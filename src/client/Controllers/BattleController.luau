@@ -929,8 +929,8 @@ local function swordHit(event: any)
 		-- Your own cuts burst as the blade landed (SwordController's reach check); everyone else's, every dash slash
 		-- (on each foe it reached) and yours the reach check missed burst here
 		if not mine or event.kind == "Skill" or not SwordController.HitSoundJustPlayed() then
-			local burst = SwordFx.BURST
-			HitFx.burst(at, (if big then burst.big else burst.size) * slash.scale, tint)
+			-- the Yona pack's hit and golden sparks (owner 2026-11-08), bigger on big hits
+			HitFx.impact(at, slash.scale * (if big then SwordFx.IMPACT.big else 1))
 			if big then
 				HitFx.ring(at, SwordFx.RING.size * slash.scale, tint)
 			end

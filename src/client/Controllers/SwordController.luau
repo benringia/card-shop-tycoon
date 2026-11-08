@@ -872,8 +872,8 @@ local function predictHit(connects: (root: BasePart, targets: { SwordRules.Targe
 	end
 	local slash = slashOf(character, sword)
 	local tint = Color3.fromRGB(slash.color[1], slash.color[2], slash.color[3])
-	local burst = SwordFx.BURST
-	HitFx.burst(at, (if last then burst.big else burst.size) * slash.scale, tint)
+	-- the Yona pack's hit and golden sparks (owner 2026-11-08), bigger on the finisher
+	HitFx.impact(at, slash.scale * (if last then SwordFx.IMPACT.big else 1))
 	-- The finisher's ring; from +7 an element burst on every hit (the weapon's layers)
 	local view = if character then views[character] else nil
 	local layers = if view then WeaponLook.layers(view.swordId, view.grade, view.level, "hand") else nil

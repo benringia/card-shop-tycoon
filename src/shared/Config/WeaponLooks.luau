@@ -139,6 +139,16 @@ return {
 		spark = { texture = "spark", rate = 14, lifetime = { 0.6, 1.1 }, size = 0.3, speed = { 0.4, 1.4 }, brightness = 4 },
 		ribbon = { texture = "streak", rate = 10, lifetime = { 0.7, 1.1 }, size = { 0.25, 0.5 }, speed = { 2, 4 }, transparency = 0.2, brightness = 1.6 },
 	},
+	-- Ember and Tide weapons' auras (owner 2026-11-08, picked in game from the free Euphoric Games VFX Pack, Creator
+	-- Store 112672322113504; WeaponLookRules.auraStyle): the pack's fire or water flipbook (a 4x4 sheet played once over
+	-- each particle's life, turned at random, fading in and out) in the weapon's deep colour, in place of our flames,
+	-- core and smoke; the sparks, ribbons and the upgrade ladder stay. `rate` at full density like AURA's (the guard and
+	-- grip get `otherParts` of it); `zOffset` keeps the blade in front of it. Sizes from the in-game test on the Titan's
+	-- Lance (the pack's 1.1 times 0.75); the pack's own brightness (fire 2, water 1).
+	ELEMENT_AURA = {
+		Ember = { texture = "fireAura", rate = 120, lifetime = 1, size = 0.8, brightness = 2, emission = 0.5, zOffset = -1 },
+		Tide = { texture = "waterAura", rate = 120, lifetime = 1, size = 0.8, brightness = 1, emission = 0.5, zOffset = -1 },
+	},
 	-- A new boss weapon drop seen by others nearby (spec 4.4): a column of light in the rarity's colour rising where the
 	-- winner stands, for players within `range` studs (studs, seconds; the column's width grows by `swell`)
 	BEACON = { range = 150, height = 40, width = 3, swell = 1.6, seconds = 4, fadeIn = 0.3, fadeOut = 1.2 },

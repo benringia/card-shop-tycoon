@@ -3,6 +3,7 @@
 -- aura's density by upgrade, the +10 ribbons, the cheap creature-style sparkles, and which swords get the full aura
 local WeaponLookRules = require("../src/shared/Util/WeaponLookRules")
 local Looks = require("../src/shared/Config/WeaponLooks")
+local AttackFx = require("../src/shared/Config/AttackFx")
 local expect = require("./lib/expect")
 
 return {
@@ -109,5 +110,25 @@ return {
 
 	["the budget's numbers are set"] = function()
 		assert(Looks.BUDGET.nearest >= 1 and Looks.BUDGET.range > 0 and Looks.BUDGET.every > 0)
+	end,
+
+	-- Owner 2026-11-08 (free VFX packs, picked in game): Ember weapons blaze with the Euphoric pack's fire, Tide weapons
+	-- with its water; every other element and the Prism Blade keep our flames
+	["Ember and Tide weapons wear the pack's fire and water auras; the rest keep our flames"] = function()
+		expect.equal(WeaponLookRules.auraStyle(Looks, "Ember", false), "Ember")
+		expect.equal(WeaponLookRules.auraStyle(Looks, "Tide", false), "Tide")
+		for _, element in { "Bloom", "Volt", "Shade" } do
+			expect.equal(WeaponLookRules.auraStyle(Looks, element, false), nil, element)
+		end
+		expect.equal(WeaponLookRules.auraStyle(Looks, nil, false), nil, "the Steel Sword")
+		expect.equal(WeaponLookRules.auraStyle(Looks, nil, true), nil, "the Prism Blade")
+	end,
+
+	["the element auras' textures are effect textures and they burn"] = function()
+		for element, spec in Looks.ELEMENT_AURA do
+			local id = (AttackFx.TEXTURES :: any)[spec.texture]
+			expect.equal(typeof(id) == "string" and string.match(id, "^rbxassetid://%d+$") ~= nil, true, `{element}: {spec.texture}`)
+			assert(spec.rate > 0 and spec.lifetime > 0 and spec.size > 0, element)
+		end
 	end,
 }

@@ -192,6 +192,60 @@ function HitFx.burst(at: Vector3, size: number, tint: Color3)
 	end
 end
 
+-- A landed cut's impact at `at` (Config/SwordFx IMPACT, the Yona VFX Pack's hit and golden sparks): every emitter
+-- bursts once, its sizes and speeds `scale` times the pack's
+function HitFx.impact(at: Vector3, scale: number)
+	local impact = SwordFx.IMPACT
+	local part = holder(CFrame.new(at), impact.seconds)
+	for _, spec in impact.emitters do
+		local emitter = Instance.new("ParticleEmitter")
+		emitter.Texture = (AttackFx.TEXTURES :: any)[spec.texture] or ""
+		emitter.Color = ColorSequence.new(color(spec.color))
+		emitter.LightEmission = 1
+		emitter.LightInfluence = 0
+		emitter.Brightness = spec.brightness
+		emitter.ZOffset = spec.zOffset
+		emitter.Lifetime = NumberRange.new(spec.lifetime[1], spec.lifetime[2])
+		local speed = spec.speed or { 0, 0 }
+		emitter.Speed = NumberRange.new(speed[1] * scale, speed[2] * scale)
+		local spread = spec.spread or { 0, 0 }
+		emitter.SpreadAngle = Vector2.new(spread[1], spread[2])
+		local rotation = spec.rotation or { 0, 0 }
+		emitter.Rotation = NumberRange.new(rotation[1], rotation[2])
+		emitter.Acceleration = Vector3.new(0, -(spec.fall or 0), 0)
+		emitter.Drag = spec.drag or 0
+		local size = {}
+		for _, point in spec.size do
+			table.insert(size, NumberSequenceKeypoint.new(point[1], point[2] * scale, point[3] * scale))
+		end
+		emitter.Size = NumberSequence.new(size)
+		local transparency = {}
+		for _, point in spec.transparency do
+			table.insert(transparency, keypoint(point[1], point[2]))
+		end
+		emitter.Transparency = NumberSequence.new(transparency)
+		if spec.squash then
+			local squash = {}
+			for _, point in spec.squash do
+				table.insert(squash, NumberSequenceKeypoint.new(point[1], point[2], point[3]))
+			end
+			emitter.Squash = NumberSequence.new(squash)
+		end
+		if spec.alongFlight then
+			emitter.Orientation = Enum.ParticleOrientation.VelocityParallel
+		end
+		if spec.flipbook then
+			emitter.FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4
+			emitter.FlipbookMode = Enum.ParticleFlipbookMode.OneShot
+			emitter.FlipbookFramerate = NumberRange.new(spec.flipbook.fps)
+			emitter.FlipbookStartRandom = spec.flipbook.random == true
+		end
+		emitter.Rate = 0
+		emitter.Parent = part
+		emitter:Emit(spec.count)
+	end
+end
+
 -- A ring snapping out from `at` to `size` studs across, facing you (a big hit; flat ground rings are the boss's)
 function HitFx.ring(at: Vector3, size: number, tint: Color3)
 	local seconds = SwordFx.RING.seconds

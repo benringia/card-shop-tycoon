@@ -4,6 +4,7 @@ local Bosses = require("../src/shared/Config/Bosses")
 local Combat = require("../src/shared/Config/Combat")
 local Swords = require("../src/shared/Config/Swords")
 local SwordFx = require("../src/shared/Config/SwordFx")
+local AttackFx = require("../src/shared/Config/AttackFx")
 local SwordRules = require("../src/shared/Util/SwordRules")
 local expect = require("./lib/expect")
 
@@ -317,6 +318,20 @@ return {
 		expect.equal(sun.speed, 14); expect.equal(sun.blast, 6)
 		local prism = shapes.prismBlade.skill.shape
 		expect.equal(prism.kind, "judgment"); expect.equal(prism.range, 24); expect.equal(prism.strikes, 5); expect.equal(prism.gap, 0.15)
+	end,
+
+	-- Owner 2026-11-08 (free VFX packs, picked in game): a landed cut bursts with the Yona pack's hit (a white flash,
+	-- sparks and a shockwave) and its golden sparks; bigger on the finisher and the skill
+	["a landed cut's impact: every emitter bursts with a known effect texture"] = function()
+		local impact = SwordFx.IMPACT
+		assert(#impact.emitters >= 2, "a flash and sparks at least")
+		for index, emitter in impact.emitters do
+			local id = (AttackFx.TEXTURES :: any)[emitter.texture]
+			expect.equal(typeof(id) == "string" and string.match(id, "^rbxassetid://%d+$") ~= nil, true, `emitter {index}: {emitter.texture}`)
+			assert(emitter.count >= 1 and emitter.lifetime[1] > 0 and emitter.lifetime[2] >= emitter.lifetime[1], `emitter {index}`)
+		end
+		assert(impact.big > 1, "the finisher and the skill hit bigger")
+		assert(impact.seconds >= 1, "it cleans up after the longest emitter")
 	end,
 
 	-- The sword-moves round's effect textures (tools/textures/make_sword_fx.py), uploaded as images

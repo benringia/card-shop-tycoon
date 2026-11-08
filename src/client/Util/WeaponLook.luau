@@ -170,12 +170,52 @@ local function auraEmitter(parent: BasePart, kind: string, rate: number, colors:
 	return made
 end
 
+-- An Ember or Tide weapon's pack aura (Config/WeaponLooks ELEMENT_AURA): the pack's fire or water flipbook filling the
+-- part's box in the weapon's deep colour, a "kind" of the aura like the flames (setPlace scales its rate the same way)
+local function elementAuraEmitter(parent: BasePart, spec: any, rate: number, deep: Color3): ParticleEmitter
+	local made = Instance.new("ParticleEmitter")
+	made.Name = "Aura"
+	made:SetAttribute("Kind", "element")
+	made:SetAttribute("FullRate", rate)
+	made.Texture = texture(spec.texture)
+	made.Shape = Enum.ParticleEmitterShape.Box
+	made.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+	made.Color = ColorSequence.new(deep)
+	made.LightEmission = spec.emission
+	made.LightInfluence = 0
+	made.Brightness = spec.brightness
+	made.ZOffset = spec.zOffset
+	made.Lifetime = NumberRange.new(spec.lifetime)
+	made.Speed = NumberRange.new(0)
+	made.Rotation = NumberRange.new(-360, 360)
+	made.Size = NumberSequence.new(spec.size)
+	made.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.5, 0),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	made.FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4
+	made.FlipbookMode = Enum.ParticleFlipbookMode.OneShot
+	made.Rate = 0
+	made.Enabled = false
+	made.LockedToPart = true
+	made.Parent = parent
+	return made
+end
+
 -- The aura's colours: deep to bright for the flames (the Prism Blade: one flame emitter per element), its core and
--- sparks bright, its smoke deep
+-- sparks bright, its smoke deep. Ember and Tide weapons wear their pack aura in place of the flames, core and smoke.
 local function auraEmitters(parent: BasePart, share: number, weaponId: string, look: WeaponLooks.Look)
 	local deep, glow = rgb(look.deep), rgb(look.glow)
 	local weapon = Weapons.ById[weaponId]
 	local aura = WeaponLooks.AURA :: any
+	local style = WeaponLookRules.auraStyle(WeaponLooks, if weapon then weapon.element else nil, if weapon then weapon.prism else nil)
+	if style then
+		local spec = (WeaponLooks.ELEMENT_AURA :: any)[style]
+		elementAuraEmitter(parent, spec, spec.rate * share, deep)
+		auraEmitter(parent, "spark", aura.spark.rate * share, ColorSequence.new(WHITE, glow))
+		return
+	end
 	if weapon and weapon.prism then
 		for _, element in PRISM_ORDER do
 			local colors = WeaponLooks.BY_ELEMENT[element]

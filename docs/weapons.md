@@ -103,3 +103,24 @@ after re-importing a model or running `forge_variants`.
 The aura (flames, core, smoke, sparks, +10 ribbons) and the cheap glow (sparkles, light) are particles and a light made
 in code (`Util/WeaponLook`, numbers in `WeaponLooks.AURA` and `SPARKLES`); `SwordController` gives the full aura to
 your own sword and the nearest few (`BUDGET`).
+
+## Pack effects
+
+Some effects come from free Creator Store VFX packs (owner 2026-11-08, picked from renders in town):
+
+| Pack | Store id | Used for | Our config |
+|---|---|---|---|
+| Euphoric Games VFX Pack | 112672322113504 | the Ember and Tide weapon auras (its Fire-Aura-01 and Water-Aura-01) | `WeaponLooks.ELEMENT_AURA` |
+| Yona VFX Pack | 18170940328 | a landed cut's impact (its Hit-01 and Golden-Sparks-01) | `SwordFx.IMPACT` |
+
+Nothing from a pack is inserted into the game: its emitters' settings were copied into our configs and our code builds
+them, pointing at the pack's texture ids (`AttackFx.TEXTURES`: `fireAura`, `waterAura`, `hitFlash`, `hitSparks`,
+`shockwave`, `gold*`). Those are public images other people uploaded: if one is ever deleted it shows blank, and we
+draw a replacement with our texture tools (`tools/textures/`) and swap the id.
+
+Vetting a pack before using it, without touching the place: from the Studio MCP, `game:GetObjects("rbxassetid://<id>")`
+returns unparented copies; read every script (none may `require`, `loadstring`, `getfenv`, or call HTTP, teleport or
+purchase APIs), PreloadAsync every particle, beam and trail texture, and check the creator (no reuploads of paid packs,
+deleted accounts or other games' characters). Render candidates in a Play test (thrown away on Stop). Rejected
+2026-11-08: the "Aura Pack Premium Sanzzzzz" reuploads, the "Content Deleted" account's packs, "not mine" and anime
+character packs, a pack with 64 scripts.

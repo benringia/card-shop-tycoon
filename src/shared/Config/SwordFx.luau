@@ -65,6 +65,26 @@ return {
 	-- on the foe's side facing you (`share` of its radius out, `up` studs above your root), a ring snapping out on big
 	-- hits, two crossing cut lines on each foe the dash slash hits, a dust puff where the finisher lands
 	BURST = { size = 5, big = 7, seconds = 0.35, share = 0.7, up = 1 },
+	-- A landed cut's impact in place of the star burst (owner 2026-11-08, picked in game from the free Yona VFX Pack,
+	-- Creator Store 18170940328; Util/HitFx.impact): its Hit-01 (a white flash, sparks and a shockwave) and Golden-Sparks-01
+	-- (a gold shockwave, specks, streaks flung out and a star), emitted once each at the burst point. The pack's own
+	-- numbers, its sizes times the sword's slash scale (`big` more on the finisher and the dash slash). Textures are
+	-- Config/AttackFx TEXTURES keys; sizes { time, studs, envelope }, transparency { time, value }, colour { r, g, b };
+	-- flipbook: a 4x4 sheet played once over each particle's life (`fps`: the pack's framerate, `random`: start frame).
+	IMPACT = {
+		big = 1.35,
+		seconds = 1.5, -- the holder lasts past the longest particle (1 s)
+		emitters = {
+			{ texture = "hitFlash", count = 3, lifetime = { 0.45, 0.45 }, size = { { 0, 4, 0 }, { 0.989, 3.812, 0 }, { 1, 4.5, 0 } }, transparency = { { 0, 1 }, { 0.035, 0 }, { 0.9, 0 }, { 1, 1 } }, color = { 255, 255, 255 }, brightness = 10, zOffset = 4, flipbook = { fps = 30 } },
+			{ texture = "hitSparks", count = 12, lifetime = { 0.125, 0.25 }, size = { { 0, 0.25, 0 }, { 0.375, 3, 0 }, { 1, 3, 0 } }, transparency = { { 0, 1 }, { 0.25, 0 }, { 0.75, 0 }, { 1, 1 } }, color = { 255, 255, 255 }, brightness = 10, zOffset = 5, rotation = { -360, 360 }, flipbook = { fps = 45, random = true } },
+			{ texture = "shockwave", count = 1, lifetime = { 1, 1 }, size = { { 0, 0.437, 0 }, { 0.497, 3.75, 0 }, { 1, 5.125, 0 } }, transparency = { { 0, 0 }, { 1, 0 } }, color = { 255, 255, 255 }, brightness = 10, zOffset = 3, rotation = { -360, 360 }, flipbook = { fps = 1 } },
+			{ texture = "shockwave", count = 1, lifetime = { 1, 1 }, size = { { 0, 0.437, 0 }, { 0.497, 3.75, 0 }, { 1, 5.125, 0 } }, transparency = { { 0, 0 }, { 1, 0 } }, color = { 255, 235, 83 }, brightness = 10, zOffset = 3, rotation = { -360, 360 }, flipbook = { fps = 1 } },
+			{ texture = "goldSpeck", count = 5, lifetime = { 0.25, 0.5 }, speed = { 10, 15 }, spread = { -360, 360 }, size = { { 0, 0.292, 0.25 }, { 1, 0, 0 } }, transparency = { { 0, 1 }, { 0.101, 0 }, { 1, 0 } }, color = { 255, 235, 83 }, brightness = 5, zOffset = 1, rotation = { -360, 360 }, drag = 1 },
+			{ texture = "goldDot", count = 5, lifetime = { 0.2, 0.4 }, speed = { 12, 12 }, spread = { -360, 360 }, size = { { 0, 0, 0 }, { 1, 0.388, 0 } }, transparency = { { 0, 1 }, { 0.026, 0 }, { 0.802, 0 }, { 1, 1 } }, color = { 255, 235, 83 }, brightness = 5, zOffset = 1, rotation = { -360, 360 }, drag = 1 },
+			{ texture = "goldStreak", count = 25, lifetime = { 0.5, 1 }, speed = { 25, 25 }, spread = { -180, 180 }, size = { { 0, 0.875, 0.875 }, { 1, 0, 0 } }, transparency = { { 0, 1 }, { 0.25, 0 }, { 1, 1 } }, color = { 255, 235, 83 }, brightness = 10, zOffset = 2, rotation = { -90, -90 }, fall = 10, drag = 5, alongFlight = true, squash = { { 0, 0.188, 1 }, { 1, -0.488, 1 } } },
+			{ texture = "goldStar", count = 25, lifetime = { 0.25, 0.5 }, size = { { 0, 1.563, 0.125 }, { 1, 0.5, 0.125 } }, transparency = { { 0, 1 }, { 0.5, 0 }, { 1, 1 } }, color = { 255, 235, 83 }, brightness = 1, zOffset = 4, squash = { { 0, -1, 0 }, { 1, 0.487, 0 } } },
+		},
+	},
 	-- The Magma Halberd's Eruption perk (weapons round 2): a lava burst and ring on the foe, on top of the extra hit's own
 	ERUPT = { color = { 255, 120, 40 }, size = 9, ring = 10 },
 	RING = { size = 10, seconds = 0.3 },

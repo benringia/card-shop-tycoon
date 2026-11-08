@@ -75,6 +75,15 @@ function WeaponLookRules.layers(looks: any, rarity: string, level: number, grade
 	}
 end
 
+-- Which pack aura a weapon wears (looks.ELEMENT_AURA, owner 2026-11-08): its element's, when it has one; nil keeps our
+-- flames (no element, an element without one, or the Prism Blade's every-element flames)
+function WeaponLookRules.auraStyle(looks: any, element: string?, prism: boolean?): string?
+	if prism or not element or not looks.ELEMENT_AURA[element] then
+		return nil
+	end
+	return element
+end
+
 -- A new drop's light column (spec 4.4): seen by everyone within range of the winner, who has the cinematic instead
 function WeaponLookRules.seesBeacon(distance: number, range: number, mine: boolean): boolean
 	return not mine and distance <= range
