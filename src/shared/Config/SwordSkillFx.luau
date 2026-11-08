@@ -246,7 +246,7 @@ local LOOKS: { [string]: Look } = {
 	-- smoke and falling embers over `smoke` seconds. No camera moment.
 	magmaCleave = {
 		kind = "skill",
-		textures = { "flame", "spark", "smoke", "glow", "crescent" },
+		textures = { "flame", "spark", "smoke", "glow", "crescent", "fireAura" },
 		seconds = 1.2,
 		size = 22,
 		count = 120,
@@ -306,8 +306,8 @@ return {
 	} :: { [string]: { particle: string } },
 	-- Your own skill's screen shakes (ScreenFx.shake amounts; a boss slam is 0.75): on the cleave and on the burst
 	-- Titan's Wrath: each rumble pulse through the charge grows to titansRumble (they decay between pulses: it throbs and
-	-- builds), the fissure's shake is titansWrath (the peak's flash shakes `release`)
-	SHAKE = { release = 0.5, impact = 0.95, thornline = 0.55, prismStrike = 0.4, prismJudgment = 1.1, elementalSpin = 0.7, finisher = 0.35, titansRumble = 0.28, titansWrath = 1 },
+	-- builds), the fissure's shake is titansWrath (the peak's flash shakes `release`); Magma Cleave's swipe magmaCleave
+	SHAKE = { release = 0.5, impact = 0.95, thornline = 0.55, prismStrike = 0.4, prismJudgment = 1.1, elementalSpin = 0.7, finisher = 0.35, titansRumble = 0.28, titansWrath = 1, magmaCleave = 0.8 },
 	-- Your own skill's camera moment (owner 2026-11-07, camera only: the fight runs on and you can still be hit; then
 	-- "the camera ... is at the back so the crescent is hard to see ... make sure it shows the full animation without
 	-- being blocked"), seconds and studs, all from the side (your left or right, whichever has a clear view): eased over

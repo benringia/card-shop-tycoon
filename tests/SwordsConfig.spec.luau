@@ -131,6 +131,22 @@ return {
 		expect.equal(SkillFx.LOOKS.torrentStrike.cinematic, true, "your own Torrent Strike's camera pull-back")
 	end,
 
+	["Magma Cleave has its own sounds: the whoosh of the swing and the fire burst on the hit; the spear's are untouched"] = function()
+		local halberd, spear = Swords.SWORDS.magmaHalberd, Swords.SWORDS.spear
+		local keys = {}
+		for _, cue in halberd.cues.skill do
+			keys[cue.key] = cue.at
+		end
+		for _, key in { "cleaveWhoosh", "cleaveFire" } do
+			assert(keys[key], `the skill cues {key}`)
+			expect.equal(halberd.sounds[key] ~= nil and halberd.sounds[key] ~= "", true, `{key} has a sound`)
+			expect.isNil(spear.sounds[key], `the spear's sounds stay its own ({key})`)
+		end
+		expect.equal(keys.cleaveWhoosh < halberd.skill.hitAt, true, "the whoosh as it swings")
+		expect.equal(math.abs(keys.cleaveFire - halberd.skill.hitAt) < 0.1, true, "the fire on the hit")
+		expect.equal(halberd.sounds.thrustAir, spear.sounds.thrustAir, "the spear's cut sounds")
+	end,
+
 	["Titan's Wrath has its own sounds: the charge, the rumble, the thrust, thorns and the fissure; the spear's are untouched"] = function()
 		local lance, spear = Swords.SWORDS.titansLance, Swords.SWORDS.spear
 		local keys = {}

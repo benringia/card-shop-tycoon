@@ -2108,6 +2108,92 @@ local function elementalSpin(root: BasePart, spec: SwordSkillFxConfig.Look, colo
 	end)
 end
 
+-- Magma Cleave (the Magma Halberd; spec 2026-11-09-halberd-and-trident-skills-design 3: "one big swipe. with flaming
+-- horizontal slash effects"): from `windup` the blade's glow brightens and embers gather on it; at `hit` (the burst
+-- hook: your shake) a big fire crescent wipes right to left round your front over the hit's half circle (`radius`,
+-- `angle`), `crescent` studs thick with a white-hot core, `embers` flames and embers shedding off it, a thinner flame
+-- slash a beat behind; then smoke and falling embers over `smoke` seconds. The light version: half the pieces, no smoke.
+local CLEAVE_PIECES = 16
+local function magmaCleave(root: BasePart, spec: SwordSkillFxConfig.Look, colors: Colors, scale: number, hooks: Hooks)
+	local beats = spec.beats :: { [string]: number }
+	local lite = hooks.lite == true
+	local gathering = beats.hit - beats.windup
+	task.delay(beats.windup, function()
+		local blade = hooks.blade
+		if cancelled(hooks) or not blade or not blade.part.Parent then
+			return
+		end
+		local gather = emitter(blade.part, "flame", colors.glow, { size = { 0.7 * scale, 0 }, life = { 0.25, 0.45 }, speed = { 0.5, 2 }, spread = 180, brightness = 3, locked = true })
+		gather.Rate = if lite then 25 else 70
+		local light = Instance.new("PointLight")
+		light.Color = colors.glow
+		light.Range = 10
+		light.Brightness = 0
+		light.Parent = blade.part
+		tween(light, gathering, { Brightness = 5 })
+		task.delay(gathering + 0.15, function()
+			gather.Enabled = false
+			tween(light, 0.3, { Brightness = 0 })
+		end)
+		Debris:AddItem(gather, gathering + 1)
+		Debris:AddItem(light, gathering + 0.6)
+	end)
+	task.delay(beats.hit, function()
+		if cancelled(hooks) then
+			return
+		end
+		if hooks.burst then
+			hooks.burst(root.Position)
+		end
+		local direction = flatLook(root)
+		local center = root.Position - UP * 0.5
+		local half = math.rad(beats.angle / 2)
+		local base = math.atan2(direction.X, direction.Z)
+		local pieces = if lite then CLEAVE_PIECES / 2 else CLEAVE_PIECES
+		local function crescent(radius: number, thick: number, tint: Colors, seconds: number, sheds: boolean)
+			local function point(a: number): Vector3
+				return center + Vector3.new(math.sin(base + a), 0, math.cos(base + a)) * radius
+			end
+			for index = 0, pieces - 1 do
+				local a0 = -half + (index / pieces) * 2 * half
+				local a1 = -half + ((index + 1) / pieces) * 2 * half
+				task.delay(index * 0.01, function()
+					local p0, p1 = point(a0), point(a1)
+					local swell = 0.55 + 0.45 * math.sin(math.pi * (index + 0.5) / pieces)
+					beam(p0, p1, thick * 0.35 * swell, tint, seconds)
+					-- the fire itself: the pack's flame flipbook (WeaponLooks' Ember aura) along the blade's path
+					local anchor = holder(CFrame.lookAt(p1, p1 + (p1 - center).Unit), Vector3.new(thick, thick * 0.5, (p1 - p0).Magnitude), beats.smoke + 1.2)
+					local blaze = emitter(anchor, "fireAura", tint.glow, { size = { thick * 1.5 * swell, thick * 0.6 }, life = { 0.4, 0.6 }, speed = { 1, 3 }, spread = 30, rotation = { -40, 40 }, accel = UP * 4, light = 0.6, brightness = 2.5 })
+					blaze.Shape = Enum.ParticleEmitterShape.Box
+					blaze.FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4
+					blaze.FlipbookMode = Enum.ParticleFlipbookMode.OneShot
+					blaze:Emit(detail(if lite then 2 else 4))
+					if not sheds or index % 2 == 1 then
+						return
+					end
+					local share = math.round(beats.embers / pieces * 2)
+					local flames = emitter(anchor, "flame", tint.glow, { size = { 1.6 * scale, 0.2 }, life = { 0.35, 0.6 }, speed = { 6, 14 }, spread = 35, accel = UP * 6, drag = 2, brightness = 2.5 })
+					flames.EmissionDirection = Enum.NormalId.Front
+					flames:Emit(detail(share))
+					local embers = emitter(anchor, "spark", tint.glow, { size = { 0.4, 0.05 }, life = { 0.5, 1.1 }, speed = { 8, 18 }, spread = 70, accel = -UP * 9, brightness = 3 })
+					embers.EmissionDirection = Enum.NormalId.Front
+					embers:Emit(detail(share))
+					if not lite then
+						local smoke = emitter(anchor, "smoke", tint.deep, { size = { 1.5 * scale, 3.5 * scale }, life = { beats.smoke * 0.7, beats.smoke }, speed = { 0.5, 2 }, spread = 60, accel = UP * 2, light = 0.2, brightness = 0.8, start = 0.4 })
+						task.delay(0.12, function()
+							smoke:Emit(2)
+						end)
+					end
+				end)
+			end
+		end
+		crescent(beats.radius * 0.72, beats.crescent * scale, colors, 0.35, true)
+		task.delay(0.07, function()
+			crescent(beats.radius * 0.55, beats.crescent * 0.45 * scale, { deep = colors.deep, glow = colors.deep:Lerp(colors.glow, 0.5), element = colors.element }, 0.3, false)
+		end)
+	end)
+end
+
 -- The skill: Sunfall Cleave its own; the looks still waiting for their round around you, along the ground toward
 -- `aim` (else ahead), or on the aimed foe
 function SwordSkillFx.skill(character: Model, look: string, colors: Colors, scale: number, aim: Vector3?, hooks: Hooks?)
@@ -2133,6 +2219,9 @@ function SwordSkillFx.skill(character: Model, look: string, colors: Colors, scal
 		return
 	elseif look == "titansWrath" and spec.beats then
 		titansWrath(root, spec, colors, scale, hooks or {})
+		return
+	elseif look == "magmaCleave" and spec.beats then
+		magmaCleave(root, spec, colors, scale, hooks or {})
 		return
 	end
 	local feet = root.Position - Vector3.new(0, ROOT_TO_GROUND - GROUND_LIFT, 0)

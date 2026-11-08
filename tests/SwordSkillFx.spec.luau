@@ -288,4 +288,18 @@ return {
 		expect.equal(strongest <= 0.5, true, `under half the cap ({strongest})`)
 		expect.equal(ShakeRules.add(shake, SwordSkillFx.SHAKE.titansWrath) - shake >= 0.6, true, `the fissure jumps the shake (from {shake})`)
 	end,
+
+	-- Weapons round 2.5 part 2 (spec 2026-11-09-halberd-and-trident-skills-design 3): Magma Cleave's one big swipe
+	["Magma Cleave: the Halberd's look, the fire crescent over the hit's half circle, a solid shake"] = function()
+		local halberd = Swords.SWORDS.magmaHalberd
+		local look = SwordSkillFx.LOOKS.magmaCleave
+		expect.equal(look.form, "around")
+		expect.isNil(look.cinematic, "no camera moment: it's the simple one")
+		local b = look.beats :: { [string]: number }
+		expect.equal(b.windup < b.hit, true, "the wind-up before the swipe")
+		expect.equal(b.radius, halberd.skill.shape.radius, "the crescent sweeps the hit's half circle")
+		expect.equal(b.angle, halberd.skill.shape.angle)
+		local shake = SwordSkillFx.SHAKE :: any
+		expect.equal(shake.magmaCleave > shake.finisher and shake.magmaCleave < shake.titansWrath, true, "between a finisher's and Titan's Wrath's")
+	end,
 }

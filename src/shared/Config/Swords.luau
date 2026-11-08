@@ -434,9 +434,13 @@ do
 	-- design; owner 2026-11-09), in place of Piercing Rush; the spear's cuts, moves and sounds, the same tables. Neither
 	-- moves you. Their animations (tools/blender/anim_magma_halberd.py, anim_tidal_trident.py) play from
 	-- SwordAnimations.<model> in Studio until published.
-	local function ownSkill(name: string, model: string, skill: Skill, look: string, skillCues: { Cue }): Sword
+	local function ownSkill(name: string, model: string, skill: Skill, look: string, skillCues: { Cue }, extra: { [string]: string }): Sword
 		local own = table.clone(spear.animations)
 		own.skill = ""
+		local ownSounds = table.clone(spear.sounds)
+		for key, id in extra do
+			ownSounds[key] = id
+		end
 		return {
 			name = name,
 			power = starter.power,
@@ -446,7 +450,7 @@ do
 			combo = spear.combo,
 			skill = skill,
 			animations = own,
-			sounds = spear.sounds,
+			sounds = ownSounds,
 			cues = { cut1 = spear.cues.cut1, cut2 = spear.cues.cut2, cut3 = spear.cues.cut3, skill = skillCues },
 			fx = { slash = "spearStreak", finisher = "skyPierce", skill = look },
 		}
@@ -461,7 +465,11 @@ do
 		cooldown = 8,
 		shape = { kind = "arc", radius = 11, angle = 180 },
 		free = { at = 0.6 },
-	}, "magmaCleave", { { key = "spinWhoosh", at = 0.5 }, { key = "swing3", at = 0.58 } })
+	}, "magmaCleave", { { key = "cleaveWhoosh", at = 0.46 }, { key = "cleaveFire", at = 0.6 } }, {
+		-- Pro Sound Effects already measured (Config/SoundLevels)
+		cleaveWhoosh = "rbxassetid://9120717850", -- Whoosh Fast Swish By 4: the big swing
+		cleaveFire = "rbxassetid://9114438917", -- Fire Sheet 3: the fire crescent bursting out
+	})
 	-- Torrent Strike ("the player strike the ground with the trident, while the trident is stuck to the ground,
 	-- torrents of water appears from the ground"): raised overhead, slammed prongs-first into the ground (its Slam
 	-- marker), torrents bursting up round you at its Hit marker: every foe within 12 studs, once (a second, wider ring of
@@ -473,7 +481,7 @@ do
 		cooldown = 8,
 		shape = { kind = "spin", radius = 12 },
 		free = { at = 0.75 },
-	}, "torrentStrike", { { key = "swing2", at = 0.4 }, { key = "slam", at = 0.55 }, { key = "ground", at = 0.57 } })
+	}, "torrentStrike", { { key = "swing2", at = 0.4 }, { key = "slam", at = 0.55 }, { key = "ground", at = 0.57 } }, {})
 end
 
 return {
