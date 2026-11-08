@@ -149,12 +149,14 @@ function SkillCinematic.play(root: BasePart, impact: Vector3, release: number, t
 	end)
 end
 
--- The camera moment for a skill look with one (Config/SwordSkillFx `cinematic`) aimed at `aim`: its effect leaves at
+-- The camera moment for a skill look with one (Config/SwordSkillFx `cinematic`) aimed at `aim` (a look drawn round
+-- you frames you where you stand: SwordSkillFxRules.framesOnCaster; nothing to aim at, no moment): its effect leaves at
 -- `camAt` (else `release`) and lands after its flight (`speed`; none: at once), held `camHold`, the wide shot
 -- `camLookUp` / `camUp`, the hero shot looking `camFocus` above your root (else CINEMATIC's)
-function SkillCinematic.forLook(root: BasePart, look: SwordSkillFxConfig.Look, aim: Vector3, live: () -> boolean)
+function SkillCinematic.forLook(root: BasePart, look: SwordSkillFxConfig.Look, target: Vector3?, live: () -> boolean)
 	local beats = look.beats
-	if not look.cinematic or not beats then
+	local aim = if SwordSkillFxRules.framesOnCaster(look) then root.Position else target
+	if not look.cinematic or not beats or not aim then
 		return
 	end
 	local flat = Vector3.new(aim.X - root.Position.X, 0, aim.Z - root.Position.Z).Magnitude

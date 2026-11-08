@@ -318,4 +318,69 @@ return {
 		local shake = SwordSkillFx.SHAKE :: any
 		expect.equal(shake.torrentStrike > shake.release and shake.torrentStrike <= shake.titansWrath, true, "the torrents shake harder than the slam (release), no harder than Titan's Wrath")
 	end,
+
+	-- Final review 2026-11-09: every monster marker is a 1-stud part, so the big column under a foe never showed under a
+	-- boss; the columns come from the fight's real targets (their radii), at each foe's near edge, sized by it
+	["Torrent Strike's big columns go under every foe the torrents reach, at its near edge, sized by it"] = function()
+		local b = SwordSkillFx.LOOKS.torrentStrike.beats :: { [string]: number }
+		local foes = SwordSkillFxRules.torrentFoes(b, 0, 0, {
+			{ id = "boss", x = 0, z = -19, radius = 8 },
+			{ id = "far", x = 0, z = -21, radius = 8 },
+			{ id = "wolf", x = 5, z = 0, radius = 1.5 },
+		})
+		local got = {}
+		for _, foe in foes do
+			got[foe.id] = foe
+		end
+		assert(got.boss, "a radius-8 boss 19 studs away (its edge inside 12)")
+		expect.isNil(got.far, "21 studs away: out of reach")
+		assert(got.wolf, "a wolf close by")
+		expect.near(got.boss.z, -19 + 8 * b.foeEdge, 1e-6, "at the boss's near edge, toward you")
+		expect.near(got.boss.x, 0, 1e-6)
+		expect.equal(got.boss.size > got.wolf.size, true, "bigger under a bigger foe")
+		expect.equal(got.wolf.size, 1, "a small foe's column at the usual size")
+		expect.equal(got.boss.size <= b.foeSizeMax, true)
+	end,
+
+	-- Final review: the cinematic shoots from your left or right, so a column right at your side would stand between
+	-- the camera and you; and the wide shot looks over the tallest ring
+	["Torrent Strike's columns stay off the camera's sides and the wide shot looks over them"] = function()
+		local b = SwordSkillFx.LOOKS.torrentStrike.beats :: { [string]: number }
+		assert(b.ringOffset, "the rings' offset")
+		for ring, offset in { inner = b.ringOffset, outer = b.ringOffset + 0.5 } do
+			for index = 1, b.columns do
+				local angle = ((index - 1 + offset) * 360 / b.columns) % 180
+				expect.equal(math.abs(angle - 90) > 10, true, `{ring} column {index} at {angle} degrees: in the side camera's way`)
+			end
+		end
+		expect.equal(b.camUp ~= nil and b.camUp > b.outerHeight, true, "the wide shot above the tallest columns")
+	end,
+
+	-- Final review: the /skillfx preview framed Torrent Strike on the dummy ahead, a fight on you
+	["a camera moment drawn round you frames you, in a fight and in the preview alike"] = function()
+		expect.equal(SwordSkillFxRules.framesOnCaster(SwordSkillFx.LOOKS.torrentStrike), true)
+		expect.equal(SwordSkillFxRules.framesOnCaster(SwordSkillFx.LOOKS.titansWrath), false, "a line ahead frames its end")
+		expect.equal(SwordSkillFxRules.framesOnCaster(SwordSkillFx.LOOKS.sunfallCleave), false)
+	end,
+
+	-- Final review: the admin panel's spear skill buttons (spec 5: "the admin panel's buttons show the new skills")
+	["the admin panel previews every spear skill under its own name"] = function()
+		local want = {
+			["Piercing Rush"] = "/skillfx spear skill",
+			["Magma Cleave"] = "/skillfx halberd skill",
+			["Torrent Strike"] = "/skillfx trident skill",
+			["Titan's Wrath"] = "/skillfx lance skill",
+		}
+		local got = {}
+		for _, section in AdminPanel.SECTIONS do
+			if section.title == "Sword skills" then
+				for _, button in section.buttons do
+					got[button.label] = button.command
+				end
+			end
+		end
+		for label, command in want do
+			expect.equal(got[label], command, label)
+		end
+	end,
 }

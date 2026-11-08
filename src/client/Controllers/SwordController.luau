@@ -1205,6 +1205,9 @@ function SwordController.Skill()
 		SwordSkillFx.skill(character, effects.fx.skill, effects.colors, effects.scale, aim, {
 			blade = bladeOf(character),
 			live = skillLive,
+			targets = function(): { SwordRules.Target }
+				return if combatTargets then combatTargets() else {}
+			end,
 			released = function()
 				ScreenFx.shake(shake.release)
 			end,
@@ -1225,10 +1228,9 @@ function SwordController.Skill()
 		})
 		local look = SwordSkillFxConfig.LOOKS[effects.fx.skill]
 		-- a look drawn round you (Torrent Strike) has no aim: its camera moment frames you where you stand
-		local framed = aim or (if look and look.form == "around" then root.Position else nil)
-		if look and look.cinematic and framed then
+		if look and look.cinematic and (aim or SwordSkillFxRules.framesOnCaster(look)) then
 			cancelHang()
-			SkillCinematic.forLook(root, look, framed, function(): boolean
+			SkillCinematic.forLook(root, look, aim, function(): boolean
 				return stillSwinging(token)
 			end)
 		end

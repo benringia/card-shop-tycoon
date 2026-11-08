@@ -31,7 +31,9 @@ export type Blade = { part: BasePart, base: CFrame, tip: CFrame }
 -- `lite`: another player's cast (drawn lighter: SwordSkillFxRules.vineBudget); `live()` false at the skill's hit moment
 -- (your dodge cancelled it): the damaging part (the crescent, the vines, the dives, the wave) isn't launched
 -- `rumble(share)`: a pulse of a long charge's growing rumble (Titan's Wrath), `share` 0-1 of its strongest
-export type Hooks = { blade: Blade?, released: (() -> ())?, strike: ((index: number, at: Vector3) -> ())?, burst: ((at: Vector3) -> ())?, rumble: ((share: number) -> ())?, lite: boolean?, live: (() -> boolean)? }
+-- `targets()`: the fight's foes as the server counts them (Torrent Strike's big columns go under the ones in reach)
+export type Target = { id: string, x: number, z: number, radius: number }
+export type Hooks = { blade: Blade?, released: (() -> ())?, strike: ((index: number, at: Vector3) -> ())?, burst: ((at: Vector3) -> ())?, rumble: ((share: number) -> ())?, lite: boolean?, live: (() -> boolean)?, targets: (() -> { Target })? }
 
 local function cancelled(hooks: Hooks): boolean
 	return hooks.live ~= nil and not hooks.live()
@@ -2213,8 +2215,9 @@ end
 -- trident, while the trident is stuck to the ground, torrents of water appears from the ground"). From `raise` water
 -- swirls round the prongs; at `slam` (the released hook: your shake) a splash ring and `cracks` glowing blue cracks
 -- spread from where the prongs went in; at `hit` (the burst hook: your bigger shake) `columns` columns of water burst up
--- on a ring `inner` studs round you, a bigger one under every foe in reach (found from the drawn monsters: only the
--- look, the server decides the hits); at `second` a wider ring on the hit's `radius`, only for show; from `fall` the
+-- on a ring `inner` studs round you (turned `ringOffset`: none at your sides, where the camera is), a bigger one under
+-- every foe in reach (the `targets` hook's, as the server counts them; none for another player's cast); at `second` a
+-- wider ring on the hit's `radius`, only for show; from `fall` the
 -- water falls back as rain. A dodge or switch before the torrents stops it after the slam. The light version: fewer
 -- particles, no mist.
 local function torrentStrike(root: BasePart, spec: SwordSkillFxConfig.Look, colors: Colors, scale: number, hooks: Hooks)
@@ -2263,18 +2266,14 @@ local function torrentStrike(root: BasePart, spec: SwordSkillFxConfig.Look, colo
 				waterColumn(groundAt(feet + Vector3.new(math.sin(a), 0, math.cos(a)) * radius), height * scale, colors, scale, lite)
 			end
 		end
-		ring(beats.inner, beats.columnHeight, 0)
-		local monsters = workspace:FindFirstChild("Monsters")
-		for _, marker in if monsters then monsters:GetChildren() else {} do
-			if marker:IsA("BasePart") then
-				local flat = Vector3.new(marker.Position.X - feet.X, 0, marker.Position.Z - feet.Z)
-				if flat.Magnitude - marker.Size.X / 2 <= beats.radius then
-					waterColumn(groundAt(marker.Position), beats.columnHeight * 1.5 * scale, colors, scale * 1.3, lite)
-				end
-			end
+		ring(beats.inner, beats.columnHeight, beats.ringOffset)
+		local targets = if hooks.targets then hooks.targets() else {}
+		for _, foe in SwordSkillFxRules.torrentFoes(beats, root.Position.X, root.Position.Z, targets) do
+			local under = groundAt(Vector3.new(foe.x, feet.Y, foe.z))
+			waterColumn(under, beats.columnHeight * scale * (1 + 0.5 * foe.size), colors, scale * (0.8 + 0.5 * foe.size), lite)
 		end
 		task.delay(beats.second - beats.hit, function()
-			ring(beats.radius, beats.outerHeight, 0.5)
+			ring(beats.radius, beats.outerHeight, beats.ringOffset + 0.5)
 		end)
 		task.delay(beats.fall - beats.hit, function()
 			local sky = holder(CFrame.new(feet + UP * beats.outerHeight * scale), Vector3.new(beats.radius * 2, 0.2, beats.radius * 2), 3)

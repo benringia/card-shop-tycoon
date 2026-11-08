@@ -55,4 +55,32 @@ function SwordSkillFxRules.vineBudget(lowGraphics: boolean, others: boolean): { 
 	return { spacing = 1, share = 1, details = true }
 end
 
+-- Where Torrent Strike's big columns burst (Config/SwordSkillFx torrentStrike beats): under every foe of `targets`
+-- (SwordRules targets: id, x, z, radius) whose edge is within `radius` of (px, pz), as the server's spin counts it, at
+-- its near edge (`foeEdge` of its radius in from its centre, toward you), one size larger per `foeSizeStuds` of its
+-- radius up to `foeSizeMax`
+function SwordSkillFxRules.torrentFoes(beats: { [string]: number }, px: number, pz: number, targets: { { id: string, x: number, z: number, radius: number } }): { { id: string, x: number, z: number, size: number } }
+	local foes = {}
+	for _, target in targets do
+		local dx, dz = target.x - px, target.z - pz
+		local distance = math.sqrt(dx * dx + dz * dz)
+		if distance - target.radius < beats.radius then
+			local inward = if distance > 1e-6 then math.min(target.radius * beats.foeEdge, distance) / distance else 0
+			table.insert(foes, {
+				id = target.id,
+				x = target.x - dx * inward,
+				z = target.z - dz * inward,
+				size = math.clamp(target.radius / beats.foeSizeStuds, 1, beats.foeSizeMax),
+			})
+		end
+	end
+	return foes
+end
+
+-- Whether a skill look's camera moment frames you where you stand (a look drawn round you, Torrent Strike) rather than
+-- where its effect lands ahead
+function SwordSkillFxRules.framesOnCaster(look: { form: string? }): boolean
+	return look.form == "around"
+end
+
 return SwordSkillFxRules

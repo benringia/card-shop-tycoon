@@ -216,6 +216,9 @@ local function playSword(payload: any)
 		local shake = SwordSkillFxConfig.SHAKE
 		SwordSkillFx.skill(character, fx.skill, colors, scale, aim, {
 			blade = blade,
+			targets = function(): { SwordRules.Target }
+				return { dummyTarget }
+			end,
 			released = function()
 				ScreenFx.shake(shake.release)
 			end,

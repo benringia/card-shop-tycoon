@@ -257,9 +257,11 @@ local LOOKS: { [string]: Look } = {
 	-- ground, torrents of water appears from the ground"). From `raise` water swirls round the prongs; at `slam` a splash
 	-- ring and `cracks` glowing blue cracks spread from the prongs (SHAKE.torrentSlam); at `hit` `columns` columns burst
 	-- up on a ring `inner` studs round you (`columnHeight` tall: spray, falling droplets, mist, a splash ring at each
-	-- foot) and a big one under every foe hit (SHAKE.torrentStrike); at `second` a wider ring at `radius` studs
-	-- (`outerHeight` tall), only for show; from `fall` they fall back as rain and mist. Your own plays the camera
-	-- pull-back from `camAt`, held `camHold` (the hero shot `camFocus` above your root, the wide one `camLookUp` up).
+	-- foot) and a big one under every foe in reach (SHAKE.torrentStrike; at its near edge, larger for a bigger foe:
+	-- SwordSkillFxRules.torrentFoes); at `second` a wider ring at `radius` studs (`outerHeight` tall), only for show;
+	-- from `fall` they fall back as rain and mist. The rings are turned by `ringOffset` so no column stands at your sides,
+	-- where the camera shoots from. Your own plays the camera pull-back from `camAt`, held `camHold`, framed on you (the
+	-- hero shot `camFocus` above your root, the wide one `camLookUp` up from `camUp` high).
 	torrentStrike = {
 		kind = "skill",
 		textures = { "raindrop", "ring", "glow", "smoke", "crack" },
@@ -280,10 +282,15 @@ local LOOKS: { [string]: Look } = {
 			columnHeight = 9,
 			outerHeight = 11,
 			cracks = 6,
+			ringOffset = 0.25, -- the inner ring a quarter step round, the outer three quarters: none at your sides
+			foeEdge = 0.8, -- a foe's column at its near edge, this share of its radius in from its centre
+			foeSizeStuds = 3, -- ...one size larger per this many studs of its radius,
+			foeSizeMax = 3, -- up to this
 			camAt = 0.75,
 			camHold = 0.7,
 			camFocus = 0.5,
 			camLookUp = 2,
+			camUp = 12, -- the wide shot above the tallest columns
 		},
 	},
 }
