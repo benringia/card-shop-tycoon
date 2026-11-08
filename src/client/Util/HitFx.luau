@@ -193,10 +193,27 @@ function HitFx.burst(at: Vector3, size: number, tint: Color3)
 	end
 end
 
--- A landed cut's impact at `at` (Config/SwordFx IMPACT: the packs' slash streaks): every emitter bursts from a holder
--- standing level and turned to face your camera, again a beat later (the echo), sizes and speeds `scale` times the
--- packs'
-function HitFx.impact(at: Vector3, scale: number)
+-- How big a hit's effects are on `model` (SwordArcRules.impactScale from its size, Config/SwordFx IMPACT bySize; 1 with
+-- no model), worked out once per model
+local sizeScales: { [Model]: number } = setmetatable({}, { __mode = "k" }) :: any
+function HitFx.scaleFor(model: Model?): number
+	if not model then
+		return 1
+	end
+	local known = sizeScales[model]
+	if known then
+		return known
+	end
+	local extents = model:GetExtentsSize()
+	local scale = SwordArcRules.impactScale(extents.X, extents.Y, extents.Z, SwordFx.IMPACT.bySize)
+	sizeScales[model] = scale
+	return scale
+end
+
+-- A landed cut's impact at `at` (Config/SwordFx IMPACT: the packs' slash streaks in `tint`, the weapon's colour, and
+-- `element`'s own particles, ELEMENT_HIT): every emitter bursts from a holder standing level and turned to face your
+-- camera, the streaks again a beat later (the echo), sizes and speeds `scale` times the packs'
+function HitFx.impact(at: Vector3, scale: number, tint: Color3, element: string?)
 	local impact = SwordFx.IMPACT
 	local eye = workspace.CurrentCamera.CFrame.Position
 	local x, y, z = SwordArcRules.impactFacing(at.X, at.Y, at.Z, eye.X, eye.Z)
@@ -204,10 +221,16 @@ function HitFx.impact(at: Vector3, scale: number)
 	local part = holder(frame, impact.seconds)
 	local bursts: { { emitter: ParticleEmitter, count: number } } = {}
 	for _, spec in impact.emitters do
-		local emitter = PackEmitter.make(spec, scale, nil)
+		local emitter = PackEmitter.make(spec, scale, tint)
 		emitter.Parent = part
 		emitter:Emit(spec.count)
 		table.insert(bursts, { emitter = emitter, count = spec.count })
+	end
+	local own = if element then (SwordFx.ELEMENT_HIT :: any)[element] else nil
+	for _, spec in own or {} do
+		local emitter = PackEmitter.make(spec, scale, tint)
+		emitter.Parent = part
+		emitter:Emit(spec.count)
 	end
 	task.delay(impact.echo.after, function()
 		if not part.Parent then

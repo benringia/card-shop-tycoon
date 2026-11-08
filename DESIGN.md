@@ -1445,7 +1445,12 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
     Store packs, "make it look exactly like these": the Euphoric Games pack's Slash-Impact-01 and the Yona pack's
     Slash-01; `SwordFx.IMPACT`, `HitFx.impact`; they replaced the spiky star burst): a streak facing you, specks flung
     left and right, a big flat arc, a long stretched streak and sparks into the foe, standing level and turned to face
-    your camera, burst again half as strong 0.12 s later, x1.35 on the finisher and the dash slash, which also snap out a ring facing
+    your camera, burst again half as strong 0.12 s later, x1.35 on the finisher and the dash slash. In the weapon's
+    colour with a white core, its element's particles on top (`SwordFx.ELEMENT_HIT`: Ember flames and embers, Tide
+    droplets and a splash ring, Bloom leaves and motes, Volt crackling streaks and a flicker, Shade dark wisps; the
+    Prism Blade a random element each hit, the Steel Sword none), and sized to what was hit
+    (`SwordArcRules.impactScale`: the model's size against a 5-stud body, eased, 0.7 to 4: a Cave Bat 0.7, an Ash Wolf
+    1, a Magma Golem 1.35, the Meadow Warden about 3; the ring and the dash slash's cut lines too) (owner 2026-11-08), which also snap out a ring facing
     you (flat rings stay the boss's); the white flash on what you hit and the sparks as before. Your own cut hits burst the moment your reach check connects; other players' hits, every dash
     slash and yours the check missed burst when the server's hit arrives.
   - **Dash slash:** after-images along the dash and two crossing cut lines on each foe hit, a beat after you pass.

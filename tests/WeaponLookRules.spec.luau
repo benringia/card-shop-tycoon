@@ -108,6 +108,24 @@ return {
 		assert(Looks.BEACON.height > 10 and Looks.BEACON.seconds > Looks.BEACON.fadeIn + Looks.BEACON.fadeOut)
 	end,
 
+	-- The element a hit's particles come from (owner 2026-11-08): the weapon's; the Prism Blade's from every element in
+	-- turn (`roll`: 1-5, picked at random by the caller); the Steel Sword none
+	["a hit's element: the weapon's own, the Prism Blade's any of the five"] = function()
+		expect.equal(WeaponLookRules.hitElement("Ember", false, 1), "Ember")
+		expect.equal(WeaponLookRules.hitElement(nil, false, 1), nil, "the Steel Sword")
+		local seen: { [string]: boolean } = {}
+		for roll = 1, 5 do
+			local element = WeaponLookRules.hitElement(nil, true, roll)
+			assert(element and Looks.BY_ELEMENT[element], `roll {roll}`)
+			seen[element :: string] = true
+		end
+		local count = 0
+		for _ in seen do
+			count += 1
+		end
+		expect.equal(count, 5, "every element")
+	end,
+
 	["the budget's numbers are set"] = function()
 		assert(Looks.BUDGET.nearest >= 1 and Looks.BUDGET.range > 0 and Looks.BUDGET.every > 0)
 	end,

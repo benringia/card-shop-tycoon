@@ -923,22 +923,25 @@ local function swordHit(event: any)
 		local attacker = Players:GetPlayerByUserId(tonumber(string.sub(event.from or "", 4)) or 0)
 		local character = if attacker then attacker.Character else nil
 		local slash = SwordController.SlashOf(character)
-		local tint = Color3.fromRGB(slash.color[1], slash.color[2], slash.color[3])
+		local tint, element = SwordController.HitLook(character)
+		local model = MonsterController.GetModel(marker)
+		-- sized to the foe (owner 2026-11-08: bigger on bosses)
+		local size = slash.scale * HitFx.scaleFor(model)
 		local root = if character then character:FindFirstChild("HumanoidRootPart") :: BasePart? else nil
 		local at = (if root then SwordController.HitPoint(event.to, root.Position) else nil) or marker.Position + Vector3.new(0, 3, 0)
 		-- Your own cuts burst as the blade landed (SwordController's reach check); everyone else's, every dash slash
 		-- (on each foe it reached) and yours the reach check missed burst here
 		if not mine or event.kind == "Skill" or not SwordController.HitSoundJustPlayed() then
-			-- the Yona pack's hit and golden sparks (owner 2026-11-08), bigger on big hits
-			HitFx.impact(at, slash.scale * (if big then SwordFx.IMPACT.big else 1))
+			-- the packs' slash streaks in the weapon's colour with its element's particles (owner 2026-11-08), bigger on
+			-- big hits
+			HitFx.impact(at, size * (if big then SwordFx.IMPACT.big else 1), tint, element)
 			if big then
-				HitFx.ring(at, SwordFx.RING.size * slash.scale, tint)
+				HitFx.ring(at, SwordFx.RING.size * size, tint)
 			end
 		end
 		if event.kind == "Skill" and not SwordController.SkillLook(character) then
-			HitFx.cutLines(at, slash.scale, tint) -- the dash slash's; a round 1 sword's skill draws its own (SwordSkillFx)
+			HitFx.cutLines(at, size, tint) -- the dash slash's; a round 1 sword's skill draws its own (SwordSkillFx)
 		end
-		local model = MonsterController.GetModel(marker)
 		if model then
 			HitFx.flash(model, Color3.new(1, 1, 1), SwordFx.FLASH_SECONDS, 0.35)
 		end
@@ -1426,7 +1429,8 @@ local function playIntro(boss: any, seconds: number)
 	end)
 end
 
--- Who your sword can hit: the boss and its adds, with their sizes (soft aim; the server checks the real hits)
+-- Who your sword can hit: the boss and its adds, with their sizes (soft aim; the server checks the real hits) and how
+-- big a hit's effects are on each (its model's size, HitFx.scaleFor)
 local function swordTargets(): { any }
 	local list = {}
 	local boss = if bossId then Bosses.BOSSES[bossId] else nil
@@ -1435,7 +1439,8 @@ local function swordTargets(): { any }
 			local radius = if id == MONSTER_ID and boss then (boss.ringRadius or Bosses.RING_RADIUS) * Bosses.HIT_RADIUS_SHARE
 				elseif id == MONSTER_ID and foeElite then Bosses.ADD_HIT_RADIUS * Wild.ELITE_SIZE
 				else Bosses.ADD_HIT_RADIUS
-			table.insert(list, { id = id, x = marker.Position.X, z = marker.Position.Z, radius = radius })
+			local fx = HitFx.scaleFor(MonsterController.GetModel(marker))
+			table.insert(list, { id = id, x = marker.Position.X, z = marker.Position.Z, radius = radius, fx = fx })
 		end
 	end
 	return list

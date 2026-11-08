@@ -1,6 +1,7 @@
 --!strict
 -- The sword swing arcs' maths (Util/SwordArcRules; spec 2026-11-04-sword-moves-design, "Candy sparkle arc")
 local SwordArcRules = require("../src/shared/Util/SwordArcRules")
+local SwordFx = require("../src/shared/Config/SwordFx")
 local expect = require("./lib/expect")
 
 -- A transparency NumberSequence's rules: starts at 0, ends at 1, times rising, values 0-1, at most 20 points
@@ -94,5 +95,22 @@ return {
 		local ax, ay, az = SwordArcRules.impactFacing(10, 3, 0, 10.0001, 0)
 		expect.equal(ax, nil, "a camera straight above: no way to turn")
 		expect.equal(ay, nil); expect.equal(az, nil)
+	end,
+
+	-- Owner 2026-11-08: "adjust the slashes ring/effect sizes to the size of monsters; on bosses the effects should be
+	-- bigger". Sizes measured in Studio (model extents, studs): Cave Bat 3.6 x 3.3 x 1.1, Ash Wolf 2.9 x 4.4 x 7.5,
+	-- Magma Golem 7.0 x 7.1 x 4.0, Meadow Warden 16.0 x 18.7 x 9.1
+	["a hit's effects grow with what was hit: small monsters a little smaller, bosses much bigger"] = function()
+		local look = SwordFx.IMPACT.bySize
+		local bat = SwordArcRules.impactScale(3.6, 3.3, 1.1, look)
+		local wolf = SwordArcRules.impactScale(2.9, 4.4, 7.5, look)
+		local golem = SwordArcRules.impactScale(7.0, 7.1, 4.0, look)
+		local warden = SwordArcRules.impactScale(16.0, 18.7, 9.1, look)
+		assert(bat >= look.min and bat < 0.8, `a bat a little smaller, never below readable: {bat}`)
+		expect.near(SwordArcRules.impactScale(1, 1, 1, look), look.min, 1e-9, "a tiny foe: the floor")
+		expect.near(wolf, 1, 0.1, "the pack's own size on a wolf (it was made on a 5-stud body)")
+		assert(bat < wolf and golem > wolf and warden > golem, `bat {bat} < wolf {wolf} < golem {golem} < warden {warden}`)
+		assert(warden >= 2.5 and warden <= look.max, `a boss's hit is much bigger: {warden}`)
+		expect.near(SwordArcRules.impactScale(60, 80, 60, look), look.max, 1e-9, "capped")
 	end,
 }

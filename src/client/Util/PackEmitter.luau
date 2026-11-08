@@ -1,8 +1,8 @@
 --!strict
 -- A ParticleEmitter built from a pack effect's plain-data spec (owner 2026-11-08: effects copied from free Creator Store
 -- VFX packs, docs/weapons.md "Pack effects"; specs in Config/SwordFx IMPACT and Config/WeaponLooks ELEMENT_AURA).
--- Sizes and speeds are `scale` times the spec's; `color = "deep"` takes `deep`. The emitter comes back unparented at
--- rate 0: the caller places it, then bursts it (Emit) or gives it a rate.
+-- Sizes and speeds are `scale` times the spec's; `color = "tint"` (or "deep") takes `tint`, `whiten` of the way to
+-- white. The emitter comes back unparented at rate 0: the caller places it, then bursts it (Emit) or gives it a rate.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local AttackFx = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("AttackFx"))
@@ -28,10 +28,12 @@ local function sequence(points: { { number } }, scale: number): NumberSequence
 	return NumberSequence.new(keypoints)
 end
 
-function PackEmitter.make(spec: any, scale: number, deep: Color3?): ParticleEmitter
+function PackEmitter.make(spec: any, scale: number, tint: Color3?): ParticleEmitter
 	local emitter = Instance.new("ParticleEmitter")
 	emitter.Texture = (AttackFx.TEXTURES :: any)[spec.texture] or ""
-	emitter.Color = ColorSequence.new(if spec.color == "deep" then deep or Color3.new(1, 1, 1) else rgb(spec.color))
+	local white = Color3.new(1, 1, 1)
+	local color = if spec.color == "tint" or spec.color == "deep" then tint or white else rgb(spec.color)
+	emitter.Color = ColorSequence.new(color:Lerp(white, spec.whiten or 0))
 	emitter.LightEmission = spec.emission or 1
 	emitter.LightInfluence = 0
 	emitter.Brightness = spec.brightness

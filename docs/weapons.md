@@ -119,7 +119,9 @@ them (`Util/PackEmitter`), pointing at the pack's texture ids (`AttackFx.TEXTURE
 `auraSmoke`, `auraEmber`, `auraLight`, `slashStreak`, `slashArc`, `sparkStreak`). The six identical limb emitters a
 pack puts on a body are one emitter on the weapon at six times the rate. Some impact emitters fly a set way from their
 holder (`direction`, `facing`): `HitFx.impact` stands the holder level and turns it to face your camera, as in the test
-the owner picked from (tilted up toward the camera, the flat arc showed edge-on and vanished). Those are public images other people uploaded: if one is ever deleted it shows blank, and we
+the owner picked from (tilted up toward the camera, the flat arc showed edge-on and vanished). The impact takes the
+weapon's colour (`color = "tint"`, `whiten` toward white) and its element's particles (`SwordFx.ELEMENT_HIT`, our own
+textures), and grows with the foe's model (`HitFx.scaleFor`, `SwordFx.IMPACT.bySize`). Those are public images other people uploaded: if one is ever deleted it shows blank, and we
 draw a replacement with our texture tools (`tools/textures/`) and swap the id.
 
 Vetting a pack before using it, without touching the place: from the Studio MCP, `game:GetObjects("rbxassetid://<id>")`

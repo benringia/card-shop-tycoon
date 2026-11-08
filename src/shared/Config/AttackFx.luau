@@ -140,6 +140,7 @@ return {
 		slashStreak = "rbxassetid://16923007448",
 		slashArc = "rbxassetid://13780268621",
 		sparkStreak = "rbxassetid://6763809313", -- a single image
+		raindrop = "rbxassetid://83707706646646", -- the Tide hit's droplets (Config/SwordFx ELEMENT_HIT; MoveFx's raindrop)
 	},
 	-- A creature's basic attack by its grade: size, spark count and shake multipliers, and extras on top (A: one,
 	-- S: the big ones; Util/FightFx)

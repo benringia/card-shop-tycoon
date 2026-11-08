@@ -10,7 +10,8 @@ local SwordRules = {}
 export type Line = { length: number, width: number, burst: number }
 export type Cut = { power: number, hitAt: number, cancelAt: number?, length: number, reach: number, arc: number, line: Line? }
 export type LastCut = { index: number, startedAt: number }
-export type Target = { id: string, x: number, z: number, radius: number }
+-- `fx`: how big a hit's effects are on it (its model's size, client HitFx.scaleFor); unset: 1
+export type Target = { id: string, x: number, z: number, radius: number, fx: number? }
 
 -- The cut a tap at `now` starts and when it starts, or nil (the tap is ignored). A tap before the current cut's strike
 -- does nothing; from the strike until `comboReset` after the cut ends it queues the next cut (after cut 3 comes cut 1)

@@ -66,28 +66,60 @@ return {
 	-- hits, two crossing cut lines on each foe the dash slash hits, a dust puff where the finisher lands
 	BURST = { size = 5, big = 7, seconds = 0.35, share = 0.7, up = 1 },
 	-- A landed cut's impact in place of the star burst (owner 2026-11-08, picked in game from free Creator Store packs:
-	-- "make it look exactly like these"; Util/HitFx.impact): the white slash streaks of the Euphoric Games VFX Pack's
+	-- "make it look exactly like these"; Util/HitFx.impact): the slash streaks of the Euphoric Games VFX Pack's
 	-- (112672322113504) Slash-Impact-01 (a streak facing you, specks flung left and right) and the Yona VFX Pack's
-	-- (18170940328) Slash-01 (the same specks, counted twice here; a flat arc, a big stretched streak, white sparks into
-	-- the foe), emitted once each at the burst point from a holder standing level and turned to face your camera
+	-- (18170940328) Slash-01 (the same specks, counted twice here; a flat arc, a big stretched streak, sparks into the
+	-- foe), emitted once each at the burst point from a holder standing level and turned to face your camera
 	-- (SwordArcRules.impactFacing), as in the test the owner picked from. The test burst them back to back, layering the
-	-- arcs: `echo` bursts them again `after` seconds later, `share` of the counts. The packs' own numbers, sizes and
-	-- speeds times the sword's slash scale (`big` more on the finisher and the dash slash). Emitters as Util/PackEmitter
-	-- reads them: textures are Config/AttackFx TEXTURES keys; sizes { time, studs, envelope }, transparency { time,
-	-- value }, colour { r, g, b }; flipbook: a 4x4 sheet played once over each particle's life; `direction`: the holder's
-	-- face it flies from (Front: toward your camera; default Top); `facing`: camera (default), perpendicular (faces its
-	-- flight: a flat streak) or parallel (stretched along its flight); `accel` { x, y, z } in studs a second squared.
+	-- arcs: `echo` bursts them again `after` seconds later, `share` of the counts. In the weapon's colour with a white
+	-- core ("update the effect colours based on weapon elements"), the element's particles on top (ELEMENT_HIT). The
+	-- packs' own numbers, sizes and speeds times the sword's slash scale and the foe's size (`bySize`), `big` more on the
+	-- finisher and the dash slash. Emitters as Util/PackEmitter reads them: textures are Config/AttackFx TEXTURES keys;
+	-- sizes { time, studs, envelope }, transparency { time, value }, colour { r, g, b } or "tint" (the weapon's colour,
+	-- `whiten` of the way to white); flipbook: a 4x4 sheet played once over each particle's life; `direction`: the
+	-- holder's face it flies from (Front: toward your camera; default Top); `facing`: camera (default), perpendicular
+	-- (faces its flight: a flat streak) or parallel (stretched along its flight); `accel` { x, y, z } in studs a second
+	-- squared.
 	IMPACT = {
 		big = 1.35,
 		seconds = 1.5, -- the holder lasts past the longest particle (1 s) and the echo
 		echo = { after = 0.12, share = 0.5 },
+		-- sized to what was hit (SwordArcRules.impactScale; the ring and cut lines too): a 5-stud body at the packs' size
+		bySize = { reference = 5, power = 0.85, min = 0.7, max = 4 },
 		emitters = {
-			{ texture = "slashStreak", count = 10, lifetime = { 0.4, 0.4 }, speed = { 0.001, 0.001 }, spread = { 3, 3 }, size = { { 0, 2, 0 }, { 1, 2, 0 } }, transparency = { { 0, 1 }, { 0.1, 0 }, { 1, 0 } }, color = { 255, 255, 255 }, brightness = 5, zOffset = 1, rotation = { 88, 92 }, direction = "Front", facing = "perpendicular", flipbook = {} },
-			{ texture = "slashStreak", count = 20, lifetime = { 0.4, 0.4 }, speed = { 10, 10 }, spread = { 5, 0 }, size = { { 0, 0, 0 }, { 1, 2.67, 0 } }, transparency = { { 0, 1 }, { 0.499, 0 }, { 1, 1 } }, color = { 255, 255, 255 }, brightness = 5, zOffset = 1, rotation = { 85, 95 }, accel = { 0, 0, -10 }, direction = "Right", facing = "parallel", flipbook = {} },
-			{ texture = "slashStreak", count = 20, lifetime = { 0.4, 0.4 }, speed = { 10, 10 }, spread = { 5, 0 }, size = { { 0, 0, 0 }, { 1, 2.67, 0 } }, transparency = { { 0, 1 }, { 0.499, 0 }, { 1, 1 } }, color = { 255, 255, 255 }, brightness = 5, zOffset = 1, rotation = { 85, 95 }, accel = { 0, 0, -10 }, direction = "Left", facing = "parallel", flipbook = {} },
-			{ texture = "slashArc", count = 5, lifetime = { 0.4, 0.4 }, speed = { 0.001, 0.001 }, spread = { 5, 5 }, size = { { 0, 5, 0 }, { 1, 5, 0 } }, transparency = { { 0, 1 }, { 0.293, 1 }, { 0.5, 0 }, { 0.612, 0 }, { 1, 1 } }, color = { 255, 255, 255 }, brightness = 10, zOffset = 0, rotation = { -100, -100 }, direction = "Bottom", facing = "perpendicular", flipbook = {} },
-			{ texture = "slashStreak", count = 10, lifetime = { 0.4, 0.4 }, speed = { 0.001, 0.001 }, spread = { 3, 3 }, size = { { 0, 6, 0 }, { 1, 6, 0 } }, transparency = { { 0, 1 }, { 0.1, 0 }, { 1, 0 } }, color = { 255, 255, 255 }, brightness = 5, zOffset = 1, rotation = { 88, 92 }, direction = "Front", facing = "perpendicular", squash = { { 0, 0, 0 }, { 1, 2.1, 0 } }, flipbook = {} },
-			{ texture = "sparkStreak", count = 25, lifetime = { 0.5, 1 }, speed = { 25, 25 }, spread = { 100, 100 }, size = { { 0, 0.875, 0.875 }, { 1, 0, 0 } }, transparency = { { 0, 1 }, { 0.25, 0 }, { 1, 1 } }, color = { 255, 255, 255 }, brightness = 10, zOffset = 2, rotation = { -90, -90 }, accel = { 10, -10, 0 }, drag = 5, direction = "Back", facing = "parallel", squash = { { 0, 0.188, 1 }, { 1, -0.488, 1 } } },
+			{ texture = "slashStreak", count = 10, lifetime = { 0.4, 0.4 }, speed = { 0.001, 0.001 }, spread = { 3, 3 }, size = { { 0, 2, 0 }, { 1, 2, 0 } }, transparency = { { 0, 1 }, { 0.1, 0 }, { 1, 0 } }, color = "tint", whiten = 0.15, brightness = 5, zOffset = 1, rotation = { 88, 92 }, direction = "Front", facing = "perpendicular", flipbook = {} },
+			{ texture = "slashStreak", count = 20, lifetime = { 0.4, 0.4 }, speed = { 10, 10 }, spread = { 5, 0 }, size = { { 0, 0, 0 }, { 1, 2.67, 0 } }, transparency = { { 0, 1 }, { 0.499, 0 }, { 1, 1 } }, color = "tint", whiten = 0.15, brightness = 5, zOffset = 1, rotation = { 85, 95 }, accel = { 0, 0, -10 }, direction = "Right", facing = "parallel", flipbook = {} },
+			{ texture = "slashStreak", count = 20, lifetime = { 0.4, 0.4 }, speed = { 10, 10 }, spread = { 5, 0 }, size = { { 0, 0, 0 }, { 1, 2.67, 0 } }, transparency = { { 0, 1 }, { 0.499, 0 }, { 1, 1 } }, color = "tint", whiten = 0.15, brightness = 5, zOffset = 1, rotation = { 85, 95 }, accel = { 0, 0, -10 }, direction = "Left", facing = "parallel", flipbook = {} },
+			{ texture = "slashArc", count = 5, lifetime = { 0.4, 0.4 }, speed = { 0.001, 0.001 }, spread = { 5, 5 }, size = { { 0, 5, 0 }, { 1, 5, 0 } }, transparency = { { 0, 1 }, { 0.293, 1 }, { 0.5, 0 }, { 0.612, 0 }, { 1, 1 } }, color = "tint", whiten = 0.15, brightness = 10, zOffset = 0, rotation = { -100, -100 }, direction = "Bottom", facing = "perpendicular", flipbook = {} },
+			{ texture = "slashStreak", count = 10, lifetime = { 0.4, 0.4 }, speed = { 0.001, 0.001 }, spread = { 3, 3 }, size = { { 0, 6, 0 }, { 1, 6, 0 } }, transparency = { { 0, 1 }, { 0.1, 0 }, { 1, 0 } }, color = "tint", whiten = 0.15, brightness = 5, zOffset = 1, rotation = { 88, 92 }, direction = "Front", facing = "perpendicular", squash = { { 0, 0, 0 }, { 1, 2.1, 0 } }, flipbook = {} },
+			{ texture = "sparkStreak", count = 25, lifetime = { 0.5, 1 }, speed = { 25, 25 }, spread = { 100, 100 }, size = { { 0, 0.875, 0.875 }, { 1, 0, 0 } }, transparency = { { 0, 1 }, { 0.25, 0 }, { 1, 1 } }, color = "tint", whiten = 0.05, brightness = 10, zOffset = 2, rotation = { -90, -90 }, accel = { 10, -10, 0 }, drag = 5, direction = "Back", facing = "parallel", squash = { { 0, 0.188, 1 }, { 1, -0.488, 1 } } },
+		},
+	},
+	-- Each element's own particles on a sword hit, on top of the slash streaks (owner 2026-11-08: "update the effect
+	-- colours/particles based on weapon elements"; WeaponLookRules.hitElement; the Prism Blade's any of the five): Ember
+	-- flames licking up and embers, Tide droplets thrown up and falling and a splash ring, Bloom leaves tumbling and
+	-- motes, Volt crackling streaks and a flicker, Shade dark wisps and violet sparks. Emitters as IMPACT's (`tint`: the
+	-- weapon's colour), sized with the hit.
+	ELEMENT_HIT = {
+		Ember = {
+			{ texture = "flame", count = 13, lifetime = { 0.35, 0.6 }, speed = { 4, 9 }, spread = { 60, 60 }, size = { { 0, 1.44, 0.32 }, { 1, 0.32, 0 } }, transparency = { { 0, 0.2 }, { 1, 1 } }, color = "tint", brightness = 2, rotation = { -180, 180 }, accel = { 0, 10, 0 }, drag = 2 },
+			{ texture = "spark", count = 26, lifetime = { 0.4, 0.8 }, speed = { 10, 20 }, spread = { 180, 180 }, size = { { 0, 0.56, 0 }, { 1, 0, 0 } }, transparency = { { 0, 0 }, { 1, 1 } }, color = "tint", whiten = 0.4, brightness = 4, accel = { 0, 6, 0 }, drag = 3 },
+		},
+		Tide = {
+			{ texture = "raindrop", count = 23, lifetime = { 0.4, 0.7 }, speed = { 10, 18 }, spread = { 70, 70 }, size = { { 0, 0.72, 0 }, { 1, 0.4, 0 } }, transparency = { { 0, 0 }, { 0.8, 0 }, { 1, 1 } }, color = "tint", whiten = 0.3, brightness = 2, accel = { 0, -35, 0 }, facing = "parallel" },
+			{ texture = "ring", count = 2, lifetime = { 0.35, 0.35 }, speed = { 0.001, 0.001 }, size = { { 0, 0.8, 0 }, { 1, 6.4, 0 } }, transparency = { { 0, 0.2 }, { 1, 1 } }, color = "tint", whiten = 0.2, brightness = 2, direction = "Front", facing = "perpendicular" },
+		},
+		Bloom = {
+			{ texture = "shard", count = 20, lifetime = { 0.6, 1 }, speed = { 8, 14 }, spread = { 180, 180 }, size = { { 0, 0.8, 0.16 }, { 1, 0.48, 0 } }, transparency = { { 0, 0 }, { 0.8, 0 }, { 1, 1 } }, color = "tint", brightness = 1.5, rotation = { -180, 180 }, rotSpeed = { -300, 300 }, accel = { 0, -6, 0 }, drag = 3 },
+			{ texture = "glow", count = 7, lifetime = { 0.6, 1 }, speed = { 2, 5 }, spread = { 180, 180 }, size = { { 0, 0.64, 0 }, { 1, 0, 0 } }, transparency = { { 0, 0.3 }, { 1, 1 } }, color = "tint", whiten = 0.4, brightness = 2, accel = { 0, 4, 0 } },
+		},
+		Volt = {
+			{ texture = "streak", count = 16, lifetime = { 0.1, 0.2 }, speed = { 30, 45 }, spread = { 180, 180 }, size = { { 0, 0.96, 0 }, { 1, 0.16, 0 } }, transparency = { { 0, 0 }, { 1, 1 } }, color = "tint", whiten = 0.3, brightness = 6, facing = "parallel" },
+			{ texture = "flare", count = 4, lifetime = { 0.15, 0.15 }, size = { { 0, 3.2, 0 }, { 1, 4.8, 0 } }, transparency = { { 0, 0 }, { 1, 1 } }, color = "tint", whiten = 0.3, brightness = 4, rotation = { -180, 180 } },
+		},
+		Shade = {
+			{ texture = "smoke", count = 13, lifetime = { 0.6, 1 }, speed = { 3, 6 }, spread = { 180, 180 }, size = { { 0, 1.28, 0 }, { 1, 2.88, 0 } }, transparency = { { 0, 0.4 }, { 1, 1 } }, color = "tint", emission = 0.3, brightness = 1, rotation = { -180, 180 }, rotSpeed = { -60, 60 }, accel = { 0, 2, 0 }, drag = 2 },
+			{ texture = "spark", count = 16, lifetime = { 0.3, 0.6 }, speed = { 6, 12 }, spread = { 180, 180 }, size = { { 0, 0.48, 0 }, { 1, 0, 0 } }, transparency = { { 0, 0 }, { 1, 1 } }, color = "tint", whiten = 0.3, brightness = 3, drag = 2 },
 		},
 	},
 	-- The Magma Halberd's Eruption perk (weapons round 2): a lava burst and ring on the foe, on top of the extra hit's own

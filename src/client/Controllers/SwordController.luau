@@ -803,9 +803,9 @@ end
 
 -- The hit sound and the hit-stop the moment the blade lands, when your own reach check says it connects: the server's
 -- hit comes a round trip later (the spec's anti-goal: hits that land later than the swing shows)
--- Where a hit's star burst goes: on target `id`'s side facing `from` (an attacker's root), or on the nearest target's
--- when no id is given (SwordArcRules.hitPoint), a little above the attacker's root
-local function burstPoint(targets: { SwordRules.Target }, from: Vector3, id: string?): Vector3?
+-- Where a hit's impact goes: on target `id`'s side facing `from` (an attacker's root), or on the nearest target's
+-- when no id is given (SwordArcRules.hitPoint), a little above the attacker's root; and that target
+local function burstPoint(targets: { SwordRules.Target }, from: Vector3, id: string?): (Vector3?, SwordRules.Target?)
 	local best: SwordRules.Target? = nil
 	local nearest = math.huge
 	for _, target in targets do
@@ -815,16 +815,31 @@ local function burstPoint(targets: { SwordRules.Target }, from: Vector3, id: str
 		end
 	end
 	if not best then
-		return nil
+		return nil, nil
 	end
 	local x, z = SwordArcRules.hitPoint(best.x, best.z, best.radius, from.X, from.Z, SwordFx.BURST.share)
-	return Vector3.new(x, from.Y + SwordFx.BURST.up, z)
+	return Vector3.new(x, from.Y + SwordFx.BURST.up, z), best
 end
 
 -- A character's sword hit colour and size (BattleController's hit bursts): its weapon's trail colour
 function SwordController.SlashOf(character: Model?): { color: { number }, scale: number }
 	local sword = swordOf(if character then character:GetAttribute("Sword") else nil) or Swords.SWORDS[Swords.STARTER]
 	return slashOf(character, sword)
+end
+
+-- A character's sword hit look (owner 2026-11-08: "update the effect colours/particles based on weapon elements"): its
+-- colour (the weapon's trail colour; the Prism Blade's in the element it rolled) and the element whose particles burst
+-- (WeaponLookRules.hitElement: the Prism Blade's a random one each hit; none for the Steel Sword)
+function SwordController.HitLook(character: Model?): (Color3, string?)
+	local slash = SwordController.SlashOf(character)
+	local weaponId = if character then character:GetAttribute("Sword") else nil
+	local weapon = if typeof(weaponId) == "string" then Weapons.ById[weaponId] else nil
+	local element = WeaponLookRules.hitElement(if weapon then weapon.element else nil, if weapon then weapon.prism else nil, math.random(1, 5))
+	local color = slash.color
+	if weapon and weapon.prism and element then
+		color = WeaponLooks.BY_ELEMENT[element].trail
+	end
+	return Color3.fromRGB(color[1], color[2], color[3]), element
 end
 
 -- A character's blade in the world (its drawn or carried sword), for effects along it (MovePreviewController)
@@ -846,7 +861,11 @@ end
 
 -- Boss fights: where a sword hit on target `id` bursts, struck from `from` (BattleController's hits)
 function SwordController.HitPoint(id: string, from: Vector3): Vector3?
-	return if combatTargets then burstPoint(combatTargets(), from, id) else nil
+	if not combatTargets then
+		return nil
+	end
+	local point = burstPoint(combatTargets(), from, id)
+	return point
 end
 
 -- move: the cut (1-3) or "skill". A cut's star burst (and on the finisher its ring) pops at once; the dash slash's
@@ -866,19 +885,21 @@ local function predictHit(connects: (root: BasePart, targets: { SwordRules.Targe
 		mine.hitStop(if move == "skill" or last then SwordFx.HIT_STOP.big else SwordFx.HIT_STOP.cut)
 	end
 	local sword = swordOf(if character then character:GetAttribute("Sword") else nil)
-	local at = burstPoint(targets, root.Position, nil)
+	local at, target = burstPoint(targets, root.Position, nil)
 	if not sword or move == "skill" or not at then
 		return
 	end
 	local slash = slashOf(character, sword)
-	local tint = Color3.fromRGB(slash.color[1], slash.color[2], slash.color[3])
-	-- the Yona pack's hit and golden sparks (owner 2026-11-08), bigger on the finisher
-	HitFx.impact(at, slash.scale * (if last then SwordFx.IMPACT.big else 1))
+	local tint, element = SwordController.HitLook(character)
+	-- the packs' slash streaks in the weapon's colour with its element's particles (owner 2026-11-08), sized to the
+	-- foe, bigger on the finisher
+	local size = slash.scale * (if target and target.fx then target.fx else 1)
+	HitFx.impact(at, size * (if last then SwordFx.IMPACT.big else 1), tint, element)
 	-- The finisher's ring; from +7 an element burst on every hit (the weapon's layers)
 	local view = if character then views[character] else nil
 	local layers = if view then WeaponLook.layers(view.swordId, view.grade, view.level, "hand") else nil
 	if last or (layers and layers.burst) then
-		HitFx.ring(at, SwordFx.RING.size * slash.scale, tint)
+		HitFx.ring(at, SwordFx.RING.size * size, tint)
 	end
 end
 

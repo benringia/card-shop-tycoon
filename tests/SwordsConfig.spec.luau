@@ -363,6 +363,28 @@ return {
 		assert(echo.share > 0 and echo.share <= 1, "lighter or the same")
 	end,
 
+	-- Owner 2026-11-08: "update the effect colors/particles based on weapon elements": the streaks take the weapon's
+	-- colour (its trail colour, a white core kept), and each element adds its own particles
+	["a hit takes the weapon's colour, and each element adds its own particles"] = function()
+		local tinted = 0
+		for _, emitter in SwordFx.IMPACT.emitters do
+			if emitter.color == "tint" then
+				tinted += 1
+				assert(emitter.whiten == nil or (emitter.whiten >= 0 and emitter.whiten < 1), "a share toward white")
+			end
+		end
+		expect.equal(tinted, #SwordFx.IMPACT.emitters, "every streak, the arc and the sparks")
+		for _, element in { "Ember", "Tide", "Bloom", "Volt", "Shade" } do
+			local set = (SwordFx.ELEMENT_HIT :: any)[element]
+			assert(set and #set >= 1, element)
+			for index, emitter in set do
+				local id = (AttackFx.TEXTURES :: any)[emitter.texture]
+				expect.equal(typeof(id) == "string" and string.match(id, "^rbxassetid://%d+$") ~= nil, true, `{element} {index}: {emitter.texture}`)
+				assert(emitter.count >= 1 and emitter.lifetime[1] > 0, `{element} {index}`)
+			end
+		end
+	end,
+
 	-- The sword-moves round's effect textures (tools/textures/make_sword_fx.py), uploaded as images
 	["the sword effects' textures are uploaded images"] = function()
 		for _, key in { "crescent", "burst", "line", "star" } do
