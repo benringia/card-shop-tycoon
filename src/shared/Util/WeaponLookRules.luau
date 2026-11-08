@@ -114,6 +114,12 @@ function WeaponLookRules.seesBeacon(distance: number, range: number, mine: boole
 end
 
 -- Which swords get the full aura: your own always, then the nearest `nearest` others within `range` studs (set of keys)
+-- A pack aura layer's ZOffset: its own (`base`, from Config/WeaponLooks ELEMENT_AURA) while its part is in view,
+-- BEHIND_BODY.shift studs nearer the camera while the wearer's body hides the part
+function WeaponLookRules.packZOffset(looks: any, base: number, hidden: boolean): number
+	return if hidden then base + looks.BEHIND_BODY.shift else base
+end
+
 function WeaponLookRules.fullAuras(candidates: { Candidate }, nearest: number, range: number): { [string]: boolean }
 	local full: { [string]: boolean } = {}
 	local others: { Candidate } = {}

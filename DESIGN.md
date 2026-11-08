@@ -1787,7 +1787,10 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
     and smoke (owner 2026-11-08, picked in game; `WeaponLooks.ELEMENT_AURA`, `WeaponLookRules.auraStyle`): Ember and
     Tide weapons wear the free Euphoric Games VFX Pack's fire or water flipbook in their deep colour; Bloom weapons the
     Yona VFX Pack's aura in green (embers, dark and bright smoke, a soft light), thinner at low grades (C 0.3, B 0.5,
-    A 0.75, S 1 of its rate: "tone it down for low grades, then gradually to its max glow"); it starts at +4 (Epic and
+    A 0.75, S 1 of its rate: "tone it down for low grades, then gradually to its max glow"); pack layers draw at their
+    part, not a stud behind as in the packs (on the back that sank the fire into the torso: "the glow is blocked by
+    the body"), and a stud nearer the camera while the wearer's body hides the part (seen from the front; a camera ray
+    each frame against the body's visible parts, `WeaponLook.drawPastBody`, `WeaponLooks.BEHIND_BODY`); it starts at +4 (Epic and
     Legendary at +2), thickens each level and is full from +7; +10 Awakened adds ribbons streaming off the blade;
     half the aura on the back below +10; every particle is locked to the sword, so walking leaves no trail (owner);
   - the cheap glow: creature-style sparkles a second (1-5 by rarity, more per level and for Grade S) and a light

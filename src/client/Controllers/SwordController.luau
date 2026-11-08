@@ -1409,6 +1409,44 @@ local function auraBudget()
 	end
 end
 
+-- What the camera's ray may hit when checking whether a wearer's body hides their weapon's aura: the body's visible
+-- parts only (a wide hat brim or a waist accessory hid the sword's parts seen from behind, where the fire must stay
+-- behind the blade; the root part is invisible), one filter per weapon model
+local bodyFilters: { [Model]: RaycastParams } = setmetatable({}, { __mode = "k" }) :: any
+
+local function bodyFilter(character: Model, weapon: Model): RaycastParams
+	local filter = bodyFilters[weapon]
+	if filter then
+		return filter
+	end
+	local body: { Instance } = {}
+	for _, child in character:GetChildren() do
+		if child:IsA("BasePart") and child.Transparency < 1 then
+			table.insert(body, child)
+		end
+	end
+	filter = RaycastParams.new()
+	filter.FilterType = Enum.RaycastFilterType.Include
+	filter.FilterDescendantsInstances = body
+	bodyFilters[weapon] = filter
+	return filter
+end
+
+-- Every frame, the full auras' pack layers draw past their wearer's body while it hides them from the camera
+-- (WeaponLook.drawPastBody: a sword on the back seen from the front)
+local function drawAurasPastBodies()
+	local camera = workspace.CurrentCamera
+	if not camera then
+		return
+	end
+	local eye = camera.CFrame.Position
+	for character, view in views do
+		if view.model.Parent and view.model:GetAttribute("FullAura") == true then
+			WeaponLook.drawPastBody(view.model, eye, bodyFilter(character, view.model))
+		end
+	end
+end
+
 -- Another player's round 1 sword cut or skill starting at (x, z) (BattleService): its effects on their character, full
 -- within range while only a few are, light (the slash only) past that, none far away (SwordSkillFxRules.drawsOthers)
 local function onSwordCast(userId: unknown, move: unknown, x: unknown, z: unknown)
@@ -1457,6 +1495,7 @@ function SwordController.Start()
 	Remotes.SwordState:FireServer()
 	task.spawn(moveShiftLock)
 	task.spawn(auraBudget)
+	RunService.RenderStepped:Connect(drawAurasPastBodies)
 	Players.PlayerAdded:Connect(watchPlayer)
 	for _, other in Players:GetPlayers() do
 		watchPlayer(other)

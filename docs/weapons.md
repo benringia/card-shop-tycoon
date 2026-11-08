@@ -117,7 +117,11 @@ Some effects come from free Creator Store VFX packs (owner 2026-11-08, picked fr
 Nothing from a pack is inserted into the game: its emitters' settings were copied into our configs and our code builds
 them (`Util/PackEmitter`), pointing at the pack's texture ids (`AttackFx.TEXTURES`: `fireAura`, `waterAura`,
 `auraSmoke`, `auraEmber`, `auraLight`, `slashStreak`, `slashArc`, `sparkStreak`). The six identical limb emitters a
-pack puts on a body are one emitter on the weapon at six times the rate. Some impact emitters fly a set way from their
+pack puts on a body are one emitter on the weapon at six times the rate. The packs draw an aura a stud behind the body
+it wraps (`zOffset = -1`); a sword on the back rides a fifth of a stud off the torso, so that sank the fire into it
+(owner: "the glow is blocked by the body"). Our layers start at 0, and each frame `WeaponLook.drawPastBody` moves a
+part's layers `WeaponLooks.BEHIND_BODY.shift` nearer while the wearer's body (visible parts only: a hat brim or waist
+accessory would count from behind) stands between the camera and that part; 1.5 studs buried the face. Some impact emitters fly a set way from their
 holder (`direction`, `facing`): `HitFx.impact` stands the holder level and turns it to face your camera, as in the test
 the owner picked from (tilted up toward the camera, the flat arc showed edge-on and vanished). The impact takes the
 weapon's colour (`color = "tint"`, `whiten` toward white) and its element's particles (`SwordFx.ELEMENT_HIT`, our own

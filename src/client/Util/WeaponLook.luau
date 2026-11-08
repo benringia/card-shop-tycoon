@@ -189,6 +189,7 @@ local function auraEmitters(parent: BasePart, share: number, weaponId: string, l
 			made.Name = "Aura"
 			made:SetAttribute("Kind", "element")
 			made:SetAttribute("FullRate", spec.rate * share * strength)
+			made:SetAttribute("BaseZ", made.ZOffset) -- drawPastBody moves it nearer while the wearer's body hides it
 			made.Enabled = false
 			made.LockedToPart = true -- the glow sticks to the weapon: no trail left behind as you walk
 			made.Parent = parent
@@ -311,6 +312,50 @@ function WeaponLook.setPlace(model: Model, weaponId: string, grade: string, leve
 		end
 	end
 	refresh(model)
+end
+
+-- A model's parts wearing pack aura layers, with those layers (found once per model) and whether the body hid them
+type PackPart = { part: BasePart, emitters: { ParticleEmitter }, hidden: boolean }
+local packParts: { [Model]: { PackPart } } = setmetatable({}, { __mode = "k" }) :: any
+
+local function packPartsOf(model: Model): { PackPart }
+	local found = packParts[model]
+	if found then
+		return found
+	end
+	local list: { PackPart } = {}
+	local byPart: { [Instance]: PackPart } = {}
+	for _, item in model:GetDescendants() do
+		local part = item.Parent
+		if not item:IsA("ParticleEmitter") or item:GetAttribute("BaseZ") == nil or not part or not part:IsA("BasePart") then
+			continue
+		end
+		local entry = byPart[part]
+		if not entry then
+			entry = { part = part, emitters = {}, hidden = false }
+			byPart[part] = entry
+			table.insert(list, entry)
+		end
+		table.insert(entry.emitters, item)
+	end
+	packParts[model] = list
+	return list
+end
+
+-- The pack aura layers draw past the wearer's body while it stands between the camera at `eye` and their part (owner
+-- 2026-11-08: "the glow is blocked by the body", a sword on the back seen from the front; WeaponLookRules.packZOffset).
+-- `body` hits only the wearer's body and accessories.
+function WeaponLook.drawPastBody(model: Model, eye: Vector3, body: RaycastParams)
+	for _, entry in packPartsOf(model) do
+		local hidden = workspace:Raycast(eye, entry.part.Position - eye, body) ~= nil
+		if hidden == entry.hidden then
+			continue
+		end
+		entry.hidden = hidden
+		for _, emitter in entry.emitters do
+			emitter.ZOffset = WeaponLookRules.packZOffset(WeaponLooks, (emitter:GetAttribute("BaseZ") :: number?) or 0, hidden)
+		end
+	end
 end
 
 -- The full aura on or off (SwordController's budget: your own sword and the nearest few get it, the rest stay cheap)

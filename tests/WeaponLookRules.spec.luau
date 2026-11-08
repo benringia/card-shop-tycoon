@@ -155,6 +155,28 @@ return {
 		end
 	end,
 
+	-- Owner 2026-11-08: "the glow is blocked by the body" (a sword on the back, seen from behind). The packs drew their
+	-- layers a stud behind the body they wrapped; a blade rides a fifth of a stud off the wearer's back, so that sank
+	-- the fire into the torso. Layers draw at their part (zOffset >= 0). While the wearer's body stands between the
+	-- camera and the part (seen from the front) they draw BEHIND_BODY.shift nearer: past a torso's half depth (an R15
+	-- UpperTorso is a stud deep), short of the face (Studio renders: a stud in front of the part clears the shoulders
+	-- and hat, 1.5 buries the face in fire)
+	["a pack aura draws at its part, and past the wearer's body while the body hides it"] = function()
+		for element, aura in Looks.ELEMENT_AURA do
+			for index, spec in aura.emitters do
+				local base = spec.zOffset or 0
+				assert(base >= 0, `{element} {index}: zOffset {base} sinks into the wearer's back`)
+				expect.equal(WeaponLookRules.packZOffset(Looks, base, false), base, `{element} {index} in view`)
+				local past = WeaponLookRules.packZOffset(Looks, base, true)
+				assert(past >= 0.5, `{element} {index}: {past} stays behind the torso`)
+				assert(base >= 0.5 or past <= 1.2, `{element} {index}: {past} buries the face`)
+			end
+		end
+		local bloom = Looks.ELEMENT_AURA.Bloom.emitters
+		local dark = WeaponLookRules.packZOffset(Looks, bloom[2].zOffset, true)
+		assert(dark < WeaponLookRules.packZOffset(Looks, bloom[3].zOffset, true), "the dark smoke draws under the bright smoke")
+	end,
+
 	-- Owner 2026-11-08: "tone it down for low grades, then gradually to its max glow" (the green glow; on top of the
 	-- upgrade ladder's thickening)
 	["a Bloom weapon's glow is toned down at low grades and full at Grade S"] = function()
