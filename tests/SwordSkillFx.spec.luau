@@ -41,7 +41,7 @@ return {
 				end
 			end
 		end
-		expect.equal(named, 24, "four swords, the spear, the Halberd, the Trident and the Titan's Lance x slash, finisher, skill")
+		expect.equal(named, 27, "four swords, the spear, the Halberd, the Trident, the Titan's Lance and the scythe x slash, finisher, skill")
 	end,
 
 	["every element has its look colours, so each Forge Sword is coloured (Review Focus 5)"] = function()

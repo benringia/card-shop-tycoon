@@ -33,6 +33,7 @@ HRP_Z = 3.0  # HumanoidRootPart centre above the ground (HipHeight 2 + half its 
 HAND_GRIPS = {
     "sword": {"y": -0.18, "angleX": -140, "twist": 90},
     "spear": {"y": -0.18, "angleX": -90, "twist": 0},  # the arm hanging, the spear points straight ahead
+    "scythe": {"y": -0.18, "angleX": -90, "twist": 0},  # as the spear (Config/Swords GRIPS.scythe keeps the same numbers)
 }
 
 

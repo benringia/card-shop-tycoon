@@ -511,6 +511,56 @@ do
 	})
 end
 
+-- The scythe moveset (weapons round 3, spec 2026-11-09-weapons-round3-scythes-design 5.2; the owner: "epic. I want
+-- exaggerated moves, wide slashes in all directions", "a bit slower but still flashy"): shared by all four scythes.
+-- Upright at your side between moves like the spear; every attack brings both hands on with a heavy wind-up. Each cut
+-- about a third slower than the sword's and so harder, the same damage a second against one foe (tests/SwordsConfig):
+-- Reap, one huge sweep across your front; Back Sweep, the blade carving round behind you and through your front again
+-- (its damage lands in front: every cut soft-aims you at the foe, so a hit behind you would miss the lone foe of most
+-- fights); Whirlwind, two full spins, every foe round you. Nothing past 10 studs (a boss's swipe still reaches you).
+-- Reaping Cyclone (spec 5.3): three spins, a ring of crescents each, every foe within 9 studs on the third. Its moves
+-- play from SwordAnimations.Scythe in Studio until published (tools/blender/anim_scythe.py); sounds and cues are the
+-- spear's until its own (plan Task 6).
+do
+	local animations = table.clone(starter.animations)
+	for _, move in { "ready", "draw", "sheath", "run", "cut1", "cut2", "cut3", "skill" } do
+		animations[move] = ""
+	end
+	local spear = SWORDS.spear
+	SWORDS.scythe = {
+		name = "Scythe",
+		power = starter.power,
+		element = nil,
+		model = "Scythe",
+		slash = starter.slash,
+		combo = {
+			-- Reap: wound back, one huge sweep across your front
+			{ power = 0.396, hitAt = 0.30, cancelAt = 0.46, length = 0.80, reach = 10, arc = 180, lunge = { studs = 1.1, from = 0.2, to = 0.3 } },
+			-- Back Sweep: turning, the blade carves round behind you and comes through your front at the hit
+			{ power = 0.396, hitAt = 0.28, cancelAt = 0.43, length = 0.78, reach = 10, arc = 180, lunge = { studs = 0.8, from = 0.18, to = 0.28 } },
+			-- Whirlwind: two full spins with the scythe held out, every foe round you, a shake
+			{ power = 1.0326, hitAt = 0.95, length = 1.65, reach = 10, arc = 360 },
+		},
+		skill = {
+			power = 0.9,
+			hitAt = 0.9,
+			length = 1.5,
+			cooldown = SKILL_COOLDOWN,
+			shape = { kind = "spin", radius = 9 },
+			free = { at = 0.9 },
+		},
+		animations = animations,
+		sounds = table.clone(spear.sounds),
+		cues = {
+			cut1 = table.clone(spear.cues.cut1),
+			cut2 = table.clone(spear.cues.cut2),
+			cut3 = table.clone(spear.cues.cut3),
+			skill = table.clone(spear.cues.skill),
+		},
+		fx = { slash = "scytheSweep", finisher = "scytheWhirl", skill = "reapingCyclone" },
+	}
+end
+
 return {
 	STARTER = "starterSword",
 	SWORDS = SWORDS,
@@ -543,6 +593,14 @@ return {
 		-- right shoulder 40 degrees from upright (measured in Studio on the longest, the 9.2-stud Titan's Lance: its butt
 		-- 0.3 studs over the ground, its tip 3 over the head; 20 degrees from upright put the butt 2.5 into the ground)
 		spear = {
+			hand = { y = -0.18, angleX = -90, twist = 0 },
+			back = { x = 0, y = -0.4, z = 0.7, angleZ = -40 },
+			backScale = 1,
+		},
+		-- Upright at your side like the spear (spec 5.1), the blade over your head curving back; on the back diagonal, the
+		-- blade over the shoulder (the spear's numbers to start, calibrated in Studio: plan Task 5). tools/blender/anim_kit.py
+		-- hand_grip("scythe") keeps the same hand numbers.
+		scythe = {
 			hand = { y = -0.18, angleX = -90, twist = 0 },
 			back = { x = 0, y = -0.4, z = 0.7, angleZ = -40 },
 			backScale = 1,

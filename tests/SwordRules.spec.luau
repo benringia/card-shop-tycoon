@@ -1,5 +1,6 @@
 --!strict
 local SwordRules = require("../src/shared/Util/SwordRules")
+local Swords = require("../src/shared/Config/Swords")
 local expect = require("./lib/expect")
 
 local COMBO = {
@@ -322,5 +323,18 @@ return {
 	["a fight opens with the skill on its full cooldown"] = function()
 		expect.equal(SwordRules.openingSkillReady(100, { cooldown = 12 }), 112)
 		expect.equal(SwordRules.openingSkillReady(5, { cooldown = 8 }), 13)
+	end,
+
+	-- Weapons round 3 (spec 5.2): Reap and Back Sweep land in front (every cut soft-aims you at the foe), the
+	-- Whirlwind all round you
+	["the scythe's sweeps hit in front, its whirlwind all round"] = function()
+		local scythe = Swords.SWORDS.scythe
+		assert(scythe, "the scythe moveset")
+		local behind = { id = "b", x = 0, z = 6, radius = 1 }
+		local ahead = { id = "a", x = 0, z = -9, radius = 1 }
+		expect.equal(SwordRules.cutReaches(scythe.combo[1], 0, 0, 0, -1, ahead), true)
+		expect.equal(SwordRules.cutReaches(scythe.combo[1], 0, 0, 0, -1, behind), false, "Reap: not behind")
+		expect.equal(SwordRules.cutReaches(scythe.combo[2], 0, 0, 0, -1, behind), false, "Back Sweep's damage lands in front")
+		expect.equal(SwordRules.cutReaches(scythe.combo[3], 0, 0, 0, -1, behind), true, "Whirlwind: all round")
 	end,
 }

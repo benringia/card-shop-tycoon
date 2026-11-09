@@ -229,6 +229,42 @@ return {
 		end
 	end,
 
+	-- Weapons round 3 (spec 2026-11-09-weapons-round3-scythes-design 5.2; the owner: "epic, exaggerated moves, wide
+	-- slashes in all directions", "a bit slower but still flashy"): the scythe's sweeps, its whirlwind, Reaping Cyclone
+	["the scythe moveset: reap, back sweep, whirlwind and Reaping Cyclone at the sword's damage a second"] = function()
+		local scythe = Swords.SWORDS.scythe
+		assert(scythe, "the scythe moveset")
+		expect.equal(#scythe.combo, 3)
+		expect.equal(scythe.combo[1].reach, 10)
+		expect.equal(scythe.combo[1].arc, 180)
+		expect.equal(scythe.combo[2].reach, 10)
+		expect.equal(scythe.combo[2].arc, 180)
+		expect.equal(scythe.combo[3].reach, 10)
+		expect.equal(scythe.combo[3].arc, 360)
+		expect.near(SwordRules.comboPowerPerSecond(scythe.combo), SwordRules.comboPowerPerSecond(Swords.SWORDS.starterSword.combo), 1e-3)
+		for index, cut in scythe.combo do
+			local sword = Swords.SWORDS.starterSword.combo[index]
+			expect.equal(cut.length >= sword.length * 1.25, true, `cut {index} a third slower than the sword's`)
+		end
+		expect.equal(scythe.skill.power, 0.9)
+		expect.equal(scythe.skill.cooldown, Swords.SKILL_COOLDOWN)
+		expect.equal(scythe.skill.shape.kind, "spin")
+		expect.equal(scythe.skill.shape.radius, 9)
+		expect.equal(scythe.model, "Scythe")
+		expect.equal(Swords.GRIPS.scythe.backScale, 1)
+	end,
+
+	["a scythe's reach never makes a spot a boss's swipe can't reach"] = function()
+		local longest = 0
+		for _, cut in Swords.SWORDS.scythe.combo do
+			longest = math.max(longest, cut.reach)
+		end
+		for id, boss in Bosses.BOSSES do
+			local ring = boss.ringRadius or Bosses.RING_RADIUS
+			expect.equal(longest + ring * Bosses.HIT_RADIUS_SHARE <= ring + Bosses.RING_SWIPE_EXTRA, true, id)
+		end
+	end,
+
 	-- Sword skills round (spec 2026-11-06-sword-skills-design): each round 1 sword its own moveset, the starter's cuts
 	["each round 1 sword has its own moveset: the starter's cuts and animations, its own skill at today's strength"] = function()
 		local Weapons = require("../src/shared/Config/Weapons")

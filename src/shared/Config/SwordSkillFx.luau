@@ -325,6 +325,30 @@ local LOOKS: { [string]: Look } = {
 			camOut = 26,
 		},
 	},
+	-- The scythe's looks (weapons round 3, spec 2026-11-09-weapons-round3-scythes-design 5): drawn by the plain shapes
+	-- until their own (plan Task 6): the sweeps' crescent trails, the Whirlwind's ring, Reaping Cyclone's three rings
+	scytheSweep = {
+		kind = "slash",
+		textures = { "glow", "streak", "spark", "star", "shard" },
+		seconds = 0.45,
+		size = 2.2,
+		count = 160,
+	},
+	scytheWhirl = {
+		kind = "finisher",
+		textures = { "glow", "streak", "spark", "smoke", "ring" },
+		seconds = 1.2,
+		size = 20,
+		count = 90,
+	},
+	reapingCyclone = {
+		kind = "skill",
+		textures = { "glow", "streak", "spark", "star", "ring" },
+		seconds = 1.5,
+		size = 18,
+		count = 120,
+		form = "around",
+	},
 }
 
 return {
