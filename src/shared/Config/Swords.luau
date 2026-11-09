@@ -579,7 +579,7 @@ do
 	-- sounds, the same tables; its skill animation from SwordAnimations.RiftReaper (tools/blender/anim_rift_reaper.py).
 	local scythe = SWORDS.scythe
 	local riftAnimations = table.clone(scythe.animations)
-	riftAnimations.skill = ""
+	riftAnimations.skill = "rbxassetid://121934882184419" -- Thousand Cuts (SwordAnimations.RiftReaper.skill, published 2026-11-09)
 	-- Its own sounds on top of the scythe's (Pro Sound Effects, measured into Config/SoundLevels): the charge, the rumble,
 	-- the ground breaking open, the rift's growl and the Reaper's ghostly wail, the harvest's roar
 	local riftSounds = table.clone(scythe.sounds)

@@ -359,6 +359,12 @@ return {
 		expect.equal(rift.sounds.cutLines, Swords.SWORDS.scythe.sounds.cutLines, "the scythe's sounds kept for its cuts")
 	end,
 
+	["Thousand Cuts' animation is published (the owner's id, 2026-11-09); the cuts stay the scythe's"] = function()
+		local rift = Swords.SWORDS.riftReaper
+		expect.equal(rift.animations.skill, "rbxassetid://121934882184419")
+		expect.equal(rift.animations.cut1, Swords.SWORDS.scythe.animations.cut1)
+	end,
+
 	-- Thousand Cuts' timing is its animation's (tools/blender/anim_rift_reaper.py, exported to JSON for build_kfs): the
 	-- harvest at its Hit marker, the skill its length
 	["the Rift Reaper's skill timing is its animation's Hit marker and length"] = function()
