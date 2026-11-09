@@ -1752,10 +1752,19 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   beside it, the cost chips under them and the tab's line last, so a 667 x 375 phone sees it all without scrolling
   (`Config/ForgeLayout`, `UiLayout.forgePhonePane` / `forgePhoneContent`, tests/UiLayout).
 - **The Armory** (the binder's fourth set, `Collection.SETS`; cover `Config/BinderCovers` Armory): every weapon in
-  catalogue order as a card in the creature cards' shape (`Util/WeaponFace` on `CardFace.parts`): owned ones show
-  their portrait over their glow, Power, grade and +level, "Owned" / "Equipped"; locked ones a dark sword with
-  where they come from and the progress toward them ("Forge: Wild Ore 15/20"); rounds 2-3's "Coming soon". Tapping
-  an owned one opens its card view (`WeaponDetailController`: stats in words, Equip).
+  catalogue order as a card in the creature cards' shape (`Util/WeaponFace` on `CardFace.parts`). Card art (owner's
+  picks 2026-11-09, Armory UI): owned ones show their portrait over the Armory cover painting, dimmed, with soft rays
+  and a glow in the weapon's colour (1B), Power, grade and +level, "Owned" / "Equipped"; ones you don't have the same
+  painting under a slate veil, the portrait as a black shadow under a gold lock (2B), where they come from and the
+  progress toward them ("Forge: Wild Ore 15/20"); unbuilt ones "Coming soon" (`Config/WeaponLooks` CARD). Tapping a
+  card opens its card view (`WeaponDetailController`, owner's pick 3A: the creature card view's twin): the card on
+  the left (where it came from under it), rarity / family / element pills, then for yours a gold "Your weapon" box
+  (Power with how it compares to the one you hold, "+0.15 vs Rift Reaper"; grade badge; level +n / 10 with a bar),
+  for one you don't have "How to get it" (the boss and where it lives, "Beat the Rift Devourer in the Frontier: it
+  can drop.", then its forge materials and cash as bars); its sword skill (icon, name, what it does), then its perk
+  and its bond side by side (a weapon you don't have: its Power range "x1.40 to x2.09" too), icons by
+  `WeaponLookRules.familyIcon` / `perkIcon`. Yours get a bar under the facts: Equip and the Forge hint (words:
+  `WeaponText.versus`, `powerRange`, `howToGet`, `progress`, `skill`, `bond`; tests/WeaponText, WeaponLookRules).
 - **The Boss Board**: each boss with a weapon shows its card under the drops, "Drop chance now: 1.0%" (with the
   pity) and its material's chance.
 - **Models** (`assets/weapons`, docs/weapons.md): Figma concepts picked by the owner, Meshy image-to-3D, cleaned in
@@ -2362,7 +2371,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── WeaponSwitchController.luau # the quick weapon switch chip on the right edge: < and >, a swipe, Q / Z (EquipWeapon)
     │   │   ├── WeaponRevealController.luau # a boss's weapon drop and the Forge's results: the reveal on the opening stage
     │   │   ├── ForgeController.luau     # the Forge window: Forge / Upgrade / Reforge tabs and what each does, weapon rows, the chosen weapon's card, Now / After boxes, cost chips and one button
-    │   │   ├── WeaponDetailController.luau # an Armory weapon's card view: its stats in words, Equip
+    │   │   ├── WeaponDetailController.luau # a weapon's card view: pills, Your weapon / How to get it, skill, perk, bond, Equip
     │   │   ├── BossBoardController.luau # Bosses HUD tile and the Boss Ladder: bosses' list with status chips and Next, the chosen one's banner, To fight it checklist, Rewards with odds, footer with next step and Take me there
     │   │   ├── ChallengeController.luau # PvP: Challenge prompt on players, bet popup, incoming challenge popup
     │   │   ├── FrontierController.luau  # Frontier portal menu (Explore, Join friend); home button in the Frontier
@@ -2389,7 +2398,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── ListenAtCharacter.luau  # keeps sounds heard at the character while the camera is on a stage (binder, card view)
     │       ├── WorldTags.luau          # switches on-top world tags and bubbles off while a stage scene shows (binder, card view)
     │       ├── CardFace.luau           # draws a card face (front, back, missing) into a frame
-    │       ├── WeaponFace.luau         # draws a weapon's card (owned: portrait, Power, grade, +level; locked: source and progress) on CardFace's parts
+    │       ├── WeaponFace.luau         # draws a weapon's card (owned: portrait on the Armory painting, Power, grade, +level; locked: its shadow, a lock, source and progress) on CardFace's parts
     │       ├── WeaponLook.luau         # a weapon model's glow ladder: shell, aura, trail, burst, Awakened effect, twinkle, light; the stand-in model
     │       ├── OpeningStage.luau       # the opening's 3D stage: backdrop, lights, camera, post effects, bars, flash, shake, sounds
     │       ├── OpeningPack.luau        # the pack (or deck box) on the stage: idle sway, drag, the cinematic tear, the lid

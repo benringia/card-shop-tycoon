@@ -209,16 +209,21 @@ return {
 	SPARKLE_LOOK = { texture = "spark", lifetime = { 0.8, 1.4 }, size = 0.3, speed = { 0.3, 0.9 }, brightness = 3 },
 	-- The weapon cards (Armory UI, owner's picks 2026-11-09: 1B, 2B). Owned: the Armory cover painting (Config/
 	-- BinderCovers) dimmed to `backdrop`, soft rays and the weapon's glow colour behind its portrait. Not owned: the
-	-- same painting dark (`lockedBackdrop`), the portrait as a black shadow, a lock. Transparencies 0-1; RGB tints.
+	-- same painting under a slate veil (a tint alone keeps its colours), the portrait as a black shadow, a lock.
+	-- Transparencies 0-1; RGB tints.
 	CARD = {
-		backdrop = { 165, 160, 170 },
-		rays = 0.7,
+		backdrop = { 125, 120, 135 },
+		rays = 0.45,
 		raysSize = 1.7, -- of the art's width
-		glow = 0.2,
+		glow = 0.05,
 		glowSize = 1.3, -- of the art's width
-		lockedBackdrop = { 70, 74, 92 },
+		lockedBackdrop = { 160, 160, 175 },
+		veil = { 46, 50, 68 },
+		veilTransparency = 0.35,
 		shadow = 0.2,
 		lockSize = 0.26, -- of the art's width
+		lockedName = { 201, 207, 230 },
+		lockedText = { 213, 219, 240 },
 	},
 	-- The weapon window's icons (Config/UIIcons names; WeaponLookRules.familyIcon / perkIcon): a family's, a perk's by
 	-- kind (a venom burn by its look)
