@@ -11,7 +11,7 @@
 local CombatPreload = {}
 
 export type Ids = { images: { string }, sounds: { string }, animations: { string } }
-export type More = { moveFx: any?, bosses: any?, party: any?, levelUp: any?, superFx: any? }
+export type More = { moveFx: any?, bosses: any?, party: any?, levelUp: any?, superFx: any?, defeat: any?, weaponLooks: any? }
 
 local PREFIX = "rbxassetid://"
 
@@ -65,6 +65,20 @@ function CombatPreload.collect(combatHud: any, swordFx: any, swords: any, attack
 			if boss.moments then
 				add(ids.sounds, seenSounds, boss.moments.roar)
 			end
+		end
+		-- the Frontier's and the Dungeon's boss drone (a bare number in the config)
+		if typeof(more.bosses.MUSIC_ID) == "string" and more.bosses.MUSIC_ID ~= "" then
+			add(ids.sounds, seenSounds, PREFIX .. more.bosses.MUSIC_ID)
+		end
+	end
+	-- Owner 2026-11-09 ("make sure all effects/models etc are loaded before any fight starts"): the defeat screen's
+	-- music, and every weapon's portrait (the fight's weapon chip)
+	if more and more.defeat then
+		add(ids.sounds, seenSounds, more.defeat.MUSIC)
+	end
+	if more and more.weaponLooks then
+		for _, look in more.weaponLooks.WEAPONS do
+			add(ids.images, seenImages, look.portrait)
 		end
 	end
 	if more and more.party then

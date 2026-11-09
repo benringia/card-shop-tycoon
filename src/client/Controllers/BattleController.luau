@@ -962,9 +962,9 @@ local function swordHit(event: any)
 end
 
 -- The attack pictures for this fight (Util/FightFx): creatures charge, then their element's attack lands with the hit.
--- Their textures are checked again first, in case the loading screen's download failed
+-- Every fight picture is checked again first, in case the loading screen's download failed
 local function newFightFx(): FightFx.Dispatcher
-	CombatAssets.ensureAttackFx()
+	CombatAssets.ensureFight()
 	return FightFx.new({
 		marker = markerFor,
 		creature = CreatureController.GetFightView,

@@ -68,6 +68,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	PortalLooks = require("./PortalLooks.spec"),
 	LavaCracks = require("./LavaCracks.spec"),
 	ModelPreload = require("./ModelPreload.spec"),
+	TownPreload = require("./TownPreload.spec"),
 	CardArt = require("./CardArt.spec"),
 	WildValley = require("./WildValley.spec"),
 	WildPopulation = require("./WildPopulation.spec"),

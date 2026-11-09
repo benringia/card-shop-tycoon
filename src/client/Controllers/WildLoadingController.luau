@@ -16,6 +16,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local WildLoading = require(Config:WaitForChild("WildLoading"))
 local Music = require(Config:WaitForChild("Music"))
+local WildValley = require(Config:WaitForChild("WildValley"))
 local WildLoadingRules = require(Shared:WaitForChild("Util"):WaitForChild("WildLoadingRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
@@ -249,18 +250,16 @@ local function groundUnder(mine: number)
 	end
 end
 
--- The arrival area's music and ambience, kept loaded until a while after the screen closes, so they start at once
+-- The arrival area's music and ambience and every boss arena's battle music and ambience (WildLoadingRules.sounds),
+-- kept loaded until a while after the screen closes, so they start at once
 local function areaSounds()
-	local area = Music.WILD.areas[1]
 	local list: { Sound } = {}
-	for _, id in { area.tracks[1], area.ambient and area.ambient.id } do
-		if typeof(id) == "string" and id ~= "" then
-			local sound = Instance.new("Sound")
-			sound.SoundId = id
-			sound.Parent = SoundService
-			table.insert(list, sound)
-			table.insert(held, sound)
-		end
+	for _, id in WildLoadingRules.sounds(Music, WildValley) do
+		local sound = Instance.new("Sound")
+		sound.SoundId = id
+		sound.Parent = SoundService
+		table.insert(list, sound)
+		table.insert(held, sound)
 	end
 	ContentProvider:PreloadAsync(list)
 end

@@ -1,10 +1,12 @@
 --!strict
 -- Drives the loading screen (ReplicatedFirst/LoadingScreen, Config/LoadingScreen): tracks the character, the save (the
 -- server's DataLoaded attribute) and your own cards' paintings (kept drawn here, tiny, so binder pages show every face
--- the moment they turn), the summoned creature (CreatureController's CreatureReady, or no creature summoned)
--- and the fight gear (Util/CombatAssets, downloaded now), plus the shop's first pictures (round 4: the product models
--- with their maps, every UI icon, pack fronts, the mascot stickers, binder covers and level-up textures; a failed one
--- counts as done), and writes the step to LocalPlayer attributes the screen
+-- the moment they turn), the summoned creature (CreatureController's CreatureReady, or no creature summoned) and your
+-- own cards' and the town animals' models (CreatureVisuals' TownCreaturesReady), the fight gear (Util/CombatAssets,
+-- downloaded now), plus the
+-- town's first pictures and models (round 4, and owner 2026-11-09 "same with in town. make sure models and weapon
+-- effects are ready": the product, prop and place-prop models with their maps, Util/TownPreload's pictures; a failed
+-- one counts as done), and writes the step to LocalPlayer attributes the screen
 -- follows (LoadingText, LoadingShare, LoadingNote, LoadingDone). Also hands TeleportService a copy of the screen, so
 -- teleports to and from the Frontier and the Dungeon show it too.
 local ContentProvider = game:GetService("ContentProvider")
@@ -25,6 +27,10 @@ local HudMascot = require(Config:WaitForChild("HudMascot"))
 local BinderCovers = require(Config:WaitForChild("BinderCovers"))
 local LevelUpFx = require(Config:WaitForChild("LevelUpFx"))
 local ProductPictures = require(Config:WaitForChild("ProductPictures"))
+local PackFx = require(Config:WaitForChild("PackFx"))
+local Town = require(Config:WaitForChild("Town"))
+local WeaponLooks = require(Config:WaitForChild("WeaponLooks"))
+local TownPreload = require(Shared:WaitForChild("Util"):WaitForChild("TownPreload"))
 local LoadingRules = require(Shared:WaitForChild("Util"):WaitForChild("LoadingRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
@@ -107,51 +113,36 @@ local function preloadArt(payload: any)
 	end)
 end
 
--- The shop's first pictures: the pack, deck box and display box models (meshes and every look's maps: the shelves and
--- the opening stage draw them), the weapon models, every UI icon, the pack fronts, the menus' product pictures, the mascot stickers, the
--- binder covers and the level-up textures. Images are kept drawn (a picture is only ready once something draws it);
--- PreloadAsync reports each fetch, and a failed or timed-out one counts as done (LoadingRules.settled).
+-- The town's first pictures and models: the pack, deck box and display box models (meshes and every look's maps: the
+-- shelves and the opening stage draw them), the weapon models, the shop props' and place props' models (plots and
+-- placement ghosts), and Util/TownPreload's pictures (every UI icon, the pack fronts, the menus' product pictures, the
+-- mascot stickers, the binder covers, the level-up textures, the pack opening's effects, the portals' textures, the
+-- weapons' portraits). Images are kept drawn (a picture is only ready once something draws it); PreloadAsync reports
+-- each fetch, and a failed or timed-out one counts as done (LoadingRules.settled).
 local function preloadShop()
 	local items: { any } = {}
-	-- The whole folder: its meshes and every look's SurfaceAppearance (game scripts can't read a SurfaceAppearance's
-	-- maps, but preloading the instance fetches them)
-	local packModels = ReplicatedStorage:FindFirstChild("PackModels")
-	if packModels then
-		table.insert(items, packModels)
-	end
-	-- The weapons too: their colours and glow maps are SurfaceAppearances, so a freshly cloned sword (on the back, the
-	-- drop and forge reveals) would show untextured until they're fetched
-	local weaponModels = ReplicatedStorage:FindFirstChild("WeaponModels")
-	if weaponModels then
-		table.insert(items, weaponModels)
-	end
-	local images: { string } = {}
-	for _, id in UIIcons do
-		table.insert(images, id)
-	end
-	for _, pack in Packs.ById do
-		if pack.art then
-			table.insert(images, pack.art)
+	-- Whole folders: their meshes and every look's SurfaceAppearance (game scripts can't read a SurfaceAppearance's maps,
+	-- but preloading the instance fetches them). The weapons' colours and glow maps are SurfaceAppearances too, so a
+	-- freshly cloned sword (on the back, the drop and forge reveals) would show untextured until they're fetched
+	for _, name in { "PackModels", "WeaponModels", "PropModels", "PlaceProps" } do
+		local folder = ReplicatedStorage:FindFirstChild(name)
+		if folder then
+			table.insert(items, folder)
 		end
 	end
-	for _, id in HudMascot.images do
-		table.insert(images, id)
-	end
-	for _, cover in BinderCovers.SETS do
-		table.insert(images, cover.art)
-	end
-	for _, id in LevelUpFx.IMAGES do
-		table.insert(images, id)
-	end
-	for _, pictures in ProductPictures.LOOKS do
-		for _, id in pictures do
-			table.insert(images, id)
-		end
-	end
+	local images = TownPreload.images({
+		uiIcons = UIIcons,
+		packs = Packs,
+		hudMascot = HudMascot,
+		binderCovers = BinderCovers,
+		levelUpFx = LevelUpFx,
+		productPictures = ProductPictures,
+		packFx = PackFx,
+		town = Town,
+		weaponLooks = WeaponLooks,
+	})
 	for _, image in images do
-		if typeof(image) == "string" and string.sub(image, 1, 13) == "rbxassetid://" then
-			table.insert(items, keepDrawn(image))
-		end
+		table.insert(items, keepDrawn(image))
 	end
 	-- The level-up sounds (round 5), so the first level-up isn't silent while they fetch: as Sound instances (an asset id
 	-- given as a string reports Failure and fetches nothing)
@@ -232,7 +223,8 @@ function LoadingController.Start()
 				data = player:GetAttribute("DataLoaded") == true,
 				art = artReady,
 				shop = shopReady,
-				creature = player:GetAttribute("CreatureReady") == true or nothingSummoned,
+				creature = (player:GetAttribute("CreatureReady") == true or nothingSummoned)
+					and player:GetAttribute("TownCreaturesReady") == true,
 				gear = gearReady,
 			}
 			local step, share, done, slow = LoadingRules.progress(status, os.clock() - started, LoadingScreen)

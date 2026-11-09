@@ -3,10 +3,11 @@
 -- only models the game uses, a card's model (Config/Party CREATURE_MODELS) or a town animal's (Config/Ambient CRITTERS,
 -- Cute Pets), never the rest of the bought packs (45 unused models with 93% of the meshes once kept a new player's own
 -- cards waiting). The cards asked for (the player's own, one about to be summoned) come first, in the order asked, then
--- the other cards, then the town animals. Pure, Lune-tested.
+-- the town animals (owner 2026-11-09: "same with in town. make sure models ... are ready": they walk round town from the
+-- start; both are `soon`, and the loading screen waits for them), then the other cards. Pure, Lune-tested.
 local ModelPreload = {}
 
-export type Entry = { key: string, pack: string?, model: string }
+export type Entry = { key: string, pack: string?, model: string, soon: boolean }
 
 local CRITTER_PACK = "CutePets"
 
@@ -18,18 +19,21 @@ end
 function ModelPreload.order(asked: { string }, cardModels: { [string]: any }, critters: { any }): { Entry }
 	local order: { Entry } = {}
 	local seen: { [string]: boolean } = {}
-	local function add(pack: string?, model: string)
+	local function add(pack: string?, model: string, soon: boolean)
 		local key = ModelPreload.key(pack, model)
 		if not seen[key] then
 			seen[key] = true
-			table.insert(order, { key = key, pack = pack, model = model })
+			table.insert(order, { key = key, pack = pack, model = model, soon = soon })
 		end
 	end
 	for _, name in asked do
 		local entry = cardModels[name]
 		if entry then
-			add(entry.pack, entry.model)
+			add(entry.pack, entry.model, true)
 		end
+	end
+	for _, critter in critters do
+		add(CRITTER_PACK, critter.model, true)
 	end
 	-- the other cards in a fixed order, so every client downloads the same way
 	local names = {}
@@ -38,12 +42,19 @@ function ModelPreload.order(asked: { string }, cardModels: { [string]: any }, cr
 	end
 	table.sort(names)
 	for _, name in names do
-		add(cardModels[name].pack, cardModels[name].model)
-	end
-	for _, critter in critters do
-		add(CRITTER_PACK, critter.model)
+		add(cardModels[name].pack, cardModels[name].model, false)
 	end
 	return order
+end
+
+-- Whether every `soon` model (your own cards, the town animals) is downloaded
+function ModelPreload.soonReady(order: { Entry }, done: { [string]: boolean }): boolean
+	for _, entry in order do
+		if entry.soon and not done[entry.key] then
+			return false
+		end
+	end
+	return true
 end
 
 -- The next models still waiting (not in done), in order, at most `size`: one download call each (a call waits about half

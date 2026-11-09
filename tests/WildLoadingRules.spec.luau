@@ -2,6 +2,8 @@
 -- The Wild's loading screen (owner 2026-11-05: "make sure everything is loaded before player can walk in", look A)
 local WildLoadingRules = require("../src/shared/Util/WildLoadingRules")
 local WildLoading = require("../src/shared/Config/WildLoading")
+local Music = require("../src/shared/Config/Music")
+local WildValley = require("../src/shared/Config/WildValley")
 local expect = require("./lib/expect")
 
 local NONE = { ground = false, scenery = false, monsters = false, sounds = false }
@@ -41,6 +43,29 @@ return {
 		expect.equal(finished, true)
 		local _, _, holding = WildLoadingRules.progress(NONE, WildLoading.MAX_SECONDS - 0.5, 4, WildLoading)
 		expect.equal(holding, false)
+	end,
+
+	-- Owner 2026-11-09: "make sure all effects/models etc are loaded before any fight starts": the trip loads the
+	-- arrival area's music and ambience and every boss arena's battle music and ambience, so a fight's music starts at once
+	["the trip loads the arrival's sounds and every boss arena's music and ambience"] = function()
+		local ids = WildLoadingRules.sounds(Music, WildValley)
+		local function has(id: string): boolean
+			return table.find(ids, id) ~= nil
+		end
+		expect.equal(has(Music.WILD.areas[1].tracks[1]), true, "the arrival area's music")
+		for _, arena in Music.WILD.arenas do
+			expect.equal(has(arena.tracks[1]), true, `{arena.key}'s battle music`)
+		end
+		for index, dressing in WildValley.ARENA_DRESSING do
+			if dressing.sound then
+				expect.equal(has(dressing.sound.id), true, `arena {index}'s ambience`)
+			end
+		end
+		local seen = {}
+		for _, id in ids do
+			expect.equal(seen[id], nil, `{id} twice`)
+			seen[id] = true
+		end
 	end,
 
 	["one step per thing it waits for, and plain text"] = function()

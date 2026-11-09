@@ -82,19 +82,43 @@ return {
 		assert(party.PRELOAD_BATCH >= 2, "downloads go several at a time")
 	end,
 
-	["cards before town animals"] = function()
-		local order = ModelPreload.order({}, party.CREATURE_MODELS, ambient.CRITTERS)
-		local cardKeys: { [string]: boolean } = {}
-		for _, entry in party.CREATURE_MODELS do
-			cardKeys[ModelPreload.key(entry.pack, entry.model)] = true
+	-- Owner 2026-11-09 ("same with in town. make sure models ... are ready"): the town animals walk round town from the
+	-- start, so they come right after your own cards, before the other cards (which only show when someone summons
+	-- them); both are marked `soon`, and the loading screen waits for every `soon` model
+	["your own cards, then the town animals, then the other cards; the first two marked soon"] = function()
+		local own = aCard()
+		local order = ModelPreload.order({ own }, party.CREATURE_MODELS, ambient.CRITTERS)
+		local mine = party.CREATURE_MODELS[own]
+		expect.equal(order[1].key, ModelPreload.key(mine.pack, mine.model), "your own card first")
+		expect.equal(order[1].soon, true, "your own card is soon")
+		local animals: { [string]: boolean } = {}
+		for _, critter in ambient.CRITTERS do
+			animals[ModelPreload.key("CutePets", critter.model)] = true
 		end
-		local seenAnimal = false
+		local count = 0
+		for _ in animals do
+			count += 1
+		end
+		for index = 2, 1 + count do
+			expect.equal(animals[order[index].key], true, `entry {index} is a town animal`)
+			expect.equal(order[index].soon, true, "a town animal is soon")
+		end
+		for index = 2 + count, #order do
+			expect.equal(order[index].soon, false, `{order[index].key}: another card, not waited for`)
+		end
+	end,
+
+	["the town's models are ready once every soon model is downloaded"] = function()
+		local order = ModelPreload.order({ aCard() }, party.CREATURE_MODELS, ambient.CRITTERS)
+		local done: { [string]: boolean } = {}
+		expect.equal(ModelPreload.soonReady(order, done), false, "nothing yet")
 		for _, entry in order do
-			if cardKeys[entry.key] then
-				assert(not seenAnimal, `card model {entry.key} after a town animal`)
-			else
-				seenAnimal = true
+			if entry.soon then
+				done[entry.key] = true
 			end
 		end
+		expect.equal(ModelPreload.soonReady(order, done), true, "the other cards aren't waited for")
+		done[order[1].key] = nil
+		expect.equal(ModelPreload.soonReady(order, done), false, "your own card still downloading")
 	end,
 }

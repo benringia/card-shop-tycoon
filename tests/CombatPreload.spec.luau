@@ -10,6 +10,8 @@ local Bosses = require("../src/shared/Config/Bosses")
 local Party = require("../src/shared/Config/Party")
 local LevelUpFx = require("../src/shared/Config/LevelUpFx")
 local SuperFx = require("../src/shared/Config/SuperFx")
+local Defeat = require("../src/shared/Config/Defeat")
+local WeaponLooks = require("../src/shared/Config/WeaponLooks")
 local expect = require("./lib/expect")
 
 local function has(list: { string }, id: string): boolean
@@ -118,5 +120,20 @@ return {
 		local ids = CombatPreload.collect(CombatHud, SwordFx, Swords, AttackFx, Victory, { superFx = copy })
 		expect.equal(has(ids.sounds, "rbxassetid://123"), true, "a super's sound")
 		expect.equal(has(ids.images, "rbxassetid://456"), true, "a super's texture")
+	end,
+	-- Owner 2026-11-09: "make sure all effects/models etc are loaded before any fight starts" (a Studio check found these
+	-- still unfetched when the loading screen closed)
+	["the defeat music, the boss drone and every weapon's portrait are fetched ahead too"] = function()
+		local ids = CombatPreload.collect(CombatHud, SwordFx, Swords, AttackFx, Victory, { bosses = Bosses, defeat = Defeat, weaponLooks = WeaponLooks })
+		expect.equal(has(ids.sounds, Defeat.MUSIC), true, "the defeat music")
+		expect.equal(has(ids.sounds, "rbxassetid://" .. Bosses.MUSIC_ID), true, "the Frontier and Dungeon boss drone")
+		local portraits = 0
+		for weaponId, look in WeaponLooks.WEAPONS do
+			if look.portrait ~= "" then
+				portraits += 1
+				expect.equal(has(ids.images, look.portrait), true, `{weaponId}'s portrait (the weapon chip)`)
+			end
+		end
+		expect.equal(portraits >= 10, true, "the weapons' portraits")
 	end,
 }

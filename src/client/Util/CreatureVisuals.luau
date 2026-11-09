@@ -116,7 +116,9 @@ end
 -- Downloads, in the background, the creature models the game uses (Util/ModelPreload: a card's model or a town
 -- animal's, never the rest of the bought packs), a few at a time (Party.PRELOAD_BATCH), each drawn once downloaded (warmModel). Cards asked for
 -- here (the party bar passes the player's own; call it again for one about to show) jump ahead of what's left; at start
--- it waits a moment (Party.PRELOAD_PARTY_WAIT) for the player's own cards so they go first.
+-- it waits a moment (Party.PRELOAD_PARTY_WAIT) for the player's own cards so they go first. Once your own cards' and the
+-- town animals' models are in (ModelPreload `soon`) it sets the LocalPlayer's TownCreaturesReady attribute: the loading
+-- screen waits for it.
 function CreatureVisuals.preload(cardNames: { string })
 	for _, name in cardNames do
 		table.insert(preloadAsked, name)
@@ -126,8 +128,10 @@ function CreatureVisuals.preload(cardNames: { string })
 	end
 	preloading = true
 	task.spawn(function()
+		local player = game:GetService("Players").LocalPlayer
 		local models = ReplicatedStorage:WaitForChild("CreatureModels", 30)
 		if not models then
+			player:SetAttribute("TownCreaturesReady", true) -- nothing to wait for
 			return
 		end
 		local started = os.clock()
@@ -136,6 +140,9 @@ function CreatureVisuals.preload(cardNames: { string })
 		end
 		while true do
 			local order = ModelPreload.order(preloadAsked, Party.CREATURE_MODELS, Ambient.CRITTERS)
+			if ModelPreload.soonReady(order, preloadDone) then
+				player:SetAttribute("TownCreaturesReady", true)
+			end
 			local batch = ModelPreload.nextBatch(order, preloadDone, Party.PRELOAD_BATCH)
 			if #batch == 0 then
 				break

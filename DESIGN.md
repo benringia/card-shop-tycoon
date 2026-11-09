@@ -1932,16 +1932,18 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
     stops them), a big whoosh and Fire Sheet 3.
   - Torrent Strike (Epic, "strike the ground with the trident, while the trident is stuck to the ground, torrents of
     water appears from the ground"): raised high, water swirling round the prongs, driven tip-first into the ground
-    ahead (0.55 s: a splash ring, glowing blue cracks, the release shake), leaning on the stuck shaft as columns of
-    water 18 studs tall burst up on a ring 6 studs round you and a bigger one under every foe in reach (the hit, 0.75 s:
-    every foe within 12 studs, `spin`; `SHAKE.torrentStrike` 0.9), a wider ring 22 studs tall at 12 studs for show
-    (0.85 s). Owner 2026-11-09 ("higher up with slowmo effect on waters and make the torrents last longer"): as the
-    burst reaches its top (1.2 s) all the water eases into slow motion (a quarter speed, the columns pouring twice as
-    fast meanwhile so they stay full) and hangs there, still pouring, until 2.65 s: back to full speed, it stops and
-    falls back as rain. The trident is pulled free at 1.9 s while the water still hangs (the animation is unchanged).
-    Your own camera pull-back is framed on where you stand, low and 26 studs out so the columns' whole height shows,
-    held through the slow motion. Sounds: a deep boom, a big splash, Water Surge 3, Heavy Rain 1 with the fall (a
-    51 s clip, faded out 2 s in: Config/Swords cue `stopAfter`).
+    ahead (0.55 s: a splash ring, glowing blue cracks, the release shake), leaning on the stuck shaft as a big column
+    bursts under every foe in reach (the hit, 0.75 s: every foe within 12 studs, `spin`; `SHAKE.torrentStrike` 0.9).
+    Owner 2026-11-09 ("make the torrents appear at a random at a time.by one or by two torrents"): 14 torrents, 18-22
+    studs tall, burst round you one or two at a time over the next second, each at a random spot 3.5-12 studs out, 3.5
+    apart, kept out of the lane along your left-right line where the side camera looks in
+    (`SwordSkillFxRules.torrentBursts`, Lune-tested). Owner 2026-11-09 ("higher up with slowmo effect on waters and
+    make the torrents last longer"): as each burst reaches its top (0.45 s after it) its water eases into slow motion (a
+    quarter speed, pouring twice as fast meanwhile so it stays full) and hangs, still pouring, until 2.9 s: back to
+    full speed, they stop and fall back as rain. The trident is pulled free at 1.9 s while the water still hangs (the
+    animation is unchanged). Your own camera pull-back is framed on where you stand, low and 26 studs out so the
+    torrents' whole height shows, held through the bursts and the slow motion. Sounds: a deep boom, a big splash, Water
+    Surge 3, Heavy Rain 1 with the fall (a 51 s clip, faded out 2 s in: Config/Swords cue `stopAfter`).
   Keyed in `tools/blender/anim_magma_halberd.py` and `anim_tidal_trident.py` (on anim_spear's helpers), built into
   `assets/animations/MagmaHalberd` and `TidalTrident`; HUD buttons with the spare glyphs `HalberdFlames` and
   `TridentWave`. Balance re-run (tools/balance/bosses, 60 fights solo, "well"): unchanged from the rows above, the
@@ -2499,6 +2501,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── RingRules.luau     # inside a slam circle or swipe cone, a closing ring's scale (pure, Lune-tested)
             ├── HpBarRules.luau    # HP bar ghost and heal timing, the red edge flash and low-HP pulse, the portrait shake (pure, Lune-tested)
             ├── CombatPreload.luau # every image, sound and animation id the boss fight needs, from its configs (pure, Lune-tested)
+            ├── TownPreload.luau   # the town's pictures the loading screen keeps drawn before you walk in (pure, Lune-tested)
             ├── BossMoments.luau   # the Wild bosses' moments: when the intro roar is due, when a heal flares, which effect bones a moment uses (pure, Lune-tested)
             ├── DungeonRules.luau  # the run: carried HP, out, run size, packs (pure, Lune-tested)
             ├── NewPulls.luau      # which pulls are NEW to the collection, for the pack results (pure, Lune-tested)
@@ -2584,7 +2587,14 @@ their saved data.
   stickers, the binder covers and the level-up textures, images kept drawn; a failed or timed-out fetch counts as done,
   `LoadingRules.settled`, and the step can never hold the screen), the summoned creature's model downloaded
   (`CreatureReady`, set by CreatureController; none summoned counts as done) and
-  the fight art, sounds and moves (`Util/CombatAssets`); a save still loading after 6 s gets a note ("Your save is
+  the fight art, sounds and moves (`Util/CombatAssets`). Owner 2026-11-09 ("make sure all effects/models etc are
+  loaded before any fight starts. same with in town. make sure models and weapon effects are ready"; a Studio check of
+  every asset's fetch status as the screen closed found these missing): it also waits for your own cards' and the town
+  animals' models (`TownCreaturesReady`, `Util/ModelPreload` `soon`), the shop props' and place props' models
+  (`PropModels`, `PlaceProps`), the pack opening's effects, the portals' textures and every weapon's portrait
+  (`Util/TownPreload`), the defeat music and the Frontier and Dungeon boss drone (`Util/CombatPreload`), and in the
+  Frontier and the Dungeon the monsters' and bosses' models; as a fight starts every fight picture is checked again
+  (`CombatAssets.ensureFight`). Measured in Studio: the screen closes about 10 s in; a save still loading after 6 s gets a note ("Your save is
   still closing on another server, almost there!"); after 30 s it fades anyway. Tips cycle at the bottom. The same
   screen is handed to `TeleportService:SetTeleportGui`, so teleports show it and the next place carries it on. The
   first-visit welcome cinematic starts when it fades. The shop step preloads the menus' product pictures
@@ -2596,7 +2606,8 @@ their saved data.
   (`tools/textures/make_portal_swirl.py`, `assets/ui/fx-portal`) turning against each other in the portal's greens
   over the First Spark cover's hills, "The Wild", a green bar, the step and a tip. After the move ("wild") your root is
   anchored on your device until the ground under you, the valley's scenery (its meshes and textures), the monsters'
-  models and the arrival area's music and ambience are in ("Opening the portal...", "Growing the valley...", "Waking
+  models and the arrival area's music and ambience, and every boss arena's battle music and ambience (owner
+  2026-11-09, `WildLoadingRules.sounds`) are in ("Opening the portal...", "Growing the valley...", "Waking
   the monsters...", "Tuning the sounds..."; `Util/WildLoadingRules`, Lune-tested), then it fades and you walk. It
   stays up at least 1.2 s, never holds you more than 12 s after arriving or 30 s before; "stay" (the trip didn't
   happen) or "home" closes it. Its pictures are kept drawn from the start, so the first trip's swirl is there at once.
@@ -2870,7 +2881,8 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
 - Stream-friendly: enable StreamingEnabled, test on low-end phone.
 - Creature models download in the background from the start (`CreatureVisuals.preload`, `Util/ModelPreload`): only the
   models the game uses (each card's model, the town animals'), the player's own cards first (it waits up to
-  `Party.PRELOAD_PARTY_WAIT` seconds for them), then the other cards, then the animals, `Party.PRELOAD_BATCH` per
+  `Party.PRELOAD_PARTY_WAIT` seconds for them), then the town animals (owner 2026-11-09: they walk round town from the
+  start; the loading screen waits for both), then the other cards, `Party.PRELOAD_BATCH` per
   download call; each is drawn in a hidden viewport once downloaded so its textures finish. Measured 2026-10-31: the
   bought packs also hold 45 unused models with 619 of the 668 meshes, all preloaded before, so a new player's own cards
   waited behind them (about 196 queued requests for 6 s even from Studio's cache); now the 49 used models are drawn

@@ -15,6 +15,30 @@ WildLoadingRules.ORDER = { "ground", "scenery", "monsters", "sounds" }
 -- Returns (step 1-4, or 5 once all are in; the bar's share; finished: it may close). The step follows the first thing
 -- still loading. It closes once everything is in and it has been up MIN_SECONDS, MAX_SECONDS after you arrived
 -- whatever is left, or after WAIT_SECONDS if you never arrive.
+-- The sounds the trip loads (and keeps loaded a while): the arrival area's music and ambience, and every boss arena's
+-- battle music and ambience (owner 2026-11-09: "make sure all effects/models etc are loaded before any fight starts"),
+-- each once
+function WildLoadingRules.sounds(music: any, wildValley: any): { string }
+	local list: { string } = {}
+	local seen: { [string]: boolean } = {}
+	local function add(id: any)
+		if typeof(id) == "string" and string.sub(id, 1, 13) == "rbxassetid://" and not seen[id] then
+			seen[id] = true
+			table.insert(list, id)
+		end
+	end
+	local arrival = music.WILD.areas[1]
+	add(arrival.tracks[1])
+	add(arrival.ambient and arrival.ambient.id)
+	for _, arena in music.WILD.arenas do
+		add(arena.tracks[1])
+	end
+	for _, dressing in wildValley.ARENA_DRESSING do
+		add(dressing.sound and dressing.sound.id)
+	end
+	return list
+end
+
 function WildLoadingRules.progress(status: Status, arrivedFor: number?, shownFor: number, cfg: any): (number, number, boolean)
 	local order = WildLoadingRules.ORDER
 	local step = #order + 1

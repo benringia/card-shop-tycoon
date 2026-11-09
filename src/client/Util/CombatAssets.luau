@@ -20,6 +20,8 @@ local Bosses = require(Config:WaitForChild("Bosses"))
 local Party = require(Config:WaitForChild("Party"))
 local LevelUpFx = require(Config:WaitForChild("LevelUpFx"))
 local SuperFxConfig = require(Config:WaitForChild("SuperFx"))
+local Defeat = require(Config:WaitForChild("Defeat"))
+local WeaponLooks = require(Config:WaitForChild("WeaponLooks"))
 local SoundBank = require((script.Parent :: Instance):WaitForChild("SoundBank"))
 local CombatPreload = require(Shared:WaitForChild("Util"):WaitForChild("CombatPreload"))
 
@@ -49,8 +51,20 @@ function CombatAssets.ensure(images: { string })
 	end)
 end
 
+local function fightIds(): CombatPreload.Ids
+	return CombatPreload.collect(CombatHudConfig, SwordFx, Swords, AttackFx, Victory, {
+		moveFx = MoveFx,
+		bosses = Bosses,
+		party = Party,
+		levelUp = LevelUpFx,
+		superFx = SuperFxConfig,
+		defeat = Defeat,
+		weaponLooks = WeaponLooks,
+	})
+end
+
 function CombatAssets.preload()
-	local ids = CombatPreload.collect(CombatHudConfig, SwordFx, Swords, AttackFx, Victory, { moveFx = MoveFx, bosses = Bosses, party = Party, levelUp = LevelUpFx, superFx = SuperFxConfig })
+	local ids = fightIds()
 	local cache = Instance.new("ScreenGui")
 	cache.Name = "CombatCache"
 	cache.ResetOnSpawn = false
@@ -78,6 +92,13 @@ function CombatAssets.preload()
 	if models then
 		table.insert(list, models)
 	end
+	-- The Frontier and the Dungeon are all fights: their monsters and bosses too (the main game's Wild trip loads them
+	-- behind its own loading screen, WildLoadingController)
+	local kind = workspace:GetAttribute("PlaceKind")
+	local monsters = ReplicatedStorage:FindFirstChild("MonsterModels")
+	if monsters and kind ~= nil and kind ~= "Main" then
+		table.insert(list, monsters)
+	end
 	cache.Parent = (Players.LocalPlayer :: Player):WaitForChild("PlayerGui")
 	local ok, err = pcall(ContentProvider.PreloadAsync, ContentProvider, list)
 	if not ok then
@@ -86,13 +107,10 @@ function CombatAssets.preload()
 	CombatAssets.ensure(ids.images)
 end
 
--- The attack effects' textures (Config/AttackFx TEXTURES), checked again as a fight starts
-function CombatAssets.ensureAttackFx()
-	local images = {}
-	for _, id in AttackFx.TEXTURES do
-		table.insert(images, id)
-	end
-	CombatAssets.ensure(images)
+-- Every fight picture (the effects' textures, the HUD, the weapon portraits), checked again as a fight starts: any
+-- the loading screen's download missed is fetched again
+function CombatAssets.ensureFight()
+	CombatAssets.ensure(fightIds().images)
 end
 
 return CombatAssets
