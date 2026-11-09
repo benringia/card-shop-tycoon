@@ -258,4 +258,7 @@ return {
 	-- A weapon switched in a fight (the quick switch, spec 2026-11-07-weapons-round2-design 6): this long with no cut or
 	-- skill (the dodge still works)
 	SWAP_SECONDS = 1,
+	-- The quick switch's key for the weapon before (Q is the next; owner 2026-11-09: "Add a previous button to weapon
+	-- quick switch"), an Enum.KeyCode name, shown on its < button
+	PREVIOUS_KEY = "Z",
 }

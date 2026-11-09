@@ -1,6 +1,6 @@
 --!strict
 -- The quick weapon switch (spec 2026-11-07-weapons-round2-design 6; the owner's pick A, 2026-11-07): a round chip on the
--- right edge with your weapon's picture in its rarity's ring, < and > either side (or swipe the chip, or Q / Shift+Q). It
+-- right edge with your weapon's picture in its rarity's ring, < and > either side (or swipe the chip, or Q / Z). It
 -- steps through every weapon you own (Util/WeaponSwitch) and asks the server to equip it (EquipWeapon; in a fight a
 -- switch costs Weapons.SWAP_SECONDS with no cut or skill). Shown with two weapons or more, never over a window.
 local Players = game:GetService("Players")
@@ -39,7 +39,6 @@ local holderScale: UIScale
 local portrait: ImageLabel
 local ring: UIStroke
 local nameLabel: TextLabel
-local keyBadge: Frame
 local nameUntil = 0
 
 local function unlocked(): boolean
@@ -156,19 +155,27 @@ local function build()
 	portrait.Size = UDim2.fromScale(0.86, 0.86)
 	portrait.Parent = chip
 
-	-- Q on keyboards, in its white circle like the HUD tiles' keys
-	keyBadge = Instance.new("Frame")
-	keyBadge.Name = "Key"
-	keyBadge.AnchorPoint = Vector2.new(1, 1)
-	keyBadge.Position = UDim2.new(1, 2, 1, 2)
-	keyBadge.Size = UDim2.fromOffset(HudLayout.KEY_SIZE, HudLayout.KEY_SIZE)
-	keyBadge.BackgroundColor3 = Color3.new(1, 1, 1)
-	keyBadge.Visible = UserInputService.KeyboardEnabled
-	keyBadge.Parent = chip
-	UIKit.corner(keyBadge, HudLayout.KEY_SIZE // 2)
-	local key = UIKit.label(keyBadge, "Q", Enum.Font.GothamBold, 13, HudLayout.KEY_CHIP)
-	key.Size = UDim2.fromScale(1, 1)
-	key.TextXAlignment = Enum.TextXAlignment.Center
+	-- Q (the next weapon) on the chip and Z (the one before, owner 2026-11-09) on the < button, on keyboards, each in its
+	-- white circle like the HUD tiles' keys
+	local function badge(parent: GuiObject, text: string, anchor: Vector2, position: UDim2): Frame
+		local frame = Instance.new("Frame")
+		frame.Name = "Key"
+		frame.AnchorPoint = anchor
+		frame.Position = position
+		frame.Size = UDim2.fromOffset(HudLayout.KEY_SIZE, HudLayout.KEY_SIZE)
+		frame.BackgroundColor3 = Color3.new(1, 1, 1)
+		frame.Visible = UserInputService.KeyboardEnabled
+		frame.ZIndex = parent.ZIndex + 2
+		frame.Parent = parent
+		UIKit.corner(frame, HudLayout.KEY_SIZE // 2)
+		local key = UIKit.label(frame, text, Enum.Font.GothamBold, 13, HudLayout.KEY_CHIP)
+		key.Size = UDim2.fromScale(1, 1)
+		key.TextXAlignment = Enum.TextXAlignment.Center
+		key.ZIndex = frame.ZIndex + 1
+		return frame
+	end
+	badge(chip, "Q", Vector2.new(1, 1), UDim2.new(1, 2, 1, 2))
+	badge(previous, Weapons.PREVIOUS_KEY, Vector2.new(0, 1), UDim2.new(0, -6, 1, 6))
 
 	nameLabel = UIKit.label(holder, "", Enum.Font.FredokaOne, 14, UIKit.Colors.Text)
 	nameLabel.Name = "WeaponName"
@@ -217,14 +224,17 @@ function WeaponSwitchController.Start()
 	player:GetAttributeChangedSignal("Level"):Connect(render)
 	Remotes.WeaponsChanged:FireServer() -- the weapons now, if their first send came before this listened
 
-	-- Q: the next weapon, Shift+Q: the one before (not while typing, placing something or with a window open)
+	-- Q: the next weapon; Z (owner 2026-11-09: "add a previous button") or Shift+Q: the one before (not while typing,
+	-- placing something or with a window open; in a fight Shift is the dodge, so Z is the one to use there)
+	local previousKey = (Enum.KeyCode :: any)[Weapons.PREVIOUS_KEY] :: Enum.KeyCode
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		local layer = holder.Parent :: GuiObject
-		if gameProcessed or input.KeyCode ~= Enum.KeyCode.Q or not holder.Visible or not layer.Visible then
+		local key = input.KeyCode
+		if gameProcessed or (key ~= Enum.KeyCode.Q and key ~= previousKey) or not holder.Visible or not layer.Visible then
 			return
 		end
 		local shift = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or UserInputService:IsKeyDown(Enum.KeyCode.RightShift)
-		step(if shift then -1 else 1)
+		step(if key == previousKey or shift then -1 else 1)
 	end)
 
 	local screenGui = UIController.GetScreenGui()

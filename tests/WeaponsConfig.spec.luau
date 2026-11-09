@@ -107,6 +107,16 @@ return {
 		expect.equal(Weapons.SWAP_SECONDS, 1)
 	end,
 
+	-- Owner 2026-11-09: "Add a previous button to weapon quick switch": a key of its own for the weapon before (Q is the
+	-- next; Shift+Q was the only way back, and Shift is the dodge in a fight), never a key a fight or the HUD uses
+	["the quick switch's previous weapon has a key of its own"] = function()
+		local key = Weapons.PREVIOUS_KEY
+		expect.equal(typeof(key) == "string" and string.match(key, "^%u$") ~= nil, true, "one capital letter (an Enum.KeyCode name)")
+		for _, taken in { "Q", "E", "F", "R", "G", "T", "C", "B", "I", "K", "W", "A", "S", "D" } do
+			expect.equal(key ~= taken, true, `not {taken}: already used`)
+		end
+	end,
+
 	-- Weapons round 2: the spears are built (their models in, spec 2026-11-07-weapons-round2-design 7); every built
 	-- weapon's model (a Forge copy: its base model's) has its glow map
 	["the spears are built, and every built weapon has its glow map"] = function()
