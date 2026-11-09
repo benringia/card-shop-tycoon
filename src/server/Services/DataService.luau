@@ -78,6 +78,7 @@ export type PlayerData = {
 	swordFights: number, -- boss fights fought with the sword HUD; its buttons show names for the first few (SwordService)
 	weapons: { [string]: { grade: string, level: number } }, -- weaponId -> its grade and upgrade level (WeaponService)
 	equippedWeapon: string, -- the weapon in hand (Config/Weapons id; the Steel Sword until another is equipped)
+	tutorial: any, -- the first visit with Pish, his lessons and luck (TutorialService; Util/TutorialRules.Saved)
 }
 
 export type Handler = {
@@ -114,6 +115,7 @@ local TEMPLATE: PlayerData = {
 	swordFights = 0,
 	weapons = {},
 	equippedWeapon = "starterSword",
+	tutorial = { firstVisit = "todo", step = 1, early = {}, firstGiven = false, giftClaimed = false, lessons = {}, pishLuckAt = 0 },
 }
 
 local DataService = {}

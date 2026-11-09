@@ -218,6 +218,26 @@ return {
 		expect.equal(junk.equippedWeapon, "starterSword")
 	end,
 
+	["v17: existing players skip the first visit; no gift yet"] = function()
+		local data: any = { version = 16 }
+		Migrations.run(data, 17)
+		local tutorial = data.tutorial
+		expect.equal(typeof(tutorial), "table")
+		expect.equal(tutorial.firstVisit, "done", "not sent through the first visit")
+		expect.equal(tutorial.step, 1)
+		expect.equal(tutorial.giftClaimed, false, "Pish's gift still to come (a replay gives it)")
+		expect.equal(tutorial.firstGiven, true, "no first-visit pack for an existing shop")
+		expect.equal(typeof(tutorial.lessons), "table")
+		expect.equal(next(tutorial.lessons), nil)
+		expect.equal(typeof(tutorial.early), "table")
+		expect.equal(tutorial.pishLuckAt, 0)
+		expect.equal(data.version, 17)
+		local junk: any = { version = 16, tutorial = "junk" }
+		Migrations.run(junk, 17)
+		expect.equal(junk.tutorial.firstVisit, "done")
+		expect.equal(junk.tutorial.giftClaimed, false)
+	end,
+
 	["v5: already graded stacks untouched"] = function()
 		local data: any = { version = 4, cards = { FS01 = { S = { normal = 2, foil = 0 } } } }
 		Migrations.run(data, 5, sequence({ "C" }))
