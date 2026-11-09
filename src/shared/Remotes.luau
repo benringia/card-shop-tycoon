@@ -95,6 +95,8 @@ local NAMES = {
 	"WeaponDropped", -- server → client: { weaponId, grade, refund, material } a boss dropped its weapon (refund > 0: you had it)
 	"WeaponAnnouncement", -- server → all clients: (displayName, weaponId, grade, userId) an Epic or Legendary weapon dropped
 	"WeaponBeacon", -- server → all clients: (userId, weaponId, position) a new boss weapon dropped there: its light column
+	"PishPetted", -- server → all clients: (userId, lucky: boolean) Town Pish was petted: his hearts, and the luck it gave
+	"PetPish", -- client → server: () the tutorial's own Pish (only on this player's screen) was petted: a cuddle, no luck
 }
 
 local isServer = RunService:IsServer()
@@ -205,4 +207,6 @@ return {
 	WeaponDropped = remotes.WeaponDropped,
 	WeaponAnnouncement = remotes.WeaponAnnouncement,
 	WeaponBeacon = remotes.WeaponBeacon,
+	PishPetted = remotes.PishPetted,
+	PetPish = remotes.PetPish,
 }
