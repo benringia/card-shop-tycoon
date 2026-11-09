@@ -357,3 +357,45 @@ from game hooks, gives the gifts, sends the tutorial customer, queues lessons an
   failing test first.
 - [ ] **Step 4:** Tell the owner exactly what to judge in Studio (first visit start to end on a reset save, skip and
   replay, Town Pish wandering and petting, a lesson, the luck badge, phone layout, two players).
+
+---
+
+## Amendment 2026-11-10 (spec section 14): Pish talks, labels, his walk
+
+### Task 14: Pish's talk card and in-window pointing
+
+**Files:**
+- Create: `src/shared/Config/Game.luau` (`NAME`), `src/shared/Config/PishTalk.luau` (per step `intro` lines and `now`
+  lines by situation; one line per lesson and nudge), `src/shared/Util/TalkRules.luau` (pure), `tests/TalkRules.spec.luau`,
+  `src/client/Util/TutorialTalk.luau` (the card: Pish's face viewport, name, line, Next)
+- Modify: `src/client/Controllers/TutorialController.luau` (situations per step, targets inside windows, bye after the
+  last line), `src/client/Controllers/BinderController.luau` (name the Bag's Open button "Open"; `ItemId` attribute on
+  the detail panel)
+
+**Interfaces:**
+- Produces: `TalkRules.show(talk, step, introIndex, situation): { text: string, next: boolean, last: boolean }`;
+  `TalkRules.fill(text, gameName)`; `PishTalk.STEPS[step] = { intro = { string }, now = { [situation]: string } }`,
+  `PishTalk.LESSONS[id]`, `PishTalk.NUDGES[kind]`.
+
+- [ ] Step 1: tests (every step has intro and a `default` now line; lines are plain ASCII plus emoji and the middle
+  dot, at most 60 characters; `show` walks the intro then the situation's line, unknown situations fall back to
+  `default`; the game name is filled in). RED, implement, GREEN.
+- [ ] Step 2: the card and the controller; Studio: steps 1-8 with screenshots, phone landscape. Commit:
+  `Tutorial: Pish talks you through it, and points inside windows`.
+
+### Task 15: The labelled top bar and the skip card's words
+
+**Files:** Modify `src/client/Util/TutorialCues.luau` (`topBar(done, total)` replaces `pawRow` and `giftBox`),
+`src/client/Controllers/TutorialController.luau` (skip lives in the bar; the skip card's text).
+
+- [ ] Step 1: build; Studio PC and phone (Galaxy A06): nothing over the HUD, labels readable. Commit:
+  `Tutorial: a labelled top bar and a skip card with words`.
+
+### Task 16: Pish's walk tempo
+
+**Files:** Modify `src/shared/Config/Pish.luau` (`TOWN.speed` 4.5, `trotSpeed` 8), `src/shared/Config/Party.luau`
+(`CREATURE_STYLE.Pish` `stride`, `bounce`); Test: `tests/TutorialRules.spec.luau` or a new `tests/PishWalk.spec.luau`
+(leg cycles a second walking 1.5-2.2, trotting at most 3.5, from PET_ANIM.STRIDE, CREATURE_HEIGHT, Pish.HEIGHT).
+
+- [ ] Step 1: RED test, then the numbers, GREEN. Studio: he strolls, trots after you. Commit:
+  `Pish: a small dog's walk (slower, longer steps, less bob)`.

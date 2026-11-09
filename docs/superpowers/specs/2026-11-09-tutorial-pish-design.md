@@ -171,3 +171,36 @@ step n), gift claimed, lesson shown and used, Pish petted. Visible in the Creato
 - Existing players never get the first visit (they get lesson visits only for things they unlock from now on).
 - Only Town Pish gives luck (the server can't see a client-only Pish to check the player is next to him).
 - Town Pish lives in the main town only.
+
+## 14. Amendment 2026-11-10: Pish talks, labels, his walk (owner's Studio check)
+
+The owner played it: "as a new player I dont know what to do here. can add a dialogue instead? for pish explaining
+little by little", "pish's walking movement is awkward. he look like he's shaking so fast while walking", "the gift
+then arrow button at the top. is that a skip button? improve UX and label everything. I dont want players guessing".
+Mockups shown; the owner picked A and A and approved the script, adding "Welcome to (game name)".
+
+- **Pish talks (replaces "no text").** A talk card at the bottom centre (above the HUD tiles, clear of the thumbstick
+  and jump button): Pish's face (his model in a little window), "Pish", one short line in big text, a big Next. Each
+  step has a few intro lines (Next moves on), then a line for what to do *now* that follows the player: the paw points
+  at the real thing, inside windows too (his present in the Bag, then Open; Manage, then Shop, then the Small Pack
+  Rack, then "tap to place"; the computer, then First Spark's Order; the box, then the rack; behind the counter, then
+  Charge). The goodbye ends after his last line. Lesson visits and nudges say one line too.
+- **Script** (owner-approved; the game name is `Config/Game.NAME`, a placeholder until it's decided):
+  1 "Hi! I'm Pish!" · "Welcome to <game>!" · "This is your very own card shop!" · "I brought you a present. Open your
+  Bag!" · (Bag open) "Tap my present!" · "Now tap Open!"
+  2 "Shops need shelves! Tap Manage." · "Tap Shop." · "Pick the Small Pack Rack." · "Put it on the floor and tap to
+  place!"
+  3 "Empty shelves don't sell. Let's order packs!" · "Walk to the computer." · (order window) "Pick First Spark packs,
+  then Order!"
+  4 "Your box is here! Pick it up." · "Now put the packs on your rack!"
+  5 "Look, a customer! Let them shop."
+  6 "They're at the counter! Stand behind it." · "Tap Charge to sell!"
+  7 "You made your first sale! Here's my gift: a special pack!" · "Open it in your Bag!"
+  8 "You're a real shop owner now!" · "Need me? Tap the Pish button. Bye bye!"
+- **A labelled top bar** (replaces the gift box and the bare arrow): "Pish's Tour · 3 of 8", the paw row (left out on a
+  narrow phone), "Gift at the end!" with the gift picture, and "Skip tour / hold to skip" with its fill. The "really
+  skip?" card gets words: "Skip Pish's tour?", "You'll miss his gift at the end!", "Keep going" (big, green), "Skip".
+- **His walk** (research: small dogs take quick, short, low steps with the head up, legs in diagonal pairs when
+  trotting, about 2 steps a second walking): he walked at 7 studs/s with a 1.4-stud stride, 5 leg cycles a second (8
+  trotting). Now a stroll at 4.5 studs/s and a trot at 8, strides about 2.5 studs (about 1.8 and 3.2 cycles a second),
+  less body bob.
