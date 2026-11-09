@@ -37,7 +37,7 @@ local WEAPONS: { [string]: Look } = {
 	magmaHalberd = element("Ember", "rbxassetid://120186001087571"),
 	tidalTrident = element("Tide", "rbxassetid://128008717184531"),
 	titansLance = element("Bloom", "rbxassetid://132598528291002"),
-	forgeScythe = { glow = { 207, 230, 255 }, deep = { 150, 180, 230 }, trail = { 207, 230, 255 }, portrait = "" },
+	-- the scythes (weapons round 3; portraits when their models are in: plan Task 5)
 	widowsReaper = element("Shade", ""),
 	stormReaper = element("Volt", ""),
 	riftReaper = element("Shade", ""),
@@ -58,10 +58,13 @@ local FORGE_SPEAR_PORTRAITS: { [string]: string } = {
 	Volt = "rbxassetid://110373205086963",
 	Shade = "rbxassetid://135950698141778",
 }
--- The five Forge Swords take their element's colours; the five Forge Spears too
+-- The Forge Scythe's portrait per element (weapons round 3: plan Task 5)
+local FORGE_SCYTHE_PORTRAITS: { [string]: string } = { Ember = "", Tide = "", Bloom = "", Volt = "", Shade = "" }
+-- The five Forge Swords take their element's colours; the five Forge Spears and Scythes too
 for name in BY_ELEMENT do
 	WEAPONS[`forgeSword_{name}`] = element(name, FORGE_PORTRAITS[name])
 	WEAPONS[`forgeSpear_{name}`] = element(name, FORGE_SPEAR_PORTRAITS[name])
+	WEAPONS[`forgeScythe_{name}`] = element(name, FORGE_SCYTHE_PORTRAITS[name])
 end
 
 return {

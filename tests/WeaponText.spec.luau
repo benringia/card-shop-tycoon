@@ -135,4 +135,11 @@ return {
 		expect.equal(free[2].text, "1 Star Shard (you have 0)")
 		expect.equal(free[2].enough, false)
 	end,
+
+	-- Weapons round 3 (spec 4): the scythes' perks in words
+	["the scythes' perks in words"] = function()
+		expect.equal(valueOf(WeaponText.stats(Weapons, "widowsReaper", nil, Combat), "Perk"), "Poisons the foe for 3 s")
+		expect.equal(valueOf(WeaponText.stats(Weapons, "stormReaper", nil, Combat), "Perk"), "Every 4th hit strikes for 40% more and arcs to other foes for 30%")
+		expect.equal(valueOf(WeaponText.stats(Weapons, "riftReaper", nil, Combat), "Perk"), "Hits deal 30% more to foes under 30% HP")
+	end,
 }

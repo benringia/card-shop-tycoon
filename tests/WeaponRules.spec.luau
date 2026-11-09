@@ -303,4 +303,19 @@ return {
 		expect.equal(WeaponRules.unlocked(W, "verdantBlade", 1), true)
 		expect.equal(WeaponRules.unlocked(W, "riftReaper", 50), false, "not built yet")
 	end,
+
+	-- Weapons round 3 (spec 4): the scythes' perks at Grade S (every share x PERK_S, the thresholds kept)
+	["the scythes' perks scale at Grade S, their thresholds kept"] = function()
+		local chain = WeaponRules.perk(W, "stormReaper", "S") :: any
+		expect.near(chain.share, 0.4 * W.PERK_S, 1e-9)
+		expect.near(chain.spread, 0.3 * W.PERK_S, 1e-9)
+		expect.equal(chain.every, 4)
+		local reap = WeaponRules.perk(W, "riftReaper", "S") :: any
+		expect.near(reap.share, 0.3 * W.PERK_S, 1e-9)
+		expect.equal(reap.below, 0.3, "the threshold stays")
+		local venom = WeaponRules.perk(W, "widowsReaper", "C") :: any
+		expect.equal(venom.look, "venom")
+		expect.near(venom.share, 0.025, 1e-9)
+		expect.near((WeaponRules.perk(W, "widowsReaper", "S") :: any).share, 0.025 * W.PERK_S, 1e-9)
+	end,
 }

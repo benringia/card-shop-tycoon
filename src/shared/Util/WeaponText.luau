@@ -47,8 +47,14 @@ local function perkWords(perk: any): string?
 		return `Every {ordinal(perk.every)} hit erupts for {percent(perk.share)} more`
 	elseif perk.kind == "chill" and perk.share and perk.seconds then
 		return `Hits slow the foe's attacks {percent(perk.share)} for {perk.seconds} s`
+	elseif perk.kind == "burn" and perk.seconds and perk.look == "venom" then
+		return `Poisons the foe for {perk.seconds} s`
 	elseif perk.kind == "burn" and perk.seconds then
 		return `Sets the foe burning for {perk.seconds} s`
+	elseif perk.kind == "chain" and perk.every and perk.share and perk.spread then
+		return `Every {ordinal(perk.every)} hit strikes for {percent(perk.share)} more and arcs to other foes for {percent(perk.spread)}`
+	elseif perk.kind == "execute" and perk.share and perk.below then
+		return `Hits deal {percent(perk.share)} more to foes under {percent(perk.below)} HP`
 	elseif perk.kind == "prism" then
 		return "Always strong against the foe's element"
 	end

@@ -55,4 +55,11 @@ return {
 		expect.equal(WeaponSwitch.sendAt(10, 10 - gap - 0.01, gap), 10, "long after the last one: now")
 		expect.near(WeaponSwitch.sendAt(10, 9.8, gap), 9.8 + gap, 1e-9, "too soon: when the gap has passed")
 	end,
+
+	-- Weapons round 3: the scythes after the spears, the five Forge Scythes together, then by rarity
+	["the scythes come after the spears, the Forge Scythes together, then by rarity"] = function()
+		local owned = { riftReaper = {}, forgeScythe_Volt = {}, stormReaper = {}, forgeScythe_Ember = {}, widowsReaper = {}, forgeSpear_Tide = {} }
+		local list = WeaponSwitch.list(readyCopy(Weapons), owned, true)
+		expect.equal(table.concat(list, ","), "starterSword,forgeSpear_Tide,forgeScythe_Ember,forgeScythe_Volt,widowsReaper,stormReaper,riftReaper")
+	end,
 }

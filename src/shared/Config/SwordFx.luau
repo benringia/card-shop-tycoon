@@ -125,6 +125,10 @@ return {
 	},
 	-- The Magma Halberd's Eruption perk (weapons round 2): a lava burst and ring on the foe, on top of the extra hit's own
 	ERUPT = { color = { 255, 120, 40 }, size = 9, ring = 10 },
+	-- The Storm Reaper's Chain Lightning (a burst on the target, a bolt to each foe it arcs to, `boltSeconds` long) and
+	-- the Rift Reaper's Reap (a violet burst and ring on a foe under 30%; weapons round 3)
+	CHAIN = { color = { 255, 225, 90 }, size = 7, ring = 8, boltSeconds = 0.3 },
+	EXECUTE = { color = { 185, 120, 255 }, size = 10, ring = 12 },
 	RING = { size = 10, seconds = 0.3 },
 	CUT_LINES = { length = 8, width = 1.1, delay = 0.06, grow = 0.06, hold = 0.12, fade = 0.25, angle = 35 },
 	DUST = { radius = 5, seconds = 0.4, puffs = 8, color = rgb(232, 222, 205) },

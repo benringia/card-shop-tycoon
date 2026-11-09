@@ -2544,4 +2544,125 @@ return {
 		expect.equal(y.strength, x.strength)
 		expect.equal(b.sides.a.meters["1"], a.sides.a.meters["1"])
 	end,
+
+	-- Weapons round 3 (spec 2026-11-09-weapons-round3-scythes-design 4): the scythes' perks
+	["Storm Reaper's every 4th hit strikes the target for 40% more, and arcs to the other foes for 30%"] = function()
+		local state = BattleSim.new(combat, {
+			fighters = { owned("p1", "1"), playerInput("1") },
+			reserves = { owned("r1", "1") },
+			abilities = true,
+			canRun = true,
+			swapSeconds = 10,
+			callIn = false,
+		}, {
+			fighters = {
+				{ id = "m", element = "Bloom", hp = 100000, atk = 1, spd = 10 },
+				{ id = "x", element = "Bloom", hp = 100000, atk = 1, spd = 10 },
+				{ id = "y", element = "Bloom", hp = 100000, atk = 1, spd = 10 },
+			},
+			abilities = false,
+			canRun = false,
+		}, 7)
+		raw(state, "b:y").fainted = true
+		local weapon = { element = "Volt", prism = false, bond = 1, meter = 1, perk = { kind = "chain", every = 4, share = 0.4, spread = 0.3 } }
+		local chains = 0
+		local function within(value: number, of: number, share: number): boolean
+			return value >= of * share * 0.75 and value <= of * share * 1.3
+		end
+		for i = 1, 4 do
+			local onTarget, onAdd, onFainted = {}, {}, 0
+			for _, e in BattleSim.swordHit(state, "1", "b:m", 2, "Sword", weapon) :: { any } do
+				if e.type == "swordChain" then
+					chains += 1
+					expect.equal(table.find(e.arcs, "b:x") ~= nil, true, "it arcs to the other foe")
+					expect.isNil(table.find(e.arcs, "b:y"), "never to a fainted one")
+				end
+				if e.damage and e.to == "b:m" then
+					table.insert(onTarget, e.damage)
+				elseif e.damage and e.to == "b:x" then
+					table.insert(onAdd, e.damage)
+				elseif e.damage and e.to == "b:y" then
+					onFainted += 1
+				end
+			end
+			if i == 4 then
+				expect.equal(#onTarget, 2, "the hit and its bolt")
+				expect.equal(within(onTarget[2], onTarget[1], 0.4), true, `40% more ({onTarget[2]} after {onTarget[1]})`)
+				expect.equal(#onAdd, 1, "the arc")
+				expect.equal(within(onAdd[1], onTarget[1], 0.3), true, `30% to the other foe ({onAdd[1]})`)
+			else
+				expect.equal(#onTarget, 1, `hit {i}: plain`)
+				expect.equal(#onAdd, 0)
+			end
+			expect.equal(onFainted, 0)
+		end
+		expect.equal(chains, 1)
+		-- against a lone boss the bolt still lands
+		local lone = bossFightWithPlayer(7, 1)
+		local bolts = 0
+		for _ = 1, 4 do
+			local hits = 0
+			for _, e in BattleSim.swordHit(lone, "1", "b:m", 2, "Sword", weapon) :: { any } do
+				if e.damage and e.to == "b:m" then
+					hits += 1
+				end
+			end
+			bolts = hits
+		end
+		expect.equal(bolts, 2, "the 4th hit and its bolt on a lone boss")
+	end,
+
+	["Rift Reaper's hits deal 30% more to a foe under 30% of its HP, and only then"] = function()
+		local weapon = { element = "Shade", prism = false, bond = 1, meter = 1, perk = { kind = "execute", below = 0.3, share = 0.3 } }
+		local function strike(share: number): (number, number)
+			local state = bossFightWithPlayer(9, 1)
+			local boss = raw(state, "b:m")
+			boss.hp = math.floor(boss.maxHp * share)
+			local damage, executes = 0, 0
+			for _, e in BattleSim.swordHit(state, "1", "b:m", 2, "Sword", weapon) :: { any } do
+				if e.type == "swordExecute" then
+					executes += 1
+				end
+				if e.damage and e.to == "b:m" then
+					damage = e.damage
+				end
+			end
+			return damage, executes
+		end
+		local above, none = strike(0.31)
+		local below, one = strike(0.29)
+		expect.equal(none, 0, "at 31%: plain")
+		expect.equal(one, 1, "at 29%: reaped")
+		expect.near(below, above * 1.3, 1, "the same roll, 30% more")
+		local state = bossFightWithPlayer(9, 1)
+		raw(state, "b:m").fainted = true
+		local events = BattleSim.swordHit(state, "1", "b:m", 2, "Sword", weapon)
+		expect.isNil(events, "a fainted foe takes no hit")
+	end,
+
+	["Widow's Reaper's venom is the burn as poison: refreshed, never stacked"] = function()
+		local state = bossFightWithPlayer(6, 1)
+		local weapon = { element = "Shade", prism = false, bond = 1, meter = 1, perk = { kind = "burn", share = 0.5, seconds = 3, look = "venom" } }
+		local all = {}
+		for _, e in BattleSim.swordHit(state, "1", "b:m", 0.5, "Sword", weapon) :: { any } do
+			table.insert(all, e)
+		end
+		for _, e in runFor(state, 1.5) do
+			table.insert(all, e)
+		end
+		for _, e in BattleSim.swordHit(state, "1", "b:m", 0.5, "Sword", weapon) :: { any } do
+			table.insert(all, e)
+		end
+		for _, e in runFor(state, 3.5) do
+			table.insert(all, e)
+		end
+		local ticks = 0
+		for _, e in all do
+			if e.type == "ability" and e.to == "b:m" and (e.kind == "Poison" or e.kind == "Burn") then
+				expect.equal(e.kind, "Poison", "venom ticks as poison")
+				ticks += 1
+			end
+		end
+		expect.equal(ticks, 4, "refreshed by the second hit, never stacked")
+	end,
 }

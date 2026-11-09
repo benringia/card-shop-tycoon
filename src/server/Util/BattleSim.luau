@@ -160,6 +160,7 @@ type Fighter = {
 	swordBurnPerSecond: number,
 	swordBurnTick: number,
 	swordBurnBy: Fighter?,
+	swordBurnKind: string, -- "Burn", or "Poison" for the Widow's Reaper's venom (its ticks' event kind)
 	swordHits: number, -- player fighter: sword hits landed (a heal perk's every Nth)
 	player: boolean, -- a player fighter
 	down: boolean, -- player fighter: at 0 HP, kneeling (not targeted, can't act)
@@ -279,6 +280,7 @@ local function makeFighter(combat: any, input: FighterInput, side: string, time:
 		swordBurnPerSecond = 0,
 		swordBurnTick = 0,
 		swordBurnBy = nil,
+		swordBurnKind = "Burn",
 		swordHits = 0,
 		player = input.player == true,
 		down = false,
@@ -920,12 +922,12 @@ local function landPending(state: State, events: { Event })
 end
 
 -- A burn's ticks due by now (one a second until `untilTime`; a long frame catches up on every tick it covered); returns
--- the next tick's time
-local function burnTicks(state: State, fighter: Fighter, untilTime: number, tick: number, perSecond: number, by: Fighter?, events: { Event }): number
+-- the next tick's time. `kind`: the ticks' event kind ("Burn" unless said; "Poison" for a venom)
+local function burnTicks(state: State, fighter: Fighter, untilTime: number, tick: number, perSecond: number, by: Fighter?, events: { Event }, kind: string?): number
 	while not fighter.fainted and untilTime > 0 and tick <= math.min(state.time, untilTime) + 1e-9 do
 		tick += 1
 		local damage = math.max(1, math.round(perSecond))
-		table.insert(events, { type = "ability", kind = "Burn", to = fighter.id, damage = damage })
+		table.insert(events, { type = "ability", kind = kind or "Burn", to = fighter.id, damage = damage })
 		if by then
 			by.dealt += math.min(damage, fighter.hp)
 		end
@@ -938,7 +940,7 @@ end
 local function burn(state: State, fighter: Fighter, events: { Event })
 	fighter.burnTick = burnTicks(state, fighter, fighter.burnUntil, fighter.burnTick, fighter.burnPerSecond, fighter.burnBy, events)
 	fighter.swordBurnTick =
-		burnTicks(state, fighter, fighter.swordBurnUntil, fighter.swordBurnTick, fighter.swordBurnPerSecond, fighter.swordBurnBy, events)
+		burnTicks(state, fighter, fighter.swordBurnUntil, fighter.swordBurnTick, fighter.swordBurnPerSecond, fighter.swordBurnBy, events, fighter.swordBurnKind)
 end
 
 -- Healing Rain's ticks (Combat ABILITIES Tide): each due one heals its share, capped at max HP; a long frame catches up
@@ -1560,8 +1562,10 @@ end
 -- A weapon's perk after a sword hit landed (`multiplier`: that hit's, `element`: its element): heal (every `every`-th hit
 -- by this owner heals their creature `share` of its max HP; every 1: each hit), burn (the target takes `share` x the
 -- creature's ATK a second for `seconds`; a new hit refreshes it, never stacks), erupt (every `every`-th hit bursts for
--- `share` of that hit more, no super meter) or chill (the target's attacks `share` slower for `seconds`; refreshed, and
--- never weakening a stronger slow still running, like a Snare's)
+-- `share` of that hit more, no super meter), chill (the target's attacks `share` slower for `seconds`; refreshed, and
+-- never weakening a stronger slow still running, like a Snare's) or chain (every `every`-th hit a bolt on the target for
+-- `share` of that hit more and an arc to every other standing foe on its side for `spread` of it, no super meter). A
+-- burn with `look` "venom" ticks as poison. (execute is applied in swordHit: it changes the hit itself.)
 local function swordPerk(state: State, fighter: Fighter, target: Fighter, perk: any, events: { Event }, multiplier: number, element: string?)
 	if perk.kind == "erupt" and perk.every and perk.share and not target.fainted then
 		fighter.swordHits += 1
@@ -1597,6 +1601,29 @@ local function swordPerk(state: State, fighter: Fighter, target: Fighter, perk: 
 		target.swordBurnUntil = state.time + perk.seconds
 		target.swordBurnPerSecond = fighter.atk * perk.share
 		target.swordBurnBy = fighter
+		target.swordBurnKind = if perk.look == "venom" then "Poison" else "Burn"
+	elseif perk.kind == "chain" and perk.every and perk.share and perk.spread then
+		fighter.swordHits += 1
+		if fighter.swordHits % perk.every ~= 0 then
+			return
+		end
+		local side = (state.sides :: any)[target.side] :: Side
+		local arcs: { string } = {}
+		for _, foe in standing(side) do
+			if foe ~= target then
+				table.insert(arcs, foe.id)
+			end
+		end
+		table.insert(events, { type = "swordChain", from = fighter.id, to = target.id, arcs = arcs })
+		if not target.fainted then
+			hit(state, fighter, target, multiplier * perk.share, events, "Sword", true, element, 0)
+		end
+		for _, id in arcs do
+			local foe = find(state, id)
+			if foe and not foe.fainted then
+				hit(state, fighter, foe, multiplier * perk.spread, events, "Sword", true, element, 0)
+			end
+		end
 	end
 end
 
@@ -1634,6 +1661,12 @@ function BattleSim.swordHit(state: State, owner: string, targetId: string, power
 	end
 	local element = if weapon.prism then WeaponRules.strongAgainst(state.combat, target.element) else weapon.element
 	local dodged = state.time < target.dodgeUntil
+	-- execute (the Rift Reaper's Reap): more damage to a foe already under `below` of its HP
+	local perk = weapon.perk
+	if perk and perk.kind == "execute" and perk.below and perk.share and not dodged and target.hp < target.maxHp * perk.below then
+		multiplier *= 1 + perk.share
+		table.insert(events, { type = "swordExecute", from = fighter.id, to = target.id })
+	end
 	hit(state, fighter, target, multiplier * weapon.bond, events, kind, true, element, weapon.meter * part)
 	if weapon.perk and not dodged then
 		swordPerk(state, fighter, target, weapon.perk, events, multiplier * weapon.bond, element)
