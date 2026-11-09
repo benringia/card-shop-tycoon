@@ -107,6 +107,33 @@ with a camera moment). Effects exaggerated (the owner's standing taste), lighter
 Each skill: its own animation (Blender, published by the owner), sounds, HUD button icon and name (`Config/CombatHud`
 SKILLS by moveset), an admin "Sword skills" button and a `/skillfx` name.
 
+### 5.4 Thousand Cuts rebuilt round a Grim Reaper (owner 2026-11-09, after part 1)
+
+The owner, seeing the Rift Reaper with Reaping Cyclone: "the legendary scythe skill is boring. make it flashy violent,
+exaggerated. you can even summon a grim reaper as effect. screenshake. ground breaking anything to make it legendary".
+The storyboard (Thousand Cuts with the Grim Reaper, five beats) and Grim Reaper concept B (the void reaper king:
+crystal crown, one slit eye, the Rift Reaper's eye gem in its chest, armour, a cape fading into smoke) were approved
+("go"). It replaces the Thousand Cuts above and comes before the other two boss skills (part 2a).
+
+- **Rules** as every skill: 0.9 of a hit in total, landing once at the harvest on every foe within 14 studs (`spin`);
+  the shared cooldown; a dodge or switch before the hit cancels it; free after the hit; you never move and can always
+  be hit (the fade is only a look). The Rift Reaper's own moveset (`Config/Swords riftReaper`): the scythe's cuts,
+  moves and sounds, its own skill, animation and looks (as the Titan's Lance's).
+- **Beats** (about 2.6 s): 1. charge: the scythe raised, violet cracks racing across the ground to 14 studs, the sky
+  darkening (your own), a rumble building; 2. the rift: the ground splits open behind you and the Grim Reaper (about 16
+  studs, ghostly see-through violet, floating on smoke, holding a giant copy of the Rift Reaper) rises out of it, souls
+  swirling, the camera pulling back; 3. a thousand cuts: you fade half into the rift; waves of violet slashes rip across
+  the area from every direction, slabs of ground heaving up, a jolt on each wave; 4. the harvest (the hit): you
+  reappear with an X slash as the Reaper sweeps its giant scythe a full circle round you; the ground erupts (shockwave
+  rings, flung rocks, a pillar of light), the biggest shake in the game; 5. aftermath: the Reaper bursts into smoke and
+  rising souls, the cracks glow and close.
+- **Camera**: your own cast gets a camera moment framed on you (pull back for the rise, a wide shot through the
+  harvest, back). Other players see a light version (fewer slashes and particles, no darkening, the Reaper kept).
+- **Making it**: the Reaper from Meshy (concept B), cleaned in Blender, imported by the owner, the giant scythe a scaled
+  copy of the Rift Reaper model; the player's move keyed in Blender and published by the owner; the Reaper itself moves
+  by code (rise, hover, its harvest spin, dissolve: no rig). Sounds licensed and measured. The HUD button "Thousand
+  Cuts" with the Skull glyph (my call: an existing white icon that reads as the reaper).
+
 ## 6. Making the models and pictures
 
 - Meshy image-to-3D from each concept B (about 30 credits each, about 120 in all; check the balance before starting and

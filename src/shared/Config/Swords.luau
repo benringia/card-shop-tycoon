@@ -572,6 +572,39 @@ do
 		},
 		fx = { slash = "scytheSweep", finisher = "scytheWhirl", skill = "reapingCyclone" },
 	}
+	-- Thousand Cuts (spec 5.4; the owner: "the legendary scythe skill is boring. make it flashy violent, exaggerated. you
+	-- can even summon a grim reaper as effect. screenshake. ground breaking"): the Rift Reaper's own skill in place of
+	-- Reaping Cyclone. A charge cracking the ground, the Grim Reaper rising from a rift behind you, waves of slashes,
+	-- then the harvest at its Hit marker: every foe within 14 studs, once. You never move. The scythe's cuts, moves and
+	-- sounds, the same tables; its skill animation from SwordAnimations.RiftReaper (tools/blender/anim_rift_reaper.py).
+	local scythe = SWORDS.scythe
+	local riftAnimations = table.clone(scythe.animations)
+	riftAnimations.skill = ""
+	SWORDS.riftReaper = {
+		name = "Rift Reaper",
+		power = starter.power,
+		element = nil,
+		model = "RiftReaper",
+		slash = starter.slash,
+		combo = scythe.combo,
+		skill = {
+			power = 0.9,
+			hitAt = 1.8,
+			length = 2.6,
+			cooldown = SKILL_COOLDOWN,
+			shape = { kind = "spin", radius = 14 },
+			free = { at = 1.8 }, -- the harvest
+		},
+		animations = riftAnimations,
+		sounds = scythe.sounds,
+		cues = {
+			cut1 = scythe.cues.cut1,
+			cut2 = scythe.cues.cut2,
+			cut3 = scythe.cues.cut3,
+			skill = { { key = "rushCharge", at = 0.05 }, { key = "slam", at = 1.8 } },
+		},
+		fx = { slash = "scytheSweep", finisher = "scytheWhirl", skill = "thousandCuts" },
+	}
 end
 
 return {

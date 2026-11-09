@@ -221,7 +221,8 @@ return {
 		end
 		local models = { widowsReaper = "WidowsReaper", stormReaper = "StormReaper", riftReaper = "RiftReaper" }
 		for id, model in models do
-			expect.equal(Weapons.ById[id].moveset, "scythe", id)
+			-- the Rift Reaper swings the scythe's cuts with its own skill (Thousand Cuts, spec 5.4)
+			expect.equal(Weapons.ById[id].moveset, if id == "riftReaper" then "riftReaper" else "scythe", id)
 			expect.equal(Weapons.ById[id].model, model, id)
 		end
 		local venom = Weapons.ById.widowsReaper.perk :: any

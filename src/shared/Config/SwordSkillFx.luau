@@ -361,6 +361,16 @@ local LOOKS: { [string]: Look } = {
 	-- to `radius` studs (the shape's) in `fly` seconds: at `ring1`, at `ring2`, and the third, `lastScale` times bigger,
 	-- leaving `fly` before `hit` so it arrives with the hit: a shockwave out to the radius and `sparks` all round
 	-- (SHAKE.reapingCyclone). The Common skill: no camera moment.
+	-- Thousand Cuts (the Rift Reaper's own skill, spec 5.4): drawn by the plain shapes until its own look (plan
+	-- 2026-11-09-thousand-cuts Task 4)
+	thousandCuts = {
+		kind = "skill",
+		textures = { "glow", "streak", "spark", "smoke", "ring", "crack" },
+		seconds = 2.6,
+		size = 28,
+		count = 120,
+		form = "around",
+	},
 	reapingCyclone = {
 		kind = "skill",
 		textures = { "glow", "streak", "spark", "star", "ring" },

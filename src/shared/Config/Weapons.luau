@@ -229,7 +229,7 @@ REST = {
 		rarity = "Legendary",
 		element = "Shade",
 		ready = true,
-		moveset = "scythe",
+		moveset = "riftReaper", -- its own skill, Thousand Cuts (Config/Swords)
 		model = "RiftReaper",
 		source = { kind = "boss", boss = "riftDevourer" },
 		-- its own base Power, as the Prism Blade's and the Titan's Lance's (tools/balance/bosses on the Prism Hydra, 200

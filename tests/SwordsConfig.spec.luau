@@ -313,6 +313,32 @@ return {
 		expect.equal(scythe.cues.cut1 ~= Swords.SWORDS.spear.cues.cut1, true, "not the spear's")
 	end,
 
+	-- The Rift Reaper's own skill (spec 2026-11-09-weapons-round3-scythes-design 5.4; the owner: "the legendary scythe
+	-- skill is boring. make it flashy violent, exaggerated. you can even summon a grim reaper"): Thousand Cuts
+	["the Rift Reaper: the scythe's cuts and moves, its own skill Thousand Cuts (a 14-stud harvest)"] = function()
+		local Weapons = require("../src/shared/Config/Weapons")
+		expect.equal(Weapons.ById.riftReaper.moveset, "riftReaper")
+		expect.equal(Weapons.ById.stormReaper.moveset, "scythe", "the other scythes keep Reaping Cyclone")
+		local rift, scythe = Swords.SWORDS.riftReaper, Swords.SWORDS.scythe
+		assert(rift, "the riftReaper moveset")
+		expect.equal(rift.combo, scythe.combo, "the scythe's cuts, the same table")
+		for _, key in { "ready", "draw", "sheath", "run", "cut1", "cut2", "cut3" } do
+			expect.equal(rift.animations[key], scythe.animations[key], key)
+		end
+		expect.equal(rift.model, "RiftReaper", "its skill's animation folder")
+		local skill = rift.skill
+		expect.equal(skill.power, 0.9)
+		expect.equal(skill.cooldown, Swords.SKILL_COOLDOWN)
+		expect.equal(skill.shape.kind, "spin")
+		expect.equal(skill.shape.radius, 14)
+		expect.isNil(skill.dash, "you never move")
+		expect.equal((skill.free :: Swords.Free).at, skill.hitAt, "free from the harvest")
+		expect.equal(skill.hitAt < skill.length, true)
+		expect.equal(rift.fx.skill, "thousandCuts")
+		expect.equal(rift.fx.slash, scythe.fx.slash)
+		expect.equal(rift.fx.finisher, scythe.fx.finisher)
+	end,
+
 	["a scythe's reach never makes a spot a boss's swipe can't reach"] = function()
 		local longest = 0
 		for _, cut in Swords.SWORDS.scythe.combo do
