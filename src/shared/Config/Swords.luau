@@ -518,9 +518,9 @@ end
 -- Reap, one huge sweep across your front; Back Sweep, the blade carving round behind you and through your front again
 -- (its damage lands in front: every cut soft-aims you at the foe, so a hit behind you would miss the lone foe of most
 -- fights); Whirlwind, two full spins, every foe round you. Nothing past 10 studs (a boss's swipe still reaches you).
--- Reaping Cyclone (spec 5.3): three spins, a ring of crescents each, every foe within 9 studs on the third. Its moves
--- play from SwordAnimations.Scythe in Studio until published (tools/blender/anim_scythe.py); sounds and cues are the
--- spear's until its own (plan Task 6).
+-- Reaping Cyclone (spec 5.3): three spins, a ring of crescents each, every foe within 9 studs on the third. Timings are
+-- its animations' (tools/blender/anim_scythe.py, approved by the owner 2026-11-09); they play from SwordAnimations.Scythe
+-- in Studio until published; sounds and cues are the spear's until its own (plan Task 6).
 do
 	local animations = table.clone(starter.animations)
 	for _, move in { "ready", "draw", "sheath", "run", "cut1", "cut2", "cut3", "skill" } do
@@ -534,20 +534,21 @@ do
 		model = "Scythe",
 		slash = starter.slash,
 		combo = {
-			-- Reap: wound back, one huge sweep across your front
-			{ power = 0.396, hitAt = 0.30, cancelAt = 0.46, length = 0.80, reach = 10, arc = 180, lunge = { studs = 1.1, from = 0.2, to = 0.3 } },
-			-- Back Sweep: turning, the blade carves round behind you and comes through your front at the hit
-			{ power = 0.396, hitAt = 0.28, cancelAt = 0.43, length = 0.78, reach = 10, arc = 180, lunge = { studs = 0.8, from = 0.18, to = 0.28 } },
-			-- Whirlwind: two full spins with the scythe held out, every foe round you, a shake
-			{ power = 1.0326, hitAt = 0.95, length = 1.65, reach = 10, arc = 360 },
+			-- Reap: wound back over the right shoulder, one huge flat sweep right to left across your front, a step in
+			{ power = 0.4334, hitAt = 0.34, cancelAt = 0.50, length = 0.85, reach = 10, arc = 180, lunge = { studs = 1.1, from = 0.22, to = 0.34 } },
+			-- Back Sweep: a low spin, the blade across your front, round behind you and through your front again at the hit
+			{ power = 0.4334, hitAt = 0.42, cancelAt = 0.58, length = 0.90, reach = 10, arc = 180, lunge = { studs = 0.8, from = 0.15, to = 0.42 } },
+			-- Whirlwind: two full spins with the scythe held out, every foe round you as the second ends, a shake
+			{ power = 1.1301, hitAt = 0.98, length = 1.70, reach = 10, arc = 360 },
 		},
+		-- Reaping Cyclone: three spins with the scythe raised high, every foe within 9 studs on the third
 		skill = {
 			power = 0.9,
-			hitAt = 0.9,
-			length = 1.5,
+			hitAt = 0.94,
+			length = 1.6,
 			cooldown = SKILL_COOLDOWN,
 			shape = { kind = "spin", radius = 9 },
-			free = { at = 0.9 },
+			free = { at = 0.94 },
 		},
 		animations = animations,
 		sounds = table.clone(spear.sounds),
@@ -598,10 +599,12 @@ return {
 			backScale = 1,
 		},
 		-- Upright at your side like the spear (spec 5.1), the blade over your head curving back; on the back diagonal, the
-		-- blade over the shoulder (the spear's numbers to start, calibrated in Studio: plan Task 5). tools/blender/anim_kit.py
-		-- hand_grip("scythe") keeps the same hand numbers.
+		-- blade over the shoulder (the spear's numbers to start, calibrated in Studio: plan Task 5). The models have their
+		-- blade along +X (Roblox's importer flips Blender's X), so half a turn round the shaft puts it to the left of the
+		-- right hand, over the head, as the moves were keyed. tools/blender/anim_kit.py hand_grip("scythe") keeps the same
+		-- hand numbers.
 		scythe = {
-			hand = { y = -0.18, angleX = -90, twist = 0 },
+			hand = { y = -0.18, angleX = -90, twist = 180 },
 			back = { x = 0, y = -0.4, z = 0.7, angleZ = -40 },
 			backScale = 1,
 		},

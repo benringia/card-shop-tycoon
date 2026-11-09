@@ -254,6 +254,39 @@ return {
 		expect.equal(Swords.GRIPS.scythe.backScale, 1)
 	end,
 
+	-- The scythe's timings are its animations' (tools/blender/anim_scythe.py, built by tools/anim/build_kfs: their Hit
+	-- markers and lengths) and its cuts carry you as they were keyed (Reap's step, Back Sweep's drift)
+	["the scythe's timings are its animations' markers"] = function()
+		local scythe = Swords.SWORDS.scythe
+		expect.equal(scythe.combo[1].hitAt, 0.34, "Reap's Hit marker")
+		expect.equal(scythe.combo[1].length, 0.85, "Reap's length")
+		expect.equal(scythe.combo[2].hitAt, 0.42, "Back Sweep's Hit marker")
+		expect.equal(scythe.combo[2].length, 0.90, "Back Sweep's length")
+		expect.equal(scythe.combo[3].hitAt, 0.98, "Whirlwind's Hit marker")
+		expect.equal(scythe.combo[3].length, 1.70, "Whirlwind's length")
+		expect.equal(scythe.skill.hitAt, 0.94, "Reaping Cyclone's Hit marker (the third spin)")
+		expect.equal(scythe.skill.length, 1.60, "Reaping Cyclone's length")
+		expect.equal((scythe.skill.free :: Swords.Free).at, 0.94, "free from the hit")
+		local reap = scythe.combo[1].lunge :: Swords.Lunge
+		expect.equal(reap.studs, 1.1, "Reap's step")
+		expect.equal(reap.from, 0.22, "from the end of the wind-up")
+		expect.equal(reap.to, 0.34, "to the hit")
+		local sweep = scythe.combo[2].lunge :: Swords.Lunge
+		expect.equal(sweep.studs, 0.8, "Back Sweep's drift")
+		expect.equal(sweep.from, 0.15, "through the spin")
+		expect.equal(sweep.to, 0.42, "to the hit")
+		for index, cut in scythe.combo do
+			expect.equal(cut.hitAt < (cut.cancelAt or cut.length), true, `cut {index} hits before it can be cancelled`)
+		end
+	end,
+
+	-- The imported scythe models have their blade along +X (Roblox's importer flips Blender's X), the animations were keyed
+	-- with it over the head (to the left of the right hand): the hand grip turns it half round its shaft
+	["the scythe's grip turns the blade over the head"] = function()
+		expect.equal(Swords.GRIPS.scythe.hand.twist, 180)
+		expect.equal(Swords.GRIPS.scythe.hand.angleX, Swords.GRIPS.spear.hand.angleX, "held like the spear")
+	end,
+
 	["a scythe's reach never makes a spot a boss's swipe can't reach"] = function()
 		local longest = 0
 		for _, cut in Swords.SWORDS.scythe.combo do
