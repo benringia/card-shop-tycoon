@@ -75,6 +75,14 @@ return {
 		expect.equal(LuckRules.canGrant(100, 1000, 900), true)
 	end,
 
+	["badgeText: a clover and m:ss counting up to whole seconds, nil once it's over"] = function()
+		expect.equal(LuckRules.badgeText(1180, 1000), "🍀 3:00")
+		expect.equal(LuckRules.badgeText(1125.4, 1000), "🍀 2:06", "part of a second still shows as a second")
+		expect.equal(LuckRules.badgeText(1009, 1000), "🍀 0:09")
+		expect.equal(LuckRules.badgeText(1000, 1000), nil)
+		expect.equal(LuckRules.badgeText(nil, 1000), nil)
+	end,
+
 	["left: seconds of luck left, never below 0"] = function()
 		expect.equal(LuckRules.left(1180, 1000), 180)
 		expect.equal(LuckRules.left(900, 1000), 0)
