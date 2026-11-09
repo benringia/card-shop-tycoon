@@ -148,6 +148,13 @@ function SwordSkillFxRules.scythePieces(angle: number, lite: boolean, perHalfTur
 	return math.max(3, math.round(math.abs(angle) / math.pi * per))
 end
 
+-- Whether a skill's camera moment still watches for a cancel (a dodge or a switch ends it) `t` seconds in: until its
+-- effect leaves (`release`), or until the skill's hit (`hit`) when that comes later (Thousand Cuts' moment starts at
+-- 0.75 s, its hit at 1.8 s; final review 2026-11-09: a dodge in between left the camera on the wide shot)
+function SwordSkillFxRules.cinematicWatches(t: number, release: number, hit: number?): boolean
+	return t < math.max(release, hit or 0)
+end
+
 -- How far ahead of you cut 3's finisher draws: where you stand for a look drawn round you (the scythe's Whirlwind), at
 -- the end of the cut's line (`lineLength`: the spear's plunge), else nil (just ahead: a sword's slam, SwordSkillFx)
 function SwordSkillFxRules.finisherAhead(look: { form: string? }, lineLength: number?): number?

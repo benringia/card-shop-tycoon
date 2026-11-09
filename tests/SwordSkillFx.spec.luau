@@ -598,6 +598,18 @@ return {
 		expect.equal(angle >= 25 and angle <= 60, true, `the wide shot {math.round(angle)} degrees round toward your front`)
 	end,
 
+	-- Final review (Thousand Cuts): its camera moment starts at 0.75 s but its hit is at 1.8 s; a dodge in between must
+	-- end the camera moment too (it watched for a cancel only until it started)
+	["a camera moment watches for a cancel until the skill's hit, not only until it starts"] = function()
+		local b = SwordSkillFx.LOOKS.thousandCuts.beats :: { [string]: number }
+		expect.equal(SwordSkillFxRules.cinematicWatches(1.0, b.camAt, b.hit), true, "a dodge at 1.0 s ends it")
+		expect.equal(SwordSkillFxRules.cinematicWatches(1.9, b.camAt, b.hit), false, "after the hit it plays on")
+		local w = SwordSkillFx.LOOKS.titansWrath.beats :: { [string]: number }
+		expect.equal(SwordSkillFxRules.cinematicWatches(1.4, w.camAt, w.hit), false, "Titan's Wrath as before")
+		expect.equal(SwordSkillFxRules.cinematicWatches(0.5, 0.62, nil), true, "a look without a hit: until it starts")
+		expect.equal(SwordSkillFxRules.cinematicWatches(0.7, 0.62, nil), false)
+	end,
+
 	-- Final review: the admin panel's spear skill buttons (spec 5: "the admin panel's buttons show the new skills")
 	["the admin panel previews every spear skill under its own name"] = function()
 		local want = {

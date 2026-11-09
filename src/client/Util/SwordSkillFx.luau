@@ -1966,6 +1966,8 @@ local function thousandCuts(character: Model, root: BasePart, spec: SwordSkillFx
 	local reaper: Model? = nil
 	local dark: ColorCorrectionEffect? = nil
 	local faded: { BasePart } = {}
+	-- what a cancel stops at once (the charge's cracks and swirl, the rift's hole)
+	local stops: { () -> () } = {}
 
 	local function undark(seconds: number)
 		local effect = dark
@@ -2024,11 +2026,22 @@ local function thousandCuts(character: Model, root: BasePart, spec: SwordSkillFx
 			return false
 		end
 		finished = true
+		for _, stop in stops do
+			stop()
+		end
 		undark(0.3)
 		unfade()
 		dismiss(0.4, true)
 		return true
 	end
+	-- Watched every frame until the hit (final review 2026-11-09: checked only at the beats, a dodge left the rumble,
+	-- the darkening, the cracks and the rising Reaper running on)
+	local watcher: RBXScriptConnection
+	watcher = RunService.Heartbeat:Connect(function()
+		if stopped() then
+			watcher:Disconnect()
+		end
+	end)
 
 	-- 1. The charge: cracks racing out, the rumble pulsing and growing, your screen darkening
 	task.delay(beats.charge, function()
@@ -2040,7 +2053,7 @@ local function thousandCuts(character: Model, root: BasePart, spec: SwordSkillFx
 		for index = 1, beats.cracks do
 			local angle = (index - 1) / beats.cracks * math.pi * 2 + (index % 2) * 0.2
 			local out = Vector3.new(math.cos(angle), 0, math.sin(angle))
-			fissure(from + out * 1.2, from + out * beats.crackReach * (0.75 + (index % 3) * 0.12), 0.7 * scale, colors.glow, colors.deep, beats.crackGrow, linger, beats.fade, "spark", false)
+			table.insert(stops, fissure(from + out * 1.2, from + out * beats.crackReach * (0.75 + (index % 3) * 0.12), 0.7 * scale, colors.glow, colors.deep, beats.crackGrow, linger, beats.fade, "spark", false))
 		end
 		if not lite then
 			local effect = Instance.new("ColorCorrectionEffect")
@@ -2054,7 +2067,7 @@ local function thousandCuts(character: Model, root: BasePart, spec: SwordSkillFx
 			local pulses = math.max(1, math.floor((beats.slam - beats.charge) / beats.rumbleEvery))
 			for pulse = 1, pulses do
 				task.delay(pulse * beats.rumbleEvery, function()
-					if not finished and hooks.rumble then
+					if hooks.rumble and not stopped() then
 						hooks.rumble(pulse / pulses)
 					end
 				end)
@@ -2079,6 +2092,9 @@ local function thousandCuts(character: Model, root: BasePart, spec: SwordSkillFx
 		hole.CFrame = CFrame.new(rift + UP * 0.08) * CFrame.Angles(0, 0, math.rad(90))
 		hole.Transparency = 0.15
 		Debris:AddItem(hole, beats.close - beats.slam + 0.5)
+		table.insert(stops, function()
+			tween(hole, 0.3, { Transparency = 1, Size = Vector3.new(0.1, 0.5, 0.5) })
+		end)
 		task.delay(beats.close - beats.slam - beats.fade, function()
 			tween(hole, beats.fade, { Transparency = 1, Size = Vector3.new(0.1, 0.5, 0.5) })
 		end)
@@ -2101,9 +2117,9 @@ local function thousandCuts(character: Model, root: BasePart, spec: SwordSkillFx
 			end)
 		end
 		if full then
-			swirl(function(): Vector3
+			table.insert(stops, swirl(function(): Vector3
 				return rift + UP * 8
-			end, 6, colors.glow, "glow", beats.hit - beats.slam, 1.6 * scale)
+			end, 6, colors.glow, "glow", beats.hit - beats.slam, 1.6 * scale))
 		end
 	end)
 
