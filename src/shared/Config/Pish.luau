@@ -59,4 +59,5 @@ return {
 	HEIGHT = 2.6, -- studs: a small dog beside a 5-stud player
 	-- Licensed sounds (Roblox's PSE catalogue), measured in Config/SoundLevels
 	SOUNDS = { bark = "", whimper = "", yawn = "", yip = "", dig = "" } :: { [string]: string },
+	SOUND_VOLUME = 0.6, -- times each sound's measured level (Util/SoundLevel)
 }
