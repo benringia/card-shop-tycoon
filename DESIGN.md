@@ -2201,7 +2201,8 @@ Spec `docs/superpowers/specs/2026-11-09-tutorial-pish-design.md`, plan `docs/sup
 The owner's dog Pish (a Shih Tzu with an underbite, a light brown patch on his back) teaches the game to kids without
 words. Model and 16 clips: `tools/blender/prep_pish.py`, `rig_pish.py`, `anim_pish.py` (sources `assets/blender/Pish/`),
 clips in `assets/monster-animations/Pish`, the model as `assets/npcs/Pish.rbxm` -> `ReplicatedStorage.NpcModels`
-(until it's saved, Pish is an invisible marker that still leads and shows his pictures). Drawn by `Util/PishVisual`
+(until it's saved, the guide Pish is an invisible marker that still leads and shows his pictures, and Town Pish
+isn't made at all: no "Pet" prompt on nothing). Drawn by `Util/PishVisual`
 (clips through `Util/ClipPlayer`, markers make his barks, yawn and digging dirt), style `Party.CREATURE_STYLE.Pish`.
 All numbers in `Config/Pish`.
 - [ ] **First visit** (`TutorialService`, `TutorialController`, `Util/TutorialCues`, `Util/TutorialRules`): starts after
