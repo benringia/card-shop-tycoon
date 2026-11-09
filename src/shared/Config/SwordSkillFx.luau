@@ -375,8 +375,8 @@ local LOOKS: { [string]: Look } = {
 	-- rocks flung up at `rockSpeed`, a pillar of light `pillarHeight` tall (SHAKE.thousandCuts, the biggest in the
 	-- game). 5. Aftermath: the Reaper dissolves into smoke and `souls` souls rising, the cracks glow on until `close` and
 	-- fade over `fade`. Your own plays the camera moment from `camAt` (the Reaper rising), held `camHold` through the
-	-- harvest, framed on you (`camFocus` above your root; the wide shot `camOut` studs out, `camUp` above, looking up
-	-- `camLookUp`) so the Reaper's whole height shows.
+	-- harvest, framed on you (`camFocus` above your root; the wide shot `camOut` studs out to the side and `camAhead`
+	-- toward your front, `camUp` above, looking up `camLookUp`) so you and the Reaper's face and whole height show.
 	thousandCuts = {
 		kind = "skill",
 		textures = { "glow", "streak", "spark", "smoke", "ring", "crack" },
@@ -422,6 +422,7 @@ local LOOKS: { [string]: Look } = {
 			camLookUp = 9,
 			camUp = 0,
 			camOut = 30,
+			camAhead = 22, -- the wide shot this far toward your front (Studio 2026-11-09: side-on saw the Reaper edge-on)
 		},
 	},
 	reapingCyclone = {
@@ -460,9 +461,10 @@ return {
 	-- Thousand Cuts' Grim Reaper (ReplicatedStorage.FxModels.GrimReaper, 16 studs, its origin at the bottom centre): it
 	-- rises from `depth` studs under the rift `behind` you over `rise` seconds, hovers bobbing `bob` studs, see-through
 	-- (`ghost`) with a `glow` outline, holding a giant Rift Reaper (`scytheScale` x, `scytheOffset` studs from its pivot:
-	-- x right, y up, z back; turned `scytheTurn` degrees); at the harvest it spins a full turn in `spin` seconds, then
+	-- x right, y up, z back: in its right hand; turned `scytheTurn` degrees so the blade faces forward; set in Studio
+	-- 2026-11-09); at the harvest it spins a full turn in `spin` seconds, then
 	-- dissolves over `dissolve`
-	REAPER = { behind = 6, depth = 18, rise = 0.5, bob = 0.5, ghost = 0.3, glow = { 185, 120, 255 }, scytheScale = 2.4, scytheOffset = { 4.3, 7.5, 0 }, scytheTurn = 0, spin = 0.32, dissolve = 0.7 },
+	REAPER = { behind = 6, depth = 18, rise = 0.5, bob = 0.5, ghost = 0.3, glow = { 185, 120, 255 }, scytheScale = 2.4, scytheOffset = { 4.3, 7.5, -0.5 }, scytheTurn = 90, spin = 0.32, dissolve = 0.7 },
 	-- Your own skill's camera moment (owner 2026-11-07, camera only: the fight runs on and you can still be hit; then
 	-- "the camera ... is at the back so the crescent is hard to see ... make sure it shows the full animation without
 	-- being blocked"), seconds and studs, all from the side (your left or right, whichever has a clear view): eased over

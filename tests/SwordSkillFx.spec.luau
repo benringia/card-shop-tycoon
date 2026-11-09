@@ -120,7 +120,7 @@ return {
 			scytheSweep = { "arc", "arcAngle", "thick", "flash", "sparks", "wrap", "wrapFrom", "spin", "low", "high", "lead", "swipe", "pieces" },
 			scytheWhirl = { "rings", "ring", "blades", "bladeRing", "sparks", "dust", "flash" },
 			reapingCyclone = { "gather", "ring1", "ring2", "hit", "radius", "fly", "crescents", "lastScale", "swirl", "sparks" },
-			thousandCuts = { "charge", "cracks", "crackReach", "crackGrow", "rumbleEvery", "darkness", "slam", "riftBehind", "riftSize", "cutsFrom", "waves", "waveGap", "slashes", "slashLite", "slashThick", "slashFlash", "slabs", "slabSize", "hit", "radius", "harvestRadius", "harvestThick", "xLength", "rings", "rocks", "rockSpeed", "pillarHeight", "close", "fade", "souls", "camAt", "camHold", "camFocus", "camLookUp", "camUp", "camOut" },
+			thousandCuts = { "charge", "cracks", "crackReach", "crackGrow", "rumbleEvery", "darkness", "slam", "riftBehind", "riftSize", "cutsFrom", "waves", "waveGap", "slashes", "slashLite", "slashThick", "slashFlash", "slabs", "slabSize", "hit", "radius", "harvestRadius", "harvestThick", "xLength", "rings", "rocks", "rockSpeed", "pillarHeight", "close", "fade", "souls", "camAt", "camHold", "camFocus", "camLookUp", "camUp", "camOut", "camAhead" },
 			torrentStrike = { "raise", "slam", "hit", "spread", "slowAfter", "slowScale", "slowEase", "slowFeed", "fall", "radius", "inner", "torrents", "spread", "pairShare", "nearest", "apart", "lane", "columnHeight", "outerHeight", "cracks", "foeEdge", "foeSizeStuds", "foeSizeMax", "camAt", "camHold", "camFocus", "camLookUp", "camUp", "camOut" },
 		}
 		for look, keys in needs do
@@ -588,6 +588,14 @@ return {
 		expect.equal(b.slam + reaper.rise <= b.cutsFrom, true, "the Reaper has risen before the cuts")
 		expect.equal(reaper.ghost > 0 and reaper.ghost < 1, true, "see-through")
 		expect.equal(reaper.spin <= b.close - b.hit, true, "its harvest spin ends before it leaves")
+	end,
+
+	-- Studio 2026-11-09: a side-on wide shot saw the Grim Reaper edge-on (it faces where you face, behind you); the
+	-- wide shot stands out in front of you to the side, so you and the Reaper's face both show
+	["Thousand Cuts' wide shot looks from your front side, at the Reaper's face"] = function()
+		local b = SwordSkillFx.LOOKS.thousandCuts.beats :: { [string]: number }
+		local angle = math.deg(math.atan2(b.camAhead, b.camOut))
+		expect.equal(angle >= 25 and angle <= 60, true, `the wide shot {math.round(angle)} degrees round toward your front`)
 	end,
 
 	-- Final review: the admin panel's spear skill buttons (spec 5: "the admin panel's buttons show the new skills")
