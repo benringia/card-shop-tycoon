@@ -255,17 +255,19 @@ local LOOKS: { [string]: Look } = {
 	},
 	-- Torrent Strike (the Tidal Trident; spec 4: "strike the ground with the trident, while the trident is stuck to the
 	-- ground, torrents of water appears from the ground"). From `raise` water swirls round the prongs; at `slam` a splash
-	-- ring and `cracks` glowing blue cracks spread from the prongs (SHAKE.torrentSlam); at `hit` `columns` columns burst
-	-- up on a ring `inner` studs round you (`columnHeight` tall: spray, falling droplets, mist, a splash ring at each
-	-- foot) and a big one under every foe in reach (SHAKE.torrentStrike; at its near edge, larger for a bigger foe:
-	-- SwordSkillFxRules.torrentFoes); at `second` a wider ring at `radius` studs (`outerHeight` tall), only for show.
-	-- Owner 2026-11-09 ("torrents need to be higher up with slowmo effect on waters and make the torrents last longer"):
-	-- at `slow`, the burst at its top, all of the water eases over `slowEase` to `slowScale` of its speed and the columns
-	-- keep pouring, hanging in slow motion, until `fall`: back to full speed, they stop and fall back as rain and mist.
-	-- The rings are turned by `ringOffset` / `outerOffset` so every column stands clear of the line from the side camera
-	-- to you. Your own plays the camera pull-back from `camAt`, held `camHold`, framed on you: the hero shot `camFocus`
-	-- above your root, the wide one low and far out (`camOut` studs, looking `camLookUp` up from `camUp` above that) so
-	-- the columns' whole height shows.
+	-- ring and `cracks` glowing blue cracks spread `inner` studs from the prongs (the release shake); at `hit` a big
+	-- column under every foe in reach (SHAKE.torrentStrike; at its near edge, larger for a bigger foe:
+	-- SwordSkillFxRules.torrentFoes) and the first of `torrents` torrents. Owner 2026-11-09: "make the torrents appear at
+	-- a random at a time.by one or by two torrents": they burst one or two at a time (two with `pairShare`) over `spread`
+	-- seconds, each at a random spot `nearest`-`radius` studs from you, `apart` from the others, out of the `lane` along
+	-- your left-right line where the side camera looks in, `columnHeight`-`outerHeight` tall (spray, falling droplets,
+	-- mist, a splash ring at each foot; SwordSkillFxRules.torrentBursts). Owner 2026-11-09 ("torrents need to be higher
+	-- up with slowmo effect on waters and make the torrents last longer"): `slowAfter` seconds after its burst, at its
+	-- top, a torrent's water eases over `slowEase` to `slowScale` of its speed and hangs, still pouring (`slowFeed` times
+	-- as fast, so its feet stay full), until `fall`: back to full speed, they stop and fall back as rain and mist. Your
+	-- own plays the camera pull-back from `camAt`, held `camHold`, framed on you: the hero shot `camFocus` above your
+	-- root, the wide one low and far out (`camOut` studs, looking `camLookUp` up from `camUp` above that) so the
+	-- torrents' whole height shows.
 	torrentStrike = {
 		kind = "skill",
 		textures = { "raindrop", "ring", "glow", "smoke", "crack", "waterAura" },
@@ -278,28 +280,30 @@ local LOOKS: { [string]: Look } = {
 			raise = 0.05,
 			slam = 0.55,
 			hit = 0.75,
-			second = 0.85,
-			slow = 1.2, -- the burst at its top (Studio 2026-11-09: slowed sooner, the columns crawled up and looked short)
+			spread = 1, -- the last torrents burst this long after the hit
+			slowAfter = 0.45, -- a burst at its top (Studio 2026-11-09: slowed sooner, the columns crawled up, looked short)
 			slowScale = 0.25,
 			slowEase = 0.25,
-			slowFeed = 2, -- the columns pour this much faster while slowed, so their feet stay full
-			fall = 2.65,
+			slowFeed = 2,
+			fall = 2.9,
 			radius = 12,
 			inner = 6,
-			columns = 8,
+			torrents = 14,
+			pairShare = 0.5,
+			nearest = 3.5,
+			apart = 3.5,
+			lane = 3,
 			columnHeight = 18,
 			outerHeight = 22,
 			cracks = 6,
-			ringOffset = 0.5, -- both rings half a step round: none on the side camera's line to you
-			outerOffset = 0.5,
 			foeEdge = 0.8, -- a foe's column at its near edge, this share of its radius in from its centre
 			foeSizeStuds = 3, -- ...one size larger per this many studs of its radius,
 			foeSizeMax = 3, -- up to this
 			camAt = 0.75,
-			camHold = 1.3, -- through the slow motion
+			camHold = 1.5, -- through the bursts and the slow motion
 			camFocus = 0.5,
 			camLookUp = 10,
-			camUp = -2, -- a little under the look: up at the columns
+			camUp = -2, -- a little under the look: up at the torrents
 			camOut = 26,
 		},
 	},

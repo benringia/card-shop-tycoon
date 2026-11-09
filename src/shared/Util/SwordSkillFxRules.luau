@@ -77,6 +77,52 @@ function SwordSkillFxRules.torrentFoes(beats: { [string]: number }, px: number, 
 	return foes
 end
 
+-- Torrent Strike's torrents (Config/SwordSkillFx torrentStrike beats; owner 2026-11-09: "make the torrents appear at a
+-- random at a time.by one or by two torrents"): `torrents` of them in bursts of one or two (two with `pairShare`), the
+-- first burst at `hit`, the rest spread evenly to `hit + spread` with a little jitter; each at a random spot `nearest`-
+-- `radius` studs from you (x to your right, z ahead), `apart` studs from every other, kept `lane` studs off your
+-- left-right line (the side camera looks in along it), `columnHeight`-`outerHeight` tall. `rand()` returns 0-1. A
+-- torrent with no room left after a few tries is dropped.
+local SPOT_TRIES = 40
+local JITTER = 0.2 -- a burst moves up to this share of the gap between bursts, so they stay in order
+function SwordSkillFxRules.torrentBursts(beats: { [string]: number }, rand: () -> number): { { at: number, x: number, z: number, height: number } }
+	local sizes: { number } = {}
+	local left = beats.torrents
+	while left > 0 do
+		local size = if left >= 2 and rand() < beats.pairShare then 2 else 1
+		table.insert(sizes, size)
+		left -= size
+	end
+	local step = if #sizes > 1 then beats.spread / (#sizes - 1) else 0
+	local near2, far2 = beats.nearest * beats.nearest, beats.radius * beats.radius
+	local bursts = {}
+	for index, size in sizes do
+		local at = beats.hit + step * (index - 1)
+		if index > 1 and index < #sizes then
+			at += (rand() * 2 - 1) * JITTER * step
+		end
+		for _ = 1, size do
+			for _ = 1, SPOT_TRIES do
+				local distance = math.sqrt(near2 + rand() * (far2 - near2)) -- even over the area
+				local angle = rand() * 2 * math.pi
+				local x, z = math.sin(angle) * distance, math.cos(angle) * distance
+				local clear = math.abs(z) >= beats.lane
+				for _, other in bursts do
+					if clear and (other.x - x) ^ 2 + (other.z - z) ^ 2 < beats.apart * beats.apart then
+						clear = false
+					end
+				end
+				if clear then
+					local height = beats.columnHeight + rand() * (beats.outerHeight - beats.columnHeight)
+					table.insert(bursts, { at = at, x = x, z = z, height = height })
+					break
+				end
+			end
+		end
+	end
+	return bursts
+end
+
 -- Whether a skill look's camera moment frames you where you stand (a look drawn round you, Torrent Strike) rather than
 -- where its effect lands ahead
 function SwordSkillFxRules.framesOnCaster(look: { form: string? }): boolean

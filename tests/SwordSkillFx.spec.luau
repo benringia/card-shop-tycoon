@@ -116,7 +116,7 @@ return {
 			skyPierce = { "ahead", "burst", "rings", "ring", "cracks", "crackLength", "rocks", "rockSpeed", "dust", "flash" },
 			piercingRush = { "charge", "leave", "arrive", "hit", "length", "width", "afterimages", "glow", "swirl", "flashSeconds", "bursts", "skid" },
 			magmaCleave = { "windup", "hit", "radius", "angle", "crescent", "embers", "smoke" },
-			torrentStrike = { "raise", "slam", "hit", "second", "slow", "slowScale", "slowEase", "slowFeed", "fall", "radius", "inner", "columns", "columnHeight", "outerHeight", "cracks", "ringOffset", "outerOffset", "foeEdge", "foeSizeStuds", "foeSizeMax", "camAt", "camHold", "camFocus", "camLookUp", "camUp", "camOut" },
+			torrentStrike = { "raise", "slam", "hit", "spread", "slowAfter", "slowScale", "slowEase", "slowFeed", "fall", "radius", "inner", "torrents", "spread", "pairShare", "nearest", "apart", "lane", "columnHeight", "outerHeight", "cracks", "foeEdge", "foeSizeStuds", "foeSizeMax", "camAt", "camHold", "camFocus", "camLookUp", "camUp", "camOut" },
 		}
 		for look, keys in needs do
 			local beats = SwordSkillFx.LOOKS[look].beats :: { [string]: number }
@@ -312,9 +312,9 @@ return {
 		expect.equal(look.form, "around")
 		expect.equal(look.cinematic, true, "your own plays the camera pull-back")
 		local b = look.beats :: { [string]: number }
-		expect.equal(b.raise < b.slam and b.slam < b.hit and b.hit < b.second and b.second < b.slow and b.slow < b.fall, true, "raise, slam, torrents, second wave, slow motion, fall back")
-		expect.equal(b.radius, trident.skill.shape.radius, "the second wave on the hit's circle")
-		expect.equal(b.inner < b.radius, true, "the first ring inside it")
+		expect.equal(b.raise < b.slam and b.slam < b.hit and b.hit + b.spread + b.slowAfter < b.fall, true, "raise, slam, the torrents bursting and slowing, fall back")
+		expect.equal(b.radius, trident.skill.shape.radius, "the torrents out to the hit's circle")
+		expect.equal(b.inner < b.radius, true, "the cracks inside it")
 		expect.equal(b.camAt, b.hit, "the pull-back on the torrents")
 		local shake = SwordSkillFx.SHAKE :: any
 		expect.equal(shake.torrentStrike > shake.release and shake.torrentStrike <= shake.titansWrath, true, "the torrents shake harder than the slam (release), no harder than Titan's Wrath")
@@ -347,15 +347,16 @@ return {
 	-- longer"
 	["Torrent Strike's torrents: twice as tall, slowed to a hang, raging well past the hit"] = function()
 		local b = SwordSkillFx.LOOKS.torrentStrike.beats :: { [string]: number }
-		expect.equal(b.columnHeight >= 16, true, `the inner ring {b.columnHeight} studs tall (was 9)`)
-		expect.equal(b.outerHeight > b.columnHeight, true, "the outer ring taller still")
+		expect.equal(b.columnHeight >= 16, true, `the shortest torrent {b.columnHeight} studs tall (was 9)`)
+		expect.equal(b.outerHeight > b.columnHeight, true, "the tallest taller still")
 		expect.equal(b.slowScale > 0 and b.slowScale <= 0.35, true, `the water slowed to {b.slowScale} of its speed`)
 		-- Studio 2026-11-09: slowed 0.2 s after the burst the columns crawled up and looked short; the water reaches its
-		-- top over its particles' life (about half a second), then hangs
-		expect.equal(b.slow - b.hit >= 0.4 and b.slow - b.hit <= 0.6, true, "the slow motion as the burst reaches its top")
-		expect.equal(b.fall - b.slow >= 1.2, true, "a long hang in slow motion")
+		-- top over its particles' life (about half a second), then hangs (each torrent from its own burst)
+		expect.equal(b.slowAfter >= 0.4 and b.slowAfter <= 0.6, true, "the slow motion as a burst reaches its top")
+		expect.equal(b.fall - (b.hit + b.slowAfter) >= 1.2, true, "the first torrents hang long in slow motion")
+		expect.equal(b.fall - (b.hit + b.spread + b.slowAfter) >= 0.5, true, "the last ones hang too")
 		expect.equal(b.fall - b.hit >= 1.5, true, `the torrents raging {b.fall - b.hit} s (were 0.75)`)
-		expect.equal(b.slowEase > 0 and b.slowEase < b.fall - b.slow, true, "eased in and out of the slow motion")
+		expect.equal(b.slowEase > 0 and b.slowEase < b.slowAfter, true, "eased in and out of the slow motion")
 		-- Studio 2026-11-09: slowed, the columns poured slower too and their feet thinned out; they pour faster while
 		-- slowed, short of the full make-up (the particle count on phones)
 		expect.equal(b.slowFeed > 1 and b.slowFeed < 1 / b.slowScale, true, `poured {b.slowFeed}x while slowed`)
@@ -375,17 +376,60 @@ return {
 		expect.equal(rain.stopAfter ~= nil and rain.stopAfter <= 2.5, true, "faded out, not 51 s of rain")
 	end,
 
-	-- Final review: the cinematic shoots from your left or right, so a column right at your side would stand between
-	-- the camera and you. Owner 2026-11-09 ("higher up"): the wide shot stands low and far out so the columns' whole
-	-- height shows, so the columns stand clear of its line to you
-	["Torrent Strike's columns stay off the camera's line to you and the wide shot shows their whole height"] = function()
+	-- Owner 2026-11-09 (Studio): "make the torrents appear at a random at a time.by one or by two torrents"
+	["Torrent Strike's torrents burst at random spots, one or two at a time"] = function()
 		local b = SwordSkillFx.LOOKS.torrentStrike.beats :: { [string]: number }
-		for ring, offset in { inner = b.ringOffset, outer = b.outerOffset } do
-			for index = 1, b.columns do
-				local angle = ((index - 1 + offset) * 360 / b.columns) % 180
-				expect.equal(math.abs(angle - 90) >= 20, true, `{ring} column {index} at {angle} degrees: in the side camera's way`)
+		local function seeded(seed: number): () -> number
+			local state = seed
+			return function(): number
+				state = (state * 1103515245 + 12345) % 2147483648
+				return state / 2147483648
 			end
 		end
+		local singles, pairs, layouts = 0, 0, {}
+		for seed = 1, 30 do
+			local bursts = SwordSkillFxRules.torrentBursts(b, seeded(seed))
+			expect.equal(#bursts, b.torrents, `seed {seed}: every torrent placed`)
+			local groups: { [number]: number } = {}
+			local times: { number } = {}
+			for index, burst in bursts do
+				if not groups[burst.at] then
+					table.insert(times, burst.at)
+				end
+				groups[burst.at] = (groups[burst.at] or 0) + 1
+				local distance = math.sqrt(burst.x * burst.x + burst.z * burst.z)
+				expect.equal(distance >= b.nearest - 1e-6 and distance <= b.radius + 1e-6, true, `seed {seed}: {distance} studs out`)
+				expect.equal(math.abs(burst.z) >= b.lane - 1e-6, true, `seed {seed}: in the side camera's lane (z {burst.z})`)
+				expect.equal(burst.height >= b.columnHeight and burst.height <= b.outerHeight, true, `seed {seed}: {burst.height} tall`)
+				for other = 1, index - 1 do
+					local o = bursts[other]
+					expect.equal(math.sqrt((o.x - burst.x) ^ 2 + (o.z - burst.z) ^ 2) >= b.apart - 1e-6, true, `seed {seed}: two torrents too close`)
+				end
+			end
+			expect.equal(times[1], b.hit, "the first with the hit")
+			for index = 2, #times do
+				expect.equal(times[index] - times[index - 1] >= 0.04, true, `seed {seed}: one burst after another`)
+				expect.equal(times[index] <= b.hit + b.spread + 1e-6, true, "within the spread")
+			end
+			for _, count in groups do
+				expect.equal(count == 1 or count == 2, true, `seed {seed}: {count} at once`)
+				if count == 1 then
+					singles += 1
+				else
+					pairs += 1
+				end
+			end
+			table.insert(layouts, string.format("%.3f,%.3f", bursts[1].x, bursts[1].z))
+		end
+		expect.equal(singles > 0 and pairs > 0, true, "some one at a time, some two")
+		expect.equal(layouts[1] ~= layouts[2] or layouts[2] ~= layouts[3], true, "a different layout each time")
+	end,
+
+	-- Final review: the cinematic shoots from your left or right, so a column right at your side would stand between
+	-- the camera and you (torrentBursts keeps them out of that lane). Owner 2026-11-09 ("higher up"): the wide shot
+	-- stands low and far out so the columns' whole height shows
+	["Torrent Strike's wide shot shows the torrents' whole height"] = function()
+		local b = SwordSkillFx.LOOKS.torrentStrike.beats :: { [string]: number }
 		-- SkillCinematic's wide shot, framing you (its impact at your feet): camOut studs out, looking camLookUp above your
 		-- feet from camUp above that
 		expect.equal(b.camOut > b.radius + 6, true, "outside the outer ring")

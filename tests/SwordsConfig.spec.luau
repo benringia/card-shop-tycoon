@@ -178,7 +178,7 @@ return {
 		local beats = require("../src/shared/Config/SwordSkillFx").LOOKS.torrentStrike.beats :: { [string]: number }
 		expect.equal(math.abs(keys.torrentSlam - beats.slam) < 0.05, true, "the boom on the slam")
 		expect.equal(math.abs(keys.torrentSurge - trident.skill.hitAt) < 0.05, true, "the surge on the torrents")
-		expect.equal(keys.torrentRain >= beats.second, true, "the rain as it falls back")
+		expect.equal(keys.torrentRain >= beats.fall - 0.1, true, "the rain as it falls back")
 	end,
 
 	["Titan's Wrath has its own sounds: the charge, the rumble, the thrust, thorns and the fissure; the spear's are untouched"] = function()

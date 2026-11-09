@@ -496,7 +496,7 @@ do
 		{ key = "torrentSlam", at = 0.55 },
 		{ key = "torrentSplash", at = 0.57 },
 		{ key = "torrentSurge", at = 0.75 },
-		{ key = "torrentRain", at = 2.6, stopAfter = 2 }, -- a 51 s clip: only while the water falls
+		{ key = "torrentRain", at = 2.85, stopAfter = 2 }, -- a 51 s clip: only while the water falls
 	}, {
 		-- Pro Sound Effects already measured (Config/SoundLevels)
 		torrentSlam = "rbxassetid://9125484367", -- Deep Hits Big Reverberant Booms Rumbling Tail 2: the prongs hit the ground

@@ -2229,11 +2229,11 @@ end
 -- Torrent Strike (the Tidal Trident; spec 2026-11-09-halberd-and-trident-skills-design 4: "strike the ground with the
 -- trident, while the trident is stuck to the ground, torrents of water appears from the ground"). From `raise` water
 -- swirls round the prongs; at `slam` (the released hook: your shake) a splash ring and `cracks` glowing blue cracks
--- spread from where the prongs went in; at `hit` (the burst hook: your bigger shake) `columns` columns of water burst up
--- on a ring `inner` studs round you (turned `ringOffset`: none at your sides, where the camera is), a bigger one under
--- every foe in reach (the `targets` hook's, as the server counts them; none for another player's cast); at `second` a
--- wider ring on the hit's `radius`, only for show; from `slow` all the water eases into slow motion (ParticleEmitter
--- TimeScale `slowScale`) while the columns keep pouring; at `fall` back to full speed, they stop and fall back as rain.
+-- spread from where the prongs went in; at `hit` (the burst hook: your bigger shake) a big column under every foe in
+-- reach (the `targets` hook's, as the server counts them; none for another player's cast) and the torrents start
+-- bursting round you one or two at a time, at random spots (SwordSkillFxRules.torrentBursts); `slowAfter` after its
+-- burst each one's water eases into slow motion (ParticleEmitter TimeScale `slowScale`) and keeps pouring; at `fall`
+-- all of it is back to full speed, stops and falls back as rain.
 -- A dodge or switch before the torrents stops it after the slam. The light version: fewer particles, no mist.
 local function torrentStrike(root: BasePart, spec: SwordSkillFxConfig.Look, colors: Colors, scale: number, hooks: Hooks)
 	local beats = spec.beats :: { [string]: number }
@@ -2274,45 +2274,42 @@ local function torrentStrike(root: BasePart, spec: SwordSkillFxConfig.Look, colo
 			hooks.burst(root.Position)
 		end
 		local feet = groundAt(root.Position - UP * ROOT_TO_GROUND)
-		local turn = math.atan2(flatLook(root).X, flatLook(root).Z)
+		local forward = flatLook(root)
+		local right = forward:Cross(UP)
 		local waters: { ParticleEmitter } = {}
+		-- one torrent bursting `from` seconds into the move: at its top, `slowAfter` later, its water slows (pouring
+		-- `slowFeed` times as fast meanwhile, so its feet stay full) and hangs until the fall
 		local function column(ground: Vector3, height: number, size: number, from: number)
-			for _, e in waterColumn(ground, height, colors, size, lite, beats.fall - from) do
+			local own = waterColumn(ground, height, colors, size, lite, beats.fall - from)
+			for _, e in own do
 				table.insert(waters, e)
 			end
+			task.delay(beats.slowAfter, function()
+				for _, e in own do
+					if e.Parent then
+						e.Rate *= beats.slowFeed
+						tween(e, beats.slowEase, { TimeScale = beats.slowScale })
+					end
+				end
+			end)
 		end
-		local function ring(radius: number, height: number, offset: number, from: number)
-			for index = 1, beats.columns do
-				local a = turn + (index - 1 + offset) * 2 * math.pi / beats.columns
-				column(groundAt(feet + Vector3.new(math.sin(a), 0, math.cos(a)) * radius), height * scale, scale, from)
-			end
-		end
-		ring(beats.inner, beats.columnHeight, beats.ringOffset, beats.hit)
 		local targets = if hooks.targets then hooks.targets() else {}
 		for _, foe in SwordSkillFxRules.torrentFoes(beats, root.Position.X, root.Position.Z, targets) do
 			local under = groundAt(Vector3.new(foe.x, feet.Y, foe.z))
 			column(under, beats.columnHeight * scale * (1 + 0.5 * foe.size), scale * (0.8 + 0.5 * foe.size), beats.hit)
 		end
-		task.delay(beats.second - beats.hit, function()
-			ring(beats.radius, beats.outerHeight, beats.outerOffset, beats.second)
-		end)
-		-- the slow motion: every drop of it eased to `slowScale` of its speed (the columns pouring `slowFeed` times as
-		-- fast meanwhile, so their feet stay full), then back to full speed for the fall (they stop pouring then)
-		local function timeScale(to: number)
+		for _, burst in SwordSkillFxRules.torrentBursts(beats, math.random) do
+			task.delay(burst.at - beats.hit, function()
+				column(groundAt(feet + right * burst.x + forward * burst.z), burst.height * scale, scale, burst.at)
+			end)
+		end
+		task.delay(beats.fall - beats.hit, function()
+			-- back to full speed for the fall (they stop pouring then)
 			for _, e in waters do
 				if e.Parent then
-					tween(e, beats.slowEase, { TimeScale = to })
+					tween(e, beats.slowEase, { TimeScale = 1 })
 				end
 			end
-		end
-		task.delay(beats.slow - beats.hit, function()
-			for _, e in waters do
-				e.Rate *= beats.slowFeed
-			end
-			timeScale(beats.slowScale)
-		end)
-		task.delay(beats.fall - beats.hit, function()
-			timeScale(1)
 			local sky = holder(CFrame.new(feet + UP * beats.outerHeight * scale), Vector3.new(beats.radius * 2, 0.2, beats.radius * 2), 3)
 			local rain = emitter(sky, "raindrop", colors.glow:Lerp(WHITE, 0.5), { size = { 0.5 * scale, 0.3 }, life = { 0.9, 1.3 }, speed = { 4, 8 }, spread = 5, accel = -UP * 30, orientation = Enum.ParticleOrientation.VelocityParallel, brightness = 1.6 })
 			rain.Shape = Enum.ParticleEmitterShape.Box
