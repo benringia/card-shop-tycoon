@@ -2147,6 +2147,12 @@ function BinderController.Start()
 	end
 	local function pickCard(side: BinderDesk.Side, index: number, tile: Tile)
 		clearHover()
+		-- A weapon opens its own window over the binder, which never takes the camera back the way the card view does:
+		-- a lifted copy would stay hanging in front of the book with its pocket empty (owner 2026-11-09)
+		if weaponOf(tile.card) then
+			openDetail(tile.card)
+			return
+		end
 		BinderDesk.lift(side, index, liteFace({ tile })[1], function()
 			openDetail(tile.card)
 		end)
