@@ -141,6 +141,25 @@ down 4 studs into the ground). `run_sword_moves.py -- --sword magma_halberd` / `
 spear's ids). Without ffmpeg, preview stills come from the module's own `make(name, json_dir, render_dir)` in a
 background Blender (PNG frames every other frame).
 
+## The scythe moves (weapons round 3, spec 2026-11-09-weapons-round3-scythes-design)
+
+`tools/blender/anim_scythe.py` (`PROP = "scythe"`, `FOLDER = "Scythe"`) keys the scythe moveset on
+`anim_kit.build("scythe")`: a blocky scythe prop shaped like the Storm Reaper (`SCYTHE_LENGTH` 8.6 studs, held a third
+up from the butt, the socket at the top and the blade 3.2 studs out to +X with its tip hanging to 3.4 over the grip),
+at `hand_grip("scythe")`: the spear's tilt (-90) and a half turn round the shaft (twist 180; the imported models carry
+their blade along +X), so the blade sits to the left of the right hand: over the head when upright. It uses the
+spear's helpers (`arm(shoulder, elbow, pitch)`, two hands 1.5 studs up the shaft, the waist and neck trailing). Body
+yaw: + turns to the left. Moves: ready (upright at the right side, the blade over the head), draw, sheath, run, Reap
+(wound back over the right shoulder, one flat sweep right to left, the tip leading, "Hit" 0.34 of 0.85, a 1.1-stud
+step), Back Sweep (crouched, a full spin to the left: the blade across the front, behind you and through the front
+again, "Hit" 0.42 of 0.9), Whirlwind (two spins with the scythe held out at shoulder height, "Hit" 0.98 of 1.7) and
+Reaping Cyclone (three spins with it raised high, rising onto the toes, "Hit" on the third, 0.94 of 1.6).
+`run_sword_moves.py -- --sword scythe [--preview <dir>]`, then `lune run tools/anim/build_kfs
+assets/blender/Animations/Scythe assets/animations/Scythe`; `Config/Swords scythe` timings follow the markers
+(tests/SwordsConfig). Published by the owner 2026-11-09 (`SwordAnimations.Scythe.<move>`: cut1 84614363717630, cut2
+101503127287374, cut3 112263670560674, skill 133282199201010, draw 120963161842619, sheath 87007060779059, ready
+107381698123347, run 93344115404944); dodge, flinch, down and get up stay the Steel Sword's.
+
 ## Making or changing moves
 
 1. In a background Blender (`run_sword_moves.py`, above; the older moves the same way with their names), or through

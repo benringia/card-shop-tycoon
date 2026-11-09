@@ -96,6 +96,10 @@ return {
 		-- the Lance's own base Power and a heal every 4th hit keep it inside the Hydra's balance limit (tools/balance/bosses:
 		-- at 1.8 with a heal on every hit a 0.8x party won 100% even at +0; DESIGN.md weapons balance rows)
 		expect.equal(Weapons.ById.titansLance.power, 1.2)
+		-- the Rift Reaper's own base Power too (weapons round 3, tools/balance/bosses on the Prism Hydra, 200 fights: at
+		-- the Legendary 1.8 a 0.8x party won 92% at +10 Grade S; at 1.4 +0 C 68%, +10 S 84%, a 1x fight 70% of the Steel
+		-- Sword's)
+		expect.equal(Weapons.ById.riftReaper.power, 1.4)
 		local bloom = Weapons.ById.titansLance.perk :: any
 		expect.equal(bloom.kind, "heal")
 		expect.equal(bloom.every, 4)

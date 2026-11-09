@@ -68,6 +68,11 @@ the butt. Lengths: Forge Scythe 8, Widow's Reaper 8.3, Storm Reaper 8.6, Rift Re
 like a spear. The Forge Scythe's three socket gems are tinted (`forge_variants ForgeScythe`); its spike butt stays steel.
 Meshy sometimes hands the GLB back with a stray armature (the Rift Reaper's came as `Mesh_0` beside two `root`
 skeletons): the add-on then says "No mesh objects imported"; rename the mesh and delete the rest, it is the model.
+Roblox's importer flips Blender's X: in the imported models the blade is along +X, so `Config/Swords GRIPS.scythe`'s
+hand turns it half round the shaft (twist 180) to sit over the head as the moves were keyed; on the back it leans 48
+degrees from upright, 0.2 studs higher than the spear (the 9-stud Rift Reaper's crescent butt 0.38 over the ground, its
+top 2.66 over the head). Its effects run from the socket out along the blade (`SwordFx.TRAIL_BLADE_SCYTHE`: 5.2 up,
+the tip 3.2 up and 3 out).
 
 ## 4. Into the game
 
@@ -92,7 +97,9 @@ python tools/ui-art/cut_product_picture.py <capture> assets/ui/weapon-portraits/
 ```
 
 A model with colours near magenta (the Shade Forge Sword's purple gems) is captured on green and cut with
-`--key 0,255,0`. The PNGs (256 px tall) are uploaded (serve the folder on 127.0.0.1, `upload_image`) and their ids go
+`--key 0,255,0` (the Widow's and Rift Reapers too; the Shade Forge Scythe's tiny gems survive magenta, and green left a
+fringe on its pale blade edge). Scythes are shot in the reaper pose: the shaft rising to the right, the blade hooking
+left over the top (`tilt` -28, `turn` 192 in the capture helper). The PNGs (256 px tall) are uploaded (serve the folder on 127.0.0.1, `upload_image`) and their ids go
 in `Config/WeaponLooks` (`portrait`; the Forge Sword's per element in `FORGE_PORTRAITS`). `Util/WeaponFace` draws the
 portrait over the weapon's glow gradient; a weapon with no model yet keeps the big sword emoji (tested in
 `WeaponsConfig`).
@@ -101,7 +108,9 @@ portrait over the weapon's glow gradient; a weapon with no model yet keeps the b
 
 The weapon glow (owner 2026-11-06) lights each model's own painting: its runes, gems or crystal. A glow map is a
 grayscale emissive mask (white glows) made from the model's colour map by `tools/textures/make_glow_maps.py` (one rule
-per model; the Forge Sword's is wherever an element's map differs from the base: its gems), saved in
+per model; the Forge Sword's, Spear's and Scythe's wherever an element's map differs from the base: their gems; the
+scythes': the Widow's lilac edge and eyes, the Storm's lemon lightning and cyan edge, its gold metal matte, the Rift's
+violet cracks and crystals), saved in
 `assets/ui/weapon-glow-maps/<Model>.png` and uploaded; the ids go in `Config/WeaponLooks` `GLOW_MAPS`.
 
 A game script can't set a SurfaceAppearance's maps (PluginSecurity), so `lune run tools/weapons/add_glow_maps` bakes

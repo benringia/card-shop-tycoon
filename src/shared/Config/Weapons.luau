@@ -232,6 +232,10 @@ REST = {
 		moveset = "scythe",
 		model = "RiftReaper",
 		source = { kind = "boss", boss = "riftDevourer" },
+		-- its own base Power, as the Prism Blade's and the Titan's Lance's (tools/balance/bosses on the Prism Hydra, 200
+		-- fights: at the Legendary 1.8 a 0.8x party won 92% at +10 Grade S; at 1.4 +0 C 68%, +10 S 84%, a 1x fight 70%
+		-- of the Steel Sword's; DESIGN.md weapons balance rows)
+		power = 1.4,
 		-- Reap: 30% more damage to a foe under 30% of its HP
 		perk = { kind = "execute", below = 0.3, share = 0.3 },
 	},
