@@ -339,6 +339,25 @@ return {
 		expect.equal(rift.fx.finisher, scythe.fx.finisher)
 	end,
 
+	-- Thousand Cuts' timing is its animation's (tools/blender/anim_rift_reaper.py, exported to JSON for build_kfs): the
+	-- harvest at its Hit marker, the skill its length
+	["the Rift Reaper's skill timing is its animation's Hit marker and length"] = function()
+		local fs = require("@lune/fs")
+		local serde = require("@lune/serde")
+		local path = "assets/blender/Animations/RiftReaper/skill.json"
+		assert(fs.isFile(path), `{path} is missing (run_sword_moves.py -- --sword rift_reaper)`)
+		local anim = serde.decode("json", fs.readFile(path))
+		local hit
+		for _, marker in anim.markers do
+			if marker.name == "Hit" then
+				hit = marker.t
+			end
+		end
+		local skill = Swords.SWORDS.riftReaper.skill
+		expect.equal(skill.hitAt, hit, "the harvest at the Hit marker")
+		expect.near(skill.length, anim.frames[#anim.frames].t, 1e-3, "the skill as long as its animation")
+	end,
+
 	["a scythe's reach never makes a spot a boss's swipe can't reach"] = function()
 		local longest = 0
 		for _, cut in Swords.SWORDS.scythe.combo do
