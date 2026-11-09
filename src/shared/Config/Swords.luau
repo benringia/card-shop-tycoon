@@ -604,14 +604,15 @@ return {
 			back = { x = 0, y = -0.4, z = 0.7, angleZ = -40 },
 			backScale = 1,
 		},
-		-- Upright at your side like the spear (spec 5.1), the blade over your head curving back; on the back diagonal, the
-		-- blade over the shoulder (the spear's numbers to start, calibrated in Studio: plan Task 5). The models have their
+		-- Upright at your side like the spear (spec 5.1), the blade over your head curving back. The models have their
 		-- blade along +X (Roblox's importer flips Blender's X), so half a turn round the shaft puts it to the left of the
 		-- right hand, over the head, as the moves were keyed. tools/blender/anim_kit.py hand_grip("scythe") keeps the same
-		-- hand numbers.
+		-- hand numbers. On the back diagonal, the blade over the right shoulder pointing out: 48 degrees from upright and
+		-- 0.2 studs higher than the spear (measured in Studio on the 9-stud Rift Reaper, 2026-11-09: its crescent butt
+		-- 0.38 over the ground, its top 2.66 over the head; the spear's 40 put the butt in the ground).
 		scythe = {
 			hand = { y = -0.18, angleX = -90, twist = 180 },
-			back = { x = 0, y = -0.4, z = 0.7, angleZ = -40 },
+			back = { x = 0, y = -0.2, z = 0.7, angleZ = -48 },
 			backScale = 1,
 		},
 	},

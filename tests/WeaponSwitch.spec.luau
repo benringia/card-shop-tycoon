@@ -4,6 +4,24 @@ local WeaponSwitch = require("../src/shared/Util/WeaponSwitch")
 local Weapons = require("../src/shared/Config/Weapons")
 local expect = require("./lib/expect")
 
+-- The catalogue with one weapon not built yet (every weapon is built since weapons round 3; the rule still matters for
+-- the next round's)
+local function unbuiltCopy(cfg: any, id: string): any
+	local copy = table.clone(cfg)
+	copy.ById = table.clone(cfg.ById)
+	copy.WEAPONS = {}
+	for _, weapon in cfg.WEAPONS do
+		local entry = weapon
+		if weapon.id == id then
+			entry = table.clone(weapon)
+			entry.ready = false
+			copy.ById[id] = entry
+		end
+		table.insert(copy.WEAPONS, entry)
+	end
+	return copy
+end
+
 -- The catalogue with every weapon built (the spears aren't until their models are in)
 local function readyCopy(cfg: any): any
 	local copy = table.clone(cfg)
@@ -34,7 +52,7 @@ return {
 	end,
 
 	["not-ready and unknown weapons are left out"] = function()
-		local list = WeaponSwitch.list(Weapons, { riftReaper = {}, nothing = {} }, true) -- a scythe: not built yet
+		local list = WeaponSwitch.list(unbuiltCopy(Weapons, "riftReaper"), { riftReaper = {}, nothing = {} }, true)
 		expect.equal(table.concat(list, ","), "starterSword")
 	end,
 

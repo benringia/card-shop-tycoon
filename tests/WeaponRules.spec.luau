@@ -4,6 +4,25 @@ local W = require("../src/shared/Config/Weapons")
 local Combat = require("../src/shared/Config/Combat")
 local expect = require("./lib/expect")
 
+-- The catalogue with one weapon not built yet (every weapon is built since weapons round 3; the rule still matters for
+-- the next round's)
+local function unbuiltCopy(cfg: any, id: string): any
+	local copy = table.clone(cfg)
+	copy.ById = table.clone(cfg.ById)
+	copy.WEAPONS = {}
+	for _, weapon in cfg.WEAPONS do
+		local entry = weapon
+		if weapon.id == id then
+			entry = table.clone(weapon)
+			entry.ready = false
+			copy.ById[id] = entry
+		end
+		table.insert(copy.WEAPONS, entry)
+	end
+	return copy
+end
+local UNBUILT = unbuiltCopy(W, "riftReaper")
+
 return {
 	-- The quick switch (spec 2026-11-07-weapons-round2-design 6): switching in a fight is allowed (the server's swap lock
 	-- makes it cost 1 s), only the first sword's shop level blocks
@@ -152,7 +171,7 @@ return {
 		expect.equal(reforge.items.material_meadowWarden, 8)
 		expect.equal(reforge.cash, 1000)
 		expect.isNil(WeaponRules.makeCost(W, "starterSword"))
-		expect.isNil(WeaponRules.makeCost(W, "riftReaper"))
+		expect.isNil(WeaponRules.makeCost(UNBUILT, "riftReaper"), "not built yet")
 		expect.isNil(WeaponRules.reforgeCost(W, "starterSword"))
 	end,
 
@@ -223,7 +242,7 @@ return {
 		expect.equal(have, 0)
 		expect.equal(need, 20, "its main material (Colossus Core)")
 		expect.isNil((WeaponRules.makeProgress(W, "starterSword", {})))
-		expect.isNil((WeaponRules.makeProgress(W, "riftReaper", {})), "not built yet")
+		expect.isNil((WeaponRules.makeProgress(UNBUILT, "riftReaper", {})), "not built yet")
 	end,
 
 	["paying is all or nothing"] = function()
@@ -301,7 +320,8 @@ return {
 		expect.equal(WeaponRules.unlocked(W, "forgeSword_Ember", 5), false)
 		expect.equal(WeaponRules.unlocked(W, "forgeSword_Ember", 6), true)
 		expect.equal(WeaponRules.unlocked(W, "verdantBlade", 1), true)
-		expect.equal(WeaponRules.unlocked(W, "riftReaper", 50), false, "not built yet")
+		expect.equal(WeaponRules.unlocked(UNBUILT, "riftReaper", 50), false, "not built yet")
+		expect.equal(WeaponRules.unlocked(W, "riftReaper", 1), true, "built: a boss weapon, no shop level")
 	end,
 
 	-- Weapons round 3 (spec 4): the scythes' perks at Grade S (every share x PERK_S, the thresholds kept)

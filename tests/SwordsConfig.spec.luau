@@ -285,6 +285,11 @@ return {
 	["the scythe's grip turns the blade over the head"] = function()
 		expect.equal(Swords.GRIPS.scythe.hand.twist, 180)
 		expect.equal(Swords.GRIPS.scythe.hand.angleX, Swords.GRIPS.spear.hand.angleX, "held like the spear")
+		-- On the back (measured in Studio on the 9-stud Rift Reaper, 2026-11-09): 48 degrees from upright and 0.2 studs
+		-- higher than the spear, its butt 0.38 over the ground and its top 2.66 over the head (the spear's 40 put the
+		-- crescent butt in the ground)
+		expect.equal(Swords.GRIPS.scythe.back.angleZ, -48)
+		expect.equal(Swords.GRIPS.scythe.back.y, -0.2)
 	end,
 
 	["a scythe's reach never makes a spot a boss's swipe can't reach"] = function()

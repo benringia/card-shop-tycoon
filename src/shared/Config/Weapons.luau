@@ -181,7 +181,7 @@ for _, weapon in REST do
 	table.insert(WEAPONS, weapon)
 end
 -- Round 3: scythes (spec 2026-11-09-weapons-round3-scythes-design 4), all swinging the scythe moveset (Config/Swords),
--- `ready` once their models are in (plan Task 5). The Forge Scythe in every element, like the Forge Sword and Spear.
+-- ready since their models are in (plan Task 5). The Forge Scythe in every element, like the Forge Sword and Spear.
 for _, element in ELEMENTS do
 	table.insert(WEAPONS, {
 		id = `forgeScythe_{element}`,
@@ -189,7 +189,7 @@ for _, element in ELEMENTS do
 		family = "scythe",
 		rarity = "Common",
 		element = element,
-		ready = false,
+		ready = true,
 		moveset = "scythe",
 		model = `ForgeScythe_{element}`,
 		source = { kind = "forge", cost = FORGE_COST },
@@ -202,7 +202,7 @@ REST = {
 		family = "scythe",
 		rarity = "Very Rare",
 		element = "Shade",
-		ready = false,
+		ready = true,
 		moveset = "scythe",
 		model = "WidowsReaper",
 		source = { kind = "boss", boss = "caveBroodQueen" },
@@ -215,7 +215,7 @@ REST = {
 		family = "scythe",
 		rarity = "Epic",
 		element = "Volt",
-		ready = false,
+		ready = true,
 		moveset = "scythe",
 		model = "StormReaper",
 		source = { kind = "boss", boss = "stormSovereign" },
@@ -228,7 +228,7 @@ REST = {
 		family = "scythe",
 		rarity = "Legendary",
 		element = "Shade",
-		ready = false,
+		ready = true,
 		moveset = "scythe",
 		model = "RiftReaper",
 		source = { kind = "boss", boss = "riftDevourer" },
