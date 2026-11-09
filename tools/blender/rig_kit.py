@@ -724,6 +724,125 @@ def reweight(mesh, bone, share_of):
             g.remove([v.index])
 
 
+def vertex_colours(mesh):
+    """Each vertex's colour from the mesh's colour map ({index: (r, g, b)}, 0..1; a loose vertex has none)"""
+    import numpy as np
+
+    image = next(n.image for mat in mesh.data.materials if mat and mat.use_nodes
+                 for n in mat.node_tree.nodes if n.type == "TEX_IMAGE" and n.image)
+    width, height = image.size
+    px = np.array(image.pixels[:], dtype=np.float32).reshape(height, width, 4)
+    uv = mesh.data.uv_layers.active.data
+    colours = {}
+    for loop in mesh.data.loops:
+        u, v = uv[loop.index].uv
+        colours[loop.vertex_index] = tuple(px[min(height - 1, int(v * height)), min(width - 1, int(u * width)), :3])
+    return colours
+
+
+def confine(mesh, bones, share_of, fallback, whole=None):
+    """Hands a part of the mesh to its own bones after skin(), so it moves as one piece (a chibi's big head: skin()'s
+    nearest-bone weights left the back of Pish's skull on the spine, which stretched it whenever the head moved).
+    share_of(point) gives each vertex's share (0..1, blending at the part's edge): that share of its weight goes to
+    `bones` in the proportions it already had among them (all to `fallback` if it had none), the rest stays as it was.
+    whole(vertex index) can claim a vertex outright (an ear hanging below the head's edge). Four bones at most."""
+    names = {g.index: g.name for g in mesh.vertex_groups}
+    groups = {g.name: g for g in mesh.vertex_groups}
+    for bone in list(bones) + [fallback]:
+        if bone not in groups:
+            groups[bone] = mesh.vertex_groups.new(name=bone)
+    for v in mesh.data.vertices:
+        old = {names[g.group]: g.weight for g in v.groups if g.weight > 0}
+        share = share_of(mesh.matrix_world @ v.co)
+        if whole and whole(v.index):
+            share = 1.0
+        if share <= 0:
+            continue
+        own = {n: w for n, w in old.items() if n in bones}
+        total = sum(own.values())
+        if total < 1e-4:
+            own, total = {fallback: 1.0}, 1.0
+        new = {n: (1 - share) * w for n, w in old.items()}
+        for n, w in own.items():
+            new[n] = new.get(n, 0) + share * w / total
+        kept = sorted(new.items(), key=lambda nw: -nw[1])[:MAX_BONES]
+        scale = sum(w for _, w in kept) or 1
+        for g in list(v.groups):
+            mesh.vertex_groups[g.group].remove([v.index])
+        for n, w in kept:
+            if w > 0:
+                groups[n].add([v.index], w / scale, "REPLACE")
+
+
+def restrict(mesh, bones, factor):
+    """Scales `bones`' weights on each vertex by factor(vertex index) (0..1; soft at a part's edge), sharing what they
+    lose among the vertex's other bones (skin()'s smoothing spreads a tail's weight onto the rump, which then stretched
+    whenever the tail moved). A vertex with no other bone keeps them."""
+    names = {g.index: g.name for g in mesh.vertex_groups}
+    for v in mesh.data.vertices:
+        keep = factor(v.index)
+        if keep >= 1:
+            continue
+        old = [(names[g.group], g.group, g.weight) for g in v.groups if g.weight > 0]
+        rest = [(n, i, w) for n, i, w in old if n not in bones]
+        kept = sum(w for _, _, w in rest)
+        taken = sum(w for n, _, w in old if n in bones) * (1 - keep)
+        if taken <= 0 or kept <= 0:
+            continue
+        for n, i, w in old:
+            if n in bones:
+                if keep <= 0:
+                    mesh.vertex_groups[i].remove([v.index])
+                else:
+                    mesh.vertex_groups[i].add([v.index], w * keep, "REPLACE")
+            else:
+                mesh.vertex_groups[i].add([v.index], w * (kept + taken) / kept, "REPLACE")
+
+
+def smooth_field(mesh, field, passes, where=None):
+    """Blurs a per-vertex value (a list) along the mesh's edges `passes` times (each vertex half its own value, half
+    its neighbours' average), on the vertices where(index) allows (all by default), so a part's edge fades softly."""
+    neighbours = [[] for _ in mesh.data.vertices]
+    for edge in mesh.data.edges:
+        a, b = edge.vertices
+        neighbours[a].append(b)
+        neighbours[b].append(a)
+    field = list(field)
+    for _ in range(passes):
+        blurred = list(field)
+        for i, near in enumerate(neighbours):
+            if near and (where is None or where(i)):
+                blurred[i] = 0.5 * field[i] + 0.5 * sum(field[n] for n in near) / len(near)
+        field = blurred
+    return field
+
+
+def set_bone(mesh, bone, field):
+    """Gives `bone` exactly field[i] (0..1) of each vertex, scaling the vertex's other weights to the rest (a vertex
+    with no other bone gets `bone` alone); where field is 0 the bone comes off. Four bones at most."""
+    names = {g.index: g.name for g in mesh.vertex_groups}
+    group = mesh.vertex_groups.get(bone) or mesh.vertex_groups.new(name=bone)
+    for v in mesh.data.vertices:
+        share = max(0.0, min(1.0, field[v.index]))
+        others = [(names[g.group], g.group, g.weight) for g in v.groups if g.group != group.index and g.weight > 0]
+        total = sum(w for _, _, w in others)
+        if share <= 0:
+            if any(g.group == group.index for g in v.groups) and total > 0:
+                group.remove([v.index])
+                for _, i, w in others:
+                    mesh.vertex_groups[i].add([v.index], w / total, "REPLACE")
+            continue
+        if total <= 0:
+            group.add([v.index], 1.0, "REPLACE")
+            continue
+        for _, i, w in others:
+            mesh.vertex_groups[i].add([v.index], w / total * (1 - share), "REPLACE")
+        group.add([v.index], share, "REPLACE")
+        kept = sorted(((names[g.group], g.group, g.weight) for g in v.groups), key=lambda x: -x[2])
+        for _, i, _ in kept[MAX_BONES:]:
+            mesh.vertex_groups[i].remove([v.index])
+
+
 def jaw_share(hinge_y, tip_y, top_hinge, top_tip, bottom, half_width, mid_x=0.0, blend=0.012, top_blend=None):
     """A lower jaw's share for reweight(): the vertices from the mouth's corner (hinge_y) forward to its tip (tip_y,
     further toward -y), under the mouth line (top_hinge at the corner sloping to top_tip at the tip), above the throat

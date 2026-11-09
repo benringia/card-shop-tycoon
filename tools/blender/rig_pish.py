@@ -66,11 +66,83 @@ JAW = rig_kit.jaw_share(bottom=0.53, half_width=0.1, mid_x=-0.015, top_blend=0.0
 params = rig_kit.Params()
 params.leg_top = 0.3  # the body's underside is about 0.2 up
 params.leg_full = 0.14
-params.leg_core = 0.06
-params.leg_radius = 0.11
+params.leg_core = 0.09  # his paws are about 20 cm wide: a narrower reach left their inner edges on the body,
+params.leg_radius = 0.15  # stretching whenever a leg moved
 params.belly_mid = 0.03
 params.tail_from = 0.28
 params.head_from = -0.15
+
+# Moving in one piece without stretching (owner 2026-11-09: "sniff is stretching its head... check all animations make
+# sure nothing is stretching"; tools/blender/check_stretch.py measures it). skin()'s nearest-bone weights left the back
+# of his big head (behind y -0.15) on the spine and pelvis, so the head stretched whenever it moved, and its smoothing
+# spread the ears' and the tail's bones onto the chest, the cheeks and the rump. After skin():
+# - the head (above the neck line: 0.48 up at the front, rising to 0.6 behind y 0, nothing behind y 0.12) goes to the
+#   head's bones (rig_kit.confine);
+# - each ear (its beige and grey-brown, and the white fur within EAR_REACH of it) follows its ear bone by height: none
+#   at the crown where it hangs from (EAR_TOP), all of it from EAR_FREE down, blurred EAR_BLUR rings along the ear so
+#   its edge against the cheek fades instead of tearing; no other vertex follows the ear;
+# - the tail (above the rump, which tops out at 0.58, behind y 0.22) goes to the tail's bones, which fade out over the
+#   rump's top (rig_kit.restrict).
+HEAD_BONES = ("Head_0", "Ear_Left_0", "Ear_Right_0", "Jaw_0")
+TAIL_BONES = ("Tail_0", "Tail_1", "Tail_2")
+EAR_REACH = 0.035
+EAR_TOP, EAR_FREE = 0.86, 0.62
+EAR_BLUR = 4
+
+
+def _smooth(value, zero, one):
+    t = min(1.0, max(0.0, (value - zero) / (one - zero)))
+    return t * t * (3 - 2 * t)
+
+
+def head_share(p):
+    behind = _smooth(p.y, -0.15, 0.0)
+    floor = 0.48 * (1 - behind) + 0.6 * behind
+    return _smooth(p.z, floor, floor + 0.07) * (1 - _smooth(p.y, 0.05, 0.12))
+
+
+def tail_share(p):
+    return _smooth(p.z, 0.58, 0.63) * _smooth(p.y, 0.2, 0.26)
+
+
+def ears(mesh):
+    """(left ear's vertex indices, right ear's), by the ears' colour"""
+    from mathutils import kdtree
+
+    colours = rig_kit.vertex_colours(mesh)
+    world = [mesh.matrix_world @ v.co for v in mesh.data.vertices]
+
+    def near(p):
+        return abs(p.x) > 0.1 and p.z > 0.33 and p.y < -0.13  # the ears' back edges stop at y -0.15
+
+    coloured = []
+    for i, p in enumerate(world):
+        rgb = colours.get(i)
+        if rgb and near(p) and (max(rgb) < 0.7 or (max(rgb) - min(rgb)) / max(max(rgb), 1e-6) > 0.12):
+            coloured.append(i)
+    tree = kdtree.KDTree(max(1, len(coloured)))
+    for k, i in enumerate(coloured):
+        tree.insert(world[i], k)
+    tree.balance()
+    left, right = set(), set()
+    for i, p in enumerate(world):
+        if coloured and near(p) and tree.find(p)[2] < EAR_REACH:
+            (left if p.x > 0 else right).add(i)
+    return left, right
+
+
+def stiffen(mesh):
+    world = [mesh.matrix_world @ v.co for v in mesh.data.vertices]
+    rig_kit.confine(mesh, HEAD_BONES, head_share, "Head_0")
+    left, right = ears(mesh)
+    for bone, members in (("Ear_Left_0", left), ("Ear_Right_0", right)):
+        field = [_smooth(-world[i].z, -EAR_TOP, -EAR_FREE) if i in members else 0.0 for i in range(len(world))]
+        # blurred inside the ear only: blurred onto the chest fur by its tip, the chest followed the ear
+        field = rig_kit.smooth_field(mesh, field, EAR_BLUR, where=lambda i, members=members: i in members)
+        rig_kit.set_bone(mesh, bone, field)
+    rig_kit.confine(mesh, TAIL_BONES, tail_share, "Tail_0")
+    rig_kit.restrict(mesh, TAIL_BONES, lambda i: tail_share(world[i]))
+    print("stiffened: ears", len(left), len(right))
 
 
 def test_pose(rig):
@@ -124,6 +196,7 @@ rig_kit.optimize(mesh, "Pish")
 rig_kit.mouth_cut(mesh, JAW, cavity_color=(0.12, 0.05, 0.06), **MOUTH)
 rig = rig_kit.build_rig("PishRig", BONES)
 rig_kit.skin(mesh, rig, BONES, params)
+stiffen(mesh)
 rig_kit.reweight_jaw(mesh, JAW)
 if os.environ.get("POSE", "0") == "1":
     test_pose(rig)

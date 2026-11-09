@@ -37,8 +37,13 @@ HEAD_TURN = -40
 HEAD_PIVOT = (0.0, -0.25)
 HEAD_LOW, HEAD_HIGH = 0.48, 0.6
 # White fur this close to the ears' colour turns with them (metres). Wider reaches, paler greys or spreading the turn
-# along the mesh caught the shadowed chest fur under the ears and tore it; a sliver under the far ear stays.
+# along the mesh caught the shadowed chest fur under the ears and tore it.
 EAR_REACH = 0.035
+# The far (left) ear came out with a thin flap trailing back toward the body (35 ear-coloured vertices behind
+# y -0.13; the right ear's back edge stops at -0.15): it stretched into a fin whenever the head moved, so fold_flap()
+# moves each of them onto the nearest of the ear's own vertices in front of FLAP_FROM
+FLAP_FROM = -0.17
+FLAP_BEHIND = -0.13
 # The patch on its back (owner 2026-11-09: "light brown, at the top of his spine, between his head and his tail"):
 # a soft ellipse on the upward-facing fur, centred on the spine
 PATCH_COLOR = (0.62, 0.45, 0.30)  # light brown, a little warmer than the ear tips
@@ -106,18 +111,9 @@ def _smooth(value, zero, one):
 
 def turn_head(mesh):
     """Turns the head (and the ears) back in line with the body, blending into the neck"""
-    import numpy as np
-
-    image = next(n.image for mat in mesh.data.materials if mat and mat.use_nodes
-                 for n in mat.node_tree.nodes if n.type == "TEX_IMAGE" and n.image)
-    width, height = image.size
-    px = np.array(image.pixels[:], dtype=np.float32).reshape(height, width, 4)
-    uv = mesh.data.uv_layers.active.data
-    colour = {}
-    for loop in mesh.data.loops:
-        u, v = uv[loop.index].uv
-        colour[loop.vertex_index] = px[min(height - 1, int(v * height)), min(width - 1, int(u * width)), :3]
     from mathutils import kdtree
+
+    colour = rig_kit.vertex_colours(mesh)
 
     def near_ear(co):
         return abs(co.x) > 0.1 and co.z > 0.33 and co.y < 0.1
@@ -126,7 +122,7 @@ def turn_head(mesh):
     for vert in mesh.data.vertices:
         rgb = colour.get(vert.index)
         if rgb is not None and near_ear(vert.co):
-            top, low = float(rgb.max()), float(rgb.min())
+            top, low = max(rgb), min(rgb)
             if top < 0.7 or (top - low) / max(top, 1e-6) > 0.12:
                 ears.append(vert.co.copy())
     tree = kdtree.KDTree(max(1, len(ears)))
@@ -154,6 +150,29 @@ def turn_head(mesh):
         co.x = px_ + dx * math.cos(angle) - dy * math.sin(angle)
         co.y = py_ + dx * math.sin(angle) + dy * math.cos(angle)
     mesh.data.update()
+
+
+def fold_flap(mesh):
+    """Folds the left ear's trailing flap onto the ear (its faces shrink to nothing)"""
+    from mathutils import kdtree
+
+    colours = rig_kit.vertex_colours(mesh)
+
+    def ear_coloured(index):
+        rgb = colours.get(index)
+        return rgb is not None and (max(rgb) < 0.7 or (max(rgb) - min(rgb)) / max(max(rgb), 1e-6) > 0.12)
+
+    left = [v for v in mesh.data.vertices if v.co.x > 0.1 and v.co.z > 0.33 and ear_coloured(v.index)]
+    ear = [v.co.copy() for v in left if v.co.y < FLAP_FROM]
+    flap = [v for v in left if v.co.y > FLAP_BEHIND]
+    tree = kdtree.KDTree(max(1, len(ear)))
+    for i, co in enumerate(ear):
+        tree.insert(co, i)
+    tree.balance()
+    for v in flap:
+        v.co = tree.find(v.co)[0]
+    mesh.data.update()
+    print("fold_flap:", len(flap), "vertices folded onto the ear")
 
 
 def patch_weight(position, normal):
@@ -229,6 +248,7 @@ straighten(dog)
 rig_kit.optimize(dog, NAME, target_tris=10000)
 dog.name = "Pish_Dog"
 turn_head(dog)
+fold_flap(dog)
 measure(dog)
 if os.environ.get("PATCH", "1") == "1":
     rig_kit.paint_region(dog, NAME, PATCH_COLOR, patch_weight, grow=1)  # more spread specks onto nearby UV islands

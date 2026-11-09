@@ -101,25 +101,27 @@ def _sit(rig):  # 4.0 s = frames 1-121
 
 
 # --- sniff ---------------------------------------------------------------------------------------------------------
+# He has almost no neck, so the nose goes down mostly by lowering his whole front (front legs bent, back tipped
+# forward): a head tipped further opened the skin between the back of his skull and his back
 NOSE_DOWN = merge(
     {
-        "Pelvis": ((4, 0, 0), (0, 0, -0.03)),
+        "Pelvis": ((10, 0, 0), (0, 0, -0.03)),
         "Spine_0": (6, 0, 0),
-        "Spine_1": (10, 0, 0),
-        "Neck": (28, 0, 0),
-        "Head_0": (26, 0, 0),
-        "Ear_Left_0": (-18, 0, 0),
-        "Ear_Right_0": (-18, 0, 0),
-        "Tail_0": (-10, 0, 0),
+        "Spine_1": (8, 0, 0),
+        "Neck": (10, 0, 0),
+        "Head_0": (14, 0, 0),
+        "Ear_Left_0": (-6, 0, 0),
+        "Ear_Right_0": (-6, 0, 0),
+        "Tail_0": (-12, 0, 0),
     },
-    legs(front=(-22, 34, -12), hind=(-4, 4, 0)),
+    legs(front=(-40, 62, -22), hind=(-12, 14, -2)),
 )
 
 
 def sniff_at(turn, nod=0):
     pose = dict(NOSE_DOWN)
-    pose["Neck"] = (28, 0, turn * 0.5)
-    pose["Head_0"] = (26 + nod, 0, turn * 0.5)
+    pose["Neck"] = (10, 0, turn * 0.5)
+    pose["Head_0"] = (14 + nod, 0, turn * 0.5)
     pose["Tail_0"] = (-10, 0, turn * 0.8)
     return pose
 
@@ -157,13 +159,13 @@ BARK_DIP = merge(
 def bark_open(strength=1.0):
     return merge(
         {
-            "Pelvis": ((-5 * strength, 0, 0), (0, -0.015 * strength, 0.015 * strength)),
+            "Pelvis": ((-7 * strength, 0, 0), (0, -0.015 * strength, 0.015 * strength)),
             "Spine_1": (-6 * strength, 0, 0),
-            "Neck": (-12 * strength, 0, 0),
-            "Head_0": (-14 * strength, 0, 0),
-            "Jaw_0": (46 * strength, 0, 0),
-            "Ear_Left_0": (18 * strength, -14 * strength, 0),  # ears flick up and out
-            "Ear_Right_0": (18 * strength, 14 * strength, 0),
+            "Neck": (-6 * strength, 0, 0),
+            "Head_0": (-8 * strength, 0, 0),
+            "Jaw_0": (38 * strength, 0, 0),
+            "Ear_Left_0": (8 * strength, -7 * strength, 0),  # ears flick up and out (more stretched the cheek)
+            "Ear_Right_0": (8 * strength, 7 * strength, 0),
             "Tail_0": (-25, 0, 20),
             "Tail_1": (0, 0, 15),
         },
@@ -215,12 +217,13 @@ LIE = merge(
 
 
 def on_side(roll, lift):
-    """Rolled `roll` degrees onto his left side (180: on his back), the head kept turned up toward the camera side"""
+    """Rolled `roll` degrees onto his left side (180: on his back), the head rolling over with him (held upright, his
+    ears pulled at his shoulders)"""
     pose = merge(
         {
             "Pelvis": ((0, roll, 0), (0, 0, -0.17 + lift)),
-            "Neck": (0, -roll * 0.35, 0),
-            "Head_0": (0, -roll * 0.25, 0),
+            "Neck": (0, -roll * 0.1, 0),
+            "Head_0": (0, -roll * 0.08, 0),
             "Tail_0": (20, 0, 0),
         },
         legs(front=(-50, 60, -20), hind=(-40, 70, -20)),
@@ -236,7 +239,7 @@ def paws_up(wiggle):
         left_front=(-45 - 15 * wiggle, 50, -20), right_front=(-45 + 15 * wiggle, 50, -20),
         left_hind=(-35 + 12 * wiggle, 60, -20), right_hind=(-35 - 12 * wiggle, 60, -20),
     ))
-    pose["Head_0"] = (0, -170 * 0.25, wiggle * 10)
+    pose["Head_0"] = (0, -170 * 0.08, wiggle * 8)
     pose["Tail_0"] = (20, 0, wiggle * 25)
     return pose
 

@@ -221,6 +221,17 @@ pipeline:
   Hydra waits for its remodel. The six valley species' `windup` and `strike` are all in `tools/blender/anim_wild.py`
   (exported under the game's species name, "Ash Wolf"; `lune run tools/anim/build_bone_clips "Ash Wolf"`).
   `anim_bone_kit.key_pose` keys a whole pose parents first, straight from the rig.
+- Pish, the tutorial's guide puppy, uses the same pipeline for his idle clips (`tools/blender/anim_pish.py`: sit,
+  sniff, bark with `Bark1..3` markers, roll; each from rest to rest so they can be picked at random), keyed on
+  `assets/blender/Pish/Pish.blend` (`prep_pish.py`, then `rig_pish.py`) and built with
+  `lune run tools/anim/build_bone_clips Pish`.
+- Stretching: `tools/blender/check_stretch.py -- anim_<model>` plays every clip and lists the edges stretched most
+  against their rest length (where, which frame, which bones), grouped by spot. A big head or ear that stretches is a
+  weighting problem, not a keying one: on Pish, `rig_kit.confine` hands the head wholly to the head's bones,
+  `smooth_field` + `set_bone` give each ear its bone by height (none at the crown, all of the flap) blurred inside the
+  ear, and `restrict` fades the tail's bones out over the rump. Edges where the generator fused separate parts (an
+  ear's edge against the cheek, an ear tip on a shoulder) always stretch a little; keep moves there small and judge
+  the renders.
 - Adding the `MonsterAnimations` mapping needs a `rojo serve` restart (all three project files have it).
 
 ## The sword model
