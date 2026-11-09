@@ -85,6 +85,7 @@ return {
 	LanceLeaves = "rbxassetid://73931008782377", -- sheet 9 (round 2.5: the Titan's Lance's skill, Titan's Wrath)
 	HalberdFlames = "rbxassetid://74007321357515", -- sheet 9 (round 2.5 part 2: the Magma Halberd's skill, Magma Cleave)
 	TridentWave = "rbxassetid://77166574700023", -- sheet 9 (round 2.5 part 2: the Tidal Trident's skill, Torrent Strike)
+	CrescentSparks = "rbxassetid://140638978492873", -- sheet 9 (round 3: every scythe's skill, Reaping Cyclone)
 	Paw = "rbxassetid://127023045019616",
 	Sparkle = "rbxassetid://90976268345911",
 	Swap = "rbxassetid://122501337503529",

@@ -519,8 +519,8 @@ end
 -- (its damage lands in front: every cut soft-aims you at the foe, so a hit behind you would miss the lone foe of most
 -- fights); Whirlwind, two full spins, every foe round you. Nothing past 10 studs (a boss's swipe still reaches you).
 -- Reaping Cyclone (spec 5.3): three spins, a ring of crescents each, every foe within 9 studs on the third. Timings are
--- its animations' (tools/blender/anim_scythe.py, approved and published by the owner 2026-11-09); sounds and cues are
--- the spear's until its own (plan Task 6).
+-- its animations' (tools/blender/anim_scythe.py, approved and published by the owner 2026-11-09); its sounds its own mix
+-- of the measured licensed ones.
 do
 	-- its own moves (published by the owner 2026-11-09); dodge, flinch, down and get up stay the Steel Sword's
 	local animations = table.clone(starter.animations)
@@ -533,6 +533,9 @@ do
 	animations.cut3 = "rbxassetid://112263670560674"
 	animations.skill = "rbxassetid://133282199201010"
 	local spear = SWORDS.spear
+	-- Its own mix of the measured Pro Sound Effects (Config/SoundLevels): the spear's sounds plus the Halberd's big swing
+	local sounds = table.clone(spear.sounds)
+	sounds.cleaveWhoosh = "rbxassetid://9120717850" -- Whoosh Fast Swish By 4: Reap's huge sweep
 	SWORDS.scythe = {
 		name = "Scythe",
 		power = starter.power,
@@ -557,12 +560,15 @@ do
 			free = { at = 0.94 },
 		},
 		animations = animations,
-		sounds = table.clone(spear.sounds),
+		sounds = sounds,
+		-- Reap: the wind-up's release and one big whoosh across the front; Back Sweep: the spin's whoosh and the blade
+		-- coming through the front; Whirlwind: a whoosh on each spin and the ring's slam; Reaping Cyclone: the gathering
+		-- pull, a whoosh on each spin, the third ring's cut lines and slam
 		cues = {
-			cut1 = table.clone(spear.cues.cut1),
-			cut2 = table.clone(spear.cues.cut2),
-			cut3 = table.clone(spear.cues.cut3),
-			skill = table.clone(spear.cues.skill),
+			cut1 = { { key = "swing1", at = 0.22 }, { key = "cleaveWhoosh", at = 0.24 }, { key = "air2", at = 0.3 } },
+			cut2 = { { key = "swing2", at = 0.15 }, { key = "spinWhoosh", at = 0.17 }, { key = "air1", at = 0.38 } },
+			cut3 = { { key = "spinWhoosh", at = 0.32 }, { key = "swing1", at = 0.55 }, { key = "spinWhoosh", at = 0.62 }, { key = "swing3", at = 0.9 }, { key = "slam", at = 0.98 } },
+			skill = { { key = "rushCharge", at = 0.03 }, { key = "spinWhoosh", at = 0.28 }, { key = "spinWhoosh", at = 0.5 }, { key = "spinWhoosh", at = 0.71 }, { key = "cutLines", at = 0.92 }, { key = "slam", at = 0.94 } },
 		},
 		fx = { slash = "scytheSweep", finisher = "scytheWhirl", skill = "reapingCyclone" },
 	}

@@ -117,6 +117,9 @@ return {
 			piercingRush = { "charge", "leave", "arrive", "hit", "length", "width", "afterimages", "glow", "swirl", "flashSeconds", "bursts", "skid" },
 			magmaCleave = { "windup", "hit", "radius", "angle", "crescent", "embers", "smoke" },
 			titansWrath = { "charge", "peak", "hit", "close", "fade", "tear", "length", "width", "tearWidth", "glow", "inflow", "swirl", "cracks", "crackReach", "rumbleEvery", "ring", "rocks", "beam", "thorns", "thornHeight", "thornThick", "giants", "giantHeight", "giantThick", "branches", "branchReach", "slabs", "slabSize", "debris", "debrisHeight", "pillars", "pillarHeight", "petals", "camAt", "camHold", "camFocus", "camLookUp" },
+			scytheSweep = { "arc", "arcAngle", "thick", "flash", "sparks", "wrap", "wrapFrom", "spin", "low", "high" },
+			scytheWhirl = { "rings", "ring", "blades", "bladeRing", "sparks", "dust", "flash" },
+			reapingCyclone = { "gather", "ring1", "ring2", "hit", "radius", "fly", "crescents", "lastScale", "swirl", "sparks" },
 			torrentStrike = { "raise", "slam", "hit", "spread", "slowAfter", "slowScale", "slowEase", "slowFeed", "fall", "radius", "inner", "torrents", "spread", "pairShare", "nearest", "apart", "lane", "columnHeight", "outerHeight", "cracks", "foeEdge", "foeSizeStuds", "foeSizeMax", "camAt", "camHold", "camFocus", "camLookUp", "camUp", "camOut" },
 		}
 		for look, keys in needs do
@@ -464,6 +467,74 @@ return {
 		expect.equal(SwordSkillFxRules.framesOnCaster(SwordSkillFx.LOOKS.torrentStrike), true)
 		expect.equal(SwordSkillFxRules.framesOnCaster(SwordSkillFx.LOOKS.titansWrath), false, "a line ahead frames its end")
 		expect.equal(SwordSkillFxRules.framesOnCaster(SwordSkillFx.LOOKS.sunfallCleave), false)
+	end,
+
+	-- Weapons round 3 (spec 2026-11-09-weapons-round3-scythes-design 5.2 and 5.3; the owner: "exaggerated moves, wide
+	-- slashes in all directions"): the scythe's looks keep time and place with its moves
+	["the scythe's looks keep time with its moves: crescents over each cut's sweep, the Whirlwind round you"] = function()
+		local scythe = Swords.SWORDS.scythe
+		expect.equal(scythe.fx and scythe.fx.slash, "scytheSweep")
+		local sweep = SwordSkillFx.LOOKS.scytheSweep.beats :: { [string]: number }
+		expect.equal(sweep.arcAngle >= scythe.combo[1].arc, true, "Reap's crescent covers its half circle")
+		expect.equal(sweep.arc <= scythe.combo[1].reach, true, "the crescent inside the reach (its sparks fly on out)")
+		expect.equal(sweep.wrap <= scythe.combo[2].hitAt, true, "Back Sweep's whole turn laid before its strike")
+		expect.equal(sweep.spin <= scythe.combo[3].hitAt, true, "the Whirlwind's two turns laid before its strike")
+		expect.equal(sweep.low > 0 and sweep.high >= 0, true, "Back Sweep low, the Whirlwind at shoulder height")
+		local whirl = SwordSkillFx.LOOKS.scytheWhirl
+		expect.equal(whirl.form, "around", "the Whirlwind's finish round you, not ahead")
+		expect.equal((whirl.beats :: { [string]: number }).ring, scythe.combo[3].reach, "its rings out to the reach")
+		expect.equal(SwordSkillFxRules.finisherAhead(whirl, nil), 0, "drawn where you stand")
+		expect.equal(SwordSkillFxRules.finisherAhead(SwordSkillFx.LOOKS.skyPierce, 8), 8, "Sky Pierce at its line's end")
+		expect.isNil(SwordSkillFxRules.finisherAhead(SwordSkillFx.LOOKS.elementBurst, nil), "a sword's slam just ahead")
+		local shake = SwordSkillFx.SHAKE :: any
+		expect.equal(shake.scytheWhirl > shake.finisher, true, "the Whirlwind's shake bigger than a finisher's")
+	end,
+
+	["Reaping Cyclone: three rings of crescents, one per spin, the third arriving with the hit at the shape's radius"] = function()
+		local scythe = Swords.SWORDS.scythe
+		local look = SwordSkillFx.LOOKS.reapingCyclone
+		expect.equal(look.form, "around")
+		expect.isNil(look.cinematic, "the Common skill: no camera moment")
+		local b = look.beats :: { [string]: number }
+		expect.equal(b.radius, scythe.skill.shape.radius)
+		expect.equal(b.hit, scythe.skill.hitAt, "the third ring is the hit")
+		expect.equal(b.gather < b.ring1 and b.ring1 < b.ring2 and b.ring2 < b.hit, true, "a ring at the end of each spin")
+		expect.equal(b.hit - b.fly > b.ring2, true, "the last ring leaves after the second")
+		expect.equal(b.lastScale > 1, true, "the last ring the biggest")
+		local shake = SwordSkillFx.SHAKE :: any
+		expect.equal(shake.reapingCyclone > shake.finisher and shake.reapingCyclone < shake.titansWrath, true)
+	end,
+
+	["/skillfx previews every scythe, and the admin panel has their moves"] = function()
+		expect.equal(SwordSkillFx.PREVIEW.scythe, "forgeScythe_Shade")
+		expect.equal(SwordSkillFx.PREVIEW.widow, "widowsReaper")
+		expect.equal(SwordSkillFx.PREVIEW.storm, "stormReaper")
+		expect.equal(SwordSkillFx.PREVIEW.rift, "riftReaper")
+		local want = {
+			["Reap"] = "/skillfx scythe cut1",
+			["Back Sweep"] = "/skillfx scythe cut2",
+			["Whirlwind"] = "/skillfx scythe cut3",
+			["Reaping Cyclone"] = "/skillfx scythe skill",
+		}
+		local got = {}
+		for _, section in AdminPanel.SECTIONS do
+			if section.title == "Sword skills" then
+				for _, button in section.buttons do
+					got[button.label] = button.command
+				end
+			end
+		end
+		for label, command in want do
+			expect.equal(got[label], command, label)
+		end
+	end,
+
+	-- The slash trail runs along the scythe's blade: from its socket out to the tip at the side (a sword's and a spear's
+	-- run up the blade)
+	["the scythe's slash trail runs from the socket out along the blade"] = function()
+		local trail = SwordFx.TRAIL_BLADE_SCYTHE :: any
+		expect.equal(trail.base > 4 and trail.tip > 2.5 and trail.tip < trail.base, true, "the socket high, the tip hanging lower")
+		expect.equal(trail.out > 2, true, "the tip out to the side")
 	end,
 
 	-- Final review: the admin panel's spear skill buttons (spec 5: "the admin panel's buttons show the new skills")

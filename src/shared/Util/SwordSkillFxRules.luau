@@ -129,4 +129,13 @@ function SwordSkillFxRules.framesOnCaster(look: { form: string? }): boolean
 	return look.form == "around"
 end
 
+-- How far ahead of you cut 3's finisher draws: where you stand for a look drawn round you (the scythe's Whirlwind), at
+-- the end of the cut's line (`lineLength`: the spear's plunge), else nil (just ahead: a sword's slam, SwordSkillFx)
+function SwordSkillFxRules.finisherAhead(look: { form: string? }, lineLength: number?): number?
+	if look.form == "around" then
+		return 0
+	end
+	return lineLength
+end
+
 return SwordSkillFxRules

@@ -120,6 +120,11 @@ AdminPanel.SECTIONS = {
 			{ label = "Magma Cleave", command = "/skillfx halberd skill" },
 			{ label = "Torrent Strike", command = "/skillfx trident skill" },
 			{ label = "Titan's Wrath", command = "/skillfx lance skill" },
+			-- the scythes (weapons round 3)
+			{ label = "Reap", command = "/skillfx scythe cut1" },
+			{ label = "Back Sweep", command = "/skillfx scythe cut2" },
+			{ label = "Whirlwind", command = "/skillfx scythe cut3" },
+			{ label = "Reaping Cyclone", command = "/skillfx scythe skill" },
 			{ label = "Any sword move", command = "/skillfx %s", placeholder = "sword [cut1|cut2|cut3|skill] [level] (tide skill 10)" },
 		},
 	},

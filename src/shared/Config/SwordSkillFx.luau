@@ -325,22 +325,40 @@ local LOOKS: { [string]: Look } = {
 			camOut = 26,
 		},
 	},
-	-- The scythe's looks (weapons round 3, spec 2026-11-09-weapons-round3-scythes-design 5): drawn by the plain shapes
-	-- until their own (plan Task 6): the sweeps' crescent trails, the Whirlwind's ring, Reaping Cyclone's three rings
+	-- The scythe (weapons round 3, spec 2026-11-09-weapons-round3-scythes-design 5.2: "big wind-ups, wide sweeps, long
+	-- trails in the scythe's colour"; the owner: "exaggerated moves, wide slashes in all directions"), shared by the four
+	-- scythes in each one's colours and element. Scythe sweep: the blade's element streaming off every cut; at each cut's
+	-- strike a huge crescent of light `arc` studs round you, `thick` studs, bright for `flash` seconds, streaks and `sparks`
+	-- flying out of it to the reach: Reap's across your front, `arcAngle` degrees right to left; Back Sweep's a whole turn
+	-- laid round you low (`low` studs down) over the `wrap` seconds before its strike, from `wrapFrom` degrees (your right)
+	-- round behind you to your front; the Whirlwind's two turns at shoulder height (`high` up) over the `spin` seconds
+	-- before its strike
 	scytheSweep = {
 		kind = "slash",
 		textures = { "glow", "streak", "spark", "star", "shard" },
 		seconds = 0.45,
 		size = 2.2,
 		count = 160,
+		beats = { arc = 7, arcAngle = 200, thick = 0.9, flash = 0.3, sparks = 50, wrap = 0.27, wrapFrom = -90, spin = 0.64, low = 1.4, high = 0.6 },
 	},
+	-- Whirlwind's finish, round you where you stand (`form` around): at the strike `rings` shockwaves race out to `ring`
+	-- studs (the cut's reach), a whole circle of `blades` crescents flashes `bladeRing` studs out, `sparks` fly all round,
+	-- a ring of `dust` kicks up, a white flash for `flash` seconds (SHAKE.scytheWhirl)
 	scytheWhirl = {
 		kind = "finisher",
 		textures = { "glow", "streak", "spark", "smoke", "ring" },
 		seconds = 1.2,
 		size = 20,
 		count = 90,
+		form = "around",
+		beats = { rings = 2, ring = 10, blades = 10, bladeRing = 6.5, sparks = 80, dust = 24, flash = 0.2 },
 	},
+	-- Reaping Cyclone (the Forge Scythe's and every scythe's until its own; spec 5.3: "three spins, each throwing a ring of
+	-- element crescents outward; the third ring is the hit"). From `gather` the element swirls round you `swirl` studs out
+	-- and a ring glows under you; at the end of each spin a ring of `crescents` crescents in the scythe's colours flies out
+	-- to `radius` studs (the shape's) in `fly` seconds: at `ring1`, at `ring2`, and the third, `lastScale` times bigger,
+	-- leaving `fly` before `hit` so it arrives with the hit: a shockwave out to the radius and `sparks` all round
+	-- (SHAKE.reapingCyclone). The Common skill: no camera moment.
 	reapingCyclone = {
 		kind = "skill",
 		textures = { "glow", "streak", "spark", "star", "ring" },
@@ -348,6 +366,7 @@ local LOOKS: { [string]: Look } = {
 		size = 18,
 		count = 120,
 		form = "around",
+		beats = { gather = 0.14, ring1 = 0.52, ring2 = 0.73, hit = 0.94, radius = 9, fly = 0.2, crescents = 8, lastScale = 1.5, swirl = 3, sparks = 60 },
 	},
 }
 
@@ -370,8 +389,9 @@ return {
 	-- Your own skill's screen shakes (ScreenFx.shake amounts; a boss slam is 0.75): on the cleave and on the burst
 	-- Titan's Wrath: each rumble pulse through the charge grows to titansRumble (they decay between pulses: it throbs and
 	-- builds), the fissure's shake is titansWrath (the peak's flash shakes `release`); Magma Cleave's swipe magmaCleave;
-	-- Torrent Strike's slam shakes `release`, its torrents torrentStrike
-	SHAKE = { release = 0.5, impact = 0.95, thornline = 0.55, prismStrike = 0.4, prismJudgment = 1.1, elementalSpin = 0.7, finisher = 0.35, titansRumble = 0.28, titansWrath = 1, magmaCleave = 0.8, torrentStrike = 0.9 },
+	-- Torrent Strike's slam shakes `release`, its torrents torrentStrike; a finisher with its own shakes that
+	-- (the scythe's Whirlwind), else `finisher`; Reaping Cyclone's third ring reapingCyclone
+	SHAKE = { release = 0.5, impact = 0.95, thornline = 0.55, prismStrike = 0.4, prismJudgment = 1.1, elementalSpin = 0.7, finisher = 0.35, titansRumble = 0.28, titansWrath = 1, magmaCleave = 0.8, torrentStrike = 0.9, scytheWhirl = 0.55, reapingCyclone = 0.65 },
 	-- Your own skill's camera moment (owner 2026-11-07, camera only: the fight runs on and you can still be hit; then
 	-- "the camera ... is at the back so the crescent is hard to see ... make sure it shows the full animation without
 	-- being blocked"), seconds and studs, all from the side (your left or right, whichever has a clear view): eased over
@@ -411,5 +431,10 @@ return {
 		halberd = "magmaHalberd",
 		trident = "tidalTrident",
 		lance = "titansLance",
+		-- the scythes (weapons round 3)
+		scythe = "forgeScythe_Shade",
+		widow = "widowsReaper",
+		storm = "stormReaper",
+		rift = "riftReaper",
 	} :: { [string]: string },
 }

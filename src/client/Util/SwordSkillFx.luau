@@ -1742,6 +1742,152 @@ local function titansWrath(root: BasePart, spec: SwordSkillFxConfig.Look, colors
 	end)
 end
 
+-- The scythe's crescent (weapons round 3): a band of light laid piece by piece round `center`, `radius` studs out, from
+-- angle `from` to `to` (radians from `facing`, + to your left) over `seconds`, each piece swelling toward the middle
+-- (`thick` studs at its widest), bright for `flash`; streaks and sparks fly out of every other piece toward the reach
+local SCYTHE_PIECES = 18 -- pieces in a half turn of crescent
+local function scytheArc(center: Vector3, facing: Vector3, radius: number, from: number, to: number, seconds: number, thick: number, flash: number, sparks: number, colors: Colors, scale: number)
+	local count = math.max(3, math.round(math.abs(to - from) / math.pi * SCYTHE_PIECES))
+	local base = math.atan2(facing.X, facing.Z)
+	local function point(a: number): Vector3
+		return center + Vector3.new(math.sin(base + a), 0, math.cos(base + a)) * radius
+	end
+	local share = math.max(1, math.round(sparks / count * 2))
+	for index = 0, count - 1 do
+		local a0 = from + (index / count) * (to - from)
+		local a1 = from + ((index + 1) / count) * (to - from)
+		task.delay(index / count * seconds, function()
+			local p0, p1 = point(a0), point(a1)
+			local swell = 0.55 + 0.45 * math.sin(math.pi * (index + 0.5) / count)
+			beam(p0, p1, thick * scale * swell, colors, flash)
+			if index % 2 == 1 then
+				return
+			end
+			local anchor = holder(CFrame.lookAt(p1, p1 + (p1 - center).Unit), Vector3.one * 0.5, 1.2)
+			local out = emitter(anchor, "streak", colors.glow, { size = { 0.6 * scale, 0 }, life = { 0.2, 0.35 }, speed = { 16, 28 }, spread = 25, brightness = 2.5 })
+			out.EmissionDirection = Enum.NormalId.Front
+			out:Emit(detail(5))
+			local spray = emitter(anchor, "spark", colors.glow, { size = { 0.4, 0.05 }, life = { 0.3, 0.6 }, speed = { 8, 18 }, spread = 60, accel = -UP * 8, brightness = 2.5 })
+			spray.EmissionDirection = Enum.NormalId.Front
+			spray:Emit(detail(share))
+		end)
+	end
+end
+
+-- The scythe's slash: the blade's element streaming off every cut, then the cut's crescent timed to its strike (`hitIn`
+-- seconds from now): Reap's huge sweep across your front, right to left; Back Sweep's whole turn laid low round you,
+-- from your right, behind you and through your front at the strike; the Whirlwind's two turns at shoulder height
+local function scytheSweep(spec: SwordSkillFxConfig.Look, colors: Colors, scale: number, blade: Blade?, root: BasePart, cut: number, hitIn: number)
+	local beats = spec.beats :: { [string]: number }
+	if blade and blade.part.Parent then
+		elementTrail(spec, colors, scale, blade)
+	end
+	local facing = flatLook(root)
+	local function lay(startIn: number, height: number, from: number, to: number, seconds: number)
+		task.delay(math.max(0, startIn), function()
+			if root.Parent then
+				scytheArc(root.Position + UP * height, facing, beats.arc, from, to, seconds, beats.thick, beats.flash, beats.sparks, colors, scale)
+			end
+		end)
+	end
+	local half = math.rad(beats.arcAngle / 2)
+	if cut == 1 then
+		lay(hitIn - 0.1, -0.6, -half, half, 0.18)
+	elseif cut == 2 then
+		lay(hitIn - beats.wrap, -beats.low, math.rad(beats.wrapFrom), math.rad(390), beats.wrap + 0.03)
+	else
+		lay(hitIn - beats.spin, beats.high, 0, math.rad(750), beats.spin)
+	end
+end
+
+-- The Whirlwind's finish where you stand (`ground` under you): shockwave rings racing out to the reach, a circle of
+-- crescent blades flashing round you, sparks flying all round, a ring of dust and a flash of light
+local function scytheWhirl(ground: Vector3, spec: SwordSkillFxConfig.Look, colors: Colors, scale: number)
+	local beats = spec.beats :: { [string]: number }
+	for index = 1, beats.rings do
+		task.delay((index - 1) * 0.12, function()
+			ElementFx.ring(ground, if index == 1 then colors.glow else colors.deep, beats.ring, 0.4 + 0.12 * index)
+		end)
+	end
+	local center = ground + UP * 1.6
+	local gap = math.pi * 2 / beats.blades
+	for index = 0, beats.blades - 1 do
+		local middle = index * gap
+		scytheArc(center, Vector3.zAxis, beats.bladeRing, middle - gap * 0.32, middle + gap * 0.32, 0.05, 1.1, beats.flash + 0.15, beats.sparks / beats.blades, colors, scale)
+	end
+	local anchor = holder(CFrame.new(center), Vector3.one, 1.6)
+	emitter(anchor, "spark", colors.glow, { size = { 0.5, 0.05 }, life = { 0.4, 0.8 }, speed = { 18, 34 }, spread = 180, accel = -UP * 14, drag = 1.5, brightness = 3 }):Emit(detail(beats.sparks))
+	local dust = holder(CFrame.new(ground + UP * 0.4), Vector3.one, 2)
+	emitter(dust, "smoke", DUST, { size = { 1.4 * scale, 3 * scale }, life = { 0.6, 1 }, speed = { 8, 14 }, spread = 180, accel = UP * 2, drag = 3, light = 0.2, brightness = 0.8, start = 0.3 }):Emit(detail(beats.dust))
+	local light = Instance.new("PointLight")
+	light.Color = colors.glow
+	light.Range = beats.ring * 1.6
+	light.Brightness = 5
+	light.Parent = anchor
+	tween(light, beats.flash + 0.25, { Brightness = 0 })
+end
+
+-- Reaping Cyclone: from `gather` the element swirls round you and a ring glows under you; at the end of each spin a ring
+-- of crescents flies out flat to the skill's radius (`fly` seconds), each ring turned half a crescent from the last;
+-- the third (bigger, leaving `fly` before the hit) arrives with it (hook: your shake), a shockwave out to the radius and
+-- sparks all round. The light version: half the crescents, no swirl.
+local function reapingCyclone(root: BasePart, spec: SwordSkillFxConfig.Look, colors: Colors, scale: number, hooks: Hooks)
+	local beats = spec.beats :: { [string]: number }
+	local lite = hooks.lite == true
+	local function feet(): Vector3
+		return root.Position - UP * (ROOT_TO_GROUND - GROUND_LIFT)
+	end
+	local spinning = beats.hit - beats.gather
+	task.delay(beats.gather, function()
+		if cancelled(hooks) or not root.Parent then
+			return
+		end
+		ElementFx.castRing(feet(), colors.glow, beats.swirl, spinning + 0.2)
+		if not lite then
+			local _, particle = elementOf(colors)
+			swirl(function(): Vector3
+				return root.Position
+			end, beats.swirl, colors.glow, particle, spinning, 1.2 * scale)
+		end
+	end)
+	local count = if lite then math.max(3, math.round(beats.crescents / 2)) else beats.crescents
+	local rings = { { at = beats.ring1, size = 1 }, { at = beats.ring2, size = 1 }, { at = beats.hit - beats.fly, size = beats.lastScale } }
+	for ringIndex, ring in rings do
+		local last = ringIndex == #rings
+		task.delay(ring.at, function()
+			if cancelled(hooks) or not root.Parent then
+				return
+			end
+			local center = root.Position + UP * 0.2
+			local facing = flatLook(root)
+			local base = math.atan2(facing.X, facing.Z) + (ringIndex - 1) * math.pi / count
+			for index = 0, count - 1 do
+				local a = base + index * math.pi * 2 / count
+				local direction = Vector3.new(math.sin(a), 0, math.cos(a))
+				local goal = center + direction * beats.radius
+				ElementFx.moonSlash(center + direction * 1.5, function(): Vector3
+					return goal
+				end, colors.glow, beats.fly, function(at: Vector3)
+					if last and not lite then
+						ElementFx.burst(at, colors.glow, 0.5 * scale)
+					end
+				end, ring.size * scale, 0)
+			end
+			if not last then
+				return
+			end
+			task.delay(beats.fly, function()
+				if hooks.burst then
+					hooks.burst(root.Position)
+				end
+				ElementFx.ring(feet(), colors.glow, beats.radius, 0.45)
+				local anchor = holder(CFrame.new(root.Position), Vector3.one, 1.6)
+				emitter(anchor, "spark", colors.glow, { size = { 0.5, 0.05 }, life = { 0.4, 0.8 }, speed = { 20, 34 }, spread = 180, accel = -UP * 12, drag = 1.5, brightness = 3 }):Emit(detail(if lite then math.round(beats.sparks / 3) else beats.sparks))
+			end)
+		end)
+	end
+end
+
 -- A cut's slash (cut 1-3): along the swing in front of you (cut 3's upright, the others across); with the blade known,
 -- the Sunforged's flames, the Verdant's leaves, the Prism's rainbow or the Forge Sword's element stream off it
 -- `hitIn`: seconds from now to the cut's strike (the spear's streak and crescent land then)
@@ -1753,6 +1899,9 @@ function SwordSkillFx.slash(character: Model, look: string, cut: number, colors:
 	end
 	if look == "spearStreak" and spec.beats then
 		spearStreak(spec, colors, scale, blade, root, cut, hitIn or 0)
+		return
+	elseif look == "scytheSweep" and spec.beats then
+		scytheSweep(spec, colors, scale, blade, root, cut, hitIn or 0)
 		return
 	elseif look == "fireTrail" and blade and blade.part.Parent then
 		fireTrail(spec, colors, scale, blade)
@@ -1781,6 +1930,13 @@ function SwordSkillFx.slamPoint(character: Model, ahead: number?): Vector3?
 	return root.Position + flatLook(root) * (ahead or SLAM_AHEAD) - Vector3.new(0, ROOT_TO_GROUND, 0)
 end
 
+-- Where cut 3's finisher draws for `look` (SwordSkillFxRules.finisherAhead): round you for a look drawn there (the
+-- scythe's Whirlwind), at the line's end (`lineLength`: the spear's plunge), else just ahead of you
+function SwordSkillFx.finisherPoint(character: Model, look: string, lineLength: number?): Vector3?
+	local spec = SwordSkillFxConfig.LOOKS[look]
+	return SwordSkillFx.slamPoint(character, if spec then SwordSkillFxRules.finisherAhead(spec, lineLength) else lineLength)
+end
+
 -- The finisher where cut 3's slam lands (`at`: on the ground)
 function SwordSkillFx.finisher(at: Vector3, look: string, colors: Colors, scale: number)
 	local spec = SwordSkillFxConfig.LOOKS[look]
@@ -1807,6 +1963,9 @@ function SwordSkillFx.finisher(at: Vector3, look: string, colors: Colors, scale:
 		return
 	elseif look == "skyPierce" and spec.beats then
 		skyPierce(groundAt(at), spec, colors, scale)
+		return
+	elseif look == "scytheWhirl" and spec.beats then
+		scytheWhirl(groundAt(at), spec, colors, scale)
 		return
 	end
 	sketch(CFrame.new(at + Vector3.new(0, GROUND_LIFT, 0)), size, size, spec, colors, scale)
@@ -2440,6 +2599,9 @@ function SwordSkillFx.skill(character: Model, look: string, colors: Colors, scal
 		return
 	elseif look == "torrentStrike" and spec.beats then
 		torrentStrike(root, spec, colors, scale, hooks or {})
+		return
+	elseif look == "reapingCyclone" and spec.beats then
+		reapingCyclone(root, spec, colors, scale, hooks or {})
 		return
 	end
 	local feet = root.Position - Vector3.new(0, ROOT_TO_GROUND - GROUND_LIFT, 0)

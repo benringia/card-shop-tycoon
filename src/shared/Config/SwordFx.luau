@@ -141,6 +141,10 @@ return {
 	-- a spear's head (weapons round 2): its bottom and tip over the grip (31% up the spear; measured on the four models:
 	-- the heads start 2.4-3.0 studs up, the tips 5.9-6.4)
 	TRAIL_BLADE_SPEAR = { base = 2.6, tip = 5.9 },
+	-- a scythe's blade (weapons round 3): from its socket (`base` up the shaft from the grip, a third up the scythe) out to
+	-- its hanging tip (`tip` up, `out` to the blade's side, +X in the model; measured on the four models: the sockets
+	-- 5.0-5.6 up, the tips 2.8-3.4 up and 2.7-3.4 out)
+	TRAIL_BLADE_SCYTHE = { base = 5.2, tip = 3.2, out = 3 },
 	-- Drawing your sword: a flash of light and a glint at the blade's tip
 	GLEAM = { seconds = 0.3, brightness = 4, range = 8, size = 2.2, color = rgb(255, 250, 225) },
 

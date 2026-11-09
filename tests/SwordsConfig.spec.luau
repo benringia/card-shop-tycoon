@@ -292,6 +292,27 @@ return {
 		expect.equal(Swords.GRIPS.scythe.back.y, -0.2)
 	end,
 
+	-- Task 6: the scythe's own sound mix (licensed and measured, Config/SoundLevels), every cue a sound it has
+	["the scythe's cues: its own swishes and spins, every key a sound it has"] = function()
+		local scythe = Swords.SWORDS.scythe
+		for _, move in { "cut1", "cut2", "cut3", "skill" } do
+			local cues = scythe.cues[move]
+			expect.equal(#cues > 0, true, move)
+			for _, cue in cues do
+				assert(scythe.sounds[cue.key], `{move} cues {cue.key}: no such sound`)
+				expect.equal(cue.at <= (if move == "skill" then scythe.skill.length else scythe.combo[tonumber(move:sub(4)) :: number].length), true, `{move} {cue.key} within the move`)
+			end
+		end
+		local spins = 0
+		for _, cue in scythe.cues.skill do
+			if cue.key == "spinWhoosh" then
+				spins += 1
+			end
+		end
+		expect.equal(spins, 3, "Reaping Cyclone: a whoosh on each spin")
+		expect.equal(scythe.cues.cut1 ~= Swords.SWORDS.spear.cues.cut1, true, "not the spear's")
+	end,
+
 	["a scythe's reach never makes a spot a boss's swipe can't reach"] = function()
 		local longest = 0
 		for _, cut in Swords.SWORDS.scythe.combo do
