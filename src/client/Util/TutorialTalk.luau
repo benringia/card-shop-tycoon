@@ -25,6 +25,7 @@ local PICTURE = 52
 local NEXT_WIDTH = 108
 local GAP = 34 -- px above the HUD tiles (their icons pop up out of the row)
 local TOP = 66 -- px from the top when the card goes up there (under the tour bar)
+local EDGE = 8 -- px kept clear of the screen's edges and the HUD's side columns
 local TYPE_SPEED = 45 -- letters a second
 local POP = TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 
@@ -159,22 +160,45 @@ local function build(): Frame
 		end
 		local row = tiles
 		local bottom = if row then row.AbsolutePosition.Y - GAP else screenSize.Y - GAP
+		-- Clear of the HUD's side columns beside it (on a phone the cash, weapon switch and party run down the right)
+		local leftEdge, rightEdge = EDGE, screenSize.X - EDGE
+		local main = made:FindFirstAncestorWhichIsA("PlayerGui")
+		local gui = main and main:FindFirstChild("MainGui")
+		local height = HEIGHT * math.min(WIDTH, screenSize.X * SCREEN_SHARE) / WIDTH
+		for _, columnName in { "StatusRow", "HudSide" } do
+			local column = gui and gui:FindFirstChild(columnName)
+			if column and column:IsA("GuiObject") and column.Visible then
+				local top, low = column.AbsolutePosition.Y, column.AbsolutePosition.Y + column.AbsoluteSize.Y
+				if low > bottom - height and top < bottom then
+					if columnName == "StatusRow" then
+						rightEdge = math.min(rightEdge, column.AbsolutePosition.X - EDGE)
+					else
+						leftEdge = math.max(leftEdge, column.AbsolutePosition.X + column.AbsoluteSize.X + EDGE)
+					end
+				end
+			end
+		end
 		local width = math.min(WIDTH, screenSize.X * SCREEN_SHARE)
+		local centre = screenSize.X / 2
+		if centre + width / 2 > rightEdge or centre - width / 2 < leftEdge then
+			width = math.min(width, rightEdge - leftEdge)
+			centre = math.clamp(centre, leftEdge + width / 2, rightEdge - width / 2)
+		end
 		local fit = width / WIDTH
 		if scale then
 			scale.Scale = scale:GetAttribute("Popping") and scale.Scale or fit
 		end
-		local height = HEIGHT * fit
+		height = HEIGHT * fit
 		local target = avoid
 		local covered = false
 		if target and target.Parent then
 			local top, low = target.AbsolutePosition.Y, target.AbsolutePosition.Y + target.AbsoluteSize.Y
 			local left, right = target.AbsolutePosition.X, target.AbsolutePosition.X + target.AbsoluteSize.X
-			local cardLeft, cardRight = screenSize.X / 2 - width / 2, screenSize.X / 2 + width / 2
+			local cardLeft, cardRight = centre - width / 2, centre + width / 2
 			covered = low > bottom - height and top < bottom and right > cardLeft and left < cardRight
 		end
 		made.AnchorPoint = Vector2.new(0.5, if covered then 0 else 1)
-		made.Position = UDim2.fromOffset(screenSize.X / 2, if covered then TOP else bottom)
+		made.Position = UDim2.fromOffset(centre, if covered then TOP else bottom)
 		if line and shownText ~= "" then
 			local letters = math.floor((os.clock() - typedAt) * TYPE_SPEED)
 			line.MaxVisibleGraphemes = if letters >= utf8.len(shownText) :: number then -1 else letters
