@@ -432,11 +432,11 @@ do
 	}
 	-- The Halberd's and the Trident's own skills (weapons round 2.5 part 2, spec 2026-11-09-halberd-and-trident-skills-
 	-- design; owner 2026-11-09), in place of Piercing Rush; the spear's cuts, moves and sounds, the same tables. Neither
-	-- moves you. Their animations (tools/blender/anim_magma_halberd.py, anim_tidal_trident.py) play from
-	-- SwordAnimations.<model> in Studio until published.
-	local function ownSkill(name: string, model: string, skill: Skill, look: string, skillCues: { Cue }, extra: { [string]: string }): Sword
+	-- moves you. Their animations: tools/blender/anim_magma_halberd.py, anim_tidal_trident.py (SwordAnimations.<model>.skill,
+	-- published 2026-11-09).
+	local function ownSkill(name: string, model: string, skill: Skill, skillAnimation: string, look: string, skillCues: { Cue }, extra: { [string]: string }): Sword
 		local own = table.clone(spear.animations)
-		own.skill = ""
+		own.skill = skillAnimation
 		local ownSounds = table.clone(spear.sounds)
 		for key, id in extra do
 			ownSounds[key] = id
@@ -465,7 +465,7 @@ do
 		cooldown = 8,
 		shape = { kind = "arc", radius = 11, angle = 180 },
 		free = { at = 0.6 },
-	}, "magmaCleave", { { key = "cleaveWhoosh", at = 0.46 }, { key = "cleaveFire", at = 0.6 } }, {
+	}, "rbxassetid://139376815690800", "magmaCleave", { { key = "cleaveWhoosh", at = 0.46 }, { key = "cleaveFire", at = 0.6 } }, {
 		-- Pro Sound Effects already measured (Config/SoundLevels)
 		cleaveWhoosh = "rbxassetid://9120717850", -- Whoosh Fast Swish By 4: the big swing
 		cleaveFire = "rbxassetid://9114438917", -- Fire Sheet 3: the fire crescent bursting out
@@ -481,7 +481,7 @@ do
 		cooldown = 8,
 		shape = { kind = "spin", radius = 12 },
 		free = { at = 0.75 },
-	}, "torrentStrike", {
+	}, "rbxassetid://97640469455794", "torrentStrike", {
 		{ key = "swing2", at = 0.4 },
 		{ key = "torrentSlam", at = 0.55 },
 		{ key = "torrentSplash", at = 0.57 },

@@ -362,6 +362,18 @@ return {
 		expect.equal(Swords.SWORDS.starterSword.animations.skill ~= ids.forgeSword, true, "the Steel Sword keeps its dash slash")
 	end,
 
+	["the Halberd's and the Trident's skill animations are published (the owner's ids, 2026-11-09)"] = function()
+		local ids = {
+			magmaHalberd = "rbxassetid://139376815690800",
+			tidalTrident = "rbxassetid://97640469455794",
+		}
+		for moveset, id in ids do
+			expect.equal(Swords.SWORDS[moveset].animations.skill, id, moveset)
+		end
+		expect.equal(Swords.SWORDS.spear.animations.skill ~= ids.magmaHalberd, true, "the spear keeps Piercing Rush")
+		expect.equal(Swords.SWORDS.magmaHalberd.animations.cut1, Swords.SWORDS.spear.animations.cut1, "the cuts stay the spear's")
+	end,
+
 	["each round 1 skill frees you once its damage is committed, inside the move (owner 2026-11-07)"] = function()
 		local wants = { forgeSword = 0.8, verdantBlade = 0.45, sunforgedBlade = 1.78, prismBlade = 1.2 }
 		for moveset, at in wants do

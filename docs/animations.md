@@ -136,9 +136,9 @@ The Trident: up into both hands and high overhead (Sky Pierce's raised poses, no
 the ground ahead ("Slam" at 0.55), crouched leaning on the stuck shaft ("Hit" at 0.75) and held to 1.5, pulled free by
 1.9. The stuck shaft leans about 37 degrees (the waist's bend adds to the arm's pitch: Sky Pierce's -62 sank it straight
 down 4 studs into the ground). `run_sword_moves.py -- --sword magma_halberd` / `tidal_trident`, then `build_kfs` into
-`assets/animations/<FOLDER>`. Publish `ReplicatedStorage.SwordAnimations.MagmaHalberd.skill` and `.TidalTrident.skill`;
-their ids go in `Config/Swords` `magmaHalberd` / `tidalTrident` `animations.skill` (empty until then: Studio plays the
-KeyframeSequences). Without ffmpeg, preview stills come from the module's own `make(name, json_dir, render_dir)` in a
+`assets/animations/<FOLDER>`. Published 2026-11-09: `SwordAnimations.MagmaHalberd.skill` 139376815690800 and
+`SwordAnimations.TidalTrident.skill` 97640469455794 (`Config/Swords` `ownSkill`'s skill animation; the cuts use the
+spear's ids). Without ffmpeg, preview stills come from the module's own `make(name, json_dir, render_dir)` in a
 background Blender (PNG frames every other frame).
 
 ## Making or changing moves

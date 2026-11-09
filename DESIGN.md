@@ -3235,7 +3235,8 @@ boss models; the ranch and Heroic tiers come after those.
   (2026-11-08, id in `Config/Swords` titansLance). Merged to main 2026-11-08.
 - [ ] Weapons round 2.5 part 2 (spec `2026-11-09-halberd-and-trident-skills-design.md`): the Magma Halberd's Magma
   Cleave and the Tidal Trident's Torrent Strike (own movesets, the `arc` shape, animations, effects, sounds, HUD
-  buttons). Waiting on the owner: publishing both skill animations, judging them in Studio.
+  buttons). Both skill animations are published (2026-11-09, ids in `Config/Swords`). Waiting on the owner: judging
+  them in Studio.
 - [ ] Weapons round 3 (spec `2026-11-06-weapons-round1-design.md` section 2, "The whole plan"): the scythes (Forge
   Scythe, Widow's Reaper, Storm Reaper, Rift Reaper) with their own moveset, models and portraits; the Forge's own model.
 - Not reproduced (2026-11-06): pack models on a freshly stocked shelf "slow to render" after joining (the server
