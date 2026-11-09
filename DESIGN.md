@@ -2196,6 +2196,46 @@ Hired staff became **shop jobs**: your levelled cards do the work (spec `2026-10
   (about 3.5 an hour, $34 an hour, a Legendary offer every ~13 hours) gives some of that back. At 3 stars with kids:
   16 min and 24.1 h. The first Legendary is pity-bound (within 130 packs), so its minutes move with packs per hour.
 
+### 7.6 The tutorial with Pish
+Spec `docs/superpowers/specs/2026-11-09-tutorial-pish-design.md`, plan `docs/superpowers/plans/2026-11-09-tutorial-pish.md`.
+The owner's dog Pish (a Shih Tzu with an underbite, a light brown patch on his back) teaches the game to kids without
+words. Model and 16 clips: `tools/blender/prep_pish.py`, `rig_pish.py`, `anim_pish.py` (sources `assets/blender/Pish/`),
+clips in `assets/monster-animations/Pish`, the model as `assets/npcs/Pish.rbxm` -> `ReplicatedStorage.NpcModels`
+(until it's saved, Pish is an invisible marker that still leads and shows his pictures). Drawn by `Util/PishVisual`
+(clips through `Util/ClipPlayer`, markers make his barks, yawn and digging dirt), style `Party.CREATURE_STYLE.Pish`.
+All numbers in `Config/Pish`.
+- [ ] **First visit** (`TutorialService`, `TutorialController`, `Util/TutorialCues`, `Util/TutorialRules`): starts after
+  the welcome flight, eight steps completed by what the game sees: open his first pack (`sparkPack`, in the Bag),
+  build a Small Pack Rack, order First Spark packs, stock the rack, a customer he sends reaches the counter, ring them
+  up, open his gift (`pishGift`: the hit card is Very Rare or better), his goodbye. Cues: gold paw prints on the ground
+  to the place, a bouncing gold paw over the button or thing (the Manage tile while its tray is shut), the step's
+  picture in a bubble over him, a row of paws at the top, his gift box at the top left. A step the shop has already
+  done (a replay) completes at once. Old saves skip it (v17 migration).
+- [ ] **Skip and replay**: the skip arrow beside the gift box needs holding 2 s, then a "really skip?" card shows the
+  gift crossed out and a sad Pish (whimper, head tilt): a big green paw keeps going, a small grey arrow skips. A Pish
+  tile in the Manage tray replays it (his gifts are never given twice).
+- [ ] **Tutorial Pish is this player's own** (a client marker): other players see Town Pish; Town Pish and his pet prompt
+  are hidden for the player Pish is leading.
+- [ ] **Town Pish** (`PishService`, `TownPishController`, `Util/PishPath`): a server marker (`workspace.PishNpc.TownPish`)
+  walking the town at 7 studs/s round the fountain to stops and open shops' doors, idle clips, naps. **Petting** him
+  (within 12 studs) gives **Pish's Luck** for 3 minutes, once per 15 minutes per player: the hit slot's Very Rare, Epic
+  and Legendary weights +25% (`Util/LuckRules`, `PackService.SetLuck`), shown as a "🍀 m:ss" chip beside the creature's
+  perk chip (`BuffController`), hearts for everyone nearby.
+- [ ] **Lesson visits**: a level-up marks the lessons it unlocks waiting (`Pish.LESSONS`: Sleeves 3, first sword 4,
+  Condenser 5, Forge 6, Deck Boxes 7, Booster Boxes 11, Grading Station 14, Jobs 20; saved `false` in
+  `tutorial.lessons` until shown, so ones gained in the Frontier or the Dungeon wait for the town). Once the player has
+  been free in town for 3 s (no window, fight, opening or weapon reveal; the first-sword popup comes first), Pish runs
+  in, barks and points: machines at the Shop (Build) tile, new stock at the order computer, Jobs at its tile, the first
+  sword at the Wild portal. He leaves after 20 s or once it's used (a window opens, the portal is reached).
+- [ ] **Stuck helper**: a new player's first hour (first visit not done when they joined), a quiet minute (no order,
+  restock, sale or pack) with a box waiting brings Pish to point at it, with empty shelves at the order computer; at
+  most every 2 minutes (`LessonRules.nudge`).
+- [ ] **Sounds**: Pro Sound Effects has no house dogs: coyote barks pitched up small, a coyote cub's whimper, dirt
+  from a shovel; the yawn is silent (`Pish.SOUNDS`, `SOUND_PITCH`, measured in `Config/SoundLevels`).
+- Analytics: the onboarding funnel (steps 1-8, `LogOnboardingFunnelStepEvent`) and custom events `TutorialSkipped`,
+  `PishGiftClaimed`, `LessonShown`, `LessonUsed`, `PishPetted`.
+- Dev: `/tutorial reset | step <1-8> | lesson <id>`, `/pish`, `/pishluck`; the admin panel's "Pish (tutorial)" section.
+
 ---
 
 ## 8. Monetization
@@ -2284,6 +2324,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── TownService.luau      # main town: ground, street, plaza, decor props, portals, walls, trail lines, signs, lighting
     │   │   ├── SceneryService.luau   # main town: terrain and scenery round the town, in the three portal areas (Config/Scenery) and in the Wild valley (Config/WildValley)
     │   │   ├── WelcomeService.luau   # the first-visit welcome cinematic's saved flag (SeenWelcome)
+    │   │   ├── PishService.luau      # Town Pish: wandering the town, petting him for luck (luck times kept for TutorialService)
+    │   │   ├── TutorialService.luau  # the first visit with Pish: steps, gifts, customer, funnel; lesson queue and the stuck helper
     │   │   ├── EconomyService.luau   # cash, XP, levels (ONLY place cash changes)
     │   │   ├── StockService.luau     # orders, deliveries, carrying, stocking shelves
     │   │   ├── PlacementService.luau # validate + place/move/sell shelves, shelf contents
@@ -2360,6 +2402,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── FountainFxController.luau # the healing fountain's rune circle, light column and orbs (client only)
     │   │   ├── PortalFxController.luau # spins every portal's vortex near the camera (client only)
     │   │   ├── WelcomeController.luau # the first-visit welcome cinematic
+    │   │   ├── TutorialController.luau # this player's own Pish: the first visit's cues, hold-to-skip, replay; lesson and nudge visits
+    │   │   ├── TownPishController.luau # Town Pish drawn on the server's marker, his clips and hearts
     │   │   ├── PriceTagController.luau  # point at / tap your shelf price tags to set the price
     │   │   ├── PartyBarController.luau  # bottom-right party cushion: Party pill + 3 round portraits (and the mascot), tap or 1/2/3 to summon
     │   │   ├── MonsterController.luau   # draws wild monsters on their markers (model or placeholder) at their species' height, glow masks, Fx_ bone effects; boss rigs, head glow, death
@@ -2432,6 +2476,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── ElementFx.luau          # the pieces of fight effects (textured light): charge glow, comet, burst, bolt, slash, eruption, pillar, sound
     │       ├── ScreenFx.luau           # fight screen shake (one decaying shake, falls off with distance) and screen flashes
     │       ├── ClipPlayer.luau         # one-shot attack clips on monster and boss bones (model-space poses), over the procedural motion
+    │       ├── PishVisual.luau         # Pish on a marker: his model, clips, marker sounds, dirt and hearts
+    │       ├── TutorialCues.luau       # the tutorial's wordless cues: paw trail, bouncing paw, picture bubble, paw row, gift box
     │       └── AfterImage.luau         # the dodge's fading copies of the character
     └── shared/                 # → ReplicatedStorage
         ├── Config/
@@ -2497,6 +2543,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── DayCycle.luau   # the day cycle's phases and looks (plain data)
         │   ├── Ambient.luau    # tree sway, the frame watchdog, the town's animals (plain data)
         │   ├── Welcome.luau    # the welcome cinematic's flight (plain data)
+        │   ├── Pish.luau       # the tutorial: steps and pictures, gifts, luck, lessons, stuck helper, Town Pish, sounds
         │   ├── Plaza.luau      # the Card Festival Square plaza (plain data)
         │   ├── Places.luau     # place ids, Frontier portal spot
         │   ├── CardList.luau   # every card row (Set 1 and Frontier), plain data
@@ -2531,6 +2578,10 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── FrameWatchdog.luau # turns the extras off on slow frames (pure, Lune-tested)
             ├── Wander.luau        # ambient animals wandering round home (pure, Lune-tested)
             ├── WelcomePath.luau   # the welcome cinematic's camera path (pure, Lune-tested)
+            ├── TutorialRules.luau # the first visit's saved table: read, steps recorded, skip, replay (pure, Lune-tested)
+            ├── LuckRules.luau     # Pish's Luck: the hit slot's boost, the gift's floor, cooldown, badge text (pure, Lune-tested)
+            ├── LessonRules.luau   # lessons due at a level-up and waiting, the stuck helper's nudge (pure, Lune-tested)
+            ├── PishPath.luau      # Town Pish's walk round the fountain (pure, Lune-tested)
             ├── PlazaLayout.luau   # the Card Festival Square's placements, giant cards, string lights, lotus petals, chairs, planter plants (pure, Lune-tested)
             ├── ModelPreload.luau  # which creature models a client downloads in the background, and in what order (pure, Lune-tested)
             ├── CardArt.luau       # which painting a card face draws: the half-size copy when drawn small, the full one for big views (pure, Lune-tested)
@@ -2645,7 +2696,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     equippedWeapon = "starterSword", -- the weapon in hand (Config/Weapons id)
     tutorial = { firstVisit = "todo", step = 1, early = {}, firstGiven = false, giftClaimed = false, lessons = {},
                  pishLuckAt = 0 }, -- the first visit with Pish ("todo" | "done" | "skipped"), its step and steps done
-                 -- early, his first pack and end gift given, lesson visits seen, the last luck from petting him
+                 -- early, his first pack and end gift given, lesson visits (true seen, false waiting to be shown),
+                 -- the last luck from petting him
 }
 ```
 Bump `version` and write a migration whenever the shape changes.
