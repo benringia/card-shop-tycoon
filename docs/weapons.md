@@ -74,6 +74,13 @@ degrees from upright, 0.2 studs higher than the spear (the 9-stud Rift Reaper's 
 top 2.66 over the head). Its effects run from the socket out along the blade (`SwordFx.TRAIL_BLADE_SCYTHE`: 5.2 up,
 the tip 3.2 up and 3 out).
 
+**The Grim Reaper** (Thousand Cuts, the Rift Reaper's skill): not a weapon, but made the same way: Meshy from
+`assets/blender/GrimReaper/concept_B.png`, cleaned by `tools/blender/build_grim_reaper.py` (`weapon_kit.load_raw`,
+`rig_kit.optimize` to 6,000 triangles and one 1024 colour map, 16 studs tall, its origin at the bottom centre, one mesh
+`Reaper`), imported by the owner (Rig Type None) and saved as `assets/fx-models/GrimReaper.rbxm` (synced to
+`ReplicatedStorage.FxModels`). In the game it is a see-through copy with a glowing outline holding a giant copy of the
+Rift Reaper (`Config/SwordSkillFx REAPER`).
+
 ## 4. Into the game
 
 1. The owner imports `<Name>.fbx` in Studio (3D Importer, Rig Type None); the model's pivot lands on the grip's centre.

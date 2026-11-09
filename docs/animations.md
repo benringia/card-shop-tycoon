@@ -160,6 +160,14 @@ assets/blender/Animations/Scythe assets/animations/Scythe`; `Config/Swords scyth
 101503127287374, cut3 112263670560674, skill 133282199201010, draw 120963161842619, sheath 87007060779059, ready
 107381698123347, run 93344115404944); dodge, flinch, down and get up stay the Steel Sword's.
 
+**Thousand Cuts** (the Rift Reaper's own skill, spec 5.4): `tools/blender/anim_rift_reaper.py` (`FOLDER =
+"RiftReaper"`, skill only, on anim_scythe's helpers): raised high overhead arching back through the charge, the butt
+slammed into the ground in front at 0.7 (the rift), sunk to a kneel leaning on the scythe and swaying through the cuts,
+up and wound over the right shoulder, then the X: down to the left at the "Hit" (1.8, the harvest) and down to the
+right; 2.6 in all. `run_sword_moves.py -- --sword rift_reaper`, then `build_kfs` into `assets/animations/RiftReaper`; a
+test reads the exported JSON so `Config/Swords riftReaper.skill` keeps the marker's timing. The Grim Reaper itself has
+no rig: code moves it (`Util/SwordSkillFx` thousandCuts, `Config/SwordSkillFx REAPER`).
+
 ## Making or changing moves
 
 1. In a background Blender (`run_sword_moves.py`, above; the older moves the same way with their names), or through

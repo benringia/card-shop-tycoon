@@ -2005,6 +2005,27 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   Rift Devourer (adds for its arcs to reach): 60% / 69% / 87%, the same with its arcs at 20% (88%) or 25% (86%): an
   Epic's Power, not the arcs; inside the limit on its own tier boss. The three boss scythes' own skills (Eight Legs,
   Storm Cyclone, Thousand Cuts) are part 2.
+- **Thousand Cuts** (the Rift Reaper's own skill, spec 5.4, plan `2026-11-09-thousand-cuts.md`; the owner: "the
+  legendary scythe skill is boring. make it flashy violent, exaggerated. you can even summon a grim reaper as effect.
+  screenshake. ground breaking anything to make it legendary"; storyboard and Reaper concept B approved 2026-11-09).
+  Its own moveset `riftReaper` (the scythe's cuts, moves and sounds, the same tables). Same rules as every skill (0.9
+  of a hit, the shared cooldown, a dodge or switch before the hit cancels it, free after it, you never move and can
+  always be hit). 2.6 s: raised high overhead through the charge (10 violet cracks racing out to 14 studs, your screen
+  darkening, a growing rumble); at 0.7 s the butt slammed into the ground, the rift tearing open 6 studs behind you and
+  the Grim Reaper rising out of it (16 studs, see-through with a glowing outline, holding a giant Rift Reaper;
+  `ReplicatedStorage.FxModels.GrimReaper`, moved by code: `SwordSkillFx.REAPER`), souls swirling; a kneel while you
+  fade half into the rift and four waves of slashes rip across the area, slabs of ground heaving up, a jolt each wave;
+  the harvest at 1.8 s (the hit: every foe within 14 studs, `spin`): an X slash as the Reaper spins its giant scythe a
+  full circle (a crescent ring), three shockwaves, 18 rocks, a 22-stud pillar of light, `SHAKE.thousandCuts` 1.25 (the
+  biggest); the Reaper dissolves into rising souls and the cracks close by 3.2 s. A camera moment framed on you (the
+  wide shot 30 studs out, looking up at the Reaper). Another player's cast: three slashes a wave, no darkening, slabs,
+  swirl or souls, a third of the rocks. Sounds (Pro Sound Effects, measured): the charge and rumble, Avalanche Crashing
+  3 as the ground splits, a spirit growl and Unhappy Angels Discordant Choral Wail as the Reaper rises, a Soul Slice
+  each wave, a reversed whoosh into the X, a thunder roar and slam on the harvest. The HUD button "Thousand Cuts"
+  (`UIIcons.Skull`). The Reaper: Meshy from concept B (the void reaper king), cleaned by
+  `tools/blender/build_grim_reaper.py` (6,000 triangles); the move keyed in `tools/blender/anim_rift_reaper.py`.
+  Balance re-run (tools/balance/bosses, Prism Hydra, 200 fights): unchanged, +0 C 68% and +10 S 84% at 0.8x, the 1x
+  fight 125 s (the skill's damage is the same).
 - **Quick weapon switch** (weapons round 2, the owner's pick A): a round chip on the right edge at mid height with your
   weapon's portrait in its rarity's ring, `<` and `>` either side, Q (next) / Z (previous, `Weapons.PREVIOUS_KEY`, its
   badge on `<`; owner 2026-11-09; Shift+Q too, but Shift is the dodge in a fight) on keyboards, a swipe on the chip; it
