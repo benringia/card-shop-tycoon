@@ -1374,7 +1374,13 @@ local function showPopup(swordId: string)
 	view.BackgroundTransparency = 1
 	view.LayoutOrder = 1
 	view.Parent = list
-	local model = makeModel(swordId)
+	-- The weapon as you hold it (a weapon with its own look needs its grade and level)
+	local grade, level = "C", 0
+	local character = player.Character
+	if character then
+		grade, level = gradeAndLevel(character)
+	end
+	local model = makeModel(swordId, grade, level)
 	for _, item in model:GetDescendants() do
 		if item:IsA("Weld") then
 			item:Destroy() -- a still picture: anchored parts turn as one with PivotTo (welds would drag each other)
