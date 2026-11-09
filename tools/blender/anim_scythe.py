@@ -11,7 +11,7 @@ length).
 How the scythe points: its grip is the spear's (anim_kit.hand_grip("scythe"), angleX -90): a hanging arm holds the shaft
 straight ahead, the blade out to the left of its top, flat. Its pitch (degrees up from straight ahead) is about the sum
 of the shoulder's, the elbow's and the wrist's x angles (arm()); its yaw comes from turning the body (R, W; + turns to
-the left). Held upright at the right side between moves, the blade over the head; every attack swings it down into both
+the left). Held upright at the right side between moves, the blade facing forward (HOLD_TURN); every attack swings it down into both
 hands with a heavy wind-up (two_hands, the left hand up the shaft). The sweeps go right to left, the blade's tip leading
 (a real scythe's stroke); the blade sits about 30 degrees left of where the shaft points, so a Hit's shaft points a
 little right of the front.
@@ -38,8 +38,12 @@ def arm(rs, re, pitch, rwz=0):
 
 
 LEFT_FREE = {"LS": (8, 0, -8), "LE": (20, 0, 0)}
-# Upright at the right side, the butt by the right foot, the blade over the head (the spear's stance)
-READY = dict(arm((-4, 0, 14), 64, 88, -12), **LEFT_FREE)
+# Held between moves (ready, run): the scythe turned a quarter round its shaft by the wrist so the blade faces forward
+# (owner 2026-11-09: "the blade is facing on my head. make it look forward"); the attacks hold it with the blade to the
+# side (flat, the tip leading the sweeps) and turn into that through their wind-ups
+HOLD_TURN = 90
+# Upright at the right side, the butt by the right foot, the blade forward over your head
+READY = dict(arm((-4, 0, 14), 64, 88, -12 + HOLD_TURN), **LEFT_FREE)
 # The waist, neck and free left arm trail; the right arm aims the scythe as one (the spear's overlap)
 LAG_SCYTHE = {"W": 1, "N": 2, "LS": 1, "LE": 2, "LW": 2}
 
@@ -182,10 +186,11 @@ def _skill(rig, f):
 
 
 def _ready(rig, f):
-    """Upright at the right side while drawn (upper body only: Roblox's idle and walk keep the legs), breathing."""
+    """Upright at the right side while drawn, the blade forward (upper body only: Roblox's idle and walk keep the
+    legs), breathing."""
     F = lambda t: kit.frame_at(f, t)  # noqa: E731
     kit.key_pose(rig, F(0), READY)
-    kit.key_pose(rig, F(0.9), dict(READY, W=(3, 0, 0), N=(-2, 0, 0), **arm((-2, 0, 14), 66, 87, -12)))
+    kit.key_pose(rig, F(0.9), dict(READY, W=(3, 0, 0), N=(-2, 0, 0), **arm((-2, 0, 14), 66, 87, -12 + HOLD_TURN)))
     kit.key_pose(rig, F(1.8), READY)
     kit.key_root(rig, F(0), 0)
     kit.plant_feet(F(0))
@@ -217,9 +222,9 @@ def _sheath(rig, f):
 
 def _run(rig, f):
     """Running with the scythe (upper body only, over Roblox's run): held at the right side tilted forward, the blade
-    up, the left arm pumping."""
+    up and facing forward, the left arm pumping."""
     F = lambda t: kit.frame_at(f, t)  # noqa: E731
-    scythe = arm((10, 0, 14), 50, 60, -10)
+    scythe = arm((10, 0, 14), 50, 60, -10 + HOLD_TURN)
     kit.key_pose(rig, F(0), dict(scythe, LS=(38, 0, -6), LE=(70, 0, 0), W=(10, 8, 0), N=(-6, -6, 0)))
     kit.key_pose(rig, F(0.33), dict(scythe, LS=(-30, 0, -6), LE=(40, 0, 0), W=(10, -8, 0), N=(-6, 6, 0)))
     kit.key_pose(rig, F(0.66), dict(scythe, LS=(38, 0, -6), LE=(70, 0, 0), W=(10, 8, 0), N=(-6, -6, 0)))

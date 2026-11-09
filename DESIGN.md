@@ -1972,7 +1972,7 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   ahead, since every cut soft-aims you at the foe; 0.42 of 0.9), Whirlwind (two spins with it held out, every foe within
   10; 0.98 of 1.7) and the skill Reaping Cyclone (three spins with it raised high, a ring of crescents thrown out at the
   end of each spin, the third the hit: every foe within 9; 0.94 of 1.6; free after the hit; the HUD button "Reaping
-  Cyclone" with the spare glyph `CrescentSparks`). Held upright at the right side with the blade over the head (the
+  Cyclone" with the spare glyph `CrescentSparks`). Held upright at the right side with the blade facing forward (owner 2026-11-09; the wrist turns it a quarter for the hold: the
   spear's grip turned half round the shaft, `GRIPS.scythe`: the imported models carry their blade along +X), on the back
   48 degrees from upright, 0.2 studs higher than the spear (the 9-stud Rift Reaper's butt 0.38 over the ground, its top
   2.66 over the head). Perks: the Widow's Venom (the Sunforged's burn as poison, 2.5% of the creature's ATK a second for 3

@@ -149,7 +149,7 @@ up from the butt, the socket at the top and the blade 3.2 studs out to +X with i
 at `hand_grip("scythe")`: the spear's tilt (-90) and a half turn round the shaft (twist 180; the imported models carry
 their blade along +X), so the blade sits to the left of the right hand: over the head when upright. It uses the
 spear's helpers (`arm(shoulder, elbow, pitch)`, two hands 1.5 studs up the shaft, the waist and neck trailing). Body
-yaw: + turns to the left. Moves: ready (upright at the right side, the blade over the head), draw, sheath, run, Reap
+yaw: + turns to the left. Moves: ready (upright at the right side; the wrist turns the scythe a quarter round its shaft, `HOLD_TURN`, so the blade faces forward: owner 2026-11-09), draw, sheath, run (the same turn), Reap
 (wound back over the right shoulder, one flat sweep right to left, the tip leading, "Hit" 0.34 of 0.85, a 1.1-stud
 step), Back Sweep (crouched, a full spin to the left: the blade across the front, behind you and through the front
 again, "Hit" 0.42 of 0.9), Whirlwind (two spins with the scythe held out at shoulder height, "Hit" 0.98 of 1.7) and
