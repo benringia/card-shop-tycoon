@@ -280,10 +280,10 @@ local function swirl(center: () -> Vector3, radius: number, color: Color3, key: 
 end
 
 -- A glowing fissure tearing along the ground from `from` to `to` over `grow` seconds (a tiled crack over a bright seam,
--- `spark` particles spitting up out of it, a light), held `linger` seconds, then fading over `fade`. Returns a stop (a
--- cancelled charge: it stops growing and fades out at once)
+-- `spark` particles spitting up out of it, a light unless `lit` is false), held `linger` seconds, then fading over
+-- `fade`. Returns a stop (a cancelled charge: it stops growing and fades out at once)
 local CRACK_STOP = 0.25 -- seconds a stopped fissure takes to fade
-local function fissure(from: Vector3, to: Vector3, width: number, glow: Color3, deep: Color3, grow: number, linger: number, fade: number, spark: string): () -> ()
+local function fissure(from: Vector3, to: Vector3, width: number, glow: Color3, deep: Color3, grow: number, linger: number, fade: number, spark: string, lit: boolean?): () -> ()
 	local flat = Vector3.new(to.X - from.X, 0, to.Z - from.Z)
 	local length = flat.Magnitude
 	if length < 0.5 then
@@ -307,11 +307,15 @@ local function fissure(from: Vector3, to: Vector3, width: number, glow: Color3, 
 	local spit = emitter(seam, spark, glow, { size = { 0.55, 0.1 }, life = { 0.5, 0.9 }, speed = { 3, 8 }, spread = 25, accel = UP * 2, brightness = 2.2 })
 	spit.Shape = Enum.ParticleEmitterShape.Box
 	spit.Rate = detail(80)
-	local light = Instance.new("PointLight")
-	light.Color = deep
-	light.Range = math.max(width * 4, length * 0.6)
-	light.Brightness = 2.5
-	light.Parent = seam
+	local light: PointLight? = nil
+	if lit ~= false then
+		local made = Instance.new("PointLight")
+		made.Color = deep
+		made.Range = math.max(width * 4, length * 0.6)
+		made.Brightness = 2.5
+		made.Parent = seam
+		light = made
+	end
 	local started = os.clock()
 	local connection: RBXScriptConnection
 	connection = RunService.RenderStepped:Connect(function()
@@ -336,7 +340,9 @@ local function fissure(from: Vector3, to: Vector3, width: number, glow: Color3, 
 		spit.Rate = 0
 		tween(crack, seconds, { Transparency = 1 })
 		tween(seam, seconds, { Transparency = 1 })
-		tween(light, seconds, { Brightness = 0 })
+		if light then
+			tween(light, seconds, { Brightness = 0 })
+		end
 	end
 	task.delay(grow + linger, function()
 		fadeOut(fade)
@@ -434,12 +440,13 @@ local function piece(color: Color3, material: Enum.Material): Part
 	return p
 end
 
--- `bulb`: a glowing bud on its tip in that colour; `details` false: stems only (no thorns, leaf or bud)
-local function makeVine(base: Vector3, inward: Vector3, height: number, thick: number, color: Color3, leafColor: Color3, material: Enum.Material, bulb: Color3?, details: boolean?): Vine
+-- `bulb`: a glowing bud on its tip in that colour; `details` false: stems only (no thorns, leaf or bud); `pieces`: stem
+-- pieces (VINE_PIECES; more curl smoother, Titan's Wrath's big vines)
+local function makeVine(base: Vector3, inward: Vector3, height: number, thick: number, color: Color3, leafColor: Color3, material: Enum.Material, bulb: Color3?, details: boolean?, pieces: number?): Vine
 	local full = details ~= false
 	local stems: { Part } = {}
 	local thorns: { Part } = {}
-	for _ = 1, VINE_PIECES do
+	for _ = 1, pieces or VINE_PIECES do
 		local stem = piece(color, material)
 		stem.Shape = Enum.PartType.Cylinder
 		table.insert(stems, stem)
@@ -475,14 +482,14 @@ end
 local function placeVine(v: Vine, grow: number, lean: number, curl: number)
 	local shown = grow > 0.02
 	local at = v.base
-	local length = v.height / VINE_PIECES * grow
+	local length = v.height / #v.stems * grow
 	local angle = lean
 	local side = v.inward:Cross(UP)
 	for index, stem in v.stems do
 		angle += curl
 		local direction = UP * math.cos(angle) + v.inward * math.sin(angle)
 		local to = at + direction * length
-		local width = v.thick * (1 - (index - 1) * 0.25)
+		local width = v.thick * (1 - (index - 1) / #v.stems * 0.75) -- tapering to a quarter (three pieces: 1, 0.75, 0.5)
 		stem.Size = Vector3.new(math.max(length + width * 0.3, 0.05), width, width)
 		stem.CFrame = CFrame.lookAt((at + to) / 2, to) * CFrame.Angles(0, math.rad(90), 0)
 		stem.Transparency = if shown then 0 else 1
@@ -1499,7 +1506,7 @@ local function titansWrath(root: BasePart, spec: SwordSkillFxConfig.Look, colors
 			local angle = index / beats.cracks * math.pi * 2 + 0.4
 			local out = Vector3.new(math.cos(angle), 0, math.sin(angle))
 			local reach = beats.crackReach * scale * (0.7 + (index % 3) * 0.15)
-			table.insert(stops, fissure(feet, feet + out * reach, 0.9 * scale, gold, green, charging, beats.close - beats.peak, beats.fade, "spark"))
+			table.insert(stops, fissure(feet, feet + out * reach, 0.9 * scale, gold, green, charging, beats.close - beats.peak, beats.fade, "spark", index % 3 == 0))
 		end
 		local ground = holder(CFrame.new(feet + UP * 0.3) * CFrame.Angles(0, 0, math.rad(90)), Vector3.new(0.2, 4, 4), charging + 1.5)
 		local dust = emitter(ground, "smoke", DUST, { size = { 1.4 * scale, 3 * scale }, life = { 0.5, 0.9 }, speed = { 2, 5 }, spread = 80, light = 0, brightness = 1, start = 0.4 })
@@ -1599,45 +1606,128 @@ local function titansWrath(root: BasePart, spec: SwordSkillFxConfig.Look, colors
 			hooks.burst(middle)
 		end
 		-- the fissure tearing open the whole line, a gold seam in it (a little above the ground: 14 studs of rocky ground
-		-- would bury a flat crack in its bumps)
+		-- would bury a flat crack in its bumps). Owner 2026-11-09 ("make the vines more epic and exaggerated ground cracks
+		-- fissures and etc. this is a legendary weapon"): wide, cracks branching off both sides as the tear passes, slabs
+		-- of ground heaved up along it, rocks flung up out of it, pillars of light, towering thorns and titan vines
 		local linger = beats.close - beats.hit - beats.tear
 		local lift = UP * 0.25
-		fissure(from + ahead * 0.8 + lift, finish + lift, beats.width * 0.65 * scale, green, gold, beats.tear, linger, beats.fade, "shard")
-		fissure(from + ahead * 0.8 + lift * 1.2, finish + lift * 1.2, beats.width * 0.2 * scale, gold, green, beats.tear, linger, beats.fade, "spark")
+		local side = ahead:Cross(UP)
+		fissure(from + ahead * 0.8 + lift, finish + lift, beats.tearWidth * scale, green, gold, beats.tear, linger, beats.fade, "shard")
+		fissure(from + ahead * 0.8 + lift * 1.2, finish + lift * 1.2, beats.tearWidth * 0.3 * scale, gold, green, beats.tear, linger, beats.fade, "spark")
+		local branches = if full then beats.branches else math.ceil(beats.branches / 2)
+		for index = 1, branches do
+			local share = 0.12 + 0.83 * (index - 0.5) / branches
+			local sign = if index % 2 == 0 then 1 else -1
+			local out = (side * sign + ahead * (0.25 + (index % 3) * 0.2)).Unit
+			local at = from + ahead * beats.length * share + side * sign * beats.tearWidth * 0.35 * scale
+			local reach = beats.branchReach * scale * (0.55 + (index % 4) * 0.15)
+			task.delay(beats.tear * share, function()
+				fissure(at + lift, at + out * reach + lift, 1.1 * scale, green, gold, 0.18, linger - beats.tear * share, beats.fade, "shard", false)
+			end)
+		end
 		-- green light bursting up out of it, dust and earth along it
-		local strip = holder(CFrame.lookAt(middle + UP * 0.3, middle + UP * 0.3 + ahead), Vector3.new(beats.width * scale, 0.3, beats.length), linger + beats.fade + 1.5)
-		local rays = emitter(strip, "glow", green, { size = { 1.6 * scale, 0.2 }, life = { 0.5, 0.9 }, speed = { 8, 16 }, spread = 12, brightness = 3 })
+		local strip = holder(CFrame.lookAt(middle + UP * 0.3, middle + UP * 0.3 + ahead), Vector3.new(beats.tearWidth * scale, 0.3, beats.length), linger + beats.fade + 1.5)
+		local rays = emitter(strip, "glow", green, { size = { 1.8 * scale, 0.2 }, life = { 0.6, 1 }, speed = { 10, 20 }, spread = 12, brightness = 3 })
 		rays.Shape = Enum.ParticleEmitterShape.Box
 		rays.EmissionDirection = Enum.NormalId.Top
 		rays:Emit(detail(spec.count))
-		rays.Rate = detail(40)
-		local earth = emitter(strip, "smoke", DUST, { size = { 2 * scale, 4.5 * scale }, life = { 0.6, 1.1 }, speed = { 3, 8 }, spread = 40, light = 0, brightness = 1, start = 0.35 })
+		rays.Rate = detail(50)
+		local earth = emitter(strip, "smoke", DUST, { size = { 2.5 * scale, 6 * scale }, life = { 0.7, 1.2 }, speed = { 4, 10 }, spread = 45, light = 0, brightness = 1, start = 0.35 })
 		earth.Shape = Enum.ParticleEmitterShape.Box
 		earth.EmissionDirection = Enum.NormalId.Top
-		earth:Emit(detail(40))
-		for index = 1, 5 do
-			task.delay(index * 0.04, function()
-				ElementFx.burst(from + ahead * beats.length * index / 6, green, 0.9 * scale)
-			end)
-		end
+		earth:Emit(detail(70))
 		task.delay(linger, function()
 			rays.Rate = 0
 		end)
-		-- thorns bursting up along it, alternately left and right, sinking back as it closes
-		local side = ahead:Cross(UP)
+		local pillarColors: Colors = { deep = green, glow = green:Lerp(WHITE, 0.4), element = colors.element }
+		for index = 1, beats.pillars do
+			local share = index / (beats.pillars + 1)
+			local base = from + ahead * beats.length * share
+			task.delay(beats.tear * share + 0.05, function()
+				beam(base, base + UP * beats.pillarHeight * scale * (0.8 + (index % 2) * 0.3), 0.9 * scale, pillarColors, 0.6)
+				ElementFx.burst(base + UP * 0.5, green, 0.9 * scale)
+			end)
+		end
+		if full then
+			-- slabs of ground heaved up along both sides, the edge by the tear lifted, sinking back as it closes
+			local perSide = math.ceil(beats.slabs / 2)
+			for index = 1, beats.slabs do
+				local sign = if index % 2 == 0 then 1 else -1
+				local share = (math.ceil(index / 2) - 0.5) / perSide
+				local size = beats.slabSize * scale * (0.8 + (index % 3) * 0.2)
+				local base = from + ahead * beats.length * share + side * sign * (beats.tearWidth * 0.5 * scale + size * 0.45)
+				local frame = CFrame.lookAt(base, base + ahead)
+				local slab = piece(STONE:Lerp(Color3.new(), 0.15 + (index % 3) * 0.08), Enum.Material.Slate)
+				slab.Size = Vector3.new(size, size * 0.3, size * 1.3)
+				slab.CFrame = frame * CFrame.new(0, -size * 0.3, 0)
+				task.delay(beats.tear * share, function()
+					slab.Transparency = 0
+					tween(slab, 0.14, { CFrame = frame * CFrame.new(0, size * 0.12, 0) * CFrame.Angles(0, 0, -sign * math.rad(28 + (index % 3) * 10)) })
+				end)
+				task.delay(beats.close - beats.hit, function()
+					tween(slab, beats.fade, { CFrame = frame * CFrame.new(0, -size * 0.4, 0), Transparency = 1 })
+				end)
+				Debris:AddItem(slab, beats.close - beats.hit + beats.fade + 0.3)
+			end
+			-- rocks flung up out of the tear as it passes, tumbling down beside it
+			for index = 1, beats.debris do
+				local share = (index - 0.5) / beats.debris
+				local rock = piece(STONE:Lerp(Color3.new(), (index % 4) * 0.08), Enum.Material.Slate)
+				rock.Size = Vector3.new(0.7, 0.55, 0.7) * scale * (0.6 + (index % 3) * 0.35)
+				local start = from + ahead * beats.length * share + lift
+				local sideways = side * (if index % 2 == 0 then 1 else -1) * (0.6 + (index % 3) * 0.5) * scale
+				local top = start + sideways + UP * beats.debrisHeight * scale * (0.5 + (index % 4) * 0.17)
+				local land = start + sideways * 2.4
+				rock.CFrame = CFrame.new(start)
+				task.delay(beats.tear * share, function()
+					rock.Transparency = 0
+					TweenService:Create(rock, TweenInfo.new(0.32, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { CFrame = CFrame.new(top) * CFrame.Angles(index, index * 2, 0.6) }):Play()
+					task.delay(0.32, function()
+						TweenService:Create(rock, TweenInfo.new(0.38, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { CFrame = CFrame.new(land) * CFrame.Angles(index * 2, index, 1.2) }):Play()
+					end)
+					task.delay(1.2, function()
+						tween(rock, 0.5, { Transparency = 1 })
+					end)
+				end)
+				Debris:AddItem(rock, beats.tear + 2.2)
+			end
+		end
+		-- thorns bursting up along it, alternately left and right, most arching over it, every third flaring out, all of
+		-- different heights (Studio 2026-11-09: straight and even they read as a fence), sinking back as it closes
 		local vines: { Vine } = {}
 		local count = if full then beats.thorns else math.ceil(beats.thorns / 2)
 		for index = 1, count do
 			local sign = if index % 2 == 0 then 1 else -1
-			local base = from + ahead * (beats.length * (index - 0.4) / count) + side * sign * beats.width * 0.3 * scale
-			local inward = (ahead * 0.6 - side * sign * 0.4).Unit
-			local thorn = makeVine(base, inward, beats.thornHeight * scale * (0.7 + (index % 3) * 0.2), 0.5 * scale, rgb(TITAN.bark), green, Enum.Material.Wood, gold, full)
+			local flare = index % 3 == 0
+			local base = from + ahead * (beats.length * (index - 0.4) / count) + side * sign * beats.tearWidth * 0.45 * scale
+			local inward = if flare then (ahead * 0.3 + side * sign * 0.7).Unit else (ahead * 0.4 - side * sign * 0.6).Unit
+			local tall = 0.55 + ((index * 37) % 7) / 7 * 0.6
+			local thorn = makeVine(base, inward, beats.thornHeight * scale * tall, beats.thornThick * scale * (0.8 + tall * 0.3), rgb(TITAN.bark), green, Enum.Material.Wood, if flare then gold else nil, full, 4)
 			thorn.growAt = beats.tear * (index - 1) / count
-			thorn.grow = 0.12
-			thorn.lean = -0.1
-			thorn.curl = 0.16
+			thorn.grow = 0.18
+			thorn.lean = if flare then 0.1 else -0.25
+			thorn.curl = if flare then 0.14 else 0.26
 			table.insert(vines, thorn)
 		end
+		-- the titan vines: towering at the line's end as the tear reaches it, leaning out then curling back over the
+		-- fissure like great arches
+		local giants = if full then beats.giants else 1
+		for index = 1, giants do
+			local offset = if giants > 1 then (index - (giants + 1) / 2) / ((giants - 1) / 2) else 0 -- -1 to 1 across
+			local base = finish + side * offset * beats.tearWidth * 0.7 * scale - ahead * math.abs(offset) * 0.8 * scale
+			local inward = (-ahead * 0.7 - side * offset * 0.3).Unit
+			local giant = makeVine(base, inward, beats.giantHeight * scale * (1 - math.abs(offset) * 0.15), beats.giantThick * scale, rgb(TITAN.bark), green, Enum.Material.Wood, gold, full, 6)
+			giant.growAt = beats.tear + 0.05 + index * 0.07
+			giant.grow = 0.3
+			giant.lean = -0.35
+			giant.curl = 0.24
+			table.insert(vines, giant)
+		end
+		task.delay(beats.tear, function()
+			ElementFx.eruption(finish, rgb(TITAN.bark), 3 * scale, 14)
+			ElementFx.ring(finish, gold, 8 * scale, 0.5)
+			leafBurst(finish, pillarColors, 30, scale, 14)
+		end)
 		animateVines(vines, nil, linger, beats.fade)
 		-- petals drifting down over the line
 		task.delay(0.3, function()

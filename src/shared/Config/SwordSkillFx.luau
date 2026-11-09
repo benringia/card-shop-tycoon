@@ -202,7 +202,12 @@ local LOOKS: { [string]: Look } = {
 	-- thorns (`thornHeight` studs) bursting out of it (SHAKE.titansWrath and its burstSound); it glows on until `close`,
 	-- closing over `fade`, `petals` petals drifting down. Your own plays the camera moment: the side shot of your stance
 	-- (looking `camFocus` studs above your root) through the charge, the wide shot of the whole line from `camAt` (looking
-	-- `camLookUp` studs up), held `camHold`.
+	-- `camLookUp` studs up), held `camHold`. Owner 2026-11-09 ("make the vines more epic and exaggerated ground cracks
+	-- fissures and etc. this is a legendary weapon"): the fissure `tearWidth` studs wide with `branches` cracks branching
+	-- off it up to `branchReach` studs, `slabs` slabs of ground (`slabSize` studs) heaved up along both sides, `debris`
+	-- rocks flung up to `debrisHeight` studs out of it, `pillars` pillars of light `pillarHeight` tall bursting from it,
+	-- the thorns `thornThick` thick, and `giants` titan vines (`giantHeight` tall, `giantThick` thick) erupting at the
+	-- line's end as the tear reaches it.
 	titansWrath = {
 		kind = "skill",
 		textures = { "glow", "spark", "star", "shard", "smoke", "ring", "crack" },
@@ -216,27 +221,40 @@ local LOOKS: { [string]: Look } = {
 			charge = 0.1,
 			peak = 1.22,
 			hit = 1.35,
-			close = 2.7,
-			fade = 0.7,
-			tear = 0.22,
+			close = 3.2,
+			fade = 0.8,
+			tear = 0.3,
 			length = 14,
 			width = 4,
+			tearWidth = 3.6,
 			glow = 2.4,
 			inflow = 4,
 			swirl = 3.2,
-			cracks = 7,
-			crackReach = 6,
+			cracks = 12,
+			crackReach = 9,
 			rumbleEvery = 0.12,
 			ring = 11,
 			rocks = 12,
 			beam = 2.2,
-			thorns = 9,
-			thornHeight = 4.5,
-			petals = 45,
+			thorns = 14,
+			thornHeight = 8,
+			thornThick = 0.9,
+			giants = 3,
+			giantHeight = 13,
+			giantThick = 1.8,
+			branches = 10,
+			branchReach = 6,
+			slabs = 10,
+			slabSize = 2.2,
+			debris = 16,
+			debrisHeight = 6,
+			pillars = 5,
+			pillarHeight = 10,
+			petals = 60,
 			camAt = 1.35,
-			camHold = 0.9,
+			camHold = 1.3,
 			camFocus = 0.5, -- the hero shot looks at your stance (CINEMATIC.lookUp is for a jump)
-			camLookUp = 1.2, -- the wide shot looks low, along the fissure
+			camLookUp = 3, -- the wide shot looks low along the fissure, the titan vines' tops still in frame
 		},
 	},
 	-- Magma Cleave (the Magma Halberd; spec 2026-11-09-halberd-and-trident-skills-design 3: "one big swipe. with flaming

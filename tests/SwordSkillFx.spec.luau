@@ -116,6 +116,7 @@ return {
 			skyPierce = { "ahead", "burst", "rings", "ring", "cracks", "crackLength", "rocks", "rockSpeed", "dust", "flash" },
 			piercingRush = { "charge", "leave", "arrive", "hit", "length", "width", "afterimages", "glow", "swirl", "flashSeconds", "bursts", "skid" },
 			magmaCleave = { "windup", "hit", "radius", "angle", "crescent", "embers", "smoke" },
+			titansWrath = { "charge", "peak", "hit", "close", "fade", "tear", "length", "width", "tearWidth", "glow", "inflow", "swirl", "cracks", "crackReach", "rumbleEvery", "ring", "rocks", "beam", "thorns", "thornHeight", "thornThick", "giants", "giantHeight", "giantThick", "branches", "branchReach", "slabs", "slabSize", "debris", "debrisHeight", "pillars", "pillarHeight", "petals", "camAt", "camHold", "camFocus", "camLookUp" },
 			torrentStrike = { "raise", "slam", "hit", "spread", "slowAfter", "slowScale", "slowEase", "slowFeed", "fall", "radius", "inner", "torrents", "spread", "pairShare", "nearest", "apart", "lane", "columnHeight", "outerHeight", "cracks", "foeEdge", "foeSizeStuds", "foeSizeMax", "camAt", "camHold", "camFocus", "camLookUp", "camUp", "camOut" },
 		}
 		for look, keys in needs do
@@ -253,6 +254,22 @@ return {
 		local shake = SwordSkillFx.SHAKE :: any
 		expect.equal(shake.titansRumble > 0 and shake.titansRumble < shake.titansWrath, true, "a rumble under the fissure's big shake")
 		expect.equal(shake.titansWrath >= shake.impact, true, "the fissure shakes at least as hard as a burst")
+	end,
+
+	-- Owner 2026-11-09: "on Titans lance skill: make the vines more epic and exaggerated ground cracks fissures and etc.
+	-- this is a legendary weapon"
+	["Titan's Wrath, exaggerated: giant vines, a wide branching fissure, heaved slabs, flung rocks, light pillars"] = function()
+		local b = SwordSkillFx.LOOKS.titansWrath.beats :: { [string]: number }
+		expect.equal(b.thorns >= 14 and b.thornHeight >= 7 and b.thornThick >= 0.8, true, `{b.thorns} thorn vines {b.thornHeight} studs tall (were 9 x 4.5, 0.5 thick)`)
+		expect.equal(b.giants >= 3 and b.giantHeight >= b.thornHeight * 1.4 and b.giantThick > b.thornThick, true, "titan vines towering over the rest at the line's end")
+		expect.equal(b.tearWidth > b.width * 0.65, true, `the fissure {b.tearWidth} studs wide (was {b.width * 0.65})`)
+		expect.equal(b.branches >= 8 and b.branchReach >= 4, true, "cracks branching off the fissure")
+		expect.equal(b.slabs >= 8 and b.slabSize >= 1.5, true, "ground slabs heaved up along it")
+		expect.equal(b.debris >= 12 and b.debrisHeight >= 4, true, "rocks flung up out of it")
+		expect.equal(b.pillars >= 4 and b.pillarHeight >= 8, true, "pillars of light bursting from it")
+		expect.equal(b.cracks >= 12 and b.crackReach >= 8, true, `the charge's cracks: {b.cracks} reaching {b.crackReach} studs (were 7 x 6)`)
+		expect.equal(b.close - b.hit >= 1.6, true, "it all stands a while before closing")
+		expect.equal(b.camHold >= 1.2, true, "the wide shot holds while the vines rise")
 	end,
 
 	-- Studio 2026-11-08: the cinematic's hero shot looked 5.5 studs above you (Sunfall Cleave's jump), so Titan's Wrath's
