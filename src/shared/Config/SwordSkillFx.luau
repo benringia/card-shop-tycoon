@@ -258,10 +258,14 @@ local LOOKS: { [string]: Look } = {
 	-- ring and `cracks` glowing blue cracks spread from the prongs (SHAKE.torrentSlam); at `hit` `columns` columns burst
 	-- up on a ring `inner` studs round you (`columnHeight` tall: spray, falling droplets, mist, a splash ring at each
 	-- foot) and a big one under every foe in reach (SHAKE.torrentStrike; at its near edge, larger for a bigger foe:
-	-- SwordSkillFxRules.torrentFoes); at `second` a wider ring at `radius` studs (`outerHeight` tall), only for show;
-	-- from `fall` they fall back as rain and mist. The rings are turned by `ringOffset` so no column stands at your sides,
-	-- where the camera shoots from. Your own plays the camera pull-back from `camAt`, held `camHold`, framed on you (the
-	-- hero shot `camFocus` above your root, the wide one `camLookUp` up from `camUp` high).
+	-- SwordSkillFxRules.torrentFoes); at `second` a wider ring at `radius` studs (`outerHeight` tall), only for show.
+	-- Owner 2026-11-09 ("torrents need to be higher up with slowmo effect on waters and make the torrents last longer"):
+	-- at `slow`, the burst at its top, all of the water eases over `slowEase` to `slowScale` of its speed and the columns
+	-- keep pouring, hanging in slow motion, until `fall`: back to full speed, they stop and fall back as rain and mist.
+	-- The rings are turned by `ringOffset` / `outerOffset` so every column stands clear of the line from the side camera
+	-- to you. Your own plays the camera pull-back from `camAt`, held `camHold`, framed on you: the hero shot `camFocus`
+	-- above your root, the wide one low and far out (`camOut` studs, looking `camLookUp` up from `camUp` above that) so
+	-- the columns' whole height shows.
 	torrentStrike = {
 		kind = "skill",
 		textures = { "raindrop", "ring", "glow", "smoke", "crack", "waterAura" },
@@ -274,23 +278,29 @@ local LOOKS: { [string]: Look } = {
 			raise = 0.05,
 			slam = 0.55,
 			hit = 0.75,
-			second = 1.0,
-			fall = 1.5,
+			second = 0.85,
+			slow = 1.2, -- the burst at its top (Studio 2026-11-09: slowed sooner, the columns crawled up and looked short)
+			slowScale = 0.25,
+			slowEase = 0.25,
+			slowFeed = 2, -- the columns pour this much faster while slowed, so their feet stay full
+			fall = 2.65,
 			radius = 12,
 			inner = 6,
 			columns = 8,
-			columnHeight = 9,
-			outerHeight = 11,
+			columnHeight = 18,
+			outerHeight = 22,
 			cracks = 6,
-			ringOffset = 0.25, -- the inner ring a quarter step round, the outer three quarters: none at your sides
+			ringOffset = 0.5, -- both rings half a step round: none on the side camera's line to you
+			outerOffset = 0.5,
 			foeEdge = 0.8, -- a foe's column at its near edge, this share of its radius in from its centre
 			foeSizeStuds = 3, -- ...one size larger per this many studs of its radius,
 			foeSizeMax = 3, -- up to this
 			camAt = 0.75,
-			camHold = 0.7,
+			camHold = 1.3, -- through the slow motion
 			camFocus = 0.5,
-			camLookUp = 2,
-			camUp = 12, -- the wide shot above the tallest columns
+			camLookUp = 10,
+			camUp = -2, -- a little under the look: up at the columns
+			camOut = 26,
 		},
 	},
 }

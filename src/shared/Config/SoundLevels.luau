@@ -128,5 +128,8 @@ return {
 		["9120023325"] = 104, -- wrathThrust: Thunder With Lion Roar Searing Blast 5
 		["9120629528"] = 115, -- rushDash: Web Whoosh Fast Heavy Swooshes 3
 		["9114658416"] = 123, -- skid: Gravel Slide 1
+		-- Magma Cleave's charge-up (weapons round 2.5 part 2), measured 2026-11-09
+		["9114463016"] = 110, -- cleaveCharge: Flame Licks 4
+		["9118158113"] = 92, -- cleaveRush: Reversed Whoosh Backwards Hissing Burst 2
 	} :: { [string]: number },
 }

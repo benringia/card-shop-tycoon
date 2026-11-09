@@ -48,9 +48,10 @@ export type Skill = { power: number, hitAt: number, length: number, cooldown: nu
 export type SwordFx = { slash: string, finisher: string, skill: string }
 -- animations: published asset ids by move ("" until published: Studio plays ReplicatedStorage.SwordAnimations);
 -- sounds: asset ids by moment ("" plays nothing); cues: each move's sounds layered at set moments, seconds from its
--- start (SwordController; a dodge stops the ones still to come); slash: its swing arcs' and hits' colour
--- ({ r, g, b }) and size (Config/SwordFx, Util/HitFx), plain on the starter, bolder on the Forge's swords
-export type Cue = { key: string, at: number }
+-- start (SwordController; a dodge stops the ones still to come; `stopAfter`: a long sound faded out that many seconds
+-- after it starts); slash: its swing arcs' and hits' colour ({ r, g, b }) and size (Config/SwordFx, Util/HitFx),
+-- plain on the starter, bolder on the Forge's swords
+export type Cue = { key: string, at: number, stopAfter: number? }
 export type Sword = {
 	name: string,
 	power: number, -- kept for old data; damage uses the weapon's Power (Config/Weapons) instead
@@ -465,7 +466,16 @@ do
 		cooldown = 8,
 		shape = { kind = "arc", radius = 11, angle = 180 },
 		free = { at = 0.6 },
-	}, "rbxassetid://139376815690800", "magmaCleave", { { key = "cleaveWhoosh", at = 0.46 }, { key = "cleaveFire", at = 0.6 } }, {
+	}, "rbxassetid://139376815690800", "magmaCleave", {
+		{ key = "cleaveCharge", at = 0.02 },
+		{ key = "cleaveRush", at = 0.22 },
+		{ key = "cleaveWhoosh", at = 0.46 },
+		{ key = "cleaveFire", at = 0.6 },
+	}, {
+		-- the charge-up (owner 2026-11-09: "add a charging up sound while charging"), measured in Studio 2026-11-09: the
+		-- fire swells from 0.2 s to its peak at 0.72 s; the reversed whoosh peaks 0.38 s in, so at the swing
+		cleaveCharge = "rbxassetid://9114463016", -- Flame Licks 4
+		cleaveRush = "rbxassetid://9118158113", -- Reversed Whoosh Backwards Hissing Burst 2
 		-- Pro Sound Effects already measured (Config/SoundLevels)
 		cleaveWhoosh = "rbxassetid://9120717850", -- Whoosh Fast Swish By 4: the big swing
 		cleaveFire = "rbxassetid://9114438917", -- Fire Sheet 3: the fire crescent bursting out
@@ -486,7 +496,7 @@ do
 		{ key = "torrentSlam", at = 0.55 },
 		{ key = "torrentSplash", at = 0.57 },
 		{ key = "torrentSurge", at = 0.75 },
-		{ key = "torrentRain", at = 1.45 },
+		{ key = "torrentRain", at = 2.6, stopAfter = 2 }, -- a 51 s clip: only while the water falls
 	}, {
 		-- Pro Sound Effects already measured (Config/SoundLevels)
 		torrentSlam = "rbxassetid://9125484367", -- Deep Hits Big Reverberant Booms Rumbling Tail 2: the prongs hit the ground
@@ -585,5 +595,7 @@ return {
 		wrathThrust = 0.5,
 		thornsTear = 0.4,
 		wrathFissure = 0.5,
+		cleaveCharge = 0.35,
+		cleaveRush = 0.35,
 	},
 }

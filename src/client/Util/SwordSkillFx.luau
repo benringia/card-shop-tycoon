@@ -2199,28 +2199,31 @@ end
 -- One column of water bursting up from `ground`, `height` studs (Torrent Strike): the pack's water flipbook rushing up
 -- in the weapon's water colour round a pale core (Studio 2026-11-09: a pillar of glow light bloomed into a white blob,
 -- and lit a PointLight per column), spray thrown up and falling back, a splash ring at its foot and mist (none in the
--- light version)
-local COLUMN_RISE = 0.4 -- seconds the water keeps rushing up
-local function waterColumn(ground: Vector3, height: number, colors: Colors, scale: number, lite: boolean)
+-- light version). It keeps pouring `pour` seconds (owner 2026-11-09: "make the torrents last longer"); its emitters
+-- are returned for the slow motion.
+local function waterColumn(ground: Vector3, height: number, colors: Colors, scale: number, lite: boolean, pour: number): { ParticleEmitter }
 	local water = colors.deep:Lerp(colors.glow, 0.6)
-	local anchor = holder(CFrame.new(ground + UP * 0.3), Vector3.new(1.2, 0.2, 1.2) * scale, 3)
-	local rise = emitter(anchor, "waterAura", water, { size = { 2.6 * scale, 1.6 * scale }, life = { 0.45, 0.6 }, speed = { height * 1.4, height * 1.9 }, spread = 6, rotation = { -15, 15 }, accel = -UP * 6, light = 0.4, brightness = 1.4 })
+	local anchor = holder(CFrame.new(ground + UP * 0.3), Vector3.new(1.4, 0.2, 1.4) * scale, pour + 2.5)
+	local rise = emitter(anchor, "waterAura", water, { size = { 3.2 * scale, 2 * scale }, life = { 0.45, 0.6 }, speed = { height * 1.4, height * 1.9 }, spread = 6, rotation = { -15, 15 }, accel = -UP * 6, light = 0.4, brightness = 1.4 })
 	rise.FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4
 	rise.FlipbookMode = Enum.ParticleFlipbookMode.OneShot
-	rise.Rate = detail(if lite then 18 else 40)
-	local core = emitter(anchor, "glow", water:Lerp(WHITE, 0.5), { size = { 1.2 * scale, 0.4 }, life = { 0.3, 0.4 }, speed = { height * 1.6, height * 2 }, spread = 3, light = 0.8, brightness = 1.2 })
+	rise.Rate = detail(if lite then 20 else 50)
+	local core = emitter(anchor, "glow", water:Lerp(WHITE, 0.5), { size = { 1.4 * scale, 0.4 }, life = { 0.3, 0.4 }, speed = { height * 1.6, height * 2 }, spread = 3, light = 0.8, brightness = 1.2 })
 	core.Rate = detail(if lite then 8 else 20)
-	task.delay(COLUMN_RISE, function()
+	task.delay(pour, function()
 		rise.Rate = 0
 		core.Rate = 0
 	end)
 	local spray = emitter(anchor, "raindrop", colors.glow:Lerp(WHITE, 0.4), { size = { 0.7 * scale, 0.3 }, life = { 0.8, 1.3 }, speed = { height * 1.2, height * 1.8 }, spread = 14, accel = -UP * 40, orientation = Enum.ParticleOrientation.VelocityParallel, brightness = 2 })
 	spray:Emit(detail(if lite then 10 else 26))
 	ElementFx.ring(ground + UP * 0.2, colors.glow, 2.6 * scale, 0.5)
+	local emitters = { rise, core, spray }
 	if not lite then
 		local mist = emitter(anchor, "smoke", colors.glow:Lerp(WHITE, 0.6), { size = { 2 * scale, 4.5 * scale }, life = { 0.9, 1.4 }, speed = { 1, 3 }, spread = 80, light = 0.3, brightness = 1, start = 0.5 })
 		mist:Emit(detail(4))
+		table.insert(emitters, mist)
 	end
+	return emitters
 end
 
 -- Torrent Strike (the Tidal Trident; spec 2026-11-09-halberd-and-trident-skills-design 4: "strike the ground with the
@@ -2229,9 +2232,9 @@ end
 -- spread from where the prongs went in; at `hit` (the burst hook: your bigger shake) `columns` columns of water burst up
 -- on a ring `inner` studs round you (turned `ringOffset`: none at your sides, where the camera is), a bigger one under
 -- every foe in reach (the `targets` hook's, as the server counts them; none for another player's cast); at `second` a
--- wider ring on the hit's `radius`, only for show; from `fall` the
--- water falls back as rain. A dodge or switch before the torrents stops it after the slam. The light version: fewer
--- particles, no mist.
+-- wider ring on the hit's `radius`, only for show; from `slow` all the water eases into slow motion (ParticleEmitter
+-- TimeScale `slowScale`) while the columns keep pouring; at `fall` back to full speed, they stop and fall back as rain.
+-- A dodge or switch before the torrents stops it after the slam. The light version: fewer particles, no mist.
 local function torrentStrike(root: BasePart, spec: SwordSkillFxConfig.Look, colors: Colors, scale: number, hooks: Hooks)
 	local beats = spec.beats :: { [string]: number }
 	local lite = hooks.lite == true
@@ -2272,24 +2275,46 @@ local function torrentStrike(root: BasePart, spec: SwordSkillFxConfig.Look, colo
 		end
 		local feet = groundAt(root.Position - UP * ROOT_TO_GROUND)
 		local turn = math.atan2(flatLook(root).X, flatLook(root).Z)
-		local function ring(radius: number, height: number, offset: number)
-			for index = 1, beats.columns do
-				local a = turn + (index - 1 + offset) * 2 * math.pi / beats.columns
-				waterColumn(groundAt(feet + Vector3.new(math.sin(a), 0, math.cos(a)) * radius), height * scale, colors, scale, lite)
+		local waters: { ParticleEmitter } = {}
+		local function column(ground: Vector3, height: number, size: number, from: number)
+			for _, e in waterColumn(ground, height, colors, size, lite, beats.fall - from) do
+				table.insert(waters, e)
 			end
 		end
-		ring(beats.inner, beats.columnHeight, beats.ringOffset)
+		local function ring(radius: number, height: number, offset: number, from: number)
+			for index = 1, beats.columns do
+				local a = turn + (index - 1 + offset) * 2 * math.pi / beats.columns
+				column(groundAt(feet + Vector3.new(math.sin(a), 0, math.cos(a)) * radius), height * scale, scale, from)
+			end
+		end
+		ring(beats.inner, beats.columnHeight, beats.ringOffset, beats.hit)
 		local targets = if hooks.targets then hooks.targets() else {}
 		for _, foe in SwordSkillFxRules.torrentFoes(beats, root.Position.X, root.Position.Z, targets) do
 			local under = groundAt(Vector3.new(foe.x, feet.Y, foe.z))
-			waterColumn(under, beats.columnHeight * scale * (1 + 0.5 * foe.size), colors, scale * (0.8 + 0.5 * foe.size), lite)
+			column(under, beats.columnHeight * scale * (1 + 0.5 * foe.size), scale * (0.8 + 0.5 * foe.size), beats.hit)
 		end
 		task.delay(beats.second - beats.hit, function()
-			ring(beats.radius, beats.outerHeight, beats.ringOffset + 0.5)
+			ring(beats.radius, beats.outerHeight, beats.outerOffset, beats.second)
+		end)
+		-- the slow motion: every drop of it eased to `slowScale` of its speed (the columns pouring `slowFeed` times as
+		-- fast meanwhile, so their feet stay full), then back to full speed for the fall (they stop pouring then)
+		local function timeScale(to: number)
+			for _, e in waters do
+				if e.Parent then
+					tween(e, beats.slowEase, { TimeScale = to })
+				end
+			end
+		end
+		task.delay(beats.slow - beats.hit, function()
+			for _, e in waters do
+				e.Rate *= beats.slowFeed
+			end
+			timeScale(beats.slowScale)
 		end)
 		task.delay(beats.fall - beats.hit, function()
+			timeScale(1)
 			local sky = holder(CFrame.new(feet + UP * beats.outerHeight * scale), Vector3.new(beats.radius * 2, 0.2, beats.radius * 2), 3)
-			local rain = emitter(sky, "raindrop", colors.glow:Lerp(WHITE, 0.5), { size = { 0.5 * scale, 0.3 }, life = { 0.7, 1.1 }, speed = { 4, 8 }, spread = 5, accel = -UP * 30, orientation = Enum.ParticleOrientation.VelocityParallel, brightness = 1.6 })
+			local rain = emitter(sky, "raindrop", colors.glow:Lerp(WHITE, 0.5), { size = { 0.5 * scale, 0.3 }, life = { 0.9, 1.3 }, speed = { 4, 8 }, spread = 5, accel = -UP * 30, orientation = Enum.ParticleOrientation.VelocityParallel, brightness = 1.6 })
 			rain.Shape = Enum.ParticleEmitterShape.Box
 			rain.EmissionDirection = Enum.NormalId.Bottom
 			rain:Emit(detail(if lite then 20 else 60))

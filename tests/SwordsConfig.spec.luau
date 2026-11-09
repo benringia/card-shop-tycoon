@@ -147,6 +147,23 @@ return {
 		expect.equal(halberd.sounds.thrustAir, spear.sounds.thrustAir, "the spear's cut sounds")
 	end,
 
+	-- Owner 2026-11-09 (Studio): "on magma halberd skill. add a charging up sound while charging"
+	["Magma Cleave charges up with a sound: fire building through the wind-up, rushing in to the swing"] = function()
+		local halberd = Swords.SWORDS.magmaHalberd
+		local keys = {}
+		for _, cue in halberd.cues.skill do
+			keys[cue.key] = cue.at
+		end
+		for _, key in { "cleaveCharge", "cleaveRush" } do
+			assert(keys[key], `the skill cues {key}`)
+			expect.equal(string.sub(halberd.sounds[key] or "", 1, 13), "rbxassetid://", `{key} has a sound`)
+			expect.equal(keys[key] < halberd.skill.hitAt, true, `{key} in the wind-up: a dodge before the swing stops it`)
+			expect.equal(type((Swords.SOUND_VOLUMES :: any)[key]), "number", `{key} a charge's volume, under the swing`)
+		end
+		expect.equal(keys.cleaveCharge < 0.15, true, "from the start of the wind-up")
+		expect.equal(keys.cleaveRush > keys.cleaveCharge and keys.cleaveRush < keys.cleaveWhoosh, true, "rushing in before the swing's whoosh")
+	end,
+
 	["Torrent Strike has its own sounds: the slam, the splash, the torrents surging, the rain falling back"] = function()
 		local trident, spear = Swords.SWORDS.tidalTrident, Swords.SWORDS.spear
 		local keys = {}
@@ -553,10 +570,14 @@ return {
 
 	-- The sword's sound cues (owner 2026-11-04: a whoosh as the finisher jumps, better slash sounds overall): each move
 	-- plays its layered sounds at set moments, every cue is a sound the sword has, inside its move, and the cuts' swish
-	-- comes with the swing, not at the tap
+	-- comes with the swing, not at the tap. A skill's cue may also come while its effect still plays after the move
+	-- (owner 2026-11-09: Torrent Strike's torrents last longer, its rain falls after the move ends)
 	["every move's sound cues play the sword's own sounds, inside the move"] = function()
+		local looks = require("../src/shared/Config/SwordSkillFx").LOOKS
 		for _, sword in Swords.SWORDS do
-			local lengths: { [string]: number } = { skill = sword.skill.length }
+			local look = if sword.fx then looks[sword.fx.skill] else nil
+			local fall = if look and look.beats then (look.beats :: { [string]: number }).fall else nil
+			local lengths: { [string]: number } = { skill = math.max(sword.skill.length, if fall then fall + 0.1 else 0) }
 			for index, cut in sword.combo do
 				lengths[`cut{index}`] = cut.length
 			end

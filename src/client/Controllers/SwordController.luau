@@ -963,6 +963,29 @@ local function stillSwinging(token: number): boolean
 	return SwingGate.live(gate, token) and combatTargets ~= nil and not kneeling
 end
 
+-- A long cue's sound (Config/Swords cue `stopAfter`: Torrent Strike's 51 s rain) faded out that many seconds after it
+-- starts, its volume put back for next time
+local CUE_FADE = 0.5
+local function stopLater(sound: Sound?, cue: Swords.Cue)
+	local after = cue.stopAfter
+	if not sound or not after then
+		return
+	end
+	local playing = sound :: Sound
+	local volume = playing.Volume
+	task.delay(after, function()
+		if not playing.Parent or not playing.IsPlaying then
+			return
+		end
+		local fade = TweenService:Create(playing, TweenInfo.new(CUE_FADE), { Volume = 0 })
+		fade.Completed:Once(function()
+			playing:Stop()
+			playing.Volume = volume
+		end)
+		fade:Play()
+	end)
+end
+
 -- A move's sounds at their moments (Config/Swords cues): the swish with the swing, the finisher's jump and slam, the
 -- dash slash's draw, dash and cut lines; a dodge or anything that ends the swing (`live()` false) stops the ones to come
 -- `stopUntil`: a move cancelled before then (a dodge or switch during a skill's charge) also stops its sounds already
@@ -975,6 +998,7 @@ local function playCues(sword: Swords.Sword, move: string, live: () -> boolean, 
 				return
 			end
 			local sound = SwordController.PlaySound(cue.key)
+			stopLater(sound, cue)
 			if not sound or not stopUntil or cue.at >= stopUntil then
 				return
 			end
@@ -1046,7 +1070,9 @@ function SwordController.PlayCues(move: string)
 	local character = player.Character
 	local sword = swordOf(if character then character:GetAttribute("Sword") else nil)
 	for _, cue in (if sword then sword.cues[move] else nil) or {} do
-		task.delay(cue.at, SwordController.PlaySound, cue.key)
+		task.delay(cue.at, function()
+			stopLater(SwordController.PlaySound(cue.key), cue)
+		end)
 	end
 end
 

@@ -1927,14 +1927,21 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
     hit, 0.6 s; 1.2 s in all): a fire crescent (a white-hot core with the pack's flame flipbook along it, flames,
     embers and smoke shedding off it) and a thinner flame slash behind it, every foe in the half circle in front of you
     11 studs out (the `arc` skill shape: a foe counts when any of it is inside, so one right beside you is swept,
-    `SwordRules.skillHits`), `SHAKE.magmaCleave` 0.8; no camera moment. Sounds: a big whoosh and Fire Sheet 3.
+    `SwordRules.skillHits`), `SHAKE.magmaCleave` 0.8; no camera moment. Sounds: a charge-up through the wind-up (owner
+    2026-11-09: Flame Licks 4 swelling from the start, a reversed whoosh peaking at the swing; a dodge before the swing
+    stops them), a big whoosh and Fire Sheet 3.
   - Torrent Strike (Epic, "strike the ground with the trident, while the trident is stuck to the ground, torrents of
     water appears from the ground"): raised high, water swirling round the prongs, driven tip-first into the ground
     ahead (0.55 s: a splash ring, glowing blue cracks, the release shake), leaning on the stuck shaft as columns of
-    water burst up on a ring 6 studs round you and a bigger one under every foe in reach (the hit, 0.75 s: every foe
-    within 12 studs, `spin`; `SHAKE.torrentStrike` 0.9 and a camera pull-back framed on where you stand), a wider ring
-    at 12 studs for show (1.0 s), the water falling back as rain (1.5 s), pulled free (1.9 s). Sounds: a deep boom, a
-    big splash, Water Surge 3, Heavy Rain 1.
+    water 18 studs tall burst up on a ring 6 studs round you and a bigger one under every foe in reach (the hit, 0.75 s:
+    every foe within 12 studs, `spin`; `SHAKE.torrentStrike` 0.9), a wider ring 22 studs tall at 12 studs for show
+    (0.85 s). Owner 2026-11-09 ("higher up with slowmo effect on waters and make the torrents last longer"): as the
+    burst reaches its top (1.2 s) all the water eases into slow motion (a quarter speed, the columns pouring twice as
+    fast meanwhile so they stay full) and hangs there, still pouring, until 2.65 s: back to full speed, it stops and
+    falls back as rain. The trident is pulled free at 1.9 s while the water still hangs (the animation is unchanged).
+    Your own camera pull-back is framed on where you stand, low and 26 studs out so the columns' whole height shows,
+    held through the slow motion. Sounds: a deep boom, a big splash, Water Surge 3, Heavy Rain 1 with the fall (a
+    51 s clip, faded out 2 s in: Config/Swords cue `stopAfter`).
   Keyed in `tools/blender/anim_magma_halberd.py` and `anim_tidal_trident.py` (on anim_spear's helpers), built into
   `assets/animations/MagmaHalberd` and `TidalTrident`; HUD buttons with the spare glyphs `HalberdFlames` and
   `TridentWave`. Balance re-run (tools/balance/bosses, 60 fights solo, "well"): unchanged from the rows above, the

@@ -115,6 +115,8 @@ return {
 			spearStreak = { "streak", "arc", "arcAngle", "flash", "sparks" },
 			skyPierce = { "ahead", "burst", "rings", "ring", "cracks", "crackLength", "rocks", "rockSpeed", "dust", "flash" },
 			piercingRush = { "charge", "leave", "arrive", "hit", "length", "width", "afterimages", "glow", "swirl", "flashSeconds", "bursts", "skid" },
+			magmaCleave = { "windup", "hit", "radius", "angle", "crescent", "embers", "smoke" },
+			torrentStrike = { "raise", "slam", "hit", "second", "slow", "slowScale", "slowEase", "slowFeed", "fall", "radius", "inner", "columns", "columnHeight", "outerHeight", "cracks", "ringOffset", "outerOffset", "foeEdge", "foeSizeStuds", "foeSizeMax", "camAt", "camHold", "camFocus", "camLookUp", "camUp", "camOut" },
 		}
 		for look, keys in needs do
 			local beats = SwordSkillFx.LOOKS[look].beats :: { [string]: number }
@@ -310,8 +312,7 @@ return {
 		expect.equal(look.form, "around")
 		expect.equal(look.cinematic, true, "your own plays the camera pull-back")
 		local b = look.beats :: { [string]: number }
-		expect.equal(b.raise < b.slam and b.slam < b.hit and b.hit < b.second and b.second < b.fall, true, "raise, slam, torrents, second wave, fall back")
-		expect.equal(b.fall < trident.skill.length, true, "the water falls back before the move ends")
+		expect.equal(b.raise < b.slam and b.slam < b.hit and b.hit < b.second and b.second < b.slow and b.slow < b.fall, true, "raise, slam, torrents, second wave, slow motion, fall back")
 		expect.equal(b.radius, trident.skill.shape.radius, "the second wave on the hit's circle")
 		expect.equal(b.inner < b.radius, true, "the first ring inside it")
 		expect.equal(b.camAt, b.hit, "the pull-back on the torrents")
@@ -342,18 +343,59 @@ return {
 		expect.equal(got.boss.size <= b.foeSizeMax, true)
 	end,
 
-	-- Final review: the cinematic shoots from your left or right, so a column right at your side would stand between
-	-- the camera and you; and the wide shot looks over the tallest ring
-	["Torrent Strike's columns stay off the camera's sides and the wide shot looks over them"] = function()
+	-- Owner 2026-11-09 (Studio): "torrents need to be higher up with slowmo effect on waters and make the torrents last
+	-- longer"
+	["Torrent Strike's torrents: twice as tall, slowed to a hang, raging well past the hit"] = function()
 		local b = SwordSkillFx.LOOKS.torrentStrike.beats :: { [string]: number }
-		assert(b.ringOffset, "the rings' offset")
-		for ring, offset in { inner = b.ringOffset, outer = b.ringOffset + 0.5 } do
-			for index = 1, b.columns do
-				local angle = ((index - 1 + offset) * 360 / b.columns) % 180
-				expect.equal(math.abs(angle - 90) > 10, true, `{ring} column {index} at {angle} degrees: in the side camera's way`)
+		expect.equal(b.columnHeight >= 16, true, `the inner ring {b.columnHeight} studs tall (was 9)`)
+		expect.equal(b.outerHeight > b.columnHeight, true, "the outer ring taller still")
+		expect.equal(b.slowScale > 0 and b.slowScale <= 0.35, true, `the water slowed to {b.slowScale} of its speed`)
+		-- Studio 2026-11-09: slowed 0.2 s after the burst the columns crawled up and looked short; the water reaches its
+		-- top over its particles' life (about half a second), then hangs
+		expect.equal(b.slow - b.hit >= 0.4 and b.slow - b.hit <= 0.6, true, "the slow motion as the burst reaches its top")
+		expect.equal(b.fall - b.slow >= 1.2, true, "a long hang in slow motion")
+		expect.equal(b.fall - b.hit >= 1.5, true, `the torrents raging {b.fall - b.hit} s (were 0.75)`)
+		expect.equal(b.slowEase > 0 and b.slowEase < b.fall - b.slow, true, "eased in and out of the slow motion")
+		-- Studio 2026-11-09: slowed, the columns poured slower too and their feet thinned out; they pour faster while
+		-- slowed, short of the full make-up (the particle count on phones)
+		expect.equal(b.slowFeed > 1 and b.slowFeed < 1 / b.slowScale, true, `poured {b.slowFeed}x while slowed`)
+	end,
+
+	-- The rain's sound is 51 s long (Heavy Rain 1): it falls with the water and stops soon after
+	["Torrent Strike's rain sound comes with the water falling back and stops"] = function()
+		local b = SwordSkillFx.LOOKS.torrentStrike.beats :: { [string]: number }
+		local rain
+		for _, cue in Swords.SWORDS.tidalTrident.cues.skill do
+			if cue.key == "torrentRain" then
+				rain = cue
 			end
 		end
-		expect.equal(b.camUp ~= nil and b.camUp > b.outerHeight, true, "the wide shot above the tallest columns")
+		assert(rain, "the rain cue")
+		expect.near(rain.at, b.fall, 0.1, "with the fall")
+		expect.equal(rain.stopAfter ~= nil and rain.stopAfter <= 2.5, true, "faded out, not 51 s of rain")
+	end,
+
+	-- Final review: the cinematic shoots from your left or right, so a column right at your side would stand between
+	-- the camera and you. Owner 2026-11-09 ("higher up"): the wide shot stands low and far out so the columns' whole
+	-- height shows, so the columns stand clear of its line to you
+	["Torrent Strike's columns stay off the camera's line to you and the wide shot shows their whole height"] = function()
+		local b = SwordSkillFx.LOOKS.torrentStrike.beats :: { [string]: number }
+		for ring, offset in { inner = b.ringOffset, outer = b.outerOffset } do
+			for index = 1, b.columns do
+				local angle = ((index - 1 + offset) * 360 / b.columns) % 180
+				expect.equal(math.abs(angle - 90) >= 20, true, `{ring} column {index} at {angle} degrees: in the side camera's way`)
+			end
+		end
+		-- SkillCinematic's wide shot, framing you (its impact at your feet): camOut studs out, looking camLookUp above your
+		-- feet from camUp above that
+		expect.equal(b.camOut > b.radius + 6, true, "outside the outer ring")
+		local fov = math.rad(SwordSkillFx.CINEMATIC.fov)
+		local eye = b.camLookUp + b.camUp
+		local pitch = math.atan((b.camLookUp - eye) / b.camOut)
+		local top = eye + b.camOut * math.tan(pitch + fov / 2)
+		local bottom = eye + b.camOut * math.tan(pitch - fov / 2)
+		expect.equal(top >= b.outerHeight + 2, true, `the frame's top {top} studs up over you: the tallest columns ({b.outerHeight}) fit`)
+		expect.equal(bottom <= 0, true, "your feet in the frame")
 	end,
 
 	-- Final review: the /skillfx preview framed Torrent Strike on the dummy ahead, a fight on you
