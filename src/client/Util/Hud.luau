@@ -489,6 +489,33 @@ function Hud.fanButton(spec: FanSpec): TextButton
 	return button
 end
 
+-- A HUD button by id: a tile, a Manage tray button, or "Manage" (the tray's own tile); nil when there's none. The
+-- tutorial points a bouncing paw at it.
+function Hud.find(id: string): GuiObject?
+	if id == "Manage" then
+		return manageTile
+	end
+	local tile = tiles[id]
+	if tile then
+		return tile
+	end
+	for _, entry in fanButtons do
+		if entry.button.Name == id then
+			return entry.button
+		end
+	end
+	return nil
+end
+
+-- Whether the Manage tray is open now, and opening or closing it
+function Hud.isTrayOpen(): boolean
+	return fanOpen
+end
+
+function Hud.openTray(open: boolean)
+	setFan(open)
+end
+
 function Hud.setLabel(id: string, text: string)
 	local tile = tiles[id]
 	local label = if tile then tile:FindFirstChild("Label", true) else nil

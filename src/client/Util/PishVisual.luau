@@ -140,7 +140,7 @@ function PishVisual.hearts(visual: Visual)
 		local board = Instance.new("BillboardGui")
 		board.Size = UDim2.fromOffset(40, 40)
 		board.StudsOffset = Vector3.new((i - (HEART_COUNT + 1) / 2) * 0.8, Pish.HEIGHT, 0)
-		board.AlwaysOnTop = true
+		board.LightInfluence = 0
 		board.Adornee = root
 		local heart = Instance.new("TextLabel")
 		heart.BackgroundTransparency = 1
