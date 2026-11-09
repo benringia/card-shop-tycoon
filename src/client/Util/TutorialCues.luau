@@ -1,34 +1,45 @@
 --!strict
--- The tutorial's cues, all without words (spec 2026-11-09-tutorial-pish-design 5, 6): glowing paw prints on the ground to
--- where to go, a bouncing paw over what to tap (a HUD button or a thing in the shop), a picture bubble over Pish, a row
--- of paws (steps done and left) and Pish's gift box in view at the top. Each returns a remover, or is set again.
+-- The tutorial's cues (spec 2026-11-09-tutorial-pish-design 5, 6, 14): glowing paw prints on the ground to where to go,
+-- a bouncing paw (and a gold ring) over what to tap (a HUD button, a button in a window or a thing in the shop), and
+-- the labelled tour bar at the top: the step of the tour, the paw row, his gift at the end and the skip button
+-- (Pish's words: Util/TutorialTalk). Each returns a remover, or is set again.
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
+
+local PishTalk = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("PishTalk"))
 
 local ClientUtil = script.Parent :: Instance
 local Icon = require(ClientUtil:WaitForChild("Icon"))
+local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 
 local TutorialCues = {}
 
 local PRINT_GAP = 3 -- studs between paw prints
 local PRINT_MAX = 24
 local PRINT_SIZE = 1.6 -- studs
-local PAW_SIZE = 64 -- px: the bouncing paw over a button
+local PAW_SIZE = 64 -- px: the bouncing paw over a button (smaller over a small one, down to PAW_MIN)
+local PAW_MIN = 40
+local RING_PAD = 5 -- px the gold ring stands off the button
+local RING_THICKNESS = 4
+local RING_CORNER = 14
 local BOUNCE = 10 -- px (studs * 0.4 on a thing in the shop)
 local BOUNCE_SPEED = 6
-local ROW_PAW = 34 -- px each paw in the row
--- Pish's gift box sits in the top left corner, above the Manage tray: on phones the HUD's right column (cash, weapon
--- switch) runs from the top
-local GIFT_SIZE = 56
-local GIFT_LEFT = 12
 local GOLD = Color3.fromRGB(255, 214, 90)
-
-TutorialCues.GIFT_RIGHT = GIFT_LEFT + GIFT_SIZE -- px: the gift box's right edge, for the skip button beside it
+-- The tour bar at the top (owner's pick A, 2026-11-10): "Pish's Tour · 3 of 8", the paw row, "Gift at the end!" and
+-- the skip button (TutorialController puts it in). On a narrow screen it's shorter and sits in the top left corner,
+-- above the Manage tray: on phones the HUD's right column (cash, weapon switch) runs from the top
+local BAR_HEIGHT = 56
+local BAR_COMPACT = 900 -- px: narrower screens leave out the paw row
+local BAR_EDGE = 12 -- px from the screen's left edge when compact
+local ROW_PAW = 22 -- px each paw in the row
+local PILL_HEIGHT = 40
+local PILL_ICON = 26
+local PILL_FILL = Color3.fromRGB(255, 246, 224)
+local PILL_EDGE = Color3.fromRGB(255, 215, 122)
 
 local screen: ScreenGui? = nil
-local row: Frame? = nil
-local gift: Frame? = nil
+local bar: Frame? = nil
 
 -- Gold paws: white ones vanished against the shop's white walls and light floors
 local function tint(icon: Instance, color: Color3)
@@ -104,28 +115,49 @@ function TutorialCues.trail(from: Vector3, to: Vector3): () -> ()
 	end
 end
 
--- A bouncing paw pointing down at a HUD button or a thing in the shop
+-- A bouncing paw pointing down at a HUD button, a button in a window or a thing in the shop; a button also gets a
+-- pulsing gold ring round it (in a window full of items the paw alone could pass for one of them)
 function TutorialCues.pawOn(target: GuiObject | BasePart): () -> ()
 	local started = os.clock()
 	if typeof(target) == "Instance" and target:IsA("GuiObject") then
 		local holder = Instance.new("Frame")
 		holder.Name = "PawPointer"
 		holder.BackgroundTransparency = 1
-		holder.Size = UDim2.fromOffset(PAW_SIZE, PAW_SIZE)
 		holder.AnchorPoint = Vector2.new(0.5, 1)
 		holder.ZIndex = 20
 		holder.Parent = gui()
 		local paw = Icon.make(holder, "Paw", UDim2.fromScale(1, 1))
 		paw.Rotation = 180 -- toes down, toward the button
 		tint(paw, GOLD)
+		local ring = Instance.new("Frame")
+		ring.Name = "PawRing"
+		ring.BackgroundTransparency = 1
+		ring.ZIndex = 19
+		ring.Parent = gui()
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, RING_CORNER)
+		corner.Parent = ring
+		local stroke = Instance.new("UIStroke")
+		stroke.Color = GOLD
+		stroke.Thickness = RING_THICKNESS
+		stroke.Parent = ring
 		local connection = RunService.RenderStepped:Connect(function()
-			local bounce = math.abs(math.sin((os.clock() - started) * BOUNCE_SPEED)) * BOUNCE
-			holder.Visible = target.Parent ~= nil and target.Visible and target.AbsoluteSize.X > 0
-			holder.Position = UDim2.fromOffset(target.AbsolutePosition.X + target.AbsoluteSize.X / 2, target.AbsolutePosition.Y - 4 - bounce)
+			local beat = math.abs(math.sin((os.clock() - started) * BOUNCE_SPEED))
+			local at, size = target.AbsolutePosition, target.AbsoluteSize
+			local shown = target.Parent ~= nil and target.Visible and size.X > 0
+			local pawSize = math.clamp(size.Y * 0.9, PAW_MIN, PAW_SIZE)
+			holder.Visible = shown
+			holder.Size = UDim2.fromOffset(pawSize, pawSize)
+			holder.Position = UDim2.fromOffset(at.X + size.X / 2, at.Y - 4 - beat * BOUNCE)
+			ring.Visible = shown
+			ring.Position = UDim2.fromOffset(at.X - RING_PAD, at.Y - RING_PAD)
+			ring.Size = UDim2.fromOffset(size.X + RING_PAD * 2, size.Y + RING_PAD * 2)
+			stroke.Transparency = 0.15 + beat * 0.45
 		end)
 		return function()
 			connection:Disconnect()
 			holder:Destroy()
+			ring:Destroy()
 		end
 	end
 	local part = target :: BasePart
@@ -150,102 +182,118 @@ function TutorialCues.pawOn(target: GuiObject | BasePart): () -> ()
 	end
 end
 
--- A white picture bubble over Pish (`adornee`: his root)
-function TutorialCues.bubble(adornee: BasePart, icon: string, height: number): () -> ()
-	local board = Instance.new("BillboardGui")
-	board.Name = "PishBubble"
-	board.Size = UDim2.fromOffset(84, 84)
-	board.StudsOffset = Vector3.new(0, height, 0)
-	board.LightInfluence = 0
-	board.Adornee = adornee
-	local back = Instance.new("Frame")
-	back.Size = UDim2.fromScale(1, 1)
-	back.BackgroundColor3 = Color3.new(1, 1, 1)
-	back.Parent = board
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0.5, 0)
-	corner.Parent = back
-	local edge = Instance.new("UIStroke")
-	edge.Thickness = 3
-	edge.Color = Color3.fromRGB(70, 60, 100)
-	edge.Parent = back
-	local picture = Icon.make(back, icon, UDim2.fromScale(0.68, 0.68))
-	picture.AnchorPoint = Vector2.new(0.5, 0.5)
-	picture.Position = UDim2.fromScale(0.5, 0.5)
-	local scale = Instance.new("UIScale")
-	scale.Scale = 0
-	scale.Parent = back
-	board.Parent = adornee
-	TweenService:Create(scale, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
-	return function()
-		board:Destroy()
-	end
+-- A label pill on the tour bar: a picture and its words
+local function pill(parent: Frame, order: number, icon: string): TextLabel
+	local holder = Instance.new("Frame")
+	holder.Name = "Pill" .. order
+	holder.LayoutOrder = order
+	holder.AutomaticSize = Enum.AutomaticSize.X
+	holder.Size = UDim2.fromOffset(0, PILL_HEIGHT)
+	holder.BackgroundColor3 = PILL_FILL
+	holder.Parent = parent
+	UIKit.corner(holder, 14)
+	UIKit.outline(holder, PILL_EDGE, 2)
+	local padding = Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0, 10)
+	padding.PaddingRight = UDim.new(0, 12)
+	padding.Parent = holder
+	local list = Instance.new("UIListLayout")
+	list.FillDirection = Enum.FillDirection.Horizontal
+	list.VerticalAlignment = Enum.VerticalAlignment.Center
+	list.Padding = UDim.new(0, 6)
+	list.SortOrder = Enum.SortOrder.LayoutOrder
+	list.Parent = holder
+	local picture = Icon.make(holder, icon, UDim2.fromOffset(PILL_ICON, PILL_ICON))
+	picture.LayoutOrder = 1
+	local words = UIKit.label(holder, "", Enum.Font.FredokaOne, 18, UIKit.colorsFor(parent).ink)
+	words.Name = "Words"
+	words.LayoutOrder = 2
+	words.AutomaticSize = Enum.AutomaticSize.X
+	words.Size = UDim2.fromOffset(0, PILL_HEIGHT)
+	return words
 end
 
--- The row of paws at the top: `done` lit of `total` (hidden at total 0)
-function TutorialCues.pawRow(done: number, total: number)
-	local frame = row
-	if not frame or not frame.Parent then
-		frame = Instance.new("Frame")
-		frame.Name = "PawRow"
-		frame.BackgroundTransparency = 1
-		frame.AnchorPoint = Vector2.new(0.5, 0)
-		frame.Position = UDim2.new(0.5, 0, 0, 12)
-		frame.AutomaticSize = Enum.AutomaticSize.X
-		frame.Size = UDim2.fromOffset(0, ROW_PAW)
-		frame.Parent = gui()
-		local list = Instance.new("UIListLayout")
-		list.FillDirection = Enum.FillDirection.Horizontal
-		list.Padding = UDim.new(0, 6)
-		list.SortOrder = Enum.SortOrder.LayoutOrder
-		list.Parent = frame
-		row = frame
+local function buildBar(): Frame
+	local made = Instance.new("Frame")
+	made.Name = "TourBar"
+	made.AutomaticSize = Enum.AutomaticSize.X
+	made.Size = UDim2.fromOffset(0, BAR_HEIGHT)
+	made.ZIndex = 20
+	made.Parent = gui()
+	-- The cotton candy colours without creamWindow's face and glow frames: a row that sizes itself would count them
+	made:SetAttribute("Theme", "cream")
+	made.BackgroundColor3 = UIKit.colorsFor(made).panel
+	UIKit.corner(made, 16)
+	UIKit.outline(made, Color3.fromRGB(255, 211, 234), 3)
+	local padding = Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0, 8)
+	padding.PaddingRight = UDim.new(0, 8)
+	padding.Parent = made
+	local list = Instance.new("UIListLayout")
+	list.FillDirection = Enum.FillDirection.Horizontal
+	list.VerticalAlignment = Enum.VerticalAlignment.Center
+	list.Padding = UDim.new(0, 8)
+	list.SortOrder = Enum.SortOrder.LayoutOrder
+	list.Parent = made
+	pill(made, 1, "Paw")
+	local paws = Instance.new("Frame")
+	paws.Name = "PawRow"
+	paws.LayoutOrder = 2
+	paws.BackgroundTransparency = 1
+	paws.AutomaticSize = Enum.AutomaticSize.X
+	paws.Size = UDim2.fromOffset(0, ROW_PAW)
+	paws.Parent = made
+	local pawList = Instance.new("UIListLayout")
+	pawList.FillDirection = Enum.FillDirection.Horizontal
+	pawList.Padding = UDim.new(0, 3)
+	pawList.SortOrder = Enum.SortOrder.LayoutOrder
+	pawList.Parent = paws
+	pill(made, 3, "Gift")
+	bar = made
+	return made
+end
+
+-- The tour bar showing step `done + 1` of `total` (hidden at total 0); the skip button goes in it (LayoutOrder 4)
+function TutorialCues.topBar(done: number, total: number): Frame
+	local shown = if bar and bar.Parent then bar else buildBar()
+	shown.Visible = total > 0
+	local compact = gui().AbsoluteSize.X < BAR_COMPACT
+	shown.AnchorPoint = Vector2.new(if compact then 0 else 0.5, 0)
+	shown.Position = if compact then UDim2.fromOffset(BAR_EDGE, 4) else UDim2.new(0.5, 0, 0, 4)
+	local labels = PishTalk.LABELS
+	local tour = shown:FindFirstChild("Pill1")
+	local tourWords = tour and tour:FindFirstChild("Words")
+	if tourWords and tourWords:IsA("TextLabel") then
+		tourWords.Text = string.format(if compact then labels.tourShort else labels.tour, math.min(done + 1, total), total)
 	end
-	local shown = frame :: Frame
-	for _, child in shown:GetChildren() do
-		if child:IsA("Frame") then
+	local gift = shown:FindFirstChild("Pill3")
+	local giftWords = gift and gift:FindFirstChild("Words")
+	if giftWords and giftWords:IsA("TextLabel") then
+		giftWords.Text = if compact then labels.giftShort else labels.gift
+	end
+	local paws = shown:FindFirstChild("PawRow") :: Frame
+	paws.Visible = not compact
+	for _, child in paws:GetChildren() do
+		if child:IsA("GuiObject") then
 			child:Destroy()
 		end
 	end
-	shown.Visible = total > 0
 	for i = 1, total do
-		local paw = Icon.make(shown, "Paw", UDim2.fromOffset(ROW_PAW, ROW_PAW))
+		local paw = Icon.make(paws, "Paw", UDim2.fromOffset(ROW_PAW, ROW_PAW))
 		paw.LayoutOrder = i
 		for _, image in paw:GetDescendants() do
 			if image:IsA("ImageLabel") then
-				image.ImageTransparency = if i <= done then 0 else 0.7
-				image.ImageColor3 = if i <= done then GOLD else Color3.new(1, 1, 1)
+				image.ImageTransparency = if i <= done then 0 else 0.6
+				image.ImageColor3 = if i <= done then GOLD else Color3.fromRGB(200, 190, 210)
 			end
 		end
 	end
+	return shown
 end
 
--- Pish's gift box at the top right, crossed out on the "really skip?" card's warning
-function TutorialCues.giftBox(shown: boolean, crossed: boolean)
-	local frame = gift
-	if not frame or not frame.Parent then
-		frame = Instance.new("Frame")
-		frame.Name = "PishGift"
-		frame.BackgroundTransparency = 1
-		frame.Position = UDim2.fromOffset(GIFT_LEFT, 4)
-		frame.Size = UDim2.fromOffset(GIFT_SIZE, GIFT_SIZE)
-		frame.Parent = gui()
-		Icon.make(frame, "Gift", UDim2.fromScale(1, 1))
-		local cross = Instance.new("TextLabel")
-		cross.Name = "Cross"
-		cross.BackgroundTransparency = 1
-		cross.Size = UDim2.fromScale(1, 1)
-		cross.Text = "❌"
-		cross.TextScaled = true
-		cross.ZIndex = 3
-		cross.Parent = frame
-		gift = frame
-	end
-	local shownFrame = frame :: Frame
-	shownFrame.Visible = shown
-	local cross = shownFrame:FindFirstChild("Cross") :: TextLabel?
-	if cross then
-		cross.Visible = crossed
+function TutorialCues.hideBar()
+	if bar then
+		bar.Visible = false
 	end
 end
 

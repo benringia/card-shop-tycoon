@@ -15,11 +15,14 @@ local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
+local Game = require(Config:WaitForChild("Game"))
 local Music = require(Config:WaitForChild("Music"))
 local Pish = require(Config:WaitForChild("Pish"))
+local PishTalk = require(Config:WaitForChild("PishTalk"))
 local Town = require(Config:WaitForChild("Town"))
 local Wild = require(Config:WaitForChild("Wild"))
 local MusicRules = require(Shared:WaitForChild("Util"):WaitForChild("MusicRules"))
+local TalkRules = require(Shared:WaitForChild("Util"):WaitForChild("TalkRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -29,8 +32,10 @@ local Icon = require(ClientUtil:WaitForChild("Icon"))
 local OpeningStage = require(ClientUtil:WaitForChild("OpeningStage"))
 local PishVisual = require(ClientUtil:WaitForChild("PishVisual"))
 local TutorialCues = require(ClientUtil:WaitForChild("TutorialCues"))
+local TutorialTalk = require(ClientUtil:WaitForChild("TutorialTalk"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local BattleController = require(Controllers:WaitForChild("BattleController"))
+local PlacementController = require(Controllers:WaitForChild("PlacementController"))
 local TownPishController = require(Controllers:WaitForChild("TownPishController"))
 local WeaponRevealController = require(Controllers:WaitForChild("WeaponRevealController"))
 
@@ -41,29 +46,18 @@ local FOLLOW_RANGE = 40 -- studs: further from the step's place than this, Pish 
 local BESIDE = 3.5 -- studs he stands from the player or the place
 local RUN_IN = 16 -- studs away a visiting Pish appears, to run in
 local TRAIL_REFRESH = 8 -- studs the player moves before the trail is redrawn from where they are
-local BUTTON = 56 -- px: the skip button (tap targets 48 px or more)
+local SKIP_BUTTON = Vector2.new(112, 48) -- px: the skip button on the tour bar (tap targets 48 px or more)
+local SKIP_CARD = Vector2.new(360, 236) -- px: the "really skip?" card
 local FREE_SECONDS = 3 -- a visit starts once the player has been free this long (the first-sword popup comes first)
 local NUDGE_RANGE = 60 -- studs: a nudge shows only when the player is this near the thing to use
 local PORTAL_REACH = 14 -- studs from the Wild portal that count as having gone to it
 local SPOT_HEIGHT = 9 -- studs above the ground the paw over a place in town (the portal) hangs
-local BYE_MIN_SECONDS = 1 -- the goodbye's least time before the first visit ends (no model: no celebrate clip)
-local GREEN = Color3.fromRGB(80, 205, 130)
+local BYE_IDLE_SECONDS = 20 -- the goodbye's last line left this long: the first visit ends by itself
 local GREY = Color3.fromRGB(190, 195, 205)
 
--- Where Pish points: a HUD button (in the Manage tray: `tray`), a part of the player's shop (the Pack Rack instead
--- while a box is carried: `carryRack`), or a spot in town
-type Target = { hud: string?, tray: boolean?, part: string?, carryRack: boolean?, spot: Vector3? }
-
-local TARGETS: { [string]: Target } = {
-	giftPack = { hud = "Bag" },
-	buildRack = { hud = "Build", tray = true },
-	orderStock = { part = "OrderComputer" },
-	stockRack = { part = "DeliverySpot", carryRack = true },
-	customer = { part = "Register" },
-	ringUp = { part = "Register" },
-	gift = { hud = "Bag" },
-	bye = {},
-}
+-- Where Pish points: a HUD button (in the Manage tray: `tray`), a button inside a window (`gui`), a part of the
+-- player's shop (the Pack Rack instead while a box is carried: `carryRack`), or a spot in town
+type Target = { hud: string?, tray: boolean?, part: string?, carryRack: boolean?, spot: Vector3?, gui: GuiObject? }
 
 -- Each lesson's new thing: machines are bought in Build, new stock at the order computer, the first sword's way is the
 -- Wild portal
@@ -94,6 +88,9 @@ local player = Players.LocalPlayer
 local marker: Part? = nil
 local visual: PishVisual.Visual? = nil
 local step = ""
+local introIndex = 1 -- Pish's intro line on now (Config/PishTalk), from 1 at each step
+local byeSent = false
+local lastLineAt = 0 -- os.clock() the goodbye's last line showed
 local visit: Visit? = nil -- a lesson or nudge visit on now (never during the first visit)
 local lessonQueue: { string } = {} -- lessons waiting to be shown, from the server
 local pendingNudge: string? = nil
@@ -128,20 +125,121 @@ local function ownPlot(): Model?
 	return nil
 end
 
--- What Pish is showing now: the step, else the visit; its key (a change redraws the cues), target and picture
-local function focus(): (string, Target?, string?)
-	if step ~= "" then
-		return step, TARGETS[step], Pish.STEP_ICONS[step]
+-- Shown on screen: it and every window it sits in are visible
+local function shown(gui: Instance?): boolean
+	local at = gui
+	while at and at:IsA("GuiObject") do
+		if not at.Visible then
+			return false
+		end
+		at = at.Parent
 	end
+	return gui ~= nil
+end
+
+-- A window (or a thing in one) in the HUD's screen, by name, while it shows
+local function inMainGui(name: string): GuiObject?
+	local gui = player:FindFirstChild("PlayerGui") and player.PlayerGui:FindFirstChild("MainGui")
+	local found = gui and gui:FindFirstChild(name, true)
+	return if found and found:IsA("GuiObject") and shown(found) then found else nil
+end
+
+-- A button by name inside a window, while it shows
+local function inside(window: GuiObject, name: string): GuiObject?
+	local found = window:FindFirstChild(name, true)
+	return if found and found:IsA("GuiObject") and shown(found) then found else nil
+end
+
+-- Pish's present or gift in the Bag: the Bag button, then its slot, then Open once it's the one showing
+local function bagSituation(item: string): (string, Target)
+	local bag = inMainGui("Bag")
+	if not bag then
+		return "default", { hud = "Bag" }
+	end
+	local details = bag:FindFirstChild("Details", true)
+	if details and details:GetAttribute("ItemId") == item then
+		local open = inside(bag, "Open")
+		if open then
+			return "picked", { gui = open }
+		end
+	end
+	return "bagOpen", { gui = inside(bag, item) }
+end
+
+-- What the player is at in this step (Config/PishTalk `now` lines) and where Pish points for it
+local function stepSituation(stepId: string): (string, Target)
+	if stepId == "giftPack" then
+		return bagSituation(Pish.FIRST_ITEM)
+	elseif stepId == "gift" then
+		return bagSituation(Pish.GIFT_ITEM)
+	elseif stepId == "buildRack" then
+		if PlacementController.IsActive() then
+			return "placing", {}
+		end
+		local shop = inMainGui("BuildMenu")
+		if shop then
+			return "shopOpen", { gui = inside(shop, Pish.RACK) }
+		end
+		if Hud.isTrayOpen() then
+			return "trayOpen", { hud = "Build" }
+		end
+		return "default", { hud = "Manage" }
+	elseif stepId == "orderStock" then
+		local order = inMainGui("OrderMenu")
+		local row = order and order:FindFirstChild(Pish.ORDER_PRODUCT, true)
+		if order then
+			return "orderOpen", { gui = if row then inside(row :: GuiObject, "Order") else nil }
+		end
+		return "default", { part = "OrderComputer" }
+	elseif stepId == "stockRack" then
+		local carrying = (player:GetAttribute("CarryCount") or 0) > 0
+		return if carrying then "carrying" else "default", { part = "DeliverySpot", carryRack = true }
+	elseif stepId == "customer" then
+		return "default", { part = "Register" }
+	elseif stepId == "ringUp" then
+		local charge = inMainGui("Charge")
+		if charge then
+			return "charge", { gui = charge }
+		end
+		return "default", { part = "Register" }
+	end
+	return "default", {}
+end
+
+-- What Pish is on now, worked out once a tick (refreshFocus): its key (a change redraws the cues), target, picture,
+-- the step's situation and whether he's still on his intro lines (no pointing yet)
+local focusKey, focusTarget, focusIcon, focusSituation = "", nil :: Target?, nil :: string?, "default"
+local talking = false
+
+local function refreshFocus()
+	if step ~= "" then
+		local situation, target = stepSituation(step)
+		local talk = PishTalk.STEPS[step]
+		local line = if talk then TalkRules.show(talk, introIndex, situation) else nil
+		talking = line ~= nil and line.next
+		focusKey = step .. ":" .. (if talking then "intro" else situation)
+		focusTarget = if talking then nil else target
+		focusIcon = Pish.STEP_ICONS[step]
+		focusSituation = situation
+		return
+	end
+	talking = false
+	focusSituation = "default"
 	local now = visit
 	if not now then
-		return "", nil, nil
+		focusKey, focusTarget, focusIcon = "", nil, nil
+	elseif now.kind == "lesson" then
+		focusKey, focusTarget, focusIcon = "lesson:" .. now.id, LESSON_TARGETS[now.id], LESSON_ICONS[now.id]
+	else
+		local nudge = NUDGES[now.id]
+		focusKey = "nudge:" .. now.id
+		focusTarget = if nudge then nudge.target else nil
+		focusIcon = if nudge then nudge.icon else nil
 	end
-	if now.kind == "lesson" then
-		return "lesson:" .. now.id, LESSON_TARGETS[now.id], LESSON_ICONS[now.id]
-	end
-	local nudge = NUDGES[now.id]
-	return "nudge:" .. now.id, if nudge then nudge.target else nil, if nudge then nudge.icon else nil
+end
+
+local function focus(): (string, Target?, string?)
+	return focusKey, focusTarget, focusIcon
 end
 
 -- An invisible anchor at a spot in town for the paw and the trail
@@ -195,9 +293,12 @@ local function targetPart(): BasePart?
 	return partFor(spec)
 end
 
--- The HUD button Pish points at (the Manage tile while the tray it's in is shut)
+-- The button Pish points at: inside a window, or on the HUD (the Manage tile while the tray it's in is shut)
 local function targetButton(): GuiObject?
 	local _, spec = focus()
+	if spec and spec.gui then
+		return spec.gui
+	end
 	if not spec or not spec.hud then
 		return nil
 	end
@@ -278,16 +379,16 @@ local function removePish()
 	TownPishController.SetHidden(false)
 end
 
--- The paw over the button or place to use (redrawn when the tray opens or a box is picked up)
+-- The paw over the button or place to use (redrawn when a window opens or a box is picked up)
 local function pointPaw()
-	local focusKey, _, icon = focus()
+	local key, _ = focus()
 	local button = targetButton()
-	local part = targetPart()
-	local key = focusKey .. "|" .. (if button then button:GetFullName() elseif part then part:GetFullName() else "")
-	if key == shownKey then
+	local part = if button then nil else targetPart()
+	local drawn = key .. "|" .. (if button then button:GetFullName() elseif part then part:GetFullName() else "")
+	if drawn == shownKey then
 		return
 	end
-	shownKey = key
+	shownKey = drawn
 	for _, remove in cues do
 		remove()
 	end
@@ -297,10 +398,29 @@ local function pointPaw()
 	elseif part then
 		table.insert(cues, TutorialCues.pawOn(part))
 	end
-	local adornee = if visual then visual.body.root elseif marker then marker else nil
-	if adornee and icon then
-		table.insert(cues, TutorialCues.bubble(adornee, icon, Pish.HEIGHT + 1.5))
+end
+
+-- Pish's line on the talk card for the step (Config/PishTalk, Util/TalkRules): his intro one line at a time with Next,
+-- then the line for what to do now; the goodbye's last Next ends the first visit
+local function updateTalk()
+	local talk = PishTalk.STEPS[step]
+	if step == "" or not talk then
+		return
 	end
+	local line = TalkRules.show(talk, introIndex, focusSituation)
+	local label = if not line.next then nil elseif line.finish then PishTalk.BYE else PishTalk.NEXT
+	TutorialTalk.say(TalkRules.fill(line.text, Game.NAME), focusIcon, label, function()
+		if line.finish then
+			if step == "bye" and not byeSent then
+				byeSent = true
+				Remotes.TutorialAction:FireServer("bye")
+			end
+			return
+		end
+		introIndex += 1
+		refreshFocus()
+		updateTalk()
+	end)
 end
 
 -- The paw trail from the player to the place, redrawn as they walk
@@ -385,12 +505,13 @@ local function moveTowardGoal(dt: number)
 	end
 end
 
--- The "really skip?" card: the gift crossed out, a sad Pish; a big green paw keeps going, a small grey skip skips
+-- The "really skip?" card (with words, owner 2026-11-10): "Skip Pish's tour?", his gift crossed out, a sad Pish; a big
+-- green "Keep going" carries on, a small grey "Skip" skips
 local function showSkipCard()
 	if skipCard then
 		return
 	end
-	TutorialCues.giftBox(true, true)
+	local labels = PishTalk.LABELS
 	if visual then
 		PishVisual.sound(visual, "whimper")
 		PishVisual.play(visual, "headTilt")
@@ -399,63 +520,48 @@ local function showSkipCard()
 	card.Name = "SkipCard"
 	card.AnchorPoint = Vector2.new(0.5, 0.5)
 	card.Position = UDim2.fromScale(0.5, 0.5)
-	card.Size = UDim2.fromOffset(300, 200)
-	card.BackgroundColor3 = Color3.fromRGB(255, 248, 240)
+	card.Size = UDim2.fromOffset(SKIP_CARD.X, SKIP_CARD.Y)
 	card.ZIndex = 40
 	card.Parent = TutorialCues.screen()
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 24)
-	corner.Parent = card
-	local edge = Instance.new("UIStroke")
-	edge.Thickness = 4
-	edge.Color = Color3.fromRGB(255, 255, 255)
-	edge.Parent = card
-	local giftIcon = Icon.make(card, "Gift", UDim2.fromOffset(84, 84))
+	UIKit.creamWindow(card)
+	local ink = UIKit.colorsFor(card).ink
+	local title = UIKit.label(card, labels.skipTitle, Enum.Font.FredokaOne, 26, ink)
+	title.Position = UDim2.fromOffset(0, 12)
+	title.Size = UDim2.new(1, 0, 0, 32)
+	title.TextXAlignment = Enum.TextXAlignment.Center
+	local giftIcon = Icon.make(card, "Gift", UDim2.fromOffset(64, 64))
 	giftIcon.AnchorPoint = Vector2.new(0.5, 0)
-	giftIcon.Position = UDim2.new(0.5, 0, 0, 14)
+	giftIcon.Position = UDim2.new(0.5, 0, 0, 48)
 	local cross = Instance.new("TextLabel")
 	cross.BackgroundTransparency = 1
 	cross.AnchorPoint = Vector2.new(0.5, 0)
-	cross.Position = UDim2.new(0.5, 0, 0, 14)
-	cross.Size = UDim2.fromOffset(84, 84)
+	cross.Position = UDim2.new(0.5, 0, 0, 48)
+	cross.Size = UDim2.fromOffset(64, 64)
 	cross.Text = "❌"
 	cross.TextScaled = true
 	cross.ZIndex = 42
 	cross.Parent = card
-	local keep = Instance.new("TextButton")
+	local warning = UIKit.label(card, labels.skipWarning, Enum.Font.FredokaOne, 19, ink)
+	warning.Position = UDim2.fromOffset(0, 116)
+	warning.Size = UDim2.new(1, 0, 0, 24)
+	warning.TextXAlignment = Enum.TextXAlignment.Center
+	local keep = UIKit.button(card, labels.keepGoing, UIKit.Colors.Success)
 	keep.Name = "Keep"
-	keep.Text = ""
 	keep.AnchorPoint = Vector2.new(0, 1)
 	keep.Position = UDim2.new(0, 18, 1, -16)
-	keep.Size = UDim2.fromOffset(170, 64)
-	keep.BackgroundColor3 = GREEN
-	keep.ZIndex = 41
-	keep.Parent = card
-	local keepCorner = Instance.new("UICorner")
-	keepCorner.CornerRadius = UDim.new(0, 18)
-	keepCorner.Parent = keep
-	local paw = Icon.make(keep, "Paw", UDim2.fromOffset(44, 44))
-	paw.AnchorPoint = Vector2.new(0.5, 0.5)
-	paw.Position = UDim2.fromScale(0.5, 0.5)
-	local skip = Instance.new("TextButton")
+	keep.Size = UDim2.fromOffset(190, 56)
+	keep.Font = Enum.Font.FredokaOne
+	keep.TextSize = 22
+	local skip = UIKit.button(card, labels.skipYes, GREY)
 	skip.Name = "ReallySkip"
-	skip.Text = ""
 	skip.AnchorPoint = Vector2.new(1, 1)
 	skip.Position = UDim2.new(1, -18, 1, -20)
-	skip.Size = UDim2.fromOffset(56, 52)
-	skip.BackgroundColor3 = GREY
-	skip.ZIndex = 41
-	skip.Parent = card
-	local skipCorner = Instance.new("UICorner")
-	skipCorner.CornerRadius = UDim.new(0, 14)
-	skipCorner.Parent = skip
-	local next = Icon.make(skip, "Next", UDim2.fromOffset(30, 30))
-	next.AnchorPoint = Vector2.new(0.5, 0.5)
-	next.Position = UDim2.fromScale(0.5, 0.5)
+	skip.Size = UDim2.fromOffset(96, 48)
+	skip.Font = Enum.Font.FredokaOne
+	skip.TextSize = 18
 	local function close()
 		card:Destroy()
 		skipCard = nil
-		TutorialCues.giftBox(step ~= "", false)
 	end
 	keep.Activated:Connect(close)
 	skip.Activated:Connect(function()
@@ -465,36 +571,40 @@ local function showSkipCard()
 	skipCard = card
 end
 
--- The skip button: held for SKIP_HOLD seconds (its fill grows), a tap does nothing
+-- The skip button on the tour bar: "Skip tour", "hold to skip" under it; held for SKIP_HOLD seconds (its fill grows),
+-- a tap does nothing
 local function makeSkipButton(): TextButton
+	local labels = PishTalk.LABELS
 	local button = Instance.new("TextButton")
 	button.Name = "TutorialSkip"
 	button.Text = ""
-	-- Top left beside Pish's gift box, above the Manage tray: the right side is the HUD's (cash, weapon switch)
-	button.Position = UDim2.fromOffset(TutorialCues.GIFT_RIGHT + 8, 4)
-	button.Size = UDim2.fromOffset(BUTTON, BUTTON)
-	button.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	button.BackgroundTransparency = 0.25
+	button.LayoutOrder = 4
+	button.Size = UDim2.fromOffset(SKIP_BUTTON.X, SKIP_BUTTON.Y)
+	button.BackgroundColor3 = Color3.fromRGB(238, 240, 246)
 	button.AutoButtonColor = false
 	button.ClipsDescendants = true
 	button.ZIndex = 30
-	button.Parent = TutorialCues.screen()
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0.5, 0)
+	corner.CornerRadius = UDim.new(0, 12)
 	corner.Parent = button
+	UIKit.outline(button, GREY, 2)
 	local fill = Instance.new("Frame")
 	fill.Name = "Fill"
-	fill.AnchorPoint = Vector2.new(0, 1)
-	fill.Position = UDim2.fromScale(0, 1)
-	fill.Size = UDim2.fromScale(1, 0)
-	fill.BackgroundColor3 = Color3.fromRGB(255, 170, 70)
+	fill.Size = UDim2.fromScale(0, 1)
+	fill.BackgroundColor3 = Color3.fromRGB(255, 210, 160)
 	fill.BorderSizePixel = 0
 	fill.ZIndex = 30
 	fill.Parent = button
-	local next = Icon.make(button, "Next", UDim2.fromOffset(30, 30))
-	next.AnchorPoint = Vector2.new(0.5, 0.5)
-	next.Position = UDim2.fromScale(0.5, 0.5)
-	next.ZIndex = 31
+	local words = UIKit.label(button, labels.skip, Enum.Font.FredokaOne, 18, Color3.fromRGB(80, 84, 104))
+	words.Position = UDim2.fromOffset(0, 4)
+	words.Size = UDim2.new(1, 0, 0, 22)
+	words.TextXAlignment = Enum.TextXAlignment.Center
+	words.ZIndex = 31
+	local hint = UIKit.label(button, labels.skipHold, Enum.Font.GothamBold, 11, Color3.fromRGB(130, 136, 160))
+	hint.Position = UDim2.fromOffset(0, 26)
+	hint.Size = UDim2.new(1, 0, 0, 14)
+	hint.TextXAlignment = Enum.TextXAlignment.Center
+	hint.ZIndex = 31
 	local held: number? = nil
 	button.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -504,7 +614,7 @@ local function makeSkipButton(): TextButton
 	button.InputEnded:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			held = nil
-			TweenService:Create(fill, TweenInfo.new(0.2), { Size = UDim2.fromScale(1, 0) }):Play()
+			TweenService:Create(fill, TweenInfo.new(0.2), { Size = UDim2.fromScale(0, 1) }):Play()
 		end
 	end)
 	RunService.RenderStepped:Connect(function()
@@ -513,10 +623,10 @@ local function makeSkipButton(): TextButton
 			return
 		end
 		local share = math.clamp((os.clock() - since) / Pish.SKIP_HOLD, 0, 1)
-		fill.Size = UDim2.fromScale(1, share)
+		fill.Size = UDim2.fromScale(share, 1)
 		if share >= 1 then
 			held = nil
-			fill.Size = UDim2.fromScale(1, 0)
+			fill.Size = UDim2.fromScale(0, 1)
 			showSkipCard()
 		end
 	end)
@@ -527,8 +637,8 @@ local function finishVisit()
 	leaving = true
 	clearCues()
 	shownKey = ""
-	TutorialCues.pawRow(0, 0)
-	TutorialCues.giftBox(false, false)
+	TutorialTalk.hide()
+	TutorialCues.hideBar()
 	if skipButton then
 		skipButton.Visible = false
 	end
@@ -597,6 +707,11 @@ local function startVisit(kind: "lesson" | "nudge", id: string)
 	shownKey = ""
 	clearCues()
 	ensurePish(RUN_IN)
+	refreshFocus()
+	local line = if kind == "lesson" then PishTalk.LESSONS[id] else PishTalk.NUDGES[id]
+	if line then
+		TutorialTalk.say(TalkRules.fill(line, Game.NAME), focusIcon, nil, nil)
+	end
 	if kind == "lesson" then
 		Remotes.TutorialAction:FireServer("lessonShown", id)
 	end
@@ -682,10 +797,13 @@ local function onStep()
 	local before = step
 	step = nextStep
 	shownKey = ""
+	introIndex = 1
+	byeSent = false
 	clearCues()
 	if step ~= "" then
 		visit = nil -- a replay takes over a visit; its lesson stays waiting
 	end
+	refreshFocus()
 	if replayButton then
 		replayButton.Visible = step == "" and player:GetAttribute("TutorialDone") == true
 	end
@@ -696,28 +814,39 @@ local function onStep()
 		return
 	end
 	ensurePish()
-	if not skipButton then
-		skipButton = makeSkipButton()
-	end
-	(skipButton :: TextButton).Visible = step ~= "bye"
 	local index = table.find(STEPS, step) or 1
-	TutorialCues.pawRow(index - 1, #STEPS)
-	TutorialCues.giftBox(true, false)
+	local bar = TutorialCues.topBar(index - 1, #STEPS)
+	local skip = skipButton or makeSkipButton()
+	skipButton = skip
+	skip.Parent = bar
+	skip.Visible = step ~= "bye"
 	if before ~= "" and marker then
 		TutorialCues.sparkle(marker.Position + Vector3.new(0, Pish.HEIGHT, 0))
 		play("happyHop")
 	end
 	if step == "bye" then
-		-- Its own timer, not the clip's end: petting him mid-celebration replaces the clip and would lose the goodbye
-		play("celebrate")
-		local celebrate = if visual then PishVisual.length(visual, "celebrate") else 0
-		task.delay(math.max(celebrate, BYE_MIN_SECONDS), function()
-			if step == "bye" then
-				Remotes.TutorialAction:FireServer("bye")
-			end
-		end)
+		play("celebrate") -- his goodbye ends on its last line's button (updateTalk), or by itself (BYE_IDLE_SECONDS)
 	end
+	updateTalk()
 	pointPaw()
+end
+
+-- The goodbye's last line left alone a while: the first visit ends by itself
+local function byeIdle()
+	if step ~= "bye" or byeSent then
+		return
+	end
+	local talk = PishTalk.STEPS.bye
+	if introIndex < #talk.intro then
+		lastLineAt = 0
+		return
+	end
+	if lastLineAt == 0 then
+		lastLineAt = os.clock()
+	elseif os.clock() - lastLineAt >= BYE_IDLE_SECONDS then
+		byeSent = true
+		Remotes.TutorialAction:FireServer("bye")
+	end
 end
 
 function TutorialController.Start()
@@ -755,6 +884,12 @@ function TutorialController.Start()
 			return
 		end
 		tick = 0
+		refreshFocus()
+		TutorialTalk.keepClear(if focusTarget then focusTarget.gui else nil)
+		if step ~= "" then
+			updateTalk()
+			byeIdle()
+		end
 		if leading then
 			pointPaw()
 			updateTrail()
