@@ -2148,7 +2148,7 @@ local function thousandCuts(character: Model, root: BasePart, spec: SwordSkillFx
 			-- your own: the slashes rip across your screen too, with a flash (owner 2026-11-09: "the slashes are hard to
 			-- see")
 			if not lite then
-				ScreenSlashes.wave(colors.glow)
+				ScreenSlashes.wave(colors.glow, colors.deep)
 			end
 			local center = ground + UP * 0.5
 			for _ = 1, slashes do
@@ -2193,7 +2193,7 @@ local function thousandCuts(character: Model, root: BasePart, spec: SwordSkillFx
 			hooks.burst(root.Position)
 		end
 		if not lite then
-			ScreenSlashes.cross(colors.glow)
+			ScreenSlashes.cross(colors.glow, colors.deep)
 		end
 		local right = Vector3.new(-facing.Z, 0, facing.X)
 		local cross = root.Position + facing * 2.5 + UP * 1.5

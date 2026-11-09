@@ -2023,7 +2023,7 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   3 as the ground splits, a spirit growl and Unhappy Angels Discordant Choral Wail as the Reaper rises, a Soul Slice
   each wave, a reversed whoosh into the X, a thunder roar and slam on the harvest. Owner 2026-11-09 ("the slashes are
   hard to see. can add the slashes and flashes across the screen, with also a sound effect of a fast slashes"): your
-  own cast also rips 5 glowing slashes with white cores across your screen each wave with a white flash, and a big X
+  own cast also rips 5 thin dark slashes (owner 2026-11-09: "darker and thinner": a 12 px deep-violet glow round a 2 px core) across your screen each wave with a white flash, and a big X
   with a bright flash on the harvest (`Config/SwordSkillFx SCREEN`, `Util/ScreenSlashRules`, client
   `Util/ScreenSlashes`); a flurry of sharp sword swishes (three Pro Sound Effects, measured) through the cuts. The HUD button "Thousand Cuts"
   (`UIIcons.Skull`). The Reaper: Meshy from concept B (the void reaper king), cleaned by

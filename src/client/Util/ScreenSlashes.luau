@@ -56,8 +56,9 @@ local function band(parent: Instance, color: Color3, thick: number, transparency
 	return frame
 end
 
--- One slash across the screen: a glow band round a white core, drawn out from its middle, held, then faded
-local function slash(at: ScreenSlashRules.Slash, color: Color3)
+-- One slash across the screen: a dark glow band (the weapon's `deep` colour pushed toward black) round a thin core in
+-- its `glow` colour, drawn out from its middle, held, then faded
+local function slash(at: ScreenSlashRules.Slash, glowColor: Color3, deepColor: Color3)
 	local cfg = SwordSkillFxConfig.SCREEN
 	local camera = workspace.CurrentCamera
 	if not camera then
@@ -65,10 +66,10 @@ local function slash(at: ScreenSlashRules.Slash, color: Color3)
 	end
 	local view = camera.ViewportSize
 	local length = math.sqrt(view.X * view.X + view.Y * view.Y) * at.length
-	local glow = band(layer(), color, cfg.thick, 0.25)
+	local glow = band(layer(), deepColor:Lerp(Color3.new(), cfg.darken), cfg.thick, 0.1)
 	glow.Position = UDim2.fromScale(at.x, at.y)
 	glow.Rotation = at.angle
-	local core = band(glow, WHITE, cfg.core, 0)
+	local core = band(glow, glowColor:Lerp(WHITE, cfg.coreWhite), cfg.core, 0)
 	core.Position = UDim2.fromScale(0.5, 0.5)
 	core.Size = UDim2.new(1, 0, 0, cfg.core)
 	TweenService:Create(glow, TweenInfo.new(cfg.draw, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.fromOffset(length, cfg.thick) }):Play()
@@ -92,24 +93,24 @@ function ScreenSlashes.flash(strength: number, color: Color3)
 	Debris:AddItem(frame, cfg.flashSeconds + 0.1)
 end
 
--- A wave of cuts: SCREEN.perWave slashes ripping across the screen in `color`, a few hundredths of a second apart, and
--- a flash
-function ScreenSlashes.wave(color: Color3)
+-- A wave of cuts: SCREEN.perWave slashes ripping across the screen in the weapon's colours (`glow`, `deep`), a few
+-- hundredths of a second apart, and a flash
+function ScreenSlashes.wave(glowColor: Color3, deepColor: Color3)
 	local cfg = SwordSkillFxConfig.SCREEN
 	for index, at in ScreenSlashRules.wave(cfg.perWave, math.random) do
 		task.delay((index - 1) * cfg.draw * 0.5, function()
-			slash(at, color)
+			slash(at, glowColor, deepColor)
 		end)
 	end
-	ScreenSlashes.flash(cfg.flash, color)
+	ScreenSlashes.flash(cfg.flash, glowColor)
 end
 
 -- The harvest: a big X across the screen and a bright flash
-function ScreenSlashes.cross(color: Color3)
+function ScreenSlashes.cross(glowColor: Color3, deepColor: Color3)
 	for _, at in ScreenSlashRules.cross() do
-		slash(at, color)
+		slash(at, glowColor, deepColor)
 	end
-	ScreenSlashes.flash(SwordSkillFxConfig.SCREEN.hitFlash, color)
+	ScreenSlashes.flash(SwordSkillFxConfig.SCREEN.hitFlash, glowColor)
 end
 
 return ScreenSlashes

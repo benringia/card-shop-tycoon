@@ -50,6 +50,15 @@ return {
 		expect.equal(screen.perWave >= 3, true)
 		expect.equal(screen.flash > 0 and screen.flash < screen.hitFlash and screen.hitFlash <= 1, true)
 		expect.equal(screen.draw > 0 and screen.hold > 0 and screen.flashSeconds > 0, true)
-		expect.equal(screen.core < screen.thick, true, "a white core inside the glow")
+		expect.equal(screen.core < screen.thick, true, "a core inside the glow")
+	end,
+
+	-- Owner 2026-11-09: "make the slashes darker and thinner"
+	["the screen's slashes are thin and dark"] = function()
+		local screen = SwordSkillFx.SCREEN
+		expect.equal(screen.thick <= 14, true, "a thin glow")
+		expect.equal(screen.core <= 3, true, "a thin core")
+		expect.equal(screen.darken >= 0.4 and screen.darken < 1, true, "the glow's colour pushed toward black")
+		expect.equal(screen.coreWhite <= 0.3, true, "the core no longer white")
 	end,
 }
