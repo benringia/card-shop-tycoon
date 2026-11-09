@@ -77,6 +77,7 @@ local KIND_LABELS = {
 local PlacementService = {}
 
 local layouts: { [Player]: { [string]: PlacedShelf } } = {}
+local placedHandlers: { (player: Player, shelfId: string) -> () } = {} -- PlacementService.OnPlaced
 local allowAction = RateLimiter.new(PlacementConfig.ACTION_COOLDOWN)
 
 local function notify(player: Player, message: string, isError: boolean)
@@ -688,6 +689,9 @@ local function onPlace(player: Player, shelfId: unknown, gridX: unknown, gridZ: 
 
 	createShelf(player, plot, def, gx, gz, rot, def.cost)
 	notify(player, `Placed {def.name}.`, false)
+	for _, handler in placedHandlers do
+		task.spawn(handler, player, def.id)
+	end
 end
 
 local function onMove(player: Player, uid: unknown, gridX: unknown, gridZ: unknown, rotation: unknown)
@@ -972,6 +976,11 @@ end
 function PlacementService.GetShelf(player: Player, uid: string): PlacedShelf?
 	local layout = layouts[player]
 	return if layout then layout[uid] else nil
+end
+
+-- A shelf bought and placed (the tutorial's "build a rack" step)
+function PlacementService.OnPlaced(callback: (player: Player, shelfId: string) -> ())
+	table.insert(placedHandlers, callback)
 end
 
 function PlacementService.GetShelves(player: Player): { PlacedShelf }

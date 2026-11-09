@@ -13,6 +13,16 @@ return {
 		expect.isNil(ItemRules.openablePack(config, nil), "nil")
 	end,
 
+	-- Pish's end gift (spec 2026-11-09-tutorial-pish-design 5): a First Spark pack whose hit card is Very Rare or better
+	["openablePack: the gift opens a First Spark pack with a Very Rare floor"] = function()
+		local product, floor = ItemRules.openablePack(config, "pishGift")
+		expect.equal(product, "FirstSparkPack")
+		expect.equal(floor, "Very Rare")
+		local plain, none = ItemRules.openablePack(config, "sparkPack")
+		expect.equal(plain, "FirstSparkPack")
+		expect.isNil(none, "the level-up pack has no floor")
+	end,
+
 	["sanitize: unknown ids, bad counts dropped; whole numbers; capped"] = function()
 		local items = ItemRules.sanitize(config, { starShard = 4.9, mystery = 3, [5] = 1 })
 		expect.equal(items.starShard, 4, "floored")

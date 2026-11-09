@@ -112,7 +112,7 @@ local function onOpenBagPack(player: Player, itemId: unknown)
 	if not allowOpen(player) then
 		return
 	end
-	local productId = ItemRules.openablePack(Items, itemId)
+	local productId, floor = ItemRules.openablePack(Items, itemId)
 	if not productId then
 		return
 	end
@@ -124,7 +124,7 @@ local function onOpenBagPack(player: Player, itemId: unknown)
 	if not ItemService.TakeItem(player, itemId :: string, 1) then
 		return
 	end
-	if not PackService or not PackService.OpenItemPack(player, productId) then
+	if not PackService or not PackService.OpenItemPack(player, productId, floor, itemId :: string) then
 		ItemService.GiveItem(player, itemId :: string, 1) -- not a pack after all: give it back
 	end
 end

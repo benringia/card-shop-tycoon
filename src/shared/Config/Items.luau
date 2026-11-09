@@ -122,6 +122,17 @@ return {
 			use = "Bag: tap Open",
 			open = "FirstSparkPack", -- the Config/Packs product it opens
 		},
+		-- Pish's gift at the end of the first visit (spec 2026-11-09-tutorial-pish-design 5): opened from the Bag like the
+		-- level-up pack, its hit card Very Rare or better (`floor`, Util/LuckRules.atLeast)
+		pishGift = {
+			name = "Pish's Gift",
+			icon = "Gift",
+			description = "A First Spark pack from Pish: its last card is Very Rare or better.",
+			source = "Pish, at the end of your first visit",
+			use = "Bag: tap Open",
+			open = "FirstSparkPack",
+			floor = "Very Rare",
+		},
 		goldSeal = {
 			name = "Gold Seal",
 			icon = "GoldSeal",
