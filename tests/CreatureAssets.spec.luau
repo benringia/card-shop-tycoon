@@ -41,6 +41,24 @@ local function findPackModel(pack: string, model: string): any?
 	return nil
 end
 
+-- A long weapon (a spear or a scythe) is a Head and a Shaft, the Shaft its PrimaryPart (where the hand holds it: the
+-- model's origin), every pivot straight (lune run tools/weapons/finish_sword)
+local function checkShafted(name: string)
+	local path = `assets/weapons/{name}.rbxm`
+	assert(fs.isFile(path), `{path} is missing (the owner imports the FBX; docs/weapons.md)`)
+	local model = roblox.deserializeModel(fs.readFile(path))[1]
+	assert(model and model:IsA("Model") and model.Name == name, `{path} holds the {name} model`)
+	assert(model:FindFirstChild("Head") and model:FindFirstChild("Shaft"), `{name} has its Head and Shaft`)
+	assert(model.PrimaryPart and model.PrimaryPart.Name == "Shaft", `{name}: the Shaft is its PrimaryPart (lune run tools/weapons/finish_sword)`)
+	for _, part in model:GetDescendants() do
+		if part:IsA("BasePart") then
+			local _, _, _, r00, r01, r02, r10, r11, r12, r20, r21, r22 = part.PivotOffset:GetComponents()
+			local straight = r00 == 1 and r11 == 1 and r22 == 1 and r01 == 0 and r02 == 0 and r10 == 0 and r12 == 0 and r20 == 0 and r21 == 0
+			assert(straight, `{name} {part.Name}'s PivotOffset is turned (lune run tools/weapons/finish_sword)`)
+		end
+	end
+end
+
 return {
 	["every card's creature model is in its pack, with the colour variant it asks for"] = function()
 		local party = require("../src/shared/Config/Party")
@@ -105,18 +123,18 @@ return {
 			table.insert(names, `ForgeSpear_{element}`)
 		end
 		for _, name in names do
-			local path = `assets/weapons/{name}.rbxm`
-			assert(fs.isFile(path), `{path} is missing (the owner imports the FBX; docs/weapons.md)`)
-			local model = roblox.deserializeModel(fs.readFile(path))[1]
-			assert(model and model:IsA("Model") and model.Name == name, `{path} holds the {name} model`)
-			assert(model:FindFirstChild("Head") and model:FindFirstChild("Shaft"), `{name} has its Head and Shaft`)
-			assert(model.PrimaryPart and model.PrimaryPart.Name == "Shaft", `{name}: the Shaft is its PrimaryPart (lune run tools/weapons/finish_sword)`)
-			for _, part in model:GetDescendants() do
-				if part:IsA("BasePart") then
-					local _, _, _, r00, r01, r02, r10, r11, r12, r20, r21, r22 = part.PivotOffset:GetComponents()
-					local straight = r00 == 1 and r11 == 1 and r22 == 1 and r01 == 0 and r02 == 0 and r10 == 0 and r12 == 0 and r20 == 0 and r21 == 0
-					assert(straight, `{name} {part.Name}'s PivotOffset is turned (lune run tools/weapons/finish_sword)`)
-				end
+			checkShafted(name)
+		end
+	end,
+
+	-- Weapons round 3 (spec 2026-11-09-weapons-round3-scythes-design): a scythe is shaped like a spear (Head and Shaft, the
+	-- grip a third up the shaft); every scythe marked ready has its model in and finished (this gates `ready`)
+	["every ready scythe's model is in and finished: Head and Shaft, the Shaft its PrimaryPart"] = function()
+		local weapons = require("../src/shared/Config/Weapons")
+		for _, weapon in weapons.WEAPONS do
+			if weapon.family == "scythe" and weapon.ready then
+				assert(weapon.model, `{weapon.id} is ready but names no model`)
+				checkShafted(weapon.model)
 			end
 		end
 	end,

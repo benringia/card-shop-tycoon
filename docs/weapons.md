@@ -60,6 +60,15 @@ the origin on the grip 31% up from the butt (held upright at the side, the butt 
 Sword's (`weapon_kit.FORGE_GEMS`; `forge_variants ForgeSpear`). In the game a spear's grip is `Config/Swords GRIPS.spear`
 and its effects run along `SwordFx.TRAIL_BLADE_SPEAR` (the head, 2.6-5.9 studs up from the grip).
 
+**Scythes** (weapons round 3): `weapon_kit.build_scythe(name, length)`: the spear's cleanup, but the shaft is centred
+(not the whole model: the blade sticks out to one side), the blade turned to -X (half a turn round the shaft when Meshy
+made it the other way), the head found from the blade's hanging tip (`find_scythe_head`: the first slice above 55% of
+the length wider than 1.6x the shaft's median; the tip sits 68-77% up at 18-20x the shaft) and the grip a third up from
+the butt. Lengths: Forge Scythe 8, Widow's Reaper 8.3, Storm Reaper 8.6, Rift Reaper 9. Parts **Head** and **Shaft**,
+like a spear. The Forge Scythe's three socket gems are tinted (`forge_variants ForgeScythe`); its spike butt stays steel.
+Meshy sometimes hands the GLB back with a stray armature (the Rift Reaper's came as `Mesh_0` beside two `root`
+skeletons): the add-on then says "No mesh objects imported"; rename the mesh and delete the rest, it is the model.
+
 ## 4. Into the game
 
 1. The owner imports `<Name>.fbx` in Studio (3D Importer, Rig Type None); the model's pivot lands on the grip's centre.

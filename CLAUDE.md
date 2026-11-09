@@ -56,7 +56,8 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   Meshy, cleaned by `tools/blender/build_weapon_<id>.py` on `weapon_kit.py`, the Forge Sword's elements made by
   `lune run tools/weapons/forge_variants` from `assets/weapons-source/ForgeSword.rbxm`, not synced; docs/weapons.md; the spears
   `ForgeSpear_<Element>`, `MagmaHalberd`, `TidalTrident`, `TitansLance` from Meshy, cleaned by `weapon_kit.build_spear`
-  (`build_weapon_<id>.py`), the Forge Spear's copies by `forge_variants ForgeSpear`), imported in Studio, finished by
+  (`build_weapon_<id>.py`), the Forge Spear's copies by `forge_variants ForgeSpear`; the scythes `ForgeScythe_<Element>`,
+  `WidowsReaper`, `StormReaper`, `RiftReaper` the same way by `weapon_kit.build_scythe`, `forge_variants ForgeScythe`), imported in Studio, finished by
   `lune run tools/weapons/finish_sword`: the FBX importer drops colours and turns pivots).
   `assets/ui/weapon-glow-maps`: each sword's glow map (its painted runes, gems, crystal), made by
   `tools/textures/make_glow_maps.py`, uploaded (ids in `Config/WeaponLooks` GLOW_MAPS) and baked into the models'

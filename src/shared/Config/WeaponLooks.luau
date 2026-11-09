@@ -101,6 +101,13 @@ return {
 			Volt = "rbxassetid://122146092260533",
 			Shade = "rbxassetid://74237076352651",
 		},
+		ForgeScythe = { -- weapons round 3 (tools/blender/build_weapon_forgeScythe.py, uploaded 2026-11-09)
+			Ember = "rbxassetid://74294427925403",
+			Tide = "rbxassetid://140328124517186",
+			Bloom = "rbxassetid://110918663246279",
+			Volt = "rbxassetid://125025825762225",
+			Shade = "rbxassetid://137995788929621",
+		},
 	},
 	-- Each model's glow map (emissive mask: the runes, gems, crystal; tools/textures/make_glow_maps.py, uploaded),
 	-- baked into its SurfaceAppearances by `lune run tools/weapons/add_glow_maps` (a game script can't set them).
