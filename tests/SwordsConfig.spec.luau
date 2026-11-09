@@ -357,6 +357,14 @@ return {
 		expect.equal(#(at.cutLines or {}), beats.waves, "a slice each wave of cuts")
 		expect.equal(at.wrathThrust and at.wrathThrust[1], rift.skill.hitAt, "the roar on the harvest")
 		expect.equal(rift.sounds.cutLines, Swords.SWORDS.scythe.sounds.cutLines, "the scythe's sounds kept for its cuts")
+		-- owner 2026-11-09: "with also a sound effect of a fast slashes": a flurry of sharp swishes through the cuts
+		local flurry = 0
+		for _, cue in rift.cues.skill do
+			if string.sub(cue.key, 1, 6) == "flurry" and cue.at >= beats.cutsFrom and cue.at < rift.skill.hitAt then
+				flurry += 1
+			end
+		end
+		expect.equal(flurry >= 6, true, `a flurry of fast slashes ({flurry})`)
 	end,
 
 	["Thousand Cuts' animation is published (the owner's id, 2026-11-09); the cuts stay the scythe's"] = function()

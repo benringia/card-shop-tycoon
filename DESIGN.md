@@ -2021,7 +2021,11 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   wide shot 30 studs out, looking up at the Reaper). Another player's cast: three slashes a wave, no darkening, slabs,
   swirl or souls, a third of the rocks. Sounds (Pro Sound Effects, measured): the charge and rumble, Avalanche Crashing
   3 as the ground splits, a spirit growl and Unhappy Angels Discordant Choral Wail as the Reaper rises, a Soul Slice
-  each wave, a reversed whoosh into the X, a thunder roar and slam on the harvest. The HUD button "Thousand Cuts"
+  each wave, a reversed whoosh into the X, a thunder roar and slam on the harvest. Owner 2026-11-09 ("the slashes are
+  hard to see. can add the slashes and flashes across the screen, with also a sound effect of a fast slashes"): your
+  own cast also rips 5 glowing slashes with white cores across your screen each wave with a white flash, and a big X
+  with a bright flash on the harvest (`Config/SwordSkillFx SCREEN`, `Util/ScreenSlashRules`, client
+  `Util/ScreenSlashes`); a flurry of sharp sword swishes (three Pro Sound Effects, measured) through the cuts. The HUD button "Thousand Cuts"
   (`UIIcons.Skull`). The Reaper: Meshy from concept B (the void reaper king), cleaned by
   `tools/blender/build_grim_reaper.py` (6,000 triangles); the move keyed in `tools/blender/anim_rift_reaper.py`.
   Balance re-run (tools/balance/bosses, Prism Hydra, 200 fights): unchanged, +0 C 68% and +10 S 84% at 0.8x, the 1x

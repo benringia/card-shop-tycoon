@@ -22,6 +22,7 @@ local SuperFx = require(Config:WaitForChild("SuperFx"))
 local SwordFx = require(Config:WaitForChild("SwordFx"))
 local ElementFx = require((script.Parent :: Instance):WaitForChild("ElementFx"))
 local Extras = require((script.Parent :: Instance):WaitForChild("Extras"))
+local ScreenSlashes = require((script.Parent :: Instance):WaitForChild("ScreenSlashes"))
 
 -- A weapon's effect colours, and its element (a Forge Sword's looks are drawn in it)
 export type Colors = { deep: Color3, glow: Color3, element: string? }
@@ -2144,6 +2145,11 @@ local function thousandCuts(character: Model, root: BasePart, spec: SwordSkillFx
 			if hooks.rumble then
 				hooks.rumble(1)
 			end
+			-- your own: the slashes rip across your screen too, with a flash (owner 2026-11-09: "the slashes are hard to
+			-- see")
+			if not lite then
+				ScreenSlashes.wave(colors.glow)
+			end
 			local center = ground + UP * 0.5
 			for _ = 1, slashes do
 				local angle = math.random() * math.pi * 2
@@ -2185,6 +2191,9 @@ local function thousandCuts(character: Model, root: BasePart, spec: SwordSkillFx
 		unfade()
 		if hooks.burst then
 			hooks.burst(root.Position)
+		end
+		if not lite then
+			ScreenSlashes.cross(colors.glow)
 		end
 		local right = Vector3.new(-facing.Z, 0, facing.X)
 		local cross = root.Position + facing * 2.5 + UP * 1.5

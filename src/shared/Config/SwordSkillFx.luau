@@ -458,6 +458,12 @@ return {
 	-- Torrent Strike's slam shakes `release`, its torrents torrentStrike; a finisher with its own shakes that
 	-- (the scythe's Whirlwind), else `finisher`; Reaping Cyclone's third ring reapingCyclone
 	SHAKE = { release = 0.5, impact = 0.95, thornline = 0.55, prismStrike = 0.4, prismJudgment = 1.1, elementalSpin = 0.7, finisher = 0.35, titansRumble = 0.28, titansWrath = 1, magmaCleave = 0.8, torrentStrike = 0.9, scytheWhirl = 0.55, reapingCyclone = 0.65, thousandCuts = 1.25 },
+	-- Thousand Cuts' slashes across your own screen (owner 2026-11-09: "the slashes are hard to see. can add the slashes
+	-- and flashes across the screen"; ScreenSlashRules, drawn by Util/ScreenSlashes): each wave of cuts `perWave` lines
+	-- rip across the screen (a `thick`-pixel glow round a `core`-pixel white line, drawn in over `draw` seconds, gone
+	-- `hold` later) with a white flash of `flash`; at the harvest a big X and a `hitFlash` flash, each fading over
+	-- `flashSeconds`. Your own cast only (another player's never draws on your screen).
+	SCREEN = { perWave = 5, thick = 26, core = 6, draw = 0.06, hold = 0.16, flash = 0.3, hitFlash = 0.65, flashSeconds = 0.2 },
 	-- Thousand Cuts' Grim Reaper (ReplicatedStorage.FxModels.GrimReaper, 16 studs, its origin at the bottom centre): it
 	-- rises from `depth` studs under the rift `behind` you over `rise` seconds, hovers bobbing `bob` studs, see-through
 	-- (`ghost`) with a `glow` outline, holding a giant Rift Reaper (`scytheScale` x, `scytheOffset` studs from its pivot:

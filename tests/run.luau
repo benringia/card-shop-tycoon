@@ -99,6 +99,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	SwordsConfig = require("./SwordsConfig.spec"),
 	SwordRules = require("./SwordRules.spec"),
 	SwordSkillFx = require("./SwordSkillFx.spec"),
+	ScreenSlashRules = require("./ScreenSlashRules.spec"),
 	SwordArcRules = require("./SwordArcRules.spec"),
 	SwingGate = require("./SwingGate.spec"),
 	RingRules = require("./RingRules.spec"),

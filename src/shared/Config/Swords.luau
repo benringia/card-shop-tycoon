@@ -590,6 +590,10 @@ do
 	riftSounds.reaperWail = "rbxassetid://9120358057" -- Unhappy Angels Discordant Choral Wail Airy 1: the Reaper rising
 	riftSounds.cleaveRush = "rbxassetid://9118158113" -- Reversed Whoosh Backwards Hissing Burst 2: into the X
 	riftSounds.wrathThrust = "rbxassetid://9120023325" -- Thunder With Lion Roar Searing Blast 5: the harvest
+	-- the cuts' flurry (owner 2026-11-09: "a sound effect of a fast slashes"): three sharp sword swishes, measured
+	riftSounds.flurryA = "rbxassetid://9126013644" -- Swish Med High End Sharp Swords Fast Punches
+	riftSounds.flurryB = "rbxassetid://9126013382" -- Swish Med High End Sharp Swords Fast Punches
+	riftSounds.flurryC = "rbxassetid://9126014020" -- Swish Med High End Sharp Swords Fast Punches
 	SWORDS.riftReaper = {
 		name = "Rift Reaper",
 		power = starter.power,
@@ -620,9 +624,17 @@ do
 				{ key = "riftGrowl", at = 0.72 },
 				{ key = "reaperWail", at = 0.78, stopAfter = 2.2 },
 				{ key = "cutLines", at = 1.2 },
+				{ key = "flurryA", at = 1.2 },
+				{ key = "flurryB", at = 1.26 },
 				{ key = "cutLines", at = 1.33 },
+				{ key = "flurryC", at = 1.33 },
+				{ key = "flurryA", at = 1.4 },
 				{ key = "cutLines", at = 1.46 },
+				{ key = "flurryB", at = 1.46 },
+				{ key = "flurryC", at = 1.53 },
 				{ key = "cutLines", at = 1.59 },
+				{ key = "flurryA", at = 1.59 },
+				{ key = "flurryB", at = 1.66 },
 				{ key = "cleaveRush", at = 1.62 },
 				{ key = "wrathThrust", at = 1.8 },
 				{ key = "slam", at = 1.8 },
