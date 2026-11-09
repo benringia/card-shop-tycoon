@@ -33,6 +33,7 @@ HRP_Z = 3.0  # HumanoidRootPart centre above the ground (HipHeight 2 + half its 
 HAND_GRIPS = {
     "sword": {"y": -0.18, "angleX": -140, "twist": 90},
     "spear": {"y": -0.18, "angleX": -90, "twist": 0},  # the arm hanging, the spear points straight ahead
+    "scythe": {"y": -0.18, "angleX": -90, "twist": 180},  # as the spear, half turned: the models' blade is along +X
 }
 
 
@@ -122,6 +123,12 @@ def box(name, center, size, rgba):
 # Forge Spear's proportions) has its shaft through the grip, a collar and a leaf head on top.
 SPEAR_LENGTH = 8.5
 SPEAR_GRIP = 0.31
+# The scythe (weapons round 3: the Storm Reaper's proportions, weapon_kit.build_scythe): held a third up from the butt,
+# a socket at the top, the blade out 3.2 studs to +X as in the imported models (flat faces along Z), its tip hanging down
+# to 3.4 over the grip; the grip's half turn puts it to the left of the right hand
+SCYTHE_LENGTH = 8.6
+SCYTHE_GRIP = 1 / 3
+_SCYTHE_TOP = SCYTHE_LENGTH * (1 - SCYTHE_GRIP)
 PROPS = {
     "sword": [("Handle", (0, 0, 0), (0.26, 1.1, 0.26), (0.27, 0.17, 0.12, 1)), ("Guard", (0, 0.62, 0), (1.15, 0.2, 0.34), (0.84, 0.69, 0.32, 1)),
               ("Blade", (0, 2.55, 0), (0.24, 3.7, 0.07), (0.88, 0.92, 0.96, 1))],
@@ -130,12 +137,19 @@ PROPS = {
         ("Collar", (0, SPEAR_LENGTH * (1 - SPEAR_GRIP) - 1.55, 0), (0.42, 0.3, 0.42), (0.55, 0.57, 0.62, 1)),
         ("Head", (0, SPEAR_LENGTH * (1 - SPEAR_GRIP) - 0.7, 0), (0.62, 1.4, 0.1), (0.88, 0.92, 0.96, 1)),
     ],
+    "scythe": [
+        ("Shaft", (0, SCYTHE_LENGTH * (0.5 - SCYTHE_GRIP) - 0.3, 0), (0.24, SCYTHE_LENGTH - 0.6, 0.24), (0.2, 0.22, 0.36, 1)),
+        ("Socket", (0, _SCYTHE_TOP - 0.7, 0), (0.5, 1.0, 0.5), (0.8, 0.62, 0.2, 1)),
+        ("Blade", (0.9, _SCYTHE_TOP - 0.5, 0), (1.4, 0.8, 0.07), (0.88, 0.92, 0.96, 1)),
+        ("Blade2", (2.2, _SCYTHE_TOP - 0.85, 0), (1.3, 0.6, 0.07), (0.88, 0.92, 0.96, 1)),
+        ("Tip", (3.0, _SCYTHE_TOP - 1.6, 0), (0.45, 1.4, 0.07), (0.62, 0.72, 0.95, 1)),
+    ],
 }
 
 
 def build(prop="sword"):
-    """An empty scene with the rig (armature "Rig" = the HumanoidRootPart), block body parts, a weapon (`prop`: "sword"
-    or "spear") in the right hand at the game's grip for its family, IK legs with planted foot targets, a ground, a sun
+    """An empty scene with the rig (armature "Rig" = the HumanoidRootPart), block body parts, a weapon (`prop`: "sword",
+    "spear" or "scythe") in the right hand at the game's grip for its family, IK legs with planted foot targets, a ground, a sun
     and a camera."""
     EASES.clear()
     for obj in list(bpy.data.objects):

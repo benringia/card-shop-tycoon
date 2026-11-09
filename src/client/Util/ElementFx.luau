@@ -340,8 +340,9 @@ end
 
 -- A crescent of moonlight flung from `from` at a (moving) target over `seconds` (Shade's basic attack, AttackFx
 -- MOON_SLASH): a glowing crescent bowed forward and tilted, a white core, a dark shadow sheet trailing behind it and
--- motes; `onArrive` where it lands. tilt: degrees (the default's own tilt when nil)
-function ElementFx.moonSlash(from: Vector3, target: () -> Vector3, color: Color3, seconds: number, onArrive: (Vector3) -> (), scale: number?, tilt: number?)
+-- motes; `onArrive` where it lands. tilt: degrees (the default's own tilt when nil); `lit` false: no light of its own
+-- (Reaping Cyclone's rings share one)
+function ElementFx.moonSlash(from: Vector3, target: () -> Vector3, color: Color3, seconds: number, onArrive: (Vector3) -> (), scale: number?, tilt: number?, lit: boolean?)
 	local cfg = AttackFx.MOON_SLASH
 	local s = scale or 1
 	local half = cfg.length * 0.5 * s
@@ -384,7 +385,9 @@ function ElementFx.moonSlash(from: Vector3, target: () -> Vector3, color: Color3
 	trail.Parent = carrier
 	local motes = emitter(carrier, "spark", color, { size = { 0.6 * s, 0.1 }, life = { 0.25, 0.45 }, speed = { 1, 3 }, spread = 180, brightness = 2 })
 	motes.Rate = detail(40)
-	light(carrier, color, 9 * s, 2, seconds + 0.2)
+	if lit ~= false then
+		light(carrier, color, 9 * s, 2, seconds + 0.2)
+	end
 	local started = os.clock()
 	local connection: RBXScriptConnection
 	connection = RunService.RenderStepped:Connect(function()

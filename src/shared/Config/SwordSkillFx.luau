@@ -325,6 +325,115 @@ local LOOKS: { [string]: Look } = {
 			camOut = 26,
 		},
 	},
+	-- The scythe (weapons round 3, spec 2026-11-09-weapons-round3-scythes-design 5.2: "big wind-ups, wide sweeps, long
+	-- trails in the scythe's colour"; the owner: "exaggerated moves, wide slashes in all directions"), shared by the four
+	-- scythes in each one's colours and element. Scythe sweep: the blade's element streaming off every cut; at each cut's
+	-- strike a huge crescent of light `arc` studs round you, `thick` studs, bright for `flash` seconds, streaks and `sparks`
+	-- flying out of it to the reach: Reap's across your front, `arcAngle` degrees right to left; Back Sweep's a whole turn
+	-- laid round you low (`low` studs down) over the `wrap` seconds before its strike, from `wrapFrom` degrees (your right)
+	-- round behind you to your front; the Whirlwind's two turns at shoulder height (`high` up) over the `spin` seconds
+	-- before its strike (its slash is called later, at SwordFx.ARCS.cut3.from: the crescent catches up,
+	-- SwordSkillFxRules.arcCatchUp). Reap's starts `lead` before its strike and takes `swipe`. Each half turn is laid in
+	-- `pieces` pieces, half for another player's (or on low graphics), with no streaks or sparks then
+	scytheSweep = {
+		kind = "slash",
+		textures = { "glow", "streak", "spark", "star", "shard" },
+		seconds = 0.45,
+		size = 2.2,
+		count = 160,
+		beats = { arc = 7, arcAngle = 200, thick = 0.9, flash = 0.3, sparks = 50, wrap = 0.27, wrapFrom = -90, spin = 0.64, low = 1.4, high = 0.6, lead = 0.1, swipe = 0.18, pieces = 18 },
+	},
+	-- Whirlwind's finish, round you where you stand (`form` around): at the strike `rings` shockwaves race out to `ring`
+	-- studs (the cut's reach), a whole circle of `blades` crescents flashes `bladeRing` studs out, `sparks` fly all round,
+	-- a ring of `dust` kicks up, a white flash for `flash` seconds (SHAKE.scytheWhirl)
+	scytheWhirl = {
+		kind = "finisher",
+		textures = { "glow", "streak", "spark", "smoke", "ring" },
+		seconds = 1.2,
+		size = 20,
+		count = 90,
+		form = "around",
+		beats = { rings = 2, ring = 10, blades = 10, bladeRing = 6.5, sparks = 80, dust = 24, flash = 0.2 },
+	},
+	-- Reaping Cyclone (the Forge Scythe's and every scythe's until its own; spec 5.3: "three spins, each throwing a ring of
+	-- element crescents outward; the third ring is the hit"). From `gather` the element swirls round you `swirl` studs out
+	-- and a ring glows under you; at the end of each spin a ring of `crescents` crescents in the scythe's colours flies out
+	-- to `radius` studs (the shape's) in `fly` seconds: at `ring1`, at `ring2`, and the third, `lastScale` times bigger,
+	-- leaving `fly` before `hit` so it arrives with the hit: a shockwave out to the radius and `sparks` all round
+	-- (SHAKE.reapingCyclone). The Common skill: no camera moment.
+	-- Thousand Cuts (the Rift Reaper's own skill, spec 5.4; the owner: "flashy violent, exaggerated. you can even summon
+	-- a grim reaper as effect. screenshake. ground breaking anything to make it legendary"; storyboard approved
+	-- 2026-11-09). 1. Charge: from `charge` `cracks` glowing violet cracks race out across the ground to `crackReach`
+	-- studs over `crackGrow` seconds, your screen darkens by `darkness` (your own), a rumble pulsing every `rumbleEvery`
+	-- s and growing. 2. The rift: at `slam` the ground splits open `riftBehind` studs behind you (a `riftSize`-stud
+	-- tear, a shockwave, the release shake) and the Grim Reaper (REAPER) rises out of it, souls swirling. 3. A thousand
+	-- cuts: you fade half into the rift; from `cutsFrom`, `waves` waves `waveGap` apart, each of `slashes` violet slashes
+	-- (`slashLite` for another player's) ripping across the area from every direction, `slashThick` thick, bright for
+	-- `slashFlash`, a jolt each wave, `slabs` slabs of ground (`slabSize`) heaving up. 4. The harvest at `hit`: you
+	-- reappear with an X (two beams `xLength` long), the Reaper spins its giant scythe a full circle (a crescent ring at
+	-- `harvestRadius`, `harvestThick` thick), `rings` shockwave rings race out to the `radius` (the skill's), `rocks`
+	-- rocks flung up at `rockSpeed`, a pillar of light `pillarHeight` tall (SHAKE.thousandCuts, the biggest in the
+	-- game). 5. Aftermath: the Reaper dissolves into smoke and `souls` souls rising, the cracks glow on until `close` and
+	-- fade over `fade`. Your own plays the camera moment from `camAt` (the Reaper rising), held `camHold` through the
+	-- harvest, framed on you (`camFocus` above your root; the wide shot `camOut` studs out to the side and `camAhead`
+	-- toward your front, `camUp` above, looking up `camLookUp`) so you and the Reaper's face and whole height show.
+	thousandCuts = {
+		kind = "skill",
+		textures = { "glow", "streak", "spark", "smoke", "ring", "crack" },
+		seconds = 2.6,
+		size = 28,
+		count = 120,
+		form = "around",
+		cinematic = true,
+		beats = {
+			charge = 0.1,
+			cracks = 10,
+			crackReach = 14,
+			crackGrow = 0.6,
+			rumbleEvery = 0.12,
+			darkness = 0.35,
+			slam = 0.7,
+			riftBehind = 6,
+			riftSize = 9,
+			cutsFrom = 1.2,
+			waves = 4,
+			waveGap = 0.13,
+			slashes = 7,
+			slashLite = 3,
+			slashThick = 0.55,
+			slashFlash = 0.3,
+			slabs = 10,
+			slabSize = 2.4,
+			hit = 1.8,
+			radius = 14,
+			harvestRadius = 11,
+			harvestThick = 2.6,
+			xLength = 16,
+			rings = 3,
+			rocks = 18,
+			rockSpeed = 30,
+			pillarHeight = 22,
+			close = 3.2,
+			fade = 0.8,
+			souls = 40,
+			camAt = 0.75,
+			camHold = 1.6,
+			camFocus = 0.5,
+			camLookUp = 9,
+			camUp = 0,
+			camOut = 30,
+			camAhead = 22, -- the wide shot this far toward your front (Studio 2026-11-09: side-on saw the Reaper edge-on)
+		},
+	},
+	reapingCyclone = {
+		kind = "skill",
+		textures = { "glow", "streak", "spark", "star", "ring" },
+		seconds = 1.5,
+		size = 18,
+		count = 120,
+		form = "around",
+		beats = { gather = 0.14, ring1 = 0.52, ring2 = 0.73, hit = 0.94, radius = 9, fly = 0.2, crescents = 8, lastScale = 1.5, swirl = 3, sparks = 60 },
+	},
 }
 
 return {
@@ -346,8 +455,24 @@ return {
 	-- Your own skill's screen shakes (ScreenFx.shake amounts; a boss slam is 0.75): on the cleave and on the burst
 	-- Titan's Wrath: each rumble pulse through the charge grows to titansRumble (they decay between pulses: it throbs and
 	-- builds), the fissure's shake is titansWrath (the peak's flash shakes `release`); Magma Cleave's swipe magmaCleave;
-	-- Torrent Strike's slam shakes `release`, its torrents torrentStrike
-	SHAKE = { release = 0.5, impact = 0.95, thornline = 0.55, prismStrike = 0.4, prismJudgment = 1.1, elementalSpin = 0.7, finisher = 0.35, titansRumble = 0.28, titansWrath = 1, magmaCleave = 0.8, torrentStrike = 0.9 },
+	-- Torrent Strike's slam shakes `release`, its torrents torrentStrike; a finisher with its own shakes that
+	-- (the scythe's Whirlwind), else `finisher`; Reaping Cyclone's third ring reapingCyclone
+	SHAKE = { release = 0.5, impact = 0.95, thornline = 0.55, prismStrike = 0.4, prismJudgment = 1.1, elementalSpin = 0.7, finisher = 0.35, titansRumble = 0.28, titansWrath = 1, magmaCleave = 0.8, torrentStrike = 0.9, scytheWhirl = 0.55, reapingCyclone = 0.65, thousandCuts = 1.25 },
+	-- Thousand Cuts' slashes across your own screen (owner 2026-11-09: "the slashes are hard to see. can add the slashes
+	-- and flashes across the screen"; ScreenSlashRules, drawn by Util/ScreenSlashes): each wave of cuts `perWave` lines
+	-- rip across the screen (a `thick`-pixel glow in the weapon's deep colour, `darken` of the way to black, round a
+	-- `core`-pixel line in its glow colour, `coreWhite` of the way to white; drawn in over `draw` seconds, gone `hold`
+	-- later) with a white flash of `flash`; at the harvest a big X and a `hitFlash` flash, each fading over
+	-- `flashSeconds`. Your own cast only (another player's never draws on your screen). Owner 2026-11-09: "make the
+	-- slashes darker and thinner" (were 26 / 6 px, a pale glow round a white core).
+	SCREEN = { perWave = 5, thick = 12, core = 2, darken = 0.5, coreWhite = 0.15, draw = 0.06, hold = 0.16, flash = 0.3, hitFlash = 0.65, flashSeconds = 0.2 },
+	-- Thousand Cuts' Grim Reaper (ReplicatedStorage.FxModels.GrimReaper, 16 studs, its origin at the bottom centre): it
+	-- rises from `depth` studs under the rift `behind` you over `rise` seconds, hovers bobbing `bob` studs, see-through
+	-- (`ghost`) with a `glow` outline, holding a giant Rift Reaper (`scytheScale` x, `scytheOffset` studs from its pivot:
+	-- x right, y up, z back: in its right hand; turned `scytheTurn` degrees so the blade faces forward; set in Studio
+	-- 2026-11-09); at the harvest it spins a full turn in `spin` seconds, then
+	-- dissolves over `dissolve`
+	REAPER = { behind = 6, depth = 18, rise = 0.5, bob = 0.5, ghost = 0.3, glow = { 185, 120, 255 }, scytheScale = 2.4, scytheOffset = { 4.3, 7.5, -0.5 }, scytheTurn = 90, spin = 0.32, dissolve = 0.7 },
 	-- Your own skill's camera moment (owner 2026-11-07, camera only: the fight runs on and you can still be hit; then
 	-- "the camera ... is at the back so the crescent is hard to see ... make sure it shows the full animation without
 	-- being blocked"), seconds and studs, all from the side (your left or right, whichever has a clear view): eased over
@@ -387,5 +512,10 @@ return {
 		halberd = "magmaHalberd",
 		trident = "tidalTrident",
 		lance = "titansLance",
+		-- the scythes (weapons round 3)
+		scythe = "forgeScythe_Shade",
+		widow = "widowsReaper",
+		storm = "stormReaper",
+		rift = "riftReaper",
 	} :: { [string]: string },
 }

@@ -55,6 +55,28 @@ return {
 		expect.equal(string.sub(button.tip, -#ending), ending, "ends with the dodge rule")
 	end,
 
+	-- Weapons round 3: every scythe's Reaping Cyclone button (a spare glyph: a crescent flung out with sparks)
+	["the scythe's skill button: Reaping Cyclone, its crescent icon and the dodge rule"] = function()
+		local button = SkillText.swordSkill(CombatHud, "scythe")
+		expect.equal(button.icon, "CrescentSparks")
+		expect.equal(UIIcons[button.icon] ~= nil, true, "its icon is uploaded")
+		expect.equal(button.name, "Reaping Cyclone")
+		expect.equal(#button.tip <= 140, true, "its tooltip fits the tooltip box")
+		local ending = CombatHud.SKILL_DODGE_TIP
+		expect.equal(string.sub(button.tip, -#ending), ending, "ends with the dodge rule")
+	end,
+
+	-- The Rift Reaper's own skill button (spec 5.4: the Skull glyph, the summoned Grim Reaper)
+	["the Rift Reaper's skill button: Thousand Cuts, the skull icon and the dodge rule"] = function()
+		local button = SkillText.swordSkill(CombatHud, "riftReaper")
+		expect.equal(button.icon, "Skull")
+		expect.equal(UIIcons[button.icon] ~= nil, true, "its icon is uploaded")
+		expect.equal(button.name, "Thousand Cuts")
+		expect.equal(#button.tip <= 140, true, "its tooltip fits the tooltip box")
+		local ending = CombatHud.SKILL_DODGE_TIP
+		expect.equal(string.sub(button.tip, -#ending), ending, "ends with the dodge rule")
+	end,
+
 	-- Weapons round 2.5 part 2: the Halberd's and the Trident's own skill buttons (spare glyphs, spec 5)
 	["the Halberd's and the Trident's skill buttons: Magma Cleave and Torrent Strike, their icons and the dodge rule"] = function()
 		for moveset, want in { magmaHalberd = { "Magma Cleave", "HalberdFlames" }, tidalTrident = { "Torrent Strike", "TridentWave" } } do

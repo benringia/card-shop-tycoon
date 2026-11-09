@@ -5,8 +5,9 @@
 -- catches nested ones).
 local fs = require("@lune/fs")
 local roblox = require("@lune/roblox")
+local expect = require("./lib/expect")
 
-local FOLDERS = { "assets/creatures", "assets/monsters", "assets/props", "assets/town", "assets/place-props", "assets/packs", "assets/weapons" }
+local FOLDERS = { "assets/creatures", "assets/monsters", "assets/props", "assets/town", "assets/place-props", "assets/packs", "assets/weapons", "assets/fx-models" }
 -- The 3D pack models (UI project 3): each file's model and the meshes the game looks up in it
 local PACK_MODELS = {
 	Pack = { "Body", "Strip", "BodyLow" },
@@ -39,6 +40,24 @@ local function findPackModel(pack: string, model: string): any?
 		end
 	end
 	return nil
+end
+
+-- A long weapon (a spear or a scythe) is a Head and a Shaft, the Shaft its PrimaryPart (where the hand holds it: the
+-- model's origin), every pivot straight (lune run tools/weapons/finish_sword)
+local function checkShafted(name: string)
+	local path = `assets/weapons/{name}.rbxm`
+	assert(fs.isFile(path), `{path} is missing (the owner imports the FBX; docs/weapons.md)`)
+	local model = roblox.deserializeModel(fs.readFile(path))[1]
+	assert(model and model:IsA("Model") and model.Name == name, `{path} holds the {name} model`)
+	assert(model:FindFirstChild("Head") and model:FindFirstChild("Shaft"), `{name} has its Head and Shaft`)
+	assert(model.PrimaryPart and model.PrimaryPart.Name == "Shaft", `{name}: the Shaft is its PrimaryPart (lune run tools/weapons/finish_sword)`)
+	for _, part in model:GetDescendants() do
+		if part:IsA("BasePart") then
+			local _, _, _, r00, r01, r02, r10, r11, r12, r20, r21, r22 = part.PivotOffset:GetComponents()
+			local straight = r00 == 1 and r11 == 1 and r22 == 1 and r01 == 0 and r02 == 0 and r10 == 0 and r12 == 0 and r20 == 0 and r21 == 0
+			assert(straight, `{name} {part.Name}'s PivotOffset is turned (lune run tools/weapons/finish_sword)`)
+		end
+	end
 end
 
 return {
@@ -105,20 +124,37 @@ return {
 			table.insert(names, `ForgeSpear_{element}`)
 		end
 		for _, name in names do
-			local path = `assets/weapons/{name}.rbxm`
-			assert(fs.isFile(path), `{path} is missing (the owner imports the FBX; docs/weapons.md)`)
-			local model = roblox.deserializeModel(fs.readFile(path))[1]
-			assert(model and model:IsA("Model") and model.Name == name, `{path} holds the {name} model`)
-			assert(model:FindFirstChild("Head") and model:FindFirstChild("Shaft"), `{name} has its Head and Shaft`)
-			assert(model.PrimaryPart and model.PrimaryPart.Name == "Shaft", `{name}: the Shaft is its PrimaryPart (lune run tools/weapons/finish_sword)`)
-			for _, part in model:GetDescendants() do
-				if part:IsA("BasePart") then
-					local _, _, _, r00, r01, r02, r10, r11, r12, r20, r21, r22 = part.PivotOffset:GetComponents()
-					local straight = r00 == 1 and r11 == 1 and r22 == 1 and r01 == 0 and r02 == 0 and r10 == 0 and r12 == 0 and r20 == 0 and r21 == 0
-					assert(straight, `{name} {part.Name}'s PivotOffset is turned (lune run tools/weapons/finish_sword)`)
-				end
+			checkShafted(name)
+		end
+	end,
+
+	-- Weapons round 3 (spec 2026-11-09-weapons-round3-scythes-design): a scythe is shaped like a spear (Head and Shaft, the
+	-- grip a third up the shaft); every scythe marked ready has its model in and finished (this gates `ready`)
+	["every ready scythe's model is in and finished: Head and Shaft, the Shaft its PrimaryPart"] = function()
+		local weapons = require("../src/shared/Config/Weapons")
+		for _, weapon in weapons.WEAPONS do
+			if weapon.family == "scythe" and weapon.ready then
+				assert(weapon.model, `{weapon.id} is ready but names no model`)
+				checkShafted(weapon.model)
 			end
 		end
+	end,
+
+	-- Thousand Cuts' Grim Reaper (spec 2026-11-09-weapons-round3-scythes-design 5.4): one mesh, Reaper, its PrimaryPart,
+	-- the model's pivot at the bottom centre (where it rises from the rift; Util/SwordSkillFx moves it by its pivot)
+	["the Grim Reaper model is in: its Reaper mesh the PrimaryPart, the pivot at its bottom, straight"] = function()
+		local path = "assets/fx-models/GrimReaper.rbxm"
+		assert(fs.isFile(path), `{path} is missing (the owner imports tools/blender/build_grim_reaper.py's FBX)`)
+		local model = roblox.deserializeModel(fs.readFile(path))[1]
+		assert(model and model:IsA("Model") and model.Name == "GrimReaper", `{path} holds the GrimReaper model`)
+		local reaper = model:FindFirstChild("Reaper")
+		assert(reaper and reaper:IsA("MeshPart"), "its Reaper mesh")
+		assert(model.PrimaryPart == reaper, "the Reaper is its PrimaryPart")
+		local offset = reaper.PivotOffset
+		expect.near(offset.Position.Y, -reaper.Size.Y / 2, 0.05, "the pivot at the bottom")
+		local _, _, _, r00, r01, r02, r10, r11, r12, r20, r21, r22 = offset:GetComponents()
+		local straight = r00 == 1 and r11 == 1 and r22 == 1 and r01 == 0 and r02 == 0 and r10 == 0 and r12 == 0 and r20 == 0 and r21 == 0
+		assert(straight, "its PivotOffset isn't turned")
 	end,
 
 	["the prop folder is scanned too"] = function()

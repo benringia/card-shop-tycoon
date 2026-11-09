@@ -511,6 +511,139 @@ do
 	})
 end
 
+-- The scythe moveset (weapons round 3, spec 2026-11-09-weapons-round3-scythes-design 5.2; the owner: "epic. I want
+-- exaggerated moves, wide slashes in all directions", "a bit slower but still flashy"): shared by all four scythes.
+-- Upright at your side between moves like the spear; every attack brings both hands on with a heavy wind-up. Each cut
+-- about a third slower than the sword's and so harder, the same damage a second against one foe (tests/SwordsConfig):
+-- Reap, one huge sweep across your front; Back Sweep, the blade carving round behind you and through your front again
+-- (its damage lands in front: every cut soft-aims you at the foe, so a hit behind you would miss the lone foe of most
+-- fights); Whirlwind, two full spins, every foe round you. Nothing past 10 studs (a boss's swipe still reaches you).
+-- Reaping Cyclone (spec 5.3): three spins, a ring of crescents each, every foe within 9 studs on the third. Timings are
+-- its animations' (tools/blender/anim_scythe.py, approved and published by the owner 2026-11-09); its sounds its own mix
+-- of the measured licensed ones.
+do
+	-- its own moves (published by the owner 2026-11-09); dodge, flinch, down and get up stay the Steel Sword's
+	local animations = table.clone(starter.animations)
+	animations.ready = "rbxassetid://107381698123347"
+	animations.draw = "rbxassetid://120963161842619"
+	animations.sheath = "rbxassetid://87007060779059"
+	animations.run = "rbxassetid://93344115404944"
+	animations.cut1 = "rbxassetid://84614363717630"
+	animations.cut2 = "rbxassetid://101503127287374"
+	animations.cut3 = "rbxassetid://112263670560674"
+	animations.skill = "rbxassetid://133282199201010"
+	local spear = SWORDS.spear
+	-- Its own mix of the measured Pro Sound Effects (Config/SoundLevels): the spear's sounds plus the Halberd's big swing
+	local sounds = table.clone(spear.sounds)
+	sounds.cleaveWhoosh = "rbxassetid://9120717850" -- Whoosh Fast Swish By 4: Reap's huge sweep
+	SWORDS.scythe = {
+		name = "Scythe",
+		power = starter.power,
+		element = nil,
+		model = "Scythe",
+		slash = starter.slash,
+		combo = {
+			-- Reap: wound back over the right shoulder, one huge flat sweep right to left across your front, a step in
+			{ power = 0.4334, hitAt = 0.34, cancelAt = 0.50, length = 0.85, reach = 10, arc = 180, lunge = { studs = 1.1, from = 0.22, to = 0.34 } },
+			-- Back Sweep: a low spin, the blade across your front, round behind you and through your front again at the hit
+			{ power = 0.4334, hitAt = 0.42, cancelAt = 0.58, length = 0.90, reach = 10, arc = 180, lunge = { studs = 0.8, from = 0.15, to = 0.42 } },
+			-- Whirlwind: two full spins with the scythe held out, every foe round you as the second ends, a shake
+			{ power = 1.1301, hitAt = 0.98, length = 1.70, reach = 10, arc = 360 },
+		},
+		-- Reaping Cyclone: three spins with the scythe raised high, every foe within 9 studs on the third
+		skill = {
+			power = 0.9,
+			hitAt = 0.94,
+			length = 1.6,
+			cooldown = SKILL_COOLDOWN,
+			shape = { kind = "spin", radius = 9 },
+			free = { at = 0.94 },
+		},
+		animations = animations,
+		sounds = sounds,
+		-- Reap: the wind-up's release and one big whoosh across the front; Back Sweep: the spin's whoosh and the blade
+		-- coming through the front; Whirlwind: a whoosh on each spin and the ring's slam; Reaping Cyclone: the gathering
+		-- pull, a whoosh on each spin, the third ring's cut lines and slam
+		cues = {
+			cut1 = { { key = "swing1", at = 0.22 }, { key = "cleaveWhoosh", at = 0.24 }, { key = "air2", at = 0.3 } },
+			cut2 = { { key = "swing2", at = 0.15 }, { key = "spinWhoosh", at = 0.17 }, { key = "air1", at = 0.38 } },
+			cut3 = { { key = "spinWhoosh", at = 0.32 }, { key = "swing1", at = 0.55 }, { key = "spinWhoosh", at = 0.62 }, { key = "swing3", at = 0.9 }, { key = "slam", at = 0.98 } },
+			skill = { { key = "rushCharge", at = 0.03 }, { key = "spinWhoosh", at = 0.28 }, { key = "spinWhoosh", at = 0.5 }, { key = "spinWhoosh", at = 0.71 }, { key = "cutLines", at = 0.92 }, { key = "slam", at = 0.94 } },
+		},
+		fx = { slash = "scytheSweep", finisher = "scytheWhirl", skill = "reapingCyclone" },
+	}
+	-- Thousand Cuts (spec 5.4; the owner: "the legendary scythe skill is boring. make it flashy violent, exaggerated. you
+	-- can even summon a grim reaper as effect. screenshake. ground breaking"): the Rift Reaper's own skill in place of
+	-- Reaping Cyclone. A charge cracking the ground, the Grim Reaper rising from a rift behind you, waves of slashes,
+	-- then the harvest at its Hit marker: every foe within 14 studs, once. You never move. The scythe's cuts, moves and
+	-- sounds, the same tables; its skill animation from SwordAnimations.RiftReaper (tools/blender/anim_rift_reaper.py).
+	local scythe = SWORDS.scythe
+	local riftAnimations = table.clone(scythe.animations)
+	riftAnimations.skill = "rbxassetid://121934882184419" -- Thousand Cuts (SwordAnimations.RiftReaper.skill, published 2026-11-09)
+	-- Its own sounds on top of the scythe's (Pro Sound Effects, measured into Config/SoundLevels): the charge, the rumble,
+	-- the ground breaking open, the rift's growl and the Reaper's ghostly wail, the harvest's roar
+	local riftSounds = table.clone(scythe.sounds)
+	riftSounds.wrathCharge = "rbxassetid://9125973984" -- Spaceship Blast High Pitch Energy Charge Up
+	riftSounds.wrathRumble = "rbxassetid://9114344093" -- Energy Presence 8
+	riftSounds.groundBreak = "rbxassetid://9113216700" -- Avalanche Crashing 3: the ground splitting open
+	riftSounds.riftGrowl = "rbxassetid://9125989548" -- Spirit Whooshes Low End Airy Growls Fast Bys: the rift
+	riftSounds.reaperWail = "rbxassetid://9120358057" -- Unhappy Angels Discordant Choral Wail Airy 1: the Reaper rising
+	riftSounds.cleaveRush = "rbxassetid://9118158113" -- Reversed Whoosh Backwards Hissing Burst 2: into the X
+	riftSounds.wrathThrust = "rbxassetid://9120023325" -- Thunder With Lion Roar Searing Blast 5: the harvest
+	-- the cuts' flurry (owner 2026-11-09: "a sound effect of a fast slashes"): three sharp sword swishes, measured
+	riftSounds.flurryA = "rbxassetid://9126013644" -- Swish Med High End Sharp Swords Fast Punches
+	riftSounds.flurryB = "rbxassetid://9126013382" -- Swish Med High End Sharp Swords Fast Punches
+	riftSounds.flurryC = "rbxassetid://9126014020" -- Swish Med High End Sharp Swords Fast Punches
+	SWORDS.riftReaper = {
+		name = "Rift Reaper",
+		power = starter.power,
+		element = nil,
+		model = "RiftReaper",
+		slash = starter.slash,
+		combo = scythe.combo,
+		skill = {
+			power = 0.9,
+			hitAt = 1.8,
+			length = 2.6,
+			cooldown = SKILL_COOLDOWN,
+			shape = { kind = "spin", radius = 14 },
+			free = { at = 1.8 }, -- the harvest
+		},
+		animations = riftAnimations,
+		sounds = riftSounds,
+		-- the charge and its rumble, the ground breaking at the slam, the rift's growl and the Reaper's wail as it rises,
+		-- a slice on each wave of cuts, the rush into the X, the harvest's roar and slam
+		cues = {
+			cut1 = scythe.cues.cut1,
+			cut2 = scythe.cues.cut2,
+			cut3 = scythe.cues.cut3,
+			skill = {
+				{ key = "wrathCharge", at = 0.05 },
+				{ key = "wrathRumble", at = 0.12, stopAfter = 1.1 },
+				{ key = "groundBreak", at = 0.7, stopAfter = 1.6 },
+				{ key = "riftGrowl", at = 0.72 },
+				{ key = "reaperWail", at = 0.78, stopAfter = 2.2 },
+				{ key = "cutLines", at = 1.2 },
+				{ key = "flurryA", at = 1.2 },
+				{ key = "flurryB", at = 1.26 },
+				{ key = "cutLines", at = 1.33 },
+				{ key = "flurryC", at = 1.33 },
+				{ key = "flurryA", at = 1.4 },
+				{ key = "cutLines", at = 1.46 },
+				{ key = "flurryB", at = 1.46 },
+				{ key = "flurryC", at = 1.53 },
+				{ key = "cutLines", at = 1.59 },
+				{ key = "flurryA", at = 1.59 },
+				{ key = "flurryB", at = 1.66 },
+				{ key = "cleaveRush", at = 1.62 },
+				{ key = "wrathThrust", at = 1.8 },
+				{ key = "slam", at = 1.8 },
+			},
+		},
+		fx = { slash = "scytheSweep", finisher = "scytheWhirl", skill = "thousandCuts" },
+	}
+end
+
 return {
 	STARTER = "starterSword",
 	SWORDS = SWORDS,
@@ -545,6 +678,18 @@ return {
 		spear = {
 			hand = { y = -0.18, angleX = -90, twist = 0 },
 			back = { x = 0, y = -0.4, z = 0.7, angleZ = -40 },
+			backScale = 1,
+		},
+		-- Upright at your side like the spear (spec 5.1); the hold's animations turn it a quarter by the wrist so the blade
+		-- faces forward (owner 2026-11-09; tools/blender/anim_scythe.py HOLD_TURN). The models have their
+		-- blade along +X (Roblox's importer flips Blender's X), so half a turn round the shaft puts it to the left of the
+		-- right hand, over the head, as the moves were keyed. tools/blender/anim_kit.py hand_grip("scythe") keeps the same
+		-- hand numbers. On the back diagonal, the blade over the right shoulder pointing out: 48 degrees from upright and
+		-- 0.2 studs higher than the spear (measured in Studio on the 9-stud Rift Reaper, 2026-11-09: its crescent butt
+		-- 0.38 over the ground, its top 2.66 over the head; the spear's 40 put the butt in the ground).
+		scythe = {
+			hand = { y = -0.18, angleX = -90, twist = 180 },
+			back = { x = 0, y = -0.2, z = 0.7, angleZ = -48 },
 			backScale = 1,
 		},
 	},

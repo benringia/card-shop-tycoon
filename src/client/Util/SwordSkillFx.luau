@@ -5,6 +5,7 @@
 -- rings), live under the camera and clean themselves up. The Sunforged Blade's looks are its own (storyboard
 -- 2026-11-07); the other swords draw their look's basic shape until their round (Tasks 6-8).
 local Debris = game:GetService("Debris")
+local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -21,6 +22,7 @@ local SuperFx = require(Config:WaitForChild("SuperFx"))
 local SwordFx = require(Config:WaitForChild("SwordFx"))
 local ElementFx = require((script.Parent :: Instance):WaitForChild("ElementFx"))
 local Extras = require((script.Parent :: Instance):WaitForChild("Extras"))
+local ScreenSlashes = require((script.Parent :: Instance):WaitForChild("ScreenSlashes"))
 
 -- A weapon's effect colours, and its element (a Forge Sword's looks are drawn in it)
 export type Colors = { deep: Color3, glow: Color3, element: string? }
@@ -1742,10 +1744,512 @@ local function titansWrath(root: BasePart, spec: SwordSkillFxConfig.Look, colors
 	end)
 end
 
+-- The scythe's crescent (weapons round 3): a band of light laid piece by piece round `center`, `radius` studs out, from
+-- angle `from` to `to` (radians from `facing`, + to your left) over `seconds`, each piece swelling toward the middle
+-- (`thick` studs at its widest), bright for `flash`; streaks and sparks fly out of every other piece toward the reach.
+-- `perHalfTurn` pieces a half turn; the light version (`lite`) half as many and no streaks or sparks
+local function scytheArc(center: Vector3, facing: Vector3, radius: number, from: number, to: number, seconds: number, thick: number, flash: number, sparks: number, colors: Colors, scale: number, lite: boolean, perHalfTurn: number)
+	local count = SwordSkillFxRules.scythePieces(to - from, lite, perHalfTurn)
+	local base = math.atan2(facing.X, facing.Z)
+	local function point(a: number): Vector3
+		return center + Vector3.new(math.sin(base + a), 0, math.cos(base + a)) * radius
+	end
+	local share = math.max(1, math.round(sparks / count * 2))
+	for index = 0, count - 1 do
+		local a0 = from + (index / count) * (to - from)
+		local a1 = from + ((index + 1) / count) * (to - from)
+		task.delay(index / count * seconds, function()
+			local p0, p1 = point(a0), point(a1)
+			local swell = 0.55 + 0.45 * math.sin(math.pi * (index + 0.5) / count)
+			beam(p0, p1, thick * scale * swell, colors, flash)
+			if lite or index % 2 == 1 then
+				return
+			end
+			local anchor = holder(CFrame.lookAt(p1, p1 + (p1 - center).Unit), Vector3.one * 0.5, 1.2)
+			local out = emitter(anchor, "streak", colors.glow, { size = { 0.6 * scale, 0 }, life = { 0.2, 0.35 }, speed = { 16, 28 }, spread = 25, brightness = 2.5 })
+			out.EmissionDirection = Enum.NormalId.Front
+			out:Emit(detail(5))
+			local spray = emitter(anchor, "spark", colors.glow, { size = { 0.4, 0.05 }, life = { 0.3, 0.6 }, speed = { 8, 18 }, spread = 60, accel = -UP * 8, brightness = 2.5 })
+			spray.EmissionDirection = Enum.NormalId.Front
+			spray:Emit(detail(share))
+		end)
+	end
+end
+
+-- The scythe's slash: the blade's element streaming off every cut, then the cut's crescent timed to its strike (`hitIn`
+-- seconds from now): Reap's huge sweep across your front, right to left; Back Sweep's whole turn laid low round you,
+-- from your right, behind you and through your front at the strike; the Whirlwind's two turns at shoulder height (called
+-- after they've begun: it catches up, SwordSkillFxRules.arcCatchUp). `lite`: another player's, or low graphics
+local function scytheSweep(spec: SwordSkillFxConfig.Look, colors: Colors, scale: number, blade: Blade?, root: BasePart, cut: number, hitIn: number, lite: boolean)
+	local beats = spec.beats :: { [string]: number }
+	local light = lite or not Extras.enabled()
+	if blade and blade.part.Parent then
+		elementTrail(spec, colors, scale, blade)
+	end
+	local facing = flatLook(root)
+	local function lay(startIn: number, height: number, from: number, to: number, seconds: number)
+		local delay, start, left = SwordSkillFxRules.arcCatchUp(startIn, seconds, from, to)
+		task.delay(delay, function()
+			if root.Parent then
+				scytheArc(root.Position + UP * height, facing, beats.arc, start, to, left, beats.thick, beats.flash, beats.sparks, colors, scale, light, beats.pieces)
+			end
+		end)
+	end
+	local half = math.rad(beats.arcAngle / 2)
+	if cut == 1 then
+		lay(hitIn - beats.lead, -0.6, -half, half, beats.swipe)
+	elseif cut == 2 then
+		lay(hitIn - beats.wrap, -beats.low, math.rad(beats.wrapFrom), math.rad(390), beats.wrap + 0.03)
+	else
+		lay(hitIn - beats.spin, beats.high, 0, math.rad(750), beats.spin)
+	end
+end
+
+-- The Whirlwind's finish where you stand (`ground` under you): shockwave rings racing out to the reach, a circle of
+-- crescent blades flashing round you (each the fewest pieces), sparks flying all round, a ring of dust and a flash of
+-- light
+local BLADE_PIECES = 0 -- scythePieces' least: three pieces a blade
+local function scytheWhirl(ground: Vector3, spec: SwordSkillFxConfig.Look, colors: Colors, scale: number)
+	local beats = spec.beats :: { [string]: number }
+	for index = 1, beats.rings do
+		task.delay((index - 1) * 0.12, function()
+			ElementFx.ring(ground, if index == 1 then colors.glow else colors.deep, beats.ring, 0.4 + 0.12 * index)
+		end)
+	end
+	local center = ground + UP * 1.6
+	local gap = math.pi * 2 / beats.blades
+	for index = 0, beats.blades - 1 do
+		local middle = index * gap
+		scytheArc(center, Vector3.zAxis, beats.bladeRing, middle - gap * 0.32, middle + gap * 0.32, 0.05, 1.1, beats.flash + 0.15, 0, colors, scale, true, BLADE_PIECES)
+	end
+	local anchor = holder(CFrame.new(center), Vector3.one, 1.6)
+	emitter(anchor, "spark", colors.glow, { size = { 0.5, 0.05 }, life = { 0.4, 0.8 }, speed = { 18, 34 }, spread = 180, accel = -UP * 14, drag = 1.5, brightness = 3 }):Emit(detail(beats.sparks))
+	local dust = holder(CFrame.new(ground + UP * 0.4), Vector3.one, 2)
+	emitter(dust, "smoke", DUST, { size = { 1.4 * scale, 3 * scale }, life = { 0.6, 1 }, speed = { 8, 14 }, spread = 180, accel = UP * 2, drag = 3, light = 0.2, brightness = 0.8, start = 0.3 }):Emit(detail(beats.dust))
+	local light = Instance.new("PointLight")
+	light.Color = colors.glow
+	light.Range = beats.ring * 1.6
+	light.Brightness = 5
+	light.Parent = anchor
+	tween(light, beats.flash + 0.25, { Brightness = 0 })
+end
+
+-- Reaping Cyclone: from `gather` the element swirls round you and a ring glows under you; at the end of each spin a ring
+-- of crescents flies out flat to the skill's radius (`fly` seconds), each ring turned half a crescent from the last;
+-- the third (bigger, leaving `fly` before the hit) arrives with it (hook: your shake), a shockwave out to the radius and
+-- sparks all round. The light version: half the crescents, no swirl.
+local function reapingCyclone(root: BasePart, spec: SwordSkillFxConfig.Look, colors: Colors, scale: number, hooks: Hooks)
+	local beats = spec.beats :: { [string]: number }
+	local lite = hooks.lite == true
+	local function feet(): Vector3
+		return root.Position - UP * (ROOT_TO_GROUND - GROUND_LIFT)
+	end
+	local spinning = beats.hit - beats.gather
+	task.delay(beats.gather, function()
+		if cancelled(hooks) or not root.Parent then
+			return
+		end
+		ElementFx.castRing(feet(), colors.glow, beats.swirl, spinning + 0.2)
+		if not lite then
+			local _, particle = elementOf(colors)
+			swirl(function(): Vector3
+				return root.Position
+			end, beats.swirl, colors.glow, particle, spinning, 1.2 * scale)
+		end
+	end)
+	local count = if lite then math.max(3, math.round(beats.crescents / 2)) else beats.crescents
+	local rings = { { at = beats.ring1, size = 1 }, { at = beats.ring2, size = 1 }, { at = beats.hit - beats.fly, size = beats.lastScale } }
+	for ringIndex, ring in rings do
+		local last = ringIndex == #rings
+		task.delay(ring.at, function()
+			if cancelled(hooks) or not root.Parent then
+				return
+			end
+			local center = root.Position + UP * 0.2
+			local facing = flatLook(root)
+			local base = math.atan2(facing.X, facing.Z) + (ringIndex - 1) * math.pi / count
+			-- one light for the ring (a light per crescent was 8-24 lights at once)
+			local glow = holder(CFrame.new(center), Vector3.one, beats.fly + 0.6)
+			local light = Instance.new("PointLight")
+			light.Color = colors.glow
+			light.Range = beats.radius * 1.4
+			light.Brightness = if last then 4 else 2.5
+			light.Parent = glow
+			tween(light, beats.fly + 0.3, { Brightness = 0 })
+			for index = 0, count - 1 do
+				local a = base + index * math.pi * 2 / count
+				local direction = Vector3.new(math.sin(a), 0, math.cos(a))
+				local goal = center + direction * beats.radius
+				ElementFx.moonSlash(center + direction * 1.5, function(): Vector3
+					return goal
+				end, colors.glow, beats.fly, function(at: Vector3)
+					if last and not lite then
+						local spark = holder(CFrame.new(at), Vector3.one, 1.2)
+						emitter(spark, "spark", colors.glow, { size = { 0.45, 0.05 }, life = { 0.3, 0.6 }, speed = { 10, 20 }, spread = 180, accel = -UP * 12, brightness = 3 }):Emit(detail(10))
+					end
+				end, ring.size * scale, 0, false)
+			end
+			if not last then
+				return
+			end
+			task.delay(beats.fly, function()
+				if hooks.burst then
+					hooks.burst(root.Position)
+				end
+				ElementFx.ring(feet(), colors.glow, beats.radius, 0.45)
+				local anchor = holder(CFrame.new(root.Position), Vector3.one, 1.6)
+				emitter(anchor, "spark", colors.glow, { size = { 0.5, 0.05 }, life = { 0.4, 0.8 }, speed = { 20, 34 }, spread = 180, accel = -UP * 12, drag = 1.5, brightness = 3 }):Emit(detail(if lite then math.round(beats.sparks / 3) else beats.sparks))
+			end)
+		end)
+	end
+end
+
+-- Thousand Cuts' Grim Reaper: a ghostly copy of ReplicatedStorage.FxModels.GrimReaper holding a giant copy of the Rift
+-- Reaper (Config/SwordSkillFx REAPER), under the camera; nil while the model isn't there (the rest still plays)
+local function summonReaper(): Model?
+	local folder = ReplicatedStorage:FindFirstChild("FxModels")
+	local source = if folder then folder:FindFirstChild("GrimReaper") else nil
+	if not source or not source:IsA("Model") then
+		return nil
+	end
+	local cfg = SwordSkillFxConfig.REAPER
+	local reaper = source:Clone()
+	local weapons = ReplicatedStorage:FindFirstChild("WeaponModels")
+	local scythe = if weapons then weapons:FindFirstChild("RiftReaper") else nil
+	if scythe and scythe:IsA("Model") then
+		local giant = scythe:Clone()
+		giant:ScaleTo(cfg.scytheScale)
+		local offset = cfg.scytheOffset
+		giant:PivotTo(reaper:GetPivot() * CFrame.new(offset[1], offset[2], offset[3]) * CFrame.Angles(0, math.rad(cfg.scytheTurn), 0))
+		giant.Parent = reaper
+	end
+	for _, item in reaper:GetDescendants() do
+		if item:IsA("BasePart") then
+			item.Anchored = true
+			item.CanCollide = false
+			item.CanQuery = false
+			item.CanTouch = false
+			item.CastShadow = false
+			item.Transparency = math.max(item.Transparency, cfg.ghost)
+		elseif item:IsA("LuaSourceContainer") then
+			item:Destroy()
+		end
+	end
+	local glow = Instance.new("Highlight")
+	glow.FillColor = rgb(cfg.glow)
+	glow.FillTransparency = 0.8
+	glow.OutlineColor = rgb(cfg.glow)
+	glow.OutlineTransparency = 0.15
+	glow.DepthMode = Enum.HighlightDepthMode.Occluded
+	glow.Parent = reaper
+	reaper.Parent = workspace.CurrentCamera
+	return reaper
+end
+
+-- Thousand Cuts (the Rift Reaper's own skill; the storyboard approved 2026-11-09): the charge's cracks and rumble (your
+-- own screen darkening), the rift and the Grim Reaper rising behind you at `slam` (hook: released), you fading half into
+-- the rift while waves of slashes rip across the area (hook: a rumble jolt each wave), the harvest at `hit` (hook:
+-- burst; the X, the Reaper's spin and its crescent ring, shockwaves, rocks, a pillar), then the Reaper dissolving into
+-- souls. A dodge or switch before the hit (`live()` false) ends it: the Reaper sinks back, your screen and your fade
+-- come back, nothing damaging shows. The light version (another player's): fewer slashes, no darkening, no slabs,
+-- swirl or rocks, the Reaper kept.
+local function thousandCuts(character: Model, root: BasePart, spec: SwordSkillFxConfig.Look, colors: Colors, scale: number, hooks: Hooks)
+	local beats = spec.beats :: { [string]: number }
+	local cfg = SwordSkillFxConfig.REAPER
+	local lite = hooks.lite == true
+	local full = not lite and Extras.enabled()
+	local facing = flatLook(root)
+	local function feet(): Vector3
+		return root.Position - UP * (ROOT_TO_GROUND - GROUND_LIFT)
+	end
+	local ground = groundAt(feet())
+	local finished = false
+	local reaper: Model? = nil
+	local dark: ColorCorrectionEffect? = nil
+	local faded: { BasePart } = {}
+	-- what a cancel stops at once (the charge's cracks and swirl, the rift's hole)
+	local stops: { () -> () } = {}
+
+	local function undark(seconds: number)
+		local effect = dark
+		dark = nil
+		if effect then
+			tween(effect, seconds, { Brightness = 0, Saturation = 0, TintColor = WHITE })
+			Debris:AddItem(effect, seconds + 0.1)
+		end
+	end
+	local function unfade()
+		for _, part in faded do
+			if part.Parent then
+				part.LocalTransparencyModifier = 0
+			end
+		end
+		table.clear(faded)
+	end
+	local function dismiss(seconds: number, sink: boolean)
+		local model = reaper
+		reaper = nil
+		if not model then
+			return
+		end
+		local from = model:GetPivot()
+		local begun = os.clock()
+		local connection: RBXScriptConnection
+		connection = RunService.RenderStepped:Connect(function()
+			local t = math.clamp((os.clock() - begun) / seconds, 0, 1)
+			if not model.Parent then
+				connection:Disconnect()
+				return
+			end
+			if sink then
+				model:PivotTo(from - UP * cfg.depth * smooth(t))
+			end
+			for _, item in model:GetDescendants() do
+				if item:IsA("BasePart") then
+					item.Transparency = cfg.ghost + (1 - cfg.ghost) * t
+				elseif item:IsA("Highlight") then
+					item.OutlineTransparency = 0.15 + 0.85 * t
+					item.FillTransparency = 0.8 + 0.2 * t
+				end
+			end
+			if t >= 1 then
+				connection:Disconnect()
+				model:Destroy()
+			end
+		end)
+	end
+	-- A dodge or a switch before the harvest: everything still running goes away
+	local function stopped(): boolean
+		if finished then
+			return true
+		end
+		if not cancelled(hooks) and root.Parent then
+			return false
+		end
+		finished = true
+		for _, stop in stops do
+			stop()
+		end
+		undark(0.3)
+		unfade()
+		dismiss(0.4, true)
+		return true
+	end
+	-- Watched every frame until the hit (final review 2026-11-09: checked only at the beats, a dodge left the rumble,
+	-- the darkening, the cracks and the rising Reaper running on)
+	local watcher: RBXScriptConnection
+	watcher = RunService.Heartbeat:Connect(function()
+		if stopped() then
+			watcher:Disconnect()
+		end
+	end)
+
+	-- 1. The charge: cracks racing out, the rumble pulsing and growing, your screen darkening
+	task.delay(beats.charge, function()
+		if stopped() then
+			return
+		end
+		local from = ground
+		local linger = beats.close - beats.charge - beats.crackGrow
+		for index = 1, beats.cracks do
+			local angle = (index - 1) / beats.cracks * math.pi * 2 + (index % 2) * 0.2
+			local out = Vector3.new(math.cos(angle), 0, math.sin(angle))
+			table.insert(stops, fissure(from + out * 1.2, from + out * beats.crackReach * (0.75 + (index % 3) * 0.12), 0.7 * scale, colors.glow, colors.deep, beats.crackGrow, linger, beats.fade, "spark", false))
+		end
+		if not lite then
+			local effect = Instance.new("ColorCorrectionEffect")
+			effect.Name = "ThousandCutsDark"
+			effect.Parent = Lighting
+			dark = effect
+			tween(effect, beats.slam - beats.charge, { Brightness = -beats.darkness * 0.4, Saturation = -beats.darkness, TintColor = WHITE:Lerp(colors.glow, beats.darkness) })
+			Debris:AddItem(effect, beats.close + 1)
+		end
+		if hooks.rumble then
+			local pulses = math.max(1, math.floor((beats.slam - beats.charge) / beats.rumbleEvery))
+			for pulse = 1, pulses do
+				task.delay(pulse * beats.rumbleEvery, function()
+					if hooks.rumble and not stopped() then
+						hooks.rumble(pulse / pulses)
+					end
+				end)
+			end
+		end
+	end)
+
+	-- 2. The rift opens behind you and the Grim Reaper rises out of it, souls swirling
+	task.delay(beats.slam, function()
+		if stopped() then
+			return
+		end
+		if hooks.released then
+			hooks.released()
+		end
+		local rift = ground - facing * beats.riftBehind
+		ElementFx.ring(ground, colors.glow, beats.radius * 0.6, 0.5)
+		ElementFx.castRing(rift, colors.glow, beats.riftSize / 2, beats.hit - beats.slam + 0.4)
+		local hole = piece(Color3.fromRGB(12, 4, 24), Enum.Material.Neon)
+		hole.Shape = Enum.PartType.Cylinder
+		hole.Size = Vector3.new(0.1, beats.riftSize, beats.riftSize)
+		hole.CFrame = CFrame.new(rift + UP * 0.08) * CFrame.Angles(0, 0, math.rad(90))
+		hole.Transparency = 0.15
+		Debris:AddItem(hole, beats.close - beats.slam + 0.5)
+		table.insert(stops, function()
+			tween(hole, 0.3, { Transparency = 1, Size = Vector3.new(0.1, 0.5, 0.5) })
+		end)
+		task.delay(beats.close - beats.slam - beats.fade, function()
+			tween(hole, beats.fade, { Transparency = 1, Size = Vector3.new(0.1, 0.5, 0.5) })
+		end)
+		local model = summonReaper()
+		if model then
+			reaper = model
+			local base = CFrame.lookAt(rift, rift + facing)
+			local risen = os.clock()
+			local connection: RBXScriptConnection
+			connection = RunService.RenderStepped:Connect(function()
+				if reaper ~= model or not model.Parent then
+					connection:Disconnect()
+					return
+				end
+				local t = os.clock() - risen
+				local rise = smooth(math.clamp(t / cfg.rise, 0, 1))
+				local spinFrom = beats.hit - beats.slam
+				local turn = 2 * math.pi * smooth(math.clamp((t - spinFrom) / cfg.spin, 0, 1))
+				model:PivotTo(base * CFrame.new(0, -cfg.depth * (1 - rise) + cfg.bob * math.sin(t * 2.4), 0) * CFrame.Angles(0, turn, 0))
+			end)
+		end
+		if full then
+			table.insert(stops, swirl(function(): Vector3
+				return rift + UP * 8
+			end, 6, colors.glow, "glow", beats.hit - beats.slam, 1.6 * scale))
+		end
+	end)
+
+	-- 3. A thousand cuts: you fade half into the rift; waves of slashes from every direction, slabs heaving up
+	task.delay(beats.cutsFrom, function()
+		if stopped() then
+			return
+		end
+		for _, item in character:GetDescendants() do
+			if item:IsA("BasePart") and item.Transparency < 1 then
+				item.LocalTransparencyModifier = 0.55
+				table.insert(faded, item)
+			end
+		end
+	end)
+	local slashes = if lite then beats.slashLite else beats.slashes
+	for wave = 0, beats.waves - 1 do
+		task.delay(beats.cutsFrom + wave * beats.waveGap, function()
+			if stopped() then
+				return
+			end
+			if hooks.rumble then
+				hooks.rumble(1)
+			end
+			-- your own: the slashes rip across your screen too, with a flash (owner 2026-11-09: "the slashes are hard to
+			-- see")
+			if not lite then
+				ScreenSlashes.wave(colors.glow, colors.deep)
+			end
+			local center = ground + UP * 0.5
+			for _ = 1, slashes do
+				local angle = math.random() * math.pi * 2
+				local along = Vector3.new(math.cos(angle), 0, math.sin(angle))
+				local across = Vector3.new(-along.Z, 0, along.X)
+				local offset = (math.random() * 2 - 1) * beats.radius * 0.75
+				local half = math.sqrt(beats.radius * beats.radius - offset * offset)
+				local middle = center + across * offset + UP * (0.6 + math.random() * 4.5)
+				beam(middle - along * half, middle + along * half, beats.slashThick * scale, colors, beats.slashFlash)
+			end
+			if full then
+				local per = math.ceil(beats.slabs / beats.waves)
+				for index = 1, per do
+					local angle = math.random() * math.pi * 2
+					local out = Vector3.new(math.cos(angle), 0, math.sin(angle))
+					local spot = ground + out * (4 + math.random() * (beats.radius - 5))
+					local size = beats.slabSize * scale * (0.8 + (index % 3) * 0.2)
+					local frame = CFrame.lookAt(spot, spot + out)
+					local slab = piece(STONE:Lerp(Color3.new(), 0.15 + (index % 3) * 0.08), Enum.Material.Slate)
+					slab.Size = Vector3.new(size, size * 0.3, size * 1.3)
+					slab.CFrame = frame * CFrame.new(0, -size * 0.3, 0)
+					slab.Transparency = 0
+					tween(slab, 0.14, { CFrame = frame * CFrame.new(0, size * 0.12, 0) * CFrame.Angles(math.rad(24 + (index % 3) * 10), 0, 0) })
+					local remaining = beats.close - (beats.cutsFrom + wave * beats.waveGap)
+					task.delay(remaining, function()
+						tween(slab, beats.fade, { CFrame = frame * CFrame.new(0, -size * 0.4, 0), Transparency = 1 })
+					end)
+					Debris:AddItem(slab, remaining + beats.fade + 0.3)
+				end
+			end
+		end)
+	end
+
+	-- 4. The harvest: you reappear with an X, the Reaper spins its giant scythe a full circle, the ground erupts
+	task.delay(beats.hit, function()
+		if stopped() then
+			return
+		end
+		unfade()
+		if hooks.burst then
+			hooks.burst(root.Position)
+		end
+		if not lite then
+			ScreenSlashes.cross(colors.glow, colors.deep)
+		end
+		local right = Vector3.new(-facing.Z, 0, facing.X)
+		local cross = root.Position + facing * 2.5 + UP * 1.5
+		for _, side in { 1, -1 } do
+			local diagonal = (right * side + UP).Unit
+			beam(cross - diagonal * beats.xLength / 2, cross + diagonal * beats.xLength / 2, 1.3 * scale, colors, 0.5)
+		end
+		scytheArc(ground + UP * 2.5, facing, beats.harvestRadius, 0, math.pi * 2, cfg.spin, beats.harvestThick, 0.55, 80, colors, scale, lite, SwordSkillFxConfig.LOOKS.scytheSweep.beats.pieces)
+		for ring = 1, beats.rings do
+			task.delay((ring - 1) * 0.1, function()
+				ElementFx.ring(ground, if ring == 1 then colors.glow else colors.deep, beats.radius, 0.45 + 0.1 * ring)
+			end)
+		end
+		rocks(ground, if full then beats.rocks else math.round(beats.rocks / 3), beats.rockSpeed, scale)
+		ElementFx.pillar(ground, colors.glow, beats.pillarHeight * scale, 0.7, "glow")
+		local flash = holder(CFrame.new(ground + UP * 3), Vector3.one, 1.5)
+		local light = Instance.new("PointLight")
+		light.Color = colors.glow
+		light.Range = beats.radius * 2
+		light.Brightness = 6
+		light.Parent = flash
+		tween(light, 0.9, { Brightness = 0 })
+		undark(0.6)
+		finished = true
+		-- 5. The aftermath: the Reaper dissolves into smoke and souls rising
+		task.delay(cfg.spin + 0.25, function()
+			local model = reaper
+			if model and model.Parent and not lite then
+				local chest = holder(CFrame.new(model:GetPivot().Position + UP * 8), Vector3.new(6, 8, 6), 3)
+				local souls = emitter(chest, "glow", colors.glow, { size = { 1.2 * scale, 0.2 }, life = { 1.2, 2.2 }, speed = { 4, 9 }, spread = 35, accel = UP * 4, brightness = 2.5 })
+				souls.Shape = Enum.ParticleEmitterShape.Box
+				souls.EmissionDirection = Enum.NormalId.Top
+				souls:Emit(detail(beats.souls))
+				local smoke = emitter(chest, "smoke", colors.deep, { size = { 3 * scale, 6 * scale }, life = { 0.9, 1.5 }, speed = { 1, 3 }, spread = 180, accel = UP * 2, light = 0.2, brightness = 0.9, start = 0.3 })
+				smoke.Shape = Enum.ParticleEmitterShape.Box
+				smoke:Emit(detail(16))
+			end
+			dismiss(cfg.dissolve, false)
+		end)
+	end)
+	-- a cast that never reaches its hit (the character gone) still cleans up
+	task.delay(beats.close + 1, function()
+		if not finished then
+			finished = true
+			undark(0.3)
+			unfade()
+			dismiss(0.3, true)
+		end
+	end)
+end
+
 -- A cut's slash (cut 1-3): along the swing in front of you (cut 3's upright, the others across); with the blade known,
 -- the Sunforged's flames, the Verdant's leaves, the Prism's rainbow or the Forge Sword's element stream off it
--- `hitIn`: seconds from now to the cut's strike (the spear's streak and crescent land then)
-function SwordSkillFx.slash(character: Model, look: string, cut: number, colors: Colors, scale: number, blade: Blade?, hitIn: number?)
+-- `hitIn`: seconds from now to the cut's strike (the spear's streak and crescent land then); `lite`: another player's
+-- (the scythe's crescents lighter)
+function SwordSkillFx.slash(character: Model, look: string, cut: number, colors: Colors, scale: number, blade: Blade?, hitIn: number?, lite: boolean?)
 	local spec = SwordSkillFxConfig.LOOKS[look]
 	local root = rootOf(character)
 	if not spec or not root then
@@ -1753,6 +2257,9 @@ function SwordSkillFx.slash(character: Model, look: string, cut: number, colors:
 	end
 	if look == "spearStreak" and spec.beats then
 		spearStreak(spec, colors, scale, blade, root, cut, hitIn or 0)
+		return
+	elseif look == "scytheSweep" and spec.beats then
+		scytheSweep(spec, colors, scale, blade, root, cut, hitIn or 0, lite == true)
 		return
 	elseif look == "fireTrail" and blade and blade.part.Parent then
 		fireTrail(spec, colors, scale, blade)
@@ -1781,6 +2288,13 @@ function SwordSkillFx.slamPoint(character: Model, ahead: number?): Vector3?
 	return root.Position + flatLook(root) * (ahead or SLAM_AHEAD) - Vector3.new(0, ROOT_TO_GROUND, 0)
 end
 
+-- Where cut 3's finisher draws for `look` (SwordSkillFxRules.finisherAhead): round you for a look drawn there (the
+-- scythe's Whirlwind), at the line's end (`lineLength`: the spear's plunge), else just ahead of you
+function SwordSkillFx.finisherPoint(character: Model, look: string, lineLength: number?): Vector3?
+	local spec = SwordSkillFxConfig.LOOKS[look]
+	return SwordSkillFx.slamPoint(character, if spec then SwordSkillFxRules.finisherAhead(spec, lineLength) else lineLength)
+end
+
 -- The finisher where cut 3's slam lands (`at`: on the ground)
 function SwordSkillFx.finisher(at: Vector3, look: string, colors: Colors, scale: number)
 	local spec = SwordSkillFxConfig.LOOKS[look]
@@ -1807,6 +2321,9 @@ function SwordSkillFx.finisher(at: Vector3, look: string, colors: Colors, scale:
 		return
 	elseif look == "skyPierce" and spec.beats then
 		skyPierce(groundAt(at), spec, colors, scale)
+		return
+	elseif look == "scytheWhirl" and spec.beats then
+		scytheWhirl(groundAt(at), spec, colors, scale)
 		return
 	end
 	sketch(CFrame.new(at + Vector3.new(0, GROUND_LIFT, 0)), size, size, spec, colors, scale)
@@ -2440,6 +2957,12 @@ function SwordSkillFx.skill(character: Model, look: string, colors: Colors, scal
 		return
 	elseif look == "torrentStrike" and spec.beats then
 		torrentStrike(root, spec, colors, scale, hooks or {})
+		return
+	elseif look == "reapingCyclone" and spec.beats then
+		reapingCyclone(root, spec, colors, scale, hooks or {})
+		return
+	elseif look == "thousandCuts" and spec.beats then
+		thousandCuts(character, root, spec, colors, scale, hooks or {})
 		return
 	end
 	local feet = root.Position - Vector3.new(0, ROOT_TO_GROUND - GROUND_LIFT, 0)

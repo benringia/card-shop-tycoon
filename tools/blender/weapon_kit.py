@@ -22,6 +22,10 @@ Spears (weapons round 2, spec 2026-11-07-weapons-round2-design 7): build_spear()
 found from the width (the first slice above the shaft's width in the upper part; its collar counts), the origin goes on
 the grip (31% of the length up from the butt: held upright at your side, the butt by your foot) and the parts are Head
 and Shaft.
+
+Scythes (weapons round 3, spec 2026-11-09-weapons-round3-scythes-design): build_scythe() is build_spear() with the
+shaft centred (the blade sticks out to one side), the blade turned to -X, the head found from the blade's hanging tip
+(find_scythe_head) and the grip a third up from the butt.
 """
 import math
 import os
@@ -202,6 +206,51 @@ def place_spear(obj, length, grip_share):
     return head - offset.z
 
 
+def find_scythe_head(obj, start_share=0.55, factor=1.6):
+    """Where a scythe's head starts: the lowest slice from `start_share` of the length up whose width (the median of it
+    and its neighbours, so one stray vertex doesn't count) passes `factor` x the shaft's (the median of the slices from
+    10% to 50% up). The blade's hanging tip is far out to the side, so the head starts there (its socket and the shaft
+    above it count). Measured on the four round 3 scythes: the tip at 68% to 77% up, 18-20x the shaft; the shaft's
+    rings at most 1.5x."""
+    low, high, width = widths(obj)
+    step = (high - low) / BINS
+    shaft = sorted(width[int(BINS * 0.1):int(BINS * 0.5)])
+    median = shaft[len(shaft) // 2]
+    for i in range(int(BINS * start_share), BINS):
+        smooth = sorted(width[max(0, i - 1):i + 2])[1] if 0 < i < BINS - 1 else width[i]
+        if smooth > median * factor:
+            return low + i * step
+    raise AssertionError("no head found above the shaft")
+
+
+def place_scythe(obj, length, grip_share):
+    """Scales a scythe to `length` studs, centres the shaft (not the whole model: the blade sticks out to one side) on X
+    and Y, turns it so the blade points to -X and puts the grip (`grip_share` of the length up from the butt) on the
+    origin; returns the head's bottom z after the move."""
+    zs = [v.co.z for v in obj.data.vertices]
+    scale = length / (max(zs) - min(zs))
+    obj.scale = (scale, scale, scale)
+    bpy.ops.object.select_all(action="DESELECT")
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    zs = [v.co.z for v in obj.data.vertices]
+    low = min(zs)
+    shaft = [v.co for v in obj.data.vertices if low + 0.1 * length <= v.co.z <= low + 0.5 * length]
+    centre = Vector(((max(c.x for c in shaft) + min(c.x for c in shaft)) / 2,
+                     (max(c.y for c in shaft) + min(c.y for c in shaft)) / 2, low + grip_share * length))
+    for v in obj.data.vertices:
+        v.co -= centre
+    head = find_scythe_head(obj)
+    tip = max((v.co for v in obj.data.vertices if v.co.z >= head), key=lambda c: abs(c.x))
+    if tip.x > 0:
+        # Half a turn round the shaft (not a mirror: the faces stay the right way out)
+        for v in obj.data.vertices:
+            v.co.x, v.co.y = -v.co.x, -v.co.y
+    obj.data.update()
+    return head
+
+
 def image_of(obj):
     return next(n.image for mat in obj.data.materials if mat and mat.use_nodes
                 for n in mat.node_tree.nodes if n.type == "TEX_IMAGE" and n.image)
@@ -314,6 +363,16 @@ def build_spear(name, length, grip_share=0.31, target_tris=TARGET_TRIS):
     obj = load_raw(name)
     rig_kit.optimize(obj, name, target_tris=target_tris, texture_size=1024)
     head = place_spear(obj, length, grip_share)
+    print(f"{name}: head from {head:.2f} over the grip")
+    parts = cut(obj, (("Head", lambda z: z >= head), ("Shaft", lambda z: z < head)))
+    return parts, head
+
+
+def build_scythe(name, length, grip_share=1 / 3, target_tris=TARGET_TRIS):
+    """A scythe's cleanup up to the split; returns the parts (Head, Shaft) and the head's bottom z over the grip."""
+    obj = load_raw(name)
+    rig_kit.optimize(obj, name, target_tris=target_tris, texture_size=1024)
+    head = place_scythe(obj, length, grip_share)
     print(f"{name}: head from {head:.2f} over the grip")
     parts = cut(obj, (("Head", lambda z: z >= head), ("Shaft", lambda z: z < head)))
     return parts, head

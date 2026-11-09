@@ -245,16 +245,21 @@ local function playSword(payload: any)
 			length += 2
 		end
 	else
-		task.delay(SwordFxConfig.ARCS[move].from, function()
+		-- the cut's strike and the finisher's place as in a fight (SwordController cutEffects)
+		local from = SwordFxConfig.ARCS[move].from
+		task.delay(from, function()
 			if not stopped then
-				SwordSkillFx.slash(character, fx.slash, cut, colors, scale, blade)
+				SwordSkillFx.slash(character, fx.slash, cut, colors, scale, blade, moveset.combo[cut].hitAt - from)
 			end
 		end)
 		if cut == 3 then
-			task.delay(moveset.combo[3].hitAt, function()
-				local at = SwordSkillFx.slamPoint(character)
+			local finisherCut = moveset.combo[3]
+			task.delay(finisherCut.hitAt, function()
+				local at = SwordSkillFx.finisherPoint(character, fx.finisher, if finisherCut.line then finisherCut.line.length else nil)
 				if at and not stopped then
 					SwordSkillFx.finisher(at, fx.finisher, colors, scale)
+					local shake = SwordSkillFxConfig.SHAKE :: any
+					ScreenFx.shake(shake[fx.finisher] or shake.finisher)
 				end
 			end)
 		end

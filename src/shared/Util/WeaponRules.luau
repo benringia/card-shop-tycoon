@@ -4,7 +4,9 @@
 -- Forge and the Armory preview them. `cfg` is Config/Weapons, `combat` Config/Combat (passed in so Lune can test it).
 
 export type Cost = { cash: number, items: { [string]: number }, unlockLevel: number? }
-export type Perk = { kind: string, every: number?, share: number?, seconds: number? }
+-- `spread` (chain: the arcs' share), `below` (execute: the HP share under which it applies), `look` (burn: "venom"
+-- poisons rather than burns)
+export type Perk = { kind: string, every: number?, share: number?, seconds: number?, spread: number?, below: number?, look: string? }
 export type Owned = { grade: string, level: number }
 
 local WeaponRules = {}
@@ -133,11 +135,12 @@ function WeaponRules.perk(cfg: any, weaponId: string, grade: string): Perk?
 		return nil
 	end
 	local perk = weapon.perk
-	local share = perk.share
-	if share and grade == "S" then
-		share *= cfg.PERK_S
+	local share, spread = perk.share, perk.spread
+	if grade == "S" then
+		share = if share then share * cfg.PERK_S else nil
+		spread = if spread then spread * cfg.PERK_S else nil
 	end
-	return { kind = perk.kind, every = perk.every, share = share, seconds = perk.seconds }
+	return { kind = perk.kind, every = perk.every, share = share, seconds = perk.seconds, spread = spread, below = perk.below, look = perk.look }
 end
 
 -- A sword hit's weapon (BattleSim.SwordWeapon): its element (the Prism Blade's is picked per foe in the sim), the bond

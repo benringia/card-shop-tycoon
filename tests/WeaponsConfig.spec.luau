@@ -96,6 +96,10 @@ return {
 		-- the Lance's own base Power and a heal every 4th hit keep it inside the Hydra's balance limit (tools/balance/bosses:
 		-- at 1.8 with a heal on every hit a 0.8x party won 100% even at +0; DESIGN.md weapons balance rows)
 		expect.equal(Weapons.ById.titansLance.power, 1.2)
+		-- the Rift Reaper's own base Power too (weapons round 3, tools/balance/bosses on the Prism Hydra, 200 fights: at
+		-- the Legendary 1.8 a 0.8x party won 92% at +10 Grade S; at 1.4 +0 C 68%, +10 S 84%, a 1x fight 70% of the Steel
+		-- Sword's)
+		expect.equal(Weapons.ById.riftReaper.power, 1.4)
 		local bloom = Weapons.ById.titansLance.perk :: any
 		expect.equal(bloom.kind, "heal")
 		expect.equal(bloom.every, 4)
@@ -137,7 +141,7 @@ return {
 	end,
 
 	["every weapon is complete and in the Armory order"] = function()
-		expect.equal(#Weapons.WEAPONS, 21) -- Steel, 5 Forge Swords, 3 new swords, 5 Forge Spears, 3 spears, 4 scythes
+		expect.equal(#Weapons.WEAPONS, 25) -- Steel, 5 Forge Swords, 3 new swords, 5 Forge Spears, 3 spears, 5 Forge Scythes, 3 scythes
 		for _, w in Weapons.WEAPONS do
 			assert(Weapons.ById[w.id] == w, w.id)
 			assert(Weapons.RARITY_POWER[w.rarity] or w.id == "starterSword", w.id)
@@ -148,10 +152,11 @@ return {
 		end
 	end,
 
+	-- (a weapon's model is named before it's built, weapons round 3: the portrait comes with `ready`)
 	["every weapon with a model has its portrait (the card's picture); the rest wait for theirs"] = function()
 		for _, w in Weapons.WEAPONS do
 			local portrait = WeaponLooks.WEAPONS[w.id].portrait
-			if w.model then
+			if w.model and w.ready then
 				assert(string.match(portrait, "^rbxassetid://%d+$"), `{w.id} needs its portrait`)
 			else
 				expect.equal(portrait, "", `{w.id}: no model yet, so no portrait`)
@@ -199,5 +204,44 @@ return {
 		expect.equal(Frontier.ORE_CHANCE, 0.15)
 		expect.equal(Frontier.ELITE_ORE_CHANCE, 0.6)
 		assert(Items.ITEMS[Weapons.WILD_ORE], "the Wild Ore item")
+	end,
+
+	-- Weapons round 3 (spec 2026-11-09-weapons-round3-scythes-design 4)
+	["the scythes: the Forge Scythe in five elements, one moveset, their models, perks and tiers"] = function()
+		expect.isNil(Weapons.ById.forgeScythe, "the Forge Scythe comes in elements")
+		for _, element in { "Ember", "Tide", "Bloom", "Volt", "Shade" } do
+			local scythe = Weapons.ById[`forgeScythe_{element}`]
+			assert(scythe, element)
+			expect.equal(scythe.family, "scythe")
+			expect.equal(scythe.element, element)
+			expect.equal(scythe.moveset, "scythe")
+			expect.equal(scythe.model, `ForgeScythe_{element}`)
+			expect.equal(scythe.source.kind, "forge")
+			expect.isNil(scythe.perk)
+		end
+		local models = { widowsReaper = "WidowsReaper", stormReaper = "StormReaper", riftReaper = "RiftReaper" }
+		for id, model in models do
+			-- the Rift Reaper swings the scythe's cuts with its own skill (Thousand Cuts, spec 5.4)
+			expect.equal(Weapons.ById[id].moveset, if id == "riftReaper" then "riftReaper" else "scythe", id)
+			expect.equal(Weapons.ById[id].model, model, id)
+		end
+		local venom = Weapons.ById.widowsReaper.perk :: any
+		expect.equal(venom.kind, "burn")
+		expect.equal(venom.share, 0.025)
+		expect.equal(venom.seconds, 3)
+		expect.equal(venom.look, "venom")
+		local chain = Weapons.ById.stormReaper.perk :: any
+		expect.equal(chain.kind, "chain")
+		expect.equal(chain.every, 4)
+		expect.equal(chain.share, 0.4)
+		expect.equal(chain.spread, 0.3)
+		local reap = Weapons.ById.riftReaper.perk :: any
+		expect.equal(reap.kind, "execute")
+		expect.equal(reap.below, 0.3)
+		expect.equal(reap.share, 0.3)
+		expect.equal(Weapons.TIER_BOSS.forgeScythe, "meadowWarden")
+		expect.equal(Weapons.TIER_BOSS.widowsReaper, "emberColossus")
+		expect.equal(Weapons.TIER_BOSS.stormReaper, "frostTyrant")
+		expect.equal(Weapons.TIER_BOSS.riftReaper, "prismHydra")
 	end,
 }

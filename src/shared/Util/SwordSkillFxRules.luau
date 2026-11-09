@@ -129,4 +129,39 @@ function SwordSkillFxRules.framesOnCaster(look: { form: string? }): boolean
 	return look.form == "around"
 end
 
+-- An arc of `seconds` from angle `from` to `to`, due to start `startIn` seconds from now: when to start it, from where
+-- and over how long. One already due (a cut's slash is called at the sword's arc start, SwordFx.ARCS, after the
+-- scythe's Whirlwind turns have begun) starts now from where the swing is, so it still ends on time; nothing is drawn
+-- twice.
+function SwordSkillFxRules.arcCatchUp(startIn: number, seconds: number, from: number, to: number): (number, number, number)
+	if startIn >= 0 or seconds <= 0 then
+		return math.max(0, startIn), from, seconds
+	end
+	local gone = math.min(-startIn, seconds)
+	return 0, from + (to - from) * gone / seconds, seconds - gone
+end
+
+-- How many pieces a scythe crescent over `angle` radians is laid in: `perHalfTurn` for every half turn, half that for
+-- another player's (or on low graphics), never under three
+function SwordSkillFxRules.scythePieces(angle: number, lite: boolean, perHalfTurn: number): number
+	local per = if lite then perHalfTurn / 2 else perHalfTurn
+	return math.max(3, math.round(math.abs(angle) / math.pi * per))
+end
+
+-- Whether a skill's camera moment still watches for a cancel (a dodge or a switch ends it) `t` seconds in: until its
+-- effect leaves (`release`), or until the skill's hit (`hit`) when that comes later (Thousand Cuts' moment starts at
+-- 0.75 s, its hit at 1.8 s; final review 2026-11-09: a dodge in between left the camera on the wide shot)
+function SwordSkillFxRules.cinematicWatches(t: number, release: number, hit: number?): boolean
+	return t < math.max(release, hit or 0)
+end
+
+-- How far ahead of you cut 3's finisher draws: where you stand for a look drawn round you (the scythe's Whirlwind), at
+-- the end of the cut's line (`lineLength`: the spear's plunge), else nil (just ahead: a sword's slam, SwordSkillFx)
+function SwordSkillFxRules.finisherAhead(look: { form: string? }, lineLength: number?): number?
+	if look.form == "around" then
+		return 0
+	end
+	return lineLength
+end
+
 return SwordSkillFxRules

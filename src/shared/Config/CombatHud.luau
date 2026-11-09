@@ -80,6 +80,16 @@ return {
 			icon = "TridentWave", name = "Torrent Strike",
 			tip = "Slam the trident into the ground: torrents of water burst up round you, hitting every foe near you.",
 		},
+		-- every scythe (weapons round 3; a spare glyph: a crescent flung out with sparks)
+		scythe = {
+			icon = "CrescentSparks", name = "Reaping Cyclone",
+			tip = "Spin three times, throwing rings of blades that hit every foe round you.",
+		},
+		-- the Rift Reaper (spec 5.4: the Skull glyph for its summoned Grim Reaper)
+		riftReaper = {
+			icon = "Skull", name = "Thousand Cuts",
+			tip = "Summon the Grim Reaper: a thousand cuts, then it reaps every foe round you.",
+		},
 	} :: { [string]: { icon: string, name: string, tip: string } },
 	-- Under every skill's tooltip (a dodge before a skill's hit cancels its damage: SwordRules.skillDodged)
 	SKILL_DODGE_TIP = "Dodging before it lands cancels it.",

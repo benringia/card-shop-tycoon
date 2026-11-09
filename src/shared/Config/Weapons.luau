@@ -176,11 +176,69 @@ REST = {
 		power = 1.2,
 		perk = { kind = "heal", every = 4, share = 0.01 }, -- every 4th hit heals your creature 1% of its max HP
 	},
-	-- Round 3: scythes
-	{ id = "forgeScythe", name = "Forge Scythe", family = "scythe", rarity = "Common", ready = false, source = { kind = "forge", cost = FORGE_COST } },
-	{ id = "widowsReaper", name = "Widow's Reaper", family = "scythe", rarity = "Very Rare", element = "Shade", ready = false, source = { kind = "boss", boss = "caveBroodQueen" } },
-	{ id = "stormReaper", name = "Storm Reaper", family = "scythe", rarity = "Epic", element = "Volt", ready = false, source = { kind = "boss", boss = "stormSovereign" } },
-	{ id = "riftReaper", name = "Rift Reaper", family = "scythe", rarity = "Legendary", element = "Shade", ready = false, source = { kind = "boss", boss = "riftDevourer" } },
+}
+for _, weapon in REST do
+	table.insert(WEAPONS, weapon)
+end
+-- Round 3: scythes (spec 2026-11-09-weapons-round3-scythes-design 4), all swinging the scythe moveset (Config/Swords),
+-- ready since their models are in (plan Task 5). The Forge Scythe in every element, like the Forge Sword and Spear.
+for _, element in ELEMENTS do
+	table.insert(WEAPONS, {
+		id = `forgeScythe_{element}`,
+		name = `{element} Forge Scythe`,
+		family = "scythe",
+		rarity = "Common",
+		element = element,
+		ready = true,
+		moveset = "scythe",
+		model = `ForgeScythe_{element}`,
+		source = { kind = "forge", cost = FORGE_COST },
+	})
+end
+REST = {
+	{
+		id = "widowsReaper",
+		name = "Widow's Reaper",
+		family = "scythe",
+		rarity = "Very Rare",
+		element = "Shade",
+		ready = true,
+		moveset = "scythe",
+		model = "WidowsReaper",
+		source = { kind = "boss", boss = "caveBroodQueen" },
+		-- Venom: the Sunforged Blade's burn as poison, 2.5% of your creature's ATK a second for 3 s, refreshed
+		perk = { kind = "burn", share = 0.025, seconds = 3, look = "venom" },
+	},
+	{
+		id = "stormReaper",
+		name = "Storm Reaper",
+		family = "scythe",
+		rarity = "Epic",
+		element = "Volt",
+		ready = true,
+		moveset = "scythe",
+		model = "StormReaper",
+		source = { kind = "boss", boss = "stormSovereign" },
+		-- Chain Lightning: every 4th hit a bolt on the target for 40% more, arcing to every other foe for 30%
+		perk = { kind = "chain", every = 4, share = 0.4, spread = 0.3 },
+	},
+	{
+		id = "riftReaper",
+		name = "Rift Reaper",
+		family = "scythe",
+		rarity = "Legendary",
+		element = "Shade",
+		ready = true,
+		moveset = "riftReaper", -- its own skill, Thousand Cuts (Config/Swords)
+		model = "RiftReaper",
+		source = { kind = "boss", boss = "riftDevourer" },
+		-- its own base Power, as the Prism Blade's and the Titan's Lance's (tools/balance/bosses on the Prism Hydra, 200
+		-- fights: at the Legendary 1.8 a 0.8x party won 92% at +10 Grade S; at 1.4 +0 C 68%, +10 S 84%, a 1x fight 70%
+		-- of the Steel Sword's; DESIGN.md weapons balance rows)
+		power = 1.4,
+		-- Reap: 30% more damage to a foe under 30% of its HP
+		perk = { kind = "execute", below = 0.3, share = 0.3 },
+	},
 }
 for _, weapon in REST do
 	table.insert(WEAPONS, weapon)
@@ -254,6 +312,11 @@ return {
 		magmaHalberd = "emberColossus",
 		tidalTrident = "frostTyrant",
 		titansLance = "prismHydra",
+		-- the scythes (spec 2026-11-09-weapons-round3-scythes-design 4): the same tiers by rarity
+		forgeScythe = "meadowWarden",
+		widowsReaper = "emberColossus",
+		stormReaper = "frostTyrant",
+		riftReaper = "prismHydra",
 	},
 	-- A weapon switched in a fight (the quick switch, spec 2026-11-07-weapons-round2-design 6): this long with no cut or
 	-- skill (the dodge still works)

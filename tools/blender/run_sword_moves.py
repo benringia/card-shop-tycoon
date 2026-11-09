@@ -3,7 +3,8 @@
     "C:/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b --factory-startup --python tools/blender/run_sword_moves.py -- [--sword <name>] [--preview <dir>] [move ...]
 
 --sword picks the moves file tools/blender/anim_<name>.py (default starter_sword; a round 1 sword's own skill, e.g.
-sunforged_blade; `spear` for the spear moveset, anim_spear.py, weapons round 2). With no moves it exports that file's NATURAL moves. JSON goes to assets/blender/Animations/<its
+sunforged_blade; `spear` for the spear moveset, anim_spear.py, weapons round 2; `scythe` for the scythe moveset,
+anim_scythe.py, weapons round 3; `rift_reaper` for the Rift Reaper's Thousand Cuts, anim_rift_reaper.py). With no moves it exports that file's NATURAL moves. JSON goes to assets/blender/Animations/<its
 FOLDER> (then `lune run tools/anim/build_kfs <that folder> assets/animations/<FOLDER>`). --preview <dir> also writes
 <dir>/moves-<move>-<front|side>.mp4 (the travel shows in the preview; the export is in place). Never run this in the
 owner's open Blender: anim_kit.build() empties the scene.

@@ -77,8 +77,11 @@ end
 -- A look's own framing (its beats): how long the wide shot holds, how high it looks and stands, and how high above your
 -- root the hero shot looks (`focusUp`; a jump's look up by default)
 -- `out`: the wide shot never nearer than this (else CINEMATIC.wide.least; Torrent Strike stands far out so its tall
--- columns fit)
-export type Framing = { hold: number?, lookUp: number?, up: number?, focusUp: number?, out: number? }
+-- columns fit); `ahead`: the wide shot this far toward your front (Thousand Cuts: the Grim Reaper behind you faces
+-- where you face, so a side-on shot saw it edge-on)
+-- `hit`: the skill's hit, when it comes after the moment starts (a cancel before it still ends the moment:
+-- SwordSkillFxRules.cinematicWatches)
+export type Framing = { hold: number?, lookUp: number?, up: number?, focusUp: number?, out: number?, ahead: number?, hit: number? }
 
 -- Plays for your character's `root`: the skill's effect leaves `release` seconds in and lands at `impact` (on the
 -- ground) `travel` seconds later; `live()` false before then (a dodge) cuts it short
@@ -109,7 +112,7 @@ function SkillCinematic.play(root: BasePart, impact: Vector3, release: number, t
 	local out = SwordSkillFxRules.wideDistance(flight + 4, cfg.wide.margin, cfg.fov, viewport.X / math.max(viewport.Y, 1), frame.out or cfg.wide.least)
 	local function eyes(side: number): (Vector3, Vector3)
 		local hero = base + right * side * cfg.hero.side + forward * cfg.hero.ahead + UP * cfg.hero.up
-		return hero, middle + right * side * out + UP * wideUp
+		return hero, middle + right * side * out + forward * (frame.ahead or 0) + UP * wideUp
 	end
 	-- the side a wall or hill blocks least
 	local heroRight, wideRight = eyes(1)
@@ -124,7 +127,7 @@ function SkillCinematic.play(root: BasePart, impact: Vector3, release: number, t
 	RunService:BindToRenderStep(RENDER_NAME, Enum.RenderPriority.Camera.Value + 1, function()
 		local t = os.clock() - started
 		local beat, a = SwordSkillFxRules.cinematicBeat(t, release, travel, timing)
-		if saved ~= was or not root.Parent or SuperCinematic.isPlaying() or ((beat == "rise" or beat == "charge") and not live()) then
+		if saved ~= was or not root.Parent or SuperCinematic.isPlaying() or (SwordSkillFxRules.cinematicWatches(t, release, frame.hit) and not live()) then
 			if saved == was then
 				SkillCinematic.stop()
 			end
@@ -169,6 +172,8 @@ function SkillCinematic.forLook(root: BasePart, look: SwordSkillFxConfig.Look, t
 		up = beats.camUp,
 		focusUp = beats.camFocus,
 		out = beats.camOut,
+		ahead = beats.camAhead,
+		hit = beats.hit,
 	})
 end
 

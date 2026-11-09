@@ -1711,11 +1711,11 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   opens the doors up to that room and puts you at its gate (4: the chamber), also in the admin panel's Dungeon section. Teleports only work in
   the published game.
 
-### 5.11 Weapons (round 1; spec docs/superpowers/specs/2026-11-06-weapons-round1-design.md; rounds 2-3, spears and scythes, in 13)
+### 5.11 Weapons (round 1; spec docs/superpowers/specs/2026-11-06-weapons-round1-design.md; rounds 2-3, spears and scythes, below)
 - **Catalogue** (`Config/Weapons`, looks in `Config/WeaponLooks`): the Steel Sword (everyone's), the Forge Sword in five
   elements (Common, $1,500 + 20 Wild Ore, shop level 6), the Verdant Blade (Rare, Meadow Warden), the Sunforged Blade
   (Epic Masterwork: $25,000, 20 Colossus Core, 10 Warden Heartwood, 10 Brood Silk, 5 Star Shards) and the Prism Blade
-  (Legendary, Prism Hydra); spears and scythes are listed as coming soon. Saved per copy: grade and upgrade level
+  (Legendary, Prism Hydra); the spears (round 2) and the scythes (round 3) below. Saved per copy: grade and upgrade level
   (`weapons`, `equippedWeapon`, schema 16; `WeaponService`). Rules: `Util/WeaponRules` (Lune-tested).
 - **Materials**: each boss's own (80% on full loot, 1-2; its daily chest 2) and Wild Ore (15% from Wild and Frontier
   monsters, 60% from elites, shown in the fight toast).
@@ -1960,6 +1960,76 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   `assets/animations/MagmaHalberd` and `TidalTrident`; HUD buttons with the spare glyphs `HalberdFlames` and
   `TridentWave`. Balance re-run (tools/balance/bosses, 60 fights solo, "well"): unchanged from the rows above, the
   skill's damage is the same.
+- **Scythes** (weapons round 3 part 1, spec `2026-11-09-weapons-round3-scythes-design.md`, plan
+  `2026-11-09-weapons-round3-part1.md`; the owner: "epic. I want exaggerated moves, wide slashes in all directions", "a
+  bit slower but still flashy", concepts B for all four): the Forge Scythe (Common, five elements, Wild Ore), the Widow's
+  Reaper (Very Rare, Shade, Cave Brood Queen), the Storm Reaper (Epic, Volt, Storm Sovereign) and the Rift Reaper
+  (Legendary, Shade, Rift Devourer; its own base Power 1.4, as the Prism Blade's and the Lance's). Tiers: the Meadow
+  Warden, the Ember Colossus, the Frost Tyrant and the Prism Hydra. One moveset for all four (`Config/Swords` `scythe`),
+  each cut about a third slower than the sword's and the same damage a second (tests/SwordsConfig): Reap (wound back
+  over the right shoulder, one flat sweep right to left, the tip leading; reach 10 in 180 degrees, a 1.1-stud step; Hit
+  0.34 of 0.85), Back Sweep (a low spin, the blade across your front, behind you and through the front again; 10 in 180
+  ahead, since every cut soft-aims you at the foe; 0.42 of 0.9), Whirlwind (two spins with it held out, every foe within
+  10; 0.98 of 1.7) and the skill Reaping Cyclone (three spins with it raised high, a ring of crescents thrown out at the
+  end of each spin, the third the hit: every foe within 9; 0.94 of 1.6; free after the hit; the HUD button "Reaping
+  Cyclone" with the spare glyph `CrescentSparks`). Held upright at the right side with the blade facing forward (owner 2026-11-09; the wrist turns it a quarter for the hold: the
+  spear's grip turned half round the shaft, `GRIPS.scythe`: the imported models carry their blade along +X), on the back
+  48 degrees from upright, 0.2 studs higher than the spear (the 9-stud Rift Reaper's butt 0.38 over the ground, its top
+  2.66 over the head). Perks: the Widow's Venom (the Sunforged's burn as poison, 2.5% of the creature's ATK a second for 3
+  s, ticks shown as "Poison"), the Storm's Chain Lightning (every 4th hit strikes the target for 40% more and arcs to
+  every other standing foe for 30%, a bolt to each; new `chain` kind) and the Rift's Reap (30% more to a foe under 30%
+  of its HP, a violet burst; new `execute` kind); Grade S x1.2 on the shares, the thresholds kept (`BattleSim`
+  swordPerk/swordHit, `WeaponText` words). Effects (`scytheSweep`, `scytheWhirl`, `reapingCyclone` in
+  `Config/SwordSkillFx`, drawn by `Util/SwordSkillFx`): the blade's element streaming off every cut and a huge crescent
+  of light timed to each strike (Reap's across the front, Back Sweep's a whole low turn round you, the Whirlwind's two
+  turns at shoulder height), the slash trail from the socket out along the blade (`SwordFx.TRAIL_BLADE_SCYTHE`); the
+  Whirlwind's finish drawn where you stand (`SwordSkillFxRules.finisherAhead`: shockwave rings to the reach, a circle of
+  crescent blades, sparks, dust, `SHAKE.scytheWhirl` 0.55); Reaping Cyclone's glowing ring and element swirl under you
+  and three rings of flat crescents flying out to the radius, the third arriving with the hit (a shockwave, sparks,
+  `SHAKE.reapingCyclone` 0.65; no camera moment: the Common skill). Sounds: its own mix of measured Pro Sound Effects
+  (a big whoosh on Reap, a whoosh on every spin, the ring's slam). Models: Figma concepts B, Meshy, cleaned by
+  `weapon_kit.build_scythe` (the shaft centred, the blade turned to one side, the head from the blade's hanging tip,
+  Head and Shaft); the Forge Scythe's three socket gems tinted per element; glow maps for the gems, the Widow's lilac
+  edge and eyes, the Storm's lemon lightning and cyan edge, the Rift's violet cracks and crystals; portraits in the
+  reaper pose. Moves keyed in `tools/blender/anim_scythe.py` (published 2026-11-09). Balance rows (as round 1's, 200
+  fights solo, "well"):
+
+  | Scythe on its tier boss | 0.8x win: Steel / +0 C / +10 S | 1x fight: Steel / +10 S |
+  |---|---|---|
+  | Ember Forge Scythe, Meadow Warden | 100% / 100% / 100% (Steel already above 85%) | 80 s / 44 s (55%) |
+  | Widow's Reaper, Ember Colossus | 60% / 62% / 70% | 68 s / 52 s (76%) |
+  | Storm Reaper, Frost Tyrant | 47% / 62% / 75% | 130 s / 72 s (55%) |
+  | Rift Reaper, Prism Hydra (after the rooms) | 61% / 68% / 84% | 179 s / 125 s (70%) |
+
+  The Rift Reaper first had the Legendary 1.8: +10 S won 92% at 0.8x (1.3: 81%, 1.5: 85%). The Storm Reaper on the
+  Rift Devourer (adds for its arcs to reach): 60% / 69% / 87%, the same with its arcs at 20% (88%) or 25% (86%): an
+  Epic's Power, not the arcs; inside the limit on its own tier boss. The three boss scythes' own skills (Eight Legs,
+  Storm Cyclone, Thousand Cuts) are part 2.
+- **Thousand Cuts** (the Rift Reaper's own skill, spec 5.4, plan `2026-11-09-thousand-cuts.md`; the owner: "the
+  legendary scythe skill is boring. make it flashy violent, exaggerated. you can even summon a grim reaper as effect.
+  screenshake. ground breaking anything to make it legendary"; storyboard and Reaper concept B approved 2026-11-09).
+  Its own moveset `riftReaper` (the scythe's cuts, moves and sounds, the same tables). Same rules as every skill (0.9
+  of a hit, the shared cooldown, a dodge or switch before the hit cancels it, free after it, you never move and can
+  always be hit). 2.6 s: raised high overhead through the charge (10 violet cracks racing out to 14 studs, your screen
+  darkening, a growing rumble); at 0.7 s the butt slammed into the ground, the rift tearing open 6 studs behind you and
+  the Grim Reaper rising out of it (16 studs, see-through with a glowing outline, holding a giant Rift Reaper;
+  `ReplicatedStorage.FxModels.GrimReaper`, moved by code: `SwordSkillFx.REAPER`), souls swirling; a kneel while you
+  fade half into the rift and four waves of slashes rip across the area, slabs of ground heaving up, a jolt each wave;
+  the harvest at 1.8 s (the hit: every foe within 14 studs, `spin`): an X slash as the Reaper spins its giant scythe a
+  full circle (a crescent ring), three shockwaves, 18 rocks, a 22-stud pillar of light, `SHAKE.thousandCuts` 1.25 (the
+  biggest); the Reaper dissolves into rising souls and the cracks close by 3.2 s. A camera moment framed on you (the
+  wide shot 30 studs out, looking up at the Reaper). Another player's cast: three slashes a wave, no darkening, slabs,
+  swirl or souls, a third of the rocks. Sounds (Pro Sound Effects, measured): the charge and rumble, Avalanche Crashing
+  3 as the ground splits, a spirit growl and Unhappy Angels Discordant Choral Wail as the Reaper rises, a Soul Slice
+  each wave, a reversed whoosh into the X, a thunder roar and slam on the harvest. Owner 2026-11-09 ("the slashes are
+  hard to see. can add the slashes and flashes across the screen, with also a sound effect of a fast slashes"): your
+  own cast also rips 5 thin dark slashes (owner 2026-11-09: "darker and thinner": a 12 px deep-violet glow round a 2 px core) across your screen each wave with a white flash, and a big X
+  with a bright flash on the harvest (`Config/SwordSkillFx SCREEN`, `Util/ScreenSlashRules`, client
+  `Util/ScreenSlashes`); a flurry of sharp sword swishes (three Pro Sound Effects, measured) through the cuts. The HUD button "Thousand Cuts"
+  (`UIIcons.Skull`). The Reaper: Meshy from concept B (the void reaper king), cleaned by
+  `tools/blender/build_grim_reaper.py` (6,000 triangles); the move keyed in `tools/blender/anim_rift_reaper.py`.
+  Balance re-run (tools/balance/bosses, Prism Hydra, 200 fights): unchanged, +0 C 68% and +10 S 84% at 0.8x, the 1x
+  fight 125 s (the skill's damage is the same).
 - **Quick weapon switch** (weapons round 2, the owner's pick A): a round chip on the right edge at mid height with your
   weapon's portrait in its rarity's ring, `<` and `>` either side, Q (next) / Z (previous, `Weapons.PREVIOUS_KEY`, its
   badge on `<`; owner 2026-11-09; Shift+Q too, but Shift is the dodge in a fight) on keyboards, a swipe on the chip; it
@@ -3275,8 +3345,13 @@ boss models; the ranch and Heroic tiers come after those.
   follow-ups: the torrents taller, slowed and bursting at random, Magma Cleave's charge-up, Titan's Wrath made more
   epic, one 12 s skill cooldown starting full, Z for the previous weapon, fights and the town loaded before the
   loading screens close. Merged to main 2026-11-09.
-- [ ] Weapons round 3 (spec `2026-11-06-weapons-round1-design.md` section 2, "The whole plan"): the scythes (Forge
-  Scythe, Widow's Reaper, Storm Reaper, Rift Reaper) with their own moveset, models and portraits; the Forge's own model.
+- [x] Weapons round 3 (spec `2026-11-06-weapons-round1-design.md` section 2, "The whole plan"): the scythes (Forge
+  Scythe, Widow's Reaper, Storm Reaper, Rift Reaper) with their own moveset, models and portraits (spec
+  `2026-11-09-weapons-round3-scythes-design.md`): models, moveset, Reaping Cyclone, perks, portraits, balance (5.11
+  "Scythes"), the Rift Reaper's Thousand Cuts with the Grim Reaper (5.11 "Thousand Cuts"), the forward-facing hold;
+  owner approved and merged 2026-11-09. The Forge machine's own model: later (owner 2026-11-09).
+- [ ] Weapons round 3 part 2: the Widow's Reaper's Eight Legs and the Storm Reaper's Storm Cyclone (spec 5.3); the
+  final review's deferred minors (Chain Lightning per foe, the capped harvest shake, the light version's cracks).
 - Not reproduced (2026-11-06): pack models on a freshly stocked shelf "slow to render" after joining (the server
   builds them at once, the client had them in 0.05 s, assets preloaded); waiting on how long and which restock.
 - Boss cash pays on every win with no cooldown (only items wait LOOT_COOLDOWN): a strong party farming the Meadow

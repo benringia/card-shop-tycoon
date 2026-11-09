@@ -41,7 +41,7 @@ return {
 				end
 			end
 		end
-		expect.equal(named, 24, "four swords, the spear, the Halberd, the Trident and the Titan's Lance x slash, finisher, skill")
+		expect.equal(named, 30, "four swords, the spear, the Halberd, the Trident, the Titan's Lance, the scythe and the Rift Reaper x slash, finisher, skill")
 	end,
 
 	["every element has its look colours, so each Forge Sword is coloured (Review Focus 5)"] = function()
@@ -117,6 +117,10 @@ return {
 			piercingRush = { "charge", "leave", "arrive", "hit", "length", "width", "afterimages", "glow", "swirl", "flashSeconds", "bursts", "skid" },
 			magmaCleave = { "windup", "hit", "radius", "angle", "crescent", "embers", "smoke" },
 			titansWrath = { "charge", "peak", "hit", "close", "fade", "tear", "length", "width", "tearWidth", "glow", "inflow", "swirl", "cracks", "crackReach", "rumbleEvery", "ring", "rocks", "beam", "thorns", "thornHeight", "thornThick", "giants", "giantHeight", "giantThick", "branches", "branchReach", "slabs", "slabSize", "debris", "debrisHeight", "pillars", "pillarHeight", "petals", "camAt", "camHold", "camFocus", "camLookUp" },
+			scytheSweep = { "arc", "arcAngle", "thick", "flash", "sparks", "wrap", "wrapFrom", "spin", "low", "high", "lead", "swipe", "pieces" },
+			scytheWhirl = { "rings", "ring", "blades", "bladeRing", "sparks", "dust", "flash" },
+			reapingCyclone = { "gather", "ring1", "ring2", "hit", "radius", "fly", "crescents", "lastScale", "swirl", "sparks" },
+			thousandCuts = { "charge", "cracks", "crackReach", "crackGrow", "rumbleEvery", "darkness", "slam", "riftBehind", "riftSize", "cutsFrom", "waves", "waveGap", "slashes", "slashLite", "slashThick", "slashFlash", "slabs", "slabSize", "hit", "radius", "harvestRadius", "harvestThick", "xLength", "rings", "rocks", "rockSpeed", "pillarHeight", "close", "fade", "souls", "camAt", "camHold", "camFocus", "camLookUp", "camUp", "camOut", "camAhead" },
 			torrentStrike = { "raise", "slam", "hit", "spread", "slowAfter", "slowScale", "slowEase", "slowFeed", "fall", "radius", "inner", "torrents", "spread", "pairShare", "nearest", "apart", "lane", "columnHeight", "outerHeight", "cracks", "foeEdge", "foeSizeStuds", "foeSizeMax", "camAt", "camHold", "camFocus", "camLookUp", "camUp", "camOut" },
 		}
 		for look, keys in needs do
@@ -464,6 +468,146 @@ return {
 		expect.equal(SwordSkillFxRules.framesOnCaster(SwordSkillFx.LOOKS.torrentStrike), true)
 		expect.equal(SwordSkillFxRules.framesOnCaster(SwordSkillFx.LOOKS.titansWrath), false, "a line ahead frames its end")
 		expect.equal(SwordSkillFxRules.framesOnCaster(SwordSkillFx.LOOKS.sunfallCleave), false)
+	end,
+
+	-- Weapons round 3 (spec 2026-11-09-weapons-round3-scythes-design 5.2 and 5.3; the owner: "exaggerated moves, wide
+	-- slashes in all directions"): the scythe's looks keep time and place with its moves
+	["the scythe's looks keep time with its moves: crescents over each cut's sweep, the Whirlwind round you"] = function()
+		local scythe = Swords.SWORDS.scythe
+		expect.equal(scythe.fx and scythe.fx.slash, "scytheSweep")
+		local sweep = SwordSkillFx.LOOKS.scytheSweep.beats :: { [string]: number }
+		expect.equal(sweep.arcAngle >= scythe.combo[1].arc, true, "Reap's crescent covers its half circle")
+		expect.equal(sweep.arc <= scythe.combo[1].reach, true, "the crescent inside the reach (its sparks fly on out)")
+		expect.equal(sweep.wrap <= scythe.combo[2].hitAt, true, "Back Sweep's whole turn laid before its strike")
+		expect.equal(sweep.spin <= scythe.combo[3].hitAt, true, "the Whirlwind's two turns laid before its strike")
+		expect.equal(sweep.low > 0 and sweep.high >= 0, true, "Back Sweep low, the Whirlwind at shoulder height")
+		local whirl = SwordSkillFx.LOOKS.scytheWhirl
+		expect.equal(whirl.form, "around", "the Whirlwind's finish round you, not ahead")
+		expect.equal((whirl.beats :: { [string]: number }).ring, scythe.combo[3].reach, "its rings out to the reach")
+		expect.equal(SwordSkillFxRules.finisherAhead(whirl, nil), 0, "drawn where you stand")
+		expect.equal(SwordSkillFxRules.finisherAhead(SwordSkillFx.LOOKS.skyPierce, 8), 8, "Sky Pierce at its line's end")
+		expect.isNil(SwordSkillFxRules.finisherAhead(SwordSkillFx.LOOKS.elementBurst, nil), "a sword's slam just ahead")
+		local shake = SwordSkillFx.SHAKE :: any
+		expect.equal(shake.scytheWhirl > shake.finisher, true, "the Whirlwind's shake bigger than a finisher's")
+	end,
+
+	-- Final review: a cut's slash is called at the sword's arc start (SwordFx.ARCS), after the Whirlwind's two turns have
+	-- begun; its crescent catches up (the part already swung isn't drawn) and its last turn lands with the strike
+	["the scythe's crescents keep time with the swing from the moment the slash is called"] = function()
+		local scythe = Swords.SWORDS.scythe
+		local sweep = SwordSkillFx.LOOKS.scytheSweep.beats :: { [string]: number }
+		local hitIn = scythe.combo[3].hitAt - SwordFx.ARCS.cut3.from
+		local delay, from, seconds = SwordSkillFxRules.arcCatchUp(hitIn - sweep.spin, sweep.spin, 0, 750)
+		expect.equal(delay, 0)
+		expect.near(delay + seconds, hitIn, 1e-9, "the Whirlwind's crescent ends with the strike")
+		expect.near(from, 750 * (sweep.spin - hitIn) / sweep.spin, 1e-9, "from where the blade is when it's called")
+		local d2, f2, s2 = SwordSkillFxRules.arcCatchUp(0.2, 0.3, -90, 90)
+		expect.equal(d2, 0.2, "a start still ahead waits for it")
+		expect.equal(f2, -90)
+		expect.equal(s2, 0.3)
+		expect.equal(scythe.combo[1].hitAt - SwordFx.ARCS.cut1.from - sweep.lead >= 0, true, "Reap's crescent starts after its call")
+		expect.equal(scythe.combo[2].hitAt - SwordFx.ARCS.cut2.from - sweep.wrap >= 0, true, "Back Sweep's turn starts after its call")
+	end,
+
+	-- Final review: the scythe is a group weapon; another player's crescents (and yours on low graphics) are lighter
+	["the scythe's crescents: full pieces for your own, half for another player's, never under three"] = function()
+		local pieces = (SwordSkillFx.LOOKS.scytheSweep.beats :: { [string]: number }).pieces
+		expect.equal(pieces, 18, "pieces in a half turn")
+		expect.equal(SwordSkillFxRules.scythePieces(math.pi, false, pieces), 18, "a half turn")
+		expect.equal(SwordSkillFxRules.scythePieces(math.pi, true, pieces), 9, "lighter")
+		expect.equal(SwordSkillFxRules.scythePieces(0.2, true, pieces), 3, "at least three")
+		expect.equal(SwordSkillFxRules.scythePieces(math.rad(750), true, pieces) <= 38, true, "the Whirlwind's two turns for another player")
+	end,
+
+	["Reaping Cyclone: three rings of crescents, one per spin, the third arriving with the hit at the shape's radius"] = function()
+		local scythe = Swords.SWORDS.scythe
+		local look = SwordSkillFx.LOOKS.reapingCyclone
+		expect.equal(look.form, "around")
+		expect.isNil(look.cinematic, "the Common skill: no camera moment")
+		local b = look.beats :: { [string]: number }
+		expect.equal(b.radius, scythe.skill.shape.radius)
+		expect.equal(b.hit, scythe.skill.hitAt, "the third ring is the hit")
+		expect.equal(b.gather < b.ring1 and b.ring1 < b.ring2 and b.ring2 < b.hit, true, "a ring at the end of each spin")
+		expect.equal(b.hit - b.fly > b.ring2, true, "the last ring leaves after the second")
+		expect.equal(b.lastScale > 1, true, "the last ring the biggest")
+		local shake = SwordSkillFx.SHAKE :: any
+		expect.equal(shake.reapingCyclone > shake.finisher and shake.reapingCyclone < shake.titansWrath, true)
+	end,
+
+	["/skillfx previews every scythe, and the admin panel has their moves"] = function()
+		expect.equal(SwordSkillFx.PREVIEW.scythe, "forgeScythe_Shade")
+		expect.equal(SwordSkillFx.PREVIEW.widow, "widowsReaper")
+		expect.equal(SwordSkillFx.PREVIEW.storm, "stormReaper")
+		expect.equal(SwordSkillFx.PREVIEW.rift, "riftReaper")
+		local want = {
+			["Reap"] = "/skillfx scythe cut1",
+			["Back Sweep"] = "/skillfx scythe cut2",
+			["Whirlwind"] = "/skillfx scythe cut3",
+			["Reaping Cyclone"] = "/skillfx scythe skill",
+			["Thousand Cuts"] = "/skillfx rift skill",
+		}
+		local got = {}
+		for _, section in AdminPanel.SECTIONS do
+			if section.title == "Sword skills" then
+				for _, button in section.buttons do
+					got[button.label] = button.command
+				end
+			end
+		end
+		for label, command in want do
+			expect.equal(got[label], command, label)
+		end
+	end,
+
+	-- The slash trail runs along the scythe's blade: from its socket out to the tip at the side (a sword's and a spear's
+	-- run up the blade)
+	["the scythe's slash trail runs from the socket out along the blade"] = function()
+		local trail = SwordFx.TRAIL_BLADE_SCYTHE :: any
+		expect.equal(trail.base > 4 and trail.tip > 2.5 and trail.tip < trail.base, true, "the socket high, the tip hanging lower")
+		expect.equal(trail.out > 2, true, "the tip out to the side")
+	end,
+
+	-- The Rift Reaper's own skill (spec 5.4; the owner: "flashy violent, exaggerated ... summon a grim reaper ...
+	-- screenshake. ground breaking"): Thousand Cuts, the storyboard approved 2026-11-09
+	["Thousand Cuts: the Rift Reaper's look, its beats in the storyboard's order, the harvest the skill's hit"] = function()
+		local rift = Swords.SWORDS.riftReaper
+		local look = SwordSkillFx.LOOKS.thousandCuts
+		expect.equal(look.form, "around")
+		expect.equal(look.cinematic, true, "the Legendary's camera moment")
+		local b = look.beats :: { [string]: number }
+		expect.equal(b.radius, rift.skill.shape.radius)
+		expect.equal(b.hit, rift.skill.hitAt, "the harvest is the hit")
+		expect.equal(b.charge < b.slam and b.slam < b.cutsFrom and b.cutsFrom < b.hit and b.hit < b.close, true, "charge, rift, cuts, harvest, aftermath")
+		expect.equal(b.cutsFrom + (b.waves - 1) * b.waveGap < b.hit, true, "every wave of cuts before the harvest")
+		expect.equal(b.crackReach, b.radius, "the cracks race out to the harvest's reach")
+		expect.equal(b.harvestRadius <= b.radius, true, "the Reaper's sweep inside the reach (its rings race on out to it)")
+		expect.equal(b.slashLite < b.slashes, true, "another player's: fewer slashes")
+		local shake = SwordSkillFx.SHAKE :: any
+		expect.equal(shake.thousandCuts > shake.titansWrath, true, "the biggest shake in the game")
+		local reaper = SwordSkillFx.REAPER
+		expect.equal(b.slam + reaper.rise <= b.cutsFrom, true, "the Reaper has risen before the cuts")
+		expect.equal(reaper.ghost > 0 and reaper.ghost < 1, true, "see-through")
+		expect.equal(reaper.spin <= b.close - b.hit, true, "its harvest spin ends before it leaves")
+	end,
+
+	-- Studio 2026-11-09: a side-on wide shot saw the Grim Reaper edge-on (it faces where you face, behind you); the
+	-- wide shot stands out in front of you to the side, so you and the Reaper's face both show
+	["Thousand Cuts' wide shot looks from your front side, at the Reaper's face"] = function()
+		local b = SwordSkillFx.LOOKS.thousandCuts.beats :: { [string]: number }
+		local angle = math.deg(math.atan2(b.camAhead, b.camOut))
+		expect.equal(angle >= 25 and angle <= 60, true, `the wide shot {math.round(angle)} degrees round toward your front`)
+	end,
+
+	-- Final review (Thousand Cuts): its camera moment starts at 0.75 s but its hit is at 1.8 s; a dodge in between must
+	-- end the camera moment too (it watched for a cancel only until it started)
+	["a camera moment watches for a cancel until the skill's hit, not only until it starts"] = function()
+		local b = SwordSkillFx.LOOKS.thousandCuts.beats :: { [string]: number }
+		expect.equal(SwordSkillFxRules.cinematicWatches(1.0, b.camAt, b.hit), true, "a dodge at 1.0 s ends it")
+		expect.equal(SwordSkillFxRules.cinematicWatches(1.9, b.camAt, b.hit), false, "after the hit it plays on")
+		local w = SwordSkillFx.LOOKS.titansWrath.beats :: { [string]: number }
+		expect.equal(SwordSkillFxRules.cinematicWatches(1.4, w.camAt, w.hit), false, "Titan's Wrath as before")
+		expect.equal(SwordSkillFxRules.cinematicWatches(0.5, 0.62, nil), true, "a look without a hit: until it starts")
+		expect.equal(SwordSkillFxRules.cinematicWatches(0.7, 0.62, nil), false)
 	end,
 
 	-- Final review: the admin panel's spear skill buttons (spec 5: "the admin panel's buttons show the new skills")

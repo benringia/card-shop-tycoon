@@ -125,6 +125,10 @@ return {
 	},
 	-- The Magma Halberd's Eruption perk (weapons round 2): a lava burst and ring on the foe, on top of the extra hit's own
 	ERUPT = { color = { 255, 120, 40 }, size = 9, ring = 10 },
+	-- The Storm Reaper's Chain Lightning (a burst on the target, a bolt to each foe it arcs to, `boltSeconds` long) and
+	-- the Rift Reaper's Reap (a violet burst and ring on a foe under 30%; weapons round 3)
+	CHAIN = { color = { 255, 225, 90 }, size = 7, ring = 8, boltSeconds = 0.3 },
+	EXECUTE = { color = { 185, 120, 255 }, size = 10, ring = 12 },
 	RING = { size = 10, seconds = 0.3 },
 	CUT_LINES = { length = 8, width = 1.1, delay = 0.06, grow = 0.06, hold = 0.12, fade = 0.25, angle = 35 },
 	DUST = { radius = 5, seconds = 0.4, puffs = 8, color = rgb(232, 222, 205) },
@@ -137,6 +141,10 @@ return {
 	-- a spear's head (weapons round 2): its bottom and tip over the grip (31% up the spear; measured on the four models:
 	-- the heads start 2.4-3.0 studs up, the tips 5.9-6.4)
 	TRAIL_BLADE_SPEAR = { base = 2.6, tip = 5.9 },
+	-- a scythe's blade (weapons round 3): from its socket (`base` up the shaft from the grip, a third up the scythe) out to
+	-- its hanging tip (`tip` up, `out` to the blade's side, +X in the model; measured on the four models: the sockets
+	-- 5.0-5.6 up, the tips 2.8-3.4 up and 2.7-3.4 out)
+	TRAIL_BLADE_SCYTHE = { base = 5.2, tip = 3.2, out = 3 },
 	-- Drawing your sword: a flash of light and a glint at the blade's tip
 	GLEAM = { seconds = 0.3, brightness = 4, range = 8, size = 2.2, color = rgb(255, 250, 225) },
 

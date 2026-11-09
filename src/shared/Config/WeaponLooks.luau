@@ -37,10 +37,10 @@ local WEAPONS: { [string]: Look } = {
 	magmaHalberd = element("Ember", "rbxassetid://120186001087571"),
 	tidalTrident = element("Tide", "rbxassetid://128008717184531"),
 	titansLance = element("Bloom", "rbxassetid://132598528291002"),
-	forgeScythe = { glow = { 207, 230, 255 }, deep = { 150, 180, 230 }, trail = { 207, 230, 255 }, portrait = "" },
-	widowsReaper = element("Shade", ""),
-	stormReaper = element("Volt", ""),
-	riftReaper = element("Shade", ""),
+	-- the scythes (weapons round 3; portraits uploaded 2026-11-09)
+	widowsReaper = element("Shade", "rbxassetid://108309018722542"),
+	stormReaper = element("Volt", "rbxassetid://110426856864549"),
+	riftReaper = element("Shade", "rbxassetid://92170879649035"),
 }
 -- The Forge Sword's portrait per element (its model with that element's colour map)
 local FORGE_PORTRAITS: { [string]: string } = {
@@ -58,10 +58,19 @@ local FORGE_SPEAR_PORTRAITS: { [string]: string } = {
 	Volt = "rbxassetid://110373205086963",
 	Shade = "rbxassetid://135950698141778",
 }
--- The five Forge Swords take their element's colours; the five Forge Spears too
+-- The Forge Scythe's portrait per element (weapons round 3, uploaded 2026-11-09)
+local FORGE_SCYTHE_PORTRAITS: { [string]: string } = {
+	Ember = "rbxassetid://122519222347000",
+	Tide = "rbxassetid://92420585219211",
+	Bloom = "rbxassetid://86345664305774",
+	Volt = "rbxassetid://116575737704287",
+	Shade = "rbxassetid://128846294072177",
+}
+-- The five Forge Swords take their element's colours; the five Forge Spears and Scythes too
 for name in BY_ELEMENT do
 	WEAPONS[`forgeSword_{name}`] = element(name, FORGE_PORTRAITS[name])
 	WEAPONS[`forgeSpear_{name}`] = element(name, FORGE_SPEAR_PORTRAITS[name])
+	WEAPONS[`forgeScythe_{name}`] = element(name, FORGE_SCYTHE_PORTRAITS[name])
 end
 
 return {
@@ -98,6 +107,13 @@ return {
 			Volt = "rbxassetid://122146092260533",
 			Shade = "rbxassetid://74237076352651",
 		},
+		ForgeScythe = { -- weapons round 3 (tools/blender/build_weapon_forgeScythe.py, uploaded 2026-11-09)
+			Ember = "rbxassetid://74294427925403",
+			Tide = "rbxassetid://140328124517186",
+			Bloom = "rbxassetid://110918663246279",
+			Volt = "rbxassetid://125025825762225",
+			Shade = "rbxassetid://137995788929621",
+		},
 	},
 	-- Each model's glow map (emissive mask: the runes, gems, crystal; tools/textures/make_glow_maps.py, uploaded),
 	-- baked into its SurfaceAppearances by `lune run tools/weapons/add_glow_maps` (a game script can't set them).
@@ -112,6 +128,11 @@ return {
 		MagmaHalberd = "rbxassetid://99891722202960",
 		TidalTrident = "rbxassetid://80363641113517",
 		TitansLance = "rbxassetid://122751631291942",
+		-- the scythes (weapons round 3, uploaded 2026-11-09)
+		ForgeScythe = "rbxassetid://98008666468059",
+		WidowsReaper = "rbxassetid://125281661466225",
+		StormReaper = "rbxassetid://126587973899441",
+		RiftReaper = "rbxassetid://121478494910404",
 	},
 	INNER = { strength = 4 },
 	-- A PointLight on the weapon in hand (spec 5.1: Epic "a glowing gem and a light", Legendary too), as strong as its

@@ -131,5 +131,10 @@ return {
 		-- Magma Cleave's charge-up (weapons round 2.5 part 2), measured 2026-11-09
 		["9114463016"] = 110, -- cleaveCharge: Flame Licks 4
 		["9118158113"] = 92, -- cleaveRush: Reversed Whoosh Backwards Hissing Burst 2
+		["9125989548"] = 134, -- riftGrowl: Spirit Whooshes Low End Airy Growls Fast Bys (2026-11-09)
+		["9120358057"] = 66, -- reaperWail: Unhappy Angels Discordant Choral Wail Airy 1 (2026-11-09)
+		["9126013644"] = 80, -- flurryA: Swish Med High End Sharp Swords Fast Punches (2026-11-09)
+		["9126013382"] = 100, -- flurryB: Swish Med High End Sharp Swords Fast Punches (2026-11-09)
+		["9126014020"] = 117, -- flurryC: Swish Med High End Sharp Swords Fast Punches (2026-11-09)
 	} :: { [string]: number },
 }

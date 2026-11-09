@@ -28,6 +28,9 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   caldera's `Volcano`, `CharredTree` and `ObsidianShards` come from `build_volcano.py`, `build_charred_tree.py`,
   `build_obsidian_shards.py` (docs/props.md). The Wild boss arenas' `StandingStone`, `Stalagmite`, `Web`, `Cocoon`,
   `Bones`, `CaveDome` and `LavaCliff` come from `build_arena_props.py`.
+- `assets/fx-models` → ReplicatedStorage.FxModels (mapped in all three project files): models effects summon, moved by
+  code: the Grim Reaper of the Rift Reaper's Thousand Cuts (`GrimReaper.rbxm`, Meshy from
+  `assets/blender/GrimReaper/concept_B.png`, cleaned by `tools/blender/build_grim_reaper.py`); the same script rule.
 - `assets/place-props`: prop models that contain unions (Rojo live sync drops union shapes). Not synced: inserted
   into the place file's `ReplicatedStorage.PlaceProps` with Insert from File (docs/props.md).
 - `assets/town` → Workspace.TownDecor: hand-placed town scenery saved from Studio as `TownDecor.rbxm` (docs/props.md).
@@ -56,7 +59,8 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   Meshy, cleaned by `tools/blender/build_weapon_<id>.py` on `weapon_kit.py`, the Forge Sword's elements made by
   `lune run tools/weapons/forge_variants` from `assets/weapons-source/ForgeSword.rbxm`, not synced; docs/weapons.md; the spears
   `ForgeSpear_<Element>`, `MagmaHalberd`, `TidalTrident`, `TitansLance` from Meshy, cleaned by `weapon_kit.build_spear`
-  (`build_weapon_<id>.py`), the Forge Spear's copies by `forge_variants ForgeSpear`), imported in Studio, finished by
+  (`build_weapon_<id>.py`), the Forge Spear's copies by `forge_variants ForgeSpear`; the scythes `ForgeScythe_<Element>`,
+  `WidowsReaper`, `StormReaper`, `RiftReaper` the same way by `weapon_kit.build_scythe`, `forge_variants ForgeScythe`), imported in Studio, finished by
   `lune run tools/weapons/finish_sword`: the FBX importer drops colours and turns pivots).
   `assets/ui/weapon-glow-maps`: each sword's glow map (its painted runes, gems, crystal), made by
   `tools/textures/make_glow_maps.py`, uploaded (ids in `Config/WeaponLooks` GLOW_MAPS) and baked into the models'
@@ -71,7 +75,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   moveset, `anim_spear.py`, into `assets/animations/Spear`; `--sword titans_lance` for the Titan's Lance's skill,
   `anim_titans_lance.py`, into `assets/animations/TitansLance`; `--sword magma_halberd` / `tidal_trident` for the
   Halberd's and Trident's skills, `anim_magma_halberd.py` / `anim_tidal_trident.py`, into `assets/animations/MagmaHalberd`
-  / `TidalTrident`); published ids go in
+  / `TidalTrident`; `--sword scythe` for the scythe moveset, `anim_scythe.py`, into `assets/animations/Scythe`); published ids go in
   `Config/Swords` (docs/animations.md). The round 1 swords' effects: `Config/SwordSkillFx`, client `Util/SwordSkillFx`
   and `Util/SkillCinematic` (DESIGN.md 5.11 "Sword skills").
   `assets/monster-animations` → ReplicatedStorage.MonsterAnimations: monster and boss attack clips
@@ -128,7 +132,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   recommended Power, three ways: no sword yet, standing still, fighting well (targets: normal about 12.5 s, well ~90%,
   still ~75%, the Meadow ~75% with no sword; elite 25-35 s, well ~65%)
 - `lune run tests/run` — unit tests for pure modules (BeastMath, Migrations, SaleRules, CondenseRules, JobRules, LevelMath, PartyRules,
-  CreatureMotion, CombatMath, BattleSim, SwordsConfig, SwordRules, SwordSkillFx: the round 1 swords' looks, beats and shakes, SwordArcRules, SwingGate, RingRules, HpBarRules, CombatPreload, LoadingRules, AttackTiming, FightMotion, FightFxRules, MonsterMoves, ShakeRules, DamagePop, VictoryRules, MarkerNames, DebuffRules, SwapKeys, SummonMotion, DefeatRules, PetVoice, MusicRules, XpPill, SparkPath, HudMascotRules, ContrastRules, SoftColors, SquishRules, PvpRules, Frontier, Dungeon, WildPopulation, DungeonRules, ItemRules, TownLayout, TownPreload: the town's pictures before you walk in, PropFit, ShelfStock, ShelfLayout, PetRig, KeyframeTiming, BeastFxRules, RigGuess, CellSearch, ShelvesConfig, RevealRules, ElementFxRules, BinderSpreads, OddsRules, NewPulls, PityRules, BossRules, CreatureCull, AdminPanel, UiLayout, CompareRules, LevelRemap, LevelUpRules, BinderCovers, OrderRules, LevelUpFxConfig, PageCurl, BinderFit, BinderGesture, ShowcaseLayout, OpeningFlow, OpeningLayout, PackFxConfig, HoverRules, ProductPictureRules, ShopDetail: every shop screen sets a draw distance, PortalTrails,
+  CreatureMotion, CombatMath, BattleSim, SwordsConfig, SwordRules, SwordSkillFx: the round 1 swords' looks, beats and shakes, ScreenSlashRules: Thousand Cuts' slashes across your screen, SwordArcRules, SwingGate, RingRules, HpBarRules, CombatPreload, LoadingRules, AttackTiming, FightMotion, FightFxRules, MonsterMoves, ShakeRules, DamagePop, VictoryRules, MarkerNames, DebuffRules, SwapKeys, SummonMotion, DefeatRules, PetVoice, MusicRules, XpPill, SparkPath, HudMascotRules, ContrastRules, SoftColors, SquishRules, PvpRules, Frontier, Dungeon, WildPopulation, DungeonRules, ItemRules, TownLayout, TownPreload: the town's pictures before you walk in, PropFit, ShelfStock, ShelfLayout, PetRig, KeyframeTiming, BeastFxRules, RigGuess, CellSearch, ShelvesConfig, RevealRules, ElementFxRules, BinderSpreads, OddsRules, NewPulls, PityRules, BossRules, CreatureCull, AdminPanel, UiLayout, CompareRules, LevelRemap, LevelUpRules, BinderCovers, OrderRules, LevelUpFxConfig, PageCurl, BinderFit, BinderGesture, ShowcaseLayout, OpeningFlow, OpeningLayout, PackFxConfig, HoverRules, ProductPictureRules, ShopDetail: every shop screen sets a draw distance, PortalTrails,
   TownTerrain, DayCycle, FrameWatchdog, Wander, WelcomePath, PlazaLayout, PortalLooks, LavaCracks, ModelPreload, CardArt, WildValley, MonsterLooks, BossMoments, MoveFx: the Pet button moves' looks by grade and MoveFxRules, SkillText: a card's skills in words and the sword skill buttons, WildLoadingRules: the Wild's loading screen, SuperFx: the super moves' looks by grade, beats and camera, SoundLevel: skill sounds brought to one level, CustomerTypes, CollectorRules, OfferRules, HaggleRules, ReactionRules, RatingRules, WalkerRules: the customers round, StageRules: the binder, card view and pack opening stages right above the player, WalkStep: NPCs following a path smoothly, TiredRules: shop workers' tired spells, CreatureFlight: which creatures fly, ToastRules: toasts as speech bubbles over the cash, WeaponsConfig, WeaponRules, WeaponText, WeaponLookRules: weapons round 1, WeaponSwitch: the quick weapon switch's order and steps) plus the model script gate (CreatureAssets) and SourceOrder (no local function or file-level local used above its definition, no module used without a require). Pure logic goes in Roblox-free modules so it can be tested here. Lune can't build Vector3 or Color3, so numbers a test reads live in plain-data configs (`CaseLayout`, `PackOpeningLayout`, `CardReveal`, `PackFx`), and pure modules don't require siblings (no `script` in Lune).
 - luau-lsp "Unknown require: unsupported path" on `(script.Parent :: Instance)` requires is editor-only; ignore.
   "Undefined type `unknown`" comes from the old Roblox LSP extension; ignore.

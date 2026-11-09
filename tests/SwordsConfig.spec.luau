@@ -229,6 +229,180 @@ return {
 		end
 	end,
 
+	-- Weapons round 3 (spec 2026-11-09-weapons-round3-scythes-design 5.2; the owner: "epic, exaggerated moves, wide
+	-- slashes in all directions", "a bit slower but still flashy"): the scythe's sweeps, its whirlwind, Reaping Cyclone
+	["the scythe moveset: reap, back sweep, whirlwind and Reaping Cyclone at the sword's damage a second"] = function()
+		local scythe = Swords.SWORDS.scythe
+		assert(scythe, "the scythe moveset")
+		expect.equal(#scythe.combo, 3)
+		expect.equal(scythe.combo[1].reach, 10)
+		expect.equal(scythe.combo[1].arc, 180)
+		expect.equal(scythe.combo[2].reach, 10)
+		expect.equal(scythe.combo[2].arc, 180)
+		expect.equal(scythe.combo[3].reach, 10)
+		expect.equal(scythe.combo[3].arc, 360)
+		expect.near(SwordRules.comboPowerPerSecond(scythe.combo), SwordRules.comboPowerPerSecond(Swords.SWORDS.starterSword.combo), 1e-3)
+		for index, cut in scythe.combo do
+			local sword = Swords.SWORDS.starterSword.combo[index]
+			expect.equal(cut.length >= sword.length * 1.25, true, `cut {index} a third slower than the sword's`)
+		end
+		expect.equal(scythe.skill.power, 0.9)
+		expect.equal(scythe.skill.cooldown, Swords.SKILL_COOLDOWN)
+		expect.equal(scythe.skill.shape.kind, "spin")
+		expect.equal(scythe.skill.shape.radius, 9)
+		expect.equal(scythe.model, "Scythe")
+		expect.equal(Swords.GRIPS.scythe.backScale, 1)
+	end,
+
+	-- The scythe's timings are its animations' (tools/blender/anim_scythe.py, built by tools/anim/build_kfs: their Hit
+	-- markers and lengths) and its cuts carry you as they were keyed (Reap's step, Back Sweep's drift)
+	["the scythe's timings are its animations' markers"] = function()
+		local scythe = Swords.SWORDS.scythe
+		expect.equal(scythe.combo[1].hitAt, 0.34, "Reap's Hit marker")
+		expect.equal(scythe.combo[1].length, 0.85, "Reap's length")
+		expect.equal(scythe.combo[2].hitAt, 0.42, "Back Sweep's Hit marker")
+		expect.equal(scythe.combo[2].length, 0.90, "Back Sweep's length")
+		expect.equal(scythe.combo[3].hitAt, 0.98, "Whirlwind's Hit marker")
+		expect.equal(scythe.combo[3].length, 1.70, "Whirlwind's length")
+		expect.equal(scythe.skill.hitAt, 0.94, "Reaping Cyclone's Hit marker (the third spin)")
+		expect.equal(scythe.skill.length, 1.60, "Reaping Cyclone's length")
+		expect.equal((scythe.skill.free :: Swords.Free).at, 0.94, "free from the hit")
+		local reap = scythe.combo[1].lunge :: Swords.Lunge
+		expect.equal(reap.studs, 1.1, "Reap's step")
+		expect.equal(reap.from, 0.22, "from the end of the wind-up")
+		expect.equal(reap.to, 0.34, "to the hit")
+		local sweep = scythe.combo[2].lunge :: Swords.Lunge
+		expect.equal(sweep.studs, 0.8, "Back Sweep's drift")
+		expect.equal(sweep.from, 0.15, "through the spin")
+		expect.equal(sweep.to, 0.42, "to the hit")
+		for index, cut in scythe.combo do
+			expect.equal(cut.hitAt < (cut.cancelAt or cut.length), true, `cut {index} hits before it can be cancelled`)
+		end
+	end,
+
+	-- The imported scythe models have their blade along +X (Roblox's importer flips Blender's X), the animations were keyed
+	-- with it over the head (to the left of the right hand): the hand grip turns it half round its shaft
+	["the scythe's grip turns the blade over the head"] = function()
+		expect.equal(Swords.GRIPS.scythe.hand.twist, 180)
+		expect.equal(Swords.GRIPS.scythe.hand.angleX, Swords.GRIPS.spear.hand.angleX, "held like the spear")
+		-- On the back (measured in Studio on the 9-stud Rift Reaper, 2026-11-09): 48 degrees from upright and 0.2 studs
+		-- higher than the spear, its butt 0.38 over the ground and its top 2.66 over the head (the spear's 40 put the
+		-- crescent butt in the ground)
+		expect.equal(Swords.GRIPS.scythe.back.angleZ, -48)
+		expect.equal(Swords.GRIPS.scythe.back.y, -0.2)
+	end,
+
+	-- Task 6: the scythe's own sound mix (licensed and measured, Config/SoundLevels), every cue a sound it has
+	["the scythe's cues: its own swishes and spins, every key a sound it has"] = function()
+		local scythe = Swords.SWORDS.scythe
+		for _, move in { "cut1", "cut2", "cut3", "skill" } do
+			local cues = scythe.cues[move]
+			expect.equal(#cues > 0, true, move)
+			for _, cue in cues do
+				assert(scythe.sounds[cue.key], `{move} cues {cue.key}: no such sound`)
+				expect.equal(cue.at <= (if move == "skill" then scythe.skill.length else scythe.combo[tonumber(move:sub(4)) :: number].length), true, `{move} {cue.key} within the move`)
+			end
+		end
+		local spins = 0
+		for _, cue in scythe.cues.skill do
+			if cue.key == "spinWhoosh" then
+				spins += 1
+			end
+		end
+		expect.equal(spins, 3, "Reaping Cyclone: a whoosh on each spin")
+		expect.equal(scythe.cues.cut1 ~= Swords.SWORDS.spear.cues.cut1, true, "not the spear's")
+	end,
+
+	-- The Rift Reaper's own skill (spec 2026-11-09-weapons-round3-scythes-design 5.4; the owner: "the legendary scythe
+	-- skill is boring. make it flashy violent, exaggerated. you can even summon a grim reaper"): Thousand Cuts
+	["the Rift Reaper: the scythe's cuts and moves, its own skill Thousand Cuts (a 14-stud harvest)"] = function()
+		local Weapons = require("../src/shared/Config/Weapons")
+		expect.equal(Weapons.ById.riftReaper.moveset, "riftReaper")
+		expect.equal(Weapons.ById.stormReaper.moveset, "scythe", "the other scythes keep Reaping Cyclone")
+		local rift, scythe = Swords.SWORDS.riftReaper, Swords.SWORDS.scythe
+		assert(rift, "the riftReaper moveset")
+		expect.equal(rift.combo, scythe.combo, "the scythe's cuts, the same table")
+		for _, key in { "ready", "draw", "sheath", "run", "cut1", "cut2", "cut3" } do
+			expect.equal(rift.animations[key], scythe.animations[key], key)
+		end
+		expect.equal(rift.model, "RiftReaper", "its skill's animation folder")
+		local skill = rift.skill
+		expect.equal(skill.power, 0.9)
+		expect.equal(skill.cooldown, Swords.SKILL_COOLDOWN)
+		expect.equal(skill.shape.kind, "spin")
+		expect.equal(skill.shape.radius, 14)
+		expect.isNil(skill.dash, "you never move")
+		expect.equal((skill.free :: Swords.Free).at, skill.hitAt, "free from the harvest")
+		expect.equal(skill.hitAt < skill.length, true)
+		expect.equal(rift.fx.skill, "thousandCuts")
+		expect.equal(rift.fx.slash, scythe.fx.slash)
+		expect.equal(rift.fx.finisher, scythe.fx.finisher)
+	end,
+
+	-- Thousand Cuts' sounds (spec 5.4: "a deep charge, cracking ground, a ghostly choir as the Reaper rises, slash after
+	-- slash, and a huge impact"; licensed and measured): every cue a sound it has, in the storyboard's order
+	["Thousand Cuts' cues: the charge, the ground breaking, the Reaper's wail, a slice each wave, the harvest's roar"] = function()
+		local rift = Swords.SWORDS.riftReaper
+		local SwordSkillFx = require("../src/shared/Config/SwordSkillFx")
+		local beats = SwordSkillFx.LOOKS.thousandCuts.beats :: { [string]: number }
+		local at: { [string]: { number } } = {}
+		for _, cue in rift.cues.skill do
+			assert(rift.sounds[cue.key], `skill cues {cue.key}: no such sound`)
+			at[cue.key] = at[cue.key] or {}
+			table.insert(at[cue.key], cue.at)
+		end
+		expect.equal(at.wrathCharge ~= nil and at.wrathCharge[1] < beats.slam, true, "the charge before the rift")
+		expect.equal(at.groundBreak and at.groundBreak[1], beats.slam, "the ground splits at the slam")
+		expect.equal(at.reaperWail ~= nil and at.reaperWail[1] >= beats.slam and at.reaperWail[1] < beats.cutsFrom, true, "the wail as the Reaper rises")
+		expect.equal(#(at.cutLines or {}), beats.waves, "a slice each wave of cuts")
+		expect.equal(at.wrathThrust and at.wrathThrust[1], rift.skill.hitAt, "the roar on the harvest")
+		expect.equal(rift.sounds.cutLines, Swords.SWORDS.scythe.sounds.cutLines, "the scythe's sounds kept for its cuts")
+		-- owner 2026-11-09: "with also a sound effect of a fast slashes": a flurry of sharp swishes through the cuts
+		local flurry = 0
+		for _, cue in rift.cues.skill do
+			if string.sub(cue.key, 1, 6) == "flurry" and cue.at >= beats.cutsFrom and cue.at < rift.skill.hitAt then
+				flurry += 1
+			end
+		end
+		expect.equal(flurry >= 6, true, `a flurry of fast slashes ({flurry})`)
+	end,
+
+	["Thousand Cuts' animation is published (the owner's id, 2026-11-09); the cuts stay the scythe's"] = function()
+		local rift = Swords.SWORDS.riftReaper
+		expect.equal(rift.animations.skill, "rbxassetid://121934882184419")
+		expect.equal(rift.animations.cut1, Swords.SWORDS.scythe.animations.cut1)
+	end,
+
+	-- Thousand Cuts' timing is its animation's (tools/blender/anim_rift_reaper.py, exported to JSON for build_kfs): the
+	-- harvest at its Hit marker, the skill its length
+	["the Rift Reaper's skill timing is its animation's Hit marker and length"] = function()
+		local fs = require("@lune/fs")
+		local serde = require("@lune/serde")
+		local path = "assets/blender/Animations/RiftReaper/skill.json"
+		assert(fs.isFile(path), `{path} is missing (run_sword_moves.py -- --sword rift_reaper)`)
+		local anim = serde.decode("json", fs.readFile(path))
+		local hit
+		for _, marker in anim.markers do
+			if marker.name == "Hit" then
+				hit = marker.t
+			end
+		end
+		local skill = Swords.SWORDS.riftReaper.skill
+		expect.equal(skill.hitAt, hit, "the harvest at the Hit marker")
+		expect.near(skill.length, anim.frames[#anim.frames].t, 1e-3, "the skill as long as its animation")
+	end,
+
+	["a scythe's reach never makes a spot a boss's swipe can't reach"] = function()
+		local longest = 0
+		for _, cut in Swords.SWORDS.scythe.combo do
+			longest = math.max(longest, cut.reach)
+		end
+		for id, boss in Bosses.BOSSES do
+			local ring = boss.ringRadius or Bosses.RING_RADIUS
+			expect.equal(longest + ring * Bosses.HIT_RADIUS_SHARE <= ring + Bosses.RING_SWIPE_EXTRA, true, id)
+		end
+	end,
+
 	-- Sword skills round (spec 2026-11-06-sword-skills-design): each round 1 sword its own moveset, the starter's cuts
 	["each round 1 sword has its own moveset: the starter's cuts and animations, its own skill at today's strength"] = function()
 		local Weapons = require("../src/shared/Config/Weapons")
@@ -389,6 +563,26 @@ return {
 		end
 		expect.equal(Swords.SWORDS.spear.animations.skill ~= ids.magmaHalberd, true, "the spear keeps Piercing Rush")
 		expect.equal(Swords.SWORDS.magmaHalberd.animations.cut1, Swords.SWORDS.spear.animations.cut1, "the cuts stay the spear's")
+	end,
+
+	["the scythe's moves are published (the owner's ids, 2026-11-09); dodge, flinch, down and get up stay the sword's"] = function()
+		local ids = {
+			cut1 = "rbxassetid://84614363717630",
+			cut2 = "rbxassetid://101503127287374",
+			cut3 = "rbxassetid://112263670560674",
+			skill = "rbxassetid://133282199201010",
+			draw = "rbxassetid://120963161842619",
+			sheath = "rbxassetid://87007060779059",
+			ready = "rbxassetid://107381698123347",
+			run = "rbxassetid://93344115404944",
+		}
+		local scythe = Swords.SWORDS.scythe
+		for key, id in ids do
+			expect.equal(scythe.animations[key], id, key)
+		end
+		for _, key in { "dodge", "flinch", "down", "getUp" } do
+			expect.equal(scythe.animations[key], Swords.SWORDS.starterSword.animations[key], key)
+		end
 	end,
 
 	["each round 1 skill frees you once its damage is committed, inside the move (owner 2026-11-07)"] = function()

@@ -28,6 +28,15 @@ local MODELS = {
 	ForgeSpear_Bloom = "ForgeSpear",
 	ForgeSpear_Volt = "ForgeSpear",
 	ForgeSpear_Shade = "ForgeSpear",
+	-- the scythes (weapons round 3; the Forge Scythe's five copies share ForgeScythe's)
+	WidowsReaper = "WidowsReaper",
+	StormReaper = "StormReaper",
+	RiftReaper = "RiftReaper",
+	ForgeScythe_Ember = "ForgeScythe",
+	ForgeScythe_Tide = "ForgeScythe",
+	ForgeScythe_Bloom = "ForgeScythe",
+	ForgeScythe_Volt = "ForgeScythe",
+	ForgeScythe_Shade = "ForgeScythe",
 }
 
 -- A MeshPart's colour map: newer files keep it as TextureContent (a Content), older ones as TextureID

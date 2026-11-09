@@ -15,6 +15,13 @@ Spears (weapons round 2):
 - TidalTrident: the frosted crystal prongs and the aquamarine gem (pale to bright blue-cyan); the pearl shaft and the
   silver spiral stay matte.
 - TitansLance: the emerald veins and gem (saturated green); the gold and the wood stay matte.
+Scythes (weapons round 3; hues measured on the baked maps 2026-11-09):
+- ForgeScythe: its socket gems, as the Forge Sword's.
+- WidowsReaper: the lilac edge and the spider's eyes (the brightest violet, value 0.8+); the violet blade, the black
+  body and the bone shaft stay matte.
+- StormReaper: the lemon lightning crack (hue 0.14-0.18; the gold metal sits at 0.10-0.12 and stays matte) and the
+  cyan edge and gem.
+- RiftReaper: the vivid violet cracks, crystals and eye (saturated, bright); the black blade and the silver stay matte.
 
 Usage: python tools/textures/make_glow_maps.py   (needs Pillow; writes assets/ui/weapon-glow-maps/<Model>.png)
 """
@@ -54,6 +61,20 @@ def emerald(h, s, v):
     return clamp(1 - abs(h - 0.42) / 0.1) * clamp((s - 0.25) / 0.25) * clamp((v - 0.3) / 0.3)
 
 
+def widow(h, s, v):
+    return clamp(1 - abs(h - 0.76) / 0.08) * clamp((v - 0.78) / 0.12) * clamp((s - 0.1) / 0.15)
+
+
+def storm(h, s, v):
+    lightning = clamp(1 - abs(h - 0.16) / 0.03) * clamp((s - 0.4) / 0.2) * clamp((v - 0.72) / 0.2)
+    edge = clamp(1 - abs(h - 0.53) / 0.05) * clamp((s - 0.3) / 0.2) * clamp((v - 0.6) / 0.3)
+    return max(lightning, edge)
+
+
+def rift(h, s, v):
+    return clamp(1 - abs(h - 0.75) / 0.1) * clamp((s - 0.4) / 0.15) * clamp((v - 0.6) / 0.2)
+
+
 RULES = {
     "SunforgedBlade": sunforged,
     "VerdantBlade": verdant,
@@ -61,6 +82,9 @@ RULES = {
     "MagmaHalberd": sunforged,
     "TidalTrident": tidal,
     "TitansLance": emerald,
+    "WidowsReaper": widow,
+    "StormReaper": storm,
+    "RiftReaper": rift,
 }
 
 
@@ -93,6 +117,7 @@ def main():
     maps = {name: by_colour(name, rule) for name, rule in RULES.items()}
     maps["ForgeSword"] = forge_gems("ForgeSword")
     maps["ForgeSpear"] = forge_gems("ForgeSpear")
+    maps["ForgeScythe"] = forge_gems("ForgeScythe")
     for name, mask in maps.items():
         mask.filter(ImageFilter.GaussianBlur(1)).save(os.path.join(OUT, f"{name}.png"))
         print("saved", name)

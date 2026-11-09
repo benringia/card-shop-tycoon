@@ -150,10 +150,12 @@ local function skillAim(character: Model, sword: Swords.Sword): Vector3?
 	return if x and z then Vector3.new(x, root.Position.Y, z) else nil
 end
 
--- Where a weapon's blade runs, up from the grip (a spear's: its head, SwordFx.TRAIL_BLADE_SPEAR)
-local function trailBladeOf(weaponId: string): { base: number, tip: number }
+-- Where a weapon's blade runs, up from the grip (a spear's: its head, SwordFx.TRAIL_BLADE_SPEAR; a scythe's: from its
+-- socket out to the tip at its side, TRAIL_BLADE_SCYTHE's `out`)
+local function trailBladeOf(weaponId: string): { base: number, tip: number, out: number? }
 	local weapon = Weapons.ById[weaponId]
-	return if weapon and weapon.family == "spear" then SwordFx.TRAIL_BLADE_SPEAR else SwordFx.TRAIL_BLADE
+	local family = if weapon then weapon.family else nil
+	return if family == "spear" then SwordFx.TRAIL_BLADE_SPEAR elseif family == "scythe" then SwordFx.TRAIL_BLADE_SCYTHE else SwordFx.TRAIL_BLADE
 end
 
 -- A character's blade (its sword in the world): the handle and the blade's base and tip, for effects along it
@@ -163,7 +165,7 @@ local function bladeOf(character: Model): SwordSkillFx.Blade?
 		return nil
 	end
 	local blade = trailBladeOf(view.swordId)
-	return { part = view.handle, base = view.grip * CFrame.new(0, blade.base, 0), tip = view.grip * CFrame.new(0, blade.tip, 0) }
+	return { part = view.handle, base = view.grip * CFrame.new(0, blade.base, 0), tip = view.grip * CFrame.new(blade.out or 0, blade.tip, 0) }
 end
 
 -- A cut's effects on a character: its slash as the blade comes round, and on the finisher the slam's burst
@@ -174,16 +176,18 @@ local function cutEffects(character: Model, sword: Swords.Sword, effects: Effect
 	local cut = sword.combo[index]
 	task.delay(from, function()
 		if live() then
-			SwordSkillFx.slash(character, effects.fx.slash, index, effects.colors, effects.scale, bladeOf(character), cut.hitAt - from)
+			SwordSkillFx.slash(character, effects.fx.slash, index, effects.colors, effects.scale, bladeOf(character), cut.hitAt - from, not finisher)
 		end
 	end)
 	if finisher and index == #sword.combo then
 		task.delay(cut.hitAt, function()
-			local at = SwordSkillFx.slamPoint(character, if cut.line then cut.line.length else nil)
+			local at = SwordSkillFx.finisherPoint(character, effects.fx.finisher, if cut.line then cut.line.length else nil)
 			if at and live() then
 				SwordSkillFx.finisher(at, effects.fx.finisher, effects.colors, effects.scale)
 				if character == player.Character then
-					ScreenFx.shake(SwordSkillFxConfig.SHAKE.finisher) -- your own finisher's slam
+					-- your own finisher's slam (the scythe's Whirlwind its own, bigger)
+					local shake = SwordSkillFxConfig.SHAKE :: any
+					ScreenFx.shake(shake[effects.fx.finisher] or shake.finisher)
 				end
 			end
 		end)
@@ -410,7 +414,7 @@ local function refresh(character: Model)
 			-- The slash trail along your blade (a spear's head), on while a cut or the skill swings
 			local blade = trailBladeOf(swordId)
 			local base, tip = Instance.new("Attachment"), Instance.new("Attachment")
-			base.CFrame, tip.CFrame = grip * CFrame.new(0, blade.base, 0), grip * CFrame.new(0, blade.tip, 0)
+			base.CFrame, tip.CFrame = grip * CFrame.new(0, blade.base, 0), grip * CFrame.new(blade.out or 0, blade.tip, 0)
 			base.Parent, tip.Parent = handle, handle
 			local trail = Instance.new("Trail")
 			trail.Attachment0, trail.Attachment1 = base, tip
