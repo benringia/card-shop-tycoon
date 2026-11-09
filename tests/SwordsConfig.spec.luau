@@ -339,6 +339,26 @@ return {
 		expect.equal(rift.fx.finisher, scythe.fx.finisher)
 	end,
 
+	-- Thousand Cuts' sounds (spec 5.4: "a deep charge, cracking ground, a ghostly choir as the Reaper rises, slash after
+	-- slash, and a huge impact"; licensed and measured): every cue a sound it has, in the storyboard's order
+	["Thousand Cuts' cues: the charge, the ground breaking, the Reaper's wail, a slice each wave, the harvest's roar"] = function()
+		local rift = Swords.SWORDS.riftReaper
+		local SwordSkillFx = require("../src/shared/Config/SwordSkillFx")
+		local beats = SwordSkillFx.LOOKS.thousandCuts.beats :: { [string]: number }
+		local at: { [string]: { number } } = {}
+		for _, cue in rift.cues.skill do
+			assert(rift.sounds[cue.key], `skill cues {cue.key}: no such sound`)
+			at[cue.key] = at[cue.key] or {}
+			table.insert(at[cue.key], cue.at)
+		end
+		expect.equal(at.wrathCharge ~= nil and at.wrathCharge[1] < beats.slam, true, "the charge before the rift")
+		expect.equal(at.groundBreak and at.groundBreak[1], beats.slam, "the ground splits at the slam")
+		expect.equal(at.reaperWail ~= nil and at.reaperWail[1] >= beats.slam and at.reaperWail[1] < beats.cutsFrom, true, "the wail as the Reaper rises")
+		expect.equal(#(at.cutLines or {}), beats.waves, "a slice each wave of cuts")
+		expect.equal(at.wrathThrust and at.wrathThrust[1], rift.skill.hitAt, "the roar on the harvest")
+		expect.equal(rift.sounds.cutLines, Swords.SWORDS.scythe.sounds.cutLines, "the scythe's sounds kept for its cuts")
+	end,
+
 	-- Thousand Cuts' timing is its animation's (tools/blender/anim_rift_reaper.py, exported to JSON for build_kfs): the
 	-- harvest at its Hit marker, the skill its length
 	["the Rift Reaper's skill timing is its animation's Hit marker and length"] = function()

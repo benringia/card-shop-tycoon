@@ -580,6 +580,16 @@ do
 	local scythe = SWORDS.scythe
 	local riftAnimations = table.clone(scythe.animations)
 	riftAnimations.skill = ""
+	-- Its own sounds on top of the scythe's (Pro Sound Effects, measured into Config/SoundLevels): the charge, the rumble,
+	-- the ground breaking open, the rift's growl and the Reaper's ghostly wail, the harvest's roar
+	local riftSounds = table.clone(scythe.sounds)
+	riftSounds.wrathCharge = "rbxassetid://9125973984" -- Spaceship Blast High Pitch Energy Charge Up
+	riftSounds.wrathRumble = "rbxassetid://9114344093" -- Energy Presence 8
+	riftSounds.groundBreak = "rbxassetid://9113216700" -- Avalanche Crashing 3: the ground splitting open
+	riftSounds.riftGrowl = "rbxassetid://9125989548" -- Spirit Whooshes Low End Airy Growls Fast Bys: the rift
+	riftSounds.reaperWail = "rbxassetid://9120358057" -- Unhappy Angels Discordant Choral Wail Airy 1: the Reaper rising
+	riftSounds.cleaveRush = "rbxassetid://9118158113" -- Reversed Whoosh Backwards Hissing Burst 2: into the X
+	riftSounds.wrathThrust = "rbxassetid://9120023325" -- Thunder With Lion Roar Searing Blast 5: the harvest
 	SWORDS.riftReaper = {
 		name = "Rift Reaper",
 		power = starter.power,
@@ -596,12 +606,27 @@ do
 			free = { at = 1.8 }, -- the harvest
 		},
 		animations = riftAnimations,
-		sounds = scythe.sounds,
+		sounds = riftSounds,
+		-- the charge and its rumble, the ground breaking at the slam, the rift's growl and the Reaper's wail as it rises,
+		-- a slice on each wave of cuts, the rush into the X, the harvest's roar and slam
 		cues = {
 			cut1 = scythe.cues.cut1,
 			cut2 = scythe.cues.cut2,
 			cut3 = scythe.cues.cut3,
-			skill = { { key = "rushCharge", at = 0.05 }, { key = "slam", at = 1.8 } },
+			skill = {
+				{ key = "wrathCharge", at = 0.05 },
+				{ key = "wrathRumble", at = 0.12, stopAfter = 1.1 },
+				{ key = "groundBreak", at = 0.7, stopAfter = 1.6 },
+				{ key = "riftGrowl", at = 0.72 },
+				{ key = "reaperWail", at = 0.78, stopAfter = 2.2 },
+				{ key = "cutLines", at = 1.2 },
+				{ key = "cutLines", at = 1.33 },
+				{ key = "cutLines", at = 1.46 },
+				{ key = "cutLines", at = 1.59 },
+				{ key = "cleaveRush", at = 1.62 },
+				{ key = "wrathThrust", at = 1.8 },
+				{ key = "slam", at = 1.8 },
+			},
 		},
 		fx = { slash = "scytheSweep", finisher = "scytheWhirl", skill = "thousandCuts" },
 	}

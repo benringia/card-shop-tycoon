@@ -125,6 +125,7 @@ AdminPanel.SECTIONS = {
 			{ label = "Back Sweep", command = "/skillfx scythe cut2" },
 			{ label = "Whirlwind", command = "/skillfx scythe cut3" },
 			{ label = "Reaping Cyclone", command = "/skillfx scythe skill" },
+			{ label = "Thousand Cuts", command = "/skillfx rift skill" },
 			{ label = "Any sword move", command = "/skillfx %s", placeholder = "sword [cut1|cut2|cut3|skill] [level] (tide skill 10)" },
 		},
 	},

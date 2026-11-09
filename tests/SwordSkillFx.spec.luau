@@ -544,6 +544,7 @@ return {
 			["Back Sweep"] = "/skillfx scythe cut2",
 			["Whirlwind"] = "/skillfx scythe cut3",
 			["Reaping Cyclone"] = "/skillfx scythe skill",
+			["Thousand Cuts"] = "/skillfx rift skill",
 		}
 		local got = {}
 		for _, section in AdminPanel.SECTIONS do
