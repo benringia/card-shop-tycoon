@@ -9,7 +9,7 @@ export type Saved = {
 	early: { [string]: boolean }, -- steps the player did before their turn
 	firstGiven: boolean, -- Pish's first pack was given
 	giftClaimed: boolean, -- his end gift was given
-	lessons: { [string]: boolean }, -- lesson visits seen (Config/Pish LESSONS ids)
+	lessons: { [string]: boolean }, -- lesson visits (Config/Pish LESSONS ids): true seen, false due and waiting
 	pishLuckAt: number, -- os.time of the last luck from petting him (0: never)
 }
 
@@ -59,8 +59,8 @@ function TutorialRules.read(raw: any, steps: { string }): Saved
 	local lessons = {}
 	if typeof(data.lessons) == "table" then
 		for id, value in data.lessons do
-			if typeof(id) == "string" and value == true then
-				lessons[id] = true
+			if typeof(id) == "string" and typeof(value) == "boolean" then
+				lessons[id] = value -- false: due, waiting to be shown (Util/LessonRules.pending)
 			end
 		end
 	end

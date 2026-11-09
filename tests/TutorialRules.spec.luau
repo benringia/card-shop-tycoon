@@ -82,8 +82,9 @@ return {
 		expect.equal(early.stockRack, true)
 		expect.equal(early.nope, nil, "unknown steps dropped")
 		expect.equal(early.ringUp, nil, "non-true dropped")
-		local lessons = TutorialRules.read({ lessons = { forge = true, bad = "yes" } }, STEPS).lessons
+		local lessons = TutorialRules.read({ lessons = { forge = true, jobs = false, bad = "yes" } }, STEPS).lessons
 		expect.equal(lessons.forge, true)
+		expect.equal(lessons.jobs, false, "a lesson waiting to be shown (false) is kept")
 		expect.equal(lessons.bad, nil)
 		expect.equal(TutorialRules.read({ pishLuckAt = -5 }, STEPS).pishLuckAt, 0)
 	end,

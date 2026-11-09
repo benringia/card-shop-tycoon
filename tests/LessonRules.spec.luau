@@ -43,6 +43,17 @@ return {
 		same(LessonRules.due(Pish.LESSONS, 3, 4, {}), { "sword" }, "the level gained, not the one left")
 	end,
 
+	["due: leaves out lessons already waiting (false) as well as seen"] = function()
+		same(LessonRules.due(Pish.LESSONS, 6, 7, { expand = false }), {}, "queued in the Frontier")
+		same(LessonRules.due(Pish.LESSONS, 4, 6, { condenser = false }), { "forge" }, "the other one still due")
+	end,
+
+	["pending: the lessons waiting to be shown, known ones in level order"] = function()
+		local saved = { jobs = false, sleeves = false, forge = true, nope = false }
+		same(LessonRules.pending(Pish.LESSONS, saved), { "sleeves", "jobs" }, "waiting")
+		same(LessonRules.pending(Pish.LESSONS, {}), {}, "none")
+	end,
+
 	["nudge: stock a waiting box, else order"] = function()
 		expect.equal(LessonRules.nudge(Pish.STUCK, facts({ boxWaiting = true })), "stock")
 		expect.equal(LessonRules.nudge(Pish.STUCK, facts({ shelvesStocked = false })), "order")

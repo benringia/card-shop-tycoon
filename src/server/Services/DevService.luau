@@ -31,6 +31,7 @@ local Cycle = require(Shared:WaitForChild("Config"):WaitForChild("DayCycle"))
 local Wild = Place.getWorld() -- the Frontier's zones there
 local Levels = require(Config:WaitForChild("Levels"))
 local LevelUpFx = require(Config:WaitForChild("LevelUpFx"))
+local PishConfig = require(Config:WaitForChild("Pish"))
 local SuperFxConfig = require(Config:WaitForChild("SuperFx"))
 local SwordSkillFx = require(Config:WaitForChild("SwordSkillFx"))
 local Rarities = require(Config:WaitForChild("Rarities"))
@@ -609,15 +610,25 @@ function DevService.Start()
 		end
 	end)
 	-- The tutorial with Pish (spec 2026-11-09-tutorial-pish-design): /tutorial reset (a new player's first visit, gifts
-	-- not given), /tutorial step <1-8>, /pish (Town Pish comes to you), /pishluck (petting him gives luck again now)
+	-- not given), /tutorial step <1-8>, /tutorial lesson <id> (that lesson visit again: sleeves, sword, condenser, forge,
+	-- expand, boosterBox, grading, jobs), /pish (Town Pish comes to you), /pishluck (petting him gives luck again now)
 	addCommand(folder, "tutorial", function(player, text)
-		local word, number = string.match(string.lower(text), "^/%w+%s+(%w+)%s*(%d*)")
+		local word, value = string.match(text, "^/%w+%s+(%w+)%s*(%w*)")
+		word = if word then string.lower(word) else nil
+		local lessonId: string? = nil
+		for _, lesson in PishConfig.LESSONS do
+			if value and string.lower(lesson.id) == string.lower(value) then
+				lessonId = lesson.id
+			end
+		end
 		if word == "reset" then
 			TutorialService.Reset(player)
-		elseif word == "step" and tonumber(number) then
-			TutorialService.SetStep(player, tonumber(number) :: number)
+		elseif word == "step" and tonumber(value) then
+			TutorialService.SetStep(player, tonumber(value) :: number)
+		elseif word == "lesson" and lessonId then
+			TutorialService.QueueLesson(player, lessonId)
 		else
-			Remotes.Notify:FireClient(player, "Usage: /tutorial reset | /tutorial step <1-8>", true)
+			Remotes.Notify:FireClient(player, "Usage: /tutorial reset | /tutorial step <1-8> | /tutorial lesson <id>", true)
 		end
 	end)
 	addCommand(folder, "pish", function(player)

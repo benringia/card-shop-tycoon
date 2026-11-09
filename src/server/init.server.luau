@@ -59,6 +59,7 @@ if Place.isDungeon() then
 	BossService.Start() -- the Prism Hydra's chamber
 	DungeonService.Start() -- the run: arrivals, rooms, carried HP (after BattleService and WildService's cavern)
 	FrontierService.Start() -- back to the Frontier
+	TutorialService.StartLessonsOnly() -- Pish's lessons a level-up here unlocks wait for the town (saved)
 	LevelUpService.Start() -- level-up packs and Bag pack openings (after EconomyService, ItemService, BattleService)
 	DevService.Start() -- Studio only
 	DataService.Start() -- last: starts loading players
@@ -78,6 +79,7 @@ elseif Place.isFrontier() then
 	BossService.Start() -- the Frontier bosses: after BattleService and WildService (it uses both)
 	FrontierService.Start() -- the Return portal and home button: back to the main game
 	DungeonGateService.Start() -- the Dungeon portal: checks, groups, the teleport (after WildService builds the plaza)
+	TutorialService.StartLessonsOnly() -- Pish's lessons a level-up here unlocks wait for the town (saved)
 	LevelUpService.Start() -- level-up packs and Bag pack openings (after EconomyService, ItemService, BattleService)
 	DevService.Start() -- Studio only
 	DataService.Start() -- last: starts loading players

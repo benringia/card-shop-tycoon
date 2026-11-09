@@ -5,49 +5,99 @@
 -- bouncing paw marks the button or thing to use, a picture bubble over him says what, the paw row and his gift box sit
 -- at the top (Util/TutorialCues). Town Pish is hidden for this player meanwhile. Skip needs holding; then a card with
 -- the gift crossed out and a sad Pish asks again. A Pish button in the Manage tray replays it later.
+-- Later he comes back the same way (spec 8): a lesson visit for each unlock the server says is waiting (run in, bark,
+-- point at the new thing with its picture, leave after LESSON_SECONDS or once it's used; only when the player is free
+-- and in town), and the stuck helper's nudge (point at the order computer or a waiting box).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local Pish = require(Shared:WaitForChild("Config"):WaitForChild("Pish"))
+local Config = Shared:WaitForChild("Config")
+local Music = require(Config:WaitForChild("Music"))
+local Pish = require(Config:WaitForChild("Pish"))
+local Town = require(Config:WaitForChild("Town"))
+local Wild = require(Config:WaitForChild("Wild"))
+local MusicRules = require(Shared:WaitForChild("Util"):WaitForChild("MusicRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local Hud = require(ClientUtil:WaitForChild("Hud"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
+local OpeningStage = require(ClientUtil:WaitForChild("OpeningStage"))
 local PishVisual = require(ClientUtil:WaitForChild("PishVisual"))
 local TutorialCues = require(ClientUtil:WaitForChild("TutorialCues"))
+local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local BattleController = require(Controllers:WaitForChild("BattleController"))
 local TownPishController = require(Controllers:WaitForChild("TownPishController"))
+local WeaponRevealController = require(Controllers:WaitForChild("WeaponRevealController"))
 
 local TutorialController = {}
 
 local STEPS = Pish.STEPS
 local FOLLOW_RANGE = 40 -- studs: further from the step's place than this, Pish comes back to the player
 local BESIDE = 3.5 -- studs he stands from the player or the place
+local RUN_IN = 16 -- studs away a visiting Pish appears, to run in
 local TRAIL_REFRESH = 8 -- studs the player moves before the trail is redrawn from where they are
 local BUTTON = 56 -- px: the skip button (tap targets 48 px or more)
+local FREE_SECONDS = 3 -- a visit starts once the player has been free this long (the first-sword popup comes first)
+local NUDGE_RANGE = 60 -- studs: a nudge shows only when the player is this near the thing to use
+local PORTAL_REACH = 14 -- studs from the Wild portal that count as having gone to it
+local SPOT_HEIGHT = 9 -- studs above the ground the paw over a place in town (the portal) hangs
 local GREEN = Color3.fromRGB(80, 205, 130)
 local GREY = Color3.fromRGB(190, 195, 205)
 
--- Where each step points: a HUD button (in the Manage tray: `tray`), or a part of the player's shop
-local TARGETS: { [string]: { hud: string?, tray: boolean?, part: string? } } = {
+-- Where Pish points: a HUD button (in the Manage tray: `tray`), a part of the player's shop (the Pack Rack instead
+-- while a box is carried: `carryRack`), or a spot in town
+type Target = { hud: string?, tray: boolean?, part: string?, carryRack: boolean?, spot: Vector3? }
+
+local TARGETS: { [string]: Target } = {
 	giftPack = { hud = "Bag" },
 	buildRack = { hud = "Build", tray = true },
 	orderStock = { part = "OrderComputer" },
-	stockRack = { part = "DeliverySpot" },
+	stockRack = { part = "DeliverySpot", carryRack = true },
 	customer = { part = "Register" },
 	ringUp = { part = "Register" },
 	gift = { hud = "Bag" },
 	bye = {},
 }
 
+-- Each lesson's new thing: machines are bought in Build, new stock at the order computer, the first sword's way is the
+-- Wild portal
+local PORTAL = Wild.PLAZA_PORTAL
+local LESSON_TARGETS: { [string]: Target } = {
+	sleeves = { part = "OrderComputer" },
+	sword = { spot = Vector3.new(PORTAL.x, PORTAL.y + SPOT_HEIGHT, PORTAL.z) },
+	condenser = { hud = "Build", tray = true },
+	forge = { hud = "Build", tray = true },
+	expand = { part = "OrderComputer" },
+	boosterBox = { part = "OrderComputer" },
+	grading = { hud = "Build", tray = true },
+	jobs = { hud = "Jobs", tray = true },
+}
+local LESSON_ICONS: { [string]: string } = {}
+for _, lesson in Pish.LESSONS do
+	LESSON_ICONS[lesson.id] = lesson.icon
+end
+-- The stuck helper's two nudges (Util/LessonRules.nudge)
+local NUDGES: { [string]: { target: Target, icon: string } } = {
+	order = { target = { part = "OrderComputer" }, icon = "Order" },
+	stock = { target = { part = "DeliverySpot", carryRack = true }, icon = "Box" },
+}
+
+type Visit = { kind: "lesson" | "nudge", id: string, started: number }
+
 local player = Players.LocalPlayer
 local marker: Part? = nil
 local visual: PishVisual.Visual? = nil
 local step = ""
+local visit: Visit? = nil -- a lesson or nudge visit on now (never during the first visit)
+local lessonQueue: { string } = {} -- lessons waiting to be shown, from the server
+local pendingNudge: string? = nil
+local freeSince: number? = nil
+local spotAnchor: Part? = nil -- the paw's anchor at a spot in town
 local cues: { () -> () } = {}
 local trailRemover: (() -> ())? = nil
 local trailFrom: Vector3? = nil
@@ -77,14 +127,58 @@ local function ownPlot(): Model?
 	return nil
 end
 
--- The step's place in the player's shop (stocking: the pad, or the rack once a box is carried)
-local function targetPart(stepId: string): BasePart?
-	local plot = ownPlot()
-	local spec = TARGETS[stepId]
-	if not plot or not spec or not spec.part then
+-- What Pish is showing now: the step, else the visit; its key (a change redraws the cues), target and picture
+local function focus(): (string, Target?, string?)
+	if step ~= "" then
+		return step, TARGETS[step], Pish.STEP_ICONS[step]
+	end
+	local now = visit
+	if not now then
+		return "", nil, nil
+	end
+	if now.kind == "lesson" then
+		return "lesson:" .. now.id, LESSON_TARGETS[now.id], LESSON_ICONS[now.id]
+	end
+	local nudge = NUDGES[now.id]
+	return "nudge:" .. now.id, if nudge then nudge.target else nil, if nudge then nudge.icon else nil
+end
+
+-- An invisible anchor at a spot in town for the paw and the trail
+local function anchorAt(at: Vector3): Part
+	local made = spotAnchor
+	if made and made.Parent and made.Position == at then
+		return made
+	end
+	if made then
+		made:Destroy()
+	end
+	local anchor = Instance.new("Part")
+	anchor.Name = "PishSpot"
+	anchor.Anchored = true
+	anchor.CanCollide = false
+	anchor.CanQuery = false
+	anchor.CanTouch = false
+	anchor.Transparency = 1
+	anchor.Size = Vector3.new(1, 1, 1)
+	anchor.Position = at
+	anchor.Parent = workspace
+	spotAnchor = anchor
+	return anchor
+end
+
+-- The target's place: a spot in town, or a part of the player's shop (the rack once a box is carried)
+local function partFor(spec: Target?): BasePart?
+	if not spec then
 		return nil
 	end
-	if stepId == "stockRack" and (player:GetAttribute("CarryCount") or 0) > 0 then
+	if spec.spot then
+		return anchorAt(spec.spot)
+	end
+	local plot = ownPlot()
+	if not plot or not spec.part then
+		return nil
+	end
+	if spec.carryRack and (player:GetAttribute("CarryCount") or 0) > 0 then
 		for _, item in plot:GetDescendants() do
 			if item:IsA("BasePart") and item:GetAttribute("ShelfId") == Pish.RACK then
 				return item
@@ -95,9 +189,14 @@ local function targetPart(stepId: string): BasePart?
 	return if found and found:IsA("BasePart") then found else nil
 end
 
--- The HUD button the step points at (the Manage tile while the tray it's in is shut)
-local function targetButton(stepId: string): GuiObject?
-	local spec = TARGETS[stepId]
+local function targetPart(): BasePart?
+	local _, spec = focus()
+	return partFor(spec)
+end
+
+-- The HUD button Pish points at (the Manage tile while the tray it's in is shut)
+local function targetButton(): GuiObject?
+	local _, spec = focus()
 	if not spec or not spec.hud then
 		return nil
 	end
@@ -127,7 +226,8 @@ local function play(clip: string, onDone: (() -> ())?)
 	end
 end
 
-local function ensurePish()
+-- His marker beside the player (`away` studs off for a visit, so he runs in)
+local function ensurePish(away: number?)
 	if marker then
 		return
 	end
@@ -140,7 +240,7 @@ local function ensurePish()
 	made.CanTouch = false
 	made.Transparency = 1
 	made.Size = Vector3.new(2, 2, 2)
-	local start = if at then at.Position + at.CFrame.RightVector * BESIDE else Vector3.zero
+	local start = if at then at.Position + at.CFrame.RightVector * (away or BESIDE) else Vector3.zero
 	made.CFrame = CFrame.new(Vector3.new(start.X, (if at then at.Position.Y - 3 else 0), start.Z))
 	made.Parent = workspace
 	marker = made
@@ -174,11 +274,12 @@ local function removePish()
 	TownPishController.SetHidden(false)
 end
 
--- The paw over the step's button or place (redrawn when the tray opens or a box is picked up)
+-- The paw over the button or place to use (redrawn when the tray opens or a box is picked up)
 local function pointPaw()
-	local button = targetButton(step)
-	local part = targetPart(step)
-	local key = if button then button:GetFullName() elseif part then part:GetFullName() else ""
+	local focusKey, _, icon = focus()
+	local button = targetButton()
+	local part = targetPart()
+	local key = focusKey .. "|" .. (if button then button:GetFullName() elseif part then part:GetFullName() else "")
 	if key == shownKey then
 		return
 	end
@@ -193,15 +294,14 @@ local function pointPaw()
 		table.insert(cues, TutorialCues.pawOn(part))
 	end
 	local adornee = if visual then visual.body.root elseif marker then marker else nil
-	local icon = Pish.STEP_ICONS[step]
 	if adornee and icon then
 		table.insert(cues, TutorialCues.bubble(adornee, icon, Pish.HEIGHT + 1.5))
 	end
 end
 
--- The paw trail from the player to the step's place, redrawn as they walk
+-- The paw trail from the player to the place, redrawn as they walk
 local function updateTrail()
-	local part = targetPart(step)
+	local part = targetPart()
 	local at = root()
 	if not part or not at then
 		if trailRemover then
@@ -231,7 +331,7 @@ local function goal(): Vector3?
 		return nil
 	end
 	local feet = at.Position - Vector3.new(0, 3, 0)
-	local part = targetPart(step)
+	local part = targetPart()
 	if part and (part.Position - feet).Magnitude <= FOLLOW_RANGE then
 		local toward = Vector3.new(feet.X - part.Position.X, 0, feet.Z - part.Position.Z)
 		local side = if toward.Magnitude > 0.1 then toward.Unit else Vector3.new(1, 0, 0)
@@ -257,7 +357,7 @@ local function moveTowardGoal(dt: number)
 		current.CFrame = CFrame.lookAt(nextAt, nextAt + flat.Unit)
 		return
 	end
-	-- Arrived: face the player, and point once per step at its place
+	-- Arrived: face the player, and point once per step at its place (a visit barks first)
 	local me = root()
 	if me then
 		local look = Vector3.new(me.Position.X, at.Y, me.Position.Z)
@@ -265,8 +365,18 @@ local function moveTowardGoal(dt: number)
 			current.CFrame = CFrame.lookAt(at, look)
 		end
 	end
-	if pointedAt ~= step and targetPart(step) then
-		pointedAt = step
+	local key = focus()
+	if pointedAt == key then
+		return
+	end
+	local part = targetPart()
+	if visit then
+		pointedAt = key
+		play("bark", if part then function()
+			play("point")
+		end else nil)
+	elseif part then
+		pointedAt = key
 		play("point")
 	end
 end
@@ -435,7 +545,128 @@ local function finishVisit()
 	tween:Play()
 	tween.Completed:Wait()
 	removePish()
+	if spotAnchor then
+		spotAnchor:Destroy()
+		spotAnchor = nil
+	end
 	leaving = false
+end
+
+local function inTown(): boolean
+	local at = root()
+	return at ~= nil and MusicRules.inTown(at.Position.X, at.Position.Z, Town.BOUNDS, Music.TOWN.margin)
+end
+
+-- Free for a visit: in town, no window, fight, pack opening or weapon reveal on
+local function isFree(): boolean
+	return inTown()
+		and not UIKit.anyPanelOpen()
+		and not OpeningStage.isShown()
+		and not BattleController.IsFighting()
+		and not WeaponRevealController.IsPlaying()
+end
+
+-- The visit's new thing was used: a window opened (the tile's, the order computer's), a box picked up for stocking,
+-- or the player went to the spot (or through the portal, out of town)
+local function visitUsed(spec: Target?): boolean
+	if not spec then
+		return false
+	end
+	if UIKit.anyPanelOpen() then
+		return true
+	end
+	if spec.carryRack and (player:GetAttribute("CarryCount") or 0) > 0 then
+		return true
+	end
+	local spot = spec.spot
+	local at = root()
+	if spot and at then
+		local flat = Vector3.new(spot.X - at.Position.X, 0, spot.Z - at.Position.Z)
+		return flat.Magnitude <= PORTAL_REACH or not inTown()
+	end
+	return false
+end
+
+local function startVisit(kind: "lesson" | "nudge", id: string)
+	visit = { kind = kind, id = id, started = os.clock() }
+	pointedAt = ""
+	shownKey = ""
+	clearCues()
+	ensurePish(RUN_IN)
+	if kind == "lesson" then
+		Remotes.TutorialAction:FireServer("lessonShown", id)
+	end
+end
+
+-- The visit is over: a lesson is reported done (never shown again), and Pish runs off
+local function endVisit(used: boolean)
+	local ended = visit
+	if not ended then
+		return
+	end
+	visit = nil
+	if ended.kind == "lesson" then
+		local index = table.find(lessonQueue, ended.id)
+		if index then
+			table.remove(lessonQueue, index)
+		end
+		Remotes.TutorialAction:FireServer("lessonDone", ended.id, used)
+	end
+	task.spawn(finishVisit)
+end
+
+-- Every few frames outside the first visit: end the visit on now, or start the next one once the player is free
+local function updateVisit()
+	local now = visit
+	if now then
+		local _, spec = focus()
+		if visitUsed(spec) then
+			endVisit(true)
+		elseif os.clock() - now.started >= Pish.LESSON_SECONDS then
+			endVisit(false)
+		end
+		return
+	end
+	if leaving or marker then
+		return
+	end
+	local free = isFree()
+	freeSince = if free then (freeSince or os.clock()) else nil
+	local nudge = pendingNudge
+	if nudge then
+		pendingNudge = nil
+		local spec = NUDGES[nudge]
+		local part = if spec then partFor(spec.target) else nil
+		local at = root()
+		if free and part and at and (part.Position - at.Position).Magnitude <= NUDGE_RANGE then
+			startVisit("nudge", nudge)
+		end
+		return
+	end
+	if #lessonQueue > 0 and freeSince and os.clock() - freeSince >= FREE_SECONDS then
+		startVisit("lesson", lessonQueue[1])
+	end
+end
+
+-- The server's lesson queue, or a nudge from the stuck helper
+local function onState(payload: unknown)
+	if typeof(payload) ~= "table" then
+		return
+	end
+	local lessons = (payload :: any).lessons
+	if typeof(lessons) == "table" then
+		local queue = {}
+		for _, id in lessons do
+			if typeof(id) == "string" and LESSON_TARGETS[id] then
+				table.insert(queue, id)
+			end
+		end
+		lessonQueue = queue
+	end
+	local nudge = (payload :: any).nudge
+	if typeof(nudge) == "string" and NUDGES[nudge] and step == "" and not visit then
+		pendingNudge = nudge
+	end
 end
 
 local function onStep()
@@ -448,6 +679,9 @@ local function onStep()
 	step = nextStep
 	shownKey = ""
 	clearCues()
+	if step ~= "" then
+		visit = nil -- a replay takes over a visit; its lesson stays waiting
+	end
 	if replayButton then
 		replayButton.Visible = step == "" and player:GetAttribute("TutorialDone") == true
 	end
@@ -497,23 +731,27 @@ function TutorialController.Start()
 			replayButton.Visible = step == "" and player:GetAttribute("TutorialDone") == true
 		end
 	end)
+	Remotes.TutorialState.OnClientEvent:Connect(onState)
 	local tick = 0
 	RunService.RenderStepped:Connect(function(dt)
-		if step == "" then
-			if visual then
-				PishVisual.step(visual, dt)
-			end
-			return
+		local leading = step ~= "" or visit ~= nil
+		if leading then
+			moveTowardGoal(dt)
 		end
-		moveTowardGoal(dt)
 		if visual then
 			PishVisual.step(visual, dt)
 		end
 		tick += dt
-		if tick >= 0.3 then
-			tick = 0
+		if tick < 0.3 then
+			return
+		end
+		tick = 0
+		if leading then
 			pointPaw()
 			updateTrail()
+		end
+		if step == "" then
+			updateVisit()
 		end
 	end)
 	onStep()
