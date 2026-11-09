@@ -120,6 +120,7 @@ return {
 			scytheSweep = { "arc", "arcAngle", "thick", "flash", "sparks", "wrap", "wrapFrom", "spin", "low", "high", "lead", "swipe", "pieces" },
 			scytheWhirl = { "rings", "ring", "blades", "bladeRing", "sparks", "dust", "flash" },
 			reapingCyclone = { "gather", "ring1", "ring2", "hit", "radius", "fly", "crescents", "lastScale", "swirl", "sparks" },
+			thousandCuts = { "charge", "cracks", "crackReach", "crackGrow", "rumbleEvery", "darkness", "slam", "riftBehind", "riftSize", "cutsFrom", "waves", "waveGap", "slashes", "slashLite", "slashThick", "slashFlash", "slabs", "slabSize", "hit", "radius", "harvestRadius", "harvestThick", "xLength", "rings", "rocks", "rockSpeed", "pillarHeight", "close", "fade", "souls", "camAt", "camHold", "camFocus", "camLookUp", "camUp", "camOut" },
 			torrentStrike = { "raise", "slam", "hit", "spread", "slowAfter", "slowScale", "slowEase", "slowFeed", "fall", "radius", "inner", "torrents", "spread", "pairShare", "nearest", "apart", "lane", "columnHeight", "outerHeight", "cracks", "foeEdge", "foeSizeStuds", "foeSizeMax", "camAt", "camHold", "camFocus", "camLookUp", "camUp", "camOut" },
 		}
 		for look, keys in needs do
@@ -563,6 +564,29 @@ return {
 		local trail = SwordFx.TRAIL_BLADE_SCYTHE :: any
 		expect.equal(trail.base > 4 and trail.tip > 2.5 and trail.tip < trail.base, true, "the socket high, the tip hanging lower")
 		expect.equal(trail.out > 2, true, "the tip out to the side")
+	end,
+
+	-- The Rift Reaper's own skill (spec 5.4; the owner: "flashy violent, exaggerated ... summon a grim reaper ...
+	-- screenshake. ground breaking"): Thousand Cuts, the storyboard approved 2026-11-09
+	["Thousand Cuts: the Rift Reaper's look, its beats in the storyboard's order, the harvest the skill's hit"] = function()
+		local rift = Swords.SWORDS.riftReaper
+		local look = SwordSkillFx.LOOKS.thousandCuts
+		expect.equal(look.form, "around")
+		expect.equal(look.cinematic, true, "the Legendary's camera moment")
+		local b = look.beats :: { [string]: number }
+		expect.equal(b.radius, rift.skill.shape.radius)
+		expect.equal(b.hit, rift.skill.hitAt, "the harvest is the hit")
+		expect.equal(b.charge < b.slam and b.slam < b.cutsFrom and b.cutsFrom < b.hit and b.hit < b.close, true, "charge, rift, cuts, harvest, aftermath")
+		expect.equal(b.cutsFrom + (b.waves - 1) * b.waveGap < b.hit, true, "every wave of cuts before the harvest")
+		expect.equal(b.crackReach, b.radius, "the cracks race out to the harvest's reach")
+		expect.equal(b.harvestRadius <= b.radius, true, "the Reaper's sweep inside the reach (its rings race on out to it)")
+		expect.equal(b.slashLite < b.slashes, true, "another player's: fewer slashes")
+		local shake = SwordSkillFx.SHAKE :: any
+		expect.equal(shake.thousandCuts > shake.titansWrath, true, "the biggest shake in the game")
+		local reaper = SwordSkillFx.REAPER
+		expect.equal(b.slam + reaper.rise <= b.cutsFrom, true, "the Reaper has risen before the cuts")
+		expect.equal(reaper.ghost > 0 and reaper.ghost < 1, true, "see-through")
+		expect.equal(reaper.spin <= b.close - b.hit, true, "its harvest spin ends before it leaves")
 	end,
 
 	-- Final review: the admin panel's spear skill buttons (spec 5: "the admin panel's buttons show the new skills")

@@ -5,6 +5,7 @@
 -- rings), live under the camera and clean themselves up. The Sunforged Blade's looks are its own (storyboard
 -- 2026-11-07); the other swords draw their look's basic shape until their round (Tasks 6-8).
 local Debris = game:GetService("Debris")
+local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -1902,6 +1903,323 @@ local function reapingCyclone(root: BasePart, spec: SwordSkillFxConfig.Look, col
 	end
 end
 
+-- Thousand Cuts' Grim Reaper: a ghostly copy of ReplicatedStorage.FxModels.GrimReaper holding a giant copy of the Rift
+-- Reaper (Config/SwordSkillFx REAPER), under the camera; nil while the model isn't there (the rest still plays)
+local function summonReaper(): Model?
+	local folder = ReplicatedStorage:FindFirstChild("FxModels")
+	local source = if folder then folder:FindFirstChild("GrimReaper") else nil
+	if not source or not source:IsA("Model") then
+		return nil
+	end
+	local cfg = SwordSkillFxConfig.REAPER
+	local reaper = source:Clone()
+	local weapons = ReplicatedStorage:FindFirstChild("WeaponModels")
+	local scythe = if weapons then weapons:FindFirstChild("RiftReaper") else nil
+	if scythe and scythe:IsA("Model") then
+		local giant = scythe:Clone()
+		giant:ScaleTo(cfg.scytheScale)
+		local offset = cfg.scytheOffset
+		giant:PivotTo(reaper:GetPivot() * CFrame.new(offset[1], offset[2], offset[3]) * CFrame.Angles(0, math.rad(cfg.scytheTurn), 0))
+		giant.Parent = reaper
+	end
+	for _, item in reaper:GetDescendants() do
+		if item:IsA("BasePart") then
+			item.Anchored = true
+			item.CanCollide = false
+			item.CanQuery = false
+			item.CanTouch = false
+			item.CastShadow = false
+			item.Transparency = math.max(item.Transparency, cfg.ghost)
+		elseif item:IsA("LuaSourceContainer") then
+			item:Destroy()
+		end
+	end
+	local glow = Instance.new("Highlight")
+	glow.FillColor = rgb(cfg.glow)
+	glow.FillTransparency = 0.8
+	glow.OutlineColor = rgb(cfg.glow)
+	glow.OutlineTransparency = 0.15
+	glow.DepthMode = Enum.HighlightDepthMode.Occluded
+	glow.Parent = reaper
+	reaper.Parent = workspace.CurrentCamera
+	return reaper
+end
+
+-- Thousand Cuts (the Rift Reaper's own skill; the storyboard approved 2026-11-09): the charge's cracks and rumble (your
+-- own screen darkening), the rift and the Grim Reaper rising behind you at `slam` (hook: released), you fading half into
+-- the rift while waves of slashes rip across the area (hook: a rumble jolt each wave), the harvest at `hit` (hook:
+-- burst; the X, the Reaper's spin and its crescent ring, shockwaves, rocks, a pillar), then the Reaper dissolving into
+-- souls. A dodge or switch before the hit (`live()` false) ends it: the Reaper sinks back, your screen and your fade
+-- come back, nothing damaging shows. The light version (another player's): fewer slashes, no darkening, no slabs,
+-- swirl or rocks, the Reaper kept.
+local function thousandCuts(character: Model, root: BasePart, spec: SwordSkillFxConfig.Look, colors: Colors, scale: number, hooks: Hooks)
+	local beats = spec.beats :: { [string]: number }
+	local cfg = SwordSkillFxConfig.REAPER
+	local lite = hooks.lite == true
+	local full = not lite and Extras.enabled()
+	local facing = flatLook(root)
+	local function feet(): Vector3
+		return root.Position - UP * (ROOT_TO_GROUND - GROUND_LIFT)
+	end
+	local ground = groundAt(feet())
+	local finished = false
+	local reaper: Model? = nil
+	local dark: ColorCorrectionEffect? = nil
+	local faded: { BasePart } = {}
+
+	local function undark(seconds: number)
+		local effect = dark
+		dark = nil
+		if effect then
+			tween(effect, seconds, { Brightness = 0, Saturation = 0, TintColor = WHITE })
+			Debris:AddItem(effect, seconds + 0.1)
+		end
+	end
+	local function unfade()
+		for _, part in faded do
+			if part.Parent then
+				part.LocalTransparencyModifier = 0
+			end
+		end
+		table.clear(faded)
+	end
+	local function dismiss(seconds: number, sink: boolean)
+		local model = reaper
+		reaper = nil
+		if not model then
+			return
+		end
+		local from = model:GetPivot()
+		local begun = os.clock()
+		local connection: RBXScriptConnection
+		connection = RunService.RenderStepped:Connect(function()
+			local t = math.clamp((os.clock() - begun) / seconds, 0, 1)
+			if not model.Parent then
+				connection:Disconnect()
+				return
+			end
+			if sink then
+				model:PivotTo(from - UP * cfg.depth * smooth(t))
+			end
+			for _, item in model:GetDescendants() do
+				if item:IsA("BasePart") then
+					item.Transparency = cfg.ghost + (1 - cfg.ghost) * t
+				elseif item:IsA("Highlight") then
+					item.OutlineTransparency = 0.15 + 0.85 * t
+					item.FillTransparency = 0.8 + 0.2 * t
+				end
+			end
+			if t >= 1 then
+				connection:Disconnect()
+				model:Destroy()
+			end
+		end)
+	end
+	-- A dodge or a switch before the harvest: everything still running goes away
+	local function stopped(): boolean
+		if finished then
+			return true
+		end
+		if not cancelled(hooks) and root.Parent then
+			return false
+		end
+		finished = true
+		undark(0.3)
+		unfade()
+		dismiss(0.4, true)
+		return true
+	end
+
+	-- 1. The charge: cracks racing out, the rumble pulsing and growing, your screen darkening
+	task.delay(beats.charge, function()
+		if stopped() then
+			return
+		end
+		local from = ground
+		local linger = beats.close - beats.charge - beats.crackGrow
+		for index = 1, beats.cracks do
+			local angle = (index - 1) / beats.cracks * math.pi * 2 + (index % 2) * 0.2
+			local out = Vector3.new(math.cos(angle), 0, math.sin(angle))
+			fissure(from + out * 1.2, from + out * beats.crackReach * (0.75 + (index % 3) * 0.12), 0.7 * scale, colors.glow, colors.deep, beats.crackGrow, linger, beats.fade, "spark", false)
+		end
+		if not lite then
+			local effect = Instance.new("ColorCorrectionEffect")
+			effect.Name = "ThousandCutsDark"
+			effect.Parent = Lighting
+			dark = effect
+			tween(effect, beats.slam - beats.charge, { Brightness = -beats.darkness * 0.4, Saturation = -beats.darkness, TintColor = WHITE:Lerp(colors.glow, beats.darkness) })
+			Debris:AddItem(effect, beats.close + 1)
+		end
+		if hooks.rumble then
+			local pulses = math.max(1, math.floor((beats.slam - beats.charge) / beats.rumbleEvery))
+			for pulse = 1, pulses do
+				task.delay(pulse * beats.rumbleEvery, function()
+					if not finished and hooks.rumble then
+						hooks.rumble(pulse / pulses)
+					end
+				end)
+			end
+		end
+	end)
+
+	-- 2. The rift opens behind you and the Grim Reaper rises out of it, souls swirling
+	task.delay(beats.slam, function()
+		if stopped() then
+			return
+		end
+		if hooks.released then
+			hooks.released()
+		end
+		local rift = ground - facing * beats.riftBehind
+		ElementFx.ring(ground, colors.glow, beats.radius * 0.6, 0.5)
+		ElementFx.castRing(rift, colors.glow, beats.riftSize / 2, beats.hit - beats.slam + 0.4)
+		local hole = piece(Color3.fromRGB(12, 4, 24), Enum.Material.Neon)
+		hole.Shape = Enum.PartType.Cylinder
+		hole.Size = Vector3.new(0.1, beats.riftSize, beats.riftSize)
+		hole.CFrame = CFrame.new(rift + UP * 0.08) * CFrame.Angles(0, 0, math.rad(90))
+		hole.Transparency = 0.15
+		Debris:AddItem(hole, beats.close - beats.slam + 0.5)
+		task.delay(beats.close - beats.slam - beats.fade, function()
+			tween(hole, beats.fade, { Transparency = 1, Size = Vector3.new(0.1, 0.5, 0.5) })
+		end)
+		local model = summonReaper()
+		if model then
+			reaper = model
+			local base = CFrame.lookAt(rift, rift + facing)
+			local risen = os.clock()
+			local connection: RBXScriptConnection
+			connection = RunService.RenderStepped:Connect(function()
+				if reaper ~= model or not model.Parent then
+					connection:Disconnect()
+					return
+				end
+				local t = os.clock() - risen
+				local rise = smooth(math.clamp(t / cfg.rise, 0, 1))
+				local spinFrom = beats.hit - beats.slam
+				local turn = 2 * math.pi * smooth(math.clamp((t - spinFrom) / cfg.spin, 0, 1))
+				model:PivotTo(base * CFrame.new(0, -cfg.depth * (1 - rise) + cfg.bob * math.sin(t * 2.4), 0) * CFrame.Angles(0, turn, 0))
+			end)
+		end
+		if full then
+			swirl(function(): Vector3
+				return rift + UP * 8
+			end, 6, colors.glow, "glow", beats.hit - beats.slam, 1.6 * scale)
+		end
+	end)
+
+	-- 3. A thousand cuts: you fade half into the rift; waves of slashes from every direction, slabs heaving up
+	task.delay(beats.cutsFrom, function()
+		if stopped() then
+			return
+		end
+		for _, item in character:GetDescendants() do
+			if item:IsA("BasePart") and item.Transparency < 1 then
+				item.LocalTransparencyModifier = 0.55
+				table.insert(faded, item)
+			end
+		end
+	end)
+	local slashes = if lite then beats.slashLite else beats.slashes
+	for wave = 0, beats.waves - 1 do
+		task.delay(beats.cutsFrom + wave * beats.waveGap, function()
+			if stopped() then
+				return
+			end
+			if hooks.rumble then
+				hooks.rumble(1)
+			end
+			local center = ground + UP * 0.5
+			for _ = 1, slashes do
+				local angle = math.random() * math.pi * 2
+				local along = Vector3.new(math.cos(angle), 0, math.sin(angle))
+				local across = Vector3.new(-along.Z, 0, along.X)
+				local offset = (math.random() * 2 - 1) * beats.radius * 0.75
+				local half = math.sqrt(beats.radius * beats.radius - offset * offset)
+				local middle = center + across * offset + UP * (0.6 + math.random() * 4.5)
+				beam(middle - along * half, middle + along * half, beats.slashThick * scale, colors, beats.slashFlash)
+			end
+			if full then
+				local per = math.ceil(beats.slabs / beats.waves)
+				for index = 1, per do
+					local angle = math.random() * math.pi * 2
+					local out = Vector3.new(math.cos(angle), 0, math.sin(angle))
+					local spot = ground + out * (4 + math.random() * (beats.radius - 5))
+					local size = beats.slabSize * scale * (0.8 + (index % 3) * 0.2)
+					local frame = CFrame.lookAt(spot, spot + out)
+					local slab = piece(STONE:Lerp(Color3.new(), 0.15 + (index % 3) * 0.08), Enum.Material.Slate)
+					slab.Size = Vector3.new(size, size * 0.3, size * 1.3)
+					slab.CFrame = frame * CFrame.new(0, -size * 0.3, 0)
+					slab.Transparency = 0
+					tween(slab, 0.14, { CFrame = frame * CFrame.new(0, size * 0.12, 0) * CFrame.Angles(math.rad(24 + (index % 3) * 10), 0, 0) })
+					local remaining = beats.close - (beats.cutsFrom + wave * beats.waveGap)
+					task.delay(remaining, function()
+						tween(slab, beats.fade, { CFrame = frame * CFrame.new(0, -size * 0.4, 0), Transparency = 1 })
+					end)
+					Debris:AddItem(slab, remaining + beats.fade + 0.3)
+				end
+			end
+		end)
+	end
+
+	-- 4. The harvest: you reappear with an X, the Reaper spins its giant scythe a full circle, the ground erupts
+	task.delay(beats.hit, function()
+		if stopped() then
+			return
+		end
+		unfade()
+		if hooks.burst then
+			hooks.burst(root.Position)
+		end
+		local right = Vector3.new(-facing.Z, 0, facing.X)
+		local cross = root.Position + facing * 2.5 + UP * 1.5
+		for _, side in { 1, -1 } do
+			local diagonal = (right * side + UP).Unit
+			beam(cross - diagonal * beats.xLength / 2, cross + diagonal * beats.xLength / 2, 1.3 * scale, colors, 0.5)
+		end
+		scytheArc(ground + UP * 2.5, facing, beats.harvestRadius, 0, math.pi * 2, cfg.spin, beats.harvestThick, 0.55, 80, colors, scale, lite, SwordSkillFxConfig.LOOKS.scytheSweep.beats.pieces)
+		for ring = 1, beats.rings do
+			task.delay((ring - 1) * 0.1, function()
+				ElementFx.ring(ground, if ring == 1 then colors.glow else colors.deep, beats.radius, 0.45 + 0.1 * ring)
+			end)
+		end
+		rocks(ground, if full then beats.rocks else math.round(beats.rocks / 3), beats.rockSpeed, scale)
+		ElementFx.pillar(ground, colors.glow, beats.pillarHeight * scale, 0.7, "glow")
+		local flash = holder(CFrame.new(ground + UP * 3), Vector3.one, 1.5)
+		local light = Instance.new("PointLight")
+		light.Color = colors.glow
+		light.Range = beats.radius * 2
+		light.Brightness = 6
+		light.Parent = flash
+		tween(light, 0.9, { Brightness = 0 })
+		undark(0.6)
+		finished = true
+		-- 5. The aftermath: the Reaper dissolves into smoke and souls rising
+		task.delay(cfg.spin + 0.25, function()
+			local model = reaper
+			if model and model.Parent and not lite then
+				local chest = holder(CFrame.new(model:GetPivot().Position + UP * 8), Vector3.new(6, 8, 6), 3)
+				local souls = emitter(chest, "glow", colors.glow, { size = { 1.2 * scale, 0.2 }, life = { 1.2, 2.2 }, speed = { 4, 9 }, spread = 35, accel = UP * 4, brightness = 2.5 })
+				souls.Shape = Enum.ParticleEmitterShape.Box
+				souls.EmissionDirection = Enum.NormalId.Top
+				souls:Emit(detail(beats.souls))
+				local smoke = emitter(chest, "smoke", colors.deep, { size = { 3 * scale, 6 * scale }, life = { 0.9, 1.5 }, speed = { 1, 3 }, spread = 180, accel = UP * 2, light = 0.2, brightness = 0.9, start = 0.3 })
+				smoke.Shape = Enum.ParticleEmitterShape.Box
+				smoke:Emit(detail(16))
+			end
+			dismiss(cfg.dissolve, false)
+		end)
+	end)
+	-- a cast that never reaches its hit (the character gone) still cleans up
+	task.delay(beats.close + 1, function()
+		if not finished then
+			finished = true
+			undark(0.3)
+			unfade()
+			dismiss(0.3, true)
+		end
+	end)
+end
+
 -- A cut's slash (cut 1-3): along the swing in front of you (cut 3's upright, the others across); with the blade known,
 -- the Sunforged's flames, the Verdant's leaves, the Prism's rainbow or the Forge Sword's element stream off it
 -- `hitIn`: seconds from now to the cut's strike (the spear's streak and crescent land then); `lite`: another player's
@@ -2617,6 +2935,9 @@ function SwordSkillFx.skill(character: Model, look: string, colors: Colors, scal
 		return
 	elseif look == "reapingCyclone" and spec.beats then
 		reapingCyclone(root, spec, colors, scale, hooks or {})
+		return
+	elseif look == "thousandCuts" and spec.beats then
+		thousandCuts(character, root, spec, colors, scale, hooks or {})
 		return
 	end
 	local feet = root.Position - Vector3.new(0, ROOT_TO_GROUND - GROUND_LIFT, 0)
