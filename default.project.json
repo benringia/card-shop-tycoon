@@ -31,6 +31,9 @@
       },
       "WeaponModels": {
         "$path": "assets/weapons"
+      },
+      "FxModels": {
+        "$path": "assets/fx-models"
       }
     },
     "ServerScriptService": {

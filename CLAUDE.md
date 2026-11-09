@@ -28,6 +28,9 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   caldera's `Volcano`, `CharredTree` and `ObsidianShards` come from `build_volcano.py`, `build_charred_tree.py`,
   `build_obsidian_shards.py` (docs/props.md). The Wild boss arenas' `StandingStone`, `Stalagmite`, `Web`, `Cocoon`,
   `Bones`, `CaveDome` and `LavaCliff` come from `build_arena_props.py`.
+- `assets/fx-models` → ReplicatedStorage.FxModels (mapped in all three project files): models effects summon, moved by
+  code: the Grim Reaper of the Rift Reaper's Thousand Cuts (`GrimReaper.rbxm`, Meshy from
+  `assets/blender/GrimReaper/concept_B.png`, cleaned by `tools/blender/build_grim_reaper.py`); the same script rule.
 - `assets/place-props`: prop models that contain unions (Rojo live sync drops union shapes). Not synced: inserted
   into the place file's `ReplicatedStorage.PlaceProps` with Insert from File (docs/props.md).
 - `assets/town` → Workspace.TownDecor: hand-placed town scenery saved from Studio as `TownDecor.rbxm` (docs/props.md).

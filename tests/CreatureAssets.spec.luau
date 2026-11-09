@@ -6,7 +6,7 @@
 local fs = require("@lune/fs")
 local roblox = require("@lune/roblox")
 
-local FOLDERS = { "assets/creatures", "assets/monsters", "assets/props", "assets/town", "assets/place-props", "assets/packs", "assets/weapons" }
+local FOLDERS = { "assets/creatures", "assets/monsters", "assets/props", "assets/town", "assets/place-props", "assets/packs", "assets/weapons", "assets/fx-models" }
 -- The 3D pack models (UI project 3): each file's model and the meshes the game looks up in it
 local PACK_MODELS = {
 	Pack = { "Body", "Strip", "BodyLow" },
