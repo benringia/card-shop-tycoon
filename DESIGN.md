@@ -3276,7 +3276,8 @@ boss models; the ranch and Heroic tiers come after those.
   epic, one 12 s skill cooldown starting full, Z for the previous weapon, fights and the town loaded before the
   loading screens close. Merged to main 2026-11-09.
 - [ ] Weapons round 3 (spec `2026-11-06-weapons-round1-design.md` section 2, "The whole plan"): the scythes (Forge
-  Scythe, Widow's Reaper, Storm Reaper, Rift Reaper) with their own moveset, models and portraits; the Forge's own model.
+  Scythe, Widow's Reaper, Storm Reaper, Rift Reaper) with their own moveset, models and portraits (spec
+  `2026-11-09-weapons-round3-scythes-design.md`). The Forge machine's own model: later (owner 2026-11-09).
 - Not reproduced (2026-11-06): pack models on a freshly stocked shelf "slow to render" after joining (the server
   builds them at once, the client had them in 0.05 s, assets preloaded); waiting on how long and which restock.
 - Boss cash pays on every win with no cooldown (only items wait LOOT_COOLDOWN): a strong party farming the Meadow
