@@ -3269,10 +3269,12 @@ boss models; the ranch and Heroic tiers come after those.
 - [x] Weapons round 2.5 part 1 (spec `2026-11-08-forge-relayout-and-titans-wrath-design.md`): the Forge window relaid
   out (the owner's pick A) and the Titan's Lance's own skill, Titan's Wrath. The skill animation is published
   (2026-11-08, id in `Config/Swords` titansLance). Merged to main 2026-11-08.
-- [ ] Weapons round 2.5 part 2 (spec `2026-11-09-halberd-and-trident-skills-design.md`): the Magma Halberd's Magma
+- [x] Weapons round 2.5 part 2 (spec `2026-11-09-halberd-and-trident-skills-design.md`): the Magma Halberd's Magma
   Cleave and the Tidal Trident's Torrent Strike (own movesets, the `arc` shape, animations, effects, sounds, HUD
-  buttons). Both skill animations are published (2026-11-09, ids in `Config/Swords`). Waiting on the owner: judging
-  them in Studio.
+  buttons). Both skill animations are published (2026-11-09, ids in `Config/Swords`). With the owner's Studio
+  follow-ups: the torrents taller, slowed and bursting at random, Magma Cleave's charge-up, Titan's Wrath made more
+  epic, one 12 s skill cooldown starting full, Z for the previous weapon, fights and the town loaded before the
+  loading screens close. Merged to main 2026-11-09.
 - [ ] Weapons round 3 (spec `2026-11-06-weapons-round1-design.md` section 2, "The whole plan"): the scythes (Forge
   Scythe, Widow's Reaper, Storm Reaper, Rift Reaper) with their own moveset, models and portraits; the Forge's own model.
 - Not reproduced (2026-11-06): pack models on a freshly stocked shelf "slow to render" after joining (the server
