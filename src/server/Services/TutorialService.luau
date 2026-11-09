@@ -134,8 +134,9 @@ end
 
 local record: (player: Player, stepId: string) -> ()
 
--- What happens as a step becomes the one to do: Pish's gifts (each once), the customer he sends; a step the shop has
--- already done (a replay with racks and stock) completes straight away
+-- What happens as a step becomes the one to do: Pish's gifts (each once), the customer he sends; a step done before
+-- it came up (a replay or an old save: his pack or gift given and opened, a rack built, shelves stocked) completes
+-- straight away (TutorialRules.doneAlready)
 local function enter(player: Player, stepId: string)
 	local state = states[player]
 	if not state then
@@ -144,10 +145,6 @@ local function enter(player: Player, stepId: string)
 	if stepId == "giftPack" and not state.firstGiven then
 		state.firstGiven = true
 		ItemService.GiveItem(player, Pish.FIRST_ITEM, 1)
-	elseif stepId == "buildRack" and ownsRack(player) then
-		task.defer(record, player, "buildRack")
-	elseif stepId == "stockRack" and StockService.ShelvesStocked(player) then
-		task.defer(record, player, "stockRack")
 	elseif stepId == "customer" then
 		CustomerService.SpawnForTest(player, "plain")
 	elseif stepId == "gift" and not state.giftClaimed then
@@ -156,6 +153,15 @@ local function enter(player: Player, stepId: string)
 		log(function()
 			AnalyticsService:LogCustomEvent(player, "PishGiftClaimed")
 		end)
+	end
+	local facts: TutorialRules.ShopFacts = {
+		firstPackHeld = ItemService.GetCount(player, Pish.FIRST_ITEM) > 0,
+		giftHeld = ItemService.GetCount(player, Pish.GIFT_ITEM) > 0,
+		ownsRack = ownsRack(player),
+		shelvesStocked = StockService.ShelvesStocked(player),
+	}
+	if TutorialRules.doneAlready(state, stepId, facts) then
+		task.defer(record, player, stepId)
 	end
 end
 
@@ -320,6 +326,9 @@ local function unload(player: Player)
 	newcomers[player] = nil
 	lastActive[player] = nil
 	lastNudge[player] = nil
+	-- Pish's luck lives in this lifecycle (saved above first): nothing kept for a player who's gone
+	PishService.ForgetLuck(player)
+	PackService.SetLuck(player, nil)
 end
 
 -- The Frontier and the Dungeon: only the saved table (kept as it is) and the lessons a level-up there unlocks, marked

@@ -15,7 +15,37 @@ local function same(a: { string }, b: { string }, what: string)
 	end
 end
 
+local function facts(over: { [string]: boolean }): any
+	local base = { firstPackHeld = false, giftHeld = false, ownsRack = false, shelvesStocked = false }
+	for key, value in over do
+		base[key] = value
+	end
+	return base
+end
+
 return {
+	["doneAlready: a replay passes the gift steps whose gift was given and opened (final review C1)"] = function()
+		local migrated = TutorialRules.read({ firstVisit = "done", firstGiven = true, giftClaimed = false }, STEPS)
+		expect.equal(TutorialRules.doneAlready(migrated, "giftPack", facts({})), true, "an old save: his pack long opened")
+		expect.equal(TutorialRules.doneAlready(migrated, "giftPack", facts({ firstPackHeld = true })), false, "still in the Bag: open it")
+		expect.equal(TutorialRules.doneAlready(migrated, "gift", facts({})), false, "his gift still to come")
+		local finished = TutorialRules.read({ firstVisit = "done", firstGiven = true, giftClaimed = true }, STEPS)
+		expect.equal(TutorialRules.doneAlready(finished, "gift", facts({})), true, "given and opened before")
+		expect.equal(TutorialRules.doneAlready(finished, "gift", facts({ giftHeld = true })), false, "given, not opened yet")
+		local fresh = TutorialRules.read({}, STEPS)
+		expect.equal(TutorialRules.doneAlready(fresh, "giftPack", facts({})), false, "a new player: his pack comes now")
+	end,
+
+	["doneAlready: a rack owned or shelves stocked count; the rest never pass by themselves"] = function()
+		local saved = TutorialRules.read({ firstVisit = "done", firstGiven = true, giftClaimed = true }, STEPS)
+		expect.equal(TutorialRules.doneAlready(saved, "buildRack", facts({ ownsRack = true })), true)
+		expect.equal(TutorialRules.doneAlready(saved, "buildRack", facts({})), false)
+		expect.equal(TutorialRules.doneAlready(saved, "stockRack", facts({ shelvesStocked = true })), true)
+		for _, step in { "orderStock", "customer", "ringUp", "bye" } do
+			expect.equal(TutorialRules.doneAlready(saved, step, facts({ ownsRack = true, shelvesStocked = true })), false, step)
+		end
+	end,
+
 	["the steps are the spec's eight, in order"] = function()
 		same(STEPS, { "giftPack", "buildRack", "orderStock", "stockRack", "customer", "ringUp", "gift", "bye" }, "steps")
 	end,

@@ -2,7 +2,9 @@
 -- Town Pish on this client (spec 2026-11-09-tutorial-pish-design 4): draws him on the server's marker
 -- (workspace.PishNpc.TownPish, Server/Services/PishService) with Util/PishVisual, plays the clip the server names each
 -- time its ClipId changes, and floats hearts when someone pets him (Remotes.PishPetted). While this player is in the
--- tutorial their own Pish leads them, so Town Pish and his pet prompt are hidden here (SetHidden). Main game only.
+-- tutorial their own Pish leads them, so Town Pish and his pet prompt are hidden here (SetHidden). The marker can
+-- stream out (far in the Wild valley) and back in as a new part: he's drawn again on the new one. Main game only; no
+-- model (NpcModels.Pish), no Town Pish (the server doesn't make him either).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -15,8 +17,11 @@ local PishVisual = require(ClientUtil:WaitForChild("PishVisual"))
 
 local TownPishController = {}
 
+local FIND_SECONDS = 15 -- how long to wait for the model and the server's marker on join
+
 local visual: PishVisual.Visual? = nil
 local marker: BasePart? = nil
+local markerConnections: { RBXScriptConnection } = {}
 local hidden = false
 
 local function applyHidden()
@@ -43,27 +48,30 @@ local function playNamed()
 	end
 end
 
+local function detach()
+	for _, connection in markerConnections do
+		connection:Disconnect()
+	end
+	markerConnections = {}
+	if visual then
+		PishVisual.destroy(visual)
+		visual = nil
+	end
+	marker = nil
+end
+
 local function attach(found: BasePart)
+	detach()
 	marker = found
-	-- The model ships in ReplicatedStorage.NpcModels; wait for it rather than give up on a slow join
-	local models = ReplicatedStorage:WaitForChild("NpcModels")
-	models:WaitForChild("Pish")
 	visual = PishVisual.new(found)
 	if not visual then
 		return
 	end
 	applyHidden()
-	found:GetAttributeChangedSignal("ClipId"):Connect(playNamed)
-	Remotes.PishPetted.OnClientEvent:Connect(function()
-		if visual and not hidden then
-			PishVisual.hearts(visual)
-		end
-	end)
-	RunService.RenderStepped:Connect(function(dt)
-		if visual then
-			PishVisual.step(visual, dt)
-		end
-	end)
+	table.insert(markerConnections, found:GetAttributeChangedSignal("ClipId"):Connect(playNamed))
+	-- The prompt can arrive a moment after the part: hide it too while this player's own Pish is out
+	table.insert(markerConnections, found.ChildAdded:Connect(applyHidden))
+	playNamed()
 end
 
 function TownPishController.Start()
@@ -71,8 +79,38 @@ function TownPishController.Start()
 		return
 	end
 	task.spawn(function()
-		local folder = workspace:WaitForChild("PishNpc")
-		attach(folder:WaitForChild("TownPish") :: BasePart)
+		local models = ReplicatedStorage:WaitForChild("NpcModels", FIND_SECONDS)
+		if not models or not models:WaitForChild("Pish", FIND_SECONDS) then
+			return
+		end
+		local folder = workspace:WaitForChild("PishNpc", FIND_SECONDS)
+		if not folder then
+			return
+		end
+		folder.ChildAdded:Connect(function(child)
+			if child.Name == "TownPish" and child:IsA("BasePart") then
+				attach(child)
+			end
+		end)
+		folder.ChildRemoved:Connect(function(child)
+			if child == marker then
+				detach()
+			end
+		end)
+		local found = folder:FindFirstChild("TownPish")
+		if found and found:IsA("BasePart") then
+			attach(found)
+		end
+		Remotes.PishPetted.OnClientEvent:Connect(function()
+			if visual and not hidden then
+				PishVisual.hearts(visual)
+			end
+		end)
+		RunService.RenderStepped:Connect(function(dt)
+			if visual then
+				PishVisual.step(visual, dt)
+			end
+		end)
 	end)
 end
 

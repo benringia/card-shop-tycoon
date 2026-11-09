@@ -8,7 +8,6 @@
 -- once per LUCK.cooldown, it gives Pish's Luck for LUCK.seconds (PackService.SetLuck; the player's PishLuckUntil
 -- attribute, os.time). PetPish is the tutorial's own (client-only) Pish being petted: a cuddle, no luck.
 local AnalyticsService = game:GetService("AnalyticsService")
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -210,13 +209,18 @@ local function onTutorialPet(player: Player)
 	end)
 end
 
--- The last time a player had luck from him, and setting it (TutorialService loads and saves it)
+-- The last time a player had luck from him, and setting it: TutorialService loads it (petting gives nothing until
+-- then), saves it and forgets it on unload, so it lives in DataService's lifecycle
 function PishService.GetLuckAt(player: Player): number
 	return luckAt[player] or 0
 end
 
 function PishService.SetLuckAt(player: Player, at: number)
 	luckAt[player] = at
+end
+
+function PishService.ForgetLuck(player: Player)
+	luckAt[player] = nil
 end
 
 -- Studio's /pish: Town Pish comes to you
@@ -228,6 +232,13 @@ function PishService.ComeTo(player: Player)
 end
 
 function PishService.Start()
+	Remotes.PetPish.OnServerEvent:Connect(onTutorialPet)
+	-- No model, no Town Pish: an invisible marker would carry a "Pet" prompt round the town on nothing
+	local models = ReplicatedStorage:FindFirstChild("NpcModels")
+	if not models or not models:FindFirstChild("Pish") then
+		warn("[PishService] ReplicatedStorage.NpcModels.Pish is missing: Town Pish stays home")
+		return
+	end
 	local world: WalkerRules.World = {
 		perRow = PlotConfig.PER_ROW,
 		plotWidth = PlotConfig.WIDTH,
@@ -268,11 +279,6 @@ function PishService.Start()
 	prompt.MaxActivationDistance = Pish.LUCK.petRange
 	prompt.Parent = marker
 	prompt.Triggered:Connect(onPet)
-
-	Remotes.PetPish.OnServerEvent:Connect(onTutorialPet)
-	Players.PlayerRemoving:Connect(function(player)
-		luckAt[player] = nil
-	end)
 	task.spawn(day)
 end
 

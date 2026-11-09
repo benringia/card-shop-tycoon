@@ -46,6 +46,7 @@ local FREE_SECONDS = 3 -- a visit starts once the player has been free this long
 local NUDGE_RANGE = 60 -- studs: a nudge shows only when the player is this near the thing to use
 local PORTAL_REACH = 14 -- studs from the Wild portal that count as having gone to it
 local SPOT_HEIGHT = 9 -- studs above the ground the paw over a place in town (the portal) hangs
+local BYE_MIN_SECONDS = 1 -- the goodbye's least time before the first visit ends (no model: no celebrate clip)
 local GREEN = Color3.fromRGB(80, 205, 130)
 local GREY = Color3.fromRGB(190, 195, 205)
 
@@ -245,6 +246,10 @@ local function ensurePish(away: number?)
 	made.Parent = workspace
 	marker = made
 	visual = PishVisual.new(made)
+	TownPishController.SetHidden(true)
+	if not visual then
+		return -- no model yet: he still leads, but there's nothing to pet
+	end
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Pet"
 	prompt.ObjectText = ""
@@ -259,7 +264,6 @@ local function ensurePish(away: number?)
 		end
 		Remotes.PetPish:FireServer()
 	end)
-	TownPishController.SetHidden(true)
 end
 
 local function removePish()
@@ -704,8 +708,13 @@ local function onStep()
 		play("happyHop")
 	end
 	if step == "bye" then
-		play("celebrate", function()
-			Remotes.TutorialAction:FireServer("bye")
+		-- Its own timer, not the clip's end: petting him mid-celebration replaces the clip and would lose the goodbye
+		play("celebrate")
+		local celebrate = if visual then PishVisual.length(visual, "celebrate") else 0
+		task.delay(math.max(celebrate, BYE_MIN_SECONDS), function()
+			if step == "bye" then
+				Remotes.TutorialAction:FireServer("bye")
+			end
 		end)
 	end
 	pointPaw()

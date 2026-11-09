@@ -69,7 +69,7 @@ return {
 	end,
 
 	["canGrant: once per cooldown"] = function()
-		expect.equal(LuckRules.canGrant(nil, 1000, 900), true)
+		expect.equal(LuckRules.canGrant(nil, 1000, 900), false, "not loaded yet: the saved time could still say no (final review I1)")
 		expect.equal(LuckRules.canGrant(0, 1000, 900), true, "never had it")
 		expect.equal(LuckRules.canGrant(500, 1000, 900), false)
 		expect.equal(LuckRules.canGrant(100, 1000, 900), true)

@@ -54,9 +54,12 @@ function LuckRules.atLeast(slot: { Weighted }, rank: { [string]: number }, minRa
 	return out
 end
 
--- Whether petting gives luck now: never had it (nil or 0), or the last was `cooldown` seconds ago or more
+-- Whether petting gives luck now: never had it (0), or the last was `cooldown` seconds ago or more; nil (not loaded) never
 function LuckRules.canGrant(lastAt: number?, now: number, cooldown: number): boolean
-	return lastAt == nil or lastAt <= 0 or now - lastAt >= cooldown
+	if lastAt == nil then
+		return false -- not loaded yet (or gone): the saved time could still say no
+	end
+	return lastAt <= 0 or now - lastAt >= cooldown
 end
 
 -- Seconds of luck left (0 when none)

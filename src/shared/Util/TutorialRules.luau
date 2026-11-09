@@ -135,4 +135,22 @@ function TutorialRules.finish(saved: Saved): Saved
 	return after
 end
 
+-- What the server sees of the player's shop and Bag when a step becomes the one to do
+export type ShopFacts = { firstPackHeld: boolean, giftHeld: boolean, ownsRack: boolean, shelvesStocked: boolean }
+
+-- A step done before it came up (a replay, an old save) completes at once: Pish's pack or gift given before and no
+-- longer in the Bag (they're never given twice), a rack already built, shelves already stocked
+function TutorialRules.doneAlready(saved: Saved, stepId: string, facts: ShopFacts): boolean
+	if stepId == "giftPack" then
+		return saved.firstGiven and not facts.firstPackHeld
+	elseif stepId == "gift" then
+		return saved.giftClaimed and not facts.giftHeld
+	elseif stepId == "buildRack" then
+		return facts.ownsRack
+	elseif stepId == "stockRack" then
+		return facts.shelvesStocked
+	end
+	return false
+end
+
 return TutorialRules
