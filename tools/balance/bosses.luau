@@ -269,7 +269,7 @@ local function battle(players: { { any } }, foes: { any }, hpLeft: { [string]: n
 				if not target or state.result then
 					continue
 				end
-				if state.time >= (skillReady[owner] or 0) then
+				if state.time >= (skillReady[owner] or SWORD.skill.cooldown) then -- opens on its cooldown (SwordRules.openingSkillReady)
 					if BattleSim.swordHit(state, owner, target.id, SWORD.skill.power * WEAPON_POWER, "Skill", weaponHit(state, owner)) then
 						skillReady[owner] = state.time + SWORD.skill.cooldown * (1 - BattleSim.perkOf(state, owner, "Express"))
 						nextCut[owner] = math.max(nextCut[owner] or 0, state.time + SWORD.skill.length)

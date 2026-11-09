@@ -758,12 +758,20 @@ local function softAim(root: BasePart)
 	end
 end
 
--- Boss fights: start or stop running your sword. targets: the boss and its adds now; cooldown: the HUD's drains.
+-- Boss fights: start or stop running your sword. targets: the boss and its adds now; cooldown: the HUD's drains. A
+-- fight opens with the skill on its full cooldown (owner 2026-11-09), as the server's does (BattleService)
 function SwordController.SetCombat(active: boolean, targets: (() -> { SwordRules.Target })?, cooldown: ((name: string, readyAt: number, total: number) -> ())?)
 	combatTargets = if active then targets else nil
 	onCooldown = if active then cooldown else nil
 	lastCut = nil
 	SwingGate.cancel(gate)
+	local held = if active and player.Character then swordOf(player.Character:GetAttribute("Sword")) else nil
+	if held then
+		skillReadyAt = SwordRules.openingSkillReady(os.clock(), held.skill)
+		if onCooldown then
+			onCooldown("skill", skillReadyAt, held.skill.cooldown)
+		end
+	end
 	if not active then
 		SwordController.GetUp()
 		releaseHold()

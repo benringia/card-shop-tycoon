@@ -66,6 +66,11 @@ export type Sword = {
 	slash: { color: { number }, scale: number },
 }
 
+-- Every weapon's skill cooldown, seconds (owner 2026-11-09: "increase the weapon skill cooldown and make the weapons
+-- share cooldowns", up from 8): one timer per fighter whatever weapon is in hand (BattleService), started full as a fight
+-- opens (SwordRules.openingSkillReady)
+local SKILL_COOLDOWN = 12
+
 local SWORDS: { [string]: Sword } = {
 	starterSword = {
 		name = "Steel Sword",
@@ -98,7 +103,7 @@ local SWORDS: { [string]: Sword } = {
 			power = 0.9,
 			hitAt = 0.62,
 			length = 1.0,
-			cooldown = 8,
+			cooldown = SKILL_COOLDOWN,
 			dash = { studs = 9, maxStuds = 20, margin = 1.5, width = 4, from = 0.30, to = 0.42, slack = 3 },
 			shape = { kind = "dash", width = 4, maxStuds = 20, slack = 3 }, -- the dash's path (SwordRules.skillHits)
 		},
@@ -200,7 +205,7 @@ SWORDS.forgeSword = withSkill("Forge Sword", "ForgeSword", "rbxassetid://8754082
 	power = 0.9,
 	hitAt = 0.8,
 	length = 1.1,
-	cooldown = 8,
+	cooldown = SKILL_COOLDOWN,
 	shape = { kind = "spin", radius = 9 },
 	free = { at = 0.8 }, -- the wave
 }, { slash = "elementTrail", finisher = "elementBurst", skill = "elementalSpin" }, {
@@ -237,7 +242,7 @@ SWORDS.verdantBlade = withSkill("Verdant Blade", "VerdantBlade", "rbxassetid://1
 	power = 0.9,
 	hitAt = 0.45,
 	length = 0.95,
-	cooldown = 8,
+	cooldown = SKILL_COOLDOWN,
 	shape = { kind = "wave", length = 18, width = 4, speed = 20, blast = 4 },
 	hold = { at = 0.5, snap = 0.58 },
 	free = { at = 0.45, reach = true }, -- the vines snapping shut on the foe
@@ -266,7 +271,7 @@ SWORDS.sunforgedBlade = withSkill("Sunforged Blade", "SunforgedBlade", "rbxasset
 	power = 0.9,
 	hitAt = 1.78,
 	length = 2.45,
-	cooldown = 8,
+	cooldown = SKILL_COOLDOWN,
 	shape = { kind = "wave", length = 24, width = 6, speed = 14, blast = 6 },
 	free = { at = 1.78 }, -- the crescent launched (it flies on by itself)
 }, { slash = "fireTrail", finisher = "lavaCrack", skill = "sunfallCleave" }, {
@@ -296,7 +301,7 @@ SWORDS.prismBlade = withSkill("Prism Blade", "PrismBlade", "rbxassetid://1363919
 	power = 0.9,
 	hitAt = 0.6,
 	length = 1.75,
-	cooldown = 8,
+	cooldown = SKILL_COOLDOWN,
 	shape = { kind = "judgment", range = 24, angle = 60, strikes = 5, gap = 0.15 },
 	free = { at = 1.2 }, -- the last strike
 }, { slash = "rainbowArc", finisher = "prismShatter", skill = "prismJudgment" }, {
@@ -373,7 +378,7 @@ do
 			power = 0.9,
 			hitAt = 0.45,
 			length = 1.0,
-			cooldown = 8,
+			cooldown = SKILL_COOLDOWN,
 			dash = { studs = 12, maxStuds = 20, margin = 1.5, width = 3, from = 0.28, to = 0.42, slack = 3 },
 			shape = { kind = "dash", width = 3, maxStuds = 20, slack = 3 },
 			free = { at = 0.45 },
@@ -415,7 +420,7 @@ do
 			power = 0.9,
 			hitAt = 1.35,
 			length = 2.2,
-			cooldown = 8,
+			cooldown = SKILL_COOLDOWN,
 			shape = { kind = "line", length = 14, width = 4 },
 			free = { at = 1.35 }, -- the thrust
 		},
@@ -463,7 +468,7 @@ do
 		power = 0.9,
 		hitAt = 0.6,
 		length = 1.2,
-		cooldown = 8,
+		cooldown = SKILL_COOLDOWN,
 		shape = { kind = "arc", radius = 11, angle = 180 },
 		free = { at = 0.6 },
 	}, "rbxassetid://139376815690800", "magmaCleave", {
@@ -488,7 +493,7 @@ do
 		power = 0.9,
 		hitAt = 0.75,
 		length = 1.9,
-		cooldown = 8,
+		cooldown = SKILL_COOLDOWN,
 		shape = { kind = "spin", radius = 12 },
 		free = { at = 0.75 },
 	}, "rbxassetid://97640469455794", "torrentStrike", {
@@ -509,6 +514,7 @@ end
 return {
 	STARTER = "starterSword",
 	SWORDS = SWORDS,
+	SKILL_COOLDOWN = SKILL_COOLDOWN,
 	UNLOCK_SHOP_LEVEL = 4, -- everyone gets the starter sword here (when boss 1 opens)
 	SHEATH_SECONDS = 4, -- the sword goes back on your back after this long without attacking
 	COMBO_RESET = 0.9, -- a tap this long after a cut ends still continues the combo; later starts it again

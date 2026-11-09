@@ -1048,7 +1048,11 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 				table.insert(reserves, input)
 			end
 		end
-		table.insert(members, { player = player, owner = owner, leaderId = leaderId, markers = {}, fought = { [leaderId] = true }, partyIds = partyIds, died = nil, leashWarnedAt = 0, lastCut = nil, skillReady = 0, down = false, slow = nil, rings = 0, dodged = 0 })
+		-- the sword skill opens on its full cooldown (owner 2026-11-09), as the client's does (SwordController.SetCombat)
+		local swordId = SwordService.GetSword(player)
+		local sword = if swordId then Swords.SWORDS[swordId] else nil
+		local skillReady = if sword then SwordRules.openingSkillReady(os.clock(), sword.skill) else 0
+		table.insert(members, { player = player, owner = owner, leaderId = leaderId, markers = {}, fought = { [leaderId] = true }, partyIds = partyIds, died = nil, leashWarnedAt = 0, lastCut = nil, skillReady = skillReady, down = false, slow = nil, rings = 0, dodged = 0 })
 	end
 	-- Boss fights and Dungeon rooms allow swaps (and are tuned for them); in boss fights only one creature of yours fights
 	local sideA = { fighters = leaders, reserves = reserves, abilities = true, canRun = true, swapSeconds = if boss or run then Combat.BOSS_SWAP_SECONDS else nil, callIn = if boss then false else nil, creaturesDecide = not boss and not run }

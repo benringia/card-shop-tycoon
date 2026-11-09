@@ -336,6 +336,12 @@ function SwordRules.skillFreeAt(skill: { hitAt: number, length: number, free: { 
 	return free.at + (if free.reach then travel else 0)
 end
 
+-- When the sword skill is first ready in a fight that opens at `now` (owner 2026-11-09: "when a fight starts the skill
+-- should start in cooldown"): one full cooldown in. The server (BattleService) and your own client both start it here
+function SwordRules.openingSkillReady(now: number, skill: { cooldown: number }): number
+	return now + skill.cooldown
+end
+
 -- Whether a dodge (at `dodgedAt`, os.clock) between a skill's cast (`castAt`) and its hit moment (`hitAt` after it)
 -- cancels its damage (the dodge cancels the move on your screen; owner 2026-11-07); one after the hit doesn't
 function SwordRules.skillDodged(castAt: number, hitAt: number, dodgedAt: number?): boolean

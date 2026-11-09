@@ -83,7 +83,7 @@ local function fight(world: any, species: string, level: number, elite: boolean,
 	dice = seed
 	local uptime = SWORD_UPTIME[1] + (SWORD_UPTIME[2] - SWORD_UPTIME[1]) * roll()
 	local quickDodge = QUICK_DODGE[1] + (QUICK_DODGE[2] - QUICK_DODGE[1]) * roll()
-	local nextCut, cutIndex, skillReady, dodgeAt = 0, 1, 0, nil :: number?
+	local nextCut, cutIndex, skillReady, dodgeAt = 0, 1, SWORD.skill.cooldown, nil :: number? -- the skill opens on its cooldown
 	while not state.result and state.time < LIMIT do
 		local events = BattleSim.step(state, DT)
 		if mode == "well" then

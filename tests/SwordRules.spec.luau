@@ -316,4 +316,11 @@ return {
 		expect.near(x :: number, 2, 1e-9)
 		expect.near(z :: number, 3 - 14, 1e-9)
 	end,
+
+	-- Owner 2026-11-09: "when a fight starts the skill should start in cooldown" (no skill the moment a fight opens, so
+	-- one can't be thrown fight after fight); server and client both start it here
+	["a fight opens with the skill on its full cooldown"] = function()
+		expect.equal(SwordRules.openingSkillReady(100, { cooldown = 12 }), 112)
+		expect.equal(SwordRules.openingSkillReady(5, { cooldown = 8 }), 13)
+	end,
 }

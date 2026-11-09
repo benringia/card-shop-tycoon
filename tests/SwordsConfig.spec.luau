@@ -36,7 +36,7 @@ return {
 		expect.equal(line.burst, 4)
 		expect.near(SwordRules.comboPowerPerSecond(spear.combo), SwordRules.comboPowerPerSecond(Swords.SWORDS.starterSword.combo), 1e-3)
 		expect.equal(spear.skill.power, 0.9)
-		expect.equal(spear.skill.cooldown, 8)
+		expect.equal(spear.skill.cooldown, Swords.SKILL_COOLDOWN)
 		expect.equal(spear.skill.shape.kind, "dash")
 		local dash = spear.skill.dash :: Swords.Dash
 		expect.equal(dash.studs, 12)
@@ -77,7 +77,7 @@ return {
 		expect.equal(lance.model, "TitansLance", "its skill's animation folder")
 		local skill = lance.skill
 		expect.equal(skill.power, 0.9)
-		expect.equal(skill.cooldown, 8)
+		expect.equal(skill.cooldown, Swords.SKILL_COOLDOWN)
 		expect.equal(skill.shape.kind, "line")
 		expect.equal(skill.shape.length, 14)
 		expect.equal(skill.shape.width, 4)
@@ -110,7 +110,7 @@ return {
 			expect.equal(moves.model, case.model, `{case.id}: its skill's animation folder`)
 			local skill = moves.skill
 			expect.equal(skill.power, 0.9, case.id)
-			expect.equal(skill.cooldown, 8, case.id)
+			expect.equal(skill.cooldown, Swords.SKILL_COOLDOWN, case.id)
 			expect.equal(skill.hitAt, case.hitAt, case.id)
 			expect.equal(skill.length, case.length, case.id)
 			expect.isNil(skill.dash, `{case.id}: you stay put`)
@@ -257,7 +257,7 @@ return {
 				expect.equal(sword.animations[key], starter.animations[key], `{id} {key}`)
 			end
 			expect.equal(sword.skill.power, 0.9, `{id} skill power`)
-			expect.equal(sword.skill.cooldown, 8, `{id} skill cooldown`)
+			expect.equal(sword.skill.cooldown, Swords.SKILL_COOLDOWN, `{id} skill cooldown`)
 			assert(sword.skill.shape and kinds[sword.skill.shape.kind], `{id} skill shape`)
 		end
 		expect.equal(starter.skill.shape.kind, "dash")
@@ -558,7 +558,7 @@ return {
 	["the starter sword has three cuts, a skill and every animation and sound key"] = function()
 		local sword = Swords.SWORDS[Swords.STARTER]
 		expect.equal(#sword.combo, 3)
-		expect.equal(sword.skill.cooldown, 8)
+		expect.equal(sword.skill.cooldown, Swords.SKILL_COOLDOWN)
 		for _, key in ANIMATIONS do
 			expect.equal(typeof(sword.animations[key]), "string", `animation {key}`)
 		end
@@ -572,6 +572,16 @@ return {
 	-- plays its layered sounds at set moments, every cue is a sound the sword has, inside its move, and the cuts' swish
 	-- comes with the swing, not at the tap. A skill's cue may also come while its effect still plays after the move
 	-- (owner 2026-11-09: Torrent Strike's torrents last longer, its rain falls after the move ends)
+	-- Owner 2026-11-09: "increase the weapon skill cooldown and make the weapons share cooldowns. to avoid abuse
+	-- (switching to another weapon then pressing the skill and repeat)": one longer cooldown for every weapon's skill (the
+	-- server keeps one timer per fighter, whatever weapon is in hand)
+	["every weapon's skill shares one longer cooldown"] = function()
+		expect.equal(Swords.SKILL_COOLDOWN >= 12, true, `{Swords.SKILL_COOLDOWN} s (was 8)`)
+		for id, sword in Swords.SWORDS do
+			expect.equal(sword.skill.cooldown, Swords.SKILL_COOLDOWN, id)
+		end
+	end,
+
 	["every move's sound cues play the sword's own sounds, inside the move"] = function()
 		local looks = require("../src/shared/Config/SwordSkillFx").LOOKS
 		for _, sword in Swords.SWORDS do
