@@ -136,5 +136,10 @@ return {
 		["9126013644"] = 80, -- flurryA: Swish Med High End Sharp Swords Fast Punches (2026-11-09)
 		["9126013382"] = 100, -- flurryB: Swish Med High End Sharp Swords Fast Punches (2026-11-09)
 		["9126014020"] = 117, -- flurryC: Swish Med High End Sharp Swords Fast Punches (2026-11-09)
+		-- Pish (Config/Pish SOUNDS), measured 2026-11-10
+		["9113955093"] = 12, -- bark: Coyotes Gruff Barking 6
+		["9113951583"] = 51, -- whimper: Coyote Cub Whimpering Yelping Crying 3
+		["9113955748"] = 11, -- yip: Coyotes Gruff Barking 12
+		["9114083746"] = 76, -- dig: Dirt Dig Dirt Throws From Shovel 12
 	} :: { [string]: number },
 }

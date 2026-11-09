@@ -57,7 +57,16 @@ return {
 		idleClips = { "sit", "sniff", "bark", "roll", "dig", "shake", "playBow", "headTilt", "yawnStretch", "tailChase", "happyHop", "scratch" },
 	},
 	HEIGHT = 2.6, -- studs: a small dog beside a 5-stud player
-	-- Licensed sounds (Roblox's PSE catalogue), measured in Config/SoundLevels
-	SOUNDS = { bark = "", whimper = "", yawn = "", yip = "", dig = "" } :: { [string]: string },
-	SOUND_VOLUME = 0.6, -- times each sound's measured level (Util/SoundLevel)
+	-- Licensed sounds (Roblox's Pro Sound Effects catalogue, which has no house dogs: coyote barks pitched up small, a
+	-- coyote cub's whimper, dirt thrown from a shovel; no canine yawn, so the yawn stays silent), measured in
+	-- Config/SoundLevels. Each Bark marker plays the whole bark, so it must stay short.
+	SOUNDS = {
+		bark = "rbxassetid://9113955093", -- Coyotes Gruff Barking 6, 0.5 s
+		whimper = "rbxassetid://9113951583", -- Coyote Cub Whimpering Yelping Crying 3, 2 s
+		yawn = "",
+		yip = "rbxassetid://9113955748", -- Coyotes Gruff Barking 12, 0.5 s
+		dig = "rbxassetid://9114083746", -- Dirt Dig Dirt Throws From Shovel 12, 0.8 s
+	} :: { [string]: string },
+	SOUND_PITCH = { bark = 1.35, whimper = 1.1, yip = 1.7 } :: { [string]: number }, -- PlaybackSpeed (higher: a smaller dog)
+	SOUND_VOLUME = 1, -- times each sound's level (Util/SoundLevel); all four are quiet (measured 11-76 of 120)
 }

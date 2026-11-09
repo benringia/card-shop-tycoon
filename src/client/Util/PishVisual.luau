@@ -45,6 +45,7 @@ local function sound(visual: Visual, key: string)
 	local made = Instance.new("Sound")
 	made.SoundId = id
 	made.Volume = Pish.SOUND_VOLUME * SoundLevel.gain(SoundLevels, id)
+	made.PlaybackSpeed = Pish.SOUND_PITCH[key] or 1
 	made.RollOffMaxDistance = 80
 	made.Parent = visual.body.root
 	made:Play()
