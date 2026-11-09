@@ -48,8 +48,8 @@ return {
 	-- shop's door (`shopChance`) where he stays `visitSeconds`, a random idle clip every `idleEvery` seconds (never the
 	-- same twice running), a nap now and then
 	TOWN = {
-		speed = 7,
-		trotSpeed = 11,
+		speed = 4.5, -- a small dog's stroll (was 7: his legs blurred)
+		trotSpeed = 8,
 		visitSeconds = { 6, 12 },
 		idleEvery = { 5, 10 },
 		napChance = 0.1,
