@@ -46,6 +46,8 @@ local MusicRules = require(Shared:WaitForChild("Util"):WaitForChild("MusicRules"
 local Services = script.Parent :: Instance
 local ArenaService = require(Services:WaitForChild("ArenaService"))
 local WelcomeService = require(Services:WaitForChild("WelcomeService"))
+local PishService = require(Services:WaitForChild("PishService"))
+local TutorialService = require(Services:WaitForChild("TutorialService"))
 local SwordService = require(Services:WaitForChild("SwordService"))
 local BattleService = require(Services:WaitForChild("BattleService"))
 local JobService = require(Services:WaitForChild("JobService"))
@@ -605,6 +607,24 @@ function DevService.Start()
 		if not kind or not CustomerService.SpawnForTest(player, kind, if card then card.id else nil, inHand) then
 			Remotes.Notify:FireClient(player, "Usage: /customer <plain|kid|collector|bargain|bigSpender> [card for a collector, rarity for a kid]", true)
 		end
+	end)
+	-- The tutorial with Pish (spec 2026-11-09-tutorial-pish-design): /tutorial reset (a new player's first visit, gifts
+	-- not given), /tutorial step <1-8>, /pish (Town Pish comes to you), /pishluck (petting him gives luck again now)
+	addCommand(folder, "tutorial", function(player, text)
+		local word, number = string.match(string.lower(text), "^/%w+%s+(%w+)%s*(%d*)")
+		if word == "reset" then
+			TutorialService.Reset(player)
+		elseif word == "step" and tonumber(number) then
+			TutorialService.SetStep(player, tonumber(number) :: number)
+		else
+			Remotes.Notify:FireClient(player, "Usage: /tutorial reset | /tutorial step <1-8>", true)
+		end
+	end)
+	addCommand(folder, "pish", function(player)
+		PishService.ComeTo(player)
+	end)
+	addCommand(folder, "pishluck", function(player)
+		PishService.SetLuckAt(player, 0)
 	end)
 	addCommand(folder, "frontierdrop", function(player)
 		ItemService.GiveItem(player, "starShard", 1)

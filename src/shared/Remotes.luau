@@ -97,6 +97,8 @@ local NAMES = {
 	"WeaponBeacon", -- server → all clients: (userId, weaponId, position) a new boss weapon dropped there: its light column
 	"PishPetted", -- server → all clients: (userId, lucky: boolean) Town Pish was petted: his hearts, and the luck it gave
 	"PetPish", -- client → server: () the tutorial's own Pish (only on this player's screen) was petted: a cuddle, no luck
+	"TutorialAction", -- client → server: (action: "skip" | "replay" | "bye" | "lessonDone", lessonId: string?) the tutorial
+	"TutorialState", -- server → client: { firstVisit, step, giftClaimed, lesson: string? } the tutorial's state, a lesson visit
 }
 
 local isServer = RunService:IsServer()
@@ -209,4 +211,6 @@ return {
 	WeaponBeacon = remotes.WeaponBeacon,
 	PishPetted = remotes.PishPetted,
 	PetPish = remotes.PetPish,
+	TutorialAction = remotes.TutorialAction,
+	TutorialState = remotes.TutorialState,
 }
