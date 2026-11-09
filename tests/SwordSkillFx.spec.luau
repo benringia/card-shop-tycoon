@@ -117,7 +117,7 @@ return {
 			piercingRush = { "charge", "leave", "arrive", "hit", "length", "width", "afterimages", "glow", "swirl", "flashSeconds", "bursts", "skid" },
 			magmaCleave = { "windup", "hit", "radius", "angle", "crescent", "embers", "smoke" },
 			titansWrath = { "charge", "peak", "hit", "close", "fade", "tear", "length", "width", "tearWidth", "glow", "inflow", "swirl", "cracks", "crackReach", "rumbleEvery", "ring", "rocks", "beam", "thorns", "thornHeight", "thornThick", "giants", "giantHeight", "giantThick", "branches", "branchReach", "slabs", "slabSize", "debris", "debrisHeight", "pillars", "pillarHeight", "petals", "camAt", "camHold", "camFocus", "camLookUp" },
-			scytheSweep = { "arc", "arcAngle", "thick", "flash", "sparks", "wrap", "wrapFrom", "spin", "low", "high" },
+			scytheSweep = { "arc", "arcAngle", "thick", "flash", "sparks", "wrap", "wrapFrom", "spin", "low", "high", "lead", "swipe", "pieces" },
 			scytheWhirl = { "rings", "ring", "blades", "bladeRing", "sparks", "dust", "flash" },
 			reapingCyclone = { "gather", "ring1", "ring2", "hit", "radius", "fly", "crescents", "lastScale", "swirl", "sparks" },
 			torrentStrike = { "raise", "slam", "hit", "spread", "slowAfter", "slowScale", "slowEase", "slowFeed", "fall", "radius", "inner", "torrents", "spread", "pairShare", "nearest", "apart", "lane", "columnHeight", "outerHeight", "cracks", "foeEdge", "foeSizeStuds", "foeSizeMax", "camAt", "camHold", "camFocus", "camLookUp", "camUp", "camOut" },
@@ -488,6 +488,34 @@ return {
 		expect.isNil(SwordSkillFxRules.finisherAhead(SwordSkillFx.LOOKS.elementBurst, nil), "a sword's slam just ahead")
 		local shake = SwordSkillFx.SHAKE :: any
 		expect.equal(shake.scytheWhirl > shake.finisher, true, "the Whirlwind's shake bigger than a finisher's")
+	end,
+
+	-- Final review: a cut's slash is called at the sword's arc start (SwordFx.ARCS), after the Whirlwind's two turns have
+	-- begun; its crescent catches up (the part already swung isn't drawn) and its last turn lands with the strike
+	["the scythe's crescents keep time with the swing from the moment the slash is called"] = function()
+		local scythe = Swords.SWORDS.scythe
+		local sweep = SwordSkillFx.LOOKS.scytheSweep.beats :: { [string]: number }
+		local hitIn = scythe.combo[3].hitAt - SwordFx.ARCS.cut3.from
+		local delay, from, seconds = SwordSkillFxRules.arcCatchUp(hitIn - sweep.spin, sweep.spin, 0, 750)
+		expect.equal(delay, 0)
+		expect.near(delay + seconds, hitIn, 1e-9, "the Whirlwind's crescent ends with the strike")
+		expect.near(from, 750 * (sweep.spin - hitIn) / sweep.spin, 1e-9, "from where the blade is when it's called")
+		local d2, f2, s2 = SwordSkillFxRules.arcCatchUp(0.2, 0.3, -90, 90)
+		expect.equal(d2, 0.2, "a start still ahead waits for it")
+		expect.equal(f2, -90)
+		expect.equal(s2, 0.3)
+		expect.equal(scythe.combo[1].hitAt - SwordFx.ARCS.cut1.from - sweep.lead >= 0, true, "Reap's crescent starts after its call")
+		expect.equal(scythe.combo[2].hitAt - SwordFx.ARCS.cut2.from - sweep.wrap >= 0, true, "Back Sweep's turn starts after its call")
+	end,
+
+	-- Final review: the scythe is a group weapon; another player's crescents (and yours on low graphics) are lighter
+	["the scythe's crescents: full pieces for your own, half for another player's, never under three"] = function()
+		local pieces = (SwordSkillFx.LOOKS.scytheSweep.beats :: { [string]: number }).pieces
+		expect.equal(pieces, 18, "pieces in a half turn")
+		expect.equal(SwordSkillFxRules.scythePieces(math.pi, false, pieces), 18, "a half turn")
+		expect.equal(SwordSkillFxRules.scythePieces(math.pi, true, pieces), 9, "lighter")
+		expect.equal(SwordSkillFxRules.scythePieces(0.2, true, pieces), 3, "at least three")
+		expect.equal(SwordSkillFxRules.scythePieces(math.rad(750), true, pieces) <= 38, true, "the Whirlwind's two turns for another player")
 	end,
 
 	["Reaping Cyclone: three rings of crescents, one per spin, the third arriving with the hit at the shape's radius"] = function()

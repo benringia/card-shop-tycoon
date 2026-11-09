@@ -176,7 +176,7 @@ local function cutEffects(character: Model, sword: Swords.Sword, effects: Effect
 	local cut = sword.combo[index]
 	task.delay(from, function()
 		if live() then
-			SwordSkillFx.slash(character, effects.fx.slash, index, effects.colors, effects.scale, bladeOf(character), cut.hitAt - from)
+			SwordSkillFx.slash(character, effects.fx.slash, index, effects.colors, effects.scale, bladeOf(character), cut.hitAt - from, not finisher)
 		end
 	end)
 	if finisher and index == #sword.combo then

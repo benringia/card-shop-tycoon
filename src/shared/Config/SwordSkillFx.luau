@@ -332,14 +332,16 @@ local LOOKS: { [string]: Look } = {
 	-- flying out of it to the reach: Reap's across your front, `arcAngle` degrees right to left; Back Sweep's a whole turn
 	-- laid round you low (`low` studs down) over the `wrap` seconds before its strike, from `wrapFrom` degrees (your right)
 	-- round behind you to your front; the Whirlwind's two turns at shoulder height (`high` up) over the `spin` seconds
-	-- before its strike
+	-- before its strike (its slash is called later, at SwordFx.ARCS.cut3.from: the crescent catches up,
+	-- SwordSkillFxRules.arcCatchUp). Reap's starts `lead` before its strike and takes `swipe`. Each half turn is laid in
+	-- `pieces` pieces, half for another player's (or on low graphics), with no streaks or sparks then
 	scytheSweep = {
 		kind = "slash",
 		textures = { "glow", "streak", "spark", "star", "shard" },
 		seconds = 0.45,
 		size = 2.2,
 		count = 160,
-		beats = { arc = 7, arcAngle = 200, thick = 0.9, flash = 0.3, sparks = 50, wrap = 0.27, wrapFrom = -90, spin = 0.64, low = 1.4, high = 0.6 },
+		beats = { arc = 7, arcAngle = 200, thick = 0.9, flash = 0.3, sparks = 50, wrap = 0.27, wrapFrom = -90, spin = 0.64, low = 1.4, high = 0.6, lead = 0.1, swipe = 0.18, pieces = 18 },
 	},
 	-- Whirlwind's finish, round you where you stand (`form` around): at the strike `rings` shockwaves race out to `ring`
 	-- studs (the cut's reach), a whole circle of `blades` crescents flashes `bladeRing` studs out, `sparks` fly all round,
