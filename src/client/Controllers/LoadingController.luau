@@ -45,6 +45,7 @@ local LoadingController = {}
 
 local gearReady = false
 local shopReady = false
+local townReady = false
 local artReady = false
 local artStarted = false
 local artCache: ScreenGui? = nil
@@ -171,6 +172,47 @@ local function preloadShop()
 	shopReady = true
 end
 
+-- The town round you (Config/LoadingScreen TOWN_FOLDERS; owner 2026-11-09: "in town. some models still load some time
+-- after the loading screen"): Roblox fetches a mesh only once it's drawn up close, so scenery popped in as you walked.
+-- The area round your character is streamed in, then every town folder's meshes, textures and looks are fetched
+local function preloadTown()
+	local character = player.Character or player.CharacterAdded:Wait()
+	local root = character:WaitForChild("HumanoidRootPart", LoadingScreen.STREAM_TIMEOUT)
+	if root and root:IsA("BasePart") then
+		pcall(player.RequestStreamAroundAsync, player, root.Position, LoadingScreen.STREAM_TIMEOUT)
+	end
+	local folders: { Instance } = {}
+	for _, name in LoadingScreen.TOWN_FOLDERS do
+		local folder = workspace:FindFirstChild(name)
+		if folder then
+			table.insert(folders, folder)
+		end
+	end
+	ContentProvider:PreloadAsync(folders)
+end
+
+-- Anything that streams in later (the far side of town, a plot's new props, customers, the Wild): its meshes, textures
+-- and looks fetched as it arrives, a batch every WARM_GAP seconds, not when the camera first comes close
+local WARM_GAP = 0.5
+local function warmStreamed()
+	local queue: { Instance } = {}
+	workspace.DescendantAdded:Connect(function(item)
+		if item:IsA("MeshPart") or item:IsA("SurfaceAppearance") or item:IsA("Decal") or item:IsA("SpecialMesh") then
+			table.insert(queue, item)
+		end
+	end)
+	task.spawn(function()
+		while true do
+			task.wait(WARM_GAP)
+			if #queue > 0 then
+				local batch = queue
+				queue = {}
+				pcall(ContentProvider.PreloadAsync, ContentProvider, batch)
+			end
+		end
+	end)
+end
+
 -- A copy of the screen at its first step for teleports (the next place's loading screen carries it on)
 local function setTeleportScreen()
 	local folder = ReplicatedFirst:FindFirstChild("LoadingScreen")
@@ -193,6 +235,7 @@ end
 
 function LoadingController.Start()
 	setTeleportScreen()
+	warmStreamed()
 	if player:GetAttribute("LoadingDone") == true then
 		return -- already shown this session
 	end
@@ -215,6 +258,13 @@ function LoadingController.Start()
 		shopReady = true
 	end)
 	task.spawn(function()
+		local ok, err = pcall(preloadTown)
+		if not ok then
+			warn("[LoadingController] town:", err)
+		end
+		townReady = true
+	end)
+	task.spawn(function()
 		local kind = workspace:GetAttribute("PlaceKind")
 		local placeKind = if typeof(kind) == "string" then kind else "Main"
 		while true do
@@ -222,7 +272,7 @@ function LoadingController.Start()
 				character = game:IsLoaded() and player.Character ~= nil,
 				data = player:GetAttribute("DataLoaded") == true,
 				art = artReady,
-				shop = shopReady,
+				shop = shopReady and townReady,
 				creature = (player:GetAttribute("CreatureReady") == true or nothingSummoned)
 					and player:GetAttribute("TownCreaturesReady") == true,
 				gear = gearReady,

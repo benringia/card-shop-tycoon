@@ -1144,8 +1144,8 @@ group, checked before its fragments and every time (not only the first). Below i
   Frontier's and the Prism Hydra) each player fights beside their one creature as a player fighter (`a:@<UserId>`,
   100 HP, `Combat.PLAYER_HP`). Their sword (from shop level 4, `Config/Swords`, `SwordService`) hits through remotes
   `SwordAttack` (the server picks the combo's next cut with `SwordRules.nextCut` and hits whatever is in reach at its
-  strike frame), `SwordSkill` (the dash slash, 8 s cooldown: every foe along the path from where they started to where
-  they are when its cut lines appear, the path clamped to the dash's longest plus 3 studs, `SwordRules.clampPath` /
+  strike frame), `SwordSkill` (the dash slash, 12 s cooldown since 2026-11-09, was 8: every foe along the path from
+  where they started to where they are when its cut lines appear, the path clamped to the dash's longest plus 3 studs, `SwordRules.clampPath` /
   `inDashPath`) and `Dodge` (untouchable 0.35 s, 2.5 s cooldown since 2026-11-04, was 1 s; the
   dash is the client's), all rate-limited; damage is their creature's ATK x the cut's power. The boss sends about a
   third of its swings at players as quick hits (a 0.5 s flash, then `quick` of their HP) and every `every` seconds a
@@ -1827,8 +1827,14 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   branch `sword-skills`; owner 2026-11-07: "exaggerate everything, that's what kids want"): each round 1 sword has its own
   moveset (`Config/Swords`: the Steel Sword's three cuts, their animations and sounds shared, its own skill, skill
   animation, sounds and looks `fx`; `Config/Weapons` points each weapon at it, the five Forge Swords share one). Every
-  skill keeps today's damage in total (0.9 x the weapon's Power) and 8 s cooldown; only the shape it hits, the motion
-  and the look change. The server counts the shape from its own record of where you stand (`SwordRules.skillHits`,
+  skill keeps today's damage in total (0.9 x the weapon's Power) and one shared cooldown (`Swords.SKILL_COOLDOWN`); only
+  the shape it hits, the motion and the look change. Owner 2026-11-09 ("increase the weapon skill cooldown and make the
+  weapons share cooldowns. to avoid abuse (switching to another weapon then pressing the skill and repeat). and when a
+  fight starts the skill should start in cooldown"): 12 s (was 8), one timer per fighter whatever weapon is in hand (the
+  server's `skillReady` and the client's were already one each; checked in Studio: a skill, a switch, the skill again:
+  refused), and every fight opens with the skill on its full cooldown (`SwordRules.openingSkillReady`, server and
+  client; the HUD drains from the start), so it can't be thrown fight after fight. Balance (tools/balance, 60 boss fights,
+  200 wild): within a few points of before at every row (the skill is a small share of the damage). The server counts the shape from its own record of where you stand (`SwordRules.skillHits`,
   Lune-tested; `BattleService.onSwordSkill` lands each hit `after` its moment with its share):
 
   | Sword | Skill (shape) | Slashes / finisher | Moments |
@@ -1901,13 +1907,19 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
 - **Titan's Wrath** (weapons round 2.5, spec `2026-11-08-forge-relayout-and-titans-wrath-design.md`; the owner's
   storyboard, exaggerated): the Titan's Lance's own skill in place of Piercing Rush (its own moveset
   `Config/Swords` `titansLance`: the spear's cuts, moves and sounds; the Halberd's and the Trident's own skills below).
-  Same rules as every skill (0.9 of a hit, 8 s cooldown, a dodge or a switch before the hit cancels it). A long, loud
+  Same rules as every skill (0.9 of a hit, the shared cooldown, a dodge or a switch before the hit cancels it). A long, loud
   charge in a low stance (gold and green light pouring into the tip, sparks and leaves swirling round you, glowing
   cracks creeping out from your feet, the screen rumbling harder and harder), the peak's white flash with a ring and
   rocks lifting off the ground (1.22 s), one huge thrust (the hit, 1.35 s): a lance-shaped beam and a gold shockwave,
   every foe on the 14 x 4 line ahead (`SwordRules` line: its ends rounded by half its width), a fissure tearing open
   the whole line with green light and thorns bursting out of it, the rocks flung along it, a big shake; it glows on to
-  2.7 s and closes under drifting petals. You stay put (no rush). The rumble pulses grow to `SHAKE.titansRumble` 0.28
+  3.2 s and closes under drifting petals. Owner 2026-11-09 ("make the vines more epic and exaggerated ground cracks
+  fissures and etc. this is a legendary weapon"): the fissure 3.6 studs wide with 10 cracks branching off both sides as
+  the tear passes, 10 slabs of ground heaved up along it (tilted, sinking back as it closes), 16 rocks flung up out of
+  it, 5 pillars of green light bursting from it; 14 thorn vines up to 8 studs tall, curling like claws (most arching
+  over the fissure, every third flaring out, all different heights), and 3 titan vines 13 studs tall erupting at the
+  line's end (six-piece stems leaning out and curling back over it, gold buds, an eruption of earth and leaves); the
+  charge's cracks 12, reaching 9 studs; the wide shot holds 1.3 s, looking a little higher so the titan vines fit. You stay put (no rush). The rumble pulses grow to `SHAKE.titansRumble` 0.28
   and die down before the thrust (no shake at the peak), so the fissure's shake lands as a jump (tests/SwordSkillFx); a
   dodge or a switch during the charge stops all of it, its sounds too (`playCues` stops a skill's cue sounds when it is
   cancelled before its hit). Its camera moment frames the stance from the side
@@ -1949,7 +1961,8 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   `TridentWave`. Balance re-run (tools/balance/bosses, 60 fights solo, "well"): unchanged from the rows above, the
   skill's damage is the same.
 - **Quick weapon switch** (weapons round 2, the owner's pick A): a round chip on the right edge at mid height with your
-  weapon's portrait in its rarity's ring, `<` and `>` either side, Q / Shift+Q on keyboards, a swipe on the chip; it
+  weapon's portrait in its rarity's ring, `<` and `>` either side, Q (next) / Z (previous, `Weapons.PREVIOUS_KEY`, its
+  badge on `<`; owner 2026-11-09; Shift+Q too, but Shift is the dodge in a fight) on keyboards, a swipe on the chip; it
   steps through every weapon you own (swords, spears, scythes; by rarity, then name: `Util/WeaponSwitch`, Lune-tested)
   and asks the server to equip it (`EquipWeapon`), its name under the chip for 1.5 s. Shown with two weapons or more,
   never over a window or while placing (`WeaponSwitchController`, sizes in `Config/HudLayout` WEAPON_SWITCH). In a fight a
@@ -2276,7 +2289,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── BattleController.luau    # Fight prompts, the Return to town pill in the wild, XP sparks after a win, fight bar (wild + PvP), boss HP bar and banners, damage numbers, end screen
     │   │   ├── LevelUpController.luau   # plays the level-up pillar on you, your creatures and players nearby (LevelUpFx)
     │   │   ├── SwordController.luau     # draws the equipped weapon (its glow ladder, WeaponLook) on backs and in hands, the first-sword popup, boss-fight actions (buttons, keys, dodge dash), trail, sounds, kneeling
-    │   │   ├── WeaponSwitchController.luau # the quick weapon switch chip on the right edge: < and >, a swipe, Q / Shift+Q (EquipWeapon)
+    │   │   ├── WeaponSwitchController.luau # the quick weapon switch chip on the right edge: < and >, a swipe, Q / Z (EquipWeapon)
     │   │   ├── WeaponRevealController.luau # a boss's weapon drop and the Forge's results: the reveal on the opening stage
     │   │   ├── ForgeController.luau     # the Forge window: Forge / Upgrade / Reforge tabs and what each does, weapon rows, the chosen weapon's card, Now / After boxes, cost chips and one button
     │   │   ├── WeaponDetailController.luau # an Armory weapon's card view: its stats in words, Equip
@@ -2592,7 +2605,11 @@ their saved data.
   every asset's fetch status as the screen closed found these missing): it also waits for your own cards' and the town
   animals' models (`TownCreaturesReady`, `Util/ModelPreload` `soon`), the shop props' and place props' models
   (`PropModels`, `PlaceProps`), the pack opening's effects, the portals' textures and every weapon's portrait
-  (`Util/TownPreload`), the defeat music and the Frontier and Dungeon boss drone (`Util/CombatPreload`), and in the
+  (`Util/TownPreload`), the town round you (owner 2026-11-09: "in town. some models still load some time after the
+  loading screen": Roblox fetches a mesh only once it's drawn up close, so scenery popped in as you walked; the area round
+  your character streamed in, then `LoadingScreen.TOWN_FOLDERS`' meshes and textures fetched; anything streaming in
+  later is fetched as it arrives, `LoadingController.warmStreamed`), the defeat music and the Frontier and Dungeon boss
+  drone (`Util/CombatPreload`), and in the
   Frontier and the Dungeon the monsters' and bosses' models; as a fight starts every fight picture is checked again
   (`CombatAssets.ensureFight`). Measured in Studio: the screen closes about 10 s in; a save still loading after 6 s gets a note ("Your save is
   still closing on another server, almost there!"); after 30 s it fades anyway. Tips cycle at the bottom. The same

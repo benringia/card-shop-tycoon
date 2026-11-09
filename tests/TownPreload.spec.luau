@@ -66,6 +66,17 @@ return {
 		end
 	end,
 
+	-- Owner 2026-11-09: "in town. some models still load some time after the loading screen": a mesh is only fetched
+	-- once it's drawn up close, so the scenery popped in as you walked; the loading screen streams in the area round you
+	-- and fetches every town folder's meshes and textures first
+	["the loading screen fetches the town's scenery, shops and plots"] = function()
+		local LoadingScreen = require("../src/shared/Config/LoadingScreen")
+		for _, name in { "TownDecor", "Town", "Scenery", "Plots" } do
+			expect.equal(table.find(LoadingScreen.TOWN_FOLDERS, name) ~= nil, true, name)
+		end
+		expect.equal(LoadingScreen.STREAM_TIMEOUT > 0 and LoadingScreen.STREAM_TIMEOUT < LoadingScreen.MAX_SECONDS, true, "streaming in never holds it past its cap")
+	end,
+
 	["only image ids, each once"] = function()
 		local seen = {}
 		for _, id in TownPreload.images(CONFIGS) do

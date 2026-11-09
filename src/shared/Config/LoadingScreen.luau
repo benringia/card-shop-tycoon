@@ -35,6 +35,12 @@ return {
 	SLOW_SECONDS = 6, -- the save still loading after this: say why
 	SLOW_NOTE = "Your save is still closing on another server, almost there!",
 	MAX_SECONDS = 30, -- fades anyway after this, so nobody is stuck
+	-- The town round you, with the shop's pictures (owner 2026-11-09: "in town. some models still load some time after
+	-- the loading screen": a mesh is only fetched once it's drawn up close, so scenery popped in as you walked): the area
+	-- round your character streamed in (at most STREAM_TIMEOUT seconds), then these Workspace folders' meshes and
+	-- textures fetched; anything streaming in later is fetched as it arrives (LoadingController)
+	TOWN_FOLDERS = { "TownDecor", "Town", "Scenery", "Plots" },
+	STREAM_TIMEOUT = 8,
 	FADE_SECONDS = 0.6,
 	TIP_SECONDS = 4, -- each tip shows this long
 	TIPS = {
