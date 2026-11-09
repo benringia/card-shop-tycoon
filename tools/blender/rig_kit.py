@@ -278,6 +278,74 @@ def glow_mask(mesh, name, rules, grow=1, region=None):
     return path
 
 
+def _fill_weighted(grid, corners, weights):
+    """Raises the texels of `grid` (rows from v = 0) inside the UV triangle `corners` to the triangle's weights,
+    interpolated across it (never lowers one)."""
+    import numpy as np
+
+    height, width = grid.shape
+    xs = [p[0] * width for p in corners]
+    ys = [p[1] * height for p in corners]
+    x0, x1 = max(0, int(min(xs))), min(width - 1, int(max(xs)) + 1)
+    y0, y1 = max(0, int(min(ys))), min(height - 1, int(max(ys)) + 1)
+    if x1 < x0 or y1 < y0:
+        return
+    px, py = np.meshgrid(np.arange(x0, x1 + 1) + 0.5, np.arange(y0, y1 + 1) + 0.5)
+    (ax, bx, cx), (ay, by, cy) = xs, ys
+    area = (bx - ax) * (cy - ay) - (cx - ax) * (by - ay)
+    if abs(area) < 1e-9:
+        return
+    w0 = ((bx - px) * (cy - py) - (cx - px) * (by - py)) / area
+    w1 = ((cx - px) * (ay - py) - (ax - px) * (cy - py)) / area
+    w2 = 1 - w0 - w1
+    inside = (w0 >= -1e-6) & (w1 >= -1e-6) & (w2 >= -1e-6)
+    value = np.where(inside, w0 * weights[0] + w1 * weights[1] + w2 * weights[2], 0)
+    block = grid[y0:y1 + 1, x0:x1 + 1]
+    np.maximum(block, value, out=block)
+
+
+def paint_region(mesh, name, color, weight_of, grow=3):
+    """Blends `color` (RGB 0..1) into `mesh`'s colour map by weight_of(world position, world normal) at each vertex
+    (0..1, soft at the edges), interpolated across the faces, so a marking (a patch on a dog's back) follows the
+    surface whatever the UV layout. The mask then grows `grow` texels into texels it hasn't touched, to cover the bake's
+    seams. Saves the map over assets/blender/<name>/<name>_color.png. Run after remesh_bake or optimize (the final UVs)."""
+    import numpy as np
+
+    image = next(n.image for mat in mesh.data.materials if mat and mat.use_nodes
+                 for n in mat.node_tree.nodes if n.type == "TEX_IMAGE" and n.image)
+    width, height = image.size
+    px = np.array(image.pixels[:], dtype=np.float32).reshape(height, width, 4)
+    mask = np.zeros((height, width), dtype=np.float32)
+    world = mesh.matrix_world
+    turn = world.to_3x3().inverted().transposed()
+    weights = [weight_of(world @ v.co, (turn @ v.normal).normalized()) for v in mesh.data.vertices]
+    loops = mesh.data.loops
+    uv = mesh.data.uv_layers.active.data
+    for poly in mesh.data.polygons:
+        ws = [weights[loops[i].vertex_index] for i in poly.loop_indices]
+        if max(ws) <= 0:
+            continue
+        corners = [uv[i].uv for i in poly.loop_indices]
+        for k in range(1, len(corners) - 1):
+            _fill_weighted(mask, (corners[0], corners[k], corners[k + 1]), (ws[0], ws[k], ws[k + 1]))
+    for _ in range(grow):
+        grown = mask.copy()
+        for shifted in (np.roll(mask, 1, 0), np.roll(mask, -1, 0), np.roll(mask, 1, 1), np.roll(mask, -1, 1)):
+            np.maximum(grown, np.where(mask == 0, shifted, 0), out=grown)
+        mask = grown
+    share = mask[..., None]
+    px[..., :3] = px[..., :3] * (1 - share) + np.array(color, dtype=np.float32) * share
+    image.pixels[:] = px.ravel()
+    image.update()
+    path = os.path.join(REPO, "assets", "blender", name, f"{name}_color.png")
+    image.filepath_raw = path
+    image.file_format = "PNG"
+    image.save()
+    image.pack()
+    print("paint_region:", int((mask > 0.5).sum()), "texels painted ->", path)
+    return path
+
+
 def paint_patch(mesh, color, cells=64):
     """Paints a small patch of `color` (RGB 0..1) into a corner of the colour map no UV uses and returns its UV, so
     pieces added by hand (bolt()) take that colour without a second material. Run after optimize()."""
