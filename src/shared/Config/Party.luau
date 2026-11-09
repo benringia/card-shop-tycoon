@@ -151,6 +151,9 @@ return {
 	-- rig_kit.mouth_cut crease if they gape wide; 1 when nil).
 	CREATURE_STYLE = {
 		Boltlynx = { fidgets = { "look", "tilt", "sniff", "stretch", "sit", "scratch", "yawn", "shake", "wag" }, tailSpeed = 0.45, tailAmount = 0.9, bounce = 0.5 },
+		-- Pish, the tutorial's guide puppy (spec 2026-11-09-tutorial-pish-design): a small dog's quick wag and bouncy trot;
+		-- his big idles are keyed clips (assets/monster-animations/Pish), so only small fidgets here
+		Pish = { fidgets = { "look", "tilt", "sniff" }, tailSpeed = 0.9, tailAmount = 1, bounce = 0.6 },
 		Voidmaw = { fidgets = { "look", "sniff", "yawn", "shake", "tilt", "stretch", "stomp" }, tailSpeed = 0.35, tailAmount = 0.7, bounce = 0.4, stride = 1.2 }, -- a huge prowling dragon
 		prismHydra = { fidgets = { "look", "shake", "stomp" }, tailSpeed = 0.3, tailAmount = 0.5, bounce = 0.2, stride = 0.9 }, -- the final boss: heavy, slow
 		-- Wild monsters (keyed by species, spec 2026-11-01-wild-monster-models-design)
