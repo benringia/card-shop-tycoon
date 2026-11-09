@@ -8,10 +8,11 @@ assets/blender/Pish/Pish_raw.glb (also kept out of git). Run in a background Ble
   blender -b --factory-startup --python tools/blender/prep_pish.py
 
 It imports the raw model, stands it on its feet's centre facing -Y (Meshy copied the concept's three-quarter view:
-the dog stood turned 41 degrees to its right), scales it to HEIGHT metres, rebuilds it as one clean ~10,000-triangle
-surface with its colours baked (rig_kit.remesh_bake) and paints the light brown patch the owner asked for on the top
-of its back, between its head and its tail (rig_kit.paint_region; PATCH=0 skips it). Saves
-assets/blender/Pish/Pish_meshy.blend (object "Pish_Dog") and preview renders next to it.
+the dog stood turned 41 degrees to its right while its head looked at the camera), scales it to HEIGHT metres,
+reduces it to ~10,000 triangles (rig_kit.optimize; its surface isn't closed, so a voxel remesh loses the body), turns
+the head back in line with the body (straightening the body had turned it 40 degrees to its left), and paints the
+light brown patch the owner asked for on the top of its back, between its head and its tail (rig_kit.paint_region;
+PATCH=0 skips it). Saves assets/blender/Pish/Pish_meshy.blend (object "Pish_Dog") and preview renders next to it.
 """
 import math
 import os
@@ -28,7 +29,16 @@ FOLDER = os.path.join(rig_kit.REPO, "assets", "blender", NAME)
 RAW = os.path.join(FOLDER, "Pish_raw.glb")
 HEIGHT = 1.0  # metres, like the other generated creatures; the game scales the model
 TURN = 41  # degrees about the vertical: the dog stood turned this far to its right
-VOXEL = 0.004  # metres: keeps the eyes, the two bottom teeth and the tongue tip
+# The head: turned back HEAD_TURN degrees about a vertical axis through HEAD_PIVOT (x, y), measured from the eyes and
+# nose (their midpoint sat at x +0.14). Each vertex turns by its share of the head: everything above HEAD_LOW at the
+# front, rising to HEAD_HIGH behind y 0 (the top of the back is 0.58 up), nothing behind the neck (y > 0.12), and the
+# ears (their beige and grey-brown colour, hanging lower; the far one had swung back past y 0) all the way.
+HEAD_TURN = -40
+HEAD_PIVOT = (0.0, -0.25)
+HEAD_LOW, HEAD_HIGH = 0.48, 0.6
+# White fur this close to the ears' colour turns with them (metres). Wider reaches, paler greys or spreading the turn
+# along the mesh caught the shadowed chest fur under the ears and tore it; a sliver under the far ear stays.
+EAR_REACH = 0.035
 # The patch on its back (owner 2026-11-09: "light brown, at the top of his spine, between his head and his tail"):
 # a soft ellipse on the upward-facing fur, centred on the spine
 PATCH_COLOR = (0.62, 0.45, 0.30)  # light brown, a little warmer than the ear tips
@@ -87,6 +97,63 @@ def straighten(source):
     move = Matrix.Translation(Vector((-centre[0], -centre[1], -co[:, 2].min())))
     source.data.transform(Matrix.Scale(scale, 4) @ Matrix.Rotation(math.radians(TURN), 4, "Z") @ move)
     source.data.update()
+
+
+def _smooth(value, zero, one):
+    t = min(1.0, max(0.0, (value - zero) / (one - zero)))
+    return t * t * (3 - 2 * t)
+
+
+def turn_head(mesh):
+    """Turns the head (and the ears) back in line with the body, blending into the neck"""
+    import numpy as np
+
+    image = next(n.image for mat in mesh.data.materials if mat and mat.use_nodes
+                 for n in mat.node_tree.nodes if n.type == "TEX_IMAGE" and n.image)
+    width, height = image.size
+    px = np.array(image.pixels[:], dtype=np.float32).reshape(height, width, 4)
+    uv = mesh.data.uv_layers.active.data
+    colour = {}
+    for loop in mesh.data.loops:
+        u, v = uv[loop.index].uv
+        colour[loop.vertex_index] = px[min(height - 1, int(v * height)), min(width - 1, int(u * width)), :3]
+    from mathutils import kdtree
+
+    def near_ear(co):
+        return abs(co.x) > 0.1 and co.z > 0.33 and co.y < 0.1
+
+    ears = []
+    for vert in mesh.data.vertices:
+        rgb = colour.get(vert.index)
+        if rgb is not None and near_ear(vert.co):
+            top, low = float(rgb.max()), float(rgb.min())
+            if top < 0.7 or (top - low) / max(top, 1e-6) > 0.12:
+                ears.append(vert.co.copy())
+    tree = kdtree.KDTree(max(1, len(ears)))
+    for i, co in enumerate(ears):
+        tree.insert(co, i)
+    tree.balance()
+    shares = []
+    for vert in mesh.data.vertices:
+        co = vert.co
+        behind = _smooth(co.y, -0.15, 0.0)
+        floor = HEAD_LOW * (1 - behind) + HEAD_HIGH * behind
+        share = _smooth(co.z, floor, floor + 0.07) * (1 - _smooth(co.y, 0.05, 0.12))
+        # The ears turn whole, with the white fur inside them (within EAR_REACH of an ear-coloured vertex)
+        if ears and near_ear(co):
+            share = max(share, 1 - _smooth(tree.find(co)[2], EAR_REACH * 0.6, EAR_REACH))
+        shares.append(share)
+    px_, py_ = HEAD_PIVOT
+    for vert in mesh.data.vertices:
+        co = vert.co
+        share = shares[vert.index]
+        if share <= 0:
+            continue
+        angle = math.radians(HEAD_TURN * share)
+        dx, dy = co.x - px_, co.y - py_
+        co.x = px_ + dx * math.cos(angle) - dy * math.sin(angle)
+        co.y = py_ + dx * math.sin(angle) + dy * math.cos(angle)
+    mesh.data.update()
 
 
 def patch_weight(position, normal):
@@ -161,9 +228,10 @@ straighten(dog)
 # Meshy's surface isn't closed, so a voxel remesh (rig_kit.remesh_bake) loses the body: reduce it instead
 rig_kit.optimize(dog, NAME, target_tris=10000)
 dog.name = "Pish_Dog"
+turn_head(dog)
 measure(dog)
 if os.environ.get("PATCH", "1") == "1":
-    rig_kit.paint_region(dog, NAME, PATCH_COLOR, patch_weight)
+    rig_kit.paint_region(dog, NAME, PATCH_COLOR, patch_weight, grow=1)  # more spread specks onto nearby UV islands
 bpy.ops.outliner.orphans_purge(do_recursive=True)
 for key in [k for k in bpy.context.scene.keys() if k.startswith("blendermcp_")]:
     del bpy.context.scene[key]

@@ -6,9 +6,12 @@ Run in a background Blender:
 
 A chibi dog: a big round head (y -0.6..0, z 0.5..1.0) over a small body (y -0.3..0.35, z 0.2..0.58) on four short
 legs (z 0..0.25; front feet at y -0.25, hind at 0.25, x +-0.16), floppy ears down the sides of its head and a
-curled puff of a tail on its rump. Bones named for src/shared/Util/PetRig.luau, positions read off the mesh. Writes
+curled puff of a tail on its rump. Bones named for src/shared/Util/PetRig.luau, positions read off the mesh. The
+lower jaw opens for his barks (owner 2026-11-09: barking among his animations): the underbite's chin with its two
+teeth and the tongue, under the mouth line, split from the head with a dark mouth behind it (rig_kit.mouth_cut).
+Saves assets/blender/Pish/Pish.blend (Pish_meshy.blend stays the unrigged prep) and writes
 assets/blender/Pish/Pish.fbx (EXPORT=0 skips it). POSE=1 renders a test pose (a stride, head turned, ears and tail
-swung) to assets/blender/Pish/Pish_pose_<view>.png to check the skin.
+swung, the mouth open) to assets/blender/Pish/Pish_pose_<view>.png to check the skin.
 """
 import math
 import os
@@ -53,6 +56,13 @@ BONES = [
     ("Tail_2", "Tail_1", (0, 0.46, 0.74), (0, 0.38, 0.8)),
 ]
 
+# The mouth (read off a slice through the muzzle): open a little, 13 cm wide (x -0.08..0.05), its line 0.635 up at the
+# corner rising to 0.647 at the front so the two bottom teeth (up to 0.645) go with the jaw and the upper lip (from
+# 0.65) stays; the chin juts forward to y -0.6 and runs down to 0.53
+MOUTH = dict(hinge_y=-0.51, tip_y=-0.6, top_hinge=0.635, top_tip=0.647)
+BONES.append(("Jaw_0", "Head_0", (-0.015, -0.51, 0.625), (-0.015, -0.59, 0.585)))
+JAW = rig_kit.jaw_share(bottom=0.53, half_width=0.1, mid_x=-0.015, top_blend=0.003, **MOUTH)
+
 params = rig_kit.Params()
 params.leg_top = 0.3  # the body's underside is about 0.2 up
 params.leg_full = 0.14
@@ -73,6 +83,7 @@ def test_pose(rig):
         "Head_0": (0, 0, 20), "Neck": (10, 0, 0),
         "Ear_Left_0": (0, 25, 0), "Ear_Right_0": (0, -25, 0),
         "Tail_0": (0, 0, 30), "Tail_1": (0, 0, 20),
+        "Jaw_0": (25, 0, 0),
     }
     for name, (x, y, z) in turns.items():
         bone = rig.pose.bones[name]
@@ -107,6 +118,14 @@ def test_pose(rig):
         bpy.ops.render.render(write_still=True)
 
 
-rig, mesh = rig_kit.run("Pish", "Pish_Dog", BONES, params, export_now=os.environ.get("POSE", "0") != "1")
+bpy.ops.wm.save_as_mainfile(filepath=os.path.join(rig_kit.REPO, "assets", "blender", "Pish", "Pish.blend"))
+mesh = bpy.data.objects["Pish_Dog"]
+rig_kit.optimize(mesh, "Pish")
+rig_kit.mouth_cut(mesh, JAW, cavity_color=(0.12, 0.05, 0.06), **MOUTH)
+rig = rig_kit.build_rig("PishRig", BONES)
+rig_kit.skin(mesh, rig, BONES, params)
+rig_kit.reweight_jaw(mesh, JAW)
 if os.environ.get("POSE", "0") == "1":
     test_pose(rig)
+elif os.environ.get("EXPORT", "1") == "1":
+    rig_kit.export("Pish", rig, mesh)
