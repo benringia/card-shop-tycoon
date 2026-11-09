@@ -5,6 +5,7 @@
 -- catches nested ones).
 local fs = require("@lune/fs")
 local roblox = require("@lune/roblox")
+local expect = require("./lib/expect")
 
 local FOLDERS = { "assets/creatures", "assets/monsters", "assets/props", "assets/town", "assets/place-props", "assets/packs", "assets/weapons", "assets/fx-models" }
 -- The 3D pack models (UI project 3): each file's model and the meshes the game looks up in it
@@ -137,6 +138,23 @@ return {
 				checkShafted(weapon.model)
 			end
 		end
+	end,
+
+	-- Thousand Cuts' Grim Reaper (spec 2026-11-09-weapons-round3-scythes-design 5.4): one mesh, Reaper, its PrimaryPart,
+	-- the model's pivot at the bottom centre (where it rises from the rift; Util/SwordSkillFx moves it by its pivot)
+	["the Grim Reaper model is in: its Reaper mesh the PrimaryPart, the pivot at its bottom, straight"] = function()
+		local path = "assets/fx-models/GrimReaper.rbxm"
+		assert(fs.isFile(path), `{path} is missing (the owner imports tools/blender/build_grim_reaper.py's FBX)`)
+		local model = roblox.deserializeModel(fs.readFile(path))[1]
+		assert(model and model:IsA("Model") and model.Name == "GrimReaper", `{path} holds the GrimReaper model`)
+		local reaper = model:FindFirstChild("Reaper")
+		assert(reaper and reaper:IsA("MeshPart"), "its Reaper mesh")
+		assert(model.PrimaryPart == reaper, "the Reaper is its PrimaryPart")
+		local offset = reaper.PivotOffset
+		expect.near(offset.Position.Y, -reaper.Size.Y / 2, 0.05, "the pivot at the bottom")
+		local _, _, _, r00, r01, r02, r10, r11, r12, r20, r21, r22 = offset:GetComponents()
+		local straight = r00 == 1 and r11 == 1 and r22 == 1 and r01 == 0 and r02 == 0 and r10 == 0 and r12 == 0 and r20 == 0 and r21 == 0
+		assert(straight, "its PivotOffset isn't turned")
 	end,
 
 	["the prop folder is scanned too"] = function()
