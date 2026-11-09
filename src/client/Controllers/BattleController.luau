@@ -1180,8 +1180,17 @@ local function onEvents(events: { any })
 				HitFx.burst(at, reap.size, tint)
 				HitFx.ring(at, reap.ring, tint)
 			end
-		elseif event.type == "run" and event.ok == false and event.kind == "failed" then
-			UIController.Notify("Couldn't get away!", true, 1.5)
+		elseif event.type == "run" and event.ok == false then
+			-- Owner 2026-11-09: say when getting away fails. The fight's centre banner (a toast sits under the fight
+			-- buttons): a failed roll, the retry wait still running, or a fight you can't run from
+			if event.kind == "failed" then
+				banner("Couldn't get away!", UIKit.Colors.Danger)
+			elseif event.kind == "wait" then
+				local left = if typeof(event.left) == "number" then math.max(1, math.ceil(event.left)) else nil
+				banner(if left then `Not yet! Run again in {left}s` else "Not yet!", UIKit.Colors.Danger)
+			elseif event.kind == "none" then
+				banner("You can't run from this fight!", UIKit.Colors.Danger)
+			end
 		elseif event.type == "callin" and event.from then
 			floatText(event.from, "Joined!", HEAL_COLOR)
 		elseif event.type == "heal" then

@@ -823,6 +823,8 @@ return {
 			expect.equal(retry[1].type, "run", "run event")
 			expect.equal(retry[1].ok, false, "must wait")
 			expect.equal(retry[1].kind, "wait", "wait reason")
+			-- the seconds still to wait, for the fight's "Not yet" banner (owner 2026-11-09: tell me when getting away fails)
+			expect.near(retry[1].left :: number, combat.RUN_RETRY_SECONDS, 1e-9, "the whole retry wait is still left")
 		else
 			expect.equal(state.result, "run", "ran away")
 		end

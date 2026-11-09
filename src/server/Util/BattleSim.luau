@@ -1725,7 +1725,8 @@ function BattleSim.tryRun(state: State, sideName: string): { Event }
 		table.insert(events, { type = "run", ok = false, kind = "none" })
 		return events
 	elseif state.time < side.runReadyAt then
-		table.insert(events, { type = "run", ok = false, kind = "wait" })
+		-- `left`: the seconds still to wait (the fight's "Not yet" banner)
+		table.insert(events, { type = "run", ok = false, kind = "wait", left = side.runReadyAt - state.time })
 		return events
 	end
 	if random(state) < BattleSim.getRunChance(state, sideName) then
