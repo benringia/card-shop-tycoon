@@ -240,4 +240,129 @@ function WeaponText.costChips(cost: { cash: number, items: { [string]: number } 
 	return chips
 end
 
+-- The weapon window (Armory UI, owner's pick A 2026-11-09) ----------------------------------------------------------
+
+-- A Power as the cards show it (2 decimals), read back as a number so differences match what's on screen
+local function shown(cfg: any, combat: any, weaponId: string, owned: { grade: string, level: number }?): number
+	local grade = if owned then owned.grade else "C"
+	local level = if owned then owned.level else 0
+	return tonumber(string.format("%.2f", WeaponRules.shownPower(cfg, combat, weaponId, grade, level))) :: number
+end
+
+-- This weapon's Power against the equipped one's: "+0.79 vs Steel Sword" (sign 1), "-0.20 vs Rift Reaper" (-1),
+-- "Same Power as ..." or "Equipped now" (0). A record nil: Grade C at +0. nil when either weapon is unknown.
+export type Versus = { text: string, sign: number }
+function WeaponText.versus(
+	cfg: any,
+	combat: any,
+	weaponId: string,
+	owned: { grade: string, level: number }?,
+	equippedId: string,
+	equipped: { grade: string, level: number }?
+): Versus?
+	local held = cfg.ById[equippedId]
+	if not cfg.ById[weaponId] or not held then
+		return nil
+	end
+	if weaponId == equippedId then
+		return { text = "Equipped now", sign = 0 }
+	end
+	local difference = shown(cfg, combat, weaponId, owned) - shown(cfg, combat, equippedId, equipped)
+	if math.abs(difference) < 0.005 then
+		return { text = `Same Power as {held.name}`, sign = 0 }
+	end
+	local sign = if difference > 0 then 1 else -1
+	return { text = `{if sign > 0 then "+" else "-"}{string.format("%.2f", math.abs(difference))} vs {held.name}`, sign = sign }
+end
+
+-- A weapon's Power from Grade C at +0 to Grade S at the top level ("x1.40 to x2.09"; one number when they match)
+function WeaponText.powerRange(cfg: any, combat: any, weaponId: string): string
+	if not cfg.ById[weaponId] then
+		return ""
+	end
+	local low = string.format("x%.2f", shown(cfg, combat, weaponId, nil))
+	local high = string.format("x%.2f", shown(cfg, combat, weaponId, { grade = "S", level = cfg.MAX_LEVEL }))
+	return if low == high then low else `{low} to {high}`
+end
+
+-- Where a boss lives, after its name (Config/Bosses place)
+local PLACE_WORDS = { Wild = "in the Wild", Frontier = "in the Frontier", Dungeon = "at the end of the Dungeon" }
+
+-- How to get a weapon you don't have: the boss that drops it ("Beat the Rift Devourer in the Frontier: it can drop.")
+-- and the line over its forge materials (WeaponText.progress), when it can be forged
+export type HowToGet = { drop: string?, forge: string? }
+function WeaponText.howToGet(cfg: any, bosses: any, weaponId: string): HowToGet
+	local weapon = cfg.ById[weaponId]
+	local source = if weapon then weapon.source else nil
+	if not source then
+		return {}
+	end
+	if source.kind == "boss" then
+		local boss = bosses.BOSSES[source.boss]
+		local name = if boss then boss.name else source.boss
+		local where = if boss then PLACE_WORDS[boss.place] else nil
+		return {
+			drop = if where then `Beat the {name} {where}: it can drop.` else `Beat the {name}: it can drop.`,
+			forge = if WeaponRules.makeCost(cfg, weaponId) then "Or forge it:" else nil,
+		}
+	elseif source.kind == "forge" then
+		return { forge = "Forge it at the Forge in your shop:" }
+	elseif source.kind == "masterwork" then
+		return { forge = "A masterwork. Forge it at the Forge in your shop:" }
+	end
+	return {}
+end
+
+-- A cost as progress rows: each material (sorted by id) with have/need ("12/60"), then the cash ("$30,000", have being
+-- your cash), each with its picture (a Config/UIIcons name, "" for an unknown item)
+export type Progress = { icon: string, name: string, have: number, need: number, text: string }
+function WeaponText.progress(cost: { cash: number, items: { [string]: number } }, have: { [string]: number }, cashNow: number, items: any): { Progress }
+	local rows: { Progress } = {}
+	local ids = {}
+	for id in cost.items do
+		table.insert(ids, id)
+	end
+	table.sort(ids)
+	for _, id in ids do
+		local need = cost.items[id]
+		local count = have[id] or 0
+		local item = items.ITEMS[id]
+		table.insert(rows, {
+			icon = if item then item.icon or "" else "",
+			name = if item then item.name else id,
+			have = count,
+			need = need,
+			text = `{count}/{need}`,
+		})
+	end
+	if cost.cash > 0 then
+		table.insert(rows, { icon = "Cash", name = "Cash", have = cashNow, need = cost.cash, text = cash(cost.cash) })
+	end
+	return rows
+end
+
+-- A weapon's sword skill (Config/CombatHud SKILLS by its moveset, else the dash slash's BUTTONS.skill): its icon, its
+-- name in words ("DASH" -> "Dash") and what it does
+export type Skill = { icon: string, name: string, text: string }
+function WeaponText.skill(hud: any, cfg: any, weaponId: string): Skill
+	local weapon = cfg.ById[weaponId]
+	local spec = (if weapon and weapon.moveset then hud.SKILLS[weapon.moveset] else nil) or hud.BUTTONS.skill
+	local name: string = spec.name
+	if name == string.upper(name) then
+		name = string.upper(string.sub(name, 1, 1)) .. string.lower(string.sub(name, 2))
+	end
+	return { icon = spec.icon, name = name, text = spec.tip }
+end
+
+-- What sharing the weapon's element with your summoned creature gives (Config/Weapons BOND; the Prism Blade: every
+-- creature). nil for a weapon with no element.
+function WeaponText.bond(cfg: any, weaponId: string): string?
+	local weapon = cfg.ById[weaponId]
+	if not weapon or (not weapon.prism and not weapon.element) then
+		return nil
+	end
+	local who = if weapon.prism then "every creature" else `{weapon.element} creatures`
+	return `+{percent(cfg.BOND.damage - 1)} hits and a {percent(cfg.BOND.meter - 1)} faster super with {who}`
+end
+
 return WeaponText

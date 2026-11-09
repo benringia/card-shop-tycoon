@@ -207,6 +207,36 @@ return {
 	BEACON = { range = 150, height = 40, width = 3, swell = 1.6, seconds = 4, fadeIn = 0.3, fadeOut = 1.2 },
 	-- The cheap glow's sparkle look
 	SPARKLE_LOOK = { texture = "spark", lifetime = { 0.8, 1.4 }, size = 0.3, speed = { 0.3, 0.9 }, brightness = 3 },
+	-- The weapon cards (Armory UI, owner's picks 2026-11-09: 1B, 2B). Owned: the Armory cover painting (Config/
+	-- BinderCovers) dimmed to `backdrop`, soft rays and the weapon's glow colour behind its portrait. Not owned: the
+	-- same painting dark (`lockedBackdrop`), the portrait as a black shadow, a lock. Transparencies 0-1; RGB tints.
+	CARD = {
+		backdrop = { 165, 160, 170 },
+		rays = 0.7,
+		raysSize = 1.7, -- of the art's width
+		glow = 0.2,
+		glowSize = 1.3, -- of the art's width
+		lockedBackdrop = { 70, 74, 92 },
+		shadow = 0.2,
+		lockSize = 0.26, -- of the art's width
+	},
+	-- The weapon window's icons (Config/UIIcons names; WeaponLookRules.familyIcon / perkIcon): a family's, a perk's by
+	-- kind (a venom burn by its look)
+	ICONS = {
+		family = { sword = "Sword", spear = "Spear", scythe = "Scythe" },
+		perk = {
+			heal = "Heal",
+			erupt = "MoveInferno",
+			chill = "FrostHeart",
+			burn = "Ember",
+			venom = "MoveCurse",
+			chain = "Bolt",
+			execute = "Target",
+			prism = "PrismScale",
+		},
+		unknownFamily = "Sword",
+		unknownPerk = "Sparkle",
+	},
 	-- The drop cinematic and the forge reveal (WeaponRevealController, on the pack opening's stage): the circle opens,
 	-- a light column in the rarity's colour shoots up, the weapon rises out of it spinning, the banner and its grade
 	-- pop, a line under it. Seconds from the start; studs on the stage (its camera is 8 studs from the middle).

@@ -4,6 +4,8 @@
 local WeaponLookRules = require("../src/shared/Util/WeaponLookRules")
 local Looks = require("../src/shared/Config/WeaponLooks")
 local AttackFx = require("../src/shared/Config/AttackFx")
+local Weapons = require("../src/shared/Config/Weapons")
+local UIIcons = require("../src/shared/Config/UIIcons")
 local expect = require("./lib/expect")
 
 return {
@@ -187,5 +189,21 @@ return {
 		expect.equal(WeaponLookRules.auraGrade(Looks, "Bloom", "S"), 1)
 		expect.equal(WeaponLookRules.auraGrade(Looks, "Ember", "C"), 1, "the fire isn't graded")
 		expect.equal(WeaponLookRules.auraGrade(Looks, nil, "C"), 1, "our flames aren't graded")
+	end,
+
+	-- The weapon window's icons (Armory UI 2026-11-09): every family and every perk has an uploaded one
+	["perkIcon and familyIcon: every weapon's perk and family has an uploaded icon"] = function()
+		for _, weapon in Weapons.WEAPONS do
+			local family = WeaponLookRules.familyIcon(Looks, weapon.family)
+			expect.equal(UIIcons[family] ~= nil, true, `{weapon.id}'s family icon {family} is uploaded`)
+			if weapon.perk then
+				local perk = WeaponLookRules.perkIcon(Looks, weapon.perk)
+				expect.equal(UIIcons[perk] ~= nil, true, `{weapon.id}'s perk icon {perk} is uploaded`)
+			end
+		end
+		expect.equal(WeaponLookRules.perkIcon(Looks, { kind = "burn" }), "Ember")
+		expect.equal(WeaponLookRules.perkIcon(Looks, { kind = "burn", look = "venom" }), "MoveCurse", "a venom burn by its look")
+		expect.equal(WeaponLookRules.perkIcon(Looks, { kind = "mystery" }), "Sparkle", "an unknown perk")
+		expect.equal(WeaponLookRules.familyIcon(Looks, "mystery"), "Sword", "an unknown family")
 	end,
 }
