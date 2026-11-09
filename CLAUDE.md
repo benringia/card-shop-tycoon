@@ -24,8 +24,9 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - `assets/npcs` → ReplicatedStorage.NpcModels: Pish, the tutorial's guide (`Pish.rbxm`, the owner's dog: Meshy, then
   `tools/blender/prep_pish.py` (straighten, scale, head turn, back patch) and `rig_pish.py` (bones, jaw, stiffened
   head and ears; saves `assets/blender/Pish/Pish.fbx`), his 16 clips by `anim_pish.py` into
-  `assets/monster-animations/Pish`, checked by `tools/blender/check_stretch.py`; DESIGN.md 7.6). Until the file is
-  saved and mapped in the project files, the guide Pish is an invisible marker that still leads and Town Pish isn't made.
+  `assets/monster-animations/Pish`, checked by `tools/blender/check_stretch.py`; DESIGN.md 7.6). Mapped in the main
+  project only. Studio saves the mesh as `MeshContent`, which Lune can't read: a Lune rewrite keeps it, but a model added
+  while Rojo is live arrives without its mesh until Rojo reconnects.
 - `assets/props` → ReplicatedStorage.PropModels (clients build placement ghosts from them): town prop models saved as `<Slot>.rbxm` (docs/props.md). Missing
   ones get a code-built stand-in; the same script test applies.
   The town portals (`PortalWild`, `PortalFrontier`, `PortalArena`) are built by `tools/blender/build_portal_<world>.py` on
