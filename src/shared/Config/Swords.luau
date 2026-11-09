@@ -519,13 +519,19 @@ end
 -- (its damage lands in front: every cut soft-aims you at the foe, so a hit behind you would miss the lone foe of most
 -- fights); Whirlwind, two full spins, every foe round you. Nothing past 10 studs (a boss's swipe still reaches you).
 -- Reaping Cyclone (spec 5.3): three spins, a ring of crescents each, every foe within 9 studs on the third. Timings are
--- its animations' (tools/blender/anim_scythe.py, approved by the owner 2026-11-09); they play from SwordAnimations.Scythe
--- in Studio until published; sounds and cues are the spear's until its own (plan Task 6).
+-- its animations' (tools/blender/anim_scythe.py, approved and published by the owner 2026-11-09); sounds and cues are
+-- the spear's until its own (plan Task 6).
 do
+	-- its own moves (published by the owner 2026-11-09); dodge, flinch, down and get up stay the Steel Sword's
 	local animations = table.clone(starter.animations)
-	for _, move in { "ready", "draw", "sheath", "run", "cut1", "cut2", "cut3", "skill" } do
-		animations[move] = ""
-	end
+	animations.ready = "rbxassetid://107381698123347"
+	animations.draw = "rbxassetid://120963161842619"
+	animations.sheath = "rbxassetid://87007060779059"
+	animations.run = "rbxassetid://93344115404944"
+	animations.cut1 = "rbxassetid://84614363717630"
+	animations.cut2 = "rbxassetid://101503127287374"
+	animations.cut3 = "rbxassetid://112263670560674"
+	animations.skill = "rbxassetid://133282199201010"
 	local spear = SWORDS.spear
 	SWORDS.scythe = {
 		name = "Scythe",

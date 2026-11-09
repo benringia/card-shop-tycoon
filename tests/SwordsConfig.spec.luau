@@ -460,6 +460,26 @@ return {
 		expect.equal(Swords.SWORDS.magmaHalberd.animations.cut1, Swords.SWORDS.spear.animations.cut1, "the cuts stay the spear's")
 	end,
 
+	["the scythe's moves are published (the owner's ids, 2026-11-09); dodge, flinch, down and get up stay the sword's"] = function()
+		local ids = {
+			cut1 = "rbxassetid://84614363717630",
+			cut2 = "rbxassetid://101503127287374",
+			cut3 = "rbxassetid://112263670560674",
+			skill = "rbxassetid://133282199201010",
+			draw = "rbxassetid://120963161842619",
+			sheath = "rbxassetid://87007060779059",
+			ready = "rbxassetid://107381698123347",
+			run = "rbxassetid://93344115404944",
+		}
+		local scythe = Swords.SWORDS.scythe
+		for key, id in ids do
+			expect.equal(scythe.animations[key], id, key)
+		end
+		for _, key in { "dodge", "flinch", "down", "getUp" } do
+			expect.equal(scythe.animations[key], Swords.SWORDS.starterSword.animations[key], key)
+		end
+	end,
+
 	["each round 1 skill frees you once its damage is committed, inside the move (owner 2026-11-07)"] = function()
 		local wants = { forgeSword = 0.8, verdantBlade = 0.45, sunforgedBlade = 1.78, prismBlade = 1.2 }
 		for moveset, at in wants do
