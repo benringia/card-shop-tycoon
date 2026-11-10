@@ -8,16 +8,16 @@ return {
 	STEPS = { "giftPack", "buildRack", "orderStock", "stockRack", "customer", "ringUp", "gift", "bye" },
 	-- The picture over Pish's head for each step (Config/UIIcons names)
 	STEP_ICONS = {
-		giftPack = "BoosterPack",
+		giftPack = "PishPresent",
 		buildRack = "Build",
 		orderStock = "Order",
 		stockRack = "Box",
 		customer = "Customer",
 		ringUp = "Register",
-		gift = "Gift",
+		gift = "PishGift",
 		bye = "Paw",
 	} :: { [string]: string },
-	FIRST_ITEM = "sparkPack", -- the pack Pish drops at the start (Config/Items)
+	FIRST_ITEM = "pishPresent", -- his present at the start: a First Spark pack with his picture (Config/Items)
 	GIFT_ITEM = "pishGift", -- his gift at the end: a pack whose hit card is Very Rare or better
 	RACK = "SmallPackRack", -- the rack the first visit builds (Config/Shelves)
 	ORDER_PRODUCT = "FirstSparkPack", -- the stock it orders (Config/Products)

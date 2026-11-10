@@ -48,6 +48,8 @@ return {
 	Customer = "rbxassetid://77604247843612",
 	Trophy = "rbxassetid://118220724387080",
 	Gift = "rbxassetid://81487341571661",
+	PishPresent = "rbxassetid://113628518764342", -- Pish hugging a ribboned First Spark pack (assets/ui/icons, Figma pick B)
+	PishGift = "rbxassetid://70964467654557", -- a rainbow-foil pack with a purple bow and a paw medal
 	Lock = "rbxassetid://126931591650684",
 	Check = "rbxassetid://134111044278552",
 	Next = "rbxassetid://85219685038174",

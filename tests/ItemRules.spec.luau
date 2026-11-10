@@ -23,6 +23,20 @@ return {
 		expect.isNil(none, "the level-up pack has no floor")
 	end,
 
+	-- Round 3 (owner 2026-11-10: "we need an icon for pish's gift. that will make players excited"): his present at the
+	-- start is its own item with his picture, his gift at the end too
+	["Pish's present is its own item: a First Spark pack, no floor, his pictures on both gifts"] = function()
+		local Pish = require("../src/shared/Config/Pish")
+		local UIIcons = require("../src/shared/Config/UIIcons")
+		expect.equal(Pish.FIRST_ITEM, "pishPresent")
+		local product, floor = ItemRules.openablePack(config, Pish.FIRST_ITEM)
+		expect.equal(product, "FirstSparkPack")
+		expect.isNil(floor, "a plain pack")
+		expect.equal(config.ITEMS.pishPresent.icon, "PishPresent")
+		expect.equal(config.ITEMS.pishGift.icon, "PishGift")
+		assert(UIIcons.PishPresent and UIIcons.PishGift, "both pictures uploaded")
+	end,
+
 	["sanitize: unknown ids, bad counts dropped; whole numbers; capped"] = function()
 		local items = ItemRules.sanitize(config, { starShard = 4.9, mystery = 3, [5] = 1 })
 		expect.equal(items.starShard, 4, "floored")
