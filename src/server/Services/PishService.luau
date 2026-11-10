@@ -4,9 +4,10 @@
 -- doors, at a dog's walk, going round the plaza fountain (Util/PishPath), and between walks picks a random idle clip
 -- (never the same twice running) or a nap. Clients draw him on the marker (Client/Controllers/TownPishController) and
 -- play the clip named by its Clip attribute each time ClipId changes.
--- Petting him (a ProximityPrompt on the marker): he stops, faces the player and plays "petted"; within LUCK.petRange,
--- once per LUCK.cooldown, it gives Pish's Luck for LUCK.seconds (PackService.SetLuck; the player's PishLuckUntil
--- attribute, os.time). PetPish is the tutorial's own (client-only) Pish being petted: a cuddle, no luck.
+-- Petting him (a ProximityPrompt on the marker) only at your own shop's door, after your first visit (owner 2026-11-10;
+-- his VisitingOwner attribute, the client shows the prompt only then): he stops, faces the player and plays "petted";
+-- within LUCK.petRange, once per LUCK.cooldown, it gives Pish's Luck for LUCK.seconds (PackService.SetLuck; the
+-- player's PishLuckUntil attribute, os.time).
 local AnalyticsService = game:GetService("AnalyticsService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -44,7 +45,6 @@ local lastClip: string? = nil
 local pettedUntil = 0
 local luckAt: { [Player]: number } = {} -- os.time of each player's last luck from him (TutorialService saves it later)
 local allowPet = RateLimiter.new(PET_COOLDOWN)
-local allowTutorialPet = RateLimiter.new(PET_COOLDOWN)
 
 local function ground(x: number, z: number): Vector3
 	return Vector3.new(x, Wild.SPRING.y, z)
@@ -107,8 +107,8 @@ local function walkTo(target: Vector3, speed: number)
 	marker:SetAttribute("Moving", false)
 end
 
--- An open shop's doorway (its owner in the game), seen from the street, or nil
-local function shopDoor(): (Vector3?, Vector3?)
+-- An open shop's doorway (its owner in the game), seen from the street, and its owner; or nil
+local function shopDoor(): (Vector3?, Vector3?, Player?)
 	local open = {}
 	for _, plot in PlotService.GetPlots() do
 		if plot.owner and plot.owner.Parent then
@@ -116,14 +116,14 @@ local function shopDoor(): (Vector3?, Vector3?)
 		end
 	end
 	if #open == 0 then
-		return nil, nil
+		return nil, nil, nil
 	end
 	local plot = open[rng:NextInteger(1, #open)]
 	local floor = plot.floor
 	local outward = Vector3.new(floor.CFrame.LookVector.X, 0, floor.CFrame.LookVector.Z).Unit
 	local doorway = floor.Position + outward * PlotConfig.DEPTH / 2
 	local outside = doorway + outward * DOOR_STEP
-	return ground(outside.X, outside.Z), ground(doorway.X, doorway.Z)
+	return ground(outside.X, outside.Z), ground(doorway.X, doorway.Z), plot.owner
 end
 
 local function idle()
@@ -142,15 +142,18 @@ end
 local function day()
 	while true do
 		local town = Pish.TOWN
-		local door, doorway = nil, nil
+		local door, doorway, owner = nil, nil, nil
 		if rng:NextNumber() < town.shopChance then
-			door, doorway = shopDoor()
+			door, doorway, owner = shopDoor()
 		end
-		if door and doorway then
+		if door and doorway and owner then
 			walkTo(door, town.speed)
 			face(doorway)
 			play(if rng:NextNumber() < 0.5 then "sit" else "sniff")
+			-- At this shop's door: its owner may pet him (owner 2026-11-10), once their first visit is done
+			marker:SetAttribute("VisitingOwner", owner.UserId)
 			waitFor(rng:NextNumber(town.visitSeconds[1], town.visitSeconds[2]))
+			marker:SetAttribute("VisitingOwner", 0)
 		elseif #stops > 0 then
 			walkTo(stops[rng:NextInteger(1, #stops)], town.speed)
 			idle()
@@ -173,8 +176,9 @@ local function onPet(player: Player)
 		return
 	end
 	local near = (root.Position - marker.Position).Magnitude <= Pish.LUCK.petRange + 2
-	if not near then
-		return
+	local visitingYou = marker:GetAttribute("VisitingOwner") == player.UserId
+	if not near or not visitingYou or player:GetAttribute("TutorialDone") ~= true then
+		return -- only at your own shop's door, after your first visit (the client shows the prompt only then)
 	end
 	pettedUntil = os.clock() + PETTED_SECONDS
 	face(root.Position)
@@ -199,16 +203,6 @@ local function onPet(player: Player)
 	end)
 end
 
--- The tutorial's own Pish (only on that player's screen) petted: a cuddle, no luck; counted for the funnel
-local function onTutorialPet(player: Player)
-	if not allowTutorialPet(player) then
-		return
-	end
-	pcall(function()
-		AnalyticsService:LogCustomEvent(player, "PishPetted", 0)
-	end)
-end
-
 -- The last time a player had luck from him, and setting it: TutorialService loads it (petting gives nothing until
 -- then), saves it and forgets it on unload, so it lives in DataService's lifecycle
 function PishService.GetLuckAt(player: Player): number
@@ -223,16 +217,16 @@ function PishService.ForgetLuck(player: Player)
 	luckAt[player] = nil
 end
 
--- Studio's /pish: Town Pish comes to you
+-- Studio's /pish: Town Pish comes to you, as if visiting your shop (so petting can be tried)
 function PishService.ComeTo(player: Player)
 	local root = characterRoot(player)
 	if root and marker then
 		marker.CFrame = CFrame.new(ground(root.Position.X + 4, root.Position.Z))
+		marker:SetAttribute("VisitingOwner", player.UserId)
 	end
 end
 
 function PishService.Start()
-	Remotes.PetPish.OnServerEvent:Connect(onTutorialPet)
 	-- No model, no Town Pish: an invisible marker would carry a "Pet" prompt round the town on nothing
 	local models = ReplicatedStorage:FindFirstChild("NpcModels")
 	if not models or not models:FindFirstChild("Pish") then

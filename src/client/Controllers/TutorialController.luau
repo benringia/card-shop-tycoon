@@ -166,8 +166,33 @@ local function bagSituation(item: string): (string, Target)
 	return "bagOpen", { gui = inside(bag, item) }
 end
 
--- What the player is at in this step (Config/PishTalk `now` lines) and where Pish points for it
+-- The windows each step works in; any other window open is in the way (Pish says to close it)
+local STEP_WINDOWS: { [string]: { [string]: boolean } } = {
+	giftPack = { Bag = true },
+	gift = { Bag = true },
+	buildRack = { BuildMenu = true },
+	orderStock = { OrderMenu = true },
+}
+
+-- A window open that this step doesn't use, and its X
+local function windowInTheWay(stepId: string): GuiObject?
+	local allowed = STEP_WINDOWS[stepId] or {}
+	for _, panel in UIKit.openPanelList() do
+		if not allowed[panel.Name] and shown(panel) then
+			local close = panel:FindFirstChild("Close", true)
+			return if close and close:IsA("GuiObject") then close else panel
+		end
+	end
+	return nil
+end
+
+-- What the player is at in this step (Config/PishTalk `now` lines) and where Pish points for it; first of all, a
+-- window in the way to close
 local function stepSituation(stepId: string): (string, Target)
+	local inTheWay = windowInTheWay(stepId)
+	if inTheWay then
+		return "closeWindow", { gui = inTheWay }
+	end
 	if stepId == "giftPack" then
 		return bagSituation(Pish.FIRST_ITEM)
 	elseif stepId == "gift" then
@@ -219,6 +244,9 @@ local function refreshFocus()
 		talking = line ~= nil and line.next
 		focusKey = step .. ":" .. (if talking then "intro" else situation)
 		focusTarget = if talking then nil else target
+		if step == "bye" then
+			focusTarget = { hud = "Pish", tray = true } -- "Tap Manage, then Pish": where to find him later
+		end
 		focusIcon = Pish.STEP_ICONS[step]
 		focusSituation = situation
 		return
@@ -347,24 +375,10 @@ local function ensurePish(away: number?)
 	made.Parent = workspace
 	marker = made
 	visual = PishVisual.new(made)
-	TownPishController.SetHidden(true)
-	if not visual then
-		return -- no model yet: he still leads, but there's nothing to pet
+	if visual then
+		PishVisual.nameTag(visual, nil) -- no petting while he's teaching (owner 2026-11-10)
 	end
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = "Pet"
-	prompt.ObjectText = ""
-	prompt.HoldDuration = 0
-	prompt.RequiresLineOfSight = false
-	prompt.MaxActivationDistance = Pish.LUCK.petRange
-	prompt.Parent = made
-	prompt.Triggered:Connect(function()
-		play("petted")
-		if visual then
-			PishVisual.hearts(visual)
-		end
-		Remotes.PetPish:FireServer()
-	end)
+	TownPishController.SetHidden(true)
 end
 
 local function removePish()
@@ -409,7 +423,8 @@ local function updateTalk()
 	end
 	local line = TalkRules.show(talk, introIndex, focusSituation)
 	local label = if not line.next then nil elseif line.finish then PishTalk.BYE else PishTalk.NEXT
-	TutorialTalk.say(TalkRules.fill(line.text, Game.NAME), focusIcon, label, function()
+	local text = if not line.next and focusSituation == "closeWindow" then PishTalk.LABELS.close else line.text
+	TutorialTalk.say(TalkRules.fill(text, Game.NAME), focusIcon, label, function()
 		if line.finish then
 			if step == "bye" and not byeSent then
 				byeSent = true
@@ -788,6 +803,11 @@ local function onState(payload: unknown)
 	end
 end
 
+-- The Pish button in the Manage tray: after the first visit, and at its goodbye ("Tap Manage, then Pish")
+local function replayShown(): boolean
+	return step == "bye" or (step == "" and player:GetAttribute("TutorialDone") == true)
+end
+
 local function onStep()
 	local value = player:GetAttribute("TutorialStep")
 	local nextStep = if typeof(value) == "string" then value else ""
@@ -805,7 +825,7 @@ local function onStep()
 	end
 	refreshFocus()
 	if replayButton then
-		replayButton.Visible = step == "" and player:GetAttribute("TutorialDone") == true
+		replayButton.Visible = replayShown()
 	end
 	if step == "" then
 		if before ~= "" then
@@ -862,11 +882,11 @@ function TutorialController.Start()
 			Remotes.TutorialAction:FireServer("replay")
 		end,
 	})
-	;(replayButton :: TextButton).Visible = player:GetAttribute("TutorialDone") == true
+	;(replayButton :: TextButton).Visible = replayShown()
 	player:GetAttributeChangedSignal("TutorialStep"):Connect(onStep)
 	player:GetAttributeChangedSignal("TutorialDone"):Connect(function()
 		if replayButton then
-			replayButton.Visible = step == "" and player:GetAttribute("TutorialDone") == true
+			replayButton.Visible = replayShown()
 		end
 	end)
 	Remotes.TutorialState.OnClientEvent:Connect(onState)
@@ -884,6 +904,19 @@ function TutorialController.Start()
 			return
 		end
 		tick = 0
+		-- A pack opening, a fight or a weapon reveal has the screen: Pish waits quietly (his card, bar and paws hidden)
+		local busy = OpeningStage.isShown() or BattleController.IsFighting() or WeaponRevealController.IsPlaying()
+		TutorialCues.screen().Enabled = not busy
+		if busy then
+			if shownKey ~= "" then
+				clearCues()
+				shownKey = ""
+			end
+			if step == "" then
+				updateVisit()
+			end
+			return
+		end
 		refreshFocus()
 		TutorialTalk.keepClear(if focusTarget then focusTarget.gui else nil)
 		if step ~= "" then

@@ -232,6 +232,17 @@ function UIKit.anyPanelOpen(): boolean
 	return next(openPanels) ~= nil
 end
 
+-- The UIKit.panel windows open now (Pish's tutorial tells the player to close one the step doesn't use)
+function UIKit.openPanelList(): { Frame }
+	local list = {}
+	for frame in openPanels do
+		if frame.Parent then
+			table.insert(list, frame)
+		end
+	end
+	return list
+end
+
 -- World hovers and taps (shelf tooltips, price tags) stay off while a window is open or the pointer is over
 -- visible UI. screen is a viewport point, like UserInputService:GetMouseLocation().
 function UIKit.pointerBlocked(screen: Vector2): boolean

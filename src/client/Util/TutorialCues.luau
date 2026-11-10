@@ -17,7 +17,9 @@ local TutorialCues = {}
 
 local PRINT_GAP = 3 -- studs between paw prints
 local PRINT_MAX = 24
-local PRINT_SIZE = 1.6 -- studs
+local PRINT_PX = 46 -- px: a paw print up close (PRINT_NEAR studs away), smaller further off down to PRINT_MIN
+local PRINT_NEAR = 12
+local PRINT_MIN = 16
 local PAW_SIZE = 64 -- px: the bouncing paw over a button (smaller over a small one, down to PAW_MIN)
 local PAW_MIN = 40
 local RING_PAD = 5 -- px the gold ring stands off the button
@@ -67,51 +69,63 @@ local function gui(): ScreenGui
 	return new
 end
 
--- Glowing paw prints along the ground from `from` to `to`, lighting up one after another
+-- Where a point in the world shows on the cues' screen (it shares the HUD's inset), and how far it is; nil behind
+-- the camera
+local function onScreen(at: Vector3): (Vector2?, number)
+	local camera = workspace.CurrentCamera
+	if not camera then
+		return nil, 0
+	end
+	local point, visible = camera:WorldToScreenPoint(at)
+	if point.Z <= 0 then
+		return nil, 0
+	end
+	return if visible then Vector2.new(point.X, point.Y) else nil, point.Z
+end
+
+-- Glowing paw prints along the ground from `from` to `to`, lighting up one after another. Drawn on the screen over
+-- the world (owner 2026-11-10: "paw prints are not visible when the door is closed"), smaller further away
 function TutorialCues.trail(from: Vector3, to: Vector3): () -> ()
-	local folder = Instance.new("Folder")
-	folder.Name = "PawTrail"
 	local flat = Vector3.new(to.X - from.X, 0, to.Z - from.Z)
 	local count = math.clamp(math.floor(flat.Magnitude / PRINT_GAP), 1, PRINT_MAX)
-	local prints = {}
+	local holder = Instance.new("Frame")
+	holder.Name = "PawTrail"
+	holder.BackgroundTransparency = 1
+	holder.Size = UDim2.fromScale(1, 1)
+	holder.ZIndex = 5
+	holder.Parent = gui()
+	local prints: { { at: Vector3, paw: Frame } } = {}
+	local facing = math.deg(math.atan2(flat.X, -flat.Z))
 	for i = 1, count do
 		local at = from + flat * (i / (count + 1))
-		local anchor = Instance.new("Part")
-		anchor.Anchored = true
-		anchor.CanCollide = false
-		anchor.CanQuery = false
-		anchor.CanTouch = false
-		anchor.Transparency = 1
-		anchor.Size = Vector3.new(0.2, 0.2, 0.2)
-		anchor.Position = Vector3.new(at.X, to.Y + 0.15, at.Z)
-		anchor.Parent = folder
-		local board = Instance.new("BillboardGui")
-		board.Size = UDim2.fromScale(PRINT_SIZE, PRINT_SIZE)
-		board.LightInfluence = 0
-		board.Adornee = anchor
-		board.Parent = anchor
-		local paw = Icon.make(board, "Paw", UDim2.fromScale(1, 1))
+		local paw = Icon.make(holder, "Paw", UDim2.fromOffset(PRINT_PX, PRINT_PX))
+		paw.AnchorPoint = Vector2.new(0.5, 0.5)
+		paw.Rotation = facing
 		tint(paw, GOLD)
-		table.insert(prints, paw)
+		table.insert(prints, { at = Vector3.new(at.X, to.Y + 0.15, at.Z), paw = paw })
 	end
-	folder.Parent = workspace
 	local started = os.clock()
 	local connection = RunService.RenderStepped:Connect(function()
 		local wave = (os.clock() - started) * 6
-		for i, paw in prints do
-			local glow = 0.5 + 0.5 * math.sin(wave - i * 0.7)
-			for _, image in paw:GetDescendants() do
-				if image:IsA("ImageLabel") then
-					image.ImageTransparency = 0.6 - glow * 0.6
-				elseif image:IsA("TextLabel") then
-					image.TextTransparency = 0.6 - glow * 0.6
+		for i, entry in prints do
+			local point, depth = onScreen(entry.at)
+			entry.paw.Visible = point ~= nil
+			if point then
+				local size = math.clamp(PRINT_PX * PRINT_NEAR / depth, PRINT_MIN, PRINT_PX)
+				entry.paw.Position = UDim2.fromOffset(point.X, point.Y)
+				entry.paw.Size = UDim2.fromOffset(size, size)
+				local glow = 0.5 + 0.5 * math.sin(wave - i * 0.7)
+				for _, image in entry.paw:GetDescendants() do
+					if image:IsA("ImageLabel") then
+						image.ImageTransparency = 0.55 - glow * 0.5
+					end
 				end
 			end
 		end
 	end)
 	return function()
 		connection:Disconnect()
-		folder:Destroy()
+		holder:Destroy()
 	end
 end
 
@@ -161,26 +175,31 @@ function TutorialCues.pawOn(target: GuiObject | BasePart): () -> ()
 		end
 	end
 	local part = target :: BasePart
-	-- Depth-tested like the trail's prints: always-on-top boards made here never drew in Studio play (2026-11-10)
-	local board = Instance.new("BillboardGui")
-	board.Name = "PawPointer"
-	board.Size = UDim2.fromOffset(PAW_SIZE, PAW_SIZE)
-	board.LightInfluence = 0
-	board.Adornee = part
-	board.Parent = part
-	local paw = Icon.make(board, "Paw", UDim2.fromScale(1, 1))
+	-- On the screen over the world, like the trail: walls and closed doors don't hide it
+	local holder = Instance.new("Frame")
+	holder.Name = "PawPointer"
+	holder.BackgroundTransparency = 1
+	holder.AnchorPoint = Vector2.new(0.5, 1)
+	holder.Size = UDim2.fromOffset(PAW_SIZE, PAW_SIZE)
+	holder.ZIndex = 20
+	holder.Parent = gui()
+	local paw = Icon.make(holder, "Paw", UDim2.fromScale(1, 1))
 	paw.Rotation = 180
 	tint(paw, GOLD)
-	local top = part.Size.Y / 2 + 2.5
 	local connection = RunService.RenderStepped:Connect(function()
-		local bounce = math.abs(math.sin((os.clock() - started) * BOUNCE_SPEED)) * BOUNCE * 0.04
-		board.StudsOffset = Vector3.new(0, top + bounce, 0)
+		local point = onScreen(part.Position + Vector3.new(0, part.Size.Y / 2 + 0.5, 0))
+		holder.Visible = point ~= nil and part.Parent ~= nil
+		if point then
+			local beat = math.abs(math.sin((os.clock() - started) * BOUNCE_SPEED))
+			holder.Position = UDim2.fromOffset(point.X, point.Y - beat * BOUNCE)
+		end
 	end)
 	return function()
 		connection:Disconnect()
-		board:Destroy()
+		holder:Destroy()
 	end
 end
+
 
 -- A label pill on the tour bar: a picture and its words
 local function pill(parent: Frame, order: number, icon: string): TextLabel

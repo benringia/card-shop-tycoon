@@ -34,6 +34,12 @@ local PishVisual = {}
 local HEART_COUNT = 3
 local HEART_RISE = 3 -- studs the hearts float up
 local HEART_SECONDS = 1.2
+local TAG_WIDTH, TAG_HEIGHT = 200, 56 -- px: the name tag's board (the pill sits at its bottom)
+local TAG_LIFT = -0.4 -- studs from his height (his root sits above his feet)
+local TAG_DISTANCE = 70 -- studs: further away the tag hides
+local TAG_NAME = Color3.fromRGB(224, 138, 44)
+local TAG_SUB = Color3.fromRGB(90, 160, 110)
+local TAG_EDGE = Color3.fromRGB(255, 215, 122)
 local DIRT_RATE = 40 -- dirt bits a second while he digs
 
 -- A sound from Config/Pish SOUNDS on his body (nothing until its id is set)
@@ -160,6 +166,76 @@ function PishVisual.hearts(visual: Visual)
 		end)
 	end
 	sound(visual, "yip")
+end
+
+-- His name over his head (owner 2026-11-10: "show that he's an npc and he's interactable"), with a second line when
+-- there's something to do with him ("pet me for luck!"); nil leaves just the name
+function PishVisual.nameTag(visual: Visual, subtitle: string?)
+	local root = visual.body.root
+	local board = root:FindFirstChild("PishName") :: BillboardGui?
+	if not board then
+		local made = Instance.new("BillboardGui")
+		made.Name = "PishName"
+		made.Size = UDim2.fromOffset(TAG_WIDTH, TAG_HEIGHT)
+		made.StudsOffset = Vector3.new(0, Pish.HEIGHT + TAG_LIFT, 0)
+		made.LightInfluence = 0
+		made.MaxDistance = TAG_DISTANCE
+		made.Adornee = root
+		local pill = Instance.new("Frame")
+		pill.Name = "Pill"
+		pill.AnchorPoint = Vector2.new(0.5, 1)
+		pill.Position = UDim2.fromScale(0.5, 1)
+		pill.AutomaticSize = Enum.AutomaticSize.XY
+		pill.Size = UDim2.fromOffset(0, 0)
+		pill.BackgroundColor3 = Color3.new(1, 1, 1)
+		pill.Parent = made
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 12)
+		corner.Parent = pill
+		local edge = Instance.new("UIStroke")
+		edge.Color = TAG_EDGE
+		edge.Thickness = 2.5
+		edge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		edge.Parent = pill
+		local padding = Instance.new("UIPadding")
+		padding.PaddingLeft = UDim.new(0, 10)
+		padding.PaddingRight = UDim.new(0, 10)
+		padding.PaddingTop = UDim.new(0, 3)
+		padding.PaddingBottom = UDim.new(0, 3)
+		padding.Parent = pill
+		local list = Instance.new("UIListLayout")
+		list.HorizontalAlignment = Enum.HorizontalAlignment.Center
+		list.SortOrder = Enum.SortOrder.LayoutOrder
+		list.Parent = pill
+		local name = Instance.new("TextLabel")
+		name.Name = "Name"
+		name.LayoutOrder = 1
+		name.BackgroundTransparency = 1
+		name.AutomaticSize = Enum.AutomaticSize.X
+		name.Size = UDim2.fromOffset(0, 22)
+		name.Font = Enum.Font.FredokaOne
+		name.TextSize = 20
+		name.TextColor3 = TAG_NAME
+		name.Text = "🐾 Pish"
+		name.Parent = pill
+		local sub = Instance.new("TextLabel")
+		sub.Name = "Sub"
+		sub.LayoutOrder = 2
+		sub.BackgroundTransparency = 1
+		sub.AutomaticSize = Enum.AutomaticSize.X
+		sub.Size = UDim2.fromOffset(0, 15)
+		sub.Font = Enum.Font.GothamBold
+		sub.TextSize = 13
+		sub.TextColor3 = TAG_SUB
+		sub.Parent = pill
+		made.Parent = root
+		board = made
+	end
+	local sub = (board :: BillboardGui):FindFirstChild("Sub", true) :: TextLabel?
+	if sub then
+		sub.Text = subtitle or ""
+		sub.Visible = subtitle ~= nil
+	end
 end
 
 -- A sound of his by name (Config/Pish SOUNDS key): the tutorial's whimper, the yip

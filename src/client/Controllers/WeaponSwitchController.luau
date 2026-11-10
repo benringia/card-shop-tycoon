@@ -25,6 +25,7 @@ local Hud = require(ClientUtil:WaitForChild("Hud"))
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local PlacementController = require(Controllers:WaitForChild("PlacementController"))
+local RegisterController = require(Controllers:WaitForChild("RegisterController"))
 
 local WeaponSwitchController = {}
 
@@ -244,7 +245,10 @@ function WeaponSwitchController.Start()
 		if view ~= laidOutSize or fight ~= laidOutFight then
 			relayout(view, fight)
 		end
-		holder.Visible = WeaponSwitch.visible(list) and not UIKit.anyPanelOpen() and not PlacementController.IsActive()
+		holder.Visible = WeaponSwitch.visible(list)
+			and not UIKit.anyPanelOpen()
+			and not PlacementController.IsActive()
+			and not RegisterController.IsShowing() -- the checkout sits in the same spot (owner 2026-11-10)
 		nameLabel.Visible = os.clock() < nameUntil
 	end)
 end
