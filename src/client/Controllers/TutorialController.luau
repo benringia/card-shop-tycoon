@@ -25,6 +25,7 @@ local Products = require(Config:WaitForChild("Products"))
 local Shelves = require(Config:WaitForChild("Shelves"))
 local Town = require(Config:WaitForChild("Town"))
 local Wild = require(Config:WaitForChild("Wild"))
+local ArrivalShot = require(Shared:WaitForChild("Util"):WaitForChild("ArrivalShot"))
 local MusicRules = require(Shared:WaitForChild("Util"):WaitForChild("MusicRules"))
 local TalkRules = require(Shared:WaitForChild("Util"):WaitForChild("TalkRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -55,16 +56,7 @@ local FREE_SECONDS = 3 -- a visit starts once the player has been free this long
 local NUDGE_RANGE = 60 -- studs: a nudge shows only when the player is this near the thing to use
 local PORTAL_REACH = 14 -- studs from the Wild portal that count as having gone to it
 local SPOT_HEIGHT = 9 -- studs above the ground the paw over a place in town (the portal) hangs
-local ARRIVE_DELAY = 0.8 -- seconds after the first visit starts (the welcome flight over) before his first bark
-local ARRIVE_FROM = 22 -- studs in front of the player he starts his run
-local ARRIVE_SIDE = 5 -- studs to the player's left of it
-local ARRIVE_STOP = 4 -- studs in front of the player he stops
-local ARRIVE_STOP_SIDE = 2 -- and to their left (clear of the player in the camera's view)
-local ARRIVE_SPEED = 9 -- studs a second, running in
-local ARRIVE_CAMERA_UP = 2.5 -- the camera over the player's left shoulder: up, back, left
-local ARRIVE_CAMERA_BACK = 7
-local ARRIVE_CAMERA_SIDE = 3.5
-local ARRIVE_WAIT_LIMIT = 30 -- seconds he waits for the loading screen at most
+local ARRIVAL = Pish.ARRIVAL -- his arrival's numbers and shot (Util/ArrivalShot)
 local BYE_IDLE_SECONDS = 20 -- the goodbye's last line left this long: the first visit ends by itself
 
 -- Where Pish points: a HUD button (in the Manage tray: `tray`), a button inside a window (`gui`), a part of the
@@ -897,9 +889,10 @@ local function onState(payload: unknown)
 	end
 end
 
--- Pish arrives (round 3): after the welcome flight, a bark; the camera looks past the player at him running in from
--- the street; he stops in front of them and barks; the camera goes back behind the player and he starts talking. Once
--- per first visit (a replay starts without it); a tap skips it
+-- Pish arrives (round 3; the shot round 5, owner 2026-11-10): after the welcome flight a bark, then the camera rides
+-- low beside him on his paws as he runs in from the street, slowly pans up to his face, and zooms out to the two of you
+-- as he stops in front of the player and barks (Util/ArrivalShot, Config/Pish ARRIVAL); then the camera goes back
+-- behind the player and he starts talking. Once per first visit (a replay starts without it); a tap skips it
 local function arrive()
 	arriving = true
 	arrivedOnce = true
@@ -907,30 +900,94 @@ local function arrive()
 	TutorialCues.skipButton(false, openTourCard)
 	-- A player back mid-tour joins straight into it: he waits for the loading screen to go
 	local waited = 0
-	while player:GetAttribute("LoadingDone") ~= true and waited < ARRIVE_WAIT_LIMIT do
+	while player:GetAttribute("LoadingDone") ~= true and waited < ARRIVAL.waitLimit do
 		waited += task.wait(0.2)
+	end
+	if waited > 0 then
+		task.wait(ARRIVAL.afterLoading) -- the loading screen's fade, so the first shot isn't under it
 	end
 	local at = root()
 	if not at or step ~= STEPS[1] then
 		arriving = false
 		if step ~= "" then
+			ensurePish()
 			TutorialCues.skipButton(step ~= "bye", openTourCard)
 			updateTalk()
 		end
 		return
 	end
+	local up = Vector3.yAxis
 	local look = Vector3.new(at.CFrame.LookVector.X, 0, at.CFrame.LookVector.Z).Unit
-	-- On the player's left: the weapon in their right hand would hide him
-	local left = -Vector3.new(at.CFrame.RightVector.X, 0, at.CFrame.RightVector.Z).Unit
 	local feet = at.Position - Vector3.new(0, 3, 0)
-	local stop = feet + look * ARRIVE_STOP + left * ARRIVE_STOP_SIDE
-	local start = feet + look * ARRIVE_FROM + left * ARRIVE_SIDE
 	ensurePish()
 	local dog = marker :: Part
+	local blockers = RaycastParams.new()
+	blockers.FilterType = Enum.RaycastFilterType.Exclude
+	blockers.FilterDescendantsInstances = { player.Character :: Instance, dog, if visual then visual.body.model else dog }
+	local function freeFor(from: Vector3, way: Vector3, length: number): number
+		local hit = workspace:Raycast(from, way * length, blockers)
+		return if hit then hit.Distance else length
+	end
+	-- His run: in front of the player if it's clear, else the first clear way fanning out left and right, else the
+	-- longest (Util/ArrivalShot.pickRun): he never runs through a shelf or a wall
+	local ways, clearance = {}, {}
+	for _, degrees in { 0, 30, -30, 60, -60, 90, -90, 135, -135, 180 } do
+		local way = CFrame.Angles(0, math.rad(degrees), 0):VectorToWorldSpace(look)
+		table.insert(ways, way)
+		table.insert(clearance, freeFor(feet + up * 1.2, way, ARRIVAL.from + ARRIVAL.wallGap))
+	end
+	local index, runFrom = ArrivalShot.pickRun(clearance, ARRIVAL)
+	local outward = ways[index]
+	local across = Vector3.new(-outward.Z, 0, outward.X) -- to the side of his way in
+	local stop = feet + outward * ARRIVAL.stop + across * ARRIVAL.stopSide
+	local start = feet + outward * runFrom + across * math.min(ARRIVAL.startSide, runFrom * 0.15)
+	local run = Vector3.new(stop.X - start.X, 0, stop.Z - start.Z)
+	local runLength = run.Magnitude
+	local runWay = run.Unit
+	-- The camera rides on the side of his run with fewer things in the way (Util/ArrivalShot.pickSide)
+	local side = Vector3.new(runWay.Z, 0, -runWay.X)
+	local blocked = { 0, 0 }
+	for sample = 0, 5 do
+		local point = start + run * (sample / 5) + up * 1
+		for which, sign in { 1, -1 } do
+			if freeFor(point, side * sign, ARRIVAL.wide.side) < ARRIVAL.wide.side then
+				blocked[which] += 1
+			end
+		end
+	end
+	side *= ArrivalShot.pickSide(blocked[1], blocked[2])
+	-- The wide shot of the two of you: the first angle with a clear view (Util/ArrivalShot.pickWide)
+	local middle = (feet + stop) / 2
+	local wideTarget = middle + up * ARRIVAL.wide.lookUp
+	local widePlaces, wideFree = {}, {}
+	for _, angle in ARRIVAL.wideAngles do
+		local place = middle + side * angle.side + outward * angle.out + up * angle.up
+		local reach = (place - wideTarget).Magnitude
+		table.insert(widePlaces, place)
+		table.insert(wideFree, freeFor(wideTarget, (place - wideTarget).Unit, reach) / reach)
+	end
+	local widePlace = widePlaces[ArrivalShot.pickWide(wideFree, ARRIVAL)]
 	dog.CFrame = CFrame.lookAt(start, Vector3.new(stop.X, start.Y, stop.Z))
 	local camera = workspace.CurrentCamera
 	camera.CameraType = Enum.CameraType.Scriptable
-	local shoulder = at.Position + Vector3.new(0, ARRIVE_CAMERA_UP, 0) - look * ARRIVE_CAMERA_BACK + left * ARRIVE_CAMERA_SIDE
+	-- Never through a wall or a shelf: the camera stops short of anything between it and what it looks at
+	local function clear(from: Vector3, to: Vector3): Vector3
+		local hit = workspace:Raycast(from, to - from, blockers)
+		return if hit then hit.Position + (from - to).Unit * 0.5 else to
+	end
+	local function shot(): CFrame
+		local here = dog.Position
+		local covered = Vector3.new(here.X - start.X, 0, here.Z - start.Z).Magnitude
+		local frame = ArrivalShot.at(if runLength > 0 then covered / runLength else 1, ARRIVAL)
+		local target = here + up * frame.lookUp
+		local close = CFrame.lookAt(clear(target, here + side * frame.side + runWay * frame.ahead + up * frame.up), target)
+		if frame.wide <= 0 then
+			return close
+		end
+		local wide = CFrame.lookAt(clear(wideTarget, widePlace), wideTarget)
+		return close:Lerp(wide, frame.wide)
+	end
+	camera.CFrame = shot() -- a cut to his paws
 	local skipped = false
 	local tap = UserInputService.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -938,8 +995,7 @@ local function arrive()
 		end
 	end)
 	local follow = RunService.RenderStepped:Connect(function(dt)
-		local view = CFrame.lookAt(shoulder, dog.Position + Vector3.new(0, 1.2, 0))
-		camera.CFrame = camera.CFrame:Lerp(view, math.min(1, dt * 6))
+		camera.CFrame = camera.CFrame:Lerp(shot(), math.min(1, dt * ARRIVAL.follow))
 	end)
 	task.spawn(function()
 		local function hold(seconds: number)
@@ -948,7 +1004,7 @@ local function arrive()
 				task.wait()
 			end
 		end
-		hold(ARRIVE_DELAY)
+		hold(ARRIVAL.delay)
 		if visual and not skipped then
 			PishVisual.sound(visual, "bark")
 		end
@@ -959,7 +1015,7 @@ local function arrive()
 				break
 			end
 			local dt = task.wait()
-			local nextAt = now + flat.Unit * math.min(flat.Magnitude, ARRIVE_SPEED * dt)
+			local nextAt = now + flat.Unit * math.min(flat.Magnitude, ARRIVAL.speed * dt)
 			dog.CFrame = CFrame.lookAt(nextAt, nextAt + flat.Unit)
 		end
 		local facing = Vector3.new(at.Position.X, stop.Y, at.Position.Z)

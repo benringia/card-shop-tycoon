@@ -69,6 +69,39 @@ return {
 		idleClips = { "sit", "sniff", "bark", "roll", "dig", "shake", "playBow", "headTilt", "yawnStretch", "tailChase", "happyHop", "scratch" },
 	},
 	HEIGHT = 2.6, -- studs: a small dog beside a 5-stud player
+	-- His arrival after the welcome flight (Util/ArrivalShot; owner 2026-11-10: the camera close on his paws as he runs,
+	-- slowly up to his face, then out to the two of you when he's near; longer). Studs and seconds; `feet` / `face`: the
+	-- close camera beside him (up, to his side, ahead of him) and the height it looks at; `panFrom` / `panTo` /
+	-- `wideFrom`: shares of his run; `wide`: the shot of you both from the side
+	ARRIVAL = {
+		delay = 0.8, -- after the first visit starts, before his first bark and his run
+		from = 30, -- studs from the player he starts (in front, else the first clear way; Util/ArrivalShot.pickRun), `startSide` to their left
+		minRun = 10, -- the shortest run when every way is blocked
+		wallGap = 1.5, -- studs he starts short of a wall or a shelf
+		startSide = 5,
+		stop = 4, -- studs in front of the player he stops, `stopSide` to their left
+		stopSide = 2,
+		speed = 6.5, -- studs a second (about 4.6 s of running)
+		feet = { up = 0.55, side = 2.6, ahead = 1.6, lookUp = 0.35 },
+		face = { up = 1.75, side = 3, ahead = 2.2, lookUp = 1.8 },
+		panFrom = 0.25,
+		panTo = 0.7,
+		wideFrom = 0.78,
+		wide = { side = 10, lookUp = 1.6 }, -- `side`: how far the camera's side of his run is checked; the height it looks at
+		-- The wide shot's angles to try, from the middle of the two of you (studs: to the camera's side of his run, out
+		-- along his way in, up): from the side, the other side, behind him looking at you, behind you looking at him;
+		-- the first with `wideClear` of its view free of walls (Util/ArrivalShot.pickWide)
+		wideAngles = {
+			{ side = 10, out = 0, up = 4.5 },
+			{ side = -10, out = 0, up = 4.5 },
+			{ side = 2.5, out = 9, up = 3.5 },
+			{ side = 2.5, out = -8, up = 4.5 },
+		},
+		wideClear = 0.85,
+		follow = 9, -- how quickly the camera follows its shot (per second)
+		waitLimit = 30, -- seconds he waits for the loading screen at most
+		afterLoading = 0.8, -- and then its fade (Config/LoadingScreen FADE_SECONDS 0.6) before the first shot
+	},
 	-- Licensed sounds (Roblox's Pro Sound Effects catalogue, which has no house dogs: coyote barks pitched up small, a
 	-- coyote cub's whimper, dirt thrown from a shovel; no canine yawn, so the yawn stays silent), measured in
 	-- Config/SoundLevels. Each Bark marker plays the whole bark, so it must stay short.

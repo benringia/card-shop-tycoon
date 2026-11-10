@@ -2215,9 +2215,13 @@ clips in `assets/monster-animations/Pish`, the model as `assets/npcs/Pish.rbxm` 
 (clips through `Util/ClipPlayer`, markers make his barks, yawn and digging dirt), style `Party.CREATURE_STYLE.Pish`.
 All numbers in `Config/Pish`.
 - [ ] **First visit** (`TutorialService`, `TutorialController`, `Util/TutorialCues`, `Util/TutorialRules`): starts after
-  the welcome flight. **Pish arrives** first (round 3): a bark, the camera over the player's left shoulder watches him
-  run in from 22 studs ahead, he stops in front of them and barks, then the camera goes back and he talks (once per
-  first visit, after the loading screen for a player back mid-tour; a tap skips it). Eight steps completed by what the
+  the welcome flight. **Pish arrives** first (round 3; the shot round 5, owner 2026-11-10): a bark, then the camera
+  rides low beside him on his paws as he runs in (30 studs, about 4.6 s; from in front of the player if that's clear,
+  else the first clear way fanning out left and right, so he never runs through a shelf or a wall), slowly pans up to
+  his face, and zooms out to a wide shot of the two of you as he stops in front of the player and barks (the first of
+  four angles with a clear view); about 7 s in all, then the camera goes back behind the player and he talks
+  (`Util/ArrivalShot`, `Pish.ARRIVAL`, `tests/ArrivalShot`; the camera never goes through a wall; once per first
+  visit, after the loading screen and its fade for a player back mid-tour; a tap skips it). Eight steps completed by what the
   game sees: open his present (`pishPresent`, "Pish's Present": a First Spark pack with his picture, in the Bag),
   build a Small Pack Rack, order First Spark packs, stock the rack, a customer he sends reaches the counter, ring them
   up, open his gift (`pishGift`: the hit card is Very Rare or better), his goodbye. **Pish talks** (`Util/TutorialTalk`, lines in

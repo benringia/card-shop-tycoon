@@ -97,6 +97,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	LessonRules = require("./LessonRules.spec"),
 	TalkRules = require("./TalkRules.spec"),
 	OpeningSounds = require("./OpeningSounds.spec"),
+	ArrivalShot = require("./ArrivalShot.spec"),
 	PishWalk = require("./PishWalk.spec"),
 	PishPath = require("./PishPath.spec"),
 	WeaponLookRules = require("./WeaponLookRules.spec"),
