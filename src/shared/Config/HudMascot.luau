@@ -4,17 +4,18 @@
 -- based on their own pet): new pictures, sizes, eye spots, lid colour and voice, nothing else (docs/hud-mascot.md).
 -- Plain data (Lune-tested).
 return {
+	-- Pish as he is: furrowed brows and his underbite, a little grumpy (owner 2026-11-10)
 	name = "Pish",
 	-- Transparent stickers (assets/ui/mascot, made with tools/ui-art/cutout.py): its head and two front paws, cut off at
 	-- the paws; its tail. "" means no mascot.
-	images = { peek = "rbxassetid://133179727267427", tail = "rbxassetid://118500581089750" },
-	size = { peek = { 86, 63 }, tail = { 30, 31 } }, -- pixels at full HUD scale (the pictures' own shapes, 512x374 and 284x292)
+	images = { peek = "rbxassetid://125657246581399", tail = "rbxassetid://102206389239561" },
+	size = { peek = { 86, 68 }, tail = { 30, 31 } }, -- pixels at full HUD scale (the pictures' own shapes, 512x405 and 322x333)
 	-- Its eyes on the peek picture, as shares of its width and height, for blinking
 	eyes = {
-		{ x = 0.297, y = 0.34, w = 0.107, h = 0.126 },
-		{ x = 0.574, y = 0.34, w = 0.107, h = 0.126 },
+		{ x = 0.289, y = 0.36, w = 0.127, h = 0.116 },
+		{ x = 0.584, y = 0.356, w = 0.117, h = 0.121 },
 	} :: { { x: number, y: number, w: number, h: number } },
-	lid = { 232, 226, 216 }, -- the fur colour round its eyes (the blink's lids)
+	lid = { 222, 214, 204 }, -- the fur colour round its eyes (the blink's lids)
 	crease = { 110, 95, 85 }, -- the line across a closed eye
 	-- Its voice when tapped: Pish's yip (Config/Pish SOUNDS), quiet
 	voice = { id = "rbxassetid://9113955748", volume = 0.3, pitch = { min = 1.6, max = 1.8 } },

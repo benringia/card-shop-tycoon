@@ -644,9 +644,11 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
   (soft chimes for Rare and Very Rare, a deep boom for Epic, orchestral hits for Legendary and Frontier) and a shimmer
   while the card is alive; the results swipe in per landing card and end on a bright UI ding (PSE "Synth Sparkle Tone
   High Pitch Bell Tone Ding 4"): the lineup's sounds are never the boss victory's (owner 2026-11-10: it sounded like
-  killing a boss; `tests/OpeningSounds`). **Music**: the opening has its own piece (`Music.OPENING`, crossfading in from
-  wherever you are and back out, through the leveler; owner 2026-11-10: "change the music on this screen. too plain"),
-  six APM options to pick by ear with `/music opening <n> [volume]`. Most come from Roblox's licensed libraries (Pro Sound Effects,
+  killing a boss; `tests/OpeningSounds`). **Music**: the opening has its own music (`Music.OPENING`, crossfading in from
+  wherever you are and back out, through the leveler, quiet at 0.06; owner 2026-11-10: "change the music on this
+  screen. too plain"): each opening plays the next of three APM pieces, looping while it's up ("Magic and Mayhem",
+  "Enchanted Butterflies", "Mischievous Elves"; `rotate = "visit"`, `MusicRules.visitTrack`; owner: "so that when
+  players open lots of pack its not the same music always"); `/music opening <n> [volume]` plays any of the six. Most come from Roblox's licensed libraries (Pro Sound Effects,
   APM) and Daily Sounds (made from scratch); the flip is "card_flip" by f4ngy (Freesound, CC BY).
 - Card faces (`Util/CardFace`, `Config/CardDesign`), clean full-art style (like the top Roblox card games),
   built in code with no frame images: the art fills the card inside a thin rounded rim in the rarity colour
@@ -2900,7 +2902,8 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   tile at its widest, key chip and all, stays inside the gap); the Party pill squishes on a press and hops a little under
   a mouse. Anything stacked over the tile row (the status corner on a narrow PC screen, the toast) sits above its
   popped-out icons at their highest hover (`SquishRules.rowTop`). **The mascot** (`Config/HudMascot`, `Util/HudMascotView`, `Util/HudMascotRules`):
-  Pish (round 5, owner 2026-11-10: "Change peaking cindercub to Pish"; Cindercub before), a Figma-generated
+  Pish (round 5, owner 2026-11-10: "Change peaking cindercub to Pish"; Cindercub before; a little grumpy like the
+  real Pish: furrowed brows and his underbite), a Figma-generated
   sticker (`assets/ui/mascot`, cut out by `tools/ui-art/cutout.py`), peeks over the cushion's left end with his paws
   on the edge and his curled tail poking up behind him; he's the Pish button (section 7.6); it breathes and its tail sways
   (looping tweens), it blinks every 3-7 s (lids drawn over its eyes), it ducks behind the cushion when you summon,

@@ -54,9 +54,14 @@ return {
 	-- option n; the owner picks by ear.
 	OPENING = {
 		key = "opening",
+		-- One piece per opening, the next one the next time (owner 2026-11-10: "add music 1 and 2 to alternate ... so
+		-- that when players open lots of pack its not the same music always"); each loops while the opening is up
 		tracks = {
-			"rbxassetid://1841593987", -- "Magic and Mayhem" (the owner's pick 2026-11-10: option 3, "but low volume")
+			"rbxassetid://1841593987", -- "Magic and Mayhem" (the owner's pick: option 3)
+			"rbxassetid://9048776085", -- "Enchanted Butterflies" (option 1)
+			"rbxassetid://1841594035", -- "Mischievous Elves" (option 2)
 		},
+		rotate = "visit",
 		options = {
 			option("Enchanted Butterflies (whimsical mallets and piano)", "9048776085"),
 			option("Mischievous Elves (playful magic orchestra)", "1841594035"),
@@ -65,7 +70,7 @@ return {
 			option("Jackpot (game show, fast and driving)", "1836301731"),
 			option("Mr Happy Go Lucky (cheerful pizzicato)", "9043031481"),
 		},
-		volume = 0.1, -- low (owner 2026-11-10); "/music opening 3 <volume>" to try others
+		volume = 0.06, -- low (owner 2026-11-10: 0.1, then "lower the volume"); "/music opening 3 <volume>" to try others
 		compressor = LEVELER,
 		fade = 0.8, -- seconds: quick, so the music changes as the pack comes up
 	},

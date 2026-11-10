@@ -14,6 +14,12 @@ function MusicRules.nextTrack(current: number, count: number): number
 	return current % count + 1
 end
 
+-- A place that changes piece each time you come (`rotate = "visit"`, the pack opening): the next one after `previous`
+-- (nil: the first time)
+function MusicRules.visitTrack(previous: number?, count: number): number
+	return MusicRules.nextTrack(previous or 0, count)
+end
+
 -- Studio's "/music [place] <n> [volume]": the place (its key; none: the town), the option to hear (0: back to the
 -- normal tracks) and a volume kept within 0-1 (nil: the configured one); nil for an unknown place or option.
 -- `counts`: each place's number of options, by key

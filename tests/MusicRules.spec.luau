@@ -183,13 +183,15 @@ return {
 		local opening = Music.OPENING
 		expect.equal(MusicRules.find(Music, "opening"), opening)
 		assert(#opening.options >= 4, "options to audition with /music opening <n>")
-		local picked = false
+		local ids = {}
 		for _, option in opening.options do
 			assert(string.match(option.id, "^rbxassetid://%d+$"), `{option.name} is an asset id`)
-			picked = picked or option.id == opening.tracks[1]
+			ids[option.id] = true
 		end
-		assert(picked, "the track playing is one of the options")
-		assert(opening.volume > 0 and opening.volume <= 0.5, "a sensible volume")
+		for _, track in opening.tracks do
+			assert(ids[track], `{track} is one of the options`)
+		end
+		assert(opening.volume > 0 and opening.volume <= 0.08, "quiet (owner 2026-11-10: lower)")
 		assert(opening.compressor, "through the leveler")
 		assert(opening.fade and opening.fade <= 1.5, "a quick crossfade in and out of the opening")
 		for _, list in { Music.WILD.areas, Music.WILD.arenas } do
@@ -199,5 +201,16 @@ return {
 				end
 			end
 		end
+	end,
+	["each pack opening plays the next of its three pieces, looping while it's up (owner: not the same music always)"] = function()
+		local opening = Music.OPENING
+		expect.equal(#opening.tracks, 3, "options 3, 1 and 2")
+		expect.equal(opening.tracks[1], opening.options[3].id, "the owner's pick first")
+		expect.equal(opening.tracks[2], opening.options[1].id)
+		expect.equal(opening.tracks[3], opening.options[2].id)
+		expect.equal(opening.rotate, "visit", "one piece per opening, the next one next time")
+		expect.equal(MusicRules.visitTrack(nil, 3), 1, "the first opening")
+		expect.equal(MusicRules.visitTrack(1, 3), 2)
+		expect.equal(MusicRules.visitTrack(3, 3), 1, "round again")
 	end,
 }
