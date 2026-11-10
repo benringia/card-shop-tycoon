@@ -423,3 +423,30 @@ the first visit is on). Commit: `Tutorial: a spotlight on what to tap, and a cal
 ### Task 20: Pish arrives
 Files: `src/client/Controllers/TutorialController.luau` (the arrival: after the welcome flight, once per first visit;
 a tap skips). Commit: `Tutorial: Pish runs in to meet you`.
+
+## Amendment 2026-11-10 round 4 (spec section 16)
+
+### Task 21: A replay gives nothing new
+Files: `src/shared/Util/TutorialRules.luau` (`sendsCustomer(saved): boolean`, true only while `giftClaimed` is false),
+`src/server/Services/TutorialService.luau` (step "customer" spawns only when it says so); tests: TutorialRules
+(a new player and a replay before the gift: true; a replay after it: false; replay keeps firstGiven and giftClaimed).
+Commit: `Tutorial: a replay gives nothing new`.
+
+### Task 22: The opening's sounds
+Files: `src/shared/Config/PackOpening.luau` (VOLUMES snap 0.3, crinkle 0.35; SOUNDS land = the cardswipe, chime =
+rbxassetid://9126073001); test: a spec that the lineup's sounds aren't any of `Config/Victory`'s. Commit:
+`Pack opening: a softer rip, and lineup sounds of its own`.
+
+### Task 23: Pish's name tag
+Files: `src/client/Util/PishVisual.luau` (bigger orange pill, white outlined text, higher). Commit:
+`Pish: a name tag you can read`.
+
+### Task 24: Pish teaches every unlock
+Files: `src/shared/Config/Pish.luau` (LESSONS gain `shelf` / `product` / `trigger = "trophy"`, new lessons
+showcase 2, collectorCase 3, wallShelf 4, accessoryHook 7, bigRack 9, trophy), `src/shared/Util/LessonRules.luau`
+(level lessons only in `due`; `forShelf(lessons, shelfId, def)`, `forProduct`), `src/shared/Config/PishTalk.luau`
+(lines, TEACH lines), `src/server/Services/ItemService.luau` (`OnGiven`), `src/server/Services/TutorialService.luau`
+(trophy trigger; placed / ordered marks the lesson used), `src/client/Controllers/TutorialController.luau` (guided
+lessons), `Config/AdminPanel`; tests: LessonRules (every Products/Shelves unlock above Lv 1 has a lesson at its
+level, the two cases, trophy event lesson not in `due`, forShelf / forProduct), TalkRules, AdminPanel. Commit:
+`Pish: a lesson visit for every unlock, teaching it step by step`.

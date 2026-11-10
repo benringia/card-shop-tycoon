@@ -2231,7 +2231,7 @@ All numbers in `Config/Pish`.
   the cash column when that reaches the top). Tapping it brings a sad Pish (whimper, head tilt) and the tour card in
   the middle (Pish's card waits under it): "Pish's Tour · 3 of 8", the paw row, his gift's picture, "Finish the tour
   for Pish's gift!", a big green "Keep going" and a small grey "Skip tour". A Pish tile in the Manage tray replays it
-  (his gifts are never given twice). Icons: `PishPresent` (Pish hugging a ribboned pack) and `PishGift` (a rainbow
+  (nothing comes twice: his present and gift once, and his own customer only until his gift is claimed, `TutorialRules.sendsCustomer`; a later replay waits for a customer who comes by themselves). Icons: `PishPresent` (Pish hugging a ribboned pack) and `PishGift` (a rainbow
   pack with a paw medal), `Config/UIIcons`.
 - [ ] **Tutorial Pish is this player's own** (a client marker): other players see Town Pish; Town Pish and his pet prompt
   are hidden for the player Pish is leading. The guide can't be petted. Both wear a "🐾 Pish" name tag.

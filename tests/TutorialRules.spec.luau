@@ -148,4 +148,12 @@ return {
 		TutorialRules.record(saved, STEPS, "giftPack")
 		expect.equal(saved.step, 1)
 	end,
+	["sendsCustomer: Pish's own customer comes until his gift is claimed, never on later replays (owner: free stuff)"] = function()
+		local fresh = TutorialRules.read({}, STEPS)
+		expect.equal(TutorialRules.sendsCustomer(fresh), true, "a new player")
+		local skippedEarly = TutorialRules.replay(TutorialRules.skip(fresh))
+		expect.equal(TutorialRules.sendsCustomer(skippedEarly), true, "a replay before ever reaching the gift")
+		local finished = TutorialRules.read({ firstVisit = "done", firstGiven = true, giftClaimed = true }, STEPS)
+		expect.equal(TutorialRules.sendsCustomer(TutorialRules.replay(finished)), false, "a replay after the gift")
+	end,
 }

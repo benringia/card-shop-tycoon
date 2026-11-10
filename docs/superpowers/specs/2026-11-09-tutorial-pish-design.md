@@ -222,3 +222,25 @@ The owner played the talking version and asked for less on screen and a proper e
 - **Icons** (pick B): his present at the start is its own item, "Pish's Present" (Pish hugging a ribboned First Spark
   pack; it opens a First Spark pack), and his gift at the end shows a rainbow-foil pack with a purple bow and a paw
   medal. Made with Figma's image generator, cut out, uploaded (Config/UIIcons).
+
+## 16. Amendment 2026-11-10 (round 4): Pish teaches every unlock, a replay gives nothing, sounds, his tag
+
+The owner played round 3 and asked: "pish teaches everything town/shop related. when a player unlocks something for
+the first time, pish will visit and teach them"; the Pish button's replay "will get abused for free cards"; the
+rip is loud; the sound after ripping a pack is like the one after killing a boss; his name tag is hard to see.
+
+- **A replay gives nothing new.** His present and gift were already never given twice. Pish's own customer (step 5)
+  comes only until his gift is claimed; on a later replay the step waits for a customer who comes by themselves.
+  (The owner's two presents came from Studio's `/tutorial reset`, which starts a brand-new player.)
+- **Every town/shop unlock gets a lesson visit, and the visit teaches it**: every shelf and product a shop level
+  unlocks, the Glass Showcase (Lv 2, once he's given you cards) and Collector Case (Lv 3), and your first boss trophy
+  (when the trophy comes). Combat (bosses, the Wild, weapons) is left for Chikin's tutorial; the first-sword visit
+  stays. A shelf, machine or trophy lesson walks the player through it: his line about the new thing (Next), then
+  Manage, Shop, its tab, its tile, "Tap the floor to place it."; a stock lesson: the computer, then its Order button.
+  The lesson is done when the player places or orders it (the server sees it); he leaves after a quiet 20 s (each
+  step the player takes starts the 20 s again). New lessons: Glass Showcase 2, Collector Case 3, Wall Shelf 4,
+  Accessory Hook 7, Big Display Rack 9, trophy (event). Players already past a level don't get its new visit.
+- **Sounds**: the rip (tear and crinkle) at about half; the lineup's sounds stop matching the boss victory: each card
+  lands with the opening's own cardswipe (was the victory tiles' Cartoon Pop) and the lineup ends on a bright UI ding
+  (PSE "Synth Sparkle Tone High Pitch Bell Tone Ding 4"; was the victory's Chiming Hits 4).
+- **His name tag**: bigger, an orange pill with white outlined text, higher over his head.

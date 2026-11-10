@@ -128,6 +128,12 @@ function TutorialRules.replay(saved: Saved): Saved
 	return after
 end
 
+-- Pish sends his own customer (step "customer") only until his gift is claimed: a later replay waits for a customer
+-- who comes by themselves, so replaying never brings anything for free
+function TutorialRules.sendsCustomer(saved: Saved): boolean
+	return not saved.giftClaimed
+end
+
 function TutorialRules.finish(saved: Saved): Saved
 	local after = copy(saved)
 	after.firstVisit = "done"

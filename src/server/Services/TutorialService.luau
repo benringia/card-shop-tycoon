@@ -145,7 +145,7 @@ local function enter(player: Player, stepId: string)
 	if stepId == "giftPack" and not state.firstGiven then
 		state.firstGiven = true
 		ItemService.GiveItem(player, Pish.FIRST_ITEM, 1)
-	elseif stepId == "customer" then
+	elseif stepId == "customer" and TutorialRules.sendsCustomer(state) then
 		CustomerService.SpawnForTest(player, "plain")
 	elseif stepId == "gift" and not state.giftClaimed then
 		state.giftClaimed = true
