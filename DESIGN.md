@@ -2236,7 +2236,7 @@ All numbers in `Config/Pish`.
   (nothing comes twice: his present and gift once, and his own customer only until his gift is claimed, `TutorialRules.sendsCustomer`; a later replay waits for a customer who comes by themselves). Icons: `PishPresent` (Pish hugging a ribboned pack) and `PishGift` (a rainbow
   pack with a paw medal), `Config/UIIcons`.
 - [ ] **Tutorial Pish is this player's own** (a client marker): other players see Town Pish; Town Pish and his pet prompt
-  are hidden for the player Pish is leading. The guide can't be petted. Both wear a "🐾 Pish" name tag.
+  are hidden for the player Pish is leading. The guide can't be petted. Both wear a "🐾 Pish" name tag: an orange pill with white outlined words high over his head (owner 2026-11-10: the white one was hard to see).
 - [ ] **Town Pish** (`PishService`, `TownPishController`, `Util/PishPath`): a server marker (`workspace.PishNpc.TownPish`)
   strolling the town at 4.5 studs/s (trotting at 8; a small dog's
   walk, about 1.8 leg cycles a second, tests/PishWalk) round the fountain to stops and open shops' doors, idle clips, naps. **Petting** him
