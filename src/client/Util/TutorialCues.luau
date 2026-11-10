@@ -43,6 +43,7 @@ local SPOT_PAD = 8 -- px of light round the button
 local screen: ScreenGui? = nil
 local skip: TextButton? = nil
 local onSkipTap: (() -> ())? = nil
+local skipWanted = false -- the controller wants Skip shown (a window open still hides it)
 local spotTarget: GuiObject? = nil
 local spotFrames: { Frame }? = nil
 local card: Frame? = nil
@@ -240,8 +241,10 @@ function TutorialCues.skipButton(shown: boolean, onTap: () -> ())
 				tap()
 			end
 		end)
-		-- Top right, or just left of the HUD's right column when it reaches the top (phones)
+		-- Top right, or just left of the HUD's right column when it reaches the top (phones). Hidden while a window is
+		-- open: on a phone it sat right on the window's X, which Pish points at to close it
 		RunService.RenderStepped:Connect(function()
+			made.Visible = skipWanted and not UIKit.anyPanelOpen()
 			if not made.Visible then
 				return
 			end
@@ -259,7 +262,8 @@ function TutorialCues.skipButton(shown: boolean, onTap: () -> ())
 		button = made
 	end
 	onSkipTap = onTap
-	;(button :: TextButton).Visible = shown
+	skipWanted = shown
+	;(button :: TextButton).Visible = shown and not UIKit.anyPanelOpen()
 end
 
 -- The tour card (Skip tapped): "Pish's Tour · 3 of 8", the paw row, his gift and what you'd miss, a big green Keep

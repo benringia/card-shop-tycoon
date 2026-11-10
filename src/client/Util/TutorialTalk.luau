@@ -19,6 +19,7 @@ local TutorialTalk = {}
 
 local WIDTH = 560 -- px at most; a share of a narrow screen
 local SCREEN_SHARE = 0.64
+local MIN_WIDTH = 260 -- px: it never gets narrower than this to clear the Skip button
 local HEIGHT = 112
 local FACE = 84
 local PICTURE = 52
@@ -208,6 +209,23 @@ local function build(): Frame
 				bottom = top - PAW_ROOM
 			end
 			covered = across and low > bottom - height and top - PAW_ROOM < bottom
+		end
+		-- Clear of the Skip button at the top right (on a short phone screen a raised card reaches it): narrower, to its
+		-- left
+		local cardTop = if covered then TOP else bottom - height
+		local skip = TutorialCues.screen():FindFirstChild("TutorialSkip")
+		if skip and skip:IsA("GuiObject") and skip.Visible then
+			local skipLow = skip.AbsolutePosition.Y + skip.AbsoluteSize.Y
+			local skipLeft = skip.AbsolutePosition.X - EDGE
+			if cardTop < skipLow and centre + width / 2 > skipLeft then
+				local cardLeft = centre - width / 2
+				width = math.max(MIN_WIDTH, skipLeft - math.max(leftEdge, cardLeft))
+				centre = math.max(leftEdge, cardLeft) + width / 2
+				fit = width / WIDTH
+				if scale and not scale:GetAttribute("Popping") then
+					scale.Scale = fit
+				end
+			end
 		end
 		made.AnchorPoint = Vector2.new(0.5, if covered then 0 else 1)
 		made.Position = UDim2.fromOffset(centre, if covered then TOP else bottom)
