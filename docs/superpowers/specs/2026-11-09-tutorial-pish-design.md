@@ -237,8 +237,8 @@ rip is loud; the sound after ripping a pack is like the one after killing a boss
   (when the trophy comes). Combat (bosses, the Wild, weapons) is left for Chikin's tutorial; the first-sword visit
   stays. A shelf, machine or trophy lesson walks the player through it: his line about the new thing (Next), then
   Manage, Shop, its tab, its tile, "Tap the floor to place it."; a stock lesson: the computer, then its Order button.
-  The lesson is done when the player places or orders it (the server sees it); he leaves after a quiet 20 s (each
-  step the player takes starts the 20 s again). New lessons: Glass Showcase 2, Collector Case 3, Wall Shelf 4,
+  The lesson is done when the player places or orders it (the server sees it); he leaves after a quiet 30 s (each
+  step the player takes, Next too, starts the 30 s again). New lessons: Glass Showcase 2, Collector Case 3, Wall Shelf 4,
   Accessory Hook 7, Big Display Rack 9, trophy (event). Players already past a level don't get its new visit.
 - **Sounds**: the rip (tear and crinkle) at about half; the lineup's sounds stop matching the boss victory: each card
   lands with the opening's own cardswipe (was the victory tiles' Cartoon Pop) and the lineup ends on a bright UI ding

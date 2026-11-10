@@ -14,7 +14,9 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Items = require(Shared:WaitForChild("Config"):WaitForChild("Items"))
 local Pish = require(Shared:WaitForChild("Config"):WaitForChild("Pish"))
+local Shelves = require(Shared:WaitForChild("Config"):WaitForChild("Shelves"))
 local LessonRules = require(Shared:WaitForChild("Util"):WaitForChild("LessonRules"))
 local TutorialRules = require(Shared:WaitForChild("Util"):WaitForChild("TutorialRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -95,6 +97,32 @@ local function queueLessons(player: Player, fromLevel: number, toLevel: number, 
 	end
 	if tell then
 		publish(player)
+	end
+end
+
+-- An event's lessons (the first trophy) wait to be shown, like a level-up's
+local function queueEvent(player: Player, trigger: string, tell: boolean)
+	local state = states[player]
+	if not state then
+		return
+	end
+	local due = LessonRules.byEvent(Pish.LESSONS, trigger, state.lessons)
+	if #due == 0 then
+		return
+	end
+	for _, id in due do
+		state.lessons[id] = false
+	end
+	if tell then
+		publish(player)
+	end
+end
+
+-- A trophy item given (a boss's first win, wherever it was) brings the trophy lesson
+local function onItemGiven(player: Player, itemId: string)
+	local def = (Items.ITEMS :: any)[itemId]
+	if def and def.trophy == true then
+		queueEvent(player, "trophy", inTown)
 	end
 end
 
@@ -338,6 +366,7 @@ function TutorialService.StartLessonsOnly()
 	EconomyService.OnLevelUp(function(player, fromLevel, toLevel)
 		queueLessons(player, fromLevel, toLevel, false)
 	end)
+	ItemService.OnGiven(onItemGiven)
 end
 
 function TutorialService.Start()
@@ -347,6 +376,7 @@ function TutorialService.Start()
 	EconomyService.OnLevelUp(function(player, fromLevel, toLevel)
 		queueLessons(player, fromLevel, toLevel, true)
 	end)
+	ItemService.OnGiven(onItemGiven)
 	task.spawn(function()
 		while true do
 			task.wait(STUCK_CHECK)
@@ -374,15 +404,25 @@ function TutorialService.Start()
 			record(player, "gift")
 		end
 	end)
+	-- Placing or ordering a lesson's new thing completes it (round 4: the lesson visit taught it, or they found it)
 	PlacementService.OnPlaced(function(player, shelfId)
 		if shelfId == Pish.RACK then
 			record(player, "buildRack")
+		end
+		local def = Shelves.ById[shelfId]
+		local lesson = LessonRules.forShelf(Pish.LESSONS, shelfId, if def then def.kind else nil)
+		if lesson then
+			TutorialService.LessonDone(player, lesson, true)
 		end
 	end)
 	StockService.OnOrdered(function(player, productId)
 		markActive(player)
 		if productId == Pish.ORDER_PRODUCT then
 			record(player, "orderStock")
+		end
+		local lesson = LessonRules.forProduct(Pish.LESSONS, productId)
+		if lesson then
+			TutorialService.LessonDone(player, lesson, true)
 		end
 	end)
 	StockService.OnStocked(function(player)

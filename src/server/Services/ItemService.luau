@@ -19,6 +19,7 @@ local ItemService = {}
 
 local inventories: { [Player]: ItemRules.Items } = {}
 local allowRequest = RateLimiter.new(1)
+local givenHandlers: { (player: Player, id: string, added: number) -> () } = {} -- ItemService.OnGiven
 
 local function sync(player: Player)
 	local items = inventories[player]
@@ -42,8 +43,16 @@ function ItemService.GiveItem(player: Player, id: string, n: number): number
 	if added > 0 then
 		inventories[player] = updated
 		sync(player)
+		for _, handler in givenHandlers do
+			task.spawn(handler, player, id, added)
+		end
 	end
 	return added
+end
+
+-- Called after a player is given an item (e.g. their first trophy brings Pish's trophy lesson)
+function ItemService.OnGiven(callback: (player: Player, id: string, added: number) -> ())
+	table.insert(givenHandlers, callback)
 end
 
 -- Takes n of an item if the player has that many; false (and nothing taken) otherwise

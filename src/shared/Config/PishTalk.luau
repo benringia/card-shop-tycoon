@@ -65,15 +65,34 @@ return {
 	} :: { [string]: StepTalk },
 
 	-- A lesson visit's line (Config/Pish LESSONS ids)
+	-- Each lesson visit's first line (what's new and why); a shelf or stock lesson then teaches it with TEACH
 	LESSONS = {
+		showcase = "Sell your spare cards in a Glass Showcase!",
 		sleeves = "New at the computer: Card Sleeves!",
+		collectorCase = "Sell cards to other players in a Collector Case!",
 		sword = "You got a sword! Try it in the Wild!",
-		condenser = "The Card Condenser is here! Find it in Shop.",
-		forge = "The Forge is here! Build it from Shop.",
-		expand = "Deck Boxes are here! Order them at the computer.",
-		boosterBox = "Booster Boxes are in! Order one at the computer.",
-		grading = "The Grading Station is here! Build it from Shop.",
+		wallShelf = "Wall Shelves are here! More room for stock.",
+		condenser = "The Card Condenser is here! It powers up cards.",
+		forge = "The Forge is here! Make and upgrade weapons.",
+		expand = "Deck Boxes are here! Customers love them.",
+		accessoryHook = "Accessory Hooks are here! For sleeves and decks.",
+		bigRack = "The Big Display Rack is here! Lots of stock.",
+		boosterBox = "Booster Boxes are in! They sell for a lot.",
+		grading = "The Grading Station is here! Grade your cards.",
 		jobs = "Your cards can work now! Tap Jobs.",
+		trophy = "You won a trophy! Show it off in your shop.",
+	} :: { [string]: string },
+
+	-- A lesson teaching its new thing, by where the player is (%s: the thing's name, or the Build tab's)
+	TEACH = {
+		default = "Tap Manage.",
+		trayOpen = "Tap Shop.",
+		tab = "Tap %s.",
+		tile = "Tap the %s!",
+		placing = "Put it on the floor and tap to place!",
+		computer = "Walk to the computer.",
+		orderOpen = "Tap Order on %s!",
+		closeWindow = "Tap the X to close this window.",
 	} :: { [string]: string },
 
 	-- The stuck helper's nudges (Util/LessonRules.nudge)

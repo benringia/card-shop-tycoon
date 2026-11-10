@@ -28,18 +28,29 @@ return {
 	LUCK = { seconds = 180, cooldown = 900, boost = 0.25, fromRarity = "Very Rare", petRange = 12 },
 
 	SKIP_HOLD = 2, -- seconds the skip button is held before the "really skip?" card
-	LESSON_SECONDS = 20, -- a lesson visit leaves after this (or when the new thing is used)
-	-- One visit per unlock (owner's levels, Config/Levels), once per player
+	LESSON_SECONDS = 20, -- a lesson visit that points leaves after this long (or when the new thing is used)
+	TEACH_QUIET_SECONDS = 30, -- a lesson that teaches leaves after this long with no step taken (each step starts it again)
+	-- One visit per town or shop unlock, once per player (owner 2026-11-10: "when a player unlocks something for the
+	-- first time, pish will visit and teach them"; tests/LessonRules checks every Products / Shelves unlock has one).
+	-- `shelf`: he walks them through Build to place it, `product`: through the order computer to order it (done when
+	-- they do, Util/LessonRules.forShelf / forProduct); `trigger`: an event instead of a level (the first trophy).
+	-- The two cases unlock at 1 and are taught once his first visit has given you cards. Combat is Chikin's.
 	LESSONS = {
-		{ id = "sleeves", level = 3, icon = "Sleeves" },
+		{ id = "showcase", level = 2, icon = "Cases", shelf = "GlassShowcase" },
+		{ id = "sleeves", level = 3, icon = "Sleeves", product = "CardSleeves" },
+		{ id = "collectorCase", level = 3, icon = "Cases", shelf = "CollectorCase" },
 		{ id = "sword", level = 4, icon = "Sword" },
-		{ id = "condenser", level = 5, icon = "Condenser" },
-		{ id = "forge", level = 6, icon = "Forge" },
-		{ id = "expand", level = 7, icon = "DeckBox" },
-		{ id = "boosterBox", level = 11, icon = "BoosterBox" },
-		{ id = "grading", level = 14, icon = "GradingSeal" },
+		{ id = "wallShelf", level = 4, icon = "Shelves", shelf = "WallShelf" },
+		{ id = "condenser", level = 5, icon = "Condenser", shelf = "Condenser" },
+		{ id = "forge", level = 6, icon = "Forge", shelf = "Forge" },
+		{ id = "expand", level = 7, icon = "DeckBox", product = "DeckBox" },
+		{ id = "accessoryHook", level = 7, icon = "Shelves", shelf = "AccessoryHook" },
+		{ id = "bigRack", level = 9, icon = "Shelves", shelf = "BigDisplayRack" },
+		{ id = "boosterBox", level = 11, icon = "BoosterBox", product = "FirstSparkBox" },
+		{ id = "grading", level = 14, icon = "GradingSeal", shelf = "GradingStation" },
 		{ id = "jobs", level = 20, icon = "Jobs" },
-	} :: { { id: string, level: number, icon: string } },
+		{ id = "trophy", icon = "Trophy", trigger = "trophy" },
+	} :: { { id: string, level: number?, icon: string, shelf: string?, product: string?, trigger: string? } },
 	-- The stuck helper: in a player's first `firstSeconds` of play, after `quiet` seconds without progress, at most
 	-- once per `gap` seconds
 	STUCK = { firstSeconds = 3600, quiet = 60, gap = 120 },

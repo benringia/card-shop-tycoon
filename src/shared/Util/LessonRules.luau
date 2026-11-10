@@ -1,7 +1,7 @@
 --!strict
--- Pish's lesson visits and the stuck helper (spec 2026-11-09-tutorial-pish-design 8). Pure: `lessons` is Config/Pish
--- LESSONS, `cfg` its STUCK.
-export type Lesson = { id: string, level: number, icon: string }
+-- Pish's lesson visits and the stuck helper (spec 2026-11-09-tutorial-pish-design 8, 16). Pure: `lessons` is
+-- Config/Pish LESSONS, `cfg` its STUCK.
+export type Lesson = { id: string, level: number?, icon: string, shelf: string?, product: string?, trigger: string? }
 export type Facts = {
 	played: number, -- seconds of play so far
 	quiet: number, -- seconds since the last order, restock, sale or pack
@@ -12,39 +12,71 @@ export type Facts = {
 
 local LessonRules = {}
 
-local function inLevelOrder(picked: { Lesson }): { string }
+-- Level order; one level's lessons (and the event lessons, after every level) in the order the config lists them
+local function inLevelOrder(lessons: { Lesson }, keep: (Lesson) -> boolean): { string }
+	local picked = {}
+	for index, lesson in lessons do
+		if keep(lesson) then
+			table.insert(picked, { lesson = lesson, index = index })
+		end
+	end
 	table.sort(picked, function(a, b)
-		return a.level < b.level
+		local levelA, levelB = a.lesson.level or math.huge, b.lesson.level or math.huge
+		if levelA ~= levelB then
+			return levelA < levelB
+		end
+		return a.index < b.index
 	end)
 	local ids = {}
-	for _, lesson in picked do
-		table.insert(ids, lesson.id)
+	for _, entry in picked do
+		table.insert(ids, entry.lesson.id)
 	end
 	return ids
 end
 
 -- The lessons a level-up from `fromLevel` to `toLevel` brings, in level order, leaving out ones seen (true) or already
 -- waiting (false). Loading a save (from = to) brings none, so players never get lessons for what they unlocked before.
+-- Event lessons (no level) never come this way.
 function LessonRules.due(lessons: { Lesson }, fromLevel: number, toLevel: number, seen: { [string]: boolean }): { string }
-	local picked = {}
-	for _, lesson in lessons do
-		if lesson.level > fromLevel and lesson.level <= toLevel and seen[lesson.id] == nil then
-			table.insert(picked, lesson)
-		end
-	end
-	return inLevelOrder(picked)
+	return inLevelOrder(lessons, function(lesson)
+		local level = lesson.level
+		return level ~= nil and level > fromLevel and level <= toLevel and seen[lesson.id] == nil
+	end)
+end
+
+-- The lessons an event brings (`trigger`, e.g. "trophy": the first trophy item), not seen or waiting yet
+function LessonRules.byEvent(lessons: { Lesson }, trigger: string, seen: { [string]: boolean }): { string }
+	return inLevelOrder(lessons, function(lesson)
+		return lesson.trigger == trigger and seen[lesson.id] == nil
+	end)
 end
 
 -- The lessons due but not shown yet (saved false: gained during a fight, an opening or in another place), in level
 -- order; unknown ids are left out
 function LessonRules.pending(lessons: { Lesson }, seen: { [string]: boolean }): { string }
-	local picked = {}
+	return inLevelOrder(lessons, function(lesson)
+		return seen[lesson.id] == false
+	end)
+end
+
+-- The lesson that placing this shelf completes (`kind` its Config/Shelves kind: any trophy completes the trophy one)
+function LessonRules.forShelf(lessons: { Lesson }, shelfId: string, kind: string?): string?
 	for _, lesson in lessons do
-		if seen[lesson.id] == false then
-			table.insert(picked, lesson)
+		if lesson.shelf == shelfId or (kind == "Trophy" and lesson.trigger == "trophy") then
+			return lesson.id
 		end
 	end
-	return inLevelOrder(picked)
+	return nil
+end
+
+-- The lesson that ordering this product completes
+function LessonRules.forProduct(lessons: { Lesson }, productId: string): string?
+	for _, lesson in lessons do
+		if lesson.product == productId then
+			return lesson.id
+		end
+	end
+	return nil
 end
 
 -- What Pish comes to point at for a stuck new player: "stock" (a box waiting for a shelf), "order" (empty shelves), or

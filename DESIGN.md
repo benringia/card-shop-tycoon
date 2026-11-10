@@ -2244,12 +2244,22 @@ All numbers in `Config/Pish`.
   first visit; "pet me for luck!" under his tag then, the server checks the same) gives **Pish's Luck** for 3 minutes, once per 15 minutes per player: the hit slot's Very Rare, Epic
   and Legendary weights +25% (`Util/LuckRules`, `PackService.SetLuck`), shown as a "🍀 m:ss" chip beside the creature's
   perk chip (`BuffController`), hearts for everyone nearby.
-- [ ] **Lesson visits**: a level-up marks the lessons it unlocks waiting (`Pish.LESSONS`: Sleeves 3, first sword 4,
-  Condenser 5, Forge 6, Deck Boxes 7, Booster Boxes 11, Grading Station 14, Jobs 20; saved `false` in
-  `tutorial.lessons` until shown, so ones gained in the Frontier or the Dungeon wait for the town). Once the player has
-  been free in town for 3 s (no window, fight, opening or weapon reveal; the first-sword popup comes first), Pish runs
-  in, barks and points: machines at the Shop (Build) tile, new stock at the order computer, Jobs at its tile, the first
-  sword at the Wild portal. He leaves after 20 s or once it's used (a window opens, the portal is reached).
+- [ ] **Lesson visits** (round 4, owner 2026-11-10: "pish teaches everything town/shop related. when a player unlocks
+  something for the first time, pish will visit and teach them"): every town and shop unlock has one (`Pish.LESSONS`;
+  `tests/LessonRules` fails for a Products or Shelves unlock without one): Glass Showcase 2, Card Sleeves 3, Collector
+  Case 3, first sword 4, Wall Shelf 4, Condenser 5, Forge 6, Deck Boxes 7, Accessory Hook 7, Big Display Rack 9,
+  Booster Boxes 11, Grading Station 14, Jobs 20, and the first trophy (an event: a trophy item given,
+  `ItemService.OnGiven`). The two cases unlock at 1 and are taught once his first visit has given you cards; combat
+  (bosses, the Wild, weapons) is left for Chikin's tutorial. A level-up (or the trophy) marks them waiting (saved
+  `false` in `tutorial.lessons` until shown, so ones gained in the Frontier or the Dungeon wait for the town); players
+  already past a level don't get its visit. Once the player has been free in town for 3 s (no window, fight, opening or
+  weapon reveal; the first-sword popup comes first), Pish runs in, barks and says what's new with Next; a shelf,
+  machine or trophy he then teaches like the first visit's rack ("Tap Manage.", "Tap Shop.", "Tap Cases.", "Tap the
+  Glass Showcase!", "Put it on the floor and tap to place!"; the trophy you hold), new stock through the computer
+  ("Walk to the computer.", "Tap Order on Card Sleeves!"; lines `PishTalk.TEACH`), a window in the way first ("Tap the
+  X..."). It's done when the server sees it placed or ordered (`LessonRules.forShelf` / `forProduct`; also when the
+  player finds it before he comes); he leaves after 30 s with no step taken (`TEACH_QUIET_SECONDS`, Next counts). The
+  first sword (the Wild portal) and Jobs (its tile) he points at and leaves after 20 s or once it's used.
 - [ ] **Stuck helper**: a new player's first hour (first visit not done when they joined), a quiet minute (no order,
   restock, sale or pack) with a box waiting brings Pish to point at it, with empty shelves at the order computer; at
   most every 2 minutes (`LessonRules.nudge`).
@@ -2370,7 +2380,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── WeaponService.luau    # owned and equipped weapons (saves), EquipWeapon, the Sword/SwordGrade/SwordLevel attributes, HitInfo for sword hits
     │   │   ├── ForgeService.luau     # the Forge machine: forge, upgrade, reforge (costs from WeaponRules, all or nothing, grade rolled here)
     │   │   ├── ArenaService.luau     # PvP: challenges, bet escrow, arena pad + queue, fights, saved record
-    │   │   ├── ItemService.luau      # item inventory (Star Shards, boss items): give, take, save
+    │   │   ├── ItemService.luau      # item inventory (Star Shards, boss items): give, take, save; OnGiven (Pish's trophy lesson)
     │   │   ├── BossService.luau      # boss ladder: saved progress, arena gates and copies, keys, boss wins' items (farm protection)
     │   │   ├── FrontierService.luau  # teleports: plaza Frontier portal, Explore / Join friend, back home (Dungeon: back to the Frontier)
     │   │   ├── DungeonGateService.luau # Frontier: the Dungeon portal's checks, groups and reserved-server teleport
@@ -2425,7 +2435,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── FountainFxController.luau # the healing fountain's rune circle, light column and orbs (client only)
     │   │   ├── PortalFxController.luau # spins every portal's vortex near the camera (client only)
     │   │   ├── WelcomeController.luau # the first-visit welcome cinematic
-    │   │   ├── TutorialController.luau # this player's own Pish: his arrival, the first visit's cues, Skip and the tour card, replay; lesson and nudge visits
+    │   │   ├── TutorialController.luau # this player's own Pish: his arrival, the first visit's cues, Skip and the tour card, replay; lesson visits that teach each unlock step by step, nudge visits
     │   │   ├── TownPishController.luau # Town Pish drawn on the server's marker, his clips and hearts
     │   │   ├── PriceTagController.luau  # point at / tap your shelf price tags to set the price
     │   │   ├── PartyBarController.luau  # bottom-right party cushion: Party pill + 3 round portraits (and the mascot), tap or 1/2/3 to summon
@@ -2606,7 +2616,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── WelcomePath.luau   # the welcome cinematic's camera path (pure, Lune-tested)
             ├── TutorialRules.luau # the first visit's saved table: read, steps recorded, skip, replay (pure, Lune-tested)
             ├── LuckRules.luau     # Pish's Luck: the hit slot's boost, the gift's floor, cooldown, badge text (pure, Lune-tested)
-            ├── LessonRules.luau   # lessons due at a level-up and waiting, the stuck helper's nudge (pure, Lune-tested)
+            ├── LessonRules.luau   # lessons due at a level-up or an event and waiting, what placing or ordering completes, the stuck helper's nudge (pure, Lune-tested)
             ├── PishPath.luau      # Town Pish's walk round the fountain (pure, Lune-tested)
             ├── TalkRules.luau     # which of Pish's lines shows: intro with Next, then the line for now (pure, Lune-tested)
             ├── PlazaLayout.luau   # the Card Festival Square's placements, giant cards, string lights, lotus petals, chairs, planter plants (pure, Lune-tested)

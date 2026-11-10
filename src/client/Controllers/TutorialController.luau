@@ -5,9 +5,10 @@
 -- bouncing paw marks the button or thing to use, a picture bubble over him says what, the paw row and his gift box sit
 -- at the top (Util/TutorialCues). Town Pish is hidden for this player meanwhile. Skip needs holding; then a card with
 -- the gift crossed out and a sad Pish asks again. A Pish button in the Manage tray replays it later.
--- Later he comes back the same way (spec 8): a lesson visit for each unlock the server says is waiting (run in, bark,
--- point at the new thing with its picture, leave after LESSON_SECONDS or once it's used; only when the player is free
--- and in town), and the stuck helper's nudge (point at the order computer or a waiting box).
+-- Later he comes back the same way (spec 8, 16): a lesson visit for each unlock the server says is waiting (run in,
+-- bark, say what's new; a shelf, machine, trophy or new stock he then teaches step by step, like the first visit, until
+-- the server sees it placed or ordered; the first sword and jobs he points at; he leaves after LESSON_SECONDS with
+-- nothing done; only when the player is free and in town), and the stuck helper's nudge (the order computer or a box).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -20,6 +21,8 @@ local Game = require(Config:WaitForChild("Game"))
 local Music = require(Config:WaitForChild("Music"))
 local Pish = require(Config:WaitForChild("Pish"))
 local PishTalk = require(Config:WaitForChild("PishTalk"))
+local Products = require(Config:WaitForChild("Products"))
+local Shelves = require(Config:WaitForChild("Shelves"))
 local Town = require(Config:WaitForChild("Town"))
 local Wild = require(Config:WaitForChild("Wild"))
 local MusicRules = require(Shared:WaitForChild("Util"):WaitForChild("MusicRules"))
@@ -35,6 +38,7 @@ local TutorialCues = require(ClientUtil:WaitForChild("TutorialCues"))
 local TutorialTalk = require(ClientUtil:WaitForChild("TutorialTalk"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local BattleController = require(Controllers:WaitForChild("BattleController"))
+local BuildController = require(Controllers:WaitForChild("BuildController"))
 local PlacementController = require(Controllers:WaitForChild("PlacementController"))
 local TownPishController = require(Controllers:WaitForChild("TownPishController"))
 local WeaponRevealController = require(Controllers:WaitForChild("WeaponRevealController"))
@@ -66,30 +70,35 @@ local BYE_IDLE_SECONDS = 20 -- the goodbye's last line left this long: the first
 -- player's shop (the Pack Rack instead while a box is carried: `carryRack`), or a spot in town
 type Target = { hud: string?, tray: boolean?, part: string?, carryRack: boolean?, spot: Vector3?, gui: GuiObject? }
 
--- Each lesson's new thing: machines are bought in Build, new stock at the order computer, the first sword's way is the
--- Wild portal
+-- Each lesson (Config/Pish LESSONS) by id. One with a shelf, a product or the trophy is taught step by step
+-- (lessonSituation); the others point at one place: the first sword's way is the Wild portal, jobs their tile
+type Lesson = { id: string, level: number?, icon: string, shelf: string?, product: string?, trigger: string? }
 local PORTAL = Wild.PLAZA_PORTAL
-local LESSON_TARGETS: { [string]: Target } = {
-	sleeves = { part = "OrderComputer" },
+local LESSONS: { [string]: Lesson } = {}
+for _, lesson in Pish.LESSONS do
+	LESSONS[lesson.id] = lesson
+end
+local POINT_AT: { [string]: Target } = {
 	sword = { spot = Vector3.new(PORTAL.x, PORTAL.y + SPOT_HEIGHT, PORTAL.z) },
-	condenser = { hud = "Build", tray = true },
-	forge = { hud = "Build", tray = true },
-	expand = { part = "OrderComputer" },
-	boosterBox = { part = "OrderComputer" },
-	grading = { hud = "Build", tray = true },
 	jobs = { hud = "Jobs", tray = true },
 }
-local LESSON_ICONS: { [string]: string } = {}
-for _, lesson in Pish.LESSONS do
-	LESSON_ICONS[lesson.id] = lesson.icon
-end
 -- The stuck helper's two nudges (Util/LessonRules.nudge)
 local NUDGES: { [string]: { target: Target, icon: string } } = {
 	order = { target = { part = "OrderComputer" }, icon = "Order" },
 	stock = { target = { part = "DeliverySpot", carryRack = true }, icon = "Box" },
 }
 
-type Visit = { kind: "lesson" | "nudge", id: string, started: number }
+-- `started`: when it began, or the player's last step in a lesson that teaches; `firstKey`: where they were when it
+-- began (a step away from it ends his first line); `lastKey`: where they were at the last tick; `introDone`: his first
+-- line is over
+type Visit = {
+	kind: "lesson" | "nudge",
+	id: string,
+	started: number,
+	firstKey: string?,
+	lastKey: string?,
+	introDone: boolean?,
+}
 
 local player = Players.LocalPlayer
 local marker: Part? = nil
@@ -179,6 +188,8 @@ local STEP_WINDOWS: { [string]: { [string]: boolean } } = {
 	gift = { Bag = true },
 	buildRack = { BuildMenu = true },
 	orderStock = { OrderMenu = true },
+	["lesson:build"] = { BuildMenu = true },
+	["lesson:order"] = { OrderMenu = true },
 }
 
 -- A window open that this step doesn't use, and its X
@@ -238,9 +249,65 @@ local function stepSituation(stepId: string): (string, Target)
 	return "default", {}
 end
 
+local function teaches(lesson: Lesson): boolean
+	return lesson.shelf ~= nil or lesson.product ~= nil or lesson.trigger == "trophy"
+end
+
+-- The trophy the player holds, to place (the trophy lesson's tile)
+local function heldTrophy(): string?
+	for _, def in Shelves.List do
+		if def.kind == "Trophy" and def.requiresItem and BuildController.ItemCount(def.requiresItem) > 0 then
+			return def.id
+		end
+	end
+	return nil
+end
+
+-- Where the player is in a lesson that teaches its new thing (Config/PishTalk TEACH) and where Pish points, plus the
+-- name his line says: Manage, Shop, its tab, its tile, placing it; or the computer, then its Order button
+local function lessonSituation(lesson: Lesson): (string, Target, string)
+	if lesson.product then
+		local inTheWay = windowInTheWay("lesson:order")
+		if inTheWay then
+			return "closeWindow", { gui = inTheWay }, ""
+		end
+		local product = Products.ById[lesson.product]
+		local name = if product then product.name else lesson.product
+		local order = inMainGui("OrderMenu")
+		if order then
+			local row = order:FindFirstChild(lesson.product, true)
+			return "orderOpen", { gui = if row and row:IsA("GuiObject") then inside(row, "Order") else nil }, name
+		end
+		return "computer", { part = "OrderComputer" }, name
+	end
+	local inTheWay = windowInTheWay("lesson:build")
+	if inTheWay then
+		return "closeWindow", { gui = inTheWay }, ""
+	end
+	if PlacementController.IsActive() then
+		return "placing", {}, ""
+	end
+	local shelfId = lesson.shelf or heldTrophy()
+	local def = if shelfId then Shelves.ById[shelfId] else nil
+	local shop = inMainGui("BuildMenu")
+	if shop then
+		local tile = if shelfId then inside(shop, shelfId) else nil
+		if tile and def then
+			return "tile", { gui = tile }, def.name
+		end
+		local category = if def then def.category else "Trophies"
+		return "tab", { gui = inside(shop, "Tab" .. category) }, category
+	end
+	if Hud.isTrayOpen() then
+		return "trayOpen", { hud = "Build" }, ""
+	end
+	return "default", { hud = "Build", tray = true }, ""
+end
+
 -- What Pish is on now, worked out once a tick (refreshFocus): its key (a change redraws the cues), target, picture,
--- the step's situation and whether he's still on his intro lines (no pointing yet)
+-- the step's situation and whether he's still on his intro lines (no pointing yet); in a lesson, the name its line says
 local focusKey, focusTarget, focusIcon, focusSituation = "", nil :: Target?, nil :: string?, "default"
+local focusName = ""
 local talking = false
 
 local function refreshFocus()
@@ -264,7 +331,15 @@ local function refreshFocus()
 	if not now then
 		focusKey, focusTarget, focusIcon = "", nil, nil
 	elseif now.kind == "lesson" then
-		focusKey, focusTarget, focusIcon = "lesson:" .. now.id, LESSON_TARGETS[now.id], LESSON_ICONS[now.id]
+		local lesson = LESSONS[now.id]
+		if lesson and teaches(lesson) then
+			local situation, target, name = lessonSituation(lesson)
+			focusKey, focusTarget, focusIcon = "lesson:" .. now.id .. ":" .. situation, target, lesson.icon
+			focusSituation, focusName = situation, name
+		else
+			focusKey, focusTarget = "lesson:" .. now.id, POINT_AT[now.id]
+			focusIcon = if lesson then lesson.icon else nil
+		end
 	else
 		local nudge = NUDGES[now.id]
 		focusKey = "nudge:" .. now.id
@@ -611,6 +686,33 @@ local function visitUsed(spec: Target?): boolean
 	return false
 end
 
+local function teaching(now: Visit?): Lesson?
+	local lesson = if now and now.kind == "lesson" then LESSONS[now.id] else nil
+	return if lesson and teaches(lesson) then lesson else nil
+end
+
+-- A lesson that teaches: his line about the new thing with Next (until they tap it or take a step), then the line for
+-- where they are (Config/PishTalk TEACH)
+local function updateLessonTalk()
+	local now = visit
+	if not now or not teaching(now) then
+		return
+	end
+	if not now.introDone and focusKey ~= now.firstKey then
+		now.introDone = true -- they're already on their way
+	end
+	if not now.introDone then
+		TutorialTalk.say(TalkRules.fill(PishTalk.LESSONS[now.id] or "", Game.NAME), focusIcon, PishTalk.NEXT, function()
+			now.introDone = true
+			now.started = os.clock() -- Next is a step too: the quiet time starts again
+			updateLessonTalk()
+		end)
+		return
+	end
+	local line = PishTalk.TEACH[focusSituation] or PishTalk.TEACH.default
+	TutorialTalk.say(string.format(line, focusName), focusIcon, nil, nil)
+end
+
 local function startVisit(kind: "lesson" | "nudge", id: string)
 	visit = { kind = kind, id = id, started = os.clock() }
 	pointedAt = ""
@@ -618,9 +720,15 @@ local function startVisit(kind: "lesson" | "nudge", id: string)
 	clearCues()
 	ensurePish(RUN_IN)
 	refreshFocus()
-	local line = if kind == "lesson" then PishTalk.LESSONS[id] else PishTalk.NUDGES[id]
-	if line then
-		TutorialTalk.say(TalkRules.fill(line, Game.NAME), focusIcon, nil, nil)
+	local now = visit :: Visit
+	now.firstKey = focusKey
+	if teaching(now) then
+		updateLessonTalk()
+	else
+		local line = if kind == "lesson" then PishTalk.LESSONS[id] else PishTalk.NUDGES[id]
+		if line then
+			TutorialTalk.say(TalkRules.fill(line, Game.NAME), focusIcon, nil, nil)
+		end
 	end
 	if kind == "lesson" then
 		Remotes.TutorialAction:FireServer("lessonShown", id)
@@ -641,6 +749,9 @@ local function endVisit(used: boolean)
 		end
 		Remotes.TutorialAction:FireServer("lessonDone", ended.id, used)
 	end
+	if used and marker then
+		TutorialCues.sparkle(marker.Position + Vector3.new(0, Pish.HEIGHT, 0))
+	end
 	task.spawn(finishVisit)
 end
 
@@ -648,6 +759,17 @@ end
 local function updateVisit()
 	local now = visit
 	if now then
+		if teaching(now) then
+			-- Done when the server sees it placed or ordered (onState); each step the player takes gives him more time
+			if focusKey ~= now.firstKey and focusKey ~= now.lastKey then
+				now.lastKey = focusKey
+				now.started = os.clock()
+			end
+			if os.clock() - now.started >= Pish.TEACH_QUIET_SECONDS then
+				endVisit(false)
+			end
+			return
+		end
 		local _, spec = focus()
 		if visitUsed(spec) then
 			endVisit(true)
@@ -686,11 +808,16 @@ local function onState(payload: unknown)
 	if typeof(lessons) == "table" then
 		local queue = {}
 		for _, id in lessons do
-			if typeof(id) == "string" and LESSON_TARGETS[id] then
+			if typeof(id) == "string" and LESSONS[id] then
 				table.insert(queue, id)
 			end
 		end
 		lessonQueue = queue
+		-- The lesson being taught is no longer waiting: the server saw it placed or ordered
+		local now = visit
+		if now and now.kind == "lesson" and not table.find(queue, now.id) then
+			endVisit(true)
+		end
 	end
 	local nudge = (payload :: any).nudge
 	if typeof(nudge) == "string" and NUDGES[nudge] and step == "" and not visit then
@@ -907,6 +1034,8 @@ function TutorialController.Start()
 		if step ~= "" then
 			updateTalk()
 			byeIdle()
+		elseif visit then
+			updateLessonTalk()
 		end
 		if leading then
 			pointPaw()

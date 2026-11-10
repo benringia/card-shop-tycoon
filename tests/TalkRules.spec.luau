@@ -38,6 +38,9 @@ local function eachLine(visit: (where: string, text: string) -> ())
 	for key, text in PishTalk.LABELS do
 		visit(`label {key}`, string.format(text, 3, 8))
 	end
+	for key, text in PishTalk.TEACH do
+		visit(`teach {key}`, string.format(text, "First Spark Booster Box")) -- the longest name a line names
+	end
 end
 
 return {
@@ -118,5 +121,13 @@ return {
 		expect.equal(last.next, true)
 		expect.equal(last.finish, true)
 		expect.equal(TalkRules.show(talk, 5, "default").text, "bye", "past the end: the last line")
+	end,
+	["a lesson teaches step by step: a line for each place the player is at (round 4)"] = function()
+		for _, situation in { "default", "trayOpen", "tab", "tile", "placing", "computer", "orderOpen", "closeWindow" } do
+			assert(PishTalk.TEACH[situation], `a line for {situation}`)
+		end
+		expect.equal(string.format(PishTalk.TEACH.tile, "Wall Shelf"), "Tap the Wall Shelf!")
+		expect.equal(string.format(PishTalk.TEACH.orderOpen, "Card Sleeves"), "Tap Order on Card Sleeves!")
+		expect.equal(PishTalk.TEACH.closeWindow, PishTalk.LABELS.close)
 	end,
 }
