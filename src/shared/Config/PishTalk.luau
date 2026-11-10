@@ -59,7 +59,7 @@ return {
 			},
 		},
 		bye = {
-			intro = { "You're a real shop owner now!", "Need me later? Tap Manage, then Pish. Bye bye!" },
+			intro = { "You're a real shop owner now!", "Need me later? Tap me on your party bar. Bye!" },
 			now = {},
 		},
 	} :: { [string]: StepTalk },
@@ -169,6 +169,9 @@ return {
 		keepGoing = "Keep going",
 		skipYes = "Skip tour",
 		close = "Tap the X to close this window.", -- a window the step doesn't use is open (TutorialController)
-		petMe = "pet me for luck!", -- under Town Pish's name at your shop, once your first visit is done
+		petMe = "pet me for luck!",
+		replayAsk = "Want my shop tour again?",
+		replayYes = "Yes!",
+		replayNo = "Not now", -- under Town Pish's name at your shop, once your first visit is done
 	} :: { [string]: string },
 }

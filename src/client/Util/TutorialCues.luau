@@ -46,6 +46,8 @@ local onSkipTap: (() -> ())? = nil
 local spotTarget: GuiObject? = nil
 local spotFrames: { Frame }? = nil
 local card: Frame? = nil
+local askCard: Frame? = nil -- the "tour again?" card (TutorialCues.askReplay)
+local ASK_SIZE = Vector2.new(330, 150)
 
 -- Gold paws: white ones vanished against the shop's white walls and light floors
 local function tint(icon: Instance, color: Color3)
@@ -336,6 +338,53 @@ function TutorialCues.tourCard(done: number, total: number, onKeep: () -> (), on
 		onSkip()
 	end)
 	card = made
+end
+
+-- Tapping the peeking Pish (round 5: he's the Pish button): "Want my shop tour again?" with a big green Yes and a
+-- small grey Not now, so a stray tap never restarts it
+function TutorialCues.askReplay(onYes: () -> ())
+	if askCard and askCard.Parent then
+		return
+	end
+	local labels = PishTalk.LABELS
+	local made = Instance.new("Frame")
+	made.Name = "AskReplay"
+	made.AnchorPoint = Vector2.new(0.5, 0.5)
+	made.Position = UDim2.fromScale(0.5, 0.5)
+	made.Size = UDim2.fromOffset(ASK_SIZE.X, ASK_SIZE.Y)
+	made.ZIndex = 40
+	made.Parent = gui()
+	UIKit.creamWindow(made)
+	local ink = UIKit.colorsFor(made).ink
+	local face = Icon.make(made, "Paw", UDim2.fromOffset(34, 34))
+	face.Position = UDim2.fromOffset(16, 16)
+	local line = UIKit.label(made, labels.replayAsk, Enum.Font.FredokaOne, 22, ink)
+	line.Position = UDim2.fromOffset(58, 16)
+	line.Size = UDim2.new(1, -74, 0, 34)
+	local yes = UIKit.button(made, labels.replayYes, UIKit.Colors.Success)
+	yes.Name = "Yes"
+	yes.AnchorPoint = Vector2.new(0, 1)
+	yes.Position = UDim2.new(0, 16, 1, -16)
+	yes.Size = UDim2.fromOffset(170, 52)
+	yes.Font = Enum.Font.FredokaOne
+	yes.TextSize = 22
+	local no = UIKit.button(made, labels.replayNo, CARD_GREY)
+	no.Name = "No"
+	no.AnchorPoint = Vector2.new(1, 1)
+	no.Position = UDim2.new(1, -16, 1, -18)
+	no.Size = UDim2.fromOffset(112, 48)
+	no.Font = Enum.Font.FredokaOne
+	no.TextSize = 18
+	local function close()
+		made:Destroy()
+		askCard = nil
+	end
+	yes.Activated:Connect(function()
+		close()
+		onYes()
+	end)
+	no.Activated:Connect(close)
+	askCard = made
 end
 
 function TutorialCues.isTourCardOpen(): boolean

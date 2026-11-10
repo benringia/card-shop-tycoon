@@ -44,7 +44,10 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   `Config/Packs`): art made with Figma's image generator, uploaded as images. Not synced by Rojo.
 - `assets/ui/covers`: the binder's set cover paintings (creature-free, Figma-generated, 680 wide; ids in
   `Config/BinderCovers`). Not synced by Rojo.
-- `assets/ui/mascot`: the HUD mascot's stickers (peek and tail; ids in `Config/HudMascot`), Figma-generated on flat green
+- `assets/ui/card-back` (the card back: Pish and Chikin's medallion; id in `Config/CardDesign` BACK.IMAGE) and
+  `assets/ui/opening` (the pack opening's backdrop: their shop at night; id in `Config/PackOpening` BACKDROP.IMAGE):
+  Figma-generated, uploaded as images. Not synced by Rojo. Pish and Chikin are the face of the game (owner 2026-11-10).
+- `assets/ui/mascot`: the HUD mascot's stickers (Pish, the Pish button) (peek and tail; ids in `Config/HudMascot`), Figma-generated on flat green
   and cut out by `tools/ui-art/cutout.py`; swapping the mascot: `docs/hud-mascot.md`. Not synced by Rojo.
 - `assets/ui/product-pictures`: the menus' pack and deck box pictures (Order Stock, Prices; ids in
   `Config/ProductPictures`): the real models rendered big in a ViewportFrame on magenta, captured with the Studio MCP and

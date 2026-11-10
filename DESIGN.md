@@ -574,8 +574,10 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
 ### 5.7 Pack opening feel (important)
 - **A 3D stage** (UI project 3, spec `docs/superpowers/specs/2026-10-29-cards-in-world-and-pack-opening-design.md`):
   client-only parts right above the player while it shows (`Util/OpeningStage`, `Util/StageSpot`; see the binder's
-  stage note in 10.6; far away at `PackOpening.STAGE_POSITION` otherwise): a violet glow fading to
-  near-black behind, a warm key light and a blue rim light, and a Scriptable camera (FOV 40, 8 studs back) with
+  stage note in 10.6; far away at `PackOpening.STAGE_POSITION` otherwise): behind it Pish and Chikin's card shop
+  at night, the two peeking over the counter (owner's pick A 2026-11-10, "connect every element to our core loop";
+  `PackOpening.BACKDROP.IMAGE`, `assets/ui/opening`, Figma-generated; a little darker, darker still behind the
+  cards, its sides fading to near-black on wide screens), a warm key light and a blue rim light, and a Scriptable camera (FOV 40, 8 studs back) with
   bloom, a colour grade that dims for big pulls and a depth-of-field blur for the push-ins; letterbox bars and a
   white flash sit on top. The world stays where it is (sound stays at the character, `Util/ListenAtCharacter`; the
   HUD and world tags hide). The opening follows `Util/OpeningFlow` (Ready, Tearing, Stacking, Stacked, Flipping,
@@ -657,8 +659,9 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
   JPEGs in `assets/ui/card-art`). A card without one falls back to its element's painted scene (`SCENES`:
   fireplace, coral reef, forest, stormy peak, moonlit graveyard; `assets/ui/card-scenes`) with the element emoji
   on a glow, else an element gradient. Effects on the art: Epic and up a white shine now and then, foil and Frontier a holo
-  sweep. Missing binder slots: grey rim, dark silhouette and "?". The face-down back is a deep blue card with
-  🃏 CARD SHOP; glows use the "Glow Circle / Radial Glow" decal (public Creator Store image).
+  sweep. Missing binder slots: grey rim, dark silhouette and "?". The face-down back is Pish and Chikin hugging a
+  pack in a gold medallion on violet with gold filigree, one picture for the whole card (owner's pick A 2026-11-10:
+  "PISH and CHIKIN is now the face of this game"; `CardDesign.BACK.IMAGE`, `assets/ui/card-back`); glows use the "Glow Circle / Radial Glow" decal (public Creator Store image).
 - Cards on display in Glass Showcases and Collector Cases use the same card face, drawn by each client on the
   server's plain card part (0.84 x 1.2 studs, standing upright in two rows, `Config/CaseLayout`; the back drawn on
   its other side), with the asking price in gold in the value row. The full face and back draw within 30 studs
@@ -1193,7 +1196,7 @@ group, checked before its fragments and every time (not only the first). Below i
   per party card with its painting and name, its key 1-3 on a gold chip (PC; the party slot as the party bar numbers
   it, `SwapKeys.party`/`pick`, Lune-tested). Its look (option C, the owner: "Remove strong/weak/out just add an effect
   or animation or icons for who's out/dead"): the one fighting has a green light running round its edge and a
-  heartbeat pulse in place of its name; a card that fainted in this fight lies face down (the card back's blue) with
+  heartbeat pulse in place of its name; a card that fainted in this fight lies face down (the card back's violet and gold) with
   dizzy stars, one resting since an earlier fight face down with "Zzz"; while swaps cool down the others dim with the
   seconds left; a tap swaps (looks in `Config/CombatHud` PARTY_STRIP). A key while swaps cool
   down still says "Swap ready in 4s", a resting card says so (2026-11-04). The dodge is a 12-stud dash pushed by a velocity constraint in the ground plane (setting the velocity each frame
@@ -2225,8 +2228,8 @@ All numbers in `Config/Pish`.
   on phones. Cues: gold paw prints to the place and a bouncing gold paw over a thing in the shop, drawn on the screen
   so walls and closed doors don't hide them; a bouncing gold paw and a pulsing gold ring on a button. He waits
   quietly (card and cues hidden) while a pack opening, a fight or a weapon reveal has the screen. The goodbye ("Need
-  me later? Tap Manage, then Pish. Bye bye!", the paw on Manage, then the Pish tile) ends on its "Bye!" button (or by
-  itself 20 s after). A step the shop has already done (a replay) completes at once. Old saves skip it (v17 migration).
+  me later? Tap me on your party bar. Bye!", the HUD back and the paw on the peeking Pish there) ends on its "Bye!"
+  button, a tap on the peeking Pish, or by itself 20 s after. A step the shop has already done (a replay) completes at once. Old saves skip it (v17 migration).
 - [ ] **Calm screen** (round 3, owner: "overwhelming for new players"): through the first visit the party bar, weapon
   switch, Bosses tile and buff chips are hidden (`Hud.calmPiece`, `Hud.setCalm`), and a **spotlight** dims everything
   but the button Pish points at (four dim frames, his card, paw and Skip above them; nothing dims for a thing in the
@@ -2234,7 +2237,10 @@ All numbers in `Config/Pish`.
 - [ ] **Skipping** (round 3, owner: "just put a skip icon on the top right"): a small "Skip" at the top right (left of
   the cash column when that reaches the top). Tapping it brings a sad Pish (whimper, head tilt) and the tour card in
   the middle (Pish's card waits under it): "Pish's Tour · 3 of 8", the paw row, his gift's picture, "Finish the tour
-  for Pish's gift!", a big green "Keep going" and a small grey "Skip tour". A Pish tile in the Manage tray replays it
+  for Pish's gift!", a big green "Keep going" and a small grey "Skip tour". The peeking Pish over the party bar is the
+  Pish button (round 5, owner: "make it the Pish button"; the Manage tray's Pish tile is gone): a tap after the first
+  visit bounces and yips and asks "Want my shop tour again?" with a big green "Yes!" and a grey "Not now"
+  (`TutorialCues.askReplay`, `HudMascotView.onTap`), so a stray tap never restarts it. A replay
   (nothing comes twice: his present and gift once, and his own customer only until his gift is claimed, `TutorialRules.sendsCustomer`; a later replay waits for a customer who comes by themselves). Icons: `PishPresent` (Pish hugging a ribboned pack) and `PishGift` (a rainbow
   pack with a paw medal), `Config/UIIcons`.
 - [ ] **Tutorial Pish is this player's own** (a client marker): other players see Town Pish; Town Pish and his pet prompt
@@ -2894,11 +2900,12 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   tile at its widest, key chip and all, stays inside the gap); the Party pill squishes on a press and hops a little under
   a mouse. Anything stacked over the tile row (the status corner on a narrow PC screen, the toast) sits above its
   popped-out icons at their highest hover (`SquishRules.rowTop`). **The mascot** (`Config/HudMascot`, `Util/HudMascotView`, `Util/HudMascotRules`):
-  Cindercub, a Figma-generated sticker (`assets/ui/mascot`, cut out by `tools/ui-art/cutout.py`), peeks over the
-  cushion's left end with its paws on the edge and its flame tail poking up behind it; it breathes and its tail sways
+  Pish (round 5, owner 2026-11-10: "Change peaking cindercub to Pish"; Cindercub before), a Figma-generated
+  sticker (`assets/ui/mascot`, cut out by `tools/ui-art/cutout.py`), peeks over the cushion's left end with his paws
+  on the edge and his curled tail poking up behind him; he's the Pish button (section 7.6); it breathes and its tail sways
   (looping tweens), it blinks every 3-7 s (lids drawn over its eyes), it ducks behind the cushion when you summon,
   unsummon or swap and pops back up (carrying on from where it is if you swap again), and a tap makes it bounce and
-  chirp. It sits over the left end because on touch screens the level pill sits above the right end. Everything about
+  yip. It sits over the left end because on touch screens the level pill sits above the right end. Everything about
   it is in its config so another creature can replace it (the owner plans one based on their own pet): see
   `docs/hud-mascot.md`.
 - **HUD** (`Util/Hud`, `Config/HudLayout`): a **Manage** tile on the left middle slides out a tray of tiles to
@@ -2924,7 +2931,7 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   from the moment you join (Roblox only finishes loading an image once it's drawn), so hidden tiles open with
   their icons ready. Names without a picture show as text (⌛ in a bubble). **Toasts** (owner's pick A, 2026-11-06;
   `Config/Toasts`, `Util/ToastRules`, `UIController.Notify(message, isError, duration, icon)` and `NotifySide` for
-  money): Cindercub's speech bubbles stacked right over the cash pill (over the buff badge while one shows; under the
+  money): the HUD mascot's speech bubbles stacked right over the cash pill (over the buff badge while one shows; under the
   column on touch screens), newest nearest the coin, messages and sales alike, at most 3 (2 on phones; a new one
   pushes the oldest out). A white bubble with the windows' soft lilac edge, a soft plum shadow and a tail pointing at
   the cash (up on phones), an icon chip in its kind's colour (mint money with the coin, butter news with Info, pink
@@ -2933,7 +2940,7 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   settles, stays 6 s (errors 8 s; a toast that sets its own time gets it doubled: a loot pickup 3 s, the level-up
   10 s; owner 2026-11-06 "last longer, with a close button") and leaves shrinking and fading; a click or tap anywhere
   on it closes it at once (the "x" darkens under the pointer). The same message again bumps the newest bubble instead
-  of stacking a copy. The HUD's Cindercub hops (silent, `HudMascotView.hop`) once per burst. Toasts
+  of stacking a copy. The HUD's peeking Pish hops (silent, `HudMascotView.hop`) once per burst. Toasts
   stay up over the binder and the pack opening (the corner hides, they don't). The fight screen hides the HUD groups.
 - **One window at a time** (`UIKit.panel`): opening a main window (Shop, Prices, Jobs, Party, the binder...)
   closes any other; windows marked `Overlay` (the Rarity guide, a case's card picker) open on top without

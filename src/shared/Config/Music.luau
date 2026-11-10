@@ -55,7 +55,7 @@ return {
 	OPENING = {
 		key = "opening",
 		tracks = {
-			"rbxassetid://9048776085", -- "Enchanted Butterflies" (whimsical mallets and piano; first pick, to judge)
+			"rbxassetid://1841593987", -- "Magic and Mayhem" (the owner's pick 2026-11-10: option 3, "but low volume")
 		},
 		options = {
 			option("Enchanted Butterflies (whimsical mallets and piano)", "9048776085"),
@@ -65,7 +65,7 @@ return {
 			option("Jackpot (game show, fast and driving)", "1836301731"),
 			option("Mr Happy Go Lucky (cheerful pizzicato)", "9043031481"),
 		},
-		volume = 0.25,
+		volume = 0.1, -- low (owner 2026-11-10); "/music opening 3 <volume>" to try others
 		compressor = LEVELER,
 		fade = 0.8, -- seconds: quick, so the music changes as the pack comes up
 	},

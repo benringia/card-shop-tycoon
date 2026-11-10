@@ -32,6 +32,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local Hud = require(ClientUtil:WaitForChild("Hud"))
+local HudMascotView = require(ClientUtil:WaitForChild("HudMascotView"))
 local OpeningStage = require(ClientUtil:WaitForChild("OpeningStage"))
 local PishVisual = require(ClientUtil:WaitForChild("PishVisual"))
 local TutorialCues = require(ClientUtil:WaitForChild("TutorialCues"))
@@ -130,7 +131,6 @@ local trailFrom: Vector3? = nil
 local trailTo: Vector3? = nil
 local pointedAt = "" -- the step he last ran to and pointed for
 local shownKey = "" -- what the paw points at now (redrawn when it changes)
-local replayButton: TextButton? = nil
 local leaving = false
 
 local function root(): BasePart?
@@ -329,7 +329,9 @@ local function refreshFocus()
 		focusKey = step .. ":" .. (if talking then "intro" else situation)
 		focusTarget = if talking then nil else target
 		if step == "bye" then
-			focusTarget = { hud = "Pish", tray = true } -- "Tap Manage, then Pish": where to find him later
+			-- "Tap me on your party bar": the peeking Pish there is the Pish button (round 5)
+			local mascot = HudMascotView.tapArea()
+			focusTarget = if mascot then { gui = mascot } else nil
 		end
 		focusIcon = Pish.STEP_ICONS[step]
 		focusSituation = situation
@@ -968,7 +970,7 @@ local function arrive()
 	end)
 end
 
--- The Pish button in the Manage tray: after the first visit, and at its goodbye ("Tap Manage, then Pish")
+-- The Pish button (the peeking Pish over the party bar) offers his tour again after the first visit, and at its goodbye
 local function replayShown(): boolean
 	return step == "bye" or (step == "" and player:GetAttribute("TutorialDone") == true)
 end
@@ -984,15 +986,13 @@ local function onStep()
 	shownKey = ""
 	introIndex = 1
 	byeSent = false
-	Hud.setCalm(step ~= "") -- the calm HUD through the first visit (round 3, pick A)
+	-- The calm HUD through the first visit (round 3, pick A); back for the goodbye, which points at the peeking Pish
+	Hud.setCalm(step ~= "" and step ~= "bye")
 	clearCues()
 	if step ~= "" then
 		visit = nil -- a replay takes over a visit; its lesson stays waiting
 	end
 	refreshFocus()
-	if replayButton then
-		replayButton.Visible = replayShown()
-	end
 	if step == "" then
 		if before ~= "" then
 			task.spawn(finishVisit)
@@ -1039,22 +1039,21 @@ function TutorialController.Start()
 	if workspace:GetAttribute("PlaceKind") ~= "Main" then
 		return
 	end
-	replayButton = Hud.fanButton({
-		id = "Pish",
-		icon = "Paw",
-		label = "Pish",
-		order = 6,
-		onClick = function()
-			Remotes.TutorialAction:FireServer("replay")
-		end,
-	})
-	;(replayButton :: TextButton).Visible = replayShown()
-	player:GetAttributeChangedSignal("TutorialStep"):Connect(onStep)
-	player:GetAttributeChangedSignal("TutorialDone"):Connect(function()
-		if replayButton then
-			replayButton.Visible = replayShown()
+	-- The peeking Pish over the party bar is the Pish button (owner 2026-11-10): at his goodbye a tap ends it; once
+	-- the first visit is done (no visit on) a tap offers his tour again
+	HudMascotView.onTap(function()
+		if step == "bye" then
+			if not byeSent then
+				byeSent = true
+				Remotes.TutorialAction:FireServer("bye")
+			end
+		elseif replayShown() and not visit then
+			TutorialCues.askReplay(function()
+				Remotes.TutorialAction:FireServer("replay")
+			end)
 		end
 	end)
+	player:GetAttributeChangedSignal("TutorialStep"):Connect(onStep)
 	Remotes.TutorialState.OnClientEvent:Connect(onState)
 	local tick = 0
 	RunService.RenderStepped:Connect(function(dt)

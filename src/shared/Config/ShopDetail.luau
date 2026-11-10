@@ -5,5 +5,5 @@
 return {
 	SCREEN_DISTANCE = 60, -- studs: price tags, shelf headers, machine screens and box prints stop drawing beyond this
 	FULL_CARD_DISTANCE = 30, -- studs: closer, a displayed card shows its full face; further, a flat picture of its art
-	FLAT_BACK_COLOR = { 70, 110, 245 }, -- a displayed card's back and edges from afar (the card back's blue)
+	FLAT_BACK_COLOR = { 75, 45, 165 }, -- a displayed card's back and edges from afar (the card back's violet)
 }

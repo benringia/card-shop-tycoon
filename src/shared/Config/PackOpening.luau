@@ -22,11 +22,17 @@ return {
 	CAMERA_DISTANCE = 8, -- the camera's distance from the stage's middle
 	LETTERBOX = 0.11, -- each cinematic bar, share of the screen height
 	BACKDROP = {
-		MIDDLE = Color3.fromRGB(75, 47, 176), -- a violet glow behind the pack
-		EDGE = Color3.fromRGB(13, 8, 38), -- near-black at the edges
+		EDGE = Color3.fromRGB(13, 8, 38), -- near-black past the painting's sides (wide phone screens)
 		BEHIND = 45, -- how far behind the stage's middle (past the row's far-away cards)
 		SIZE = 160,
-		GLOW = 0.35, -- the glow's size, share of the backdrop
+		-- Owner's pick A (2026-11-10, "connect every element to our core loop"): Pish and Chikin's card shop at night,
+		-- the two of them peeking over the counter (assets/ui/opening, Figma-generated, uploaded)
+		IMAGE = "rbxassetid://118859062249822",
+		IMAGE_SIZE = Vector2.new(75, 42), -- studs: the view's height at BEHIND (about 39) and a little more
+		IMAGE_TINT = Color3.fromRGB(185, 175, 200), -- a little darker, so the cards stand out
+		FADE = 0.08, -- share of its width fading into EDGE at each side
+		-- Darker behind the cards in the middle (the glow picture, tinted)
+		SHADE = { COLOR = Color3.fromRGB(13, 8, 38), SIZE = 0.62, TRANSPARENCY = 0.45 },
 	},
 	LIGHTS = {
 		-- Only the pack and deck box take these (card faces ignore light); too bright and the bloom glows round the pack

@@ -81,7 +81,7 @@ local function buildScene(): Folder
 	local scene = Instance.new("Folder")
 	scene.Name = "PackOpeningStage"
 	local look = PackOpening.BACKDROP
-	-- The backdrop: near-black with a big violet glow in the middle, ignoring the world's light
+	-- The backdrop: Pish and Chikin's shop at night on near-black, ignoring the world's light
 	local backdrop = anchoredPart("Backdrop", Vector3.new(look.SIZE, look.SIZE, 0.2), root * CFrame.new(0, 0, look.BEHIND), scene)
 	local surface = Instance.new("SurfaceGui")
 	surface.Face = Enum.NormalId.Front
@@ -94,14 +94,36 @@ local function buildScene(): Folder
 	dark.BackgroundColor3 = look.EDGE
 	dark.BorderSizePixel = 0
 	dark.Parent = surface
-	local glow = Instance.new("ImageLabel")
-	glow.AnchorPoint = Vector2.new(0.5, 0.5)
-	glow.Position = UDim2.fromScale(0.5, 0.5)
-	glow.Size = UDim2.fromScale(look.GLOW, look.GLOW)
-	glow.BackgroundTransparency = 1
-	glow.Image = CardDesign.IMAGES.GLOW
-	glow.ImageColor3 = look.MIDDLE
-	glow.Parent = dark
+	-- The painting, its sides fading into the dark on wide screens, darker behind the cards
+	local painting = Instance.new("ImageLabel")
+	painting.Name = "Painting"
+	painting.AnchorPoint = Vector2.new(0.5, 0.5)
+	painting.Position = UDim2.fromScale(0.5, 0.5)
+	painting.Size = UDim2.fromScale(look.IMAGE_SIZE.X / look.SIZE, look.IMAGE_SIZE.Y / look.SIZE)
+	painting.BackgroundTransparency = 1
+	painting.Image = look.IMAGE
+	painting.ImageColor3 = look.IMAGE_TINT
+	painting.ScaleType = Enum.ScaleType.Stretch
+	painting.Parent = dark
+	local fade = Instance.new("UIGradient")
+	fade.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(look.FADE, 0),
+		NumberSequenceKeypoint.new(1 - look.FADE, 0),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	fade.Parent = painting
+	local shadeSize = look.SHADE.SIZE * look.IMAGE_SIZE.X / look.SIZE
+	local shade = Instance.new("ImageLabel")
+	shade.Name = "Shade"
+	shade.AnchorPoint = Vector2.new(0.5, 0.5)
+	shade.Position = UDim2.fromScale(0.5, 0.5)
+	shade.Size = UDim2.fromScale(shadeSize, shadeSize)
+	shade.BackgroundTransparency = 1
+	shade.Image = CardDesign.IMAGES.GLOW
+	shade.ImageColor3 = look.SHADE.COLOR
+	shade.ImageTransparency = look.SHADE.TRANSPARENCY
+	shade.Parent = dark
 	for name, light in PackOpening.LIGHTS do
 		local holder = anchoredPart(`{name}Light`, Vector3.one, root * CFrame.new(light.AT), scene)
 		local point = Instance.new("PointLight")

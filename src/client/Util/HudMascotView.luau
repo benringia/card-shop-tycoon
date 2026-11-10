@@ -19,6 +19,7 @@ local HudMascotView = {}
 local CFG = HudMascot
 local body: Frame? = nil -- the sticker's frame inside the clip: breathes, and slides down to duck
 local bounceScale: UIScale? = nil
+local tapButton: TextButton? = nil -- its tap area (HudMascotView.tapArea)
 local duckDistance = 0 -- pixels a full duck moves the sticker down
 local duckStart: number? = nil
 local duckConnection: RBXScriptConnection? = nil
@@ -107,13 +108,18 @@ local function hop()
 	end)
 end
 
--- A tap: it bounces and chirps
+local tapHandlers: { () -> () } = {} -- HudMascotView.onTap
+
+-- A tap: it bounces and chirps, then whoever listens hears of it (Pish's tour offer, TutorialController)
 local function bounce()
 	if not bounceScale then
 		return
 	end
 	hop()
 	chirp()
+	for _, handler in tapHandlers do
+		task.spawn(handler)
+	end
 end
 
 -- Puts the mascot on `cushion` (nothing when it has no picture). The cushion is laid out by a list, so the mascot
@@ -194,6 +200,17 @@ function HudMascotView.mount(cushion: GuiObject)
 	tap.ZIndex = 6
 	tap.Parent = host
 	tap.Activated:Connect(bounce)
+	tapButton = tap
+end
+
+-- Called after each tap on the mascot (it's the Pish button: TutorialController offers his tour again)
+function HudMascotView.onTap(callback: () -> ())
+	table.insert(tapHandlers, callback)
+end
+
+-- Its tap area while it's mounted (Pish points at it at his goodbye)
+function HudMascotView.tapArea(): GuiObject?
+	return tapButton
 end
 
 -- A silent hop (a toast arriving over the cash pill, UIController); nothing before it's mounted
