@@ -965,8 +965,11 @@ the Frontier leaves out; `HOME` (the way-home portal and the trailhead title) an
 - **Scenery** (the owner's pick C, the Titans' Graveyard; `docs/props.md` "Frontier scenery props"): ruined forts with
   red banners, giant swords in the snow, snowy pines and a ribcage the trail walks through in Frostwood; rock spires,
   wrecked watchtowers, a horned skull, storm stones with glowing runes, charred trees, boulders and three rocky hills
-  on Stormpeak (more added 2026-11-10: "stormpeak is a bit plain"); violet crystals, floating rocks (streamed whole) and
-  the dragon skeleton in the Rift.
+  on Stormpeak (more added 2026-11-10: "stormpeak is a bit plain"); in the Rift (fuller 2026-11-10: "rift too
+  empty") 16 violet crystal clusters from 3 to 13 studs, 14 floating rocks from 3 to 20 studs (small ones low, big ones
+  high; streamed whole), dark stalagmites, obsidian shards, a ruined crystal arch and the dragon skeleton. Past the
+  rims, snowy pines, crags and stalagmites stand on the drawn rim tops (they stood over no terrain before, their crowns
+  showing over the rims with nothing under them: "fix floating trees"; Lune-tested).
 - **Skies and effects** (`Config/DayCycle FRONTIER`, no day cycle; `Controllers/FrontierFxController`,
   `Util/FrontierFxRules`): a cold grey dusk on the passes; Frostwood a snowy dusk with snow round you and pairs of red
   eyes in the fog that fade as you come close; Stormpeak a grey storm with light rain round you (`FX.rain`, 50 streaks

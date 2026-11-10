@@ -323,8 +323,14 @@ return {
 		{ model = "RockSpire", x = 362, z = 300, height = 18, yaw = 250, clear = 8 },
 		{ model = "StormStone", x = 340, z = 150, height = 9, yaw = 120, glow = "storm" },
 		{ model = "WreckedTower", x = 305, z = 300, height = 15, yaw = 300, clear = 9 },
+		-- the Rift's dark stalagmites (the owner 2026-11-10: "rift too empty")
+		{ model = "Stalagmite", x = -50, z = 650, height = 14, yaw = 20, clear = 7 },
+		{ model = "Stalagmite", x = 470, z = 640, height = 16, yaw = 130, clear = 7 },
+		{ model = "Stalagmite", x = 230, z = 690, height = 12, yaw = 250, clear = 7 },
+		{ model = "Stalagmite", x = 410, z = 520, height = 10, yaw = 300, clear = 6 },
+		{ model = "Stalagmite", x = 40, z = 480, height = 11, yaw = 70, clear = 6 },
 	},
-	-- The Rift's violet crystal clusters (code-built)
+	-- The Rift's violet crystal clusters (code-built), small to big (more 2026-11-10: "rift too empty")
 	CRYSTALS = {
 		{ x = 150, z = 650, height = 6, yaw = 10 },
 		{ x = 240, z = 640, height = 7, yaw = 80 },
@@ -332,6 +338,16 @@ return {
 		{ x = -20, z = 560, height = 5, yaw = 220 },
 		{ x = 60, z = 520, height = 6, yaw = 300 },
 		{ x = 330, z = 660, height = 7, yaw = 40 },
+		{ x = 485, z = 575, height = 12, yaw = 100 },
+		{ x = -60, z = 590, height = 10, yaw = 340 },
+		{ x = 100, z = 680, height = 4, yaw = 60 },
+		{ x = 280, z = 690, height = 11, yaw = 190 },
+		{ x = 200, z = 520, height = 3, yaw = 15 },
+		{ x = 440, z = 680, height = 5, yaw = 240 },
+		{ x = 20, z = 680, height = 13, yaw = 120 },
+		{ x = 360, z = 640, height = 4, yaw = 280 },
+		{ x = -10, z = 500, height = 8, yaw = 45 },
+		{ x = 480, z = 500, height = 9, yaw = 170 },
 	},
 	CRYSTAL_LOOK = { color = { 150, 80, 255 }, tip = { 220, 180, 255 }, transparency = 0.12 },
 	-- Pieces placed where scenery lists can't go (dressed like them, outside Util/WildValley.scenery's clearances): the
@@ -347,6 +363,19 @@ return {
 		{ model = "FloatingRock", x = 380, z = 612, y = 10, height = 8, yaw = 140, glow = "violet" },
 		{ model = "FloatingRock", x = 20, z = 540, y = 4, height = 6, yaw = 260, glow = "violet" },
 		{ model = "FloatingRock", x = 300, z = 500, y = 8, height = 7, yaw = 80, glow = "violet" },
+		-- small ones low, big ones high (the owner 2026-11-10: "different size of floating rocks")
+		{ model = "FloatingRock", x = 460, z = 520, y = 4, height = 4, yaw = 30, glow = "violet" },
+		{ model = "FloatingRock", x = 110, z = 560, y = 2, height = 3, yaw = 200, glow = "violet" },
+		{ model = "FloatingRock", x = 250, z = 680, y = 0, height = 4, yaw = 310, glow = "violet" },
+		{ model = "FloatingRock", x = 350, z = 690, y = 3, height = 5, yaw = 90, glow = "violet" },
+		{ model = "FloatingRock", x = -60, z = 500, y = 6, height = 9, yaw = 150, glow = "violet" },
+		{ model = "FloatingRock", x = 240, z = 520, y = 18, height = 10, yaw = 240, glow = "violet" },
+		{ model = "FloatingRock", x = -40, z = 680, y = 14, height = 12, yaw = 60, glow = "violet" },
+		{ model = "FloatingRock", x = 150, z = 480, y = 40, height = 14, yaw = 330, glow = "violet" },
+		{ model = "FloatingRock", x = 450, z = 660, y = 22, height = 16, yaw = 110, glow = "violet" },
+		{ model = "FloatingRock", x = 90, z = 690, y = 30, height = 20, yaw = 190, glow = "violet" },
+		-- a ruined crystal arch standing in the crater
+		{ model = "CrystalArch", x = 445, z = 625, height = 18, yaw = 60, glow = "violet" },
 	},
 	GLOW = {
 		teal = { 80, 235, 215 },
@@ -370,6 +399,7 @@ return {
 		Ribcage = { radius = 0.05, height = 0.4, spread = { -0.6, 0.6 } },
 		CrystalArch = { radius = 0.06, height = 0.6, spread = { -0.37, 0.37 } },
 		DragonSkeleton = { radius = 0.3, height = 0.5, spread = { -1, 0, 1 } },
+		Stalagmite = { radius = 0.18, height = 0.8 },
 	},
 	-- Town props placed as they are: snowy pines round Frostwood, rocks, dead trees on Stormpeak, obsidian in the Rift
 	PROPS = {
@@ -398,25 +428,31 @@ return {
 		{ model = "RockA", x = 330, z = 120, height = 4, yaw = 10 },
 		{ model = "ObsidianShards", x = 400, z = 650, height = 6, yaw = 20 },
 		{ model = "ObsidianShards", x = 0, z = 670, height = 5, yaw = 200 },
+		{ model = "ObsidianShards", x = 150, z = 500, height = 7, yaw = 80 },
+		{ model = "ObsidianShards", x = -30, z = 570, height = 6, yaw = 290 },
+		{ model = "ObsidianShards", x = 260, z = 640, height = 8, yaw = 150 },
+		{ model = "ObsidianShards", x = 480, z = 690, height = 5, yaw = 40 },
 	},
 	SETTLE = { band = 0.04, grid = 15, sink = 0.4, cap = 0.2, perYield = 10 },
 	FEET = {},
 	-- Past the walls: tall snowy pines over Frostwood's hills, the dead giant's skull and ribs on its body, crags over
 	-- Stormpeak, stalagmites on the Rift's rim
+	-- Each on the drawn rim (the owner 2026-11-10: "fix floating trees"; past the rims there's no terrain, so a piece
+	-- stood there showed its crown over the rim with nothing under it)
 	BACKDROP = {
-		{ model = "SnowPine", x = -100, z = -100, height = 40, yaw = 20 },
-		{ model = "SnowPine", x = 0, z = -102, height = 44, yaw = 140 },
-		{ model = "SnowPine", x = 100, z = -100, height = 40, yaw = 250 },
-		{ model = "SnowPine", x = 200, z = -98, height = 42, yaw = 80 },
-		{ model = "SnowPine", x = -150, z = 0, height = 40, yaw = 300 },
-		{ model = "SnowPine", x = -150, z = 100, height = 44, yaw = 30 },
+		{ model = "SnowPine", x = -108, z = -86, height = 40, yaw = 20 },
+		{ model = "SnowPine", x = 2, z = -86, height = 44, yaw = 140 },
+		{ model = "SnowPine", x = 84, z = -88, height = 40, yaw = 250 },
+		{ model = "SnowPine", x = 224, z = -80, height = 42, yaw = 80 },
+		{ model = "SnowPine", x = -130, z = -16, height = 40, yaw = 300 },
+		{ model = "SnowPine", x = -132, z = 118, height = 44, yaw = 30 },
 		{ model = "TitanSkull", x = -70, z = 300, height = 28, yaw = 270 },
 		{ model = "Ribcage", x = 90, z = 300, height = 30, yaw = 0 },
-		{ model = "RockSpire", x = 548, z = 50, height = 34, yaw = 10 },
-		{ model = "RockSpire", x = 548, z = 250, height = 38, yaw = 200 },
-		{ model = "Stalagmite", x = 0, z = 728, height = 30, yaw = 0 },
-		{ model = "Stalagmite", x = 200, z = 730, height = 36, yaw = 90 },
-		{ model = "Stalagmite", x = 400, z = 728, height = 32, yaw = 180 },
+		{ model = "RockSpire", x = 536, z = 58, height = 34, yaw = 10 },
+		{ model = "RockSpire", x = 536, z = 252, height = 38, yaw = 200 },
+		{ model = "Stalagmite", x = -10, z = 716, height = 30, yaw = 0 },
+		{ model = "Stalagmite", x = 174, z = 716, height = 36, yaw = 90 },
+		{ model = "Stalagmite", x = 358, z = 714, height = 32, yaw = 180 },
 	},
 	-- Far ranges: snowy ones south and west, dark ones east and north
 	MOUNTAINS = {

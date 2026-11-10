@@ -295,6 +295,31 @@ return {
 		end
 	end,
 
+	-- The owner 2026-11-10: "rift too empty. maybe add different size of floating rocks. or crystals": many of each, from
+	-- small to big
+	["the Rift has floating rocks and crystals of many sizes"] = function()
+		local function spread(list: { any }, model: string?): (number, number, number)
+			local count, low, high = 0, math.huge, 0
+			for _, spot in list do
+				if (model == nil or spot.model == model) and WildValley.zoneAt(valley, spot) == 3 then
+					count += 1
+					low = math.min(low, spot.height)
+					high = math.max(high, spot.height)
+				end
+			end
+			return count, low, high
+		end
+		local rocks, smallRock, bigRock = spread(valley.LANDMARKS, "FloatingRock")
+		assert(rocks >= 12, `only {rocks} floating rocks`)
+		assert(smallRock <= 4 and bigRock >= 16, `rocks from {smallRock} to {bigRock} studs`)
+		local crystals, smallCrystal, bigCrystal = spread(valley.CRYSTALS)
+		assert(crystals >= 14, `only {crystals} crystal clusters`)
+		assert(smallCrystal <= 4 and bigCrystal >= 12, `crystals from {smallCrystal} to {bigCrystal} studs`)
+		local stalagmites = spread(valley.SPIRES, "Stalagmite")
+		assert(stalagmites >= 4, "dark stalagmites in the crater")
+		assert(valley.COLLIDERS.Stalagmite, "a stalagmite stops players")
+	end,
+
 	-- Plan Task 5: the Frontier bosses' arenas, mirroring the Wild's rules
 	["each Frontier arena copy is walled in round its clearing, its ring and its way home inside"] = function()
 		local clearing = valley.ARENA_CLEARING
@@ -398,6 +423,23 @@ return {
 		expect.equal(fx.rain.zone, 2, "rain on Stormpeak")
 		assert(fx.rain.rate > 0 and fx.rain.rate <= 80, "light rain, not a downpour")
 		assert(fx.lightning.volume <= 0.3, "thunder turned down")
+	end,
+
+	-- The owner 2026-11-10 ("fix floating trees"): a backdrop piece past the rims stood over no terrain at all, its
+	-- crown showing over the rim with nothing under it. Every one now stands on the drawn rim: terrain under its foot
+	-- all round, the foot near level
+	["every backdrop piece stands on drawn terrain"] = function()
+		for _, spot in valley.BACKDROP do
+			local centre = TownTerrain.groundAt(OPS, spot.x, spot.z)
+			assert(centre, `{spot.model} at {spot.x}, {spot.z} stands over no terrain`)
+			local foot = spot.height * 0.15
+			for step = 0, 7 do
+				local angle = step * math.pi / 4
+				local here = TownTerrain.groundAt(OPS, spot.x + math.cos(angle) * foot, spot.z + math.sin(angle) * foot)
+				assert(here, `{spot.model} at {spot.x}, {spot.z}: no terrain under its foot`)
+				assert(math.abs(here - centre) <= 6, `{spot.model} at {spot.x}, {spot.z}: its foot hangs over a drop`)
+			end
+		end
 	end,
 
 	["the Frontier's terrain flag is its own"] = function()
