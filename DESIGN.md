@@ -2236,7 +2236,7 @@ All numbers in `Config/Pish`.
   (nothing comes twice: his present and gift once, and his own customer only until his gift is claimed, `TutorialRules.sendsCustomer`; a later replay waits for a customer who comes by themselves). Icons: `PishPresent` (Pish hugging a ribboned pack) and `PishGift` (a rainbow
   pack with a paw medal), `Config/UIIcons`.
 - [ ] **Tutorial Pish is this player's own** (a client marker): other players see Town Pish; Town Pish and his pet prompt
-  are hidden for the player Pish is leading. The guide can't be petted. Both wear a "🐾 Pish" name tag: an orange pill with white outlined words high over his head (owner 2026-11-10: the white one was hard to see).
+  are hidden for the player Pish is leading. The guide can't be petted. Both wear a "🐾 Pish" name tag: an orange pill with white outlined words standing on a point over his head (`SizeOffset`, so far away it stays above him; owner 2026-11-10: the white one was hard to see, then it covered him from afar).
 - [ ] **Town Pish** (`PishService`, `TownPishController`, `Util/PishPath`): a server marker (`workspace.PishNpc.TownPish`)
   strolling the town at 4.5 studs/s (trotting at 8; a small dog's
   walk, about 1.8 leg cycles a second, tests/PishWalk) round the fountain to stops and open shops' doors, idle clips, naps. **Petting** him
@@ -2258,7 +2258,11 @@ All numbers in `Config/Pish`.
   Glass Showcase!", "Put it on the floor and tap to place!"; the trophy you hold), new stock through the computer
   ("Walk to the computer.", "Tap Order on Card Sleeves!"; lines `PishTalk.TEACH`), a window in the way first ("Tap the
   X..."). It's done when the server sees it placed or ordered (`LessonRules.forShelf` / `forProduct`; also when the
-  player finds it before he comes); he leaves after 30 s with no step taken (`TEACH_QUIET_SECONDS`, Next counts). The
+  player finds it before he comes): a happy hop, then he runs to it (new stock: the delivery pad) and says what it's
+  for, a line at a time with Next, the last "Bye!" (`PishTalk.AFTER`, owner 2026-11-10: "make him explain what this
+  for"; the Glass Showcase: customers buy single cards, Edit then Cards to add some, price near value; the Collector
+  Case: for players). He leaves after 30 s with no step taken (`TEACH_QUIET_SECONDS`, Next counts); his card stays
+  above the Rotate / Place / Cancel bar while placing. The
   first sword (the Wild portal) and Jobs (its tile) he points at and leaves after 20 s or once it's used.
 - [ ] **Stuck helper**: a new player's first hour (first visit not done when they joined), a quiet minute (no order,
   restock, sale or pack) with a box waiting brings Pish to point at it, with empty shelves at the order computer; at

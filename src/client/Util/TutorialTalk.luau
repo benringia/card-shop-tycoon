@@ -25,6 +25,7 @@ local PICTURE = 52
 local NEXT_WIDTH = 108
 local GAP = 34 -- px above the HUD tiles (their icons pop up out of the row)
 local TOP = 66 -- px from the top when the card goes up there
+local BAR_GAP = 12 -- px above the placement bar while the player places something
 local PAW_ROOM = 82 -- px over the button Pish points at for his bouncing paw (Util/TutorialCues: 64 + lift + bounce)
 local EDGE = 8 -- px kept clear of the screen's edges and the HUD's side columns
 local TYPE_SPEED = 45 -- letters a second
@@ -165,6 +166,11 @@ local function build(): Frame
 		local leftEdge, rightEdge = EDGE, screenSize.X - EDGE
 		local main = made:FindFirstAncestorWhichIsA("PlayerGui")
 		local gui = main and main:FindFirstChild("MainGui")
+		-- Above the Rotate / Place / Cancel bar while the player places something (phones need those buttons)
+		local placing = gui and gui:FindFirstChild("PlacementBar", true)
+		if placing and placing:IsA("GuiObject") and placing.Visible then
+			bottom = math.min(bottom, placing.AbsolutePosition.Y - BAR_GAP)
+		end
 		local height = HEIGHT * math.min(WIDTH, screenSize.X * SCREEN_SHARE) / WIDTH
 		for _, columnName in { "StatusRow", "HudSide" } do
 			local column = gui and gui:FindFirstChild(columnName)

@@ -68,7 +68,16 @@ local BYE_IDLE_SECONDS = 20 -- the goodbye's last line left this long: the first
 
 -- Where Pish points: a HUD button (in the Manage tray: `tray`), a button inside a window (`gui`), a part of the
 -- player's shop (the Pack Rack instead while a box is carried: `carryRack`), or a spot in town
-type Target = { hud: string?, tray: boolean?, part: string?, carryRack: boolean?, spot: Vector3?, gui: GuiObject? }
+-- `placed`: a shelf the player has placed (its Config/Shelves id; "trophy": any trophy), the nearest one
+type Target = {
+	hud: string?,
+	tray: boolean?,
+	part: string?,
+	carryRack: boolean?,
+	spot: Vector3?,
+	gui: GuiObject?,
+	placed: string?,
+}
 
 -- Each lesson (Config/Pish LESSONS) by id. One with a shelf, a product or the trophy is taught step by step
 -- (lessonSituation); the others point at one place: the first sword's way is the Wild portal, jobs their tile
@@ -98,6 +107,7 @@ type Visit = {
 	firstKey: string?,
 	lastKey: string?,
 	introDone: boolean?,
+	after: number?, -- it's placed or ordered: the PishTalk.AFTER line he's on (past the last: the visit ends)
 }
 
 local player = Players.LocalPlayer
@@ -332,7 +342,12 @@ local function refreshFocus()
 		focusKey, focusTarget, focusIcon = "", nil, nil
 	elseif now.kind == "lesson" then
 		local lesson = LESSONS[now.id]
-		if lesson and teaches(lesson) then
+		if lesson and teaches(lesson) and now.after then
+			-- Placed or ordered: he stands by it (the box's pad for new stock) and says what it's for
+			local placed = if lesson.trigger == "trophy" then "trophy" else lesson.shelf
+			focusKey, focusIcon, focusSituation = "lesson:" .. now.id .. ":after", lesson.icon, "after"
+			focusTarget = if placed then { placed = placed } else { part = "DeliverySpot" }
+		elseif lesson and teaches(lesson) then
 			local situation, target, name = lessonSituation(lesson)
 			focusKey, focusTarget, focusIcon = "lesson:" .. now.id .. ":" .. situation, target, lesson.icon
 			focusSituation, focusName = situation, name
@@ -384,6 +399,22 @@ local function partFor(spec: Target?): BasePart?
 		return anchorAt(spec.spot)
 	end
 	local plot = ownPlot()
+	local placed = spec.placed
+	if plot and placed then
+		local at = root()
+		local nearest: BasePart? = nil
+		for _, item in plot:GetDescendants() do
+			local id = item:GetAttribute("ShelfId")
+			local match = typeof(id) == "string" and (id == placed or (placed == "trophy" and string.sub(id, 1, 7) == "trophy_"))
+			if match and item:IsA("BasePart") then
+				local closer = not nearest or not at or (item.Position - at.Position).Magnitude < (nearest.Position - at.Position).Magnitude
+				if closer then
+					nearest = item
+				end
+			end
+		end
+		return nearest
+	end
 	if not plot or not spec.part then
 		return nil
 	end
@@ -698,6 +729,17 @@ local function updateLessonTalk()
 	if not now or not teaching(now) then
 		return
 	end
+	local afterIndex = now.after
+	if afterIndex then
+		local lines = PishTalk.AFTER[now.id] or {}
+		local last = afterIndex >= #lines
+		TutorialTalk.say(lines[afterIndex] or "", focusIcon, if last then PishTalk.BYE else PishTalk.NEXT, function()
+			now.after = afterIndex + 1 -- past the last line updateVisit ends the visit
+			now.started = os.clock()
+			updateLessonTalk()
+		end)
+		return
+	end
 	if not now.introDone and focusKey ~= now.firstKey then
 		now.introDone = true -- they're already on their way
 	end
@@ -749,9 +791,6 @@ local function endVisit(used: boolean)
 		end
 		Remotes.TutorialAction:FireServer("lessonDone", ended.id, used)
 	end
-	if used and marker then
-		TutorialCues.sparkle(marker.Position + Vector3.new(0, Pish.HEIGHT, 0))
-	end
 	task.spawn(finishVisit)
 end
 
@@ -760,6 +799,15 @@ local function updateVisit()
 	local now = visit
 	if now then
 		if teaching(now) then
+			local afterIndex = now.after
+			if afterIndex then
+				-- Saying what it's for: over after his last line, or left alone a while
+				local lines = PishTalk.AFTER[now.id] or {}
+				if afterIndex > #lines or os.clock() - now.started >= Pish.TEACH_QUIET_SECONDS then
+					endVisit(true)
+				end
+				return
+			end
 			-- Done when the server sees it placed or ordered (onState); each step the player takes gives him more time
 			if focusKey ~= now.firstKey and focusKey ~= now.lastKey then
 				now.lastKey = focusKey
@@ -813,10 +861,22 @@ local function onState(payload: unknown)
 			end
 		end
 		lessonQueue = queue
-		-- The lesson being taught is no longer waiting: the server saw it placed or ordered
+		-- The lesson being taught is no longer waiting: the server saw it placed or ordered. A happy hop, then he says
+		-- what it's for (PishTalk.AFTER) before he goes
 		local now = visit
-		if now and now.kind == "lesson" and not table.find(queue, now.id) then
-			endVisit(true)
+		if now and now.kind == "lesson" and not now.after and not table.find(queue, now.id) then
+			if marker then
+				TutorialCues.sparkle(marker.Position + Vector3.new(0, Pish.HEIGHT, 0))
+				play("happyHop")
+			end
+			if teaching(now) and PishTalk.AFTER[now.id] then
+				now.after = 1
+				now.started = os.clock()
+				refreshFocus()
+				updateLessonTalk()
+			else
+				endVisit(true)
+			end
 		end
 	end
 	local nudge = (payload :: any).nudge

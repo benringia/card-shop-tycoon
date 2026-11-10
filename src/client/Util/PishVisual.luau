@@ -35,7 +35,7 @@ local HEART_COUNT = 3
 local HEART_RISE = 3 -- studs the hearts float up
 local HEART_SECONDS = 1.2
 local TAG_WIDTH, TAG_HEIGHT = 260, 80 -- px: the name tag's board (the pill sits at its bottom)
-local TAG_LIFT = 0.8 -- studs over his height (his root sits above his feet): clear of his head and the paw prints
+local TAG_LIFT = 0.4 -- studs over his height (his root sits above his feet) where the tag's bottom sits
 local TAG_DISTANCE = 70 -- studs: further away the tag hides
 -- Owner 2026-11-10: "pish nametag hard to see": an orange pill with white outlined words, not orange on white
 local TAG_FILL = Color3.fromRGB(240, 140, 40)
@@ -180,6 +180,8 @@ function PishVisual.nameTag(visual: Visual, subtitle: string?)
 		made.Name = "PishName"
 		made.Size = UDim2.fromOffset(TAG_WIDTH, TAG_HEIGHT)
 		made.StudsOffset = Vector3.new(0, Pish.HEIGHT + TAG_LIFT, 0)
+		-- The board stands on that point (not centred on it): far away it stays above him instead of over his head
+		made.SizeOffset = Vector2.new(0, 0.5)
 		made.LightInfluence = 0
 		made.MaxDistance = TAG_DISTANCE
 		made.Adornee = root

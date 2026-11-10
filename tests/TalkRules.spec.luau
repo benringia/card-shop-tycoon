@@ -41,6 +41,11 @@ local function eachLine(visit: (where: string, text: string) -> ())
 	for key, text in PishTalk.TEACH do
 		visit(`teach {key}`, string.format(text, "First Spark Booster Box")) -- the longest name a line names
 	end
+	for id, lines in PishTalk.AFTER do
+		for i, text in lines do
+			visit(`after {id}[{i}]`, text)
+		end
+	end
 end
 
 return {
@@ -129,5 +134,15 @@ return {
 		expect.equal(string.format(PishTalk.TEACH.tile, "Wall Shelf"), "Tap the Wall Shelf!")
 		expect.equal(string.format(PishTalk.TEACH.orderOpen, "Card Sleeves"), "Tap Order on Card Sleeves!")
 		expect.equal(PishTalk.TEACH.closeWindow, PishTalk.LABELS.close)
+	end,
+	["once it's placed or ordered, Pish says what it's for (owner: explain what this is for)"] = function()
+		for _, lesson in Pish.LESSONS do
+			local lessonAny = lesson :: any
+			if lessonAny.shelf or lessonAny.product or lessonAny.trigger == "trophy" then
+				local lines = PishTalk.AFTER[lesson.id]
+				assert(lines and #lines >= 2, `{lesson.id} has at least two lines after`)
+			end
+		end
+		expect.equal(PishTalk.AFTER.showcase[1], "Customers buy single cards from this case!")
 	end,
 }

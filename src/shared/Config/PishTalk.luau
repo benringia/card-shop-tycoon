@@ -83,6 +83,61 @@ return {
 		trophy = "You won a trophy! Show it off in your shop.",
 	} :: { [string]: string },
 
+	-- Once it's placed or ordered, Pish runs to it and says what it's for, one line at a time with Next (the last one
+	-- "Bye!"; owner 2026-11-10: "make him explain what this for and stuff like that")
+	AFTER = {
+		showcase = {
+			"Customers buy single cards from this case!",
+			"Walk up, press Edit, then Cards to add some.",
+			"Price near a card's value and it sells fast!",
+		},
+		collectorCase = {
+			"This case is for other players, not customers.",
+			"Press Edit, then Cards, to put your best ones in.",
+			"Players who visit your shop can buy them!",
+		},
+		wallShelf = {
+			"It holds packs, just like your rack.",
+			"Carry a box to it to stock it!",
+		},
+		accessoryHook = {
+			"It holds Card Sleeves and Deck Boxes.",
+			"Carry their boxes to it to stock it!",
+		},
+		bigRack = {
+			"It holds lots of stock at once.",
+			"Fill it up and customers buy more!",
+		},
+		condenser = {
+			"Put spare copies of a card in here.",
+			"They give that card more stars and Power!",
+		},
+		forge = {
+			"Make weapons here with Wild Ore and cash.",
+			"Upgrade them to hit harder in fights!",
+		},
+		grading = {
+			"Grade your cards up here.",
+			"A better grade makes a card worth more!",
+		},
+		trophy = {
+			"Everyone who visits your shop sees it!",
+			"Beat more bosses for more trophies.",
+		},
+		sleeves = {
+			"Your box is on its way!",
+			"Carry it to a shelf. Customers love sleeves!",
+		},
+		expand = {
+			"Your box is on its way!",
+			"Carry it to a shelf. Deck Boxes sell for more!",
+		},
+		boosterBox = {
+			"Your box is on its way!",
+			"Put it on a shelf. It sells for a lot!",
+		},
+	} :: { [string]: { string } },
+
 	-- A lesson teaching its new thing, by where the player is (%s: the thing's name, or the Build tab's)
 	TEACH = {
 		default = "Tap Manage.",
