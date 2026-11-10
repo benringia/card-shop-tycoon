@@ -662,8 +662,8 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
   JPEGs in `assets/ui/card-art`). A card without one falls back to its element's painted scene (`SCENES`:
   fireplace, coral reef, forest, stormy peak, moonlit graveyard; `assets/ui/card-scenes`) with the element emoji
   on a glow, else an element gradient. Effects on the art: Epic and up a white shine now and then, foil and Frontier a holo
-  sweep. Missing binder slots: grey rim, dark silhouette and "?". The face-down back is Pish and Chikin hugging a
-  pack in a gold medallion on violet with gold filigree, one picture for the whole card (owner's pick A 2026-11-10:
+  sweep. Missing binder slots: grey rim, dark silhouette and "?". The face-down back is Pish (a little grumpy, with his
+  underbite) and Chikin hugging a pack in a gold medallion on violet with gold filigree, one picture for the whole card (owner's pick A 2026-11-10:
   "PISH and CHIKIN is now the face of this game"; `CardDesign.BACK.IMAGE`, `assets/ui/card-back`); glows use the "Glow Circle / Radial Glow" decal (public Creator Store image).
 - Cards on display in Glass Showcases and Collector Cases use the same card face, drawn by each client on the
   server's plain card part (0.84 x 1.2 studs, standing upright in two rows, `Config/CaseLayout`; the back drawn on

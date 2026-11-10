@@ -73,7 +73,7 @@ return {
 	-- hugging a pack in a gold medallion on violet, gold filigree (assets/ui/card-back, Figma-generated, uploaded). RIM
 	-- and INSIDE are its colours for things drawn in code (a fainted card in the fight HUD)
 	BACK = {
-		IMAGE = "rbxassetid://86881865581607",
+		IMAGE = "rbxassetid://90882539153680", -- Pish repainted a little grumpy with his underbite (owner 2026-11-10)
 		RIM = { Color3.fromRGB(240, 200, 100), Color3.fromRGB(170, 120, 40) },
 		INSIDE = { Color3.fromRGB(95, 55, 185), Color3.fromRGB(25, 20, 80) },
 	},
