@@ -509,6 +509,17 @@ local function buildWildValley(folder: Folder)
 			table.insert(settling, model)
 		end
 	end
+	-- The Frontier's landmarks (Config/FrontierValley LANDMARKS: the ribcage over the trail, the Dungeon gate's arch,
+	-- the camp, the floating rocks): dressed the same way; a piece hung at its own `y` is never settled onto the ground
+	for _, spot in ValleyConfig.LANDMARKS or {} do
+		local model = placeModel(holder, spot, spot.model)
+		if model then
+			dressValleyProp(model, spot)
+			if not spot.y then
+				table.insert(settling, model)
+			end
+		end
+	end
 	for _, spot in ValleyConfig.EMBER_CRYSTALS or {} do
 		buildCrystalCluster(holder, spot, ValleyConfig.EMBER_CRYSTAL_LOOK)
 	end

@@ -62,8 +62,8 @@ return {
 		spacing = 9, out = 4, drift = 4, radius = { 10, 13 }, rise = { 6, 12 }, grassShare = 0.5, outcrop = 3, seed = 5151,
 		props = {
 			-- Frostwood up to Stormpeak: snowy pines and rocks
-			{ every = 14, back = 6, trees = { "PineA", "PineB", "Pine" }, rocks = { "RockA", "RockB" }, height = { 16, 22 }, rockHeight = { 4, 6 },
-				behind = { every = 11, back = 9, trees = { "PineB", "Pine" }, height = { 22, 28 } } },
+			{ every = 14, back = 6, trees = { "SnowPine" }, rocks = { "RockA", "RockB" }, height = { 16, 22 }, rockHeight = { 4, 6 },
+				behind = { every = 11, back = 9, trees = { "SnowPine" }, height = { 22, 28 } } },
 			-- Stormpeak down into the Rift: dead trees and obsidian
 			{ every = 16, back = 6, trees = { "CharredTree" }, rocks = { "ObsidianShards" }, height = { 12, 17 }, rockHeight = { 4, 6 }, glow = "violet" },
 		},
@@ -224,20 +224,20 @@ return {
 
 	-- The scenery lists (Util/WildValley.scenery): kept off the trail, the camp, the portals and boards. DRESSED_LISTS
 	-- are anchored, given colliders and settled (SceneryService); PROPS are town props placed as they are; CRYSTALS are
-	-- code-built in CRYSTAL_LOOK. Stand-in models until the Titans' Graveyard props (plan Task 3)
+	-- code-built in CRYSTAL_LOOK. The Titans' Graveyard props: tools/blender/build_frontier_props.py (docs/props.md)
 	PROP_LISTS = { "PROPS", "RUINS", "BONES", "SPIRES", "CRYSTALS" },
 	DRESSED_LISTS = { "RUINS", "BONES", "SPIRES" },
-	-- Frostwood's ruined forts: one west of the camp, one north-east
+	-- Frostwood: two ruined forts (west and north-east) with red banners, giant swords stuck in the snow
 	RUINS = {
-		{ model = "RuinArch", x = -85, z = 80, height = 13, yaw = 90, clear = 9 },
-		{ model = "RuinWall", x = -95, z = 60, height = 3, yaw = 0 },
-		{ model = "RuinWall", x = -72, z = 100, height = 3, yaw = 90 },
-		{ model = "RuinPillar", x = -100, z = 98, height = 12, yaw = 30 },
-		{ model = "RuinPillarBroken", x = -60, z = 75, height = 9, yaw = 150 },
-		{ model = "RuinPillarFallen", x = -78, z = 52, height = 2, yaw = 20 },
-		{ model = "RuinWall", x = 90, z = 112, height = 3, yaw = 20 },
-		{ model = "RuinPillar", x = 120, z = 122, height = 12, yaw = 200 },
-		{ model = "RuinPillarBroken", x = 62, z = 120, height = 8, yaw = 80 },
+		{ model = "FortRuin", x = -92, z = 92, height = 16, yaw = 30, clear = 10 },
+		{ model = "FortWall", x = -70, z = 62, height = 7, yaw = 0, clear = 10 },
+		{ model = "FortWall", x = -105, z = 60, height = 6.5, yaw = 90, clear = 10 },
+		{ model = "FortRuin", x = 115, z = 120, height = 14, yaw = 200, clear = 10 },
+		{ model = "FortWall", x = 82, z = 118, height = 6.5, yaw = 10, clear = 10 },
+		{ model = "GiantSword", x = -72, z = 8, height = 14, yaw = 30, clear = 5 },
+		{ model = "GiantSword", x = 150, z = 10, height = 12, yaw = 200, clear = 5 },
+		{ model = "GiantSword", x = 45, z = 105, height = 15, yaw = 120, clear = 5 },
+		{ model = "GiantSword", x = -40, z = 120, height = 13, yaw = 80, clear = 5 },
 	},
 	-- Bones: by Frostwood's west hills, on Stormpeak, the dragon skeleton in the Rift
 	BONES = {
@@ -245,12 +245,18 @@ return {
 		{ model = "Bones", x = 470, z = 250, height = 6, yaw = 120 },
 		{ model = "DragonSkeleton", x = 120, z = 655, height = 14, yaw = 160, glow = "violet", clear = 26 },
 	},
-	-- Stormpeak's rock spires
+	-- Stormpeak: rock spires, wrecked watchtowers, the giant horned skull, storm stones with glowing runes
 	SPIRES = {
-		{ model = "RockA", x = 330, z = 0, height = 20, yaw = 30, clear = 8 },
-		{ model = "RockB", x = 480, z = -10, height = 24, yaw = 200, clear = 8 },
-		{ model = "RockA", x = 500, z = 200, height = 22, yaw = 110, clear = 8 },
-		{ model = "RockB", x = 330, z = 180, height = 18, yaw = 300, clear = 8 },
+		{ model = "RockSpire", x = 330, z = 0, height = 22, yaw = 30, clear = 8 },
+		{ model = "RockSpire", x = 480, z = -10, height = 26, yaw = 200, clear = 8 },
+		{ model = "RockSpire", x = 500, z = 200, height = 24, yaw = 110, clear = 8 },
+		{ model = "RockSpire", x = 330, z = 180, height = 20, yaw = 300, clear = 8 },
+		{ model = "WreckedTower", x = 370, z = 20, height = 16, yaw = 20, clear = 9 },
+		{ model = "WreckedTower", x = 462, z = 282, height = 14, yaw = 200, clear = 9 },
+		{ model = "HornedSkull", x = 380, z = 250, height = 10, yaw = 210, glow = "storm", clear = 12 },
+		{ model = "StormStone", x = 310, z = 140, height = 9, yaw = 80, glow = "storm" },
+		{ model = "StormStone", x = 430, z = -20, height = 9, yaw = 0, glow = "storm" },
+		{ model = "StormStone", x = 505, z = 120, height = 9, yaw = 270, glow = "storm" },
 	},
 	-- The Rift's violet crystal clusters (code-built)
 	CRYSTALS = {
@@ -262,56 +268,81 @@ return {
 		{ x = 330, z = 660, height = 7, yaw = 40 },
 	},
 	CRYSTAL_LOOK = { color = { 150, 80, 255 }, tip = { 220, 180, 255 }, transparency = 0.12 },
+	-- Pieces placed where scenery lists can't go (dressed like them, outside Util/WildValley.scenery's clearances): the
+	-- ribcage the trail walks through (its feet off the trail), the Dungeon gate's crystal arch round the portal, the
+	-- camp's tents, campfire and watchtower, and the Rift's floating rocks (at their own `y`, never settled)
+	LANDMARKS = {
+		{ model = "Ribcage", x = 95, z = 58, height = 22, yaw = 90 },
+		{ model = "CrystalArch", x = -45, z = 622, height = 18, yaw = 90, glow = "violet" },
+		{ model = "Tent", x = -26, z = -54, height = 5, yaw = 30 },
+		{ model = "Tent", x = -27, z = -28, height = 5, yaw = 150 },
+		{ model = "Campfire", x = -22, z = -41, height = 1.6, yaw = 0, glow = "fire" },
+		{ model = "Watchtower", x = 38, z = -60, height = 16, yaw = 200 },
+		{ model = "FloatingRock", x = 180, z = 640, y = 6, height = 7, yaw = 20, glow = "violet" },
+		{ model = "FloatingRock", x = 380, z = 612, y = 10, height = 8, yaw = 140, glow = "violet" },
+		{ model = "FloatingRock", x = 20, z = 540, y = 4, height = 6, yaw = 260, glow = "violet" },
+		{ model = "FloatingRock", x = 300, z = 500, y = 8, height = 7, yaw = 80, glow = "violet" },
+	},
 	GLOW = {
 		teal = { 80, 235, 215 },
 		blue = { 110, 190, 255 },
 		violet = { 170, 90, 255 },
 		ice = { 150, 215, 255 },
+		storm = { 120, 200, 255 },
+		fire = { 255, 120, 40 },
 	},
+	-- Invisible upright cylinders that stop players at a big piece (shares of its height; `spread` along its own X)
 	COLLIDERS = {
-		RuinArch = { radius = 0.12, height = 1, spread = { -0.38, 0.38 } },
-		RuinPillar = { radius = 0.12, height = 1 },
-		RuinPillarBroken = { radius = 0.18, height = 0.8 },
-		RuinWall = { radius = 0.4, height = 1, spread = { -0.9, 0, 0.9 } },
-		StandingStone = { radius = 0.2, height = 1 },
+		FortRuin = { radius = 0.25, height = 1 },
+		FortWall = { radius = 0.15, height = 1, spread = { -1.1, -0.55, 0, 0.55, 1.1 } },
+		GiantSword = { radius = 0.06, height = 0.6 },
+		Tent = { radius = 0.45, height = 0.6 },
+		Watchtower = { radius = 0.05, height = 0.6, spread = { -0.13, 0.13 } },
+		WreckedTower = { radius = 0.18, height = 0.8 },
+		RockSpire = { radius = 0.15, height = 0.9 },
+		StormStone = { radius = 0.14, height = 1 },
+		HornedSkull = { radius = 0.35, height = 0.5 },
+		Ribcage = { radius = 0.05, height = 0.4, spread = { -0.6, 0.6 } },
+		CrystalArch = { radius = 0.06, height = 0.6, spread = { -0.37, 0.37 } },
 		DragonSkeleton = { radius = 0.3, height = 0.5, spread = { -1, 0, 1 } },
-		RockA = { radius = 0.4, height = 0.8 },
-		RockB = { radius = 0.4, height = 0.8 },
 	},
-	-- Town props placed as they are: pines round Frostwood, rocks, dead trees on Stormpeak, obsidian in the Rift
+	-- Town props placed as they are: snowy pines round Frostwood, rocks, dead trees on Stormpeak, obsidian in the Rift
 	PROPS = {
-		{ model = "PineA", x = -100, z = -50, height = 22, yaw = 20 },
-		{ model = "PineB", x = -60, z = -62, height = 24, yaw = 140 },
-		{ model = "Pine", x = 62, z = -60, height = 20, yaw = 250 },
-		{ model = "PineA", x = 120, z = -56, height = 23, yaw = 10 },
-		{ model = "PineB", x = 180, z = -40, height = 25, yaw = 75 },
-		{ model = "Pine", x = 190, z = 20, height = 21, yaw = 200 },
-		{ model = "PineA", x = -105, z = 20, height = 22, yaw = 300 },
-		{ model = "PineB", x = -100, z = 128, height = 26, yaw = 160 },
-		{ model = "Pine", x = 20, z = 132, height = 22, yaw = 30 },
-		{ model = "PineA", x = 160, z = 130, height = 24, yaw = 120 },
-		{ model = "PineB", x = 192, z = 128, height = 22, yaw = 60 },
+		{ model = "SnowPine", x = -100, z = -50, height = 22, yaw = 20 },
+		{ model = "SnowPine", x = -60, z = -62, height = 24, yaw = 140 },
+		{ model = "SnowPine", x = 62, z = -60, height = 20, yaw = 250 },
+		{ model = "SnowPine", x = 120, z = -56, height = 23, yaw = 10 },
+		{ model = "SnowPine", x = 180, z = -40, height = 25, yaw = 75 },
+		{ model = "SnowPine", x = 190, z = 20, height = 21, yaw = 200 },
+		{ model = "SnowPine", x = -105, z = 20, height = 22, yaw = 300 },
+		{ model = "SnowPine", x = -100, z = 128, height = 26, yaw = 160 },
+		{ model = "SnowPine", x = 20, z = 132, height = 22, yaw = 30 },
+		{ model = "SnowPine", x = 160, z = 130, height = 24, yaw = 120 },
+		{ model = "SnowPine", x = 192, z = 128, height = 22, yaw = 60 },
 		{ model = "RockB", x = 100, z = 10, height = 3, yaw = 60 },
 		{ model = "RockC", x = -20, z = 100, height = 3.5, yaw = 200 },
 		{ model = "CharredTree", x = 360, z = -20, height = 14, yaw = 30 },
 		{ model = "CharredTree", x = 500, z = 100, height = 15, yaw = 140 },
-		{ model = "CharredTree", x = 470, z = 295, height = 13, yaw = 260 },
+		{ model = "CharredTree", x = 500, z = 290, height = 13, yaw = 260 },
 		{ model = "RockC", x = 380, z = 60, height = 4, yaw = 90 },
 		{ model = "ObsidianShards", x = 400, z = 650, height = 6, yaw = 20 },
 		{ model = "ObsidianShards", x = 0, z = 670, height = 5, yaw = 200 },
 	},
 	SETTLE = { band = 0.04, grid = 15, sink = 0.4, cap = 0.2, perYield = 10 },
 	FEET = {},
-	-- Past the walls: tall pines over Frostwood's hills, crags over Stormpeak, stalagmites on the Rift's rim
+	-- Past the walls: tall snowy pines over Frostwood's hills, the dead giant's skull and ribs on its body, crags over
+	-- Stormpeak, stalagmites on the Rift's rim
 	BACKDROP = {
-		{ model = "PineB", x = -100, z = -100, height = 40, yaw = 20 },
-		{ model = "Pine", x = 0, z = -102, height = 44, yaw = 140 },
-		{ model = "PineA", x = 100, z = -100, height = 40, yaw = 250 },
-		{ model = "PineB", x = 200, z = -98, height = 42, yaw = 80 },
-		{ model = "Pine", x = -150, z = 0, height = 40, yaw = 300 },
-		{ model = "PineA", x = -150, z = 100, height = 44, yaw = 30 },
-		{ model = "RockA", x = 548, z = 50, height = 30, yaw = 10 },
-		{ model = "RockB", x = 548, z = 250, height = 34, yaw = 200 },
+		{ model = "SnowPine", x = -100, z = -100, height = 40, yaw = 20 },
+		{ model = "SnowPine", x = 0, z = -102, height = 44, yaw = 140 },
+		{ model = "SnowPine", x = 100, z = -100, height = 40, yaw = 250 },
+		{ model = "SnowPine", x = 200, z = -98, height = 42, yaw = 80 },
+		{ model = "SnowPine", x = -150, z = 0, height = 40, yaw = 300 },
+		{ model = "SnowPine", x = -150, z = 100, height = 44, yaw = 30 },
+		{ model = "TitanSkull", x = -70, z = 300, height = 28, yaw = 270 },
+		{ model = "Ribcage", x = 90, z = 300, height = 30, yaw = 0 },
+		{ model = "RockSpire", x = 548, z = 50, height = 34, yaw = 10 },
+		{ model = "RockSpire", x = 548, z = 250, height = 38, yaw = 200 },
 		{ model = "Stalagmite", x = 0, z = 728, height = 30, yaw = 0 },
 		{ model = "Stalagmite", x = 200, z = 730, height = 36, yaw = 90 },
 		{ model = "Stalagmite", x = 400, z = 728, height = 32, yaw = 180 },

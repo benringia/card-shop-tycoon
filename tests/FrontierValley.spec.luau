@@ -9,6 +9,7 @@ local bosses = require("../src/shared/Config/Bosses")
 local WildValley = require("../src/shared/Util/WildValley")
 local TownTerrain = require("../src/shared/Util/TownTerrain")
 local expect = require("./lib/expect")
+local fs = require("@lune/fs")
 
 local valley = frontierValley :: any
 local OPS = WildValley.terrainOps(valley, TownTerrain.trailSegment)
@@ -223,6 +224,73 @@ return {
 
 	["the Frontier draws monsters 30% bigger than the Wild"] = function()
 		expect.equal(frontier.MONSTER_HEIGHT, 3.9)
+	end,
+
+	-- Plan Task 3: the Titans' Graveyard props (tools/blender/build_frontier_props.py, split by tools/props/split_pack)
+	["every model the Frontier names is a saved prop"] = function()
+		local named = {}
+		local function add(spot: any)
+			if spot.model then
+				named[spot.model] = true
+			end
+		end
+		for _, spot in WildValley.scenery(valley) do
+			add(spot)
+		end
+		for _, spot in WildValley.passProps(valley) do
+			add(spot)
+		end
+		for _, list in { valley.BACKDROP, valley.MOUNTAINS, valley.LANDMARKS } do
+			for _, spot in list do
+				add(spot)
+			end
+		end
+		for _, dressing in valley.ARENA_DRESSING do
+			for _, row in dressing.walls do
+				for _, model in row.models do
+					named[model] = true
+				end
+			end
+			for _, group in dressing.inner do
+				for _, model in group.models do
+					named[model] = true
+				end
+			end
+		end
+		named[valley.HOME.model] = true
+		named[valley.BOSS_PORTAL.model] = true
+		for model in named do
+			assert(fs.isFile(`assets/props/{model}.rbxm`), `assets/props/{model}.rbxm is missing`)
+		end
+	end,
+
+	["landmarks stand inside the edge, the ribcage's feet off the trail it arches over"] = function()
+		for _, spot in valley.LANDMARKS do
+			expect.equal(WildValley.inside(valley.EDGE, spot), true, `{spot.model} at {spot.x}, {spot.z}`)
+		end
+		local ribcage
+		for _, spot in valley.LANDMARKS do
+			if spot.model == "Ribcage" then
+				ribcage = spot
+			end
+		end
+		assert(ribcage, "the ribcage over Frostwood's trail")
+		assert(trailDistance(ribcage) <= 4, "the ribcage stands over the trail")
+		local yaw = math.rad(ribcage.yaw)
+		for _, share in valley.COLLIDERS.Ribcage.spread do
+			-- a piece's own X turned by its yaw (CFrame.Angles about Y)
+			local foot = { x = ribcage.x + math.cos(yaw) * share * ribcage.height, z = ribcage.z - math.sin(yaw) * share * ribcage.height }
+			assert(trailDistance(foot) >= valley.TRAIL_WIDTH / 2 + 2, `a rib's foot at {foot.x}, {foot.z} is on the trail`)
+		end
+	end,
+
+	["floating rocks hang well above the Rift's floor"] = function()
+		for _, spot in valley.LANDMARKS do
+			if spot.model == "FloatingRock" then
+				assert(spot.y >= valley.BIOMES[3].ground + 12, `a floating rock at {spot.x}, {spot.z} hangs low`)
+				expect.equal(WildValley.zoneAt(valley, spot), 3, "floating rocks are in the Rift")
+			end
+		end
 	end,
 
 	["the Frontier's terrain flag is its own"] = function()

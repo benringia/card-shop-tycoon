@@ -27,3 +27,6 @@ assets/blender/*/concept_*.png
 # Reference photos for a model (the owner's own pictures, e.g. Pish) stay local too
 assets/blender/*/reference_*.png
 assets/ui/covers/options/
+
+# Imported prop packs before tools/props/split_pack splits them into assets/props (not synced)
+assets/props-import/

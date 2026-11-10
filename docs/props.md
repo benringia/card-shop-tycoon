@@ -121,6 +121,23 @@ one `Frame`. Import and save as `assets/props/<Name>.rbxm`. SceneryService place
 from `GIANT_TREES` (dressed with colliders) and every backdrop piece from `BACKDROP` / `MOUNTAINS` (`buildBackdrop`: no
 colliders, backdrop streamed `Atomic`, mountains `Persistent` and shadowless at their own `y`).
 
+## Frontier scenery props (Tent ... IceThrone)
+
+The Frontier valley's Titans' Graveyard pieces (spec 2026-11-10-frontier-valley-design): the camp's `Tent`, `Campfire`
+and `Watchtower`; Frostwood's `Ribcage` (the trail walks through it), `GiantSword`, `FortRuin`, `FortWall`, `SnowPine`;
+Stormpeak's `WreckedTower`, `HornedSkull`, `RockSpire`, `StormStone`; the Rift's `FloatingRock` and the Dungeon gate's
+`CrystalArch`; the dead giant's `TitanSkull`; the Frost Tyrant's hall's `IcePillar` and `IceThrone`. Built by
+`tools/blender/build_frontier_props.py` on `voxel_kit.py` and `portal_kit.py` (background Blender, `PROPS=`, `EXPORT=0`
+as above; under 2000 triangles each, the ribcage and both skulls under 4000; previews with
+`MODULE=build_frontier_props` on `render_valley_props.py`). Unlike the Wild's props they come as ONE pack, so they
+import once: `assets/blender/FrontierProps/FrontierProps.fbx` holds every prop as an Empty `<Name>` over its meshes
+`<Name>__Frame` / `<Name>__Glow`. Import it with default settings, save the imported model as
+`assets/props-import/FrontierProps.rbxm` (gitignored), then `lune run tools/props/split_pack
+assets/props-import/FrontierProps.rbxm` writes `assets/props/<Name>.rbxm` per prop: its parts renamed `Frame` / `Glow`,
+the Frame its PrimaryPart, the pivot at the bottom centre. Positions are `Config/FrontierValley`'s lists; `LANDMARKS`
+holds the pieces placed outside the scenery clearances (the ribcage over the trail, the arch round the Dungeon portal,
+the camp, the floating rocks hung at their own `y`).
+
 ## Models with unions (PlaceProps)
 
 Rojo's live sync can't carry union (CSG) shapes: a synced UnionOperation arrives empty and invisible. So models
