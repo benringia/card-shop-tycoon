@@ -637,10 +637,12 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
   all from level 6; `RevealRules.scaleCount`). Studio at graphics level 1: worst frame 42 ms as the stage shows,
   27 ms or less through the tear, flips and results.
 - **Sounds** (`PackOpening.SOUNDS` and `VOLUMES`, free Creator Store sounds, only the opener hears them): a crinkle
-  while the strip parts and a rip when it tears off, a card swipe per card stacking up, a card flick per flip; Rare
-  and better get a rising tease (cut short when the card lands) and a hit (soft chimes for Rare and Very Rare, a deep
-  boom for Epic, orchestral hits for Legendary and Frontier) and a shimmer while the card is alive; the results pop
-  per landing card and chime when the lineup is done. Most come from Roblox's licensed libraries (Pro Sound Effects,
+  while the strip parts and a rip when it tears off (both at 0.3, owner 2026-11-10: lower), a card swipe per card
+  stacking up, a card flick per flip; Rare and better get a rising tease (cut short when the card lands) and a hit
+  (soft chimes for Rare and Very Rare, a deep boom for Epic, orchestral hits for Legendary and Frontier) and a shimmer
+  while the card is alive; the results swipe in per landing card and end on a bright UI ding (PSE "Synth Sparkle Tone
+  High Pitch Bell Tone Ding 4"): the lineup's sounds are never the boss victory's (owner 2026-11-10: it sounded like
+  killing a boss; `tests/OpeningSounds`). Most come from Roblox's licensed libraries (Pro Sound Effects,
   APM) and Daily Sounds (made from scratch); the flip is "card_flip" by f4ngy (Freesound, CC BY).
 - Card faces (`Util/CardFace`, `Config/CardDesign`), clean full-art style (like the top Roblox card games),
   built in code with no frame images: the art fills the card inside a thin rounded rim in the rarity colour

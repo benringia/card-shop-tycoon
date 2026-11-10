@@ -166,8 +166,10 @@ return {
 		hitEpic = "rbxassetid://94978851787238", -- Deep Impact Boom (Daily Sounds)
 		hitLegendary = "rbxassetid://1844539433", -- Orchestral Hits (APM)
 		shimmer = "rbxassetid://9116418035", -- Magic Tone Falling Shimmer (Pro Sound Effects): a shown card comes alive
-		land = "rbxassetid://106984966606682", -- Cartoon Pop (Daily Sounds): each lineup card landing
-		chime = "rbxassetid://9116395089", -- Magic Glows Soft Clusters Of Chiming Hits 4 (Pro Sound Effects): lineup done
+		-- The lineup: its own sounds, not the boss victory's tiles and chime (owner 2026-11-10: "similar to the sound
+		-- after killing a boss")
+		land = "rbxassetid://105273485659548", -- cardswipe (as the pile's stack): each lineup card landing
+		chime = "rbxassetid://9126073001", -- Synth Sparkle Tone High Pitch Bell Tone Ding 4 (Pro Sound Effects): lineup done
 		-- The Forge's reveal on the same stage (Config/WeaponLooks REVEAL.forge), all Pro Sound Effects but the boom
 		forgeFire = "rbxassetid://9114446277", -- Fire Whoosh 6: the forge flares up as the build-up starts
 		forgeStrike = "rbxassetid://9125361455", -- Anvil Hits Ringing Metal Clinks Blacksmith 1: each hammer strike
@@ -184,8 +186,9 @@ return {
 		dropFlip = "rbxassetid://3456145589", -- card_flip (the opening's flip, quieter here): its card turns over
 	},
 	VOLUMES = {
-		crinkle = 0.5, snap = 0.6, stack = 0.35, flip = 0.45, tease = 0.5,
-		hitRare = 0.55, hitEpic = 0.65, hitLegendary = 0.75, shimmer = 0.3, land = 0.35, chime = 0.5,
+		-- The rip at about half (owner 2026-11-10: lower the ripping sound)
+		crinkle = 0.3, snap = 0.3, stack = 0.35, flip = 0.45, tease = 0.5,
+		hitRare = 0.55, hitEpic = 0.65, hitLegendary = 0.75, shimmer = 0.3, land = 0.3, chime = 0.4,
 		-- The Forge's: half their first levels (owner 2026-11-06: good, but loud)
 		forgeFire = 0.22, forgeStrike = 0.25, forgeClank = 0.32, forgeBurst = 0.25, forgeBoom = 0.3, forgeRing = 0.2,
 		-- The drop cinematic's: half again (owner 2026-11-06: good, but loud)
