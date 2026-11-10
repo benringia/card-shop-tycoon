@@ -46,11 +46,14 @@ local HEART_SECONDS = 1.2
 local TAG_WIDTH, TAG_HEIGHT = 260, 80 -- px: the name tag's board (the pill sits at its bottom)
 local TAG_LIFT = 0.4 -- studs over his height (his root sits above his feet) where the tag's bottom sits
 local TAG_DISTANCE = 70 -- studs: further away the tag hides
--- Owner 2026-11-10: "pish nametag hard to see": an orange pill with white outlined words, not orange on white
-local TAG_FILL = Color3.fromRGB(240, 140, 40)
-local TAG_EDGE = Color3.new(1, 1, 1)
+-- Plain words since 2026-11-11 (the owner: "update the name tag to be simpler"; it was "🐾 Pish" at 28 px on an
+-- orange pill, after "pish nametag hard to see" on 2026-11-10): his name in white, a thing to do in warm yellow, both
+-- with a dark outline so they read on light walls and dark streets
 local TAG_INK = Color3.new(1, 1, 1)
-local TAG_OUTLINE = Color3.fromRGB(110, 55, 15)
+local TAG_SUB_INK = Color3.fromRGB(255, 214, 110)
+local TAG_OUTLINE = Color3.fromRGB(60, 40, 30)
+local TAG_NAME_SIZE = 20
+local TAG_SUB_SIZE = 14
 local DIRT_RATE = 40 -- dirt bits a second while he digs
 
 -- A sound from Config/Pish SOUNDS on his body (nothing until its id is set)
@@ -204,22 +207,8 @@ function PishVisual.nameTag(visual: Visual, subtitle: string?)
 		pill.Position = UDim2.fromScale(0.5, 1)
 		pill.AutomaticSize = Enum.AutomaticSize.XY
 		pill.Size = UDim2.fromOffset(0, 0)
-		pill.BackgroundColor3 = TAG_FILL
+		pill.BackgroundTransparency = 1
 		pill.Parent = made
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 16)
-		corner.Parent = pill
-		local edge = Instance.new("UIStroke")
-		edge.Color = TAG_EDGE
-		edge.Thickness = 3
-		edge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-		edge.Parent = pill
-		local padding = Instance.new("UIPadding")
-		padding.PaddingLeft = UDim.new(0, 14)
-		padding.PaddingRight = UDim.new(0, 14)
-		padding.PaddingTop = UDim.new(0, 4)
-		padding.PaddingBottom = UDim.new(0, 5)
-		padding.Parent = pill
 		local list = Instance.new("UIListLayout")
 		list.HorizontalAlignment = Enum.HorizontalAlignment.Center
 		list.SortOrder = Enum.SortOrder.LayoutOrder
@@ -229,25 +218,25 @@ function PishVisual.nameTag(visual: Visual, subtitle: string?)
 		name.LayoutOrder = 1
 		name.BackgroundTransparency = 1
 		name.AutomaticSize = Enum.AutomaticSize.X
-		name.Size = UDim2.fromOffset(0, 32)
+		name.Size = UDim2.fromOffset(0, TAG_NAME_SIZE + 4)
 		name.Font = Enum.Font.FredokaOne
-		name.TextSize = 28
+		name.TextSize = TAG_NAME_SIZE
 		name.TextColor3 = TAG_INK
-		name.Text = "🐾 " .. visual.dog
+		name.Text = visual.dog
 		name.Parent = pill
 		local nameOutline = Instance.new("UIStroke")
 		nameOutline.Color = TAG_OUTLINE
-		nameOutline.Thickness = 2
+		nameOutline.Thickness = 1.5
 		nameOutline.Parent = name
 		local sub = Instance.new("TextLabel")
 		sub.Name = "Sub"
 		sub.LayoutOrder = 2
 		sub.BackgroundTransparency = 1
 		sub.AutomaticSize = Enum.AutomaticSize.X
-		sub.Size = UDim2.fromOffset(0, 20)
+		sub.Size = UDim2.fromOffset(0, TAG_SUB_SIZE + 4)
 		sub.Font = Enum.Font.GothamBold
-		sub.TextSize = 16
-		sub.TextColor3 = TAG_INK
+		sub.TextSize = TAG_SUB_SIZE
+		sub.TextColor3 = TAG_SUB_INK
 		sub.Parent = pill
 		local subOutline = Instance.new("UIStroke")
 		subOutline.Color = TAG_OUTLINE

@@ -32,6 +32,9 @@ local GOLD = Color3.fromRGB(255, 214, 90)
 -- row, his gift at the end, Keep going and Skip tour. On a phone the HUD's right column (cash, weapon switch) runs
 -- from the top, so Skip sits just left of it
 local SKIP_SIZE = Vector2.new(84, 48) -- px (tap targets 48 px or more)
+-- Docked to the talk card (the owner 2026-11-11, focus mode A: "Skip inside it"): a small pill hanging off the card's
+-- bottom right (its top right while the card sits low), its tap area still 48 px tall
+local SKIP_DOCKED = { pill = Vector2.new(68, 24), text = 14, icon = 14, inset = 12, overlap = 6 }
 local SKIP_EDGE = 10 -- px from the screen's right edge, or from the HUD's right column beside it
 local ROW_PAW = 26 -- px each paw on the tour card
 local CARD_SIZE = Vector2.new(360, 250)
@@ -213,42 +216,86 @@ end
 function TutorialCues.skipButton(shown: boolean, onTap: () -> ())
 	local button = skip
 	if not button or not button.Parent then
+		-- The tap area (transparent) holds the pill you see: full size on its own, small when docked to the talk card
 		local made = Instance.new("TextButton")
 		made.Name = "TutorialSkip"
 		made.Text = ""
 		made.AnchorPoint = Vector2.new(1, 0)
 		made.Size = UDim2.fromOffset(SKIP_SIZE.X, SKIP_SIZE.Y)
-		made.BackgroundColor3 = Color3.new(1, 1, 1)
+		made.BackgroundTransparency = 1
 		made.AutoButtonColor = false
 		made.ZIndex = 30
 		made.Parent = gui()
-		UIKit.corner(made, 14)
-		UIKit.outline(made, Color3.fromRGB(255, 211, 234), 3)
+		local pill = Instance.new("Frame")
+		pill.Name = "Pill"
+		pill.AnchorPoint = Vector2.new(0.5, 0)
+		pill.Position = UDim2.fromScale(0.5, 0)
+		pill.Size = UDim2.fromScale(1, 1)
+		pill.BackgroundColor3 = Color3.new(1, 1, 1)
+		pill.Active = false
+		pill.Parent = made
+		local pillCorner = Instance.new("UICorner")
+		pillCorner.CornerRadius = UDim.new(0, 14)
+		pillCorner.Parent = pill
+		UIKit.outline(pill, Color3.fromRGB(255, 211, 234), 3)
 		local list = Instance.new("UIListLayout")
 		list.FillDirection = Enum.FillDirection.Horizontal
 		list.HorizontalAlignment = Enum.HorizontalAlignment.Center
 		list.VerticalAlignment = Enum.VerticalAlignment.Center
 		list.Padding = UDim.new(0, 4)
-		list.Parent = made
-		local arrow = Icon.make(made, "Next", UDim2.fromOffset(22, 22))
+		list.Parent = pill
+		local arrow = Icon.make(pill, "Next", UDim2.fromOffset(22, 22))
 		arrow.LayoutOrder = 1
-		local words = UIKit.label(made, PishTalk.LABELS.skip, Enum.Font.FredokaOne, 19, Color3.fromRGB(90, 70, 110))
+		local words = UIKit.label(pill, PishTalk.LABELS.skip, Enum.Font.FredokaOne, 19, Color3.fromRGB(90, 70, 110))
 		words.LayoutOrder = 2
 		words.AutomaticSize = Enum.AutomaticSize.X
-		words.Size = UDim2.fromOffset(0, SKIP_SIZE.Y)
+		words.Size = UDim2.fromScale(0, 1)
+		-- The pill's look: full (on its own, top right) or small (docked to the talk card)
+		local docked: boolean? = nil
+		local function dock(on: boolean, below: boolean)
+			if docked ~= on then
+				docked = on
+				local size = SKIP_DOCKED
+				pill.Size = if on then UDim2.fromOffset(size.pill.X, size.pill.Y) else UDim2.fromScale(1, 1)
+				words.TextSize = if on then size.text else 19
+				arrow.Size = if on then UDim2.fromOffset(size.icon, size.icon) else UDim2.fromOffset(22, 22)
+				pillCorner.CornerRadius = UDim.new(0, if on then size.pill.Y / 2 else 14)
+			end
+			-- hanging off the card's bottom edge (or its top while the card sits low)
+			pill.AnchorPoint = Vector2.new(0.5, if on and not below then 1 else 0)
+			pill.Position = UDim2.fromScale(0.5, if on and not below then 1 else 0)
+		end
 		made.Activated:Connect(function()
 			local tap = onSkipTap
 			if tap then
 				tap()
 			end
 		end)
-		-- Top right, or just left of the HUD's right column when it reaches the top (phones). Hidden while a window is
-		-- open: on a phone it sat right on the window's X, which Pish points at to close it
+		-- Docked to the talk card while it shows; else top right, or just left of the HUD's right column when it reaches
+		-- the top (phones). Hidden while a window is open: on a phone it sat right on the window's X, which Pish points
+		-- at to close it
 		RunService.RenderStepped:Connect(function()
 			made.Visible = skipWanted and not UIKit.anyPanelOpen()
 			if not made.Visible then
 				return
 			end
+			local talk = gui():FindFirstChild("PishTalk")
+			if talk and talk:IsA("GuiObject") and talk.Visible then
+				local size = SKIP_DOCKED
+				local below = talk.AnchorPoint.Y < 0.5 -- the card sits at the top: Skip hangs under it
+				local right = talk.AbsolutePosition.X + talk.AbsoluteSize.X - size.inset
+				dock(true, below)
+				if below then
+					made.AnchorPoint = Vector2.new(1, 0)
+					made.Position = UDim2.fromOffset(right, talk.AbsolutePosition.Y + talk.AbsoluteSize.Y - size.overlap)
+				else
+					made.AnchorPoint = Vector2.new(1, 1)
+					made.Position = UDim2.fromOffset(right, talk.AbsolutePosition.Y + size.overlap)
+				end
+				return
+			end
+			dock(false, true)
+			made.AnchorPoint = Vector2.new(1, 0)
 			local screenSize = gui().AbsoluteSize
 			local right = screenSize.X - SKIP_EDGE
 			local main = Players.LocalPlayer:FindFirstChild("PlayerGui")

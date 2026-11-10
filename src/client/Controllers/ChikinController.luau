@@ -17,7 +17,11 @@ local Chikin = require(Config:WaitForChild("Chikin"))
 local ChikinTalk = require(Config:WaitForChild("ChikinTalk"))
 local WildValleyConfig = require(Config:WaitForChild("WildValley"))
 local Wild = require(Config:WaitForChild("Wild"))
+local Music = require(Config:WaitForChild("Music"))
+local Town = require(Config:WaitForChild("Town"))
+local MusicRules = require(Shared:WaitForChild("Util"):WaitForChild("MusicRules"))
 local TalkRules = require(Shared:WaitForChild("Util"):WaitForChild("TalkRules"))
+local TutorialRules = require(Shared:WaitForChild("Util"):WaitForChild("TutorialRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -469,6 +473,14 @@ local function leading(): boolean
 	return step ~= "" and step ~= Chikin.WAIT_STEP
 end
 
+-- Focus mode (the owner 2026-11-11): while he leads in town the HUD shows only what his step uses (Config/Chikin
+-- FOCUS); the Wild and no tour let it go
+local function updateFocus()
+	local at = root()
+	local inTown = at ~= nil and MusicRules.inTown(at.Position.X, at.Position.Z, Town.BOUNDS, Music.TOWN.margin)
+	Hud.setFocus("chikin", TutorialRules.chikinFocus(step, inTown, Chikin.FOCUS, Chikin.WAIT_STEP))
+end
+
 local function arrive()
 	arriving = true
 	TutorialTalk.hide()
@@ -519,6 +531,7 @@ local function onStep()
 	nextSent = false
 	tipIndex, tipsDone = 0, false
 	clearCue()
+	updateFocus()
 	if not leading() then
 		TutorialTalk.atTop(false)
 		TutorialTalk.hide()
@@ -588,6 +601,7 @@ function ChikinController.Start()
 			return
 		end
 		tick = 0
+		updateFocus() -- in town or out in the Wild
 		-- A pack opening or a weapon reveal has the screen: he waits quietly; in a fight his tips go on
 		local busy = OpeningStage.isShown() or WeaponRevealController.IsPlaying()
 		TutorialCues.quiet("chikin", busy)

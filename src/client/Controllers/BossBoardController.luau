@@ -1065,7 +1065,7 @@ function BossBoardController.Start()
 	UIKit.outline(details, palette.rowEdge, 2)
 
 	-- hidden through Pish's first visit (a calm HUD)
-	Hud.calmPiece(Hud.tile({ id = "Bosses", icon = "Trophy", label = "Bosses", key = "K", group = "Bottom", order = 3, onClick = toggle }))
+	Hud.calmPiece(Hud.tile({ id = "Bosses", icon = "Trophy", label = "Bosses", key = "K", group = "Bottom", order = 3, onClick = toggle }), "bosses")
 
 	Remotes.WeaponsChanged.OnClientEvent:Connect(function(state: unknown)
 		if typeof(state) == "table" and typeof((state :: any).owned) == "table" then

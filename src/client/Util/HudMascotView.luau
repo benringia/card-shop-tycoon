@@ -20,6 +20,8 @@ local CFG = HudMascot
 local body: Frame? = nil -- the sticker's frame inside the clip: breathes, and slides down to duck
 local bounceScale: UIScale? = nil
 local tapButton: TextButton? = nil -- its tap area (HudMascotView.tapArea)
+local pieces: { GuiObject } = {} -- what mount made (its tail, the clip, the tap area): hidden while a tour runs
+local hidden = false
 local duckDistance = 0 -- pixels a full duck moves the sticker down
 local duckStart: number? = nil
 local duckConnection: RBXScriptConnection? = nil
@@ -201,6 +203,16 @@ function HudMascotView.mount(cushion: GuiObject)
 	tap.Parent = host
 	tap.Activated:Connect(bounce)
 	tapButton = tap
+	pieces = { tail, clip, tap }
+	HudMascotView.setHidden(hidden)
+end
+
+-- Hides it (a tour on: Util/Hud's calm "mascot" piece) or shows it again; its tail only when it has a picture
+function HudMascotView.setHidden(on: boolean)
+	hidden = on
+	for _, piece in pieces do
+		piece.Visible = not on and (piece.Name ~= "MascotTail" or CFG.images.tail ~= "")
+	end
 end
 
 -- Called after each tap on the mascot (it's the Pish button: TutorialController offers his tour again)

@@ -15,6 +15,8 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local Party = require(Config:WaitForChild("Party"))
+local Chikin = require(Config:WaitForChild("Chikin"))
+local TutorialRules = require(Shared:WaitForChild("Util"):WaitForChild("TutorialRules"))
 local AttackFx = require(Config:WaitForChild("AttackFx"))
 local FightMotion = require(Shared:WaitForChild("Util"):WaitForChild("FightMotion"))
 local Rarities = require(Config:WaitForChild("Rarities"))
@@ -145,8 +147,23 @@ local function addGlow(creature: Creature, element: string, grade: string, stars
 	end
 end
 
+-- Your own creature's tag hides on your screen while a tour leads (the owner 2026-11-11: "hide the title and creature
+-- tag only on tutorial"): it sat right over Pish and Chikin
+local function tagShown(marker: BasePart): boolean
+	local me = Players.LocalPlayer
+	if marker:GetAttribute("OwnerUserId") ~= me.UserId then
+		return true
+	end
+	local pish, combat = me:GetAttribute("TutorialStep"), me:GetAttribute("CombatStep")
+	return not TutorialRules.tourLeading(if typeof(pish) == "string" then pish else "", if typeof(combat) == "string" then combat else "", Chikin.WAIT_STEP)
+end
+
 local function updateTag(creature: Creature)
 	local marker = creature.marker
+	local board = creature.tag.Parent
+	if board and board:IsA("BillboardGui") then
+		board.Enabled = tagShown(marker)
+	end
 	local card = Cards.ById[marker:GetAttribute("CardId") :: string]
 	local level = marker:GetAttribute("Level")
 	local stars = marker:GetAttribute("Stars")
@@ -594,6 +611,14 @@ function CreatureController.Start()
 		end
 	end
 	folder.ChildAdded:Connect(watch)
+	-- A tour starting or ending: your own creature's tag hides or comes back
+	for _, name in { "TutorialStep", "CombatStep" } do
+		Players.LocalPlayer:GetAttributeChangedSignal(name):Connect(function()
+			for _, creature in creatures do
+				updateTag(creature)
+			end
+		end)
+	end
 	-- Stepping up to or away from the healing spring
 	RestTimers.Changed:Connect(function()
 		for _, creature in creatures do

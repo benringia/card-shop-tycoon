@@ -145,4 +145,19 @@ return {
 		end
 		expect.equal(PishTalk.AFTER.showcase[1], "Customers buy single cards from this case!")
 	end,
+
+	-- The owner 2026-11-11: "move the dialogue at the center top so that pish model can be seen"
+	["the talk card sits at the top, unless it would cover what Pish points at there"] = function()
+		local TOP, HEIGHT, PAW = 66, 112, 82
+		expect.equal(TalkRules.cardAtTop(TOP, HEIGHT, PAW, nil, false), true, "nothing pointed at: the top")
+		local tile = { top = 520, low = 580, across = true }
+		expect.equal(TalkRules.cardAtTop(TOP, HEIGHT, PAW, tile, false), true, "a HUD tile at the bottom: still the top")
+		local high = { top = 120, low = 170, across = true }
+		expect.equal(TalkRules.cardAtTop(TOP, HEIGHT, PAW, high, false), false, "a button under the top card: the bottom")
+		local paw = { top = 230, low = 280, across = true }
+		expect.equal(TalkRules.cardAtTop(TOP, HEIGHT, PAW, paw, false), false, "the paw over it would hit the card")
+		local aside = { top = 120, low = 170, across = false }
+		expect.equal(TalkRules.cardAtTop(TOP, HEIGHT, PAW, aside, false), true, "beside the card: the top")
+		expect.equal(TalkRules.cardAtTop(TOP, HEIGHT, PAW, high, true), true, "a fight keeps it at the top")
+	end,
 }

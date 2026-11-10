@@ -2378,22 +2378,29 @@ All numbers in `Config/Pish`.
   game sees: open his present (`pishPresent`, "Pish's Present": a First Spark pack with his picture, in the Bag),
   build a Small Pack Rack, order First Spark packs, stock the rack, a customer he sends reaches the counter, ring them
   up, open his gift (`pishGift`: the hit card is Very Rare or better), his goodbye. **Pish talks** (`Util/TutorialTalk`, lines in
-  `Config/PishTalk`, `Util/TalkRules`; the game's name from `Config/Game.NAME`): a talk card above the HUD tiles with
+  `Config/PishTalk`, `Util/TalkRules`; the game's name from `Config/Game.NAME`): a talk card at the top centre (the owner
+  2026-11-11: "so that pish model can be seen"; it was above the HUD tiles) with
   his face (his model in a little window), one short line, the step's picture and a big Next; his intro lines first
   ("Hi! I'm Pish!", "Welcome to <game>!"...), then the line for what to do now, which follows the player inside
   windows: his present in the Bag, then Open; Manage, Shop, the Small Pack Rack, "tap to place"; the computer, then
   First Spark's Order; the box, then the rack; behind the counter, then Charge. A window the step doesn't use makes
-  the line "Tap the X to close this window." with the paw on its X. The card rises above a HUD tile he points at so
-  his paw shows, moves to the top when it would cover a button in a window, and keeps clear of the HUD's side columns
-  on phones. Cues: gold paw prints to the place and a bouncing gold paw over a thing in the shop, drawn on the screen
+  the line "Tap the X to close this window." with the paw on its X. The card moves down above the HUD tiles only when
+  at the top it would cover what he points at, his paw included (`TalkRules.cardAtTop`); down there it rises above a
+  HUD tile he points at so his paw shows, and keeps clear of the HUD's side columns on phones. Cues: gold paw prints to the place and a bouncing gold paw over a thing in the shop, drawn on the screen
   so walls and closed doors don't hide them (none while a window is open, so they never sit on it); a bouncing gold
   paw and a pulsing gold ring on a button (it follows a window that rebuilds its buttons). The small Skip hides while
-  a window is open (on phones it sat on the window's X), and the talk card narrows to keep clear of it. He waits
+  a window is open (on phones it sat on the window's X); while the talk card shows it hangs off the card's bottom right
+  as a small pill (its top right while the card sits low; still a 48 px tap area: `TutorialCues` SKIP_DOCKED, the
+  owner's focus mode A, 2026-11-11), else it stands at the top right. The card is small since 2026-11-11 (the owner:
+  "a smaller fontsize and a smaller talk card"): 420 x 76 (was 560 x 112), its line at most 18 px (was 24), the name
+  14, the face 56, Next still 48 px tall; it sits 8 px under Roblox's top bar (66 in a fight, under the boss bar; the
+  owner: "move the dialogue higher up"). He waits
   quietly (card and cues hidden) while a pack opening, a fight or a weapon reveal has the screen. The goodbye ("Need
   me later? Tap me on your party bar. Bye!", the HUD back and the paw on the peeking Pish there) ends on its "Bye!"
   button, a tap on the peeking Pish, or by itself 20 s after. A step the shop has already done (a replay) completes at once. Old saves skip it (v17 migration).
 - [ ] **Calm screen** (round 3, owner: "overwhelming for new players"): through the first visit, in town (in the Wild they show), the party bar, weapon
-  switch, Bosses tile and buff chips are hidden (`Hud.calmPiece`, `Hud.setCalm`), and a **spotlight** dims everything
+  switch, Bosses tile and buff chips are hidden (`Hud.calmPiece` by name: party, weapons, bosses, buffs, mascot;
+  `Hud.setCalm` / `Hud.setFocus` per guide; the peeking Pish waits till the tour is over), and a **spotlight** dims everything
   but the button Pish points at (four dim frames, his card, paw and Skip above them; nothing dims for a thing in the
   shop).
 - [ ] **Skipping** (round 3, owner: "just put a skip icon on the top right"): a small "Skip" at the top right (left of
@@ -2406,7 +2413,7 @@ All numbers in `Config/Pish`.
   (nothing comes twice: his present and gift once, and his own customer once ever and only with room in the shop, `TutorialRules.sendsCustomer` / `customerSent`, `CustomerService.HasRoom`; skipping and replaying waits for a customer who comes by themselves). Icons: `PishPresent` (Pish hugging a ribboned pack) and `PishGift` (a rainbow
   pack with a paw medal), `Config/UIIcons`.
 - [ ] **Tutorial Pish is this player's own** (a client marker): other players see Town Pish; Town Pish and his pet prompt
-  are hidden for the player Pish is leading. The guide can't be petted. Both wear a "🐾 Pish" name tag: an orange pill with white outlined words standing on a point over his head (`SizeOffset`, so far away it stays above him; owner 2026-11-10: the white one was hard to see, then it covered him from afar).
+  are hidden for the player Pish is leading. The guide can't be petted. Both wear a "Pish" name tag (Chikin his own): plain words since 2026-11-11 (the owner: "update the name tag to be simpler"; it was "🐾 Pish" on an orange pill), his name in white at 20 px and a thing to do in warm yellow at 14 px, both with a dark outline, standing on a point over his head (`SizeOffset`, so far away it stays above him; owner 2026-11-10: the white one was hard to see, then it covered him from afar). While a tour leads your own title and your creature's name tag hide on your screen (others still see them; `TutorialRules.tourLeading`, `TitleController`, `CreatureController`; the owner 2026-11-11: "hide the title and creature tag only on tutorial").
 - [ ] **Town Pish** (`PishService`, `TownPishController`, `Util/PishPath`): a server marker (`workspace.PishNpc.TownPish`)
   strolling the town at 4.5 studs/s (trotting at 8; a small dog's
   walk, about 1.8 leg cycles a second, tests/PishWalk) round the fountain to stops and open shops' doors, idle clips, naps. **Petting** him
@@ -2464,6 +2471,9 @@ his card for a face.
   "You got a sword!", the Wild, a fight that must be won ("Oops! Rest up, then try another one!" after a loss or a run),
   then "The Meadow Warden lives through that portal. Beat it for a trophy!" with the paw trail to its portal. Steps
   the game already shows done pass at once (a party, a summoned creature, being in the Wild).
+- [ ] **Focus mode** (the owner 2026-11-11: "the screen is really crowded", pick A): while he leads in town the calm
+  HUD hides all but what his step uses (`Config/Chikin` FOCUS: the party bar on his summon step, the weapon switch on
+  the sword's; `TutorialRules.chikinFocus`); the peeking Pish waits till the tour is over; the Wild keeps the whole HUD.
 - [ ] **In a fight** his card moves to the top, clear of the combat buttons (`TutorialTalk.atTop`), and his tips go one
   at a time with the paw on their button: "Your creature fights by itself!" (3.5 s), "Tap Pet when it's ready" (R);
   with the sword "Tap Attack" (on PC "Click to swing your sword!"), "Tap Dodge" (Shift), "Tap Skill" (E). A tip moves
@@ -2678,7 +2688,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── UIKit.luau              # shared UI building helpers and the style (header, close, lip buttons)
     │       ├── Motion.luau             # pop in/out, press squash, bumps
     │       ├── FontStyle.luau          # switches Gotham text to the game fonts (FredokaOne, Montserrat)
-    │       ├── Hud.luau                # HUD layout: Manage tray, bottom tiles, context tiles, top bar; the calm HUD (first visit)
+    │       ├── Hud.luau                # HUD layout: Manage tray, bottom tiles, context tiles, top bar; the calm HUD (the tours' focus)
     │       ├── Icon.luau               # draws a UIIcons icon (or an emoji) into a holder
     │       ├── CardTips.luau           # card tooltips in the style kit: binder card summary, party copy (bars, perk, rest)
     │       ├── CopyCompare.luau        # the kid swap comparison: verdict badge and sentence, IN -> OUT cards, paired stat bars, perk line

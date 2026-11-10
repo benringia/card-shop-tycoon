@@ -533,47 +533,88 @@ function Hud.hideWith(object: GuiObject)
 	table.insert(hideWithHud, object)
 end
 
--- The calm HUD (Pish's first visit, round 3 pick A): pieces the tour doesn't use hide while it's on
-local calmPieces: { [GuiObject]: boolean } = {}
-local calm = false
+-- The calm HUD (Pish's first visit, round 3 pick A; Chikin's tour's focus mode, 2026-11-11): named pieces the tour
+-- doesn't use ("party", "weapons", "bosses", "buffs", "mascot") hide while a guide asks for it; each guide (a source)
+-- names the pieces it keeps, and a piece hides while any guide on doesn't keep it
+local calmPieces: { [GuiObject]: string } = {}
+local focusBy: { [string]: { [string]: boolean } } = {}
 local calmListeners: { () -> () } = {}
+
+local function hides(name: string?): boolean
+	if not name then
+		return false
+	end
+	for _, kept in focusBy do
+		if not kept[name] then
+			return true
+		end
+	end
+	return false
+end
 
 local function apply(show: boolean)
 	side.Visible = show
 	bottom.Visible = show
 	for _, object in hideWithHud do
-		object.Visible = show and not (calm and calmPieces[object])
+		object.Visible = show and not hides(calmPieces[object])
 	end
-	for object in calmPieces do
+	for object, name in calmPieces do
 		if not table.find(hideWithHud, object) then
-			object.Visible = not calm
+			object.Visible = not hides(name)
 		end
 	end
 end
 
--- A piece of the HUD the first visit doesn't use (the party bar, the weapon switch, the Bosses tile): hidden while calm
-function Hud.calmPiece(object: GuiObject)
-	calmPieces[object] = true
-	if calm then
+-- A piece of the HUD a tour may not use (the party bar, the weapon switch, the Bosses tile), by name
+function Hud.calmPiece(object: GuiObject, name: string)
+	calmPieces[object] = name
+	if next(focusBy) then
 		apply(next(hiddenBy) == nil)
 	end
 end
 
--- Calm on while Pish's first visit runs (TutorialController); pieces that show and hide themselves (the buff chips)
--- ask Hud.isCalm and listen with Hud.onCalm
-function Hud.setCalm(on: boolean)
-	if calm == on then
+-- `source` (a guide: "pish", "chikin") asks for the calm HUD keeping only the pieces named in `keep`; nil lets go.
+-- Pieces that show and hide themselves (the buff chips, the peeking Pish) ask Hud.hides and listen with Hud.onCalm
+function Hud.setFocus(source: string, keep: { string }?)
+	local before = focusBy[source]
+	local after: { [string]: boolean }? = nil
+	if keep then
+		after = {}
+		for _, name in keep do
+			(after :: { [string]: boolean })[name] = true
+		end
+	end
+	local same = (before == nil) == (after == nil)
+	if same and before and after then
+		for name in before do
+			same = same and after[name] == true
+		end
+		for name in after do
+			same = same and before[name] == true
+		end
+	end
+	if same then
 		return
 	end
-	calm = on
+	focusBy[source] = after
 	apply(next(hiddenBy) == nil)
 	for _, callback in calmListeners do
 		callback()
 	end
 end
 
+-- Calm on while Pish's first visit runs (TutorialController): every piece hidden
+function Hud.setCalm(on: boolean)
+	Hud.setFocus("pish", if on then {} else nil)
+end
+
+-- Whether the calm HUD hides the piece `name` now
+function Hud.hides(name: string): boolean
+	return hides(name)
+end
+
 function Hud.isCalm(): boolean
-	return calm
+	return next(focusBy) ~= nil
 end
 
 function Hud.onCalm(callback: () -> ())

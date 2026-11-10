@@ -168,4 +168,20 @@ function TutorialRules.doneAlready(saved: Saved, stepId: string, facts: ShopFact
 	return false
 end
 
+-- Whether a guide's tour leads now: Pish's step (his goodbye too) or Chikin's (`combatStep`, not his hidden wait,
+-- `waitStep`). Your own title and creature tag hide on your screen meanwhile (the owner 2026-11-11: "hide the title
+-- and creature tag only on tutorial")
+function TutorialRules.tourLeading(pishStep: string, combatStep: string, waitStep: string): boolean
+	return pishStep ~= "" or (combatStep ~= "" and combatStep ~= waitStep)
+end
+
+-- The calm HUD pieces kept while Chikin leads (`focus`: Config/Chikin FOCUS, by step; the owner 2026-11-11, focus
+-- mode): nil when he isn't leading (no step, his wait) or the player is out of town (the Wild keeps the whole HUD)
+function TutorialRules.chikinFocus(step: string, inTown: boolean, focus: { [string]: { string } }, waitStep: string): { string }?
+	if step == "" or step == waitStep or not inTown then
+		return nil
+	end
+	return focus[step] or {}
+end
+
 return TutorialRules

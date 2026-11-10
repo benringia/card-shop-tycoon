@@ -91,7 +91,7 @@ end
 
 -- The row shows while either chip does (an empty one would still take a gap in the column)
 local function refreshRow()
-	row.Visible = (creature.badge.Visible or luck.badge.Visible) and not Hud.isCalm() -- hidden through Pish's first visit
+	row.Visible = (creature.badge.Visible or luck.badge.Visible) and not Hud.hides("buffs") -- hidden through the tours
 	if tooltipFor and not tooltipFor.badge.Visible then
 		showTooltip(tooltipFor, false)
 	end

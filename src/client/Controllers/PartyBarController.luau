@@ -693,7 +693,7 @@ function PartyBarController.Start()
 	bar.AutomaticSize = Enum.AutomaticSize.XY
 	bar.BackgroundTransparency = 1
 	bar.Parent = UIController.GetStatusRow()
-	Hud.calmPiece(bar) -- hidden through Pish's first visit (a calm HUD)
+	Hud.calmPiece(bar, "party") -- hidden through Pish's first visit (a calm HUD) and Chikin's but his summon step
 	local headroom = Instance.new("UIPadding")
 	headroom.PaddingTop = UDim.new(0, HudMascotRules.headroom(HudMascot))
 	headroom.Parent = bar
@@ -772,6 +772,11 @@ function PartyBarController.Start()
 
 	-- The mascot peeks over the cushion and ducks when the summoned creature changes
 	HudMascotView.mount(seat)
+	-- The peeking Pish waits till a tour is over (the owner 2026-11-11), even while Chikin shows the party bar
+	Hud.onCalm(function()
+		HudMascotView.setHidden(Hud.hides("mascot"))
+	end)
+	HudMascotView.setHidden(Hud.hides("mascot"))
 	PartyBarController.Summoned:Connect(HudMascotView.duck)
 
 	tip = Instance.new("Frame")

@@ -114,7 +114,7 @@ local function build()
 	layer.BackgroundTransparency = 1
 	layer.Parent = UIController.GetScreenGui()
 	Hud.hideWith(layer)
-	Hud.calmPiece(layer) -- hidden through Pish's first visit (a calm HUD)
+	Hud.calmPiece(layer, "weapons") -- hidden through Pish's first visit (a calm HUD) and Chikin's but his sword step
 	holder = Instance.new("Frame")
 	holder.Name = "Switch"
 	holder.Size = UDim2.fromOffset(LOOK.chip + 2 * (LOOK.arrow + LOOK.gap), LOOK.chip + LOOK.name)

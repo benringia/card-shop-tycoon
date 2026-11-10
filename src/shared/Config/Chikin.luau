@@ -36,6 +36,13 @@ return {
 		fight2 = "Sword",
 		boss = "Trophy",
 	} :: { [string]: string },
+	-- Focus mode (the owner 2026-11-11: "the screen is really crowded", pick A): while he leads in town the calm HUD's
+	-- pieces (Util/Hud: party, weapons, bosses, buffs, mascot) hide but those his step uses; the Wild keeps the whole
+	-- HUD; the peeking Pish waits till the tour is over (Util/TutorialRules.chikinFocus)
+	FOCUS = {
+		summon = { "party" },
+		sword = { "weapons" },
+	} :: { [string]: { string } },
 	HEIGHT = 2.6, -- studs: Pish's size
 	-- Pish's licensed barks (Config/Pish SOUNDS), pitched up a little: a smaller, higher dog
 	SOUNDS = {

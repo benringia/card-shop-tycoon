@@ -159,4 +159,13 @@ return {
 		expect.equal(TutorialRules.read({ customerSent = true }, STEPS).customerSent, true, "saved")
 		expect.equal(TutorialRules.read({ customerSent = "yes" }, STEPS).customerSent, false, "junk reads as not sent")
 	end,
+
+	-- The owner 2026-11-11: "hide the title and creature tag only on tutorial" (on your own screen)
+	["a tour leads while Pish's step or Chikin's (not his wait) is on"] = function()
+		expect.equal(TutorialRules.tourLeading("", "", "level4"), false, "no tour")
+		expect.equal(TutorialRules.tourLeading("shop", "", "level4"), true, "Pish's tour")
+		expect.equal(TutorialRules.tourLeading("bye", "", "level4"), true, "his goodbye too")
+		expect.equal(TutorialRules.tourLeading("", "party", "level4"), true, "Chikin's tour")
+		expect.equal(TutorialRules.tourLeading("", "level4", "level4"), false, "Chikin's wait for shop level 4")
+	end,
 }

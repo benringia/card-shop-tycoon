@@ -1,6 +1,7 @@
 --!strict
--- Pish's talk card (spec 2026-11-09-tutorial-pish-design 14, the owner's pick A): at the bottom centre, just above the
--- HUD tiles, a cotton candy card with Pish's face (his model in a little window), his name, one short line in big
+-- Pish's talk card (spec 2026-11-09-tutorial-pish-design 14, the owner's pick A): at the top centre (the owner
+-- 2026-11-11: "so that pish model can be seen"; down above the HUD tiles only when it would cover what he points at,
+-- Util/TalkRules.cardAtTop), a cotton candy card with Pish's face (his model in a little window), his name, one short line in big
 -- text, the picture of the thing to use, and a big Next while he has more to say. A new line types itself in; a tap on
 -- the card (or Next) shows the rest, then moves on. Lines come from Config/PishTalk through Util/TalkRules.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -9,6 +10,7 @@ local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local PishTalk = require(Shared:WaitForChild("Config"):WaitForChild("PishTalk"))
+local TalkRules = require(Shared:WaitForChild("Util"):WaitForChild("TalkRules"))
 
 local ClientUtil = script.Parent :: Instance
 local Icon = require(ClientUtil:WaitForChild("Icon"))
@@ -17,15 +19,22 @@ local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 
 local TutorialTalk = {}
 
-local WIDTH = 560 -- px at most; a share of a narrow screen
+-- Smaller since 2026-11-11 (the owner: "the screen is really crowded ... a smaller fontsize and a smaller talk card";
+-- was 560 x 112, text 24, name 18, face 84): Next keeps a finger-sized 48 px height
+local WIDTH = 420 -- px at most; a share of a narrow screen
 local SCREEN_SHARE = 0.64
-local MIN_WIDTH = 260 -- px: it never gets narrower than this to clear the Skip button
-local HEIGHT = 112
-local FACE = 84
-local PICTURE = 52
-local NEXT_WIDTH = 108
+local HEIGHT = 76
+local FACE = 56
+local PICTURE = 34
+local NEXT_WIDTH = 84
+local NEXT_HEIGHT = 48
+local INSET = 10 -- px round the face and between it and the words
+local NAME_SIZE = 14
+local LINE_SIZE = 18 -- the line's biggest text (it shrinks to fit, never under LINE_MIN)
+local LINE_MIN = 12
 local GAP = 34 -- px above the HUD tiles (their icons pop up out of the row)
-local TOP = 66 -- px from the top when the card goes up there
+local TOP = 8 -- px under Roblox's top bar: where the card sits (the owner 2026-11-11: "move the dialogue higher up")
+local FIGHT_TOP = 66 -- px in a fight: under the boss's HP bar
 local BAR_GAP = 12 -- px above the placement bar while the player places something
 local PAW_ROOM = 82 -- px over the button Pish points at for his bouncing paw (Util/TutorialCues: 64 + lift + bounce)
 local EDGE = 8 -- px kept clear of the screen's edges and the HUD's side columns
@@ -38,7 +47,7 @@ local nextButton: TextButton? = nil
 local picture: Frame? = nil
 local scale: UIScale? = nil
 local typedAt = 0
-local avoid: GuiObject? = nil -- what Pish points at in a window: the card moves to the top rather than cover it
+local avoid: GuiObject? = nil -- what Pish points at: the card moves down above the HUD rather than cover it
 local tiles: GuiObject? = nil
 local shownText = ""
 local shownIcon: string? = nil
@@ -52,7 +61,7 @@ local function face(parent: Frame)
 	local holder = Instance.new("Frame")
 	holder.Name = "Face"
 	holder.Size = UDim2.fromOffset(FACE, FACE)
-	holder.Position = UDim2.new(0, 12, 0.5, 0)
+	holder.Position = UDim2.new(0, INSET, 0.5, 0)
 	holder.AnchorPoint = Vector2.new(0, 0.5)
 	holder.BackgroundColor3 = Color3.fromRGB(255, 246, 224)
 	holder.Parent = parent
@@ -100,24 +109,26 @@ local function build(): Frame
 	face(made)
 	local colors = UIKit.colorsFor(made)
 
-	local name = UIKit.label(made, speakerName, Enum.Font.FredokaOne, 18, Color3.fromRGB(224, 138, 44))
+	local words = INSET + FACE + INSET -- where the name and the line start
+	local room = words + NEXT_WIDTH + PICTURE + 26 -- the width the face, picture and Next take
+	local name = UIKit.label(made, speakerName, Enum.Font.FredokaOne, NAME_SIZE, Color3.fromRGB(224, 138, 44))
 	name.Name = "Speaker"
 	nameLabel = name
-	name.Position = UDim2.fromOffset(12 + FACE + 12, 10)
-	name.Size = UDim2.new(1, -(12 + FACE + 12 + NEXT_WIDTH + PICTURE + 30), 0, 22)
+	name.Position = UDim2.fromOffset(words, 7)
+	name.Size = UDim2.new(1, -room, 0, 16)
 	name.TextXAlignment = Enum.TextXAlignment.Left
 
-	local text = UIKit.label(made, "", Enum.Font.FredokaOne, 24, colors.ink)
+	local text = UIKit.label(made, "", Enum.Font.FredokaOne, LINE_SIZE, colors.ink)
 	text.Name = "Line"
-	text.Position = UDim2.fromOffset(12 + FACE + 12, 32)
-	text.Size = UDim2.new(1, -(12 + FACE + 12 + NEXT_WIDTH + PICTURE + 30), 1, -40)
+	text.Position = UDim2.fromOffset(words, 24)
+	text.Size = UDim2.new(1, -room, 1, -30)
 	text.TextXAlignment = Enum.TextXAlignment.Left
 	text.TextYAlignment = Enum.TextYAlignment.Top
 	text.TextWrapped = true
 	text.TextScaled = true
 	local limit = Instance.new("UITextSizeConstraint")
-	limit.MaxTextSize = 24
-	limit.MinTextSize = 14
+	limit.MaxTextSize = LINE_SIZE
+	limit.MinTextSize = LINE_MIN
 	limit.Parent = text
 	line = text
 
@@ -125,7 +136,7 @@ local function build(): Frame
 	thing.Name = "Picture"
 	thing.BackgroundTransparency = 1
 	thing.AnchorPoint = Vector2.new(1, 0.5)
-	thing.Position = UDim2.new(1, -(NEXT_WIDTH + 22), 0.5, 0)
+	thing.Position = UDim2.new(1, -(NEXT_WIDTH + 18), 0.5, 0)
 	thing.Size = UDim2.fromOffset(PICTURE, PICTURE)
 	thing.Parent = made
 	picture = thing
@@ -133,10 +144,10 @@ local function build(): Frame
 	local button = UIKit.button(made, PishTalk.NEXT, UIKit.Colors.Accent)
 	button.Name = "Next"
 	button.AnchorPoint = Vector2.new(1, 0.5)
-	button.Position = UDim2.new(1, -12, 0.5, 0)
-	button.Size = UDim2.fromOffset(NEXT_WIDTH, 56)
+	button.Position = UDim2.new(1, -INSET, 0.5, 0)
+	button.Size = UDim2.fromOffset(NEXT_WIDTH, NEXT_HEIGHT)
 	button.Font = Enum.Font.FredokaOne
-	button.TextSize = 22
+	button.TextSize = 18
 	button.Activated:Connect(function()
 		TutorialTalk.advance()
 	end)
@@ -154,7 +165,7 @@ local function build(): Frame
 		TutorialTalk.advance()
 	end)
 
-	-- Just above the HUD's bottom tiles, as wide as fits; at the top instead when it would cover what Pish points at
+	-- At the top centre, as wide as fits; just above the HUD's bottom tiles instead when it would cover what Pish points at
 	RunService.RenderStepped:Connect(function()
 		if not made.Visible then
 			return
@@ -203,38 +214,22 @@ local function build(): Frame
 		end
 		height = HEIGHT * fit
 		local target = avoid
-		local covered = false
+		local pointed: TalkRules.Target? = nil
 		if target and target.Parent then
 			local top, low = target.AbsolutePosition.Y, target.AbsolutePosition.Y + target.AbsoluteSize.Y
 			local left, right = target.AbsolutePosition.X, target.AbsolutePosition.X + target.AbsoluteSize.X
 			local cardLeft, cardRight = centre - width / 2, centre + width / 2
 			local across = right > cardLeft and left < cardRight
 			if across and top >= bottom and top - PAW_ROOM < bottom then
-				-- A HUD tile under the card: up enough to show the paw bouncing on it
+				-- A HUD tile under the card when it's down: up enough to show the paw bouncing on it
 				bottom = top - PAW_ROOM
 			end
-			covered = across and low > bottom - height and top - PAW_ROOM < bottom
+			pointed = { top = top, low = low, across = across }
 		end
-		covered = covered or forceTop
-		-- Clear of the Skip button at the top right (on a short phone screen a raised card reaches it): narrower, to its
-		-- left
-		local cardTop = if covered then TOP else bottom - height
-		local skip = TutorialCues.screen():FindFirstChild("TutorialSkip")
-		if skip and skip:IsA("GuiObject") and skip.Visible then
-			local skipLow = skip.AbsolutePosition.Y + skip.AbsoluteSize.Y
-			local skipLeft = skip.AbsolutePosition.X - EDGE
-			if cardTop < skipLow and centre + width / 2 > skipLeft then
-				local cardLeft = centre - width / 2
-				width = math.max(MIN_WIDTH, skipLeft - math.max(leftEdge, cardLeft))
-				centre = math.max(leftEdge, cardLeft) + width / 2
-				fit = width / WIDTH
-				if scale and not scale:GetAttribute("Popping") then
-					scale.Scale = fit
-				end
-			end
-		end
-		made.AnchorPoint = Vector2.new(0.5, if covered then 0 else 1)
-		made.Position = UDim2.fromOffset(centre, if covered then TOP else bottom)
+		local top = if forceTop then FIGHT_TOP else TOP
+		local atTop = TalkRules.cardAtTop(top, height, PAW_ROOM, pointed, forceTop)
+		made.AnchorPoint = Vector2.new(0.5, if atTop then 0 else 1)
+		made.Position = UDim2.fromOffset(centre, if atTop then top else bottom)
 		if line and shownText ~= "" then
 			local letters = math.floor((os.clock() - typedAt) * TYPE_SPEED)
 			line.MaxVisibleGraphemes = if letters >= utf8.len(shownText) :: number then -1 else letters

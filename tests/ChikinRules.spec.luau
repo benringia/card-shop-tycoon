@@ -127,4 +127,28 @@ return {
 		after = TutorialRules.record(after, STEPS, "party")
 		expect.equal(TutorialRules.current(after, STEPS), "wild", "then the summon done early counts")
 	end,
+
+	-- The owner 2026-11-11 (the calm HUD's focus mode, pick A): while Chikin leads in town the HUD shows only what his
+	-- step uses; the peeking Pish waits till the tour is over; the Wild keeps the whole HUD (fights need it)
+	["while Chikin leads in town the HUD keeps only what his step uses"] = function()
+		local PIECES = { party = true, weapons = true, bosses = true, buffs = true, mascot = true }
+		local function keeps(step: string, inTown: boolean): string?
+			local kept = TutorialRules.chikinFocus(step, inTown, Chikin.FOCUS, Chikin.WAIT_STEP)
+			return if kept then table.concat(kept, ",") else nil
+		end
+		expect.equal(keeps("hello", true), "", "his hello: nothing extra")
+		expect.equal(keeps("summon", true), "party", "summon: the party bar")
+		expect.equal(keeps("sword", true), "weapons", "the sword: the weapon switch")
+		expect.equal(keeps("wild", true), "", "on his way to the portal")
+		expect.isNil(keeps("fight", false), "the Wild: the whole HUD")
+		expect.isNil(keeps(Chikin.WAIT_STEP, true), "his wait for shop level 4: not leading")
+		expect.isNil(keeps("", true), "no tour")
+		for step, kept in Chikin.FOCUS do
+			assert(table.find(STEPS, step), `{step} is one of his steps`)
+			for _, name in kept do
+				assert(PIECES[name], `{step}: {name} is a calm HUD piece`)
+				assert(name ~= "mascot", "the peeking Pish waits till the tour is over")
+			end
+		end
+	end,
 }
