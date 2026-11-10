@@ -24,7 +24,8 @@ local FACE = 84
 local PICTURE = 52
 local NEXT_WIDTH = 108
 local GAP = 34 -- px above the HUD tiles (their icons pop up out of the row)
-local TOP = 66 -- px from the top when the card goes up there (under the tour bar)
+local TOP = 66 -- px from the top when the card goes up there
+local PAW_ROOM = 82 -- px over the button Pish points at for his bouncing paw (Util/TutorialCues: 64 + lift + bounce)
 local EDGE = 8 -- px kept clear of the screen's edges and the HUD's side columns
 local TYPE_SPEED = 45 -- letters a second
 local POP = TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
@@ -195,7 +196,12 @@ local function build(): Frame
 			local top, low = target.AbsolutePosition.Y, target.AbsolutePosition.Y + target.AbsoluteSize.Y
 			local left, right = target.AbsolutePosition.X, target.AbsolutePosition.X + target.AbsoluteSize.X
 			local cardLeft, cardRight = centre - width / 2, centre + width / 2
-			covered = low > bottom - height and top < bottom and right > cardLeft and left < cardRight
+			local across = right > cardLeft and left < cardRight
+			if across and top >= bottom and top - PAW_ROOM < bottom then
+				-- A HUD tile under the card: up enough to show the paw bouncing on it
+				bottom = top - PAW_ROOM
+			end
+			covered = across and low > bottom - height and top - PAW_ROOM < bottom
 		end
 		made.AnchorPoint = Vector2.new(0.5, if covered then 0 else 1)
 		made.Position = UDim2.fromOffset(centre, if covered then TOP else bottom)

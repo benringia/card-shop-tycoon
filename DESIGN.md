@@ -2205,28 +2205,41 @@ clips in `assets/monster-animations/Pish`, the model as `assets/npcs/Pish.rbxm` 
 (clips through `Util/ClipPlayer`, markers make his barks, yawn and digging dirt), style `Party.CREATURE_STYLE.Pish`.
 All numbers in `Config/Pish`.
 - [ ] **First visit** (`TutorialService`, `TutorialController`, `Util/TutorialCues`, `Util/TutorialRules`): starts after
-  the welcome flight, eight steps completed by what the game sees: open his first pack (`sparkPack`, in the Bag),
+  the welcome flight. **Pish arrives** first (round 3): a bark, the camera over the player's left shoulder watches him
+  run in from 22 studs ahead, he stops in front of them and barks, then the camera goes back and he talks (once per
+  first visit, after the loading screen for a player back mid-tour; a tap skips it). Eight steps completed by what the
+  game sees: open his present (`pishPresent`, "Pish's Present": a First Spark pack with his picture, in the Bag),
   build a Small Pack Rack, order First Spark packs, stock the rack, a customer he sends reaches the counter, ring them
   up, open his gift (`pishGift`: the hit card is Very Rare or better), his goodbye. **Pish talks** (`Util/TutorialTalk`, lines in
   `Config/PishTalk`, `Util/TalkRules`; the game's name from `Config/Game.NAME`): a talk card above the HUD tiles with
   his face (his model in a little window), one short line, the step's picture and a big Next; his intro lines first
   ("Hi! I'm Pish!", "Welcome to <game>!"...), then the line for what to do now, which follows the player inside
   windows: his present in the Bag, then Open; Manage, Shop, the Small Pack Rack, "tap to place"; the computer, then
-  First Spark's Order; the box, then the rack; behind the counter, then Charge. The card moves to the top when it
-  would cover what he points at, and keeps clear of the HUD's side columns on phones. Cues: gold paw prints on the
-  ground to the place, a bouncing gold paw and a pulsing gold ring on the button or thing. The goodbye ends on its
-  "Bye!" button (or by itself 20 s after). A step the shop has already done (a replay) completes at once. Old saves skip it (v17 migration).
-- [ ] **The tour bar and skipping** (owner: "label everything"): at the top, "Pish's Tour · 3 of 8", the paw row,
-  "Gift at the end!" and "Skip tour / hold to skip" (shorter on a narrow phone, in the top left). Skip needs holding
-  2 s, then the card asks "Skip Pish's tour?" with his gift crossed out, "You'll miss his gift at the end!" and a sad
-  Pish (whimper, head tilt): a big green "Keep going", a small grey "Skip". A Pish
-  tile in the Manage tray replays it (his gifts are never given twice).
+  First Spark's Order; the box, then the rack; behind the counter, then Charge. A window the step doesn't use makes
+  the line "Tap the X to close this window." with the paw on its X. The card rises above a HUD tile he points at so
+  his paw shows, moves to the top when it would cover a button in a window, and keeps clear of the HUD's side columns
+  on phones. Cues: gold paw prints to the place and a bouncing gold paw over a thing in the shop, drawn on the screen
+  so walls and closed doors don't hide them; a bouncing gold paw and a pulsing gold ring on a button. He waits
+  quietly (card and cues hidden) while a pack opening, a fight or a weapon reveal has the screen. The goodbye ("Need
+  me later? Tap Manage, then Pish. Bye bye!", the paw on Manage, then the Pish tile) ends on its "Bye!" button (or by
+  itself 20 s after). A step the shop has already done (a replay) completes at once. Old saves skip it (v17 migration).
+- [ ] **Calm screen** (round 3, owner: "overwhelming for new players"): through the first visit the party bar, weapon
+  switch, Bosses tile and buff chips are hidden (`Hud.calmPiece`, `Hud.setCalm`), and a **spotlight** dims everything
+  but the button Pish points at (four dim frames, his card, paw and Skip above them; nothing dims for a thing in the
+  shop).
+- [ ] **Skipping** (round 3, owner: "just put a skip icon on the top right"): a small "Skip" at the top right (left of
+  the cash column when that reaches the top). Tapping it brings a sad Pish (whimper, head tilt) and the tour card in
+  the middle (Pish's card waits under it): "Pish's Tour · 3 of 8", the paw row, his gift's picture, "Finish the tour
+  for Pish's gift!", a big green "Keep going" and a small grey "Skip tour". A Pish tile in the Manage tray replays it
+  (his gifts are never given twice). Icons: `PishPresent` (Pish hugging a ribboned pack) and `PishGift` (a rainbow
+  pack with a paw medal), `Config/UIIcons`.
 - [ ] **Tutorial Pish is this player's own** (a client marker): other players see Town Pish; Town Pish and his pet prompt
-  are hidden for the player Pish is leading.
+  are hidden for the player Pish is leading. The guide can't be petted. Both wear a "🐾 Pish" name tag.
 - [ ] **Town Pish** (`PishService`, `TownPishController`, `Util/PishPath`): a server marker (`workspace.PishNpc.TownPish`)
   strolling the town at 4.5 studs/s (trotting at 8; a small dog's
   walk, about 1.8 leg cycles a second, tests/PishWalk) round the fountain to stops and open shops' doors, idle clips, naps. **Petting** him
-  (within 12 studs) gives **Pish's Luck** for 3 minutes, once per 15 minutes per player: the hit slot's Very Rare, Epic
+  (within 12 studs; only the owner of the shop he's visiting, marker attribute `VisitingOwner`, and only after their
+  first visit; "pet me for luck!" under his tag then, the server checks the same) gives **Pish's Luck** for 3 minutes, once per 15 minutes per player: the hit slot's Very Rare, Epic
   and Legendary weights +25% (`Util/LuckRules`, `PackService.SetLuck`), shown as a "🍀 m:ss" chip beside the creature's
   perk chip (`BuffController`), hearts for everyone nearby.
 - [ ] **Lesson visits**: a level-up marks the lessons it unlocks waiting (`Pish.LESSONS`: Sleeves 3, first sword 4,
@@ -2410,7 +2423,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── FountainFxController.luau # the healing fountain's rune circle, light column and orbs (client only)
     │   │   ├── PortalFxController.luau # spins every portal's vortex near the camera (client only)
     │   │   ├── WelcomeController.luau # the first-visit welcome cinematic
-    │   │   ├── TutorialController.luau # this player's own Pish: the first visit's cues, hold-to-skip, replay; lesson and nudge visits
+    │   │   ├── TutorialController.luau # this player's own Pish: his arrival, the first visit's cues, Skip and the tour card, replay; lesson and nudge visits
     │   │   ├── TownPishController.luau # Town Pish drawn on the server's marker, his clips and hearts
     │   │   ├── PriceTagController.luau  # point at / tap your shelf price tags to set the price
     │   │   ├── PartyBarController.luau  # bottom-right party cushion: Party pill + 3 round portraits (and the mascot), tap or 1/2/3 to summon
@@ -2438,7 +2451,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── UIKit.luau              # shared UI building helpers and the style (header, close, lip buttons)
     │       ├── Motion.luau             # pop in/out, press squash, bumps
     │       ├── FontStyle.luau          # switches Gotham text to the game fonts (FredokaOne, Montserrat)
-    │       ├── Hud.luau                # HUD layout: Manage tray, bottom tiles, context tiles, top bar
+    │       ├── Hud.luau                # HUD layout: Manage tray, bottom tiles, context tiles, top bar; the calm HUD (first visit)
     │       ├── Icon.luau               # draws a UIIcons icon (or an emoji) into a holder
     │       ├── CardTips.luau           # card tooltips in the style kit: binder card summary, party copy (bars, perk, rest)
     │       ├── CopyCompare.luau        # the kid swap comparison: verdict badge and sentence, IN -> OUT cards, paired stat bars, perk line
@@ -2485,7 +2498,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── ScreenFx.luau           # fight screen shake (one decaying shake, falls off with distance) and screen flashes
     │       ├── ClipPlayer.luau         # one-shot attack clips on monster and boss bones (model-space poses), over the procedural motion
     │       ├── PishVisual.luau         # Pish on a marker: his model, clips, marker sounds, dirt and hearts
-    │       ├── TutorialCues.luau       # the tutorial's cues: paw trail, bouncing paw and gold ring, the labelled tour bar
+    │       ├── TutorialCues.luau       # the tutorial's cues: paw trail, bouncing paw and gold ring, the small Skip and tour card, the spotlight
     │       ├── TutorialTalk.luau       # Pish's talk card: his face, one short line, the step's picture, Next
     │       └── AfterImage.luau         # the dodge's fading copies of the character
     └── shared/                 # → ReplicatedStorage
@@ -2553,7 +2566,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Ambient.luau    # tree sway, the frame watchdog, the town's animals (plain data)
         │   ├── Welcome.luau    # the welcome cinematic's flight (plain data)
         │   ├── Pish.luau       # the tutorial: steps and pictures, gifts, luck, lessons, stuck helper, Town Pish, sounds
-        │   ├── PishTalk.luau   # what Pish says: each step's intro and now lines, lessons, nudges, the tour bar's labels
+        │   ├── PishTalk.luau   # what Pish says: each step's intro and now lines, lessons, nudges, the Skip and tour card labels
         │   ├── Game.luau       # the game's name (a placeholder until it's decided)
         │   ├── Plaza.luau      # the Card Festival Square plaza (plain data)
         │   ├── Places.luau     # place ids, Frontier portal spot

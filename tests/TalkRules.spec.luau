@@ -71,12 +71,15 @@ return {
 		end)
 	end,
 
-	["the top bar and the skip card say what everything is (owner: label everything)"] = function()
+	["the Skip button and the tour card say what everything is (owner: label everything; round 3: a small Skip)"] = function()
 		local labels = PishTalk.LABELS
 		expect.equal(string.format(labels.tour, 3, 8), "Pish's Tour · 3 of 8")
-		expect.equal(string.format(labels.tourShort, 3, 8), "Tour · 3 of 8")
-		for _, key in { "gift", "giftShort", "skip", "skipHold", "skipTitle", "skipWarning", "keepGoing", "skipYes" } do
-			assert(labels[key], `label {key}`)
+		expect.equal(labels.skip, "Skip")
+		expect.equal(labels.tourGift, "Finish the tour for Pish's gift!")
+		expect.equal(labels.keepGoing, "Keep going")
+		expect.equal(labels.skipYes, "Skip tour")
+		for _, gone in { "tourShort", "gift", "giftShort", "skipHold", "skipTitle", "skipWarning" } do
+			expect.equal(labels[gone], nil, `the tour bar's {gone} is gone`)
 		end
 	end,
 

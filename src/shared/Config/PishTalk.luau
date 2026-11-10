@@ -86,19 +86,14 @@ return {
 	NEXT = "Next",
 	BYE = "Bye!", -- the goodbye's last button
 
-	-- The top bar and the "really skip?" card (owner: "label everything. I dont want players guessing"); tour lines take
-	-- the step number and the count; the short ones on a narrow phone
+	-- The small Skip button and the tour card it opens (round 3, owner's pick A: "just put a skip icon on the top right
+	-- and if they click it. the progress and discouragement element shows up"); `tour` takes the step and the count
 	LABELS = {
 		tour = "Pish's Tour · %d of %d",
-		tourShort = "Tour · %d of %d",
-		gift = "Gift at the end!",
-		giftShort = "Gift at end!",
-		skip = "Skip tour",
-		skipHold = "hold to skip",
-		skipTitle = "Skip Pish's tour?",
-		skipWarning = "You'll miss his gift at the end!",
+		skip = "Skip",
+		tourGift = "Finish the tour for Pish's gift!",
 		keepGoing = "Keep going",
-		skipYes = "Skip",
+		skipYes = "Skip tour",
 		close = "Tap the X to close this window.", -- a window the step doesn't use is open (TutorialController)
 		petMe = "pet me for luck!", -- under Town Pish's name at your shop, once your first visit is done
 	} :: { [string]: string },

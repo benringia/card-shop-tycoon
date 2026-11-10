@@ -1,8 +1,8 @@
 --!strict
 -- The tutorial's cues (spec 2026-11-09-tutorial-pish-design 5, 6, 14): glowing paw prints on the ground to where to go,
--- a bouncing paw (and a gold ring) over what to tap (a HUD button, a button in a window or a thing in the shop), and
--- the labelled tour bar at the top: the step of the tour, the paw row, his gift at the end and the skip button
--- (Pish's words: Util/TutorialTalk). Each returns a remover, or is set again.
+-- a bouncing paw (and a gold ring) over what to tap (a HUD button, a button in a window or a thing in the shop), the
+-- small Skip at the top right and the tour card it opens (the step of the tour, the paw row, his gift, Keep going or
+-- Skip tour) (Pish's words: Util/TutorialTalk). Each returns a remover, or is set again.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -28,20 +28,24 @@ local RING_CORNER = 14
 local BOUNCE = 10 -- px (studs * 0.4 on a thing in the shop)
 local BOUNCE_SPEED = 6
 local GOLD = Color3.fromRGB(255, 214, 90)
--- The tour bar at the top (owner's pick A, 2026-11-10): "Pish's Tour · 3 of 8", the paw row, "Gift at the end!" and
--- the skip button (TutorialController puts it in). On a narrow screen it's shorter and sits in the top left corner,
--- above the Manage tray: on phones the HUD's right column (cash, weapon switch) runs from the top
-local BAR_HEIGHT = 56
-local BAR_COMPACT = 900 -- px: narrower screens leave out the paw row
-local BAR_EDGE = 12 -- px from the screen's left edge when compact
-local ROW_PAW = 22 -- px each paw in the row
-local PILL_HEIGHT = 40
-local PILL_ICON = 26
-local PILL_FILL = Color3.fromRGB(255, 246, 224)
-local PILL_EDGE = Color3.fromRGB(255, 215, 122)
+-- The small Skip at the top right (round 3, owner's pick A) and the tour card it opens: the step of the tour, the paw
+-- row, his gift at the end, Keep going and Skip tour. On a phone the HUD's right column (cash, weapon switch) runs
+-- from the top, so Skip sits just left of it
+local SKIP_SIZE = Vector2.new(84, 48) -- px (tap targets 48 px or more)
+local SKIP_EDGE = 10 -- px from the screen's right edge, or from the HUD's right column beside it
+local ROW_PAW = 26 -- px each paw on the tour card
+local CARD_SIZE = Vector2.new(360, 250)
+local CARD_GREY = Color3.fromRGB(190, 195, 205)
+local DIM_COLOR = Color3.fromRGB(20, 10, 40) -- the spotlight's dimming
+local DIM_TRANSPARENCY = 0.45
+local SPOT_PAD = 8 -- px of light round the button
 
 local screen: ScreenGui? = nil
-local bar: Frame? = nil
+local skip: TextButton? = nil
+local onSkipTap: (() -> ())? = nil
+local spotTarget: GuiObject? = nil
+local spotFrames: { Frame }? = nil
+local card: Frame? = nil
 
 -- Gold paws: white ones vanished against the shop's white walls and light floors
 local function tint(icon: Instance, color: Color3)
@@ -201,102 +205,93 @@ function TutorialCues.pawOn(target: GuiObject | BasePart): () -> ()
 end
 
 
--- A label pill on the tour bar: a picture and its words
-local function pill(parent: Frame, order: number, icon: string): TextLabel
-	local holder = Instance.new("Frame")
-	holder.Name = "Pill" .. order
-	holder.LayoutOrder = order
-	holder.AutomaticSize = Enum.AutomaticSize.X
-	holder.Size = UDim2.fromOffset(0, PILL_HEIGHT)
-	holder.BackgroundColor3 = PILL_FILL
-	holder.Parent = parent
-	UIKit.corner(holder, 14)
-	UIKit.outline(holder, PILL_EDGE, 2)
-	local padding = Instance.new("UIPadding")
-	padding.PaddingLeft = UDim.new(0, 10)
-	padding.PaddingRight = UDim.new(0, 12)
-	padding.Parent = holder
-	local list = Instance.new("UIListLayout")
-	list.FillDirection = Enum.FillDirection.Horizontal
-	list.VerticalAlignment = Enum.VerticalAlignment.Center
-	list.Padding = UDim.new(0, 6)
-	list.SortOrder = Enum.SortOrder.LayoutOrder
-	list.Parent = holder
-	local picture = Icon.make(holder, icon, UDim2.fromOffset(PILL_ICON, PILL_ICON))
-	picture.LayoutOrder = 1
-	local words = UIKit.label(holder, "", Enum.Font.FredokaOne, 18, UIKit.colorsFor(parent).ink)
-	words.Name = "Words"
-	words.LayoutOrder = 2
-	words.AutomaticSize = Enum.AutomaticSize.X
-	words.Size = UDim2.fromOffset(0, PILL_HEIGHT)
-	return words
+-- The small Skip at the top right (a tap opens the tour card: TutorialController); shown or hidden
+function TutorialCues.skipButton(shown: boolean, onTap: () -> ())
+	local button = skip
+	if not button or not button.Parent then
+		local made = Instance.new("TextButton")
+		made.Name = "TutorialSkip"
+		made.Text = ""
+		made.AnchorPoint = Vector2.new(1, 0)
+		made.Size = UDim2.fromOffset(SKIP_SIZE.X, SKIP_SIZE.Y)
+		made.BackgroundColor3 = Color3.new(1, 1, 1)
+		made.AutoButtonColor = false
+		made.ZIndex = 30
+		made.Parent = gui()
+		UIKit.corner(made, 14)
+		UIKit.outline(made, Color3.fromRGB(255, 211, 234), 3)
+		local list = Instance.new("UIListLayout")
+		list.FillDirection = Enum.FillDirection.Horizontal
+		list.HorizontalAlignment = Enum.HorizontalAlignment.Center
+		list.VerticalAlignment = Enum.VerticalAlignment.Center
+		list.Padding = UDim.new(0, 4)
+		list.Parent = made
+		local arrow = Icon.make(made, "Next", UDim2.fromOffset(22, 22))
+		arrow.LayoutOrder = 1
+		local words = UIKit.label(made, PishTalk.LABELS.skip, Enum.Font.FredokaOne, 19, Color3.fromRGB(90, 70, 110))
+		words.LayoutOrder = 2
+		words.AutomaticSize = Enum.AutomaticSize.X
+		words.Size = UDim2.fromOffset(0, SKIP_SIZE.Y)
+		made.Activated:Connect(function()
+			local tap = onSkipTap
+			if tap then
+				tap()
+			end
+		end)
+		-- Top right, or just left of the HUD's right column when it reaches the top (phones)
+		RunService.RenderStepped:Connect(function()
+			if not made.Visible then
+				return
+			end
+			local screenSize = gui().AbsoluteSize
+			local right = screenSize.X - SKIP_EDGE
+			local main = Players.LocalPlayer:FindFirstChild("PlayerGui")
+			local hud = main and main:FindFirstChild("MainGui")
+			local column = hud and hud:FindFirstChild("StatusRow")
+			if column and column:IsA("GuiObject") and column.Visible and column.AbsolutePosition.Y < SKIP_SIZE.Y + 8 then
+				right = math.min(right, column.AbsolutePosition.X - SKIP_EDGE)
+			end
+			made.Position = UDim2.fromOffset(right, 4)
+		end)
+		skip = made
+		button = made
+	end
+	onSkipTap = onTap
+	;(button :: TextButton).Visible = shown
 end
 
-local function buildBar(): Frame
+-- The tour card (Skip tapped): "Pish's Tour · 3 of 8", the paw row, his gift and what you'd miss, a big green Keep
+-- going and a small grey Skip tour
+function TutorialCues.tourCard(done: number, total: number, onKeep: () -> (), onSkip: () -> ())
+	if card and card.Parent then
+		return
+	end
+	local labels = PishTalk.LABELS
 	local made = Instance.new("Frame")
-	made.Name = "TourBar"
-	made.AutomaticSize = Enum.AutomaticSize.X
-	made.Size = UDim2.fromOffset(0, BAR_HEIGHT)
-	made.ZIndex = 20
+	made.Name = "TourCard"
+	made.AnchorPoint = Vector2.new(0.5, 0.5)
+	made.Position = UDim2.fromScale(0.5, 0.5)
+	made.Size = UDim2.fromOffset(CARD_SIZE.X, CARD_SIZE.Y)
+	made.ZIndex = 40
 	made.Parent = gui()
-	-- The cotton candy colours without creamWindow's face and glow frames: a row that sizes itself would count them
-	made:SetAttribute("Theme", "cream")
-	made.BackgroundColor3 = UIKit.colorsFor(made).panel
-	UIKit.corner(made, 16)
-	UIKit.outline(made, Color3.fromRGB(255, 211, 234), 3)
-	local padding = Instance.new("UIPadding")
-	padding.PaddingLeft = UDim.new(0, 8)
-	padding.PaddingRight = UDim.new(0, 8)
-	padding.Parent = made
-	local list = Instance.new("UIListLayout")
-	list.FillDirection = Enum.FillDirection.Horizontal
-	list.VerticalAlignment = Enum.VerticalAlignment.Center
-	list.Padding = UDim.new(0, 8)
-	list.SortOrder = Enum.SortOrder.LayoutOrder
-	list.Parent = made
-	pill(made, 1, "Paw")
+	UIKit.creamWindow(made)
+	local ink = UIKit.colorsFor(made).ink
+	local title = UIKit.label(made, string.format(labels.tour, math.min(done + 1, total), total), Enum.Font.FredokaOne, 24, ink)
+	title.Position = UDim2.fromOffset(0, 12)
+	title.Size = UDim2.new(1, 0, 0, 30)
+	title.TextXAlignment = Enum.TextXAlignment.Center
 	local paws = Instance.new("Frame")
-	paws.Name = "PawRow"
-	paws.LayoutOrder = 2
 	paws.BackgroundTransparency = 1
+	paws.AnchorPoint = Vector2.new(0.5, 0)
+	paws.Position = UDim2.new(0.5, 0, 0, 48)
 	paws.AutomaticSize = Enum.AutomaticSize.X
 	paws.Size = UDim2.fromOffset(0, ROW_PAW)
 	paws.Parent = made
 	local pawList = Instance.new("UIListLayout")
 	pawList.FillDirection = Enum.FillDirection.Horizontal
-	pawList.Padding = UDim.new(0, 3)
+	pawList.Padding = UDim.new(0, 4)
 	pawList.SortOrder = Enum.SortOrder.LayoutOrder
 	pawList.Parent = paws
-	pill(made, 3, "Gift")
-	bar = made
-	return made
-end
-
--- The tour bar showing step `done + 1` of `total` (hidden at total 0); the skip button goes in it (LayoutOrder 4)
-function TutorialCues.topBar(done: number, total: number): Frame
-	local shown = if bar and bar.Parent then bar else buildBar()
-	shown.Visible = total > 0
-	local compact = gui().AbsoluteSize.X < BAR_COMPACT
-	shown.AnchorPoint = Vector2.new(if compact then 0 else 0.5, 0)
-	shown.Position = if compact then UDim2.fromOffset(BAR_EDGE, 4) else UDim2.new(0.5, 0, 0, 4)
-	local labels = PishTalk.LABELS
-	local tour = shown:FindFirstChild("Pill1")
-	local tourWords = tour and tour:FindFirstChild("Words")
-	if tourWords and tourWords:IsA("TextLabel") then
-		tourWords.Text = string.format(if compact then labels.tourShort else labels.tour, math.min(done + 1, total), total)
-	end
-	local gift = shown:FindFirstChild("Pill3")
-	local giftWords = gift and gift:FindFirstChild("Words")
-	if giftWords and giftWords:IsA("TextLabel") then
-		giftWords.Text = if compact then labels.giftShort else labels.gift
-	end
-	local paws = shown:FindFirstChild("PawRow") :: Frame
-	paws.Visible = not compact
-	for _, child in paws:GetChildren() do
-		if child:IsA("GuiObject") then
-			child:Destroy()
-		end
-	end
 	for i = 1, total do
 		local paw = Icon.make(paws, "Paw", UDim2.fromOffset(ROW_PAW, ROW_PAW))
 		paw.LayoutOrder = i
@@ -307,13 +302,95 @@ function TutorialCues.topBar(done: number, total: number): Frame
 			end
 		end
 	end
-	return shown
+	local gift = Icon.make(made, "PishGift", UDim2.fromOffset(72, 72))
+	gift.AnchorPoint = Vector2.new(0.5, 0)
+	gift.Position = UDim2.new(0.5, 0, 0, 82)
+	local line = UIKit.label(made, labels.tourGift, Enum.Font.FredokaOne, 19, ink)
+	line.Position = UDim2.fromOffset(0, 156)
+	line.Size = UDim2.new(1, 0, 0, 24)
+	line.TextXAlignment = Enum.TextXAlignment.Center
+	local keep = UIKit.button(made, labels.keepGoing, UIKit.Colors.Success)
+	keep.Name = "Keep"
+	keep.AnchorPoint = Vector2.new(0, 1)
+	keep.Position = UDim2.new(0, 16, 1, -14)
+	keep.Size = UDim2.fromOffset(190, 52)
+	keep.Font = Enum.Font.FredokaOne
+	keep.TextSize = 22
+	local skipTour = UIKit.button(made, labels.skipYes, CARD_GREY)
+	skipTour.Name = "ReallySkip"
+	skipTour.AnchorPoint = Vector2.new(1, 1)
+	skipTour.Position = UDim2.new(1, -16, 1, -16)
+	skipTour.Size = UDim2.fromOffset(122, 48)
+	skipTour.Font = Enum.Font.FredokaOne
+	skipTour.TextSize = 18
+	local function close()
+		made:Destroy()
+		card = nil
+	end
+	keep.Activated:Connect(function()
+		close()
+		onKeep()
+	end)
+	skipTour.Activated:Connect(function()
+		close()
+		onSkip()
+	end)
+	card = made
 end
 
-function TutorialCues.hideBar()
-	if bar then
-		bar.Visible = false
+function TutorialCues.isTourCardOpen(): boolean
+	return card ~= nil and card.Parent ~= nil
+end
+
+-- The tour card away (the first visit ended under it)
+function TutorialCues.closeTourCard()
+	if card then
+		card:Destroy()
+		card = nil
 	end
+end
+
+-- The spotlight (round 3, pick A): everything dims but the button Pish points at (his card, the paw and Skip stay
+-- above it); nil takes it away. Four dim frames round the button, following it
+function TutorialCues.spotlight(target: GuiObject?)
+	spotTarget = target
+	if spotFrames or not target then
+		return
+	end
+	local frames = {}
+	for i = 1, 4 do
+		local dim = Instance.new("Frame")
+		dim.Name = "Dim" .. i
+		dim.BackgroundColor3 = DIM_COLOR
+		dim.BackgroundTransparency = DIM_TRANSPARENCY
+		dim.BorderSizePixel = 0
+		dim.ZIndex = 15
+		dim.Active = false
+		dim.Visible = false
+		dim.Parent = gui()
+		table.insert(frames, dim)
+	end
+	spotFrames = frames
+	RunService.RenderStepped:Connect(function()
+		local current = spotTarget
+		local shown = current ~= nil and current.Parent ~= nil and current.Visible and current.AbsoluteSize.X > 0
+		for _, dim in frames do
+			dim.Visible = shown
+		end
+		if not shown or not current then
+			return
+		end
+		local screenSize = gui().AbsoluteSize
+		-- Whole pixels, so the four frames meet without a bright seam between them
+		local left = math.floor(current.AbsolutePosition.X - SPOT_PAD)
+		local top = math.floor(current.AbsolutePosition.Y - SPOT_PAD)
+		local right = math.ceil(current.AbsolutePosition.X + current.AbsoluteSize.X + SPOT_PAD)
+		local bottom = math.ceil(current.AbsolutePosition.Y + current.AbsoluteSize.Y + SPOT_PAD)
+		frames[1].Position, frames[1].Size = UDim2.fromOffset(0, -60), UDim2.fromOffset(screenSize.X, math.max(0, top + 60))
+		frames[2].Position, frames[2].Size = UDim2.fromOffset(0, bottom), UDim2.fromOffset(screenSize.X, math.max(0, screenSize.Y - bottom))
+		frames[3].Position, frames[3].Size = UDim2.fromOffset(0, top), UDim2.fromOffset(math.max(0, left), bottom - top)
+		frames[4].Position, frames[4].Size = UDim2.fromOffset(right, top), UDim2.fromOffset(math.max(0, screenSize.X - right), bottom - top)
+	end)
 end
 
 -- A burst of sparkles at a point (a step done)
