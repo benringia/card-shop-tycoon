@@ -27,6 +27,32 @@ local function look(name: string): any
 end
 
 return {
+	-- The Frontier valley (spec 2026-11-10-frontier-valley-design): no day cycle, a fixed look and one per area and arena
+	["the Frontier has a fixed look and a look for each area and each arena"] = function()
+		local frontier = (cycle :: any).FRONTIER
+		assert(frontier, "DayCycle.FRONTIER")
+		local keys = {}
+		for key in cycle.AREA_LOOKS[2] do
+			keys[key] = true
+		end
+		local function check(look: any, label: string)
+			assert(look, label)
+			for key in keys do
+				assert(look[key] ~= nil, `{label} has no {key}`)
+			end
+		end
+		check(frontier.FIXED, "the fixed look")
+		for index = 1, 3 do
+			check(frontier.AREA_LOOKS[index], `area {index}'s look`)
+			check(frontier.ARENA_LOOKS[index], `arena {index}'s look`)
+		end
+		-- darker than the Wild: every Frontier area is dimmer than the Wild's fixed afternoon
+		local afternoon = DayCycle.fixedLook(cycle)
+		for index = 1, 3 do
+			assert(frontier.AREA_LOOKS[index].brightness < afternoon.brightness, `area {index} is as bright as the Wild`)
+		end
+	end,
+
 	["a loop is about 20 minutes and morning is the longest phase"] = function()
 		expect.equal(DayCycle.loopSeconds(cycle), 1170, "loop")
 		local longest = 0

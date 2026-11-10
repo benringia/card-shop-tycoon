@@ -1141,6 +1141,12 @@ function SceneryService.StartValley()
 		return
 	end
 	terrainOps = WildValley.terrainOps(ValleyConfig, TownTerrain.trailSegment)
+	local look = ValleyConfig.CLOUDS -- heavy grey clouds over the whole place
+	local clouds = workspace.Terrain:FindFirstChildOfClass("Clouds") or Instance.new("Clouds")
+	clouds.Cover = look.cover
+	clouds.Density = look.density
+	clouds.Color = Props.color(look.color)
+	clouds.Parent = workspace.Terrain
 	task.spawn(function()
 		local terrain = workspace.Terrain
 		for name, rgb in ValleyConfig.MATERIAL_COLORS do

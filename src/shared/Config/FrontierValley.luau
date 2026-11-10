@@ -97,6 +97,31 @@ return {
 		{ x = 425, z = 300, arms = { { zone = 3, toward = { x = 400, z = 470 } }, { text = "CAMP", toward = { x = 290, z = 60 } } } },
 	},
 	MARKER = { size = 1.3, color = { 150, 205, 255 }, across = true }, -- icy blue trail stones, square to the trail
+	-- Effects (Controllers/FrontierFxController, Util/FrontierFxRules; spec: darker and more dangerous than the Wild).
+	-- Looks and sounds only: nothing hurts outside a fight. Snow falls round you in Frostwood; pairs of red eyes watch
+	-- from its fog and fade as you come close (`eyeFade`), blinking now and then; lightning flashes over Stormpeak with
+	-- thunder (`every` { min, max } seconds), a tornado turns far past its east cliffs; a violet vortex turns over the
+	-- Rift, its floating rocks bob and the ground trembles now and then (a small camera shake and a rumble)
+	FX = {
+		snow = { zone = 1, rate = 40, height = 30, size = 120 },
+		eyes = {
+			{ x = -108, z = -10, y = 4 }, { x = -100, z = 112, y = 5 }, { x = -40, z = -60, y = 4 }, { x = 150, z = -60, y = 4 },
+			{ x = 195, z = -28, y = 5 }, { x = 198, z = 108, y = 4 }, { x = 10, z = 136, y = 5 }, { x = 140, z = 136, y = 4 },
+		},
+		eyeFade = { near = 30, far = 90 },
+		eyeColor = { 255, 40, 30 },
+		eyeBlink = { 3, 8 },
+		lightning = {
+			zone = 2, every = { 8, 16 }, flash = 0.18, brightness = 6, volume = 0.5,
+			sounds = { "rbxassetid://9120016021", "rbxassetid://9120016256", "rbxassetid://9120018172" }, -- Pro Sound Effects: Thunder Cracks Big Rumbling Blasts Booming 2, 3; Thunder Distant Boom 20
+		},
+		tornado = { x = 700, z = 160, height = 180, radius = 26, turn = 40, color = { 70, 74, 86 } },
+		vortex = { zone = 3, x = 212, z = 582, y = 220, size = 520, turn = 3, color = { 150, 80, 255 }, transparency = 0.35, image = "rbxassetid://82162011115712" }, -- Config/WildLoading SWIRL
+		floating = { bob = 0.8, speed = 0.5 },
+		tremor = { zone = 3, every = { 20, 40 }, length = 1.6, shake = 0.35, sound = "rbxassetid://9113221477", volume = 0.4 }, -- Pro Sound Effects: Avalanche Rumble 3
+	},
+	-- Roblox's clouds over the Frontier (SceneryService.StartValley): heavy and grey
+	CLOUDS = { cover = 0.78, density = 0.6, color = { 118, 122, 138 } },
 	-- The Dungeon portal (Config/Frontier DUNGEON_PORTAL): a crystal arch at the trail's west end, the farthest walk
 	DUNGEON_GATE = { x = -45, z = 622, faces = { x = -20, z = 620 } },
 

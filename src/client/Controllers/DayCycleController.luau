@@ -4,7 +4,8 @@
 -- times a second. Outside the town (the Wild, the Arena) the fixed afternoon look shows at once; in a Wild boss's
 -- arena copy, that arena's own look (Config/DayCycle ARENA_LOOKS, never night); in a valley area with a look of its
 -- own (AREA_LOOKS: the Caves), that look blends in over AREA_BLEND seconds and out again as you leave.
--- Nothing is replicated: every client works the same time out from the server clock.
+-- Nothing is replicated: every client works the same time out from the server clock. The Frontier has no day cycle:
+-- its fixed dusk (Config/DayCycle FRONTIER) with its own area and arena looks, the same way.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -18,6 +19,8 @@ local WildValley = require(SharedUtil:WaitForChild("WildValley"))
 local SkyLook = require(SharedUtil:WaitForChild("SkyLook"))
 local Place = require(SharedUtil:WaitForChild("Place"))
 local Valley = Place.getValley() -- the place's valley (Util/Place)
+local FRONTIER = Place.isFrontier()
+local Looks = if FRONTIER then (Cycle :: any).FRONTIER else Cycle -- AREA_LOOKS and ARENA_LOOKS
 
 local DayCycleController = {}
 
@@ -35,7 +38,7 @@ function DayCycleController.Start()
 		end
 		elapsed = 0
 		local start = workspace:GetAttribute("DayCycleStart")
-		if typeof(start) ~= "number" or SkyLook.isHeld() then
+		if (not FRONTIER and typeof(start) ~= "number") or SkyLook.isHeld() then
 			return
 		end
 		-- Where the player is (the camera's focus while they have no character)
@@ -48,17 +51,17 @@ function DayCycleController.Start()
 		local jumped = DayCycle.jumped(if lastAt then { x = lastAt.X, z = lastAt.Z } else nil, { x = at.X, z = at.Z }, step, Cycle.AREA_SNAP_SPEED)
 		lastAt = at
 		local arena = WildValley.arenaZoneAt(Valley, Bosses.ARENA_COPIES, at.X, at.Z)
-		if arena and Cycle.ARENA_LOOKS[arena] then
+		if arena and Looks.ARENA_LOOKS[arena] then
 			mix = 0
 			lastWasValley = false
-			SkyLook.apply(Cycle.ARENA_LOOKS[arena])
-		elseif DayCycle.inTown(Cycle, at.X, at.Z) then
+			SkyLook.apply(Looks.ARENA_LOOKS[arena])
+		elseif not FRONTIER and typeof(start) == "number" and DayCycle.inTown(Cycle, at.X, at.Z) then
 			mix = 0
 			lastWasValley = false
 			SkyLook.apply(DayCycle.lookAt(Cycle, workspace:GetServerTimeNow() - start))
 		else
 			local zone = WildValley.zoneAt(Valley, { x = at.X, z = at.Z })
-			local inside = zone ~= nil and Cycle.AREA_LOOKS[zone] ~= nil
+			local inside = zone ~= nil and Looks.AREA_LOOKS[zone] ~= nil
 			if inside then
 				mixZone = zone
 			end
@@ -69,9 +72,9 @@ function DayCycleController.Start()
 				mix = DayCycle.areaMix(mix, inside, step, Cycle.AREA_BLEND)
 			end
 			lastWasValley = true
-			local fixed = DayCycle.fixedLook(Cycle)
+			local fixed = if FRONTIER then Looks.FIXED else DayCycle.fixedLook(Cycle)
 			if mix > 0 and mixZone then
-				SkyLook.apply(DayCycle.blend(fixed, Cycle.AREA_LOOKS[mixZone], mix))
+				SkyLook.apply(DayCycle.blend(fixed, Looks.AREA_LOOKS[mixZone], mix))
 			else
 				SkyLook.apply(fixed)
 			end

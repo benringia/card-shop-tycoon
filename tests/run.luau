@@ -26,6 +26,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	PvpRules = require("./PvpRules.spec"),
 	Frontier = require("./Frontier.spec"),
 	FrontierValley = require("./FrontierValley.spec"),
+	FrontierFxRules = require("./FrontierFxRules.spec"),
 	Dungeon = require("./Dungeon.spec"),
 	DungeonRules = require("./DungeonRules.spec"),
 	ItemRules = require("./ItemRules.spec"),

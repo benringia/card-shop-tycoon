@@ -53,6 +53,7 @@ local ChallengeController = require(Controllers:WaitForChild("ChallengeControlle
 local ArenaWatchController = require(Controllers:WaitForChild("ArenaWatchController"))
 local FrontierController = require(Controllers:WaitForChild("FrontierController"))
 local FrontierRevealController = require(Controllers:WaitForChild("FrontierRevealController"))
+local FrontierFxController = require(Controllers:WaitForChild("FrontierFxController"))
 local WeaponRevealController = require(Controllers:WaitForChild("WeaponRevealController"))
 local DungeonController = require(Controllers:WaitForChild("DungeonController"))
 local TitleController = require(Controllers:WaitForChild("TitleController"))
@@ -92,6 +93,9 @@ if Place.isFrontier() or Place.isDungeon() then
 	LevelUpController.Start() -- the level-up light pillar on you, your creatures and players nearby
 	if Place.isDungeon() then
 		DungeonController.Start() -- the run line and Leave
+	else
+		DayCycleController.Start() -- the Frontier valley's skies (Config/DayCycle FRONTIER)
+		FrontierFxController.Start() -- its snow, red eyes, lightning, tornado, vortex, floating rocks and tremors
 	end
 else
 	UIController.Start()
