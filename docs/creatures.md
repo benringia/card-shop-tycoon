@@ -572,6 +572,36 @@ phase's head gets a PointLight and sparks on its bone, and when it falls the nec
 (`Bosses.HEAD_DROP`, during `DEATH_SECONDS`). Import it like the creatures (Rig Type Custom, Keep Zero Influence
 Bones), reset the MeshPart's `PivotOffset` rotation, name the model `prismHydra`.
 
+### Frontier monsters and bosses
+
+The Frontier valley's six species and three bosses (spec `2026-11-10-frontier-valley-design.md`): from the owner's
+kept concepts (Frost Wisp, Shade Lynx, Storm Hawk, Lava Brute, Rift Horror, Prism Crab) and boss picks (the Frost
+Tyrant's ice yeti king, the Storm Sovereign's storm wyvern, the Rift Devourer's void beetle titan). All nine came from
+one batch, faster than the Wild's one-by-one way:
+
+1. Cut each concept out of its white background (`<Folder>_concept.png`; pale creatures need a tight white threshold,
+   and white trapped between legs is cleared too).
+2. Meshy image to 3D in the live Blender (all nine at once; jobs in the plan's ledger). Each came facing -Y.
+3. Export each raw mesh as `<Folder>_raw.glb` (kept out of git), then
+   `NAME=<Folder> YAW=0 HEIGHT=1 blender -b --factory-startup --python tools/blender/prep_frontier_model.py` joins it,
+   stands it 1 m tall over the origin and saves `<Folder>.blend` with `<Folder>_Src` (and preview renders).
+4. Bone positions read off orthographic renders with a 0.1 m grid, feet off the ground vertices (k-means). The rigs:
+   `NAME=<Folder> blender -b assets/blender/<Folder>/<Folder>.blend --python tools/blender/rig_frontier_monsters.py`
+   (the six) or `rig_frontier_bosses.py` (the three, with `Fx_Crown` / `Fx_Portal` effect bones): PetRig names, the
+   glow mask, the FBX. The Prism Crab uses `rig_kit.remesh_bake` (collapse decimation shredded its crystal shell).
+5. Clips: `blender -b --factory-startup --python tools/blender/anim_frontier.py` (the monsters share their Wild
+   counterparts' `windup` / `strike` poses from `anim_wild.py`; the Frost Tyrant the Meadow Warden's four clips; the
+   Sovereign and the Devourer their own), then `lune run tools/anim/build_bone_clips "<game name>"`.
+6. The owner imports the nine FBX (Rig Type Custom, Keep Zero Influence Bones); Claude finishes them through the Studio
+   MCP (the game names, straight pivots, PrimaryPart, the imported AnimationController removed, a SurfaceAppearance:
+   Overlay, the colour map, the uploaded glow mask, strength 2) into one Workspace folder; the owner saves that folder
+   once as `assets/props-import/FrontierModels.rbxm`, and `lune run tools/monsters/split_models
+   assets/props-import/FrontierModels.rbxm` writes `assets/monsters/<name>.rbxm`.
+
+Heights (`Config/Frontier SPECIES`) are 30% over each Wild counterpart's (Frost Wisp 4.5, Shade Lynx 5.2, Storm Hawk 4,
+Lava Brute 8.5, Rift Horror 3.3, Prism Crab 4); the bosses 16-18 studs with rings 15-18 (`Config/Bosses`). Styles and
+signatures in `Config/Party` (the lynx roars, the brute and the Tyrant stomp).
+
 ## Originality
 
 Free and bought models are stand-ins. Check each model's licence and creator before shipping, and plan to

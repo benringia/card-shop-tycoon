@@ -702,7 +702,8 @@ The plaza's "The Frontier" portal opens a menu: Explore (any Frontier server) or
 A teleport is a leave (fights end, the save goes to the next server); your shop pauses and rebuilds from the save
 when you come back. Open to everyone ("Recommended Lv 15+"). Same combat as the wild; zones Frostwood Lv 15–25
 (Tide, Shade), Stormpeak 25–35 (Volt, Ember), The Rift 35–50 (all five, everything chases); elites 1 in 6; a healing
-spring at the entrance and the Dungeon portal (5.10, the final boss). Frontier-only drops: Star Shards (3% normal / 10% elite)
+spring in the camp and the Dungeon portal at the far end of the Rift (5.10, the final boss); the place is a valley like
+the Wild's (below, "The Frontier valley"). Frontier-only drops: Star Shards (3% normal / 10% elite)
 and Frontier cards (3% / 10%; Frostfang, Gale Sprite, Riftwalker, Cinder Titan, Tideborne Kirin, Stormking, never in
 packs). Frontier cards look special everywhere: an aurora border and rarity, a FRONTIER chip, a constant
 shimmer, an aurora glow in shop cases, a mystery "?" slot ("Found in the Frontier") in the binder until owned; finding
@@ -841,8 +842,8 @@ SurfaceAppearance's EmissiveMask) lights its markings at the species' steady `gl
 6.6 ms of render CPU a frame, even one golem (10.5; a Lune test keeps every glow to one strength). Small effects ride
 zero-influence `Fx_` bones within 60 studs of the camera with the extras on (`Wild.FX_RANGE`,
 `Util/MonsterLooks.effectsOn`, looks in `Wild.FX`): sparks at the beetle's pincer tips, a smoke wisp from the wolf's
-tail. A species without a model (the Frontier's) keeps its
-code-built placeholder.
+tail. A species without a model keeps its code-built placeholder; the Frontier's six have theirs (below, "The Frontier
+valley").
 
 **The Wild valley** (main game; round 1 spec `2026-10-31-wild-valley-design.md`, the user's pick A "One valley,
 three moods"; round 2 spec `2026-10-31-wild-valley-v2-design.md`, the user's picks A "Winding valley", boss portals and
@@ -939,7 +940,46 @@ looks, edge); rules in `Util/WildValley` (the trail and markers, which biome a s
 spawn spots, the terrain fills, arena copy spots, how far a monster may step) and `Util/WildPopulation`, Lune-tested.
 SceneryService fills its terrain with the town's and places the dressing on the drawn ground; WildService builds the
 spawn spots, signs, edges, return portal, boss portals and arena copies and runs the population check; BossService
-hands fights to free copies. The Frontier and the Dungeon keep their own maps and single rings.
+hands fights to free copies. The Frontier is a valley on the same engine (below); the Dungeon keeps its cavern and
+single ring.
+**The Frontier valley** (spec `2026-11-10-frontier-valley-design.md`, the owner's "make the frontier feel more dangerous
+than the wild. apply the wild's rules too"; plan `2026-11-10-frontier-valley.md`). The Frontier place runs the Wild
+valley's engine on its own config: `Util/Place.getValley()` gives `Config/WildValley` in the main game,
+`Config/FrontierValley` in the Frontier and nothing in the Dungeon, and WildService, SceneryService (`StartValley`, the
+Frontier's half: its terrain in its own colours, its scenery, backdrop and arena effects), BossService, the sky, the
+music and the loading screens read it. The Wild's own pieces (stream, bridge, cave, volcano, vents) are optional keys
+the Frontier leaves out; `HOME` (the way-home portal and the trailhead title) and `DRESSED_LISTS` are shared keys.
+- **Layout:** the camp (arrival pad, spring, Return portal, tents, campfire, watchtower; no monsters) and Frostwood
+  at ground level (y 0); a straight 100-stud climb east onto Stormpeak (y 30); a straight 140-stud drop north into the
+  Rift's crater (y -12); the trail west to the Dungeon gate at its end (its crystal arch; `Frontier.DUNGEON_PORTAL`).
+  A hollow dead giant (walls and a roof, its skull and ribs on top) lies between the three, so none can be seen from
+  the last. No walls: snowy hills, slate cliffs and the crater's basalt rim close the areas in, with lumpy skylines,
+  rolling banks along the passes and far snowy and dark mountain ranges. About 680 by 815 studs, 104k terrain cells
+  (the Wild's 105k budget).
+- **Scenery** (the owner's pick C, the Titans' Graveyard; `docs/props.md` "Frontier scenery props"): ruined forts with
+  red banners, giant swords in the snow, snowy pines and a ribcage the trail walks through in Frostwood; rock spires,
+  wrecked watchtowers, a horned skull and storm stones with glowing runes on Stormpeak; violet crystals, floating rocks
+  and the dragon skeleton in the Rift.
+- **Skies and effects** (`Config/DayCycle FRONTIER`, no day cycle; `Controllers/FrontierFxController`,
+  `Util/FrontierFxRules`): a cold grey dusk on the passes; Frostwood a snowy dusk with snow round you and pairs of red
+  eyes in the fog that fade as you come close; Stormpeak a grey storm with lightning flashes and thunder (every 8-16 s)
+  and a tornado past its east cliffs; the Rift violet with a slow vortex overhead, bobbing floating rocks and a tremor
+  now and then (a small camera shake and a rumble). Looks and sounds only: nothing hurts outside a fight.
+- **Danger:** Frontier monsters stand 30% taller than their Wild counterparts (`Frontier.SPECIES` heights,
+  `MONSTER_HEIGHT` 3.9 for any without one); elites chase everywhere and the whole Rift chases (as before).
+- **Boss portals and arenas** like the Wild's: a portal and board by each area's trail, four copies of each arena far
+  off (x 1600+, z 1400+): the Frost Tyrant's frozen hall (ice pillars, snowy pines, his ice throne), the Storm
+  Sovereign's summit (glowing storm stones, rock spires) and the Rift Devourer's island over a dark void; walls 72-74
+  studs out for the big bosses; each its own sky, ambient loop and music. `/boss 4-6` goes to their portals.
+- **Loading screen:** the Frontier look (`Config/LoadingScreen LOOKS.Frontier`, `Util/LoadingRules.look`): "The
+  Frontier", the swirl in icy blue and violet, Frostwood's picture, its own steps and tips; the main game's teleport
+  carries it (`LoadingRules.teleportLook`), and arrival holds until the valley round you is in (`Status.valley`).
+- **Music** (`Config/Music FRONTIER`): Frostwood, Stormpeak and the Rift with wind, distant thunder and an eerie hum
+  under them, and each arena its own battle piece; three APM options each (`/music frostwood|stormpeak|rift|tyrant|
+  sovereign|devourer <n>`).
+- **Models** (`docs/creatures.md` "Frontier monsters and bosses"): Meshy models of all six species and three bosses,
+  rigged with PetRig bones and glow masks; their clips share their Wild counterparts' attacks (the bosses' are their
+  own); each boss has a roar and an intro shot.
 
 **Party & summoning.** Binder card view → Add to party (slots 1–3; a plain copy becomes its own card). The Party
 panel (HUD; style kit, teal band) shows the three slots side by side with no scrolling: the card, name, grade pill,
@@ -1133,7 +1173,8 @@ group, checked before its fragments and every time (not only the first). Below i
   until then. A low ambient drone plays through the fight ("Tension Repeat Drones 22", `MUSIC_ID`, volume 0.1: a bed under the
   attack and skill sounds to come); heals and enrages shake the camera.
 - **Frontier bosses (phase 3):** their arenas are in the Frontier place (each place builds only its own bosses;
-  the board lists all 6 and names the other place). Shield: the boss's HP bar shows "+n shield", "Ice shield!" and
+  the board lists all 6 and names the other place); since the Frontier valley, behind portals with four copies each,
+  like the Wild's (above, "The Frontier valley"). Shield: the boss's HP bar shows "+n shield", "Ice shield!" and
   "Shield broken!" banners. Thunderclap: "Thunderclap!" and "Stunned" over each creature. Adds: "Rift Spawn!", the
   Spawn appear beside the boss (real monsters held still) with small HP bars under the boss bar; auto-attacks go to
   them first, abilities can still hit the boss (at half damage while any Spawn stands); the fight is won when the
