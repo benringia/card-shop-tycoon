@@ -61,6 +61,46 @@ local function checkShafted(name: string)
 end
 
 return {
+	-- The Frontier valley (spec 2026-11-10-frontier-valley-design, plan Tasks 7 and 8): every Frontier monster and boss
+	-- has its own Meshy model, rigged, with its bone clips
+	["every Frontier species and boss has its model"] = function()
+		local frontier = require("../src/shared/Config/Frontier")
+		local bosses = require("../src/shared/Config/Bosses")
+		for species in frontier.SPECIES do
+			assert(fs.isFile(`assets/monsters/{species}.rbxm`), `assets/monsters/{species}.rbxm is missing`)
+		end
+		for bossId, boss in bosses.BOSSES do
+			if (boss :: any).place == "Frontier" then
+				assert(fs.isFile(`assets/monsters/{bossId}.rbxm`), `assets/monsters/{bossId}.rbxm is missing`)
+			end
+		end
+	end,
+
+	["every Frontier model is one rigged MeshPart with its glow"] = function()
+		local frontier = require("../src/shared/Config/Frontier")
+		local bosses = require("../src/shared/Config/Bosses")
+		local names = {}
+		for species in frontier.SPECIES do
+			table.insert(names, species)
+		end
+		for bossId, boss in bosses.BOSSES do
+			if (boss :: any).place == "Frontier" then
+				table.insert(names, bossId)
+			end
+		end
+		for _, name in names do
+			local path = `assets/monsters/{name}.rbxm`
+			if fs.isFile(path) then
+				local model = roblox.deserializeModel(fs.readFile(path))[1]
+				expect.equal(model.Name, name, `{path}'s model name`)
+				local body = model:FindFirstChildWhichIsA("MeshPart")
+				assert(body, `{name} has no MeshPart`)
+				assert(body:FindFirstChild("Root", true), `{name} has no bones`)
+				assert(body:FindFirstChildWhichIsA("SurfaceAppearance"), `{name} has no SurfaceAppearance (its glow)`)
+			end
+		end
+	end,
+
 	["every card's creature model is in its pack, with the colour variant it asks for"] = function()
 		local party = require("../src/shared/Config/Party")
 		local cards = require("../src/shared/Config/CardList")

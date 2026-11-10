@@ -128,6 +128,10 @@ return {
 		-- Wild monsters (keyed by species; Util/MonsterLooks): the wolf roars (the plain wildroar), the golem stomps
 		["Ash Wolf"] = { fidget = "wildroar", chance = 0.3 },
 		["Magma Golem"] = { fidget = "stomp", chance = 0.3 },
+		-- The Frontier's (spec 2026-11-10-frontier-valley-design): the lynx roars, the brute and the Frost Tyrant stomp
+		["Shade Lynx"] = { fidget = "wildroar", chance = 0.3 },
+		["Lava Brute"] = { fidget = "stomp", chance = 0.3 },
+		frostTyrant = { fidget = "stomp", chance = 0.3 },
 		-- The Wild bosses (keyed by boss id, spec 2026-11-01-wild-bosses-arenas-design): only the Warden has a random
 		-- one; the Brood Queen's flare and the Colossus's vents come from the fight (Config/Bosses moments)
 		meadowWarden = { fidget = "rootslam", chance = 0.3 },
@@ -166,10 +170,21 @@ return {
 		["Spark Beetle"] = { fidgets = { "look", "shake" }, bounce = 0.2 }, -- six legs, two tripods
 		["Magma Golem"] = { fidgets = { "look", "shake", "stomp" }, bounce = 0.15, stride = 1.3, legSwing = 0.6, sway = 1.4 }, -- lumbers on two legs
 		["Ash Wolf"] = { fidgets = { "look", "sniff", "stretch", "shake", "yawn" }, tailSpeed = 0.5, tailAmount = 0.8, bounce = 0.4 }, -- a fast prowl
+		-- The Frontier's monsters (spec 2026-11-10-frontier-valley-design), moving like their Wild counterparts
+		["Frost Wisp"] = { fidgets = { "look", "shake" }, bounce = 0.7 }, -- a slime: it bounces
+		["Shade Lynx"] = { fidgets = { "look", "sniff", "stretch", "shake", "yawn" }, tailSpeed = 0.5, tailAmount = 0.8, bounce = 0.4 },
+		["Storm Hawk"] = { fidgets = { "look", "tilt", "spin" } }, -- flies, wings beating
+		["Lava Brute"] = { fidgets = { "look", "shake", "stomp" }, bounce = 0.15, stride = 1.3, legSwing = 0.6, sway = 1.4 },
+		["Rift Horror"] = { fidgets = { "look", "shake" }, bounce = 0.2 },
+		["Prism Crab"] = { fidgets = { "look", "shake" }, bounce = 0.2 },
 		-- The Wild bosses (keyed by boss id, spec 2026-11-01-wild-bosses-arenas-design)
 		meadowWarden = { fidgets = { "look", "shake", "stomp" }, bounce = 0.15, stride = 1.4, legSwing = 0.6, sway = 1.6 }, -- two heavy legs, long arms dragging
 		caveBroodQueen = { fidgets = { "look", "tilt", "shake" }, bounce = 0.1 }, -- eight legs in a wave
 		emberColossus = { fidgets = { "look", "sniff", "shake", "stomp" }, bounce = 0.2, stride = 1.3, legSwing = 0.6 }, -- a heavy four-legged plod on stubby legs (its rig holds clean up to this swing)
+		-- The Frontier bosses (keyed by boss id)
+		frostTyrant = { fidgets = { "look", "shake", "stomp" }, bounce = 0.15, stride = 1.4, legSwing = 0.6, sway = 1.6 }, -- two heavy legs, crystal fists swinging
+		stormSovereign = { fidgets = { "look", "shake", "stomp" }, tailSpeed = 0.4, tailAmount = 0.6, bounce = 0.15, stride = 1.3, legSwing = 0.6, sway = 1.3 }, -- a wyvern on two legs, wings half open
+		riftDevourer = { fidgets = { "look", "tilt", "shake" }, bounce = 0.1 }, -- six heavy legs
 		Stormjack = { fidgets = { "look", "sniff", "shake", "stomp", "hop", "wag" }, tailSpeed = 1.2, tailAmount = 0.7, bounce = 0.8 }, -- a stocky ram, stubby tail flicking
 		Infernox = { fidgets = { "look", "tilt", "sniff", "yawn", "shake", "stomp", "stretch" }, tailSpeed = 0.35, tailAmount = 1, bounce = 0.6 },
 		Sprouthop = { fidgets = { "look", "tilt", "sniff", "stretch", "hop", "spin", "shake", "yawn" } },

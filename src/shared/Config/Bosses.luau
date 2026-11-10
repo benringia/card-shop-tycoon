@@ -193,6 +193,10 @@ local BOSSES: { [string]: Boss } = {
 		zone = 1,
 		shape = "slime",
 		scale = 3.0,
+		height = 17, -- the ice yeti king (spec 2026-11-10-frontier-valley-design, the owner's pick A; assets/monsters/frostTyrant.rbxm)
+		ringRadius = 15,
+		introShot = { back = 36, up = 16 },
+		moments = { roar = "rbxassetid://9114628620" }, -- Pro Sound Effects: Goliath Vocal Deep Growling Voice 21
 		element = "Tide",
 		level = 22,
 		hp = 14900,
@@ -224,6 +228,10 @@ local BOSSES: { [string]: Boss } = {
 		zone = 2,
 		shape = "bat",
 		scale = 3.2,
+		height = 18, -- the storm wyvern (the owner's pick B), about 26 studs across its wings
+		ringRadius = 18,
+		introShot = { back = 42, up = 18 },
+		moments = { roar = "rbxassetid://9126100408" }, -- Pro Sound Effects: Thunder With Lion Roar Growl Low Rumble Roar
 		element = "Volt",
 		level = 32,
 		hp = 28000,
@@ -254,6 +262,10 @@ local BOSSES: { [string]: Boss } = {
 		zone = 3,
 		shape = "beetle",
 		scale = 3.4,
+		height = 16, -- the void beetle titan (the owner's pick A), about 22 studs long
+		ringRadius = 17,
+		introShot = { back = 40, up = 18 },
+		moments = { roar = "rbxassetid://9125470501" }, -- Pro Sound Effects: Creature Growls Lion Deep Guttural Rumbling
 		element = "Shade",
 		level = 45,
 		hp = 34000,

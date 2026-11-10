@@ -24,12 +24,14 @@ return {
 	-- `lune run tools/balance/wild` (owner 2026-11-03): about 12.5 s fought well at the zone's middle level, won about 75%
 	-- standing still
 	SPECIES = {
-		["Frost Wisp"] = { element = "Tide", hp = 670, atk = 19.9, spd = 11, shape = "slime" },
-		["Shade Lynx"] = { element = "Shade", hp = 706, atk = 19.4, spd = 14, shape = "wolf" },
-		["Storm Hawk"] = { element = "Volt", hp = 797, atk = 19.3, spd = 15, shape = "bat" },
-		["Lava Brute"] = { element = "Ember", hp = 826, atk = 24, spd = 7, shape = "golem" },
-		["Rift Horror"] = { element = "Shade", hp = 801, atk = 20.7, spd = 12, shape = "beetle" },
-		["Prism Crab"] = { element = "Bloom", hp = 753, atk = 22.3, spd = 9, shape = "crab" },
+		-- heights (studs, the Meshy models of the Frontier valley spec): 30% over their Wild counterparts' (the slime
+		-- the Mossling's, the lynx the wolf's, the hawk the bat's, the brute the golem's, the beetle's, the crab's)
+		["Frost Wisp"] = { element = "Tide", hp = 670, atk = 19.9, spd = 11, shape = "slime", height = 4.5, glow = { strength = 2 } },
+		["Shade Lynx"] = { element = "Shade", hp = 706, atk = 19.4, spd = 14, shape = "wolf", height = 5.2, glow = { strength = 2 } },
+		["Storm Hawk"] = { element = "Volt", hp = 797, atk = 19.3, spd = 15, shape = "bat", height = 4, glow = { strength = 2 } },
+		["Lava Brute"] = { element = "Ember", hp = 826, atk = 24, spd = 7, shape = "golem", height = 8.5, glow = { strength = 2 } },
+		["Rift Horror"] = { element = "Shade", hp = 801, atk = 20.7, spd = 12, shape = "beetle", height = 3.3, glow = { strength = 2 } },
+		["Prism Crab"] = { element = "Bloom", hp = 753, atk = 22.3, spd = 9, shape = "crab", height = 4, glow = { strength = 2 } },
 	},
 	FLYING = { "Storm Hawk" },
 	MONSTER_GROWTH = 0.12,

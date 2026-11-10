@@ -5,7 +5,8 @@ local BossMoments = require("../src/shared/Util/BossMoments")
 local Bosses = require("../src/shared/Config/Bosses")
 local expect = require("./lib/expect")
 
-local WILD_BOSSES = { meadowWarden = true, caveBroodQueen = true, emberColossus = true }
+-- The bosses with a model of their own: the Wild's three and the Frontier's (spec 2026-11-10-frontier-valley-design)
+local MODELLED = { meadowWarden = true, caveBroodQueen = true, emberColossus = true, frostTyrant = true, stormSovereign = true, riftDevourer = true }
 
 return {
 	["the intro roar comes once, at its moment"] = function()
@@ -29,10 +30,10 @@ return {
 		expect.equal(BossMoments.anchors(nil, {}), nil, "no moment")
 	end,
 
-	["only the three Wild bosses have moments, each with a roar and known effects"] = function()
+	["only the modelled bosses have moments, each with a roar and known effects"] = function()
 		for id, boss in Bosses.BOSSES do
 			local moments = (boss :: any).moments
-			expect.equal(moments ~= nil, WILD_BOSSES[id] == true, id)
+			expect.equal(moments ~= nil, MODELLED[id] == true, id)
 			if moments then
 				assert(string.match(moments.roar, "^rbxassetid://%d+$"), id .. " has no roar sound")
 				for _, kind in { moments.heal and moments.heal.fx, moments.enrage and moments.enrage.burst, moments.enrage and moments.enrage.lasting } do

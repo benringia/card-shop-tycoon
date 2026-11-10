@@ -18,7 +18,19 @@ return {
 	end,
 
 	["a species without a height keeps the world's monster height"] = function()
-		expect.near(MonsterLooks.height(frontier, "Frost Wisp", false), frontier.MONSTER_HEIGHT, 1e-9, "Frontier species")
+		local world = table.clone(frontier) :: any
+		world.SPECIES = { Nameless = { element = "Tide", hp = 1, atk = 1, spd = 1, shape = "slime" } }
+		expect.near(MonsterLooks.height(world, "Nameless", false), frontier.MONSTER_HEIGHT, 1e-9, "a species with no height")
+	end,
+
+	-- The Frontier valley (spec 2026-11-10-frontier-valley-design): its Meshy monsters are 30% over their Wild
+	-- counterparts' heights
+	["each Frontier species stands 30% over its Wild counterpart"] = function()
+		local pairs = { ["Frost Wisp"] = "Mossling", ["Shade Lynx"] = "Ash Wolf", ["Storm Hawk"] = "Cave Bat", ["Rift Horror"] = "Spark Beetle", ["Prism Crab"] = "Puddle Crab", ["Lava Brute"] = "Magma Golem" }
+		for species, counterpart in pairs do
+			local ratio = MonsterLooks.height(frontier, species, false) / MonsterLooks.height(wild, counterpart, false)
+			assert(ratio >= 1.25 and ratio <= 1.35, `{species}: {ratio}x {counterpart}`)
+		end
 	end,
 
 	["a boss is sized by its scale as before"] = function()
@@ -53,12 +65,20 @@ return {
 		assert(light and light.brightness > 0 and light.range >= 20 and #light.color == 3, "no light on it")
 	end,
 
-	["bosses without a height keep their scale (Frontier bosses unchanged)"] = function()
+	["bosses without a height keep their scale"] = function()
 		local bosses = require("../src/shared/Config/Bosses").BOSSES
+		for id, boss in bosses :: any do
+			if boss.height == nil then
+				expect.near(MonsterLooks.height(frontier, boss.name, false, boss.scale, nil), frontier.MONSTER_HEIGHT * boss.scale, 1e-9, id)
+			end
+		end
+	end,
+
+	["the Frontier bosses stand as tall as the Wild's (their Meshy models)"] = function()
+		local bosses = require("../src/shared/Config/Bosses").BOSSES :: any
 		for _, id in { "frostTyrant", "stormSovereign", "riftDevourer" } do
-			local boss = (bosses :: any)[id]
-			expect.equal(boss.height, nil, id)
-			expect.near(MonsterLooks.height(frontier, boss.name, false, boss.scale, nil), frontier.MONSTER_HEIGHT * boss.scale, 1e-9, id)
+			assert(bosses[id].height >= 15 and bosses[id].height <= 20, `{id}: {bosses[id].height} studs`)
+			assert(bosses[id].ringRadius >= 15, `{id}: fighters stand clear of its body`)
 		end
 	end,
 
