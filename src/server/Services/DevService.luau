@@ -49,6 +49,7 @@ local ArenaService = require(Services:WaitForChild("ArenaService"))
 local WelcomeService = require(Services:WaitForChild("WelcomeService"))
 local PishService = require(Services:WaitForChild("PishService"))
 local TutorialService = require(Services:WaitForChild("TutorialService"))
+local CombatTutorialService = require(Services:WaitForChild("CombatTutorialService"))
 local SwordService = require(Services:WaitForChild("SwordService"))
 local BattleService = require(Services:WaitForChild("BattleService"))
 local JobService = require(Services:WaitForChild("JobService"))
@@ -629,6 +630,19 @@ function DevService.Start()
 			TutorialService.QueueLesson(player, lessonId)
 		else
 			Remotes.Notify:FireClient(player, "Usage: /tutorial reset | /tutorial step <1-8> | /tutorial lesson <id>", true)
+		end
+	end)
+	-- Chikin's combat tutorial (spec 2026-11-10-chikin-combat-tutorial-design): /chikin reset (a new player's tour, after
+	-- Pish's), /chikin step <1-11> (that step)
+	addCommand(folder, "chikin", function(player, text)
+		local word, value = string.match(text, "^/%w+%s+(%w+)%s*(%w*)")
+		word = if word then string.lower(word) else nil
+		if word == "reset" then
+			CombatTutorialService.Reset(player)
+		elseif word == "step" and tonumber(value) then
+			CombatTutorialService.SetStep(player, tonumber(value) :: number)
+		else
+			Remotes.Notify:FireClient(player, "Usage: /chikin reset | /chikin step <1-11>", true)
 		end
 	end)
 	addCommand(folder, "pish", function(player)

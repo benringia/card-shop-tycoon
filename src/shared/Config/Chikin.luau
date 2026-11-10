@@ -8,17 +8,19 @@
 return {
 	-- Visit 1 right after Pish's goodbye (the first fight with a creature), a hidden wait for shop level 4, visit 2
 	-- with the free sword (Attack, Dodge, Skill), ending at the Meadow Warden's portal
-	STEPS = { "party", "summon", "wild", "fight", "firstWin", "level4", "sword", "wild2", "fight2", "boss" },
+	STEPS = { "hello", "party", "summon", "wild", "fight", "firstWin", "level4", "sword", "wild2", "fight2", "boss" },
 	VISITS = {
-		{ "party", "summon", "wild", "fight", "firstWin" },
+		{ "hello", "party", "summon", "wild", "fight", "firstWin" },
 		{ "sword", "wild2", "fight2", "boss" },
 	},
 	WAIT_STEP = "level4", -- no visit: done once the shop reaches SWORD_LEVEL
 	SWORD_LEVEL = 4, -- Config/Swords UNLOCK_SHOP_LEVEL: everyone gets the starter sword here
-	-- Steps whose last Next moves on (the server records them when the client says so)
-	FINISH_STEPS = { firstWin = true, boss = true },
+	-- Steps whose last Next moves on (the server records them when the client says so): his hello, the first fight's
+	-- end, the sword's hello and his goodbye. A fight step ends when the fight does (won, lost or run from)
+	FINISH_STEPS = { hello = true, firstWin = true, sword = true, boss = true } :: { [string]: boolean },
 	-- Each step's picture on his talk card (Config/UIIcons)
 	STEP_ICONS = {
+		hello = "Paw",
 		party = "Party",
 		summon = "Summon",
 		wild = "Travel",

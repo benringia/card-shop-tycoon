@@ -5,8 +5,12 @@
 return {
 	NAME = "Chikin",
 	STEPS = {
+		hello = {
+			intro = { "Woof! I'm Chikin, Pish's buddy!", "Your cards are creatures.", "Let's train one to fight!" },
+			now = {},
+		},
 		party = {
-			intro = { "Woof! I'm Chikin, Pish's buddy!", "Your cards are creatures. Let's train one!" },
+			intro = {},
 			now = {
 				default = "Tap Cards.",
 				binderOpen = "Tap your strongest card!",
@@ -34,8 +38,8 @@ return {
 			now = {},
 		},
 		sword = {
-			intro = { "You got a sword! Now you fight too!", "Let's try it on a monster!" },
-			now = { default = "Follow my paws to the Wild!" },
+			intro = { "Woof! You got a sword!", "Now you fight too. Let's try it!" },
+			now = {},
 		},
 		wild2 = {
 			intro = {},

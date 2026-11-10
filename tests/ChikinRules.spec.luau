@@ -22,11 +22,11 @@ end
 return {
 	["his steps: the first fight, a hidden wait for level 4, then the sword"] = function()
 		local order = table.concat(STEPS, ",")
-		expect.equal(order, "party,summon,wild,fight,firstWin,level4,sword,wild2,fight2,boss")
+		expect.equal(order, "hello,party,summon,wild,fight,firstWin,level4,sword,wild2,fight2,boss")
 		expect.equal(Chikin.WAIT_STEP, "level4")
 		expect.equal(Chikin.SWORD_LEVEL, 4)
 		expect.equal(#Chikin.VISITS, 2)
-		expect.equal(table.concat(Chikin.VISITS[1], ","), "party,summon,wild,fight,firstWin")
+		expect.equal(table.concat(Chikin.VISITS[1], ","), "hello,party,summon,wild,fight,firstWin")
 		expect.equal(table.concat(Chikin.VISITS[2], ","), "sword,wild2,fight2,boss")
 	end,
 
@@ -41,8 +41,15 @@ return {
 				end
 			end
 		end
-		expect.equal(next(ChikinTalk.STEPS.firstWin.now), nil)
-		expect.equal(next(ChikinTalk.STEPS.boss.now), nil)
+		-- His hellos and goodbyes are intro lines only: their last Next moves on (Config/Chikin FINISH_STEPS)
+		for step in Chikin.FINISH_STEPS do
+			expect.equal(next(ChikinTalk.STEPS[step].now), nil, `{step} ends on its last Next`)
+			assert(#ChikinTalk.STEPS[step].intro > 0, `{step} has lines`)
+		end
+		for _, step in { "hello", "firstWin", "sword", "boss" } do
+			assert(Chikin.FINISH_STEPS[step], `{step} ends on its last Next`)
+		end
+		expect.equal(#ChikinTalk.STEPS.party.intro, 0, "the party step starts on what to do (hello said hi)")
 		assert(#ChikinTalk.LOST >= 2, "a lost first fight has its own lines")
 	end,
 
@@ -90,7 +97,9 @@ return {
 
 	["the step machine runs his list: steps done early wait their turn"] = function()
 		local saved = TutorialRules.read({}, STEPS)
-		local after = TutorialRules.record(saved, STEPS, "summon")
+		expect.equal(TutorialRules.current(saved, STEPS), "hello", "he says hi first")
+		local after = TutorialRules.record(saved, STEPS, "hello")
+		after = TutorialRules.record(after, STEPS, "summon")
 		expect.equal(TutorialRules.current(after, STEPS), "party", "summoning first doesn't skip the party")
 		after = TutorialRules.record(after, STEPS, "party")
 		expect.equal(TutorialRules.current(after, STEPS), "wild", "then the summon done early counts")

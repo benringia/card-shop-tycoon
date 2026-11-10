@@ -97,6 +97,7 @@ local NAMES = {
 	"WeaponBeacon", -- server → all clients: (userId, weaponId, position) a new boss weapon dropped there: its light column
 	"PishPetted", -- server → all clients: (userId, lucky: boolean) Town Pish was petted: his hearts, and the luck it gave
 	"TutorialAction", -- client → server: (action: "skip" | "replay" | "bye" | "lessonDone", lessonId: string?) the tutorial
+	"CombatTutorialAction", -- client → server: (action: "next" | "skip" | "replay") Chikin's combat tutorial; gives nothing
 	"TutorialState", -- server → client: { firstVisit, step, giftClaimed, lesson: string? } the tutorial's state, a lesson visit
 }
 
