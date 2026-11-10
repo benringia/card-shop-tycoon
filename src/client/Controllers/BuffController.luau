@@ -17,6 +17,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
+local Hud = require(ClientUtil:WaitForChild("Hud"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local BinderController = require(Controllers:WaitForChild("BinderController"))
@@ -90,7 +91,7 @@ end
 
 -- The row shows while either chip does (an empty one would still take a gap in the column)
 local function refreshRow()
-	row.Visible = creature.badge.Visible or luck.badge.Visible
+	row.Visible = (creature.badge.Visible or luck.badge.Visible) and not Hud.isCalm() -- hidden through Pish's first visit
 	if tooltipFor and not tooltipFor.badge.Visible then
 		showTooltip(tooltipFor, false)
 	end
@@ -265,6 +266,7 @@ function BuffController.Start()
 	tooltipBody.TextWrapped = true
 
 	player:GetAttributeChangedSignal("PishLuckUntil"):Connect(runLuck)
+	Hud.onCalm(refreshRow)
 	runLuck()
 
 	Remotes.PartyChanged.OnClientEvent:Connect(function(payload)
