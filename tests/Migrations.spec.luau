@@ -239,6 +239,24 @@ return {
 		expect.equal(junk.tutorial.giftClaimed, false)
 	end,
 
+	["v18: Chikin's combat tour is done for every shop past Pish's tour, still to do for one mid-tour"] = function()
+		local data: any = { version = 17, tutorial = { firstVisit = "done" } }
+		Migrations.run(data, 18)
+		expect.equal(data.combat.firstVisit, "done", "an existing player already fights")
+		expect.equal(data.combat.step, 1)
+		expect.equal(typeof(data.combat.early), "table")
+		expect.equal(data.version, 18)
+		local skipped: any = { version = 17, tutorial = { firstVisit = "skipped" } }
+		Migrations.run(skipped, 18)
+		expect.equal(skipped.combat.firstVisit, "done")
+		local mid: any = { version = 17, tutorial = { firstVisit = "todo", step = 3 } }
+		Migrations.run(mid, 18)
+		expect.equal(mid.combat.firstVisit, "todo", "a new player mid-tour gets Chikin after Pish")
+		local junk: any = { version = 17, tutorial = "junk" }
+		Migrations.run(junk, 18)
+		expect.equal(junk.combat.firstVisit, "done", "unknown counts as done")
+	end,
+
 	["v5: already graded stacks untouched"] = function()
 		local data: any = { version = 4, cards = { FS01 = { S = { normal = 2, foil = 0 } } } }
 		Migrations.run(data, 5, sequence({ "C" }))

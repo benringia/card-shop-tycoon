@@ -59,7 +59,7 @@ return {
 			},
 		},
 		bye = {
-			intro = { "You're a real shop owner now!", "Need me later? Tap me on your party bar. Bye!" },
+			intro = { "You're a real shop owner now!", "My buddy Chikin will teach you to fight!", "Need me later? Tap me on your party bar. Bye!" },
 			now = {},
 		},
 	} :: { [string]: StepTalk },
