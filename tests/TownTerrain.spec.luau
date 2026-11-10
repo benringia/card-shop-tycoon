@@ -23,6 +23,20 @@ local OPS = TownTerrain.ops(scenery, town, PLOTS)
 local GROUND = -TownTerrain.SURFACE_LIFT -- the fill top that draws the ground at y 0
 
 return {
+	-- The Frontier's Rift trail runs at y -12, below the town's ground bottom (spec 2026-11-10-frontier-valley-design)
+	["a flat trail below the ground's bottom is still a slab with its top at the ground"] = function()
+		local op = TownTerrain.trailSegment({ x = 0, z = 0, y = -12 }, { x = 0, z = 40, y = -12 }, 10, "Basalt")
+		assert(op.size.y >= 4, `the slab is {op.size.y} thick`)
+		expect.near(op.y + op.size.y / 2, -12 - TownTerrain.SURFACE_LIFT, 0.001, "its top")
+		expect.near(TownTerrain.groundAt({ op }, 0, 20) :: number, -12, 0.001, "the ground on it")
+	end,
+
+	["a flat trail at the town's ground is unchanged"] = function()
+		local op = TownTerrain.trailSegment({ x = 0, z = 0 }, { x = 0, z = 40 }, 10, "Ground")
+		expect.equal(op.y, (-8 - TownTerrain.SURFACE_LIFT) / 2)
+		expect.equal(op.size.y, -TownTerrain.SURFACE_LIFT + 8)
+	end,
+
 	-- A ledge jutting over the ground (spec 2026-11-04-valley-scenery-design: the Caves' rock shelf) is drawn but
 	-- isn't ground: props, crystals and spawn spots under it stand on the floor
 	-- Round 2 (spec 2026-11-05-valley-natural-design): Roblox's clouds over the whole place, town included (owner "OK")

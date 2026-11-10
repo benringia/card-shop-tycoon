@@ -31,7 +31,9 @@ local RAMP_DEPTH = 6 -- a sloping trail is a slab this thick, tilted between its
 
 local function flat(x: number, z: number, sizeX: number, sizeZ: number, material: string, yaw: number?, height: number?): Op
 	local top = (height or 0) - TownTerrain.SURFACE_LIFT
-	return { shape = "Block", x = x, y = (GROUND_BOTTOM + top) / 2, z = z, size = { x = sizeX, y = top - GROUND_BOTTOM, z = sizeZ }, yaw = yaw, material = material }
+	-- Down from the ground's bottom, or a slab RAMP_DEPTH thick where the ground lies lower (the Frontier's Rift)
+	local bottom = math.min(GROUND_BOTTOM, top - RAMP_DEPTH)
+	return { shape = "Block", x = x, y = (bottom + top) / 2, z = z, size = { x = sizeX, y = top - bottom, z = sizeZ }, yaw = yaw, material = material }
 end
 
 -- One trail segment, paved in `material`: flat at its height, or a slab tilted from a's height up (or down) to b's

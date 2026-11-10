@@ -852,7 +852,7 @@ local function arenaPiece(folder: Instance, spot: any, label: string, ground: nu
 			if spot.height < 4 then
 				part.CastShadow = false
 			end
-			if part.Name == "Lava" then
+			if part.Name == "Lava" and ValleyConfig.VENT_LOOK then -- the Wild's lava cliffs (the Frontier has no vents)
 				for _, child in part:GetChildren() do
 					if child:IsA("SurfaceAppearance") then
 						child:Destroy()
