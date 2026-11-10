@@ -20,6 +20,7 @@ local Town = require(Config:WaitForChild("Town"))
 local WildValleyConfig = require(Config:WaitForChild("WildValley"))
 local MusicRules = require(Shared:WaitForChild("Util"):WaitForChild("MusicRules"))
 local WildValley = require(Shared:WaitForChild("Util"):WaitForChild("WildValley"))
+local OpeningStage = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("OpeningStage"))
 
 local MusicController = {}
 
@@ -138,6 +139,10 @@ function MusicController.Start()
 			local inTown = MusicRules.inTown(x, z, Town.BOUNDS, Music.TOWN.margin)
 			last = MusicRules.place(Music, arena, area, inTown, last)
 		end
+		-- The pack opening has its own music while it shows; where you are (`last`) is kept for after
+		if OpeningStage.isShown() then
+			return Music.OPENING
+		end
 		return if last then MusicRules.find(Music, last) else nil
 	end
 
@@ -149,8 +154,9 @@ function MusicController.Start()
 		if not place then
 			return QUIET
 		end
-		-- A place with a gap between tracks (the town) takes turns; one track and no gap loops
-		local turns = place.gap ~= nil or #place.tracks > 1
+		-- A place with a gap between tracks (the town) takes turns; one track and no gap loops, and so does each visit's
+		-- piece of a place that changes it per visit (the pack opening)
+		local turns = place.rotate ~= "visit" and (place.gap ~= nil or #place.tracks > 1)
 		local index = tracks[place.key] or 1
 		return { place = place, id = place.tracks[index], looped = not turns, volume = place.volume, compressor = place.compressor, name = place.key }
 	end
@@ -163,8 +169,16 @@ function MusicController.Start()
 		return { place = place, id = loop.id, looped = true, volume = loop.volume, compressor = nil, name = place.key }
 	end
 
+	local visiting: string? = nil -- the place whose music wants playing now, to see you arrive at it
 	local function update()
 		local place = here()
+		local key = if place then place.key else nil
+		if key ~= visiting then
+			visiting = key
+			if place and place.rotate == "visit" then
+				tracks[place.key] = MusicRules.visitTrack(tracks[place.key], #place.tracks)
+			end
+		end
 		apply(music, wantedMusic(place))
 		apply(ambience, wantedAmbience(place))
 	end

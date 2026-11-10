@@ -174,6 +174,20 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 			data.equippedWeapon = "starterSword"
 		end
 	end,
+	-- v17: the tutorial with Pish (TutorialService): shops from before it never go through the first visit (their
+	-- first pack counts as given), Pish's gift still comes if they replay it, no lessons seen yet
+	[16] = function(data)
+		data.tutorial = {
+			firstVisit = "done",
+			step = 1,
+			early = {},
+			firstGiven = true,
+			giftClaimed = false,
+			customerSent = true, -- their shop already has customers: a replay brings none for free
+			lessons = {},
+			pishLuckAt = 0,
+		}
+	end,
 }
 
 local function lowestGrade(): string

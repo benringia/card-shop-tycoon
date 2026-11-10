@@ -69,12 +69,13 @@ return {
 	LEVEL_CHIP = Color3.fromRGB(25, 18, 40),
 	LEVEL_CHIP_TRANSPARENCY = 0.3,
 
-	-- The face-down card: a deep blue card with the shop's name
+	-- The face-down card (owner's pick A, 2026-11-10: "PISH and CHIKIN is now the face of this game"): Pish and Chikin
+	-- hugging a pack in a gold medallion on violet, gold filigree (assets/ui/card-back, Figma-generated, uploaded). RIM
+	-- and INSIDE are its colours for things drawn in code (a fainted card in the fight HUD)
 	BACK = {
-		RIM = { Color3.fromRGB(120, 170, 255), Color3.fromRGB(40, 70, 200) },
-		INSIDE = { Color3.fromRGB(70, 110, 245), Color3.fromRGB(25, 35, 120) },
-		TITLE = "CARD\nSHOP",
-		EMBLEM = "🃏",
+		IMAGE = "rbxassetid://90882539153680", -- Pish repainted a little grumpy with his underbite (owner 2026-11-10)
+		RIM = { Color3.fromRGB(240, 200, 100), Color3.fromRGB(170, 120, 40) },
+		INSIDE = { Color3.fromRGB(95, 55, 185), Color3.fromRGB(25, 20, 80) },
 	},
 	-- A pocket the player hasn't filled yet: a dark slot in the binder's sleeve
 	MISSING = {

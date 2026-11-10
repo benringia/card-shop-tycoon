@@ -3,6 +3,8 @@ local WeaponText = require("../src/shared/Util/WeaponText")
 local Weapons = require("../src/shared/Config/Weapons")
 local Items = require("../src/shared/Config/Items")
 local Combat = require("../src/shared/Config/Combat")
+local Bosses = require("../src/shared/Config/Bosses")
+local CombatHud = require("../src/shared/Config/CombatHud")
 local expect = require("./lib/expect")
 
 local function valueOf(rows: { { label: string, value: string } }, label: string): string?
@@ -141,5 +143,95 @@ return {
 		expect.equal(valueOf(WeaponText.stats(Weapons, "widowsReaper", nil, Combat), "Perk"), "Poisons the foe for 3 s")
 		expect.equal(valueOf(WeaponText.stats(Weapons, "stormReaper", nil, Combat), "Perk"), "Every 4th hit strikes for 40% more and arcs to other foes for 30%")
 		expect.equal(valueOf(WeaponText.stats(Weapons, "riftReaper", nil, Combat), "Perk"), "Hits deal 30% more to foes under 30% HP")
+	end,
+
+	-- The weapon window (Armory UI, owner's pick A 2026-11-09): Power against what you hold, signed
+	["versus: this weapon's Power against the equipped one's, signed, to 2 decimals"] = function()
+		local maxed = { grade = "S", level = 10 }
+		local better = WeaponText.versus(Weapons, Combat, "titansLance", maxed, "starterSword", nil)
+		assert(better, "a known pair compares")
+		expect.equal(better.text, "+0.79 vs Steel Sword")
+		expect.equal(better.sign, 1)
+		local worse = WeaponText.versus(Weapons, Combat, "starterSword", nil, "titansLance", maxed)
+		assert(worse)
+		expect.equal(worse.text, "-0.79 vs Titan's Lance")
+		expect.equal(worse.sign, -1)
+		local held = WeaponText.versus(Weapons, Combat, "titansLance", maxed, "titansLance", maxed)
+		assert(held)
+		expect.equal(held.text, "Equipped now")
+		expect.equal(held.sign, 0)
+		local even = WeaponText.versus(Weapons, Combat, "forgeSword_Ember", nil, "forgeSword_Tide", nil)
+		assert(even)
+		expect.equal(even.text, "Same Power as Tide Forge Sword")
+		expect.equal(even.sign, 0)
+		expect.equal(WeaponText.versus(Weapons, Combat, "titansLance", maxed, "nope", nil), nil, "an unknown weapon compares to nothing")
+	end,
+
+	["powerRange: Grade C at +0 to Grade S at the top level, one number when they match"] = function()
+		expect.equal(WeaponText.powerRange(Weapons, Combat, "riftReaper"), "x1.40 to x2.09")
+		expect.equal(WeaponText.powerRange(Weapons, Combat, "starterSword"), "x1.00")
+		expect.equal(WeaponText.powerRange(Weapons, Combat, "nope"), "")
+	end,
+
+	["howToGet: the boss and where it lives, then how the forge makes it"] = function()
+		local rift = WeaponText.howToGet(Weapons, Bosses, "riftReaper")
+		expect.equal(rift.drop, "Beat the Rift Devourer in the Frontier: it can drop.")
+		expect.equal(rift.forge, "Or forge it:")
+		expect.equal(WeaponText.howToGet(Weapons, Bosses, "widowsReaper").drop, "Beat the Cave Brood Queen in the Wild: it can drop.")
+		local forged = WeaponText.howToGet(Weapons, Bosses, "forgeScythe_Ember")
+		expect.equal(forged.drop, nil)
+		expect.equal(forged.forge, "Forge it at the Forge in your shop:")
+		local masterwork = WeaponText.howToGet(Weapons, Bosses, "titansLance")
+		expect.equal(masterwork.drop, nil)
+		expect.equal(masterwork.forge, "A masterwork. Forge it at the Forge in your shop:")
+		local steel = WeaponText.howToGet(Weapons, Bosses, "starterSword")
+		expect.equal(steel.drop, nil, "everyone has the Steel Sword")
+		expect.equal(steel.forge, nil)
+	end,
+
+	["howToGet: a Dungeon boss is at the end of the Dungeon run"] = function()
+		local bosses = { BOSSES = { prismHydra = { name = "Prism Hydra", place = "Dungeon" } } }
+		local cfg = { ById = { test = { id = "test", source = { kind = "boss", boss = "prismHydra" } } } }
+		expect.equal(WeaponText.howToGet(cfg, bosses, "test").drop, "Beat the Prism Hydra at the end of the Dungeon: it can drop.")
+	end,
+
+	["progress: each material's have/need sorted by id, then the cash"] = function()
+		local rows = WeaponText.progress({ cash = 30000, items = { material_riftDevourer = 60, starShard = 2 } }, { material_riftDevourer = 12 }, 40000, Items)
+		expect.equal(#rows, 3)
+		expect.equal(rows[1].icon, "RiftShard")
+		expect.equal(rows[1].name, "Rift Shard")
+		expect.equal(rows[1].have, 12)
+		expect.equal(rows[1].need, 60)
+		expect.equal(rows[1].text, "12/60")
+		expect.equal(rows[2].name, "Star Shard")
+		expect.equal(rows[2].text, "0/2", "none yet")
+		expect.equal(rows[3].icon, "Cash")
+		expect.equal(rows[3].name, "Cash")
+		expect.equal(rows[3].text, "$30,000")
+		expect.equal(rows[3].have, 40000)
+		expect.equal(rows[3].need, 30000)
+		expect.equal(#WeaponText.progress({ cash = 0, items = {} }, {}, 0, Items), 0, "a free cost has no rows")
+	end,
+
+	["skill: a weapon's own sword skill by its moveset, else the dash slash (named in words, not capitals)"] = function()
+		local lance = WeaponText.skill(CombatHud, Weapons, "titansLance")
+		expect.equal(lance.name, "Titan's Wrath")
+		expect.equal(lance.icon, "LanceLeaves")
+		expect.equal(lance.text, CombatHud.SKILLS.titansLance.tip)
+		expect.equal(WeaponText.skill(CombatHud, Weapons, "widowsReaper").name, "Reaping Cyclone")
+		expect.equal(WeaponText.skill(CombatHud, Weapons, "riftReaper").name, "Thousand Cuts")
+		local steel = WeaponText.skill(CombatHud, Weapons, "starterSword")
+		expect.equal(steel.name, "Dash")
+		expect.equal(steel.icon, CombatHud.BUTTONS.skill.icon)
+		for _, weapon in Weapons.WEAPONS do
+			local skill = WeaponText.skill(CombatHud, Weapons, weapon.id)
+			assert(skill.name ~= "" and skill.text ~= "", `{weapon.id} has a skill in words`)
+		end
+	end,
+
+	["bond: what sharing its element with your creature gives, from Config/Weapons BOND"] = function()
+		expect.equal(WeaponText.bond(Weapons, "titansLance"), "+15% hits and a 50% faster super with Bloom creatures")
+		expect.equal(WeaponText.bond(Weapons, "prismBlade"), "+15% hits and a 50% faster super with every creature")
+		expect.equal(WeaponText.bond(Weapons, "starterSword"), nil, "no element, no bond")
 	end,
 }

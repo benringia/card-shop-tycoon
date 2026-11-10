@@ -423,7 +423,7 @@ local function addStars(parent: Instance, stars: number, area: Box)
 	end
 end
 
--- Face-down card: a deep blue card with the shop's name
+-- Face-down card: Pish and Chikin's card back (Config/CardDesign BACK), the whole card one picture
 function CardFace.renderBack(frame: Frame, stroke: UIStroke)
 	clear(frame)
 	removeAurora(stroke)
@@ -432,19 +432,11 @@ function CardFace.renderBack(frame: Frame, stroke: UIStroke)
 	stroke.Transparency = 1
 	stroke.Thickness = 2
 	local face = newFace(frame)
-	local look = CardDesign.BACK
-	addRim(face, look.RIM)
-	local inside = addArtWindow(face)
-	inside.Name = "Back"
-	inside.BackgroundColor3 = WHITE
-	shade(inside, look.INSIDE[1], look.INSIDE[2])
-	local glow = image(inside, "Glow", CardDesign.IMAGES.GLOW, 3)
-	glow.ScaleType = Enum.ScaleType.Fit
-	glow.ImageTransparency = 0.5
-	local emblem = text(inside, look.EMBLEM, { x = 0.25, y = 0.2, w = 0.5, h = 0.25 }, WHITE, 4)
-	emblem.TextXAlignment = Enum.TextXAlignment.Center
-	local title = text(inside, look.TITLE, { x = 0.12, y = 0.5, w = 0.76, h = 0.28 }, WHITE, 4)
-	title.TextXAlignment = Enum.TextXAlignment.Center
+	local back = image(face, "Back", CardDesign.BACK.IMAGE, 1)
+	back.ScaleType = Enum.ScaleType.Stretch
+	back.BackgroundColor3 = CardDesign.BACK.INSIDE[2] -- while the picture loads
+	back.BackgroundTransparency = 0
+	round(back, CardDesign.CORNER)
 	lift(frame, face)
 end
 

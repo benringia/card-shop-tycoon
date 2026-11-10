@@ -439,6 +439,11 @@ local function buildOfferPanel(parent: Instance)
 	end)
 end
 
+-- The checkout or an offer is up at the right of the screen (the weapon switch steps aside meanwhile)
+function RegisterController.IsShowing(): boolean
+	return (panel ~= nil and panel.Visible) or (offerPanel ~= nil and offerPanel.Visible)
+end
+
 function RegisterController.Start()
 	local screen = UIController.GetScreenGui()
 	buildPanel(screen)

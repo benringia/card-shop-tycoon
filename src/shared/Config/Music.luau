@@ -49,6 +49,32 @@ return {
 		checkEvery = 0.5, -- seconds between checks of where you are
 	},
 
+	-- The pack opening (owner 2026-11-10: "change the music on this screen. too plain"): its own piece while the opening
+	-- shows, crossfading from wherever you are and back (MusicController). Studio: "/music opening <n> [volume]" plays
+	-- option n; the owner picks by ear.
+	OPENING = {
+		key = "opening",
+		-- One piece per opening, the next one the next time (owner 2026-11-10: "add music 1 and 2 to alternate ... so
+		-- that when players open lots of pack its not the same music always"); each loops while the opening is up
+		tracks = {
+			"rbxassetid://1841593987", -- "Magic and Mayhem" (the owner's pick: option 3)
+			"rbxassetid://9048776085", -- "Enchanted Butterflies" (option 1)
+			"rbxassetid://1841594035", -- "Mischievous Elves" (option 2)
+		},
+		rotate = "visit",
+		options = {
+			option("Enchanted Butterflies (whimsical mallets and piano)", "9048776085"),
+			option("Mischievous Elves (playful magic orchestra)", "1841594035"),
+			option("Magic and Mayhem (bouncy magic orchestra)", "1841593987"),
+			option("Pixie Dance (light and sparkly)", "1838007325"),
+			option("Jackpot (game show, fast and driving)", "1836301731"),
+			option("Mr Happy Go Lucky (cheerful pizzicato)", "9043031481"),
+		},
+		volume = 0.1, -- the owner's number (2026-11-10, after trying 0.06); "/music opening 3 <volume>" to try others
+		compressor = LEVELER,
+		fade = 0.8, -- seconds: quick, so the music changes as the pack comes up
+	},
+
 	-- The Wild valley (owner 2026-11-04: "finalize the wilds": music in the valley and in every boss arena). Each area
 	-- (Config/WildValley BIOMES order) has its own piece, crossfading as you walk from one to the next (on a pass
 	-- between them the last one keeps playing); each boss arena (the same zone order) has its own battle piece while

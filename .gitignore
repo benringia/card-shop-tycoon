@@ -24,4 +24,6 @@ assets/blender/*/*_sheet_preview.jpg
 # Weapons (tools/blender/weapon_kit.py): the raw Meshy models and the Figma concepts stay local
 assets/blender/*/*_raw.glb
 assets/blender/*/concept_*.png
+# Reference photos for a model (the owner's own pictures, e.g. Pish) stay local too
+assets/blender/*/reference_*.png
 assets/ui/covers/options/

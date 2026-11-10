@@ -199,6 +199,30 @@ AdminPanel.SECTIONS = {
 		},
 	},
 	{
+		-- The tutorial with Pish (spec 2026-11-09-tutorial-pish-design): the first visit, his lesson visits, Town Pish
+		title = "Pish (tutorial)",
+		buttons = {
+			{ label = "First visit again (a new player's)", command = "/tutorial reset" },
+			{ label = "Jump to a step", command = "/tutorial step %s", placeholder = "step 1-8" },
+			{ label = "Lesson: Glass Showcase (Lv 2)", command = "/tutorial lesson showcase" },
+			{ label = "Lesson: Card Sleeves (Lv 3)", command = "/tutorial lesson sleeves" },
+			{ label = "Lesson: Collector Case (Lv 3)", command = "/tutorial lesson collectorCase" },
+			{ label = "Lesson: first sword (Lv 4)", command = "/tutorial lesson sword" },
+			{ label = "Lesson: Wall Shelf (Lv 4)", command = "/tutorial lesson wallShelf" },
+			{ label = "Lesson: Card Condenser (Lv 5)", command = "/tutorial lesson condenser" },
+			{ label = "Lesson: Forge (Lv 6)", command = "/tutorial lesson forge" },
+			{ label = "Lesson: Deck Boxes (Lv 7)", command = "/tutorial lesson expand" },
+			{ label = "Lesson: Accessory Hook (Lv 7)", command = "/tutorial lesson accessoryHook" },
+			{ label = "Lesson: Big Display Rack (Lv 9)", command = "/tutorial lesson bigRack" },
+			{ label = "Lesson: Booster Boxes (Lv 11)", command = "/tutorial lesson boosterBox" },
+			{ label = "Lesson: Grading Station (Lv 14)", command = "/tutorial lesson grading" },
+			{ label = "Lesson: Shop jobs (Lv 20)", command = "/tutorial lesson jobs" },
+			{ label = "Lesson: first trophy", command = "/tutorial lesson trophy" },
+			{ label = "Town Pish to me", command = "/pish" },
+			{ label = "Petting gives luck again now", command = "/pishluck" },
+		},
+	},
+	{
 		title = "Dungeon (Dungeon window)",
 		buttons = {
 			{ label = "To room 2", command = "/room 2" },

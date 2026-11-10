@@ -40,6 +40,15 @@ type Shop = {
 local StockService = {}
 
 local shops: { [Player]: Shop } = {}
+-- The tutorial listens (TutorialService): an order placed, a shelf stocked
+local orderedHandlers: { (player: Player, productId: string) -> () } = {}
+local stockedHandlers: { (player: Player, productId: string) -> () } = {}
+
+local function fire(handlers: { (player: Player, productId: string) -> () }, player: Player, productId: string)
+	for _, handler in handlers do
+		task.spawn(handler, player, productId)
+	end
+end
 local allowOrder = RateLimiter.new(StockConfig.ORDER_COOLDOWN)
 local allowStock = RateLimiter.new(StockConfig.STOCK_COOLDOWN)
 local allowDrop = RateLimiter.new(StockConfig.DROP_COOLDOWN)
@@ -229,6 +238,7 @@ local function onOrder(player: Player, productId: unknown)
 	end
 
 	table.insert(shop.incoming, product.id)
+	fire(orderedHandlers, player, product.id)
 	-- Express (Bloom creature summoned): deliveries arrive faster
 	local deliverySeconds = math.max(1, math.round(StockConfig.DELIVERY_SECONDS * (1 - PartyService.GetPerk(player, "Express"))))
 	notify(player, `Ordered {product.name}. Arrives in {deliverySeconds}s.`, false)
@@ -288,6 +298,7 @@ local function onStockShelf(player: Player, uid: unknown)
 		notify(player, `Stocked {added}.`, false)
 	end
 	syncCarry(shop)
+	fire(stockedHandlers, player, productId)
 end
 
 -- Takes a product shelf's stock back off it into boxes on the delivery pad (as many as the pad has room
@@ -521,6 +532,32 @@ function StockService.ConsumeUnits(player: Player, box: Part, units: number)
 		table.remove(shop.workerBoxes, index)
 		box:Destroy()
 	end
+end
+
+-- An order went through (the tutorial's "order stock" step)
+function StockService.OnOrdered(callback: (player: Player, productId: string) -> ())
+	table.insert(orderedHandlers, callback)
+end
+
+-- A shelf got stock from a carried box (the tutorial's "stock the rack" step)
+function StockService.OnStocked(callback: (player: Player, productId: string) -> ())
+	table.insert(stockedHandlers, callback)
+end
+
+-- A delivered box is waiting for a shelf: on the pad or carried (Pish's stuck helper points at the shelf)
+function StockService.HasWaitingBox(player: Player): boolean
+	local shop = shops[player]
+	return shop ~= nil and (#shop.waiting > 0 or #shop.carried > 0)
+end
+
+-- Some shelf has stock on it (no point telling a stocked shop to order)
+function StockService.ShelvesStocked(player: Player): boolean
+	for _, shelf in PlacementService.GetShelves(player) do
+		if shelf.units > 0 then
+			return true
+		end
+	end
+	return false
 end
 
 function StockService.Start()

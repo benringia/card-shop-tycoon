@@ -278,6 +278,74 @@ def glow_mask(mesh, name, rules, grow=1, region=None):
     return path
 
 
+def _fill_weighted(grid, corners, weights):
+    """Raises the texels of `grid` (rows from v = 0) inside the UV triangle `corners` to the triangle's weights,
+    interpolated across it (never lowers one)."""
+    import numpy as np
+
+    height, width = grid.shape
+    xs = [p[0] * width for p in corners]
+    ys = [p[1] * height for p in corners]
+    x0, x1 = max(0, int(min(xs))), min(width - 1, int(max(xs)) + 1)
+    y0, y1 = max(0, int(min(ys))), min(height - 1, int(max(ys)) + 1)
+    if x1 < x0 or y1 < y0:
+        return
+    px, py = np.meshgrid(np.arange(x0, x1 + 1) + 0.5, np.arange(y0, y1 + 1) + 0.5)
+    (ax, bx, cx), (ay, by, cy) = xs, ys
+    area = (bx - ax) * (cy - ay) - (cx - ax) * (by - ay)
+    if abs(area) < 1e-9:
+        return
+    w0 = ((bx - px) * (cy - py) - (cx - px) * (by - py)) / area
+    w1 = ((cx - px) * (ay - py) - (ax - px) * (cy - py)) / area
+    w2 = 1 - w0 - w1
+    inside = (w0 >= -1e-6) & (w1 >= -1e-6) & (w2 >= -1e-6)
+    value = np.where(inside, w0 * weights[0] + w1 * weights[1] + w2 * weights[2], 0)
+    block = grid[y0:y1 + 1, x0:x1 + 1]
+    np.maximum(block, value, out=block)
+
+
+def paint_region(mesh, name, color, weight_of, grow=3):
+    """Blends `color` (RGB 0..1) into `mesh`'s colour map by weight_of(world position, world normal) at each vertex
+    (0..1, soft at the edges), interpolated across the faces, so a marking (a patch on a dog's back) follows the
+    surface whatever the UV layout. The mask then grows `grow` texels into texels it hasn't touched, to cover the bake's
+    seams. Saves the map over assets/blender/<name>/<name>_color.png. Run after remesh_bake or optimize (the final UVs)."""
+    import numpy as np
+
+    image = next(n.image for mat in mesh.data.materials if mat and mat.use_nodes
+                 for n in mat.node_tree.nodes if n.type == "TEX_IMAGE" and n.image)
+    width, height = image.size
+    px = np.array(image.pixels[:], dtype=np.float32).reshape(height, width, 4)
+    mask = np.zeros((height, width), dtype=np.float32)
+    world = mesh.matrix_world
+    turn = world.to_3x3().inverted().transposed()
+    weights = [weight_of(world @ v.co, (turn @ v.normal).normalized()) for v in mesh.data.vertices]
+    loops = mesh.data.loops
+    uv = mesh.data.uv_layers.active.data
+    for poly in mesh.data.polygons:
+        ws = [weights[loops[i].vertex_index] for i in poly.loop_indices]
+        if max(ws) <= 0:
+            continue
+        corners = [uv[i].uv for i in poly.loop_indices]
+        for k in range(1, len(corners) - 1):
+            _fill_weighted(mask, (corners[0], corners[k], corners[k + 1]), (ws[0], ws[k], ws[k + 1]))
+    for _ in range(grow):
+        grown = mask.copy()
+        for shifted in (np.roll(mask, 1, 0), np.roll(mask, -1, 0), np.roll(mask, 1, 1), np.roll(mask, -1, 1)):
+            np.maximum(grown, np.where(mask == 0, shifted, 0), out=grown)
+        mask = grown
+    share = mask[..., None]
+    px[..., :3] = px[..., :3] * (1 - share) + np.array(color, dtype=np.float32) * share
+    image.pixels[:] = px.ravel()
+    image.update()
+    path = os.path.join(REPO, "assets", "blender", name, f"{name}_color.png")
+    image.filepath_raw = path
+    image.file_format = "PNG"
+    image.save()
+    image.pack()
+    print("paint_region:", int((mask > 0.5).sum()), "texels painted ->", path)
+    return path
+
+
 def paint_patch(mesh, color, cells=64):
     """Paints a small patch of `color` (RGB 0..1) into a corner of the colour map no UV uses and returns its UV, so
     pieces added by hand (bolt()) take that colour without a second material. Run after optimize()."""
@@ -654,6 +722,125 @@ def reweight(mesh, bone, share_of):
         kept = sorted(((names[g.group], g.weight) for g in v.groups), key=lambda gw: -gw[1])
         for g, _ in kept[MAX_BONES:]:
             g.remove([v.index])
+
+
+def vertex_colours(mesh):
+    """Each vertex's colour from the mesh's colour map ({index: (r, g, b)}, 0..1; a loose vertex has none)"""
+    import numpy as np
+
+    image = next(n.image for mat in mesh.data.materials if mat and mat.use_nodes
+                 for n in mat.node_tree.nodes if n.type == "TEX_IMAGE" and n.image)
+    width, height = image.size
+    px = np.array(image.pixels[:], dtype=np.float32).reshape(height, width, 4)
+    uv = mesh.data.uv_layers.active.data
+    colours = {}
+    for loop in mesh.data.loops:
+        u, v = uv[loop.index].uv
+        colours[loop.vertex_index] = tuple(px[min(height - 1, int(v * height)), min(width - 1, int(u * width)), :3])
+    return colours
+
+
+def confine(mesh, bones, share_of, fallback, whole=None):
+    """Hands a part of the mesh to its own bones after skin(), so it moves as one piece (a chibi's big head: skin()'s
+    nearest-bone weights left the back of Pish's skull on the spine, which stretched it whenever the head moved).
+    share_of(point) gives each vertex's share (0..1, blending at the part's edge): that share of its weight goes to
+    `bones` in the proportions it already had among them (all to `fallback` if it had none), the rest stays as it was.
+    whole(vertex index) can claim a vertex outright (an ear hanging below the head's edge). Four bones at most."""
+    names = {g.index: g.name for g in mesh.vertex_groups}
+    groups = {g.name: g for g in mesh.vertex_groups}
+    for bone in list(bones) + [fallback]:
+        if bone not in groups:
+            groups[bone] = mesh.vertex_groups.new(name=bone)
+    for v in mesh.data.vertices:
+        old = {names[g.group]: g.weight for g in v.groups if g.weight > 0}
+        share = share_of(mesh.matrix_world @ v.co)
+        if whole and whole(v.index):
+            share = 1.0
+        if share <= 0:
+            continue
+        own = {n: w for n, w in old.items() if n in bones}
+        total = sum(own.values())
+        if total < 1e-4:
+            own, total = {fallback: 1.0}, 1.0
+        new = {n: (1 - share) * w for n, w in old.items()}
+        for n, w in own.items():
+            new[n] = new.get(n, 0) + share * w / total
+        kept = sorted(new.items(), key=lambda nw: -nw[1])[:MAX_BONES]
+        scale = sum(w for _, w in kept) or 1
+        for g in list(v.groups):
+            mesh.vertex_groups[g.group].remove([v.index])
+        for n, w in kept:
+            if w > 0:
+                groups[n].add([v.index], w / scale, "REPLACE")
+
+
+def restrict(mesh, bones, factor):
+    """Scales `bones`' weights on each vertex by factor(vertex index) (0..1; soft at a part's edge), sharing what they
+    lose among the vertex's other bones (skin()'s smoothing spreads a tail's weight onto the rump, which then stretched
+    whenever the tail moved). A vertex with no other bone keeps them."""
+    names = {g.index: g.name for g in mesh.vertex_groups}
+    for v in mesh.data.vertices:
+        keep = factor(v.index)
+        if keep >= 1:
+            continue
+        old = [(names[g.group], g.group, g.weight) for g in v.groups if g.weight > 0]
+        rest = [(n, i, w) for n, i, w in old if n not in bones]
+        kept = sum(w for _, _, w in rest)
+        taken = sum(w for n, _, w in old if n in bones) * (1 - keep)
+        if taken <= 0 or kept <= 0:
+            continue
+        for n, i, w in old:
+            if n in bones:
+                if keep <= 0:
+                    mesh.vertex_groups[i].remove([v.index])
+                else:
+                    mesh.vertex_groups[i].add([v.index], w * keep, "REPLACE")
+            else:
+                mesh.vertex_groups[i].add([v.index], w * (kept + taken) / kept, "REPLACE")
+
+
+def smooth_field(mesh, field, passes, where=None):
+    """Blurs a per-vertex value (a list) along the mesh's edges `passes` times (each vertex half its own value, half
+    its neighbours' average), on the vertices where(index) allows (all by default), so a part's edge fades softly."""
+    neighbours = [[] for _ in mesh.data.vertices]
+    for edge in mesh.data.edges:
+        a, b = edge.vertices
+        neighbours[a].append(b)
+        neighbours[b].append(a)
+    field = list(field)
+    for _ in range(passes):
+        blurred = list(field)
+        for i, near in enumerate(neighbours):
+            if near and (where is None or where(i)):
+                blurred[i] = 0.5 * field[i] + 0.5 * sum(field[n] for n in near) / len(near)
+        field = blurred
+    return field
+
+
+def set_bone(mesh, bone, field):
+    """Gives `bone` exactly field[i] (0..1) of each vertex, scaling the vertex's other weights to the rest (a vertex
+    with no other bone gets `bone` alone); where field is 0 the bone comes off. Four bones at most."""
+    names = {g.index: g.name for g in mesh.vertex_groups}
+    group = mesh.vertex_groups.get(bone) or mesh.vertex_groups.new(name=bone)
+    for v in mesh.data.vertices:
+        share = max(0.0, min(1.0, field[v.index]))
+        others = [(names[g.group], g.group, g.weight) for g in v.groups if g.group != group.index and g.weight > 0]
+        total = sum(w for _, _, w in others)
+        if share <= 0:
+            if any(g.group == group.index for g in v.groups) and total > 0:
+                group.remove([v.index])
+                for _, i, w in others:
+                    mesh.vertex_groups[i].add([v.index], w / total, "REPLACE")
+            continue
+        if total <= 0:
+            group.add([v.index], 1.0, "REPLACE")
+            continue
+        for _, i, w in others:
+            mesh.vertex_groups[i].add([v.index], w / total * (1 - share), "REPLACE")
+        group.add([v.index], share, "REPLACE")
+        kept = sorted(((names[g.group], g.group, g.weight) for g in v.groups), key=lambda x: -x[2])
+        for _, i, _ in kept[MAX_BONES:]:
+            mesh.vertex_groups[i].remove([v.index])
 
 
 def jaw_share(hinge_y, tip_y, top_hinge, top_tip, bottom, half_width, mid_x=0.0, blend=0.012, top_blend=None):

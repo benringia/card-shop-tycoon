@@ -31,6 +31,7 @@ local Cycle = require(Shared:WaitForChild("Config"):WaitForChild("DayCycle"))
 local Wild = Place.getWorld() -- the Frontier's zones there
 local Levels = require(Config:WaitForChild("Levels"))
 local LevelUpFx = require(Config:WaitForChild("LevelUpFx"))
+local PishConfig = require(Config:WaitForChild("Pish"))
 local SuperFxConfig = require(Config:WaitForChild("SuperFx"))
 local SwordSkillFx = require(Config:WaitForChild("SwordSkillFx"))
 local Rarities = require(Config:WaitForChild("Rarities"))
@@ -46,6 +47,8 @@ local MusicRules = require(Shared:WaitForChild("Util"):WaitForChild("MusicRules"
 local Services = script.Parent :: Instance
 local ArenaService = require(Services:WaitForChild("ArenaService"))
 local WelcomeService = require(Services:WaitForChild("WelcomeService"))
+local PishService = require(Services:WaitForChild("PishService"))
+local TutorialService = require(Services:WaitForChild("TutorialService"))
 local SwordService = require(Services:WaitForChild("SwordService"))
 local BattleService = require(Services:WaitForChild("BattleService"))
 local JobService = require(Services:WaitForChild("JobService"))
@@ -389,7 +392,7 @@ function DevService.Start()
 	addCommand(folder, "music", function(player, text)
 		local counts: { [string]: number } = { [Music.TOWN.key] = #Music.TOWN.options }
 		local keys = { Music.TOWN.key }
-		for _, list in { Music.WILD.areas, Music.WILD.arenas } do
+		for _, list in { Music.WILD.areas, Music.WILD.arenas, { Music.OPENING } } do
 			for _, place in list do
 				counts[place.key] = #place.options
 				table.insert(keys, place.key)
@@ -605,6 +608,34 @@ function DevService.Start()
 		if not kind or not CustomerService.SpawnForTest(player, kind, if card then card.id else nil, inHand) then
 			Remotes.Notify:FireClient(player, "Usage: /customer <plain|kid|collector|bargain|bigSpender> [card for a collector, rarity for a kid]", true)
 		end
+	end)
+	-- The tutorial with Pish (spec 2026-11-09-tutorial-pish-design): /tutorial reset (a new player's first visit, gifts
+	-- not given), /tutorial step <1-8>, /tutorial lesson <id> (that lesson visit again: sleeves, sword, condenser, forge,
+	-- expand, boosterBox, grading, jobs), /pish (Town Pish comes to you), /pishluck (petting him gives luck again now)
+	addCommand(folder, "tutorial", function(player, text)
+		local word, value = string.match(text, "^/%w+%s+(%w+)%s*(%w*)")
+		word = if word then string.lower(word) else nil
+		local lessonId: string? = nil
+		for _, lesson in PishConfig.LESSONS do
+			if value and string.lower(lesson.id) == string.lower(value) then
+				lessonId = lesson.id
+			end
+		end
+		if word == "reset" then
+			TutorialService.Reset(player)
+		elseif word == "step" and tonumber(value) then
+			TutorialService.SetStep(player, tonumber(value) :: number)
+		elseif word == "lesson" and lessonId then
+			TutorialService.QueueLesson(player, lessonId)
+		else
+			Remotes.Notify:FireClient(player, "Usage: /tutorial reset | /tutorial step <1-8> | /tutorial lesson <id>", true)
+		end
+	end)
+	addCommand(folder, "pish", function(player)
+		PishService.ComeTo(player)
+	end)
+	addCommand(folder, "pishluck", function(player)
+		PishService.SetLuckAt(player, 0)
 	end)
 	addCommand(folder, "frontierdrop", function(player)
 		ItemService.GiveItem(player, "starShard", 1)

@@ -1,0 +1,260 @@
+"""Prepares Pish, the tutorial's guide puppy (the owner's own Shih Tzu, with his underbite), for rig_pish.py.
+
+Meshy image-to-3D through the Blender MCP from the owner's pick B of the Figma concepts (a groomed white Shih Tzu with
+cream ears tipped grey-brown, big dark eyes, the underbite with two bottom teeth and the tip of the tongue, a curled
+tail; assets/blender/Pish/concept_B.png, kept out of git, like the owner's reference photos), saved raw as
+assets/blender/Pish/Pish_raw.glb (also kept out of git). Run in a background Blender:
+
+  blender -b --factory-startup --python tools/blender/prep_pish.py
+
+It imports the raw model, stands it on its feet's centre facing -Y (Meshy copied the concept's three-quarter view:
+the dog stood turned 41 degrees to its right while its head looked at the camera), scales it to HEIGHT metres,
+reduces it to ~10,000 triangles (rig_kit.optimize; its surface isn't closed, so a voxel remesh loses the body), turns
+the head back in line with the body (straightening the body had turned it 40 degrees to its left), and paints the
+light brown patch the owner asked for on the top of its back, between its head and its tail (rig_kit.paint_region;
+PATCH=0 skips it). Saves assets/blender/Pish/Pish_meshy.blend (object "Pish_Dog") and preview renders next to it.
+"""
+import math
+import os
+import sys
+
+import bpy
+from mathutils import Matrix, Vector
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import rig_kit  # noqa: E402
+
+NAME = "Pish"
+FOLDER = os.path.join(rig_kit.REPO, "assets", "blender", NAME)
+RAW = os.path.join(FOLDER, "Pish_raw.glb")
+HEIGHT = 1.0  # metres, like the other generated creatures; the game scales the model
+TURN = 41  # degrees about the vertical: the dog stood turned this far to its right
+# The head: turned back HEAD_TURN degrees about a vertical axis through HEAD_PIVOT (x, y), measured from the eyes and
+# nose (their midpoint sat at x +0.14). Each vertex turns by its share of the head: everything above HEAD_LOW at the
+# front, rising to HEAD_HIGH behind y 0 (the top of the back is 0.58 up), nothing behind the neck (y > 0.12), and the
+# ears (their beige and grey-brown colour, hanging lower; the far one had swung back past y 0) all the way.
+HEAD_TURN = -40
+HEAD_PIVOT = (0.0, -0.25)
+HEAD_LOW, HEAD_HIGH = 0.48, 0.6
+# White fur this close to the ears' colour turns with them (metres). Wider reaches, paler greys or spreading the turn
+# along the mesh caught the shadowed chest fur under the ears and tore it.
+EAR_REACH = 0.035
+# The far (left) ear came out with a thin flap trailing back toward the body (35 ear-coloured vertices behind
+# y -0.13; the right ear's back edge stops at -0.15): it stretched into a fin whenever the head moved, so fold_flap()
+# moves each of them onto the nearest of the ear's own vertices in front of FLAP_FROM
+FLAP_FROM = -0.17
+FLAP_BEHIND = -0.13
+# The patch on its back (owner 2026-11-09: "light brown, at the top of his spine, between his head and his tail"):
+# a soft ellipse on the upward-facing fur, centred on the spine
+PATCH_COLOR = (0.62, 0.45, 0.30)  # light brown, a little warmer than the ear tips
+PATCH_CENTRE = (0.0, 0.12)  # x, y in metres: the back's top runs from behind the head (y 0) to the tail (y 0.25)
+PATCH_RADII = (0.19, 0.17)  # half width, half length
+PATCH_EDGE = 0.35  # of the radius: the soft edge
+PATCH_UP = 0.35  # only fur facing at least this much up (normal z)
+PATCH_BELOW = 0.7  # metres: the back is about 0.58 up; the tail curled over the rump and the back of the head are higher
+
+
+def feet_centre(points):
+    """The middle of the four feet: the vertices on the ground, split into four clusters."""
+    import numpy as np
+
+    low, high = points[:, 2].min(), points[:, 2].max()
+    feet = points[points[:, 2] < low + 0.05 * (high - low)][:, :2]
+    # Start from points far apart (a random start merged the two front feet and split a hind one)
+    centres = [feet[feet[:, 0].argmin()]]
+    while len(centres) < 4:
+        gap = np.min([((feet - c) ** 2).sum(1) for c in centres], axis=0)
+        centres.append(feet[gap.argmax()])
+    centres = np.array(centres)
+    for _ in range(40):
+        label = ((feet[:, None, :] - centres[None]) ** 2).sum(-1).argmin(1)
+        centres = np.array([feet[label == k].mean(0) if (label == k).any() else centres[k] for k in range(4)])
+    print("feet:", [tuple(round(float(v), 4) for v in c) for c in centres])
+    return centres.mean(0)
+
+
+def import_raw():
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    bpy.ops.import_scene.gltf(filepath=RAW)
+    meshes = [o for o in bpy.context.scene.objects if o.type == "MESH"]
+    assert len(meshes) == 1, f"expected one mesh in {RAW}, got {len(meshes)}"
+    source = meshes[0]
+    source.name = "Pish_Src"
+    source.parent = None
+    source.matrix_world = source.matrix_world.copy()
+    bpy.context.view_layer.objects.active = source
+    source.select_set(True)
+    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    for other in [o for o in bpy.context.scene.objects if o is not source]:
+        bpy.data.objects.remove(other)
+    return source
+
+
+def straighten(source):
+    import numpy as np
+
+    count = len(source.data.vertices)
+    co = np.empty(count * 3)
+    source.data.vertices.foreach_get("co", co)
+    co = co.reshape(-1, 3)
+    centre = feet_centre(co)
+    scale = HEIGHT / (co[:, 2].max() - co[:, 2].min())
+    move = Matrix.Translation(Vector((-centre[0], -centre[1], -co[:, 2].min())))
+    source.data.transform(Matrix.Scale(scale, 4) @ Matrix.Rotation(math.radians(TURN), 4, "Z") @ move)
+    source.data.update()
+
+
+def _smooth(value, zero, one):
+    t = min(1.0, max(0.0, (value - zero) / (one - zero)))
+    return t * t * (3 - 2 * t)
+
+
+def turn_head(mesh):
+    """Turns the head (and the ears) back in line with the body, blending into the neck"""
+    from mathutils import kdtree
+
+    colour = rig_kit.vertex_colours(mesh)
+
+    def near_ear(co):
+        return abs(co.x) > 0.1 and co.z > 0.33 and co.y < 0.1
+
+    ears = []
+    for vert in mesh.data.vertices:
+        rgb = colour.get(vert.index)
+        if rgb is not None and near_ear(vert.co):
+            top, low = max(rgb), min(rgb)
+            if top < 0.7 or (top - low) / max(top, 1e-6) > 0.12:
+                ears.append(vert.co.copy())
+    tree = kdtree.KDTree(max(1, len(ears)))
+    for i, co in enumerate(ears):
+        tree.insert(co, i)
+    tree.balance()
+    shares = []
+    for vert in mesh.data.vertices:
+        co = vert.co
+        behind = _smooth(co.y, -0.15, 0.0)
+        floor = HEAD_LOW * (1 - behind) + HEAD_HIGH * behind
+        share = _smooth(co.z, floor, floor + 0.07) * (1 - _smooth(co.y, 0.05, 0.12))
+        # The ears turn whole, with the white fur inside them (within EAR_REACH of an ear-coloured vertex)
+        if ears and near_ear(co):
+            share = max(share, 1 - _smooth(tree.find(co)[2], EAR_REACH * 0.6, EAR_REACH))
+        shares.append(share)
+    px_, py_ = HEAD_PIVOT
+    for vert in mesh.data.vertices:
+        co = vert.co
+        share = shares[vert.index]
+        if share <= 0:
+            continue
+        angle = math.radians(HEAD_TURN * share)
+        dx, dy = co.x - px_, co.y - py_
+        co.x = px_ + dx * math.cos(angle) - dy * math.sin(angle)
+        co.y = py_ + dx * math.sin(angle) + dy * math.cos(angle)
+    mesh.data.update()
+
+
+def fold_flap(mesh):
+    """Folds the left ear's trailing flap onto the ear (its faces shrink to nothing)"""
+    from mathutils import kdtree
+
+    colours = rig_kit.vertex_colours(mesh)
+
+    def ear_coloured(index):
+        rgb = colours.get(index)
+        return rgb is not None and (max(rgb) < 0.7 or (max(rgb) - min(rgb)) / max(max(rgb), 1e-6) > 0.12)
+
+    left = [v for v in mesh.data.vertices if v.co.x > 0.1 and v.co.z > 0.33 and ear_coloured(v.index)]
+    ear = [v.co.copy() for v in left if v.co.y < FLAP_FROM]
+    flap = [v for v in left if v.co.y > FLAP_BEHIND]
+    tree = kdtree.KDTree(max(1, len(ear)))
+    for i, co in enumerate(ear):
+        tree.insert(co, i)
+    tree.balance()
+    for v in flap:
+        v.co = tree.find(v.co)[0]
+    mesh.data.update()
+    print("fold_flap:", len(flap), "vertices folded onto the ear")
+
+
+def patch_weight(position, normal):
+    """1 in the patch, fading to 0 over its soft edge; only on fur facing up"""
+    if normal.z < PATCH_UP or position.z > PATCH_BELOW:
+        return 0.0
+    dx = (position.x - PATCH_CENTRE[0]) / PATCH_RADII[0]
+    dy = (position.y - PATCH_CENTRE[1]) / PATCH_RADII[1]
+    reach = math.sqrt(dx * dx + dy * dy)
+    if reach >= 1:
+        return 0.0
+    edge = min(1.0, (1 - reach) / PATCH_EDGE)
+    up = min(1.0, (normal.z - PATCH_UP) / 0.2)
+    return edge * edge * (3 - 2 * edge) * up
+
+
+def measure(mesh):
+    """Prints where the back is, to place the patch: the highest fur along the spine, by y"""
+    rows = {}
+    for v in mesh.data.vertices:
+        p = mesh.matrix_world @ v.co
+        if abs(p.x) < 0.04:
+            key = round(p.y, 1)
+            rows[key] = max(rows.get(key, -1), p.z)
+    print("spine top by y:", sorted((k, round(z, 3)) for k, z in rows.items()))
+    xs = [(mesh.matrix_world @ v.co) for v in mesh.data.vertices]
+    print("bounds x", round(min(p.x for p in xs), 3), round(max(p.x for p in xs), 3),
+          "y", round(min(p.y for p in xs), 3), round(max(p.y for p in xs), 3),
+          "z", round(min(p.z for p in xs), 3), round(max(p.z for p in xs), 3))
+
+
+def preview(mesh):
+    scene = bpy.context.scene
+    try:
+        scene.render.engine = "BLENDER_EEVEE_NEXT"
+    except TypeError:
+        scene.render.engine = "BLENDER_EEVEE"
+    scene.render.resolution_x, scene.render.resolution_y = 640, 640
+    if not scene.world:
+        scene.world = bpy.data.worlds.new("World")
+    # A soft sky all round (EEVEE lights only through the world's nodes; world.color alone left the shaded side black)
+    scene.world.use_nodes = True
+    background = next(n for n in scene.world.node_tree.nodes if n.type == "BACKGROUND")
+    background.inputs["Color"].default_value = (0.32, 0.4, 0.5, 1)
+    background.inputs["Strength"].default_value = 1.0
+    sun = bpy.data.objects.new("Sun", bpy.data.lights.new("Sun", "SUN"))
+    sun.data.energy = 3
+    sun.rotation_euler = (math.radians(40), 0, math.radians(25))
+    scene.collection.objects.link(sun)
+    cam = bpy.data.objects.new("PreviewCam", bpy.data.cameras.new("PreviewCam"))
+    scene.collection.objects.link(cam)
+    scene.camera = cam
+    middle = Vector((0, 0, HEIGHT * 0.45))
+    views = {
+        "front": Vector((0, -1, 0.15)),
+        "three_quarter": Vector((0.75, -0.7, 0.45)),
+        "side": Vector((1, 0, 0.1)),
+        "top": Vector((0.001, 0.25, 1)),
+        "back_three_quarter": Vector((-0.6, 0.75, 0.6)),
+    }
+    for view, direction in views.items():
+        cam.location = middle + direction.normalized() * HEIGHT * 3.2
+        cam.rotation_euler = (middle - cam.location).to_track_quat("-Z", "Y").to_euler()
+        scene.render.filepath = os.path.join(FOLDER, f"{NAME}_preview_{view}.png")
+        bpy.ops.render.render(write_still=True)
+    bpy.data.objects.remove(sun)
+    bpy.data.objects.remove(cam)
+
+
+dog = import_raw()
+straighten(dog)
+# Meshy's surface isn't closed, so a voxel remesh (rig_kit.remesh_bake) loses the body: reduce it instead
+rig_kit.optimize(dog, NAME, target_tris=10000)
+dog.name = "Pish_Dog"
+turn_head(dog)
+fold_flap(dog)
+measure(dog)
+if os.environ.get("PATCH", "1") == "1":
+    rig_kit.paint_region(dog, NAME, PATCH_COLOR, patch_weight, grow=1)  # more spread specks onto nearby UV islands
+bpy.ops.outliner.orphans_purge(do_recursive=True)
+for key in [k for k in bpy.context.scene.keys() if k.startswith("blendermcp_")]:
+    del bpy.context.scene[key]
+bpy.ops.wm.save_as_mainfile(filepath=os.path.join(FOLDER, f"{NAME}_meshy.blend"))
+preview(dog)
+print("saved", os.path.join(FOLDER, f"{NAME}_meshy.blend"))

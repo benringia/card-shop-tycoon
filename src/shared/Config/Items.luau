@@ -122,6 +122,27 @@ return {
 			use = "Bag: tap Open",
 			open = "FirstSparkPack", -- the Config/Packs product it opens
 		},
+		-- Pish's present at the start of the first visit (spec 2026-11-09-tutorial-pish-design 15): a First Spark pack with
+		-- his picture (owner: "we need an icon for pish's gift. that will make players excited")
+		pishPresent = {
+			name = "Pish's Present",
+			icon = "PishPresent",
+			description = "A First Spark pack from Pish, to start your shop.",
+			source = "Pish, at the start of your first visit",
+			use = "Bag: tap Open",
+			open = "FirstSparkPack",
+		},
+		-- Pish's gift at the end of the first visit (spec 2026-11-09-tutorial-pish-design 5): opened from the Bag like the
+		-- level-up pack, its hit card Very Rare or better (`floor`, Util/LuckRules.atLeast)
+		pishGift = {
+			name = "Pish's Gift",
+			icon = "PishGift",
+			description = "A First Spark pack from Pish: its last card is Very Rare or better.",
+			source = "Pish, at the end of your first visit",
+			use = "Bag: tap Open",
+			open = "FirstSparkPack",
+			floor = "Very Rare",
+		},
 		goldSeal = {
 			name = "Gold Seal",
 			icon = "GoldSeal",

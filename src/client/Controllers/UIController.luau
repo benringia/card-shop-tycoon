@@ -137,10 +137,10 @@ function UIController.GetStatusRow(): Frame
 end
 
 
--- Toasts (owner's pick A, 2026-11-06; Config/Toasts, Util/ToastRules): Cindercub's speech bubbles stacked just above
+-- Toasts (owner's pick A, 2026-11-06; Config/Toasts, Util/ToastRules): the HUD mascot's speech bubbles stacked just above
 -- the cash pill, newest nearest the coin, messages and sales alike, at most MAX (MAX_TOUCH on touch screens). Each
 -- pops up with a squash-and-bounce, stays its seconds and leaves shrinking and fading; the same message again bumps
--- the newest bubble instead of stacking a copy. The HUD's Cindercub hops as a burst arrives.
+-- the newest bubble instead of stacking a copy. The HUD's peeking Pish hops as a burst arrives.
 type Bubble = { id: number, message: string, root: CanvasGroup, scale: UIScale, closing: boolean, closeAt: number }
 local bubbles: { Bubble } = {} -- up now, oldest first
 local nextToastId = 0

@@ -69,15 +69,16 @@ function ItemRules.bossOf(itemId: string, ladder: { string }): (number?, ("fragm
 end
 
 -- The pack a Bag item opens (its `open` product id), or nil for a non-string, unknown or non-openable id
-function ItemRules.openablePack(config: Config, itemId: any): string?
+function ItemRules.openablePack(config: Config, itemId: any): (string?, string?)
 	if typeof(itemId) ~= "string" then
-		return nil
+		return nil, nil
 	end
 	local info = config.ITEMS[itemId]
 	if typeof(info) ~= "table" or typeof(info.open) ~= "string" then
-		return nil
+		return nil, nil
 	end
-	return info.open
+	-- `floor`: the lowest rarity its hit card can be (Pish's gift: Very Rare)
+	return info.open, if typeof(info.floor) == "string" then info.floor else nil
 end
 
 return ItemRules

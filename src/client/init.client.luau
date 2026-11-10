@@ -14,6 +14,8 @@ local ButterflyController = require(Controllers:WaitForChild("ButterflyControlle
 local DayCycleController = require(Controllers:WaitForChild("DayCycleController"))
 local TreeSwayController = require(Controllers:WaitForChild("TreeSwayController"))
 local TownCritterController = require(Controllers:WaitForChild("TownCritterController"))
+local TownPishController = require(Controllers:WaitForChild("TownPishController"))
+local TutorialController = require(Controllers:WaitForChild("TutorialController"))
 local PlazaNpcController = require(Controllers:WaitForChild("PlazaNpcController"))
 local FountainFxController = require(Controllers:WaitForChild("FountainFxController"))
 local PortalFxController = require(Controllers:WaitForChild("PortalFxController"))
@@ -104,6 +106,8 @@ else
 	WildLoadingController.Start() -- the Wild's loading screen: holds you still until the valley round you is in
 	TreeSwayController.Start()
 	TownCritterController.Start()
+	TownPishController.Start() -- Town Pish, drawn on the server's marker (main game)
+	TutorialController.Start() -- the first visit with Pish: his cues, skip and replay (after the HUD and TownPishController)
 	PlazaNpcController.Start()
 	FountainFxController.Start()
 	PortalFxController.Start()

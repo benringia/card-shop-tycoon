@@ -1042,6 +1042,12 @@ function CustomerService.Adopt(model: Model, plot: Plot, owner: Player, kind: st
 	return true
 end
 
+-- Whether this owner's shop has room for one more customer (MAX_PER_PLOT), e.g. the one Pish sends
+function CustomerService.HasRoom(owner: Player): boolean
+	local plot = PlotService.GetPlot(owner)
+	return plot ~= nil and #getPlotState(plot).customers < CustomerConfig.MAX_PER_PLOT
+end
+
 -- Studio's /customer command: a customer of this type now (a collector wanting `wanted` when given)
 -- inHand: it arrives holding its shopping list instead of taking stock off the shelves (testing with empty shelves)
 function CustomerService.SpawnForTest(owner: Player, kind: string, wanted: string?, inHand: boolean?): boolean

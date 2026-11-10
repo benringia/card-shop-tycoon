@@ -1,7 +1,8 @@
 # HUD mascot
 
 The creature peeking over the party bar (spec `docs/superpowers/specs/2026-11-03-hud-creature-pals-design.md`).
-Today it's Cindercub. Everything about it is in `src/shared/Config/HudMascot.luau`; the code (`Util/HudMascotView`,
+Today it's Pish (round 5, 2026-11-10; Cindercub before), and tapping him is the Pish button
+(`HudMascotView.onTap`, TutorialController). Everything about it is in `src/shared/Config/HudMascot.luau`; the code (`Util/HudMascotView`,
 `Util/HudMascotRules`) never names it, so replacing it is new pictures plus that file.
 
 ## Make the pictures

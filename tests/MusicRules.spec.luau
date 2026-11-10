@@ -179,4 +179,38 @@ return {
 		expect.equal(town.margin > 0, true)
 		expect.equal(MusicRules.inTown(0, 0, Town.BOUNDS, town.margin), true, "the plaza is in town with the real numbers")
 	end,
+	["the pack opening has its own music (owner 2026-11-10: too plain), licensed, levelled, with options to pick from"] = function()
+		local opening = Music.OPENING
+		expect.equal(MusicRules.find(Music, "opening"), opening)
+		assert(#opening.options >= 4, "options to audition with /music opening <n>")
+		local ids = {}
+		for _, option in opening.options do
+			assert(string.match(option.id, "^rbxassetid://%d+$"), `{option.name} is an asset id`)
+			ids[option.id] = true
+		end
+		for _, track in opening.tracks do
+			assert(ids[track], `{track} is one of the options`)
+		end
+		expect.equal(opening.volume, 0.1, "the owner's number (2026-11-10)")
+		assert(opening.compressor, "through the leveler")
+		assert(opening.fade and opening.fade <= 1.5, "a quick crossfade in and out of the opening")
+		for _, list in { Music.WILD.areas, Music.WILD.arenas } do
+			for _, place in list do
+				for _, option in place.options do
+					assert(option.id ~= opening.tracks[1], `the opening's track isn't {place.key}'s too`)
+				end
+			end
+		end
+	end,
+	["each pack opening plays the next of its three pieces, looping while it's up (owner: not the same music always)"] = function()
+		local opening = Music.OPENING
+		expect.equal(#opening.tracks, 3, "options 3, 1 and 2")
+		expect.equal(opening.tracks[1], opening.options[3].id, "the owner's pick first")
+		expect.equal(opening.tracks[2], opening.options[1].id)
+		expect.equal(opening.tracks[3], opening.options[2].id)
+		expect.equal(opening.rotate, "visit", "one piece per opening, the next one next time")
+		expect.equal(MusicRules.visitTrack(nil, 3), 1, "the first opening")
+		expect.equal(MusicRules.visitTrack(1, 3), 2)
+		expect.equal(MusicRules.visitTrack(3, 3), 1, "round again")
+	end,
 }

@@ -6,6 +6,7 @@ local SoundLevels = require("../src/shared/Config/SoundLevels")
 local SuperFx = require("../src/shared/Config/SuperFx")
 local MoveFx = require("../src/shared/Config/MoveFx")
 local Swords = require("../src/shared/Config/Swords")
+local Pish = require("../src/shared/Config/Pish")
 local expect = require("./lib/expect")
 
 local function eachId(value: any, visit: (id: string, path: string) -> (), path: string)
@@ -37,6 +38,16 @@ return {
 					local key = string.match(sound, "%d+") :: string
 					assert(SoundLevels.LEVELS[key], `{id}.sounds.{moment} ({sound}): measure it (tools/audio/measure_loudness)`)
 				end
+			end
+		end
+	end,
+
+	-- The tutorial (spec 2026-11-09-tutorial-pish-design): Pish's barks, whimper, yip and digging (Util/PishVisual)
+	["every Pish sound has its loudness measured"] = function()
+		for key, sound in Pish.SOUNDS do
+			if sound ~= "" then
+				local id = string.match(sound, "%d+") :: string
+				assert(SoundLevels.LEVELS[id], `Pish.SOUNDS.{key} ({sound}): measure it (tools/audio/measure_loudness)`)
 			end
 		end
 	end,

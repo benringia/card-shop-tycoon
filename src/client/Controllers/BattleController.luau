@@ -2087,6 +2087,11 @@ local function onClick(input: InputObject, processed: boolean)
 	SwordController.Attack()
 end
 
+-- A fight is on for this player (Pish's lesson visits wait for it to end)
+function BattleController.IsFighting(): boolean
+	return fighting
+end
+
 function BattleController.Start()
 	build()
 	UserInputService.InputBegan:Connect(onClick)

@@ -105,6 +105,23 @@ function ClipPlayer.attach(model: Model): Player
 	return { bones = bones, parentOf = parentOf, rest = rest, playing = nil, weight = 0 }
 end
 
+-- A model's clips (ReplicatedStorage.MonsterAnimations/<key>: a monster's or boss's attacks, Pish's idles) and a player
+-- for them on `model` (nil when it has none)
+function ClipPlayer.loadSet(key: string, model: Model): ({ [string]: Clip }, Player?)
+	local clips = {}
+	local folder = ReplicatedStorage:FindFirstChild("MonsterAnimations")
+	local set = if folder then folder:FindFirstChild(key) else nil
+	if not set then
+		return clips, nil
+	end
+	for _, item in set:GetChildren() do
+		if item:IsA("KeyframeSequence") then
+			clips[item.Name] = ClipPlayer.clip(item)
+		end
+	end
+	return clips, if next(clips) then ClipPlayer.attach(model) else nil
+end
+
 -- Starts a clip now (replacing one playing) at `speed` times its pace, holding its last pose `hold` seconds
 function ClipPlayer.play(player: Player, clip: Clip, speed: number?, onMarker: ((name: string) -> ())?, hold: number?)
 	local from = if player.playing then player.weight else 0

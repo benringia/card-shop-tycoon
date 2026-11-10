@@ -35,6 +35,8 @@ local FrontierService = require(Services:WaitForChild("FrontierService"))
 local TownService = require(Services:WaitForChild("TownService"))
 local SceneryService = require(Services:WaitForChild("SceneryService"))
 local WelcomeService = require(Services:WaitForChild("WelcomeService"))
+local PishService = require(Services:WaitForChild("PishService"))
+local TutorialService = require(Services:WaitForChild("TutorialService"))
 local DevService = require(Services:WaitForChild("DevService"))
 local DungeonService = require(Services:WaitForChild("DungeonService"))
 local DungeonGateService = require(Services:WaitForChild("DungeonGateService"))
@@ -57,6 +59,7 @@ if Place.isDungeon() then
 	BossService.Start() -- the Prism Hydra's chamber
 	DungeonService.Start() -- the run: arrivals, rooms, carried HP (after BattleService and WildService's cavern)
 	FrontierService.Start() -- back to the Frontier
+	TutorialService.StartLessonsOnly() -- Pish's lessons a level-up here unlocks wait for the town (saved)
 	LevelUpService.Start() -- level-up packs and Bag pack openings (after EconomyService, ItemService, BattleService)
 	DevService.Start() -- Studio only
 	DataService.Start() -- last: starts loading players
@@ -76,6 +79,7 @@ elseif Place.isFrontier() then
 	BossService.Start() -- the Frontier bosses: after BattleService and WildService (it uses both)
 	FrontierService.Start() -- the Return portal and home button: back to the main game
 	DungeonGateService.Start() -- the Dungeon portal: checks, groups, the teleport (after WildService builds the plaza)
+	TutorialService.StartLessonsOnly() -- Pish's lessons a level-up here unlocks wait for the town (saved)
 	LevelUpService.Start() -- level-up packs and Bag pack openings (after EconomyService, ItemService, BattleService)
 	DevService.Start() -- Studio only
 	DataService.Start() -- last: starts loading players
@@ -111,6 +115,8 @@ else
 	FrontierService.Start() -- the plaza Frontier portal (after WildService builds the plaza)
 	TownService.Start() -- street, decor, portal frames and lighting around the plots and portals
 	SceneryService.Start() -- terrain round the town and in the portal areas (after TownService)
+	PishService.Start() -- Town Pish wandering the town, petted for luck (after PlotService, PackService, TownService)
+	TutorialService.Start() -- the first visit with Pish, his gifts and the funnel (after PishService; before DataService.Start)
 	WelcomeService.Start() -- the first-visit welcome cinematic's saved flag (before DataService.Start)
 	LevelUpService.Start() -- level-up packs and Bag pack openings (after EconomyService, ItemService, BattleService)
 	DevService.Start() -- Studio only

@@ -1055,6 +1055,7 @@ local function renderBagDetail()
 			child:Destroy()
 		end
 	end
+	bagDetail:SetAttribute("ItemId", selectedItem) -- which item shows (Pish's tutorial points at its Open)
 	local info = if selectedItem then Items.ITEMS[selectedItem] else nil
 	if not info or not selectedItem then
 		local hint = bagLabel(bagDetail, "Your items show here. Tap one to see what it does.", Enum.Font.FredokaOne, 16, bagPalette.inkSoft, 24, 60)
@@ -1089,6 +1090,7 @@ local function renderBagDetail()
 	local openId = selectedItem
 	if info.open and (bagItems[openId] or 0) > 0 and not Place.isFrontier() and not Place.isDungeon() then
 		local open = UIKit.button(bagDetail, "Open", UIKit.Colors.Accent)
+		open.Name = "Open"
 		open.AnchorPoint = Vector2.new(0.5, 0)
 		open.Position = UDim2.new(0.5, 0, 0, y)
 		open.Size = UDim2.fromOffset(160, 48)

@@ -1,5 +1,6 @@
 --!strict
 local AdminPanel = require("../src/shared/Config/AdminPanel")
+local Pish = require("../src/shared/Config/Pish")
 local expect = require("./lib/expect")
 local fs = require("@lune/fs")
 
@@ -40,6 +41,23 @@ return {
 			end
 		end
 		expect.equal(commands.weapon and commands.material and commands.item, true, "weapon, material and Wild Ore buttons")
+	end,
+
+	["admin panel: a Pish section runs the tutorial, each lesson visit and his luck"] = function()
+		local commands = {}
+		for _, section in AdminPanel.SECTIONS do
+			if section.title == "Pish (tutorial)" then
+				for _, button in section.buttons do
+					commands[button.command] = true
+				end
+			end
+		end
+		for _, command in { "/tutorial reset", "/tutorial step %s", "/pish", "/pishluck" } do
+			expect.equal(commands[command], true, command)
+		end
+		for _, lesson in Pish.LESSONS do
+			expect.equal(commands[`/tutorial lesson {lesson.id}`], true, `lesson {lesson.id}`)
+		end
 	end,
 
 	["admin panel: typed commands fill in the text box"] = function()

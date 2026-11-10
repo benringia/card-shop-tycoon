@@ -31,6 +31,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local RestTimers = require(ClientUtil:WaitForChild("RestTimers"))
+local Hud = require(ClientUtil:WaitForChild("Hud"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Motion = require(ClientUtil:WaitForChild("Motion"))
 local HudMascotView = require(ClientUtil:WaitForChild("HudMascotView"))
@@ -692,6 +693,7 @@ function PartyBarController.Start()
 	bar.AutomaticSize = Enum.AutomaticSize.XY
 	bar.BackgroundTransparency = 1
 	bar.Parent = UIController.GetStatusRow()
+	Hud.calmPiece(bar) -- hidden through Pish's first visit (a calm HUD)
 	local headroom = Instance.new("UIPadding")
 	headroom.PaddingTop = UDim.new(0, HudMascotRules.headroom(HudMascot))
 	headroom.Parent = bar

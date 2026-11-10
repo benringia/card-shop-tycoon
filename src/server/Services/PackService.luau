@@ -3,6 +3,9 @@
 -- Also announces big pulls to the server once the puller has revealed them, and keeps each player's pity: packs since
 -- their last Legendary and last Epic or better (saved; Util/PityRules raises a hit slot when one is due). What's left
 -- until each guarantee is on the player as the PityLegendary and PityEpic attributes, for the pack screen.
+-- Pish's Luck (SetLuck, from petting Town Pish) raises a player's own packs' hit slot from Very Rare up, and a Bag pack
+-- with a floor (Pish's gift) keeps its hit card at that rarity or better (Util/LuckRules; spec
+-- 2026-11-09-tutorial-pish-design 5, 7). OnOpened tells the tutorial a player opened one.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -11,9 +14,11 @@ local Config = Shared:WaitForChild("Config")
 local Announcements = require(Config:WaitForChild("Announcements"))
 local Cards = require(Config:WaitForChild("Cards"))
 local Packs = require(Config:WaitForChild("Packs"))
+local Pish = require(Config:WaitForChild("Pish"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
+local LuckRules = require(Shared:WaitForChild("Util"):WaitForChild("LuckRules"))
 local NewPulls = require(Shared:WaitForChild("Util"):WaitForChild("NewPulls"))
 local PityRules = require(Shared:WaitForChild("Util"):WaitForChild("PityRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -37,6 +42,8 @@ local rng = Random.new()
 local allowRip = RateLimiter.new(Packs.RIP_COOLDOWN)
 local pendingAnnouncements: { [Player]: { PullResult } } = {}
 local pityStates: { [Player]: PityRules.State } = {} -- loaded players only
+local luckUntil: { [Player]: number } = {} -- os.time Pish's Luck runs out
+local openedHandlers: { (player: Player, productId: string, itemId: string?) -> () } = {}
 
 local function publishPity(player: Player, state: PityRules.State)
 	local legendary, epic = PityRules.remaining(Packs.PITY, state)
@@ -59,10 +66,22 @@ local function rollRarity(slot: { Weighted }): string
 	return slot[#slot].rarity
 end
 
-local function rollPack(pack: Pack): { PullResult }
+-- A player's own pack: the hit (last) slot floored (Pish's gift) and raised while they have Pish's Luck; a customer's
+-- (no player) rolls the plain odds
+local function rollPack(pack: Pack, player: Player?, floor: string?): { PullResult }
 	local results: { PullResult } = {}
-	for _, slot in pack.slots do
-		local pool = Cards.ByRarity[rollRarity(slot)]
+	local lucky = player ~= nil and LuckRules.left(luckUntil[player], os.time()) > 0
+	for index, slot in pack.slots do
+		local odds: { Weighted } = slot
+		if index == #pack.slots then
+			if floor then
+				odds = LuckRules.atLeast(odds, Packs.RANK, floor) :: any
+			end
+			if lucky then
+				odds = LuckRules.boost(odds, Packs.RANK, Pish.LUCK.fromRarity, Pish.LUCK.boost) :: any
+			end
+		end
+		local pool = Cards.ByRarity[rollRarity(odds)]
 		local card = pool[rng:NextInteger(1, #pool)]
 		table.insert(results, { cardId = card.id, foil = rng:NextNumber() < Rarities.FOIL_CHANCE, grade = BeastRules.rollGrade(rng:NextNumber(), card.rarity) })
 	end
@@ -132,12 +151,16 @@ local function getOwnedCardIds(player: Player): { [string]: boolean }
 	return owned
 end
 
-local function deliverPack(player: Player, productId: string, results: { PullResult })
+-- itemId: the Bag item it came from (nil: ripped from a carried box)
+local function deliverPack(player: Player, productId: string, results: { PullResult }, itemId: string?)
 	-- Checked before the cards are added, so the results screen can mark first-ever copies NEW
 	local newFlags = NewPulls.flag(results, getOwnedCardIds(player))
 	CardService.AddFresh(player, results)
 	queueAnnouncements(player, results)
 	Remotes.PackOpened:FireClient(player, productId, results, newFlags)
+	for _, handler in openedHandlers do
+		task.spawn(handler, player, productId, itemId)
+	end
 end
 
 -- Counts this pack towards the player's pity and, when a guarantee is due, raises its hit slot: a pity Legendary
@@ -199,23 +222,34 @@ local function onRip(player: Player)
 	end
 
 	DataService.AddStat(player, "packsOpened", 1)
-	local results = rollPack(pack)
+	local results = rollPack(pack, player)
 	applyPity(player, results)
 	deliverPack(player, productId, results)
 end
 
 -- A pack from the Bag (LevelUpService, after it took the item): the same roll, pity and stat as ripping one from a
--- carried box. Returns false (nothing rolled) for a product that isn't a pack.
-function PackService.OpenItemPack(player: Player, productId: string): boolean
+-- carried box; `floor` keeps its hit card at that rarity or better (Pish's gift). Returns false (nothing rolled) for a
+-- product that isn't a pack.
+function PackService.OpenItemPack(player: Player, productId: string, floor: string?, itemId: string?): boolean
 	local pack = Packs.ById[productId]
 	if not pack then
 		return false
 	end
 	DataService.AddStat(player, "packsOpened", 1)
-	local results = rollPack(pack)
+	local results = rollPack(pack, player, floor)
 	applyPity(player, results)
-	deliverPack(player, productId, results)
+	deliverPack(player, productId, results, itemId)
 	return true
+end
+
+-- Pish's Luck until os.time `untilTime` (nil: none), from petting Town Pish (PishService)
+function PackService.SetLuck(player: Player, untilTime: number?)
+	luckUntil[player] = untilTime
+end
+
+-- Every pack a player opens (ripped or from the Bag): the tutorial's first steps listen
+function PackService.OnOpened(callback: (player: Player, productId: string, itemId: string?) -> ())
+	table.insert(openedHandlers, callback)
 end
 
 -- Studio testing only (called by DevService): a normal roll with a foil legendary in the hit slot
@@ -278,6 +312,7 @@ function PackService.Start()
 	Remotes.PullRevealed.OnServerEvent:Connect(onPullRevealed)
 	Players.PlayerRemoving:Connect(function(player)
 		pendingAnnouncements[player] = nil
+		luckUntil[player] = nil
 	end)
 end
 

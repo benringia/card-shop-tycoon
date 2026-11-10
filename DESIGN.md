@@ -574,8 +574,11 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
 ### 5.7 Pack opening feel (important)
 - **A 3D stage** (UI project 3, spec `docs/superpowers/specs/2026-10-29-cards-in-world-and-pack-opening-design.md`):
   client-only parts right above the player while it shows (`Util/OpeningStage`, `Util/StageSpot`; see the binder's
-  stage note in 10.6; far away at `PackOpening.STAGE_POSITION` otherwise): a violet glow fading to
-  near-black behind, a warm key light and a blue rim light, and a Scriptable camera (FOV 40, 8 studs back) with
+  stage note in 10.6; far away at `PackOpening.STAGE_POSITION` otherwise): behind it Pish and Chikin's card shop
+  at night, the two peeking over the counter (owner's pick A 2026-11-10, "connect every element to our core loop";
+  Pish repainted a little grumpy with his underbite, as he is;
+  `PackOpening.BACKDROP.IMAGE`, `assets/ui/opening`, Figma-generated; a little darker, darker still behind the
+  cards, its sides fading to near-black on wide screens), a warm key light and a blue rim light, and a Scriptable camera (FOV 40, 8 studs back) with
   bloom, a colour grade that dims for big pulls and a depth-of-field blur for the push-ins; letterbox bars and a
   white flash sit on top. The world stays where it is (sound stays at the character, `Util/ListenAtCharacter`; the
   HUD and world tags hide). The opening follows `Util/OpeningFlow` (Ready, Tearing, Stacking, Stacked, Flipping,
@@ -637,10 +640,16 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
   all from level 6; `RevealRules.scaleCount`). Studio at graphics level 1: worst frame 42 ms as the stage shows,
   27 ms or less through the tear, flips and results.
 - **Sounds** (`PackOpening.SOUNDS` and `VOLUMES`, free Creator Store sounds, only the opener hears them): a crinkle
-  while the strip parts and a rip when it tears off, a card swipe per card stacking up, a card flick per flip; Rare
-  and better get a rising tease (cut short when the card lands) and a hit (soft chimes for Rare and Very Rare, a deep
-  boom for Epic, orchestral hits for Legendary and Frontier) and a shimmer while the card is alive; the results pop
-  per landing card and chime when the lineup is done. Most come from Roblox's licensed libraries (Pro Sound Effects,
+  while the strip parts and a rip when it tears off (both at 0.3, owner 2026-11-10: lower), a card swipe per card
+  stacking up, a card flick per flip; Rare and better get a rising tease (cut short when the card lands) and a hit
+  (soft chimes for Rare and Very Rare, a deep boom for Epic, orchestral hits for Legendary and Frontier) and a shimmer
+  while the card is alive; the results swipe in per landing card and end on a bright UI ding (PSE "Synth Sparkle Tone
+  High Pitch Bell Tone Ding 4"): the lineup's sounds are never the boss victory's (owner 2026-11-10: it sounded like
+  killing a boss; `tests/OpeningSounds`). **Music**: the opening has its own music (`Music.OPENING`, crossfading in from
+  wherever you are and back out, through the leveler, at 0.1, the owner's number; owner 2026-11-10: "change the music on this
+  screen. too plain"): each opening plays the next of three APM pieces, looping while it's up ("Magic and Mayhem",
+  "Enchanted Butterflies", "Mischievous Elves"; `rotate = "visit"`, `MusicRules.visitTrack`; owner: "so that when
+  players open lots of pack its not the same music always"); `/music opening <n> [volume]` plays any of the six. Most come from Roblox's licensed libraries (Pro Sound Effects,
   APM) and Daily Sounds (made from scratch); the flip is "card_flip" by f4ngy (Freesound, CC BY).
 - Card faces (`Util/CardFace`, `Config/CardDesign`), clean full-art style (like the top Roblox card games),
   built in code with no frame images: the art fills the card inside a thin rounded rim in the rarity colour
@@ -653,8 +662,9 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
   JPEGs in `assets/ui/card-art`). A card without one falls back to its element's painted scene (`SCENES`:
   fireplace, coral reef, forest, stormy peak, moonlit graveyard; `assets/ui/card-scenes`) with the element emoji
   on a glow, else an element gradient. Effects on the art: Epic and up a white shine now and then, foil and Frontier a holo
-  sweep. Missing binder slots: grey rim, dark silhouette and "?". The face-down back is a deep blue card with
-  🃏 CARD SHOP; glows use the "Glow Circle / Radial Glow" decal (public Creator Store image).
+  sweep. Missing binder slots: grey rim, dark silhouette and "?". The face-down back is Pish (a little grumpy, with his
+  underbite) and Chikin hugging a pack in a gold medallion on violet with gold filigree, one picture for the whole card (owner's pick A 2026-11-10:
+  "PISH and CHIKIN is now the face of this game"; `CardDesign.BACK.IMAGE`, `assets/ui/card-back`); glows use the "Glow Circle / Radial Glow" decal (public Creator Store image).
 - Cards on display in Glass Showcases and Collector Cases use the same card face, drawn by each client on the
   server's plain card part (0.84 x 1.2 studs, standing upright in two rows, `Config/CaseLayout`; the back drawn on
   its other side), with the asking price in gold in the value row. The full face and back draw within 30 studs
@@ -1189,7 +1199,7 @@ group, checked before its fragments and every time (not only the first). Below i
   per party card with its painting and name, its key 1-3 on a gold chip (PC; the party slot as the party bar numbers
   it, `SwapKeys.party`/`pick`, Lune-tested). Its look (option C, the owner: "Remove strong/weak/out just add an effect
   or animation or icons for who's out/dead"): the one fighting has a green light running round its edge and a
-  heartbeat pulse in place of its name; a card that fainted in this fight lies face down (the card back's blue) with
+  heartbeat pulse in place of its name; a card that fainted in this fight lies face down (the card back's violet and gold) with
   dizzy stars, one resting since an earlier fight face down with "Zzz"; while swaps cool down the others dim with the
   seconds left; a tap swaps (looks in `Config/CombatHud` PARTY_STRIP). A key while swaps cool
   down still says "Swap ready in 4s", a resting card says so (2026-11-04). The dodge is a 12-stud dash pushed by a velocity constraint in the ground plane (setting the velocity each frame
@@ -1752,10 +1762,19 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   beside it, the cost chips under them and the tab's line last, so a 667 x 375 phone sees it all without scrolling
   (`Config/ForgeLayout`, `UiLayout.forgePhonePane` / `forgePhoneContent`, tests/UiLayout).
 - **The Armory** (the binder's fourth set, `Collection.SETS`; cover `Config/BinderCovers` Armory): every weapon in
-  catalogue order as a card in the creature cards' shape (`Util/WeaponFace` on `CardFace.parts`): owned ones show
-  their portrait over their glow, Power, grade and +level, "Owned" / "Equipped"; locked ones a dark sword with
-  where they come from and the progress toward them ("Forge: Wild Ore 15/20"); rounds 2-3's "Coming soon". Tapping
-  an owned one opens its card view (`WeaponDetailController`: stats in words, Equip).
+  catalogue order as a card in the creature cards' shape (`Util/WeaponFace` on `CardFace.parts`). Card art (owner's
+  picks 2026-11-09, Armory UI): owned ones show their portrait over the Armory cover painting, dimmed, with soft rays
+  and a glow in the weapon's colour (1B), Power, grade and +level, "Owned" / "Equipped"; ones you don't have the same
+  painting under a slate veil, the portrait as a black shadow under a gold lock (2B), where they come from and the
+  progress toward them ("Forge: Wild Ore 15/20"); unbuilt ones "Coming soon" (`Config/WeaponLooks` CARD). Tapping a
+  card opens its card view (`WeaponDetailController`, owner's pick 3A: the creature card view's twin): the card on
+  the left (where it came from under it), rarity / family / element pills, then for yours a gold "Your weapon" box
+  (Power with how it compares to the one you hold, "+0.15 vs Rift Reaper"; grade badge; level +n / 10 with a bar),
+  for one you don't have "How to get it" (the boss and where it lives, "Beat the Rift Devourer in the Frontier: it
+  can drop.", then its forge materials and cash as bars); its sword skill (icon, name, what it does), then its perk
+  and its bond side by side (a weapon you don't have: its Power range "x1.40 to x2.09" too), icons by
+  `WeaponLookRules.familyIcon` / `perkIcon`. Yours get a bar under the facts: Equip and the Forge hint (words:
+  `WeaponText.versus`, `powerRange`, `howToGet`, `progress`, `skill`, `bond`; tests/WeaponText, WeaponLookRules).
 - **The Boss Board**: each boss with a weapon shows its card under the drops, "Drop chance now: 1.0%" (with the
   pity) and its material's chance.
 - **Models** (`assets/weapons`, docs/weapons.md): Figma concepts picked by the owner, Meshy image-to-3D, cleaned in
@@ -2187,6 +2206,92 @@ Hired staff became **shop jobs**: your levelled cards do the work (spec `2026-10
   (about 3.5 an hour, $34 an hour, a Legendary offer every ~13 hours) gives some of that back. At 3 stars with kids:
   16 min and 24.1 h. The first Legendary is pity-bound (within 130 packs), so its minutes move with packs per hour.
 
+### 7.6 The tutorial with Pish
+Spec `docs/superpowers/specs/2026-11-09-tutorial-pish-design.md`, plan `docs/superpowers/plans/2026-11-09-tutorial-pish.md`.
+The owner's dog Pish (a Shih Tzu with an underbite, a light brown patch on his back) teaches the game to kids in short
+lines, a little at a time (owner 2026-11-10: "add a dialogue ... explaining little by little"). Model and 16 clips: `tools/blender/prep_pish.py`, `rig_pish.py`, `anim_pish.py` (sources `assets/blender/Pish/`),
+clips in `assets/monster-animations/Pish`, the model as `assets/npcs/Pish.rbxm` -> `ReplicatedStorage.NpcModels`
+(main place only; without it the guide Pish is an invisible marker that still leads, and Town Pish isn't made). Drawn by `Util/PishVisual`
+(clips through `Util/ClipPlayer`, markers make his barks, yawn and digging dirt), style `Party.CREATURE_STYLE.Pish`.
+All numbers in `Config/Pish`.
+- [ ] **First visit** (`TutorialService`, `TutorialController`, `Util/TutorialCues`, `Util/TutorialRules`): starts after
+  the welcome flight. **Pish arrives** first (round 3; the shot round 5, owner 2026-11-10): a bark, then the camera
+  rides low beside him on his paws as he runs in (30 studs, about 4.6 s; from in front of the player if that's clear,
+  else the first clear way fanning out left and right, so he never runs through a shelf or a wall), slowly pans up to
+  his face, and zooms out to a wide shot of the two of you as he stops in front of the player and barks (the first of
+  four angles with a clear view); about 7 s in all, then the camera goes back behind the player and he talks
+  (`Util/ArrivalShot`, `Pish.ARRIVAL`, `tests/ArrivalShot`; the camera never goes through a wall; once per first
+  visit, after the loading screen and its fade for a player back mid-tour; a tap skips it). Eight steps completed by what the
+  game sees: open his present (`pishPresent`, "Pish's Present": a First Spark pack with his picture, in the Bag),
+  build a Small Pack Rack, order First Spark packs, stock the rack, a customer he sends reaches the counter, ring them
+  up, open his gift (`pishGift`: the hit card is Very Rare or better), his goodbye. **Pish talks** (`Util/TutorialTalk`, lines in
+  `Config/PishTalk`, `Util/TalkRules`; the game's name from `Config/Game.NAME`): a talk card above the HUD tiles with
+  his face (his model in a little window), one short line, the step's picture and a big Next; his intro lines first
+  ("Hi! I'm Pish!", "Welcome to <game>!"...), then the line for what to do now, which follows the player inside
+  windows: his present in the Bag, then Open; Manage, Shop, the Small Pack Rack, "tap to place"; the computer, then
+  First Spark's Order; the box, then the rack; behind the counter, then Charge. A window the step doesn't use makes
+  the line "Tap the X to close this window." with the paw on its X. The card rises above a HUD tile he points at so
+  his paw shows, moves to the top when it would cover a button in a window, and keeps clear of the HUD's side columns
+  on phones. Cues: gold paw prints to the place and a bouncing gold paw over a thing in the shop, drawn on the screen
+  so walls and closed doors don't hide them (none while a window is open, so they never sit on it); a bouncing gold
+  paw and a pulsing gold ring on a button (it follows a window that rebuilds its buttons). The small Skip hides while
+  a window is open (on phones it sat on the window's X), and the talk card narrows to keep clear of it. He waits
+  quietly (card and cues hidden) while a pack opening, a fight or a weapon reveal has the screen. The goodbye ("Need
+  me later? Tap me on your party bar. Bye!", the HUD back and the paw on the peeking Pish there) ends on its "Bye!"
+  button, a tap on the peeking Pish, or by itself 20 s after. A step the shop has already done (a replay) completes at once. Old saves skip it (v17 migration).
+- [ ] **Calm screen** (round 3, owner: "overwhelming for new players"): through the first visit, in town (in the Wild they show), the party bar, weapon
+  switch, Bosses tile and buff chips are hidden (`Hud.calmPiece`, `Hud.setCalm`), and a **spotlight** dims everything
+  but the button Pish points at (four dim frames, his card, paw and Skip above them; nothing dims for a thing in the
+  shop).
+- [ ] **Skipping** (round 3, owner: "just put a skip icon on the top right"): a small "Skip" at the top right (left of
+  the cash column when that reaches the top). Tapping it brings a sad Pish (whimper, head tilt) and the tour card in
+  the middle (Pish's card waits under it): "Pish's Tour · 3 of 8", the paw row, his gift's picture, "Finish the tour
+  for Pish's gift!", a big green "Keep going" and a small grey "Skip tour". The peeking Pish over the party bar is the
+  Pish button (round 5, owner: "make it the Pish button"; the Manage tray's Pish tile is gone): a tap after the first
+  visit bounces and yips and asks "Want my shop tour again?" with a big green "Yes!" and a grey "Not now"
+  (`TutorialCues.askReplay`, `HudMascotView.onTap`), so a stray tap never restarts it. A replay
+  (nothing comes twice: his present and gift once, and his own customer once ever and only with room in the shop, `TutorialRules.sendsCustomer` / `customerSent`, `CustomerService.HasRoom`; skipping and replaying waits for a customer who comes by themselves). Icons: `PishPresent` (Pish hugging a ribboned pack) and `PishGift` (a rainbow
+  pack with a paw medal), `Config/UIIcons`.
+- [ ] **Tutorial Pish is this player's own** (a client marker): other players see Town Pish; Town Pish and his pet prompt
+  are hidden for the player Pish is leading. The guide can't be petted. Both wear a "🐾 Pish" name tag: an orange pill with white outlined words standing on a point over his head (`SizeOffset`, so far away it stays above him; owner 2026-11-10: the white one was hard to see, then it covered him from afar).
+- [ ] **Town Pish** (`PishService`, `TownPishController`, `Util/PishPath`): a server marker (`workspace.PishNpc.TownPish`)
+  strolling the town at 4.5 studs/s (trotting at 8; a small dog's
+  walk, about 1.8 leg cycles a second, tests/PishWalk) round the fountain to stops and open shops' doors, idle clips, naps. **Petting** him
+  (within 12 studs; only the owner of the shop he's visiting, marker attribute `VisitingOwner`, and only after their
+  first visit; "pet me for luck!" under his tag then, the server checks the same) gives **Pish's Luck** for 3 minutes, once per 15 minutes per player: the hit slot's Very Rare, Epic
+  and Legendary weights +25% (`Util/LuckRules`, `PackService.SetLuck`), shown as a "🍀 m:ss" chip beside the creature's
+  perk chip (`BuffController`), hearts for everyone nearby. Petting holds him still at most 8 s in one place (`TOWN.petHoldMax`,
+  `PishPath.holdEnd`), so one owner can't keep him at their door.
+- [ ] **Lesson visits** (round 4, owner 2026-11-10: "pish teaches everything town/shop related. when a player unlocks
+  something for the first time, pish will visit and teach them"): every town and shop unlock has one (`Pish.LESSONS`;
+  `tests/LessonRules` fails for a Products or Shelves unlock without one): Glass Showcase 2, Card Sleeves 3, Collector
+  Case 3, first sword 4, Wall Shelf 4, Condenser 5, Forge 6, Deck Boxes 7, Accessory Hook 7, Big Display Rack 9,
+  Booster Boxes 11, Grading Station 14, Jobs 20, and the first trophy (an event: a trophy item given,
+  `ItemService.OnGiven`). The two cases unlock at 1 and are taught once his first visit has given you cards; combat
+  (bosses, the Wild, weapons) is left for Chikin's tutorial. A level-up (or the trophy) marks them waiting (saved
+  `false` in `tutorial.lessons` until shown, so ones gained in the Frontier or the Dungeon wait for the town); players
+  already past a level don't get its visit. Once the player has been free in town for 3 s (no window, fight, opening or
+  weapon reveal; the first-sword popup comes first), Pish runs in, barks and says what's new with Next; a shelf,
+  machine or trophy he then teaches like the first visit's rack ("Tap Manage.", "Tap Shop.", "Tap Cases.", "Tap the
+  Glass Showcase!", "Put it on the floor and tap to place!"; the trophy you hold), new stock through the computer
+  ("Walk to the computer.", "Tap Order on Card Sleeves!"; lines `PishTalk.TEACH`), a window in the way first ("Tap the
+  X..."). It's done when the server sees it placed or ordered (`LessonRules.forShelf` / `forProduct`; also when the
+  player finds it before he comes): a happy hop, then he runs to it (new stock: the delivery pad) and says what it's
+  for, a line at a time with Next, the last "Bye!" (`PishTalk.AFTER`, owner 2026-11-10: "make him explain what this
+  for"; the Glass Showcase: customers buy single cards, Edit then Cards to add some, price near value; the Collector
+  Case: for players). A lesson's thing placed or ordered before its lesson is due marks it seen, so a case bought at level 1 isn't taught
+  at level 2 (`LessonRules.used`). He leaves after 30 s with no step taken (`TEACH_QUIET_SECONDS`, Next counts); his card stays
+  above the Rotate / Place / Cancel bar while placing. The
+  first sword (the Wild portal) and Jobs (its tile) he points at and leaves after 20 s or once it's used.
+- [ ] **Stuck helper**: a new player's first hour (first visit not done when they joined), a quiet minute (no order,
+  restock, sale or pack) with a box waiting brings Pish to point at it, with empty shelves at the order computer; at
+  most every 2 minutes (`LessonRules.nudge`).
+- [ ] **Sounds**: Pro Sound Effects has no house dogs: coyote barks pitched up small, a coyote cub's whimper, dirt
+  from a shovel; the yawn is silent (`Pish.SOUNDS`, `SOUND_PITCH`, measured in `Config/SoundLevels`).
+- Analytics: the onboarding funnel (steps 1-8, `LogOnboardingFunnelStepEvent`) and custom events `TutorialSkipped`,
+  `PishGiftClaimed`, `LessonShown`, `LessonUsed`, `PishPetted`.
+- Dev: `/tutorial reset | step <1-8> | lesson <id>`, `/pish`, `/pishluck`; the admin panel's "Pish (tutorial)" section.
+
 ---
 
 ## 8. Monetization
@@ -2275,6 +2380,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── TownService.luau      # main town: ground, street, plaza, decor props, portals, walls, trail lines, signs, lighting
     │   │   ├── SceneryService.luau   # main town: terrain and scenery round the town, in the three portal areas (Config/Scenery) and in the Wild valley (Config/WildValley)
     │   │   ├── WelcomeService.luau   # the first-visit welcome cinematic's saved flag (SeenWelcome)
+    │   │   ├── PishService.luau      # Town Pish: wandering the town, petting him for luck (luck times kept for TutorialService)
+    │   │   ├── TutorialService.luau  # the first visit with Pish: steps, gifts, customer, funnel; lesson queue and the stuck helper
     │   │   ├── EconomyService.luau   # cash, XP, levels (ONLY place cash changes)
     │   │   ├── StockService.luau     # orders, deliveries, carrying, stocking shelves
     │   │   ├── PlacementService.luau # validate + place/move/sell shelves, shelf contents
@@ -2296,7 +2403,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── WeaponService.luau    # owned and equipped weapons (saves), EquipWeapon, the Sword/SwordGrade/SwordLevel attributes, HitInfo for sword hits
     │   │   ├── ForgeService.luau     # the Forge machine: forge, upgrade, reforge (costs from WeaponRules, all or nothing, grade rolled here)
     │   │   ├── ArenaService.luau     # PvP: challenges, bet escrow, arena pad + queue, fights, saved record
-    │   │   ├── ItemService.luau      # item inventory (Star Shards, boss items): give, take, save
+    │   │   ├── ItemService.luau      # item inventory (Star Shards, boss items): give, take, save; OnGiven (Pish's trophy lesson)
     │   │   ├── BossService.luau      # boss ladder: saved progress, arena gates and copies, keys, boss wins' items (farm protection)
     │   │   ├── FrontierService.luau  # teleports: plaza Frontier portal, Explore / Join friend, back home (Dungeon: back to the Frontier)
     │   │   ├── DungeonGateService.luau # Frontier: the Dungeon portal's checks, groups and reserved-server teleport
@@ -2351,6 +2458,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── FountainFxController.luau # the healing fountain's rune circle, light column and orbs (client only)
     │   │   ├── PortalFxController.luau # spins every portal's vortex near the camera (client only)
     │   │   ├── WelcomeController.luau # the first-visit welcome cinematic
+    │   │   ├── TutorialController.luau # this player's own Pish: his arrival, the first visit's cues, Skip and the tour card, replay; lesson visits that teach each unlock step by step, nudge visits
+    │   │   ├── TownPishController.luau # Town Pish drawn on the server's marker, his clips and hearts
     │   │   ├── PriceTagController.luau  # point at / tap your shelf price tags to set the price
     │   │   ├── PartyBarController.luau  # bottom-right party cushion: Party pill + 3 round portraits (and the mascot), tap or 1/2/3 to summon
     │   │   ├── MonsterController.luau   # draws wild monsters on their markers (model or placeholder) at their species' height, glow masks, Fx_ bone effects; boss rigs, head glow, death
@@ -2362,7 +2471,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── WeaponSwitchController.luau # the quick weapon switch chip on the right edge: < and >, a swipe, Q / Z (EquipWeapon)
     │   │   ├── WeaponRevealController.luau # a boss's weapon drop and the Forge's results: the reveal on the opening stage
     │   │   ├── ForgeController.luau     # the Forge window: Forge / Upgrade / Reforge tabs and what each does, weapon rows, the chosen weapon's card, Now / After boxes, cost chips and one button
-    │   │   ├── WeaponDetailController.luau # an Armory weapon's card view: its stats in words, Equip
+    │   │   ├── WeaponDetailController.luau # a weapon's card view: pills, Your weapon / How to get it, skill, perk, bond, Equip
     │   │   ├── BossBoardController.luau # Bosses HUD tile and the Boss Ladder: bosses' list with status chips and Next, the chosen one's banner, To fight it checklist, Rewards with odds, footer with next step and Take me there
     │   │   ├── ChallengeController.luau # PvP: Challenge prompt on players, bet popup, incoming challenge popup
     │   │   ├── FrontierController.luau  # Frontier portal menu (Explore, Join friend); home button in the Frontier
@@ -2377,7 +2486,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── UIKit.luau              # shared UI building helpers and the style (header, close, lip buttons)
     │       ├── Motion.luau             # pop in/out, press squash, bumps
     │       ├── FontStyle.luau          # switches Gotham text to the game fonts (FredokaOne, Montserrat)
-    │       ├── Hud.luau                # HUD layout: Manage tray, bottom tiles, context tiles, top bar
+    │       ├── Hud.luau                # HUD layout: Manage tray, bottom tiles, context tiles, top bar; the calm HUD (first visit)
     │       ├── Icon.luau               # draws a UIIcons icon (or an emoji) into a holder
     │       ├── CardTips.luau           # card tooltips in the style kit: binder card summary, party copy (bars, perk, rest)
     │       ├── CopyCompare.luau        # the kid swap comparison: verdict badge and sentence, IN -> OUT cards, paired stat bars, perk line
@@ -2389,7 +2498,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── ListenAtCharacter.luau  # keeps sounds heard at the character while the camera is on a stage (binder, card view)
     │       ├── WorldTags.luau          # switches on-top world tags and bubbles off while a stage scene shows (binder, card view)
     │       ├── CardFace.luau           # draws a card face (front, back, missing) into a frame
-    │       ├── WeaponFace.luau         # draws a weapon's card (owned: portrait, Power, grade, +level; locked: source and progress) on CardFace's parts
+    │       ├── WeaponFace.luau         # draws a weapon's card (owned: portrait on the Armory painting, Power, grade, +level; locked: its shadow, a lock, source and progress) on CardFace's parts
     │       ├── WeaponLook.luau         # a weapon model's glow ladder: shell, aura, trail, burst, Awakened effect, twinkle, light; the stand-in model
     │       ├── OpeningStage.luau       # the opening's 3D stage: backdrop, lights, camera, post effects, bars, flash, shake, sounds
     │       ├── OpeningPack.luau        # the pack (or deck box) on the stage: idle sway, drag, the cinematic tear, the lid
@@ -2423,6 +2532,9 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── ElementFx.luau          # the pieces of fight effects (textured light): charge glow, comet, burst, bolt, slash, eruption, pillar, sound
     │       ├── ScreenFx.luau           # fight screen shake (one decaying shake, falls off with distance) and screen flashes
     │       ├── ClipPlayer.luau         # one-shot attack clips on monster and boss bones (model-space poses), over the procedural motion
+    │       ├── PishVisual.luau         # Pish on a marker: his model, clips, marker sounds, dirt and hearts
+    │       ├── TutorialCues.luau       # the tutorial's cues: paw trail, bouncing paw and gold ring, the small Skip and tour card, the spotlight
+    │       ├── TutorialTalk.luau       # Pish's talk card: his face, one short line, the step's picture, Next
     │       └── AfterImage.luau         # the dodge's fading copies of the character
     └── shared/                 # → ReplicatedStorage
         ├── Config/
@@ -2488,6 +2600,9 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── DayCycle.luau   # the day cycle's phases and looks (plain data)
         │   ├── Ambient.luau    # tree sway, the frame watchdog, the town's animals (plain data)
         │   ├── Welcome.luau    # the welcome cinematic's flight (plain data)
+        │   ├── Pish.luau       # the tutorial: steps and pictures, gifts, luck, lessons, stuck helper, Town Pish, sounds
+        │   ├── PishTalk.luau   # what Pish says: each step's intro and now lines, lessons, nudges, the Skip and tour card labels
+        │   ├── Game.luau       # the game's name (a placeholder until it's decided)
         │   ├── Plaza.luau      # the Card Festival Square plaza (plain data)
         │   ├── Places.luau     # place ids, Frontier portal spot
         │   ├── CardList.luau   # every card row (Set 1 and Frontier), plain data
@@ -2522,6 +2637,11 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── FrameWatchdog.luau # turns the extras off on slow frames (pure, Lune-tested)
             ├── Wander.luau        # ambient animals wandering round home (pure, Lune-tested)
             ├── WelcomePath.luau   # the welcome cinematic's camera path (pure, Lune-tested)
+            ├── TutorialRules.luau # the first visit's saved table: read, steps recorded, skip, replay (pure, Lune-tested)
+            ├── LuckRules.luau     # Pish's Luck: the hit slot's boost, the gift's floor, cooldown, badge text (pure, Lune-tested)
+            ├── LessonRules.luau   # lessons due at a level-up or an event and waiting, what placing or ordering completes, the stuck helper's nudge (pure, Lune-tested)
+            ├── PishPath.luau      # Town Pish's walk round the fountain (pure, Lune-tested)
+            ├── TalkRules.luau     # which of Pish's lines shows: intro with Next, then the line for now (pure, Lune-tested)
             ├── PlazaLayout.luau   # the Card Festival Square's placements, giant cards, string lights, lotus petals, chairs, planter plants (pure, Lune-tested)
             ├── ModelPreload.luau  # which creature models a client downloads in the background, and in what order (pure, Lune-tested)
             ├── CardArt.luau       # which painting a card face draws: the half-size copy when drawn small, the full one for big views (pure, Lune-tested)
@@ -2602,7 +2722,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v16)
+### 10.4 Player data schema (v17)
 ```lua
 {
     version = 16,
@@ -2634,6 +2754,10 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     swordFights = 0,        -- boss fights fought with the sword HUD; its buttons show names for the first 3 (SwordService)
     weapons = {},           -- weaponId -> { grade, level } (WeaponService; the Steel Sword is everyone's, never saved)
     equippedWeapon = "starterSword", -- the weapon in hand (Config/Weapons id)
+    tutorial = { firstVisit = "todo", step = 1, early = {}, firstGiven = false, giftClaimed = false, customerSent = false, lessons = {},
+                 pishLuckAt = 0 }, -- the first visit with Pish ("todo" | "done" | "skipped"), its step and steps done
+                 -- early, his first pack and end gift given, lesson visits (true seen, false waiting to be shown),
+                 -- the last luck from petting him
 }
 ```
 Bump `version` and write a migration whenever the shape changes.
@@ -2652,7 +2776,7 @@ place loads it at once; before, the session only closed after they'd left, and t
 `TeleportInitFailed`), `Reclaim` opens the session again and the next save writes it. Changes in the moment before
 they leave aren't saved. A session this server ended (leaving, a hand-off) never kicks the player.
 
-Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity). A service that didn't load for a player (e.g. no free plot) never overwrites
+Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; v17 added `tutorial` (the first visit with Pish; existing saves "done" with their first pack given and his gift still to come, so only new players go through it); each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity); `tutorial` gained `customerSent` (read as false when missing, true for v17's existing shops; no bump: an older server dropping it allows one more of Pish's customers). A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
 
 ### 10.6 UI style and HUD
@@ -2787,11 +2911,13 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   tile at its widest, key chip and all, stays inside the gap); the Party pill squishes on a press and hops a little under
   a mouse. Anything stacked over the tile row (the status corner on a narrow PC screen, the toast) sits above its
   popped-out icons at their highest hover (`SquishRules.rowTop`). **The mascot** (`Config/HudMascot`, `Util/HudMascotView`, `Util/HudMascotRules`):
-  Cindercub, a Figma-generated sticker (`assets/ui/mascot`, cut out by `tools/ui-art/cutout.py`), peeks over the
-  cushion's left end with its paws on the edge and its flame tail poking up behind it; it breathes and its tail sways
+  Pish (round 5, owner 2026-11-10: "Change peaking cindercub to Pish"; Cindercub before; a little grumpy like the
+  real Pish: furrowed brows and his underbite), a Figma-generated
+  sticker (`assets/ui/mascot`, cut out by `tools/ui-art/cutout.py`), peeks over the cushion's left end with his paws
+  on the edge and his curled tail poking up behind him; he's the Pish button (section 7.6); it breathes and its tail sways
   (looping tweens), it blinks every 3-7 s (lids drawn over its eyes), it ducks behind the cushion when you summon,
   unsummon or swap and pops back up (carrying on from where it is if you swap again), and a tap makes it bounce and
-  chirp. It sits over the left end because on touch screens the level pill sits above the right end. Everything about
+  yip. It sits over the left end because on touch screens the level pill sits above the right end. Everything about
   it is in its config so another creature can replace it (the owner plans one based on their own pet): see
   `docs/hud-mascot.md`.
 - **HUD** (`Util/Hud`, `Config/HudLayout`): a **Manage** tile on the left middle slides out a tray of tiles to
@@ -2817,7 +2943,7 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   from the moment you join (Roblox only finishes loading an image once it's drawn), so hidden tiles open with
   their icons ready. Names without a picture show as text (⌛ in a bubble). **Toasts** (owner's pick A, 2026-11-06;
   `Config/Toasts`, `Util/ToastRules`, `UIController.Notify(message, isError, duration, icon)` and `NotifySide` for
-  money): Cindercub's speech bubbles stacked right over the cash pill (over the buff badge while one shows; under the
+  money): the HUD mascot's speech bubbles stacked right over the cash pill (over the buff badge while one shows; under the
   column on touch screens), newest nearest the coin, messages and sales alike, at most 3 (2 on phones; a new one
   pushes the oldest out). A white bubble with the windows' soft lilac edge, a soft plum shadow and a tail pointing at
   the cash (up on phones), an icon chip in its kind's colour (mint money with the coin, butter news with Info, pink
@@ -2826,7 +2952,7 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   settles, stays 6 s (errors 8 s; a toast that sets its own time gets it doubled: a loot pickup 3 s, the level-up
   10 s; owner 2026-11-06 "last longer, with a close button") and leaves shrinking and fading; a click or tap anywhere
   on it closes it at once (the "x" darkens under the pointer). The same message again bumps the newest bubble instead
-  of stacking a copy. The HUD's Cindercub hops (silent, `HudMascotView.hop`) once per burst. Toasts
+  of stacking a copy. The HUD's peeking Pish hops (silent, `HudMascotView.hop`) once per burst. Toasts
   stay up over the binder and the pack opening (the corner hides, they don't). The fight screen hides the HUD groups.
 - **One window at a time** (`UIKit.panel`): opening a main window (Shop, Prices, Jobs, Party, the binder...)
   closes any other; windows marked `Overlay` (the Rarity guide, a case's card picker) open on top without

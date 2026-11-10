@@ -489,6 +489,33 @@ function Hud.fanButton(spec: FanSpec): TextButton
 	return button
 end
 
+-- A HUD button by id: a tile, a Manage tray button, or "Manage" (the tray's own tile); nil when there's none. The
+-- tutorial points a bouncing paw at it.
+function Hud.find(id: string): GuiObject?
+	if id == "Manage" then
+		return manageTile
+	end
+	local tile = tiles[id]
+	if tile then
+		return tile
+	end
+	for _, entry in fanButtons do
+		if entry.button.Name == id then
+			return entry.button
+		end
+	end
+	return nil
+end
+
+-- Whether the Manage tray is open now, and opening or closing it
+function Hud.isTrayOpen(): boolean
+	return fanOpen
+end
+
+function Hud.openTray(open: boolean)
+	setFan(open)
+end
+
 function Hud.setLabel(id: string, text: string)
 	local tile = tiles[id]
 	local label = if tile then tile:FindFirstChild("Label", true) else nil
@@ -506,14 +533,57 @@ function Hud.hideWith(object: GuiObject)
 	table.insert(hideWithHud, object)
 end
 
-function Hud.setHidden(reason: string, hidden: boolean)
-	hiddenBy[reason] = if hidden then true else nil
-	local show = next(hiddenBy) == nil
+-- The calm HUD (Pish's first visit, round 3 pick A): pieces the tour doesn't use hide while it's on
+local calmPieces: { [GuiObject]: boolean } = {}
+local calm = false
+local calmListeners: { () -> () } = {}
+
+local function apply(show: boolean)
 	side.Visible = show
 	bottom.Visible = show
 	for _, object in hideWithHud do
-		object.Visible = show
+		object.Visible = show and not (calm and calmPieces[object])
 	end
+	for object in calmPieces do
+		if not table.find(hideWithHud, object) then
+			object.Visible = not calm
+		end
+	end
+end
+
+-- A piece of the HUD the first visit doesn't use (the party bar, the weapon switch, the Bosses tile): hidden while calm
+function Hud.calmPiece(object: GuiObject)
+	calmPieces[object] = true
+	if calm then
+		apply(next(hiddenBy) == nil)
+	end
+end
+
+-- Calm on while Pish's first visit runs (TutorialController); pieces that show and hide themselves (the buff chips)
+-- ask Hud.isCalm and listen with Hud.onCalm
+function Hud.setCalm(on: boolean)
+	if calm == on then
+		return
+	end
+	calm = on
+	apply(next(hiddenBy) == nil)
+	for _, callback in calmListeners do
+		callback()
+	end
+end
+
+function Hud.isCalm(): boolean
+	return calm
+end
+
+function Hud.onCalm(callback: () -> ())
+	table.insert(calmListeners, callback)
+end
+
+function Hud.setHidden(reason: string, hidden: boolean)
+	hiddenBy[reason] = if hidden then true else nil
+	local show = next(hiddenBy) == nil
+	apply(show)
 	if not show then
 		for _, rest in resets do
 			rest()

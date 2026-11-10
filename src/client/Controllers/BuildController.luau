@@ -590,6 +590,11 @@ local function buildButton()
 	})
 end
 
+-- How many of a Bag item this client knows the player holds (Pish's trophy lesson points at the trophy you have)
+function BuildController.ItemCount(itemId: string): number
+	return items[itemId] or 0
+end
+
 function BuildController.Start()
 	local screenGui = UIController.GetScreenGui()
 	buildShopPanel(screenGui)

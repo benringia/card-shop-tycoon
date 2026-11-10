@@ -399,22 +399,6 @@ local function lightGlow(model: Model, strength: number)
 	end
 end
 
--- Its attack clips (ReplicatedStorage.MonsterAnimations/<key>, Util/ClipPlayer), on a model with them
-local function loadClips(model: Model, key: string): ({ [string]: ClipPlayer.Clip }, ClipPlayer.Player?)
-	local clips = {}
-	local folder = ReplicatedStorage:FindFirstChild("MonsterAnimations")
-	local set = if folder then folder:FindFirstChild(key) else nil
-	if not set then
-		return clips, nil
-	end
-	for _, item in set:GetChildren() do
-		if item:IsA("KeyframeSequence") then
-			clips[item.Name] = ClipPlayer.clip(item)
-		end
-	end
-	return clips, if next(clips) then ClipPlayer.attach(model) else nil
-end
-
 local function add(marker: BasePart)
 	local species = marker:GetAttribute("Species")
 	if monsters[marker] or typeof(species) ~= "string" then
@@ -454,7 +438,7 @@ local function add(marker: BasePart)
 	end
 	local fxSpec = if boss or not template then nil else (Wild.SPECIES[species] :: any).fx
 	local key = if boss then bossId :: string else species
-	local clips, clipPlayer = loadClips(model, key)
+	local clips, clipPlayer = ClipPlayer.loadSet(key, model)
 	local lengths = {}
 	for name, clip in clips do
 		lengths[name] = clip.length

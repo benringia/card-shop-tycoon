@@ -139,4 +139,15 @@ function WeaponLookRules.fullAuras(candidates: { Candidate }, nearest: number, r
 	return full
 end
 
+-- The weapon window's family icon (Config/WeaponLooks ICONS; a Config/UIIcons name)
+function WeaponLookRules.familyIcon(looks: any, family: string): string
+	return looks.ICONS.family[family] or looks.ICONS.unknownFamily
+end
+
+-- A perk's icon: a venom burn by its look, else by its kind
+function WeaponLookRules.perkIcon(looks: any, perk: { kind: string, look: string? }): string
+	local icons = looks.ICONS.perk
+	return (if perk.look then icons[perk.look] else nil) or icons[perk.kind] or looks.ICONS.unknownPerk
+end
+
 return WeaponLookRules
