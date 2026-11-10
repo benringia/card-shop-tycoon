@@ -31,7 +31,7 @@ return {
 		},
 		fight = {
 			intro = {},
-			now = { default = "Walk up to a monster to fight it!" },
+			now = { default = "Walk up to a monster and tap Fight!" },
 		},
 		firstWin = {
 			intro = { "You won! Your creature got XP.", "Win more fights to level it up!", "Come back at shop level 4. Bye!" },
@@ -47,13 +47,17 @@ return {
 		},
 		fight2 = {
 			intro = {},
-			now = { default = "Walk up to a monster to fight it!" },
+			now = { default = "Walk up to a monster and tap Fight!" },
 		},
 		boss = {
 			intro = { "Great fighting!", "The Meadow Warden lives through that portal.", "Beat it for a trophy! Bye!" },
 			now = {},
 		},
 	} :: { [string]: { intro: { string }, now: { [string]: string } } },
+	-- The last line of the first fight's end for a player already at shop level 4 (the sword's visit comes straight on)
+	SWORD_NOW = "You have a sword too! Let's try it!",
+	-- A sword fight lost or run from: the step stays, he cheers them on to try again
+	RETRY = "Oops! Rest up, then try another one!",
 	-- His first fight lost (in place of firstWin's intro)
 	LOST = { "Oh no! Your creature got tired.", "Rest it, or bring another card.", "Come back at shop level 4. Bye!" },
 	-- In a fight: what to try, one tip at a time (ChikinController), the paw on the button
@@ -76,4 +80,5 @@ return {
 	} :: { [string]: string },
 	NEXT = "Next",
 	BYE = "Bye!",
+	GO = "Let's go!", -- a hello's last button
 }

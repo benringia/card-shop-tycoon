@@ -120,6 +120,10 @@ local function check(player: Player)
 	if not state or not begun[player] then
 		return
 	end
+	-- A new fight on: the last one's result is gone (the sword fight's "try another one" line clears)
+	if BattleService.IsFighting(player) and player:GetAttribute("ChikinFightResult") ~= nil then
+		player:SetAttribute("ChikinFightResult", nil)
+	end
 	local current = TutorialRules.current(state, STEPS)
 	if current and seenDone(player, current) then
 		record(player, current)
@@ -132,7 +136,9 @@ local function fightOver(player: Player, result: string)
 	local current = if state and begun[player] then TutorialRules.current(state, STEPS) else nil
 	if current == "fight" or current == "fight2" then
 		player:SetAttribute("ChikinFightResult", result)
-		record(player, current)
+		if result == "win" or not Chikin.WIN_TO_PASS[current] then
+			record(player, current)
+		end
 	end
 end
 
@@ -224,6 +230,7 @@ function CombatTutorialService.Start()
 	BattleService.OnMemberLeft(function(player)
 		fightOver(player, "run")
 	end)
+
 	task.spawn(function()
 		while true do
 			task.wait(Chikin.CHECK_SECONDS)

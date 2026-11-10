@@ -18,6 +18,11 @@ return {
 	-- Steps whose last Next moves on (the server records them when the client says so): his hello, the first fight's
 	-- end, the sword's hello and his goodbye. A fight step ends when the fight does (won, lost or run from)
 	FINISH_STEPS = { hello = true, firstWin = true, sword = true, boss = true } :: { [string]: boolean },
+	-- Fights that must be won to move on (the sword's: "Great fighting!" after a loss would be wrong); a loss or a run
+	-- keeps the step and he says ChikinTalk.RETRY. The first fight ends either way, with its own lost lines
+	WIN_TO_PASS = { fight2 = true } :: { [string]: boolean },
+	-- His goodbyes: their last button says "Bye!" (a hello's says "Let's go!", Config/ChikinTalk GO)
+	BYE_STEPS = { firstWin = true, boss = true } :: { [string]: boolean },
 	-- Each step's picture on his talk card (Config/UIIcons)
 	STEP_ICONS = {
 		hello = "Paw",
@@ -43,5 +48,6 @@ return {
 	SOUND_PITCH = { bark = 1.55, whimper = 1.2, yip = 1.9 } :: { [string]: number },
 	SOUND_VOLUME = 1,
 	FIGHT_TIP_SECONDS = 7, -- a tip in a fight moves on after this long unused
+	FIRST_TIP_SECONDS = 3.5, -- the first ("your creature fights by itself"): a new player's first fight lasts ~12 s
 	CHECK_SECONDS = 1, -- how often the server looks at the party, the summon, the Wild and the level
 }

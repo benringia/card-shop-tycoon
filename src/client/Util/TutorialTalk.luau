@@ -43,8 +43,11 @@ local tiles: GuiObject? = nil
 local shownText = ""
 local shownIcon: string? = nil
 local onNext: (() -> ())? = nil
+local speakerName = "Pish" -- whose card it is (TutorialTalk.speaker): his face and name
+local nameLabel: TextLabel? = nil
+local forceTop = false -- in a fight the card sits at the top, clear of the combat buttons (TutorialTalk.atTop)
 
--- Pish's head in a little window (the paw while his model isn't in the game)
+-- The speaker's head in a little window, Pish's or Chikin's (the paw while his model isn't in the game)
 local function face(parent: Frame)
 	local holder = Instance.new("Frame")
 	holder.Name = "Face"
@@ -56,7 +59,7 @@ local function face(parent: Frame)
 	UIKit.corner(holder, FACE / 2)
 	UIKit.outline(holder, Color3.fromRGB(255, 215, 122), 3)
 	local models = ReplicatedStorage:FindFirstChild("NpcModels")
-	local model = models and models:FindFirstChild("Pish")
+	local model = models and models:FindFirstChild(speakerName)
 	if not model or not model:IsA("Model") then
 		local paw = Icon.make(holder, "Paw", UDim2.fromScale(0.7, 0.7))
 		paw.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -97,7 +100,9 @@ local function build(): Frame
 	face(made)
 	local colors = UIKit.colorsFor(made)
 
-	local name = UIKit.label(made, PishTalk.NAME, Enum.Font.FredokaOne, 18, Color3.fromRGB(224, 138, 44))
+	local name = UIKit.label(made, speakerName, Enum.Font.FredokaOne, 18, Color3.fromRGB(224, 138, 44))
+	name.Name = "Speaker"
+	nameLabel = name
 	name.Position = UDim2.fromOffset(12 + FACE + 12, 10)
 	name.Size = UDim2.new(1, -(12 + FACE + 12 + NEXT_WIDTH + PICTURE + 30), 0, 22)
 	name.TextXAlignment = Enum.TextXAlignment.Left
@@ -210,6 +215,7 @@ local function build(): Frame
 			end
 			covered = across and low > bottom - height and top - PAW_ROOM < bottom
 		end
+		covered = covered or forceTop
 		-- Clear of the Skip button at the top right (on a short phone screen a raised card reaches it): narrower, to its
 		-- left
 		local cardTop = if covered then TOP else bottom - height
@@ -296,6 +302,30 @@ function TutorialTalk.advance()
 	if callback and nextButton and nextButton.Visible then
 		callback()
 	end
+end
+
+-- Whose card it is: "Pish" (the default) or "Chikin": his face and name
+function TutorialTalk.speaker(name: string)
+	if name == speakerName then
+		return
+	end
+	speakerName = name
+	local shown = card
+	if shown then
+		local old = shown:FindFirstChild("Face")
+		if old then
+			old:Destroy()
+		end
+		face(shown)
+	end
+	if nameLabel then
+		nameLabel.Text = name
+	end
+end
+
+-- In a fight: the card at the top, clear of the combat buttons
+function TutorialTalk.atTop(on: boolean)
+	forceTop = on
 end
 
 -- What Pish points at in a window now (nil: nothing to keep clear)

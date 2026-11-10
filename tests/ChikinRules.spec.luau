@@ -50,6 +50,12 @@ return {
 			assert(Chikin.FINISH_STEPS[step], `{step} ends on its last Next`)
 		end
 		expect.equal(#ChikinTalk.STEPS.party.intro, 0, "the party step starts on what to do (hello said hi)")
+		-- A hello's last button starts the lesson; only his goodbyes say Bye
+		expect.equal(Chikin.BYE_STEPS.firstWin, true)
+		expect.equal(Chikin.BYE_STEPS.boss, true)
+		expect.equal(Chikin.BYE_STEPS.hello, nil)
+		expect.equal(Chikin.BYE_STEPS.sword, nil)
+		expect.equal(ChikinTalk.GO, "Let's go!")
 		assert(#ChikinTalk.LOST >= 2, "a lost first fight has its own lines")
 	end,
 
@@ -75,6 +81,23 @@ return {
 		for key, text in ChikinTalk.LABELS do
 			check(`LABELS.{key}`, string.format(text, 3, 5))
 		end
+	end,
+
+	["in a fight the first tip is short (a new player's first fight lasts about 12 s), the others longer"] = function()
+		assert(Chikin.FIRST_TIP_SECONDS <= 4, "the creature fights by itself: a quick word")
+		assert(Chikin.FIGHT_TIP_SECONDS > Chikin.FIRST_TIP_SECONDS, "time to try the button")
+	end,
+
+	["a player already at shop level 4 hears 'let's try your sword' instead of 'come back at level 4'"] = function()
+		assert(ChikinTalk.SWORD_NOW, "the line")
+		assert((utf8.len(ChikinTalk.SWORD_NOW) :: number) <= 60, "short")
+		assert(string.find(ChikinTalk.STEPS.firstWin.intro[#ChikinTalk.STEPS.firstWin.intro], "level 4", 1, true), "the usual last line names level 4")
+	end,
+
+	["a sword fight not won stays on the fight step (the second visit needs a win to finish); the first moves on"] = function()
+		expect.equal(Chikin.WIN_TO_PASS.fight2, true, "the sword fight")
+		expect.equal(Chikin.WIN_TO_PASS.fight, nil, "the first fight ends either way (its own lost lines)")
+		assert(ChikinTalk.RETRY and (utf8.len(ChikinTalk.RETRY) :: number) <= 60, "a short try-again line")
 	end,
 
 	["Pish hands over to Chikin at his goodbye"] = function()

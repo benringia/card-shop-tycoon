@@ -211,5 +211,6 @@ return {
 	WeaponBeacon = remotes.WeaponBeacon,
 	PishPetted = remotes.PishPetted,
 	TutorialAction = remotes.TutorialAction,
+	CombatTutorialAction = remotes.CombatTutorialAction,
 	TutorialState = remotes.TutorialState,
 }

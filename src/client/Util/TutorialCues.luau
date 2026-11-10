@@ -49,6 +49,7 @@ local spotFrames: { Frame }? = nil
 local card: Frame? = nil
 local askCard: Frame? = nil -- the "tour again?" card (TutorialCues.askReplay)
 local ASK_SIZE = Vector2.new(330, 150)
+local ASK_EXTRA = 60 -- px taller with a second choice
 
 -- Gold paws: white ones vanished against the shop's white walls and light floors
 local function tint(icon: Instance, color: Color3)
@@ -268,7 +269,7 @@ end
 
 -- The tour card (Skip tapped): "Pish's Tour · 3 of 8", the paw row, his gift and what you'd miss, a big green Keep
 -- going and a small grey Skip tour
-function TutorialCues.tourCard(done: number, total: number, onKeep: () -> (), onSkip: () -> ())
+function TutorialCues.tourCard(done: number, total: number, onKeep: () -> (), onSkip: () -> (), custom: { tour: string?, tourGift: string?, icon: string? }?)
 	if card and card.Parent then
 		return
 	end
@@ -282,7 +283,8 @@ function TutorialCues.tourCard(done: number, total: number, onKeep: () -> (), on
 	made.Parent = gui()
 	UIKit.creamWindow(made)
 	local ink = UIKit.colorsFor(made).ink
-	local title = UIKit.label(made, string.format(labels.tour, math.min(done + 1, total), total), Enum.Font.FredokaOne, 24, ink)
+	local own = custom or {}
+	local title = UIKit.label(made, string.format(own.tour or labels.tour, math.min(done + 1, total), total), Enum.Font.FredokaOne, 24, ink)
 	title.Position = UDim2.fromOffset(0, 12)
 	title.Size = UDim2.new(1, 0, 0, 30)
 	title.TextXAlignment = Enum.TextXAlignment.Center
@@ -308,10 +310,10 @@ function TutorialCues.tourCard(done: number, total: number, onKeep: () -> (), on
 			end
 		end
 	end
-	local gift = Icon.make(made, "PishGift", UDim2.fromOffset(72, 72))
+	local gift = Icon.make(made, own.icon or "PishGift", UDim2.fromOffset(72, 72))
 	gift.AnchorPoint = Vector2.new(0.5, 0)
 	gift.Position = UDim2.new(0.5, 0, 0, 82)
-	local line = UIKit.label(made, labels.tourGift, Enum.Font.FredokaOne, 19, ink)
+	local line = UIKit.label(made, own.tourGift or labels.tourGift, Enum.Font.FredokaOne, 19, ink)
 	line.Position = UDim2.fromOffset(0, 156)
 	line.Size = UDim2.new(1, 0, 0, 24)
 	line.TextXAlignment = Enum.TextXAlignment.Center
@@ -345,8 +347,8 @@ function TutorialCues.tourCard(done: number, total: number, onKeep: () -> (), on
 end
 
 -- Tapping the peeking Pish (round 5: he's the Pish button): "Want my shop tour again?" with a big green Yes and a
--- small grey Not now, so a stray tap never restarts it
-function TutorialCues.askReplay(onYes: () -> ())
+-- small grey Not now, so a stray tap never restarts it; `extra` adds a wide button above them (Chikin's fight lesson)
+function TutorialCues.askReplay(onYes: () -> (), extra: { label: string, onTap: () -> () }?)
 	if askCard and askCard.Parent then
 		return
 	end
@@ -355,7 +357,7 @@ function TutorialCues.askReplay(onYes: () -> ())
 	made.Name = "AskReplay"
 	made.AnchorPoint = Vector2.new(0.5, 0.5)
 	made.Position = UDim2.fromScale(0.5, 0.5)
-	made.Size = UDim2.fromOffset(ASK_SIZE.X, ASK_SIZE.Y)
+	made.Size = UDim2.fromOffset(ASK_SIZE.X, ASK_SIZE.Y + (if extra then ASK_EXTRA else 0))
 	made.ZIndex = 40
 	made.Parent = gui()
 	UIKit.creamWindow(made)
@@ -388,6 +390,18 @@ function TutorialCues.askReplay(onYes: () -> ())
 		onYes()
 	end)
 	no.Activated:Connect(close)
+	if extra then
+		local other = UIKit.button(made, extra.label, UIKit.Colors.Accent)
+		other.Name = "Extra"
+		other.Position = UDim2.fromOffset(16, 60)
+		other.Size = UDim2.new(1, -32, 0, 48)
+		other.Font = Enum.Font.FredokaOne
+		other.TextSize = 20
+		other.Activated:Connect(function()
+			close()
+			extra.onTap()
+		end)
+	end
 	askCard = made
 end
 
@@ -475,6 +489,14 @@ end
 -- The cues' screen, for the controller's own pieces (the skip button and card)
 function TutorialCues.screen(): ScreenGui
 	return gui()
+end
+
+-- Who wants the cues hidden now (Pish while an opening, a fight or a weapon reveal has the screen; Chikin keeps his up
+-- in a fight): the screen shows while nobody does
+local quietBy: { [string]: boolean } = {}
+function TutorialCues.quiet(who: string, on: boolean)
+	quietBy[who] = if on then true else nil
+	gui().Enabled = next(quietBy) == nil
 end
 
 return TutorialCues
