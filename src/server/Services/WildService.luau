@@ -894,7 +894,8 @@ local function dressArena(folder: Instance, boss: any, center: Vector3, copy: nu
 	end
 	local backdrop = dressing.backdrop
 	if backdrop then
-		arenaPiece(folder, { model = backdrop.model, x = center.X + backdrop.distance, z = center.Z, height = backdrop.height, yaw = 270 }, "ArenaBackdrop", center.Y - 10)
+		-- (its own yaw and sink when it stands inside the arena, like the Frost Tyrant's throne; the Wild's volcano: 270, 10)
+		arenaPiece(folder, { model = backdrop.model, x = center.X + backdrop.distance, z = center.Z, height = backdrop.height, yaw = backdrop.yaw or 270 }, "ArenaBackdrop", center.Y - (backdrop.sink or 10))
 	end
 	local anchor = Instance.new("Part")
 	anchor.Name = "ArenaSound"

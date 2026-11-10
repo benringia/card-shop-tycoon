@@ -151,9 +151,9 @@ return {
 		{ shape = "Block", x = 328, y = 54, z = 394, size = { x = 76, y = 4, z = 128 }, material = "Basalt" },
 		-- Stormpeak: its floor, slate cliffs east, south and north-east, the drop's east side
 		{ shape = "Block", x = 407.5, y = 26, z = 140, size = { x = 235, y = 4, z = 380 }, material = "Slate" },
-		{ shape = "Block", x = 532, y = 44, z = 140, size = { x = 14, y = 36, z = 400 }, material = "Slate" },
-		{ shape = "Block", x = 414.5, y = 44, z = -57, size = { x = 249, y = 36, z = 14 }, material = "Slate" },
-		{ shape = "Block", x = 483.5, y = 44, z = 336, size = { x = 111, y = 36, z = 12 }, material = "Slate" },
+		{ shape = "Block", x = 532, y = 41, z = 140, size = { x = 14, y = 30, z = 400 }, material = "Slate" },
+		{ shape = "Block", x = 414.5, y = 41, z = -57, size = { x = 249, y = 30, z = 14 }, material = "Slate" },
+		{ shape = "Block", x = 483.5, y = 41, z = 336, size = { x = 111, y = 30, z = 12 }, material = "Slate" },
 		{ shape = "Block", x = 434, y = 21, z = 394, size = { x = 12, y = 70, z = 104 }, material = "Basalt" },
 		-- The Rift: its crater floor and a tall basalt rim all round
 		{ shape = "Block", x = 212, y = -16, z = 581.5, size = { x = 590, y = 4, z = 247 }, material = "Basalt" },
@@ -165,18 +165,18 @@ return {
 	-- Lumps along the walls' tops (WildValley.skylineOps): snowy hills round Frostwood, the giant's lumpy body, slate
 	-- crags round Stormpeak, the Rift's jagged rim
 	SKYLINES = {
-		{ material = "Snow", top = 22, seed = 41, points = { { x = -135, z = -87 }, { x = 220, z = -87 } }, spacing = 22, radius = { 7, 13 }, rise = { 4, 10 }, drift = 2 },
-		{ material = "Snow", top = 22, seed = 42, points = { { x = -132, z = -70 }, { x = -132, z = 145 } }, spacing = 22, radius = { 7, 13 }, rise = { 4, 10 }, drift = 2 },
-		{ material = "Snow", top = 36, seed = 43, points = { { x = 256, z = -80 }, { x = 256, z = 22 } }, spacing = 22, radius = { 7, 13 }, rise = { 4, 8 }, drift = 2 },
-		{ material = "Rock", top = 48, seed = 44, points = { { x = -120, z = 158 }, { x = 280, z = 158 } }, spacing = 22, radius = { 7, 13 }, rise = { 6, 14 }, drift = 2 },
-		{ material = "Rock", top = 56, seed = 45, points = { { x = 286, z = 170 }, { x = 286, z = 325 } }, spacing = 22, radius = { 7, 13 }, rise = { 5, 12 }, drift = 2 },
-		{ material = "Slate", top = 62, seed = 46, points = { { x = 534, z = -50 }, { x = 534, z = 335 } }, spacing = 22, radius = { 7, 13 }, rise = { 5, 12 }, drift = 2 },
-		{ material = "Slate", top = 62, seed = 47, points = { { x = 300, z = -59 }, { x = 525, z = -59 } }, spacing = 22, radius = { 7, 13 }, rise = { 5, 12 }, drift = 2 },
-		{ material = "Slate", top = 62, seed = 48, points = { { x = 440, z = 338 }, { x = 525, z = 338 } }, spacing = 22, radius = { 7, 13 }, rise = { 5, 12 }, drift = 2 },
-		{ material = "Basalt", top = 50, seed = 51, points = { { x = -90, z = 714 }, { x = 515, z = 714 } }, spacing = 22, radius = { 7, 13 }, rise = { 6, 16 }, drift = 2 },
-		{ material = "Basalt", top = 50, seed = 52, points = { { x = -92, z = 470 }, { x = -92, z = 705 } }, spacing = 22, radius = { 7, 13 }, rise = { 6, 16 }, drift = 2 },
-		{ material = "Basalt", top = 50, seed = 53, points = { { x = 516, z = 470 }, { x = 516, z = 705 } }, spacing = 22, radius = { 7, 13 }, rise = { 6, 16 }, drift = 2 },
-		{ material = "Basalt", top = 52, seed = 54, points = { { x = -120, z = 450 }, { x = 360, z = 450 } }, spacing = 22, radius = { 7, 13 }, rise = { 6, 14 }, drift = 2 },
+		{ material = "Snow", top = 22, seed = 41, points = { { x = -135, z = -87 }, { x = 220, z = -87 } }, spacing = 26, radius = { 7, 13 }, rise = { 4, 10 }, drift = 2 },
+		{ material = "Snow", top = 22, seed = 42, points = { { x = -132, z = -70 }, { x = -132, z = 145 } }, spacing = 26, radius = { 7, 13 }, rise = { 4, 10 }, drift = 2 },
+		{ material = "Snow", top = 36, seed = 43, points = { { x = 256, z = -80 }, { x = 256, z = 22 } }, spacing = 26, radius = { 7, 13 }, rise = { 4, 8 }, drift = 2 },
+		{ material = "Rock", top = 48, seed = 44, points = { { x = -120, z = 158 }, { x = 280, z = 158 } }, spacing = 26, radius = { 7, 13 }, rise = { 6, 14 }, drift = 2 },
+		{ material = "Rock", top = 56, seed = 45, points = { { x = 286, z = 170 }, { x = 286, z = 325 } }, spacing = 26, radius = { 7, 13 }, rise = { 5, 12 }, drift = 2 },
+		{ material = "Slate", top = 56, seed = 46, points = { { x = 534, z = -50 }, { x = 534, z = 335 } }, spacing = 26, radius = { 7, 13 }, rise = { 5, 12 }, drift = 2 },
+		{ material = "Slate", top = 56, seed = 47, points = { { x = 300, z = -59 }, { x = 525, z = -59 } }, spacing = 26, radius = { 7, 13 }, rise = { 5, 12 }, drift = 2 },
+		{ material = "Slate", top = 56, seed = 48, points = { { x = 440, z = 338 }, { x = 525, z = 338 } }, spacing = 26, radius = { 7, 13 }, rise = { 5, 12 }, drift = 2 },
+		{ material = "Basalt", top = 50, seed = 51, points = { { x = -90, z = 714 }, { x = 515, z = 714 } }, spacing = 26, radius = { 7, 13 }, rise = { 6, 16 }, drift = 2 },
+		{ material = "Basalt", top = 50, seed = 52, points = { { x = -92, z = 470 }, { x = -92, z = 705 } }, spacing = 26, radius = { 7, 13 }, rise = { 6, 16 }, drift = 2 },
+		{ material = "Basalt", top = 50, seed = 53, points = { { x = 516, z = 470 }, { x = 516, z = 705 } }, spacing = 26, radius = { 7, 13 }, rise = { 6, 16 }, drift = 2 },
+		{ material = "Basalt", top = 52, seed = 54, points = { { x = -120, z = 450 }, { x = 360, z = 450 } }, spacing = 26, radius = { 7, 13 }, rise = { 6, 14 }, drift = 2 },
 	},
 	CARVES = {},
 
@@ -184,12 +184,12 @@ return {
 	BOSS_PORTAL = { model = "PortalArena", height = 20 },
 	ARENA_FIELD = { x = 1600, z = 1400, y = 0, spacing = 1200 },
 	ARENA_CLEARING = {
-		size = { 136, 148, 140 },
+		size = { 156, 156, 156 }, -- walls 72-76 out need ground to stand on
 		ground = 360,
 		sink = 0.5,
 		thickness = 2,
 		materials = { "Snow", "Slate", "Basalt" },
-		apronColors = { { 222, 230, 240 }, { 82, 86, 98 }, { 46, 38, 58 } },
+		apronColors = { { 222, 230, 240 }, { 82, 86, 98 }, { 28, 18, 42 } }, -- the Rift's island over a dark void
 	},
 	ARENA_COPIES_FOR_TERRAIN = 4,
 	ARENA_HOLD = 120,
@@ -201,41 +201,45 @@ return {
 		{ floor = { 80, 84, 96 }, floorMaterial = "Slate", path = { 100, 104, 116 }, pathMaterial = "Slate", post = { 70, 72, 84 }, postMaterial = "Slate", postSize = 1.6, postHeight = 7, tip = { 255, 230, 80 } },
 		{ floor = { 40, 30, 52 }, floorMaterial = "Basalt", path = { 58, 44, 70 }, pathMaterial = "Basalt", post = { 48, 36, 60 }, postMaterial = "Basalt", postSize = 1.6, postHeight = 6, tip = { 190, 110, 255 } },
 	},
-	-- Each Frontier boss's arena (stand-in pieces until the Frontier's props: Task 5 of the plan)
+	-- Each Frontier boss's arena (WildValley.arenaDressing; the Wild's rules: rows of walls all round, inner pieces clear
+	-- of the fight, the path and the way home). The Frontier's bosses are big, so the walls stand 72+ out
 	ARENA_DRESSING = {
-		{ -- the Frost Tyrant's frozen hall
+		{ -- the Frost Tyrant's frozen hall: ice pillars round it, snowy pines behind, his broken ice throne at the far end
 			walls = {
-				{ radius = 60, count = 30, models = { "PineA", "PineB", "Pine" }, height = { 30, 40 } },
+				{ radius = 72, count = 34, models = { "IcePillar" }, height = { 18, 28 } },
+				{ radius = 74, count = 36, models = { "SnowPine" }, height = { 34, 44 } },
 			},
 			inner = {
-				{ models = { "RuinPillar", "RuinPillarBroken" }, count = 8, radius = { 44, 66 }, height = { 10, 16 } },
-				{ models = { "RockA", "RockB" }, count = 10, radius = { 42, 68 }, height = { 4, 7 } },
+				{ models = { "RockA", "RockB" }, count = 8, radius = { 44, 66 }, height = { 3, 5 } },
+				{ models = { "GiantSword" }, count = 4, radius = { 48, 64 }, height = { 10, 14 } },
 			},
-			effects = { { kind = "snow", rate = 20, y = 40, size = 150 }, { kind = "mist", rate = 3, y = 2, size = 140 } },
-			sound = { id = "rbxassetid://9120505297", volume = 0.3, range = 90 },
+			backdrop = { model = "IceThrone", distance = 62, height = 26, yaw = 90, sink = 1 },
+			effects = { { kind = "snow", rate = 24, y = 40, size = 150 }, { kind = "mist", rate = 3, y = 2, size = 140 } },
+			sound = { id = "rbxassetid://9114057104", volume = 0.35, range = 90 }, -- Pro Sound Effects: Desert Wind Whistley Light Gusts 1
 		},
-		{ -- the Storm Sovereign's summit
+		{ -- the Storm Sovereign's summit: a ring of storm stones, rock spires behind, broken stones and bones
 			walls = {
-				{ radius = 60, count = 24, models = { "StandingStone" }, height = { 18, 26 } },
-				{ radius = 68, count = 30, models = { "RockA", "RockB", "RockC" }, height = { 16, 26 } },
+				{ radius = 72, count = 34, models = { "StormStone" }, height = { 14, 20 } },
+				{ radius = 74, count = 34, models = { "RockSpire" }, height = { 26, 36 } },
 			},
 			inner = {
-				{ models = { "RuinPillarBroken", "RuinPillarFallen" }, count = 8, radius = { 44, 64 }, height = { 4, 9 } },
+				{ models = { "RockA", "RockB", "RockC" }, count = 8, radius = { 44, 66 }, height = { 3, 6 } },
+				{ models = { "Bones" }, count = 4, radius = { 46, 64 }, height = { 4, 6 } },
 			},
 			effects = { { kind = "ash", rate = 6, y = 40, size = 160 }, { kind = "mist", rate = 3, y = 2, size = 140 } },
-			sound = { id = "rbxassetid://9120505297", volume = 0.3, range = 90 },
+			sound = { id = "rbxassetid://9120018695", volume = 0.4, range = 90 }, -- Pro Sound Effects: Thunder Distant Rumble 2
 		},
-		{ -- the Rift Devourer's island
+		{ -- the Rift Devourer's island: dark stalagmites round it, floating rocks over it, violet crystals, the void below
 			walls = {
-				{ radius = 64, count = 30, models = { "Stalagmite", "LavaCliff" }, height = { 20, 34 } },
+				{ radius = 72, count = 34, models = { "Stalagmite" }, height = { 22, 34 } },
 			},
 			inner = {
-				{ models = { "ObsidianShards" }, count = 11, radius = { 42, 70 }, height = { 4, 8 } },
-				{ models = { "Bones" }, count = 6, radius = { 42, 68 }, height = { 4, 7 } },
+				{ models = { "FloatingRock" }, count = 6, radius = { 50, 66 }, height = { 6, 9 }, y = 14 },
+				{ models = { "Bones" }, count = 4, radius = { 44, 66 }, height = { 4, 7 } },
 			},
 			crystals = { count = 10, radius = { 44, 70 }, height = { 4, 7 } },
 			effects = { { kind = "glints", rate = 5, y = 4, size = 140 }, { kind = "mist", rate = 3, y = 2, size = 140 } },
-			sound = { id = "rbxassetid://9120505297", volume = 0.3, range = 90 },
+			sound = { id = "rbxassetid://9112775624", volume = 0.4, range = 90 }, -- Pro Sound Effects: Eerie Presence 3
 		},
 	},
 	ARENA_FENCE = 36,

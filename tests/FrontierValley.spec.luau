@@ -293,6 +293,76 @@ return {
 		end
 	end,
 
+	-- Plan Task 5: the Frontier bosses' arenas, mirroring the Wild's rules
+	["each Frontier arena copy is walled in round its clearing, its ring and its way home inside"] = function()
+		local clearing = valley.ARENA_CLEARING
+		for zone = 1, 3 do
+			local half = clearing.size[zone] / 2
+			assert(valley.ARENA_HOLD >= half * math.sqrt(2), `zone {zone}: a player in a clearing's corner still holds the copy`)
+			for copy = 1, bosses.ARENA_COPIES do
+				local c = WildValley.arenaCopyCenter(valley, zone, copy)
+				local edge = WildValley.arenaEdge(valley, zone, copy)
+				expect.equal(WildValley.inside(edge, c), true, `copy {zone}/{copy}'s middle`)
+				expect.equal(WildValley.inside(edge, { x = c.x - valley.ARENA_HOME.distance, z = c.z }), true, `copy {zone}/{copy}'s way home`)
+				for _, p in edge do
+					assert(math.abs(p.x - c.x) <= half and math.abs(p.z - c.z) <= half, "the wall stands on the clearing")
+				end
+			end
+		end
+	end,
+
+	["each Frontier arena is walled all round, its pieces clear of the fight and the way home, with its own sound"] = function()
+		local function bossOf(zone: number): any
+			for _, boss in bosses.BOSSES do
+				if (boss :: any).place == "Frontier" and boss.zone == zone then
+					return boss
+				end
+			end
+			error(`no Frontier boss in zone {zone}`)
+		end
+		local function lcg(seed: number): () -> number
+			local state = seed
+			return function(): number
+				state = (state * 1103515245 + 12345) % 2147483648
+				return state / 2147483648
+			end
+		end
+		for zone = 1, 3 do
+			local dressing = valley.ARENA_DRESSING[zone]
+			local ringRadius = bossOf(zone).ringRadius or bosses.RING_RADIUS
+			for _, row in dressing.walls do
+				assert(2 * math.pi * row.radius / row.count <= 14, `zone {zone}: a gap in its walls`)
+				assert(row.radius + 4 <= valley.ARENA_CLEARING.size[zone] / 2, `zone {zone}: a wall off its ground`)
+				-- the Frontier's bosses are big: walls stand well back from the fight (the owner found the Wild's 56 tight)
+				assert(row.radius >= 72, `zone {zone}: walls {row.radius} studs out`)
+			end
+			for _, piece in WildValley.arenaDressing(valley, ringRadius, zone, lcg(zone)) do
+				if not piece.wall then
+					local distance = math.sqrt(piece.x ^ 2 + piece.z ^ 2)
+					assert(distance > ringRadius + 4 and distance > bosses.ARENA_RADIUS + 2, `zone {zone}: a piece in the fight`)
+					assert(not (piece.x < -bosses.ARENA_RADIUS and math.abs(piece.z) < 8), `zone {zone}: a piece on the path home`)
+					assert(math.sqrt((piece.x + valley.ARENA_HOME.distance) ^ 2 + piece.z ^ 2) >= 8, `zone {zone}: a piece by the way home`)
+				end
+			end
+			assert(string.match(dressing.sound.id, "^rbxassetid://%d+$"), `zone {zone} has no ambient sound`)
+			assert(dressing.sound.range < valley.ARENA_FIELD.spacing / 2, `zone {zone}'s sound reaches the next copy`)
+		end
+		assert(valley.ARENA_DRESSING[1].backdrop and valley.ARENA_DRESSING[1].backdrop.model == "IceThrone", "the Frost Tyrant's throne")
+	end,
+
+	["the Frontier arenas' fence agrees with Bosses and their way home is the crystal ring inside the walls"] = function()
+		expect.equal(valley.ARENA_FENCE, bosses.ARENA_RADIUS)
+		local home = valley.ARENA_HOME
+		for zone = 1, 3 do
+			expect.equal(home[zone].model, "PortalFrontier", `zone {zone}'s way home`)
+			local innerWall = math.huge
+			for _, row in valley.ARENA_DRESSING[zone].walls do
+				innerWall = math.min(innerWall, row.radius)
+			end
+			assert(home.distance >= bosses.ARENA_RADIUS + 6 and home.distance <= innerWall - 4, `zone {zone}: the way home is outside its walls`)
+		end
+	end,
+
 	["the Frontier's terrain flag is its own"] = function()
 		assert(valley.TERRAIN_READY_ATTRIBUTE ~= wildValley.TERRAIN_READY_ATTRIBUTE, "the two valleys share a terrain flag")
 	end,
