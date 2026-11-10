@@ -174,7 +174,13 @@ local function enter(player: Player, stepId: string)
 		state.firstGiven = true
 		ItemService.GiveItem(player, Pish.FIRST_ITEM, 1)
 	elseif stepId == "customer" and TutorialRules.sendsCustomer(state) then
-		CustomerService.SpawnForTest(player, "plain")
+		-- Once ever (a skip and a replay never bring another), and within the shop's customer cap; without room the
+		-- shop's own customers complete the step
+		state = TutorialRules.customerSent(state)
+		states[player] = state
+		if CustomerService.HasRoom(player) then
+			CustomerService.SpawnForTest(player, "plain")
+		end
 	elseif stepId == "gift" and not state.giftClaimed then
 		state.giftClaimed = true
 		ItemService.GiveItem(player, Pish.GIFT_ITEM, 1)
@@ -275,6 +281,20 @@ function TutorialService.LessonDone(player: Player, lessonId: string, used: bool
 	publish(player)
 end
 
+-- A lesson's thing placed or ordered: done if it was waiting; seen if it wasn't due yet, so it's never taught later
+-- (a case bought at level 1 isn't taught at level 2; final review I3)
+local function usedLesson(player: Player, lessonId: string)
+	local state = states[player]
+	if not state then
+		return
+	end
+	if state.lessons[lessonId] == false then
+		TutorialService.LessonDone(player, lessonId, true)
+	elseif state.lessons[lessonId] == nil then
+		state.lessons = LessonRules.used(state.lessons, lessonId)
+	end
+end
+
 -- Studio's /tutorial lesson <id>: that lesson waits to be shown again
 function TutorialService.QueueLesson(player: Player, lessonId: string)
 	local state = states[player]
@@ -343,6 +363,7 @@ local function save(player: Player, data: DataService.PlayerData)
 		early = table.clone(state.early),
 		firstGiven = state.firstGiven,
 		giftClaimed = state.giftClaimed,
+		customerSent = state.customerSent,
 		lessons = table.clone(state.lessons),
 		pishLuckAt = PishService.GetLuckAt(player),
 	}
@@ -412,7 +433,7 @@ function TutorialService.Start()
 		local def = Shelves.ById[shelfId]
 		local lesson = LessonRules.forShelf(Pish.LESSONS, shelfId, if def then def.kind else nil)
 		if lesson then
-			TutorialService.LessonDone(player, lesson, true)
+			usedLesson(player, lesson)
 		end
 	end)
 	StockService.OnOrdered(function(player, productId)
@@ -422,7 +443,7 @@ function TutorialService.Start()
 		end
 		local lesson = LessonRules.forProduct(Pish.LESSONS, productId)
 		if lesson then
-			TutorialService.LessonDone(player, lesson, true)
+			usedLesson(player, lesson)
 		end
 	end)
 	StockService.OnStocked(function(player)

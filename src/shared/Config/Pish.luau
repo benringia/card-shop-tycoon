@@ -65,6 +65,7 @@ return {
 		idleEvery = { 5, 10 },
 		napChance = 0.1,
 		shopChance = 0.5,
+		petHoldMax = 8, -- seconds petting can hold him in one place (Util/PishPath.holdEnd): pets every 2 s can't keep him
 		idleClips = { "sit", "sniff", "bark", "roll", "dig", "shake", "playBow", "headTilt", "yawnStretch", "tailChase", "happyHop", "scratch" },
 	},
 	HEIGHT = 2.6, -- studs: a small dog beside a 5-stud player

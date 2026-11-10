@@ -131,6 +131,7 @@ local trailFrom: Vector3? = nil
 local trailTo: Vector3? = nil
 local pointedAt = "" -- the step he last ran to and pointed for
 local shownKey = "" -- what the paw points at now (redrawn when it changes)
+local shownTarget: Instance? = nil -- the button or part the paw is on
 local leaving = false
 
 local function root(): BasePart?
@@ -431,7 +432,12 @@ local function partFor(spec: Target?): BasePart?
 	return if found and found:IsA("BasePart") then found else nil
 end
 
+-- A thing in the shop or town to point at; none while a window is open (the paw and the trail are drawn over the
+-- screen, so they'd sit on top of the window)
 local function targetPart(): BasePart?
+	if UIKit.anyPanelOpen() then
+		return nil
+	end
 	local _, spec = focus()
 	return partFor(spec)
 end
@@ -513,11 +519,15 @@ local function pointPaw()
 	local key, _ = focus()
 	local button = targetButton()
 	local part = if button then nil else targetPart()
-	local drawn = key .. "|" .. (if button then button:GetFullName() elseif part then part:GetFullName() else "")
-	if drawn == shownKey then
+	local target: Instance? = button or part
+	local drawn = key .. "|" .. (if target then target:GetFullName() else "")
+	-- The same place by name is not enough: a window that rebuilds its buttons (the Bag after a tap) makes new ones
+	-- under the same names, and the paw on the old one would vanish (final review I2)
+	if drawn == shownKey and target == shownTarget then
 		return
 	end
 	shownKey = drawn
+	shownTarget = target
 	for _, remove in cues do
 		remove()
 	end
@@ -1100,6 +1110,8 @@ function TutorialController.Start()
 			pointPaw()
 			updateTrail()
 		end
+		-- The calm HUD only in town: in the Wild a player mid-tour needs the party bar and the weapon switch
+		Hud.setCalm(step ~= "" and step ~= "bye" and inTown())
 		-- The first visit's spotlight on the button Pish points at (nothing dims for a thing in the shop)
 		TutorialCues.spotlight(if step ~= "" and focusTarget then targetButton() else nil)
 		if step == "" then

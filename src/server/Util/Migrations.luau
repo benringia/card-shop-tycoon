@@ -183,6 +183,7 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 			early = {},
 			firstGiven = true,
 			giftClaimed = false,
+			customerSent = true, -- their shop already has customers: a replay brings none for free
 			lessons = {},
 			pishLuckAt = 0,
 		}

@@ -2,6 +2,7 @@
 -- Town Pish's walk between two points (spec 2026-11-09-tutorial-pish-design 4): straight, unless the plaza fountain is
 -- in the way, then round it
 local PishPath = require("../src/shared/Util/PishPath")
+local Pish = require("../src/shared/Config/Pish")
 local expect = require("./lib/expect")
 
 type Point = { x: number, z: number }
@@ -51,5 +52,12 @@ return {
 	["a point inside the circle is reached straight (nothing to go round)"] = function()
 		local points = PishPath.route({ x = 20, z = 0 }, { x = 5, z = 0 }, CENTRE, 9)
 		expect.equal(#points, 1)
+	end,
+	["petting holds him still, but never longer than petHoldMax in one place (final review: one owner kept him at their door)"] = function()
+		local max = Pish.TOWN.petHoldMax
+		assert(max and max >= 3 and max <= 15, "a few seconds")
+		expect.equal(PishPath.holdEnd(12, 10, max), 12, "one pet: he holds 2 s")
+		expect.equal(PishPath.holdEnd(10 + max + 50, 10, max), 10 + max, "petted again and again: he moves on after petHoldMax")
+		expect.equal(PishPath.holdEnd(5, 10, max), 5, "not petted now: no hold")
 	end,
 }

@@ -65,18 +65,24 @@ local function face(point: Vector3)
 	end
 end
 
--- Holds still while he's being petted
+-- Holds still while he's being petted, at most Pish.TOWN.petHoldMax seconds at a time (PishPath.holdEnd)
 local function waitWhilePetted()
-	while os.clock() < pettedUntil do
+	local started = os.clock()
+	while os.clock() < PishPath.holdEnd(pettedUntil, started, Pish.TOWN.petHoldMax) do
 		task.wait(0.1)
 	end
 end
 
 local function waitFor(seconds: number)
 	local finish = os.clock() + seconds
+	local holdLeft = Pish.TOWN.petHoldMax -- petting can stretch this wait by this much in all
 	while os.clock() < finish do
 		task.wait(0.1)
-		waitWhilePetted()
+		if holdLeft > 0 and os.clock() < pettedUntil then
+			local before = os.clock()
+			waitWhilePetted()
+			holdLeft -= os.clock() - before
+		end
 	end
 end
 
@@ -86,13 +92,16 @@ local function walkTo(target: Vector3, speed: number)
 	local here = marker.Position
 	local points = PishPath.route({ x = here.X, z = here.Z }, { x = target.X, z = target.Z }, centre, Plaza.FOUNTAIN_RADIUS + FOUNTAIN_CLEAR)
 	marker:SetAttribute("Moving", true)
+	local holdLeft = Pish.TOWN.petHoldMax -- petting can stop this walk for this long in all
 	for _, point in points do
 		local goal = ground(point.x, point.z)
 		face(goal)
 		while (Vector3.new(goal.X, 0, goal.Z) - Vector3.new(marker.Position.X, 0, marker.Position.Z)).Magnitude > 0.2 do
-			if os.clock() < pettedUntil then
+			if holdLeft > 0 and os.clock() < pettedUntil then
 				marker:SetAttribute("Moving", false)
+				local before = os.clock()
 				waitWhilePetted()
+				holdLeft -= os.clock() - before
 				marker:SetAttribute("Moving", true)
 				face(goal)
 			end

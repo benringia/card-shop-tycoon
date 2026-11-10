@@ -2229,11 +2229,13 @@ All numbers in `Config/Pish`.
   the line "Tap the X to close this window." with the paw on its X. The card rises above a HUD tile he points at so
   his paw shows, moves to the top when it would cover a button in a window, and keeps clear of the HUD's side columns
   on phones. Cues: gold paw prints to the place and a bouncing gold paw over a thing in the shop, drawn on the screen
-  so walls and closed doors don't hide them; a bouncing gold paw and a pulsing gold ring on a button. He waits
+  so walls and closed doors don't hide them (none while a window is open, so they never sit on it); a bouncing gold
+  paw and a pulsing gold ring on a button (it follows a window that rebuilds its buttons). The small Skip hides while
+  a window is open (on phones it sat on the window's X), and the talk card narrows to keep clear of it. He waits
   quietly (card and cues hidden) while a pack opening, a fight or a weapon reveal has the screen. The goodbye ("Need
   me later? Tap me on your party bar. Bye!", the HUD back and the paw on the peeking Pish there) ends on its "Bye!"
   button, a tap on the peeking Pish, or by itself 20 s after. A step the shop has already done (a replay) completes at once. Old saves skip it (v17 migration).
-- [ ] **Calm screen** (round 3, owner: "overwhelming for new players"): through the first visit the party bar, weapon
+- [ ] **Calm screen** (round 3, owner: "overwhelming for new players"): through the first visit, in town (in the Wild they show), the party bar, weapon
   switch, Bosses tile and buff chips are hidden (`Hud.calmPiece`, `Hud.setCalm`), and a **spotlight** dims everything
   but the button Pish points at (four dim frames, his card, paw and Skip above them; nothing dims for a thing in the
   shop).
@@ -2244,7 +2246,7 @@ All numbers in `Config/Pish`.
   Pish button (round 5, owner: "make it the Pish button"; the Manage tray's Pish tile is gone): a tap after the first
   visit bounces and yips and asks "Want my shop tour again?" with a big green "Yes!" and a grey "Not now"
   (`TutorialCues.askReplay`, `HudMascotView.onTap`), so a stray tap never restarts it. A replay
-  (nothing comes twice: his present and gift once, and his own customer only until his gift is claimed, `TutorialRules.sendsCustomer`; a later replay waits for a customer who comes by themselves). Icons: `PishPresent` (Pish hugging a ribboned pack) and `PishGift` (a rainbow
+  (nothing comes twice: his present and gift once, and his own customer once ever and only with room in the shop, `TutorialRules.sendsCustomer` / `customerSent`, `CustomerService.HasRoom`; skipping and replaying waits for a customer who comes by themselves). Icons: `PishPresent` (Pish hugging a ribboned pack) and `PishGift` (a rainbow
   pack with a paw medal), `Config/UIIcons`.
 - [ ] **Tutorial Pish is this player's own** (a client marker): other players see Town Pish; Town Pish and his pet prompt
   are hidden for the player Pish is leading. The guide can't be petted. Both wear a "🐾 Pish" name tag: an orange pill with white outlined words standing on a point over his head (`SizeOffset`, so far away it stays above him; owner 2026-11-10: the white one was hard to see, then it covered him from afar).
@@ -2254,7 +2256,8 @@ All numbers in `Config/Pish`.
   (within 12 studs; only the owner of the shop he's visiting, marker attribute `VisitingOwner`, and only after their
   first visit; "pet me for luck!" under his tag then, the server checks the same) gives **Pish's Luck** for 3 minutes, once per 15 minutes per player: the hit slot's Very Rare, Epic
   and Legendary weights +25% (`Util/LuckRules`, `PackService.SetLuck`), shown as a "🍀 m:ss" chip beside the creature's
-  perk chip (`BuffController`), hearts for everyone nearby.
+  perk chip (`BuffController`), hearts for everyone nearby. Petting holds him still at most 8 s in one place (`TOWN.petHoldMax`,
+  `PishPath.holdEnd`), so one owner can't keep him at their door.
 - [ ] **Lesson visits** (round 4, owner 2026-11-10: "pish teaches everything town/shop related. when a player unlocks
   something for the first time, pish will visit and teach them"): every town and shop unlock has one (`Pish.LESSONS`;
   `tests/LessonRules` fails for a Products or Shelves unlock without one): Glass Showcase 2, Card Sleeves 3, Collector
@@ -2272,7 +2275,8 @@ All numbers in `Config/Pish`.
   player finds it before he comes): a happy hop, then he runs to it (new stock: the delivery pad) and says what it's
   for, a line at a time with Next, the last "Bye!" (`PishTalk.AFTER`, owner 2026-11-10: "make him explain what this
   for"; the Glass Showcase: customers buy single cards, Edit then Cards to add some, price near value; the Collector
-  Case: for players). He leaves after 30 s with no step taken (`TEACH_QUIET_SECONDS`, Next counts); his card stays
+  Case: for players). A lesson's thing placed or ordered before its lesson is due marks it seen, so a case bought at level 1 isn't taught
+  at level 2 (`LessonRules.used`). He leaves after 30 s with no step taken (`TEACH_QUIET_SECONDS`, Next counts); his card stays
   above the Rotate / Place / Cancel bar while placing. The
   first sword (the Wild portal) and Jobs (its tile) he points at and leaves after 20 s or once it's used.
 - [ ] **Stuck helper**: a new player's first hour (first visit not done when they joined), a quiet minute (no order,
@@ -2746,7 +2750,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     swordFights = 0,        -- boss fights fought with the sword HUD; its buttons show names for the first 3 (SwordService)
     weapons = {},           -- weaponId -> { grade, level } (WeaponService; the Steel Sword is everyone's, never saved)
     equippedWeapon = "starterSword", -- the weapon in hand (Config/Weapons id)
-    tutorial = { firstVisit = "todo", step = 1, early = {}, firstGiven = false, giftClaimed = false, lessons = {},
+    tutorial = { firstVisit = "todo", step = 1, early = {}, firstGiven = false, giftClaimed = false, customerSent = false, lessons = {},
                  pishLuckAt = 0 }, -- the first visit with Pish ("todo" | "done" | "skipped"), its step and steps done
                  -- early, his first pack and end gift given, lesson visits (true seen, false waiting to be shown),
                  -- the last luck from petting him
@@ -2768,7 +2772,7 @@ place loads it at once; before, the session only closed after they'd left, and t
 `TeleportInitFailed`), `Reclaim` opens the session again and the next save writes it. Changes in the moment before
 they leave aren't saved. A session this server ended (leaving, a hand-off) never kicks the player.
 
-Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; v17 added `tutorial` (the first visit with Pish; existing saves "done" with their first pack given and his gift still to come, so only new players go through it); each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity). A service that didn't load for a player (e.g. no free plot) never overwrites
+Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; v17 added `tutorial` (the first visit with Pish; existing saves "done" with their first pack given and his gift still to come, so only new players go through it); each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity); `tutorial` gained `customerSent` (read as false when missing, true for v17's existing shops; no bump: an older server dropping it allows one more of Pish's customers). A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
 
 ### 10.6 UI style and HUD

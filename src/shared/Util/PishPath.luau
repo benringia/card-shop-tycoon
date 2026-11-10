@@ -44,4 +44,10 @@ function PishPath.route(from: Point, to: Point, centre: Point, radius: number): 
 	return out
 end
 
+-- When he moves on after being petted: when the last pet's hold ends (`pettedUntil`), but at most `maxHold` seconds
+-- after this hold began (`holdStarted`), so one player petting him again and again can't keep him at their door
+function PishPath.holdEnd(pettedUntil: number, holdStarted: number, maxHold: number): number
+	return math.min(pettedUntil, holdStarted + maxHold)
+end
+
 return PishPath

@@ -59,6 +59,14 @@ function LessonRules.pending(lessons: { Lesson }, seen: { [string]: boolean }): 
 	end)
 end
 
+-- A lesson's thing was placed or ordered: it's seen (true), also when it isn't waiting yet, so a case bought at
+-- level 1 is never taught at level 2 (final review I3). Returns a copy
+function LessonRules.used(seen: { [string]: boolean }, lessonId: string): { [string]: boolean }
+	local after = table.clone(seen)
+	after[lessonId] = true
+	return after
+end
+
 -- The lesson that placing this shelf completes (`kind` its Config/Shelves kind: any trophy completes the trophy one)
 function LessonRules.forShelf(lessons: { Lesson }, shelfId: string, kind: string?): string?
 	for _, lesson in lessons do

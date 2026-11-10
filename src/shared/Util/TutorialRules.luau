@@ -9,6 +9,7 @@ export type Saved = {
 	early: { [string]: boolean }, -- steps the player did before their turn
 	firstGiven: boolean, -- Pish's first pack was given
 	giftClaimed: boolean, -- his end gift was given
+	customerSent: boolean, -- the customer he sends at step 5 came (once ever; missing in a save reads false)
 	lessons: { [string]: boolean }, -- lesson visits (Config/Pish LESSONS ids): true seen, false due and waiting
 	pishLuckAt: number, -- os.time of the last luck from petting him (0: never)
 }
@@ -31,6 +32,7 @@ local function copy(saved: Saved): Saved
 		early = early,
 		firstGiven = saved.firstGiven,
 		giftClaimed = saved.giftClaimed,
+		customerSent = saved.customerSent,
 		lessons = lessons,
 		pishLuckAt = saved.pishLuckAt,
 	}
@@ -71,6 +73,7 @@ function TutorialRules.read(raw: any, steps: { string }): Saved
 		early = early,
 		firstGiven = data.firstGiven == true,
 		giftClaimed = data.giftClaimed == true,
+		customerSent = data.customerSent == true,
 		lessons = lessons,
 		pishLuckAt = if typeof(luckAt) == "number" and luckAt >= 0 and luckAt < math.huge then luckAt else 0,
 	}
@@ -128,10 +131,16 @@ function TutorialRules.replay(saved: Saved): Saved
 	return after
 end
 
--- Pish sends his own customer (step "customer") only until his gift is claimed: a later replay waits for a customer
--- who comes by themselves, so replaying never brings anything for free
+-- Pish sends his own customer (step "customer") once ever: a skip and a replay, however often, wait for a customer
+-- who comes by themselves, so replaying never brings anything for free (final review I1)
 function TutorialRules.sendsCustomer(saved: Saved): boolean
-	return not saved.giftClaimed
+	return not saved.customerSent
+end
+
+function TutorialRules.customerSent(saved: Saved): Saved
+	local after = copy(saved)
+	after.customerSent = true
+	return after
 end
 
 function TutorialRules.finish(saved: Saved): Saved

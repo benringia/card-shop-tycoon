@@ -148,12 +148,15 @@ return {
 		TutorialRules.record(saved, STEPS, "giftPack")
 		expect.equal(saved.step, 1)
 	end,
-	["sendsCustomer: Pish's own customer comes until his gift is claimed, never on later replays (owner: free stuff)"] = function()
+	["sendsCustomer: Pish's own customer comes once ever, whatever is skipped or replayed (final review I1)"] = function()
 		local fresh = TutorialRules.read({}, STEPS)
 		expect.equal(TutorialRules.sendsCustomer(fresh), true, "a new player")
-		local skippedEarly = TutorialRules.replay(TutorialRules.skip(fresh))
-		expect.equal(TutorialRules.sendsCustomer(skippedEarly), true, "a replay before ever reaching the gift")
-		local finished = TutorialRules.read({ firstVisit = "done", firstGiven = true, giftClaimed = true }, STEPS)
-		expect.equal(TutorialRules.sendsCustomer(TutorialRules.replay(finished)), false, "a replay after the gift")
+		local sent = TutorialRules.customerSent(fresh)
+		expect.equal(fresh.customerSent, false, "a copy: the state passed in is unchanged")
+		expect.equal(TutorialRules.sendsCustomer(sent), false, "sent once")
+		local again = TutorialRules.replay(TutorialRules.skip(sent))
+		expect.equal(TutorialRules.sendsCustomer(again), false, "skip and replay: never again")
+		expect.equal(TutorialRules.read({ customerSent = true }, STEPS).customerSent, true, "saved")
+		expect.equal(TutorialRules.read({ customerSent = "yes" }, STEPS).customerSent, false, "junk reads as not sent")
 	end,
 }

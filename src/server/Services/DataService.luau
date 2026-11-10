@@ -115,7 +115,7 @@ local TEMPLATE: PlayerData = {
 	swordFights = 0,
 	weapons = {},
 	equippedWeapon = "starterSword",
-	tutorial = { firstVisit = "todo", step = 1, early = {}, firstGiven = false, giftClaimed = false, lessons = {}, pishLuckAt = 0 },
+	tutorial = { firstVisit = "todo", step = 1, early = {}, firstGiven = false, giftClaimed = false, customerSent = false, lessons = {}, pishLuckAt = 0 },
 }
 
 local DataService = {}

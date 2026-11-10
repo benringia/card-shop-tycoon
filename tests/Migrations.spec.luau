@@ -227,6 +227,7 @@ return {
 		expect.equal(tutorial.step, 1)
 		expect.equal(tutorial.giftClaimed, false, "Pish's gift still to come (a replay gives it)")
 		expect.equal(tutorial.firstGiven, true, "no first-visit pack for an existing shop")
+		expect.equal(tutorial.customerSent, true, "an existing shop gets no free customer from a replay")
 		expect.equal(typeof(tutorial.lessons), "table")
 		expect.equal(next(tutorial.lessons), nil)
 		expect.equal(typeof(tutorial.early), "table")

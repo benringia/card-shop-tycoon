@@ -151,4 +151,12 @@ return {
 		expect.equal(LessonRules.forProduct(Pish.LESSONS, "FirstSparkBox"), "boosterBox")
 		expect.equal(LessonRules.forProduct(Pish.LESSONS, "FirstSparkPack"), nil, "the first visit's packs")
 	end,
+	["used: placing or ordering a lesson's thing marks it seen, even before its level (final review I3)"] = function()
+		local seen = { showcase = false }
+		local after = LessonRules.used(seen, "showcase")
+		expect.equal(after.showcase, true, "a waiting lesson is done")
+		expect.equal(seen.showcase, false, "a copy")
+		expect.equal(LessonRules.used({}, "collectorCase").collectorCase, true, "placed at level 1: never taught later")
+		same(LessonRules.due(Pish.LESSONS, 1, 3, LessonRules.used({}, "showcase")), { "sleeves", "collectorCase" }, "not queued at level 2")
+	end,
 }
