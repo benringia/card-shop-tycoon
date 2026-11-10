@@ -32,6 +32,7 @@ local Town = require(Config:WaitForChild("Town"))
 local WeaponLooks = require(Config:WaitForChild("WeaponLooks"))
 local TownPreload = require(Shared:WaitForChild("Util"):WaitForChild("TownPreload"))
 local LoadingRules = require(Shared:WaitForChild("Util"):WaitForChild("LoadingRules"))
+local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -221,12 +222,15 @@ local function setTeleportScreen()
 		return
 	end
 	local LoadingGui = require(builder) :: any
+	-- the look of where this place's teleports go (the main game's: the Frontier's)
+	local here = if Place.isFrontier() then "Frontier" elseif Place.isDungeon() then "Dungeon" else "Main"
+	local screen = LoadingRules.look(LoadingScreen, LoadingRules.teleportLook(here) or "Main")
 	local images = {}
-	for _, name in LoadingScreen.FAN_CARDS do
+	for _, name in screen.FAN_CARDS do
 		table.insert(images, CardArt.SMALL[name] or CardArt.FULL[name] or "")
 	end
 	local ok, err = pcall(function()
-		TeleportService:SetTeleportGui(LoadingGui.build(LoadingScreen, images, LoadingScreen.STEPS[1]))
+		TeleportService:SetTeleportGui(LoadingGui.build(screen, images, screen.STEPS[1]))
 	end)
 	if not ok then
 		warn("[LoadingController] no teleport screen:", err)
@@ -265,8 +269,16 @@ function LoadingController.Start()
 		townReady = true
 	end)
 	task.spawn(function()
-		local kind = workspace:GetAttribute("PlaceKind")
-		local placeKind = if typeof(kind) == "string" then kind else "Main"
+		local placeKind = if Place.isFrontier() then "Frontier" elseif Place.isDungeon() then "Dungeon" else "Main"
+		local screen = LoadingRules.look(LoadingScreen, placeKind)
+		-- The Frontier's valley round you (spec 2026-11-10-frontier-valley-design): its terrain filled and its scenery in
+		local valley = if placeKind == "Frontier" then Place.getValley() else nil
+		local function valleyReady(): boolean?
+			if not valley then
+				return nil
+			end
+			return workspace:GetAttribute(valley.TERRAIN_READY_ATTRIBUTE) == true and workspace:FindFirstChild("Scenery") ~= nil
+		end
 		while true do
 			local status: LoadingRules.Status = {
 				character = game:IsLoaded() and player.Character ~= nil,
@@ -276,9 +288,10 @@ function LoadingController.Start()
 				creature = (player:GetAttribute("CreatureReady") == true or nothingSummoned)
 					and player:GetAttribute("TownCreaturesReady") == true,
 				gear = gearReady,
+				valley = valleyReady(),
 			}
-			local step, share, done, slow = LoadingRules.progress(status, os.clock() - started, LoadingScreen)
-			player:SetAttribute("LoadingText", LoadingRules.stepText(step, placeKind, LoadingScreen))
+			local step, share, done, slow = LoadingRules.progress(status, os.clock() - started, screen)
+			player:SetAttribute("LoadingText", LoadingRules.stepText(step, placeKind, screen))
 			player:SetAttribute("LoadingShare", share)
 			player:SetAttribute("LoadingNote", if slow then LoadingScreen.SLOW_NOTE else "")
 			if done then

@@ -14,6 +14,36 @@ local function status(character: boolean, data: boolean, creature: boolean, gear
 end
 
 return {
+	-- The Frontier valley (spec 2026-11-10-frontier-valley-design, plan Task 6): its own look and a wait for its valley
+	["the Frontier's look keeps the screen and changes its title, colours and steps"] = function()
+		local look = LoadingRules.look(cfg, "Frontier")
+		expect.equal(look.TITLE, "The Frontier")
+		assert(look.SWIRL_COLORS[1][1] ~= cfg.SWIRL_COLORS[1][1], "the Frontier's swirl is its own colour")
+		assert(look.STEPS[3] ~= cfg.STEPS[3], "no shelves to stock in the Frontier")
+		expect.equal(#look.STEPS, #cfg.STEPS, "the same number of steps")
+		expect.equal(look.MAX_SECONDS, cfg.MAX_SECONDS, "the rest is the screen's")
+		expect.equal(LoadingRules.look(cfg, "Main").TITLE, cfg.TITLE, "the main game keeps its look")
+		expect.equal(LoadingRules.look(cfg, "Dungeon").TITLE, cfg.TITLE, "the Dungeon too, for now")
+	end,
+
+	["the main game's teleport screen is the Frontier's"] = function()
+		expect.equal(LoadingRules.teleportLook("Main"), "Frontier", "the main game teleports only to the Frontier")
+		expect.isNil(LoadingRules.teleportLook("Frontier"), "home or to the Dungeon: the usual screen")
+		expect.isNil(LoadingRules.teleportLook("Dungeon"))
+	end,
+
+	["the Frontier's loading waits for its valley"] = function()
+		local waiting = status(true, true, true, true) :: any
+		waiting.valley = false
+		local _, _, done = LoadingRules.progress(waiting, 3, cfg)
+		expect.equal(done, false, "the valley isn't in yet")
+		local step = LoadingRules.progress(waiting, 3, cfg)
+		expect.equal(step, 3, "held on the third step")
+		waiting.valley = true
+		_, _, done = LoadingRules.progress(waiting, 3, cfg)
+		expect.equal(done, true, "the valley's in")
+	end,
+
 	["the steps tick off in order: character, save, shop pictures, creature, fight gear"] = function()
 		local step, share, done = LoadingRules.progress(status(false, false, false, false), 0, cfg)
 		expect.equal(step, 1)

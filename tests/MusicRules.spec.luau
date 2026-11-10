@@ -21,6 +21,56 @@ end
 local BOUNDS = { HALF_X = 130, HALF_Z = 110 }
 
 return {
+	-- The Frontier valley (spec 2026-11-10-frontier-valley-design, plan Task 6): its areas' and arenas' own music
+	["the Frontier's places play their own music"] = function()
+		local world = (Music :: any).FRONTIER
+		expect.equal(MusicRules.place(Music, 2, nil, false, nil, world), "sovereign", "in the Storm Sovereign's arena")
+		expect.equal(MusicRules.place(Music, nil, 1, false, nil, world), "frostwood", "in Frostwood")
+		expect.equal(MusicRules.place(Music, nil, nil, false, "rift", world), "rift", "on a pass: keeps playing")
+		expect.isNil(MusicRules.place(Music, nil, nil, false, "meadow", world), "the Wild's music doesn't carry on")
+		expect.equal(MusicRules.place(Music, nil, 1, false, nil), "meadow", "the Wild's world by default")
+	end,
+
+	["find knows the Frontier's places"] = function()
+		local world = (Music :: any).FRONTIER
+		expect.equal(MusicRules.find(Music, "stormpeak"), world.areas[2])
+		expect.equal(MusicRules.find(Music, "devourer"), world.arenas[3])
+	end,
+
+	["every Frontier place has three options, its track among them, a quiet volume and an ambient loop"] = function()
+		local world = (Music :: any).FRONTIER
+		expect.equal(#world.areas, 3, "Frostwood, Stormpeak, the Rift")
+		expect.equal(#world.arenas, 3, "one per boss")
+		for _, list in { world.areas, world.arenas } do
+			for _, place in list do
+				expect.equal(#place.options, 3, `{place.key}: options`)
+				local found = false
+				for _, option in place.options do
+					found = found or option.id == place.tracks[1]
+				end
+				assert(found, `{place.key}: its track is one of its options`)
+				assert(place.volume > 0 and place.volume <= 0.02, `{place.key}: volume {place.volume}`)
+				assert(place.compressor, `{place.key}: the leveler`)
+			end
+		end
+		for _, area in world.areas do
+			assert(area.ambient and string.match(area.ambient.id, "^rbxassetid://%d+$"), `{area.key}: an ambient loop`)
+		end
+	end,
+
+	["music keys are unique across the town, the Wild, the Frontier and the opening"] = function()
+		local seen = { [Music.TOWN.key] = true, [Music.OPENING.key] = true }
+		for _, world in { Music.WILD, (Music :: any).FRONTIER } do
+			for _, list in { world.areas, world.arenas } do
+				for _, place in list do
+					assert(not seen[place.key], `{place.key} twice`)
+					assert(string.match(place.key, "^%a+$"), `{place.key}: /music reads letters only`)
+					seen[place.key] = true
+				end
+			end
+		end
+	end,
+
 	["the town is the island inside the hedge, plus a margin to fade in and out"] = function()
 		expect.equal(MusicRules.inTown(0, 0, BOUNDS, 40), true, "the plaza")
 		expect.equal(MusicRules.inTown(-165, 140, BOUNDS, 40), true, "just past the hedge")

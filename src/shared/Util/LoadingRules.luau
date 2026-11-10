@@ -5,10 +5,13 @@ local LoadingRules = {}
 
 -- art: your own cards' paintings have downloaded (the binder opens with every face drawn); shop: the product models,
 -- icons, pack fronts, covers and effect textures a first window shows (round 4: nothing pops in after the screen)
-export type Status = { character: boolean, data: boolean, art: boolean, shop: boolean, creature: boolean, gear: boolean }
+-- valley: the Frontier's terrain and scenery round you are in (spec 2026-11-10-frontier-valley-design); nil (the main
+-- game, the Dungeon) counts as ready, only false holds the screen
+export type Status = { character: boolean, data: boolean, art: boolean, shop: boolean, creature: boolean, gear: boolean, valley: boolean? }
 
--- Each step and what it waits for: the cards step is the save and your cards' paintings
-local ORDER = { { "character" }, { "data", "art" }, { "shop" }, { "creature" }, { "gear" } }
+-- Each step and what it waits for: the cards step is the save and your cards' paintings; the third, the shop's
+-- pictures and (in the Frontier) its valley
+local ORDER = { { "character" }, { "data", "art" }, { "shop", "valley" }, { "creature" }, { "gear" } }
 
 -- (step 1-4, or 5 once all are done; the bar's share; done: all done or out of time; slow: the save still loading
 -- after SLOW_SECONDS). The bar follows the first step not done, so a later one finishing early doesn't jump it ahead.
@@ -16,7 +19,8 @@ function LoadingRules.progress(status: Status, elapsed: number, cfg: any): (numb
 	local step = #ORDER + 1
 	for index, keys in ORDER do
 		for _, key in keys do
-			if not (status :: any)[key] then
+			local value = (status :: any)[key]
+			if not value and not (key == "valley" and value == nil) then
 				step = index
 				break
 			end
@@ -28,6 +32,26 @@ function LoadingRules.progress(status: Status, elapsed: number, cfg: any): (numb
 	local done = step > #ORDER or elapsed >= cfg.MAX_SECONDS
 	local slow = not status.data and elapsed >= cfg.SLOW_SECONDS
 	return step, (step - 1) / #ORDER, done, slow
+end
+
+-- The screen's settings for a place (`kind`: Workspace PlaceKind): the main look with the place's own LOOKS (the
+-- Frontier's title, colours, steps and tips) laid over it; unchanged for a place without one
+function LoadingRules.look(cfg: any, kind: string): any
+	local own = cfg.LOOKS and cfg.LOOKS[kind]
+	if not own then
+		return cfg
+	end
+	local merged = table.clone(cfg)
+	for key, value in own do
+		merged[key] = value
+	end
+	return merged
+end
+
+-- The look a teleport out of this place carries (TeleportService:SetTeleportGui): the main game only teleports to
+-- the Frontier, so its screen is the Frontier's; from the Frontier (home or to the Dungeon) the usual one
+function LoadingRules.teleportLook(kind: string): string?
+	return if kind == "Main" then "Frontier" else nil
 end
 
 -- Whether every fetch has finished one way or another (Enum.AssetFetchStatus names): a failed or timed-out asset

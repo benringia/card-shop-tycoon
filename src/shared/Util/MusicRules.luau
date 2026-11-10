@@ -41,15 +41,17 @@ end
 -- Whose music plays where you are (its key, nil: none): a boss arena's (`arena`, its zone, WildValley.arenaZoneAt),
 -- else the Wild area you're in (`area`, WildValley.zoneAt), else the town's (`inTown`); on a pass between two areas of
 -- the valley (in none of them) the area playing keeps on (`last`)
-function MusicRules.place(music: any, arena: number?, area: number?, inTown: boolean, last: string?): string?
-	if arena and music.WILD.arenas[arena] then
-		return music.WILD.arenas[arena].key
-	elseif area and music.WILD.areas[area] then
-		return music.WILD.areas[area].key
+-- `world`: the valley's music (Config/Music WILD, the default, or FRONTIER in the Frontier)
+function MusicRules.place(music: any, arena: number?, area: number?, inTown: boolean, last: string?, world: any?): string?
+	local valley = world or music.WILD
+	if arena and valley.arenas[arena] then
+		return valley.arenas[arena].key
+	elseif area and valley.areas[area] then
+		return valley.areas[area].key
 	elseif inTown then
 		return music.TOWN.key
 	end
-	for _, other in music.WILD.areas do
+	for _, other in valley.areas do
 		if other.key == last then
 			return last
 		end
@@ -65,7 +67,12 @@ function MusicRules.find(music: any, key: string): any
 	if music.OPENING and music.OPENING.key == key then
 		return music.OPENING
 	end
-	for _, list in { music.WILD.areas, music.WILD.arenas } do
+	local lists = { music.WILD.areas, music.WILD.arenas }
+	if music.FRONTIER then
+		table.insert(lists, music.FRONTIER.areas)
+		table.insert(lists, music.FRONTIER.arenas)
+	end
+	for _, list in lists do
 		for _, place in list do
 			if place.key == key then
 				return place

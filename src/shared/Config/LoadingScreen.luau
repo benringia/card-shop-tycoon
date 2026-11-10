@@ -42,6 +42,29 @@ return {
 	TOWN_FOLDERS = { "TownDecor", "Town", "Scenery", "Plots" },
 	STREAM_TIMEOUT = 8,
 	FADE_SECONDS = 0.6,
+	-- Each place's own look laid over the above (Util/LoadingRules.look, by Workspace PlaceKind): the Frontier's (spec
+	-- 2026-11-10-frontier-valley-design: "the Wild portal's swirl in icy blue and violet, with the area's picture"),
+	-- also carried by the main game's teleport there (LoadingRules.teleportLook)
+	LOOKS = {
+		Frontier = {
+			TITLE = "The Frontier",
+			BACKGROUND = { top = rgb(24, 32, 62), bottom = rgb(12, 10, 28) },
+			BACKDROP = "rbxassetid://109335537720736", -- Frostwood (assets/ui/loading/frontier_frostwood.jpg, the area concept)
+			BACKDROP_RECT = { 0, 0, 1376, 768 },
+			BACKDROP_TRANSPARENCY = 0.45,
+			SWIRL_COLORS = { rgb(150, 215, 255), rgb(170, 90, 255) }, -- icy blue in front, violet behind
+			CARD_EDGE = rgb(150, 215, 255),
+			BAR_COLOR = rgb(150, 215, 255),
+			NOTE_COLOR = rgb(150, 215, 255),
+			STEPS = { "Getting everything ready...", "Loading your cards...", "Raising the Frontier...", "Waking up your creature...", "Getting the fight gear ready..." },
+			TIPS = {
+				"Tip: everything in the Rift chases you. Stay together!",
+				"Tip: red eyes in the fog? Something is watching you...",
+				"Tip: each boss waits behind its portal by the trail.",
+				"Tip: the Dungeon's crystal arch is at the far end of the Rift.",
+			},
+		},
+	},
 	TIP_SECONDS = 4, -- each tip shows this long
 	TIPS = {
 		"Tip: dodge when the ground glows!",

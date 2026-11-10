@@ -1,6 +1,6 @@
 --!strict
 -- Background music (MusicController, Util/MusicRules): the town, the Wild valley's three areas and its three boss
--- arenas. Each place: its `key` (Studio: "/music <key> <n> [volume]" plays option n anywhere, "/music <key> 0" goes back
+-- arenas, and the Frontier valley's (FRONTIER). Each place: its `key` (Studio: "/music <key> <n> [volume]" plays option n anywhere, "/music <key> 0" goes back
 -- to the picked tracks; "/music <n>" is the town's), the `tracks` it plays, the `options` to pick them from and its
 -- `volume`, a `compressor` evening out its louder parts (with `makeup` dB given back; MusicController) and, for the
 -- Wild valley's areas, an `ambient` loop under it. Plain data (Lune-tested).
@@ -163,5 +163,84 @@ return {
 			},
 		},
 		fade = 2.5, -- seconds to crossfade from one place's music to the next
+	},
+	-- The Frontier valley (spec 2026-11-10-frontier-valley-design: lower and darker than the Wild's guitar and piano:
+	-- strings, drums, choir), its three areas and three boss arenas the same way as the Wild's (MusicController picks
+	-- this world in the Frontier). First picks of three APM candidates each; the owner picks by ear with /music
+	FRONTIER = {
+		areas = {
+			{
+				key = "frostwood", -- snowy ruins, red eyes in the fog: cold and wondering
+				tracks = { "rbxassetid://9043599529" }, -- Frozen Forest (c)
+				compressor = LEVELER,
+				ambient = { id = "rbxassetid://9114057104", volume = 0.03 }, -- Pro Sound Effects: Desert Wind Whistley Light Gusts 1
+				options = {
+					option("Frozen Forest (c) (magical gothic orchestral)", "9043599529"),
+					option("Icy Peaks (film score)", "1840709150"),
+					option("The Icy North, orchestra only (panoramic)", "9048800521"),
+				},
+				volume = 0.006,
+			},
+			{
+				key = "stormpeak", -- the plateau under the storm: big and brooding
+				tracks = { "rbxassetid://1843501727" }, -- Mythic Mountain, no percussion
+				compressor = LEVELER,
+				ambient = { id = "rbxassetid://9120018695", volume = 0.04 }, -- Pro Sound Effects: Thunder Distant Rumble 2
+				options = {
+					option("Mythic Mountain, no percussion (dark fantasy)", "1843501727"),
+					option("Roof Of The World (ambient)", "1836285546"),
+					option("Curious Shadows (dark fantasy)", "1843503016"),
+				},
+				volume = 0.006,
+			},
+			{
+				key = "rift", -- the violet crater: eerie, a haunting choir
+				tracks = { "rbxassetid://9041780662" }, -- Coven Rituals
+				compressor = LEVELER,
+				ambient = { id = "rbxassetid://9112775624", volume = 0.03 }, -- Pro Sound Effects: Eerie Presence 3
+				options = {
+					option("Coven Rituals (eerie orchestral)", "9041780662"),
+					option("Dark Minds (haunting choir)", "9041780692"),
+					option("Ghastly Unknown (dark fantasy underscore)", "1843501883"),
+				},
+				volume = 0.006,
+			},
+		},
+		arenas = {
+			{
+				key = "tyrant", -- the Frost Tyrant's frozen hall
+				tracks = { "rbxassetid://9048541013" }, -- Battleground
+				compressor = LEVELER,
+				options = {
+					option("Battleground (orchestral hybrid)", "9048541013"),
+					option("Evil Overlord (B), no choir (epic action)", "9044584220"),
+					option("Return Of The King (orchestral hybrid)", "1847032089"),
+				},
+				volume = 0.006,
+			},
+			{
+				key = "sovereign", -- the Storm Sovereign's summit
+				tracks = { "rbxassetid://86463120740576" }, -- The Final Throes of Battle
+				compressor = LEVELER,
+				options = {
+					option("The Final Throes of Battle (film score)", "86463120740576"),
+					option("Natural Disaster (cinematic percussion)", "9045719861"),
+					option("Mission Danger (building tension)", "9045941481"),
+				},
+				volume = 0.006,
+			},
+			{
+				key = "devourer", -- the Rift Devourer's island over the void
+				tracks = { "rbxassetid://9044584201" }, -- Evil Overlord (A)
+				compressor = LEVELER,
+				options = {
+					option("Evil Overlord (A), with choir (epic action)", "9044584201"),
+					option("Core Of The Dead (film score)", "9039269632"),
+					option("Escape the Fate, percussion (ominous)", "9042642774"),
+				},
+				volume = 0.007,
+			},
+		},
+		fade = 2.5,
 	},
 }

@@ -389,11 +389,12 @@ function DevService.Start()
 	end)
 	-- Hear one of a place's music options wherever you are (MusicController loops it while the attributes are set):
 	-- "/music <n> [volume]" the town's, "/music <place> <n> [volume]" the Wild's (meadow, gorge, ridge, warden, brood,
-	-- colossus), "/music [place] 0" back to the normal music
+	-- colossus) or the Frontier's (frostwood, stormpeak, rift, tyrant, sovereign, devourer), "/music [place] 0" back to the
+	-- normal music
 	addCommand(folder, "music", function(player, text)
 		local counts: { [string]: number } = { [Music.TOWN.key] = #Music.TOWN.options }
 		local keys = { Music.TOWN.key }
-		for _, list in { Music.WILD.areas, Music.WILD.arenas, { Music.OPENING } } do
+		for _, list in { Music.WILD.areas, Music.WILD.arenas, (Music :: any).FRONTIER.areas, (Music :: any).FRONTIER.arenas, { Music.OPENING } } do
 			for _, place in list do
 				counts[place.key] = #place.options
 				table.insert(keys, place.key)

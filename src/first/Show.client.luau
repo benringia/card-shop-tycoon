@@ -25,21 +25,33 @@ end
 local cfg = require(cfgModule) :: any
 local art = require(artModule) :: any
 
+-- This place's look (Util/LoadingRules.look: the Frontier's own title, colours, picture and tips). Workspace's
+-- PlaceKind attribute hasn't replicated this early, so the place id says first (Config/Places), the attribute after
+local placesModule = config and config:WaitForChild("Places", 10)
+local places = if placesModule and placesModule:IsA("ModuleScript") then require(placesModule) :: any else {}
+local kindValue = workspace:GetAttribute("PlaceKind")
+local kind = if game.PlaceId ~= 0 and game.PlaceId == places.FRONTIER_PLACE_ID then "Frontier"
+	elseif game.PlaceId ~= 0 and game.PlaceId == places.DUNGEON_PLACE_ID then "Dungeon"
+	elseif typeof(kindValue) == "string" then kindValue
+	else "Main"
+local util = shared and shared:WaitForChild("Util", 10)
+local rulesModule = util and util:WaitForChild("LoadingRules", 10)
+local look = if rulesModule and rulesModule:IsA("ModuleScript") then (require(rulesModule) :: any).look(cfg, kind) else cfg
+
 local arriving = TeleportService:GetArrivingTeleportGui()
 local gui: ScreenGui
 if arriving and arriving:IsA("ScreenGui") then
 	gui = arriving
 else
 	local images = {}
-	for _, name in cfg.FAN_CARDS do
+	for _, name in look.FAN_CARDS do
 		table.insert(images, art.SMALL[name] or art.FULL[name] or "")
 	end
-	local kind = workspace:GetAttribute("PlaceKind")
-	gui = LoadingGui.build(cfg, images, cfg.FIRST_STEP[if typeof(kind) == "string" then kind else "Main"] or cfg.STEPS[1])
+	gui = LoadingGui.build(look, images, look.FIRST_STEP[kind] or look.STEPS[1])
 end
 gui.Parent = playerGui
 ReplicatedFirst:RemoveDefaultLoadingScreen()
-local stop = LoadingGui.animate(gui, cfg)
+local stop = LoadingGui.animate(gui, look)
 
 local function refresh()
 	local text = player:GetAttribute("LoadingText")

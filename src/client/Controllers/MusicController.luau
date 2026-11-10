@@ -21,6 +21,8 @@ local MusicRules = require(Shared:WaitForChild("Util"):WaitForChild("MusicRules"
 local WildValley = require(Shared:WaitForChild("Util"):WaitForChild("WildValley"))
 local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 local WildValleyConfig = Place.getValley() -- the place's valley (Util/Place)
+local FRONTIER = Place.isFrontier()
+local World = if FRONTIER then (Music :: any).FRONTIER else Music.WILD -- the valley's music (no town in the Frontier)
 local OpeningStage = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("OpeningStage"))
 
 local MusicController = {}
@@ -137,8 +139,8 @@ function MusicController.Start()
 			local x, z = root.Position.X, root.Position.Z
 			local arena = WildValley.arenaZoneAt(WildValleyConfig, Bosses.ARENA_COPIES, x, z)
 			local area = WildValley.zoneAt(WildValleyConfig, { x = x, z = z })
-			local inTown = MusicRules.inTown(x, z, Town.BOUNDS, Music.TOWN.margin)
-			last = MusicRules.place(Music, arena, area, inTown, last)
+			local inTown = not FRONTIER and MusicRules.inTown(x, z, Town.BOUNDS, Music.TOWN.margin)
+			last = MusicRules.place(Music, arena, area, inTown, last, World)
 		end
 		-- The pack opening has its own music while it shows; where you are (`last`) is kept for after
 		if OpeningStage.isShown() then
