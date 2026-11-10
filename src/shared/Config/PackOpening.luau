@@ -26,8 +26,9 @@ return {
 		BEHIND = 45, -- how far behind the stage's middle (past the row's far-away cards)
 		SIZE = 160,
 		-- Owner's pick A (2026-11-10, "connect every element to our core loop"): Pish and Chikin's card shop at night,
-		-- the two of them peeking over the counter (assets/ui/opening, Figma-generated, uploaded)
-		IMAGE = "rbxassetid://118859062249822",
+		-- the two of them peeking over the counter (assets/ui/opening, Figma-generated, uploaded; Pish repainted a little
+		-- grumpy with his underbite, owner 2026-11-10)
+		IMAGE = "rbxassetid://89947475330742",
 		IMAGE_SIZE = Vector2.new(75, 42), -- studs: the view's height at BEHIND (about 39) and a little more
 		IMAGE_TINT = Color3.fromRGB(185, 175, 200), -- a little darker, so the cards stand out
 		FADE = 0.08, -- share of its width fading into EDGE at each side

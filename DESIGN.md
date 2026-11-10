@@ -576,6 +576,7 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
   client-only parts right above the player while it shows (`Util/OpeningStage`, `Util/StageSpot`; see the binder's
   stage note in 10.6; far away at `PackOpening.STAGE_POSITION` otherwise): behind it Pish and Chikin's card shop
   at night, the two peeking over the counter (owner's pick A 2026-11-10, "connect every element to our core loop";
+  Pish repainted a little grumpy with his underbite, as he is;
   `PackOpening.BACKDROP.IMAGE`, `assets/ui/opening`, Figma-generated; a little darker, darker still behind the
   cards, its sides fading to near-black on wide screens), a warm key light and a blue rim light, and a Scriptable camera (FOV 40, 8 studs back) with
   bloom, a colour grade that dims for big pulls and a depth-of-field blur for the push-ins; letterbox bars and a
@@ -645,7 +646,7 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
   while the card is alive; the results swipe in per landing card and end on a bright UI ding (PSE "Synth Sparkle Tone
   High Pitch Bell Tone Ding 4"): the lineup's sounds are never the boss victory's (owner 2026-11-10: it sounded like
   killing a boss; `tests/OpeningSounds`). **Music**: the opening has its own music (`Music.OPENING`, crossfading in from
-  wherever you are and back out, through the leveler, quiet at 0.06; owner 2026-11-10: "change the music on this
+  wherever you are and back out, through the leveler, at 0.1, the owner's number; owner 2026-11-10: "change the music on this
   screen. too plain"): each opening plays the next of three APM pieces, looping while it's up ("Magic and Mayhem",
   "Enchanted Butterflies", "Mischievous Elves"; `rotate = "visit"`, `MusicRules.visitTrack`; owner: "so that when
   players open lots of pack its not the same music always"); `/music opening <n> [volume]` plays any of the six. Most come from Roblox's licensed libraries (Pro Sound Effects,

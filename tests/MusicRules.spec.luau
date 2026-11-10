@@ -191,7 +191,7 @@ return {
 		for _, track in opening.tracks do
 			assert(ids[track], `{track} is one of the options`)
 		end
-		assert(opening.volume > 0 and opening.volume <= 0.08, "quiet (owner 2026-11-10: lower)")
+		expect.equal(opening.volume, 0.1, "the owner's number (2026-11-10)")
 		assert(opening.compressor, "through the leveler")
 		assert(opening.fade and opening.fade <= 1.5, "a quick crossfade in and out of the opening")
 		for _, list in { Music.WILD.areas, Music.WILD.arenas } do
