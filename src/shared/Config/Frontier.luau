@@ -5,12 +5,12 @@
 return {
 	-- The Frontier place has no plots: the map sits at the origin, the entrance at its south edge
 	ORIGIN = { x = 0, y = 0, z = 0 },
-	SPRING = { x = 22, y = 0, z = -70 }, -- healing spring next to the entrance
+	SPRING = { x = 24, y = 0, z = -40 }, -- healing spring in the camp, beside the arrival (Config/FrontierValley ARRIVAL_CLEAR)
 	SPRING_LABEL_DISTANCE = 35, -- the healing spring's name shows only this close
 	PORTAL_SIGN_HEIGHT = 17, -- the Dungeon portal's sign floats this high over its frame
 	SIGN_WIDTH = 14, -- WildService's plain name boards
-	DUNGEON_PORTAL = { x = -22, y = 0, z = -70 }, -- part 3b; "coming soon" until then
-	ENTRANCE_OFFSET = { x = 0, y = 0, z = -70 }, -- arrival point relative to ORIGIN
+	DUNGEON_PORTAL = { x = -45, y = -12, z = 622 }, -- at the Rift trail's west end (Config/FrontierValley DUNGEON_GATE), the farthest walk
+	ENTRANCE_OFFSET = { x = 0, y = 0, z = -40 }, -- arrival point relative to ORIGIN: the valley's camp
 	ZONE_SIZE = 140,
 	ZONE_GAP = 24,
 
@@ -84,7 +84,7 @@ return {
 	CARD_RARITY = { Rare = 70, Epic = 25, Legendary = 5 },
 
 	MAX_MODEL_PARTS = 200,
-	MONSTER_HEIGHT = 3.5,
+	MONSTER_HEIGHT = 3.9, -- 30% bigger than the Wild's 3 (the Frontier valley spec: more dangerous)
 	ELITE_SIZE = 1.35,
 	-- The monsters' small effects (Config/Wild FX): no Frontier species has one yet
 	FX_RANGE = 60,

@@ -266,9 +266,9 @@ local function decorate(parent: Instance, center: Vector3, seed: number)
 	end
 end
 
--- The main game's Wild is the dressed valley (Config/WildValley; its terrain and scenery come from SceneryService): the
--- zone floors, paths and arrival pad stay as invisible floors monsters snap to (groundAt), players walk on the terrain,
--- and walls along its edge keep them in. The Frontier keeps the plain map.
+-- The main game's Wild and the Frontier are dressed valleys (Util/Place.getValley: Config/WildValley, Config/FrontierValley;
+-- their terrain and scenery come from SceneryService): the zone floors, paths and arrival pad stay as invisible floors
+-- monsters snap to (groundAt), players walk on the terrain, and walls along its edge keep them in. The Dungeon has none.
 local VALLEY = ValleyConfig ~= nil
 local valleySpots: { [number]: { BasePart } } = {} -- each biome's spawn spots (WildValley.zoneSpots)
 local pending: { [number]: number } = {} -- each biome's monsters waiting to respawn
@@ -288,11 +288,11 @@ local function buildValleySigns(folder: Instance)
 		local toward = WildValley.backAlongTrail(ValleyConfig, spot, ValleyConfig.BOARD_FACE_BACK)
 		return CFrame.new(spot.x, valleyGround(spot.x, spot.z), spot.z) * CFrame.Angles(0, math.rad(PortalTrails.armYaw(spot, toward)), 0)
 	end
-	TrailProps.trailhead(folder, facingTrail(ValleyConfig.RETURN_SIGN), "THE WILD", nil)
+	TrailProps.trailhead(folder, facingTrail(ValleyConfig.RETURN_SIGN), ValleyConfig.HOME.title, nil)
 	for index, zone in Wild.ZONES do
 		TrailProps.trailhead(folder, facingTrail(ValleyConfig.BIOMES[index].board), string.upper(zone.name), `Lv {zone.minLevel}-{zone.maxLevel}`)
 	end
-	local homeColor = Props.color(Town.PORTAL_EFFECTS.Wild.ring)
+	local homeColor = Props.color(Town.PORTAL_EFFECTS[ValleyConfig.HOME.look].ring)
 	for _, post in ValleyConfig.ARROWS do
 		local arms: { TrailProps.Arm } = {}
 		for _, arm in post.arms do
@@ -349,17 +349,22 @@ local function buildMap(): Folder
 	folder.Name = "Wild"
 
 	local entrance = ORIGIN + vec(Wild.ENTRANCE_OFFSET)
-	floorPart(block(folder, "Entrance", Vector3.new(30, 2, 24), CFrame.new(entrance - Vector3.new(0, 1, 0)), Color3.fromRGB(150, 140, 120), Enum.Material.Cobblestone))
+	local pad = block(folder, "Entrance", Vector3.new(30, 2, 24), CFrame.new(entrance - Vector3.new(0, 1, 0)), Color3.fromRGB(150, 140, 120), Enum.Material.Cobblestone)
+	if not Place.isFrontier() then
+		floorPart(pad) -- the Frontier's camp pad stays solid: players join onto it before its valley's terrain has filled
+	end
 	local returnSpot = entrance + Vector3.new(0, 0, -9)
 	local returnRing = portal(folder, "Return to shop", returnSpot, Vector3.new(0, 0, 1), "Return", function(player)
 		WildService.TravelHome(player)
 	end)
 	if VALLEY then
-		-- The valley's way home is the Forest Falls root arch it came through (its prompt stays on the hidden ring)
+		-- The valley's way home (Config HOME: the Wild's Forest Falls root arch it came through, the Frontier's crystal
+		-- ring; its prompt stays on the hidden ring)
 		returnRing.Transparency = 1
-		local arch = Props.place("PortalWild", CFrame.lookAt(returnSpot, returnSpot + Vector3.new(0, 0, 1)), folder)
-		if arch.Name == "PortalWild" and Props.hasModel("PortalWild") then
-			PortalBuild.dress(arch, Town.PORTAL_LOOKS.Wild)
+		local home = ValleyConfig.HOME
+		local arch = Props.place(home.model, CFrame.lookAt(returnSpot, returnSpot + Vector3.new(0, 0, 1)), folder)
+		if arch.Name == home.model and Props.hasModel(home.model) then
+			PortalBuild.dress(arch, Town.PORTAL_LOOKS[home.look])
 		end
 	end
 	if VALLEY then
@@ -417,14 +422,17 @@ local function buildPlaza()
 		spawn.Parent = folder
 		frontierSpawn = spawn
 		local dungeonSpot = vec((Wild :: any).DUNGEON_PORTAL)
-		portal(folder, "Dungeon", dungeonSpot, Vector3.new(1, 0, 0), "Enter", function(player)
+		-- it faces the trail's end (Config/FrontierValley DUNGEON_GATE)
+		local gate = if VALLEY then ValleyConfig.DUNGEON_GATE else nil
+		local dungeonFacing = if gate then (Vector3.new(gate.faces.x, dungeonSpot.Y, gate.faces.z) - dungeonSpot).Unit else Vector3.new(1, 0, 0)
+		portal(folder, "Dungeon", dungeonSpot, dungeonFacing, "Enter", function(player)
 			if dungeonHandler then
 				dungeonHandler(player)
 			else
 				notify(player, "The Dungeon is coming soon!", false)
 			end
 		end)
-		sign(folder, if Places.DUNGEON_PLACE_ID ~= 0 then "The Dungeon" else "The Dungeon · coming soon", CFrame.new(dungeonSpot + Vector3.new(0, Wild.PORTAL_SIGN_HEIGHT, 0)) * CFrame.Angles(0, math.rad(90), 0))
+		sign(folder, if Places.DUNGEON_PLACE_ID ~= 0 then "The Dungeon" else "The Dungeon · coming soon", CFrame.lookAt(dungeonSpot + Vector3.new(0, Wild.PORTAL_SIGN_HEIGHT, 0), dungeonSpot + Vector3.new(0, Wild.PORTAL_SIGN_HEIGHT, 0) - dungeonFacing))
 	else
 		local portalSpot = vec(Wild.PLAZA_PORTAL)
 		-- Its floating name label comes from TownService, like the other plaza portals
@@ -989,7 +997,7 @@ function WildService.BuildBossArenas(onGate: (player: Player, bossId: string) ->
 		if boss.place ~= here then
 			continue -- its arena is in another place
 		end
-		if here == "Wild" and VALLEY then
+		if VALLEY then
 			arenas[bossId] = buildBossPortal(folder, boss, bossId, onGate, onGroup, onReturn)
 			continue
 		end

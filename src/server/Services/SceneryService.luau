@@ -333,6 +333,9 @@ end
 
 local function buildBridge(folder: Instance)
 	local bridge = ValleyConfig.BRIDGE
+	if not bridge then
+		return -- the Frontier has no stream to cross
+	end
 	local wood, dark = Props.color(bridge.wood), Props.color(bridge.dark)
 	local base = groundAt(bridge.x, bridge.z - bridge.length / 2) -- the bank it starts from
 	local steps = 8
@@ -356,15 +359,24 @@ local function buildBridge(folder: Instance)
 end
 
 -- The trail's markers (Util/WildValley.markers): small glowing stones along its edges, none under the bridge; flat
--- and not solid, so monsters and players pass over them
+-- and not solid, so monsters and players pass over them. The Wild's sit east and west of the trail's line; a valley
+-- whose MARKER says `across` puts them square to the trail (the Frontier's runs east-west too)
 local function buildTrailMarkers(folder: Instance)
 	local look, bridge = ValleyConfig.MARKER, ValleyConfig.BRIDGE
 	local color = Props.color(look.color)
-	for index, point in WildValley.markers(WildValley.trail(ValleyConfig), ValleyConfig.MARKER_SPACING) do
-		if math.abs(point.z - bridge.z) > bridge.length / 2 + 1 then
+	local points = WildValley.markers(WildValley.trail(ValleyConfig), ValleyConfig.MARKER_SPACING)
+	for index, point in points do
+		if not bridge or math.abs(point.z - bridge.z) > bridge.length / 2 + 1 then
 			local side = if index % 2 == 0 then 1 else -1
-			local x = point.x + side * (ValleyConfig.TRAIL_WIDTH / 2 - 0.6)
-			local stone = piece(folder, "TrailMarker", Vector3.new(0.35, look.size, look.size), CFrame.new(x, groundAt(x, point.z) + 0.12, point.z) * CFrame.Angles(0, 0, math.rad(90)), color, Enum.Material.Neon, Enum.PartType.Cylinder)
+			local offset = ValleyConfig.TRAIL_WIDTH / 2 - 0.6
+			local x, z = point.x + side * offset, point.z
+			local nextPoint, lastPoint = points[index + 1] or point, points[index - 1] or point
+			local dx, dz = nextPoint.x - lastPoint.x, nextPoint.z - lastPoint.z
+			local length = math.sqrt(dx * dx + dz * dz)
+			if look.across and length > 0 then
+				x, z = point.x - dz / length * side * offset, point.z + dx / length * side * offset
+			end
+			local stone = piece(folder, "TrailMarker", Vector3.new(0.35, look.size, look.size), CFrame.new(x, groundAt(x, z) + 0.12, z) * CFrame.Angles(0, 0, math.rad(90)), color, Enum.Material.Neon, Enum.PartType.Cylinder)
 			stone.CanCollide = false
 			stone.CanQuery = false
 			stone.CanTouch = false
@@ -458,10 +470,10 @@ local function buildWildValley(folder: Folder)
 	end
 	buildBridge(holder)
 	buildTrailMarkers(holder)
-	for _, spot in ValleyConfig.CRYSTALS do
+	for _, spot in ValleyConfig.CRYSTALS or {} do
 		buildCrystalCluster(holder, spot)
 	end
-	for _, list in { ValleyConfig.CHARRED, ValleyConfig.SHARDS } do
+	for _, list in { ValleyConfig.CHARRED or {}, ValleyConfig.SHARDS or {} } do
 		for _, spot in list do
 			local model = placeModel(holder, spot, spot.model)
 			if model then
@@ -470,19 +482,19 @@ local function buildWildValley(folder: Folder)
 			end
 		end
 	end
-	for _, spot in ValleyConfig.VENTS do
+	for _, spot in ValleyConfig.VENTS or {} do
 		buildVent(holder, spot)
 	end
 	-- The scenery round (spec 2026-11-04-valley-scenery-design): the new pieces, the Meadow's stone circle and mushroom
 	-- rings, each dressed (freshly imported models arrive unanchored and colliding); the ridge's crystals code-built
 	local circle = ValleyConfig.STONE_CIRCLE
-	local pieces = WildValley.ring(circle, circle.radius, circle.count, circle)
-	for _, ring in ValleyConfig.MUSHROOM_RINGS do
+	local pieces = if circle then WildValley.ring(circle, circle.radius, circle.count, circle) else {}
+	for _, ring in ValleyConfig.MUSHROOM_RINGS or {} do
 		for _, spot in WildValley.ring(ring, ring.radius, ring.count, ring) do
 			table.insert(pieces, spot)
 		end
 	end
-	for _, name in { "MUSHROOMS", "TUFTS", "MOSS_ROCKS", "RUINS", "EMBER_TREES", "SKELETON", "GIANT_TREES" } do
+	for _, name in ValleyConfig.DRESSED_LISTS do
 		for _, spot in ValleyConfig[name] do
 			table.insert(pieces, spot)
 		end
@@ -497,10 +509,10 @@ local function buildWildValley(folder: Folder)
 			table.insert(settling, model)
 		end
 	end
-	for _, spot in ValleyConfig.EMBER_CRYSTALS do
+	for _, spot in ValleyConfig.EMBER_CRYSTALS or {} do
 		buildCrystalCluster(holder, spot, ValleyConfig.EMBER_CRYSTAL_LOOK)
 	end
-	local volcano = placeModel(holder, ValleyConfig.VOLCANO, "Volcano")
+	local volcano = if ValleyConfig.VOLCANO then placeModel(holder, ValleyConfig.VOLCANO, "Volcano") else nil
 	if volcano then
 		dressCalderaProp(volcano)
 	end
@@ -1034,7 +1046,7 @@ end
 -- the copy, spec 2026-11-01-wild-bosses-arenas-design)
 local function buildArenaEffects(folder: Folder)
 	for _, boss in Bosses.BOSSES do
-		local dressing = if boss.place == "Wild" then ValleyConfig.ARENA_DRESSING[boss.zone] else nil
+		local dressing = if boss.place == (if Place.isFrontier() then "Frontier" else "Wild") then ValleyConfig.ARENA_DRESSING[boss.zone] else nil
 		if dressing then
 			for copy = 1, Bosses.ARENA_COPIES do
 				local centre = WildValley.arenaCopyCenter(ValleyConfig, boss.zone, copy)
@@ -1109,6 +1121,38 @@ local function buildDressing()
 	PlazaBuild.build(folder)
 	folder.Parent = workspace
 	quietSmallShadows()
+end
+
+-- The Frontier place: its valley alone (Config/FrontierValley via Util/Place.getValley; no town): the terrain in its own
+-- colours, then the flag WildService waits for, and its dressing, backdrop and arena effects
+function SceneryService.StartValley()
+	if not Place.isFrontier() then
+		return
+	end
+	terrainOps = WildValley.terrainOps(ValleyConfig, TownTerrain.trailSegment)
+	task.spawn(function()
+		local terrain = workspace.Terrain
+		for name, rgb in ValleyConfig.MATERIAL_COLORS do
+			terrain:SetMaterialColor(material(name), Props.color(rgb))
+		end
+		for index, op in terrainOps do
+			fill(terrain, op)
+			if index % OPS_PER_YIELD == 0 then
+				task.wait()
+			end
+		end
+		workspace:SetAttribute(ValleyConfig.TERRAIN_READY_ATTRIBUTE, true)
+		workspace:WaitForChild("Scenery")
+		settlePieces()
+	end)
+	task.spawn(function()
+		local folder = Instance.new("Folder")
+		folder.Name = "Scenery"
+		buildWildValley(folder)
+		buildBackdrop(folder)
+		buildArenaEffects(folder)
+		folder.Parent = workspace
+	end)
 end
 
 function SceneryService.Start()

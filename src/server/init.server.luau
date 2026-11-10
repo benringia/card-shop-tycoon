@@ -75,7 +75,8 @@ elseif Place.isFrontier() then
 	JobService.StartLocksOnly() -- before PartyService: cards with a shop job stay out of the party
 	PartyService.Start()
 	SwordService.Start() -- the standard body and the sword (before BattleService, which uses it)
-	WildService.Start() -- the Frontier map, its spring and monsters
+	SceneryService.StartValley() -- the Frontier valley's terrain and scenery (Config/FrontierValley)
+	WildService.Start() -- the Frontier valley, its camp, spring and monsters
 	BattleService.Start()
 	BossService.Start() -- the Frontier bosses: after BattleService and WildService (it uses both)
 	FrontierService.Start() -- the Return portal and home button: back to the main game

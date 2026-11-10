@@ -9,6 +9,7 @@ local Wild = require(Config:WaitForChild("Wild"))
 local Frontier = require(Config:WaitForChild("Frontier"))
 local Places = require(Config:WaitForChild("Places"))
 local WildValley = require(Config:WaitForChild("WildValley"))
+local FrontierValley = require(Config:WaitForChild("FrontierValley"))
 
 local Place = {}
 
@@ -27,12 +28,12 @@ function Place.getWorld(): typeof(Wild)
 end
 
 -- The place's valley config (spec 2026-11-10-frontier-valley-design: one valley engine, two valleys): the Wild valley's
--- in the main game; nil where there's no valley (the Dungeon, and the Frontier until its valley is built)
+-- in the main game, the Frontier valley's in the Frontier; nil in the Dungeon (its cavern is no valley)
 function Place.getValley(): any
-	if Place.isFrontier() or Place.isDungeon() then
+	if Place.isDungeon() then
 		return nil
 	end
-	return WildValley
+	return if Place.isFrontier() then FrontierValley else WildValley
 end
 
 return Place

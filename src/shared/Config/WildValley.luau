@@ -134,6 +134,8 @@ return {
 	-- trailhead by the arrival, clear of the root arch's legs (each biome's board is in BIOMES), and an arrow post at each
 	-- bend naming the way on (a zone: its name and colour) and the way back to the portal home
 	RETURN_SIGN = { x = 18, z = 1134 },
+	-- The way home at the arrival (the Forest Falls root arch it came through) and the trailhead board's title
+	HOME = { model = "PortalWild", look = "Wild", title = "THE WILD" },
 	BOARD_FACE_BACK = 25, -- studs back along the trail (toward the arrival) a board turns to face (WildValley.backAlongTrail)
 	ARROWS = {
 		{ x = -165, z = 1245, arms = { { zone = 2, toward = { x = -240, z = 1320 } }, { text = "SHOP", toward = { x = 0, z = 1130 } } } },
@@ -356,6 +358,8 @@ return {
 	-- own `clear` for a big piece). A spot: `model` (PropModels; none for code-built ones), x, z, `height`, `yaw`, and
 	-- for glowing pieces `glow` (a GLOW colour)
 	PROP_LISTS = { "PROPS", "CRYSTALS", "CHARRED", "SHARDS", "VENTS", "MUSHROOMS", "TUFTS", "RUINS", "MOSS_ROCKS", "EMBER_TREES", "EMBER_CRYSTALS", "SKELETON", "GIANT_TREES" },
+	-- The lists SceneryService dresses (anchored, colliders, settled); the rest are built their own ways
+	DRESSED_LISTS = { "MUSHROOMS", "TUFTS", "MOSS_ROCKS", "RUINS", "EMBER_TREES", "SKELETON", "GIANT_TREES" },
 	-- The Caves' glow mushroom hollow (owner's pick C): glowing mushrooms (the four biggest under the rock shelf by the
 	-- cave mouth are the landmark; `clear` keeps spawn spots off them), glowing plant and flower tufts in patches along the
 	-- trail, mossy rocks (today's rocks, same places)
