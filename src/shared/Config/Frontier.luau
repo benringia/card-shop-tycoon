@@ -8,6 +8,7 @@ return {
 	SPRING = { x = 22, y = 0, z = -70 }, -- healing spring next to the entrance
 	SPRING_LABEL_DISTANCE = 35, -- the healing spring's name shows only this close
 	PORTAL_SIGN_HEIGHT = 17, -- the Dungeon portal's sign floats this high over its frame
+	SIGN_WIDTH = 14, -- WildService's plain name boards
 	DUNGEON_PORTAL = { x = -22, y = 0, z = -70 }, -- part 3b; "coming soon" until then
 	ENTRANCE_OFFSET = { x = 0, y = 0, z = -70 }, -- arrival point relative to ORIGIN
 	ZONE_SIZE = 140,

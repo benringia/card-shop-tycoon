@@ -130,8 +130,6 @@ return {
 	-- TERRAIN_WAIT seconds for this Workspace attribute, so nobody lands before there's ground to stand on
 	TERRAIN_READY_ATTRIBUTE = "WildTerrainReady",
 	TERRAIN_WAIT = 20,
-	-- The Frontier's plain name boards (WildService's sign)
-	SIGN_WIDTH = 14,
 	-- The valley's wooden signs (Server/Util/TrailProps, like the town's), each turned to face the trail: "The Wild"
 	-- trailhead by the arrival, clear of the root arch's legs (each biome's board is in BIOMES), and an arrow post at each
 	-- bend naming the way on (a zone: its name and colour) and the way back to the portal home

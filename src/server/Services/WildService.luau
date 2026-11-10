@@ -18,7 +18,7 @@ local Config = Shared:WaitForChild("Config")
 local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 -- The server wild map in the main game, the Frontier's map in the Frontier place (same shape)
 local Wild = Place.getWorld()
-local WildValleyConfig = require(Config:WaitForChild("WildValley"))
+local ValleyConfig = Place.getValley() -- the place's valley (nil: none here, as in the Dungeon)
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Bosses = require(Config:WaitForChild("Bosses"))
 local Combat = require(Config:WaitForChild("Combat"))
@@ -215,7 +215,7 @@ function buildSpring(folder: Instance)
 end
 
 local function sign(parent: Instance, text: string, cframe: CFrame)
-	local board = block(parent, "Sign", Vector3.new(WildValleyConfig.SIGN_WIDTH, 5, 0.6), cframe, Color3.fromRGB(40, 40, 50))
+	local board = block(parent, "Sign", Vector3.new(Wild.SIGN_WIDTH, 5, 0.6), cframe, Color3.fromRGB(40, 40, 50))
 	local gui = Instance.new("SurfaceGui")
 	gui.Face = Enum.NormalId.Front
 	gui.CanvasSize = Vector2.new(560, 200)
@@ -269,12 +269,12 @@ end
 -- The main game's Wild is the dressed valley (Config/WildValley; its terrain and scenery come from SceneryService): the
 -- zone floors, paths and arrival pad stay as invisible floors monsters snap to (groundAt), players walk on the terrain,
 -- and walls along its edge keep them in. The Frontier keeps the plain map.
-local VALLEY = not Place.isFrontier() and not Place.isDungeon()
+local VALLEY = ValleyConfig ~= nil
 local valleySpots: { [number]: { BasePart } } = {} -- each biome's spawn spots (WildValley.zoneSpots)
 local pending: { [number]: number } = {} -- each biome's monsters waiting to respawn
 local phantomPlayers = 0 -- Studio only (/crowd): counted in every biome on top of the real players
 -- The valley's terrain as SceneryService fills it: where its ground draws, for things placed before it's filled
-local valleyOps = if VALLEY then WildValley.terrainOps(WildValleyConfig, TownTerrain.trailSegment) else {}
+local valleyOps = if VALLEY then WildValley.terrainOps(ValleyConfig, TownTerrain.trailSegment) else {}
 
 local function valleyGround(x: number, z: number): number
 	return TownTerrain.groundAt(valleyOps, x, z) or 0
@@ -285,15 +285,15 @@ end
 -- "The Wild" by the arrival, each biome's trailhead board (its name and monster levels) and an arrow post at each bend
 local function buildValleySigns(folder: Instance)
 	local function facingTrail(spot: { x: number, z: number }): CFrame
-		local toward = WildValley.backAlongTrail(WildValleyConfig, spot, WildValleyConfig.BOARD_FACE_BACK)
+		local toward = WildValley.backAlongTrail(ValleyConfig, spot, ValleyConfig.BOARD_FACE_BACK)
 		return CFrame.new(spot.x, valleyGround(spot.x, spot.z), spot.z) * CFrame.Angles(0, math.rad(PortalTrails.armYaw(spot, toward)), 0)
 	end
-	TrailProps.trailhead(folder, facingTrail(WildValleyConfig.RETURN_SIGN), "THE WILD", nil)
+	TrailProps.trailhead(folder, facingTrail(ValleyConfig.RETURN_SIGN), "THE WILD", nil)
 	for index, zone in Wild.ZONES do
-		TrailProps.trailhead(folder, facingTrail(WildValleyConfig.BIOMES[index].board), string.upper(zone.name), `Lv {zone.minLevel}-{zone.maxLevel}`)
+		TrailProps.trailhead(folder, facingTrail(ValleyConfig.BIOMES[index].board), string.upper(zone.name), `Lv {zone.minLevel}-{zone.maxLevel}`)
 	end
 	local homeColor = Props.color(Town.PORTAL_EFFECTS.Wild.ring)
-	for _, post in WildValleyConfig.ARROWS do
+	for _, post in ValleyConfig.ARROWS do
 		local arms: { TrailProps.Arm } = {}
 		for _, arm in post.arms do
 			local zone = if arm.zone then Wild.ZONES[arm.zone] else nil
@@ -373,7 +373,7 @@ local function buildMap(): Folder
 			-- The valley's biomes are terrain (Config/WildValley): no floor parts; enough spawn spots for a crowd, on the
 			-- modelled ground (the population check fills them, WildPopulation)
 			valleySpots[index] = {}
-			for _, spot in WildValley.zoneSpots(WildValleyConfig, index) do
+			for _, spot in WildValley.zoneSpots(ValleyConfig, index) do
 				table.insert(valleySpots[index], addSpawnPoint(folder, index, Vector3.new(spot.x, valleyGround(spot.x, spot.z), spot.z)))
 			end
 			continue
@@ -395,7 +395,7 @@ local function buildMap(): Folder
 		end
 	end
 	if VALLEY then
-		buildWalls(folder, WildValleyConfig.EDGE, WildValleyConfig.EDGE_WALL.bottom, WildValleyConfig.EDGE_WALL.top)
+		buildWalls(folder, ValleyConfig.EDGE, ValleyConfig.EDGE_WALL.bottom, ValleyConfig.EDGE_WALL.top)
 	end
 	return folder
 end
@@ -525,7 +525,7 @@ local function moveToward(monster: Monster, target: Vector3, speed: number, dt: 
 	end
 	local stepLength = math.min(distance, speed * dt)
 	local nextPosition, found = groundAt(position + flat.Unit * stepLength)
-	if VALLEY and not WildValley.canStep(position.Y, if found then nextPosition.Y else nil, WildValleyConfig.MAX_STEP) then
+	if VALLEY and not WildValley.canStep(position.Y, if found then nextPosition.Y else nil, ValleyConfig.MAX_STEP) then
 		monster.wanderTarget = nil -- a cliff, a shelf, the stream or no ground at all: pick somewhere else
 		return true
 	end
@@ -621,11 +621,11 @@ local function spawnOnFreeSpot(zone: number)
 end
 
 local function updatePopulation()
-	local cfg = WildValleyConfig.POPULATION
+	local cfg = ValleyConfig.POPULATION
 	local players: { [number]: number } = {}
 	for player in inWild do
 		local root = getRoot(player)
-		local zone = if root then WildValley.zoneAt(WildValleyConfig, { x = root.Position.X, z = root.Position.Z }) else nil
+		local zone = if root then WildValley.zoneAt(ValleyConfig, { x = root.Position.X, z = root.Position.Z }) else nil
 		if zone then
 			players[zone] = (players[zone] or 0) + 1
 		end
@@ -720,13 +720,13 @@ end
 -- A monster at a spot, never respawned: /elite, and bosses (with their Config/Bosses id and the zone they belong to)
 function WildService.SpawnAt(position: Vector3, species: string, level: number, elite: boolean, boss: string?, zoneIndex: number?): Monster?
 	local zone = zoneIndex or 1
-	local inBiome = if VALLEY and not zoneIndex then WildValley.zoneAt(WildValleyConfig, { x = position.X, z = position.Z }) else nil
+	local inBiome = if VALLEY and not zoneIndex then WildValley.zoneAt(ValleyConfig, { x = position.X, z = position.Z }) else nil
 	if inBiome then
 		zone = inBiome
 	elseif not zoneIndex then
 		-- the nearest zone's middle (the valley's biomes, or the Frontier's grid)
 		local function middle(index: number): Vector3
-			local biome = if VALLEY then WildValleyConfig.BIOMES[index] else nil
+			local biome = if VALLEY then ValleyConfig.BIOMES[index] else nil
 			return if biome then Vector3.new(biome.centre.x, position.Y, biome.centre.z) else zoneCenter(index)
 		end
 		for index in Wild.ZONES do
@@ -854,7 +854,7 @@ local function arenaPiece(folder: Instance, spot: any, label: string, ground: nu
 					part.TextureID = ""
 				end
 				part.Material = Enum.Material.Neon
-				part.Color = Props.color(WildValleyConfig.VENT_LOOK.glow)
+				part.Color = Props.color(ValleyConfig.VENT_LOOK.glow)
 				part.CastShadow = false
 			end
 		end
@@ -865,12 +865,12 @@ end
 -- its walls and inner pieces (Util/WildValley.arenaDressing, the same layout every start), its roof or backdrop, and
 -- its looping ambient sound at the centre. Its area effects and crystals come from SceneryService
 local function dressArena(folder: Instance, boss: any, center: Vector3, copy: number)
-	local dressing = WildValleyConfig.ARENA_DRESSING[boss.zone]
+	local dressing = ValleyConfig.ARENA_DRESSING[boss.zone]
 	local random = Random.new(copy * 31 + boss.zone)
 	local rng = function(): number
 		return random:NextNumber()
 	end
-	for _, piece in WildValley.arenaDressing(WildValleyConfig, boss.ringRadius or Bosses.RING_RADIUS, boss.zone, rng) do
+	for _, piece in WildValley.arenaDressing(ValleyConfig, boss.ringRadius or Bosses.RING_RADIUS, boss.zone, rng) do
 		arenaPiece(folder, {
 			model = piece.model,
 			x = center.X + piece.x,
@@ -911,7 +911,7 @@ end
 -- The flat ground under an arena copy past its clearing (Util/WildValley.arenaApron), coloured to match the clearing's
 -- terrain: only seen from above, so nothing stands on it or hits it
 local function buildApron(folder: Instance, zone: number, copy: number)
-	local apron = WildValley.arenaApron(WildValleyConfig, zone, copy)
+	local apron = WildValley.arenaApron(ValleyConfig, zone, copy)
 	local material = (Enum.Material :: any)[apron.material]
 	local part = block(folder, "ArenaApron", Vector3.new(apron.size, apron.thickness, apron.size), CFrame.new(apron.x, apron.y, apron.z), rgb(apron.color), material)
 	part.CanCollide = false
@@ -924,11 +924,11 @@ end
 -- gate prompts and a trailhead board, and ARENA_COPIES copies of its ring far away (WildValley.arenaCopyCenter), each
 -- dressed as its zone's arena with its way home inside its walls (its Return prompt: onReturn)
 local function buildBossPortal(folder: Instance, boss: any, bossId: string, onGate: (player: Player, bossId: string) -> (), onGroup: (player: Player, bossId: string) -> (), onReturn: (player: Player, bossId: string, copy: number) -> ()): BossArena
-	local spot = WildValleyConfig.BIOMES[boss.zone].portal
+	local spot = ValleyConfig.BIOMES[boss.zone].portal
 	local ground = valleyGround(spot.x, spot.z)
 	local base = Vector3.new(spot.x, ground, spot.z)
 	local facing = Vector3.new(spot.faces.x - spot.x, 0, spot.faces.z - spot.z).Unit
-	local look = WildValleyConfig.BOSS_PORTAL
+	local look = ValleyConfig.BOSS_PORTAL
 	local model = Props.place(look.model, CFrame.lookAt(base, base + facing), folder)
 	if model.Name == look.model and Props.hasModel(look.model) then
 		model:ScaleTo(model:GetScale() * look.height / Town.SLOTS[look.model].height)
@@ -951,13 +951,13 @@ local function buildBossPortal(folder: Instance, boss: any, bossId: string, onGa
 	local gate = CFrame.lookAt(Vector3.new(gateSpot.X, valleyGround(gateSpot.X, gateSpot.Z), gateSpot.Z), Vector3.new(base.X, valleyGround(gateSpot.X, gateSpot.Z), base.Z))
 	local copies: { ArenaCopy } = {}
 	for copy = 1, Bosses.ARENA_COPIES do
-		local point = WildValley.arenaCopyCenter(WildValleyConfig, boss.zone, copy)
-		local center = Vector3.new(point.x, WildValleyConfig.ARENA_FIELD.y, point.z)
+		local point = WildValley.arenaCopyCenter(ValleyConfig, boss.zone, copy)
+		local center = Vector3.new(point.x, ValleyConfig.ARENA_FIELD.y, point.z)
 		local holder = Instance.new("Folder")
 		holder.Name = `{boss.name} {copy}`
 		holder.Parent = folder
-		local bossAt, barrier, inside = buildRing(holder, boss, center, WildValleyConfig.ARENA_LOOKS[boss.zone], WildValleyConfig.ARENA_LIFT)
-		local home = WildValleyConfig.ARENA_HOME
+		local bossAt, barrier, inside = buildRing(holder, boss, center, ValleyConfig.ARENA_LOOKS[boss.zone], ValleyConfig.ARENA_LIFT)
+		local home = ValleyConfig.ARENA_HOME
 		local homeSpot = center - Vector3.new(home.distance, 0, 0) -- inside the arena's walls
 		local ring = portal(holder, "Return to the Wild", homeSpot, Vector3.new(1, 0, 0), "Return", function(player)
 			onReturn(player, bossId, copy)
@@ -970,7 +970,7 @@ local function buildBossPortal(folder: Instance, boss: any, bossId: string, onGa
 		end
 		dressArena(holder, boss, center, copy)
 		buildApron(holder, boss.zone, copy)
-		buildWalls(holder, WildValley.arenaEdge(WildValleyConfig, boss.zone, copy), center.Y - 5, center.Y + 40)
+		buildWalls(holder, WildValley.arenaEdge(ValleyConfig, boss.zone, copy), center.Y - 5, center.Y + 40)
 		table.insert(copies, { spawn = bossAt, barrier = barrier, inside = inside, center = center, exit = gate, remote = true })
 	end
 	return { gate = gate, gatePosition = gatePart.Position, groupPrompt = groupPrompt, copies = copies }
@@ -1102,9 +1102,9 @@ function WildService.TravelToWild(player: Player, at: CFrame?)
 	-- below, and after the move holds you still until the valley round you is in on your device. "stay": no trip.
 	Remotes.WildTravel:FireClient(player, "loading")
 	-- The valley's terrain fills in the background at start: wait for its ground (SceneryService sets the attribute)
-	local ready = WildValleyConfig.TERRAIN_READY_ATTRIBUTE
+	local ready = ValleyConfig.TERRAIN_READY_ATTRIBUTE
 	if VALLEY and not workspace:GetAttribute(ready) then
-		local deadline = os.clock() + WildValleyConfig.TERRAIN_WAIT
+		local deadline = os.clock() + ValleyConfig.TERRAIN_WAIT
 		while not workspace:GetAttribute(ready) and os.clock() < deadline do
 			task.wait(0.25)
 		end
@@ -1202,13 +1202,13 @@ function WildService.Start()
 		if VALLEY then
 			-- each biome starts quiet; the population check adds more as players come
 			for zone in Wild.ZONES do
-				for _ = 1, WildValleyConfig.POPULATION.QUIET do
+				for _ = 1, ValleyConfig.POPULATION.QUIET do
 					spawnOnFreeSpot(zone)
 				end
 			end
 			task.spawn(function()
 				while true do
-					task.wait(WildValleyConfig.POPULATION.CHECK_SECONDS)
+					task.wait(ValleyConfig.POPULATION.CHECK_SECONDS)
 					updatePopulation()
 				end
 			end)

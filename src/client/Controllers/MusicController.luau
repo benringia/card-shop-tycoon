@@ -17,9 +17,10 @@ local Config = Shared:WaitForChild("Config")
 local Bosses = require(Config:WaitForChild("Bosses"))
 local Music = require(Config:WaitForChild("Music"))
 local Town = require(Config:WaitForChild("Town"))
-local WildValleyConfig = require(Config:WaitForChild("WildValley"))
 local MusicRules = require(Shared:WaitForChild("Util"):WaitForChild("MusicRules"))
 local WildValley = require(Shared:WaitForChild("Util"):WaitForChild("WildValley"))
+local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
+local WildValleyConfig = Place.getValley() -- the place's valley (Util/Place)
 local OpeningStage = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("OpeningStage"))
 
 local MusicController = {}

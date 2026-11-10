@@ -115,11 +115,11 @@ function WildValley.clearOf(point: Point, valley: any): (boolean, string?)
 			return false, "on the trail"
 		end
 	end
-	local stream = valley.STREAM
-	if segmentDistance(point, stream.from, stream.to) < stream.width / 2 + 2 then
+	local stream = valley.STREAM -- the Wild's meadow stream (the Frontier has none)
+	if stream and segmentDistance(point, stream.from, stream.to) < stream.width / 2 + 2 then
 		return false, "in the stream"
 	end
-	if math.sqrt((point.x - stream.pond.x) ^ 2 + (point.z - stream.pond.z) ^ 2) < stream.pond.radius + 2 then
+	if stream and math.sqrt((point.x - stream.pond.x) ^ 2 + (point.z - stream.pond.z) ^ 2) < stream.pond.radius + 2 then
 		return false, "in the pond"
 	end
 	local arrival = valley.ARRIVAL_CLEAR
@@ -155,7 +155,7 @@ function WildValley.ring(centre: Point, radius: number, count: number, template:
 end
 
 -- Every piece of the valley's scenery: each spot of each PROP_LISTS list, then the stone circle's stones and the
--- mushroom rings' toadstools
+-- mushroom rings' toadstools (when the valley has them)
 function WildValley.scenery(valley: any): { any }
 	local all = {}
 	for _, name in valley.PROP_LISTS do
@@ -163,11 +163,13 @@ function WildValley.scenery(valley: any): { any }
 			table.insert(all, spot)
 		end
 	end
-	local circle = valley.STONE_CIRCLE
-	for _, spot in WildValley.ring(circle, circle.radius, circle.count, circle) do
-		table.insert(all, spot)
+	local circle = valley.STONE_CIRCLE -- the Wild's (the Frontier has no circle or rings)
+	if circle then
+		for _, spot in WildValley.ring(circle, circle.radius, circle.count, circle) do
+			table.insert(all, spot)
+		end
 	end
-	for _, ring in valley.MUSHROOM_RINGS do
+	for _, ring in valley.MUSHROOM_RINGS or {} do
 		for _, spot in WildValley.ring(ring, ring.radius, ring.count, ring) do
 			table.insert(all, spot)
 		end

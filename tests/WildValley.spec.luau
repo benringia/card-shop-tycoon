@@ -51,7 +51,26 @@ local function distanceToSegment(p: any, a: any, b: any): number
 	return math.sqrt((p.x - (a.x + dx * t)) ^ 2 + (p.z - (a.z + dz * t)) ^ 2)
 end
 
+-- Measured on main before the Frontier valley (2026-11-10): the Wild's terrain must not change
+local WILD_OP_COUNT = 294
+local WILD_SCENERY_COUNT = 215
+
 return {
+	-- The Frontier valley (spec 2026-11-10-frontier-valley-design): one engine, two valleys
+	["a valley without the Wild's own pieces still gives terrain, scenery and clear spots"] = function()
+		local bare = table.clone(valley) :: any
+		bare.STREAM, bare.STONE_CIRCLE, bare.MUSHROOM_RINGS, bare.GRASS_PATCHES, bare.PATHS = nil, nil, nil, nil, nil
+		expect.equal(#WildValley.terrainOps(bare, TownTerrain.trailSegment) > 0, true)
+		expect.equal(#WildValley.scenery(bare) > 0, true)
+		expect.equal((WildValley.clearOf({ x = 1e6, z = 1e6 }, bare)), true)
+		expect.equal(#WildValley.zoneSpots(bare, 1) > 0, true)
+	end,
+
+	["the Wild's terrain ops and scenery are unchanged"] = function()
+		expect.equal(#WildValley.terrainOps(valley, TownTerrain.trailSegment), WILD_OP_COUNT)
+		expect.equal(#WildValley.scenery(valley), WILD_SCENERY_COUNT)
+	end,
+
 	["spawn spots match today's ring"] = function()
 		local spots = WildValley.spawnSpots(wild, 1)
 		expect.equal(#spots, wild.MONSTERS_PER_ZONE, "one per monster")

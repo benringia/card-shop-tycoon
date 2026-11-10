@@ -16,8 +16,8 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local WildLoading = require(Config:WaitForChild("WildLoading"))
 local Music = require(Config:WaitForChild("Music"))
-local WildValley = require(Config:WaitForChild("WildValley"))
 local WildLoadingRules = require(Shared:WaitForChild("Util"):WaitForChild("WildLoadingRules"))
+local WildValley = require(Shared:WaitForChild("Util"):WaitForChild("Place")).getValley() -- the place's valley config
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local player = Players.LocalPlayer

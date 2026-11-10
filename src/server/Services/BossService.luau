@@ -12,7 +12,6 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Bosses = require(Config:WaitForChild("Bosses"))
 local WildConfig = require(Config:WaitForChild("Wild")) -- the main game's: a remote arena copy streams in within its STREAM_TIMEOUT
-local WildValleyConfig = require(Config:WaitForChild("WildValley")) -- ARENA_HOLD: how far from a remote copy's middle its fighters hold it
 local Cards = require(Config:WaitForChild("Cards"))
 local Items = require(Config:WaitForChild("Items"))
 local Weapons = require(Config:WaitForChild("Weapons"))
@@ -22,6 +21,7 @@ local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 local WeaponRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
+local ValleyConfig = Place.getValley() -- ARENA_HOLD: how far from a remote copy's middle its fighters hold it (remote copies are a valley's)
 local Combat = require(Config:WaitForChild("Combat"))
 
 local Services = script.Parent :: Instance
@@ -423,7 +423,7 @@ local function copyFighters(bossId: string, index: number): { Player }
 	for _, player in (fighters[bossId] or {})[index] or {} do
 		local root = if player.Character then player.Character:FindFirstChild("HumanoidRootPart") :: BasePart? else nil
 		local distance = if root then (root.Position - copy.center).Magnitude else math.huge
-		if BossRules.stillInCopy(player.Parent ~= nil, distance, WildValleyConfig.ARENA_HOLD) then
+		if BossRules.stillInCopy(player.Parent ~= nil, distance, ValleyConfig.ARENA_HOLD) then
 			table.insert(held, player)
 		elseif player.Parent then
 			collectAll(player)

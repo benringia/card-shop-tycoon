@@ -12,11 +12,12 @@ local RunService = game:GetService("RunService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Cycle = require(Shared:WaitForChild("Config"):WaitForChild("DayCycle"))
 local Bosses = require(Shared:WaitForChild("Config"):WaitForChild("Bosses"))
-local Valley = require(Shared:WaitForChild("Config"):WaitForChild("WildValley"))
 local SharedUtil = Shared:WaitForChild("Util")
 local DayCycle = require(SharedUtil:WaitForChild("DayCycle"))
 local WildValley = require(SharedUtil:WaitForChild("WildValley"))
 local SkyLook = require(SharedUtil:WaitForChild("SkyLook"))
+local Place = require(SharedUtil:WaitForChild("Place"))
+local Valley = Place.getValley() -- the place's valley (Util/Place)
 
 local DayCycleController = {}
 

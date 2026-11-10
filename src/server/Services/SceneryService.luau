@@ -9,10 +9,10 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Scenery = require(Config:WaitForChild("Scenery"))
 local Town = require(Config:WaitForChild("Town"))
-local WildValleyConfig = require(Config:WaitForChild("WildValley"))
 local Bosses = require(Config:WaitForChild("Bosses"))
 local SharedUtil = Shared:WaitForChild("Util")
 local Place = require(SharedUtil:WaitForChild("Place"))
+local ValleyConfig = Place.getValley() -- the place's valley (Util/Place)
 local Props = require(SharedUtil:WaitForChild("Props"))
 local TownLayout = require(SharedUtil:WaitForChild("TownLayout"))
 local TownTerrain = require(SharedUtil:WaitForChild("TownTerrain"))
@@ -269,7 +269,7 @@ end
 -- players' way (big pieces get colliders, WildValley COLLIDERS, unless `solid` is false: round 2's backdrop pieces
 -- nobody can reach), its `Glow` parts glowing in the spot's colour, no shadow from a small one
 local function dressValleyProp(model: Model, spot: any, solid: boolean?)
-	local glow = Props.color(WildValleyConfig.GLOW[spot.glow or "teal"])
+	local glow = Props.color(ValleyConfig.GLOW[spot.glow or "teal"])
 	local _, size = model:GetBoundingBox()
 	local small = size.Y < Scenery.SMALL_DECOR_SIZE
 	for _, part in model:GetDescendants() do
@@ -296,7 +296,7 @@ local function dressValleyProp(model: Model, spot: any, solid: boolean?)
 			end
 		end
 	end
-	local share = WildValleyConfig.COLLIDERS[spot.model]
+	local share = ValleyConfig.COLLIDERS[spot.model]
 	if share and solid ~= false then
 		uprightColliders(model, spot, share)
 	end
@@ -332,7 +332,7 @@ local function groundAt(x: number, z: number): number
 end
 
 local function buildBridge(folder: Instance)
-	local bridge = WildValleyConfig.BRIDGE
+	local bridge = ValleyConfig.BRIDGE
 	local wood, dark = Props.color(bridge.wood), Props.color(bridge.dark)
 	local base = groundAt(bridge.x, bridge.z - bridge.length / 2) -- the bank it starts from
 	local steps = 8
@@ -358,12 +358,12 @@ end
 -- The trail's markers (Util/WildValley.markers): small glowing stones along its edges, none under the bridge; flat
 -- and not solid, so monsters and players pass over them
 local function buildTrailMarkers(folder: Instance)
-	local look, bridge = WildValleyConfig.MARKER, WildValleyConfig.BRIDGE
+	local look, bridge = ValleyConfig.MARKER, ValleyConfig.BRIDGE
 	local color = Props.color(look.color)
-	for index, point in WildValley.markers(WildValley.trail(WildValleyConfig), WildValleyConfig.MARKER_SPACING) do
+	for index, point in WildValley.markers(WildValley.trail(ValleyConfig), ValleyConfig.MARKER_SPACING) do
 		if math.abs(point.z - bridge.z) > bridge.length / 2 + 1 then
 			local side = if index % 2 == 0 then 1 else -1
-			local x = point.x + side * (WildValleyConfig.TRAIL_WIDTH / 2 - 0.6)
+			local x = point.x + side * (ValleyConfig.TRAIL_WIDTH / 2 - 0.6)
 			local stone = piece(folder, "TrailMarker", Vector3.new(0.35, look.size, look.size), CFrame.new(x, groundAt(x, point.z) + 0.12, point.z) * CFrame.Angles(0, 0, math.rad(90)), color, Enum.Material.Neon, Enum.PartType.Cylinder)
 			stone.CanCollide = false
 			stone.CanQuery = false
@@ -376,7 +376,7 @@ end
 -- A cluster of glowing crystals: a tall one and two smaller leaning out of its foot (the gorge's blue CRYSTAL_LOOK
 -- unless another look is given, e.g. the ridge's EMBER_CRYSTAL_LOOK)
 local function buildCrystalCluster(folder: Instance, spot: any, given: any?)
-	local look = given or WildValleyConfig.CRYSTAL_LOOK
+	local look = given or ValleyConfig.CRYSTAL_LOOK
 	local color, tip = Props.color(look.color), Props.color(look.tip)
 	local base = CFrame.new(spot.x, groundAt(spot.x, spot.z), spot.z) * CFrame.Angles(0, math.rad(spot.yaw), 0)
 	for index, shape in { { 1, 0, 0, 0 }, { 0.6, 0.9, 25, 40 }, { 0.5, -0.8, -20, 200 } } do
@@ -395,7 +395,7 @@ end
 -- The crystal cave's mouth (WildValley.CAVE): the opening is carved into the rock (an Air op); a dark wall closes its
 -- back, set on the carved face a ray finds (so it runs once the terrain is filled), and a cold blue light glows inside
 local function buildCave(folder: Instance)
-	local cave = WildValleyConfig.CAVE
+	local cave = ValleyConfig.CAVE
 	local hit = snap(Vector3.new(cave.x, cave.y + cave.height / 2, cave.z), Vector3.new(-40, 0, 0))
 	if not hit then
 		return
@@ -414,7 +414,7 @@ end
 
 -- A smoking vent on the ridge: a low basalt cone, a glowing core (its smoke is an area effect, Scenery.EMITTERS)
 local function buildVent(folder: Instance, spot: any)
-	local look = WildValleyConfig.VENT_LOOK
+	local look = ValleyConfig.VENT_LOOK
 	local rock, glow = Props.color(look.rock), Props.color(look.glow)
 	local upright = CFrame.Angles(0, 0, math.rad(90))
 	local ground = groundAt(spot.x, spot.z)
@@ -427,14 +427,14 @@ end
 
 -- The ridge's glowing floor cracks (Util/LavaCracks.floor, clear of the trail), snapped onto the terrain once it's filled
 local function buildRidgeCracks(folder: Instance)
-	local ridge = WildValleyConfig.RIDGE_CRACKS
+	local ridge = ValleyConfig.RIDGE_CRACKS
 	local holder = Instance.new("Folder")
 	holder.Name = "RidgeCracks"
 	holder.Parent = folder
 	local random = Random.new(ridge.SEED)
-	local trail = WildValley.trail(WildValleyConfig)
+	local trail = WildValley.trail(ValleyConfig)
 	local color = Props.color(Scenery.CRACKS.COLOR)
-	local floor = LavaCracks.floor(ridge.FLOOR, Scenery.CRACKS.WIDTH, trail, trail[1], WildValleyConfig.TRAIL_WIDTH / 2 + 2, 0, function(): number
+	local floor = LavaCracks.floor(ridge.FLOOR, Scenery.CRACKS.WIDTH, trail, trail[1], ValleyConfig.TRAIL_WIDTH / 2 + 2, 0, function(): number
 		return random:NextNumber()
 	end)
 	for _, segment in floor do
@@ -453,15 +453,15 @@ local function buildWildValley(folder: Folder)
 	local holder = Instance.new("Folder")
 	holder.Name = "WildValley"
 	holder.Parent = folder
-	for _, spot in WildValleyConfig.PROPS do
+	for _, spot in ValleyConfig.PROPS do
 		placeModel(holder, spot, spot.model)
 	end
 	buildBridge(holder)
 	buildTrailMarkers(holder)
-	for _, spot in WildValleyConfig.CRYSTALS do
+	for _, spot in ValleyConfig.CRYSTALS do
 		buildCrystalCluster(holder, spot)
 	end
-	for _, list in { WildValleyConfig.CHARRED, WildValleyConfig.SHARDS } do
+	for _, list in { ValleyConfig.CHARRED, ValleyConfig.SHARDS } do
 		for _, spot in list do
 			local model = placeModel(holder, spot, spot.model)
 			if model then
@@ -470,24 +470,24 @@ local function buildWildValley(folder: Folder)
 			end
 		end
 	end
-	for _, spot in WildValleyConfig.VENTS do
+	for _, spot in ValleyConfig.VENTS do
 		buildVent(holder, spot)
 	end
 	-- The scenery round (spec 2026-11-04-valley-scenery-design): the new pieces, the Meadow's stone circle and mushroom
 	-- rings, each dressed (freshly imported models arrive unanchored and colliding); the ridge's crystals code-built
-	local circle = WildValleyConfig.STONE_CIRCLE
+	local circle = ValleyConfig.STONE_CIRCLE
 	local pieces = WildValley.ring(circle, circle.radius, circle.count, circle)
-	for _, ring in WildValleyConfig.MUSHROOM_RINGS do
+	for _, ring in ValleyConfig.MUSHROOM_RINGS do
 		for _, spot in WildValley.ring(ring, ring.radius, ring.count, ring) do
 			table.insert(pieces, spot)
 		end
 	end
 	for _, name in { "MUSHROOMS", "TUFTS", "MOSS_ROCKS", "RUINS", "EMBER_TREES", "SKELETON", "GIANT_TREES" } do
-		for _, spot in WildValleyConfig[name] do
+		for _, spot in ValleyConfig[name] do
 			table.insert(pieces, spot)
 		end
 	end
-	for _, spot in WildValley.passProps(WildValleyConfig) do -- trees and rocks on the passes' banks
+	for _, spot in WildValley.passProps(ValleyConfig) do -- trees and rocks on the passes' banks
 		table.insert(pieces, spot)
 	end
 	for _, spot in pieces do
@@ -497,10 +497,10 @@ local function buildWildValley(folder: Folder)
 			table.insert(settling, model)
 		end
 	end
-	for _, spot in WildValleyConfig.EMBER_CRYSTALS do
-		buildCrystalCluster(holder, spot, WildValleyConfig.EMBER_CRYSTAL_LOOK)
+	for _, spot in ValleyConfig.EMBER_CRYSTALS do
+		buildCrystalCluster(holder, spot, ValleyConfig.EMBER_CRYSTAL_LOOK)
 	end
-	local volcano = placeModel(holder, WildValleyConfig.VOLCANO, "Volcano")
+	local volcano = placeModel(holder, ValleyConfig.VOLCANO, "Volcano")
 	if volcano then
 		dressCalderaProp(volcano)
 	end
@@ -525,14 +525,14 @@ local function buildVolcanoLava(scenery: Instance)
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Include
 	params.FilterDescendantsInstances = { volcano }
-	local lava = WildValleyConfig.VOLCANO_LAVA
+	local lava = ValleyConfig.VOLCANO_LAVA
 	local color = Props.color(Scenery.LAVA.COLOR)
 	local streams = Instance.new("Folder")
 	streams.Name = "VolcanoLava"
 	streams.Parent = holder
 	for _, stream in lava.streams do
 		local last: RaycastResult? = nil
-		for _, ray in WildValley.lavaRays(WildValleyConfig.VOLCANO, stream, lava.steps, lava.reach) do
+		for _, ray in WildValley.lavaRays(ValleyConfig.VOLCANO, stream, lava.steps, lava.reach) do
 			local hit = workspace:Raycast(Vector3.new(ray.origin.x, ray.origin.y, ray.origin.z), Vector3.new(ray.direction.x, ray.direction.y, ray.direction.z), params)
 			if hit and last then
 				strip(streams, last, hit, lava.width, color)
@@ -550,7 +550,7 @@ end
 -- turned with it, rays down find the terrain under each, and it drops by the widest gap. Its parts take rays only for
 -- the moment (dressValleyProp turned them off); its colliders move with it.
 local function settle(model: Model)
-	local look = WildValleyConfig.SETTLE
+	local look = ValleyConfig.SETTLE
 	local box, size = model:GetBoundingBox()
 	local queried = {}
 	for _, part in model:GetDescendants() do
@@ -587,7 +587,7 @@ end
 local function settlePieces()
 	for index, model in settling do
 		settle(model)
-		if index % WildValleyConfig.SETTLE.perYield == 0 then
+		if index % ValleyConfig.SETTLE.perYield == 0 then
 			task.wait()
 		end
 	end
@@ -601,7 +601,7 @@ local function buildBackdrop(folder: Instance)
 	local holder = Instance.new("Folder")
 	holder.Name = "WildBackdrop"
 	holder.Parent = folder
-	for _, spot in WildValleyConfig.BACKDROP do
+	for _, spot in ValleyConfig.BACKDROP do
 		local model = placeModel(holder, spot, spot.model)
 		if model then
 			dressValleyProp(model, spot, false)
@@ -609,7 +609,7 @@ local function buildBackdrop(folder: Instance)
 			table.insert(settling, model)
 		end
 	end
-	for _, spot in WildValleyConfig.MOUNTAINS do
+	for _, spot in ValleyConfig.MOUNTAINS do
 		local model = placeModel(holder, spot, spot.model)
 		if model then
 			dressValleyProp(model, spot, false)
@@ -1034,11 +1034,11 @@ end
 -- the copy, spec 2026-11-01-wild-bosses-arenas-design)
 local function buildArenaEffects(folder: Folder)
 	for _, boss in Bosses.BOSSES do
-		local dressing = if boss.place == "Wild" then WildValleyConfig.ARENA_DRESSING[boss.zone] else nil
+		local dressing = if boss.place == "Wild" then ValleyConfig.ARENA_DRESSING[boss.zone] else nil
 		if dressing then
 			for copy = 1, Bosses.ARENA_COPIES do
-				local centre = WildValley.arenaCopyCenter(WildValleyConfig, boss.zone, copy)
-				local y = WildValleyConfig.ARENA_FIELD.y
+				local centre = WildValley.arenaCopyCenter(ValleyConfig, boss.zone, copy)
+				local y = ValleyConfig.ARENA_FIELD.y
 				for _, effect in dressing.effects do
 					areaEffect(folder, effect.kind, effect.rate, Vector3.new(centre.x, y + effect.y, centre.z), Vector3.new(effect.size, 1, effect.size))
 				end
@@ -1048,7 +1048,7 @@ local function buildArenaEffects(folder: Folder)
 					local rng = function(): number
 						return random:NextNumber()
 					end
-					for _, spot in WildValley.arenaSpots(WildValleyConfig, boss.ringRadius or Bosses.RING_RADIUS, crystals.count, crystals.radius, rng) do
+					for _, spot in WildValley.arenaSpots(ValleyConfig, boss.ringRadius or Bosses.RING_RADIUS, crystals.count, crystals.radius, rng) do
 						buildCrystalCluster(folder, {
 							x = centre.x + spot.x,
 							z = centre.z + spot.z,
@@ -1117,7 +1117,7 @@ function SceneryService.Start()
 	end
 	terrainOps = TownTerrain.ops(Scenery, Town, TownLayout.plotRects(TownService.GetWorld()))
 	-- The Wild valley (Config/WildValley), far up the map in this same place: its terrain fills with the town's
-	for _, op in WildValley.terrainOps(WildValleyConfig, TownTerrain.trailSegment) do
+	for _, op in WildValley.terrainOps(ValleyConfig, TownTerrain.trailSegment) do
 		table.insert(terrainOps, op)
 	end
 	buildClouds()
@@ -1126,7 +1126,7 @@ function SceneryService.Start()
 	task.spawn(function()
 		buildTerrain()
 		-- the Wild valley has ground now: WildService lets players travel there
-		workspace:SetAttribute(WildValleyConfig.TERRAIN_READY_ATTRIBUTE, true)
+		workspace:SetAttribute(ValleyConfig.TERRAIN_READY_ATTRIBUTE, true)
 		local scenery = workspace:WaitForChild("Scenery")
 		settlePieces()
 		buildCracks(scenery :: Folder)
