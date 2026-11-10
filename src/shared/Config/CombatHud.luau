@@ -118,6 +118,7 @@ return {
 		Chilled = { emoji = "❄️", name = "Chilled", color = { 124, 200, 255 } },
 		Frozen = { emoji = "🧊", name = "Frozen", color = { 170, 228, 255 } },
 		Shocked = { emoji = "⚡", name = "Shocked", color = { 255, 225, 74 } },
+		Electrocuted = { emoji = "⚡", name = "Electrocuted", color = { 140, 170, 255 } },
 		Weakened = { emoji = "💔", name = "Weak", color = { 167, 123, 255 } },
 	},
 	DEBUFF_BADGE = 28, -- pixels: the badge on the portrait's corner

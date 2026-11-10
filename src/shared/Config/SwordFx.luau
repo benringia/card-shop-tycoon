@@ -151,5 +151,6 @@ return {
 	-- The boss winding up: a quick hit flashes it red; a big attack rears it back (its roar pose) with an orange glow
 	WINDUP_QUICK_COLOR = rgb(255, 70, 70),
 	WINDUP_BIG_COLOR = rgb(255, 160, 60),
+	WINDUP_CLAP_COLOR = rgb(120, 190, 255), -- a warned thunderclap's (the Storm Sovereign, 2026-11-11)
 	WINDUP_FILL = 0.55, -- the glow's strongest (Highlight fill transparency)
 }

@@ -489,8 +489,13 @@ return {
 		hero = { side = 11, ahead = 2, up = 2.5 },
 		push = 0.15,
 		lookUp = 5.5,
-		wide = { margin = 6, least = 14, up = 6, lookUp = 3.5 },
+		-- `clearance`: the wide shot stands this many studs past the reach of the body the skill lands on (Studio
+		-- 2026-11-11: the 24-stud Frost Tyrant put it inside his body, a pale wall over the skill)
+		wide = { margin = 6, least = 14, up = 6, lookUp = 3.5, clearance = 10 },
 		fov = 62,
+		-- a body (the boss, a creature, a player) still between the camera and you or the effect fades this much
+		-- (Util/CinematicView; the owner 2026-11-11: "the boss blocking so my animation/skill effects is invisible")
+		fade = 0.8,
 	},
 	-- Other players' effects (spec 4 "Everyone sees them"): drawn within `range` studs of your camera, at most `full`
 	-- at once in full; past that only their light version (Util/SwordSkillFxRules.drawsOthers)

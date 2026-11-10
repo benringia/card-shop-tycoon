@@ -68,6 +68,8 @@ require(script:WaitForChild("Util"):WaitForChild("FontStyle")).start()
 local Place = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("Place"))
 
 LoadingController.Start() -- the loading screen's steps (ReplicatedFirst shows it from the first frame)
+-- Effects toned to the scene: on bright ground (snow) they blend their colours in instead of adding light (Util/FxTone)
+require(script:WaitForChild("Util"):WaitForChild("FxTone")).Start()
 
 if Place.isFrontier() or Place.isDungeon() then
 	-- The Frontier and Dungeon places: no shop, so only the binder, party, creatures and fights

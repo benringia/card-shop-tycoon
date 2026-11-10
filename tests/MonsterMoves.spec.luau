@@ -9,7 +9,34 @@ local function play(state: MonsterMoves.State, event: any, now: number, lengths:
 	return MonsterMoves.decide(state, event, now, lengths or BOSS, CFG)
 end
 
+local SOVEREIGN = { windup = 0.6, strike = 0.5, specialWindup = 1.4, specialRelease = 0.8, clapWindup = 2, clapRelease = 1.2 }
+
 return {
+	-- The owner 2026-11-11: the Storm Sovereign's thunderclap gets its own animation
+	["a thunderclap rears up over its warning, then claps; nothing cuts in"] = function()
+		local state = MonsterMoves.new()
+		local up = play(state, { type = "thunderclap", kind = "windup", seconds = 2 }, 0, SOVEREIGN)
+		assert(up, "it rears up")
+		expect.equal(up.clip, "clapWindup")
+		expect.near(up.speed, 1, 1e-9, "over its 2 s warning")
+		expect.near(up.hold, 0.45, 1e-9, "held for the clap")
+		expect.equal(play(state, { type = "ring", kind = "clap", seconds = 2 }, 0, SOVEREIGN), nil, "its circle is no slam")
+		expect.equal(play(state, { type = "ring", kind = "slam", seconds = 1 }, 1, SOVEREIGN), nil, "a ring waits")
+		expect.equal(play(state, { type = "attack" }, 1.5, SOVEREIGN), nil, "no strike mid wind-up")
+		local clap = play(state, { type = "thunderclap", kind = "clap" }, 2.15, SOVEREIGN)
+		assert(clap, "the clap")
+		expect.equal(clap.clip, "clapRelease")
+		expect.equal(clap.speed, 1)
+	end,
+
+	["a body without clap clips claps with its special ones; an old thunderclap plays nothing"] = function()
+		local up = play(MonsterMoves.new(), { type = "thunderclap", kind = "windup", seconds = 2 }, 0)
+		assert(up and up.clip == "specialWindup", "its special wind-up")
+		local clap = play(MonsterMoves.new(), { type = "thunderclap", kind = "clap" }, 0)
+		assert(clap and clap.clip == "specialRelease", "its special release")
+		expect.equal(play(MonsterMoves.new(), { type = "thunderclap" }, 0), nil, "the Hydra's instant clap")
+	end,
+
 	["a charge winds up over its lead and holds for the strike"] = function()
 		local move = play(MonsterMoves.new(), { type = "charge", seconds = 0.6 }, 0)
 		assert(move, "a wind-up")

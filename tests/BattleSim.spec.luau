@@ -397,6 +397,102 @@ return {
 		expect.equal(math.abs(stuns["a:fast"] - 1.4) < 1e-9, true, "3 s x 14/30")
 	end,
 
+	-- The owner 2026-11-11: the Storm Sovereign's thunderclap is warned (a storm circle round it while it rears up) and
+	-- leaves a player inside it Electrocuted; its pets are stunned as before, at the clap
+	["a warned thunderclap: a storm circle round the boss, then the clap"] = function()
+		local clap = { every = 2, seconds = 1, minFactor = 0.3, maxFactor = 1.5, warning = 1, radius = 20, debuff = "Electrocuted" }
+		local state = bossFightWithPlayer(41, 1, { thunderclap = clap }, nil, { owned("p1", "1", 1e9), playerInput("1") })
+		local early = runFor(state, 2.05)
+		local windup = firstOf(early, "thunderclap")
+		assert(windup, "it rears up")
+		expect.equal(windup.kind, "windup")
+		expect.equal(windup.seconds, 1)
+		expect.equal(windup.radius, 20)
+		local circle = firstOf(early, "ring")
+		assert(circle and circle.kind == "clap" and circle.to == "a:@1", "the storm circle on the player")
+		expect.equal(circle.radius, 20)
+		expect.equal(firstOf(early, "stun"), nil, "nobody stunned before the clap")
+		local landed = runFor(state, clap.warning + combat.HIT_GRACE + 0.1)
+		local boom = firstOf(landed, "thunderclap")
+		assert(boom and boom.kind == "clap", "then it claps")
+		local stun = firstOf(landed, "stun")
+		assert(stun and stun.to == "a:p1", "its pet is stunned at the clap")
+		local debuff = firstOf(landed, "debuff")
+		assert(debuff and debuff.to == "a:@1" and debuff.kind == "Electrocuted", "the player inside is Electrocuted")
+		expect.equal(debuff.seconds, Bosses.DEBUFFS.Electrocuted.seconds)
+		expect.equal(count(landed, function(e)
+			return e.type == "attack" and e.to == "a:@1"
+		end), 0, "no damage: the jolts are the hit")
+	end,
+
+	["out of the storm circle or dodging: no Electrocuted, pets stunned all the same"] = function()
+		local clap = { every = 2, seconds = 1, minFactor = 0.3, maxFactor = 1.5, warning = 1, radius = 20, debuff = "Electrocuted" }
+		local state = bossFightWithPlayer(41, 1, { thunderclap = clap }, nil, { owned("p1", "1", 1e9), playerInput("1") })
+		state.ringCheck = function(info: any)
+			expect.equal(info.shape, "clap")
+			return false -- ran out
+		end
+		local events = runFor(state, 2.05 + clap.warning + combat.HIT_GRACE + 0.1)
+		expect.equal(firstOf(events, "debuff"), nil, "ran out")
+		assert(firstOf(events, "stun"), "the pet can't run")
+		local missed = nil
+		for _, e in events do
+			if e.type == "attack" and e.kind == "Thunderclap" then
+				missed = e
+			end
+		end
+		assert(missed and missed.to == "a:@1" and missed.dodged == true, "a miss clients show")
+
+		local dodger = bossFightWithPlayer(41, 1, { thunderclap = clap }, nil, { owned("p1", "1", 1e9), playerInput("1") })
+		runFor(dodger, 2.05 + clap.warning)
+		BattleSim.dodge(dodger, "1")
+		local after = runFor(dodger, combat.HIT_GRACE + 0.1)
+		expect.equal(firstOf(after, "debuff"), nil, "dodged through it")
+	end,
+
+	["Electrocuted: sword and dodge stopped in each 1 s jolt, free between"] = function()
+		local clap = { every = 2, seconds = 1, minFactor = 0.3, maxFactor = 1.5, warning = 1, radius = 20, debuff = "Electrocuted" }
+		local state = bossFightWithPlayer(41, 1, { thunderclap = clap }, nil, { owned("p1", "1", 1e9), playerInput("1") })
+		stepUntil(state, function(e)
+			return e.type == "debuff" and e.kind == "Electrocuted"
+		end, 10)
+		state.sides.b.fighters[1].clapReady = math.huge -- one clap only
+		local function stunned(): boolean
+			return select(2, BattleSim.swordHit(state, "1", "b:m", 0.1, "Sword")) == "stunned"
+		end
+		expect.equal(stunned(), true, "the first jolt at once")
+		expect.equal(select(2, BattleSim.dodge(state, "1")), "stunned", "no dodge in a jolt")
+		runFor(state, 1.2)
+		expect.equal(stunned(), false, "free after 1 s")
+		runFor(state, 1.9) -- 3.1 s in
+		expect.equal(stunned(), true, "the second jolt")
+		runFor(state, 1.1) -- 4.2 s in
+		expect.equal(stunned(), false)
+		runFor(state, 2) -- 6.2 s in
+		expect.equal(stunned(), true, "the third jolt")
+		expect.equal(BattleSim.playerDebuff(state, "1"), "Electrocuted")
+		runFor(state, 1)
+		expect.isNil(BattleSim.playerDebuff(state, "1"), "over after 7 s")
+		expect.equal(stunned(), false)
+	end,
+
+	["no big attack comes while a thunderclap winds up"] = function()
+		local clap = { every = 2, seconds = 1, minFactor = 0.3, maxFactor = 1.5, warning = 1.5, radius = 20, debuff = "Electrocuted" }
+		local attacks = { every = 2.5, warning = 1, big = 0.01, quick = 0, shape = "slam", debuff = "Shocked" }
+		local state = bossFightWithPlayer(41, 1, { thunderclap = clap }, attacks, { owned("p1", "1", 1e9), playerInput("1") })
+		local clapAt, slamAt = nil, nil
+		for _, timed in timedEvents(state, 6) do
+			local e = timed.event
+			if e.type == "thunderclap" and e.kind == "clap" and not clapAt then
+				clapAt = timed.time
+			elseif e.type == "ring" and e.kind == "slam" and not slamAt then
+				slamAt = timed.time
+			end
+		end
+		assert(clapAt and slamAt, "both came")
+		assert(slamAt > clapAt, `the slam waits for the clap ({slamAt} after {clapAt})`)
+	end,
+
 	["adds: two Spawn at 70% and two more at 35%"] = function()
 		local state = bossWith(ADDS, 4)
 		local boss = state.sides.b.fighters[1]

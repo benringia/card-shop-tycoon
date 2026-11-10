@@ -8,6 +8,7 @@ return {
 	BOSS_SWAP_SECONDS = 8, -- boss fights: seconds between a player's swaps (none needed when all of theirs fainted)
 	BOSS_MAX_STUN = 1, -- seconds: stuns on a boss last at most this long
 	BOSS_SKILL_GAP = 6, -- seconds between any two of a boss's skills (shield, heal, thunderclap): never back to back
+	CLAP_BREATHER = 1, -- seconds after a warned thunderclap lands before the boss's next big attack can start
 
 	-- Attacks: interval = clamp(ATTACK_BASE * (SPD_REFERENCE / SPD) ^ ATTACK_CURVE, ATTACK_MIN, ATTACK_MAX): a gentle curve
 	-- so every SPD a card reaches still speeds it up (SPD 10 every 2 s, 27 every 1.08 s, 47 every 0.77 s, 69 every 0.6 s)

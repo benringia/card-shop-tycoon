@@ -1111,7 +1111,7 @@ local function stampCharge(view: View, grade: string, seconds: number, _target: 
 			local a = math.random() * 2 * math.pi
 			local from = view.root.Position + UP * view.height * (0.2 + math.random() * 0.6) + Vector3.new(math.cos(a), 0, math.sin(a)) * reach
 			local to = view.root.Position + UP * view.height * (0.2 + math.random() * 0.6) + Vector3.new(math.cos(a + 2), 0, math.sin(a + 2)) * reach
-			ElementFx.bolt(from, to, volt, 0.12, 0.6 * g.scale)
+			ElementFx.bolt(from, to, volt, 0.12, 0.6 * g.scale, true)
 		end
 	end)
 	local stopGlow = ElementFx.chargeGlow(view.root, volt, seconds, 1.5 * g.scale)
@@ -1143,7 +1143,7 @@ local function stampImpact(view: View, grade: string, target: Vector3, _targetBo
 	local trail = beam(attachment(a0, Vector3.zero), attachment(a1, Vector3.zero), AttackFx.TEXTURES.streak, sequence(WHITE, volt), g.trailWidth * 1.5, g.trailWidth, { speed = 6, length = 8 })
 	tween(trail, 0.5, { Width0 = 0, Width1 = 0 })
 	for _ = 1, 3 do
-		ElementFx.bolt(start + UP * view.height * 0.5, past + UP * view.height * 0.5, volt, 0.25, g.scale)
+		ElementFx.bolt(start + UP * view.height * 0.5, past + UP * view.height * 0.5, volt, 0.25, g.scale, true)
 	end
 	ElementFx.burst(target, volt, 1.8 * g.scale)
 	ElementFx.ring(ground + UP * 0.2, volt, math.max(5, targetHeight * 0.6) * g.scale, 0.4)
@@ -1840,7 +1840,7 @@ local function stormCharge(view: View, grade: string, seconds: number, target: V
 		if math.floor(elapsed * 5) ~= math.floor((elapsed - 1 / 60) * 5) and #puffs > 1 then
 			local a, c = puffs[math.random(#puffs)], puffs[math.random(#puffs)]
 			if a ~= c then
-				ElementFx.bolt(a.Position, c.Position, volt, 0.12, 0.8 * g.scale)
+				ElementFx.bolt(a.Position, c.Position, volt, 0.12, 0.8 * g.scale, true)
 			end
 		end
 	end)

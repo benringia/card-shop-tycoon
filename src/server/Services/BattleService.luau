@@ -446,13 +446,16 @@ local function spawnAdd(fight: Fight, id: string, markers: { [string]: BasePart 
 end
 
 -- A big attack started: where its ring is (a slam or the Frost Tyrant's spikes under its target, a player or a pet; a
--- swipe from the boss toward them); the event is sent with the shape so clients draw the same ring
+-- swipe from the boss toward them; a thunderclap's storm circle round the boss, the sim's radius); the event is sent
+-- with the shape so clients draw the same ring
 local function recordRing(fight: Fight, event: BattleSim.Event)
 	local target = markerFor(fight, event.to or "")
 	local boss = Bosses.BOSSES[fight.monster.boss or ""]
 	local from = fight.monster.marker.Position
-	local at = if target then target.Position else from
-	local ring: Ring = { shape = event.kind or "slam", x = at.X, y = at.Y, z = at.Z, dirX = 0, dirZ = -1, radius = Bosses.RING_SLAM_RADIUS, length = 0, halfAngle = 0 }
+	local clap = event.kind == "clap"
+	local at = if target and not clap then target.Position else from
+	local radius = if clap then tonumber((event :: any).radius) or Bosses.RING_SLAM_RADIUS else Bosses.RING_SLAM_RADIUS
+	local ring: Ring = { shape = event.kind or "slam", x = at.X, y = at.Y, z = at.Z, dirX = 0, dirZ = -1, radius = radius, length = 0, halfAngle = 0 }
 	if ring.shape == "swipe" then
 		local look = fight.monster.marker.CFrame.LookVector
 		local toward = Vector3.new(at.X - from.X, 0, at.Z - from.Z)
@@ -480,7 +483,7 @@ local function ringInside(fight: Fight, info: BattleSim.RingInfo): boolean
 		return true
 	end
 	local at = root.Position
-	if ring.shape == "slam" or ring.shape == "spikes" then
+	if ring.shape == "slam" or ring.shape == "spikes" or ring.shape == "clap" then
 		return RingRules.inSlam(ring.x, ring.z, ring.radius, at.X, at.Z)
 	end
 	return RingRules.inSwipe(ring.x, ring.z, ring.dirX, ring.dirZ, ring.length, ring.halfAngle, at.X, at.Z)
@@ -522,12 +525,17 @@ local function updateMovement(member: Member)
 	end
 end
 
--- Each step: a boss's debuff that slows (Tangled, Chilled) slows the member's walking while the sim says it holds, so
--- a refresh, a different debuff, going down and running out all follow the sim
+-- Each step: a boss's debuff that slows (Tangled, Chilled; Frozen and Electrocuted's jolts hold them still) slows the
+-- member's walking while the sim says it holds, so a refresh, a different debuff, going down and running out all
+-- follow the sim
 local function followDebuff(fight: Fight, member: Member)
-	local kind = BattleSim.playerDebuff(fight.sim, member.owner)
+	local kind, left = BattleSim.playerDebuff(fight.sim, member.owner)
 	local spec = if kind then Bosses.DEBUFFS[kind] else nil
-	local slow = if spec and spec.slow then spec.slow else nil
+	local slow = nil
+	if spec and left then
+		local _, now = DebuffRules.effectAt(spec, spec.seconds - left)
+		slow = now
+	end
 	if slow ~= member.slow then
 		member.slow = slow
 		updateMovement(member)
@@ -583,7 +591,15 @@ local function handleEvents(fight: Fight, events: { BattleSim.Event })
 			if member then
 				member.rings += 1
 			end
-			windUp(fight, event.seconds, "big")
+			if event.kind ~= "clap" then
+				windUp(fight, event.seconds, "big")
+			end
+		elseif event.type == "thunderclap" and event.kind == "windup" then
+			-- A warned thunderclap rears up: clients draw its storm circle round the boss where it stands now
+			local at = fight.monster.marker.Position
+			local view = event :: any
+			view.x, view.y, view.z = at.X, at.Y, at.Z
+			windUp(fight, event.seconds, "clap")
 		elseif event.type == "telegraph" then
 			windUp(fight, event.seconds, "quick")
 		elseif (event.type == "down" or event.type == "getUp") and event.to then

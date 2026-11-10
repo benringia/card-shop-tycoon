@@ -376,7 +376,7 @@ type TrickBoss = {
 		heal: { below: number, fraction: number, uses: number? }?,
 		enrage: { below: number, atkMultiplier: number }?,
 		shield: { every: number, breakStun: number }?,
-		thunderclap: { every: number }?,
+		thunderclap: { every: number, warning: number? }?,
 		adds: { at: { number }, count: number, species: string }?,
 	},
 	phases: { { element: string } }?,
@@ -403,7 +403,9 @@ function BossRules.watchOut(boss: TrickBoss): { Trick }
 	end
 	local clap = mechanics.thunderclap
 	if clap then
-		local text = `Stuns your cards every {clap.every} s. Faster cards shake it off sooner.`
+		local text = if clap.warning
+			then `Claps every {clap.every} s: run out of its storm circle or get Electrocuted. Stuns your cards too.`
+			else `Stuns your cards every {clap.every} s. Faster cards shake it off sooner.`
 		table.insert(tricks, { kind = "thunderclap", name = "Thunderclap", text = text })
 	end
 	local adds = mechanics.adds

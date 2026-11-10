@@ -20,6 +20,7 @@ local PetAnimator = require((script.Parent :: Instance):WaitForChild("PetAnimato
 local KeyframePlayer = require((script.Parent :: Instance):WaitForChild("KeyframePlayer"))
 local BeastAura = require((script.Parent :: Instance):WaitForChild("BeastAura"))
 local SignatureFx = require((script.Parent :: Instance):WaitForChild("SignatureFx"))
+local CinematicView = require((script.Parent :: Instance):WaitForChild("CinematicView"))
 
 local CreatureVisuals = {}
 
@@ -391,6 +392,8 @@ function CreatureVisuals.build(model: Model, marker: BasePart, height: number, f
 		end
 	end
 	model:PivotTo(marker.CFrame)
+	-- a body a camera moment fades when it stands in the way (creatures, monsters, bosses: Util/CinematicView)
+	model:SetAttribute(CinematicView.BODY, true)
 	model.Parent = workspace
 	-- Animators only load animations once they're in the game
 	if animator then

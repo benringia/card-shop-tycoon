@@ -45,6 +45,7 @@ return {
 			"An Ember creature melts through the Frost Tyrant's ice",
 		},
 		stormSovereign = {
+			"When it rears up with its wings high, run out of the storm circle: Electrocuted jolts you every 3 seconds",
 			"Shocked stops your sword and dodge for a moment: don't stand in its rings",
 			"Bring a Shade creature: it hits Volt bosses harder",
 		},

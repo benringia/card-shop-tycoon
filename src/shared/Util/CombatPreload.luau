@@ -52,6 +52,12 @@ function CombatPreload.collect(combatHud: any, swordFx: any, swords: any, attack
 		for _, entry in attackFx.MONSTER do
 			scan(entry.sounds, ids.sounds, seenSounds)
 		end
+		-- the Frost Tyrant's ice and the Storm Sovereign's thunderclap (Util/IceFx, Util/StormFx)
+		for _, kit in { attackFx.ICE, attackFx.STORM } do
+			if kit and kit.sounds then
+				scan(kit.sounds, ids.sounds, seenSounds)
+			end
+		end
 	end
 	if victory then
 		scan(victory.SOUNDS, ids.sounds, seenSounds)

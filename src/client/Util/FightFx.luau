@@ -29,6 +29,7 @@ local SuperFxRules = require(Shared:WaitForChild("Util"):WaitForChild("SuperFxRu
 local RingFx = require((script.Parent :: Instance):WaitForChild("RingFx"))
 local ScreenFx = require((script.Parent :: Instance):WaitForChild("ScreenFx"))
 local IceFx = require((script.Parent :: Instance):WaitForChild("IceFx"))
+local StormFx = require((script.Parent :: Instance):WaitForChild("StormFx"))
 local Spotlight = require((script.Parent :: Instance):WaitForChild("Spotlight"))
 
 local FightFx = {}
@@ -444,6 +445,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 			return
 		end
 		local seconds = math.max(0.1, tonumber(event.seconds) or 0.5)
+		Spotlight.hold(seconds + AttackFx.SPOTLIGHT.move) -- a Pet button move shows clearly too (Util/Spotlight)
 		local tint = color(spec.color)
 		-- The four finished Pet button moves wind up bigger with grade (Config/MoveFx WINDUP, POSE_AMOUNT)
 		local grade = MoveFxRules.grade(view.grade, Extras.enabled(), MoveFxConfig)
@@ -693,6 +695,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 	local moves: { [BasePart]: MonsterMoves.State } = {}
 	local rings: { [string]: any } = {} -- each player's latest ring (by sim id): where its hit lands
 	local iceShields: { [BasePart]: IceFx.Shield } = {} -- the Frost Tyrant's shield, by his marker
+	local storms: { [BasePart]: StormFx.Windup } = {} -- the Storm Sovereign's thunderclap winding up, by its marker
 	local gathering: { [BasePart]: () -> () } = {} -- a boss's sparks pulling in for a ring
 	local strikeSoundAt = 0
 	local moveCfg = { CHARGE_GRACE = AttackFx.CHARGE_GRACE, HIT_GRACE = Combat.HIT_GRACE }
@@ -708,6 +711,27 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		if stop then
 			gathering[marker] = nil
 			stop()
+		end
+	end
+
+	-- A warned thunderclap (the Storm Sovereign, owner 2026-11-11): its storm circle and crown charging while it rears
+	-- up (round where the server says it stood), then the clap over that circle
+	local function onStorm(event: any, marker: BasePart, view: MonsterView)
+		if event.kind == "windup" then
+			local current = storms[marker]
+			if current then
+				current.stop(false)
+			end
+			local centre = if typeof(event.x) == "number" then Vector3.new(event.x, event.y, event.z) else view.root.Position
+			local seconds = (tonumber(event.seconds) or 2) + Combat.HIT_GRACE
+			storms[marker] = StormFx.windup(view.root, view.height, centre, tonumber(event.radius) or 20, seconds)
+		elseif event.kind == "clap" then
+			local current = storms[marker]
+			storms[marker] = nil
+			if current then
+				current.stop(true)
+				StormFx.clap(view.root, view.height, current.centre, current.radius)
+			end
 		end
 	end
 
@@ -727,6 +751,14 @@ function FightFx.new(resolve: Resolve): Dispatcher
 			return
 		end
 		local tint = color(spec.color)
+		if event.type == "thunderclap" then
+			if spec.storm then
+				onStorm(event, marker, view)
+			end
+			return
+		elseif event.type == "ring" and event.kind == "clap" then
+			return -- its storm circle is the thunderclap's (onStorm), one for everyone
+		end
 		local slam = event.type == "attack" and (event.kind == "Slam" or event.kind == "Swipe" or event.kind == "Spikes")
 		if event.type == "ring" then
 			if typeof(event.to) == "string" and typeof(event.x) == "number" then
@@ -858,6 +890,15 @@ function FightFx.new(resolve: Resolve): Dispatcher
 				end
 				continue
 			end
+			-- A thunderclap stunned a pet (no sender): it crackles for a moment
+			if typeof(event) == "table" and event.type == "stun" and typeof(event.to) == "string" then
+				local pet = resolve.marker(event.to)
+				local petView = if pet then resolve.creature(pet) else nil
+				if petView then
+					StormFx.zapPet(petView.root, petView.height, tonumber(event.damage) or 1)
+				end
+				continue
+			end
 			if typeof(event) ~= "table" or typeof(event.from) ~= "string" then
 				continue
 			end
@@ -904,6 +945,10 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		for boss, shield in iceShields do
 			iceShields[boss] = nil
 			shield.remove()
+		end
+		for boss, storm in storms do
+			storms[boss] = nil
+			storm.stop(false)
 		end
 		for id in rains do
 			stopRain(id)

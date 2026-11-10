@@ -2,7 +2,8 @@
 -- A boss's debuff shown on a player's character (spec 2026-11-02-attack-animations-design, the owner's approved look;
 -- kinds in Config/Bosses DEBUFFS, colours in Config/CombatHud DEBUFFS): Tangled vines wrapped round the legs, Poisoned
 -- green bubbles rising off them, Burning small flames, Chilled frost crystals at the feet and a blue tint, Shocked
--- yellow sparks crackling, Weak a purple haze. Everyone in the fight sees it (BattleController shows it for every player
+-- yellow sparks crackling, Weak a purple haze, Electrocuted (the Storm Sovereign's thunderclap) faint blue sparks and
+-- in each jolt arcs flickering round them (Util/StormFx). Everyone in the fight sees it (BattleController shows it for every player
 -- fighter's debuff event). Poison and Burn ticks flash the character in their colour. Client-only parts and emitters on
 -- the character, gone when it runs out, when the player goes down or when the fight ends.
 local Debris = game:GetService("Debris")
@@ -10,10 +11,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Bosses = require(Shared:WaitForChild("Config"):WaitForChild("Bosses"))
 local CombatHud = require(Shared:WaitForChild("Config"):WaitForChild("CombatHud"))
+local DebuffRules = require(Shared:WaitForChild("Util"):WaitForChild("DebuffRules"))
 local ElementFx = require((script.Parent :: Instance):WaitForChild("ElementFx"))
 local Extras = require((script.Parent :: Instance):WaitForChild("Extras"))
 local IceFx = require((script.Parent :: Instance):WaitForChild("IceFx"))
+local StormFx = require((script.Parent :: Instance):WaitForChild("StormFx"))
 
 local DebuffFx = {}
 
@@ -135,6 +139,11 @@ local function sparks(character: Model, color: Color3): { Instance }
 	return stream(character, "spark", color, { size = { 0.9, 0.3 }, life = 0.18, speed = 5, spread = 180, brightness = 2.2 }, 40)
 end
 
+-- Electrocuted between its jolts: faint sparks (each jolt is StormFx.jolt's, scheduled by show)
+local function charged(character: Model, color: Color3): { Instance }
+	return stream(character, "spark", color, { size = { 0.6, 0.2 }, life = 0.15, speed = 4, spread = 180, brightness = 2 }, 10)
+end
+
 local function haze(character: Model, color: Color3): { Instance }
 	return stream(character, "smoke", color, { size = { 2, 3.5 }, life = 1.4, speed = 0.6, start = 0.45, light = 0.3, spin = { -20, 20 } }, 8)
 end
@@ -156,6 +165,7 @@ local BUILD: { [string]: (Model, Color3) -> { Instance } } = {
 	Burn = flames,
 	Chilled = frost,
 	Shocked = sparks,
+	Electrocuted = charged,
 	Weakened = haze,
 }
 
@@ -184,8 +194,10 @@ function DebuffFx.clear(character: Model)
 	end
 end
 
--- `kind` on `character` for `seconds`: the same kind again only lasts longer, another replaces it
-function DebuffFx.show(character: Model, kind: string, seconds: number)
+-- `kind` on `character` for `seconds`: the same kind again only lasts longer, another replaces it. A debuff with jolts
+-- (Electrocuted) jolts them at its times from now (DebuffRules.joltTimes; a refresh starts them over), calling
+-- `onJolt(seconds)` with each (your own: the sword stops)
+function DebuffFx.show(character: Model, kind: string, seconds: number, onJolt: ((number) -> ())?)
 	local current = shown[character]
 	if current and current.kind ~= kind then
 		DebuffFx.clear(character)
@@ -201,6 +213,22 @@ function DebuffFx.show(character: Model, kind: string, seconds: number)
 			return
 		end
 		shown[character] = { kind = kind, token = token, pieces = build(character, colorOf(kind)) }
+	end
+	local spec = Bosses.DEBUFFS[kind]
+	local jolt = if spec then spec.jolt else nil
+	if spec and jolt then
+		for _, at in DebuffRules.joltTimes(spec) do
+			task.delay(at, function()
+				local now = shown[character]
+				if not now or now.token ~= token then
+					return -- cleared, refreshed or replaced
+				end
+				StormFx.jolt(character, jolt.seconds)
+				if onJolt then
+					onJolt(jolt.seconds)
+				end
+			end)
+		end
 	end
 	task.delay(seconds, function()
 		local now = shown[character]

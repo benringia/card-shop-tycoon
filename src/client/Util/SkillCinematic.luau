@@ -14,13 +14,14 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local SwordSkillFxConfig = require(Shared:WaitForChild("Config"):WaitForChild("SwordSkillFx"))
 local SwordSkillFxRules = require(Shared:WaitForChild("Util"):WaitForChild("SwordSkillFxRules"))
 local SuperCinematic = require((script.Parent :: Instance):WaitForChild("SuperCinematic"))
+local CinematicView = require((script.Parent :: Instance):WaitForChild("CinematicView"))
 
 local SkillCinematic = {}
 
 local RENDER_NAME = "SwordSkillCinematic"
 local UP = Vector3.yAxis
 
-type Saved = { cameraType: Enum.CameraType, cframe: CFrame, fov: number, subject: Instance? }
+type Saved = { cameraType: Enum.CameraType, cframe: CFrame, fov: number, subject: Instance?, fader: CinematicView.Fader? }
 local saved: Saved? = nil
 
 local function smooth(a: number): number
@@ -63,6 +64,9 @@ function SkillCinematic.stop()
 	end
 	saved = nil
 	RunService:UnbindFromRenderStep(RENDER_NAME)
+	if was.fader then
+		was.fader.restore()
+	end
 	local camera = workspace.CurrentCamera
 	if camera then
 		camera.CFrame = was.cframe
@@ -109,17 +113,31 @@ function SkillCinematic.play(root: BasePart, impact: Vector3, release: number, t
 	local flight = Vector3.new(impact.X - feet.X, 0, impact.Z - feet.Z).Magnitude
 	local middle = feet:Lerp(impact, 0.5) + UP * wideLookUp
 	local viewport = camera.ViewportSize
-	local out = SwordSkillFxRules.wideDistance(flight + 4, cfg.wide.margin, cfg.fov, viewport.X / math.max(viewport.Y, 1), frame.out or cfg.wide.least)
+	local own = root:FindFirstAncestorOfClass("Model")
+	-- zoomed out past the body the skill lands on (a big boss): the camera never stands inside it
+	local out = SwordSkillFxRules.wideClear(
+		SwordSkillFxRules.wideDistance(flight + 4, cfg.wide.margin, cfg.fov, viewport.X / math.max(viewport.Y, 1), frame.out or cfg.wide.least),
+		CinematicView.reachAt(impact, 3, own),
+		cfg.wide.clearance
+	)
 	local function eyes(side: number): (Vector3, Vector3)
 		local hero = base + right * side * cfg.hero.side + forward * cfg.hero.ahead + UP * cfg.hero.up
 		return hero, middle + right * side * out + forward * (frame.ahead or 0) + UP * wideUp
 	end
-	-- the side a wall or hill blocks least
+	-- the side with fewer bodies (the boss, creatures, players) in front of you or the effect, then the side a wall or
+	-- hill blocks least (SwordSkillFxRules.cinematicSide)
 	local heroRight, wideRight = eyes(1)
 	local heroLeft, wideLeft = eyes(-1)
+	local function bodies(hero: Vector3, wide: Vector3): number
+		return #CinematicView.blockers(hero, { focus }, own) + #CinematicView.blockers(wide, { focus }, own, { middle, impact })
+	end
 	local rightClear = math.min(clearShare(focus, heroRight), clearShare(middle, wideRight))
 	local leftClear = math.min(clearShare(focus, heroLeft), clearShare(middle, wideLeft))
-	local heroEye, wideEye = if leftClear > rightClear then heroLeft else heroRight, if leftClear > rightClear then wideLeft else wideRight
+	local side = SwordSkillFxRules.cinematicSide(bodies(heroRight, wideRight), bodies(heroLeft, wideLeft), rightClear, leftClear)
+	local heroEye, wideEye = if side < 0 then heroLeft else heroRight, if side < 0 then wideLeft else wideRight
+	-- whatever body is still in the way fades out of it each frame (restored when the moment ends)
+	local fader = CinematicView.newFader(cfg.fade)
+	was.fader = fader
 	local low = shot(focus, heroEye)
 	local close = shot(focus, heroEye:Lerp(focus, cfg.push))
 	local wide = shot(middle, wideEye)
@@ -149,6 +167,7 @@ function SkillCinematic.play(root: BasePart, impact: Vector3, release: number, t
 			return
 		end
 		camera.CFrame = view
+		fader.update(view.Position, { focus }, own, { middle, impact })
 		local zoom = if beat == "rise" then smooth(a) elseif beat == "back" then 1 - smooth(a) else 1
 		camera.FieldOfView = was.fov + (cfg.fov - was.fov) * zoom
 	end)

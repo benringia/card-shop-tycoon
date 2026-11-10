@@ -45,6 +45,15 @@ function SwordSkillFxRules.wideDistance(length: number, margin: number, fov: num
 	return math.max(least, (length / 2 + margin) / math.tan(across / 2))
 end
 
+-- The wide shot's distance `out` zoomed out past the body the skill lands on: `reach` studs from its middle to its
+-- side (0: nothing there) plus `clearance`, so the camera never stands inside a big boss
+function SwordSkillFxRules.wideClear(out: number, reach: number, clearance: number): number
+	if reach <= 0 then
+		return out
+	end
+	return math.max(out, reach + clearance)
+end
+
 -- How much of a Verdant look's vines to draw (final review 2026-11-07: phones): all of them, in full, for your own; on
 -- low graphics (or a struggling frame rate) or for another player's cast, rows `spacing` times as far apart, `share` of
 -- the trap ring's and roots' vines, and stems only (`details` off: no thorns, leaf or bud)
@@ -162,6 +171,16 @@ function SwordSkillFxRules.finisherAhead(look: { form: string? }, lineLength: nu
 		return 0
 	end
 	return lineLength
+end
+
+-- Which side a skill's camera moment stands off to (1 right, -1 left; the owner 2026-11-11: "the camera just zooms in
+-- with the boss blocking"): the one with fewer bodies between it and you or the skill's effect; on a tie, the one walls
+-- and hills block least (each side's clear share, 0-1)
+function SwordSkillFxRules.cinematicSide(rightBodies: number, leftBodies: number, rightClear: number, leftClear: number): number
+	if leftBodies ~= rightBodies then
+		return if leftBodies < rightBodies then -1 else 1
+	end
+	return if leftClear > rightClear then -1 else 1
 end
 
 return SwordSkillFxRules

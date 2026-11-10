@@ -7,6 +7,9 @@
 --     strike (a group hit in one moment is one strike) or a special
 --   ring: "specialWindup" over the warning, cutting in over a wind-up or a strike; nothing interrupts it
 --   a ring's hit landing (Slam or Swipe, dodged or not): "specialRelease", once for every ring landing together
+--   a warned thunderclap (the Storm Sovereign, owner 2026-11-11): "clapWindup" over its warning (its storm circle's
+--     "clap" rings play nothing), then "clapRelease" as it claps; a body without them uses its special clips; nothing
+--     cuts into either
 -- A body without a clip skips that move. Pure, Lune-tested.
 local MonsterMoves = {}
 
@@ -36,7 +39,7 @@ end
 -- The clip to play for `event` now, if any; remembers it in `state`
 function MonsterMoves.decide(state: State, event: any, now: number, lengths: Lengths, cfg: Cfg): Play?
 	local active = if state.clip and now < state.endsAt then state.clip else nil
-	local special = active == "specialWindup" or active == "specialRelease"
+	local special = active == "specialWindup" or active == "specialRelease" or active == "clapWindup" or active == "clapRelease"
 	local clip: string
 	local timed = false -- played over the event's warning
 	local hold = 0
@@ -46,8 +49,19 @@ function MonsterMoves.decide(state: State, event: any, now: number, lengths: Len
 		end
 		clip, timed = "windup", true
 		hold = cfg.CHARGE_GRACE + (if event.type == "telegraph" then cfg.HIT_GRACE else 0)
+	elseif event.type == "thunderclap" and event.kind == "windup" then
+		if active == "clapWindup" or active == "clapRelease" then
+			return nil
+		end
+		clip, timed = if lengths.clapWindup then "clapWindup" else "specialWindup", true
+		hold = cfg.CHARGE_GRACE + cfg.HIT_GRACE
+	elseif event.type == "thunderclap" and event.kind == "clap" then
+		if active == "clapRelease" then
+			return nil
+		end
+		clip = if lengths.clapRelease then "clapRelease" else "specialRelease"
 	elseif event.type == "ring" then
-		if special then
+		if special or event.kind == "clap" then
 			return nil
 		end
 		clip, timed = "specialWindup", true

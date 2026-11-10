@@ -13,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local AttackFx = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("AttackFx"))
 local Extras = require((script.Parent :: Instance):WaitForChild("Extras"))
 local SoundBank = require((script.Parent :: Instance):WaitForChild("SoundBank"))
+local PackEmitter = require((script.Parent :: Instance):WaitForChild("PackEmitter"))
 
 local ElementFx = {}
 
@@ -409,8 +410,31 @@ function ElementFx.moonSlash(from: Vector3, target: () -> Vector3, color: Color3
 	end)
 end
 
--- A flickering lightning beam between two points for `seconds`, flares at both ends
-function ElementFx.bolt(from: Vector3, to: Vector3, color: Color3, seconds: number, scale: number?)
+-- Where lightning lands: the Yona pack's electricity impact (AttackFx.LIGHTNING: crackling bolts growing out, bolts
+-- running along the ground, dark smoke), `scale` times its size, tinted `color`
+function ElementFx.lightningImpact(at: Vector3, color: Color3, scale: number?)
+	local s = scale or 1
+	local anchor = holder(at, 2.5)
+	for _, spec in AttackFx.LIGHTNING.impact do
+		local e = PackEmitter.make(spec, s, color)
+		e.Parent = anchor
+		local count = math.max(1, math.round(spec.count * detailShare()))
+		if spec.delay and spec.delay > 0 then
+			task.delay(spec.delay, function()
+				if e.Parent then
+					e:Emit(count)
+				end
+			end)
+		else
+			e:Emit(count)
+		end
+	end
+end
+
+-- A flickering lightning beam between two points for `seconds` (the Yona pack's bolt pictures, flickered between),
+-- a flare where it leaves and the pack's electricity impact where it lands (`midAir`: an arc between two points in the
+-- air, no impact: its bolts along the ground and smoke would hang there)
+function ElementFx.bolt(from: Vector3, to: Vector3, color: Color3, seconds: number, scale: number?, midAir: boolean?)
 	local s = scale or 1
 	local anchor = holder((from + to) / 2, seconds + 0.4)
 	local a0, a1 = Instance.new("Attachment"), Instance.new("Attachment")
@@ -441,6 +465,7 @@ function ElementFx.bolt(from: Vector3, to: Vector3, color: Color3, seconds: numb
 			flip = not flip
 			for _, b in { outer, core } do
 				b.Attachment0, b.Attachment1 = if flip then a1 else a0, if flip then a0 else a1
+				b.Texture = if flip then TEX.boltAlt else TEX.bolt
 				b.CurveSize0 = (math.random() * 2 - 1) * 2 * s
 				b.CurveSize1 = (math.random() * 2 - 1) * 2 * s
 			end
@@ -453,8 +478,10 @@ function ElementFx.bolt(from: Vector3, to: Vector3, color: Color3, seconds: numb
 		outer:Destroy()
 		core:Destroy()
 	end)
-	flashSprite(from, "flare", WHITE, 2 * s, 3.5 * s, 0.25, { spin = { 150, 250 }, core = false, brightness = 2.2 })
-	flashSprite(to, "flare", color, 3 * s, 6 * s, 0.3, { spin = { -250, -150 } })
+	flashSprite(from, "flare", color, 2 * s, 3.5 * s, 0.25, { spin = { 150, 250 }, core = false, brightness = 2.2 })
+	if not midAir then
+		ElementFx.lightningImpact(to, color, s)
+	end
 	light(anchor, color, 12 * s, 2, seconds + 0.2)
 end
 
@@ -681,6 +708,11 @@ function ElementFx.monsterStrike(style: string, at: Vector3, from: Vector3, colo
 		ElementFx.slash(at, from, color, "claw", 1, 0.9, 30)
 		ElementFx.slash(at, from, color, "claw", 2, 0.9, -150)
 		ElementFx.burst(at, color, 1.0) -- the splash
+	elseif style == "volt" then
+		-- the Storm Sovereign's crackling bite (2026-11-11): two claw marks, a bolt off its jaws, a burst
+		ElementFx.slash(at, from, color, "claw", 1, 1.3)
+		ElementFx.bolt(from + Vector3.new(0, 2, 0), at, color, 0.18, 1.1)
+		ElementFx.burst(at, color, 1.2)
 	elseif style == "spark" then
 		ElementFx.bolt(from + Vector3.new(0, 1, 0), at, color, 0.2, 0.8)
 		ElementFx.burst(at, color, 0.9)
@@ -791,6 +823,18 @@ function ElementFx.bossRelease(style: string, ground: Vector3, radius: number, d
 			end)
 		end
 		shockwave(floor + forward * length * 0.55, color, length * 0.75, 0.5)
+	elseif style == "storm" then
+		-- The Storm Sovereign's slam (2026-11-11): lightning from the sky onto the ring, bolts running out across it to
+		-- its edge, an electric shockwave and a burst
+		ElementFx.bolt(ground + Vector3.new(0, 50, 0), ground, color:Lerp(WHITE, 0.3), 0.35, 2.4)
+		shockwave(ground, color, radius * 1.6, 0.45)
+		local count = detail(6)
+		for index = 1, count do
+			local angle = index / count * math.pi * 2 + math.random() * 0.4
+			local tip = ground + Vector3.new(math.cos(angle) * radius, 0.3, math.sin(angle) * radius)
+			ElementFx.bolt(ground + Vector3.new(0, 0.5, 0), tip, color, 0.22, 0.8, true)
+		end
+		ElementFx.burst(ground + Vector3.new(0, 2, 0), color, 2.5)
 	elseif style == "lava" then
 		-- Bigger since the meteor lands here (owner 2026-11-04): a wide eruption, a tall fire pillar, a burst and a ring
 		ElementFx.eruption(ground, color, radius * 1.3, 22)

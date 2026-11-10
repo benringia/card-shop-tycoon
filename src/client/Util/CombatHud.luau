@@ -300,6 +300,9 @@ local function meterShape(share: number): NumberSequence
 		return NumberSequence.new(0)
 	end
 	local edge = math.min(share + 0.004, 0.999)
+	if edge <= share then
+		return NumberSequence.new(0) -- a hair from full (past 0.999): its keypoints would go out of order
+	end
 	return NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 0),
 		NumberSequenceKeypoint.new(share, 0),

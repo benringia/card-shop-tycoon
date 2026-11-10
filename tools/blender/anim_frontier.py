@@ -10,8 +10,11 @@ Frost Wisp the Mossling's headbutt (as a body slam). Clips `windup` (0.6 s) and 
 The three bosses also have `specialWindup` (1.4 s, its ring's warning) and `specialRelease` (0.8 s, Hit at 0.1 s):
   frostTyrant     his own (the owner 2026-11-10): a twisting claw swipe, jaw open; for his ice spikes he throws his head
                   back roaring with his arms out, calling the ice down, then crouches and slams his fists down as it falls
-  stormSovereign  rears back with wings high and jaws open, lunges and bites; rears up with its wings spread wide (the
-                  thunderclap coming), then beats them down and roars
+  stormSovereign  rears back with wings high and jaws open, lunges and bites; rears up with its wings spread wide, then
+                  beats them down and roars. Its thunderclap (the owner 2026-11-11) has its own two: `clapWindup`
+                  (2 s: wings raised high in a wide V, head thrown back roaring at the sky, shuddering as the storm
+                  charges) and `clapRelease` (1.2 s, Hit at 0.1 s: its wings swing forward and clap together in front
+                  of its chest, head down roaring, then back to rest)
   riftDevourer    backs up with mandibles spread, lunges with them snapping shut; rears its front up, then crashes down
 
 Run in a background Blender (it opens each .blend in turn; writes assets/blender/Animations/<game name>/<clip>.json):
@@ -87,6 +90,33 @@ SOVEREIGN = {
         **_pair("Wing_{side}_1", (0, -25, 0)),
         **_pair("Wing_{side}_2", (0, -15, 0)),
         **_pair("Arm_{side}_0", (-60, 20, 0)),
+    },
+    # the thunderclap's own (2026-11-11; stretch checked against "rear" and "clap": no worse)
+    "thunderUp": {
+        "Pelvis": ((-6, 0, 0), (0, 0.03, 0.04)),
+        "Spine_0": (-8, 0, 0),
+        "Spine_1": (-10, 0, 0),
+        "Neck": (-16, 0, 0),
+        "Head_0": (-22, 0, 0),
+        "Jaw_0": (34, 0, 0),
+        "Tail_0": (-12, 0, 0),
+        **_pair("Wing_{side}_0", (0, -42, -12)),
+        **_pair("Wing_{side}_1", (0, -22, 0)),
+        **_pair("Wing_{side}_2", (0, -12, 0)),
+        **_pair("Arm_{side}_0", (-55, 20, 0)),
+    },
+    "thunderClap": {
+        "Pelvis": ((8, 0, 0), (0, -0.03, -0.03)),
+        "Spine_0": (8, 0, 0),
+        "Spine_1": (8, 0, 0),
+        "Neck": (6, 0, 0),
+        "Head_0": (-4, 0, 0),
+        "Jaw_0": (34, 0, 0),
+        "Tail_0": (-10, 0, 0),
+        **_pair("Wing_{side}_0", (0, 5, -75)),
+        **_pair("Wing_{side}_1", (0, 0, -30)),
+        **_pair("Wing_{side}_2", (0, 0, -20)),
+        **_pair("Arm_{side}_0", (-30, 0, 0)),
     },
     "clap": {
         "Pelvis": ((10, 0, 0), (0, -0.04, -0.04)),
@@ -202,11 +232,41 @@ def _boss_clips(poses, attack_ready, attack_done, special_ready, special_done):
     }
 
 
+def _thunderclap_clips(poses):
+    """The Storm Sovereign's thunderclap (2026-11-11): clapWindup (up over 20 frames, then shuddering as it charges, its
+    wings quivering, held to the clap) and clapRelease (the clap at frame 4, held, back to rest)."""
+    def clap_windup(rig):
+        up = poses["thunderUp"]
+        kit.key_pose(rig, 1, poses["rest"])
+        kit.key_pose(rig, 20, up)
+        for index, frame in enumerate((28, 36, 44, 52)):
+            shiver = dict(up)
+            sign = 1 if index % 2 == 0 else -1
+            for name in ("Wing_Left_1", "Wing_Right_1"):
+                x, y, z = shiver[name]
+                shiver[name] = (x, y - 4 * sign, z)
+            x, y, z = shiver.get("Spine_0", (0, 0, 0))
+            shiver["Spine_0"] = (x - 2 * sign, y, z + 1.5 * sign)
+            kit.key_pose(rig, frame, shiver)
+        kit.key_pose(rig, 61, up)
+
+    def clap_release(rig):
+        kit.key_pose(rig, 1, poses["thunderUp"])
+        kit.key_pose(rig, 4, poses["thunderClap"])
+        kit.key_pose(rig, 14, poses["thunderClap"])
+        kit.key_pose(rig, 37, poses["rest"])
+
+    return {
+        "clapWindup": (clap_windup, 61, {}),
+        "clapRelease": (clap_release, 37, {"Hit": 0.1}),
+    }
+
+
 WARDEN = {"rest": warden.REST, "ready": warden.SWIPE_READY, "done": warden.SWIPE_DONE, "up": warden.SLAM_READY,
           "down": warden.SLAM_DOWN}
 BOSSES = {
     "FrostTyrant": ("frostTyrant", _boss_clips(FROST, "ready", "swipe", "summon", "command")),
-    "StormSovereign": ("stormSovereign", _boss_clips(SOVEREIGN, "ready", "bite", "rear", "clap")),
+    "StormSovereign": ("stormSovereign", {**_boss_clips(SOVEREIGN, "ready", "bite", "rear", "clap"), **_thunderclap_clips(SOVEREIGN)}),
     "RiftDevourer": ("riftDevourer", _boss_clips(DEVOURER, "ready", "snap", "rear", "crash")),
 }
 

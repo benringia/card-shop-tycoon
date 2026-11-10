@@ -979,6 +979,17 @@ local function newFightFx(): FightFx.Dispatcher
 	})
 end
 
+-- One of your Electrocuted jolts (the Storm Sovereign's thunderclap, owner 2026-11-11): no swing, skill or dodge for
+-- its seconds (the server holds you still), a flinch and a jolt of the camera
+local function myJolt(seconds: number)
+	SwordController.Stun(seconds)
+	local anims = SwordController.GetAnims()
+	if anims then
+		anims.play("flinch")
+	end
+	shake(SwordFx.SHAKE.hurt.seconds, SwordFx.SHAKE.hurt.studs * 0.6)
+end
+
 -- A boss's debuff on a player in the fight (Util/DebuffFx): its effect on their character, and on yours the HUD's chip
 -- and badge; going down takes it off; a Poison or Burn tick flashes them
 local function showDebuff(event: any, me: string)
@@ -990,7 +1001,7 @@ local function showDebuff(event: any, me: string)
 	local character = if who then who.Character else nil
 	if event.type == "debuff" and typeof(event.kind) == "string" and typeof(event.seconds) == "number" then
 		if character then
-			DebuffFx.show(character, event.kind, event.seconds)
+			DebuffFx.show(character, event.kind, event.seconds, if id == me then myJolt else nil)
 		end
 		if id == me and combatHud then
 			combatHud.setDebuff(event.kind, event.seconds)
@@ -1090,6 +1101,11 @@ local function onEvents(events: { any })
 			local anims = SwordController.GetAnims()
 			if anims then
 				anims.play("flinch")
+			end
+		elseif event.type == "ring" and event.kind == "clap" then
+			-- a thunderclap's storm circle: drawn once for everyone by Util/FightFx (StormFx)
+			if event.to == me then
+				SwordController.PlaySound("ring")
 			end
 		elseif event.type == "ring" and typeof(event.x) == "number" then
 			RingFx.show({
@@ -1214,8 +1230,13 @@ local function onEvents(events: { any })
 			banner("Shield broken!", ELITE_COLOR)
 			shake(Bosses.PHASE_SHAKE.seconds, Bosses.PHASE_SHAKE.studs)
 		elseif event.type == "thunderclap" then
-			banner("Thunderclap!", STRONG_COLOR)
-			shake(Bosses.PHASE_SHAKE.seconds, Bosses.PHASE_SHAKE.studs)
+			-- a warned one (the Storm Sovereign): told as it rears up, its clap shakes in Util/StormFx
+			if event.kind == "windup" then
+				banner("Thunderclap! Run out!", STRONG_COLOR)
+			elseif event.kind ~= "clap" then
+				banner("Thunderclap!", STRONG_COLOR)
+				shake(Bosses.PHASE_SHAKE.seconds, Bosses.PHASE_SHAKE.studs)
+			end
 		elseif event.type == "stun" and event.to then
 			floatText(event.to, "Stunned", WEAK_COLOR)
 		elseif event.type == "spawn" then

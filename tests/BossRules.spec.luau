@@ -436,7 +436,9 @@ return {
 		local shield = BossRules.watchOut(Bosses.BOSSES.frostTyrant)[1]
 		expect.equal(shield.text, "Puts up a shield every 20 s. Break it to stun it for 3 s.", "shield words")
 		local clap = BossRules.watchOut(Bosses.BOSSES.stormSovereign)[1]
-		expect.equal(clap.text, "Stuns your cards every 14 s. Faster cards shake it off sooner.", "thunderclap words")
+		expect.equal(clap.text, "Claps every 14 s: run out of its storm circle or get Electrocuted. Stuns your cards too.", "thunderclap words")
+		local unwarned = BossRules.watchOut({ mechanics = { thunderclap = { every = 12 } } })[1]
+		expect.equal(unwarned.text, "Stuns your cards every 12 s. Faster cards shake it off sooner.", "a clap with no circle")
 		local adds = BossRules.watchOut(Bosses.BOSSES.riftDevourer)[1]
 		expect.equal(adds.text, "Calls 2 Rift Horrors at 50% health. Beat them first: it's tougher while they stand.", "adds words")
 		local hydra = BossRules.watchOut(Bosses.BOSSES.prismHydra)
@@ -581,6 +583,22 @@ return {
 			assert(ring + 4 < BossRules.arenaRadius(boss, Bosses), `{id}: its fighters stand inside its ring`)
 		end
 		expect.equal(BossRules.leashRadius(tyrant, Bosses), 50 + Bosses.BOSS_SPOT)
+	end,
+
+	-- The owner 2026-11-11: "make the boss bigger"; its thunderclap's circle reaches past its pets (they can't run) and
+	-- leaves room to run out of it inside the arena
+	["the Storm Sovereign stands bigger, its storm circle round its pets"] = function()
+		local sovereign = Bosses.BOSSES.stormSovereign
+		assert(sovereign.height >= 24, `height {sovereign.height}`)
+		assert(sovereign.ringRadius >= 21, "its fighters stand clear of its bigger body")
+		assert(sovereign.introShot.back >= 50, "the intro camera fits it")
+		local clap = sovereign.mechanics.thunderclap
+		expect.equal(clap.warning, 2)
+		expect.equal(clap.debuff, "Electrocuted")
+		assert(clap.radius >= sovereign.ringRadius + 4, "its pets stand inside")
+		assert(clap.radius + 10 <= BossRules.arenaRadius(sovereign, Bosses), "room to run out of it")
+		assert(clap.radius > sovereign.ringRadius * Bosses.HIT_RADIUS_SHARE + 8, "a sword's reach is well inside it: you must run")
+		expect.equal(Bosses.BOSSES.prismHydra.phases[2].mechanics.thunderclap.warning, nil, "the Hydra's Volt phase claps as before")
 	end,
 
 	["the Frost Tyrant stands bigger, his fighters further out"] = function()

@@ -1164,7 +1164,7 @@ and rewards in `BossService`.
 | 2 | Cave Brood Queen | Caves | Shade | 11 | 2600 / 10 / 12 | 350 | heals 15% below half HP, every 12 s, 3 times at most | 7 | 3 Brood Queen Key Fragments |
 | 3 | Ember Colossus | Ember Ridge | Ember | 16 | 6300 / 29 / 9 | 650 | enrages below half HP (ATK x1.5) | 14 | 5 Colossus Key Fragments |
 | 4 | Frost Tyrant | Frontier, Frostwood | Tide | 22 | 13000 / 42 / 9 | 1100 | ice shield (6% HP) every 20 s; breaking it stuns it 3 s; ice spikes freeze | 26 | 5 Frost Tyrant Key Fragments |
-| 5 | Storm Sovereign | Frontier, Stormpeak | Volt | 32 | 28000 / 44 / 14 | 1500 | thunderclap every 14 s (2.5 s base): stuns your creatures, shorter on fast ones | 34 | 8 Sovereign Key Fragments |
+| 5 | Storm Sovereign | Frontier, Stormpeak | Volt | 32 | 28000 / 44 / 14 | 1500 | thunderclap every 14 s: rears up 2 s with a 28-stud storm circle, then claps: your creatures stunned (2.5 s base, shorter on fast ones), you Electrocuted unless you ran out or dodged | 34 | 8 Sovereign Key Fragments |
 | 6 | Rift Devourer | Frontier, The Rift | Shade | 45 | 34000 / 66 / 10 | 1900 | 2 Rift Spawn at 50% HP (5% HP each): hit first, boss takes half damage meanwhile | 43 | 8 Devourer Key Fragments |
 | 7 | Prism Hydra | the Dungeon (after 3 rooms) | by phase | 55 | 60000 / 38 / 11 | 2400 | five phases, one per element (below) | 57 | 10 Hydra Key Fragments |
 
@@ -1198,7 +1198,8 @@ group, checked before its fragments and every time (not only the first). Below i
 - **Frontier bosses (phase 3):** their arenas are in the Frontier place (each place builds only its own bosses;
   the board lists all 6 and names the other place); since the Frontier valley, behind portals with four copies each,
   like the Wild's (above, "The Frontier valley"). Shield: the boss's HP bar shows "+n shield", "Ice shield!" and
-  "Shield broken!" banners. Thunderclap: "Thunderclap!" and "Stunned" over each creature. Adds: "Rift Spawn!", the
+  "Shield broken!" banners. Thunderclap: "Thunderclap!" ("Thunderclap! Run out!" as the Storm Sovereign rears up) and
+  "Stunned" over each creature. Adds: "Rift Spawn!", the
   Spawn appear beside the boss (real monsters held still) with small HP bars under the boss bar; auto-attacks go to
   them first, abilities can still hit the boss (at half damage while any Spawn stands); the fight is won when the
   boss falls.
@@ -1236,7 +1237,8 @@ group, checked before its fragments and every time (not only the first). Below i
   sim still tosses its old coin so fights draw the same randoms) (`Bosses.RING_*`), landing after its warning for `big` of their HP unless they stepped out (`RingRules`) or dodged
   (`Bosses.playerAttacks`, stronger up the ladder; hits land `Combat.HIT_GRACE` after clients show them). At 0 HP a
   player kneels (character attribute `Downed`, no walking) and gets up after 5 s with half their HP while one of their
-  creatures stands. Boss shields, heals, thunderclaps and Healing Rain never touch players; Tidal Shield does (owner
+  creatures stands. Boss shields, heals, the Prism Hydra's thunderclap and Healing Rain never touch players (the Storm
+  Sovereign's thunderclap does since 2026-11-11: "The Storm Sovereign's thunderclap" below); Tidal Shield does (owner
   2026-11-05: its ward covers the caster's player and every ally, the boss's hits on players hit it first). You lose when you're
   down and none of your creatures can fight: the defeat screen counts down `Combat.LOSS_COUNTDOWN` 5 s (it can't be
   skipped; see "Defeat screen" below), then home (`BossRules.lossHome`, `WildService.SendToSpring`): the main game's plaza
@@ -1348,7 +1350,11 @@ group, checked before its fragments and every time (not only the first). Below i
   pulling in. Then the element's attack (`Config/AttackFx`, `Util/FightFx`, pieces in `Util/ElementFx`, poses `charge`,
   `strike`, `combo`, `cast` in `Util/PetRig`): Ember a fireball in an arc, Tide a water blast, Bloom a dash in and a
   3-hit vine lash, Volt a flickering lightning bolt shot from where it stands (the owner's mockup: flares at both
-  ends, 0.27 s, `AttackFx.BOLT`; at grade S the strike from the sky 0.14 s after), Shade a moon slash (owner
+  ends, 0.27 s, `AttackFx.BOLT`; at grade S the strike from the sky 0.14 s after; since 2026-11-11 the Yona pack's
+  lightning, the owner: "still using the drawn particles which is a bunch of lines": its two bolt pictures flickered
+  between, and where it lands its Electricity Impact, crackling bolts growing out, bolts running along the ground and
+  dark smoke, `AttackFx.LIGHTNING`, `ElementFx.lightningImpact`; an arc between two points in the air has no impact),
+  Shade a moon slash (owner
   2026-11-05: "a ranged moon slash dark purple"; kind `slash`, `AttackFx.MOON_SLASH`, `ElementFx.moonSlash`): a paw
   swipes and flings a crescent of dark purple moonlight with a white core, dragging a shadow behind it, that flies like
   a projectile (0.3 s) and lands in a slash; grade A flings a second crossed the other way, S a third flat across. Shade
@@ -1421,7 +1427,9 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   creature gets covered by the player or the boss": the shots stand off to whichever side has fewer players,
   creatures or bosses in front of it, `SuperFxRules.shot` side, and any still between the camera and the creature
   fades out on the caster's screen, `CAMERA.fade` through `LocalTransparencyModifier`, tested on their bounding boxes
-  because creature parts can't be raycast), the card's painting slides across
+  because creature parts can't be raycast; `Util/CinematicView`, shared with a sword skill's camera moment: every model
+  `Util/CreatureVisuals` draws is marked `CinematicBody`, and ice wrapped round a body, the Frost Tyrant's shield or a
+  frozen fighter's block, fades with it), the card's painting slides across
   with the move's name in a wash of its colour, then the camera snaps to an impact shot framing the creature and its
   target with a shake and a flash, and eases back; the HUD hides, the character holds still and the sword waits
   (`SwordController.Pause`) until control returns; a fizzle, the fight ending or leaving cuts back at once. Legendary
@@ -1496,8 +1504,7 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   `CreatureController.Freeze`; `BattleSim` "frozen" event). His shield is a frosted ice bubble with 24 shards jutting
   out, growing round him with an ice crackle and bursting into pieces when broken. The bubble and the ice blocks fit
   the whole body (its model's box: the owner's next look, the roots sit at the feet and both covered half). His
-  normal hits are an icy claw swipe (`AttackFx.BOSS.frostTyrant`; the Frontier's other two bosses have no hit effects
-  yet). His clips are his own (`tools/blender/anim_frontier.py` FROST): a twisting claw swipe, and for the spikes his
+  normal hits are an icy claw swipe (`AttackFx.BOSS.frostTyrant`; the Rift Devourer has no hit effects yet). His clips are his own (`tools/blender/anim_frontier.py` FROST): a twisting claw swipe, and for the spikes his
   head thrown back roaring with his arms out, then a crouching slam. His rig tears on big arm swings (its arm bones
   sit inside the body and its arms are skinned with a wide radius), so his poses keep the arms within about 30 degrees;
   a re-rig needs the model re-imported. He stands 24 studs (was 17), his fighters 20 out, in a wider ring: the
@@ -1506,6 +1513,30 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   owner: "make the arena wider and make the boss larger"). HP 13000 / ATK 42 (was 14900 / 46) so a party at his recommended Power still
   wins about as often with the freezes (tools/balance/bosses: well 87%, still 60%; at 0.8x the all-Common party now
   rarely wins).
+- **The Storm Sovereign's thunderclap** (the owner 2026-11-11: "add animation and effects to thunderclap. when hit by
+  thunderclap, you will be electricuted for some time. electricuted means you'll be stun for 1 sec every 3 seconds.
+  make the boss bigger"; his picks: run out of a circle, 7 s with 3 jolts, pets keep their stun). Every 14 s it rears
+  up for 2 s (`thunderclap.warning`) with a storm circle of 28 studs round it (`radius`, past its pets at 22 and well
+  past a sword's reach, inside the 50-stud fence; `BattleSim` "thunderclap" kind "windup" and a "clap" ring on each up
+  player, `BattleService` places it round the boss, `RingRules.inSlam` checks it), then claps: its creatures are
+  stunned as before, and a player still inside who didn't dodge is Electrocuted (`debuff`; no damage: the jolts are the
+  hit; out or dodged floats "Dodge"). No big attack starts until `Combat.CLAP_BREATHER` (1 s) after the clap.
+  Electrocuted (`Config/Bosses` DEBUFFS, `jolt`): 7 s, a 1 s jolt at 0, 3 and 6 s (`DebuffRules.effectAt` /
+  `joltTimes`): in a jolt no walking, jumping, sword, skill or dodge (the server holds you still, `followDebuff`; the
+  client stops your sword and you flinch), free between. A new clap starts the jolts over. Its look (`Util/StormFx`,
+  numbers in `Util/StormFxRules`, `Config/AttackFx` STORM): the circle an electric-blue outline on the ground with a
+  glow spreading from round it to the edge and lightning crackling along the edge; its crown crystal charging (a growing
+  glow and light, sparks pulling in, arcs from its wing tips); the clap a flash and a bolt from the sky onto its crown,
+  two shockwaves out to the edge, 9 bolts striking all over the circle within 0.3 s (the Yona pack's lightning), a
+  shake and a flash near it, and thunder; a stunned pet crackles; an Electrocuted player has faint blue sparks and in
+  each jolt a blue-white flicker, arcs round them and a zap. Its clips (`tools/blender/anim_frontier.py`
+  `_thunderclap_clips`): `clapWindup` (wings raised high in a wide V, head thrown back roaring at the sky, shuddering)
+  and `clapRelease` (its wings swing forward and clap together in front of its chest; `MonsterMoves`: nothing cuts in,
+  a body without them uses its special clips); the boss glows storm blue while it rears up (`SwordFx.WINDUP_CLAP_COLOR`).
+  Its normal hits are a crackling bite (`AttackFx.BOSS.stormSovereign` "volt") and its ring a lightning strike from the
+  sky with bolts running out to the ring's edge ("storm"). It stands 25 studs (was 18), its fighters 22 out, its intro
+  camera 56 back. The Prism Hydra's Volt phase claps as before (no warning, no circle). Boss balance unchanged
+  (tools/balance/bosses: well 100% / still 60% at 1x, as before).
 - **Bosses between their moves** (the owner 2026-11-10: "walking around while waiting for his next attack or roaring.
   something intimidating but not limiting its attack speed"; `Config/Bosses` IDLE, `Util/BossIdleRules`,
   `MonsterController`): after its intro, every 0.8-2.2 s a boss walks to a new spot near its own (up to 5 studs either
@@ -1517,7 +1548,7 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   2% of max HP a second), Ember Colossus Burn (3 s, 3.5% a second), Frost Tyrant Frozen (1.5 s, frozen solid in a block of
   ice: no walking, jumping, sword or dodge, a `stun` like Shocked; it was Chilled before 2026-11-10), Storm Sovereign
   Shocked (0.5 s, no sword or dodge; stuns never pass 1 s; the client holds your sword and dodge too,
-  `SwordController.Stun`), Rift
+  `SwordController.Stun`; its thunderclap's Electrocuted, above, jolts you 1 s in every 3), Rift
   Devourer Weakened (4 s, sword 70%), Prism Hydra its current phase's element (Bloom Entangled, Shade Poison, Ember
   Burn, Tide Chilled, Volt Shocked). Quick hits and dodged or stepped-out rings give none. A new hit refreshes it (no
   stacking; Poison and Burn keep one tick a second); going down, leaving or the fight ending clears it.
@@ -1527,7 +1558,8 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   countdown in `Util/DebuffRules`), and an effect on the character that everyone in the fight sees (`Util/DebuffFx`):
   Tangled vine bands round the lower legs, Poisoned green bubbles rising, Burning small flames, Chilled ice crystals at
   the feet and a blue tint, Frozen a glassy block of ice with crystals at its foot that cracks off as it thaws
-  (`Util/IceFx`), Shocked yellow sparks, Weak a purple haze; each Poison or Burn tick flashes the character in
+  (`Util/IceFx`), Shocked yellow sparks, Electrocuted faint blue sparks and its jolts (`Util/StormFx`), Weak a purple
+  haze; each Poison or Burn tick flashes the character in
   its colour and floats its number (no flinch or shake). The walk slows are the server's: each step it reads the
   player's debuff from the sim (`BattleSim.playerDebuff`) and sets WalkSpeed to the speed before times 1 - slow
   (`BattleService` `updateMovement`, which also kneels a downed player; the speed before is kept in the humanoid's
@@ -1536,7 +1568,8 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   player standing further back takes no hit and no Poison.
 - **Effect quality** (same spec, "Quality bar", owner 2026-11-03): every fight effect is drawn from a texture kit in the
   owner's reference look (`tools/textures/make_attack_fx.py` -> `assets/ui/fx-attack`, ids in `AttackFx.TEXTURES`:
-  glow, flare, comet streak, spark, shockwave ring, lightning, crescent slash, crystal shard, starburst, flame, smoke),
+  glow, flare, comet streak, spark, shockwave ring, lightning, crescent slash, crystal shard, starburst, flame, smoke;
+  the streak, spark and lightning since 2026-11-11 the Yona pack's pictures instead of our drawn lines),
   white and tinted, a coloured layer under a white core (`Util/ElementFx`: comets with trails and flames or spiral
   rings, lightning beams, crystal eruptions, fire and water pillars). The combat preload fetches them with every
   attack sound (`CombatPreload.collect`, a beam is a blank slab until its texture is in). A creature's basic attack
@@ -1981,15 +2014,30 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   thinned on low graphics; your own get screen shakes (`SwordSkillFx.SHAKE`: every finisher, Sunfall's cleave and
   burst, Thornline's snap, each Prism strike and its pillar) and Sunfall Cleave and Prism Judgment a camera moment on
   your screen (`Util/SkillCinematic`; camera only, the fight runs on): from the side, a wide shot framing you, the
-  effect's whole path and the boss, on whichever side is clear. Other players' cuts and skills reach every client
+  effect's whole path and the boss, on whichever side is clear (the owner 2026-11-11: "the camera just zooms in with
+  the boss blocking so my animation/skill effects is invisible"): the side with fewer bodies (the boss, creatures,
+  players) between the camera and you or the effect, then the side walls block least
+  (`SwordSkillFxRules.cinematicSide`); the wide shot zoomed out past the body the skill lands on, its reach plus
+  `CINEMATIC.wide.clearance` (10 studs; the 24-stud Frost Tyrant had put it inside his body,
+  `SwordSkillFxRules.wideClear`); and any body still between the camera and you, or in front of where the skill lands,
+  fades to `CINEMATIC.fade` (0.8) on your screen until the moment ends (`Util/CinematicView`). Other players' cuts and skills reach every client
   (`SwordCast` remote) and draw on their character within 90 studs, the first 3 in full and the rest slash-only
   (`SwordSkillFxRules.drawsOthers`). Sounds: each sword's own, licensed and quiet, a `<key>_<Element>` version for a
   Forge Sword's element; every sword sound is measured into `Config/SoundLevels` and loud ones are turned down. The
   skill animations are keyed in a background Blender (`tools/blender/anim_<sword>.py`, docs/animations.md), published by
   the owner (2026-11-07; ids in `Config/Swords`). A special holds the spotlight (`Util/Spotlight`,
   `FightFxRules.quiet`; the owner 2026-11-10: "special skills animation/fx should always be visible"): while your
-  skill plays (its length and `AttackFx.SPOTLIGHT.tail` after), a super's charge and move, or a camera moment,
+  skill plays (its length and `AttackFx.SPOTLIGHT.tail` after), a super's charge and move (`SPOTLIGHT.super` after),
+  a Pet button move (`SPOTLIGHT.move` after; 2026-11-11, "apply this ... to all skills"), or a camera moment,
   creatures' basic attacks draw nothing new and land as sounds only; bosses' and monsters' attacks still show.
+  Effects are toned to the scene (`Util/FxTone`, `Util/FxToneRules`, `Config/FxTone`; the owner 2026-11-11: "the
+  particles are too bright on a white map... when I cast my prism sword skill I only see white flashes instead of the
+  animation/rays of different colors"): every effect particle, beam and trail in the world is noted as made, and how
+  bright the scene is comes from the ground under the camera and the haze (snow about 1, grass and dark rock 0). On
+  bright ground they add less light (LightEmission down to a fifth: additive light on white adds up to white) and a
+  little less brightness, so their colours blend in, and glowing white cores fade 60%; on dark ground they're as made.
+  It's checked every half second and the ones still out are toned again when it changes; the world's weather and
+  scenery are left alone, and a stage high above you (nothing under the camera) is as made.
   Studio preview: `/skillfx <sword> [cut1|cut2|cut3|skill]
   [level]` and the admin panel's "Sword skills". Balance: `lune run tools/balance/bosses 300` gives identical rows before
   and after (2026-11-07). Measured in a Warden fight: about 60 fps through each skill (Thornline was building ~200 vine
@@ -2660,8 +2708,11 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── SwordAnims.luau         # loads and plays a sword's moves (ids, or the synced KeyframeSequences in Studio), markers
     │       ├── SwordSkillFx.luau       # the round 1 swords' slash, finisher and skill effects (Config/SwordSkillFx), coloured and sized by the weapon
     │       ├── SkillCinematic.luau     # your own skill's camera moment (Sunfall Cleave, Prism Judgment): side shots, restored after
+    │       ├── CinematicView.luau      # what stands between a camera moment and what it shows: bodies tested by box, faded on your screen
     │       ├── Spotlight.luau          # a special's spotlight: creatures' basic attacks draw nothing new while your skill or a super plays
+    │       ├── FxTone.luau             # effects toned to the scene: on bright ground (snow) colours blend in instead of adding light
     │       ├── IceFx.luau              # the Frost Tyrant's ice: falling spikes that shatter, his shield bubble, a frozen fighter's ice block
+    │       ├── StormFx.luau            # the Storm Sovereign's thunderclap: its storm circle, crown charging, the clap, Electrocuted jolts
     │       ├── ItemPopup.luau          # a picked-up item's card at the top right (stacking, merging)
     │       ├── CombatHud.luau          # the boss and wild fight HUD (wild: no sword buttons): slanted buttons with icons, cooldowns and key chips, your portrait and HP bars, the boss fights' party strip, the red hit flash
     │       ├── HpBar.luau              # one slanted neon HP bar: ghost of lost HP, heal lead, ticks, hit flash (HUD and boss bar)
@@ -2814,7 +2865,9 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── FightMotion.luau   # a creature's moving about in a fight, its motion clock (pure, Lune-tested)
             ├── MonsterMoves.luau  # which attack clip a boss or monster plays for each fight event, one move at a time (pure, Lune-tested)
             ├── FightFxRules.luau  # the fight effects' budget and each element's attack kind (pure, Lune-tested)
+            ├── FxToneRules.luau   # how bright the scene is and what that does to an effect (pure, Lune-tested)
             ├── IceFxRules.luau    # the Frost Tyrant's spikes' drop timing, his shield's shards, a shatter's pieces (pure, Lune-tested)
+            ├── StormFxRules.luau  # the Storm Sovereign's clap: where its bolts strike, its circle spreading, edge crackles (pure, Lune-tested)
             ├── BossIdleRules.luau # a boss between its moves: when it's free, what it does, where it walks (pure, Lune-tested)
             ├── ItemPopupRules.luau # picked-up items' cards: merging, stacking, expiring (pure, Lune-tested)
             ├── ShakeRules.luau    # screen shake maths: add, decay, the camera offset, falloff with distance (pure, Lune-tested)

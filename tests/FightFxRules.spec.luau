@@ -54,8 +54,8 @@ return {
 	end,
 
 	["every boss move effect is a real boss's, with its looks and sounds"] = function()
-		-- frost: the Frost Tyrant's, drawn by Util/IceFx (2026-11-10)
-		local styles = { strike = { leaves = true, fangs = true, embers = true, frost = true }, release = { roots = true, web = true, lava = true, frost = true } }
+		-- frost: the Frost Tyrant's, drawn by Util/IceFx (2026-11-10); volt and storm: the Storm Sovereign's (2026-11-11)
+		local styles = { strike = { leaves = true, fangs = true, embers = true, frost = true, volt = true }, release = { roots = true, web = true, lava = true, frost = true, storm = true } }
 		for bossId, moves in AttackFx.BOSS do
 			expect.equal(Bosses.BOSSES[bossId] ~= nil, true, bossId)
 			expect.equal(styles.strike[moves.strike], true, `{bossId} strike`)
@@ -151,7 +151,31 @@ return {
 		local tail = AttackFx.SPOTLIGHT.tail
 		assert(tail > 0 and tail <= 2, "a short tail after the special")
 		assert(AttackFx.SPOTLIGHT.super >= 1.5, "a super's moves play on past its charge")
+		-- then (2026-11-11, "apply this and the previous adjustments to all skills"): the Pet button moves too
+		assert(AttackFx.SPOTLIGHT.move >= 1, "a Pet button move plays on past its wind-up")
 		expect.equal(FightFxRules.spotlightUntil(10, 0, 2, tail), 12 + tail)
 		expect.equal(FightFxRules.spotlightUntil(10, 20, 2, tail), 20, "a longer hold stands")
+	end,
+
+	-- The owner 2026-11-11: "basic attack bolt type is still using the drawn particles which is a bunch of lines. use the
+	-- free particles we added from creators market and add it to every skill/attack that still using the drawn lines":
+	-- every effect's lightning, sparks and streaks are the Yona pack's pictures now (one table: every user swaps at once)
+	["the lightning, sparks and streaks are the packs' pictures, not drawn lines"] = function()
+		local textures = AttackFx.TEXTURES :: any
+		for _, drawn in { "rbxassetid://118502374622454", "rbxassetid://110131144237409", "rbxassetid://72806596201777" } do
+			for key, id in textures do
+				assert(id ~= drawn, `{key} is still a drawn line`)
+			end
+		end
+		expect.equal(textures.bolt, "rbxassetid://13592365549", "Yona's Electricity-02: an upright bolt, as a beam wants")
+		assert(textures.boltAlt and textures.boltAlt ~= textures.bolt, "a second bolt picture to flicker to")
+		expect.equal(textures.spark, textures.sparkStreak, "Yona's spark")
+		expect.equal(textures.streak, textures.sparkStreak)
+		local impact = AttackFx.LIGHTNING.impact
+		assert(#impact >= 3, "the pack's electricity impact")
+		for index, spec in impact do
+			assert(textures[spec.texture], `impact {index}: {spec.texture}`)
+			assert(spec.count > 0 and #spec.size >= 2 and #spec.transparency >= 2, `impact {index}`)
+		end
 	end,
 }

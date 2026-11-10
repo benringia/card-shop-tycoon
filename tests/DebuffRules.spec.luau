@@ -40,4 +40,40 @@ return {
 		expect.equal(DebuffRules.jumpHeight(7.2, true, nil), 0, "down")
 		expect.equal(DebuffRules.walkSpeed(16, false, 1), 0, "Frozen: no walking")
 	end,
+
+	-- The owner 2026-11-11: the Storm Sovereign's thunderclap leaves you Electrocuted, "stun for 1 sec every 3 seconds"
+	["Electrocuted jolts: stunned and held 1 s in every 3, free between"] = function()
+		local spec = Bosses.DEBUFFS.Electrocuted
+		assert(spec, "Electrocuted exists")
+		expect.equal(spec.seconds, 7, "3 jolts")
+		expect.equal(spec.jolt.every, 3)
+		expect.equal(spec.jolt.seconds, 1)
+		local function at(elapsed: number): (boolean, number?)
+			return DebuffRules.effectAt(spec, elapsed)
+		end
+		for _, elapsed in { 0, 0.5, 0.99, 3, 3.5, 6, 6.9 } do
+			local stun, slow = at(elapsed)
+			expect.equal(stun, true, `jolting at {elapsed}`)
+			expect.equal(slow, 1, `held still at {elapsed}`)
+		end
+		for _, elapsed in { 1.01, 2, 2.99, 4.2, 5.9 } do
+			local stun, slow = at(elapsed)
+			expect.equal(stun, false, `free at {elapsed}`)
+			expect.isNil(slow, `walking at {elapsed}`)
+		end
+		expect.equal(table.concat(DebuffRules.joltTimes(spec), ","), "0,3,6", "the jolts' starts")
+		-- the server's clock adds up 0.1 s steps: a jolt due at 3 s still starts when it reads 2.9999999
+		expect.equal((at(3 - 1e-9)), true, "a hair before 3 s is the second jolt")
+	end,
+
+	["a debuff without jolts holds the same the whole time"] = function()
+		local frozenStun, frozenSlow = DebuffRules.effectAt(Bosses.DEBUFFS.Frozen, 1)
+		expect.equal(frozenStun, true)
+		expect.equal(frozenSlow, 1)
+		local chilledStun, chilledSlow = DebuffRules.effectAt(Bosses.DEBUFFS.Chilled, 2)
+		expect.equal(chilledStun, false)
+		expect.equal(chilledSlow, 0.3)
+		expect.equal(DebuffRules.effectAt(Bosses.DEBUFFS.Shocked, 0.2), true)
+		expect.equal(#DebuffRules.joltTimes(Bosses.DEBUFFS.Shocked), 0, "no jolts")
+	end,
 }

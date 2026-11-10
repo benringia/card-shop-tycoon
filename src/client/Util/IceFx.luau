@@ -13,6 +13,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local AttackFx = require(Shared:WaitForChild("Config"):WaitForChild("AttackFx"))
 local IceFxRules = require(Shared:WaitForChild("Util"):WaitForChild("IceFxRules"))
 local ElementFx = require((script.Parent :: Instance):WaitForChild("ElementFx"))
+local CinematicView = require((script.Parent :: Instance):WaitForChild("CinematicView"))
 
 local IceFx = {}
 
@@ -224,6 +225,8 @@ function IceFx.shield(root: BasePart, height: number): Shield
 	local radius = math.max(size.X, size.Y, size.Z) * look.radius
 	local centre = root.Position + lift
 	local holder = model("IceShield", centre)
+	-- a camera moment that fades him out of its way fades his shield too
+	CinematicView.attach(root:FindFirstAncestorOfClass("Model"), holder)
 	local parts: { BasePart } = {}
 	local bubble = piece(holder, "Part", Vector3.one * radius * 2, CFrame.new(centre), ICE_COLOR, Enum.Material.Glass, look.transparency)
 	bubble.Shape = Enum.PartType.Ball
@@ -305,6 +308,7 @@ function IceFx.encase(root: BasePart, height: number, seconds: number?): Model
 	local wide = math.max(size.X, size.Z) * look.width
 	local centre = root.Position + lift
 	local holder = model("IceBlock", centre)
+	CinematicView.attach(root:FindFirstAncestorOfClass("Model"), holder)
 	local block = piece(holder, "Part", Vector3.new(wide, tall, wide), CFrame.new(centre), ICE_COLOR, Enum.Material.Glass, look.transparency)
 	local parts: { BasePart } = { block }
 	for index = 1, look.crystals do

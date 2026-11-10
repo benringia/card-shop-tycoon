@@ -630,4 +630,26 @@ return {
 			expect.equal(got[label], command, label)
 		end
 	end,
+
+	-- The owner 2026-11-11: "when I use skill, the camera just zooms in with the boss blocking so my animation/skill
+	-- effects is invisible on cinematic": the camera moment takes the side with fewer bodies (the boss, creatures,
+	-- players) between it and you or the skill's effect; on a tie, the side walls block least (as before); bodies still
+	-- in the way fade (CINEMATIC.fade)
+	["a skill's camera moment takes the side the boss doesn't block"] = function()
+		expect.equal(SwordSkillFxRules.cinematicSide(1, 0, 1, 0.4), -1, "the boss on the right: left, though a wall is nearer")
+		expect.equal(SwordSkillFxRules.cinematicSide(0, 2, 0.5, 1), 1, "two in the way on the left")
+		expect.equal(SwordSkillFxRules.cinematicSide(0, 0, 0.5, 1), -1, "nobody either side: the clearer one")
+		expect.equal(SwordSkillFxRules.cinematicSide(1, 1, 1, 0.3), 1, "the same either side: the clearer one")
+		assert(SwordSkillFx.CINEMATIC.fade >= 0.6 and SwordSkillFx.CINEMATIC.fade < 1, "a body still in the way fades")
+	end,
+
+	-- Studio 2026-11-11: the Frost Tyrant (24 studs) 12 studs away put the wide shot inside his body, a pale wall over
+	-- the skill. The wide shot zooms out past the body the skill lands on (its reach across plus a clearance)
+	["a skill's wide shot zooms out past the boss it lands on"] = function()
+		local clearance = SwordSkillFx.CINEMATIC.wide.clearance
+		assert(type(clearance) == "number" and clearance >= 6, "a clearance of at least 6 studs past his body")
+		expect.equal(SwordSkillFxRules.wideClear(14, 0, clearance), 14, "nothing at the impact: the shot as framed")
+		expect.equal(SwordSkillFxRules.wideClear(14, 12, clearance), 12 + clearance, "a big boss: past his reach")
+		expect.equal(SwordSkillFxRules.wideClear(40, 12, clearance), 40, "already far enough out: as framed")
+	end,
 }

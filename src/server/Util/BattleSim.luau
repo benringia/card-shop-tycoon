@@ -29,18 +29,22 @@ local Bosses = if game ~= nil
 local WeaponRules = if game ~= nil
 	then require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("WeaponRules")) :: any
 	else require("../../shared/Util/WeaponRules") :: any
+local DebuffRules = if game ~= nil
+	then require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("DebuffRules")) :: any
+	else require("../../shared/Util/DebuffRules") :: any
 
 local BattleSim = {}
 
 -- mechanics: a boss's (Config/Bosses): heal below an HP fraction every cooldown (at most `uses` times), enrage once below one, a shield every
 -- few seconds (its side's shield; breaking it stuns the boss), a thunderclap that stuns every enemy (longer on slow
--- ones), adds at HP fractions (auto-attacks hit them first; the boss takes x guard damage while any stands; the fight is
+-- ones; with a `warning`, the Storm Sovereign's: it winds up that long with a storm circle of `radius` round it, a "clap"
+-- ring on each player, then the creatures are stunned and a player still inside who didn't dodge gets `debuff`), adds at HP fractions (auto-attacks hit them first; the boss takes x guard damage while any stands; the fight is
 -- won when the boss falls, adds or not). boss: stuns on it last at most BOSS_MAX_STUN seconds (not a shield break's)
 export type Mechanics = {
 	heal: { below: number, fraction: number, cooldown: number, uses: number? }?,
 	enrage: { below: number, atkMultiplier: number }?,
 	shield: { every: number, fraction: number, breakStun: number }?,
-	thunderclap: { every: number, seconds: number, minFactor: number, maxFactor: number }?,
+	thunderclap: { every: number, seconds: number, minFactor: number, maxFactor: number, warning: number?, radius: number?, debuff: string? }?,
 	adds: { at: { number }, count: number, hpShare: number, atkShare: number, guard: number, species: string }?,
 }
 -- phases: a boss's (the final boss): each switches its element and mechanics below an HP share, and never back
@@ -72,12 +76,14 @@ export type FighterInput = { id: string, element: string, hp: number, atk: numbe
 export type SideInput = { fighters: { FighterInput }, reserves: { FighterInput }?, abilities: boolean, canRun: boolean, swapSeconds: number?, callIn: boolean?, creaturesDecide: boolean? }
 export type Event = {
 	-- "attack" | "ability" | "faint" | "callin" | "swap" (from: in, to: out or nil) | "run" | "end" | "heal" | "enrage" |
-	-- "leave" | "shield" (heal: its size) | "shieldBreak" | "thunderclap" | "stun" (damage: its seconds) | "spawn" (to: the add) |
+	-- "leave" | "shield" (heal: its size) | "shieldBreak" | "thunderclap" (a warned one: kind "windup" with its seconds and
+	-- radius, then kind "clap" as it lands) | "stun" (damage: its seconds) | "spawn" (to: the add) |
 	-- "phase" (from: the boss, kind: its new element, damage: the phase's number) | "down" | "getUp" (heal: HP back) |
 	-- "out" (a player fighter down for good) | "dodge" (from: the player fighter) | "telegraph" (kind "quick": a quick
 	-- hit on `to` lands in `seconds`) | "ring" (kind "slam" | "swipe" | "spikes": a big attack's ring `ring` on `to`, a
-	-- player or a pet, lands in `seconds`) | "frozen" (to: a pet a spike hit, stunned `seconds`); hits on players are
-	-- "attack" events with kind "Quick" | "Slam" | "Swipe" | "Spikes" (and "Poison" | "Burn" each
+	-- player or a pet, lands in `seconds`; "clap": a warned thunderclap's storm circle on a player, `radius`) | "frozen"
+	-- (to: a pet a spike hit, stunned `seconds`); hits on players are "attack" events with kind "Quick" | "Slam" |
+	-- "Swipe" | "Spikes" (a missed "Thunderclap" too; a landed one is only its debuff) (and "Poison" | "Burn" each
 	-- second of those debuffs, with no `from`) | "debuff" (to: a player fighter, kind: its DEBUFFS kind, seconds) |
 	-- "charge" (from: a fighter
 	-- whose auto-attack lands in `seconds`, to: its likely target; clients wind up and fire their effects to land with it)
@@ -100,6 +106,7 @@ export type Event = {
 	look: string?,
 	protect: number?,
 	absorbed: number?, -- a hit's share its ward (Tidal Shield) and its side's shield took
+	radius: number?, -- a warned thunderclap's storm circle (its "thunderclap" windup and "clap" rings), in studs
 	-- Tidal Shield's "ability": the allies it warded, for `seconds`; "shieldGone" (to: whose ward broke or ran out)
 	shielded: { string }?,
 }
@@ -146,6 +153,8 @@ type Fighter = {
 	enraged: boolean,
 	shieldReady: number, -- boss: when its next shield goes up
 	clapReady: number, -- boss: when its next thunderclap comes
+	clapLands: number, -- boss: when its warned thunderclap claps (math.huge: none winding up)
+	clapStun: { seconds: number, minFactor: number, maxFactor: number }?, -- boss: that clap's stun on creatures
 	skillReady: number, -- boss: no shield, heal or thunderclap before this (combat.BOSS_SKILL_GAP after the last one)
 	healsUsed: number, -- boss: heals so far (this phase), against heal.uses
 	addsDone: { [number]: boolean }, -- boss: which `adds.at` thresholds have summoned
@@ -211,7 +220,7 @@ export type State = {
 }
 
 -- A boss's hit on a player, warned of and landing at `at`
-type Pending = { kind: string, at: number, target: Fighter, from: Fighter, damage: number, ring: number?, shape: string? }
+type Pending = { kind: string, at: number, target: Fighter, from: Fighter, damage: number, ring: number?, shape: string?, debuff: string? }
 -- A Pet button move or super move winding up: it fires at `at` unless its caster has fainted or left by then
 type Cast = { fighter: Fighter, side: Side, ability: any, at: number, super: boolean? }
 
@@ -266,6 +275,8 @@ local function makeFighter(combat: any, input: FighterInput, side: string, time:
 		enraged = false,
 		shieldReady = if mechanics and mechanics.shield then time + mechanics.shield.every else math.huge,
 		clapReady = if mechanics and mechanics.thunderclap then time + mechanics.thunderclap.every else math.huge,
+		clapLands = math.huge,
+		clapStun = nil,
 		skillReady = time,
 		healsUsed = 0,
 		addsDone = {},
@@ -564,11 +575,23 @@ local function debuffOn(state: State, fighter: Fighter): (string?, any)
 	return debuff.kind, Bosses.DEBUFFS[debuff.kind]
 end
 
--- A ring from `from` landed on `target`: its debuff (playerAttacks.debuff, "byPhase": its current element's). The same
--- kind again only lasts longer (its damage keeps its one tick a second); another replaces it
-local function giveDebuff(state: State, from: Fighter, target: Fighter, events: { Event })
+-- Whether a player fighter's debuff stuns it now (no sword, skill or dodge): Shocked and Frozen the whole time,
+-- Electrocuted in its jolts (DebuffRules.effectAt)
+local function stunnedNow(state: State, fighter: Fighter): boolean
+	local _, spec = debuffOn(state, fighter)
+	if not spec then
+		return false
+	end
+	local elapsed = spec.seconds - ((fighter.debuff :: Debuff).untilTime - state.time)
+	return (DebuffRules.effectAt(spec, elapsed))
+end
+
+-- A ring from `from` landed on `target`: its debuff (`kind` when given, a thunderclap's; else playerAttacks.debuff,
+-- "byPhase": its current element's). The same kind again only lasts longer (its damage keeps its one tick a second;
+-- jolts start over); another replaces it
+local function giveDebuff(state: State, from: Fighter, target: Fighter, events: { Event }, given: string?)
 	local attacks = from.playerAttacks
-	local kind = if attacks then attacks.debuff else nil
+	local kind = given or (if attacks then attacks.debuff else nil)
 	if kind == "byPhase" then
 		kind = Bosses.DEBUFF_BY_ELEMENT[from.element]
 	end
@@ -922,6 +945,9 @@ local function landPending(state: State, events: { Event })
 		end
 		if missed then
 			table.insert(events, { type = "attack", kind = pending.kind, from = pending.from.id, to = target.id, damage = 0, dodged = true })
+		elseif pending.damage <= 0 then
+			-- a warned thunderclap: no damage, its debuff is the hit
+			giveDebuff(state, pending.from, target, events, pending.debuff)
 		else
 			local raw = math.round(pending.damage * (1 - perkOf(state, target, "Calm")))
 			local warded = soakWard(target, raw, events) -- Tidal Shield covers its caster's player too
@@ -937,7 +963,7 @@ local function landPending(state: State, events: { Event })
 			pending.from.dealt += math.min(damage, target.hp)
 			hurtPlayer(state, target, damage, events)
 			if pending.ring then
-				giveDebuff(state, pending.from, target, events)
+				giveDebuff(state, pending.from, target, events, pending.debuff)
 			end
 		end
 	end
@@ -1012,6 +1038,43 @@ local function nextPhase(state: State, fighter: Fighter, events: { Event })
 	table.insert(events, { type = "phase", from = fighter.id, kind = phase.element, damage = index })
 end
 
+-- A thunderclap stuns every standing creature against `fighter` (longer on slower ones)
+local function clapStuns(state: State, fighter: Fighter, clap: { seconds: number, minFactor: number, maxFactor: number }, side: Side, events: { Event })
+	for _, enemy in standingCreatures(other(state, side)) do
+		local seconds = clap.seconds * math.clamp(fighter.spd / enemy.spd, clap.minFactor, clap.maxFactor)
+		enemy.stunUntil = math.max(enemy.stunUntil, state.time + seconds)
+		table.insert(events, { type = "stun", to = enemy.id, damage = seconds })
+	end
+end
+
+-- A warned thunderclap starts: the boss rears up `warning` seconds with its storm circle round it (an event with the
+-- circle's radius), a "clap" ring on each up player landing with it (no damage: its debuff), and no big attack until
+-- CLAP_BREATHER after it
+local function clapWindup(state: State, fighter: Fighter, clap: any, side: Side, events: { Event })
+	local warning = clap.warning :: number
+	local lands = state.time + warning + state.combat.HIT_GRACE
+	fighter.clapLands = lands
+	fighter.clapStun = { seconds = clap.seconds, minFactor = clap.minFactor, maxFactor = clap.maxFactor }
+	fighter.bigReady = math.max(fighter.bigReady, lands + (state.combat.CLAP_BREATHER or 0))
+	table.insert(events, { type = "thunderclap", from = fighter.id, kind = "windup", seconds = warning, radius = clap.radius })
+	for _, enemy in standing(other(state, side)) do
+		if enemy.player and state.time >= enemy.protectedUntil then
+			state.ringCount += 1
+			table.insert(state.pending, {
+				kind = "Thunderclap",
+				at = lands,
+				target = enemy,
+				from = fighter,
+				damage = 0,
+				ring = state.ringCount,
+				shape = "clap",
+				debuff = clap.debuff,
+			})
+			table.insert(events, { type = "ring", kind = "clap", from = fighter.id, to = enemy.id, seconds = warning, ring = state.ringCount, radius = clap.radius })
+		end
+	end
+end
+
 -- A boss's mechanics, checked every step: heal under its HP fraction (then wait the cooldown), enrage once
 local function bossMechanics(state: State, fighter: Fighter, events: { Event })
 	nextPhase(state, fighter, events)
@@ -1050,11 +1113,19 @@ local function bossMechanics(state: State, fighter: Fighter, events: { Event })
 	if clap and state.time >= fighter.clapReady and state.time >= fighter.skillReady then
 		fighter.clapReady = state.time + clap.every
 		fighter.skillReady = state.time + state.combat.BOSS_SKILL_GAP
-		table.insert(events, { type = "thunderclap", from = fighter.id })
-		for _, enemy in standingCreatures(other(state, side)) do
-			local seconds = clap.seconds * math.clamp(fighter.spd / enemy.spd, clap.minFactor, clap.maxFactor)
-			enemy.stunUntil = math.max(enemy.stunUntil, state.time + seconds)
-			table.insert(events, { type = "stun", to = enemy.id, damage = seconds })
+		if clap.warning then
+			clapWindup(state, fighter, clap, side, events)
+		else
+			table.insert(events, { type = "thunderclap", from = fighter.id })
+			clapStuns(state, fighter, clap, side, events)
+		end
+	end
+	if state.time >= fighter.clapLands then
+		-- the warned clap: its creatures stunned now (the players' hits are pending, landing with it)
+		fighter.clapLands = math.huge
+		table.insert(events, { type = "thunderclap", from = fighter.id, kind = "clap" })
+		if fighter.clapStun then
+			clapStuns(state, fighter, fighter.clapStun, side, events)
 		end
 	end
 	local adds = mechanics.adds
@@ -1666,7 +1737,7 @@ function BattleSim.swordHit(state: State, owner: string, targetId: string, power
 		return nil, "down"
 	end
 	local _, spec = debuffOn(state, fighter)
-	if spec and spec.stun then
+	if stunnedNow(state, fighter) then
 		return nil, "stunned"
 	end
 	local target, targetSide = find(state, targetId)
@@ -1712,7 +1783,7 @@ function BattleSim.dodge(state: State, owner: string): ({ Event }?, string?)
 		return nil, "cooldown" -- a tick of slack: the request can arrive up to a step after the sim's last time
 	end
 	local _, spec = debuffOn(state, fighter)
-	if spec and spec.stun then
+	if stunnedNow(state, fighter) then
 		return nil, "stunned"
 	end
 	fighter.dodgeUntil = state.time + state.combat.DODGE_SECONDS

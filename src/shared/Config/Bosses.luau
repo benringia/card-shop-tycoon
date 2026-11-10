@@ -6,13 +6,15 @@ export type Drop = { item: string, chance: number, min: number, max: number }
 export type Grant = { item: string, count: number }
 -- heal below an HP fraction (every cooldown, at most `uses` times a fight); enrage once; shield: every `every` s a shield of `fraction` of max HP that takes damage
 -- first (breaking it stuns the boss `breakStun` s); thunderclap: every `every` s stuns each enemy `seconds` x
--- clamp(boss SPD / its SPD, minFactor, maxFactor); adds: at each HP fraction in `at`, `count` adds (`hpShare` of max
+-- clamp(boss SPD / its SPD, minFactor, maxFactor), and with a `warning` (the Storm Sovereign, 2026-11-11) it rears up
+-- that long first with a storm circle of `radius` studs round it: the creatures are stunned as it claps, and a player
+-- still inside who didn't dodge gets `debuff` (Electrocuted); adds: at each HP fraction in `at`, `count` adds (`hpShare` of max
 -- HP, `atkShare` of ATK, of `species`) that are hit first, the boss taking x`guard` damage while any stands
 export type Mechanics = {
 	heal: { below: number, fraction: number, cooldown: number, uses: number? }?,
 	enrage: { below: number, atkMultiplier: number }?,
 	shield: { every: number, fraction: number, breakStun: number }?,
-	thunderclap: { every: number, seconds: number, minFactor: number, maxFactor: number }?,
+	thunderclap: { every: number, seconds: number, minFactor: number, maxFactor: number, warning: number?, radius: number?, debuff: string? }?,
 	adds: { at: { number }, count: number, hpShare: number, atkShare: number, guard: number, species: string }?,
 }
 -- One phase of a boss that has them: active while its HP share is under `below` (the first has below = 1); it
@@ -236,9 +238,11 @@ local BOSSES: { [string]: Boss } = {
 		zone = 2,
 		shape = "bat",
 		scale = 3.2,
-		height = 18, -- the storm wyvern (the owner's pick B), about 26 studs across its wings
-		ringRadius = 18,
-		introShot = { back = 42, up = 18 },
+		-- the storm wyvern (the owner's pick B); larger (the owner 2026-11-11: "make the boss bigger"; was 18 / 18 / 42),
+		-- about 36 studs across its wings
+		height = 25,
+		ringRadius = 22,
+		introShot = { back = 56, up = 24 },
 		arenaRadius = 50, -- the Frontier's big bosses fight in a wider ring (2026-11-10)
 		moments = { roar = "rbxassetid://9126100408" }, -- Pro Sound Effects: Thunder With Lion Roar Growl Low Rumble Roar
 		element = "Volt",
@@ -253,7 +257,9 @@ local BOSSES: { [string]: Boss } = {
 		playerAttacks = { every = 6.5, warning = 1.0, big = 0.50, quick = 0.17, shape = "slam", debuff = "Shocked" },
 		unlock = { item = "fragment_stormSovereign", count = 8 },
 		fragment = "fragment_riftDevourer",
-		mechanics = { thunderclap = { every = 14, seconds = 2.5, minFactor = 0.3, maxFactor = 1.5 } },
+		-- its thunderclap (the owner 2026-11-11): it rears up 2 s with its storm circle round it, past its pets; run out
+		-- of it or dodge as it claps, or be Electrocuted (DEBUFFS); its pets are stunned as before
+		mechanics = { thunderclap = { every = 14, seconds = 2.5, minFactor = 0.3, maxFactor = 1.5, warning = 2, radius = 28, debuff = "Electrocuted" } },
 		drops = {
 			{ item = "material_stormSovereign", chance = 0.8, min = 1, max = 2 }, -- its weapon material (Config/Weapons), full loot only
 			{ item = "goldSeal", chance = 0.25, min = 1, max = 1 },
@@ -385,7 +391,8 @@ return {
 	-- refreshes it, never stacks; going down, leaving or the fight ending clears it): `slow` takes that share off their
 	-- walk speed, `perSecond` of their max HP each second, `dodgeCooldown` times the dodge's recharge, `sword` times
 	-- their sword's damage; `stun` stops sword and dodge (Shocked, a moment; Frozen, the Frost Tyrant's spikes: frozen
-	-- solid, `slow` 1 stops walking and jumping too)
+	-- solid, `slow` 1 stops walking and jumping too); `jolt`: stunned and held still only `jolt.seconds` at the start of
+	-- every `jolt.every` (Electrocuted, the Storm Sovereign's thunderclap: jolts at 0, 3 and 6 s; Util/DebuffRules)
 	DEBUFFS = {
 		Entangled = { seconds = 2, slow = 0.6 },
 		Poison = { seconds = 4, perSecond = 0.02 },
@@ -393,6 +400,7 @@ return {
 		Chilled = { seconds = 3, slow = 0.3, dodgeCooldown = 1.5 },
 		Shocked = { seconds = 0.5, stun = true },
 		Frozen = { seconds = 1.5, slow = 1, stun = true },
+		Electrocuted = { seconds = 7, jolt = { every = 3, seconds = 1 } },
 		Weakened = { seconds = 4, sword = 0.7 },
 	},
 	-- A "byPhase" boss's debuff by its current element (Shade has no debuff of its own: Poison)

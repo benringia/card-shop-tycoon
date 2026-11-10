@@ -555,11 +555,12 @@ local function add(marker: BasePart)
 	lightHeads(monster)
 	-- A boss winding up an attack on a player (BattleService): a quick hit flashes it red; a big attack rears it back
 	-- (its roar pose, unless it has its own special wind-up clip, which Util/FightFx plays) with an orange glow, for
-	-- the warning's length
+	-- the warning's length; a thunderclap the same with a storm-blue glow
 	table.insert(monster.connections, marker:GetAttributeChangedSignal("WindUps"):Connect(function()
 		local seconds = tonumber(marker:GetAttribute("WindUp")) or 0.5
-		local big = marker:GetAttribute("WindUpKind") == "big"
-		local tint = if big then SwordFx.WINDUP_BIG_COLOR else SwordFx.WINDUP_QUICK_COLOR
+		local kind = marker:GetAttribute("WindUpKind")
+		local big = kind == "big" or kind == "clap"
+		local tint = if kind == "clap" then SwordFx.WINDUP_CLAP_COLOR elseif big then SwordFx.WINDUP_BIG_COLOR else SwordFx.WINDUP_QUICK_COLOR
 		if monster.idle then
 			monster.idle.busyUntil = math.max(monster.idle.busyUntil, os.clock() + seconds + Bosses.IDLE.after)
 		end

@@ -19,6 +19,7 @@ local SuperFxConfig = require(Shared:WaitForChild("Config"):WaitForChild("SuperF
 local SuperFxRules = require(Shared:WaitForChild("Util"):WaitForChild("SuperFxRules"))
 local Extras = require((script.Parent :: Instance):WaitForChild("Extras"))
 local ScreenFx = require((script.Parent :: Instance):WaitForChild("ScreenFx"))
+local CinematicView = require((script.Parent :: Instance):WaitForChild("CinematicView"))
 
 local SuperCinematic = {}
 
@@ -109,67 +110,15 @@ local function ignoreFor(args: Args): { Instance }
 end
 
 -- Players' characters, creatures and monsters near the creature: what may stand between the camera and it and gets
--- faded out of the way (owner 2026-11-05: "sometimes ... the creature gets covered by the player or the boss").
--- Creatures and monsters are drawn as models at the top of the workspace with an AnimationController (Util/
--- CreatureVisuals); their parts can't be raycast (CanQuery off), so their bounding boxes are tested instead.
-local bodies: { [Instance]: boolean } = setmetatable({}, { __mode = "k" }) :: any
-local function candidates(): { Model }
-	local list: { Model } = {}
-	for _, player in Players:GetPlayers() do
-		if player.Character then
-			table.insert(list, player.Character)
-		end
-	end
-	for _, child in workspace:GetChildren() do
-		if child:IsA("Model") then
-			local known = bodies[child]
-			if known == nil then
-				known = child:FindFirstChildWhichIsA("AnimationController", true) ~= nil
-				bodies[child] = known
-			end
-			if known then
-				table.insert(list, child)
-			end
-		end
-	end
-	return list
-end
-
-local REACH = 80 -- studs from the creature a body is checked within
-local SHRINK = 0.8 -- of a body's bounding box counts (boxes are bigger than the bodies in them)
-
--- The bodies between `eye` and any of `points` (the caster's own model left out)
-local function blockers(eye: Vector3, points: { Vector3 }, own: Instance): { Model }
-	local found: { Model } = {}
-	for _, body in candidates() do
-		if body ~= own and body.Parent and (body:GetPivot().Position - points[1]).Magnitude < REACH then
-			local box, size = body:GetBoundingBox()
-			local half = vec(size * 0.5 * SHRINK)
-			local from = vec(box:PointToObjectSpace(eye))
-			for _, point in points do
-				if SuperFxRules.segmentHitsBox(from, vec(box:PointToObjectSpace(point)), half) then
-					table.insert(found, body)
-					break
-				end
-			end
-		end
-	end
-	return found
-end
+-- faded out of the way (owner 2026-11-05: "sometimes ... the creature gets covered by the player or the boss";
+-- Util/CinematicView, shared with a sword skill's camera moment)
+local blockers = CinematicView.blockers
+local fade = CinematicView.fade
 
 -- The caster's chest and head: what the camera must see
 local function creaturePoints(run: Running): { Vector3 }
 	local base, height = run.lastBase, run.args.height
 	return { base + Vector3.new(0, height * SuperFxConfig.CAMERA.focusHeight, 0), base + Vector3.new(0, height * 0.8, 0) }
-end
-
--- A body faded (or back): every part's LocalTransparencyModifier, this screen only
-local function fade(model: Model, amount: number)
-	for _, item in model:GetDescendants() do
-		if item:IsA("BasePart") then
-			item.LocalTransparencyModifier = amount
-		end
-	end
 end
 
 -- A beat's shot (Util/SuperFxRules.shot); the frame's camera is pulled in front of walls afterwards

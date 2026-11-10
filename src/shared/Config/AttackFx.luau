@@ -9,8 +9,9 @@ return {
 	CHARGE_GRACE = 0.3, -- seconds a charge waits past its due time for its attack, then fades
 	-- A special's spotlight (Util/Spotlight; the owner 2026-11-10: "special skills animation/fx should always be
 	-- visible"): creatures' basic attacks draw nothing new while your sword skill plays (its length) and `tail` seconds
-	-- after, and through a super's charge and `super` seconds of its move
-	SPOTLIGHT = { tail = 0.8, super = 2.5 },
+	-- after, through a super's charge and `super` seconds of its move, and a Pet button move's wind-up and `move` seconds
+	-- of it (2026-11-11: "apply this and the previous adjustments to all skills")
+	SPOTLIGHT = { tail = 0.8, super = 2.5, move = 1.5 },
 	FLIGHT = { Ember = 0.35, Tide = 0.25, Shade = 0.3 }, -- seconds a projectile or moon slash flies
 	COMBO = { count = 3, window = 0.45 }, -- a combo's hits over this many seconds, the last with the damage
 	EXTRA_SHOT_GAP = 0.08, -- seconds between a grade A / S Ember's extra fireballs (they land together)
@@ -131,6 +132,44 @@ return {
 				release = "rbxassetid://9120729339", -- Whoosh Heavy Punches 7 (his arms coming down; each spike shatters on its own)
 			},
 		},
+		-- The owner 2026-11-11 (Util/StormFx, Config STORM below): a crackling bite; its ring a lightning strike from the
+		-- sky with an electric shockwave; its thunderclap (`storm`) a storm circle, its crown charging and the clap
+		stormSovereign = {
+			strike = "volt",
+			release = "storm",
+			storm = true,
+			color = rgb(120, 190, 255),
+			sounds = {
+				strike = "rbxassetid://9114277757", -- Electric Zaps 12
+				release = "rbxassetid://9120016037", -- Thunder Cracks Big Rumbling Blasts Booming 1
+			},
+		},
+	},
+	-- The Storm Sovereign's thunderclap (the owner 2026-11-11: "add animation and effects to thunderclap"; Util/StormFx,
+	-- numbers in Util/StormFxRules). While it rears up: its storm circle on the ground (an outline and a glow spreading
+	-- from round it to the edge, `startFill` of the radius at first, lightning crackling round the edge `crackles` a
+	-- second, each `span` degrees long), its crown crystal charging (sparks pulling in, arcs from its wing tips
+	-- `arcs` a second). The clap: a flash on its crown, a bolt from the sky onto it, `waves` shockwaves out to the edge,
+	-- `strikes` bolts from `skyHeight` up landing over the circle within `stagger` seconds, a screen shake and flash.
+	-- An Electrocuted player: faint sparks the whole time; each jolt `arcs` arcs flickering round them, a bright flash,
+	-- a zap. A pet the clap stuns crackles for its stun. Colours { r, g, b }; sounds Pro Sound Effects (all measured
+	-- in Config/SoundLevels with the Volt supers)
+	STORM = {
+		color = { 120, 190, 255 },
+		core = { 225, 240, 255 },
+		circle = { startFill = 0.15, crackles = 9, span = 28, outline = 0.25, glow = 0.55, lift = 0.15 },
+		crown = { arcs = 7, glow = 0.35, light = 28 },
+		clap = { strikes = 9, skyHeight = 55, stagger = 0.3, waves = 2, shake = 1, flash = { strength = 0.45, seconds = 0.25 }, crownBolt = 2.4, strikeScale = 1.6 },
+		electrocuted = { arcs = 5, flicker = 0.07, fill = 0.25, sparks = 10 },
+		petZap = { arcs = 3, seconds = 0.6 },
+		sounds = {
+			charge = "rbxassetid://9125980435", -- Spaceship Pre Blast Electric Charge Up Buzzy
+			clap = "rbxassetid://9126082854", -- Synth Thunder Cracks Individual Explosion
+			thunder = "rbxassetid://9120016256", -- Thunder Cracks Big Rumbling Blasts Booming 3 (the roll under it)
+			crackle = "rbxassetid://9116276946", -- Lightning Flashes Quick Electrical Bursts 21
+			jolt = "rbxassetid://9114277757", -- Electric Zaps 12
+			hum = "rbxassetid://9114245570", -- Electric Hum 7
+		},
 	},
 	-- The Frost Tyrant's ice (Util/IceFx, numbers in Util/IceFxRules): a spike `length` long and `width` wide hanging
 	-- `height` over its ring, dropping the last `fall` seconds; the shield bubble `radius` times his height across with
@@ -157,10 +196,14 @@ return {
 	TEXTURES = {
 		glow = "rbxassetid://111832033900052",
 		flare = "rbxassetid://83939810863438",
-		streak = "rbxassetid://72806596201777",
-		spark = "rbxassetid://110131144237409",
+		-- streaks, sparks and the lightning bolt: the Yona pack's pictures (below) since 2026-11-11 (the owner: "still
+		-- using the drawn particles which is a bunch of lines"; ours were 72806596201777, 110131144237409, 118502374622454)
+		streak = "rbxassetid://6763809313",
+		spark = "rbxassetid://6763809313",
 		ring = "rbxassetid://130539210208283",
-		bolt = "rbxassetid://118502374622454", -- upright: a beam runs a texture's height along its length
+		-- upright: a beam runs a texture's height along its length (Yona Electricity-02 and -03, flickered between)
+		bolt = "rbxassetid://13592365549",
+		boltAlt = "rbxassetid://13612625856",
 		slash = "rbxassetid://108229178074942",
 		moon = "rbxassetid://103655929836006", -- the sword's crescent (Config/SwordFx), the Shade moon slash
 		shard = "rbxassetid://128916396596028",
@@ -180,7 +223,23 @@ return {
 		slashStreak = "rbxassetid://16923007448",
 		slashArc = "rbxassetid://13780268621",
 		sparkStreak = "rbxassetid://6763809313", -- a single image
+		-- Yona's Electricity Impact (Explosion-VFX): crackling bolts growing out, bolts running along the ground, dark
+		-- smoke (4x4 flipbooks but the smoke)
+		lightningGrow = "rbxassetid://13406902074",
+		groundThunder = "rbxassetid://13923972553",
+		lightningSmoke = "rbxassetid://9650504257",
 		raindrop = "rbxassetid://83707706646646", -- the Tide hit's droplets (Config/SwordFx ELEMENT_HIT; MoveFx's raindrop)
+	},
+	-- Where lightning lands (ElementFx.bolt's end, a sky strike; the owner 2026-11-11: the packs' particles, not drawn
+	-- lines): Yona's Electricity Impact copied from the pack (Explosion-VFX, its emitters' own numbers at about a third
+	-- of its size, so scale 1 suits a creature's bolt; its giant white flare and 30-stud crack left out). White, tinted
+	-- per use (`whiten`); `delay`: seconds after the hit it bursts (the pack's EmitDelay)
+	LIGHTNING = {
+		impact = {
+			{ texture = "lightningGrow", count = 6, delay = 0.03, lifetime = { 0.28, 0.9 }, speed = { 3, 40 }, spread = { 45, 45 }, size = { { 0, 1.2, 0.6 }, { 1, 1.2, 0.6 } }, transparency = { { 0, 0 }, { 1, 0 } }, color = "tint", whiten = 0.1, brightness = 2.5, zOffset = 2, rotation = { 180, 180 }, drag = 12, direction = "Top", facing = "parallel", squash = { { 0, -1 }, { 1, -1 } }, flipbook = {} },
+			{ texture = "groundThunder", count = 7, delay = 0.03, lifetime = { 0.3, 0.8 }, speed = { 40, 110 }, spread = { 25, 180 }, size = { { 0, 1.5, 0.2 }, { 1, 2.1, 0.5 } }, transparency = { { 0, 0 }, { 1, 0 } }, color = "tint", whiten = 0.1, brightness = 2.5, zOffset = 1, rotation = { -90, -90 }, drag = 25, direction = "Left", facing = "parallel", squash = { { 0, 1 }, { 1, 1 } }, flipbook = {} },
+			{ texture = "lightningSmoke", count = 5, lifetime = { 0.7, 1.4 }, speed = { 50, 60 }, spread = { 0, 180 }, size = { { 0, 2.6, 0.6 }, { 1, 2.6, 1.2 } }, transparency = { { 0, 1 }, { 0.065, 0.35, 0.1 }, { 1, 1 } }, color = { 70, 70, 80 }, emission = 0.1, brightness = 1, zOffset = -0.05, rotation = { -360, 360 }, drag = 10, direction = "Back", facing = "camera" },
+		},
 	},
 	-- A creature's basic attack by its grade: size, spark count and shake multipliers, and extras on top (A: one,
 	-- S: the big ones; Util/FightFx)
