@@ -2318,6 +2318,15 @@ his card for a face.
 - [ ] **Skip and replay**: his own small Skip and tour card ("Chikin's Training · 2 of 5"); the peeking Pish's "tour
   again?" card adds "Chikin's fight lesson" once his tour is done. Pish's own sword lesson is done for anyone whose
   combat tour is still to come; Pish's lessons and nudges wait while Chikin leads. Nothing in it is a reward.
+- [ ] **Sharing the screen with Pish** (final review 2026-11-10): the two dogs are never on screen together. Chikin
+  begins once Pish's first visit is over and the player owns a card (his first step is the party; a skip before
+  opening Pish's present waits for one); his step is hidden while Pish's tour is replayed and comes back after it; he
+  runs in only once Pish has gone, no window, weapon reveal or pack opening has the screen (the first-sword popup
+  first), and after the loading screen. Pish's lessons and the stuck helper go on during Chikin's wait for shop level 4
+  and stop only while he leads; Pish's tour replay isn't offered while Chikin leads; his sword visit marks Pish's sword
+  lesson seen on the server; Pish's goodbye names Chikin only while his tour is still to come. A fight tip counts as
+  used when its button is tapped (phones) or its key pressed; a click on a window isn't a swing. After a rejoin the
+  first fight's end says the cheerful lines, and its last button says "Let's go!" when the sword visit is next.
 - Analytics: funnel `CombatTutorial` (`LogFunnelStepEvent`, one step per step), custom event `CombatTutorialSkipped`.
 - Dev: `/chikin reset | step <1-11>`; the admin panel's "Chikin (combat tutorial)" section. Town Chikin (walking the
   town like Town Pish) is left for later.

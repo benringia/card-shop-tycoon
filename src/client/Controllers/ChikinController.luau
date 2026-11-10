@@ -66,6 +66,7 @@ local tipIndex = 0
 local tipStarted = 0
 local tipsDone = false
 local tipUsed = false
+local tipPress: RBXScriptConnection? = nil -- the shown tip's button, to know it was tapped
 
 local function root(): BasePart?
 	local character = player.Character
@@ -306,6 +307,17 @@ local function showCue(key: string, target: Target)
 			cue = nil
 		end
 		cueKey, cueTarget = key, thing
+		if tipPress then
+			tipPress:Disconnect()
+			tipPress = nil
+		end
+		-- A fight tip's button tapped (phones) counts as using it (final review M2)
+		local button = target.gui
+		if button and button:IsA("GuiButton") and string.sub(key, 1, 4) == "tip:" then
+			tipPress = button.Activated:Connect(function()
+				tipUsed = true
+			end)
+		end
 		if target.gui then
 			cue = TutorialCues.pawOn(target.gui)
 		elseif part then
@@ -374,7 +386,9 @@ local function updateTalk(situationName: string)
 		return
 	end
 	if step == "firstWin" then
-		local lines = table.clone(if player:GetAttribute("ChikinFightResult") == "win" then talk.intro else ChikinTalk.LOST)
+		local result = player:GetAttribute("ChikinFightResult")
+		local lost = result == "lose" or result == "run" or result == "timeout" -- unknown after a rejoin: the cheerful lines
+		local lines = table.clone(if lost then ChikinTalk.LOST else talk.intro)
 		-- Already at shop level 4: the sword's visit comes straight on, so no "come back at level 4"
 		if (player:GetAttribute("Level") or 1) >= Chikin.SWORD_LEVEL then
 			lines[#lines] = ChikinTalk.SWORD_NOW
@@ -396,7 +410,8 @@ local function updateTalk(situationName: string)
 	local line = TalkRules.show(talk, introIndex, situationName)
 	local label = if not line.next then nil
 		elseif not line.finish then ChikinTalk.NEXT
-		elseif Chikin.BYE_STEPS[step] then ChikinTalk.BYE
+		elseif Chikin.BYE_STEPS[step] and not (step == "firstWin" and (player:GetAttribute("Level") or 1) >= Chikin.SWORD_LEVEL)
+			then ChikinTalk.BYE
 		else ChikinTalk.GO
 	TutorialTalk.speaker(NAME)
 	TutorialTalk.say(line.text, Chikin.STEP_ICONS[step], label, function()
@@ -458,12 +473,22 @@ local function arrive()
 	arriving = true
 	TutorialTalk.hide()
 	TutorialCues.skipButton(false, openTourCard)
-	-- Pish says goodbye and runs off first (the two dogs are never on screen together)
-	local waited = 0
-	while ((player:GetAttribute("TutorialStep") or "") ~= "" or player:GetAttribute("LoadingDone") ~= true) and waited < 60 do
-		waited += task.wait(0.25)
+	-- Pish says goodbye and runs off first, or finishes a lesson visit (the two dogs are never on screen together), and
+	-- nothing else has the screen: a window (the first-sword popup), a weapon reveal, a pack opening (final review C1, M4)
+	local function blocked(): boolean
+		return (player:GetAttribute("TutorialStep") or "") ~= ""
+			or workspace:FindFirstChild("TutorialPish") ~= nil
+			or player:GetAttribute("LoadingDone") ~= true
+			or UIKit.anyPanelOpen()
+			or WeaponRevealController.IsPlaying()
+			or OpeningStage.isShown()
 	end
-	task.wait(HANDOVER_WAIT)
+	repeat
+		while blocked() and leading() do
+			task.wait(0.25)
+		end
+		task.wait(HANDOVER_WAIT)
+	until not blocked() or not leading()
 	local at = root()
 	if not at or not leading() then
 		arriving = false
@@ -474,7 +499,11 @@ local function arrive()
 		play("bark")
 	end, function()
 		arriving = false
-		TutorialCues.skipButton(leading(), openTourCard)
+		if not leading() then
+			removeDog() -- his step ended while he ran in (Pish's tour replayed, a skip): he goes
+			return
+		end
+		TutorialCues.skipButton(true, openTourCard)
 	end)
 end
 
@@ -510,7 +539,7 @@ local function onStep()
 	leaveToken += 1 -- a visit going on (or starting straight after the last): he stays
 	-- A visit starts: he runs in (after Pish has gone); otherwise a little hop for a step done
 	local _, index = visitOf(step)
-	if index == 1 and (before == "" or before == Chikin.WAIT_STEP) and not marker then
+	if (before == "" or before == Chikin.WAIT_STEP) and not marker and not arriving then
 		task.spawn(arrive)
 		return
 	end
@@ -528,9 +557,12 @@ function ChikinController.Start()
 	end
 	player:GetAttributeChangedSignal("CombatStep"):Connect(onStep)
 	-- A tip in a fight is used when its button or key is
-	UserInputService.InputBegan:Connect(function(input)
+	UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		if tipIndex == 0 or tipsDone then
 			return
+		end
+		if gameProcessed and input.UserInputType == Enum.UserInputType.MouseButton1 then
+			return -- a click on a window or button isn't a sword swing
 		end
 		local tip = fightTips()[tipIndex]
 		if not tip then

@@ -21,6 +21,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Services = script.Parent :: Instance
 local RateLimiter = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("RateLimiter"))
 local BattleService = require(Services:WaitForChild("BattleService"))
+local CardService = require(Services:WaitForChild("CardService"))
 local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local PartyService = require(Services:WaitForChild("PartyService"))
@@ -43,12 +44,18 @@ local function log(callback: () -> ())
 	pcall(callback) -- analytics never stops the game
 end
 
+-- Pish's first visit is on (a new player's, or replayed from the peeking Pish): Chikin stays out of it (final review I1)
+local function pishLeading(player: Player): boolean
+	local pish = TutorialService.GetState(player)
+	return pish == nil or pish.firstVisit == "todo"
+end
+
 local function publish(player: Player)
 	local state = states[player]
 	if not state then
 		return
 	end
-	local step = if begun[player] then TutorialRules.current(state, STEPS) else nil
+	local step = if begun[player] and not pishLeading(player) then TutorialRules.current(state, STEPS) else nil
 	player:SetAttribute("CombatStep", step or "")
 	player:SetAttribute("CombatDone", state.firstVisit ~= "todo")
 end
@@ -106,8 +113,12 @@ end
 -- Starts (or resumes) the tour once Pish's first visit is over and the welcome flight has played
 local function begin(player: Player)
 	local state = states[player]
-	local pish = TutorialService.GetState(player)
-	if not state or begun[player] or player:GetAttribute("SeenWelcome") ~= true or not pish or pish.firstVisit == "todo" then
+	if not state or begun[player] or player:GetAttribute("SeenWelcome") ~= true or pishLeading(player) then
+		return
+	end
+	-- His first step is the party, so he waits for a card to put in it (Pish's tour skipped before his present was
+	-- opened: final review I2)
+	if next(CardService.GetOwnedCardIds(player)) == nil then
 		return
 	end
 	begun[player] = true
@@ -120,11 +131,19 @@ local function check(player: Player)
 	if not state or not begun[player] then
 		return
 	end
-	-- A new fight on: the last one's result is gone (the sword fight's "try another one" line clears)
-	if BattleService.IsFighting(player) and player:GetAttribute("ChikinFightResult") ~= nil then
-		player:SetAttribute("ChikinFightResult", nil)
+	publish(player) -- Pish's replay starting or ending shows or hides his step
+	if pishLeading(player) then
+		return
 	end
 	local current = TutorialRules.current(state, STEPS)
+	-- A new fight on a fight step: the last one's result is gone (the sword fight's "try another one" line clears)
+	if (current == "fight" or current == "fight2") and BattleService.IsFighting(player) and player:GetAttribute("ChikinFightResult") ~= nil then
+		player:SetAttribute("ChikinFightResult", nil)
+	end
+	-- His sword visit teaches what Pish's sword lesson would (one dog, not two)
+	if current == "sword" then
+		TutorialService.MarkLessonSeen(player, "sword")
+	end
 	if current and seenDone(player, current) then
 		record(player, current)
 	end

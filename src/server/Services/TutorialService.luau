@@ -268,6 +268,16 @@ local function onAction(player: Player, action: unknown, lessonId: unknown, used
 	end
 end
 
+-- A lesson another guide teaches instead (Chikin's sword visit): seen, whether it was waiting or not due yet
+function TutorialService.MarkLessonSeen(player: Player, lessonId: string)
+	local state = states[player]
+	if not state or not LESSON_IDS[lessonId] or state.lessons[lessonId] == true then
+		return
+	end
+	state.lessons = LessonRules.used(state.lessons, lessonId)
+	publish(player)
+end
+
 -- A lesson visit is over (it left after LESSON_SECONDS, or the player used the new thing): never shown again
 function TutorialService.LessonDone(player: Player, lessonId: string, used: boolean)
 	local state = states[player]

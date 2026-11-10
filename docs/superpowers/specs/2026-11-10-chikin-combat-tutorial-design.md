@@ -19,7 +19,7 @@ after the skip, with his own Skip.
 
 **Visit 1, the first fight** (right after Pish):
 1. Intro: "Woof! I'm Chikin, Pish's buddy!", "Your cards are creatures. Let's train one!"
-2. **Party:** Cards → the strongest card he picks for you (paw on it) → "Add to party". Done when the party has a
+2. **Party:** Cards → "Tap a card you like!" (built: the binder is a 3D book across pages, so no paw on one card) → "Add to party". Done when the party has a
    card; done at once if it already has one.
 3. **Summon:** "Tap it on your party bar to call it out!" (paw on slot 1). Done when a creature is summoned.
 4. **To the Wild:** "Let's find a monster in the Wild!" (paw trail to the Wild portal). Done in the Wild valley.
@@ -77,7 +77,7 @@ fights), weapons beyond the free sword, and any petting buff from Chikin.
 
 ## My calls (for the owner to check)
 
-- The strongest card is the one he picks for your party (most new players have no favourite yet).
+- (Changed in the build) the player picks the card; a new player has only Pish's pack's few cards.
 - Skipping Pish's tour doesn't skip Chikin: fighting matters, and he has his own Skip.
 - Visit 2 replaces Pish's sword lesson, so the player doesn't get two dogs saying the same thing.
 - Town Chikin has no buff, so Pish's luck stays special.

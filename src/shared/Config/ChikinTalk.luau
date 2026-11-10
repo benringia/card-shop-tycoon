@@ -13,7 +13,7 @@ return {
 			intro = {},
 			now = {
 				default = "Tap Cards.",
-				binderOpen = "Tap your strongest card!",
+				binderOpen = "Tap a card you like!",
 				cardOpen = "Tap Add to party!",
 				closeWindow = "Tap the X to close this window.",
 			},

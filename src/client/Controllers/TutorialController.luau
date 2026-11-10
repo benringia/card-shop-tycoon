@@ -21,6 +21,7 @@ local Music = require(Config:WaitForChild("Music"))
 local Pish = require(Config:WaitForChild("Pish"))
 local PishTalk = require(Config:WaitForChild("PishTalk"))
 local ChikinTalk = require(Config:WaitForChild("ChikinTalk"))
+local Chikin = require(Config:WaitForChild("Chikin"))
 local Products = require(Config:WaitForChild("Products"))
 local Shelves = require(Config:WaitForChild("Shelves"))
 local Town = require(Config:WaitForChild("Town"))
@@ -126,10 +127,32 @@ local shownKey = "" -- what the paw points at now (redrawn when it changes)
 local shownTarget: Instance? = nil -- the button or part the paw is on
 local leaving = false
 
+-- A step's talk (Config/PishTalk); his goodbye's hand-over line ("My buddy Chikin will teach you to fight!") only while
+-- Chikin's combat tour is still to come (final review M5: a replay promised him again)
+local function stepTalk(stepId: string): any
+	local talk = PishTalk.STEPS[stepId]
+	if stepId ~= "bye" or not talk or player:GetAttribute("CombatDone") ~= true then
+		return talk
+	end
+	local intro = {}
+	for _, line in talk.intro do
+		if not string.find(line, ChikinTalk.NAME, 1, true) then
+			table.insert(intro, line)
+		end
+	end
+	return { intro = intro, now = talk.now }
+end
+
 -- Pish's line on the talk card (Chikin shares the card: Util/TutorialTalk.speaker)
 local function say(text: string, icon: string?, nextLabel: string?, advance: (() -> ())?)
 	TutorialTalk.speaker(PishTalk.NAME)
 	TutorialTalk.say(text, icon, nextLabel, advance)
+end
+
+-- Chikin isn't leading: no combat step on, or only his hidden wait for shop level 4
+local function chikinAway(): boolean
+	local combat = player:GetAttribute("CombatStep")
+	return combat == nil or combat == "" or combat == Chikin.WAIT_STEP
 end
 
 local function root(): BasePart?
@@ -322,7 +345,7 @@ local talking = false
 local function refreshFocus()
 	if step ~= "" then
 		local situation, target = stepSituation(step)
-		local talk = PishTalk.STEPS[step]
+		local talk = stepTalk(step)
 		local line = if talk then TalkRules.show(talk, introIndex, situation) else nil
 		talking = line ~= nil and line.next
 		focusKey = step .. ":" .. (if talking then "intro" else situation)
@@ -540,7 +563,7 @@ end
 -- Pish's line on the talk card for the step (Config/PishTalk, Util/TalkRules): his intro one line at a time with Next,
 -- then the line for what to do now; the goodbye's last Next ends the first visit
 local function updateTalk()
-	local talk = PishTalk.STEPS[step]
+	local talk = stepTalk(step)
 	if step == "" or not talk then
 		return
 	end
@@ -700,7 +723,7 @@ end
 -- Free for a visit: in town, no window, fight, pack opening or weapon reveal on
 local function isFree(): boolean
 	return inTown()
-		and (player:GetAttribute("CombatStep") or "") == "" -- Chikin is leading (ChikinController)
+		and chikinAway() -- Chikin isn't leading (waiting for shop level 4 counts as away: final review C1)
 		and not UIKit.anyPanelOpen()
 		and not OpeningStage.isShown()
 		and not BattleController.IsFighting()
@@ -869,8 +892,9 @@ local function onState(payload: unknown)
 		for _, id in lessons do
 			-- Chikin's second visit teaches the sword (spec 2026-11-10-chikin-combat-tutorial-design): Pish's own sword lesson
 			-- is done for anyone whose combat tour is still to come
+			-- (the server marks it seen when his sword visit starts; until then it just isn't shown)
 			if id == "sword" and player:GetAttribute("CombatDone") ~= true then
-				Remotes.TutorialAction:FireServer("lessonDone", id, false)
+				continue
 			elseif typeof(id) == "string" and LESSONS[id] then
 				table.insert(queue, id)
 			end
@@ -990,7 +1014,7 @@ local function byeIdle()
 	if step ~= "bye" or byeSent then
 		return
 	end
-	local talk = PishTalk.STEPS.bye
+	local talk = stepTalk("bye")
 	if introIndex < #talk.intro then
 		lastLineAt = 0
 		return
@@ -1015,10 +1039,10 @@ function TutorialController.Start()
 				byeSent = true
 				Remotes.TutorialAction:FireServer("bye")
 			end
-		elseif replayShown() and not visit then
+		elseif replayShown() and not visit and chikinAway() then -- never Pish's tour over Chikin's (final review I1)
 			TutorialCues.askReplay(function()
 				Remotes.TutorialAction:FireServer("replay")
-			end, if player:GetAttribute("CombatDone") == true and (player:GetAttribute("CombatStep") or "") == "" then {
+			end, if player:GetAttribute("CombatDone") == true then {
 				label = ChikinTalk.LABELS.replay,
 				onTap = function()
 					Remotes.CombatTutorialAction:FireServer("replay")
