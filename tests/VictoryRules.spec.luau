@@ -1,6 +1,7 @@
 --!strict
 local VictoryRules = require("../src/shared/Util/VictoryRules")
 local Items = require("../src/shared/Config/Items")
+local Victory = require("../src/shared/Config/Victory")
 local expect = require("./lib/expect")
 
 local function find(tiles: { VictoryRules.Tile }, label: string): VictoryRules.Tile?
@@ -100,5 +101,20 @@ return {
 		local run = VictoryRules.toast({ result = "run" }, {})
 		expect.equal(run.kind, "run")
 		expect.equal(run.title, "Got away safely")
+	end,
+
+	-- The owner 2026-11-10: "after defeating a boss change the victory sound effects to something rewarding/satisfying":
+	-- three licensed stings to pick from by ear (Studio: /victorysound <1-3>), the first the default
+	["a boss win plays a rewarding sting, one of three to pick from"] = function()
+		local options = Victory.WIN_OPTIONS
+		expect.equal(#options, 3)
+		for index, option in options do
+			assert(string.match(option.id, "^rbxassetid://%d+$"), `option {index}'s id`)
+			assert(#option.name > 0, `option {index}'s name`)
+			assert(option.startAt >= 0 and option.startAt < 2, `option {index}'s start`)
+		end
+		expect.equal(Victory.SOUNDS.win, options[1].id, "the first is the default")
+		expect.equal(Victory.START_AT.win, options[1].startAt)
+		assert(Victory.SOUNDS.win ~= "rbxassetid://1844539433", "not the old orchestral hits")
 	end,
 }

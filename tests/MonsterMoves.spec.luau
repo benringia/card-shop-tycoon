@@ -104,6 +104,14 @@ return {
 		expect.equal(release.clip, "specialRelease")
 	end,
 
+	["the Frost Tyrant's ice spikes release the same way"] = function()
+		local state = MonsterMoves.new()
+		play(state, { type = "ring", kind = "spikes", seconds = 1.1 }, 0)
+		local release = play(state, { type = "attack", kind = "Spikes" }, 1.25)
+		assert(release, "a release")
+		expect.equal(release.clip, "specialRelease")
+	end,
+
 	["a body without a clip plays nothing for it"] = function()
 		local wild = { windup = 0.6, strike = 0.5 }
 		expect.equal(play(MonsterMoves.new(), { type = "ring", kind = "slam", seconds = 1.4 }, 0, wild), nil)

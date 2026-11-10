@@ -1,8 +1,8 @@
 --!strict
 -- Boss loot on the ground (BossService): this player's own drops pop out of the boss and scatter round it; walking
 -- over one asks the server to pick it up (it checks the drop is yours and you're close). Nothing here replicates, so
--- nobody else sees your drops. Nothing is collected by itself: loot has to be picked up. A weapon material's toast
--- shows its progress toward what it's for (WeaponRules.materialGoal: "Warden Heartwood +2 (9/15)").
+-- nobody else sees your drops. Nothing is collected by itself: loot has to be picked up. Each pickup pops its card at the
+-- top right (Util/ItemPopup); a weapon material's says its progress toward what it's for (WeaponRules.materialGoal).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -15,10 +15,9 @@ local Items = require(Config:WaitForChild("Items"))
 local Weapons = require(Config:WaitForChild("Weapons"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local WeaponRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponRules"))
-local WeaponText = require(Shared:WaitForChild("Util"):WaitForChild("WeaponText"))
 
 local Controllers = script.Parent :: Instance
-local UIController = require(Controllers:WaitForChild("UIController"))
+local ItemPopup = require((Controllers.Parent :: Instance):WaitForChild("Util"):WaitForChild("ItemPopup"))
 
 local LootController = {}
 
@@ -106,13 +105,17 @@ local function taken(id: string)
 	else
 		drop.part:Destroy()
 	end
-	local name, icon = itemName(drop.item)
+	-- Its card pops at the top right (Util/ItemPopup; the owner 2026-11-10: the old "+1" note was too easy to miss); a
+	-- weapon material's says how far it is toward its weapon
+	local line = nil
 	if weaponMaterial[drop.item] then
-		local _, need = WeaponRules.materialGoal(Weapons, drop.item, ownedWeapons)
-		UIController.Notify(`{icon} {WeaponText.pickup(name, drop.count, itemCounts[drop.item] or 0, need)}`, false, 1.5)
-	else
-		UIController.Notify(`{icon} +{drop.count} {name}`, false, 1.5)
+		local weaponId, need = WeaponRules.materialGoal(Weapons, drop.item, ownedWeapons)
+		local weapon = if weaponId then Weapons.ById[weaponId] else nil
+		if need then
+			line = `{itemCounts[drop.item] or 0}/{need} for {if weapon then weapon.name else "its weapon"}`
+		end
 	end
+	ItemPopup.show(drop.item, drop.count, line)
 end
 
 local function onLoot(payload: any)

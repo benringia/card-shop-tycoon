@@ -32,4 +32,12 @@ return {
 			assert(Bosses.DEBUFFS[kind], `{kind} is a look for a debuff that doesn't exist`)
 		end
 	end,
+
+	["no jumping while down or frozen solid"] = function()
+		expect.equal(DebuffRules.jumpHeight(7.2, false, nil), 7.2)
+		expect.equal(DebuffRules.jumpHeight(7.2, false, 0.3), 7.2, "a slow keeps the jump")
+		expect.equal(DebuffRules.jumpHeight(7.2, false, 1), 0, "Frozen")
+		expect.equal(DebuffRules.jumpHeight(7.2, true, nil), 0, "down")
+		expect.equal(DebuffRules.walkSpeed(16, false, 1), 0, "Frozen: no walking")
+	end,
 }

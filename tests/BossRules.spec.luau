@@ -517,7 +517,7 @@ return {
 			meadowWarden = "slam",
 			caveBroodQueen = "swipe",
 			emberColossus = "slam",
-			frostTyrant = "slam",
+			frostTyrant = "spikes", -- ice spikes falling over each player and a pet (2026-11-10)
 			stormSovereign = "slam",
 			riftDevourer = "swipe",
 			prismHydra = "swipe",
@@ -566,5 +566,27 @@ return {
 				expect.equal(ContrastRules.ratio(BabyColors.INK, fill) >= 4.5, true, bossId)
 			end
 		end
+	end,
+
+	-- The owner 2026-11-10: "make the arena wider and make the boss larger"
+	["a big boss fights in its own wider ring; the rest in the usual one"] = function()
+		local tyrant = Bosses.BOSSES.frostTyrant
+		expect.equal(BossRules.arenaRadius(tyrant, Bosses), 50)
+		expect.equal(BossRules.arenaRadius(Bosses.BOSSES.meadowWarden, Bosses), Bosses.ARENA_RADIUS, "the Wild's stay 36")
+		for _, id in { "stormSovereign", "riftDevourer" } do
+			expect.equal(BossRules.arenaRadius(Bosses.BOSSES[id], Bosses), 50, `{id}: the Frontier's ring`)
+		end
+		for id, boss in Bosses.BOSSES do
+			local ring = boss.ringRadius or Bosses.RING_RADIUS
+			assert(ring + 4 < BossRules.arenaRadius(boss, Bosses), `{id}: its fighters stand inside its ring`)
+		end
+		expect.equal(BossRules.leashRadius(tyrant, Bosses), 50 + Bosses.BOSS_SPOT)
+	end,
+
+	["the Frost Tyrant stands bigger, his fighters further out"] = function()
+		local tyrant = Bosses.BOSSES.frostTyrant
+		assert(tyrant.height >= 24, `height {tyrant.height}`)
+		assert(tyrant.ringRadius >= 20, "his fighters stand clear of his bigger body")
+		assert(tyrant.introShot.back >= 46, "the intro camera fits him")
 	end,
 }

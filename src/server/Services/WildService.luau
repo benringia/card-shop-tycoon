@@ -772,7 +772,7 @@ export type BossArena = { gate: CFrame, gatePosition: Vector3, groupPrompt: Prox
 -- ring), the ridge look's lava cracks, fence posts open toward -X, and the barrier (down until BossService seals it).
 -- Returns where the boss stands, the barrier, where members stand when it seals, and the gate's spot.
 local function buildRing(folder: Instance, boss: any, center: Vector3, look: any?, lift: number): (CFrame, { BasePart }, CFrame, Vector3)
-	local radius = Bosses.ARENA_RADIUS
+	local radius = BossRules.arenaRadius(boss, Bosses)
 	-- Cylinders run along X: lay the disc flat
 	local floor = block(folder, boss.name, Vector3.new(2, radius * 2, radius * 2), CFrame.new(center - Vector3.new(0, 1 - lift, 0)) * CFrame.Angles(0, 0, math.rad(90)), if look then rgb(look.floor) else Color3.fromRGB(70, 66, 80), if look then (Enum.Material :: any)[look.floorMaterial] else Enum.Material.Slate)
 	floor.Shape = Enum.PartType.Cylinder

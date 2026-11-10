@@ -970,6 +970,7 @@ local function newFightFx(): FightFx.Dispatcher
 		marker = markerFor,
 		creature = CreatureController.GetFightView,
 		setCharging = CreatureController.SetCharging,
+		freeze = CreatureController.Freeze,
 		pose = CreatureController.Pose,
 		dash = CreatureController.Dash,
 		blink = CreatureController.Blink,
@@ -993,6 +994,10 @@ local function showDebuff(event: any, me: string)
 		end
 		if id == me and combatHud then
 			combatHud.setDebuff(event.kind, event.seconds)
+		end
+		local spec = Bosses.DEBUFFS[event.kind]
+		if id == me and spec and spec.stun then
+			SwordController.Stun(event.seconds) -- frozen solid or shocked: no swing, skill or dodge
 		end
 	elseif event.type == "down" then
 		if character then

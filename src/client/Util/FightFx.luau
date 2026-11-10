@@ -28,6 +28,8 @@ local SuperFxConfig = require(Shared:WaitForChild("Config"):WaitForChild("SuperF
 local SuperFxRules = require(Shared:WaitForChild("Util"):WaitForChild("SuperFxRules"))
 local RingFx = require((script.Parent :: Instance):WaitForChild("RingFx"))
 local ScreenFx = require((script.Parent :: Instance):WaitForChild("ScreenFx"))
+local IceFx = require((script.Parent :: Instance):WaitForChild("IceFx"))
+local Spotlight = require((script.Parent :: Instance):WaitForChild("Spotlight"))
 
 local FightFx = {}
 
@@ -38,6 +40,7 @@ export type Resolve = {
 	marker: (id: string) -> BasePart?, -- a fighter's marker by sim id
 	creature: (marker: BasePart) -> View?, -- the creature drawn on it (nil: a monster or boss, not handled here)
 	setCharging: (marker: BasePart, seconds: number) -> (),
+	freeze: ((marker: BasePart, seconds: number) -> ())?, -- frozen solid: no moving, no animation (nil: hold still only)
 	pose: (marker: BasePart, kind: string, amount: number?) -> (), -- amount: how big (1 when nil)
 	dash: (marker: BasePart, toward: Vector3, share: number, seconds: number) -> (),
 	-- Rift Step: put the creature on a marker at a rift facing a point (nil: back home); nil where it can't
@@ -78,6 +81,9 @@ end
 -- combo, the Shade moon slash) lands with the slash streaks and arc, a fireball or bolt with its star burst and the
 -- spark streaks; the element's own particles on both. `share`: of the pack particles (a combo's lighter hits).
 local function hitPicture(element: string, at: Vector3, size: number, tint: Color3, share: number)
+	if Spotlight.active() then
+		return -- a special is playing: it shows clearly (Util/Spotlight)
+	end
 	local cut = FightFxRules.cuts(element, AttackFx)
 	if not cut then
 		ElementFx.burst(at, tint, size)
@@ -132,6 +138,10 @@ function FightFx.new(resolve: Resolve): Dispatcher
 	-- size, its sound, shake on your own creature's hits, and at grade S the boom layer, a flash on your screen and the
 	-- element's big extra
 	local function impact(view: View, tier: Tier, at: Vector3, tint: Color3, finisher: boolean, foe: number)
+		if Spotlight.active() then
+			hitSound(view.element, at) -- heard, not drawn, while a special plays
+			return
+		end
 		local s = tier.scale
 		hitPicture(view.element, at, s * foe * (if finisher then 1.15 else 1), tint, 1)
 		SuperFx.echoHit(view.root, at, s) -- Eclipse's mirror image strikes with it
@@ -162,7 +172,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		local marker = resolve.marker(event.from)
 		local view = if marker then resolve.creature(marker) else nil
 		local kind = if view then FightFxRules.kindFor(view.element, AttackFx) else nil
-		if not marker or not view or not kind or not FightFxRules.budget(active, Extras.enabled(), AttackFx) then
+		if not marker or not view or not kind or not FightFxRules.budget(active, Extras.enabled(), AttackFx) or Spotlight.active() then
 			return
 		end
 		local tier = FightFxRules.tier(view.grade, AttackFx)
@@ -198,6 +208,9 @@ function FightFx.new(resolve: Resolve): Dispatcher
 					return
 				end
 				entry.stopGlow()
+				if Spotlight.active() then
+					return
+				end
 				resolve.pose(marker, "cast")
 				local sounds = AttackFx.SOUNDS[view.element]
 				ElementFx.sound(if sounds then sounds.release else nil, view.root.Position)
@@ -224,7 +237,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 								whenAttacked(entry, function()
 									impact(view, tier, at, tint, false, foeScale(entry.to))
 								end)
-							else
+							elseif not Spotlight.active() then
 								ElementFx.burst(at, tint, s * 0.6 * foeScale(entry.to))
 							end
 						end, if shot == 1 then opts else { scale = s * 0.75, flames = ember, sparkle = opts.sparkle })
@@ -240,6 +253,9 @@ function FightFx.new(resolve: Resolve): Dispatcher
 					return
 				end
 				entry.stopGlow()
+				if Spotlight.active() then
+					return
+				end
 				local toward = targetPosition(entry.to, view.root.Position)
 				resolve.dash(marker, toward, AttackFx.DASH.combo, window + 0.2)
 				resolve.pose(marker, "combo")
@@ -256,7 +272,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 								return
 							end
 							impact(view, tier, spot, tint, true, foeScale(entry.to))
-							if tier.extra >= 2 then
+							if tier.extra >= 2 and not Spotlight.active() then
 								-- The finishing X
 								ElementFx.slash(spot, view.root.Position, Color3.new(1, 1, 1), "vine", 1, s * 1.5, 45)
 								ElementFx.slash(spot, view.root.Position, tint, "vine", 2, s * 1.5, -45)
@@ -279,6 +295,9 @@ function FightFx.new(resolve: Resolve): Dispatcher
 					return
 				end
 				entry.stopGlow()
+				if Spotlight.active() then
+					return
+				end
 				resolve.pose(marker, "combo")
 				local sounds = AttackFx.SOUNDS[view.element]
 				ElementFx.sound(if sounds then sounds.release else nil, view.root.Position)
@@ -311,6 +330,9 @@ function FightFx.new(resolve: Resolve): Dispatcher
 				end
 				entry.stopGlow()
 				whenAttacked(entry, function()
+					if Spotlight.active() then
+						return
+					end
 					resolve.pose(marker, "cast")
 					local spot = targetPosition(entry.to, view.root.Position)
 					local from = view.root.Position + Vector3.new(0, view.height * 0.5, 0)
@@ -389,6 +411,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 			return
 		end
 		local seconds = math.max(0.1, tonumber(event.seconds) or 1.5)
+		Spotlight.hold(seconds + AttackFx.SPOTLIGHT.super)
 		local grade = superGrade(view)
 		stopSuperCharge(event.from)
 		resolve.setCharging(marker, seconds)
@@ -669,6 +692,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 
 	local moves: { [BasePart]: MonsterMoves.State } = {}
 	local rings: { [string]: any } = {} -- each player's latest ring (by sim id): where its hit lands
+	local iceShields: { [BasePart]: IceFx.Shield } = {} -- the Frost Tyrant's shield, by his marker
 	local gathering: { [BasePart]: () -> () } = {} -- a boss's sparks pulling in for a ring
 	local strikeSoundAt = 0
 	local moveCfg = { CHARGE_GRACE = AttackFx.CHARGE_GRACE, HIT_GRACE = Combat.HIT_GRACE }
@@ -703,7 +727,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 			return
 		end
 		local tint = color(spec.color)
-		local slam = event.type == "attack" and (event.kind == "Slam" or event.kind == "Swipe")
+		local slam = event.type == "attack" and (event.kind == "Slam" or event.kind == "Swipe" or event.kind == "Spikes")
 		if event.type == "ring" then
 			if typeof(event.to) == "string" and typeof(event.x) == "number" then
 				rings[event.to] = event
@@ -725,6 +749,11 @@ function FightFx.new(resolve: Resolve): Dispatcher
 					return ground
 				end, tint, seconds, meteor.arc, function() end, { scale = meteor.scale, flames = true })
 			end
+			-- A giant ice spike over the ring, dropping to land with the hit (the Frost Tyrant, owner 2026-11-10)
+			if spec.spikes and typeof(event.x) == "number" then
+				local seconds = (tonumber(event.seconds) or 1) + Combat.HIT_GRACE
+				IceFx.spike(Vector3.new(event.x, RingFx.groundY(event.x, event.y, event.z), event.z), seconds)
+			end
 		elseif slam then
 			stopGathering(marker)
 			if move then
@@ -735,7 +764,11 @@ function FightFx.new(resolve: Resolve): Dispatcher
 				rings[event.to] = nil
 				local ground = Vector3.new(ring.x, RingFx.groundY(ring.x, ring.y, ring.z), ring.z)
 				local direction = Vector3.new(tonumber(ring.dirX) or 0, 0, tonumber(ring.dirZ) or -1)
-				ElementFx.bossRelease(spec.release, ground, ring.radius or 7, direction, ring.length or 0, ring.halfAngle or 0, tint, view.height)
+				if spec.release == "frost" then
+					IceFx.release(ground, ring.radius or 7)
+				else
+					ElementFx.bossRelease(spec.release, ground, ring.radius or 7, direction, ring.length or 0, ring.halfAngle or 0, tint, view.height)
+				end
 				ElementFx.sound(AttackFx.SOUNDS.boom, ground, 0.7)
 				ScreenFx.shakeAt(AttackFx.SHAKE.bossSlam, ground)
 				local flash = AttackFx.FLASH.bossSlam
@@ -743,9 +776,25 @@ function FightFx.new(resolve: Resolve): Dispatcher
 					ScreenFx.flash(color(flash.color), flash.strength, flash.seconds)
 				end
 			end
+		elseif event.type == "frozen" and typeof(event.to) == "string" then
+			-- A spike froze a pet: locked in ice till it thaws
+			local pet = resolve.marker(event.to)
+			local petView = if pet then resolve.creature(pet) else nil
+			if pet and petView then
+				local seconds = math.max(0.2, tonumber(event.seconds) or 2)
+				resolve.setCharging(pet, seconds)
+				if resolve.freeze then
+					resolve.freeze(pet, seconds)
+				end
+				IceFx.encase(petView.root, petView.height, seconds)
+			end
 		elseif event.type == "attack" and not event.dodged then
 			local spot = targetPosition(event.to, view.root.Position)
-			ElementFx.monsterStrike(spec.strike, spot, view.root.Position, tint)
+			if spec.strike == "frost" then
+				IceFx.strike(spot, view.root.Position)
+			else
+				ElementFx.monsterStrike(spec.strike, spot, view.root.Position, tint)
+			end
 			ScreenFx.shakeAt(AttackFx.SHAKE.bossStrike, spot)
 			local now = os.clock()
 			if now - strikeSoundAt > 0.2 then -- a group hit in one moment sounds once
@@ -789,6 +838,26 @@ function FightFx.new(resolve: Resolve): Dispatcher
 					end
 				end
 			end
+			-- A boss's shield going up or breaking (no sender: its target is the boss): the Frost Tyrant's ice bubble
+			if typeof(event) == "table" and (event.type == "shield" or event.type == "shieldBreak") and typeof(event.to) == "string" then
+				local boss, bossView = monsterOf(event.to)
+				local spec = if bossView then AttackFx.BOSS[bossView.key] else nil
+				if boss and bossView and spec and spec.iceShield then
+					local current = iceShields[boss]
+					iceShields[boss] = nil
+					if current then
+						if event.type == "shieldBreak" then
+							current.shatter()
+						else
+							current.remove()
+						end
+					end
+					if event.type == "shield" then
+						iceShields[boss] = IceFx.shield(bossView.root, bossView.height)
+					end
+				end
+				continue
+			end
 			if typeof(event) ~= "table" or typeof(event.from) ~= "string" then
 				continue
 			end
@@ -831,6 +900,10 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		pending = {}
 		for marker in gathering do
 			stopGathering(marker)
+		end
+		for boss, shield in iceShields do
+			iceShields[boss] = nil
+			shield.remove()
 		end
 		for id in rains do
 			stopRain(id)

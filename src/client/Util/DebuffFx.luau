@@ -13,6 +13,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local CombatHud = require(Shared:WaitForChild("Config"):WaitForChild("CombatHud"))
 local ElementFx = require((script.Parent :: Instance):WaitForChild("ElementFx"))
 local Extras = require((script.Parent :: Instance):WaitForChild("Extras"))
+local IceFx = require((script.Parent :: Instance):WaitForChild("IceFx"))
 
 local DebuffFx = {}
 
@@ -138,7 +139,18 @@ local function haze(character: Model, color: Color3): { Instance }
 	return stream(character, "smoke", color, { size = { 2, 3.5 }, life = 1.4, speed = 0.6, start = 0.45, light = 0.3, spin = { -20, 20 } }, 8)
 end
 
+-- Frozen solid (the Frost Tyrant's spikes, 2026-11-10): locked in a block of ice that cracks off as it thaws
+local CHARACTER_HEIGHT = 5.2
+local function frozen(character: Model, _color: Color3): { Instance }
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if not root or not root:IsA("BasePart") then
+		return {}
+	end
+	return { IceFx.encase(root, CHARACTER_HEIGHT, nil) }
+end
+
 local BUILD: { [string]: (Model, Color3) -> { Instance } } = {
+	Frozen = frozen,
 	Entangled = vines,
 	Poison = bubbles,
 	Burn = flames,
@@ -164,6 +176,8 @@ function DebuffFx.clear(character: Model)
 		elseif item:IsA("Highlight") then
 			TweenService:Create(item, FADE, { FillTransparency = 1, OutlineTransparency = 1 }):Play()
 			Debris:AddItem(item, FADE.Time)
+		elseif item:IsA("Model") and item.Name == "IceBlock" then
+			IceFx.thaw(item)
 		else
 			item:Destroy()
 		end

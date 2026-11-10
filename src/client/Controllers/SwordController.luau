@@ -38,6 +38,7 @@ local HitFx = require(ClientUtil:WaitForChild("HitFx"))
 local SwordAnims = require(ClientUtil:WaitForChild("SwordAnims"))
 local SwordSkillFx = require(ClientUtil:WaitForChild("SwordSkillFx"))
 local SkillCinematic = require(ClientUtil:WaitForChild("SkillCinematic"))
+local Spotlight = require(ClientUtil:WaitForChild("Spotlight"))
 local ScreenFx = require(ClientUtil:WaitForChild("ScreenFx"))
 local WeaponLook = require(ClientUtil:WaitForChild("WeaponLook"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
@@ -1096,8 +1097,19 @@ function SwordController.Pause(on: boolean)
 	paused = on
 end
 
+-- A boss's stun on you (Shocked, Frozen: Config/Bosses DEBUFFS `stun`): no swing, skill or dodge for `seconds` (the
+-- server refuses them too)
+local stunnedUntil = 0
+function SwordController.Stun(seconds: number)
+	stunnedUntil = math.max(stunnedUntil, os.clock() + seconds)
+end
+
+local function stunned(): boolean
+	return os.clock() < stunnedUntil
+end
+
 function SwordController.Attack()
-	if paused then
+	if paused or stunned() then
 		return
 	end
 	local character, root = ownParts()
@@ -1199,7 +1211,7 @@ end
 -- along your facing that goes through foes (SwordRules.dashLength) with after-images, and at its hit frame every foe
 -- along the path from where you started is hit (the server checks the same path, clamped)
 function SwordController.Skill()
-	if paused then
+	if paused or stunned() then
 		return
 	end
 	local character, root, humanoid = ownParts()
@@ -1236,6 +1248,8 @@ function SwordController.Skill()
 	swingTrail()
 	playCues(sword, "skill", skillLive, skill.hitAt)
 	local effects = effectsOf(character)
+	-- your skill holds the spotlight: creatures' basic attacks draw nothing new over it (Util/Spotlight)
+	Spotlight.hold(math.max(skill.length, freeAt))
 	if effects then
 		-- Your own: a shake on the cleave and on the burst, and the look's camera moment (Sunfall Cleave)
 		local aim = skillAim(character, sword)
@@ -1322,7 +1336,7 @@ end
 -- A dodge: untouchable for a moment (the server's), a dash the way you're moving (backward when still), after-images.
 -- It cancels a swing: your walking comes back and the swing's lunge or dash stops.
 function SwordController.Dodge()
-	if paused then
+	if paused or stunned() then
 		return
 	end
 	local character, root, humanoid = ownParts()

@@ -77,7 +77,8 @@ return {
 	["the Frontier bosses stand as tall as the Wild's (their Meshy models)"] = function()
 		local bosses = require("../src/shared/Config/Bosses").BOSSES :: any
 		for _, id in { "frostTyrant", "stormSovereign", "riftDevourer" } do
-			assert(bosses[id].height >= 15 and bosses[id].height <= 20, `{id}: {bosses[id].height} studs`)
+			-- the Frost Tyrant larger since 2026-11-10 (the owner: "make the boss larger")
+			assert(bosses[id].height >= 15 and bosses[id].height <= 26, `{id}: {bosses[id].height} studs`)
 			assert(bosses[id].ringRadius >= 15, `{id}: fighters stand clear of its body`)
 		end
 	end,

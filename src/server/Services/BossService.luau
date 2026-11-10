@@ -473,13 +473,14 @@ local function moveOut(player: Player, copy: WildService.ArenaCopy)
 	end
 end
 
--- Everyone inside the ring who isn't one of `members` (someone waiting at the gate) goes out before it seals
-local function clearRing(copy: WildService.ArenaCopy, members: { Player })
+-- Everyone inside the ring (`radius`, the boss's: BossRules.arenaRadius) who isn't one of `members` (someone waiting at
+-- the gate) goes out before it seals
+local function clearRing(copy: WildService.ArenaCopy, members: { Player }, radius: number)
 	for _, player in Players:GetPlayers() do
 		local character = player.Character
 		local root = if character then character:FindFirstChild("HumanoidRootPart") :: BasePart? else nil
 		local offset = if root then root.Position - copy.center else nil
-		if offset and not table.find(members, player) and BossRules.insideRing(offset.X, offset.Z, Bosses.ARENA_RADIUS) then
+		if offset and not table.find(members, player) and BossRules.insideRing(offset.X, offset.Z, radius) then
 			moveOut(player, copy)
 		end
 	end
@@ -521,7 +522,7 @@ local function startBoss(bossId: string, players: { Player }, index: number, opt
 			character:PivotTo(copy.inside * CFrame.new(sideways, 0, 0))
 		end
 	end
-	clearRing(copy, players)
+	clearRing(copy, players, BossRules.arenaRadius(boss, Bosses))
 	setBarrier(copy, true)
 	local unlock = boss.unlock
 	for _, player in players do

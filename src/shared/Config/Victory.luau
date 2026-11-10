@@ -6,7 +6,17 @@ local function rgb(r: number, g: number, b: number): { number }
 	return { r, g, b }
 end
 
+-- A boss win's sting (the owner 2026-11-10: "after defeating a boss change the victory sound effects to something
+-- rewarding/satisfying"): three APM stings to pick from by ear (Studio: /victorysound <1-3> plays one and uses it on
+-- your next wins this session), the first the default; `startAt` skips silence at the file's start
+local WIN_OPTIONS = {
+	{ id = "rbxassetid://1836473422", name = "Victory Fanfare Sting", startAt = 0 }, -- Olympiad: a classic brass fanfare
+	{ id = "rbxassetid://85130118995016", name = "Arc Of Triumph (Sting)", startAt = 0 }, -- Brass & Glory: heroic
+	{ id = "rbxassetid://9040233162", name = "Light Fun Orchestral Transition 04", startAt = 0 }, -- playful and light
+}
+
 return {
+	WIN_OPTIONS = WIN_OPTIONS,
 	SECONDS = 6, -- on screen before it goes by itself (a tap closes it sooner)
 	TITLE_SIZE = 64, -- px, on a 400 px tall screen and up; smaller screens scale it down
 	TILE = { width = 92, height = 96, gap = 10, perRow = 5 },
@@ -29,14 +39,14 @@ return {
 	XP_FILL_COLOR = rgb(57, 182, 232),
 	-- Roblox-licensed sounds the pack opening already uses
 	SOUNDS = {
-		win = "rbxassetid://1844539433", -- Orchestral Hits (APM)
+		win = WIN_OPTIONS[1].id, -- a boss win's sting (was Orchestral Hits, APM 1844539433)
 		tile = "rbxassetid://106984966606682", -- Cartoon Pop (Daily Sounds)
 		rare = "rbxassetid://9116395089", -- Magic Glows Soft Clusters Of Chiming Hits 4 (Pro Sound Effects)
 		levelUp = "rbxassetid://9116418035", -- Magic Tone Falling Shimmer (Pro Sound Effects)
 	},
 	VOLUME = 0.5,
 	-- Seconds of silence at the start of a sound's file, skipped so it lands with the moment (measured in Studio)
-	START_AT = { win = 0.3, levelUp = 0.38 },
+	START_AT = { win = WIN_OPTIONS[1].startAt, levelUp = 0.38 },
 	-- Normal monsters get a toast instead (Util/FightToast): slides down at the top, edge colour by kind, gone after
 	-- `seconds`; a soft pop as it lands (the chime for a card or shards)
 	TOAST = {
@@ -44,4 +54,8 @@ return {
 		top = 64, -- px under the top bar, clear of the Shop button
 		edge = { win = rgb(62, 224, 138), rare = rgb(255, 207, 74), lose = rgb(224, 71, 58), run = rgb(154, 150, 168) },
 	},
+	-- Boss loot picked up (Util/ItemPopup, Util/ItemPopupRules; the owner 2026-11-10: "picking up an item should show a
+	-- notification"): a card per item at the top right, under Roblox's top bar, `width` px wide, stacking down (three
+	-- at most, clear of the weapon switch)
+	PICKUP = { seconds = 3, max = 3, width = 250, height = 56, gap = 8, top = 70, right = 16, sound = "rbxassetid://106984966606682" },
 }

@@ -56,6 +56,7 @@ return {
 		Pavement = { 118, 116, 124 },
 		Basalt = { 46, 38, 58 },
 		CrackedLava = { 130, 70, 200 },
+		Mud = { 60, 56, 50 }, -- Stormpeak's swamps
 	},
 	PASS = { width = 44, depth = 20 },
 	PASS_BANKS = {
@@ -121,7 +122,9 @@ return {
 		tornado = { x = 700, z = 160, height = 180, radius = 26, turn = 40, color = { 70, 74, 86 } },
 		-- light rain round you on Stormpeak (the owner: "a bit of rain droplets not too much"; its sound is the area's
 		-- ambient loop, Config/Music FRONTIER)
-		rain = { zone = 2, rate = 50, height = 30, size = 110, speed = { 55, 70 }, length = 2.2, transparency = 0.45 },
+		-- a box `size` wide `height` over you; drops `drop` studs, stretched `length` along their fall (then: "I havent
+		-- seen rain in this region make it rain a little": 50 a second over 110 studs was about none to see)
+		rain = { zone = 2, rate = 400, height = 30, size = 70, speed = { 60, 75 }, length = 3, drop = 0.3, transparency = 0.3 },
 		-- the storm's eye over each of the Storm Sovereign's arena copies (the spec: "a storm eye overhead")
 		stormEye = { arena = 2, y = 150, size = 380, turn = 5, color = { 150, 170, 210 }, transparency = 0.4, image = "rbxassetid://82162011115712" },
 		vortex = { zone = 3, x = 212, z = 582, y = 220, size = 520, turn = 3, color = { 150, 80, 255 }, transparency = 0.35, image = "rbxassetid://82162011115712" }, -- Config/WildLoading SWIRL
@@ -242,8 +245,8 @@ return {
 				{ radius = 74, count = 36, models = { "SnowPine" }, height = { 34, 44 } },
 			},
 			inner = {
-				{ models = { "RockA", "RockB" }, count = 8, radius = { 44, 66 }, height = { 3, 5 } },
-				{ models = { "GiantSword" }, count = 4, radius = { 48, 64 }, height = { 10, 14 } },
+				{ models = { "RockA", "RockB" }, count = 8, radius = { 54, 68 }, height = { 3, 5 } },
+				{ models = { "GiantSword" }, count = 4, radius = { 54, 66 }, height = { 10, 14 } },
 			},
 			backdrop = { model = "IceThrone", distance = 62, height = 26, yaw = 90, sink = 1 },
 			effects = { { kind = "snow", rate = 24, y = 40, size = 150 }, { kind = "mist", rate = 3, y = 2, size = 140 } },
@@ -255,8 +258,8 @@ return {
 				{ radius = 74, count = 34, models = { "RockSpire" }, height = { 26, 36 } },
 			},
 			inner = {
-				{ models = { "RockA", "RockB", "RockC" }, count = 8, radius = { 44, 66 }, height = { 3, 6 } },
-				{ models = { "Bones" }, count = 4, radius = { 46, 64 }, height = { 4, 6 } },
+				{ models = { "RockA", "RockB", "RockC" }, count = 8, radius = { 54, 68 }, height = { 3, 6 } },
+				{ models = { "Bones" }, count = 4, radius = { 54, 66 }, height = { 4, 6 } },
 			},
 			effects = { { kind = "ash", rate = 6, y = 40, size = 160 }, { kind = "mist", rate = 3, y = 2, size = 140 } },
 			sound = { id = "rbxassetid://9120018695", volume = 0.4, range = 90 }, -- Pro Sound Effects: Thunder Distant Rumble 2
@@ -266,18 +269,18 @@ return {
 				{ radius = 72, count = 34, models = { "Stalagmite" }, height = { 22, 34 } },
 			},
 			inner = {
-				{ models = { "FloatingRock" }, count = 6, radius = { 50, 66 }, height = { 6, 9 }, y = 14 },
-				{ models = { "Bones" }, count = 4, radius = { 44, 66 }, height = { 4, 7 } },
+				{ models = { "FloatingRock" }, count = 6, radius = { 55, 68 }, height = { 6, 9 }, y = 14 },
+				{ models = { "Bones" }, count = 4, radius = { 54, 68 }, height = { 4, 7 } },
 			},
-			crystals = { count = 10, radius = { 44, 70 }, height = { 4, 7 } },
+			crystals = { count = 10, radius = { 54, 70 }, height = { 4, 7 } },
 			effects = { { kind = "glints", rate = 5, y = 4, size = 140 }, { kind = "mist", rate = 3, y = 2, size = 140 } },
 			sound = { id = "rbxassetid://9112775624", volume = 0.4, range = 90 }, -- Pro Sound Effects: Eerie Presence 3
 		},
 	},
-	ARENA_FENCE = 36,
+	ARENA_FENCE = 50, -- its bosses' arenaRadius (Config/Bosses; was 36 like the Wild's, the owner 2026-11-10: "make the arena wider")
 	-- Each arena's way home: the Frontier's crystal ring
 	ARENA_HOME = {
-		distance = 46,
+		distance = 58, -- past the fence (50), inside the walls (72)
 		{ model = "PortalFrontier", look = "Frontier" },
 		{ model = "PortalFrontier", look = "Frontier" },
 		{ model = "PortalFrontier", look = "Frontier" },
@@ -286,7 +289,7 @@ return {
 	-- The scenery lists (Util/WildValley.scenery): kept off the trail, the camp, the portals and boards. DRESSED_LISTS
 	-- are anchored, given colliders and settled (SceneryService); PROPS are town props placed as they are; CRYSTALS are
 	-- code-built in CRYSTAL_LOOK. The Titans' Graveyard props: tools/blender/build_frontier_props.py (docs/props.md)
-	PROP_LISTS = { "PROPS", "RUINS", "BONES", "SPIRES", "CRYSTALS" },
+	PROP_LISTS = { "PROPS", "RUINS", "BONES", "SPIRES", "CRYSTALS", "STORM_CRYSTALS", "SWAMPS" },
 	DRESSED_LISTS = { "RUINS", "BONES", "SPIRES" },
 	-- Frostwood: two ruined forts (west and north-east) with red banners, giant swords stuck in the snow
 	RUINS = {
@@ -304,6 +307,11 @@ return {
 	BONES = {
 		{ model = "Bones", x = -62, z = -45, height = 5, yaw = 40 },
 		{ model = "Bones", x = 470, z = 250, height = 6, yaw = 120 },
+		-- in and by Stormpeak's swamps
+		{ model = "Bones", x = 416, z = 103, height = 5, yaw = 30 },
+		{ model = "Bones", x = 396, z = 104, height = 4, yaw = 210 },
+		{ model = "Bones", x = 386, z = 188, height = 4, yaw = 80 },
+		{ model = "Bones", x = 377, z = 178, height = 5, yaw = 300 },
 		{ model = "DragonSkeleton", x = 120, z = 655, height = 14, yaw = 160, glow = "violet", clear = 26 },
 	},
 	-- Stormpeak: rock spires, wrecked watchtowers, the giant horned skull, storm stones with glowing runes
@@ -323,6 +331,17 @@ return {
 		{ model = "RockSpire", x = 362, z = 300, height = 18, yaw = 250, clear = 8 },
 		{ model = "StormStone", x = 340, z = 150, height = 9, yaw = 120, glow = "storm" },
 		{ model = "WreckedTower", x = 305, z = 300, height = 15, yaw = 300, clear = 9 },
+		-- giant spires, a tall wrecked tower and storm stones from small to huge (the owner 2026-11-10: "add some storm
+		-- related elements in various sizes")
+		{ model = "RockSpire", x = 470, z = 320, height = 55, yaw = 40, clear = 12 },
+		{ model = "RockSpire", x = 435, z = 75, height = 45, yaw = 170, clear = 10 },
+		{ model = "RockSpire", x = 425, z = 300, height = 38, yaw = 280, clear = 9 },
+		{ model = "WreckedTower", x = 430, z = 255, height = 22, yaw = 120, clear = 8 },
+		{ model = "StormStone", x = 455, z = -40, height = 24, yaw = 10, glow = "storm", clear = 8 },
+		{ model = "StormStone", x = 330, z = -35, height = 18, yaw = 200, glow = "storm", clear = 6 },
+		{ model = "StormStone", x = 335, z = 320, height = 14, yaw = 140, glow = "storm", clear = 5 },
+		{ model = "StormStone", x = 390, z = 315, height = 6, yaw = 60, glow = "storm" },
+		{ model = "StormStone", x = 415, z = 155, height = 4, yaw = 300, glow = "storm" },
 		-- the Rift's dark stalagmites (the owner 2026-11-10: "rift too empty")
 		{ model = "Stalagmite", x = -50, z = 650, height = 14, yaw = 20, clear = 7 },
 		{ model = "Stalagmite", x = 470, z = 640, height = 16, yaw = 130, clear = 7 },
@@ -330,26 +349,74 @@ return {
 		{ model = "Stalagmite", x = 410, z = 520, height = 10, yaw = 300, clear = 6 },
 		{ model = "Stalagmite", x = 40, z = 480, height = 11, yaw = 70, clear = 6 },
 	},
-	-- The Rift's violet crystal clusters (code-built), small to big (more 2026-11-10: "rift too empty")
+	-- The Rift's violet crystal clusters (code-built, pointed: CRYSTAL_LOOK), small to oversized (the owner 2026-11-10:
+	-- "add oversized crystals, these crystals are too small"); a big one's `clear` keeps monsters' spawns off its foot
 	CRYSTALS = {
-		{ x = 150, z = 650, height = 6, yaw = 10 },
-		{ x = 240, z = 640, height = 7, yaw = 80 },
-		{ x = 420, z = 560, height = 6, yaw = 150 },
-		{ x = -20, z = 560, height = 5, yaw = 220 },
-		{ x = 60, z = 520, height = 6, yaw = 300 },
-		{ x = 330, z = 660, height = 7, yaw = 40 },
-		{ x = 485, z = 575, height = 12, yaw = 100 },
-		{ x = -60, z = 590, height = 10, yaw = 340 },
-		{ x = 100, z = 680, height = 4, yaw = 60 },
-		{ x = 280, z = 690, height = 11, yaw = 190 },
-		{ x = 200, z = 520, height = 3, yaw = 15 },
-		{ x = 440, z = 680, height = 5, yaw = 240 },
-		{ x = 20, z = 680, height = 13, yaw = 120 },
-		{ x = 360, z = 640, height = 4, yaw = 280 },
-		{ x = -10, z = 500, height = 8, yaw = 45 },
-		{ x = 480, z = 500, height = 9, yaw = 170 },
+		{ x = 150, z = 650, height = 10, yaw = 10 },
+		{ x = 240, z = 640, height = 11, yaw = 80 },
+		{ x = 420, z = 560, height = 10, yaw = 150 },
+		{ x = -20, z = 560, height = 8, yaw = 220 },
+		{ x = 60, z = 520, height = 10, yaw = 300 },
+		{ x = 330, z = 660, height = 11, yaw = 40 },
+		{ x = 100, z = 680, height = 6, yaw = 60 },
+		{ x = 280, z = 690, height = 18, yaw = 190 },
+		{ x = 200, z = 520, height = 5, yaw = 15 },
+		{ x = 440, z = 680, height = 8, yaw = 240 },
+		{ x = 20, z = 680, height = 21, yaw = 120, clear = 6 },
+		{ x = 360, z = 640, height = 6, yaw = 280 },
+		{ x = -10, z = 500, height = 13, yaw = 45 },
+		{ x = 480, z = 500, height = 14, yaw = 170 },
+		{ x = 480, z = 590, height = 55, yaw = 200, clear = 14 },
+		{ x = -55, z = 560, height = 48, yaw = 30, clear = 12 },
+		{ x = 120, z = 700, height = 45, yaw = 330, clear = 12 },
+		{ x = 330, z = 700, height = 40, yaw = 110, clear = 10 },
+		{ x = 250, z = 470, height = 38, yaw = 260, clear = 10 },
+		{ x = -45, z = 468, height = 34, yaw = 150, clear = 9 },
+		{ x = 440, z = 700, height = 32, yaw = 70, clear = 8 },
 	},
-	CRYSTAL_LOOK = { color = { 150, 80, 255 }, tip = { 220, 180, 255 }, transparency = 0.12 },
+	-- glassy violet shells (Glass, `transparency`) round glowing cores (Neon, `core`); a tip `point` times a crystal's
+	-- width tall; clusters from `lightFrom` studs light the ground round them
+	CRYSTAL_LOOK = { color = { 150, 80, 255 }, tip = { 220, 180, 255 }, transparency = 0.25, core = 0.1, pointed = true, point = 1.1, lightFrom = 25, light = 1.5 },
+	-- Stormpeak's storm crystals: charged by the storm, pointed like the Rift's in pale electric blue, small to oversized
+	STORM_CRYSTALS = {
+		{ x = 420, z = 30, height = 45, yaw = 15, clear = 12 },
+		{ x = 320, z = 55, height = 38, yaw = 120, clear = 10 },
+		{ x = 485, z = 155, height = 32, yaw = 250, clear = 8 },
+		{ x = 460, z = 105, height = 30, yaw = 330, clear = 8 },
+		{ x = 510, z = 5, height = 18, yaw = 70 },
+		{ x = 370, z = 150, height = 15, yaw = 190 },
+		{ x = 390, z = 285, height = 12, yaw = 40 },
+		{ x = 350, z = 270, height = 8, yaw = 280 },
+		{ x = 310, z = 95, height = 6, yaw = 160 },
+		{ x = 395, z = 0, height = 5, yaw = 220 },
+	},
+	STORM_CRYSTAL_LOOK = { color = { 120, 190, 255 }, tip = { 225, 245, 255 }, transparency = 0.25, core = 0.05, pointed = true, point = 1.1, lightFrom = 25, light = 1.6 },
+	-- Stormpeak's swamps (the owner 2026-11-10: "some ponds with bones or something a swamp"): mud in the terrain
+	-- (WildValley.swampOps) round a dark pool `SWAMP_LOOK.pool` of the radius across, reeds round it; bones by and in
+	-- it (BONES), a horned skull half sunk in the big one (LANDMARKS), dead trees on its edge (PROPS)
+	SWAMPS = {
+		{ x = 405, z = 115, radius = 18, yaw = 20, seed = 11, clear = 18 },
+		{ x = 390, z = 185, radius = 15, yaw = 140, seed = 12, clear = 15 },
+	},
+	SWAMP_LOOK = { pool = 0.62, water = { 34, 46, 52 }, transparency = 0.12, reflectance = 0.35, rings = 6, reeds = 9, reedHeight = { 2, 4.5 }, reed = { 74, 82, 52 } },
+	-- Puddles over Stormpeak, each with rain rings
+	PUDDLES = {
+		{ x = 400, z = 220, radius = 3.5 },
+		{ x = 335, z = 290, radius = 4.5 },
+		{ x = 310, z = 20, radius = 5.5 },
+		{ x = 350, z = 65, radius = 2.5 },
+		{ x = 355, z = 195, radius = 3.5 },
+		{ x = 305, z = 165, radius = 4.5 },
+		{ x = 430, z = 220, radius = 5.5 },
+		{ x = 355, z = 125, radius = 2.5 },
+		{ x = 480, z = 220, radius = 3.5 },
+		{ x = 400, z = 75, radius = 4.5 },
+		{ x = 355, z = 170, radius = 5.5 },
+		{ x = 500, z = 170, radius = 2.5 },
+		{ x = 300, z = 115, radius = 3.5 },
+		{ x = 480, z = 125, radius = 4.5 },
+	},
+	PUDDLE_LOOK = { water = { 44, 56, 66 }, transparency = 0.2, reflectance = 0.3, rings = 0.5 },
 	-- Pieces placed where scenery lists can't go (dressed like them, outside Util/WildValley.scenery's clearances): the
 	-- ribcage the trail walks through (its feet off the trail), the Dungeon gate's crystal arch round the portal, the
 	-- camp's tents, campfire and watchtower, and the Rift's floating rocks (at their own `y`, never settled)
@@ -374,6 +441,14 @@ return {
 		{ model = "FloatingRock", x = 150, z = 480, y = 40, height = 14, yaw = 330, glow = "violet" },
 		{ model = "FloatingRock", x = 450, z = 660, y = 22, height = 16, yaw = 110, glow = "violet" },
 		{ model = "FloatingRock", x = 90, z = 690, y = 30, height = 20, yaw = 190, glow = "violet" },
+		-- oversized, hung high over the crater (the owner 2026-11-10: "also oversized floating rocks")
+		{ model = "FloatingRock", x = 200, z = 560, y = 45, height = 40, yaw = 20, glow = "violet" },
+		{ model = "FloatingRock", x = 400, z = 690, y = 55, height = 50, yaw = 280, glow = "violet" },
+		{ model = "FloatingRock", x = -30, z = 640, y = 40, height = 35, yaw = 130, glow = "violet" },
+		{ model = "FloatingRock", x = 330, z = 480, y = 50, height = 30, yaw = 220, glow = "violet" },
+		{ model = "FloatingRock", x = 60, z = 560, y = 60, height = 60, yaw = 70, glow = "violet" },
+		-- a horned skull half sunk in Stormpeak's big swamp (its foot under the ground, so never settled)
+		{ model = "HornedSkull", x = 410, z = 111, y = 26.5, height = 10, yaw = 200, glow = "storm" },
 		-- a ruined crystal arch standing in the crater
 		{ model = "CrystalArch", x = 445, z = 625, height = 18, yaw = 60, glow = "violet" },
 	},
@@ -421,6 +496,13 @@ return {
 		{ model = "CharredTree", x = 500, z = 290, height = 13, yaw = 260 },
 		{ model = "RockC", x = 380, z = 60, height = 4, yaw = 90 },
 		{ model = "CharredTree", x = 455, z = 225, height = 14, yaw = 80 },
+		-- lightning-struck trees, small to giant, and dead ones on the swamps' edges
+		{ model = "CharredTree", x = 365, z = 90, height = 24, yaw = 200 },
+		{ model = "CharredTree", x = 435, z = 190, height = 20, yaw = 50 },
+		{ model = "CharredTree", x = 450, z = 0, height = 9, yaw = 120 },
+		{ model = "CharredTree", x = 420, z = 128, height = 12, yaw = 260 },
+		{ model = "CharredTree", x = 398, z = 98, height = 10, yaw = 20 },
+		{ model = "CharredTree", x = 376, z = 196, height = 11, yaw = 150 },
 		{ model = "RockC", x = 300, z = -25, height = 4, yaw = 30 },
 		{ model = "RockB", x = 395, z = -30, height = 5, yaw = 200 },
 		{ model = "RockC", x = 505, z = 35, height = 4, yaw = 120 },

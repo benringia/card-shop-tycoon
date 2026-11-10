@@ -15,6 +15,7 @@ local SharedUtil = Shared:WaitForChild("Util")
 local Place = require(SharedUtil:WaitForChild("Place"))
 local ValleyConfig = Place.getValley() -- the place's valley (Util/Place)
 local Props = require(SharedUtil:WaitForChild("Props"))
+local AttackFx = require(Config:WaitForChild("AttackFx")) -- the rain rings' texture
 local TownLayout = require(SharedUtil:WaitForChild("TownLayout"))
 local TownTerrain = require(SharedUtil:WaitForChild("TownTerrain"))
 local LavaCracks = require(SharedUtil:WaitForChild("LavaCracks"))
@@ -388,8 +389,70 @@ end
 
 -- A cluster of glowing crystals: a tall one and two smaller leaning out of its foot (the gorge's blue CRYSTAL_LOOK
 -- unless another look is given, e.g. the ridge's EMBER_CRYSTAL_LOOK)
+-- The Y turn that puts a CornerWedgePart's high corner (its +X, -Z top corner) toward (-qx, -qz): four of them, one in
+-- each quarter round an axis, make a pyramid
+local function cornerTurn(qx: number, qz: number): number
+	for quarter = 0, 3 do
+		local turned = CFrame.Angles(0, math.rad(90 * quarter), 0) * Vector3.new(1, 0, -1)
+		if math.abs(turned.X + qx) < 0.01 and math.abs(turned.Z + qz) < 0.01 then
+			return math.rad(90 * quarter)
+		end
+	end
+	return 0
+end
+
+-- A pointed crystal cluster (the Frontier's CRYSTAL_LOOK.pointed; the owner 2026-11-10: "add oversized crystals, these
+-- crystals are too small"): each crystal of WildValley.crystalShards a glassy diamond prism with a pyramid tip and a
+-- glowing core, the cluster's foot sunk a little; the main crystal stops players, and a big cluster lights the ground
+local function buildPointedCrystals(folder: Instance, spot: any, look: any)
+	local shell, glow = Props.color(look.color), Props.color(look.tip)
+	local shards = WildValley.crystalShards(spot, look.point)
+	local base = CFrame.new(spot.x, groundAt(spot.x, spot.z) - shards[1].width * 0.3, spot.z) * CFrame.Angles(0, math.rad(spot.yaw), 0)
+	for index, shard in shards do
+		local axis = base * CFrame.Angles(0, math.rad(shard.turn), 0) * CFrame.new(0, 0, -shard.out) * CFrame.Angles(math.rad(-shard.tilt), 0, 0) * CFrame.Angles(0, math.rad(45), 0)
+		local w, h, tip = shard.width, shard.height, shard.width * look.point
+		local parts: { BasePart } = { piece(folder, "RiftCrystal", Vector3.new(w, h, w), axis * CFrame.new(0, h / 2, 0), shell, Enum.Material.Glass) }
+		for _, quarter in { { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 } } do
+			local wedge = Instance.new("CornerWedgePart")
+			wedge.Name = "RiftCrystalTip"
+			wedge.Anchored = true
+			wedge.Size = Vector3.new(w / 2, tip, w / 2)
+			wedge.CFrame = axis * CFrame.new(quarter[1] * w / 4, h + tip / 2, quarter[2] * w / 4) * CFrame.Angles(0, cornerTurn(quarter[1], quarter[2]), 0)
+			wedge.Color = shell
+			wedge.Material = Enum.Material.Glass
+			wedge.Parent = folder
+			table.insert(parts, wedge)
+		end
+		local core = piece(folder, "RiftCrystalCore", Vector3.new(w * 0.45, h * 0.92, w * 0.45), axis * CFrame.new(0, h * 0.48, 0), glow, Enum.Material.Neon)
+		core.Transparency = look.core
+		table.insert(parts, core)
+		for _, part in parts do
+			if part ~= core then
+				part.Transparency = look.transparency
+			end
+			local solid = index == 1 and part == parts[1]
+			part.CanCollide = solid
+			part.CanQuery = solid
+			part.CanTouch = false
+			part.CastShadow = false
+		end
+	end
+	if spot.height >= look.lightFrom then
+		local light = Instance.new("PointLight")
+		light.Color = shell
+		light.Brightness = look.light
+		light.Range = math.min(spot.height * 0.9, 60)
+		light.Shadows = false
+		light.Parent = anchorPart(folder, "RiftCrystalLight", base.Position + Vector3.new(0, spot.height * 0.3, 0))
+	end
+end
+
 local function buildCrystalCluster(folder: Instance, spot: any, given: any?)
 	local look = given or ValleyConfig.CRYSTAL_LOOK
+	if look.pointed then
+		buildPointedCrystals(folder, spot, look)
+		return
+	end
 	local color, tip = Props.color(look.color), Props.color(look.tip)
 	local base = CFrame.new(spot.x, groundAt(spot.x, spot.z), spot.z) * CFrame.Angles(0, math.rad(spot.yaw), 0)
 	for index, shape in { { 1, 0, 0, 0 }, { 0.6, 0.9, 25, 40 }, { 0.5, -0.8, -20, 200 } } do
@@ -459,6 +522,69 @@ local function buildRidgeCracks(folder: Instance)
 	end
 end
 
+-- Rain landing on still water: rings spreading on a flat box `width` across over `at`, `rate` a second
+local function rainRings(folder: Instance, at: Vector3, width: number, depth: number, rate: number)
+	local holder = anchorPart(folder, "RainRings", at, Vector3.new(width, 0.1, depth))
+	local rings = Instance.new("ParticleEmitter")
+	rings.Texture = AttackFx.TEXTURES.ring
+	rings.Shape = Enum.ParticleEmitterShape.Box
+	rings.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+	rings.Orientation = Enum.ParticleOrientation.VelocityPerpendicular -- flat on the water
+	rings.EmissionDirection = Enum.NormalId.Top
+	rings.Speed = NumberRange.new(0.01)
+	rings.Lifetime = NumberRange.new(0.6, 0.9)
+	rings.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(1, 1.4) })
+	rings.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 1) })
+	rings.Color = ColorSequence.new(Color3.fromRGB(200, 215, 230))
+	rings.LightEmission = 0.2
+	rings.Rate = rate
+	rings.Parent = holder
+end
+
+-- Still water lying on the drawn ground: a thin glassy disc `width` by `depth`, turned `yaw` degrees
+local function stillWater(folder: Instance, name: string, x: number, z: number, width: number, depth: number, yaw: number, look: any): BasePart
+	local water = piece(folder, name, Vector3.new(0.1, width, depth), CFrame.new(x, groundAt(x, z) + 0.15, z) * CFrame.Angles(0, math.rad(yaw), 0) * CFrame.Angles(0, 0, math.rad(90)), Props.color(look.water), Enum.Material.Glass, Enum.PartType.Cylinder)
+	water.Transparency = look.transparency
+	water.Reflectance = look.reflectance
+	water.CanCollide = false
+	water.CanQuery = false
+	water.CanTouch = false
+	water.CastShadow = false
+	return water
+end
+
+-- A swamp (Config/FrontierValley SWAMPS, SWAMP_LOOK): its mud is in the terrain (WildValley.swampOps); here its dark
+-- pool with rain rings and clumps of reeds round the pool's edge (its bones and dead trees are in the scenery lists)
+local function buildSwamp(folder: Instance, swamp: any, look: any)
+	local radius = swamp.radius * look.pool
+	local pool = stillWater(folder, "SwampPool", swamp.x, swamp.z, radius * 2, radius * 1.7, swamp.yaw or 0, look)
+	rainRings(folder, pool.Position + Vector3.new(0, 0.1, 0), radius * 1.3, radius * 1.1, look.rings)
+	local random = Random.new(swamp.seed)
+	local reed = Props.color(look.reed)
+	for _ = 1, look.reeds do
+		local angle = random:NextNumber(0, math.pi * 2)
+		local out = radius * random:NextNumber(0.8, 1.15)
+		local cx, cz = swamp.x + math.cos(angle) * out, swamp.z + math.sin(angle) * out * 0.85
+		for _ = 1, 3 do
+			local x, z = cx + random:NextNumber(-0.8, 0.8), cz + random:NextNumber(-0.8, 0.8)
+			local height = random:NextNumber(look.reedHeight[1], look.reedHeight[2])
+			local lean = CFrame.Angles(math.rad(random:NextNumber(-12, 12)), 0, math.rad(random:NextNumber(-12, 12)))
+			local stalk = piece(folder, "Reed", Vector3.new(height, 0.22, 0.22), CFrame.new(x, groundAt(x, z) - 0.3, z) * lean * CFrame.new(0, height / 2, 0) * CFrame.Angles(0, 0, math.rad(90)), reed, Enum.Material.Grass, Enum.PartType.Cylinder)
+			stalk.CanCollide = false
+			stalk.CanQuery = false
+			stalk.CanTouch = false
+			stalk.CastShadow = false
+		end
+	end
+end
+
+-- A puddle (Config/FrontierValley PUDDLES, PUDDLE_LOOK): a little oval of still water with rain rings on it
+local function buildPuddle(folder: Instance, puddle: any, look: any)
+	local yaw = (puddle.x * 7 + puddle.z * 13) % 180 -- a fixed turn of its own
+	local water = stillWater(folder, "Puddle", puddle.x, puddle.z, puddle.radius * 2, puddle.radius * 1.4, yaw, look)
+	rainRings(folder, water.Position + Vector3.new(0, 0.1, 0), puddle.radius * 1.2, puddle.radius * 0.8, look.rings * puddle.radius)
+end
+
 -- The Wild valley's dressing (Config/WildValley), each piece on the drawn ground: props, the bridge, the trail's markers,
 -- the gorge's crystals, the ridge's charred trees, obsidian shards (with the caldera's colliders) and vents, and the
 -- volcano past the ridge (the cave and the ridge's cracks wait for the terrain: Start)
@@ -522,6 +648,17 @@ local function buildWildValley(folder: Folder)
 				model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic -- a hung piece the client bobs arrives whole
 			end
 		end
+	end
+	-- Stormpeak's storm crystals, swamps and puddles (the owner 2026-11-10: "add some storm related elements in various
+	-- sizes... some puddles, some ponds with bones or something a swamp")
+	for _, spot in ValleyConfig.STORM_CRYSTALS or {} do
+		buildCrystalCluster(holder, spot, ValleyConfig.STORM_CRYSTAL_LOOK)
+	end
+	for _, swamp in ValleyConfig.SWAMPS or {} do
+		buildSwamp(holder, swamp, ValleyConfig.SWAMP_LOOK)
+	end
+	for _, puddle in ValleyConfig.PUDDLES or {} do
+		buildPuddle(holder, puddle, ValleyConfig.PUDDLE_LOOK)
 	end
 	for _, spot in ValleyConfig.EMBER_CRYSTALS or {} do
 		buildCrystalCluster(holder, spot, ValleyConfig.EMBER_CRYSTAL_LOOK)

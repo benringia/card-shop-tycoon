@@ -103,7 +103,13 @@ return {
 	PLAYER_HP = 100, -- everyone's; boss hits on players are shares of it (Config/Bosses playerAttacks)
 	DOWN_SECONDS = 5, -- at 0 HP you're down this long, then back up while one of your creatures stands
 	GET_UP_SHARE = 0.5, -- of your HP back when you get up
-	PLAYER_TARGET_SHARE = 1 / 3, -- of a boss's swings go at a player (a quick hit) instead of a creature
+	-- of a boss's swings go at a player (a quick hit) while a creature of theirs stands: none, bosses go for pets first
+	-- (the owner 2026-11-10; was 1 / 3); with no creature standing every swing goes at a player. Its warned big
+	-- attacks (rings, the Frost Tyrant's spikes) still come for players
+	PLAYER_TARGET_SHARE = 0,
+	-- A boss with player attacks swings this many times slower than its SPD says: with every normal hit now at pets, its
+	-- pets take the same hits a second as when one in three went at the player (1 / (1 - 1 / 3))
+	BOSS_PACE = 1.5,
 	QUICK_WARNING = 0.5, -- seconds the boss flashes before a quick hit lands
 	HIT_GRACE = 0.15, -- seconds the server lands hits on players after clients show them (a late dodge still counts)
 	DODGE_SECONDS = 0.35, -- untouchable after a dodge

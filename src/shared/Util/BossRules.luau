@@ -231,6 +231,17 @@ function BossRules.forEachOf(list: { any }, each: (any) -> ())
 	end
 end
 
+-- The fenced ring a boss fights in (the owner 2026-11-10: "make the arena wider"): its own `arenaRadius` (the
+-- Frontier's big bosses), else every arena's ARENA_RADIUS
+function BossRules.arenaRadius(boss: { arenaRadius: number? }, cfg: { ARENA_RADIUS: number }): number
+	return boss.arenaRadius or cfg.ARENA_RADIUS
+end
+
+-- How far a player may roam from the boss in its fight: its ring and the boss's spot past the ring's centre
+function BossRules.leashRadius(boss: { arenaRadius: number? }, cfg: { ARENA_RADIUS: number, BOSS_SPOT: number }): number
+	return BossRules.arenaRadius(boss, cfg) + cfg.BOSS_SPOT
+end
+
 -- Whether a spot (offset from the arena's centre) is inside its sealed ring, wall line included
 function BossRules.insideRing(dx: number, dz: number, radius: number): boolean
 	return dx * dx + dz * dz <= (radius + 1) ^ 2

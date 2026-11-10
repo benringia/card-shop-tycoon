@@ -7,6 +7,10 @@ end
 
 return {
 	CHARGE_GRACE = 0.3, -- seconds a charge waits past its due time for its attack, then fades
+	-- A special's spotlight (Util/Spotlight; the owner 2026-11-10: "special skills animation/fx should always be
+	-- visible"): creatures' basic attacks draw nothing new while your sword skill plays (its length) and `tail` seconds
+	-- after, and through a super's charge and `super` seconds of its move
+	SPOTLIGHT = { tail = 0.8, super = 2.5 },
 	FLIGHT = { Ember = 0.35, Tide = 0.25, Shade = 0.3 }, -- seconds a projectile or moon slash flies
 	COMBO = { count = 3, window = 0.45 }, -- a combo's hits over this many seconds, the last with the damage
 	EXTRA_SHOT_GAP = 0.08, -- seconds between a grade A / S Ember's extra fireballs (they land together)
@@ -113,6 +117,39 @@ return {
 				strike = "rbxassetid://9117330384", -- Pick Impacts 1 (heavy dirt and rock hits)
 				release = "rbxassetid://9113216700", -- Avalanche Crashing 3
 			},
+		},
+		-- The owner 2026-11-10 (Util/IceFx, Config ICE below): an icy claw swipe; his ring is a giant ice spike falling
+		-- from the sky that shatters in ice smoke (`spikes`), his shield a frosted ice bubble with shards (`iceShield`)
+		frostTyrant = {
+			strike = "frost",
+			release = "frost",
+			spikes = true,
+			iceShield = true,
+			color = rgb(150, 215, 255),
+			sounds = {
+				strike = "rbxassetid://9120728815", -- Whoosh Heavy Punches 1
+				release = "rbxassetid://9120729339", -- Whoosh Heavy Punches 7 (his arms coming down; each spike shatters on its own)
+			},
+		},
+	},
+	-- The Frost Tyrant's ice (Util/IceFx, numbers in Util/IceFxRules): a spike `length` long and `width` wide hanging
+	-- `height` over its ring, dropping the last `fall` seconds; the shield bubble `radius` times his height across with
+	-- `shards`; a frozen fighter's ice block; the colours and sounds (Pro Sound Effects)
+	ICE = {
+		-- 45 up and a long fall: a fight camera behind you sees it hang and come down (60 up was off the top of the view)
+		spike = { height = 45, length = 22, width = 5.5, fall = 0.75, pieces = 12, smoke = 18, light = 22 },
+		-- the bubble's radius and the ice block's sides: shares of the body's box (its largest side; its height and width)
+		shield = { radius = 0.62, shards = 24, grow = 0.4, transparency = 0.55 },
+		encase = { width = 1.05, tall = 1.08, transparency = 0.45, crystals = 6 },
+		color = { 170, 220, 255 },
+		core = { 235, 250, 255 },
+		smoke = { 225, 240, 255 },
+		sounds = {
+			fall = "rbxassetid://9113077334", -- Air Whoosh Heavy Bys And Impacts 1
+			shatter = "rbxassetid://9114855870", -- Ice Block Drop To Concrete Shatter 1
+			shieldForm = "rbxassetid://9114858583", -- Ice Crackle Large Block Cracks 1
+			shieldBreak = "rbxassetid://9114856304", -- Ice Block Drop To Concrete Shatter 3
+			freeze = "rbxassetid://9114866515", -- Ice Pick Small Crunches Splinters 2
 		},
 	},
 	-- The effects' textures (tools/textures/make_attack_fx.py, the owner's reference look): white, tinted per use, a

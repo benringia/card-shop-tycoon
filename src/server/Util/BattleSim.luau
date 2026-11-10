@@ -48,7 +48,9 @@ export type Phase = { below: number, element: string, mechanics: Mechanics }
 -- A boss's attacks on players (Config/Bosses playerAttacks)
 -- shape: every ring this boss draws ("slam" | "swipe"); without it each ring is a coin flip. debuff: what a landed ring
 -- leaves on the player (a Config/Bosses DEBUFFS kind, or "byPhase": its current element's)
-export type PlayerAttacks = { every: number, warning: number, big: number, quick: number, doubleChance: number?, shape: string?, debuff: string? }
+-- pets: a big attack also falls on this many random standing creatures (they can't step out), each hit stunning it
+-- `petFreeze` seconds and dealing `petHit` of a normal hit (the Frost Tyrant's ice spikes)
+export type PlayerAttacks = { every: number, warning: number, big: number, quick: number, doubleChance: number?, shape: string?, debuff: string?, pets: number?, petFreeze: number?, petHit: number? }
 -- What State.ringCheck is asked when a ring lands: its id (from the "ring" event), its target and shape
 export type RingInfo = { id: number, target: string, shape: string }
 -- hpNow: it starts hurt (the Dungeon: HP carried from the last room), max HP stays hp; callers never pass 0
@@ -73,8 +75,9 @@ export type Event = {
 	-- "leave" | "shield" (heal: its size) | "shieldBreak" | "thunderclap" | "stun" (damage: its seconds) | "spawn" (to: the add) |
 	-- "phase" (from: the boss, kind: its new element, damage: the phase's number) | "down" | "getUp" (heal: HP back) |
 	-- "out" (a player fighter down for good) | "dodge" (from: the player fighter) | "telegraph" (kind "quick": a quick
-	-- hit on `to` lands in `seconds`) | "ring" (kind "slam" | "swipe": a big attack's ring `ring` on `to`, lands in
-	-- `seconds`); hits on players are "attack" events with kind "Quick" | "Slam" | "Swipe" (and "Poison" | "Burn" each
+	-- hit on `to` lands in `seconds`) | "ring" (kind "slam" | "swipe" | "spikes": a big attack's ring `ring` on `to`, a
+	-- player or a pet, lands in `seconds`) | "frozen" (to: a pet a spike hit, stunned `seconds`); hits on players are
+	-- "attack" events with kind "Quick" | "Slam" | "Swipe" | "Spikes" (and "Poison" | "Burn" each
 	-- second of those debuffs, with no `from`) | "debuff" (to: a player fighter, kind: its DEBUFFS kind, seconds) |
 	-- "charge" (from: a fighter
 	-- whose auto-attack lands in `seconds`, to: its likely target; clients wind up and fire their effects to land with it)
@@ -735,6 +738,9 @@ end
 
 local function interval(state: State, fighter: Fighter): number
 	local value = CombatMath.getAttackInterval(state.combat, fighter.spd) / (1 + perkOf(state, fighter, "Hustle"))
+	if fighter.playerAttacks then
+		value *= state.combat.BOSS_PACE or 1 -- it goes for pets first (Config/Combat BOSS_PACE)
+	end
 	if state.time < fighter.slowUntil then
 		value /= 1 - fighter.slow
 	end
@@ -851,7 +857,7 @@ local function bigAttack(state: State, fighter: Fighter, events: { Event })
 		local roll = random(state)
 		local shape = attacks.shape or (if roll < 0.5 then "slam" else "swipe")
 		table.insert(state.pending, {
-			kind = if shape == "slam" then "Slam" else "Swipe",
+			kind = if shape == "slam" then "Slam" elseif shape == "spikes" then "Spikes" else "Swipe",
 			at = state.time + attacks.warning + state.combat.HIT_GRACE,
 			target = target,
 			from = fighter,
@@ -866,6 +872,12 @@ local function bigAttack(state: State, fighter: Fighter, events: { Event })
 	end
 	if #players > 0 and attacks.doubleChance and random(state) < attacks.doubleChance then
 		ring(players[math.min(#players, 1 + math.floor(random(state) * #players))])
+	end
+	-- and on `pets` random standing creatures (drawn only for a boss that has them, so the others replay as before)
+	local pets = standingCreatures(other(state, (state.sides :: any)[fighter.side]))
+	for _ = 1, math.min(attacks.pets or 0, #pets) do
+		local index = math.min(#pets, 1 + math.floor(random(state) * #pets))
+		ring(table.remove(pets, index) :: Fighter)
 	end
 end
 
@@ -882,7 +894,18 @@ local function landPending(state: State, events: { Event })
 			continue
 		end
 		local target = pending.target
-		if state.result or target.down or target.left then
+		if state.result or target.down or target.left or target.fainted then
+			continue
+		end
+		if not target.player then
+			-- A spike on a pet: it can't step out; `petHit` of a normal hit, then frozen (stunned) petFreeze seconds
+			local attacks = pending.from.playerAttacks
+			hit(state, pending.from, target, if attacks and attacks.petHit then attacks.petHit else 1, events, pending.kind, true)
+			local seconds = if attacks then attacks.petFreeze else nil
+			if seconds and not target.fainted then
+				target.stunUntil = math.max(target.stunUntil, state.time + seconds)
+				table.insert(events, { type = "frozen", from = pending.from.id, to = target.id, damage = seconds, seconds = seconds })
+			end
 			continue
 		end
 		-- A dodge counts if its window still covered the moment clients showed the hit (HIT_GRACE before it lands),
@@ -1642,8 +1665,8 @@ function BattleSim.swordHit(state: State, owner: string, targetId: string, power
 	elseif fighter.down then
 		return nil, "down"
 	end
-	local debuff, spec = debuffOn(state, fighter)
-	if debuff == "Shocked" then
+	local _, spec = debuffOn(state, fighter)
+	if spec and spec.stun then
 		return nil, "stunned"
 	end
 	local target, targetSide = find(state, targetId)
@@ -1688,8 +1711,8 @@ function BattleSim.dodge(state: State, owner: string): ({ Event }?, string?)
 	elseif fighter.dodgeReady - state.time > 1 / state.combat.TICK_RATE + 1e-6 then
 		return nil, "cooldown" -- a tick of slack: the request can arrive up to a step after the sim's last time
 	end
-	local debuff, spec = debuffOn(state, fighter)
-	if debuff == "Shocked" then
+	local _, spec = debuffOn(state, fighter)
+	if spec and spec.stun then
 		return nil, "stunned"
 	end
 	fighter.dodgeUntil = state.time + state.combat.DODGE_SECONDS

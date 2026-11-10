@@ -51,7 +51,27 @@ for key, id in Victory.SOUNDS do
 	end
 end
 
+-- Studio's /victorysound <1-3> (DevService): the win sting option picked by ear, heard once now and played on your
+-- next wins (Config/Victory WIN_OPTIONS); none: the default
+local function winOption(): any?
+	local picked = Players.LocalPlayer:GetAttribute("VictorySound")
+	return if typeof(picked) == "number" then Victory.WIN_OPTIONS[picked] else nil
+end
+
 local function play(id: string)
+	local option = winOption()
+	if id == Victory.SOUNDS.win and option then
+		local sound = Instance.new("Sound")
+		sound.SoundId = option.id
+		sound.Volume = Victory.VOLUME
+		sound.Parent = SoundService
+		sound.TimePosition = option.startAt
+		sound:Play()
+		sound.Ended:Once(function()
+			sound:Destroy()
+		end)
+		return
+	end
 	local template = templates[id]
 	if not template then
 		return
@@ -64,6 +84,13 @@ local function play(id: string)
 		sound:Destroy()
 	end)
 end
+
+-- /victorysound picked one: heard once now
+Players.LocalPlayer:GetAttributeChangedSignal("VictorySound"):Connect(function()
+	if winOption() then
+		play(Victory.SOUNDS.win)
+	end
+end)
 
 local function pop(target: GuiObject, from: number, seconds: number)
 	local scale = Instance.new("UIScale")

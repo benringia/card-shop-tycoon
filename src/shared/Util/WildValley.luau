@@ -392,6 +392,31 @@ function WildValley.faceOps(valley: any): { any }
 	return ops
 end
 
+-- Each swamp's mud (Config/FrontierValley SWAMPS; the owner 2026-11-10: "a swamp"): three thin slabs of Mud crossed
+-- at its yaw, together an uneven patch about its radius, their tops `MUD_RISE` over its area's ground fill so the
+-- surface draws as mud (SceneryService lays the pool on it). A valley without SWAMPS has none (the Wild)
+local MUD_RISE = 0.3
+local MUD_DEPTH = 1.6
+function WildValley.swampOps(valley: any): { any }
+	local ops = {}
+	for _, swamp in valley.SWAMPS or {} do
+		local top = valley.BIOMES[WildValley.zoneAt(valley, swamp) or 1].ground - valley.SURFACE_LIFT + MUD_RISE
+		local r = swamp.radius
+		for _, slab in { { r * 2, r * 1.5, 0 }, { r * 1.6, r * 1.9, 50 }, { r * 1.3, r * 1.3, 25 } } do
+			table.insert(ops, {
+				shape = "Block",
+				x = swamp.x,
+				y = top - MUD_DEPTH / 2,
+				z = swamp.z,
+				size = { x = slab[1], y = MUD_DEPTH, z = slab[2] },
+				yaw = (swamp.yaw or 0) + slab[3],
+				material = "Mud",
+			})
+		end
+	end
+	return ops
+end
+
 -- One lava stream down the volcano (round 2, spec 2026-11-05-valley-natural-design): `steps + 1` level rays aimed at
 -- its axis from `reach * height` out, at heights from share `from` down to `to` of its height; angle 0 faces -Z (the
 -- ridge), positive toward +X, the stream swaying `wobble` degrees as it runs down. SceneryService casts them onto the
@@ -415,6 +440,25 @@ end
 -- roots in the air over a rounded wall top): `gaps` are its lowest surfaces' heights over the terrain, measured by rays
 -- (negative: buried). It drops by the widest gap plus `sink`, never by more than `cap` of its `height`; a gap past the
 -- cap is a root out over a wall's edge and is left out.
+-- The crystals of one pointed cluster (the Frontier's CRYSTAL_LOOK.pointed; SceneryService builds each as a diamond
+-- prism with a pyramid tip `point` times its width tall): a main crystal standing the spot's whole height and three
+-- smaller ones round it leaning out. Each: its body's height and width, its turn round the middle (degrees, from the
+-- spot's yaw), how far out from the middle its foot stands and how far it leans out (degrees)
+local CRYSTAL_WIDTH = 0.2 -- the main crystal's width, a share of the spot's height
+local CRYSTAL_SIDES = {
+	{ share = 0.55, turn = 40, tilt = 25 },
+	{ share = 0.45, turn = 160, tilt = 22 },
+	{ share = 0.36, turn = 260, tilt = 30 },
+}
+function WildValley.crystalShards(spot: { height: number }, point: number): { { height: number, width: number, turn: number, out: number, tilt: number } }
+	local width = spot.height * CRYSTAL_WIDTH
+	local shards = { { height = spot.height - width * point, width = width, turn = 0, out = 0, tilt = 0 } }
+	for _, side in CRYSTAL_SIDES do
+		table.insert(shards, { height = spot.height * side.share, width = width * side.share * 1.2, turn = side.turn, out = width * 0.55, tilt = side.tilt })
+	end
+	return shards
+end
+
 function WildValley.settleDrop(gaps: { number }, height: number, settle: { sink: number, cap: number }): number
 	local cap = settle.cap * height
 	local widest = 0
@@ -510,6 +554,9 @@ function WildValley.terrainOps(valley: any, segment: (a: any, b: any, width: num
 		table.insert(ops, op)
 	end
 	for _, op in WildValley.faceOps(valley) do
+		table.insert(ops, op)
+	end
+	for _, op in WildValley.swampOps(valley) do
 		table.insert(ops, op)
 	end
 	for _, hill in valley.HILLS do

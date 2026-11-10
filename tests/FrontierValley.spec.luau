@@ -7,6 +7,7 @@ local wildValley = require("../src/shared/Config/WildValley")
 local frontier = require("../src/shared/Config/Frontier")
 local bosses = require("../src/shared/Config/Bosses")
 local WildValley = require("../src/shared/Util/WildValley")
+local BossRules = require("../src/shared/Util/BossRules")
 local TownTerrain = require("../src/shared/Util/TownTerrain")
 local expect = require("./lib/expect")
 local fs = require("@lune/fs")
@@ -309,15 +310,142 @@ return {
 			end
 			return count, low, high
 		end
+		local function oversized(list: { any }, model: string?, from: number): number
+			local count = 0
+			for _, spot in list do
+				if (model == nil or spot.model == model) and spot.height >= from then
+					count += 1
+				end
+			end
+			return count
+		end
+		-- then "add oversized crystals, these crystals are too small. also oversized floating rocks"
 		local rocks, smallRock, bigRock = spread(valley.LANDMARKS, "FloatingRock")
 		assert(rocks >= 12, `only {rocks} floating rocks`)
-		assert(smallRock <= 4 and bigRock >= 16, `rocks from {smallRock} to {bigRock} studs`)
+		assert(smallRock <= 4 and bigRock >= 50, `rocks from {smallRock} to {bigRock} studs`)
+		assert(oversized(valley.LANDMARKS, "FloatingRock", 30) >= 4, "oversized floating rocks")
 		local crystals, smallCrystal, bigCrystal = spread(valley.CRYSTALS)
 		assert(crystals >= 14, `only {crystals} crystal clusters`)
-		assert(smallCrystal <= 4 and bigCrystal >= 12, `crystals from {smallCrystal} to {bigCrystal} studs`)
+		assert(smallCrystal <= 6 and bigCrystal >= 50, `crystals from {smallCrystal} to {bigCrystal} studs`)
+		assert(oversized(valley.CRYSTALS, nil, 30) >= 6, "oversized crystals")
 		local stalagmites = spread(valley.SPIRES, "Stalagmite")
 		assert(stalagmites >= 4, "dark stalagmites in the crater")
 		assert(valley.COLLIDERS.Stalagmite, "a stalagmite stops players")
+	end,
+
+	-- A big crystal's whole foot stays off the trail and the boss portal, and monsters spawn clear of it
+	["the crystals keep their feet off the trail and the portals"] = function()
+		local all = table.clone(valley.CRYSTALS)
+		for _, spot in valley.STORM_CRYSTALS do
+			table.insert(all, spot)
+		end
+		for _, spot in all do
+			local foot = spot.height * 0.25
+			assert(trailDistance(spot) >= foot + valley.TRAIL_WIDTH / 2 + 2, `a crystal at {spot.x}, {spot.z} reaches the trail`)
+			local portal = valley.BIOMES[WildValley.zoneAt(valley, spot) or 3].portal
+			local d = math.sqrt((portal.x - spot.x) ^ 2 + (portal.z - spot.z) ^ 2)
+			assert(d >= valley.PORTAL_CLEAR + foot, `a crystal at {spot.x}, {spot.z} crowds the boss portal`)
+			if spot.height >= 20 then
+				assert((spot.clear or 0) >= foot, `a big crystal at {spot.x}, {spot.z} keeps no spawns off`)
+			end
+		end
+	end,
+
+	-- The Frontier's crystals are pointed (Util/WildValley.crystalShards; SceneryService builds each as a diamond prism
+	-- with a pyramid tip): a tall one in the middle and three smaller ones leaning out round it
+	["a crystal cluster is a tall pointed crystal with three leaning out"] = function()
+		expect.equal(valley.CRYSTAL_LOOK.pointed, true, "the Frontier's crystals are pointed")
+		local shards = WildValley.crystalShards({ x = 0, z = 0, height = 40, yaw = 0 }, valley.CRYSTAL_LOOK.point)
+		expect.equal(#shards, 4)
+		local main = shards[1]
+		expect.equal(main.out, 0)
+		expect.equal(main.tilt, 0)
+		local whole = main.height + main.width * valley.CRYSTAL_LOOK.point
+		assert(math.abs(whole - 40) <= 2, `the main crystal stands {whole} studs, not the spot's 40`)
+		for index = 2, 4 do
+			local side = shards[index]
+			assert(side.height < main.height and side.width < main.width, "the side crystals are smaller")
+			assert(side.tilt >= 15 and side.tilt <= 35, "the side crystals lean out")
+			assert(side.out > 0, "the side crystals stand round the main one")
+		end
+	end,
+
+	-- The owner 2026-11-10 on Stormpeak: "add some storm related elements in various sizes, so that it wouldnt look
+	-- empty/plain"
+	["Stormpeak has storm crystals, spires, stones and dead trees of many sizes"] = function()
+		local function heights(list: { any }, model: string?): { number }
+			local found = {}
+			for _, spot in list do
+				if (model == nil or spot.model == model) and WildValley.zoneAt(valley, spot) == 2 then
+					table.insert(found, spot.height)
+				end
+			end
+			table.sort(found)
+			return found
+		end
+		expect.equal(valley.STORM_CRYSTAL_LOOK.pointed, true, "storm crystals are pointed like the Rift's")
+		local crystals = heights(valley.STORM_CRYSTALS)
+		assert(#crystals >= 8 and crystals[1] <= 6 and crystals[#crystals] >= 40, "storm crystals from small to oversized")
+		local big = 0
+		for _, h in crystals do
+			big += if h >= 30 then 1 else 0
+		end
+		assert(big >= 3, "oversized storm crystals")
+		local spires = heights(valley.SPIRES, "RockSpire")
+		assert(spires[#spires] >= 50, "a giant rock spire")
+		local stones = heights(valley.SPIRES, "StormStone")
+		assert(stones[1] <= 5 and stones[#stones] >= 20, "storm stones from small to huge")
+		local trees = heights(valley.PROPS, "CharredTree")
+		assert(trees[#trees] >= 20, "a giant lightning-struck tree")
+	end,
+
+	-- "maybe add some puddles, some ponds with bones or something a swamp": swamps (a mud patch in the terrain round
+	-- a dark pool) on flat ground off the trail, each with bones by or in it; puddles scattered over Stormpeak
+	["Stormpeak has bone swamps and puddles on flat ground off the trail"] = function()
+		local function flatAround(spot: any, radius: number): boolean
+			local centre = TownTerrain.groundAt(OPS, spot.x, spot.z)
+			if not centre then
+				return false
+			end
+			for step = 0, 7 do
+				local angle = step * math.pi / 4
+				local here = TownTerrain.groundAt(OPS, spot.x + math.cos(angle) * radius, spot.z + math.sin(angle) * radius)
+				if not here or math.abs(here - centre) > 0.6 then
+					return false
+				end
+			end
+			return true
+		end
+		assert(#valley.SWAMPS >= 2, "two swamps")
+		for _, swamp in valley.SWAMPS do
+			expect.equal(WildValley.zoneAt(valley, swamp), 2, "swamps are on Stormpeak")
+			assert(flatAround(swamp, swamp.radius), `the swamp at {swamp.x}, {swamp.z} isn't on flat ground`)
+			assert(trailDistance(swamp) >= swamp.radius + valley.TRAIL_WIDTH / 2 + 4, `the swamp at {swamp.x}, {swamp.z} reaches the trail`)
+			local bones = 0
+			for _, list in { valley.BONES, valley.LANDMARKS } do
+				for _, spot in list do
+					local d = math.sqrt((spot.x - swamp.x) ^ 2 + (spot.z - swamp.z) ^ 2)
+					if (spot.model == "Bones" or spot.model == "HornedSkull") and d <= swamp.radius + 6 then
+						bones += 1
+					end
+				end
+			end
+			assert(bones >= 1, `the swamp at {swamp.x}, {swamp.z} has no bones`)
+		end
+		local mud = WildValley.swampOps(valley)
+		assert(#mud >= #valley.SWAMPS, "each swamp's mud is in the terrain")
+		for _, op in mud do
+			expect.equal(op.material, "Mud")
+		end
+		expect.equal(#WildValley.swampOps(wildValley :: any), 0, "the Wild has none")
+		assert(valley.MATERIAL_COLORS.Mud, "the mud has its colour")
+		assert(#valley.PUDDLES >= 10, "puddles")
+		for _, puddle in valley.PUDDLES do
+			expect.equal(WildValley.zoneAt(valley, puddle), 2, "puddles are on Stormpeak")
+			assert(puddle.radius >= 2 and puddle.radius <= 7, "puddle-sized")
+			assert(flatAround(puddle, puddle.radius + 1), `the puddle at {puddle.x}, {puddle.z} isn't on flat ground`)
+			assert(trailDistance(puddle) >= puddle.radius + valley.TRAIL_WIDTH / 2, `the puddle at {puddle.x}, {puddle.z} is on the trail`)
+		end
 	end,
 
 	-- Plan Task 5: the Frontier bosses' arenas, mirroring the Wild's rules
@@ -366,8 +494,8 @@ return {
 			for _, piece in WildValley.arenaDressing(valley, ringRadius, zone, lcg(zone)) do
 				if not piece.wall then
 					local distance = math.sqrt(piece.x ^ 2 + piece.z ^ 2)
-					assert(distance > ringRadius + 4 and distance > bosses.ARENA_RADIUS + 2, `zone {zone}: a piece in the fight`)
-					assert(not (piece.x < -bosses.ARENA_RADIUS and math.abs(piece.z) < 8), `zone {zone}: a piece on the path home`)
+					assert(distance > ringRadius + 4 and distance > valley.ARENA_FENCE + 2, `zone {zone}: a piece in the fight`)
+					assert(not (piece.x < -valley.ARENA_FENCE and math.abs(piece.z) < 8), `zone {zone}: a piece on the path home`)
 					assert(math.sqrt((piece.x + valley.ARENA_HOME.distance) ^ 2 + piece.z ^ 2) >= 8, `zone {zone}: a piece by the way home`)
 				end
 			end
@@ -377,8 +505,15 @@ return {
 		assert(valley.ARENA_DRESSING[1].backdrop and valley.ARENA_DRESSING[1].backdrop.model == "IceThrone", "the Frost Tyrant's throne")
 	end,
 
-	["the Frontier arenas' fence agrees with Bosses and their way home is the crystal ring inside the walls"] = function()
-		expect.equal(valley.ARENA_FENCE, bosses.ARENA_RADIUS)
+	-- The owner 2026-11-10: "make the arena wider and make the boss larger": the Frontier's big bosses fight in a wider
+	-- ring (their own arenaRadius) than the Wild's
+	["the Frontier arenas' fence agrees with their bosses and their way home is the crystal ring inside the walls"] = function()
+		for _, boss in bosses.BOSSES do
+			if boss.place == "Frontier" then
+				expect.equal(valley.ARENA_FENCE, BossRules.arenaRadius(boss, bosses), `{boss.name}'s fence`)
+			end
+		end
+		assert(valley.ARENA_FENCE >= 48, "wider than the Wild's 36")
 		local home = valley.ARENA_HOME
 		for zone = 1, 3 do
 			expect.equal(home[zone].model, "PortalFrontier", `zone {zone}'s way home`)
@@ -386,7 +521,7 @@ return {
 			for _, row in valley.ARENA_DRESSING[zone].walls do
 				innerWall = math.min(innerWall, row.radius)
 			end
-			assert(home.distance >= bosses.ARENA_RADIUS + 6 and home.distance <= innerWall - 4, `zone {zone}: the way home is outside its walls`)
+			assert(home.distance >= valley.ARENA_FENCE + 6 and home.distance <= innerWall - 4, `zone {zone}: the way home is outside its walls`)
 		end
 	end,
 
@@ -421,7 +556,12 @@ return {
 	["it rains lightly on Stormpeak, under quieter thunder"] = function()
 		local fx = valley.FX
 		expect.equal(fx.rain.zone, 2, "rain on Stormpeak")
-		assert(fx.rain.rate > 0 and fx.rain.rate <= 80, "light rain, not a downpour")
+		-- the owner then: "I havent seen rain in this region make it rain a little": drops in the air at once round you
+		-- (rate x fall time over the box), per 100 square studs: seen, but light
+		local fall = fx.rain.height / ((fx.rain.speed[1] + fx.rain.speed[2]) / 2)
+		local density = fx.rain.rate * fall / (fx.rain.size * fx.rain.size / 100)
+		assert(density >= 1.5 and density <= 6, `{density} drops per 100 square studs`)
+		assert(fx.rain.drop >= 0.25, "drops big enough to see")
 		assert(fx.lightning.volume <= 0.3, "thunder turned down")
 	end,
 

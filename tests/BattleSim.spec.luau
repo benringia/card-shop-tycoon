@@ -3,6 +3,10 @@ local BattleSim = require("../src/server/Util/BattleSim")
 local combat = require("../src/shared/Config/Combat")
 local Bosses = require("../src/shared/Config/Bosses")
 local expect = require("./lib/expect")
+-- Bosses go for pets first (the owner 2026-11-10: no normal hit at a player while a creature stands,
+-- Combat.PLAYER_TARGET_SHARE 0); the quick hits' own timing and dodge tests keep the old one in three with a creature up
+local mixedCombat = table.clone(combat)
+mixedCombat.PLAYER_TARGET_SHARE = 1 / 3
 local CombatMath = require("../src/shared/Util/CombatMath")
 
 local function CombatMathInterval(spd: number): number
@@ -180,8 +184,8 @@ local function playerInput(owner: string): any
 end
 
 -- One player's creature and player fighter, a reserve, swaps on and no call-in, against a huge boss of this ATK
-local function bossFightWithPlayer(seed: number, foeAtk: number, mechanics: any?, playerAttacks: any?, fighters: { any }?, reserves: { any }?): any
-	return BattleSim.new(combat, {
+local function bossFightWithPlayer(seed: number, foeAtk: number, mechanics: any?, playerAttacks: any?, fighters: { any }?, reserves: { any }?, useCombat: any?): any
+	return BattleSim.new(useCombat or combat, {
 		fighters = fighters or { owned("p1", "1"), playerInput("1") },
 		reserves = reserves or { owned("r1", "1") },
 		abilities = true,
@@ -1354,22 +1358,105 @@ return {
 		expect.equal(shielded.sides.a.shield, 1000)
 	end,
 	-- Boss attacks on players (Task 4 of the you-in-the-fight plan)
-	["about a third of boss swings go at the player"] = function()
+	["while a creature stands, a boss's normal hits all go at creatures"] = function()
 		local state = bossFightWithPlayer(21, 1, nil, { every = 1e9, warning = 1, big = 0, quick = 0.001 }, { owned("p1", "1", 1e9), playerInput("1") })
-		local events = runFor(state, 2000)
-		local atPlayer = count(events, function(e)
+		local events = runFor(state, 600)
+		expect.equal(count(events, function(e)
 			return e.type == "telegraph" and e.to == "a:@1"
-		end)
-		local atCreature = count(events, function(e)
+		end), 0, "no normal hit at the player")
+		assert(count(events, function(e)
 			return e.type == "attack" and e.from == "b:m" and e.to == "a:p1"
-		end)
-		local share = atPlayer / (atPlayer + atCreature)
-		expect.equal(share >= 0.28 and share <= 0.39, true, `share {share}`)
-		expect.equal(viewOf(state, "a:@1").hp, 100, "quick hits this small round to 0")
+		end) > 20, "the creature takes them")
+	end,
+
+	["a boss with player attacks swings BOSS_PACE times slower, so pets take the hits they took before"] = function()
+		expect.near(combat.BOSS_PACE, 1 / (1 - 1 / 3), 1e-9, "one in three swings used to go at the player")
+		local function swings(playerAttacks: any?): number
+			local state = bossFightWithPlayer(21, 1, nil, playerAttacks, { owned("p1", "1", 1e9), playerInput("1") })
+			return count(runFor(state, 60), function(e)
+				return e.type == "attack" and e.from == "b:m"
+			end)
+		end
+		local paced = swings({ every = 1e9, warning = 1, big = 0, quick = 0 })
+		local plain = swings(nil)
+		expect.near(plain / paced, combat.BOSS_PACE, 0.15)
+	end,
+
+	["with no creature standing, the boss's normal hits go at the player"] = function()
+		local state = bossFightWithPlayer(28, 100, nil, { every = 1e9, warning = 1, big = 0, quick = 0.001 }, { owned("p1", "1", 1), playerInput("1") }, {})
+		local events = runFor(state, 30)
+		assert(count(events, function(e)
+			return e.type == "telegraph" and e.to == "a:@1"
+		end) > 3, "the player is the target now")
+	end,
+
+	-- The Frost Tyrant's ice spikes (the owner 2026-11-10): a warned spike over each player and one random pet; a hit
+	-- freezes a player (Frozen: no walking, sword or dodge) and a pet (stunned petFreeze seconds)
+	["a spike attack also falls on a pet, freezing it"] = function()
+		local attacks = { every = 3, warning = 1, big = 0.1, quick = 0, shape = "spikes", debuff = "Frozen", pets = 1, petFreeze = 2 }
+		local state = bossFightWithPlayer(31, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1") })
+		local events = runFor(state, 3.1)
+		local onPet, onPlayer = nil, nil
+		for _, e in events do
+			if e.type == "ring" and e.to == "a:p1" then
+				onPet = e
+			elseif e.type == "ring" and e.to == "a:@1" then
+				onPlayer = e
+			end
+		end
+		assert(onPet and onPlayer, "a spike over the player and one over the pet")
+		expect.equal(onPet.kind, "spikes")
+		local landed = runFor(state, attacks.warning + combat.HIT_GRACE + 0.2)
+		local frozen = firstOf(landed, "frozen")
+		assert(frozen, "the pet freezes")
+		expect.equal(frozen.to, "a:p1")
+		expect.equal(frozen.seconds, 2)
+		local pet = state.sides.a.fighters[1]
+		assert(pet.stunUntil - state.time > 1.5, "it can't attack while frozen")
+		local debuff = firstOf(landed, "debuff")
+		assert(debuff and debuff.kind == "Frozen" and debuff.to == "a:@1", "the player is frozen too")
+	end,
+
+	["a pet can't step out of its spike"] = function()
+		local attacks = { every = 3, warning = 1, big = 0.1, quick = 0, shape = "spikes", debuff = "Frozen", pets = 1, petFreeze = 2 }
+		local state = bossFightWithPlayer(31, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1") })
+		state.ringCheck = function()
+			return false -- every player stepped out
+		end
+		local events = runFor(state, 3.1 + attacks.warning + combat.HIT_GRACE + 0.2)
+		assert(firstOf(events, "frozen"), "the pet is frozen all the same")
+		expect.equal(firstOf(events, "debuff"), nil, "the player stepped out")
+	end,
+
+	["Frozen stops the sword and the dodge"] = function()
+		local attacks = { every = 3, warning = 1, big = 0.01, quick = 0, shape = "spikes", debuff = "Frozen" }
+		local state = bossFightWithPlayer(31, 1, nil, attacks, { owned("p1", "1", 1e9), playerInput("1") })
+		stepUntil(state, function(e)
+			return e.type == "debuff" and e.kind == "Frozen"
+		end, 10)
+		local _, sword = BattleSim.swordHit(state, "1", "b:m", 0.5, "Sword")
+		expect.equal(sword, "stunned")
+		local _, dodge = BattleSim.dodge(state, "1")
+		expect.equal(dodge, "stunned")
+		runFor(state, Bosses.DEBUFFS.Frozen.seconds + 0.2)
+		expect.equal(select(2, BattleSim.swordHit(state, "1", "b:m", 0.5, "Sword")), nil, "free again")
+	end,
+
+	["the Frost Tyrant's big attack is ice spikes that freeze"] = function()
+		local attacks = Bosses.BOSSES.frostTyrant.playerAttacks
+		expect.equal(attacks.shape, "spikes")
+		expect.equal(attacks.debuff, "Frozen")
+		expect.equal(attacks.pets, 1)
+		expect.equal(attacks.petFreeze, 2)
+		local frozen = Bosses.DEBUFFS.Frozen
+		expect.equal(frozen.seconds, 1.5)
+		expect.equal(frozen.slow, 1, "no walking")
+		expect.equal(frozen.stun, true)
+		expect.equal(Bosses.DEBUFFS.Shocked.stun, true, "Shocked stuns as before")
 	end,
 
 	["a quick hit lands after the warning and grace"] = function()
-		local state = bossFightWithPlayer(22, 1, nil, { every = 1e9, warning = 1, big = 0, quick = 0.1 }, { owned("p1", "1", 1e9), playerInput("1") })
+		local state = bossFightWithPlayer(22, 1, nil, { every = 1e9, warning = 1, big = 0, quick = 0.1 }, { owned("p1", "1", 1e9), playerInput("1") }, nil, mixedCombat)
 		local warned = stepUntil(state, function(e)
 			return e.type == "telegraph" and e.to == "a:@1"
 		end, 60) :: number
@@ -1381,7 +1468,7 @@ return {
 	end,
 
 	["a dodge inside the grace still avoids the hit"] = function()
-		local state = bossFightWithPlayer(23, 1, nil, { every = 1e9, warning = 1, big = 0, quick = 0.1 }, { owned("p1", "1", 1e9), playerInput("1") })
+		local state = bossFightWithPlayer(23, 1, nil, { every = 1e9, warning = 1, big = 0, quick = 0.1 }, { owned("p1", "1", 1e9), playerInput("1") }, nil, mixedCombat)
 		local warned = stepUntil(state, function(e)
 			return e.type == "telegraph" and e.to == "a:@1"
 		end, 60) :: number
@@ -1400,7 +1487,7 @@ return {
 	end,
 
 	["a dodge 0.2 s into the warning avoids the hit (its dash covers the moment the hit shows)"] = function()
-		local state = bossFightWithPlayer(23, 1, nil, { every = 1e9, warning = 1, big = 0, quick = 0.1 }, { owned("p1", "1", 1e9), playerInput("1") })
+		local state = bossFightWithPlayer(23, 1, nil, { every = 1e9, warning = 1, big = 0, quick = 0.1 }, { owned("p1", "1", 1e9), playerInput("1") }, nil, mixedCombat)
 		local warned = stepUntil(state, function(e)
 			return e.type == "telegraph" and e.to == "a:@1"
 		end, 60) :: number
@@ -1418,7 +1505,7 @@ return {
 	end,
 
 	["a dodge whose dash ends well before the hit shows doesn't count"] = function()
-		local state = bossFightWithPlayer(23, 1, nil, { every = 1e9, warning = 1, big = 0, quick = 0.1 }, { owned("p1", "1", 1e9), playerInput("1") })
+		local state = bossFightWithPlayer(23, 1, nil, { every = 1e9, warning = 1, big = 0, quick = 0.1 }, { owned("p1", "1", 1e9), playerInput("1") }, nil, mixedCombat)
 		stepUntil(state, function(e)
 			return e.type == "telegraph" and e.to == "a:@1"
 		end, 60)
@@ -1500,7 +1587,7 @@ return {
 	end,
 
 	["pending hits never land after the end"] = function()
-		local state = bossFightWithPlayer(27, 1, nil, { every = 1e9, warning = 1, big = 0, quick = 0.5 }, { owned("p1", "1", 1e9), playerInput("1") })
+		local state = bossFightWithPlayer(27, 1, nil, { every = 1e9, warning = 1, big = 0, quick = 0.5 }, { owned("p1", "1", 1e9), playerInput("1") }, nil, mixedCombat)
 		state.sides.b.fighters[1].hp = 1
 		stepUntil(state, function(e)
 			return e.type == "telegraph" and e.to == "a:@1"
@@ -1525,7 +1612,7 @@ return {
 		end), 0)
 		expect.equal(count(events, function(e)
 			return e.type == "telegraph"
-		end) >= 8, true)
+		end) >= 5, true, "a swing every 3 s (BOSS_PACE) all at the player")
 		expect.isNil(state.result, "the player fights on alone")
 	end,
 
@@ -1561,7 +1648,7 @@ return {
 		local quick = { every = 1e9, warning = 1, big = 0, quick = 0.1 }
 		local creature = perked("Calm", 0.5)
 		creature.hp = 1e9
-		local state = bossFightWithPlayer(22, 1, nil, quick, { creature, playerInput("1") })
+		local state = bossFightWithPlayer(22, 1, nil, quick, { creature, playerInput("1") }, nil, mixedCombat)
 		stepUntil(state, function(e)
 			return e.type == "attack" and e.kind == "Quick" and e.to == "a:@1"
 		end, 60)
@@ -1745,7 +1832,7 @@ return {
 		end
 		expect.equal(firstOf(runFor(missed, 3.4), "debuff"), nil, "stepped out of the ring")
 
-		local quick = bossFightWithPlayer(25, 1, nil, { every = 1000, warning = 1, big = 0, quick = 0.05, debuff = "Poison" }, { owned("p1", "1", 1e9), playerInput("1") })
+		local quick = bossFightWithPlayer(25, 1, nil, { every = 1000, warning = 1, big = 0, quick = 0.05, debuff = "Poison" }, { owned("p1", "1", 1e9), playerInput("1") }, nil, mixedCombat)
 		local events = runFor(quick, 20)
 		expect.equal(count(events, function(e)
 			return e.kind == "Quick" and not e.dodged
@@ -2096,7 +2183,7 @@ return {
 	["Tidal Shield wards every ally on its side, the player too"] = function()
 		local koi: any = fighter("k", "Tide", 1e6, 10, 1, "Abyssal Koi")
 		koi.owner = "1"
-		local state = bossFightWithPlayer(45, 30, nil, { every = 1e9, warning = 1, big = 0, quick = 0.5 }, { koi, playerInput("1") })
+		local state = bossFightWithPlayer(45, 30, nil, { every = 1e9, warning = 1, big = 0, quick = 0.5 }, { koi, playerInput("1") }, nil, mixedCombat)
 		local landed = castNow(state, "a:k", "signature", "1") :: { any }
 		local spec = combat.SIGNATURES["Abyssal Koi"]
 		local cast = landed[1]
@@ -2260,7 +2347,7 @@ return {
 
 	["the sword's hits and dodged boss hits fill the player's meter"] = function()
 		local spec = combat.SUPER_METER
-		local state = bossFightWithPlayer(62, 0, nil, { every = 1e9, warning = 1, big = 0, quick = 0.5 })
+		local state = bossFightWithPlayer(62, 0, nil, { every = 1e9, warning = 1, big = 0, quick = 0.5 }, nil, nil, mixedCombat)
 		state.sides.a.meters["1"] = 0
 		BattleSim.swordHit(state, "1", "b:m", 1, "Sword")
 		expect.near(state.sides.a.meters["1"], spec.sword, 1e-6, "a sword hit")

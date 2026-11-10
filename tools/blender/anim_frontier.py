@@ -8,7 +8,8 @@ Golem's ground punch, the Rift Horror the Spark Beetle's horn charge, the Prism 
 Frost Wisp the Mossling's headbutt (as a body slam). Clips `windup` (0.6 s) and `strike` (0.5 s, Hit at 0.07 s).
 
 The three bosses also have `specialWindup` (1.4 s, its ring's warning) and `specialRelease` (0.8 s, Hit at 0.1 s):
-  frostTyrant     the Meadow Warden's branch swipe and two-fisted ground slam (the same biped bones)
+  frostTyrant     his own (the owner 2026-11-10): a twisting claw swipe, jaw open; for his ice spikes he throws his head
+                  back roaring with his arms out, calling the ice down, then crouches and slams his fists down as it falls
   stormSovereign  rears back with wings high and jaws open, lunges and bites; rears up with its wings spread wide (the
                   thunderclap coming), then beats them down and roars
   riftDevourer    backs up with mandibles spread, lunges with them snapping shut; rears its front up, then crashes down
@@ -100,6 +101,32 @@ SOVEREIGN = {
     },
 }
 
+# His own (2026-11-10). His rig tears on big arm swings (its arm bones sit inside the body, so its arms are skinned
+# with a wide radius: arms raised past about 30 degrees stretch into slabs, checked in renders), so the drama is in his
+# spine, head and jaw and his arms move a little: a twisting claw swipe; for his ice spikes he throws his head back
+# roaring with his arms out (the spikes forming high over the rings), then crouches and slams his fists down
+FROST = {
+    "rest": {},
+    "ready": {
+        "Spine_0": (-6, 0, -20), "Spine_1": (-8, 0, -26), "Head_0": (6, 0, 16), "Jaw_0": (20, 0, 0),
+        "Arm_Right_0": (-25, 20, 0), "Arm_Right_1": (-25, 0, 0), "Arm_Left_0": (-10, -8, 0),
+    },
+    "swipe": {
+        "Spine_0": (12, 0, 22), "Spine_1": (14, 0, 28), "Head_0": (-6, 0, -12), "Jaw_0": (12, 0, 0),
+        "Arm_Right_0": (-30, -25, 0), "Arm_Left_0": (12, 8, 0),
+    },
+    "summon": {
+        "Pelvis": ((-6, 0, 0), (0, 0, 0.03)), "Spine_0": (-16, 0, 0), "Spine_1": (-18, 0, 0), "Neck": (-12, 0, 0),
+        "Head_0": (-26, 0, 0), "Jaw_0": (36, 0, 0),
+        **_pair("Arm_{side}_0", (-20, 25, 0)), **_pair("Arm_{side}_1", (-25, 0, 0)), **_pair("Arm_{side}_2", (15, 0, 0)),
+    },
+    "command": {
+        "Pelvis": ((12, 0, 0), (0, 0, -0.07)), "Spine_0": (18, 0, 0), "Spine_1": (22, 0, 0), "Neck": (6, 0, 0),
+        "Head_0": (2, 0, 0), "Jaw_0": (28, 0, 0),
+        **_pair("Arm_{side}_0", (-30, 8, 0)), **_pair("Arm_{side}_1", (-15, 0, 0)), **_pair("Arm_{side}_2", (-10, 0, 0)),
+    },
+}
+
 DEVOURER = {
     "rest": {},
     "ready": {
@@ -178,7 +205,7 @@ def _boss_clips(poses, attack_ready, attack_done, special_ready, special_done):
 WARDEN = {"rest": warden.REST, "ready": warden.SWIPE_READY, "done": warden.SWIPE_DONE, "up": warden.SLAM_READY,
           "down": warden.SLAM_DOWN}
 BOSSES = {
-    "FrostTyrant": ("frostTyrant", _boss_clips(WARDEN, "ready", "done", "up", "down")),
+    "FrostTyrant": ("frostTyrant", _boss_clips(FROST, "ready", "swipe", "summon", "command")),
     "StormSovereign": ("stormSovereign", _boss_clips(SOVEREIGN, "ready", "bite", "rear", "clap")),
     "RiftDevourer": ("riftDevourer", _boss_clips(DEVOURER, "ready", "snap", "rear", "crash")),
 }

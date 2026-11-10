@@ -54,4 +54,17 @@ function FightFxRules.hasEffect(kind: string, cfg: any): boolean
 	return cfg.SPECIALS[kind] ~= nil
 end
 
+-- Whether creatures' basic attacks keep out of the picture at `now` (the owner 2026-11-10: "special skills
+-- animation/fx should always be visible"): while a special holds the spotlight (till `holdUntil`: your sword skill, a
+-- super) or a camera moment plays (`cinematic`)
+function FightFxRules.quiet(now: number, holdUntil: number, cinematic: boolean): boolean
+	return cinematic or now < holdUntil
+end
+
+-- When the spotlight ends once a special of `seconds` starts at `now`: its length and a `tail` while its effects fade,
+-- never sooner than a hold already running (`current`)
+function FightFxRules.spotlightUntil(now: number, current: number, seconds: number, tail: number): number
+	return math.max(current, now + seconds + tail)
+end
+
 return FightFxRules

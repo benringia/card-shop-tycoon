@@ -193,20 +193,28 @@ local BOSSES: { [string]: Boss } = {
 		zone = 1,
 		shape = "slime",
 		scale = 3.0,
-		height = 17, -- the ice yeti king (spec 2026-11-10-frontier-valley-design, the owner's pick A; assets/monsters/frostTyrant.rbxm)
-		ringRadius = 15,
-		introShot = { back = 36, up = 16 },
+		-- the ice yeti king (spec 2026-11-10-frontier-valley-design, the owner's pick A; assets/monsters/frostTyrant.rbxm);
+		-- larger in a wider ring (the owner 2026-11-10: "make the arena wider and make the boss larger"; was 17 / 15 / 36)
+		height = 24,
+		ringRadius = 20,
+		arenaRadius = 50,
+		introShot = { back = 48, up = 22 },
 		moments = { roar = "rbxassetid://9114628620" }, -- Pro Sound Effects: Goliath Vocal Deep Growling Voice 21
 		element = "Tide",
 		level = 22,
-		hp = 14900,
-		atk = 46,
+		-- 14900 / 46 before its spikes froze pets (2026-11-10): lowered so a typical party at its recommended Power still
+		-- wins about as often (tools/balance/bosses: well 87%, still 60%)
+		hp = 13000,
+		atk = 42,
 		spd = 9,
 		recommended = 1100,
 		shopLevel = 26,
 		groupAtkStep = 0.1, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
 		minFightSeconds = 60,
-		playerAttacks = { every = 7, warning = 1.1, big = 0.45, quick = 0.15, shape = "slam", debuff = "Chilled" },
+		-- ice spikes falling from the sky (the owner 2026-11-10): one over each player (step out of its ring) and one
+		-- over `pets` random pets, which can't; a hit freezes a player (Frozen) and a pet for `petFreeze` seconds
+		-- (`petHit`: a pet's spike deals half a normal hit)
+		playerAttacks = { every = 7, warning = 1.1, big = 0.45, quick = 0.15, shape = "spikes", debuff = "Frozen", pets = 1, petFreeze = 2, petHit = 0.5 },
 		unlock = { item = "fragment_frostTyrant", count = 5 },
 		fragment = "fragment_stormSovereign",
 		mechanics = { shield = { every = 20, fraction = 0.06, breakStun = 3 } },
@@ -231,6 +239,7 @@ local BOSSES: { [string]: Boss } = {
 		height = 18, -- the storm wyvern (the owner's pick B), about 26 studs across its wings
 		ringRadius = 18,
 		introShot = { back = 42, up = 18 },
+		arenaRadius = 50, -- the Frontier's big bosses fight in a wider ring (2026-11-10)
 		moments = { roar = "rbxassetid://9126100408" }, -- Pro Sound Effects: Thunder With Lion Roar Growl Low Rumble Roar
 		element = "Volt",
 		level = 32,
@@ -265,6 +274,7 @@ local BOSSES: { [string]: Boss } = {
 		height = 16, -- the void beetle titan (the owner's pick A), about 22 studs long
 		ringRadius = 17,
 		introShot = { back = 40, up = 18 },
+		arenaRadius = 50, -- the Frontier's big bosses fight in a wider ring (2026-11-10)
 		moments = { roar = "rbxassetid://9125470501" }, -- Pro Sound Effects: Creature Growls Lion Deep Guttural Rumbling
 		element = "Shade",
 		level = 45,
@@ -374,13 +384,15 @@ return {
 	-- What a boss's landed ring leaves on a player for `seconds` (spec 2026-11-02-attack-animations-design; a new hit
 	-- refreshes it, never stacks; going down, leaving or the fight ending clears it): `slow` takes that share off their
 	-- walk speed, `perSecond` of their max HP each second, `dodgeCooldown` times the dodge's recharge, `sword` times
-	-- their sword's damage; Shocked stops sword and dodge (a stun: at most 1 s)
+	-- their sword's damage; `stun` stops sword and dodge (Shocked, a moment; Frozen, the Frost Tyrant's spikes: frozen
+	-- solid, `slow` 1 stops walking and jumping too)
 	DEBUFFS = {
 		Entangled = { seconds = 2, slow = 0.6 },
 		Poison = { seconds = 4, perSecond = 0.02 },
 		Burn = { seconds = 3, perSecond = 0.035 },
 		Chilled = { seconds = 3, slow = 0.3, dodgeCooldown = 1.5 },
-		Shocked = { seconds = 0.5 },
+		Shocked = { seconds = 0.5, stun = true },
+		Frozen = { seconds = 1.5, slow = 1, stun = true },
 		Weakened = { seconds = 4, sword = 0.7 },
 	},
 	-- A "byPhase" boss's debuff by its current element (Shade has no debuff of its own: Poison)
@@ -404,13 +416,26 @@ return {
 	GROUP_PROMPT_OFFSET = 80, -- pixels the gate's group prompt sits below its Fight prompt
 
 	-- Arenas: a fenced ring beside each boss's zone (on its +X side), joined to it by a path
-	ARENA_RADIUS = 36,
+	ARENA_RADIUS = 36, -- a boss's own `arenaRadius` overrides it (BossRules.arenaRadius: the Frontier's 50)
 	-- The intro: the camera flies to the boss (name card, roar), then 3, 2, 1, FIGHT. The boss can't be hit before.
 	INTRO_SECONDS = 6,
 	INTRO_CAMERA_SECONDS = 3,
 	INTRO_SHOT = { back = 24, up = 12 }, -- studs in front of the boss and above (over the creatures), looking at it
 	ROAR_SHAKE = { at = 1, seconds = 0.8, studs = 0.8 },
 	ROAR_VOLUME = 0.8, -- a boss's roar sound (its moments.roar) at that moment, from its model
+	-- A boss between its moves (Util/BossIdleRules, MonsterController; the owner 2026-11-10: "walking around while
+	-- waiting for his next attack or roaring. something intimidating but not limiting its attack speed"): every `gap`
+	-- seconds, `after` seconds clear of its last move, it walks to a new spot near its own (`wander`: up to `radius`
+	-- studs either side, `front` in front, `back` of the radius behind, at `speed` studs a second; times its height over
+	-- 17), roars (its moments.roar at `roarVolume`) or stomps. It attacks from wherever it stands
+	IDLE = {
+		gap = { 0.8, 2.2 },
+		after = 0.3,
+		weights = { wander = 0.55, roar = 0.2, stomp = 0.25 },
+		wander = { radius = 5, front = 1, back = 0.8, speed = 6 }, -- small: sword hits are judged round its own spot (ringRadius x HIT_RADIUS_SHARE)
+		roarVolume = 0.45,
+		stompShake = 0.35,
+	},
 	-- The bosses' moment effects (moments.heal / enrage), ParticleEmitters on their Fx_ bones, numbers as Config/Wild FX;
 	-- `burst` emits that many at once (a one-off), else `rate` per second while it lasts. Sizes in studs at the boss's size;
 	-- `zOffset` draws them that many studs toward the camera (an effect that starts inside the model)
@@ -438,7 +463,8 @@ return {
 	ARENA_GAP = 16, -- path length from the zone's edge to the ring
 	BOSS_SPOT = 6, -- studs past the ring's centre (away from the gate) where the boss stands
 	RING_RADIUS = 11, -- fighters stand this far from a boss (it's big)
-	LEASH_RADIUS = 42, -- ARENA_RADIUS + BOSS_SPOT: a backstop behind the barrier (the leash is measured from the boss)
+	LEASH_RADIUS = 42, -- ARENA_RADIUS + BOSS_SPOT: a backstop behind the barrier (the leash is measured from the boss;
+	-- a boss with its own arenaRadius: BossRules.leashRadius)
 	-- While a fight runs the ring is sealed: a see-through wall all round, just outside the fence
 	BARRIER_SEGMENT = 6, -- studs per wall piece
 	BARRIER_HEIGHT = 14,

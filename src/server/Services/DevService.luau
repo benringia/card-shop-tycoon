@@ -43,6 +43,7 @@ local AdminPanel = require(Config:WaitForChild("AdminPanel"))
 local Music = require(Config:WaitForChild("Music"))
 local Party = require(Config:WaitForChild("Party"))
 local MusicRules = require(Shared:WaitForChild("Util"):WaitForChild("MusicRules"))
+local Victory = require(Shared:WaitForChild("Config"):WaitForChild("Victory"))
 
 local Services = script.Parent :: Instance
 local ArenaService = require(Services:WaitForChild("ArenaService"))
@@ -416,7 +417,7 @@ function DevService.Start()
 	local function soundPick(command: string, kind: string, attribute: string): CommandHandler
 		return function(player, text)
 			local options = Party.SUMMON_SOUNDS.options[kind]
-			local index, volume = MusicRules.parsePreview(text, #options)
+			local _, index, volume = MusicRules.parsePreview(text, { town = #options })
 			if not index then
 				Remotes.Notify:FireClient(player, `Usage: /{command} <1-{#options}> [volume], /{command} 0 for the normal one`, true)
 				return
@@ -548,7 +549,7 @@ function DevService.Start()
 	addCommand(folder, "levelsound", function(player, text)
 		-- Round 5: pick one of the level-up sound sets (Config/LevelUpFx SOUNDS.sets) and hear it once
 		local sets = LevelUpFx.SOUNDS.sets
-		local index, volume = MusicRules.parsePreview(text, #sets)
+		local _, index, volume = MusicRules.parsePreview(text, { town = #sets })
 		if not index then
 			Remotes.Notify:FireClient(player, `Usage: /levelsound <1-{#sets}> [volume], 0 for the default`, true)
 			return
@@ -561,6 +562,19 @@ function DevService.Start()
 			local current = player:GetAttribute("Level")
 			LevelUpService.PreviewShop(player, if typeof(current) == "number" then math.max(2, current) else 2)
 		end
+	end)
+	addCommand(folder, "victorysound", function(player, text)
+		-- The boss win's sting (Config/Victory WIN_OPTIONS): pick one by ear; heard once now (VictoryScreen) and on your
+		-- next wins this session
+		local options = Victory.WIN_OPTIONS
+		local _, index = MusicRules.parsePreview(text, { town = #options })
+		if not index then
+			Remotes.Notify:FireClient(player, `Usage: /victorysound <1-{#options}>, 0 for the default`, true)
+			return
+		end
+		player:SetAttribute("VictorySound", if index > 0 then index else nil)
+		local line = if index > 0 then `Victory sound {index}: {options[index].name}` else "Victory sound: back to the default"
+		Remotes.Notify:FireClient(player, line, false)
 	end)
 	addCommand(folder, "time", function(player, text)
 		local phase = string.match(text, "%s+(%a+)")
@@ -695,7 +709,7 @@ function DevService.Start()
 			run(player, text)
 		end
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /weapon <id> [grade] [level], /material <boss id> <amount>, /weapondrop <boss id>, /boss <n> [fight|group], /jobslot, /jobtired, /wild, /rest, /tire, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume], /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S], /skillfx <sword> [cut1|cut2|cut3|skill] [level]")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /weapon <id> [grade] [level], /material <boss id> <amount>, /weapondrop <boss id>, /boss <n> [fight|group], /jobslot, /jobtired, /wild, /rest, /tire, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume], /victorysound <1-3>, /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S], /skillfx <sword> [cut1|cut2|cut3|skill] [level]")
 end
 
 return DevService

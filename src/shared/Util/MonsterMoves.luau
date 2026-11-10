@@ -52,7 +52,7 @@ function MonsterMoves.decide(state: State, event: any, now: number, lengths: Len
 		end
 		clip, timed = "specialWindup", true
 		hold = cfg.CHARGE_GRACE + cfg.HIT_GRACE
-	elseif event.type == "attack" and (event.kind == "Slam" or event.kind == "Swipe") then
+	elseif event.type == "attack" and (event.kind == "Slam" or event.kind == "Swipe" or event.kind == "Spikes") then
 		if active == "specialRelease" then
 			return nil
 		end

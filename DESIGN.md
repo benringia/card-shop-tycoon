@@ -965,15 +965,25 @@ the Frontier leaves out; `HOME` (the way-home portal and the trailhead title) an
 - **Scenery** (the owner's pick C, the Titans' Graveyard; `docs/props.md` "Frontier scenery props"): ruined forts with
   red banners, giant swords in the snow, snowy pines and a ribcage the trail walks through in Frostwood; rock spires,
   wrecked watchtowers, a horned skull, storm stones with glowing runes, charred trees, boulders and three rocky hills
-  on Stormpeak (more added 2026-11-10: "stormpeak is a bit plain"); in the Rift (fuller 2026-11-10: "rift too
-  empty") 16 violet crystal clusters from 3 to 13 studs, 14 floating rocks from 3 to 20 studs (small ones low, big ones
-  high; streamed whole), dark stalagmites, obsidian shards, a ruined crystal arch and the dragon skeleton. Past the
+  on Stormpeak (more added 2026-11-10: "stormpeak is a bit plain", then "add some storm related elements in various
+  sizes... some puddles, some ponds with bones or something a swamp": pale electric-blue storm crystals from 5 to 45
+  studs (`STORM_CRYSTALS`, pointed like the Rift's), rock spires to 55, storm stones from 4 to 24, lightning-struck
+  trees to 24, a tall wrecked tower; two bone swamps, each a mud patch in the terrain (`SWAMPS`,
+  `WildValley.swampOps`) round a dark glassy pool with rain rings, reeds round it, bones by and in it and a horned
+  skull half sunk in the big one; 14 puddles with rain rings, all on flat ground off the trail, Lune-tested); in the Rift (fuller 2026-11-10: "rift too
+  empty", then "add oversized crystals... also oversized floating rocks") 21 violet crystal clusters from 5 to 55
+  studs, seven of them oversized (30+), each a tall pointed crystal with three leaning out (`WildValley.crystalShards`:
+  glassy diamond prisms with pyramid tips round glowing cores, the big ones lighting the ground; the main crystal
+  stops players and a big one keeps spawns off its foot), 19 floating rocks from 3 to 60 studs (small ones low, five
+  oversized ones hung high over the crater; streamed whole), dark stalagmites, obsidian shards, a ruined crystal arch
+  and the dragon skeleton. Past the
   rims, snowy pines, crags and stalagmites stand on the drawn rim tops (they stood over no terrain before, their crowns
   showing over the rims with nothing under them: "fix floating trees"; Lune-tested).
 - **Skies and effects** (`Config/DayCycle FRONTIER`, no day cycle; `Controllers/FrontierFxController`,
   `Util/FrontierFxRules`): a cold grey dusk on the passes; Frostwood a snowy dusk with snow round you and pairs of red
-  eyes in the fog that fade as you come close; Stormpeak a grey storm with light rain round you (`FX.rain`, 50 streaks
-  a second), its rain loop, lightning flashes and quieter thunder (every 8-16 s, volume 0.25) and a tornado past its
+  eyes in the fog that fade as you come close; Stormpeak a grey storm with light rain round you (`FX.rain`: raindrops
+  from a 70-stud box over your head, 400 a second, about 3.6 in the air per 100 square studs; 50 a second over 110
+  studs was too few to see), its rain loop, lightning flashes and quieter thunder (every 8-16 s, volume 0.25) and a tornado past its
   east cliffs; the Storm Sovereign's arena the same rain and lightning under a turning storm eye (`FX.stormEye`); the Rift violet with a slow vortex overhead, bobbing floating rocks and a tremor
   now and then (a small camera shake and a rumble). Looks and sounds only: nothing hurts outside a fight.
 - **Danger:** Frontier monsters stand 30% taller than their Wild counterparts (`Frontier.SPECIES` heights,
@@ -1153,7 +1163,7 @@ and rewards in `BossService`.
 | 1 | Meadow Warden | Meadow | Bloom | 6 | 1300 / 7 / 8 | 200 | - | 4 | open |
 | 2 | Cave Brood Queen | Caves | Shade | 11 | 2600 / 10 / 12 | 350 | heals 15% below half HP, every 12 s, 3 times at most | 7 | 3 Brood Queen Key Fragments |
 | 3 | Ember Colossus | Ember Ridge | Ember | 16 | 6300 / 29 / 9 | 650 | enrages below half HP (ATK x1.5) | 14 | 5 Colossus Key Fragments |
-| 4 | Frost Tyrant | Frontier, Frostwood | Tide | 22 | 14900 / 46 / 9 | 1100 | ice shield (6% HP) every 20 s; breaking it stuns it 3 s | 26 | 5 Frost Tyrant Key Fragments |
+| 4 | Frost Tyrant | Frontier, Frostwood | Tide | 22 | 13000 / 42 / 9 | 1100 | ice shield (6% HP) every 20 s; breaking it stuns it 3 s; ice spikes freeze | 26 | 5 Frost Tyrant Key Fragments |
 | 5 | Storm Sovereign | Frontier, Stormpeak | Volt | 32 | 28000 / 44 / 14 | 1500 | thunderclap every 14 s (2.5 s base): stuns your creatures, shorter on fast ones | 34 | 8 Sovereign Key Fragments |
 | 6 | Rift Devourer | Frontier, The Rift | Shade | 45 | 34000 / 66 / 10 | 1900 | 2 Rift Spawn at 50% HP (5% HP each): hit first, boss takes half damage meanwhile | 43 | 8 Devourer Key Fragments |
 | 7 | Prism Hydra | the Dungeon (after 3 rooms) | by phase | 55 | 60000 / 38 / 11 | 2400 | five phases, one per element (below) | 57 | 10 Hydra Key Fragments |
@@ -1197,7 +1207,10 @@ group, checked before its fragments and every time (not only the first). Below i
   up (the server checks it's yours and within 8 studs; one request names every drop in reach, up to
   `LOOT_PICKUP_BATCH`). Nothing is collected by itself: loot stays until you pick it up, and whatever is still on the
   ground when you leave or teleport is gone. Drops land on the ground only, never on a player or creature standing
-  there. Cash and XP stay instant. The first-clear chest (fragments,
+  there. Each pickup pops a dark card at the top right (`Util/ItemPopup`, `Util/ItemPopupRules`, `Config/Victory`
+  PICKUP; the owner 2026-11-10: the old "+1" note was too easy to miss): the item's icon, "+2 Grading Seal" and "Added
+  to your Bag" (a weapon material: "9/15 for Frostbite Edge"), with a soft pop; the same item again while its card
+  shows adds to it with a bounce; three stack at most, each gone 3 s after its last pickup. Cash and XP stay instant. The first-clear chest (fragments,
   trophy) goes straight into the Bag: it's one-time and the clear is saved at once.
 - **Swaps:** in boss fights the bar's "Bring in <card>" buttons send in any rested party card for your summoned
   creature (only one of yours fights: boss fights have no call-in, `SideInput.callIn = false`); it goes back to the
@@ -1211,12 +1224,16 @@ group, checked before its fragments and every time (not only the first). Below i
   strike frame), `SwordSkill` (the dash slash, 12 s cooldown since 2026-11-09, was 8: every foe along the path from
   where they started to where they are when its cut lines appear, the path clamped to the dash's longest plus 3 studs, `SwordRules.clampPath` /
   `inDashPath`) and `Dodge` (untouchable 0.35 s, 2.5 s cooldown since 2026-11-04, was 1 s; the
-  dash is the client's), all rate-limited; damage is their creature's ATK x the cut's power. The boss sends about a
-  third of its swings at players as quick hits (a 0.5 s flash, then `quick` of their HP) and every `every` seconds a
+  dash is the client's), all rate-limited; damage is their creature's ATK x the cut's power. Bosses go for pets first
+  (the owner 2026-11-10; `Combat.PLAYER_TARGET_SHARE` 0, was a third): while a creature of yours stands every normal
+  hit goes at creatures, and only with none standing do its swings come at players as quick hits (a 0.5 s flash, then
+  `quick` of their HP); to keep the pets' pressure as before, a boss with player attacks swings `Combat.BOSS_PACE`
+  (1.5) times slower than its SPD says (tools/balance/bosses: most rows as before or a little easier for players who
+  fight well). Every `every` seconds it still makes a
   big attack: a closing orange ring (`SwordFx.RING_COLOR`, the owner's pick) on each player, a slam under them or a
-  swipe from the boss toward them, one shape per boss (`playerAttacks.shape`: Meadow Warden, Ember Colossus, Frost
-  Tyrant and Storm Sovereign slam; Cave Brood Queen, Rift Devourer and Prism Hydra swipe; the sim still tosses its old
-  coin so fights draw the same randoms) (`Bosses.RING_*`), landing after its warning for `big` of their HP unless they stepped out (`RingRules`) or dodged
+  swipe from the boss toward them, one shape per boss (`playerAttacks.shape`: Meadow Warden, Ember Colossus and Storm
+  Sovereign slam; Cave Brood Queen, Rift Devourer and Prism Hydra swipe; the Frost Tyrant's ice spikes, below; the
+  sim still tosses its old coin so fights draw the same randoms) (`Bosses.RING_*`), landing after its warning for `big` of their HP unless they stepped out (`RingRules`) or dodged
   (`Bosses.playerAttacks`, stronger up the ladder; hits land `Combat.HIT_GRACE` after clients show them). At 0 HP a
   player kneels (character attribute `Downed`, no walking) and gets up after 5 s with half their HP while one of their
   creatures stands. Boss shields, heals, thunderclaps and Healing Rain never touch players; Tidal Shield does (owner
@@ -1470,10 +1487,37 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   Crab a pincer snap (splash, two slashes), Cave Bat a dive (claw slashes, dark burst), Spark Beetle a horn charge
   (a bolt from its pincers), Ash Wolf a lunging bite (fang slashes, embers), Magma Golem a ground punch (fiery burst,
   rock dust, a ground ring).
+- **The Frost Tyrant's ice** (the owner 2026-11-10, his picks: shield look A, spikes on you and one pet): his ring is
+  ice spikes (`playerAttacks.shape` "spikes", `pets` 1, `petFreeze` 2, `petHit` 0.5): a giant ice spike forms 45 studs
+  over each player's ring and over one random pet's (the pet can't step out), hangs glowing, drops the last 0.75 s
+  with a whoosh and shatters as it lands: its tip stuck in the ground, pieces flying, ice smoke and a frost patch
+  (`Util/IceFx`, numbers in `Util/IceFxRules`, looks and Pro Sound Effects in `Config/AttackFx ICE`). A hit freezes a
+  player (Frozen) and a pet for 2 s (stunned, locked in ice and held still, its animation stopped too:
+  `CreatureController.Freeze`; `BattleSim` "frozen" event). His shield is a frosted ice bubble with 24 shards jutting
+  out, growing round him with an ice crackle and bursting into pieces when broken. The bubble and the ice blocks fit
+  the whole body (its model's box: the owner's next look, the roots sit at the feet and both covered half). His
+  normal hits are an icy claw swipe (`AttackFx.BOSS.frostTyrant`; the Frontier's other two bosses have no hit effects
+  yet). His clips are his own (`tools/blender/anim_frontier.py` FROST): a twisting claw swipe, and for the spikes his
+  head thrown back roaring with his arms out, then a crouching slam. His rig tears on big arm swings (its arm bones
+  sit inside the body and its arms are skinned with a wide radius), so his poses keep the arms within about 30 degrees;
+  a re-rig needs the model re-imported. He stands 24 studs (was 17), his fighters 20 out, in a wider ring: the
+  Frontier's three bosses fight inside a 50-stud fence (`arenaRadius`, `BossRules.arenaRadius` / `leashRadius`; the
+  Wild's and the Dungeon's stay 36; `FrontierValley.ARENA_FENCE` 50, the way home 58 out, inner pieces past 54; the
+  owner: "make the arena wider and make the boss larger"). HP 13000 / ATK 42 (was 14900 / 46) so a party at his recommended Power still
+  wins about as often with the freezes (tools/balance/bosses: well 87%, still 60%; at 0.8x the all-Common party now
+  rarely wins).
+- **Bosses between their moves** (the owner 2026-11-10: "walking around while waiting for his next attack or roaring.
+  something intimidating but not limiting its attack speed"; `Config/Bosses` IDLE, `Util/BossIdleRules`,
+  `MonsterController`): after its intro, every 0.8-2.2 s a boss walks to a new spot near its own (up to 5 studs either
+  side times its height over 17, a stud in front to 4 behind, 6 studs a second), roars (its roar at 0.45) or stomps
+  (a small shake). A move only stops its feet: it attacks from wherever it stands, facing the fight, so the server's
+  attack clock never waits; the walk stays small because sword hits are judged round its own spot. Client-side only.
 - **Boss debuffs** (same spec): a ring that lands on a player leaves its boss's debuff (`Config/Bosses` DEBUFFS,
   `playerAttacks.debuff`, `BattleSim`): Meadow Warden Entangled (2 s, walk 60% slower), Cave Brood Queen Poison (4 s,
-  2% of max HP a second), Ember Colossus Burn (3 s, 3.5% a second), Frost Tyrant Chilled (3 s, walk 30% slower, the
-  dodge recharges 1.5x slower), Storm Sovereign Shocked (0.5 s, no sword or dodge; stuns never pass 1 s), Rift
+  2% of max HP a second), Ember Colossus Burn (3 s, 3.5% a second), Frost Tyrant Frozen (1.5 s, frozen solid in a block of
+  ice: no walking, jumping, sword or dodge, a `stun` like Shocked; it was Chilled before 2026-11-10), Storm Sovereign
+  Shocked (0.5 s, no sword or dodge; stuns never pass 1 s; the client holds your sword and dodge too,
+  `SwordController.Stun`), Rift
   Devourer Weakened (4 s, sword 70%), Prism Hydra its current phase's element (Bloom Entangled, Shade Poison, Ember
   Burn, Tide Chilled, Volt Shocked). Quick hits and dodged or stepped-out rings give none. A new hit refreshes it (no
   stacking; Poison and Burn keep one tick a second); going down, leaving or the fight ending clears it.
@@ -1482,7 +1526,8 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   emoji in a small ring on your portrait's top-right (`CombatHud.setDebuff`, looks in `Config/CombatHud` DEBUFFS,
   countdown in `Util/DebuffRules`), and an effect on the character that everyone in the fight sees (`Util/DebuffFx`):
   Tangled vine bands round the lower legs, Poisoned green bubbles rising, Burning small flames, Chilled ice crystals at
-  the feet and a blue tint, Shocked yellow sparks, Weak a purple haze; each Poison or Burn tick flashes the character in
+  the feet and a blue tint, Frozen a glassy block of ice with crystals at its foot that cracks off as it thaws
+  (`Util/IceFx`), Shocked yellow sparks, Weak a purple haze; each Poison or Burn tick flashes the character in
   its colour and floats its number (no flinch or shake). The walk slows are the server's: each step it reads the
   player's debuff from the sim (`BattleSim.playerDebuff`) and sets WalkSpeed to the speed before times 1 - slow
   (`BattleService` `updateMovement`, which also kneels a downed player; the speed before is kept in the humanoid's
@@ -1535,7 +1580,9 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   "Your party fainted" with when it's rested (red), "Got away safely" (grey), gone after 2.6 s. The boss screen: a warm flash, then a big glowing title popping in over the arena ("VICTORY!", gold; "DUNGEON
   CONQUERED!" on the first Hydra clear) with "<foe> defeated · m:ss" under it; a row of reward tiles popping in one by
   one with their icons (cash, XP each, Star Shards, a dropped card, the boss chest and ground loot, the daily bonus; a
-  new card, a first-clear chest item and the bonus glow gold, with a chime); the notes (loot on the ground, carried,
+  new card, a first-clear chest item and the bonus glow gold, with a chime; a boss win opens with a rewarding sting,
+  `Config/Victory WIN_OPTIONS`: the Victory Fanfare Sting, or by ear in Studio `/victorysound <1-3>`: Arc Of Triumph,
+  Light Fun Orchestral; the owner 2026-11-10); the notes (loot on the ground, carried,
   reduced, full loot again in); the party with XP bars filling (round to empty again and a LEVEL UP! badge on a level
   up; the server sends each card's progress before and after, `BeastRules.levelProgress`). A loss has its own screen
   (below), a run "Got away safely" in grey, PvP "You win!" / "You lose" / "Draw" with its "Going home in" countdown. It closes by
@@ -1939,7 +1986,11 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   (`SwordSkillFxRules.drawsOthers`). Sounds: each sword's own, licensed and quiet, a `<key>_<Element>` version for a
   Forge Sword's element; every sword sound is measured into `Config/SoundLevels` and loud ones are turned down. The
   skill animations are keyed in a background Blender (`tools/blender/anim_<sword>.py`, docs/animations.md), published by
-  the owner (2026-11-07; ids in `Config/Swords`). Studio preview: `/skillfx <sword> [cut1|cut2|cut3|skill]
+  the owner (2026-11-07; ids in `Config/Swords`). A special holds the spotlight (`Util/Spotlight`,
+  `FightFxRules.quiet`; the owner 2026-11-10: "special skills animation/fx should always be visible"): while your
+  skill plays (its length and `AttackFx.SPOTLIGHT.tail` after), a super's charge and move, or a camera moment,
+  creatures' basic attacks draw nothing new and land as sounds only; bosses' and monsters' attacks still show.
+  Studio preview: `/skillfx <sword> [cut1|cut2|cut3|skill]
   [level]` and the admin panel's "Sword skills". Balance: `lune run tools/balance/bosses 300` gives identical rows before
   and after (2026-11-07). Measured in a Warden fight: about 60 fps through each skill (Thornline was building ~200 vine
   parts at once, now row by row).
@@ -2609,6 +2660,9 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── SwordAnims.luau         # loads and plays a sword's moves (ids, or the synced KeyframeSequences in Studio), markers
     │       ├── SwordSkillFx.luau       # the round 1 swords' slash, finisher and skill effects (Config/SwordSkillFx), coloured and sized by the weapon
     │       ├── SkillCinematic.luau     # your own skill's camera moment (Sunfall Cleave, Prism Judgment): side shots, restored after
+    │       ├── Spotlight.luau          # a special's spotlight: creatures' basic attacks draw nothing new while your skill or a super plays
+    │       ├── IceFx.luau              # the Frost Tyrant's ice: falling spikes that shatter, his shield bubble, a frozen fighter's ice block
+    │       ├── ItemPopup.luau          # a picked-up item's card at the top right (stacking, merging)
     │       ├── CombatHud.luau          # the boss and wild fight HUD (wild: no sword buttons): slanted buttons with icons, cooldowns and key chips, your portrait and HP bars, the boss fights' party strip, the red hit flash
     │       ├── HpBar.luau              # one slanted neon HP bar: ghost of lost HP, heal lead, ticks, hit flash (HUD and boss bar)
     │       ├── CombatAssets.luau       # downloads the fight's art, sounds, moves and sword models behind the loading screen
@@ -2760,6 +2814,9 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── FightMotion.luau   # a creature's moving about in a fight, its motion clock (pure, Lune-tested)
             ├── MonsterMoves.luau  # which attack clip a boss or monster plays for each fight event, one move at a time (pure, Lune-tested)
             ├── FightFxRules.luau  # the fight effects' budget and each element's attack kind (pure, Lune-tested)
+            ├── IceFxRules.luau    # the Frost Tyrant's spikes' drop timing, his shield's shards, a shatter's pieces (pure, Lune-tested)
+            ├── BossIdleRules.luau # a boss between its moves: when it's free, what it does, where it walks (pure, Lune-tested)
+            ├── ItemPopupRules.luau # picked-up items' cards: merging, stacking, expiring (pure, Lune-tested)
             ├── ShakeRules.luau    # screen shake maths: add, decay, the camera offset, falloff with distance (pure, Lune-tested)
             ├── DamagePop.luau     # how a damage number pops, settles, rises and fades by style (pure, Lune-tested)
             ├── VictoryRules.luau  # the end screen's reward tiles, notes and subtitle from a fight summary (pure, Lune-tested)

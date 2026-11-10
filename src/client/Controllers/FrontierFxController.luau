@@ -16,6 +16,7 @@ local TweenService = game:GetService("TweenService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local SharedUtil = Shared:WaitForChild("Util")
 local Bosses = require(Shared:WaitForChild("Config"):WaitForChild("Bosses"))
+local AttackFx = require(Shared:WaitForChild("Config"):WaitForChild("AttackFx")) -- the raindrop texture
 local Place = require(SharedUtil:WaitForChild("Place"))
 local WildValley = require(SharedUtil:WaitForChild("WildValley"))
 local FrontierFxRules = require(SharedUtil:WaitForChild("FrontierFxRules"))
@@ -92,23 +93,25 @@ function FrontierFxController.Start()
 	snow.Rate = 0
 	snow.Parent = snowBox
 
-	-- Light rain on Stormpeak: thin streaks falling fast in the same box (stretched along their fall)
+	-- Light rain on Stormpeak: raindrops stretched along their fall, from their own box kept over your head (smaller
+	-- than the snow's, so the drops fall close round you where they're seen)
 	local rainLook = fx.rain
+	local rainBox = anchored(folder, "Rain", Vector3.new(rainLook.size, 1, rainLook.size), CFrame.new(0, -500, 0))
 	local rain = Instance.new("ParticleEmitter")
 	rain.Shape = Enum.ParticleEmitterShape.Box
 	rain.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
-	rain.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	rain.Texture = AttackFx.TEXTURES.raindrop
 	rain.Color = ColorSequence.new(Color3.fromRGB(200, 215, 235))
 	rain.Transparency = NumberSequence.new(rainLook.transparency)
 	rain.LightEmission = 0.2
 	rain.Orientation = Enum.ParticleOrientation.VelocityParallel
-	rain.Size = NumberSequence.new(0.12)
+	rain.Size = NumberSequence.new(rainLook.drop)
 	rain.Squash = NumberSequence.new(-rainLook.length)
 	rain.Speed = NumberRange.new(rainLook.speed[1], rainLook.speed[2])
 	rain.Lifetime = NumberRange.new(rainLook.height / rainLook.speed[2], rainLook.height / rainLook.speed[1])
 	rain.EmissionDirection = Enum.NormalId.Bottom
 	rain.Rate = 0
-	rain.Parent = snowBox
+	rain.Parent = rainBox
 
 	-- Red eyes in Frostwood's fog: two small glowing dots each, turned toward you, fading as you come close
 	type Eyes = { parts: { Part }, at: Vector3, blinkAt: number }
@@ -233,6 +236,7 @@ function FrontierFxController.Start()
 		if at and sinceSnow >= SNOW_FOLLOW then
 			sinceSnow = 0
 			snowBox.CFrame = CFrame.new(at + Vector3.new(0, fx.snow.height, 0))
+			rainBox.CFrame = CFrame.new(at + Vector3.new(0, rainLook.height, 0))
 		end
 		-- the eyes: turned toward you, fading as you near, now and then a blink
 		local camera = workspace.CurrentCamera

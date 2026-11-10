@@ -445,14 +445,13 @@ local function spawnAdd(fight: Fight, id: string, markers: { [string]: BasePart 
 	addMonsters[id] = monster.id -- clients find the marker by name when it arrives after this message
 end
 
--- A big attack started: where its ring is (a slam under its target, a swipe from the boss toward them); the event is
--- sent with the shape so clients draw the same ring
+-- A big attack started: where its ring is (a slam or the Frost Tyrant's spikes under its target, a player or a pet; a
+-- swipe from the boss toward them); the event is sent with the shape so clients draw the same ring
 local function recordRing(fight: Fight, event: BattleSim.Event)
-	local member = memberByOwner(fight, string.sub(event.to or "", 4))
-	local root = if member then getRoot(member.player) else nil
+	local target = markerFor(fight, event.to or "")
 	local boss = Bosses.BOSSES[fight.monster.boss or ""]
 	local from = fight.monster.marker.Position
-	local at = if root then root.Position else from
+	local at = if target then target.Position else from
 	local ring: Ring = { shape = event.kind or "slam", x = at.X, y = at.Y, z = at.Z, dirX = 0, dirZ = -1, radius = Bosses.RING_SLAM_RADIUS, length = 0, halfAngle = 0 }
 	if ring.shape == "swipe" then
 		local look = fight.monster.marker.CFrame.LookVector
@@ -481,7 +480,7 @@ local function ringInside(fight: Fight, info: BattleSim.RingInfo): boolean
 		return true
 	end
 	local at = root.Position
-	if ring.shape == "slam" then
+	if ring.shape == "slam" or ring.shape == "spikes" then
 		return RingRules.inSlam(ring.x, ring.z, ring.radius, at.X, at.Z)
 	end
 	return RingRules.inSwipe(ring.x, ring.z, ring.dirX, ring.dirZ, ring.length, ring.halfAngle, at.X, at.Z)
@@ -514,7 +513,7 @@ local function updateMovement(member: Member)
 			humanoid:SetAttribute("JumpHeightBefore", humanoid.JumpHeight)
 		end
 		humanoid.WalkSpeed = DebuffRules.walkSpeed(before :: number, member.down, member.slow)
-		humanoid.JumpHeight = if member.down then 0 else tonumber(humanoid:GetAttribute("JumpHeightBefore")) or humanoid.JumpHeight
+		humanoid.JumpHeight = DebuffRules.jumpHeight(tonumber(humanoid:GetAttribute("JumpHeightBefore")) or humanoid.JumpHeight, member.down, member.slow)
 	elseif typeof(before) == "number" then
 		humanoid.WalkSpeed = before
 		humanoid.JumpHeight = tonumber(humanoid:GetAttribute("JumpHeightBefore")) or humanoid.JumpHeight
@@ -1499,7 +1498,9 @@ local function keepNear(fight: Fight, member: Member)
 	if not root then
 		return
 	end
-	local leash = if fight.monster.boss or fight.run then Bosses.LEASH_RADIUS else Combat.LEASH_RADIUS -- big rings
+	local boss = Bosses.BOSSES[fight.monster.boss or ""]
+	-- big rings: a boss's own (BossRules.leashRadius; the Frontier's are wider), a Dungeon run's the usual one
+	local leash = if boss then BossRules.leashRadius(boss, Bosses) elseif fight.run then Bosses.LEASH_RADIUS else Combat.LEASH_RADIUS
 	local offset = Vector3.new(root.Position.X - fight.center.X, 0, root.Position.Z - fight.center.Z)
 	if offset.Magnitude <= leash then
 		return

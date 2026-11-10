@@ -54,7 +54,8 @@ return {
 	end,
 
 	["every boss move effect is a real boss's, with its looks and sounds"] = function()
-		local styles = { strike = { leaves = true, fangs = true, embers = true }, release = { roots = true, web = true, lava = true } }
+		-- frost: the Frost Tyrant's, drawn by Util/IceFx (2026-11-10)
+		local styles = { strike = { leaves = true, fangs = true, embers = true, frost = true }, release = { roots = true, web = true, lava = true, frost = true } }
 		for bossId, moves in AttackFx.BOSS do
 			expect.equal(Bosses.BOSSES[bossId] ~= nil, true, bossId)
 			expect.equal(styles.strike[moves.strike], true, `{bossId} strike`)
@@ -133,5 +134,24 @@ return {
 			end
 		end
 		expect.equal(#FightFxRules.hitSpecs(SwordFx, nil, true), #SwordFx.IMPACT.emitters, "no element: the cut alone")
+	end,
+
+	-- The owner 2026-11-10: "the basic attack effects of the creature fighting with me is causing my weapon skill
+	-- animation to be hard to see... special skills animation/fx should always be visible": while a special holds the
+	-- spotlight (your sword skill, a super) or a camera moment plays, creatures' basic attacks draw nothing new,
+
+	["creatures' basic attacks keep out of a special's spotlight"] = function()
+		expect.equal(FightFxRules.quiet(10, 0, false), false, "nothing special playing")
+		expect.equal(FightFxRules.quiet(10, 12, false), true, "a skill holds the spotlight")
+		expect.equal(FightFxRules.quiet(12.5, 12, false), false, "its hold is over")
+		expect.equal(FightFxRules.quiet(10, 0, true), true, "a camera moment plays")
+	end,
+
+	["a special holds the spotlight for its length and a tail, never shortening a longer hold"] = function()
+		local tail = AttackFx.SPOTLIGHT.tail
+		assert(tail > 0 and tail <= 2, "a short tail after the special")
+		assert(AttackFx.SPOTLIGHT.super >= 1.5, "a super's moves play on past its charge")
+		expect.equal(FightFxRules.spotlightUntil(10, 0, 2, tail), 12 + tail)
+		expect.equal(FightFxRules.spotlightUntil(10, 20, 2, tail), 20, "a longer hold stands")
 	end,
 }

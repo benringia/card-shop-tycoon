@@ -38,6 +38,7 @@ type Creature = {
 	yaw: number, -- its turn off its marker's look in a fight (it faces its path while it circles)
 	seed: number,
 	chargingUntil: number, -- os.clock: holds still to charge an attack until then
+	frozenUntil: number, -- os.clock: frozen solid (the Frost Tyrant's spikes) until then: no moving, no animation
 	dash: { start: number, seconds: number, toward: Vector3, share: number }?, -- an attack's dash in and back
 	blink: { at: Vector3, face: Vector3 }?, -- Rift Step: standing at a rift (world), facing the boss, until cleared
 	element: string,
@@ -313,6 +314,7 @@ local function add(marker: BasePart)
 		yaw = 0,
 		seed = (tonumber(marker:GetAttribute("OwnerUserId")) or 0) % 1000 + #card.name,
 		chargingUntil = 0,
+		frozenUntil = 0,
 		dash = nil,
 		blink = nil,
 		element = card.element,
@@ -436,6 +438,10 @@ local function refreshCull()
 end
 
 local function step(creature: Creature, dt: number, now: number, origin: Vector3)
+	-- Frozen solid: it stays exactly as it was, mid-step (the owner 2026-11-10: "still moves around while frozen")
+	if now < creature.frozenUntil then
+		return
+	end
 	-- Rift Step: it stands at a rift, facing the boss, until it blinks home (in a fight, or a Studio preview of it)
 	local blink = creature.blink
 	if blink then
@@ -543,6 +549,15 @@ end
 function CreatureController.SetCharging(marker: BasePart, seconds: number)
 	local creature = creatures[marker]
 	if creature then
+		creature.chargingUntil = math.max(creature.chargingUntil, os.clock() + seconds)
+	end
+end
+
+-- Frozen solid by a spike (FightFx): the creature drawn on this marker stops moving and animating for `seconds`
+function CreatureController.Freeze(marker: BasePart, seconds: number)
+	local creature = creatures[marker]
+	if creature then
+		creature.frozenUntil = math.max(creature.frozenUntil, os.clock() + seconds)
 		creature.chargingUntil = math.max(creature.chargingUntil, os.clock() + seconds)
 	end
 end

@@ -20,6 +20,7 @@ local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 local Wild = Place.getWorld()
 local MonsterLooks = require(Shared:WaitForChild("Util"):WaitForChild("MonsterLooks"))
 local BossMoments = require(Shared:WaitForChild("Util"):WaitForChild("BossMoments"))
+local BossIdleRules = require(Shared:WaitForChild("Util"):WaitForChild("BossIdleRules"))
 local CreatureVisuals = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("CreatureVisuals"))
 local Extras = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("Extras"))
 local PetAnimator = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("PetAnimator"))
@@ -29,12 +30,17 @@ local MonsterController = {}
 local SwordFx = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("SwordFx"))
 local HitFx = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("HitFx"))
 local SoundBank = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("SoundBank"))
+local ScreenFx = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("ScreenFx"))
 
 local ELITE_TAG_COLOR = Color3.fromRGB(255, 205, 60)
 local TAG_COLOR = Color3.fromRGB(235, 235, 235)
 local BOSS_TAG_COLOR = Color3.fromRGB(255, 90, 80)
 
 type Head = { element: string, light: PointLight, sparks: ParticleEmitter }
+-- A boss between its moves (Util/BossIdleRules): where it stands off its spot (x, z: its spot's own space), a walk
+-- under way (from, to, started), when it may do the next thing, until when a move holds it and when its intro ends (all
+-- os.clock), its roar sound
+type Idle = { x: number, z: number, walk: { ax: number, az: number, bx: number, bz: number, start: number }?, nextAt: number, busyUntil: number, introEnd: number, roar: string? }
 type Aura = { highlight: Highlight, light: PointLight, flames: { ParticleEmitter } }
 type Monster = {
 	marker: BasePart,
@@ -53,6 +59,7 @@ type Monster = {
 	clips: { [string]: ClipPlayer.Clip }, -- its attack clips (ReplicatedStorage.MonsterAnimations/<key>), if any
 	lengths: { [string]: number }, -- each clip's length in seconds
 	clipPlayer: ClipPlayer.Player?,
+	idle: Idle?, -- a boss's life between its moves
 }
 
 local monsters: { [BasePart]: Monster } = {}
@@ -399,6 +406,61 @@ local function lightGlow(model: Model, strength: number)
 	end
 end
 
+local idleRandom = Random.new()
+
+-- A boss between its moves (the owner 2026-11-10: "walking around while waiting for his next attack or roaring.
+-- something intimidating but not limiting its attack speed"; Config/Bosses IDLE): short walks to new spots near its
+-- own, a roar, a stomp, a second or two apart. A move only stops its feet: it attacks from wherever it stands, facing
+-- the fight, so its attacks keep the server's clock
+local function stepIdle(monster: Monster, idle: Idle, now: number)
+	local cfg = Bosses.IDLE
+	local body = monster.body
+	local scale = monster.height / 17
+	local walk = idle.walk
+	if not BossIdleRules.free(now, idle.busyUntil, idle.introEnd, monster.marker:GetAttribute("Fainted") == true) then
+		if walk then
+			-- stopped where it is, turned to the fight
+			local x, z = BossIdleRules.walk(now - walk.start, walk.ax, walk.az, walk.bx, walk.bz, cfg.wander.speed * scale)
+			idle.x, idle.z, idle.walk = x, z, nil
+		end
+		body.offset = CFrame.new(idle.x, 0, idle.z)
+		idle.nextAt = math.max(idle.nextAt, idle.busyUntil)
+		return
+	end
+	if walk then
+		local x, z, yaw, done = BossIdleRules.walk(now - walk.start, walk.ax, walk.az, walk.bx, walk.bz, cfg.wander.speed * scale)
+		body.offset = CFrame.new(x, 0, z) * CFrame.Angles(0, yaw, 0)
+		if done then
+			idle.x, idle.z, idle.walk = x, z, nil
+			idle.nextAt = now + BossIdleRules.gap(idleRandom:NextNumber(), cfg.gap)
+		end
+		return
+	end
+	if now < idle.nextAt then
+		return
+	end
+	local action = BossIdleRules.pick(idleRandom:NextNumber(), cfg.weights)
+	idle.nextAt = now + BossIdleRules.gap(idleRandom:NextNumber(), cfg.gap)
+	if action == "wander" then
+		local bx, bz = BossIdleRules.spot(idleRandom:NextNumber(), idleRandom:NextNumber(), scale, cfg)
+		idle.walk = { ax = idle.x, az = idle.z, bx = bx, bz = bz, start = now }
+	elseif body.pet and action == "roar" then
+		PetAnimator.play(body.pet, "wildroar", now)
+		if idle.roar then
+			local sound = SoundBank.make(idle.roar)
+			sound.Volume = cfg.roarVolume
+			sound.Parent = body.root
+			sound.Ended:Once(function()
+				sound:Destroy()
+			end)
+			sound:Play()
+		end
+	elseif body.pet and action == "stomp" then
+		PetAnimator.play(body.pet, "stomp", now)
+		ScreenFx.shakeAt(cfg.stompShake, body.root.Position)
+	end
+end
+
 local function add(marker: BasePart)
 	local species = marker:GetAttribute("Species")
 	if monsters[marker] or typeof(species) ~= "string" then
@@ -464,6 +526,21 @@ local function add(marker: BasePart)
 	if boss and boss.moments then
 		startMoments(monster, boss.moments)
 	end
+	if boss then
+		-- its life between moves starts once its intro has played (SpawnedAt: the server's clock)
+		local spawnedAt = tonumber(marker:GetAttribute("SpawnedAt"))
+		local introLeft = if spawnedAt then spawnedAt + Bosses.INTRO_SECONDS - workspace:GetServerTimeNow() else 0
+		local now = os.clock()
+		monster.idle = {
+			x = 0,
+			z = 0,
+			walk = nil,
+			nextAt = now + math.max(0, introLeft) + 1,
+			busyUntil = 0,
+			introEnd = now + math.max(0, introLeft),
+			roar = if boss.moments then boss.moments.roar else nil,
+		}
+	end
 	if monster.aura and boss and boss.auroraFlame then
 		monster.aura.flames = makeFlames(model, body.root)
 	end
@@ -483,6 +560,9 @@ local function add(marker: BasePart)
 		local seconds = tonumber(marker:GetAttribute("WindUp")) or 0.5
 		local big = marker:GetAttribute("WindUpKind") == "big"
 		local tint = if big then SwordFx.WINDUP_BIG_COLOR else SwordFx.WINDUP_QUICK_COLOR
+		if monster.idle then
+			monster.idle.busyUntil = math.max(monster.idle.busyUntil, os.clock() + seconds + Bosses.IDLE.after)
+		end
 		HitFx.flash(body.model, Color3.fromRGB(tint[1], tint[2], tint[3]), seconds, SwordFx.WINDUP_FILL)
 		if big and body.pet and not clips.specialWindup then
 			PetAnimator.play(body.pet, "wildroar", os.clock())
@@ -547,6 +627,9 @@ function MonsterController.PlayClip(marker: BasePart, name: string, speed: numbe
 	local clip = if monster then monster.clips[name] else nil
 	if monster and clip and monster.clipPlayer then
 		ClipPlayer.play(monster.clipPlayer, clip, speed, nil, hold)
+		if monster.idle then
+			monster.idle.busyUntil = math.max(monster.idle.busyUntil, os.clock() + clip.length / math.max(speed, 0.05) + hold + Bosses.IDLE.after)
+		end
 	end
 end
 
@@ -583,6 +666,9 @@ function MonsterController.Start()
 		local origin = if camera then camera.CFrame.Position else Vector3.zero
 		local extras = Extras.enabled()
 		for _, monster in monsters do
+			if monster.idle then
+				stepIdle(monster, monster.idle, now)
+			end
 			CreatureVisuals.step(monster.body, dt, now, origin, Party.MOTION)
 			local clipPlayer = monster.clipPlayer
 			if clipPlayer and clipPlayer.playing and (monster.body.cframe.Position - origin).Magnitude <= Party.PET_ANIM.DISTANCE then
