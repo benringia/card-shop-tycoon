@@ -399,3 +399,27 @@ from game hooks, gives the gifts, sends the tutorial customer, queues lessons an
 
 - [ ] Step 1: RED test, then the numbers, GREEN. Studio: he strolls, trots after you. Commit:
   `Pish: a small dog's walk (slower, longer steps, less bob)`.
+
+---
+
+## Amendment 2026-11-10 round 3 (spec section 15)
+
+### Task 17: Pish's present and gift icons
+Files: `assets/ui/icons/PishPresent.png`, `PishGift.png` (cut by `tools/ui-art/cutout.py` from the owner's pick B),
+`src/shared/Config/UIIcons.luau`, `src/shared/Config/Items.luau` (item `pishPresent`: opens FirstSparkPack, icon
+PishPresent; `pishGift` icon PishGift), `src/shared/Config/Pish.luau` (`FIRST_ITEM = "pishPresent"`); tests: ItemRules
+(pishPresent opens FirstSparkPack, no floor). Commit: `Pish: his present and gift icons`.
+
+### Task 18: The small Skip and the tour card
+Files: `src/client/Util/TutorialCues.luau` (the tour bar replaced by `skipButton()` and `tourCard(done, total)`),
+`src/client/Controllers/TutorialController.luau`, `Config/PishTalk` LABELS (tourCard lines). Commit:
+`Tutorial: a small Skip that opens the tour card`.
+
+### Task 19: Spotlight and a calm HUD
+Files: `src/client/Util/TutorialCues.luau` (`spotlight(target)`: four dim frames round a button and the talk card),
+`src/client/Util/Hud.luau` or the controllers (the party bar, weapon switch, Bosses tile and buff chips hidden while
+the first visit is on). Commit: `Tutorial: a spotlight on what to tap, and a calm HUD`.
+
+### Task 20: Pish arrives
+Files: `src/client/Controllers/TutorialController.luau` (the arrival: after the welcome flight, once per first visit;
+a tap skips). Commit: `Tutorial: Pish runs in to meet you`.

@@ -204,3 +204,21 @@ Mockups shown; the owner picked A and A and approved the script, adding "Welcome
   trotting, about 2 steps a second walking): he walked at 7 studs/s with a 1.4-stud stride, 5 leg cycles a second (8
   trotting). Now a stroll at 4.5 studs/s and a trot at 8, strides about 2.5 studs (about 1.8 and 3.2 cycles a second),
   less body bob.
+
+## 15. Amendment 2026-11-10 (round 3): a quieter tour, Pish arrives, his gift icons
+
+The owner played the talking version and asked for less on screen and a proper entrance; mockups shown, picks: A, A, B.
+
+- **Small Skip** (pick A): the tour bar is gone. A small labelled "Skip" sits at the top right (left of the HUD's
+  right column on a phone). Tapping it opens the tour card: "Pish's Tour · 3 of 8", the paw row, "Finish the tour for
+  Pish's gift!" with the gift picture, a big green "Keep going" and a small grey "Skip tour".
+- **Spotlight and a calm HUD** (pick A): when Pish points at a button, the screen dims everywhere but that button and
+  his card. During the first visit the HUD shows only what the tour uses: the party bar, the weapon switch, the Bosses
+  tile and the buff chips are hidden until the visit ends. Nothing dims when he points at a thing in the shop.
+- **His name** over his head ("🐾 Pish"), with "pet me for luck!" when you can pet Town Pish (built in round 3's fixes).
+- **Pish arrives**: after the welcome flight, a bark off screen; the camera turns to Pish running in, he skids to a
+  stop at your feet and barks twice, the camera eases back behind you and his card says "Hi! I'm Pish!". About 4 s; a
+  tap skips it. Once per first visit (a replay starts without it).
+- **Icons** (pick B): his present at the start is its own item, "Pish's Present" (Pish hugging a ribboned First Spark
+  pack; it opens a First Spark pack), and his gift at the end shows a rainbow-foil pack with a purple bow and a paw
+  medal. Made with Figma's image generator, cut out, uploaded (Config/UIIcons).
