@@ -1,5 +1,6 @@
 --!strict
--- Pish drawn on a marker (spec 2026-11-09-tutorial-pish-design 3, 4): his model (ReplicatedStorage.NpcModels.Pish)
+-- A dog drawn on a marker, Pish or Chikin (his combat tutorial; the same rig and clips): Pish here (spec
+-- 2026-11-09-tutorial-pish-design 3, 4): his model (ReplicatedStorage.NpcModels.Pish)
 -- follows the marker with the creature walk (Util/CreatureVisuals, Party.CREATURE_STYLE.Pish), and plays his keyed clips
 -- (ReplicatedStorage.MonsterAnimations.Pish, Util/ClipPlayer) on top. A clip's markers make his sounds (Bark1..3, Yawn,
 -- DigStart) and kick up dirt between DigStart and DigEnd; hearts float up when he's petted. Town Pish
@@ -11,6 +12,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Party = require(Config:WaitForChild("Party"))
 local Pish = require(Config:WaitForChild("Pish"))
+local Chikin = require(Config:WaitForChild("Chikin"))
 local SoundLevels = require(Config:WaitForChild("SoundLevels"))
 local SoundLevel = require(Shared:WaitForChild("Util"):WaitForChild("SoundLevel"))
 
@@ -27,6 +29,13 @@ export type Visual = {
 	onDone: (() -> ())?,
 	dirt: ParticleEmitter,
 	shown: boolean,
+	dog: string, -- "Pish" or "Chikin"
+}
+
+-- Each dog's size and sounds (Config/Pish, Config/Chikin)
+local DOGS: { [string]: { HEIGHT: number, SOUNDS: { [string]: string }, SOUND_PITCH: { [string]: number }, SOUND_VOLUME: number } } = {
+	Pish = Pish :: any,
+	Chikin = Chikin :: any,
 }
 
 local PishVisual = {}
@@ -46,14 +55,15 @@ local DIRT_RATE = 40 -- dirt bits a second while he digs
 
 -- A sound from Config/Pish SOUNDS on his body (nothing until its id is set)
 local function sound(visual: Visual, key: string)
-	local id = Pish.SOUNDS[key]
+	local dog = DOGS[visual.dog] or DOGS.Pish
+	local id = dog.SOUNDS[key]
 	if not id or id == "" then
 		return
 	end
 	local made = Instance.new("Sound")
 	made.SoundId = id
-	made.Volume = Pish.SOUND_VOLUME * SoundLevel.gain(SoundLevels, id)
-	made.PlaybackSpeed = Pish.SOUND_PITCH[key] or 1
+	made.Volume = dog.SOUND_VOLUME * SoundLevel.gain(SoundLevels, id)
+	made.PlaybackSpeed = dog.SOUND_PITCH[key] or 1
 	made.RollOffMaxDistance = 80
 	made.Parent = visual.body.root
 	made:Play()
@@ -76,10 +86,10 @@ local function onMarker(visual: Visual, name: string)
 end
 
 -- Dirt kicked up by his front paws while he digs
-local function makeDirt(root: BasePart): ParticleEmitter
+local function makeDirt(root: BasePart, height: number): ParticleEmitter
 	local paws = Instance.new("Attachment")
 	paws.Name = "Paws"
-	paws.Position = Vector3.new(0, 0.2, -Pish.HEIGHT * 0.35)
+	paws.Position = Vector3.new(0, 0.2, -height * 0.35)
 	paws.Parent = root
 	local dirt = Instance.new("ParticleEmitter")
 	dirt.Name = "Dirt"
@@ -96,25 +106,28 @@ local function makeDirt(root: BasePart): ParticleEmitter
 	return dirt
 end
 
--- His model on `marker`, or nil when the model isn't in the game yet
-function PishVisual.new(marker: BasePart): Visual?
+-- The dog's model on `marker` (`dog`: "Pish", the default, or "Chikin"), or nil when it isn't in the game yet
+function PishVisual.new(marker: BasePart, dog: string?): Visual?
+	local name = dog or "Pish"
+	local config = DOGS[name] or DOGS.Pish
 	local folder = ReplicatedStorage:FindFirstChild("NpcModels")
-	local template = if folder then folder:FindFirstChild("Pish") else nil
+	local template = if folder then folder:FindFirstChild(name) else nil
 	if not template or not template:IsA("Model") then
 		return nil
 	end
 	local model = template:Clone()
 	CreatureVisuals.strip(model)
-	local body = CreatureVisuals.build(model, marker, Pish.HEIGHT, false, "Pish")
-	local clips, clipPlayer = ClipPlayer.loadSet("Pish", model)
+	local body = CreatureVisuals.build(model, marker, config.HEIGHT, false, name)
+	local clips, clipPlayer = ClipPlayer.loadSet(name, model)
 	return {
+		dog = name,
 		marker = marker,
 		body = body,
 		clips = clips,
 		clipPlayer = clipPlayer,
 		doneAt = 0,
 		onDone = nil,
-		dirt = makeDirt(body.root),
+		dirt = makeDirt(body.root, config.HEIGHT),
 		shown = true,
 	}
 end
@@ -220,7 +233,7 @@ function PishVisual.nameTag(visual: Visual, subtitle: string?)
 		name.Font = Enum.Font.FredokaOne
 		name.TextSize = 28
 		name.TextColor3 = TAG_INK
-		name.Text = "🐾 Pish"
+		name.Text = "🐾 " .. visual.dog
 		name.Parent = pill
 		local nameOutline = Instance.new("UIStroke")
 		nameOutline.Color = TAG_OUTLINE

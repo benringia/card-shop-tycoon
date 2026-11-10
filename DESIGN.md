@@ -2292,6 +2292,36 @@ All numbers in `Config/Pish`.
   `PishGiftClaimed`, `LessonShown`, `LessonUsed`, `PishPetted`.
 - Dev: `/tutorial reset | step <1-8> | lesson <id>`, `/pish`, `/pishluck`; the admin panel's "Pish (tutorial)" section.
 
+### 7.7 Chikin's combat tutorial
+Spec `docs/superpowers/specs/2026-11-10-chikin-combat-tutorial-design.md`, plan
+`docs/superpowers/plans/2026-11-10-chikin-combat-tutorial.md`. The owner's second dog Chikin (a black Shih Tzu x toy
+poodle, Pish's size; owner 2026-11-10: "I think combat tutorial is important too") teaches fighting, reusing Pish's
+pieces. Model: Meshy from the owner's pick C made less shaggy (`tools/blender/prep_chikin.py`, `rig_chikin.py`: Pish's
+bones on his shape, no jaw, his black ears found by place), Pish's 16 clips keyed on him (`anim_pish.py` with
+`DOG=Chikin`) in `assets/monster-animations/Chikin`; the owner imports `assets/blender/Chikin/Chikin.fbx` into
+`ReplicatedStorage.NpcModels` (saved as `assets/npcs/Chikin.rbxm`). Without it his marker still leads, with the paw on
+his card for a face.
+- [ ] **Two visits** (`CombatTutorialService`, `ChikinController`, `Config/Chikin`, `Config/ChikinTalk`; steps on Pish's
+  `Util/TutorialRules`, saved as `data.combat`, schema v18: done for every shop past Pish's tour). Pish's goodbye hands
+  over ("My buddy Chikin will teach you to fight!"); once Pish has gone Chikin runs in with the same arrival shot
+  (`Util/DogArrival`, now shared). Visit 1: hello, Add to party (Cards, then the card's Add to party), summon (party
+  slot 1), the Wild (paw trail to the portal), a fight ("Walk up to a monster and tap Fight!", paw over the nearest
+  monster), its end ("You won! Your creature got XP." or the lost lines "Rest it, or bring another card."; "Come back at
+  shop level 4", or "You have a sword too!" for a player already there). A hidden wait for shop level 4; visit 2:
+  "You got a sword!", the Wild, a fight that must be won ("Oops! Rest up, then try another one!" after a loss or a run),
+  then "The Meadow Warden lives through that portal. Beat it for a trophy!" with the paw trail to its portal. Steps
+  the game already shows done pass at once (a party, a summoned creature, being in the Wild).
+- [ ] **In a fight** his card moves to the top, clear of the combat buttons (`TutorialTalk.atTop`), and his tips go one
+  at a time with the paw on their button: "Your creature fights by itself!" (3.5 s), "Tap Pet when it's ready" (R);
+  with the sword "Tap Attack" (on PC "Click to swing your sword!"), "Tap Dodge" (Shift), "Tap Skill" (E). A tip moves
+  on once used or after 7 s. Pish's cues hide in fights; Chikin's stay (`TutorialCues.quiet` per guide).
+- [ ] **Skip and replay**: his own small Skip and tour card ("Chikin's Training · 2 of 5"); the peeking Pish's "tour
+  again?" card adds "Chikin's fight lesson" once his tour is done. Pish's own sword lesson is done for anyone whose
+  combat tour is still to come; Pish's lessons and nudges wait while Chikin leads. Nothing in it is a reward.
+- Analytics: funnel `CombatTutorial` (`LogFunnelStepEvent`, one step per step), custom event `CombatTutorialSkipped`.
+- Dev: `/chikin reset | step <1-11>`; the admin panel's "Chikin (combat tutorial)" section. Town Chikin (walking the
+  town like Town Pish) is left for later.
+
 ---
 
 ## 8. Monetization
@@ -2776,7 +2806,7 @@ place loads it at once; before, the session only closed after they'd left, and t
 `TeleportInitFailed`), `Reclaim` opens the session again and the next save writes it. Changes in the moment before
 they leave aren't saved. A session this server ended (leaving, a hand-off) never kicks the player.
 
-Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; v17 added `tutorial` (the first visit with Pish; existing saves "done" with their first pack given and his gift still to come, so only new players go through it); each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity); `tutorial` gained `customerSent` (read as false when missing, true for v17's existing shops; no bump: an older server dropping it allows one more of Pish's customers). A service that didn't load for a player (e.g. no free plot) never overwrites
+Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; v17 added `tutorial` (the first visit with Pish; existing saves "done" with their first pack given and his gift still to come, so only new players go through it); each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity); `tutorial` gained `customerSent` (read as false when missing, true for v17's existing shops; no bump: an older server dropping it allows one more of Pish's customers). v18 added `combat` (Chikin's combat tutorial, the same shape; done for every shop past Pish's tour, still to do for a player mid-way through it). A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
 
 ### 10.6 UI style and HUD

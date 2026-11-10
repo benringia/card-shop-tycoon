@@ -188,6 +188,21 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 			pishLuckAt = 0,
 		}
 	end,
+	-- v18: Chikin's combat tutorial (CombatTutorialService), the same table as Pish's: shops past Pish's first visit
+	-- already fight, so it's done for them; a new player still on Pish's tour gets Chikin after it
+	[17] = function(data)
+		local pish = if typeof(data.tutorial) == "table" then data.tutorial.firstVisit else nil
+		data.combat = {
+			firstVisit = if pish == "todo" then "todo" else "done",
+			step = 1,
+			early = {},
+			firstGiven = false,
+			giftClaimed = false,
+			customerSent = false,
+			lessons = {},
+			pishLuckAt = 0,
+		}
+	end,
 }
 
 local function lowestGrade(): string

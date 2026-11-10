@@ -60,6 +60,20 @@ return {
 		end
 	end,
 
+	["admin panel: a Chikin section runs his combat tutorial"] = function()
+		local commands = {}
+		for _, section in AdminPanel.SECTIONS do
+			if section.title == "Chikin (combat tutorial)" then
+				for _, button in section.buttons do
+					commands[button.command] = true
+				end
+			end
+		end
+		for _, command in { "/chikin reset", "/chikin step %s" } do
+			expect.equal(commands[command], true, command)
+		end
+	end,
+
 	["admin panel: typed commands fill in the text box"] = function()
 		expect.equal(AdminPanel.fill("/maxcard %s foil", "solarion"), "/maxcard solarion foil", "fills the input")
 		expect.equal(AdminPanel.fill("/maxcard %s", "  "), nil, "an empty input sends nothing")

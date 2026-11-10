@@ -32,6 +32,8 @@ Run in a background Blender:
 CLIP=<name> keys and previews one clip only (PREVIEW=0 skips the preview strips); JSON goes to
 assets/blender/Animations/Pish/<clip>.json, previews to assets/blender/Pish/preview_<clip>.png (not in git).
 Then: lune run tools/anim/build_bone_clips Pish
+Chikin (the combat tutorial's guide) plays the same clips: DOG=Chikin on assets/blender/Chikin/Chikin.blend, then
+lune run tools/anim/build_bone_clips Chikin.
 """
 import importlib
 import math
@@ -44,8 +46,11 @@ import anim_bone_kit as kit  # noqa: E402
 importlib.reload(kit)
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
-JSON_DIR = os.path.join(REPO, "assets", "blender", "Animations", "Pish")
-FOLDER = os.path.join(REPO, "assets", "blender", "Pish")
+# The dog keyed: Pish, or Chikin (DOG=Chikin, on assets/blender/Chikin/Chikin.blend from rig_chikin.py: the same bone
+# names, no jaw, so the jaw keys are left out)
+NAME = os.environ.get("DOG", "Pish")
+JSON_DIR = os.path.join(REPO, "assets", "blender", "Animations", NAME)
+FOLDER = os.path.join(REPO, "assets", "blender", NAME)
 
 
 def legs(front=(0, 0, 0), hind=(0, 0, 0), left_front=None, right_front=None, left_hind=None, right_hind=None):

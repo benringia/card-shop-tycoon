@@ -13,7 +13,6 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
@@ -21,11 +20,11 @@ local Game = require(Config:WaitForChild("Game"))
 local Music = require(Config:WaitForChild("Music"))
 local Pish = require(Config:WaitForChild("Pish"))
 local PishTalk = require(Config:WaitForChild("PishTalk"))
+local ChikinTalk = require(Config:WaitForChild("ChikinTalk"))
 local Products = require(Config:WaitForChild("Products"))
 local Shelves = require(Config:WaitForChild("Shelves"))
 local Town = require(Config:WaitForChild("Town"))
 local Wild = require(Config:WaitForChild("Wild"))
-local ArrivalShot = require(Shared:WaitForChild("Util"):WaitForChild("ArrivalShot"))
 local MusicRules = require(Shared:WaitForChild("Util"):WaitForChild("MusicRules"))
 local TalkRules = require(Shared:WaitForChild("Util"):WaitForChild("TalkRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -36,6 +35,7 @@ local Hud = require(ClientUtil:WaitForChild("Hud"))
 local HudMascotView = require(ClientUtil:WaitForChild("HudMascotView"))
 local OpeningStage = require(ClientUtil:WaitForChild("OpeningStage"))
 local PishVisual = require(ClientUtil:WaitForChild("PishVisual"))
+local DogArrival = require(ClientUtil:WaitForChild("DogArrival"))
 local TutorialCues = require(ClientUtil:WaitForChild("TutorialCues"))
 local TutorialTalk = require(ClientUtil:WaitForChild("TutorialTalk"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
@@ -125,6 +125,12 @@ local pointedAt = "" -- the step he last ran to and pointed for
 local shownKey = "" -- what the paw points at now (redrawn when it changes)
 local shownTarget: Instance? = nil -- the button or part the paw is on
 local leaving = false
+
+-- Pish's line on the talk card (Chikin shares the card: Util/TutorialTalk.speaker)
+local function say(text: string, icon: string?, nextLabel: string?, advance: (() -> ())?)
+	TutorialTalk.speaker(PishTalk.NAME)
+	TutorialTalk.say(text, icon, nextLabel, advance)
+end
 
 local function root(): BasePart?
 	local character = player.Character
@@ -546,7 +552,7 @@ local function updateTalk()
 	local line = TalkRules.show(talk, introIndex, focusSituation)
 	local label = if not line.next then nil elseif line.finish then PishTalk.BYE else PishTalk.NEXT
 	local text = if not line.next and focusSituation == "closeWindow" then PishTalk.LABELS.close else line.text
-	TutorialTalk.say(TalkRules.fill(text, Game.NAME), focusIcon, label, function()
+	say(TalkRules.fill(text, Game.NAME), focusIcon, label, function()
 		if line.finish then
 			if step == "bye" and not byeSent then
 				byeSent = true
@@ -694,6 +700,7 @@ end
 -- Free for a visit: in town, no window, fight, pack opening or weapon reveal on
 local function isFree(): boolean
 	return inTown()
+		and (player:GetAttribute("CombatStep") or "") == "" -- Chikin is leading (ChikinController)
 		and not UIKit.anyPanelOpen()
 		and not OpeningStage.isShown()
 		and not BattleController.IsFighting()
@@ -737,7 +744,7 @@ local function updateLessonTalk()
 	if afterIndex then
 		local lines = PishTalk.AFTER[now.id] or {}
 		local last = afterIndex >= #lines
-		TutorialTalk.say(lines[afterIndex] or "", focusIcon, if last then PishTalk.BYE else PishTalk.NEXT, function()
+		say(lines[afterIndex] or "", focusIcon, if last then PishTalk.BYE else PishTalk.NEXT, function()
 			now.after = afterIndex + 1 -- past the last line updateVisit ends the visit
 			now.started = os.clock()
 			updateLessonTalk()
@@ -748,7 +755,7 @@ local function updateLessonTalk()
 		now.introDone = true -- they're already on their way
 	end
 	if not now.introDone then
-		TutorialTalk.say(TalkRules.fill(PishTalk.LESSONS[now.id] or "", Game.NAME), focusIcon, PishTalk.NEXT, function()
+		say(TalkRules.fill(PishTalk.LESSONS[now.id] or "", Game.NAME), focusIcon, PishTalk.NEXT, function()
 			now.introDone = true
 			now.started = os.clock() -- Next is a step too: the quiet time starts again
 			updateLessonTalk()
@@ -756,7 +763,7 @@ local function updateLessonTalk()
 		return
 	end
 	local line = PishTalk.TEACH[focusSituation] or PishTalk.TEACH.default
-	TutorialTalk.say(string.format(line, focusName), focusIcon, nil, nil)
+	say(string.format(line, focusName), focusIcon, nil, nil)
 end
 
 local function startVisit(kind: "lesson" | "nudge", id: string)
@@ -773,7 +780,7 @@ local function startVisit(kind: "lesson" | "nudge", id: string)
 	else
 		local line = if kind == "lesson" then PishTalk.LESSONS[id] else PishTalk.NUDGES[id]
 		if line then
-			TutorialTalk.say(TalkRules.fill(line, Game.NAME), focusIcon, nil, nil)
+			say(TalkRules.fill(line, Game.NAME), focusIcon, nil, nil)
 		end
 	end
 	if kind == "lesson" then
@@ -860,7 +867,11 @@ local function onState(payload: unknown)
 	if typeof(lessons) == "table" then
 		local queue = {}
 		for _, id in lessons do
-			if typeof(id) == "string" and LESSONS[id] then
+			-- Chikin's second visit teaches the sword (spec 2026-11-10-chikin-combat-tutorial-design): Pish's own sword lesson
+			-- is done for anyone whose combat tour is still to come
+			if id == "sword" and player:GetAttribute("CombatDone") ~= true then
+				Remotes.TutorialAction:FireServer("lessonDone", id, false)
+			elseif typeof(id) == "string" and LESSONS[id] then
 				table.insert(queue, id)
 			end
 		end
@@ -916,119 +927,10 @@ local function arrive()
 		end
 		return
 	end
-	local up = Vector3.yAxis
-	local look = Vector3.new(at.CFrame.LookVector.X, 0, at.CFrame.LookVector.Z).Unit
-	local feet = at.Position - Vector3.new(0, 3, 0)
 	ensurePish()
-	local dog = marker :: Part
-	local blockers = RaycastParams.new()
-	blockers.FilterType = Enum.RaycastFilterType.Exclude
-	blockers.FilterDescendantsInstances = { player.Character :: Instance, dog, if visual then visual.body.model else dog }
-	local function freeFor(from: Vector3, way: Vector3, length: number): number
-		local hit = workspace:Raycast(from, way * length, blockers)
-		return if hit then hit.Distance else length
-	end
-	-- His run: in front of the player if it's clear, else the first clear way fanning out left and right, else the
-	-- longest (Util/ArrivalShot.pickRun): he never runs through a shelf or a wall
-	local ways, clearance = {}, {}
-	for _, degrees in { 0, 30, -30, 60, -60, 90, -90, 135, -135, 180 } do
-		local way = CFrame.Angles(0, math.rad(degrees), 0):VectorToWorldSpace(look)
-		table.insert(ways, way)
-		table.insert(clearance, freeFor(feet + up * 1.2, way, ARRIVAL.from + ARRIVAL.wallGap))
-	end
-	local index, runFrom = ArrivalShot.pickRun(clearance, ARRIVAL)
-	local outward = ways[index]
-	local across = Vector3.new(-outward.Z, 0, outward.X) -- to the side of his way in
-	local stop = feet + outward * ARRIVAL.stop + across * ARRIVAL.stopSide
-	local start = feet + outward * runFrom + across * math.min(ARRIVAL.startSide, runFrom * 0.15)
-	local run = Vector3.new(stop.X - start.X, 0, stop.Z - start.Z)
-	local runLength = run.Magnitude
-	local runWay = run.Unit
-	-- The camera rides on the side of his run with fewer things in the way (Util/ArrivalShot.pickSide)
-	local side = Vector3.new(runWay.Z, 0, -runWay.X)
-	local blocked = { 0, 0 }
-	for sample = 0, 5 do
-		local point = start + run * (sample / 5) + up * 1
-		for which, sign in { 1, -1 } do
-			if freeFor(point, side * sign, ARRIVAL.wide.side) < ARRIVAL.wide.side then
-				blocked[which] += 1
-			end
-		end
-	end
-	side *= ArrivalShot.pickSide(blocked[1], blocked[2])
-	-- The wide shot of the two of you: the first angle with a clear view (Util/ArrivalShot.pickWide)
-	local middle = (feet + stop) / 2
-	local wideTarget = middle + up * ARRIVAL.wide.lookUp
-	local widePlaces, wideFree = {}, {}
-	for _, angle in ARRIVAL.wideAngles do
-		local place = middle + side * angle.side + outward * angle.out + up * angle.up
-		local reach = (place - wideTarget).Magnitude
-		table.insert(widePlaces, place)
-		table.insert(wideFree, freeFor(wideTarget, (place - wideTarget).Unit, reach) / reach)
-	end
-	local widePlace = widePlaces[ArrivalShot.pickWide(wideFree, ARRIVAL)]
-	dog.CFrame = CFrame.lookAt(start, Vector3.new(stop.X, start.Y, stop.Z))
-	local camera = workspace.CurrentCamera
-	camera.CameraType = Enum.CameraType.Scriptable
-	-- Never through a wall or a shelf: the camera stops short of anything between it and what it looks at
-	local function clear(from: Vector3, to: Vector3): Vector3
-		local hit = workspace:Raycast(from, to - from, blockers)
-		return if hit then hit.Position + (from - to).Unit * 0.5 else to
-	end
-	local function shot(): CFrame
-		local here = dog.Position
-		local covered = Vector3.new(here.X - start.X, 0, here.Z - start.Z).Magnitude
-		local frame = ArrivalShot.at(if runLength > 0 then covered / runLength else 1, ARRIVAL)
-		local target = here + up * frame.lookUp
-		local close = CFrame.lookAt(clear(target, here + side * frame.side + runWay * frame.ahead + up * frame.up), target)
-		if frame.wide <= 0 then
-			return close
-		end
-		local wide = CFrame.lookAt(clear(wideTarget, widePlace), wideTarget)
-		return close:Lerp(wide, frame.wide)
-	end
-	camera.CFrame = shot() -- a cut to his paws
-	local skipped = false
-	local tap = UserInputService.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			skipped = true
-		end
-	end)
-	local follow = RunService.RenderStepped:Connect(function(dt)
-		camera.CFrame = camera.CFrame:Lerp(shot(), math.min(1, dt * ARRIVAL.follow))
-	end)
-	task.spawn(function()
-		local function hold(seconds: number)
-			local from = os.clock()
-			while os.clock() - from < seconds and not skipped do
-				task.wait()
-			end
-		end
-		hold(ARRIVAL.delay)
-		if visual and not skipped then
-			PishVisual.sound(visual, "bark")
-		end
-		while not skipped and dog.Parent do
-			local now = dog.Position
-			local flat = Vector3.new(stop.X - now.X, 0, stop.Z - now.Z)
-			if flat.Magnitude < 0.3 then
-				break
-			end
-			local dt = task.wait()
-			local nextAt = now + flat.Unit * math.min(flat.Magnitude, ARRIVAL.speed * dt)
-			dog.CFrame = CFrame.lookAt(nextAt, nextAt + flat.Unit)
-		end
-		local facing = Vector3.new(at.Position.X, stop.Y, at.Position.Z)
-		if dog.Parent then
-			dog.CFrame = CFrame.lookAt(stop, facing)
-		end
-		if not skipped then
-			play("bark")
-			hold(if visual then math.max(PishVisual.length(visual, "bark"), 1) else 1)
-		end
-		follow:Disconnect()
-		tap:Disconnect()
-		camera.CameraType = Enum.CameraType.Custom
+	DogArrival.run(at, marker :: Part, visual, player.Character, function()
+		play("bark")
+	end, function()
 		arriving = false
 		refreshFocus()
 		TutorialCues.skipButton(step ~= "" and step ~= "bye", openTourCard)
@@ -1116,7 +1018,12 @@ function TutorialController.Start()
 		elseif replayShown() and not visit then
 			TutorialCues.askReplay(function()
 				Remotes.TutorialAction:FireServer("replay")
-			end)
+			end, if player:GetAttribute("CombatDone") == true and (player:GetAttribute("CombatStep") or "") == "" then {
+				label = ChikinTalk.LABELS.replay,
+				onTap = function()
+					Remotes.CombatTutorialAction:FireServer("replay")
+				end,
+			} else nil)
 		end
 	end)
 	player:GetAttributeChangedSignal("TutorialStep"):Connect(onStep)
@@ -1143,7 +1050,7 @@ function TutorialController.Start()
 		tick = 0
 		-- A pack opening, a fight or a weapon reveal has the screen: Pish waits quietly (his card, bar and paws hidden)
 		local busy = OpeningStage.isShown() or BattleController.IsFighting() or WeaponRevealController.IsPlaying()
-		TutorialCues.screen().Enabled = not busy
+		TutorialCues.quiet("pish", busy and (step ~= "" or visit ~= nil)) -- Chikin keeps his cues up in a fight
 		if busy then
 			if shownKey ~= "" then
 				clearCues()

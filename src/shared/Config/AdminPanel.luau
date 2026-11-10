@@ -223,6 +223,14 @@ AdminPanel.SECTIONS = {
 		},
 	},
 	{
+		-- Chikin's combat tutorial (spec 2026-11-10-chikin-combat-tutorial-design): after Pish's, and at shop level 4
+		title = "Chikin (combat tutorial)",
+		buttons = {
+			{ label = "His tour again (a new player's)", command = "/chikin reset" },
+			{ label = "Jump to a step", command = "/chikin step %s", placeholder = "step 1-11" },
+		},
+	},
+	{
 		title = "Dungeon (Dungeon window)",
 		buttons = {
 			{ label = "To room 2", command = "/room 2" },
