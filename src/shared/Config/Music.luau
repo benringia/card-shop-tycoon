@@ -49,6 +49,27 @@ return {
 		checkEvery = 0.5, -- seconds between checks of where you are
 	},
 
+	-- The pack opening (owner 2026-11-10: "change the music on this screen. too plain"): its own piece while the opening
+	-- shows, crossfading from wherever you are and back (MusicController). Studio: "/music opening <n> [volume]" plays
+	-- option n; the owner picks by ear.
+	OPENING = {
+		key = "opening",
+		tracks = {
+			"rbxassetid://9048776085", -- "Enchanted Butterflies" (whimsical mallets and piano; first pick, to judge)
+		},
+		options = {
+			option("Enchanted Butterflies (whimsical mallets and piano)", "9048776085"),
+			option("Mischievous Elves (playful magic orchestra)", "1841594035"),
+			option("Magic and Mayhem (bouncy magic orchestra)", "1841593987"),
+			option("Pixie Dance (light and sparkly)", "1838007325"),
+			option("Jackpot (game show, fast and driving)", "1836301731"),
+			option("Mr Happy Go Lucky (cheerful pizzicato)", "9043031481"),
+		},
+		volume = 0.25,
+		compressor = LEVELER,
+		fade = 0.8, -- seconds: quick, so the music changes as the pack comes up
+	},
+
 	-- The Wild valley (owner 2026-11-04: "finalize the wilds": music in the valley and in every boss arena). Each area
 	-- (Config/WildValley BIOMES order) has its own piece, crossfading as you walk from one to the next (on a pass
 	-- between them the last one keeps playing); each boss arena (the same zone order) has its own battle piece while

@@ -642,7 +642,9 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
   (soft chimes for Rare and Very Rare, a deep boom for Epic, orchestral hits for Legendary and Frontier) and a shimmer
   while the card is alive; the results swipe in per landing card and end on a bright UI ding (PSE "Synth Sparkle Tone
   High Pitch Bell Tone Ding 4"): the lineup's sounds are never the boss victory's (owner 2026-11-10: it sounded like
-  killing a boss; `tests/OpeningSounds`). Most come from Roblox's licensed libraries (Pro Sound Effects,
+  killing a boss; `tests/OpeningSounds`). **Music**: the opening has its own piece (`Music.OPENING`, crossfading in from
+  wherever you are and back out, through the leveler; owner 2026-11-10: "change the music on this screen. too plain"),
+  six APM options to pick by ear with `/music opening <n> [volume]`. Most come from Roblox's licensed libraries (Pro Sound Effects,
   APM) and Daily Sounds (made from scratch); the flip is "card_flip" by f4ngy (Freesound, CC BY).
 - Card faces (`Util/CardFace`, `Config/CardDesign`), clean full-art style (like the top Roblox card games),
   built in code with no frame images: the art fills the card inside a thin rounded rim in the rarity colour

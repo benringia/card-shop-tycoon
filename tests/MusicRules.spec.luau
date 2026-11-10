@@ -179,4 +179,25 @@ return {
 		expect.equal(town.margin > 0, true)
 		expect.equal(MusicRules.inTown(0, 0, Town.BOUNDS, town.margin), true, "the plaza is in town with the real numbers")
 	end,
+	["the pack opening has its own music (owner 2026-11-10: too plain), licensed, levelled, with options to pick from"] = function()
+		local opening = Music.OPENING
+		expect.equal(MusicRules.find(Music, "opening"), opening)
+		assert(#opening.options >= 4, "options to audition with /music opening <n>")
+		local picked = false
+		for _, option in opening.options do
+			assert(string.match(option.id, "^rbxassetid://%d+$"), `{option.name} is an asset id`)
+			picked = picked or option.id == opening.tracks[1]
+		end
+		assert(picked, "the track playing is one of the options")
+		assert(opening.volume > 0 and opening.volume <= 0.5, "a sensible volume")
+		assert(opening.compressor, "through the leveler")
+		assert(opening.fade and opening.fade <= 1.5, "a quick crossfade in and out of the opening")
+		for _, list in { Music.WILD.areas, Music.WILD.arenas } do
+			for _, place in list do
+				for _, option in place.options do
+					assert(option.id ~= opening.tracks[1], `the opening's track isn't {place.key}'s too`)
+				end
+			end
+		end
+	end,
 }

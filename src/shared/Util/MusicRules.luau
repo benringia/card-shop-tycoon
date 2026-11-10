@@ -56,6 +56,9 @@ function MusicRules.find(music: any, key: string): any
 	if music.TOWN.key == key then
 		return music.TOWN
 	end
+	if music.OPENING and music.OPENING.key == key then
+		return music.OPENING
+	end
 	for _, list in { music.WILD.areas, music.WILD.arenas } do
 		for _, place in list do
 			if place.key == key then
