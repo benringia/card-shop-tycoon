@@ -178,7 +178,9 @@ return {
 
 	["the valley's terrain fits its budget"] = function()
 		expect.equal(valley.SURFACE_LIFT, TownTerrain.SURFACE_LIFT, "the ramps use the terrain's surface lift")
-		assert(valley.MAX_CELLS <= 105000, "the budget is the Wild valley's")
+		-- the main place runs its town and the Wild valley at 245k cells (Config/Scenery MAX_CELLS, measured at 60 fps);
+		-- the Frontier place has no town
+		assert(valley.MAX_CELLS <= 150000, "the budget stays well under the main place's")
 		local cells = TownTerrain.estimatedCells(OPS)
 		assert(cells <= valley.MAX_CELLS, `{cells} cells (budget {valley.MAX_CELLS})`)
 	end,
@@ -361,6 +363,41 @@ return {
 			end
 			assert(home.distance >= bosses.ARENA_RADIUS + 6 and home.distance <= innerWall - 4, `zone {zone}: the way home is outside its walls`)
 		end
+	end,
+
+	-- The owner's first look (2026-11-10): the sign stood in the spring, the cliffs were flat walls, the Dungeon gate had
+	-- no portal model, Stormpeak was plain
+	["the camp's board stands clear of the spring"] = function()
+		local spring, sign = frontier.SPRING, valley.RETURN_SIGN
+		assert(math.sqrt((spring.x - sign.x) ^ 2 + (spring.z - sign.z) ^ 2) >= 14, "the board is in the spring")
+	end,
+
+	["outcrops break up every cliff face, off the trail and its passes"] = function()
+		local faces = WildValley.faceOps(valley)
+		assert(#faces >= 150, `only {#faces} outcrops`)
+		for _, op in faces do
+			expect.equal(op.shape, "Ball")
+			assert(trailDistance(op) >= op.radius + valley.TRAIL_WIDTH / 2 + 4, `an outcrop at {op.x}, {op.z} sits on the trail`)
+			for index, biome in valley.BIOMES do
+				local d = math.sqrt((biome.portal.x - op.x) ^ 2 + (biome.portal.z - op.z) ^ 2)
+				assert(d >= op.radius + 10, `an outcrop at {op.x}, {op.z} crowds biome {index}'s portal`)
+			end
+		end
+		-- the Wild has none (its terrain is unchanged)
+		expect.equal(#WildValley.faceOps(wildValley :: any), 0)
+	end,
+
+	["the Dungeon gate is a real portal model"] = function()
+		local gate = valley.DUNGEON_GATE
+		assert(gate.model and fs.isFile(`assets/props/{gate.model}.rbxm`), "the gate's portal model")
+		assert(gate.look and gate.height and gate.height >= 16, "the gate's look and size")
+	end,
+
+	["it rains lightly on Stormpeak, under quieter thunder"] = function()
+		local fx = valley.FX
+		expect.equal(fx.rain.zone, 2, "rain on Stormpeak")
+		assert(fx.rain.rate > 0 and fx.rain.rate <= 80, "light rain, not a downpour")
+		assert(fx.lightning.volume <= 0.3, "thunder turned down")
 	end,
 
 	["the Frontier's terrain flag is its own"] = function()

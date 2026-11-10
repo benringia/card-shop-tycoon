@@ -185,7 +185,7 @@ return {
 				key = "stormpeak", -- the plateau under the storm: big and brooding
 				tracks = { "rbxassetid://1843501727" }, -- Mythic Mountain, no percussion
 				compressor = LEVELER,
-				ambient = { id = "rbxassetid://9120018695", volume = 0.04 }, -- Pro Sound Effects: Thunder Distant Rumble 2
+				ambient = { id = "rbxassetid://9112857744", volume = 0.05 }, -- Pro Sound Effects: Rainstorm Distant Summer Rain 1 (the owner 2026-11-10: rain, quieter thunder)
 				options = {
 					option("Mythic Mountain, no percussion (dark fantasy)", "1843501727"),
 					option("Roof Of The World (ambient)", "1836285546"),

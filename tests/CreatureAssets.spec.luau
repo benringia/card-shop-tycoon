@@ -76,6 +76,20 @@ return {
 		end
 	end,
 
+	["every Frontier boss has its four clips, every Frontier species its two"] = function()
+		local frontier = require("../src/shared/Config/Frontier")
+		for species in frontier.SPECIES do
+			for _, clip in { "windup", "strike" } do
+				assert(fs.isFile(`assets/monster-animations/{species}/{clip}.rbxm`), `{species} has no {clip}`)
+			end
+		end
+		for _, bossId in { "frostTyrant", "stormSovereign", "riftDevourer" } do
+			for _, clip in { "windup", "strike", "specialWindup", "specialRelease" } do
+				assert(fs.isFile(`assets/monster-animations/{bossId}/{clip}.rbxm`), `{bossId} has no {clip}`)
+			end
+		end
+	end,
+
 	["every Frontier model is one rigged MeshPart with its glow"] = function()
 		local frontier = require("../src/shared/Config/Frontier")
 		local bosses = require("../src/shared/Config/Bosses")

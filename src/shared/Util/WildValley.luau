@@ -348,6 +348,50 @@ function WildValley.skylineOps(valley: any): { any }
 	return ops
 end
 
+-- Rocky outcrops along the cliffs' faces (the Frontier valley; the owner 2026-11-10: "minimize flat walls. make the
+-- terrain look natural"): Ball lumps along each FACES line, one every `spacing` studs, `rows` of them at heights
+-- spread over `height` { low, high } (the balls' centres), each `radius` in its range and set `out` studs from the line
+-- along `facing` (the walkable side; lumps sit half in the wall, half out) give or take `drift`; seeded MINSTD sizes
+-- (exact in doubles, the same every run). A valley without FACES has none (the Wild)
+function WildValley.faceOps(valley: any): { any }
+	local ops = {}
+	for _, line in valley.FACES or {} do
+		local seed = line.seed
+		local function random(): number
+			seed = (seed * 48271) % 2147483647
+			return seed / 2147483647
+		end
+		local points = line.points
+		for index = 2, #points do
+			local a, b = points[index - 1], points[index]
+			local dx, dz = b.x - a.x, b.z - a.z
+			local length = math.sqrt(dx * dx + dz * dz)
+			local count = math.floor(length / line.spacing) + 1
+			for row = 1, line.rows or 1 do
+				local shift = (row - 1) / (line.rows or 1) * 0.5 -- each row a half step along, so lumps stagger
+				for k = 0, count - 1 do
+					local t = math.clamp((k + shift) / math.max(count - 1, 1), 0, 1)
+					local radius = line.radius[1] + (line.radius[2] - line.radius[1]) * random()
+					local rows = line.rows or 1
+					local low = line.height[1] + (line.height[2] - line.height[1]) * (row - 1) / rows
+					local high = line.height[1] + (line.height[2] - line.height[1]) * row / rows
+					local y = low + (high - low) * random()
+					local out = line.out + (random() * 2 - 1) * line.drift
+					table.insert(ops, {
+						shape = "Ball",
+						x = a.x + dx * t + line.facing.x * out,
+						y = y,
+						z = a.z + dz * t + line.facing.z * out,
+						radius = radius,
+						material = line.material,
+					})
+				end
+			end
+		end
+	end
+	return ops
+end
+
 -- One lava stream down the volcano (round 2, spec 2026-11-05-valley-natural-design): `steps + 1` level rays aimed at
 -- its axis from `reach * height` out, at heights from share `from` down to `to` of its height; angle 0 faces -Z (the
 -- ridge), positive toward +X, the stream swaying `wobble` degrees as it runs down. SceneryService casts them onto the
@@ -463,6 +507,9 @@ function WildValley.terrainOps(valley: any, segment: (a: any, b: any, width: num
 		table.insert(ops, op)
 	end
 	for _, op in WildValley.skylineOps(valley) do
+		table.insert(ops, op)
+	end
+	for _, op in WildValley.faceOps(valley) do
 		table.insert(ops, op)
 	end
 	for _, hill in valley.HILLS do

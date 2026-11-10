@@ -192,6 +192,26 @@ local function preloadTown()
 	ContentProvider:PreloadAsync(folders)
 end
 
+-- The Frontier's valley round you (spec 2026-11-10-frontier-valley-design; final review): once the server has filled
+-- its terrain and built its scenery, the area round your character is streamed in and the scenery's meshes, textures
+-- and looks fetched, so the camp's tents, rocks and portals don't pop in after the screen lifts
+local function preloadValley(valley: any)
+	local ready = valley.TERRAIN_READY_ATTRIBUTE
+	local deadline = os.clock() + LoadingScreen.MAX_SECONDS
+	while not (workspace:GetAttribute(ready) == true and workspace:FindFirstChild("Scenery")) and os.clock() < deadline do
+		task.wait(0.25)
+	end
+	local character = player.Character or player.CharacterAdded:Wait()
+	local root = character:WaitForChild("HumanoidRootPart", LoadingScreen.STREAM_TIMEOUT)
+	if root and root:IsA("BasePart") then
+		pcall(player.RequestStreamAroundAsync, player, root.Position, LoadingScreen.STREAM_TIMEOUT)
+	end
+	local scenery = workspace:FindFirstChild("Scenery")
+	if scenery then
+		ContentProvider:PreloadAsync({ scenery })
+	end
+end
+
 -- Anything that streams in later (the far side of town, a plot's new props, customers, the Wild): its meshes, textures
 -- and looks fetched as it arrives, a batch every WARM_GAP seconds, not when the camera first comes close
 local WARM_GAP = 0.5
@@ -271,13 +291,21 @@ function LoadingController.Start()
 	task.spawn(function()
 		local placeKind = if Place.isFrontier() then "Frontier" elseif Place.isDungeon() then "Dungeon" else "Main"
 		local screen = LoadingRules.look(LoadingScreen, placeKind)
-		-- The Frontier's valley round you (spec 2026-11-10-frontier-valley-design): its terrain filled and its scenery in
+		-- The Frontier's valley round you: its terrain filled, the area round you streamed and its scenery fetched
 		local valley = if placeKind == "Frontier" then Place.getValley() else nil
+		local valleyLoaded = false
+		if valley then
+			task.spawn(function()
+				-- whatever goes wrong, the step finishes (as the shop's and the town's)
+				local ok, err = pcall(preloadValley, valley)
+				if not ok then
+					warn("[LoadingController] valley:", err)
+				end
+				valleyLoaded = true
+			end)
+		end
 		local function valleyReady(): boolean?
-			if not valley then
-				return nil
-			end
-			return workspace:GetAttribute(valley.TERRAIN_READY_ATTRIBUTE) == true and workspace:FindFirstChild("Scenery") ~= nil
+			return if valley then valleyLoaded else nil
 		end
 		while true do
 			local status: LoadingRules.Status = {

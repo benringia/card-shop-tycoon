@@ -29,7 +29,7 @@ return {
 	["the main game's teleport screen is the Frontier's"] = function()
 		expect.equal(LoadingRules.teleportLook("Main"), "Frontier", "the main game teleports only to the Frontier")
 		expect.isNil(LoadingRules.teleportLook("Frontier"), "home or to the Dungeon: the usual screen")
-		expect.isNil(LoadingRules.teleportLook("Dungeon"))
+		expect.equal(LoadingRules.teleportLook("Dungeon"), "Frontier", "the Dungeon only goes back to the Frontier")
 	end,
 
 	["the Frontier's loading waits for its valley"] = function()

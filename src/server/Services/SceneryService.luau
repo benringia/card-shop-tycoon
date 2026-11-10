@@ -3,6 +3,7 @@
 -- (Util/TownTerrain), giant trees and snowy pines (scaled copies of the town's prop models), the caldera's glowing cracks
 -- and torches, Forest Falls' water sheets, Frostpeak's ice crystals, snow, embers and the aurora, and ambient sounds.
 -- Built once at server start. Main game only; the Frontier and the Dungeon keep their own.
+local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -517,6 +518,8 @@ local function buildWildValley(folder: Folder)
 			dressValleyProp(model, spot)
 			if not spot.y then
 				table.insert(settling, model)
+			else
+				model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic -- a hung piece the client bobs arrives whole
 			end
 		end
 	end
@@ -1141,6 +1144,15 @@ function SceneryService.StartValley()
 		return
 	end
 	terrainOps = WildValley.terrainOps(ValleyConfig, TownTerrain.trailSegment)
+	-- the lighting effects the Frontier's sky looks drive (Config/DayCycle FRONTIER, Util/SkyLook), made here as
+	-- TownService makes the main game's, so the place file needn't have them (final review)
+	for className, name in { Atmosphere = "FrontierAtmosphere", BloomEffect = "FrontierBloom", ColorCorrectionEffect = "FrontierColor", SunRaysEffect = "FrontierSunRays" } do
+		if not Lighting:FindFirstChildOfClass(className) then
+			local created = Instance.new(className)
+			created.Name = name
+			created.Parent = Lighting
+		end
+	end
 	local look = ValleyConfig.CLOUDS -- heavy grey clouds over the whole place
 	local clouds = workspace.Terrain:FindFirstChildOfClass("Clouds") or Instance.new("Clouds")
 	clouds.Cover = look.cover

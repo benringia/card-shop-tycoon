@@ -3,8 +3,10 @@
 -- and more dangerous than the Wild; numbers in Config/FrontierValley FX, maths in Util/FrontierFxRules): snow falling
 -- round you in Frostwood; pairs of red eyes in its fog that fade as you come close and blink now and then; lightning
 -- over Stormpeak (a flash and thunder) and a tornado turning far past its east cliffs; a violet vortex turning over the
--- Rift, its floating rocks bobbing, and now and then a tremor (a small camera shake and a rumble). Looks and sounds
--- only: nothing hurts anyone. Everything is built here, on this client; the Frontier place only.
+-- Rift, its floating rocks bobbing, and now and then a tremor (a small camera shake and a rumble). Light rain falls
+-- round you on Stormpeak and in the Storm Sovereign's arena, where its storm's eye turns overhead and lightning
+-- flashes too (the owner 2026-11-10). Looks and sounds only: nothing hurts anyone. Everything is built here, on this
+-- client; the Frontier place only.
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -72,6 +74,7 @@ function FrontierFxController.Start()
 		return rng:NextNumber()
 	end
 	local zone: number? = nil -- the area you're in (nil: the camp's passes, an arena)
+	local arenaZone: number? = nil -- the boss arena you're in (its zone), if any
 
 	-- Snow round you in Frostwood: a box of falling flakes kept over your head
 	local snowBox = anchored(folder, "Snow", Vector3.new(fx.snow.size, 1, fx.snow.size), CFrame.new(0, -500, 0))
@@ -89,11 +92,29 @@ function FrontierFxController.Start()
 	snow.Rate = 0
 	snow.Parent = snowBox
 
+	-- Light rain on Stormpeak: thin streaks falling fast in the same box (stretched along their fall)
+	local rainLook = fx.rain
+	local rain = Instance.new("ParticleEmitter")
+	rain.Shape = Enum.ParticleEmitterShape.Box
+	rain.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+	rain.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	rain.Color = ColorSequence.new(Color3.fromRGB(200, 215, 235))
+	rain.Transparency = NumberSequence.new(rainLook.transparency)
+	rain.LightEmission = 0.2
+	rain.Orientation = Enum.ParticleOrientation.VelocityParallel
+	rain.Size = NumberSequence.new(0.12)
+	rain.Squash = NumberSequence.new(-rainLook.length)
+	rain.Speed = NumberRange.new(rainLook.speed[1], rainLook.speed[2])
+	rain.Lifetime = NumberRange.new(rainLook.height / rainLook.speed[2], rainLook.height / rainLook.speed[1])
+	rain.EmissionDirection = Enum.NormalId.Bottom
+	rain.Rate = 0
+	rain.Parent = snowBox
+
 	-- Red eyes in Frostwood's fog: two small glowing dots each, turned toward you, fading as you come close
 	type Eyes = { parts: { Part }, at: Vector3, blinkAt: number }
 	local eyes: { Eyes } = {}
 	for _, spot in fx.eyes do
-		local ground = 0 -- Frostwood's ground
+		local ground = valley.BIOMES[fx.snow.zone].ground -- Frostwood's
 		local at = Vector3.new(spot.x, ground + spot.y, spot.z)
 		local pair = {}
 		for _, side in { -1, 1 } do
@@ -130,7 +151,24 @@ function FrontierFxController.Start()
 	swirl.Transparency = vortex.transparency
 	swirl.Parent = vortexPart
 
-	-- Lightning: a flash on the whole screen and thunder
+	-- The storm's eye over each of the Storm Sovereign's arena copies (grey-blue, turning slowly)
+	local eye = fx.stormEye
+	local eyes2: { Part } = {}
+	for copy = 1, Bosses.ARENA_COPIES do
+		local centre = WildValley.arenaCopyCenter(valley, eye.arena, copy)
+		local disc = anchored(folder, "StormEye", Vector3.new(eye.size, 1, eye.size), CFrame.new(centre.x, valley.ARENA_FIELD.y + eye.y, centre.z))
+		local decal = Instance.new("Decal")
+		decal.Face = Enum.NormalId.Bottom
+		decal.Texture = eye.image
+		decal.Color3 = rgb(eye.color)
+		decal.Transparency = eye.transparency
+		decal.Parent = disc
+		table.insert(eyes2, disc)
+	end
+
+	-- Lightning: a flash on the whole screen and thunder. Its own ColorCorrection, made after the sky's (FrontierColor,
+	-- SceneryService), so Util/SkyLook's grading (the first one it finds) never lands on it
+	Lighting:WaitForChild("FrontierColor", 10)
 	local flash = Instance.new("ColorCorrectionEffect")
 	flash.Name = "FrontierFlash"
 	flash.Brightness = 0
@@ -162,8 +200,15 @@ function FrontierFxController.Start()
 		if not holder then
 			return
 		end
+		-- forget rocks that streamed out (one streaming back in is a new model, taken again)
+		for index = #floating, 1, -1 do
+			if not floating[index].model.Parent then
+				table.remove(floating, index)
+			end
+		end
 		for _, model in holder:GetChildren() do
-			if model:IsA("Model") and model.Name == "FloatingRock" and not model:GetAttribute("Bobbing") then
+			-- only once it's whole (it streams atomically; PrimaryPart set): its pivot is then its real home
+			if model:IsA("Model") and model.Name == "FloatingRock" and model.PrimaryPart and not model:GetAttribute("Bobbing") then
 				model:SetAttribute("Bobbing", true)
 				table.insert(floating, { model = model, home = model:GetPivot(), phase = roll() * math.pi * 2 })
 			end
@@ -177,12 +222,12 @@ function FrontierFxController.Start()
 		sinceCheck += dt
 		if at and sinceCheck >= CHECK_SECONDS then
 			sinceCheck = 0
-			local inArena = WildValley.arenaZoneAt(valley, Bosses.ARENA_COPIES, at.X, at.Z) ~= nil
-			zone = if inArena then nil else WildValley.zoneAt(valley, { x = at.X, z = at.Z })
+			arenaZone = WildValley.arenaZoneAt(valley, Bosses.ARENA_COPIES, at.X, at.Z)
+			zone = if arenaZone then nil else WildValley.zoneAt(valley, { x = at.X, z = at.Z })
 			snow.Rate = if zone == fx.snow.zone then fx.snow.rate else 0
-			if #floating < 4 then
-				findFloating()
-			end
+			local raining = zone == rainLook.zone or arenaZone == eye.arena
+			rain.Rate = if raining then rainLook.rate else 0
+			findFloating()
 		end
 		sinceSnow += dt
 		if at and sinceSnow >= SNOW_FOLLOW then
@@ -209,10 +254,15 @@ function FrontierFxController.Start()
 			ring.CFrame = ring.CFrame * CFrame.Angles(math.rad(tornado.turn * dt * (1 + index * 0.05)), 0, 0)
 		end
 		vortexPart.CFrame = vortexPart.CFrame * CFrame.Angles(0, math.rad(vortex.turn * dt), 0)
+		if arenaZone == eye.arena then
+			for _, disc in eyes2 do
+				disc.CFrame = disc.CFrame * CFrame.Angles(0, math.rad(eye.turn * dt), 0)
+			end
+		end
 		-- lightning on Stormpeak
 		if now >= nextFlash then
 			nextFlash = now + FrontierFxRules.nextFlash(roll, fx.lightning.every)
-			if zone == fx.lightning.zone then
+			if zone == fx.lightning.zone or arenaZone == fx.lightning.arena then
 				lightning()
 			end
 		end
@@ -233,7 +283,8 @@ function FrontierFxController.Start()
 	end)
 	-- The tremor's shake, after the camera has moved this frame (so the camera scripts don't undo it)
 	RunService:BindToRenderStep("FrontierTremor", Enum.RenderPriority.Camera.Value + 1, function()
-		if not tremorFrom then
+		-- not while a cinematic holds the camera (a scripted shot would drift)
+		if not tremorFrom or workspace.CurrentCamera.CameraType ~= Enum.CameraType.Custom then
 			return
 		end
 		local t = os.clock() - tremorFrom

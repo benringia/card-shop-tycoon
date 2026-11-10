@@ -125,8 +125,8 @@ colliders, backdrop streamed `Atomic`, mountains `Persistent` and shadowless at 
 
 The Frontier valley's Titans' Graveyard pieces (spec 2026-11-10-frontier-valley-design): the camp's `Tent`, `Campfire`
 and `Watchtower`; Frostwood's `Ribcage` (the trail walks through it), `GiantSword`, `FortRuin`, `FortWall`, `SnowPine`;
-Stormpeak's `WreckedTower`, `HornedSkull`, `RockSpire`, `StormStone`; the Rift's `FloatingRock` and the Dungeon gate's
-`CrystalArch`; the dead giant's `TitanSkull`; the Frost Tyrant's hall's `IcePillar` and `IceThrone`. Built by
+Stormpeak's `WreckedTower`, `HornedSkull`, `RockSpire`, `StormStone`; the Rift's `FloatingRock` and `CrystalArch`
+(built, not placed since the Dungeon gate became a portal model, 2026-11-10); the dead giant's `TitanSkull`; the Frost Tyrant's hall's `IcePillar` and `IceThrone`. Built by
 `tools/blender/build_frontier_props.py` on `voxel_kit.py` and `portal_kit.py` (background Blender, `PROPS=`, `EXPORT=0`
 as above; under 2000 triangles each, the ribcage and both skulls under 4000; previews with
 `MODULE=build_frontier_props` on `render_valley_props.py`). Unlike the Wild's props they come as ONE pack, so they

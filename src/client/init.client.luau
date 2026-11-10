@@ -96,6 +96,7 @@ if Place.isFrontier() or Place.isDungeon() then
 	else
 		DayCycleController.Start() -- the Frontier valley's skies (Config/DayCycle FRONTIER)
 		MusicController.Start() -- its areas' and boss arenas' music (Config/Music FRONTIER)
+		PortalFxController.Start() -- its portals' swirls turning (the owner 2026-11-10: "some are no animations")
 		FrontierFxController.Start() -- its snow, red eyes, lightning, tornado, vortex, floating rocks and tremors
 	end
 else

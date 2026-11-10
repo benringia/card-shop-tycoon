@@ -135,7 +135,7 @@ return {
 	-- bend naming the way on (a zone: its name and colour) and the way back to the portal home
 	RETURN_SIGN = { x = 18, z = 1134 },
 	-- The way home at the arrival (the Forest Falls root arch it came through) and the trailhead board's title
-	HOME = { model = "PortalWild", look = "Wild", title = "THE WILD" },
+	HOME = { model = "PortalWild", look = "Wild", title = "THE WILD", name = "the Wild" },
 	BOARD_FACE_BACK = 25, -- studs back along the trail (toward the arrival) a board turns to face (WildValley.backAlongTrail)
 	ARROWS = {
 		{ x = -165, z = 1245, arms = { { zone = 2, toward = { x = -240, z = 1320 } }, { text = "SHOP", toward = { x = 0, z = 1130 } } } },

@@ -949,21 +949,29 @@ valley's engine on its own config: `Util/Place.getValley()` gives `Config/WildVa
 Frontier's half: its terrain in its own colours, its scenery, backdrop and arena effects), BossService, the sky, the
 music and the loading screens read it. The Wild's own pieces (stream, bridge, cave, volcano, vents) are optional keys
 the Frontier leaves out; `HOME` (the way-home portal and the trailhead title) and `DRESSED_LISTS` are shared keys.
-- **Layout:** the camp (arrival pad, spring, Return portal, tents, campfire, watchtower; no monsters) and Frostwood
+- **Layout:** the camp (arrival pad, spring, Return portal, tents, campfire, watchtower; no monsters; the pad is
+  solid but unseen, since it flickered against the snow drawn at its top, and the trailhead board stands clear of the
+  spring; owner 2026-11-10) and Frostwood
   at ground level (y 0); a straight 100-stud climb east onto Stormpeak (y 30); a straight 140-stud drop north into the
-  Rift's crater (y -12); the trail west to the Dungeon gate at its end (its crystal arch; `Frontier.DUNGEON_PORTAL`).
+  Rift's crater (y -12); the trail west to the Dungeon gate at its end (a 22-stud portal in the arena look round the
+  ring, swirling like the others; `FrontierValley.DUNGEON_GATE`, `Frontier.DUNGEON_PORTAL`; every Frontier portal's
+  swirl turns, `PortalFxController`).
   A hollow dead giant (walls and a roof, its skull and ribs on top) lies between the three, so none can be seen from
   the last. No walls: snowy hills, slate cliffs and the crater's basalt rim close the areas in, with lumpy skylines,
-  rolling banks along the passes and far snowy and dark mountain ranges. About 680 by 815 studs, 104k terrain cells
-  (the Wild's 105k budget).
+  rolling banks along the passes and far snowy and dark mountain ranges. The cliffs' walkable faces are broken by
+  rocky outcrops (`FACES`, `WildValley.faceOps`: staggered rows of seeded terrain balls along each face, snow, rock,
+  slate or basalt; the owner 2026-11-10: "minimize flat walls. make the terrain look natural"). About 680 by 815 studs,
+  about 135.6k terrain cells (`MAX_CELLS` 140k: the Frontier has no town; the main place runs 245k).
 - **Scenery** (the owner's pick C, the Titans' Graveyard; `docs/props.md` "Frontier scenery props"): ruined forts with
   red banners, giant swords in the snow, snowy pines and a ribcage the trail walks through in Frostwood; rock spires,
-  wrecked watchtowers, a horned skull and storm stones with glowing runes on Stormpeak; violet crystals, floating rocks
-  and the dragon skeleton in the Rift.
+  wrecked watchtowers, a horned skull, storm stones with glowing runes, charred trees, boulders and three rocky hills
+  on Stormpeak (more added 2026-11-10: "stormpeak is a bit plain"); violet crystals, floating rocks (streamed whole) and
+  the dragon skeleton in the Rift.
 - **Skies and effects** (`Config/DayCycle FRONTIER`, no day cycle; `Controllers/FrontierFxController`,
   `Util/FrontierFxRules`): a cold grey dusk on the passes; Frostwood a snowy dusk with snow round you and pairs of red
-  eyes in the fog that fade as you come close; Stormpeak a grey storm with lightning flashes and thunder (every 8-16 s)
-  and a tornado past its east cliffs; the Rift violet with a slow vortex overhead, bobbing floating rocks and a tremor
+  eyes in the fog that fade as you come close; Stormpeak a grey storm with light rain round you (`FX.rain`, 50 streaks
+  a second), its rain loop, lightning flashes and quieter thunder (every 8-16 s, volume 0.25) and a tornado past its
+  east cliffs; the Storm Sovereign's arena the same rain and lightning under a turning storm eye (`FX.stormEye`); the Rift violet with a slow vortex overhead, bobbing floating rocks and a tremor
   now and then (a small camera shake and a rumble). Looks and sounds only: nothing hurts outside a fight.
 - **Danger:** Frontier monsters stand 30% taller than their Wild counterparts (`Frontier.SPECIES` heights,
   `MONSTER_HEIGHT` 3.9 for any without one); elites chase everywhere and the whole Rift chases (as before).
@@ -973,8 +981,10 @@ the Frontier leaves out; `HOME` (the way-home portal and the trailhead title) an
   studs out for the big bosses; each its own sky, ambient loop and music. `/boss 4-6` goes to their portals.
 - **Loading screen:** the Frontier look (`Config/LoadingScreen LOOKS.Frontier`, `Util/LoadingRules.look`): "The
   Frontier", the swirl in icy blue and violet, Frostwood's picture, its own steps and tips; the main game's teleport
-  carries it (`LoadingRules.teleportLook`), and arrival holds until the valley round you is in (`Status.valley`).
-- **Music** (`Config/Music FRONTIER`): Frostwood, Stormpeak and the Rift with wind, distant thunder and an eerie hum
+  carries it (`LoadingRules.teleportLook`, the Dungeon's way back too), and arrival holds until the valley round you is
+  in (`Status.valley`: the terrain filled, the area round you streamed and the scenery's meshes fetched). The place
+  makes its own lighting effects (atmosphere, bloom, colour, sun rays) for its sky looks.
+- **Music** (`Config/Music FRONTIER`): Frostwood, Stormpeak and the Rift with wind, rain and an eerie hum
   under them, and each arena its own battle piece; three APM options each (`/music frostwood|stormpeak|rift|tyrant|
   sovereign|devourer <n>`).
 - **Models** (`docs/creatures.md` "Frontier monsters and bosses"): Meshy models of all six species and three bosses,

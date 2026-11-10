@@ -7,7 +7,7 @@
 -- shared keys; the Wild's own pieces (stream, bridge, cave, volcano, vents) are left out. World coordinates in the
 -- Frontier place (x -140..540, z -95..720). Plain data, Lune-tested (tests/FrontierValley.spec.luau).
 return {
-	MAX_CELLS = 105000, -- the Wild valley's budget (the Frontier place has no town)
+	MAX_CELLS = 140000, -- the main place runs its town and the Wild valley at 245k (Config/Scenery, measured 60 fps); the Frontier has no town (raised from 105k for the cliffs' outcrops, 2026-11-10)
 	SURFACE_LIFT = 2, -- TownTerrain.SURFACE_LIFT
 	TRAIL_WIDTH = 10,
 	MARKER_SPACING = 12,
@@ -76,6 +76,9 @@ return {
 		{ x = 150, z = 100, radius = 10, height = 0.8, material = "Glacier" },
 		{ x = 480, z = 60, radius = 16, height = 5, material = "Rock" },
 		{ x = 340, z = 230, radius = 18, height = 5, material = "Rock" },
+		{ x = 360, z = 20, radius = 14, height = 6, material = "Slate" },
+		{ x = 500, z = 250, radius = 14, height = 6, material = "Rock" },
+		{ x = 305, z = 205, radius = 12, height = 5, material = "Slate" },
 		{ x = 60, z = 662, radius = 16, height = 4, material = "Basalt" },
 	},
 	-- The walkable edge (invisible walls along it): Frostwood, the climbing pass east, Stormpeak, the drop north, the Rift
@@ -89,8 +92,8 @@ return {
 	TERRAIN_READY_ATTRIBUTE = "FrontierTerrainReady",
 	TERRAIN_WAIT = 20,
 	-- The way home's board by the camp, and the camp's home portal (the Frontier's ice-blue crystal ring)
-	RETURN_SIGN = { x = 20, z = -34 },
-	HOME = { model = "PortalFrontier", look = "Frontier", title = "THE FRONTIER" },
+	RETURN_SIGN = { x = -10, z = -20 }, -- clear of the spring (the owner 2026-11-10: they overlapped)
+	HOME = { model = "PortalFrontier", look = "Frontier", title = "THE FRONTIER", name = "the Frontier" },
 	BOARD_FACE_BACK = 25,
 	ARROWS = {
 		{ x = 160, z = 40, arms = { { zone = 2, toward = { x = 290, z = 60 } }, { text = "CAMP", toward = { x = 0, z = -40 } } } },
@@ -112,10 +115,15 @@ return {
 		eyeColor = { 255, 40, 30 },
 		eyeBlink = { 3, 8 },
 		lightning = {
-			zone = 2, every = { 8, 16 }, flash = 0.18, brightness = 6, volume = 0.5,
+			zone = 2, arena = 2, every = { 8, 16 }, flash = 0.18, volume = 0.25, -- quieter (the owner 2026-11-10); also in the Storm Sovereign's arena
 			sounds = { "rbxassetid://9120016021", "rbxassetid://9120016256", "rbxassetid://9120018172" }, -- Pro Sound Effects: Thunder Cracks Big Rumbling Blasts Booming 2, 3; Thunder Distant Boom 20
 		},
 		tornado = { x = 700, z = 160, height = 180, radius = 26, turn = 40, color = { 70, 74, 86 } },
+		-- light rain round you on Stormpeak (the owner: "a bit of rain droplets not too much"; its sound is the area's
+		-- ambient loop, Config/Music FRONTIER)
+		rain = { zone = 2, rate = 50, height = 30, size = 110, speed = { 55, 70 }, length = 2.2, transparency = 0.45 },
+		-- the storm's eye over each of the Storm Sovereign's arena copies (the spec: "a storm eye overhead")
+		stormEye = { arena = 2, y = 150, size = 380, turn = 5, color = { 150, 170, 210 }, transparency = 0.4, image = "rbxassetid://82162011115712" },
 		vortex = { zone = 3, x = 212, z = 582, y = 220, size = 520, turn = 3, color = { 150, 80, 255 }, transparency = 0.35, image = "rbxassetid://82162011115712" }, -- Config/WildLoading SWIRL
 		floating = { bob = 0.8, speed = 0.5 },
 		tremor = { zone = 3, every = { 20, 40 }, length = 1.6, shake = 0.35, sound = "rbxassetid://9113221477", volume = 0.4 }, -- Pro Sound Effects: Avalanche Rumble 3
@@ -123,7 +131,7 @@ return {
 	-- Roblox's clouds over the Frontier (SceneryService.StartValley): heavy and grey
 	CLOUDS = { cover = 0.78, density = 0.6, color = { 118, 122, 138 } },
 	-- The Dungeon portal (Config/Frontier DUNGEON_PORTAL): a crystal arch at the trail's west end, the farthest walk
-	DUNGEON_GATE = { x = -45, z = 622, faces = { x = -20, z = 620 } },
+	DUNGEON_GATE = { x = -45, z = 622, faces = { x = -20, z = 620 }, model = "PortalArena", look = "Arena", height = 22 }, -- a real portal (the owner: "some portals dont have models")
 
 	-- The terrain (shapes as Config/Scenery's; WildValley.terrainOps adds the hills, passes, trail and arenas). Each floor
 	-- is filled to its ground - 2; Stormpeak's floor starts at the climb's top (x 290) and ends at the drop's top (z 330)
@@ -179,6 +187,30 @@ return {
 		{ material = "Basalt", top = 52, seed = 54, points = { { x = -120, z = 450 }, { x = 360, z = 450 } }, spacing = 26, radius = { 7, 13 }, rise = { 6, 14 }, drift = 2 },
 	},
 	CARVES = {},
+	-- Rocky outcrops along the cliffs' faces (WildValley.faceOps; the owner 2026-11-10: "minimize flat walls. make the
+	-- terrain look natural"): each line runs along a wall's walkable face; `facing` points into the area; balls' centres
+	-- at `height`, `rows` staggered rows. Not along the passes (their banks are natural already)
+	FACES = {
+		-- Frostwood: snowy hills south, west and east, the dead giant's rocky flank north
+		{ material = "Snow", seed = 61, points = { { x = -118, z = -80 }, { x = 205, z = -80 } }, facing = { x = 0, z = 1 }, out = 1, drift = 2, spacing = 14, rows = 1, radius = { 6, 10 }, height = { 1, 12 } },
+		{ material = "Snow", seed = 62, points = { { x = -125, z = -75 }, { x = -125, z = 145 } }, facing = { x = 1, z = 0 }, out = 1, drift = 2, spacing = 14, rows = 1, radius = { 6, 10 }, height = { 1, 12 } },
+		{ material = "Snow", seed = 63, points = { { x = 215, z = -75 }, { x = 215, z = 22 } }, facing = { x = -1, z = 0 }, out = 1, drift = 2, spacing = 14, rows = 2, radius = { 6, 10 }, height = { 1, 26 } },
+		{ material = "Rock", seed = 64, points = { { x = 214, z = 94 }, { x = 214, z = 148 } }, facing = { x = -1, z = 0 }, out = 1, drift = 2, spacing = 14, rows = 2, radius = { 6, 10 }, height = { 2, 30 } },
+		{ material = "Rock", seed = 65, points = { { x = -120, z = 150 }, { x = 208, z = 150 } }, facing = { x = 0, z = -1 }, out = 1, drift = 2, spacing = 14, rows = 2, radius = { 7, 12 }, height = { 2, 34 } },
+		-- Stormpeak: slate crags all round
+		{ material = "Slate", seed = 71, points = { { x = 525, z = -45 }, { x = 525, z = 325 } }, facing = { x = -1, z = 0 }, out = 1, drift = 2, spacing = 14, rows = 2, radius = { 7, 11 }, height = { 31, 50 } },
+		{ material = "Slate", seed = 72, points = { { x = 295, z = -50 }, { x = 520, z = -50 } }, facing = { x = 0, z = 1 }, out = 1, drift = 2, spacing = 14, rows = 2, radius = { 7, 11 }, height = { 31, 50 } },
+		{ material = "Slate", seed = 73, points = { { x = 434, z = 330 }, { x = 520, z = 330 } }, facing = { x = 0, z = -1 }, out = 1, drift = 2, spacing = 14, rows = 2, radius = { 7, 11 }, height = { 31, 50 } },
+		{ material = "Rock", seed = 74, points = { { x = 294, z = 330 }, { x = 360, z = 330 } }, facing = { x = 0, z = -1 }, out = 1, drift = 2, spacing = 14, rows = 2, radius = { 7, 11 }, height = { 31, 50 } },
+		{ material = "Rock", seed = 75, points = { { x = 290, z = 166 }, { x = 290, z = 326 } }, facing = { x = 1, z = 0 }, out = 1, drift = 2, spacing = 14, rows = 2, radius = { 7, 11 }, height = { 31, 50 } },
+		{ material = "Slate", seed = 76, points = { { x = 290, z = -46 }, { x = 290, z = 26 } }, facing = { x = 1, z = 0 }, out = 1, drift = 2, spacing = 14, rows = 1, radius = { 6, 10 }, height = { 31, 36 } },
+		-- The Rift: a jagged basalt crater rim
+		{ material = "Basalt", seed = 81, points = { { x = -80, z = 705 }, { x = 505, z = 705 } }, facing = { x = 0, z = -1 }, out = 1, drift = 2, spacing = 14, rows = 2, radius = { 8, 13 }, height = { -10, 30 } },
+		{ material = "Basalt", seed = 82, points = { { x = -83, z = 462 }, { x = -83, z = 700 } }, facing = { x = 1, z = 0 }, out = 1, drift = 2, spacing = 14, rows = 2, radius = { 8, 13 }, height = { -10, 30 } },
+		{ material = "Basalt", seed = 83, points = { { x = 507, z = 462 }, { x = 507, z = 700 } }, facing = { x = -1, z = 0 }, out = 1, drift = 2, spacing = 14, rows = 2, radius = { 8, 13 }, height = { -10, 30 } },
+		{ material = "Basalt", seed = 84, points = { { x = -80, z = 458 }, { x = 360, z = 458 } }, facing = { x = 0, z = 1 }, out = 1, drift = 2, spacing = 14, rows = 2, radius = { 8, 13 }, height = { -10, 30 } },
+		{ material = "Basalt", seed = 85, points = { { x = 440, z = 458 }, { x = 505, z = 458 } }, facing = { x = 0, z = 1 }, out = 1, drift = 2, spacing = 14, rows = 2, radius = { 8, 13 }, height = { -10, 30 } },
+	},
 
 	-- The boss portals (WildService.BuildBossArenas) and each boss's arena copies far from the valley (as the Wild's)
 	BOSS_PORTAL = { model = "PortalArena", height = 20 },
@@ -286,6 +318,11 @@ return {
 		{ model = "StormStone", x = 310, z = 140, height = 9, yaw = 80, glow = "storm" },
 		{ model = "StormStone", x = 430, z = -20, height = 9, yaw = 0, glow = "storm" },
 		{ model = "StormStone", x = 505, z = 120, height = 9, yaw = 270, glow = "storm" },
+		{ model = "RockSpire", x = 470, z = 25, height = 20, yaw = 150, clear = 8 },
+		{ model = "RockSpire", x = 320, z = 260, height = 24, yaw = 60, clear = 8 },
+		{ model = "RockSpire", x = 362, z = 300, height = 18, yaw = 250, clear = 8 },
+		{ model = "StormStone", x = 340, z = 150, height = 9, yaw = 120, glow = "storm" },
+		{ model = "WreckedTower", x = 305, z = 300, height = 15, yaw = 300, clear = 9 },
 	},
 	-- The Rift's violet crystal clusters (code-built)
 	CRYSTALS = {
@@ -302,7 +339,6 @@ return {
 	-- camp's tents, campfire and watchtower, and the Rift's floating rocks (at their own `y`, never settled)
 	LANDMARKS = {
 		{ model = "Ribcage", x = 95, z = 58, height = 22, yaw = 90 },
-		{ model = "CrystalArch", x = -45, z = 622, height = 18, yaw = 90, glow = "violet" },
 		{ model = "Tent", x = -26, z = -54, height = 5, yaw = 30 },
 		{ model = "Tent", x = -27, z = -28, height = 5, yaw = 150 },
 		{ model = "Campfire", x = -22, z = -41, height = 1.6, yaw = 0, glow = "fire" },
@@ -354,6 +390,12 @@ return {
 		{ model = "CharredTree", x = 500, z = 100, height = 15, yaw = 140 },
 		{ model = "CharredTree", x = 500, z = 290, height = 13, yaw = 260 },
 		{ model = "RockC", x = 380, z = 60, height = 4, yaw = 90 },
+		{ model = "CharredTree", x = 455, z = 225, height = 14, yaw = 80 },
+		{ model = "RockC", x = 300, z = -25, height = 4, yaw = 30 },
+		{ model = "RockB", x = 395, z = -30, height = 5, yaw = 200 },
+		{ model = "RockC", x = 505, z = 35, height = 4, yaw = 120 },
+		{ model = "RockB", x = 470, z = 195, height = 5, yaw = 300 },
+		{ model = "RockA", x = 330, z = 120, height = 4, yaw = 10 },
 		{ model = "ObsidianShards", x = 400, z = 650, height = 6, yaw = 20 },
 		{ model = "ObsidianShards", x = 0, z = 670, height = 5, yaw = 200 },
 	},

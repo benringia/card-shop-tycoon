@@ -48,10 +48,10 @@ function LoadingRules.look(cfg: any, kind: string): any
 	return merged
 end
 
--- The look a teleport out of this place carries (TeleportService:SetTeleportGui): the main game only teleports to
--- the Frontier, so its screen is the Frontier's; from the Frontier (home or to the Dungeon) the usual one
+-- The look a teleport out of this place carries (TeleportService:SetTeleportGui): the main game and the Dungeon only
+-- teleport to the Frontier, so theirs is the Frontier's; from the Frontier (home or to the Dungeon) the usual one
 function LoadingRules.teleportLook(kind: string): string?
-	return if kind == "Main" then "Frontier" else nil
+	return if kind == "Main" or kind == "Dungeon" then "Frontier" else nil
 end
 
 -- Whether every fetch has finished one way or another (Enum.AssetFetchStatus names): a failed or timed-out asset

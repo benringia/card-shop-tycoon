@@ -350,8 +350,13 @@ local function buildMap(): Folder
 
 	local entrance = ORIGIN + vec(Wild.ENTRANCE_OFFSET)
 	local pad = block(folder, "Entrance", Vector3.new(30, 2, 24), CFrame.new(entrance - Vector3.new(0, 1, 0)), Color3.fromRGB(150, 140, 120), Enum.Material.Cobblestone)
-	if not Place.isFrontier() then
-		floorPart(pad) -- the Frontier's camp pad stays solid: players join onto it before its valley's terrain has filled
+	if Place.isFrontier() then
+		-- the Frontier's camp pad stays solid (players join onto it before its valley's terrain has filled) but unseen:
+		-- the snow draws at its top and the two flickered (the owner 2026-11-10)
+		pad.Transparency = 1
+		pad.CastShadow = false
+	else
+		floorPart(pad)
 	end
 	local returnSpot = entrance + Vector3.new(0, 0, -9)
 	local returnRing = portal(folder, "Return to shop", returnSpot, Vector3.new(0, 0, 1), "Return", function(player)
@@ -425,14 +430,26 @@ local function buildPlaza()
 		-- it faces the trail's end (Config/FrontierValley DUNGEON_GATE)
 		local gate = if VALLEY then ValleyConfig.DUNGEON_GATE else nil
 		local dungeonFacing = if gate then (Vector3.new(gate.faces.x, dungeonSpot.Y, gate.faces.z) - dungeonSpot).Unit else Vector3.new(1, 0, 0)
-		portal(folder, "Dungeon", dungeonSpot, dungeonFacing, "Enter", function(player)
+		local ring = portal(folder, "Dungeon", dungeonSpot, dungeonFacing, "Enter", function(player)
 			if dungeonHandler then
 				dungeonHandler(player)
 			else
 				notify(player, "The Dungeon is coming soon!", false)
 			end
 		end)
-		sign(folder, if Places.DUNGEON_PLACE_ID ~= 0 then "The Dungeon" else "The Dungeon · coming soon", CFrame.lookAt(dungeonSpot + Vector3.new(0, Wild.PORTAL_SIGN_HEIGHT, 0), dungeonSpot + Vector3.new(0, Wild.PORTAL_SIGN_HEIGHT, 0) - dungeonFacing))
+		local signHeight = Wild.PORTAL_SIGN_HEIGHT
+		if gate and gate.model and Props.hasModel(gate.model) then
+			-- a portal model round the ring (its prompts stay on the hidden ring), dressed and swirling like the others
+			local arch = Props.place(gate.model, CFrame.lookAt(dungeonSpot, dungeonSpot + dungeonFacing), folder)
+			arch:ScaleTo(arch:GetScale() * gate.height / Town.SLOTS[gate.model].height)
+			local box, size = arch:GetBoundingBox()
+			arch:PivotTo(arch:GetPivot() + Vector3.new(0, dungeonSpot.Y - (box.Position.Y - size.Y / 2), 0))
+			PortalBuild.dress(arch, (Town.PORTAL_LOOKS :: any)[gate.look])
+			arch.Name = "DungeonPortal"
+			ring.Transparency = 1
+			signHeight = gate.height + 4
+		end
+		sign(folder, if Places.DUNGEON_PLACE_ID ~= 0 then "The Dungeon" else "The Dungeon · coming soon", CFrame.lookAt(dungeonSpot + Vector3.new(0, signHeight, 0), dungeonSpot + Vector3.new(0, signHeight, 0) - dungeonFacing))
 	else
 		local portalSpot = vec(Wild.PLAZA_PORTAL)
 		-- Its floating name label comes from TownService, like the other plaza portals
@@ -968,7 +985,7 @@ local function buildBossPortal(folder: Instance, boss: any, bossId: string, onGa
 		local bossAt, barrier, inside = buildRing(holder, boss, center, ValleyConfig.ARENA_LOOKS[boss.zone], ValleyConfig.ARENA_LIFT)
 		local home = ValleyConfig.ARENA_HOME
 		local homeSpot = center - Vector3.new(home.distance, 0, 0) -- inside the arena's walls
-		local ring = portal(holder, "Return to the Wild", homeSpot, Vector3.new(1, 0, 0), "Return", function(player)
+		local ring = portal(holder, `Return to {ValleyConfig.HOME.name}`, homeSpot, Vector3.new(1, 0, 0), "Return", function(player)
 			onReturn(player, bossId, copy)
 		end)
 		ring.Transparency = 1 -- the zone's portal stands round it (its prompt stays on the ring)
@@ -1111,14 +1128,15 @@ function WildService.TravelToWild(player: Player, at: CFrame?)
 	-- below, and after the move holds you still until the valley round you is in on your device. "stay": no trip.
 	Remotes.WildTravel:FireClient(player, "loading")
 	-- The valley's terrain fills in the background at start: wait for its ground (SceneryService sets the attribute)
-	local ready = ValleyConfig.TERRAIN_READY_ATTRIBUTE
-	if VALLEY and not workspace:GetAttribute(ready) then
+	local ready = if VALLEY then ValleyConfig.TERRAIN_READY_ATTRIBUTE else nil
+	if ready and not workspace:GetAttribute(ready) then
 		local deadline = os.clock() + ValleyConfig.TERRAIN_WAIT
 		while not workspace:GetAttribute(ready) and os.clock() < deadline do
 			task.wait(0.25)
 		end
 		if not workspace:GetAttribute(ready) then
-			notify(player, "The Wild is still loading. Try again in a moment.", true)
+			local name = ValleyConfig.HOME.name
+			notify(player, `{string.upper(string.sub(name, 1, 1))}{string.sub(name, 2)} is still loading. Try again in a moment.`, true)
 			Remotes.WildTravel:FireClient(player, "stay")
 			return
 		end
