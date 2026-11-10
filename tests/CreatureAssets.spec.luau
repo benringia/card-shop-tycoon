@@ -192,6 +192,40 @@ return {
 		expect.equal(#findScripts(roots), 0, "no scripts")
 	end,
 
+	-- Chikin, the combat tutorial's guide (spec 2026-11-10-chikin-combat-tutorial-design): rig_chikin.py's rig, Pish's bones
+	-- without the jaw, so Pish's clips (assets/monster-animations/Chikin) find every bone
+	["Chikin's model is in: his mesh the PrimaryPart, every bone his clips move, no scripts"] = function()
+		local path = "assets/npcs/Chikin.rbxm"
+		assert(fs.isFile(path), `{path} is missing (the owner saves the imported Chikin.fbx model from Studio)`)
+		local roots = roblox.deserializeModel(fs.readFile(path))
+		local model = roots[1]
+		assert(model and model:IsA("Model") and model.Name == "Chikin", `{path} holds the Chikin model`)
+		local mesh = model:FindFirstChild("Chikin_Dog")
+		assert(mesh and mesh:IsA("MeshPart"), "his Chikin_Dog mesh")
+		assert(model.PrimaryPart == mesh, "the mesh is his PrimaryPart")
+		local offset = mesh.PivotOffset
+		expect.near(offset.Position.Y, -mesh.Size.Y / 2, 0.05, "the pivot at his feet")
+		local _, _, _, r00, r01, r02, r10, r11, r12, r20, r21, r22 = offset:GetComponents()
+		local straight = r00 == 1 and r11 == 1 and r22 == 1 and r01 == 0 and r02 == 0 and r10 == 0 and r12 == 0 and r20 == 0 and r21 == 0
+		assert(straight, "his PivotOffset isn't turned")
+		local bones = {}
+		for _, item in model:GetDescendants() do
+			if item:IsA("Bone") then
+				bones[item.Name] = true
+			end
+		end
+		local wanted = { "Pelvis", "Spine_0", "Spine_1", "Neck", "Head_0", "Ear_Left_0", "Ear_Right_0", "Tail_0", "Tail_1", "Tail_2" }
+		for _, leg in { "0_Left", "0_Right", "1_Left", "1_Right" } do
+			for i = 0, 2 do
+				table.insert(wanted, `{leg}_Limb_{i}`)
+			end
+		end
+		for _, name in wanted do
+			assert(bones[name], `his bone {name}`)
+		end
+		expect.equal(#findScripts(roots), 0, "no scripts")
+	end,
+
 	["the prop folder is scanned too"] = function()
 		assert(table.find(FOLDERS, "assets/props"), "assets/props is not in FOLDERS")
 		assert(table.find(FOLDERS, "assets/town"), "assets/town is not in FOLDERS")
