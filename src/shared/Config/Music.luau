@@ -75,6 +75,24 @@ return {
 		fade = 0.8, -- seconds: quick, so the music changes as the pack comes up
 	},
 
+	-- The first-visit welcome flight (owner 2026-11-11: "more epic/jolly/welcoming"): its own piece while it plays
+	-- (WelcomeController), crossfading back to the town's after. Studio: "/music welcome <n> [volume]" to try options.
+	WELCOME = {
+		key = "welcome",
+		tracks = {
+			"rbxassetid://1841209332", -- "Magical Journey" (an orchestral fantasy reveal, 14 s)
+		},
+		options = {
+			option("Magical Journey (orchestral fantasy reveal)", "1841209332"),
+			option("Magical Journey 30 (mystical, playful)", "1839910322"),
+			option("Let's All Play B (kids, bouncy)", "1846942796"),
+			option("Magic Carpet Ride (adventure)", "1838006114"),
+		},
+		volume = 0.1, -- the owner 2026-11-11: "lower volume cinematic music" (was 0.2)
+		compressor = LEVELER,
+		fade = 0.5,
+	},
+
 	-- The Wild valley (owner 2026-11-04: "finalize the wilds": music in the valley and in every boss arena). Each area
 	-- (Config/WildValley BIOMES order) has its own piece, crossfading as you walk from one to the next (on a pass
 	-- between them the last one keeps playing); each boss arena (the same zone order) has its own battle piece while

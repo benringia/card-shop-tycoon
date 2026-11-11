@@ -105,7 +105,10 @@ street's end (`Town.PORTAL_AREAS`, `Util/PortalTrails`): the Wild by the pool at
 giant trees, a waterfall of scrolling streak sheets into a turquoise pool, mossy boulders, flowers, lily pads, glowing
 mushrooms, fireflies, falling leaves), the Frontier on **Frostpeak**'s snowy rise (182, 128, 10 studs up; north-east: a
 snow-capped peak, frosted pines with lightly snowed ones on the grass below, a frozen waterfall of ice columns over a
-frozen pond, icicles, drifting snow, an aurora of hanging curtain beams), the Arena at the end of **Ember Canyon**
+frozen pond, icicles, drifting snow; since 2026-11-11 the aurora is TheRisingTides' free Creator Store "Aurora
+Borealis" (model 4556126742, its five beams copied into `Scenery.AURORA`, never the model): vast curtains across the
+northern sky past the town's north edge (0, 260, 420), over the mountains, shown day and night (the owner: "visible
+at any time"), 1.5x as solid as the pack's own (`AURORA.strength`), the Arena at the end of **Ember Canyon**
 (-205, 0; west), since 2026-10-31 a calm volcanic **caldera** in the portal's colours (caldera spec
 `2026-10-31-ember-caldera-design.md`, the user's pick A "Glowing fissures" of three): dark basalt walls with jagged rims
 and a dark cracked floor (terrain materials `Basalt` and `CrackedLava`, coloured only here), about 220 glowing orange
@@ -198,9 +201,30 @@ run round their homes, drawn by the summoned-pet code (`TownCritterController`, 
 a bunny on the grass by the grove, a capybara on the sidewalk outside the south shops (the tall grass between
 the shops hid it), a fawn at Forest Falls, a penguin on Frostpeak, two baby dragons
 in Ember Canyon's caldera in its colours (the Cute Pets Shadow and Golden variants, `variant` in `Ambient.CRITTERS`). **Welcome cinematic** (`WelcomeController`, `WelcomeService`, `Config/Welcome`, `Util/WelcomePath`): on a
-player's first visit, an 11 s flight past Forest Falls, Frostpeak, over the plaza and past Ember Canyon to their own shop,
+player's first visit, a 12 s flight past Forest Falls, Frostpeak, over the plaza and past Ember Canyon to their own shop,
 as a time-lapse from morning to sunset that holds sunset for the last half; cinema bars, a title, the rest of the UI off
-and the player standing still, a Skip button (top right) from the first frame. Code builds the fixed pieces (`Util/TownLayout`, same on every
+and the player standing still, a Skip button (top right) from the first frame. Livelier since the owner 2026-11-11 ("a
+bit plain. can you make it more epic/jolly/welcoming, like a whoosh sound on the camera"): its own music ("Magical
+Journey", `Music.WELCOME` at 0.1, while the local WelcomePlaying attribute is set; `/music welcome <n>` tries others),
+the title bouncing in with a sparkle, a card at the bottom for each place as the camera passes it (its icon and name in
+its colour, what you do there under it, both centred: "Battle wild creatures", "The Frontier: tougher monsters", "Meet
+other shop owners", "Battle other players", then "Your shop! Open packs, sell cards, get rich"), each popping in with a
+chime, magic whooshes on the fast swoops between places, a camera that widens as it speeds up and banks into turns
+(`WelcomePath.lens`), and at your shop a finale in the world (`Util/WelcomeFx`; the owner: "dont add drawn confetti.
+search for a free/safe particle/VFX on creator store"): confetti shooting up from cannons either side of the door
+(Onogork's Confetti Particle Emitter, 8250441745: its own textures, its colour script left out, each piece's size and
+colour flickering as it tumbles) and over the sign the Euphoric Games VFX Pack's star burst, gold stars and a soft glow
+(`Config/Welcome` CARDS, CUES, SOUNDS, LENS, FINALE; `WelcomePath.cardAt`, `crossed`; their textures preloaded as the
+flight starts, `PackEmitter.preload`, or the one-off burst draws blank the first time).
+**Footsteps** (the owner 2026-11-11: "lets just add a footsteps sound effect on whatever the character is stepping on";
+`FootstepController`, `Config/Footsteps`, `Util/FootstepRules`): every player within 45 studs (your own and the 6
+nearest others) takes a step each 5.5 studs they walk on the ground (about 3 a second), sounding like the floor:
+grass, dirt, sand, snow, wood or stone (by its material; plastic, metal and the rest sound like stone), a different
+sound each step at a random pitch, from their feet; none in the air, in water or sitting. Your own floor comes from
+Humanoid.FloorMaterial, others' from a short ray down. Roblox's own running loop is muted. Roblox's licensed library has
+no plain human footsteps, so they're Pro Sound Effects' nearest surface hits (dirt thuds and a foliage rustle, loose
+sand, snow crunches, muted wood thuds, the first stomp of a foot-stomp clip), at half the first try's volume (the owner:
+"lower the volume of the footsteps"). Code builds the fixed pieces (`Util/TownLayout`, same on every
 server): modern black LED street lights (StreetLight slot, 11 tall, arm over the street) on the sidewalks at every plot gap
 and row end, 4 benches round the spring, a trimmed hedge on a concrete curb (Hedge slot) round the whole island just
 inside its edge, a frame at each portal. Nothing lands inside a plot, in the street (except street lights, portals
@@ -1978,7 +2002,10 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
     the body"), and a stud nearer the camera while the wearer's body hides the part (seen from the front; a camera ray
     each frame against the body's visible parts, `WeaponLook.drawPastBody`, `WeaponLooks.BEHIND_BODY`); it starts at +4 (Epic and
     Legendary at +2), thickens each level and is full from +7; +10 Awakened adds ribbons streaming off the blade;
-    half the aura on the back below +10; every particle is locked to the sword, so walking leaves no trail (owner);
+    on the back 40% of the aura below +10 and 70% from +10, its flames drawn at 70% of their size so the blade shows
+    through (`WeaponLooks.BACK`; the owner 2026-11-11: "the actual sword on my back is hard to see due to the thickness
+    of the flames"; it was half the aura and full-size flames); every particle is locked to the sword, so walking leaves
+    no trail (owner);
   - the cheap glow: creature-style sparkles a second (1-5 by rarity, more per level and for Grade S) and a light
     (Epic and Legendary, in hand; on the back too once Awakened);
   - the budget: your own sword and the 3 nearest others within 60 studs get the full aura (checked every 0.5 s,
@@ -2394,11 +2421,18 @@ clips in `assets/monster-animations/Pish`, the model as `assets/npcs/Pish.rbxm` 
 (clips through `Util/ClipPlayer`, markers make his barks, yawn and digging dirt), style `Party.CREATURE_STYLE.Pish`.
 All numbers in `Config/Pish`.
 - [ ] **First visit** (`TutorialService`, `TutorialController`, `Util/TutorialCues`, `Util/TutorialRules`): starts after
-  the welcome flight. **Pish arrives** first (round 3; the shot round 5, owner 2026-11-10): a bark, then the camera
-  rides low beside him on his paws as he runs in (30 studs, about 4.6 s; from in front of the player if that's clear,
+  the welcome flight. **Pish arrives** first (round 3; the shot round 5, owner 2026-11-10; magic since 2026-11-11, the
+  owner: "change the pish and chicken entrance cinematic. not the same as this but still epic/magical/welcoming";
+  Chikin's the same, `Util/DogMagic`, `ArrivalShot.magic`, `Pish.ARRIVAL.MAGIC`): the camera looks out from beside the
+  player as a golden magic circle on the ground calls him for 1.6 s (spinning, brightening, gold motes pulling in, a
+  twinkling), then a pop of stars, streaks and light (the Euphoric pack's) and he barks and hops out of it as his name
+  card pops up big at the top ("Pish! Your shop buddy", "Chikin! Your battle coach", `PishTalk` / `ChikinTalk` LABELS)
+  with a cheerful APM sting, the camera pushing in on him; then he runs in trailing gold sparkles, the camera riding
+  low beside him on his paws as he runs in (30 studs, about 4.6 s; from in front of the player if that's clear,
   else the first clear way fanning out left and right, so he never runs through a shelf or a wall), slowly pans up to
   his face, and zooms out to a wide shot of the two of you as he stops in front of the player and barks (the first of
-  four angles with a clear view); about 7 s in all, then the camera goes back behind the player and he talks
+  four angles with a clear view) in hearts and stars; about 9 s in all, then the camera goes back behind the player and
+  he talks
   (`Util/ArrivalShot`, `Pish.ARRIVAL`, `tests/ArrivalShot`; the camera never goes through a wall; once per first
   visit, after the loading screen and its fade for a player back mid-tour; a tap skips it). Eight steps completed by what the
   game sees: open his present (`pishPresent`, "Pish's Present": a First Spark pack with his picture, in the Bag),
@@ -2533,7 +2567,12 @@ his card for a face.
   shown as a "💪 m:ss" chip beside Pish's Luck (`BuffController`), hearts for everyone nearby. Its last time is saved
   in data.combat's spare pishLuckAt (the table shares Pish's shape, so no new schema), so a Courage still running
   carries into the Frontier and the Dungeon and a rejoin can't reset the wait. Hidden on your screen while your own
-  Chikin leads your combat tour.
+  Chikin leads your combat tour. **He greets** anyone who comes within 16 studs (the owner 2026-11-11: "make chikin
+  greet you or other player when your at a certain distance from them"; `Chikin.TOWN.greet`, `Util/GreetRules`): the
+  nearest player he hasn't greeted in 2 minutes (checked twice a second, not while he's petted or already saying hello,
+  never a player his tutorial self is leading); he stops 2.5 s, faces them and plays a play bow, happy hop or bark, and
+  a white speech bubble over him says hello by their display name for 3 s with a bark (`ChikinTalk.GREETS`, never the
+  same line twice running; the marker's GreetUserId / GreetLine / GreetId tell every client nearby).
 
 ---
 
@@ -2697,6 +2736,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── ButterflyController.luau # client butterflies at the plaza spring, Forest Falls and the trails' start
     │   │   ├── DayCycleController.luau # the town's day cycle on this client (afternoon outside town)
     │   │   ├── MusicController.luau     # music where you are: the town, the Wild valley's areas, its boss arenas (crossfades)
+    │   │   ├── FootstepController.luau  # footsteps on whatever you and players near you walk on
     │   │   ├── TreeSwayController.luau # trees near the camera lean in the wind
     │   │   ├── TownCritterController.luau # eight Cute Pets animals running round their homes (or laps, or resting)
     │   │   ├── PlazaNpcController.luau # the plaza's sitting townsfolk: sit animation and sips (client only)
@@ -2852,7 +2892,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── HudMascot.luau  # the creature peeking over the party bar: pictures, sizes, eyes, voice, timing (plain data)
         │   ├── DayCycle.luau   # the day cycle's phases and looks (plain data)
         │   ├── Ambient.luau    # tree sway, the frame watchdog, the town's animals (plain data)
-        │   ├── Welcome.luau    # the welcome cinematic's flight (plain data)
+        │   ├── Welcome.luau    # the welcome cinematic's flight, its place cards, cues, lens and confetti (plain data)
+        │   ├── Footsteps.luau  # footsteps: surfaces by floor material, their sounds, the stride (plain data)
         │   ├── Pish.luau       # the tutorial: steps and pictures, gifts, luck, lessons, stuck helper, Town Pish, sounds
         │   ├── PishTalk.luau   # what Pish says: each step's intro and now lines, lessons, nudges, the Skip and tour card labels
         │   ├── Game.luau       # the game's name (a placeholder until it's decided)
@@ -2889,7 +2930,9 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── SkyLook.luau       # applies a day cycle look to Lighting
             ├── FrameWatchdog.luau # turns the extras off on slow frames (pure, Lune-tested)
             ├── Wander.luau        # ambient animals wandering round home (pure, Lune-tested)
-            ├── WelcomePath.luau   # the welcome cinematic's camera path (pure, Lune-tested)
+            ├── WelcomePath.luau   # the welcome cinematic's camera path, place cards, cues and lens (pure, Lune-tested)
+            ├── FootstepRules.luau # footsteps: a floor's surface, when a step comes, which sound (pure, Lune-tested)
+            ├── GreetRules.luau    # Town Chikin's greeting: whom he greets next and which line (pure, Lune-tested)
             ├── TutorialRules.luau # the first visit's saved table: read, steps recorded, skip, replay (pure, Lune-tested)
             ├── LuckRules.luau     # Pish's Luck: the hit slot's boost, the gift's floor, cooldown, badge text (pure, Lune-tested)
             ├── LessonRules.luau   # lessons due at a level-up or an event and waiting, what placing or ordering completes, the stuck helper's nudge (pure, Lune-tested)

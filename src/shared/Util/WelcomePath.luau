@@ -43,6 +43,56 @@ function WelcomePath.sample(keys: { Key }, t: number): (Vec, Vec)
 	return spline(before.pos, a.pos, b.pos, after.pos, u), spline(before.look, a.look, b.look, after.look, u)
 end
 
+local POP_FROM = 0.5 -- a card starts at half its size...
+local FADE_IN_SHARE = 0.6 -- ...shows fully this far into its pop...
+local FADE_OUT = 0.35 -- ...and fades over its last this many seconds (your shop's card holds to the end)
+
+-- An ease out that overshoots a little and settles: a bounce
+local function backOut(u: number): number
+	local c1 = 1.70158
+	local c3 = c1 + 1
+	return 1 + c3 * (u - 1) ^ 3 + c1 * (u - 1) ^ 2
+end
+
+-- The place card showing `seconds` into the flight (Config/Welcome CARDS: from, to): its index, its size (bouncing in
+-- over `pop` seconds) and how visible it is (0-1); nil between cards
+function WelcomePath.cardAt(cards: { any }, seconds: number, pop: number): (number?, number, number)
+	for index, card in cards do
+		if seconds >= card.from and seconds < card.to then
+			local age = seconds - card.from
+			local u = math.clamp(age / pop, 0, 1)
+			local scale = if u >= 1 then 1 else POP_FROM + (1 - POP_FROM) * backOut(u)
+			local fadeIn = math.clamp(age / (pop * FADE_IN_SHARE), 0, 1)
+			local fadeOut = if card.finale then 1 else math.clamp((card.to - seconds) / FADE_OUT, 0, 1)
+			return index, scale, math.min(fadeIn, fadeOut)
+		end
+	end
+	return nil, 0, 0
+end
+
+-- The cues (Config/Welcome CUES: at) the flight passed between `before` and `now` (seconds), in order: each fires once
+function WelcomePath.crossed(cues: { any }, before: number, now: number): { any }
+	local out = {}
+	for _, cue in cues do
+		if cue.at > before and cue.at <= now then
+			table.insert(out, cue)
+		end
+	end
+	table.sort(out, function(a, b)
+		return a.at < b.at
+	end)
+	return out
+end
+
+-- The camera's field of view for its `speed` (studs a second) and its roll in degrees for its `turn` (its look turning,
+-- degrees a second; positive to the left), within Config/Welcome LENS's limits. The roll is the camera's own
+-- (CFrame.Angles' z: positive banks it left), so it leans into the turn
+function WelcomePath.lens(speed: number, turn: number, cfg: any): (number, number)
+	local fov = cfg.fov + math.min(cfg.maxExtra, math.max(0, speed) * cfg.fovPerSpeed)
+	local roll = math.clamp(turn * cfg.rollPerTurn, -cfg.maxRoll, cfg.maxRoll)
+	return fov, roll
+end
+
 -- How far the time-lapse has got (0 = morning, 1 = sunset): sunset is reached at 1 - SUNSET_SHARE and held
 function WelcomePath.dayProgress(cfg: any, t: number): number
 	return math.min(1, math.max(0, t) / (1 - cfg.SUNSET_SHARE))

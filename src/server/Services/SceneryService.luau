@@ -1147,44 +1147,60 @@ local function areaEffect(folder: Instance, kind: string, rate: number, at: Vect
 	emitter.Parent = box
 end
 
+-- The aurora (Config/Scenery AURORA): the store pack's beams between two upside-down attachments, `strength` times as
+-- solid as the pack's own, shown day and night. A persistent model, so it never streams out of the sky.
+local function buildAurora()
+	local aurora = Scenery.AURORA
+	local model = Instance.new("Model")
+	model.Name = "Aurora"
+	model.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
+	local anchor = anchorPart(model, "AuroraAnchor", Vector3.new(aurora.at.x, aurora.at.y, aurora.at.z), Vector3.new(2, 2, 2))
+	anchor.CFrame = CFrame.new(anchor.Position) * CFrame.Angles(0, math.rad(aurora.yaw), 0)
+	local function hook(name: string, along: number, roll: number): Attachment
+		local attachment = Instance.new("Attachment")
+		attachment.Name = name
+		attachment.CFrame = CFrame.new(0, aurora.lift, along) * CFrame.Angles(0, 0, math.rad(roll))
+		attachment.Parent = anchor
+		return attachment
+	end
+	local first = hook("One", aurora.span, -180)
+	local second = hook("Two", -aurora.span, 180)
+	for index, spec in aurora.BEAMS do
+		local colors = {}
+		for _, key in spec.colors do
+			table.insert(colors, ColorSequenceKeypoint.new(key[1], Props.color(key[2])))
+		end
+		local fade = {}
+		for _, key in spec.transparency do
+			table.insert(fade, NumberSequenceKeypoint.new(key[1], 1 - math.clamp((1 - key[2]) * aurora.strength, 0, 1)))
+		end
+		local beam = Instance.new("Beam")
+		beam.Name = `AuroraBeam{index}`
+		beam.Attachment0 = first
+		beam.Attachment1 = second
+		beam.FaceCamera = false
+		beam.Width0 = spec.width
+		beam.Width1 = spec.width
+		beam.CurveSize0 = aurora.curve[1]
+		beam.CurveSize1 = aurora.curve[2]
+		beam.Segments = aurora.segments
+		beam.Texture = spec.texture
+		beam.TextureMode = Enum.TextureMode.Static
+		beam.TextureLength = spec.length
+		beam.TextureSpeed = spec.speed
+		beam.LightEmission = 1
+		beam.LightInfluence = 0
+		beam.Color = ColorSequence.new(colors)
+		beam.Transparency = NumberSequence.new(fade)
+		beam.Parent = anchor
+	end
+	model.Parent = workspace
+end
+
 local function buildEffects(folder: Folder)
 	for _, spec in Scenery.EMITTERS do
 		if spec.kind == "aurora" then
-			local aurora = Scenery.AURORA
-			for index, curtain in aurora.CURTAINS do
-				local anchor = anchorPart(folder, "Aurora", Vector3.new(curtain.from.x, curtain.from.y, curtain.from.z))
-				-- Upright attachments hang the beam's width vertically; turned a quarter about Y, their X axis (the way
-				-- CurveSize bends the beam) points across the curtain, so it waves
-				local function hook(at: { x: number, y: number, z: number }): Attachment
-					local attachment = Instance.new("Attachment")
-					attachment.Parent = anchor
-					attachment.WorldCFrame = CFrame.new(at.x, at.y, at.z) * CFrame.Angles(0, math.rad(90), 0)
-					return attachment
-				end
-				local beam = Instance.new("Beam")
-				beam.Attachment0 = hook(curtain.from)
-				beam.Attachment1 = hook(curtain.to)
-				beam.FaceCamera = false
-				beam.Width0 = curtain.width
-				beam.Width1 = curtain.width * 0.85
-				beam.CurveSize0 = curtain.curve[1]
-				beam.CurveSize1 = curtain.curve[2]
-				beam.Segments = 24
-				beam.Texture = aurora.TEXTURE
-				beam.TextureMode = Enum.TextureMode.Wrap
-				beam.TextureLength = aurora.TEXTURE_LENGTH
-				beam.TextureSpeed = aurora.SPEED * (if index % 2 == 0 then -1 else 1)
-				beam.LightEmission = 1
-				beam.LightInfluence = 0
-				beam.ZOffset = index * 0.5
-				beam.Transparency = NumberSequence.new({
-					NumberSequenceKeypoint.new(0, 1),
-					NumberSequenceKeypoint.new(0.15, aurora.TRANSPARENCY),
-					NumberSequenceKeypoint.new(0.85, aurora.TRANSPARENCY),
-					NumberSequenceKeypoint.new(1, 1),
-				})
-				beam.Parent = anchor
-			end
+			buildAurora()
 		elseif spec.kind == "plume" then
 			buildPlume(folder, volcanoSmoke or Vector3.new(spec.x, spec.y, spec.z))
 		else

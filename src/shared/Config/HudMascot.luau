@@ -9,7 +9,9 @@ return {
 	-- Transparent stickers (assets/ui/mascot, made with tools/ui-art/cutout.py): its head and two front paws, cut off at
 	-- the paws; its tail. "" means no mascot.
 	images = { peek = "rbxassetid://125657246581399", tail = "rbxassetid://102206389239561" },
-	size = { peek = { 86, 68 }, tail = { 30, 31 } }, -- pixels at full HUD scale (the pictures' own shapes, 512x405 and 322x333)
+	-- pixels at full HUD scale (the pictures' own shapes, 512x405 and 322x333); a little smaller since the owner
+	-- 2026-11-11 ("make pish a little smaller here on the UI"; it was 86x68 and 30x31)
+	size = { peek = { 70, 55 }, tail = { 25, 26 } },
 	-- Its eyes on the peek picture, as shares of its width and height, for blinking
 	eyes = {
 		{ x = 0.289, y = 0.36, w = 0.127, h = 0.116 },

@@ -141,6 +141,13 @@ function TownDog.idle(dog: Dog, clips: { string }, napChance: number, rng: Rando
 	TownDog.play(dog, clip)
 end
 
+-- It stops `seconds`, faces `from` and plays `clip` (Town Chikin greeting a player who came near)
+function TownDog.hold(dog: Dog, from: Vector3, clip: string, seconds: number)
+	dog.pettedUntil = os.clock() + seconds
+	TownDog.face(dog, from)
+	TownDog.play(dog, clip)
+end
+
 -- A player at `from` pets it: it holds still, faces them and plays "petted" (marker Petting: their UserId, for a moment)
 function TownDog.petted(dog: Dog, from: Vector3, userId: number)
 	dog.pettedUntil = os.clock() + PETTED_SECONDS

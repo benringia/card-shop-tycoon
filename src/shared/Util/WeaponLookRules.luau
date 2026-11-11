@@ -7,6 +7,7 @@
 export type Layers = {
 	edge: number, -- 0-1: the inner glow (the painted runes, gems, crystal) and its light's strength
 	aura: number, -- 0-1: the aura's density (0: none; 1: the full blaze)
+	auraSize: number, -- its flames' size (1 in hand; smaller on the back, so the blade shows)
 	ribbons: boolean, -- +10 Awakened: flame ribbons streaming off the blade
 	awakened: boolean, -- +10
 	sparkles: number, -- the cheap glow's sparkles a second (creature-style)
@@ -63,8 +64,10 @@ function WeaponLookRules.layers(looks: any, rarity: string, level: number, grade
 		+ (if grade == "S" then looks.SPARKLES.gradeS else 0)
 	return {
 		edge = edgeAt(looks, rarity, whole),
-		-- On the back half the aura and no light, except an Awakened weapon: it shows off (owner, 2026-11-06)
-		aura = if place == "back" and not awakened then aura * looks.BACK.auraShare else aura,
+		-- On the back less aura and no light, except an Awakened weapon: it shows off (owner, 2026-11-06), a little
+		-- thinner; smaller flames there either way (owner 2026-11-11)
+		aura = if place ~= "back" then aura elseif awakened then aura * looks.BACK.awakenedShare else aura * looks.BACK.auraShare,
+		auraSize = if place == "back" then looks.BACK.sizeShare else 1,
 		ribbons = awakened,
 		awakened = awakened,
 		sparkles = sparkles,

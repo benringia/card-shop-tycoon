@@ -959,7 +959,7 @@ local function arrive()
 		refreshFocus()
 		TutorialCues.skipButton(step ~= "" and step ~= "bye", openTourCard)
 		updateTalk()
-	end)
+	end, { name = PishTalk.LABELS.arrivalName, role = PishTalk.LABELS.arrivalRole, color = Color3.fromRGB(255, 165, 60) })
 end
 
 -- The Pish button (the peeking Pish over the party bar) offers his tour again after the first visit, and at its goodbye

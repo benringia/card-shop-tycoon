@@ -519,7 +519,7 @@ local function arrive()
 			return
 		end
 		TutorialCues.skipButton(true, openTourCard)
-	end)
+	end, { name = ChikinTalk.LABELS.arrivalName, role = ChikinTalk.LABELS.arrivalRole, color = Color3.fromRGB(255, 110, 80) })
 end
 
 local function onStep()

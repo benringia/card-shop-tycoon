@@ -8,11 +8,17 @@
 -- attribute CombatDone; the client shows the prompt only then) gives Chikin's Courage: their creatures hit
 -- COURAGE.share harder for COURAGE.seconds (player attribute ChikinCourageUntil, os.time; BattleService boosts the
 -- fight), once per COURAGE.cooldown. CombatTutorialService loads and saves the last time (data.combat's pishLuckAt).
+-- He greets a player who comes near (the owner 2026-11-11; Chikin.TOWN.greet, Util/GreetRules): the nearest he hasn't
+-- greeted lately; he stops, faces them and plays a clip, and the marker's GreetUserId / GreetLine / GreetId tell clients
+-- to show his bubble (TownChikinController). Not a player his tutorial self is leading (they don't see Town Chikin).
 local AnalyticsService = game:GetService("AnalyticsService")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Chikin = require(Shared:WaitForChild("Config"):WaitForChild("Chikin"))
+local ChikinTalk = require(Shared:WaitForChild("Config"):WaitForChild("ChikinTalk"))
+local GreetRules = require(Shared:WaitForChild("Util"):WaitForChild("GreetRules"))
 local LuckRules = require(Shared:WaitForChild("Util"):WaitForChild("LuckRules"))
 local PishPath = require(Shared:WaitForChild("Util"):WaitForChild("PishPath"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -30,6 +36,8 @@ local rng = Random.new()
 local dog: TownDog.Dog? = nil
 local courageAt: { [Player]: number } = {} -- os.time of each player's last Courage from him (CombatTutorialService saves it)
 local allowPet = RateLimiter.new(PET_COOLDOWN)
+local greetedAt: { [string]: number } = {} -- os.clock() he last greeted each player, by UserId
+local lastLine: number? = nil
 
 local function day(walker: TownDog.Dog)
 	local town = Chikin.TOWN
@@ -51,6 +59,45 @@ end
 local function characterRoot(player: Player): BasePart?
 	local character = player.Character
 	return if character then character:FindFirstChild("HumanoidRootPart") :: BasePart? else nil
+end
+
+-- A player his tutorial self is leading right now (Town Chikin is hidden on their screen)
+local function inHisTour(player: Player): boolean
+	local step = player:GetAttribute("CombatStep")
+	return typeof(step) == "string" and step ~= "" and step ~= Chikin.WAIT_STEP
+end
+
+-- Every few moments: the nearest player he hasn't greeted lately, if one has come near, gets a hello
+local function greetLoop(walker: TownDog.Dog)
+	local cfg = Chikin.TOWN.greet
+	while true do
+		task.wait(cfg.every)
+		if os.clock() < walker.pettedUntil then
+			continue -- being petted or already saying hello
+		end
+		local here = walker.marker.Position
+		local near: { GreetRules.Near } = {}
+		local byKey: { [string]: Player } = {}
+		for _, player in Players:GetPlayers() do
+			local root = characterRoot(player)
+			if root and not inHisTour(player) then
+				local key = tostring(player.UserId)
+				table.insert(near, { key = key, distance = (root.Position - here).Magnitude })
+				byKey[key] = player
+			end
+		end
+		local key = GreetRules.pick(near, greetedAt, os.clock(), cfg)
+		local player = if key then byKey[key] else nil
+		local root = if player then characterRoot(player) else nil
+		if key and player and root then
+			greetedAt[key] = os.clock()
+			TownDog.hold(walker, root.Position, cfg.clips[rng:NextInteger(1, #cfg.clips)], cfg.hold)
+			lastLine = GreetRules.line(#ChikinTalk.GREETS, rng:NextNumber(), lastLine)
+			walker.marker:SetAttribute("GreetUserId", player.UserId)
+			walker.marker:SetAttribute("GreetLine", lastLine)
+			walker.marker:SetAttribute("GreetId", ((walker.marker:GetAttribute("GreetId") :: number?) or 0) + 1)
+		end
+	end
 end
 
 local function onPet(player: Player)
@@ -118,6 +165,10 @@ function TownChikinService.Start()
 	dog = made
 	prompt.Triggered:Connect(onPet)
 	task.spawn(day, made)
+	task.spawn(greetLoop, made)
+	Players.PlayerRemoving:Connect(function(player)
+		greetedAt[tostring(player.UserId)] = nil
+	end)
 end
 
 return TownChikinService

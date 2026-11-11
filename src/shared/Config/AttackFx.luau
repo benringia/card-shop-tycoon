@@ -265,6 +265,12 @@ return {
 		groundThunder = "rbxassetid://13923972553",
 		lightningSmoke = "rbxassetid://9650504257",
 		raindrop = "rbxassetid://83707706646646", -- the Tide hit's droplets (Config/SwordFx ELEMENT_HIT; MoveFx's raindrop)
+		-- The welcome flight's finale (Config/Welcome FINALE, owner 2026-11-11): Onogork's Confetti Particle Emitter
+		-- (8250441745; its own "1024px White Square" and "Circle") and the Euphoric pack's star burst and gold stars
+		confettiSquare = "rbxassetid://708162568",
+		confettiCircle = "rbxassetid://2695001063",
+		starStreak = "rbxassetid://4963436775",
+		goldStars = "rbxassetid://1851669703",
 	},
 	-- Where lightning lands (ElementFx.bolt's end, a sky strike; the owner 2026-11-11: the packs' particles, not drawn
 	-- lines): Yona's Electricity Impact copied from the pack (Explosion-VFX, its emitters' own numbers at about a third

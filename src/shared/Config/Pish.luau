@@ -74,7 +74,6 @@ return {
 	-- close camera beside him (up, to his side, ahead of him) and the height it looks at; `panFrom` / `panTo` /
 	-- `wideFrom`: shares of his run; `wide`: the shot of you both from the side
 	ARRIVAL = {
-		delay = 0.8, -- after the first visit starts, before his first bark and his run
 		from = 30, -- studs from the player he starts (in front, else the first clear way; Util/ArrivalShot.pickRun), `startSide` to their left
 		minRun = 10, -- the shortest run when every way is blocked
 		wallGap = 1.5, -- studs he starts short of a wall or a shelf
@@ -98,6 +97,42 @@ return {
 			{ side = 2.5, out = -8, up = 4.5 },
 		},
 		wideClear = 0.85,
+		-- His magical entrance first (the owner 2026-11-11: "change the pish and chicken entrance cinematic. not the same
+		-- as this but still epic/magical/welcoming"; Util/DogMagic, ArrivalShot.magic; Chikin's too): the camera looks
+		-- out from beside you as a golden magic circle on the ground calls him for `call` seconds (motes pulling in,
+		-- a twinkling), then a pop of stars and light and he hops out of it (`hop` seconds, his happyHop) as his name
+		-- card pops up with a cheerful sting; then he runs in trailing sparkles (the shot below) and arrives in hearts
+		-- and stars. `circle` studs; the pop's emitters as Util/PackEmitter reads them (the Euphoric pack's, as the
+		-- welcome finale's). Pro Sound Effects and an APM sting.
+		MAGIC = {
+			call = 1.6,
+			hop = 1.0,
+			circle = { radius = 3.4, spin = 90, lift = 0.15, light = 16 },
+			camera = { back = 3, side = 3.5, up = 4.5, lookUp = 1.5, hero = { ahead = 7, side = 2.5, up = 2, lookUp = 1.6 }, push = 2.5 },
+			banner = { seconds = 2.6, pop = 0.45 },
+			trail = { rate = 30, lifetime = { 0.5, 0.9 }, size = 0.45, color = { 255, 220, 120 } },
+			sounds = {
+				call = "rbxassetid://9116379771", -- Magical Wing Flutter, Rapid, Pitched-Up Chimes (the circle calling)
+				poof = "rbxassetid://9125644321", -- Magic Twirling Small High Pitch Spinning Chime (he pops out)
+				pop = "rbxassetid://9117841516", -- Pop Airy 2
+				ding = "rbxassetid://9126073960", -- Synth Sparkle Tone Ding (his name card)
+				sting = "rbxassetid://9039712094", -- APM "Family Friendly Tag - Sting 1" (5 s)
+				arrive = "rbxassetid://9116394545", -- Magic Glows Soft Clusters Of Chiming Hits 1 (hearts as he arrives)
+			},
+			volumes = { call = 0.6, poof = 0.7, pop = 0.5, ding = 0.5, sting = 0.25, arrive = 0.55 },
+			stars = {
+				count = 10,
+				emitter = { texture = "goldStars", lifetime = { 0.8, 1.2 }, speed = { 3, 7 }, spread = { 180, 180 }, rotation = { -360, 360 }, size = { { 0, 1.2 }, { 1, 1.2 } }, transparency = { { 0, 1 }, { 0.4, 0 }, { 1, 1 } }, color = { 255, 212, 57 }, emission = 2, brightness = 4, zOffset = 1 },
+			},
+			burst = {
+				count = 18,
+				emitter = { texture = "starStreak", lifetime = { 0.35, 0.55 }, speed = { 60, 110 }, spread = { 360, 360 }, drag = 12, size = { { 0, 0.6 }, { 0.5, 1.6 }, { 1, 0 } }, transparency = { { 0, 0.25 }, { 1, 0 } }, color = { 255, 214, 110 }, emission = 1, brightness = 4, facing = "parallel", zOffset = 2 },
+			},
+			glow = {
+				count = 1,
+				emitter = { texture = "auraLight", lifetime = { 0.8, 0.8 }, size = { { 0, 9 }, { 1, 9 } }, transparency = { { 0, 1 }, { 0.3, 0.5 }, { 1, 1 } }, color = { 255, 220, 140 }, emission = 1, brightness = 3 },
+			},
+		},
 		follow = 9, -- how quickly the camera follows its shot (per second)
 		waitLimit = 30, -- seconds he waits for the loading screen at most
 		afterLoading = 0.8, -- and then its fade (Config/LoadingScreen FADE_SECONDS 0.6) before the first shot

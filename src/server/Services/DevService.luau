@@ -396,7 +396,7 @@ function DevService.Start()
 	addCommand(folder, "music", function(player, text)
 		local counts: { [string]: number } = { [Music.TOWN.key] = #Music.TOWN.options }
 		local keys = { Music.TOWN.key }
-		for _, list in { Music.WILD.areas, Music.WILD.arenas, (Music :: any).FRONTIER.areas, (Music :: any).FRONTIER.arenas, { Music.OPENING } } do
+		for _, list in { Music.WILD.areas, Music.WILD.arenas, (Music :: any).FRONTIER.areas, (Music :: any).FRONTIER.arenas, { Music.OPENING, (Music :: any).WELCOME } } do
 			for _, place in list do
 				counts[place.key] = #place.options
 				table.insert(keys, place.key)

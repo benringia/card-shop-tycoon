@@ -71,6 +71,11 @@ return {
 		napChance = 0.06,
 		petHoldMax = 8, -- seconds petting can hold him in one place (Util/PishPath.holdEnd)
 		idleClips = { "sit", "sniff", "bark", "playBow", "headTilt", "shake", "scratch", "happyHop", "dig", "tailChase" },
+		-- He greets a player who comes within `range` studs (the owner 2026-11-11: "Make chicken greet you or other player
+		-- when your at a certain distance from them"; Util/GreetRules): the nearest one he hasn't greeted in `cooldown`
+		-- seconds, every `every` seconds at most; he stops `hold` seconds, faces them, plays one of `clips` and barks,
+		-- and a bubble over him says one of ChikinTalk.GREETS with their name
+		greet = { range = 16, cooldown = 120, every = 0.5, hold = 2.5, clips = { "playBow", "happyHop", "bark" } },
 		stops = {
 			{ x = 110, z = -20, weight = 3 }, -- the Wild's trailhead
 			{ x = 110, z = 20, weight = 3 }, -- the Frontier's

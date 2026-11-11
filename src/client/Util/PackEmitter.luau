@@ -2,7 +2,9 @@
 -- A ParticleEmitter built from a pack effect's plain-data spec (owner 2026-11-08: effects copied from free Creator Store
 -- VFX packs, docs/weapons.md "Pack effects"; specs in Config/SwordFx IMPACT and Config/WeaponLooks ELEMENT_AURA).
 -- Sizes and speeds are `scale` times the spec's; `color = "tint"` (or "deep") takes `tint`, `whiten` of the way to
--- white. The emitter comes back unparented at rate 0: the caller places it, then bursts it (Emit) or gives it a rate.
+-- white; `colorKeys` ({ { time, { r, g, b } } }) a colour that changes over a particle's life (the welcome finale's
+-- confetti flickering as it spins). The emitter comes back unparented at rate 0: the caller places it, then bursts it
+-- (Emit) or gives it a rate.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local AttackFx = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("AttackFx"))
@@ -28,12 +30,37 @@ local function sequence(points: { { number } }, scale: number): NumberSequence
 	return NumberSequence.new(keypoints)
 end
 
+-- Downloads these specs' textures (in the background) so a one-off burst isn't drawn blank the first time it plays
+function PackEmitter.preload(specs: { any })
+	local probes: { Instance } = {}
+	for _, spec in specs do
+		local id = (AttackFx.TEXTURES :: any)[spec.texture]
+		if id then
+			local decal = Instance.new("Decal")
+			decal.Texture = id
+			table.insert(probes, decal)
+		end
+	end
+	task.spawn(function()
+		pcall(function()
+			game:GetService("ContentProvider"):PreloadAsync(probes)
+		end)
+	end)
+end
+
 function PackEmitter.make(spec: any, scale: number, tint: Color3?): ParticleEmitter
 	local emitter = Instance.new("ParticleEmitter")
 	emitter.Texture = (AttackFx.TEXTURES :: any)[spec.texture] or ""
 	local white = Color3.new(1, 1, 1)
-	local color = if spec.color == "tint" or spec.color == "deep" then tint or white else rgb(spec.color)
+	local color = if spec.color == "tint" or spec.color == "deep" then tint or white elseif spec.color then rgb(spec.color) else white
 	emitter.Color = ColorSequence.new(color:Lerp(white, spec.whiten or 0))
+	if spec.colorKeys then
+		local keys = {}
+		for _, key in spec.colorKeys do
+			table.insert(keys, ColorSequenceKeypoint.new(key[1], rgb(key[2])))
+		end
+		emitter.Color = ColorSequence.new(keys)
+	end
 	emitter.LightEmission = spec.emission or 1
 	emitter.LightInfluence = 0
 	emitter.Brightness = spec.brightness

@@ -1,9 +1,13 @@
 --!strict
 -- A guide dog's arrival (Pish's after the welcome flight, Chikin's after Pish's goodbye; owner 2026-11-10 for its shot):
--- a bark, then the camera rides low beside him on his paws as he runs in, slowly pans up to his face, and zooms out to
--- the two of you as he stops in front of the player and barks (Util/ArrivalShot, Config/Pish ARRIVAL). He runs in from
--- the first clear way (never through a shelf or a wall), the camera rides on the clearer side and never goes through a
--- wall. A tap skips it. `done` runs once the camera is back behind the player.
+-- since the owner 2026-11-11 ("change the pish and chicken entrance cinematic ... still epic/magical/welcoming") it
+-- opens with magic (Util/DogMagic, ArrivalShot.magic, Config/Pish ARRIVAL.MAGIC): the camera looks out from beside the
+-- player as a golden circle on the ground calls him, he pops out of a burst of stars with a bark and a happy hop as his
+-- name card pops up, the camera pushing in on him; then he runs in trailing sparkles, the camera riding low beside him
+-- on his paws, slowly panning up to his face and zooming out to the two of you as he stops in front of the player in
+-- hearts and stars and barks (Util/ArrivalShot, Config/Pish ARRIVAL). He runs in from the first clear way (never
+-- through a shelf or a wall), the camera rides on the clearer side and never goes through a wall. A tap skips it.
+-- `done` runs once the camera is back behind the player.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -13,13 +17,18 @@ local Pish = require(Shared:WaitForChild("Config"):WaitForChild("Pish"))
 local ArrivalShot = require(Shared:WaitForChild("Util"):WaitForChild("ArrivalShot"))
 
 local PishVisual = require((script.Parent :: Instance):WaitForChild("PishVisual"))
+local DogMagic = require((script.Parent :: Instance):WaitForChild("DogMagic"))
 
 local DogArrival = {}
 
 local ARRIVAL = Pish.ARRIVAL
+local MAGIC = ARRIVAL.MAGIC
 
--- `at`: the player's root; `dog`: his marker (placed at the start here); `playBark`: his bark clip
-function DogArrival.run(at: BasePart, dog: BasePart, visual: PishVisual.Visual?, character: Model?, playBark: () -> (), done: () -> ())
+-- His name card as he pops out (DogMagic.banner): his name, what he is to you, its colour
+export type Intro = { name: string, role: string, color: Color3 }
+
+-- `at`: the player's root; `dog`: his marker (placed at the start here); `playBark`: his bark clip; `intro`: his card
+function DogArrival.run(at: BasePart, dog: BasePart, visual: PishVisual.Visual?, character: Model?, playBark: () -> (), done: () -> (), intro: Intro?)
 	local up = Vector3.yAxis
 	local look = Vector3.new(at.CFrame.LookVector.X, 0, at.CFrame.LookVector.Z).Unit
 	local feet = at.Position - Vector3.new(0, 3, 0)
@@ -77,7 +86,23 @@ function DogArrival.run(at: BasePart, dog: BasePart, visual: PishVisual.Visual?,
 		local hit = workspace:Raycast(from, to - from, blockers)
 		return if hit then hit.Position + (from - to).Unit * 0.5 else to
 	end
+	-- The magic: the camera beside the player looking out at the circle, then pushing in on him as he pops out
+	local cam = MAGIC.camera
+	local callTarget = start + up * cam.lookUp
+	local callShot = CFrame.lookAt(clear(callTarget, feet - outward * cam.back + side * cam.side + up * cam.up), callTarget)
+	local heroTarget = start + up * cam.hero.lookUp
+	local heroShot = CFrame.lookAt(clear(heroTarget, start + runWay * cam.hero.ahead + side * cam.hero.side + up * cam.hero.up), heroTarget)
+	local magicStarted = os.clock()
+	local running = false
 	local function shot(): CFrame
+		if not running then
+			local now = ArrivalShot.magic(os.clock() - magicStarted, MAGIC)
+			if now.phase == "call" then
+				return callShot
+			end
+			local eased = 1 - (1 - math.min(1, now.share * cam.push)) ^ 3
+			return callShot:Lerp(heroShot, eased)
+		end
 		local here = dog.Position
 		local covered = Vector3.new(here.X - start.X, 0, here.Z - start.Z).Magnitude
 		local frame = ArrivalShot.at(if runLength > 0 then covered / runLength else 1, ARRIVAL)
@@ -89,7 +114,10 @@ function DogArrival.run(at: BasePart, dog: BasePart, visual: PishVisual.Visual?,
 		local wide = CFrame.lookAt(clear(wideTarget, widePlace), wideTarget)
 		return close:Lerp(wide, frame.wide)
 	end
-	camera.CFrame = shot() -- a cut to his paws
+	camera.CFrame = shot() -- a cut to the magic circle
+	if visual then
+		PishVisual.setShown(visual, false) -- not there till he pops out of the stars
+	end
 	local skipped = false
 	local tap = UserInputService.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -106,10 +134,30 @@ function DogArrival.run(at: BasePart, dog: BasePart, visual: PishVisual.Visual?,
 				task.wait()
 			end
 		end
-		hold(ARRIVAL.delay)
-		if visual and not skipped then
-			PishVisual.sound(visual, "bark")
+		-- the circle calls him...
+		DogMagic.preload()
+		local stopCircle = DogMagic.circle(start, MAGIC.call)
+		DogMagic.sound("call")
+		hold(MAGIC.call)
+		stopCircle()
+		-- ...he pops out of the stars, barks and hops, his name card up
+		if visual then
+			PishVisual.setShown(visual, true)
 		end
+		if not skipped then
+			DogMagic.poof(start + up * 1.2)
+			if visual then
+				PishVisual.sound(visual, "bark")
+				PishVisual.play(visual, "happyHop")
+			end
+			if intro then
+				DogMagic.banner(intro.name, intro.role, intro.color)
+			end
+			hold(MAGIC.hop)
+		end
+		-- then he runs in, sparkles trailing him
+		running = true
+		local stopTrail = DogMagic.trail(dog)
 		while not skipped and dog.Parent do
 			local now = dog.Position
 			local flat = Vector3.new(stop.X - now.X, 0, stop.Z - now.Z)
@@ -120,11 +168,16 @@ function DogArrival.run(at: BasePart, dog: BasePart, visual: PishVisual.Visual?,
 			local nextAt = now + flat.Unit * math.min(flat.Magnitude, ARRIVAL.speed * dt)
 			dog.CFrame = CFrame.lookAt(nextAt, nextAt + flat.Unit)
 		end
+		stopTrail()
 		local facing = Vector3.new(at.Position.X, stop.Y, at.Position.Z)
 		if dog.Parent then
 			dog.CFrame = CFrame.lookAt(stop, facing)
 		end
 		if not skipped then
+			DogMagic.arrive(stop + up * 1.5)
+			if visual then
+				PishVisual.hearts(visual)
+			end
 			playBark()
 			hold(if visual then math.max(PishVisual.length(visual, "bark"), 1) else 1)
 		end

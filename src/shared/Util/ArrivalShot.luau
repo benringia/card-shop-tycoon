@@ -25,6 +25,20 @@ local function ease(value: number, from: number, to: number): number
 	return t * t * (3 - 2 * t)
 end
 
+export type Magic = { phase: "call" | "hop" | "run", share: number, shown: boolean }
+
+-- His magical entrance (Config/Pish ARRIVAL.MAGIC, owner 2026-11-11), `elapsed` seconds in: the magic circle calling
+-- him (`share` charged, not there yet), then he pops out of the stars and hops (`share` of the hop), then he runs in
+function ArrivalShot.magic(elapsed: number, cfg: any): Magic
+	if elapsed < cfg.call then
+		return { phase = "call", share = math.clamp(elapsed / cfg.call, 0, 1), shown = false }
+	end
+	if elapsed < cfg.call + cfg.hop then
+		return { phase = "hop", share = (elapsed - cfg.call) / cfg.hop, shown = true }
+	end
+	return { phase = "run", share = 1, shown = true }
+end
+
 function ArrivalShot.at(progress: number, cfg: Config): Shot
 	local pan = ease(progress, cfg.panFrom, cfg.panTo)
 	local function blend(key: string): number

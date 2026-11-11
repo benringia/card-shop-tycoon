@@ -6,8 +6,43 @@ local Pish = require("../src/shared/Config/Pish")
 local expect = require("./lib/expect")
 
 local CFG = Pish.ARRIVAL
+local AttackFx = require("../src/shared/Config/AttackFx")
+local PishTalk = require("../src/shared/Config/PishTalk")
+local ChikinTalk = require("../src/shared/Config/ChikinTalk")
 
 return {
+	-- The owner 2026-11-11: "change the pish and chicken entrance cinematic. not the same as this but still
+	-- epic/magical/welcoming": a magic circle calls him, he pops out of a burst of stars with his name, then runs in
+	["magic: the call, then the poof and his hop, then his run"] = function()
+		local magic = CFG.MAGIC
+		expect.equal(ArrivalShot.magic(0, magic).phase, "call")
+		local calling = ArrivalShot.magic(magic.call * 0.5, magic)
+		expect.equal(calling.phase, "call")
+		expect.near(calling.share, 0.5, 1e-9, "the circle half charged")
+		expect.equal(calling.shown, false, "not there yet")
+		local popped = ArrivalShot.magic(magic.call + 0.01, magic)
+		expect.equal(popped.phase, "hop")
+		expect.equal(popped.shown, true, "out of the stars")
+		local running = ArrivalShot.magic(magic.call + magic.hop + 0.01, magic)
+		expect.equal(running.phase, "run")
+		assert(magic.call >= 1 and magic.call <= 2.5, "a short call")
+		assert(magic.hop >= 0.6 and magic.hop <= 1.6, "a short hop")
+		for name, id in magic.sounds do
+			assert(string.match(id, "^rbxassetid://%d+$"), `{name}: a sound`)
+		end
+		for _, piece in { magic.stars, magic.burst, magic.glow } do
+			assert(AttackFx.TEXTURES[piece.emitter.texture], `{piece.emitter.texture}: a known texture`)
+		end
+	end,
+
+	["each dog's name card: a short name and what he is to you"] = function()
+		for _, talk in { PishTalk, ChikinTalk } do
+			local labels = talk.LABELS :: any
+			assert(labels.arrivalName and #labels.arrivalName <= 10, "a short name")
+			assert(labels.arrivalRole and #labels.arrivalRole <= 22, "a short role")
+		end
+	end,
+
 	["it starts low on his paws"] = function()
 		local shot = ArrivalShot.at(0, CFG)
 		expect.near(shot.lookUp, CFG.feet.lookUp, 1e-6, "looking at his paws")

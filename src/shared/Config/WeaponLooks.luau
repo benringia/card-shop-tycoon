@@ -140,8 +140,10 @@ return {
 	LIGHT = { Epic = true, Legendary = true },
 	LIGHT_LOOK = { range = 7, brightness = 1 },
 	-- On the back (in town and between fights): this share of the aura and no light, except an Awakened (+10) weapon,
-	-- which keeps both (owner 2026-11-06)
-	BACK = { auraShare = 0.5 },
+	-- which keeps its light and `awakenedShare` of the aura (owner 2026-11-06); its flames drawn `sizeShare` of their
+	-- size so the blade shows through (owner 2026-11-11: "the actual sword on my back is hard to see due to the thickness
+	-- of the flames. reduce it a little bit")
+	BACK = { auraShare = 0.4, awakenedShare = 0.7, sizeShare = 0.7 },
 	-- The cheap glow (every sword outside the budget, and under the aura on yours): sparkles a second by rarity, more
 	-- per level, more for Grade S (like the creatures' Party.GLOW)
 	SPARKLES = { byRarity = { Common = 1, Rare = 2, ["Very Rare"] = 3, Epic = 4, Legendary = 5 }, perLevel = 0.3, gradeS = 2 },

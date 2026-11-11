@@ -337,7 +337,7 @@ return {
 	EMITTERS = {
 		{ area = "Frostpeak", kind = "snow", x = 192, y = 44, z = 128, size = { x = 90, z = 90 }, rate = 22 },
 		{ area = "Frostpeak", kind = "snow", x = 200, y = 50, z = 200, size = { x = 90, z = 60 }, rate = 10 },
-		{ area = "Frostpeak", kind = "aurora" }, -- AURORA's curtains (one effect)
+		{ area = "Frostpeak", kind = "aurora" }, -- AURORA's beams across the northern sky (one effect)
 		{ area = "Frostpeak", kind = "glints", x = 192, y = 11, z = 136, size = { x = 90, z = 70 }, rate = 8 },
 		{ area = "EmberCanyon", kind = "embers", x = -178, y = 1, z = 0, size = { x = 90, z = 48 }, rate = 12 },
 		{ area = "EmberCanyon", kind = "bubbles", x = -236, y = 0.5, z = 0, size = { x = 12, z = 12 }, rate = 6 },
@@ -355,17 +355,60 @@ return {
 		{ area = "ForestFalls", kind = "fireflies", x = 190, y = 4, z = -125, size = { x = 75, z = 65 }, rate = 10 },
 		{ area = "ForestFalls", kind = "leaves", x = 190, y = 34, z = -125, size = { x = 90, z = 70 }, rate = 5 },
 	},
-	-- The aurora over Frostpeak: hanging curtains (beams with upright attachments hang their width vertically), a
-	-- curtain texture turned on its side so its glowing bottom edge runs along the beam's lower edge, waving and drifting
+	-- The aurora across the northern sky (the owner 2026-11-11: "better aurora for town", from the Creator Store):
+	-- TheRisingTides' Aurora Borealis (model 4556126742, free; its textures 4553095322 "AB" and 4537255327 "wind" are
+	-- public), its five beams copied here, never the model. Two upside-down attachments `span` studs either side of `at`
+	-- (turned `yaw` degrees) hang each beam as a vast curtain, bent by `curve`, its texture drifting at `speed`. Shown at
+	-- any time of day (the owner 2026-11-11). Colours and transparency are { time, value } keys.
 	AURORA = {
-		TEXTURE = "rbxassetid://138568776053883", -- assets/ui/fx/aurora-curtain-beam.png (aurora-curtain.png turned 90 degrees)
-		TEXTURE_LENGTH = 70,
-		SPEED = 0.15,
-		TRANSPARENCY = 0.2,
-		CURTAINS = {
-			{ from = { x = 125, y = 78, z = 228 }, to = { x = 255, y = 84, z = 205 }, width = 44, curve = { 30, -26 } },
-			{ from = { x = 150, y = 92, z = 252 }, to = { x = 280, y = 96, z = 230 }, width = 40, curve = { -24, 30 } },
-			{ from = { x = 110, y = 70, z = 205 }, to = { x = 215, y = 74, z = 190 }, width = 34, curve = { 22, 18 } },
+		at = { x = 0, y = 260, z = 420 }, -- past the north edge of town, over Frostpeak's side
+		yaw = 90, -- the curtain runs east-west
+		span = 500,
+		lift = 4.5,
+		curve = { 500, 260 },
+		segments = 250,
+		strength = 1.5, -- times as solid as the pack's own transparency keys (never past solid): its look was faint here
+		BEAMS = {
+			{
+				texture = "rbxassetid://4553095322",
+				length = 650,
+				speed = 0.01,
+				width = 500,
+				colors = { { 0, { 0, 255, 226 } }, { 0.13, { 120, 178, 239 } }, { 0.33, { 255, 92, 255 } }, { 0.68, { 78, 205, 234 } }, { 1, { 0, 255, 226 } } },
+				transparency = { { 0, 1 }, { 0.3, 0.51 }, { 0.5, 0.74 }, { 0.7, 0.52 }, { 1, 1 } },
+			},
+			{
+				texture = "rbxassetid://4553095322",
+				length = 800,
+				speed = -0.01,
+				width = 700,
+				colors = { { 0, { 192, 66, 255 } }, { 0.69, { 47, 245, 255 } }, { 1, { 192, 66, 255 } } },
+				transparency = { { 0, 1 }, { 0.31, 0.48 }, { 0.5, 0.76 }, { 0.7, 0.52 }, { 1, 1 } },
+			},
+			{
+				texture = "rbxassetid://4537255327",
+				length = 1500,
+				speed = 0.03,
+				width = 800,
+				colors = { { 0, { 255, 92, 247 } }, { 1, { 255, 92, 247 } } },
+				transparency = { { 0, 1 }, { 0.28, 0.69 }, { 0.8, 0.91 }, { 1, 1 } },
+			},
+			{
+				texture = "rbxassetid://4537255327",
+				length = 1000,
+				speed = -0.06,
+				width = 260,
+				colors = { { 0, { 193, 49, 255 } }, { 1, { 193, 49, 255 } } },
+				transparency = { { 0, 1 }, { 0.51, 0.88 }, { 1, 1 } },
+			},
+			{
+				texture = "rbxassetid://4537255327",
+				length = 2000,
+				speed = -0.03,
+				width = 400,
+				colors = { { 0, { 74, 198, 255 } }, { 1, { 74, 198, 255 } } },
+				transparency = { { 0, 1 }, { 0.23, 0.82 }, { 0.81, 0.89 }, { 1, 1 } },
+			},
 		},
 	},
 	-- Ambient sounds, positioned and quiet (free Creator Store sounds; the user judges them by ear)

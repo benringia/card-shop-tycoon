@@ -58,8 +58,19 @@ return {
 		end
 	end,
 
+	-- The welcome flight's music (the owner 2026-11-11: "more epic/jolly/welcoming")
+	["the welcome flight has its own music, found by its key"] = function()
+		local welcome = (Music :: any).WELCOME
+		assert(welcome and #welcome.tracks >= 1, "a piece")
+		expect.equal(MusicRules.find(Music, welcome.key), welcome)
+		assert(welcome.volume > 0 and welcome.volume <= 0.3, "under the whooshes")
+		for _, option in welcome.options do
+			assert(string.match(option.id, "^rbxassetid://%d+$"), option.name)
+		end
+	end,
+
 	["music keys are unique across the town, the Wild, the Frontier and the opening"] = function()
-		local seen = { [Music.TOWN.key] = true, [Music.OPENING.key] = true }
+		local seen = { [Music.TOWN.key] = true, [Music.OPENING.key] = true, [(Music :: any).WELCOME.key] = true }
 		for _, world in { Music.WILD, (Music :: any).FRONTIER } do
 			for _, list in { world.areas, world.arenas } do
 				for _, place in list do

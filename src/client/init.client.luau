@@ -61,6 +61,7 @@ local TitleController = require(Controllers:WaitForChild("TitleController"))
 local SwordController = require(Controllers:WaitForChild("SwordController"))
 local WeaponSwitchController = require(Controllers:WaitForChild("WeaponSwitchController"))
 local MusicController = require(Controllers:WaitForChild("MusicController"))
+local FootstepController = require(Controllers:WaitForChild("FootstepController"))
 local WildLoadingController = require(Controllers:WaitForChild("WildLoadingController"))
 
 -- One rounded font for every text in the game, before any screen is built
@@ -94,6 +95,7 @@ if Place.isFrontier() or Place.isDungeon() then
 	SwordController.Start() -- swords on characters, the first-sword popup
 	WeaponSwitchController.Start() -- the quick weapon switch chip on the right edge (Q)
 	LevelUpController.Start() -- the level-up light pillar on you, your creatures and players nearby
+	FootstepController.Start() -- footsteps on whatever you walk on
 	if Place.isDungeon() then
 		DungeonController.Start() -- the run line and Leave
 	else
@@ -113,6 +115,7 @@ else
 	ButterflyController.Start()
 	DayCycleController.Start()
 	MusicController.Start() -- music in the town, the Wild valley's areas and its boss arenas
+	FootstepController.Start() -- footsteps on whatever you walk on
 	WildLoadingController.Start() -- the Wild's loading screen: holds you still until the valley round you is in
 	TreeSwayController.Start()
 	TownCritterController.Start()

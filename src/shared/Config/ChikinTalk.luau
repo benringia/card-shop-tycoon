@@ -78,7 +78,16 @@ return {
 		tourGift = "Finish it to fight like a pro!",
 		replay = "Chikin's fight lesson",
 		petMe = "pet me for courage!", -- under Town Chikin's tag when you can pet him (TownChikinController)
+		arrivalName = "Chikin!", -- his name card as he pops out of the stars (Util/DogMagic.banner)
+		arrivalRole = "Your battle coach",
 	} :: { [string]: string },
+	-- Town Chikin's hello to a player who comes near (%s: their name; Util/GreetRules, TownChikinController)
+	GREETS = {
+		"Woof! Hi, %s!",
+		"Hey %s! Ready to battle?",
+		"%s! Good to see you!",
+		"Arf! Hi %s! Train with me?",
+	},
 	NEXT = "Next",
 	BYE = "Bye!",
 	GO = "Let's go!", -- a hello's last button

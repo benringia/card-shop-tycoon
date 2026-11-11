@@ -142,7 +142,10 @@ function MusicController.Start()
 			local inTown = not FRONTIER and MusicRules.inTown(x, z, Town.BOUNDS, Music.TOWN.margin)
 			last = MusicRules.place(Music, arena, area, inTown, last, World)
 		end
-		-- The pack opening has its own music while it shows; where you are (`last`) is kept for after
+		-- The welcome flight and the pack opening have their own music while they show; where you are (`last`) is kept
+		if player:GetAttribute("WelcomePlaying") == true then
+			return (Music :: any).WELCOME
+		end
 		if OpeningStage.isShown() then
 			return Music.OPENING
 		end
@@ -208,7 +211,7 @@ function MusicController.Start()
 		end)
 	end
 
-	for _, attribute in { "MusicPreviewPlace", "MusicPreview", "MusicPreviewVolume" } do
+	for _, attribute in { "MusicPreviewPlace", "MusicPreview", "MusicPreviewVolume", "WelcomePlaying" } do
 		player:GetAttributeChangedSignal(attribute):Connect(update)
 	end
 	task.spawn(function()

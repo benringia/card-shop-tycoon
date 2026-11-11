@@ -170,6 +170,8 @@ return {
 		skipYes = "Skip tour",
 		close = "Tap the X to close this window.", -- a window the step doesn't use is open (TutorialController)
 		petMe = "pet me for luck!",
+		arrivalName = "Pish!", -- his name card as he pops out of the stars (Util/DogMagic.banner)
+		arrivalRole = "Your shop buddy",
 		replayAsk = "Want my shop tour again?",
 		replayYes = "Yes!",
 		replayNo = "Not now", -- under Town Pish's name at your shop, once your first visit is done

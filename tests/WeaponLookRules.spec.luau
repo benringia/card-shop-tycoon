@@ -66,14 +66,21 @@ return {
 		expect.equal(WeaponLookRules.layers(Looks, "Common", 0, "S", "hand").twinkle, true)
 	end,
 
-	["on the back: half the aura and no light, except an Awakened weapon, which keeps both"] = function()
+	-- The owner 2026-11-11: "the actual sword on my back is hard to see due to the thickness of the flames. reduce it a
+	-- little bit": on the back the flames draw smaller (`auraSize`) and an Awakened weapon's thin out a little too
+	["on the back: less aura, smaller flames and no light; an Awakened weapon keeps its light and most of its aura"] = function()
 		local hand = WeaponLookRules.layers(Looks, "Legendary", 6, "C", "hand")
 		local back = WeaponLookRules.layers(Looks, "Legendary", 6, "C", "back")
 		expect.equal(hand.light, true, "a Legendary lights up in hand")
 		expect.equal(back.light, false)
 		expect.near(back.aura, hand.aura * Looks.BACK.auraShare, 1e-9)
+		expect.equal(hand.auraSize, 1, "full size in hand")
+		expect.equal(back.auraSize, Looks.BACK.sizeShare)
+		assert(Looks.BACK.sizeShare < 1 and Looks.BACK.sizeShare >= 0.5, "smaller, still a blaze")
 		local awakened = WeaponLookRules.layers(Looks, "Epic", 10, "S", "back")
-		expect.equal(awakened.aura, 1)
+		expect.near(awakened.aura, Looks.BACK.awakenedShare, 1e-9)
+		assert(awakened.aura < 1 and awakened.aura > back.aura, "an Awakened back keeps more than a plain one")
+		expect.equal(awakened.auraSize, Looks.BACK.sizeShare)
 		expect.equal(awakened.light, true)
 		expect.equal(WeaponLookRules.layers(Looks, "Rare", 10, "S", "back").light, false, "lights are Epic and Legendary only")
 	end,

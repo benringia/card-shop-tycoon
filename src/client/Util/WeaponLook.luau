@@ -267,10 +267,20 @@ function WeaponLook.apply(model: Model, weaponId: string, grade: string, level: 
 	model:SetAttribute("FullAura", true) -- the reveals' stage models stay full; SwordController's budget changes it
 end
 
+-- `sequence` with every size times `factor`
+local function scaledSize(sequence: NumberSequence, factor: number): NumberSequence
+	local points = {}
+	for _, point in sequence.Keypoints do
+		table.insert(points, NumberSequenceKeypoint.new(point.Time, point.Value * factor, point.Envelope * factor))
+	end
+	return NumberSequence.new(points)
+end
+
 -- Shows what the model's layers and detail call for (setPlace stores the layers on the model)
 local function refresh(model: Model)
 	local full = model:GetAttribute("FullAura") == true
 	local density = (model:GetAttribute("AuraDensity") :: number?) or 0
+	local size = (model:GetAttribute("AuraSize") :: number?) or 1
 	local ribbons = model:GetAttribute("Ribbons") == true
 	local sparkles = (model:GetAttribute("SparkleRate") :: number?) or 0
 	for _, item in model:GetDescendants() do
@@ -280,6 +290,13 @@ local function refresh(model: Model)
 		if item.Name == "Aura" then
 			item.Rate = ((item:GetAttribute("FullRate") :: number?) or 0) * density
 			item.Enabled = full and density > 0
+			-- smaller on the back (its full size kept the first time, then scaled from it)
+			local base = item:GetAttribute("BaseSize")
+			if typeof(base) ~= "NumberSequence" then
+				base = item.Size
+				item:SetAttribute("BaseSize", base)
+			end
+			item.Size = scaledSize(base :: NumberSequence, size)
 		elseif item.Name == "Ribbons" then
 			item.Rate = WeaponLooks.AURA.ribbon.rate
 			item.Enabled = full and ribbons
@@ -300,6 +317,7 @@ function WeaponLook.setPlace(model: Model, weaponId: string, grade: string, leve
 	end
 	local glow = rgb(look.glow)
 	model:SetAttribute("AuraDensity", layers.aura)
+	model:SetAttribute("AuraSize", layers.auraSize)
 	model:SetAttribute("Ribbons", layers.ribbons)
 	model:SetAttribute("SparkleRate", layers.sparkles)
 	for _, item in model:GetDescendants() do
