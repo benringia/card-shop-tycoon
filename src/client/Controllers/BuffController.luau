@@ -1,6 +1,7 @@
 --!strict
 -- Small buff badges above the cash in the status corner, side by side in one row: a summoned creature's perk
--- ("⚡ +10%") and Pish's Luck while it lasts ("🍀 2:41", from the PishLuckUntil attribute, Server/Services/PishService).
+-- ("⚡ +10%"), Pish's Luck while it lasts ("🍀 2:41", from the PishLuckUntil attribute, Server/Services/PishService) and
+-- Chikin's Courage ("💪 4:12", ChikinCourageUntil, Server/Services/TownChikinService).
 -- Hover one (or tap on a phone) for a tooltip saying what it does and where it comes from.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -9,6 +10,7 @@ local TweenService = game:GetService("TweenService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
+local Chikin = require(Config:WaitForChild("Chikin"))
 local Party = require(Config:WaitForChild("Party"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local LuckRules = require(Shared:WaitForChild("Util"):WaitForChild("LuckRules"))
@@ -27,6 +29,8 @@ type Perk = { kind: string, value: number, text: string }
 local TAP_TOOLTIP_SECONDS = 4
 local POP_TWEEN = TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 local LUCK_GREEN = Color3.fromRGB(70, 175, 95)
+local COURAGE_RED = Color3.fromRGB(230, 95, 70)
+local COURAGE_ICON = "💪"
 local LUCK_TICK = 0.25 -- seconds between countdown updates
 
 local BuffController = {}
@@ -37,6 +41,7 @@ local player = Players.LocalPlayer
 local row: Frame
 local creature: Chip
 local luck: Chip
+local courage: Chip
 local tooltip: Frame
 local tooltipTitle: TextLabel
 local tooltipBody: TextLabel
@@ -45,6 +50,7 @@ local perk: Perk? = nil
 local sourceBeastId: string? = nil
 local tapToken = 0
 local luckRunning = false
+local courageRunning = false
 
 -- Icon and element colour for a perk kind ("Hustle" -> the Volt icon and colour)
 local function getPerkLook(kind: string): (string, Color3)
@@ -70,7 +76,7 @@ end
 -- The tooltip over a chip, right edges lined up: the creature's perk and its card, or Pish's Luck
 local function showTooltip(chip: Chip, visible: boolean)
 	local current = perk
-	local shown = visible and (chip == luck or current ~= nil)
+	local shown = visible and (chip == luck or chip == courage or current ~= nil)
 	if shown then
 		local badge = chip.badge
 		tooltip.Position = UDim2.fromOffset(badge.AbsolutePosition.X + badge.AbsoluteSize.X, badge.AbsolutePosition.Y - 4)
@@ -78,6 +84,10 @@ local function showTooltip(chip: Chip, visible: boolean)
 			tooltipTitle.Text = "🍀 Pish's Luck · better pulls"
 			tooltipTitle.TextColor3 = LUCK_GREEN:Lerp(Color3.new(1, 1, 1), 0.3)
 			tooltipBody.Text = "Petting Pish makes Very Rare, Epic and Legendary cards more likely in your packs for a while."
+		elseif chip == courage then
+			tooltipTitle.Text = `{COURAGE_ICON} Chikin's Courage · hits {math.round(Chikin.COURAGE.share * 100)}% harder`
+			tooltipTitle.TextColor3 = COURAGE_RED:Lerp(Color3.new(1, 1, 1), 0.3)
+			tooltipBody.Text = "Petting Chikin by the portals makes your creatures hit harder in fights for a while."
 		elseif current then
 			local icon, color = getPerkLook(current.kind)
 			tooltipTitle.Text = `{icon} {current.text}`
@@ -91,7 +101,7 @@ end
 
 -- The row shows while either chip does (an empty one would still take a gap in the column)
 local function refreshRow()
-	row.Visible = (creature.badge.Visible or luck.badge.Visible) and not Hud.hides("buffs") -- hidden through the tours
+	row.Visible = (creature.badge.Visible or luck.badge.Visible or courage.badge.Visible) and not Hud.hides("buffs") -- hidden through the tours
 	if tooltipFor and not tooltipFor.badge.Visible then
 		showTooltip(tooltipFor, false)
 	end
@@ -148,6 +158,32 @@ local function runLuck()
 			task.wait(LUCK_TICK)
 		end
 		luckRunning = false
+	end)
+end
+
+-- Chikin's Courage counting down to 0:00, then hidden
+local function runCourage()
+	if courageRunning then
+		return
+	end
+	courageRunning = true
+	task.spawn(function()
+		local first = true
+		while true do
+			local text = LuckRules.badgeText(player:GetAttribute("ChikinCourageUntil") :: number?, workspace:GetServerTimeNow(), COURAGE_ICON)
+			courage.badge.Visible = text ~= nil
+			refreshRow()
+			if not text then
+				break
+			end
+			courage.pill.Text = text
+			if first then
+				first = false
+				pop(courage)
+			end
+			task.wait(LUCK_TICK)
+		end
+		courageRunning = false
 	end)
 end
 
@@ -233,6 +269,9 @@ function BuffController.Start()
 	luck = makeChip("LuckBadge", 2)
 	luck.pill.TextColor3 = LUCK_GREEN:Lerp(Color3.new(0, 0, 0), 0.25)
 	luck.stroke.Color = LUCK_GREEN
+	courage = makeChip("CourageBadge", 3)
+	courage.pill.TextColor3 = COURAGE_RED:Lerp(Color3.new(0, 0, 0), 0.25)
+	courage.stroke.Color = COURAGE_RED
 
 	tooltip = Instance.new("Frame")
 	tooltip.Name = "BuffTooltip"
@@ -266,8 +305,10 @@ function BuffController.Start()
 	tooltipBody.TextWrapped = true
 
 	player:GetAttributeChangedSignal("PishLuckUntil"):Connect(runLuck)
+	player:GetAttributeChangedSignal("ChikinCourageUntil"):Connect(runCourage)
 	Hud.onCalm(refreshRow)
 	runLuck()
+	runCourage()
 
 	Remotes.PartyChanged.OnClientEvent:Connect(function(payload)
 		if typeof(payload) ~= "table" then

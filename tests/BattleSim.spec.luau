@@ -617,6 +617,36 @@ return {
 		expect.equal(spawn.arrive, nil, "no run in")
 	end,
 
+	-- Town Chikin's Courage (the owner 2026-11-11: petting him, "combat buff but 5 minutes"): one owner's creatures hit
+	-- that share harder while it holds; their sword and the other owners' creatures don't
+	["boost: an owner's creatures hit harder while it holds, nobody else's"] = function()
+		local function firstHit(boost: number?): number
+			local state = BattleSim.new(combat, {
+				fighters = { { id = "p1", element = "Tide", hp = 100000, atk = 50, spd = 10, owner = "1" } },
+				abilities = false,
+				canRun = false,
+			}, { fighters = { monster("Tide", 100000, 1, 1) }, abilities = false, canRun = false }, 7)
+			if boost then
+				BattleSim.setBoost(state, "1", boost)
+			end
+			for _, entry in timedEvents(state, 6) do
+				if entry.event.type == "attack" and entry.event.from == "a:p1" then
+					return entry.event.damage
+				end
+			end
+			return 0
+		end
+		local plain, boosted = firstHit(nil), firstHit(0.1)
+		assert(plain > 0, "it hits")
+		expect.equal(math.abs(boosted - plain * 1.1) <= 1, true, `10% harder ({boosted} vs {plain})`)
+		local state = bossWith({}, 4, { owned("p1", "1", 100000), owned("p2", "2", 100000) })
+		BattleSim.setBoost(state, "1", 0.1)
+		expect.equal(BattleSim.boostOf(state, "1"), 0.1)
+		expect.equal(BattleSim.boostOf(state, "2"), 0, "the other player's: none")
+		BattleSim.setBoost(state, "1", 0)
+		expect.equal(BattleSim.boostOf(state, "1"), 0, "gone when it ends")
+	end,
+
 	-- DevService's /bosshp (Studio): a boss down to a share of its HP, its summons coming on the next step
 	["setHpShare: a standing fighter goes down to that share of its HP; its summons follow on the next step"] = function()
 		local state = bossWith(SUMMONS, 4)

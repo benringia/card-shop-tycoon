@@ -44,6 +44,32 @@ function PishPath.route(from: Point, to: Point, centre: Point, radius: number): 
 	return out
 end
 
+-- A town dog's next stop (Town Chikin's, Config/Chikin TOWN.stops): its index, picked by `roll` (0-1) by weight, never
+-- `current` (the stop it stands at) while there's another; nil with no stops
+function PishPath.pickStop(stops: { { weight: number } }, roll: number, current: number?): number?
+	if #stops == 0 then
+		return nil
+	end
+	local total = 0
+	for index, stop in stops do
+		if index ~= current or #stops == 1 then
+			total += stop.weight
+		end
+	end
+	local left = math.clamp(roll, 0, 0.999999) * total
+	local last = nil
+	for index, stop in stops do
+		if index ~= current or #stops == 1 then
+			last = index
+			left -= stop.weight
+			if left < 0 then
+				return index
+			end
+		end
+	end
+	return last
+end
+
 -- When he moves on after being petted: when the last pet's hold ends (`pettedUntil`), but at most `maxHold` seconds
 -- after this hold began (`holdStarted`), so one player petting him again and again can't keep him at their door
 function PishPath.holdEnd(pettedUntil: number, holdStarted: number, maxHold: number): number

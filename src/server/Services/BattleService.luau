@@ -23,6 +23,7 @@ local Announcements = require(Config:WaitForChild("Announcements"))
 local AttackFx = require(Config:WaitForChild("AttackFx"))
 local Bosses = require(Config:WaitForChild("Bosses"))
 local Combat = require(Config:WaitForChild("Combat"))
+local Chikin = require(Config:WaitForChild("Chikin"))
 local Dungeon = require(Config:WaitForChild("Dungeon"))
 local Defeat = require(Config:WaitForChild("Defeat"))
 local Party = require(Config:WaitForChild("Party"))
@@ -658,6 +659,16 @@ local function followDebuff(fight: Fight, member: Member)
 	if slow ~= member.slow then
 		member.slow = slow
 		updateMovement(member)
+	end
+end
+
+-- Each step: Town Chikin's Courage on the member's creatures while their ChikinCourageUntil (os.time, set by
+-- TownChikinService) holds, gone the step it runs out
+local function followCourage(fight: Fight, member: Member)
+	local untilTime = member.player:GetAttribute("ChikinCourageUntil")
+	local share = if typeof(untilTime) == "number" and untilTime > os.time() then Chikin.COURAGE.share else 0
+	if BattleSim.boostOf(fight.sim, member.owner) ~= share then
+		BattleSim.setBoost(fight.sim, member.owner, share)
 	end
 end
 
@@ -1691,6 +1702,7 @@ local function stepFights(dt: number)
 		moveSummons(fight, dt)
 		for _, member in fight.members do
 			followDebuff(fight, member)
+			followCourage(fight, member)
 		end
 		if fight.sim.result then
 			endFight(fight, outcomeOf(fight.sim.result))

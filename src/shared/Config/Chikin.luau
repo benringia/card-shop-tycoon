@@ -57,4 +57,33 @@ return {
 	FIGHT_TIP_SECONDS = 7, -- a tip in a fight moves on after this long unused
 	FIRST_TIP_SECONDS = 3.5, -- the first ("your creature fights by itself"): a new player's first fight lasts ~12 s
 	CHECK_SECONDS = 1, -- how often the server looks at the party, the summon, the Wild and the level
+
+	-- Town Chikin (the owner 2026-11-11: "after chikin's tutorial he will become an NPC too like pish, walking around the
+	-- town"; his picks: the portal side of town, a combat buff for 5 minutes; TownChikinService): one dog everyone sees,
+	-- walking between `stops` (x, z in the town; picked by `weight`, never the one he's at, Util/PishPath.pickStop):
+	-- mostly the Wild and Frontier trailheads at the east end, sometimes across town to the Arena's. He trots past
+	-- `trotFrom` studs. Pish keeps the shops and the fountain.
+	TOWN = {
+		speed = 5,
+		trotSpeed = 9,
+		trotFrom = 60,
+		idleEvery = { 4, 9 },
+		napChance = 0.06,
+		petHoldMax = 8, -- seconds petting can hold him in one place (Util/PishPath.holdEnd)
+		idleClips = { "sit", "sniff", "bark", "playBow", "headTilt", "shake", "scratch", "happyHop", "dig", "tailChase" },
+		stops = {
+			{ x = 110, z = -20, weight = 3 }, -- the Wild's trailhead
+			{ x = 110, z = 20, weight = 3 }, -- the Frontier's
+			{ x = 126, z = -25, weight = 2 }, -- a little way up each
+			{ x = 126, z = 25, weight = 2 },
+			{ x = 96, z = 0, weight = 2 }, -- the street's east end
+			{ x = 80, z = -14, weight = 1 },
+			{ x = 80, z = 14, weight = 1 },
+			{ x = -110, z = 0, weight = 1 }, -- the Arena's trailhead, across town
+			{ x = -96, z = 0, weight = 1 },
+		},
+	},
+	-- Chikin's Courage: petting him (anyone within `petRange` studs whose combat tour is done) makes their creatures hit
+	-- `share` harder for `seconds`, once per `cooldown` per player (saved as data.combat's pishLuckAt; BattleSim boosts)
+	COURAGE = { petRange = 12, seconds = 300, cooldown = 900, share = 0.1 },
 }

@@ -26,6 +26,7 @@ local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local PartyService = require(Services:WaitForChild("PartyService"))
 local TutorialService = require(Services:WaitForChild("TutorialService"))
+local TownChikinService = require(Services:WaitForChild("TownChikinService"))
 
 type Saved = TutorialRules.Saved
 
@@ -212,6 +213,8 @@ end
 
 local function load(player: Player, data: DataService.PlayerData)
 	states[player] = TutorialRules.read(data.combat, STEPS)
+	-- the shared table's pishLuckAt is Town Chikin's last Courage here (petting gives nothing until it's loaded)
+	TownChikinService.SetCourageAt(player, states[player].pishLuckAt)
 	publish(player)
 	begin(player)
 end
@@ -229,13 +232,14 @@ local function save(player: Player, data: DataService.PlayerData)
 		giftClaimed = state.giftClaimed,
 		customerSent = state.customerSent,
 		lessons = table.clone(state.lessons),
-		pishLuckAt = 0,
+		pishLuckAt = TownChikinService.GetCourageAt(player),
 	}
 end
 
 local function unload(player: Player)
 	states[player] = nil
 	begun[player] = nil
+	TownChikinService.ForgetCourage(player)
 end
 
 function CombatTutorialService.Start()

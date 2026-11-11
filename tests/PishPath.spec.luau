@@ -27,6 +27,18 @@ local function clear(from: Point, points: { Point }, radius: number)
 end
 
 return {
+	-- Town Chikin (the owner 2026-11-11): his stops on the portal side, the trailheads more often than the far Arena
+	["a town dog's next stop: by weight, never the one it's at"] = function()
+		local stops = { { x = 0, z = 0, weight = 3 }, { x = 10, z = 0, weight = 1 } }
+		expect.equal(PishPath.pickStop(stops, 0, nil), 1, "low roll: the first")
+		expect.equal(PishPath.pickStop(stops, 0.74, nil), 1, "three quarters of the weight")
+		expect.equal(PishPath.pickStop(stops, 0.76, nil), 2)
+		expect.equal(PishPath.pickStop(stops, 0, 1), 2, "never the stop it's at")
+		expect.equal(PishPath.pickStop(stops, 0.99, 2), 1)
+		expect.equal(PishPath.pickStop({ { x = 0, z = 0, weight = 1 } }, 0.5, 1), 1, "one stop: that one")
+		expect.equal(PishPath.pickStop({}, 0.5, nil), nil, "none: nil")
+	end,
+
 	["a clear way is one straight leg"] = function()
 		local points = PishPath.route({ x = -30, z = 20 }, { x = 30, z = 20 }, CENTRE, 9)
 		expect.equal(#points, 1)

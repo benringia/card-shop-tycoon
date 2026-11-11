@@ -9,6 +9,33 @@ local expect = require("./lib/expect")
 
 local STEPS = Chikin.STEPS
 
+-- Town Chikin (the owner 2026-11-11: "after chikin's tutorial he will become an NPC too like pish, walking around the
+-- town"; his picks: a combat buff for 5 minutes, the portal side of town)
+local function townChecks()
+	local courage = Chikin.COURAGE
+	expect.equal(courage.seconds, 300, "5 minutes")
+	expect.near(courage.share, 0.1, 1e-9, "creatures hit 10% harder")
+	assert(courage.cooldown >= courage.seconds * 2, "not up all the time")
+	assert(courage.petRange >= 8, "pettable from beside him")
+	local town = Chikin.TOWN
+	assert(#town.stops >= 6, "a few stops")
+	local east, arena = 0, 0
+	for _, stop in town.stops do
+		assert(stop.weight > 0, "every stop can come up")
+		assert(math.abs(stop.z) <= 32 or math.abs(stop.x) >= 100, `({stop.x}, {stop.z}) on the street or a trail`)
+		if stop.x >= 60 then
+			east += stop.weight
+		elseif stop.x <= -90 then
+			arena += stop.weight
+		end
+		assert(stop.x >= 60 or stop.x <= -90, `({stop.x}, {stop.z}) on the portal side, clear of Pish's shops`)
+	end
+	assert(east > arena, "mostly by the Wild and Frontier trails")
+	for _, clip in town.idleClips do
+		assert(table.find(Pish.TOWN.idleClips, clip) or clip == "nap", `{clip}: one of the dogs' clips`)
+	end
+end
+
 local function readable(text: string): boolean
 	for _, code in utf8.codes(text) do
 		local ok = (code >= 0x20 and code <= 0x7E) or code == 0xB7 or code >= 0x1F000 or code == 0xFE0F or code == 0x200D
@@ -20,6 +47,8 @@ local function readable(text: string): boolean
 end
 
 return {
+	["town: Chikin's Courage and his portal-side walk"] = townChecks,
+
 	["his steps: the first fight, a hidden wait for level 4, then the sword"] = function()
 		local order = table.concat(STEPS, ",")
 		expect.equal(order, "hello,party,summon,wild,fight,firstWin,level4,sword,wild2,fight2,boss")

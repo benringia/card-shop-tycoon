@@ -96,6 +96,7 @@ local NAMES = {
 	"WeaponAnnouncement", -- server → all clients: (displayName, weaponId, grade, userId) an Epic or Legendary weapon dropped
 	"WeaponBeacon", -- server → all clients: (userId, weaponId, position) a new boss weapon dropped there: its light column
 	"PishPetted", -- server → all clients: (userId, lucky: boolean) Town Pish was petted: his hearts, and the luck it gave
+	"ChikinPetted", -- server → all clients: (userId, granted: boolean) Town Chikin was petted: his hearts, and the Courage it gave
 	"TutorialAction", -- client → server: (action: "skip" | "replay" | "bye" | "lessonDone", lessonId: string?) the tutorial
 	"CombatTutorialAction", -- client → server: (action: "next" | "skip" | "replay") Chikin's combat tutorial; gives nothing
 	"TutorialState", -- server → client: { firstVisit, step, giftClaimed, lesson: string? } the tutorial's state, a lesson visit
@@ -210,6 +211,7 @@ return {
 	WeaponAnnouncement = remotes.WeaponAnnouncement,
 	WeaponBeacon = remotes.WeaponBeacon,
 	PishPetted = remotes.PishPetted,
+	ChikinPetted = remotes.ChikinPetted,
 	TutorialAction = remotes.TutorialAction,
 	CombatTutorialAction = remotes.CombatTutorialAction,
 	TutorialState = remotes.TutorialState,

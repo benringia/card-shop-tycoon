@@ -70,13 +70,14 @@ function LuckRules.left(untilTime: number?, now: number): number
 	return math.max(0, untilTime - now)
 end
 
--- The luck badge's text: a clover and the time left as m:ss (part of a second shows as a whole one), nil once over
-function LuckRules.badgeText(untilTime: number?, now: number): string?
+-- The luck badge's text: a clover (or `icon`: Chikin's Courage's) and the time left as m:ss (part of a second shows as
+-- a whole one), nil once over
+function LuckRules.badgeText(untilTime: number?, now: number, icon: string?): string?
 	local seconds = math.ceil(LuckRules.left(untilTime, now))
 	if seconds <= 0 then
 		return nil
 	end
-	return string.format("🍀 %d:%02d", seconds // 60, seconds % 60)
+	return string.format("%s %d:%02d", icon or "🍀", seconds // 60, seconds % 60)
 end
 
 return LuckRules

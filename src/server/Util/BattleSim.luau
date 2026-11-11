@@ -223,6 +223,9 @@ export type State = {
 	casts: { Cast }, -- special moves winding up (combat.ABILITY_WINDUP), fired as their time comes
 	ringCount: number, -- rings so far (their ids)
 	ringCheck: ((ring: RingInfo) -> boolean)?, -- is the ring's target inside it as it lands (nil: always)
+	-- Town Chikin's Courage (2026-11-11): by owner, the share harder that owner's creatures hit while it holds
+	-- (BattleService sets and clears it from the player's ChikinCourageUntil)
+	boosts: { [string]: number },
 }
 
 -- A boss's hit on a player, warned of and landing at `at`
@@ -360,6 +363,7 @@ function BattleSim.new(combat: any, sideA: SideInput, sideB: SideInput, seed: nu
 		pending = {},
 		casts = {},
 		ringCount = 0,
+		boosts = {},
 	}
 end
 
@@ -732,7 +736,8 @@ local function hit(
 		table.insert(events, { type = eventType, kind = kind, from = from.id, to = target.id, damage = 0, dodged = true })
 		return 0
 	end
-	local atk = from.atk * multiplier * (if state.time < from.curseUntil then 1 - from.curse else 1) * (1 + perkOf(state, from, "Hype"))
+	local boost = if from.player then 0 else state.boosts[ownerKey(from)] or 0 -- Chikin's Courage: creatures only
+	local atk = from.atk * multiplier * (if state.time < from.curseUntil then 1 - from.curse else 1) * (1 + perkOf(state, from, "Hype")) * (1 + boost)
 	local elementMult, strength = CombatMath.getElementMultiplier(state.combat, element or from.element, target.element)
 	local side = (state.sides :: any)[target.side] :: Side
 	local raw = CombatMath.getDamage(state.combat, atk, elementMult, random(state)) * guarded(side, target)
@@ -1884,6 +1889,16 @@ end
 function BattleSim.getFighter(state: State, id: string): { hp: number, maxHp: number, fainted: boolean }?
 	local fighter = find(state, id)
 	return if fighter then { hp = fighter.hp, maxHp = fighter.maxHp, fainted = fighter.fainted } else nil
+end
+
+-- Town Chikin's Courage on `owner`'s creatures: they hit `share` harder (0: none). BattleService follows the player's
+-- ChikinCourageUntil each step, so it ends mid-fight when its time is up.
+function BattleSim.setBoost(state: State, owner: string, share: number)
+	state.boosts[owner] = if share > 0 then share else nil
+end
+
+function BattleSim.boostOf(state: State, owner: string): number
+	return state.boosts[owner] or 0
 end
 
 -- A standing fighter down to `share` of its max HP (never below 1): DevService's /bosshp in Studio, to reach a

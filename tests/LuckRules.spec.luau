@@ -81,6 +81,7 @@ return {
 		expect.equal(LuckRules.badgeText(1009, 1000), "🍀 0:09")
 		expect.equal(LuckRules.badgeText(1000, 1000), nil)
 		expect.equal(LuckRules.badgeText(nil, 1000), nil)
+		expect.equal(LuckRules.badgeText(1180, 1000, "💪"), "💪 3:00", "Chikin's Courage: its own icon")
 	end,
 
 	["left: seconds of luck left, never below 0"] = function()

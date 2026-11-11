@@ -2517,8 +2517,23 @@ his card for a face.
   used when its button is tapped (phones) or its key pressed; a click on a window isn't a swing. After a rejoin the
   first fight's end says the cheerful lines, and its last button says "Let's go!" when the sword visit is next.
 - Analytics: funnel `CombatTutorial` (`LogFunnelStepEvent`, one step per step), custom event `CombatTutorialSkipped`.
-- Dev: `/chikin reset | step <1-11>`; the admin panel's "Chikin (combat tutorial)" section. Town Chikin (walking the
-  town like Town Pish) is left for later.
+- Dev: `/chikin reset | step <1-11>`; the admin panel's "Chikin (combat tutorial)" section; `/townchikin` (Town
+  Chikin comes to you and petting gives Courage again).
+- [x] **Town Chikin** (the owner 2026-11-11: "after chikin's tutorial he will become an NPC too like pish, walking around
+  the town"; his picks: the portal side of town, "combat buff but 5 minutes"; `TownChikinService`,
+  `TownChikinController`, `Config/Chikin` TOWN and COURAGE): one dog everyone sees, a server marker
+  (`workspace.ChikinNpc.TownChikin`) walking at 5 studs/s (trotting at 9 past 60 studs) between portal-side stops: the
+  Wild and Frontier trailheads at the east end and a little way up each, the street's east end, now and then across
+  town to the Arena's (by weight, never the stop he's at: `PishPath.pickStop`), with idle clips and naps between. Town
+  Pish keeps the shops and the fountain. Their walking is one shared module (`Server/Util/TownDog`: the walk round the
+  fountain, facing, clips, holding still while petted). **Petting** him (within 12 studs, anyone whose combat tour is
+  done: attribute CombatDone; "pet me for courage!" under his tag then) gives **Chikin's Courage** for 5 minutes, once
+  per 15 minutes per player: their creatures hit 10% harder (`BattleSim.setBoost`; `BattleService` follows the
+  player's ChikinCourageUntil each step, so it stops mid-fight when its time is up; the sword and PvP are untouched),
+  shown as a "💪 m:ss" chip beside Pish's Luck (`BuffController`), hearts for everyone nearby. Its last time is saved
+  in data.combat's spare pishLuckAt (the table shares Pish's shape, so no new schema), so a Courage still running
+  carries into the Frontier and the Dungeon and a rejoin can't reset the wait. Hidden on your screen while your own
+  Chikin leads your combat tour.
 
 ---
 
@@ -2609,6 +2624,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── SceneryService.luau   # main town: terrain and scenery round the town, in the three portal areas (Config/Scenery) and in the Wild valley (Config/WildValley)
     │   │   ├── WelcomeService.luau   # the first-visit welcome cinematic's saved flag (SeenWelcome)
     │   │   ├── PishService.luau      # Town Pish: wandering the town, petting him for luck (luck times kept for TutorialService)
+    │   │   ├── TownChikinService.luau # Town Chikin: the portal side of town, petting him for Courage (times kept for CombatTutorialService)
     │   │   ├── TutorialService.luau  # the first visit with Pish: steps, gifts, customer, funnel; lesson queue and the stuck helper
     │   │   ├── EconomyService.luau   # cash, XP, levels (ONLY place cash changes)
     │   │   ├── StockService.luau     # orders, deliveries, carrying, stocking shelves
@@ -2649,6 +2665,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── BloomFountain.luau    # the healing spring's Elemental Bloom lotus fountain
     │       ├── PortalBuild.luau      # dresses a town portal model: vortex, glow, effects, light (and the old frame's emitters)
     │       ├── ScenePieces.luau      # anchored parts and scaled prop copies for the code-built scenery
+    │       ├── TownDog.luau          # a town dog's marker, walk round the fountain, clips and petting hold (Town Pish, Town Chikin)
     │       └── RateLimiter.luau      # per-player remote cooldowns
     ├── first/                  # → ReplicatedFirst.LoadingScreen (runs before anything else loads)
     │   ├── Show.client.luau    # the loading screen from the first frame (or the one a teleport brought), fades when done
@@ -2688,6 +2705,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── WelcomeController.luau # the first-visit welcome cinematic
     │   │   ├── TutorialController.luau # this player's own Pish: his arrival, the first visit's cues, Skip and the tour card, replay; lesson visits that teach each unlock step by step, nudge visits
     │   │   ├── TownPishController.luau # Town Pish drawn on the server's marker, his clips and hearts
+    │   │   ├── TownChikinController.luau # Town Chikin drawn the same way, his pet prompt once the combat tour is done
     │   │   ├── PriceTagController.luau  # point at / tap your shelf price tags to set the price
     │   │   ├── PartyBarController.luau  # bottom-right party cushion: Party pill + 3 round portraits (and the mascot), tap or 1/2/3 to summon
     │   │   ├── MonsterController.luau   # draws wild monsters on their markers (model or placeholder) at their species' height, glow masks, Fx_ bone effects; boss rigs, head glow, death
@@ -2875,7 +2893,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── TutorialRules.luau # the first visit's saved table: read, steps recorded, skip, replay (pure, Lune-tested)
             ├── LuckRules.luau     # Pish's Luck: the hit slot's boost, the gift's floor, cooldown, badge text (pure, Lune-tested)
             ├── LessonRules.luau   # lessons due at a level-up or an event and waiting, what placing or ordering completes, the stuck helper's nudge (pure, Lune-tested)
-            ├── PishPath.luau      # Town Pish's walk round the fountain (pure, Lune-tested)
+            ├── PishPath.luau      # Town Pish's walk round the fountain, a town dog's next stop (pure, Lune-tested)
             ├── TalkRules.luau     # which of Pish's lines shows: intro with Next, then the line for now (pure, Lune-tested)
             ├── PlazaLayout.luau   # the Card Festival Square's placements, giant cards, string lights, lotus petals, chairs, planter plants (pure, Lune-tested)
             ├── ModelPreload.luau  # which creature models a client downloads in the background, and in what order (pure, Lune-tested)

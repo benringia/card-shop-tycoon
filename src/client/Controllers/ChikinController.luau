@@ -30,6 +30,7 @@ local DogArrival = require(ClientUtil:WaitForChild("DogArrival"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
 local OpeningStage = require(ClientUtil:WaitForChild("OpeningStage"))
 local PishVisual = require(ClientUtil:WaitForChild("PishVisual"))
+local TownChikinController = require((script.Parent :: Instance):WaitForChild("TownChikinController"))
 local TutorialCues = require(ClientUtil:WaitForChild("TutorialCues"))
 local TutorialTalk = require(ClientUtil:WaitForChild("TutorialTalk"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
@@ -250,6 +251,7 @@ local function ensureDog()
 	if visual then
 		PishVisual.nameTag(visual, nil)
 	end
+	TownChikinController.SetHidden(true) -- one Chikin at a time on this screen
 end
 
 local function removeDog()
@@ -266,6 +268,7 @@ local function removeDog()
 		spotAnchor:Destroy()
 		spotAnchor = nil
 	end
+	TownChikinController.SetHidden(false)
 end
 
 -- His tips in a fight, by visit: the creature fights by itself and the Pet move; the sword's Attack, Dodge and Skill

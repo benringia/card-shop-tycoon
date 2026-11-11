@@ -77,6 +77,7 @@ return {
 		tour = "Chikin's Training · %d of %d",
 		tourGift = "Finish it to fight like a pro!",
 		replay = "Chikin's fight lesson",
+		petMe = "pet me for courage!", -- under Town Chikin's tag when you can pet him (TownChikinController)
 	} :: { [string]: string },
 	NEXT = "Next",
 	BYE = "Bye!",
