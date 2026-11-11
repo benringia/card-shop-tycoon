@@ -5,8 +5,9 @@
 local MonsterLooks = {}
 
 -- Studs tall. world: Config/Wild or Config/Frontier (its SPECIES, MONSTER_HEIGHT, ELITE_SIZE). A boss: its own height
--- when it has one (Config/Bosses height), else MONSTER_HEIGHT times its scale
-function MonsterLooks.height(world: any, species: string, elite: boolean, bossScale: number?, bossHeight: number?): number
+-- when it has one (Config/Bosses height), else MONSTER_HEIGHT times its scale. size: a boss's summoned add (Config/Bosses
+-- adds.size, the Rift Devourer's): its species' height times that
+function MonsterLooks.height(world: any, species: string, elite: boolean, bossScale: number?, bossHeight: number?, size: number?): number
 	if bossHeight then
 		return bossHeight
 	end
@@ -15,7 +16,7 @@ function MonsterLooks.height(world: any, species: string, elite: boolean, bossSc
 	end
 	local info = world.SPECIES[species]
 	local height = if info and info.height then info.height else world.MONSTER_HEIGHT
-	return if elite then height * world.ELITE_SIZE else height
+	return height * (if elite then world.ELITE_SIZE else 1) * (size or 1)
 end
 
 -- The Party.CREATURE_STYLE / SIGNATURE key its bones move by: a boss's id, else its species; nil for a placeholder

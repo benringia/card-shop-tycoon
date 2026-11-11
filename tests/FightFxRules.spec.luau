@@ -4,6 +4,7 @@ local AttackFx = require("../src/shared/Config/AttackFx")
 local Combat = require("../src/shared/Config/Combat")
 local Bosses = require("../src/shared/Config/Bosses")
 local Wild = require("../src/shared/Config/Wild")
+local Frontier = require("../src/shared/Config/Frontier")
 local SwordFx = require("../src/shared/Config/SwordFx")
 local expect = require("./lib/expect")
 
@@ -54,8 +55,9 @@ return {
 	end,
 
 	["every boss move effect is a real boss's, with its looks and sounds"] = function()
-		-- frost: the Frost Tyrant's, drawn by Util/IceFx (2026-11-10); volt and storm: the Storm Sovereign's (2026-11-11)
-		local styles = { strike = { leaves = true, fangs = true, embers = true, frost = true, volt = true }, release = { roots = true, web = true, lava = true, frost = true, storm = true } }
+		-- frost: the Frost Tyrant's, drawn by Util/IceFx (2026-11-10); volt and storm: the Storm Sovereign's (2026-11-11);
+		-- voidbite and rift: the Rift Devourer's (2026-11-11)
+		local styles = { strike = { leaves = true, fangs = true, embers = true, frost = true, volt = true, voidbite = true }, release = { roots = true, web = true, lava = true, frost = true, storm = true, rift = true } }
 		for bossId, moves in AttackFx.BOSS do
 			expect.equal(Bosses.BOSSES[bossId] ~= nil, true, bossId)
 			expect.equal(styles.strike[moves.strike], true, `{bossId} strike`)
@@ -65,14 +67,33 @@ return {
 			expect.equal(string.match(moves.sounds.release, "^rbxassetid://%d+$") ~= nil, true, `{bossId} release sound`)
 		end
 		expect.equal(AttackFx.BOSS.prismHydra, nil, "no Hydra until its remodel")
+		local rift = AttackFx.BOSS.riftDevourer
+		expect.equal(rift and rift.strike, "voidbite", "the Rift Devourer bites with its mandibles")
+		expect.equal(rift.release, "rift", "its swipe tears a rift")
+		expect.equal(rift.rift, true, "its summons come through rifts (Util/RiftFx)")
+	end,
+
+	-- The owner 2026-11-11: "add a noticeable summoning effect when creatures are summoned"
+	["the summoning's rifts: big, lit, loud and gone soon after"] = function()
+		local rift = AttackFx.RIFT
+		expect.equal(#rift.color, 3)
+		expect.equal(#rift.core, 3)
+		assert(rift.tear.size >= 1.5, "the portal stands well over its summon")
+		assert(rift.pool.radius >= 0.8, "a pool of void round it on the ground")
+		assert(rift.tear.light.range >= 16, "it lights the arena round it")
+		assert(rift.close > 0 and rift.close <= 1, "it closes soon after its summon is out")
+		for name, sound in rift.sounds do
+			expect.equal(string.match(sound, "^rbxassetid://%d+$") ~= nil, true, `{name} sound`)
+		end
 	end,
 
 	["every wild monster's attack look is a real species', with its sound"] = function()
-		local styles = { bite = true, dive = true, embers = true, headbutt = true, snap = true, spark = true }
+		-- voidclaw: the Rift Horror's (the Rift Devourer's summons, 2026-11-11)
+		local styles = { bite = true, dive = true, embers = true, headbutt = true, snap = true, spark = true, voidclaw = true }
 		local count = 0
 		for species, moves in AttackFx.MONSTER do
-			count += 1
-			expect.equal(Wild.SPECIES[species] ~= nil, true, species)
+			count += if Wild.SPECIES[species] then 1 else 0
+			expect.equal(Wild.SPECIES[species] ~= nil or Frontier.SPECIES[species] ~= nil, true, species)
 			expect.equal(styles[moves.strike], true, `{species} strike`)
 			expect.equal(#moves.color, 3, species)
 			expect.equal(string.match(moves.sounds.strike, "^rbxassetid://%d+$") ~= nil, true, `{species} sound`)
@@ -81,7 +102,8 @@ return {
 		for _ in Wild.SPECIES do
 			wild += 1
 		end
-		expect.equal(count, wild, "every species has one")
+		expect.equal(count, wild, "every Wild species has one")
+		expect.equal(AttackFx.MONSTER["Rift Horror"] and AttackFx.MONSTER["Rift Horror"].strike, "voidclaw", "the summons claw")
 	end,
 
 	["a creature's grade sets how big its attack looks"] = function()

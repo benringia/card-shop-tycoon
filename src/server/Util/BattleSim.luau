@@ -45,7 +45,7 @@ export type Mechanics = {
 	enrage: { below: number, atkMultiplier: number }?,
 	shield: { every: number, fraction: number, breakStun: number }?,
 	thunderclap: { every: number, seconds: number, minFactor: number, maxFactor: number, warning: number?, radius: number?, debuff: string? }?,
-	adds: { at: { number }, count: number, hpShare: number, atkShare: number, guard: number, species: string }?,
+	adds: { at: { number }, count: number, hpShare: number, atkShare: number, guard: number, species: string, size: number?, cast: number?, emerge: number?, run: number? }?,
 }
 -- phases: a boss's (the final boss): each switches its element and mechanics below an HP share, and never back
 export type Phase = { below: number, element: string, mechanics: Mechanics }
@@ -107,12 +107,18 @@ export type Event = {
 	protect: number?,
 	absorbed: number?, -- a hit's share its ward (Tidal Shield) and its side's shield took
 	radius: number?, -- a warned thunderclap's storm circle (its "thunderclap" windup and "clap" rings), in studs
+	-- A summoned add's "spawn" (adds with `run`, the Rift Devourer's): the pet it runs to, its place in the wave (which
+	-- corner it comes out at) and the seconds until it's there (out of its rift and run in)
+	focus: string?,
+	slot: number?,
+	arrive: number?,
 	-- Tidal Shield's "ability": the allies it warded, for `seconds`; "shieldGone" (to: whose ward broke or ran out)
 	shielded: { string }?,
 }
 
 type Fighter = {
 	id: string, -- prefixed: "a:<id>"
+	focus: string?, -- a summoned add: the pet it runs to and bites while that pet stands (else the usual target)
 	rawId: string,
 	perk: Perk?,
 	chargedFor: number, -- the nextAttack its charge event was sent for
@@ -397,6 +403,13 @@ end
 -- boss's adds first while any stand (abilities may still pick the boss).
 local function targetOf(state: State, fighter: Fighter, autoAttack: boolean?): Fighter?
 	local enemies = standingCreatures(other(state, (state.sides :: any)[fighter.side]))
+	if fighter.focus then
+		for _, enemy in enemies do
+			if enemy.id == fighter.focus then
+				return enemy
+			end
+		end
+	end
 	if autoAttack then
 		local adds = {}
 		for _, enemy in enemies do
@@ -1133,7 +1146,15 @@ local function bossMechanics(state: State, fighter: Fighter, events: { Event })
 		for index, at in adds.at do
 			if not fighter.addsDone[index] and share < at then
 				fighter.addsDone[index] = true
-				for _ = 1, adds.count do
+				-- Summoned through rifts (adds.run, the Rift Devourer's): each comes out at a corner and runs to a pet
+				-- of its own (the wave's pets in turn) before its first bite; the boss holds still while it calls them
+				local pets = if adds.run then standingCreatures(other(state, side)) else {}
+				local arrive = if adds.run then (adds.emerge or 0) + adds.run else nil
+				if adds.cast then
+					fighter.nextAttack = math.max(fighter.nextAttack, state.time + adds.cast)
+					fighter.bigReady = math.max(fighter.bigReady, state.time + adds.cast)
+				end
+				for slot = 1, adds.count do
 					fighter.addsMade += 1
 					local add = makeFighter(state.combat, {
 						id = `add{fighter.addsMade}`,
@@ -1142,8 +1163,20 @@ local function bossMechanics(state: State, fighter: Fighter, events: { Event })
 						atk = fighter.atk * adds.atkShare,
 						spd = fighter.spd,
 					}, side.name, state.time)
+					local pet = if #pets > 0 then pets[(slot - 1) % #pets + 1] else nil
+					if arrive then
+						add.focus = if pet then pet.id else nil
+						add.nextAttack = math.max(add.nextAttack, state.time + arrive)
+					end
 					table.insert(side.fighters, add)
-					table.insert(events, { type = "spawn", from = fighter.id, to = add.id })
+					table.insert(events, {
+						type = "spawn",
+						from = fighter.id,
+						to = add.id,
+						focus = add.focus,
+						slot = if arrive then slot else nil,
+						arrive = arrive,
+					})
 				end
 			end
 		end
@@ -1851,6 +1884,17 @@ end
 function BattleSim.getFighter(state: State, id: string): { hp: number, maxHp: number, fainted: boolean }?
 	local fighter = find(state, id)
 	return if fighter then { hp = fighter.hp, maxHp = fighter.maxHp, fainted = fighter.fainted } else nil
+end
+
+-- A standing fighter down to `share` of its max HP (never below 1): DevService's /bosshp in Studio, to reach a
+-- boss's summons and phases; its HP-share mechanics follow on the next step. False if there's no such fighter up.
+function BattleSim.setHpShare(state: State, id: string, share: number): boolean
+	local fighter = find(state, id)
+	if not fighter or fighter.fainted then
+		return false
+	end
+	fighter.hp = math.max(1, math.round(fighter.maxHp * math.clamp(share, 0, 1)))
+	return true
 end
 
 -- The boss debuff on `owner`'s player fighter now: its kind and seconds left (nil when none). The server slows their

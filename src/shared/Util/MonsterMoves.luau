@@ -10,6 +10,7 @@
 --   a warned thunderclap (the Storm Sovereign, owner 2026-11-11): "clapWindup" over its warning (its storm circle's
 --     "clap" rings play nothing), then "clapRelease" as it claps; a body without them uses its special clips; nothing
 --     cuts into either
+--   a boss's summons coming (the Rift Devourer, 2026-11-11): "summon", once for the wave; nothing cuts in
 -- A body without a clip skips that move. Pure, Lune-tested.
 local MonsterMoves = {}
 
@@ -39,7 +40,7 @@ end
 -- The clip to play for `event` now, if any; remembers it in `state`
 function MonsterMoves.decide(state: State, event: any, now: number, lengths: Lengths, cfg: Cfg): Play?
 	local active = if state.clip and now < state.endsAt then state.clip else nil
-	local special = active == "specialWindup" or active == "specialRelease" or active == "clapWindup" or active == "clapRelease"
+	local special = active == "specialWindup" or active == "specialRelease" or active == "clapWindup" or active == "clapRelease" or active == "summon"
 	local clip: string
 	local timed = false -- played over the event's warning
 	local hold = 0
@@ -60,6 +61,12 @@ function MonsterMoves.decide(state: State, event: any, now: number, lengths: Len
 			return nil
 		end
 		clip = if lengths.clapRelease then "clapRelease" else "specialRelease"
+	elseif event.type == "spawn" then
+		-- a boss calling its summons (the Rift Devourer, 2026-11-11): one call for a wave, nothing cuts in
+		if active == "summon" then
+			return nil
+		end
+		clip = "summon"
 	elseif event.type == "ring" then
 		if special or event.kind == "clap" then
 			return nil
@@ -67,7 +74,7 @@ function MonsterMoves.decide(state: State, event: any, now: number, lengths: Len
 		clip, timed = "specialWindup", true
 		hold = cfg.CHARGE_GRACE + cfg.HIT_GRACE
 	elseif event.type == "attack" and (event.kind == "Slam" or event.kind == "Swipe" or event.kind == "Spikes") then
-		if active == "specialRelease" then
+		if active == "specialRelease" or active == "summon" then
 			return nil
 		end
 		clip = "specialRelease"

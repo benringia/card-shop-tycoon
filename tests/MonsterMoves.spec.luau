@@ -10,8 +10,24 @@ local function play(state: MonsterMoves.State, event: any, now: number, lengths:
 end
 
 local SOVEREIGN = { windup = 0.6, strike = 0.5, specialWindup = 1.4, specialRelease = 0.8, clapWindup = 2, clapRelease = 1.2 }
+local DEVOURER = { windup = 0.6, strike = 0.5, specialWindup = 1.4, specialRelease = 0.8, summon = 1.6 }
 
 return {
+	-- The owner 2026-11-11: the Rift Devourer's summoning, its special skill
+	["a summon plays its summon clip once a wave; nothing cuts in"] = function()
+		local state = MonsterMoves.new()
+		local call = play(state, { type = "spawn", to = "b:add1" }, 0, DEVOURER)
+		assert(call, "it calls them")
+		expect.equal(call.clip, "summon")
+		expect.equal(call.speed, 1)
+		expect.equal(play(state, { type = "spawn", to = "b:add2" }, 0, DEVOURER), nil, "the wave's second summon: the same call")
+		expect.equal(play(state, { type = "attack" }, 0.8, DEVOURER), nil, "no strike mid call")
+		expect.equal(play(state, { type = "ring", kind = "swipe", seconds = 1 }, 0.8, DEVOURER), nil, "no ring mid call")
+		local later = play(state, { type = "attack" }, 1.7, DEVOURER)
+		assert(later and later.clip == "strike", "after it, its bites again")
+		expect.equal(play(MonsterMoves.new(), { type = "spawn", to = "b:add1" }, 0), nil, "a body without a summon clip plays nothing")
+	end,
+
 	-- The owner 2026-11-11: the Storm Sovereign's thunderclap gets its own animation
 	["a thunderclap rears up over its warning, then claps; nothing cuts in"] = function()
 		local state = MonsterMoves.new()

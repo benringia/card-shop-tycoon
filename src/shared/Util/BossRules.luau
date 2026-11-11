@@ -377,7 +377,7 @@ type TrickBoss = {
 		enrage: { below: number, atkMultiplier: number }?,
 		shield: { every: number, breakStun: number }?,
 		thunderclap: { every: number, warning: number? }?,
-		adds: { at: { number }, count: number, species: string }?,
+		adds: { at: { number }, count: number, species: string, run: number? }?,
 	},
 	phases: { { element: string } }?,
 }
@@ -415,7 +415,9 @@ function BossRules.watchOut(boss: TrickBoss): { Trick }
 			table.insert(shares, percent(share))
 		end
 		local who = if adds.count == 1 then `1 {adds.species}` else `{adds.count} {adds.species}s`
-		local text = `Calls {who} at {table.concat(shares, " and ")} health. Beat them first: it's tougher while they stand.`
+		local text = if adds.run
+			then `Opens rifts at {table.concat(shares, " and ")} health: {who} run at your cards. Beat them first: it's tougher while they stand.`
+			else `Calls {who} at {table.concat(shares, " and ")} health. Beat them first: it's tougher while they stand.`
 		table.insert(tricks, { kind = "adds", name = "Helpers", text = text })
 	end
 	local heal = mechanics.heal

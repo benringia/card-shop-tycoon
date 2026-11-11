@@ -1165,7 +1165,7 @@ and rewards in `BossService`.
 | 3 | Ember Colossus | Ember Ridge | Ember | 16 | 6300 / 29 / 9 | 650 | enrages below half HP (ATK x1.5) | 14 | 5 Colossus Key Fragments |
 | 4 | Frost Tyrant | Frontier, Frostwood | Tide | 22 | 13000 / 42 / 9 | 1100 | ice shield (6% HP) every 20 s; breaking it stuns it 3 s; ice spikes freeze | 26 | 5 Frost Tyrant Key Fragments |
 | 5 | Storm Sovereign | Frontier, Stormpeak | Volt | 32 | 28000 / 44 / 14 | 1500 | thunderclap every 14 s: rears up 2 s with a 28-stud storm circle, then claps: your creatures stunned (2.5 s base, shorter on fast ones), you Electrocuted unless you ran out or dodged | 34 | 8 Sovereign Key Fragments |
-| 6 | Rift Devourer | Frontier, The Rift | Shade | 45 | 34000 / 66 / 10 | 1900 | 2 Rift Spawn at 50% HP (5% HP each): hit first, boss takes half damage meanwhile | 43 | 8 Devourer Key Fragments |
+| 6 | Rift Devourer | Frontier, The Rift | Shade | 45 | 34000 / 66 / 10 | 1900 | summons 2 Rift Horrors (twice an elite's size, 5% HP, 30% ATK each) through rifts at 70% and 35% HP: out at the arena's corners, they run at your pets; hit first, boss takes half damage meanwhile | 43 | 8 Devourer Key Fragments |
 | 7 | Prism Hydra | the Dungeon (after 3 rooms) | by phase | 55 | 60000 / 38 / 11 | 2400 | five phases, one per element (below) | 57 | 10 Hydra Key Fragments |
 
 Shop Lv (`shopLevel`, `BossRules.levelReady`): the shop level every player needs to fight that boss, solo or in a
@@ -1200,9 +1200,10 @@ group, checked before its fragments and every time (not only the first). Below i
   like the Wild's (above, "The Frontier valley"). Shield: the boss's HP bar shows "+n shield", "Ice shield!" and
   "Shield broken!" banners. Thunderclap: "Thunderclap!" ("Thunderclap! Run out!" as the Storm Sovereign rears up) and
   "Stunned" over each creature. Adds: "Rift Spawn!", the
-  Spawn appear beside the boss (real monsters held still) with small HP bars under the boss bar; auto-attacks go to
-  them first, abilities can still hit the boss (at half damage while any Spawn stands); the fight is won when the
-  boss falls.
+  Spawn appear beside the boss (real monsters held still; the Rift Devourer's come out of rifts at the arena's corners
+  and run at your pets since 2026-11-11, "The Rift Devourer's summoning" below) with small HP bars under the boss bar;
+  auto-attacks go to them first, abilities can still hit the boss (at half damage while any Spawn stands); the fight is
+  won when the boss falls.
 - **Loot on the ground:** a win's repeatable items (drops, daily bonus) pop out of the boss and scatter
   round it (4-10 studs, `LOOT_*`), each player's own drops seen only by them (LootController). Walking over one picks it
   up (the server checks it's yours and within 8 studs; one request names every drop in reach, up to
@@ -1504,7 +1505,7 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   `CreatureController.Freeze`; `BattleSim` "frozen" event). His shield is a frosted ice bubble with 24 shards jutting
   out, growing round him with an ice crackle and bursting into pieces when broken. The bubble and the ice blocks fit
   the whole body (its model's box: the owner's next look, the roots sit at the feet and both covered half). His
-  normal hits are an icy claw swipe (`AttackFx.BOSS.frostTyrant`; the Rift Devourer has no hit effects yet). His clips are his own (`tools/blender/anim_frontier.py` FROST): a twisting claw swipe, and for the spikes his
+  normal hits are an icy claw swipe (`AttackFx.BOSS.frostTyrant`). His clips are his own (`tools/blender/anim_frontier.py` FROST): a twisting claw swipe, and for the spikes his
   head thrown back roaring with his arms out, then a crouching slam. His rig tears on big arm swings (its arm bones
   sit inside the body and its arms are skinned with a wide radius), so his poses keep the arms within about 30 degrees;
   a re-rig needs the model re-imported. He stands 24 studs (was 17), his fighters 20 out, in a wider ring: the
@@ -1537,6 +1538,31 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   sky with bolts running out to the ring's edge ("storm"). It stands 25 studs (was 18), its fighters 22 out, its intro
   camera 56 back. The Prism Hydra's Volt phase claps as before (no warning, no circle). Boss balance unchanged
   (tools/balance/bosses: well 100% / still 60% at 1x, as before).
+- **The Rift Devourer's summoning** (the owner 2026-11-11: "make him bigger. rift devourer doesnt have a basic attack
+  animation yet so add. his special skill is summoning add a noticeable summoning effect when creatures are summoned
+  make it balanced. summons should be bigger than a normal or elite monsters and will show up to a random corner of an
+  arena and runs to the summoned pet with melee attack with effects"). It summons twice, at 70% and 35% HP (was once at
+  50%), two Rift Horrors each (`Config/Bosses` adds: 5% of its HP and 30% of its ATK each, `guard` 0.5 as before).
+  It holds still 1.6 s calling them (`adds.cast`: its next bite and big attack wait). Each comes out of a rift at a
+  random corner of the arena (`Util/SummonRules`: four corners 78% of the arena's radius from its centre, different
+  ones in a wave, `Bosses.SUMMON`), rising out of the ground and growing over 1.2 s (`emerge`; marker Size, Emerge,
+  EmergeAt, `MonsterController`), then runs at a pet of its own (`BattleSim` add `focus`: the wave's pets in turn; the
+  spawn event's `focus`, `slot`, `arrive`) to stop a bite's reach from it, at the speed that gets it there in 2.8 s
+  (`run`; `BattleService` moveSummons), trailing void wisps; it can't bite before it's there (4 s after the call). It
+  bites that pet while it stands, then runs to whichever it bites next (16 studs a second). Twice an elite's size
+  (`adds.size` 2: `MonsterLooks.height`'s size; a sword reaches it at twice an add's radius). Its look (`Util/RiftFx`,
+  `Config/AttackFx` RIFT): the boss's call (a void shockwave out from it, a dark burst at its jaws, a shake, Energy
+  Presence) and at each corner a lightning beam from its jaws, a pool of void with a violet rim, a tall tear of violet
+  light with a black slit, a light, motes pulling in and crackles; as the Horror climbs out a burst, shards and a vortex
+  blast, and the tear snaps shut. The Horrors claw with three void slashes (`AttackFx.MONSTER["Rift Horror"]`
+  "voidclaw", the Frontier's wild ones too). The boss is bigger: 22 studs (was 16), about 30 long, its fighters 22 out,
+  its intro camera 56 back. Its normal hits are a void bite (two crossing mandible slashes, a dark burst,
+  `AttackFx.BOSS.riftDevourer` "voidbite") and its swipe rifts tearing open across the cone ("rift"). Its clips
+  (`tools/blender/anim_frontier.py` DEVOURER): the bite rears well back with its jaws wide and lunges a third of its
+  length, head down, snapping its mandibles (it read as a nod before), and `summon` (1.6 s: rears up high screeching,
+  trembling, then slams its front down; `MonsterMoves`: once a wave, nothing cuts in). The Prism Hydra's Shade phase
+  keeps its old adds (beside it, at once). Boss balance (tools/balance/bosses) at 1x: still 60% / well 84% (was 61% /
+  99%), 0.8x 60% / 60% as before.
 - **Bosses between their moves** (the owner 2026-11-10: "walking around while waiting for his next attack or roaring.
   something intimidating but not limiting its attack speed"; `Config/Bosses` IDLE, `Util/BossIdleRules`,
   `MonsterController`): after its intro, every 0.8-2.2 s a boss walks to a new spot near its own (up to 5 studs either
@@ -2723,6 +2749,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── FxTone.luau             # effects toned to the scene: on bright ground (snow) colours blend in instead of adding light
     │       ├── IceFx.luau              # the Frost Tyrant's ice: falling spikes that shatter, his shield bubble, a frozen fighter's ice block
     │       ├── StormFx.luau            # the Storm Sovereign's thunderclap: its storm circle, crown charging, the clap, Electrocuted jolts
+    │       ├── RiftFx.luau             # the Rift Devourer's summoning: its call, a rift tearing open at each summon's corner
     │       ├── ItemPopup.luau          # a picked-up item's card at the top right (stacking, merging)
     │       ├── CombatHud.luau          # the boss and wild fight HUD (wild: no sword buttons): slanted buttons with icons, cooldowns and key chips, your portrait and HP bars, the boss fights' party strip, the red hit flash
     │       ├── HpBar.luau              # one slanted neon HP bar: ghost of lost HP, heal lead, ticks, hit flash (HUD and boss bar)
@@ -2878,6 +2905,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── FxToneRules.luau   # how bright the scene is and what that does to an effect (pure, Lune-tested)
             ├── IceFxRules.luau    # the Frost Tyrant's spikes' drop timing, his shield's shards, a shatter's pieces (pure, Lune-tested)
             ├── StormFxRules.luau  # the Storm Sovereign's clap: where its bolts strike, its circle spreading, edge crackles (pure, Lune-tested)
+            ├── SummonRules.luau   # the Rift Devourer's summons: their corners, run speed, where they stop, rising out (pure, Lune-tested)
             ├── BossIdleRules.luau # a boss between its moves: when it's free, what it does, where it walks (pure, Lune-tested)
             ├── ItemPopupRules.luau # picked-up items' cards: merging, stacking, expiring (pure, Lune-tested)
             ├── ShakeRules.luau    # screen shake maths: add, decay, the camera offset, falloff with distance (pure, Lune-tested)

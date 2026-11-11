@@ -9,13 +9,16 @@ export type Grant = { item: string, count: number }
 -- clamp(boss SPD / its SPD, minFactor, maxFactor), and with a `warning` (the Storm Sovereign, 2026-11-11) it rears up
 -- that long first with a storm circle of `radius` studs round it: the creatures are stunned as it claps, and a player
 -- still inside who didn't dodge gets `debuff` (Electrocuted); adds: at each HP fraction in `at`, `count` adds (`hpShare` of max
--- HP, `atkShare` of ATK, of `species`) that are hit first, the boss taking x`guard` damage while any stands
+-- HP, `atkShare` of ATK, of `species`) that are hit first, the boss taking x`guard` damage while any stands; summoned
+-- through rifts (the Rift Devourer, 2026-11-11): `size` times its species' height, each out of a rift at a corner of the
+-- arena over `emerge` s, then running `run` s to a pet of its own before its first bite, the boss holding still `cast` s
+-- as it calls them (BattleSim; Util/SummonRules places them, Util/RiftFx draws it)
 export type Mechanics = {
 	heal: { below: number, fraction: number, cooldown: number, uses: number? }?,
 	enrage: { below: number, atkMultiplier: number }?,
 	shield: { every: number, fraction: number, breakStun: number }?,
 	thunderclap: { every: number, seconds: number, minFactor: number, maxFactor: number, warning: number?, radius: number?, debuff: string? }?,
-	adds: { at: { number }, count: number, hpShare: number, atkShare: number, guard: number, species: string }?,
+	adds: { at: { number }, count: number, hpShare: number, atkShare: number, guard: number, species: string, size: number?, cast: number?, emerge: number?, run: number? }?,
 }
 -- One phase of a boss that has them: active while its HP share is under `below` (the first has below = 1); it
 -- switches the boss's element and mechanics. Phases only go forward (a heal never takes one back).
@@ -277,9 +280,11 @@ local BOSSES: { [string]: Boss } = {
 		zone = 3,
 		shape = "beetle",
 		scale = 3.4,
-		height = 16, -- the void beetle titan (the owner's pick A), about 22 studs long
-		ringRadius = 17,
-		introShot = { back = 40, up = 18 },
+		-- the void beetle titan (the owner's pick A); larger (the owner 2026-11-11: "make him bigger"; was 16 / 17 / 40),
+		-- about 30 studs long
+		height = 22,
+		ringRadius = 22,
+		introShot = { back = 56, up = 24 },
 		arenaRadius = 50, -- the Frontier's big bosses fight in a wider ring (2026-11-10)
 		moments = { roar = "rbxassetid://9125470501" }, -- Pro Sound Effects: Creature Growls Lion Deep Guttural Rumbling
 		element = "Shade",
@@ -294,7 +299,9 @@ local BOSSES: { [string]: Boss } = {
 		playerAttacks = { every = 6, warning = 1.0, big = 0.55, quick = 0.18, shape = "swipe", debuff = "Weakened" },
 		unlock = { item = "fragment_riftDevourer", count = 8 },
 		fragment = "fragment_prismHydra",
-		mechanics = { adds = { at = { 0.5 }, count = 2, hpShare = 0.05, atkShare = 0.35, guard = 0.5, species = "Rift Horror" } },
+		-- its summons (the owner 2026-11-11: "his special skill is summoning"): twice, two Rift Horrors twice an
+		-- elite's size out of rifts at the arena's corners, running at your pets (was once at 50%, standing by it)
+		mechanics = { adds = { at = { 0.7, 0.35 }, count = 2, hpShare = 0.05, atkShare = 0.3, guard = 0.5, species = "Rift Horror", size = 2, cast = 1.6, emerge = 1.2, run = 2.8 } },
 		drops = {
 			{ item = "material_riftDevourer", chance = 0.8, min = 1, max = 2 }, -- its weapon material (Config/Weapons), full loot only
 			{ item = "goldSeal", chance = 0.3, min = 1, max = 1 },
@@ -490,6 +497,11 @@ return {
 	-- (studs at the boss's size; per bone)
 	AURORA_FLAME = { bones = { "Spine_0", "Spine_1", "Pelvis" }, height = 0.5, rate = 12, sizeStart = 8, sizeEnd = 2.5, lifetimeMin = 1, lifetimeMax = 1.6, rise = 10, transparency = 0.3 },
 	ADD_SPACING = 6, -- studs between a boss and its adds (left and right of it)
+	-- Summons through rifts (adds.run, the Rift Devourer's; Util/SummonRules): each comes out at a corner of the arena,
+	-- `cornerShare` of its radius from the centre (random corners, different ones in a wave), runs to its pet at the
+	-- speed that gets it there in adds.run (between `minSpeed` and `maxSpeed` studs a second) and stops `meleeGap` studs
+	-- plus half its height short of it; when its pet falls it runs to its next one at `retargetSpeed`
+	SUMMON = { cornerShare = 0.78, minSpeed = 6, maxSpeed = 30, meleeGap = 2.5, retargetSpeed = 16 },
 	INSIDE_STEP = 4, -- members are moved this far past the gate (and this far apart) when the fight starts
 	-- The Wild valley's boss portals (WildService, round 2 spec): each fight gets its own copy of the boss's arena, up to
 	-- ARENA_COPIES at once; after a copy's fight ends, whoever is still in it is sent back ARENA_LINGER seconds later

@@ -26,6 +26,7 @@ local MOSS = Color3.fromRGB(96, 170, 64)
 local WEB = Color3.fromRGB(236, 232, 245)
 local MOLTEN = Color3.fromRGB(255, 196, 64)
 local CRACK = Color3.fromRGB(255, 72, 18)
+local VOID = Color3.fromRGB(40, 12, 70) -- the Rift Devourer's dark bursts
 local GOLD = Color3.fromRGB(255, 215, 106)
 
 local function folder(): Folder
@@ -716,6 +717,20 @@ function ElementFx.monsterStrike(style: string, at: Vector3, from: Vector3, colo
 	elseif style == "spark" then
 		ElementFx.bolt(from + Vector3.new(0, 1, 0), at, color, 0.2, 0.8)
 		ElementFx.burst(at, color, 0.9)
+	elseif style == "voidbite" then
+		-- the Rift Devourer's mandibles snapping shut (2026-11-11): two big crossing slashes, a dark burst, violet shards
+		ElementFx.slash(at, from, color, "claw", 1, 1.7, 35)
+		ElementFx.slash(at, from, color, "claw", 2, 1.7, -145)
+		ElementFx.burst(at, VOID, 1.5)
+		ElementFx.burst(at, color, 1.1)
+		sparks(at, color, detail(14), 20, 1, 12)
+	elseif style == "voidclaw" then
+		-- its summons' claws (2026-11-11): three slashes, a dark burst, violet shards
+		for index = 1, 3 do
+			ElementFx.slash(at, from, color, "claw", index, 1.25)
+		end
+		ElementFx.burst(at, VOID, 1.1)
+		sparks(at, color, detail(10), 16, 0.8, 12)
 	end
 end
 
@@ -835,6 +850,25 @@ function ElementFx.bossRelease(style: string, ground: Vector3, radius: number, d
 			ElementFx.bolt(ground + Vector3.new(0, 0.5, 0), tip, color, 0.22, 0.8, true)
 		end
 		ElementFx.burst(ground + Vector3.new(0, 2, 0), color, 2.5)
+	elseif style == "rift" then
+		-- The Rift Devourer's swipe (2026-11-11): rifts tear open across its cone (dark slashes standing in the air, a
+		-- burst at each, one after another along it), a violet shockwave and void shards thrown up
+		local flatDirection = Vector3.new(direction.X, 0, direction.Z)
+		local forward = if flatDirection.Magnitude > 0.01 then flatDirection.Unit else Vector3.new(0, 0, -1)
+		local reach = if length > 0 then length else radius
+		local tall = (height or 10) * 0.25
+		local count = detail(5)
+		for index = 1, count do
+			local share = if count > 1 then (index - 1) / (count - 1) else 0.5
+			local way = CFrame.fromAxisAngle(Vector3.yAxis, math.rad(-halfAngle + share * halfAngle * 2)):VectorToWorldSpace(forward)
+			local spot = ground + way * reach * (0.5 + math.random() * 0.35) + Vector3.new(0, tall, 0)
+			task.delay(index * 0.05, function()
+				ElementFx.slash(spot, ground + Vector3.new(0, tall, 0), color, "claw", index, 2.4, 90)
+				ElementFx.burst(spot, VOID, 1.4)
+			end)
+		end
+		shockwave(ground, color, reach, 0.45)
+		sparks(ground + forward * reach * 0.5 + Vector3.new(0, 1, 0), color, detail(20), 24, 1.2, 15)
 	elseif style == "lava" then
 		-- Bigger since the meteor lands here (owner 2026-11-04): a wide eruption, a tall fire pillar, a burst and a ring
 		ElementFx.eruption(ground, color, radius * 1.3, 22)

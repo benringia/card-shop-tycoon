@@ -483,7 +483,12 @@ local function groundAt(position: Vector3): (Vector3, boolean)
 	return if hit then hit.Position else position, hit ~= nil
 end
 
-local function createMonster(species: string, level: number, elite: boolean, zone: number, home: Vector3, spawnPoint: BasePart?, boss: string?): Monster?
+-- A boss's summon (Config/Bosses adds.size and adds.emerge, the Rift Devourer's): drawn `size` times its species'
+-- height, rising out of its rift over `emerge` seconds from the moment it's made (marker attributes Size, Emerge,
+-- EmergeAt, set before clients see it)
+export type Summon = { size: number, emerge: number }
+
+local function createMonster(species: string, level: number, elite: boolean, zone: number, home: Vector3, spawnPoint: BasePart?, boss: string?, summon: Summon?): Monster?
 	local info: { element: string }? = if boss then Bosses.BOSSES[boss] else Wild.SPECIES[species]
 	if not info then
 		return nil
@@ -518,6 +523,11 @@ local function createMonster(species: string, level: number, elite: boolean, zon
 	setMarker(monster)
 	if boss then
 		marker:SetAttribute("SpawnedAt", workspace:GetServerTimeNow()) -- clients time its intro roar from this (Util/BossMoments)
+	end
+	if summon then
+		marker:SetAttribute("Size", summon.size)
+		marker:SetAttribute("Emerge", summon.emerge)
+		marker:SetAttribute("EmergeAt", workspace:GetServerTimeNow())
 	end
 	marker.Parent = monstersFolder
 	monsters[monster.id] = monster
@@ -743,7 +753,7 @@ function WildService.GetSpringPosition(): Vector3
 end
 
 -- A monster at a spot, never respawned: /elite, and bosses (with their Config/Bosses id and the zone they belong to)
-function WildService.SpawnAt(position: Vector3, species: string, level: number, elite: boolean, boss: string?, zoneIndex: number?): Monster?
+function WildService.SpawnAt(position: Vector3, species: string, level: number, elite: boolean, boss: string?, zoneIndex: number?, summon: Summon?): Monster?
 	local zone = zoneIndex or 1
 	local inBiome = if VALLEY and not zoneIndex then WildValley.zoneAt(ValleyConfig, { x = position.X, z = position.Z }) else nil
 	if inBiome then
@@ -760,7 +770,7 @@ function WildService.SpawnAt(position: Vector3, species: string, level: number, 
 			end
 		end
 	end
-	return createMonster(species, level, elite, zone, position, nil, boss)
+	return createMonster(species, level, elite, zone, position, nil, boss, summon)
 end
 
 -- Where a boss fight happens: its ring's spots, and where players go when they leave it (remote: a copy far from the

@@ -153,6 +153,9 @@ end
 
 local SHIELD = { shield = { every = 20, fraction = 0.06, breakStun = 3 } }
 local ADDS = { adds = { at = { 0.7, 0.35 }, count = 2, hpShare = 0.06, atkShare = 0.4, guard = 0.5, species = "Rift Horror" } }
+-- The Rift Devourer's summons (the owner 2026-11-11): each comes out of a rift at a corner of the arena (`emerge` s)
+-- and runs to a pet (`run` s) before its first bite; the boss holds still `cast` s while it calls them
+local SUMMONS = { adds = { at = { 0.7, 0.35 }, count = 2, hpShare = 0.06, atkShare = 0.4, guard = 0.5, species = "Rift Horror", size = 2, cast = 1.6, emerge = 1.2, run = 2.8 } }
 
 -- A boss with phases (the final boss): Tide shield, then Volt thunderclap below 60%, then Ember enrage below 30%
 local PHASES = {
@@ -527,6 +530,105 @@ return {
 		local plain = fireballAfter({})
 		expect.equal(string.sub(firstTarget or "", 1, 5), "b:add", "the first attack goes to a Spawn")
 		expect.equal(math.abs(guarded - math.round(plain * 0.5)) <= 1, true, `half damage ({guarded} vs {plain})`)
+	end,
+
+	["summons: no Spawn bites before it has come out of its rift and run in"] = function()
+		local state = bossWith(SUMMONS, 4, { fighter("a", "Tide", 100000, 20, 10), fighter("b", "Tide", 100000, 20, 10) })
+		state.sides.b.fighters[1].hp = 6900
+		local spawned = state.time
+		local first = math.huge
+		for _, entry in timedEvents(state, 8) do
+			local event = entry.event
+			if event.type == "attack" and string.sub(event.from or "", 1, 5) == "b:add" then
+				first = math.min(first, entry.time)
+			end
+		end
+		assert(first >= spawned + 1.2 + 2.8 - 1e-6, `first Spawn bite at {first - spawned} s, after 4 s`)
+		assert(first < math.huge, "it bites once it is there")
+	end,
+
+	["summons: the spawn event says which pet each runs to, one each, and when it gets there"] = function()
+		local state = bossWith(SUMMONS, 4, { fighter("a", "Tide", 100000, 20, 10), fighter("b", "Tide", 100000, 20, 10) })
+		state.sides.b.fighters[1].hp = 6900
+		local spawns = {}
+		for _, event in BattleSim.step(state, 0.1) do
+			if event.type == "spawn" then
+				table.insert(spawns, event)
+			end
+		end
+		expect.equal(#spawns, 2, "two summoned")
+		expect.equal(spawns[1].focus, "a:a", "the first runs to the first pet")
+		expect.equal(spawns[2].focus, "a:b", "the second to the next")
+		expect.equal(spawns[1].slot, 1, "its corner slot")
+		expect.equal(spawns[2].slot, 2, "its corner slot")
+		expect.equal(spawns[1].arrive, 4, "out of the rift and run in: 4 s")
+	end,
+
+	["summons: each Spawn keeps biting its own pet while it stands"] = function()
+		local state = bossWith(SUMMONS, 4, { fighter("a", "Tide", 100000, 20, 10), fighter("b", "Tide", 100000, 20, 10) })
+		state.sides.b.fighters[1].hp = 6900
+		local targets: { [string]: { [string]: boolean } } = {}
+		for _, entry in timedEvents(state, 20) do
+			local event = entry.event
+			if event.type == "attack" and string.sub(event.from or "", 1, 5) == "b:add" and event.to then
+				targets[event.from] = targets[event.from] or {}
+				targets[event.from][event.to] = true
+			end
+		end
+		expect.equal(targets["b:add1"] and targets["b:add1"]["a:a"], true, "add1 bites a")
+		expect.equal(targets["b:add1"]["a:b"], nil, "and only a")
+		expect.equal(targets["b:add2"] and targets["b:add2"]["a:b"], true, "add2 bites b")
+		expect.equal(targets["b:add2"]["a:a"], nil, "and only b")
+	end,
+
+	["summons: a Spawn whose pet fainted goes for another"] = function()
+		local state = bossWith(SUMMONS, 4, { fighter("a", "Tide", 100000, 20, 10), fighter("b", "Tide", 100000, 20, 10) })
+		state.sides.b.fighters[1].hp = 6900
+		BattleSim.step(state, 0.1)
+		local pet = state.sides.a.fighters[1]
+		pet.hp = 0
+		pet.fainted = true
+		local bit = {}
+		for _, entry in timedEvents(state, 12) do
+			local event = entry.event
+			if event.type == "attack" and event.from == "b:add1" and event.to then
+				bit[event.to] = true
+			end
+		end
+		expect.equal(bit["a:b"], true, "it goes for the pet still standing")
+	end,
+
+	["summons: the boss holds its attacks while it calls them"] = function()
+		local state = bossWith(SUMMONS, 4)
+		local boss = state.sides.b.fighters[1]
+		boss.hp = 6900
+		boss.nextAttack = state.time + 0.2 -- about to bite
+		boss.bigReady = state.time + 0.2
+		BattleSim.step(state, 0.1)
+		assert(boss.nextAttack >= state.time + 1.6 - 0.1 - 1e-6, `next attack {boss.nextAttack - state.time} s away`)
+		assert(boss.bigReady >= state.time + 1.6 - 0.1 - 1e-6, `next big attack {boss.bigReady - state.time} s away`)
+	end,
+
+	["adds without a rift (the Prism Hydra's) stand by the boss and bite at once, no pet of their own"] = function()
+		local state = bossWith(ADDS, 4)
+		state.sides.b.fighters[1].hp = 6900
+		local spawn = firstOf(BattleSim.step(state, 0.1), "spawn")
+		expect.equal(spawn.focus, nil, "no pet of its own")
+		expect.equal(spawn.arrive, nil, "no run in")
+	end,
+
+	-- DevService's /bosshp (Studio): a boss down to a share of its HP, its summons coming on the next step
+	["setHpShare: a standing fighter goes down to that share of its HP; its summons follow on the next step"] = function()
+		local state = bossWith(SUMMONS, 4)
+		expect.equal(BattleSim.setHpShare(state, "b:m", 0.69), true)
+		expect.equal(state.sides.b.fighters[1].hp, 6900)
+		local spawns = count(BattleSim.step(state, 0.1), function(e)
+			return e.type == "spawn"
+		end)
+		expect.equal(spawns, 2, "the first wave")
+		expect.equal(BattleSim.setHpShare(state, "b:nobody", 0.5), false, "no such fighter")
+		expect.equal(BattleSim.setHpShare(state, "b:m", 0), true, "never below 1 HP")
+		expect.equal(state.sides.b.fighters[1].hp, 1)
 	end,
 
 	["adds: the boss falling ends the fight with Spawn alive"] = function()

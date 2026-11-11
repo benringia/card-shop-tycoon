@@ -21,6 +21,7 @@ local Wild = Place.getWorld()
 local MonsterLooks = require(Shared:WaitForChild("Util"):WaitForChild("MonsterLooks"))
 local BossMoments = require(Shared:WaitForChild("Util"):WaitForChild("BossMoments"))
 local BossIdleRules = require(Shared:WaitForChild("Util"):WaitForChild("BossIdleRules"))
+local SummonRules = require(Shared:WaitForChild("Util"):WaitForChild("SummonRules"))
 local CreatureVisuals = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("CreatureVisuals"))
 local Extras = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("Extras"))
 local PetAnimator = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("PetAnimator"))
@@ -60,7 +61,13 @@ type Monster = {
 	lengths: { [string]: number }, -- each clip's length in seconds
 	clipPlayer: ClipPlayer.Player?,
 	idle: Idle?, -- a boss's life between its moves
+	-- A boss's summon (marker Size, Emerge, EmergeAt; the Rift Devourer's): climbing out of its rift until `at` +
+	-- `seconds` (the server's clock), and the void wisps it trails while it runs
+	emerge: { at: number, seconds: number }?,
+	trail: ParticleEmitter?,
 }
+
+local TRAIL_SPEED = 3 -- studs a second: a summon running faster than this trails its wisps
 
 local monsters: { [BasePart]: Monster } = {}
 
@@ -481,7 +488,8 @@ local function add(marker: BasePart)
 	model.Name = `{species}_{marker:GetAttribute("MonsterId")}`
 
 	local flying = boss == nil and table.find(Wild.FLYING, species) ~= nil
-	local height = MonsterLooks.height(Wild, species, elite, if boss then boss.scale else nil, if boss then boss.height else nil)
+	local size = tonumber(marker:GetAttribute("Size"))
+	local height = MonsterLooks.height(Wild, species, elite, if boss then boss.scale else nil, if boss then boss.height else nil, size)
 	-- A model's bones move like a creature's (its PetRig names; Party style keyed by species, a boss by its id)
 	local styleKey = MonsterLooks.styleKey(species, if boss then bossId :: string else nil, template ~= nil)
 	local body = CreatureVisuals.build(model, marker, height, flying, styleKey)
@@ -525,6 +533,26 @@ local function add(marker: BasePart)
 	}
 	if boss and boss.moments then
 		startMoments(monster, boss.moments)
+	end
+	local emergeAt, emergeSeconds = tonumber(marker:GetAttribute("EmergeAt")), tonumber(marker:GetAttribute("Emerge"))
+	if emergeAt and emergeSeconds and emergeSeconds > 0 then
+		monster.emerge = { at = emergeAt, seconds = emergeSeconds }
+	end
+	if size then
+		-- void wisps off a running summon (on while it runs, MonsterController's frame loop)
+		local trail = Instance.new("ParticleEmitter")
+		trail.Texture = "rbxasset://textures/particles/smoke_main.dds"
+		trail.Color = ColorSequence.new(Color3.fromRGB(150, 70, 255), Color3.fromRGB(30, 10, 50))
+		trail.LightEmission = 0.6
+		trail.Size = NumberSequence.new(height * 0.35, height * 0.05)
+		trail.Transparency = NumberSequence.new(0.3, 1)
+		trail.Lifetime = NumberRange.new(0.5, 0.9)
+		trail.Rate = 30
+		trail.Speed = NumberRange.new(1, 3)
+		trail.SpreadAngle = Vector2.new(40, 40)
+		trail.Enabled = false
+		trail.Parent = body.root
+		monster.trail = trail
 	end
 	if boss then
 		-- its life between moves starts once its intro has played (SpawnedAt: the server's clock)
@@ -670,7 +698,28 @@ function MonsterController.Start()
 			if monster.idle then
 				stepIdle(monster, monster.idle, now)
 			end
+			local emerge = monster.emerge
+			if emerge then
+				-- climbing out of its rift: up through the ground, growing (Util/SummonRules)
+				local elapsed = workspace:GetServerTimeNow() - emerge.at
+				local sink, scale = SummonRules.emerge(elapsed, emerge.seconds)
+				monster.body.offset = CFrame.new(0, -monster.height * sink, 0)
+				monster.body.grow = scale
+				if elapsed >= emerge.seconds then
+					monster.emerge = nil
+					monster.body.offset = nil
+				end
+			elseif monster.trail and monster.body.grow == 1 then
+				monster.body.grow = nil
+			end
 			CreatureVisuals.step(monster.body, dt, now, origin, Party.MOTION)
+			local trail = monster.trail
+			if trail then
+				local running = monster.body.speed > TRAIL_SPEED and monster.marker:GetAttribute("Fainted") ~= true and extras
+				if trail.Enabled ~= running then
+					trail.Enabled = running
+				end
+			end
 			local clipPlayer = monster.clipPlayer
 			if clipPlayer and clipPlayer.playing and (monster.body.cframe.Position - origin).Magnitude <= Party.PET_ANIM.DISTANCE then
 				ClipPlayer.step(clipPlayer, dt, monster.body.model:GetScale())

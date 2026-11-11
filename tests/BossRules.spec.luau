@@ -440,7 +440,9 @@ return {
 		local unwarned = BossRules.watchOut({ mechanics = { thunderclap = { every = 12 } } })[1]
 		expect.equal(unwarned.text, "Stuns your cards every 12 s. Faster cards shake it off sooner.", "a clap with no circle")
 		local adds = BossRules.watchOut(Bosses.BOSSES.riftDevourer)[1]
-		expect.equal(adds.text, "Calls 2 Rift Horrors at 50% health. Beat them first: it's tougher while they stand.", "adds words")
+		expect.equal(adds.text, "Opens rifts at 70% and 35% health: 2 Rift Horrors run at your cards. Beat them first: it's tougher while they stand.", "adds words")
+		local plain = BossRules.watchOut({ mechanics = { adds = { at = { 0.6 }, count = 2, species = "Rift Horror" } } })[1]
+		expect.equal(plain.text, "Calls 2 Rift Horrors at 60% health. Beat them first: it's tougher while they stand.", "adds with no rifts")
 		local hydra = BossRules.watchOut(Bosses.BOSSES.prismHydra)
 		expect.equal(#hydra, 1, "the Hydra: one entry for its phases")
 		expect.equal(hydra[1].kind, "phases", "phases")
@@ -583,6 +585,22 @@ return {
 			assert(ring + 4 < BossRules.arenaRadius(boss, Bosses), `{id}: its fighters stand inside its ring`)
 		end
 		expect.equal(BossRules.leashRadius(tyrant, Bosses), 50 + Bosses.BOSS_SPOT)
+	end,
+
+	-- The owner 2026-11-11: "make him bigger ... his special skill is summoning ... summons should be bigger than a
+	-- normal or elite monsters and will show up to a random corner of an arena and runs to the summoned pet"
+	["the Rift Devourer stands bigger and summons twice, through rifts, bigger than an elite"] = function()
+		local rift = Bosses.BOSSES.riftDevourer
+		assert(rift.height >= 22, `height {rift.height}`)
+		assert(rift.ringRadius >= 21, "its fighters stand clear of its bigger body")
+		assert(rift.introShot.back >= 50, "the intro camera fits it")
+		local adds = rift.mechanics.adds
+		expect.equal(#adds.at, 2, "two waves")
+		local frontier = require("../src/shared/Config/Frontier")
+		local horror = frontier.SPECIES[adds.species].height
+		assert(horror * adds.size > horror * frontier.ELITE_SIZE * 1.2, "well over an elite")
+		assert(adds.emerge and adds.run and adds.cast, "out of rifts, running in, the boss calling them")
+		assert(adds.emerge + adds.run <= 5, "at your pets within 5 s")
 	end,
 
 	-- The owner 2026-11-11: "make the boss bigger"; its thunderclap's circle reaches past its pets (they can't run) and

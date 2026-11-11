@@ -144,6 +144,18 @@ return {
 				release = "rbxassetid://9120016037", -- Thunder Cracks Big Rumbling Blasts Booming 1
 			},
 		},
+		-- The owner 2026-11-11 (Util/RiftFx, Config RIFT below): a void bite, its mandibles snapping shut; its ring a rift
+		-- torn along the swipe; its summons (`rift`) come out of rifts it tears open at the arena's corners
+		riftDevourer = {
+			strike = "voidbite",
+			release = "rift",
+			rift = true,
+			color = rgb(160, 90, 255),
+			sounds = {
+				strike = "rbxassetid://9125466994", -- Creature Bite Pterodactyl Crunch Flying Bug 7
+				release = "rbxassetid://9120742493", -- Whoosh Sweeteners Tearing Atmosphere 1 (the rift tearing)
+			},
+		},
 	},
 	-- The Storm Sovereign's thunderclap (the owner 2026-11-11: "add animation and effects to thunderclap"; Util/StormFx,
 	-- numbers in Util/StormFxRules). While it rears up: its storm circle on the ground (an outline and a glow spreading
@@ -169,6 +181,30 @@ return {
 			crackle = "rbxassetid://9116276946", -- Lightning Flashes Quick Electrical Bursts 21
 			jolt = "rbxassetid://9114277757", -- Electric Zaps 12
 			hum = "rbxassetid://9114245570", -- Electric Hum 7
+		},
+	},
+	-- The Rift Devourer's summoning (Util/RiftFx; the owner 2026-11-11: "add a noticeable summoning effect when creatures
+	-- are summoned"): it calls (a void shockwave `call.wave` studs out from it, a beam from its jaws to each rift, a
+	-- shake), and at each summon's corner a rift tears open: a pool of void on the ground (`pool.radius` times the
+	-- summon's height), a round portal standing on it (`tear.size` x its height across: a violet halo and ring round a
+	-- dark void) with a violet light, motes pulling in and crackles, for the summon's emerge time (Config/Bosses
+	-- adds.emerge); it bursts (shards and smoke) as
+	-- the summon climbs out and closes `close` seconds later, the pool fading over `pool.fade`
+	RIFT = {
+		color = { 160, 80, 255 },
+		core = { 22, 6, 38 },
+		glow = { 215, 170, 255 },
+		call = { wave = 26, waveSeconds = 0.8, beamSeconds = 1.0, beamWidth = 1.4, shake = 0.8 },
+		tear = { size = 1.8, open = 0.3, light = { brightness = 6, range = 32 }, crackles = 8 },
+		pool = { radius = 1.2, fade = 1.2, lift = 0.15 },
+		motes = { rate = 45, reach = 1.4 },
+		burst = { shards = 26, smoke = 14, scale = 3 },
+		close = 0.45,
+		sounds = {
+			call = "rbxassetid://9114344093", -- Energy Presence 8 (it calls)
+			open = "rbxassetid://9125989548", -- Spirit Whooshes Low End Airy Growls Fast Bys (the rift)
+			crack = "rbxassetid://9114590297", -- Glass Break 1 (space cracks)
+			burst = "rbxassetid://9120749129", -- Wind Burst Alien Vortex Blasts 1 (it bursts out of the rift)
 		},
 	},
 	-- The Frost Tyrant's ice (Util/IceFx, numbers in Util/IceFxRules): a spike `length` long and `width` wide hanging
@@ -317,6 +353,13 @@ return {
 			strike = "embers", -- a ground punch: a fiery burst, rock dust, a ground ring
 			color = rgb(255, 112, 32),
 			sounds = { strike = "rbxassetid://9119037874" }, -- Shale Break 15
+		},
+		-- The Frontier's Rift Horror (the Rift Devourer's summons, 2026-11-11): three void claw slashes, a dark burst and
+		-- violet shards
+		["Rift Horror"] = {
+			strike = "voidclaw",
+			color = rgb(175, 100, 255),
+			sounds = { strike = "rbxassetid://9120717850" }, -- Whoosh Fast Swish By 4
 		},
 	},
 }

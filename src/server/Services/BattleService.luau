@@ -43,6 +43,8 @@ local Swords = require(Config:WaitForChild("Swords"))
 local Weapons = require(Config:WaitForChild("Weapons"))
 local RingRules = require(Shared:WaitForChild("Util"):WaitForChild("RingRules"))
 local SwordRules = require(Shared:WaitForChild("Util"):WaitForChild("SwordRules"))
+local SummonRules = require(Shared:WaitForChild("Util"):WaitForChild("SummonRules"))
+local MonsterLooks = require(Shared:WaitForChild("Util"):WaitForChild("MonsterLooks"))
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
@@ -102,7 +104,16 @@ type Fight = {
 	run: boolean, -- a Dungeon run fight: rewards without items, Run leaves the run
 	endHp: { [Player]: { [string]: number } }, -- each member's creatures' HP when they left the fight (its end or earlier)
 	rings: { [number]: Ring }, -- boss fights: rings still to land, by id
+	-- A boss's summons (adds.run, the Rift Devourer's): each one running to its pet (out of its rift first), the pet each
+	-- is after, and the corners the current wave comes out at
+	runs: { [string]: SummonRun },
+	summonFocus: { [string]: string },
+	waveCorners: { number }?,
 }
+
+-- One summon on its way: to `to` (a bite's reach from its pet at `face`) at `speed` studs a second, from `startAt`
+-- (os.clock(): once it's out of its rift)
+type SummonRun = { to: Vector3, face: Vector3, speed: number, startAt: number }
 
 -- The Dungeon: a room's pack (`monster` is its first, `pack` the others) and the HP left from earlier rooms
 export type RunOptions = { pack: { Monster }?, hpLeft: { [Player]: { [string]: number } }?, run: boolean? }
@@ -416,8 +427,108 @@ local function enterField(fight: Fight, event: BattleSim.Event, markers: { [stri
 	allies[id] = if beast then `{player.DisplayName} · {Cards.ById[beast.cardId].name}` else player.DisplayName
 end
 
--- A boss summoned an add: a real wild monster of its species, held still beside the boss (left, right, further out)
-local function spawnAdd(fight: Fight, id: string, markers: { [string]: BasePart }, addMonsters: { [string]: string })
+-- Where a pet stands (its spot in the ring, else its marker), nil if it's gone
+local function petPosition(fight: Fight, id: string?): Vector3?
+	if not id then
+		return nil
+	end
+	local spot = fight.spots[id]
+	if spot then
+		return spot.Position
+	end
+	local marker = markerFor(fight, id)
+	return if marker then marker.Position else nil
+end
+
+-- A summon sets off for its pet: a bite's reach short of it (its own size plus Bosses.SUMMON.meleeGap), fast enough to
+-- get there in `seconds` (0: retargeting, at SUMMON.retargetSpeed), after `wait` seconds (coming out of its rift)
+local function runTo(fight: Fight, id: string, add: WildService.Monster, petId: string, seconds: number, wait: number)
+	local pet = petPosition(fight, petId)
+	if not pet then
+		return
+	end
+	local from = add.marker.Position
+	local size = tonumber(add.marker:GetAttribute("Size")) or 1
+	local gap = Bosses.SUMMON.meleeGap + MonsterLooks.height(Wild, add.species, false, nil, nil, size) / 2
+	local stop = SummonRules.meleeSpot({ x = pet.X, z = pet.Z }, { x = from.X, z = from.Z }, gap)
+	local to = Vector3.new(stop.x, from.Y, stop.z)
+	local cfg = Bosses.SUMMON
+	local speed = if seconds > 0 then SummonRules.runSpeed((to - from).Magnitude, seconds, cfg.minSpeed, cfg.maxSpeed) else cfg.retargetSpeed
+	fight.runs[id] = { to = to, face = pet, speed = speed, startAt = os.clock() + wait }
+	fight.summonFocus[id] = petId
+end
+
+-- Each step: summons out of their rifts run on toward their pets, facing the way they go, and turn to bite on arrival
+local function moveSummons(fight: Fight, dt: number)
+	local now = os.clock()
+	for id, run in fight.runs do
+		local add = fight.adds[id]
+		if not add or not add.alive then
+			fight.runs[id] = nil
+			continue
+		end
+		if now < run.startAt then
+			continue
+		end
+		local at = add.marker.Position
+		local flat = Vector3.new(run.to.X - at.X, 0, run.to.Z - at.Z)
+		local step = run.speed * dt
+		local cframe: CFrame
+		if flat.Magnitude <= step then
+			cframe = CFrame.lookAt(run.to, Vector3.new(run.face.X, run.to.Y, run.face.Z))
+			fight.runs[id] = nil
+		else
+			local ahead = at + flat.Unit * step
+			cframe = CFrame.lookAt(ahead, ahead + flat.Unit)
+		end
+		fight.spots[id] = cframe
+		WildService.SetFightPose(add, cframe)
+	end
+end
+
+-- A boss summoned through rifts (adds.run): out at a random corner of the arena (different ones in a wave), facing
+-- its pet, rising out of its rift and then running to it; the event gets where it came out for clients' rift
+local function spawnSummon(fight: Fight, id: string, event: BattleSim.Event, boss: any, adds: any, leader: Player): WildService.Monster?
+	local slot = event.slot or 1
+	if slot == 1 or not fight.waveCorners then
+		local rolls = {}
+		for index = 1, adds.count do
+			rolls[index] = rng:NextNumber()
+		end
+		fight.waveCorners = SummonRules.pickCorners(adds.count, rolls)
+	end
+	local bossSpot = fight.spots[MONSTER_ID]
+	-- the arena's own frame: every arena (WildService) has its boss BOSS_SPOT past the centre along +X, the gate on -X,
+	-- whichever way the boss turned since
+	local arena = CFrame.lookAt(bossSpot.Position, bossSpot.Position - Vector3.xAxis)
+	local corners = fight.waveCorners :: { number }
+	local corner = SummonRules.corner(corners[slot] or slot, BossRules.arenaRadius(boss, Bosses), Bosses.BOSS_SPOT, Bosses.SUMMON.cornerShare)
+	local at = (arena * CFrame.new(corner.x, 0, corner.z)).Position
+	local face = petPosition(fight, event.focus) or bossSpot.Position
+	local monster = WildService.SpawnAt(at, adds.species, boss.level, false, nil, nil, { size = adds.size or 1, emerge = adds.emerge or 0 })
+	if not monster then
+		return nil
+	end
+	local ground = monster.marker.Position
+	local spot = CFrame.lookAt(ground, Vector3.new(face.X, ground.Y, face.Z))
+	WildService.Lock(monster, leader)
+	WildService.SetFightPose(monster, spot)
+	fight.adds[id] = monster
+	fight.spots[id] = spot
+	if event.focus then
+		runTo(fight, id, monster, event.focus, adds.run, adds.emerge or 0)
+	end
+	local view = event :: any
+	view.x, view.y, view.z = ground.X, ground.Y, ground.Z
+	view.size = adds.size
+	view.emerge = adds.emerge
+	view.height = MonsterLooks.height(Wild, adds.species, false, nil, nil, adds.size)
+	return monster
+end
+
+-- A boss summoned an add: a real wild monster of its species, held still beside the boss (left, right, further out);
+-- summoned through rifts (adds.run), at a corner of the arena, running to its pet (spawnSummon)
+local function spawnAdd(fight: Fight, id: string, event: BattleSim.Event, markers: { [string]: BasePart }, addMonsters: { [string]: string })
 	local boss = Bosses.BOSSES[fight.monster.boss or ""]
 	local adds = if boss then boss.mechanics.adds else nil
 	for _, phase in (if boss then boss.phases else nil) or {} do
@@ -425,6 +536,14 @@ local function spawnAdd(fight: Fight, id: string, markers: { [string]: BasePart 
 	end
 	local leader = next(fight.members)
 	if not boss or not adds or not leader then
+		return
+	end
+	if adds.run then
+		local summon = spawnSummon(fight, id, event, boss, adds, leader)
+		if summon then
+			markers[id] = summon.marker
+			addMonsters[id] = summon.id
+		end
 		return
 	end
 	local count = 0
@@ -548,7 +667,15 @@ local function handleEvents(fight: Fight, events: { BattleSim.Event })
 	local addMonsters: { [string]: string } = {}
 	for _, event in events do
 		if event.type == "attack" and event.from and event.to then
-			lunge(fight, event.from, event.to)
+			-- A summon whose pet fell (or swapped out) runs to the one it bites now; it doesn't lunge while it runs
+			local summon = fight.adds[event.from]
+			local focus = fight.summonFocus[event.from]
+			if summon and focus and focus ~= event.to and string.sub(event.to, 1, 3) ~= "a:@" then
+				runTo(fight, event.from, summon, event.to, 0, 0)
+			end
+			if not fight.runs[event.from] then
+				lunge(fight, event.from, event.to)
+			end
 			if event.dodged and (event.kind == "Slam" or event.kind == "Swipe") then
 				local member = memberByOwner(fight, string.sub(event.to, 4))
 				if member then
@@ -562,6 +689,7 @@ local function handleEvents(fight: Fight, events: { BattleSim.Event })
 			end
 			local add = fight.adds[event.to]
 			if add then
+				fight.runs[event.to] = nil
 				task.delay(Bosses.ADD_FADE_SECONDS, WildService.Defeat, add)
 			end
 		elseif event.type == "ability" and event.kind == "Rebirth" and typeof(event.revived) == "table" then
@@ -574,7 +702,7 @@ local function handleEvents(fight: Fight, events: { BattleSim.Event })
 				end
 			end
 		elseif event.type == "spawn" and event.to then
-			spawnAdd(fight, event.to, markers, addMonsters)
+			spawnAdd(fight, event.to, event, markers, addMonsters)
 		elseif event.type == "phase" and event.kind then
 			fight.monster.marker:SetAttribute("Phase", event.kind) -- everyone near sees that head light up
 		elseif event.type == "heal" and event.to == MONSTER_ID then
@@ -1111,6 +1239,8 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 		run = run,
 		endHp = {},
 		rings = {},
+		runs = {},
+		summonFocus = {},
 	}
 	if boss then
 		sim.ringCheck = function(info: BattleSim.RingInfo): boolean
@@ -1239,6 +1369,16 @@ function BattleService.StartFight(player: Player, monster: Monster): (boolean, s
 	return BattleService.StartGroupFight({ player }, monster)
 end
 
+-- DevService's /bosshp: the boss of this player's fight down to `share` of its HP (Studio only), to reach a boss's
+-- summons, phases and heals without fighting there
+function BattleService.SetBossHpShare(player: Player, share: number): boolean
+	local fight = fights[player]
+	if not RunService:IsStudio() or not fight or not fight.monster.boss then
+		return false
+	end
+	return BattleSim.setHpShare(fight.sim, MONSTER_ID, share)
+end
+
 function BattleService.SetBossRewards(handler: (player: Player, monster: Monster, fight: { seconds: number, fighterIds: { string }, contributed: boolean }) -> any)
 	bossRewards = handler
 end
@@ -1351,7 +1491,7 @@ local function swordTargets(fight: Fight): { SwordRules.Target }
 		else Bosses.ADD_HIT_RADIUS * (if fight.monster.elite then Wild.ELITE_SIZE else 1)
 	add(MONSTER_ID, fight.monster.marker, radius)
 	for id, monster in fight.adds do
-		add(id, monster.marker, Bosses.ADD_HIT_RADIUS)
+		add(id, monster.marker, Bosses.ADD_HIT_RADIUS * (tonumber(monster.marker:GetAttribute("Size")) or 1))
 	end
 	return list
 end
@@ -1548,6 +1688,7 @@ local function stepFights(dt: number)
 			continue -- the intro: nothing moves yet
 		end
 		handleEvents(fight, BattleSim.step(fight.sim, dt))
+		moveSummons(fight, dt)
 		for _, member in fight.members do
 			followDebuff(fight, member)
 		end

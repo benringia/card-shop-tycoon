@@ -30,6 +30,7 @@ local RingFx = require((script.Parent :: Instance):WaitForChild("RingFx"))
 local ScreenFx = require((script.Parent :: Instance):WaitForChild("ScreenFx"))
 local IceFx = require((script.Parent :: Instance):WaitForChild("IceFx"))
 local StormFx = require((script.Parent :: Instance):WaitForChild("StormFx"))
+local RiftFx = require((script.Parent :: Instance):WaitForChild("RiftFx"))
 local Spotlight = require((script.Parent :: Instance):WaitForChild("Spotlight"))
 
 local FightFx = {}
@@ -696,6 +697,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 	local rings: { [string]: any } = {} -- each player's latest ring (by sim id): where its hit lands
 	local iceShields: { [BasePart]: IceFx.Shield } = {} -- the Frost Tyrant's shield, by his marker
 	local storms: { [BasePart]: StormFx.Windup } = {} -- the Storm Sovereign's thunderclap winding up, by its marker
+	local riftCalls: { [BasePart]: number } = {} -- the Rift Devourer's last call (os.clock), one a wave, by its marker
 	local gathering: { [BasePart]: () -> () } = {} -- a boss's sparks pulling in for a ring
 	local strikeSoundAt = 0
 	local moveCfg = { CHARGE_GRACE = AttackFx.CHARGE_GRACE, HIT_GRACE = Combat.HIT_GRACE }
@@ -751,6 +753,20 @@ function FightFx.new(resolve: Resolve): Dispatcher
 			return
 		end
 		local tint = color(spec.color)
+		if event.type == "spawn" then
+			-- its summons come through rifts (the Rift Devourer, 2026-11-11): one call a wave, a rift at each one's
+			-- corner (BattleService puts where it came out, its height and its emerge time in the event)
+			if spec.rift and typeof(event.x) == "number" then
+				local now = os.clock()
+				if now - (riftCalls[marker] or -math.huge) > 1 then
+					riftCalls[marker] = now
+					RiftFx.call(view.root, view.height)
+				end
+				local at = Vector3.new(event.x, event.y, event.z)
+				RiftFx.open(RiftFx.jaws(view.root, view.height), at, tonumber(event.height) or 6, tonumber(event.emerge) or 1)
+			end
+			return
+		end
 		if event.type == "thunderclap" then
 			if spec.storm then
 				onStorm(event, marker, view)

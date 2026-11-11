@@ -29,6 +29,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	FrontierFxRules = require("./FrontierFxRules.spec"),
 	IceFxRules = require("./IceFxRules.spec"),
 	StormFxRules = require("./StormFxRules.spec"),
+	SummonRules = require("./SummonRules.spec"),
 	ItemPopupRules = require("./ItemPopupRules.spec"),
 	BossIdleRules = require("./BossIdleRules.spec"),
 	FxToneRules = require("./FxToneRules.spec"),

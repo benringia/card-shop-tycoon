@@ -17,6 +17,14 @@ return {
 		end
 	end,
 
+	-- The Rift Devourer's summons (the owner 2026-11-11: "summons should be bigger than a normal or elite monsters")
+	["a summoned monster stands its summon size times its species, bigger than an elite"] = function()
+		local plain = MonsterLooks.height(frontier, "Rift Horror", false)
+		local summoned = MonsterLooks.height(frontier, "Rift Horror", false, nil, nil, 2)
+		expect.near(summoned, plain * 2, 1e-9, "twice its height")
+		assert(summoned > MonsterLooks.height(frontier, "Rift Horror", true), "bigger than an elite")
+	end,
+
 	["a species without a height keeps the world's monster height"] = function()
 		local world = table.clone(frontier) :: any
 		world.SPECIES = { Nameless = { element = "Tide", hp = 1, atk = 1, spd = 1, shape = "slime" } }

@@ -15,7 +15,10 @@ The three bosses also have `specialWindup` (1.4 s, its ring's warning) and `spec
                   (2 s: wings raised high in a wide V, head thrown back roaring at the sky, shuddering as the storm
                   charges) and `clapRelease` (1.2 s, Hit at 0.1 s: its wings swing forward and clap together in front
                   of its chest, head down roaring, then back to rest)
-  riftDevourer    backs up with mandibles spread, lunges with them snapping shut; rears its front up, then crashes down
+  riftDevourer    rears back with its jaws wide and mandibles spread, then lunges far forward, head down, snapping them
+                  shut (bigger since the owner 2026-11-11: "doesnt have a basic attack animation yet"); rears its front
+                  up, then crashes down. Its summoning (2026-11-11) has its own `summon` (1.6 s): it rears up high
+                  screeching, front legs reaching up, trembles, then slams its front down as the rifts open
 
 Run in a background Blender (it opens each .blend in turn; writes assets/blender/Animations/<game name>/<clip>.json):
   blender -b --factory-startup --python tools/blender/anim_frontier.py
@@ -157,23 +160,47 @@ FROST = {
     },
 }
 
+# Its bite read as a nod at boss size (the owner 2026-11-11: "doesnt have a basic attack animation yet"), so it rears
+# well back and lunges a third of its length (its Pelvis pivots at its back end: +X tips its head down)
 DEVOURER = {
     "rest": {},
     "ready": {
-        "Pelvis": ((-6, 0, 0), (0, 0.06, 0.0)),
+        "Pelvis": ((-12, 0, 0), (0, 0.16, 0.05)),
         "Spine_0": (-6, 0, 0),
-        "Head_0": (-10, 0, 0),
-        "Jaw_0": (24, 0, 0),
-        **_pair("Pincer_{side}_0", (0, 0, -24), mirror="Z"),
-        **_pair("0_{side}_Limb_0", (-12, 0, 0)),
+        "Head_0": (-16, 0, 0),
+        "Jaw_0": (38, 0, 0),
+        **_pair("Pincer_{side}_0", (0, 0, -36), mirror="Z"),
+        **_pair("0_{side}_Limb_0", (-30, 0, 0)),
+        **_pair("0_{side}_Limb_1", (20, 0, 0)),
     },
     "snap": {
-        "Pelvis": ((8, 0, 0), (0, -0.12, -0.02)),
+        "Pelvis": ((14, 0, 0), (0, -0.32, -0.04)),
         "Spine_0": (8, 0, 0),
-        "Head_0": (12, 0, 0),
-        "Jaw_0": (-2, 0, 0),
-        **_pair("Pincer_{side}_0", (0, 0, 18), mirror="Z"),
-        **_pair("0_{side}_Limb_0", (20, 0, 0)),
+        "Head_0": (16, 0, 0),
+        "Jaw_0": (-4, 0, 0),
+        **_pair("Pincer_{side}_0", (0, 0, 26), mirror="Z"),
+        **_pair("0_{side}_Limb_0", (26, 0, 0)),
+        **_pair("2_{side}_Limb_0", (-14, 0, 0)),
+    },
+    # its summoning (2026-11-11): reared up high screeching, front legs reaching up; then its front slammed down
+    "summonUp": {
+        "Pelvis": ((-30, 0, 0), (0, 0.04, 0.1)),
+        "Spine_0": (-10, 0, 0),
+        "Head_0": (-24, 0, 0),
+        "Jaw_0": (42, 0, 0),
+        **_pair("Pincer_{side}_0", (0, 0, -40), mirror="Z"),
+        **_pair("0_{side}_Limb_0", (-55, 0, 0)),
+        **_pair("0_{side}_Limb_1", (35, 0, 0)),
+        **_pair("1_{side}_Limb_0", (-25, 0, 0)),
+    },
+    "summonSlam": {
+        "Pelvis": ((12, 0, 0), (0, -0.08, -0.05)),
+        "Spine_0": (6, 0, 0),
+        "Head_0": (10, 0, 0),
+        "Jaw_0": (34, 0, 0),
+        **_pair("Pincer_{side}_0", (0, 0, -20), mirror="Z"),
+        **_pair("0_{side}_Limb_0", (30, 0, 0)),
+        **_pair("1_{side}_Limb_0", (12, 0, 0)),
     },
     "rear": {
         "Pelvis": ((-22, 0, 0), (0, 0.1, 0.06)),
@@ -262,12 +289,35 @@ def _thunderclap_clips(poses):
     }
 
 
+def _summon_clip(poses):
+    """The Rift Devourer's summoning (2026-11-11): `summon`, 1.6 s (its Bosses adds.cast): up over 12 frames, trembling
+    as it screeches, its front slammed down at frame 32 as the rifts open, held, back to rest."""
+    def summon(rig):
+        up = poses["summonUp"]
+        kit.key_pose(rig, 1, poses["rest"])
+        kit.key_pose(rig, 12, up)
+        for index, frame in enumerate((17, 22, 27)):
+            shiver = dict(up)
+            sign = 1 if index % 2 == 0 else -1
+            x, y, z = shiver["Head_0"]
+            shiver["Head_0"] = (x - 4 * sign, y, z + 3 * sign)
+            x, y, z = shiver["Spine_0"]
+            shiver["Spine_0"] = (x, y, z - 2 * sign)
+            kit.key_pose(rig, frame, shiver)
+        kit.key_pose(rig, 29, up)
+        kit.key_pose(rig, 32, poses["summonSlam"])
+        kit.key_pose(rig, 38, poses["summonSlam"])
+        kit.key_pose(rig, 49, poses["rest"])
+
+    return {"summon": (summon, 49, {})}
+
+
 WARDEN = {"rest": warden.REST, "ready": warden.SWIPE_READY, "done": warden.SWIPE_DONE, "up": warden.SLAM_READY,
           "down": warden.SLAM_DOWN}
 BOSSES = {
     "FrostTyrant": ("frostTyrant", _boss_clips(FROST, "ready", "swipe", "summon", "command")),
     "StormSovereign": ("stormSovereign", {**_boss_clips(SOVEREIGN, "ready", "bite", "rear", "clap"), **_thunderclap_clips(SOVEREIGN)}),
-    "RiftDevourer": ("riftDevourer", _boss_clips(DEVOURER, "ready", "snap", "rear", "crash")),
+    "RiftDevourer": ("riftDevourer", {**_boss_clips(DEVOURER, "ready", "snap", "rear", "crash"), **_summon_clip(DEVOURER)}),
 }
 
 
