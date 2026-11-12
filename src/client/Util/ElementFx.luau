@@ -738,24 +738,11 @@ end
 -- `apex` along `direction` across `halfAngle` degrees either side for `length`, dark rock edges round a glowing seam
 -- (`color`, or every colour along each crack with `spec.rainbow`) tearing outward; a wave of rock spikes bursting up
 -- along each crack, bigger the further out, its tip the biggest (the middle crack's the biggest of all, a rainbow
--- crystal on it); small rocks thrown up; dust; all sinking back and gone after a moment
-local function rockSpike(at: Vector3, size: number, height: number, rockColor: Color3, lean: Vector3, delay: number, life: number, crystal: Color3?, big: boolean?)
+-- crystal on it); small rocks thrown up; dust; all sinking back and gone after a moment. `detail`
+-- (FightFxRules.fissureDetail) sizes it for the moment; every part is made when it shows, never all in one frame (owner
+-- 2026-11-12: "ensure smoothness": three at once cost 21 ms built up front)
+local function rockSpike(at: Vector3, size: number, height: number, rockColor: Color3, lean: Vector3, life: number, crystal: Color3?, big: boolean)
 	local tall = size * height
-	local pieces: { BasePart } = {}
-	for index = 1, 2 do
-		local width = size * (if index == 1 then 1 else 0.7)
-		local rock = part(Vector3.new(width, tall * (if index == 1 then 1 else 0.75), width), rockColor, at)
-		rock.Material = Enum.Material.Slate
-		rock.Transparency = 1
-		table.insert(pieces, rock)
-	end
-	-- its glowing cap: a crystal on a crack's tip, a small vein on the others
-	local tip: BasePart? = nil
-	if crystal then
-		local gem = part(if big then Vector3.new(size * 0.45, size * 1.1, size * 0.45) else Vector3.new(size * 0.3, size * 0.45, size * 0.3), crystal, at)
-		gem.Transparency = 1
-		tip = gem
-	end
 	local tilt = CFrame.lookAt(Vector3.zero, lean + Vector3.new(0, 4, 0)) * CFrame.Angles(-math.pi / 2, 0, 0)
 	local spin = math.random() * math.pi
 	local function frameOf(piece: number, rise: number): CFrame
@@ -763,27 +750,28 @@ local function rockSpike(at: Vector3, size: number, height: number, rockColor: C
 		local offset = if piece == 2 then Vector3.new(size * 0.25, 0, -size * 0.2) else Vector3.zero
 		return CFrame.new(at + offset) * tilt * turn * CFrame.new(0, rise, 0)
 	end
-	for index, rock in pieces do
-		local h = rock.Size.Y
+	-- one rock, two at a crack's tip
+	for index = 1, if big then 2 else 1 do
+		local width = size * (if index == 1 then 1 else 0.7)
+		local h = tall * (if index == 1 then 1 else 0.75)
+		local rock = part(Vector3.new(width, h, width), rockColor, at)
+		rock.Material = Enum.Material.Slate
 		rock.CFrame = frameOf(index, -h / 2)
-		task.delay(delay, function()
-			rock.Transparency = 0
-			TweenService:Create(rock, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { CFrame = frameOf(index, h / 2 - h * 0.15) }):Play()
-		end)
+		TweenService:Create(rock, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { CFrame = frameOf(index, h / 2 - h * 0.15) }):Play()
 		task.delay(life - 0.6, function()
 			TweenService:Create(rock, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { CFrame = frameOf(index, -h / 2), Transparency = 1 }):Play()
 		end)
 		Debris:AddItem(rock, life)
 	end
-	if tip then
+	-- its glowing cap: a crystal on a crack's tip, a small vein on the others
+	if crystal then
+		local tip = part(if big then Vector3.new(size * 0.45, size * 1.1, size * 0.45) else Vector3.new(size * 0.3, size * 0.45, size * 0.3), crystal, at)
+		tip.Transparency = 0.05
 		tip.CFrame = frameOf(1, -tall)
-		task.delay(delay, function()
-			tip.Transparency = 0.05
-			TweenService:Create(tip, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { CFrame = frameOf(1, tall * 0.85 + (if big then size * 0.4 else 0)) }):Play()
-			if big then
-				ElementFx.burst(at + Vector3.new(0, tall, 0), tip.Color, size * 0.6)
-			end
-		end)
+		TweenService:Create(tip, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { CFrame = frameOf(1, tall * 0.85 + (if big then size * 0.4 else 0)) }):Play()
+		if big then
+			ElementFx.burst(at + Vector3.new(0, tall, 0), crystal, size * 0.6)
+		end
 		task.delay(life - 0.6, function()
 			TweenService:Create(tip, TweenInfo.new(0.5), { Transparency = 1 }):Play()
 		end)
@@ -791,66 +779,65 @@ local function rockSpike(at: Vector3, size: number, height: number, rockColor: C
 	end
 end
 
-function ElementFx.rockFissure(apex: Vector3, direction: Vector3, length: number, halfAngle: number, color: Color3, spec: any)
+function ElementFx.rockFissure(apex: Vector3, direction: Vector3, length: number, halfAngle: number, color: Color3, spec: any, detail: any)
 	local flatDirection = Vector3.new(direction.X, 0, direction.Z)
 	local forward = if flatDirection.Magnitude > 0.01 then flatDirection.Unit else Vector3.new(0, 0, -1)
 	local rockColor = Color3.fromRGB(spec.rock[1], spec.rock[2], spec.rock[3])
 	local life = spec.grow + spec.linger + spec.fade + 0.2
 	local spikes = spec.spikes
-	local middle = (spec.cracks + 1) / 2
+	local cracks, segments = detail.cracks, detail.segments
+	local middle = (cracks + 1) / 2
 	local spots: { Vector3 } = {}
-	for crackIndex = 1, spec.cracks do
-		local share = if spec.cracks > 1 then (crackIndex - 1) / (spec.cracks - 1) else 0.5
+	for crackIndex = 1, cracks do
+		local share = if cracks > 1 then (crackIndex - 1) / (cracks - 1) else 0.5
 		local angle = math.rad(-halfAngle * 0.85 + share * halfAngle * 1.7 + (math.random() - 0.5) * 6)
 		local way = CFrame.fromAxisAngle(Vector3.yAxis, angle):VectorToWorldSpace(forward)
 		local side = way:Cross(Vector3.yAxis)
 		local centre = math.abs(crackIndex - middle) < 0.6
 		local reach = length * (if centre then 1 else 0.75 + math.random() * 0.2)
 		local last = apex + way * 1.5
-		for segment = 1, spec.segments do
-			local along = 1.5 + (reach - 1.5) * segment / spec.segments
-			local off = if segment == spec.segments then 0 else (math.random() * 2 - 1) * spec.jag
-			local nextPoint = apex + way * along + side * off
-			local from, to = last, nextPoint
-			last = nextPoint
+		for segment = 1, segments do
+			local along = 1.5 + (reach - 1.5) * segment / segments
+			local off = if segment == segments then 0 else (math.random() * 2 - 1) * spec.jag
+			local from, to = last, apex + way * along + side * off
+			last = to
 			table.insert(spots, to)
-			local span = (to - from).Magnitude
-			local mid = (from + to) / 2
-			local frame = CFrame.lookAt(mid + Vector3.new(0, 0.08, 0), to + Vector3.new(0, 0.08, 0))
-			local thin = spec.width * (1 - 0.4 * segment / spec.segments)
-			-- a rainbow runs out along each crack, each crack starting on its own colour
-			local glow = if spec.rainbow then Color3.fromHSV((share * 0.7 + segment / spec.segments * 0.5) % 1, 0.75, 1) else color
-			local edge = part(Vector3.new(thin, 0.18, span + 0.3), rockColor, mid)
-			edge.Material = Enum.Material.Slate
-			edge.CFrame = frame
-			local seam = part(Vector3.new(thin * 0.7, 0.26, span + 0.1), glow, mid)
-			seam.Material = Enum.Material.Neon
-			seam.CFrame = frame
-			edge.Transparency, seam.Transparency = 1, 1
-			-- it tears outward from the boss, a piece after another
-			local at = spec.grow * (segment - 1) / spec.segments
-			task.delay(at, function()
-				edge.Transparency, seam.Transparency = 0, 0.1
-			end)
-			task.delay(spec.grow + spec.linger, function()
-				TweenService:Create(edge, TweenInfo.new(spec.fade), { Transparency = 1 }):Play()
-				TweenService:Create(seam, TweenInfo.new(spec.fade), { Transparency = 1 }):Play()
-			end)
-			Debris:AddItem(edge, life)
-			Debris:AddItem(seam, life)
-			-- a rock spike bursting up where this piece ends: bigger the further out, the tip the biggest
-			if spikes and segment >= 2 then
-				local tipRock = segment == spec.segments
-				local size = spikes.base + spikes.grow * segment / spec.segments
-				if tipRock then
-					size *= if centre then spikes.biggest else spikes.tip
+			-- this piece and its spike are made as the tear reaches them, a piece after another
+			task.delay(spec.grow * (segment - 1) / segments, function()
+				local span = (to - from).Magnitude
+				local mid = (from + to) / 2
+				local frame = CFrame.lookAt(mid + Vector3.new(0, 0.08, 0), to + Vector3.new(0, 0.08, 0))
+				local thin = spec.width * (1 - 0.4 * segment / segments)
+				-- a rainbow runs out along each crack, each crack starting on its own colour
+				local glow = if spec.rainbow then Color3.fromHSV((share * 0.7 + segment / segments * 0.5) % 1, 0.75, 1) else color
+				local edge = part(Vector3.new(thin, 0.18, span + 0.3), rockColor, mid)
+				edge.Material = Enum.Material.Slate
+				edge.CFrame = frame
+				local seam = part(Vector3.new(thin * 0.7, 0.26, span + 0.1), glow, mid)
+				seam.Transparency = 0.1
+				seam.CFrame = frame
+				local left = life - spec.grow * (segment - 1) / segments
+				task.delay(left - spec.fade - 0.2, function()
+					TweenService:Create(edge, TweenInfo.new(spec.fade), { Transparency = 1 }):Play()
+					TweenService:Create(seam, TweenInfo.new(spec.fade), { Transparency = 1 }):Play()
+				end)
+				Debris:AddItem(edge, left)
+				Debris:AddItem(seam, left)
+				-- a rock spike bursting up where this piece ends: bigger the further out, the tip the biggest
+				if spikes and detail.spikes and segment >= 2 then
+					local tipRock = segment == segments
+					local size = spikes.base + spikes.grow * segment / segments
+					if tipRock then
+						size *= if centre then spikes.biggest else spikes.tip
+					end
+					local cap = if tipRock or detail.caps then glow else nil
+					rockSpike(to, size, spikes.height, rockColor, way * (0.6 + math.random() * 0.6) + side * (math.random() - 0.5), left, cap, tipRock)
 				end
-				rockSpike(to, size, spikes.height, rockColor, way * (0.6 + math.random() * 0.6) + side * (math.random() - 0.5), at + 0.05, life, glow, tipRock)
-			end
+			end)
 		end
 	end
 	-- small rocks thrown up out of the cracks, tumbling, crashing back down
-	for _ = 1, detail(spec.rocks) do
+	for _ = 1, detail.rocks do
 		local spot = spots[math.random(1, #spots)]
 		local size = spec.rockSize[1] + math.random() * (spec.rockSize[2] - spec.rockSize[1])
 		local rock = part(Vector3.new(size, size * (0.6 + math.random() * 0.4), size * (0.7 + math.random() * 0.3)), rockColor, spot)
@@ -873,8 +860,8 @@ function ElementFx.rockFissure(apex: Vector3, direction: Vector3, length: number
 		end)
 		Debris:AddItem(rock, life)
 	end
-	-- dust bursting out along the cone
-	for index = 1, 3 do
+	-- dust bursting out along the cone (one puff for a small one)
+	for index = 1, if detail.spikes then 3 else 1 do
 		ElementFx.eruption(apex + forward * length * index / 4, DUST, length * 0.18, 8)
 	end
 end

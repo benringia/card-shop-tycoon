@@ -14,6 +14,7 @@ local AttackFx = require(Shared:WaitForChild("Config"):WaitForChild("AttackFx"))
 local IceFxRules = require(Shared:WaitForChild("Util"):WaitForChild("IceFxRules"))
 local ElementFx = require((script.Parent :: Instance):WaitForChild("ElementFx"))
 local CinematicView = require((script.Parent :: Instance):WaitForChild("CinematicView"))
+local Extras = require((script.Parent :: Instance):WaitForChild("Extras"))
 
 local IceFx = {}
 
@@ -231,7 +232,8 @@ function IceFx.shield(root: BasePart, height: number, maxRadius: number?): Shiel
 	local bubble = piece(holder, "Part", Vector3.one * radius * 2, CFrame.new(centre), ICE_COLOR, Enum.Material.Glass, look.transparency)
 	bubble.Shape = Enum.PartType.Ball
 	table.insert(parts, bubble)
-	for _, spec in IceFxRules.shieldShards(look.shards) do
+	-- fewer shards on low graphics (it's ~150 parts made at once; owner 2026-11-12: "ensure smoothness")
+	for _, spec in IceFxRules.shieldShards(if Extras.enabled() then look.shards else look.lowShards) do
 		local outward = (CFrame.Angles(0, math.rad(spec.yaw), 0) * CFrame.Angles(math.rad(spec.pitch), 0, 0)).LookVector
 		local foot = centre + outward * radius * 0.9
 		for _, part in crystal(holder, CFrame.lookAt(foot, foot + outward) * CFrame.Angles(math.rad(-90), 0, 0), radius * spec.width, radius * spec.length, 0.2) do

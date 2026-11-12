@@ -172,6 +172,10 @@ return {
 				rocks = 10, rockSize = { 1, 2.2 }, rise = { 4, 9 }, rock = { 118, 104, 138 },
 				rainbow = true, only = true,
 				spikes = { base = 0.8, grow = 1.4, height = 2.1, tip = 1.5, biggest = 2.3 },
+				-- smoothness (FightFxRules.fissureDetail): its size with the low-graphics switch off, and how soon after a
+				-- full one another on the same screen is small (seconds); its parts are made as it tears, never at once
+				low = { cracks = 3, segments = 4, rocks = 4 },
+				window = 0.6,
 			},
 			byPhase = {
 				Ember = { strike = "embers", release = "lava", color = rgb(255, 120, 50) },
@@ -251,7 +255,7 @@ return {
 		-- 45 up and a long fall: a fight camera behind you sees it hang and come down (60 up was off the top of the view)
 		spike = { height = 45, length = 22, width = 5.5, fall = 0.75, pieces = 12, smoke = 18, light = 22 },
 		-- the bubble's radius and the ice block's sides: shares of the body's box (its largest side; its height and width)
-		shield = { radius = 0.62, shards = 24, grow = 0.4, transparency = 0.55 },
+		shield = { radius = 0.62, shards = 24, lowShards = 10, grow = 0.4, transparency = 0.55 }, -- lowShards: low graphics
 		encase = { width = 1.05, tall = 1.08, transparency = 0.45, crystals = 6 },
 		color = { 170, 220, 255 },
 		core = { 235, 250, 255 },

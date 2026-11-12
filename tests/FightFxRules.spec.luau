@@ -99,6 +99,41 @@ return {
 		expect.equal(Bosses.BOSSES.prismHydra.playerAttacks.every, 10, "its attack on players comes every 10 s")
 	end,
 
+	-- The owner 2026-11-12: "if there are 4 people in a party with all the particle effects, does it affect performance?":
+	-- three fissures at once cost 21 ms to build on a desktop (one 67 ms frame); a phone is several times slower
+	["a fissure's size: full when it's the only one, small right after another, lighter on low graphics"] = function()
+		local spec = AttackFx.BOSS.prismHydra.fissure
+		local full = FightFxRules.fissureDetail(spec, true, false)
+		expect.equal(full.cracks, spec.cracks, "full: every crack")
+		expect.equal(full.segments, spec.segments)
+		expect.equal(full.rocks, spec.rocks)
+		expect.equal(full.spikes and full.caps, true, "spikes with their rainbow caps")
+		local low = FightFxRules.fissureDetail(spec, false, false)
+		expect.equal(low.cracks < full.cracks and low.segments < full.segments and low.rocks < full.rocks, true, "low graphics: fewer of each")
+		expect.equal(low.spikes, true, "still a rock fissure: spikes stay")
+		expect.equal(low.caps, false, "no caps but the tips' crystals")
+		local small = FightFxRules.fissureDetail(spec, true, true)
+		expect.equal(small.cracks <= 2 and small.spikes == false and small.rocks <= 3, true, "a second one at once: a small crack")
+		-- the parts it builds stay within a budget (each piece: an edge and a seam, a spike one rock (two at a tip) and a cap)
+		local function parts(detail: any): number
+			local pieces = detail.cracks * detail.segments * 2
+			local spikes = if detail.spikes then detail.cracks * (detail.segments - 1) * (if detail.caps then 2 else 1) + detail.cracks * 2 else 0
+			return pieces + spikes + detail.rocks
+		end
+		expect.equal(parts(full) <= 130, true, `full builds at most 130 parts ({parts(full)})`)
+		expect.equal(parts(low) <= 50, true, `low builds at most 50 ({parts(low)})`)
+		expect.equal(parts(small) <= 20, true, `small builds at most 20 ({parts(small)})`)
+		-- one full fissure at a time: another within the window is small
+		expect.equal(FightFxRules.fissureCrowded(10, 9.8, spec.window), true, "0.2 s after the last: crowded")
+		expect.equal(FightFxRules.fissureCrowded(10, 9, spec.window), false, "a second later: full again")
+		expect.equal(FightFxRules.fissureCrowded(10, nil, spec.window), false, "the first one")
+	end,
+
+	["the ice shield has fewer shards on low graphics"] = function()
+		local ice = AttackFx.ICE.shield
+		expect.equal(ice.lowShards < ice.shards and ice.lowShards >= 6, true, "fewer shards, still a crystal bubble")
+	end,
+
 	-- The owner 2026-11-12: "shield, heal, and enrage should be noticeable" (any boss's; Util/BossSkillFx)
 	["a boss's heal and enrage are big and lit; the Hydra's shield is the ice bubble"] = function()
 		local skills = AttackFx.BOSS_SKILLS

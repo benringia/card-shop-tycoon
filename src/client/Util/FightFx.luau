@@ -698,6 +698,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 	local rings: { [string]: any } = {} -- each player's latest ring (by sim id): where its hit lands
 	local iceShields: { [BasePart]: IceFx.Shield } = {} -- the Frost Tyrant's shield, by his marker
 	local auras: { [BasePart]: BossSkillFx.Aura } = {} -- an enraged boss's aura, by its marker
+	local lastFissure: number? = nil -- when the last full rock fissure tore open here (os.clock)
 	local storms: { [BasePart]: StormFx.Windup } = {} -- the Storm Sovereign's thunderclap winding up, by its marker
 	local riftCalls: { [BasePart]: number } = {} -- the Rift Devourer's last call (os.clock), one a wave, by its marker
 	local gathering: { [BasePart]: () -> () } = {} -- a boss's sparks pulling in for a ring
@@ -840,10 +841,17 @@ function FightFx.new(resolve: Resolve): Dispatcher
 				rings[event.to] = nil
 				local ground = Vector3.new(ring.x, RingFx.groundY(ring.x, ring.y, ring.z), ring.z)
 				local direction = Vector3.new(tonumber(ring.dirX) or 0, 0, tonumber(ring.dirZ) or -1)
-				-- its cone tears the ground open (the Prism Hydra: a rainbow rock fissure, and only that)
+				-- its cone tears the ground open (the Prism Hydra: a rainbow rock fissure, and only that); one full one at a
+				-- time on this screen, lighter on low graphics (FightFxRules.fissureDetail)
 				local fissure = spec.fissure and ring.shape == "swipe" and (ring.length or 0) > 0
 				if fissure then
-					ElementFx.rockFissure(ground, direction, ring.length, ring.halfAngle or 30, tint, spec.fissure)
+					local now = os.clock()
+					local crowded = FightFxRules.fissureCrowded(now, lastFissure, spec.fissure.window)
+					if not crowded then
+						lastFissure = now
+					end
+					local detail = FightFxRules.fissureDetail(spec.fissure, Extras.enabled(), crowded)
+					ElementFx.rockFissure(ground, direction, ring.length, ring.halfAngle or 30, tint, spec.fissure, detail)
 				end
 				if fissure and spec.fissure.only then
 					-- nothing else over it

@@ -2068,6 +2068,14 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   HP bar, what's on it now (`BattleSim.statusesOf` in each snapshot, `Config/BossStatus`, `Util/BossStatusRules`,
   client `Util/BossStatusBar`): shield (its size), guarded (its summons standing), enraged, stunned, snared, cursed,
   burning, a chip each with its number, its tooltip on hover or tap (3 s).
+- **Smoothness** (owner 2026-11-12: "4 people in a party ... ensure smoothness"): measured in Studio during a Hydra
+  fight, the worst moment (three cones landing at once with the shield, heal, enrage, storm and two rifts) built its
+  three fissures in 21 ms in one frame (a 67 ms frame). Now a fissure's parts are made as it tears (never at once), a
+  spike is one rock (two at a crack's tip), one full fissure plays at a time on a screen (another within
+  `fissure.window` 0.6 s is a small crack), and the low-graphics switch (Util/Extras: the frame watchdog or the
+  player's setting) shrinks it (`fissure.low`), the ice shield's shards (`ICE.shield.lowShards` 10) and the heal's and
+  enrage's particles (`FightFxRules.fissureDetail`, `fissureCrowded`). The same moment: 2.9 ms to build, worst frame
+  49 ms (31 ms on low graphics), 1016 effect parts at peak (was 1596).
 - **The Hydra's lair** (owner 2026-11-12, spec `docs/superpowers/specs/2026-11-12-dungeon-atmosphere-design.md`):
   **the welcome** when the run opens (`DungeonIntroController`, beats in `Config/Dungeon` INTRO): the way back slams
   shut, the hall's four braziers (`HALL_BRAZIERS`) die one by one, the eerie music starts, the camera drifts into the

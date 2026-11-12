@@ -8,6 +8,26 @@ function FightFxRules.budget(active: number, extras: boolean, cfg: any): boolean
 	return active < (if extras then cfg.MAX_ACTIVE else cfg.MAX_ACTIVE_LOW)
 end
 
+-- A boss's rock fissure (Config/AttackFx BOSS fissure; ElementFx.rockFissure) at its size for this moment (owner
+-- 2026-11-12, "4 people in a party ... ensure smoothness"): full when it's the only one; with the low-graphics switch
+-- off fewer cracks, pieces and rocks and no caps but the tips' crystals (`spec.low`); `crowded` (another one just
+-- tore open on this screen, a group's cone hitting several at once) a small crack with no spikes
+export type FissureDetail = { cracks: number, segments: number, rocks: number, spikes: boolean, caps: boolean }
+function FightFxRules.fissureDetail(spec: any, extras: boolean, crowded: boolean): FissureDetail
+	if crowded then
+		return { cracks = math.min(2, spec.cracks), segments = math.max(3, spec.segments - 3), rocks = math.min(2, spec.rocks), spikes = false, caps = false }
+	end
+	if not extras then
+		return { cracks = spec.low.cracks, segments = spec.low.segments, rocks = spec.low.rocks, spikes = true, caps = false }
+	end
+	return { cracks = spec.cracks, segments = spec.segments, rocks = spec.rocks, spikes = true, caps = true }
+end
+
+-- Whether a fissure tearing open `now` comes within `window` seconds of the last full one (`last`, nil: none yet)
+function FightFxRules.fissureCrowded(now: number, last: number?, window: number): boolean
+	return last ~= nil and now - last < window
+end
+
 -- "projectile" | "combo" | "bolt" | "slash" for an element, nil for one without an attack
 function FightFxRules.kindFor(element: string, cfg: any): string?
 	local entry = cfg.ELEMENT[element]

@@ -131,7 +131,7 @@ function BossSkillFx.heal(root: BasePart, height: number)
 	Debris:AddItem(pillar, look.seconds + 0.2)
 	-- motes rising round it
 	local box = bodyBox(root, height, look.seconds + 1.5)
-	local motes = emitter(box, AttackFx.TEXTURES.glow, color, look.motes, { 1, 1.6 }, { 4, 9 }, { height * 0.06, 0 })
+	local motes = emitter(box, AttackFx.TEXTURES.glow, color, look.motes * ElementFx.detailShare(), { 1, 1.6 }, { 4, 9 }, { height * 0.06, 0 })
 	task.delay(look.seconds, function()
 		motes.Enabled = false
 	end)
@@ -169,7 +169,7 @@ function BossSkillFx.enrage(root: BasePart, height: number): Aura
 	ElementFx.sound(look.sound, root.Position, look.volume)
 	-- the aura: embers off its body, a red light, its body pulsing red
 	local box, follow = bodyBox(root, height)
-	local embers = emitter(box, FIRE_TEXTURE, fire, look.embers, { 0.6, 1.2 }, { 3, 7 }, { height * 0.08, 0 })
+	local embers = emitter(box, FIRE_TEXTURE, fire, look.embers * ElementFx.detailShare(), { 0.6, 1.2 }, { 3, 7 }, { height * 0.08, 0 })
 	local light = Instance.new("PointLight")
 	light.Color = color
 	light.Range = height * 1.3
