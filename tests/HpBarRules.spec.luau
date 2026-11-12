@@ -100,13 +100,46 @@ return {
 		expect.equal(HpBarRules.edgeAlpha(0, -math.huge, 0, 1, false, cfg), 0, "never hit")
 	end,
 
-	["below 30% HP the edges pulse softly, never while down"] = function()
-		expect.equal(cfg.HIT_FLASH.LOW_SHARE, 0.3)
-		local period = cfg.HIT_FLASH.PULSE_SECONDS
-		expect.near(HpBarRules.edgeAlpha(0, -math.huge, 0, 0.2, false, cfg), cfg.HIT_FLASH.PULSE_MIN, 1e-9)
-		expect.near(HpBarRules.edgeAlpha(period / 2, -math.huge, 0, 0.2, false, cfg), cfg.HIT_FLASH.PULSE_MAX, 1e-9)
+	-- owner 2026-11-12: "an indication that I or my pet are low on health. like a heartbeat sound and more agressive red
+	-- flashes": the edges beat like a heart (two thumps a beat), harder than the old soft pulse
+	["below 30% HP the edges beat like a heart, never while down"] = function()
+		local flash = cfg.HIT_FLASH
+		expect.equal(flash.LOW_SHARE, 0.3)
+		expect.equal(flash.PULSE_MAX >= 0.7, true, "an aggressive red, not the old soft 0.45")
+		local period = HpBarRules.beatSeconds(0.2, cfg)
+		local function at(t: number): number
+			return HpBarRules.edgeAlpha(t * period, -math.huge, 0, 0.2, false, cfg)
+		end
+		expect.near(at(0), flash.PULSE_MIN, 1e-9, "a beat starts from the rest")
+		expect.near(at(flash.THUMP / 2), flash.PULSE_MAX, 1e-9, "the first thump's peak")
+		expect.near(at(flash.SECOND_AT + flash.THUMP / 2), flash.PULSE_MIN + (flash.PULSE_MAX - flash.PULSE_MIN) * flash.SECOND_SHARE, 1e-9, "the second, softer")
+		expect.near(at(0.75), flash.PULSE_MIN, 1e-9, "a rest till the next beat")
 		expect.equal(HpBarRules.edgeAlpha(period / 2, -math.huge, 0, 0.3, false, cfg), 0, "at 30% exactly")
 		expect.equal(HpBarRules.edgeAlpha(period / 2, -math.huge, 0, 0.2, true, cfg), 0, "down")
+	end,
+
+	["critical (below 15%) beats faster"] = function()
+		local flash = cfg.HIT_FLASH
+		expect.equal(HpBarRules.beatSeconds(0.25, cfg), flash.PULSE_SECONDS)
+		expect.equal(HpBarRules.beatSeconds(0.1, cfg), flash.CRITICAL_SECONDS)
+		expect.equal(flash.CRITICAL_SECONDS < flash.PULSE_SECONDS, true)
+	end,
+
+	["each beat counts once for its sound, none above 30% or while down"] = function()
+		local period = HpBarRules.beatSeconds(0.2, cfg)
+		expect.equal(HpBarRules.beatIndex(10, 0.5, false, cfg), nil, "healthy: no heartbeat")
+		expect.equal(HpBarRules.beatIndex(10, 0.2, true, cfg), nil, "down: no heartbeat")
+		local first = HpBarRules.beatIndex(period * 3.1, 0.2, false, cfg)
+		expect.equal(HpBarRules.beatIndex(period * 3.9, 0.2, false, cfg), first, "one beat")
+		expect.equal(HpBarRules.beatIndex(period * 4.05, 0.2, false, cfg), (first :: number) + 1, "the next")
+	end,
+
+	["the warning follows the lowest of you and your standing creatures"] = function()
+		expect.equal(HpBarRules.lowestShare(0.8, { 0.2, 0.9 }), 0.2, "your creature is low")
+		expect.equal(HpBarRules.lowestShare(0.1, { 0.9 }), 0.1, "you are low")
+		expect.equal(HpBarRules.lowestShare(0.8, { 0 }), 0.8, "a fainted creature doesn't count")
+		expect.equal(HpBarRules.lowestShare(nil, { 0.5 }), 0.5, "no sword: only creatures")
+		expect.equal(HpBarRules.lowestShare(nil, {}), 1, "nothing to watch")
 	end,
 
 	["a hit over the pulse shows whichever is stronger"] = function()

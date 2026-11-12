@@ -27,14 +27,20 @@ return {
 	},
 	MAX_ACTIVE = 12, -- effects playing at once (more are skipped; the damage numbers still show)
 	MAX_ACTIVE_LOW = 4, -- with the low-graphics switch off (Util/Extras)
-	-- Roblox-licensed Pro Sound Effects
+	-- Roblox-licensed Pro Sound Effects. A basic attack's hit (and a monster's strike) is a list of clips from one series:
+	-- each play a different one than the last (owner 2026-11-12: "randomize basic attack sound ... so that it doesnt feel
+	-- repeating"; Util/SoundVary)
 	SOUNDS = {
 		charge = "rbxassetid://9116394545", -- Magic Glows Chiming Hits 1
-		Ember = { release = "rbxassetid://9114463208", hit = "rbxassetid://9119746598" }, -- Flame Licks 7, Sword Hit 1
-		Tide = { release = "rbxassetid://9126013644", hit = "rbxassetid://9125703162" }, -- Swish Sharp 13, Mud Puddle Splash 19
-		Bloom = { hit = "rbxassetid://9113612888" }, -- Buggy Whip Quick Swish Crack 11
-		Volt = { hit = "rbxassetid://9114277757" }, -- Electric Zaps 12
-		Shade = { release = "rbxassetid://9120717850", hit = "rbxassetid://9119749812" }, -- Whoosh Fast Swish By 4, Sword Swishes 4
+		-- Flame Licks 7; Sword Hit 1, 2, 3
+		Ember = { release = "rbxassetid://9114463208", hit = { "rbxassetid://9119746598", "rbxassetid://9119746592", "rbxassetid://9119746759" } },
+		-- Swish Sharp 13; Mud Puddle Splash 19 and three of its series
+		Tide = { release = "rbxassetid://9126013644", hit = { "rbxassetid://9125703162", "rbxassetid://9125701409", "rbxassetid://9125701521", "rbxassetid://9125702138" } },
+		-- Buggy Whip Quick Swish Crack 11, 10, 13, 14
+		Bloom = { hit = { "rbxassetid://9113612888", "rbxassetid://9113612885", "rbxassetid://9113613077", "rbxassetid://9113615218" } },
+		Volt = { hit = { "rbxassetid://9114277757", "rbxassetid://9114277709", "rbxassetid://9114277338" } }, -- Electric Zaps 12, 10, 4
+		-- Whoosh Fast Swish By 4; Sword Swishes 4, 1, 2, 3
+		Shade = { release = "rbxassetid://9120717850", hit = { "rbxassetid://9119749812", "rbxassetid://9119750029", "rbxassetid://9119749495", "rbxassetid://9119749641" } },
 		-- The boom layer on big hits (grade S extras): per element, else `boom`
 		boom = "rbxassetid://9125484367", -- Deep Hits Big Reverberant Booms Rumbling Tail 2
 		big = {
@@ -44,8 +50,8 @@ return {
 	},
 	VOLUME = 0.45,
 	-- Each play picks its pitch (PlaybackSpeed) and loudness share from these ranges (owner 2026-11-04: no sound the same
-	-- over and over)
-	VARY = { pitch = { 0.85, 1.15 }, volume = { 0.82, 1 } },
+	-- over and over), its pitch at least `pitchGap` from the same sound's last (owner 2026-11-12, wider: 0.85-1.15 before)
+	VARY = { pitch = { 0.8, 1.22 }, volume = { 0.82, 1 }, pitchGap = 0.08 },
 	CHARGE_LIGHT = 3, -- a charging creature's glow (PointLight brightness at full charge)
 	PROJECTILE_SIZE = 1.2, -- studs
 	ARC = { Ember = 6, Tide = 0, Shade = 1 }, -- studs a projectile rises at its midpoint
@@ -382,66 +388,66 @@ return {
 		Mossling = {
 			strike = "headbutt", -- a green burst, dust and a little ground ring
 			color = rgb(120, 200, 96),
-			sounds = { strike = "rbxassetid://9118588165" }, -- Rock Drop On Concrete Drops Breaks 10
+			sounds = { strike = { "rbxassetid://9118588165", "rbxassetid://9118587493", "rbxassetid://9118587716" } }, -- Rock Drop On Concrete Drops Breaks 10, 1, 5
 		},
 		["Puddle Crab"] = {
 			strike = "snap", -- a splash and two pincer slashes
 			color = rgb(80, 196, 255),
-			sounds = { strike = "rbxassetid://9125703162" }, -- Mud Puddle Splash 19
+			sounds = { strike = { "rbxassetid://9125703162", "rbxassetid://9125701409", "rbxassetid://9125701521", "rbxassetid://9125702138" } }, -- Mud Puddle Splash 19 and three of its series
 		},
 		["Cave Bat"] = {
 			strike = "dive", -- three claw slashes and a dark burst
 			color = rgb(170, 120, 255),
-			sounds = { strike = "rbxassetid://9114375469" }, -- Fast Pass By Airy Whooshes Windy 4
+			sounds = { strike = { "rbxassetid://9114375469", "rbxassetid://9114374236", "rbxassetid://9114374439", "rbxassetid://9114374441" } }, -- Fast Pass By Airy Whooshes Windy 4, 12, 14, 15
 		},
 		["Spark Beetle"] = {
 			strike = "spark", -- a lightning bolt from its pincers and a burst
 			color = rgb(250, 214, 60),
-			sounds = { strike = "rbxassetid://9114277757" }, -- Electric Zaps 12
+			sounds = { strike = { "rbxassetid://9114277757", "rbxassetid://9114277709", "rbxassetid://9114277338" } }, -- Electric Zaps 12, 10, 4
 		},
 		["Ash Wolf"] = {
 			strike = "bite", -- fang slashes top and bottom, ember sparks
 			color = rgb(255, 130, 50),
-			sounds = { strike = "rbxassetid://9125466994" }, -- Creature Bite Pterodactyl Crunch Flying Bug 7
+			sounds = { strike = { "rbxassetid://9125466994", "rbxassetid://9125466270", "rbxassetid://9125466463", "rbxassetid://9125466705" } }, -- Creature Bite Pterodactyl Crunch Flying Bug 7 and three of its series
 		},
 		["Magma Golem"] = {
 			strike = "embers", -- a ground punch: a fiery burst, rock dust, a ground ring
 			color = rgb(255, 112, 32),
-			sounds = { strike = "rbxassetid://9119037874" }, -- Shale Break 15
+			sounds = { strike = { "rbxassetid://9119037874", "rbxassetid://9119044662", "rbxassetid://9119040650", "rbxassetid://9119041394" } }, -- Shale Break 15, 8, 12, 5
 		},
 		-- The Frontier's other monsters (owner 2026-11-12: "add attack effects on the normal monsters" in the Dungeon's
 		-- rooms): their Wild counterparts' strikes in their own colours
 		["Frost Wisp"] = {
 			strike = "headbutt",
 			color = rgb(150, 220, 255),
-			sounds = { strike = "rbxassetid://9125703162" }, -- Mud Puddle Splash 19
+			sounds = { strike = { "rbxassetid://9125703162", "rbxassetid://9125701409", "rbxassetid://9125701521", "rbxassetid://9125702138" } }, -- Mud Puddle Splash 19 and three of its series
 		},
 		["Shade Lynx"] = {
 			strike = "bite",
 			color = rgb(170, 110, 255),
-			sounds = { strike = "rbxassetid://9125466994" }, -- Creature Bite Pterodactyl Crunch Flying Bug 7
+			sounds = { strike = { "rbxassetid://9125466994", "rbxassetid://9125466270", "rbxassetid://9125466463", "rbxassetid://9125466705" } }, -- Creature Bite Pterodactyl Crunch Flying Bug 7 and three of its series
 		},
 		["Storm Hawk"] = {
 			strike = "dive",
 			color = rgb(250, 214, 60),
-			sounds = { strike = "rbxassetid://9114375469" }, -- Fast Pass By Airy Whooshes Windy 4
+			sounds = { strike = { "rbxassetid://9114375469", "rbxassetid://9114374236", "rbxassetid://9114374439", "rbxassetid://9114374441" } }, -- Fast Pass By Airy Whooshes Windy 4, 12, 14, 15
 		},
 		["Lava Brute"] = {
 			strike = "embers",
 			color = rgb(255, 112, 32),
-			sounds = { strike = "rbxassetid://9119037874" }, -- Shale Break 15
+			sounds = { strike = { "rbxassetid://9119037874", "rbxassetid://9119044662", "rbxassetid://9119040650", "rbxassetid://9119041394" } }, -- Shale Break 15, 8, 12, 5
 		},
 		["Prism Crab"] = {
 			strike = "snap",
 			color = rgb(255, 150, 230),
-			sounds = { strike = "rbxassetid://9125703162" }, -- Mud Puddle Splash 19
+			sounds = { strike = { "rbxassetid://9125703162", "rbxassetid://9125701409", "rbxassetid://9125701521", "rbxassetid://9125702138" } }, -- Mud Puddle Splash 19 and three of its series
 		},
 		-- The Frontier's Rift Horror (the Rift Devourer's summons, 2026-11-11): three void claw slashes, a dark burst and
 		-- violet shards
 		["Rift Horror"] = {
 			strike = "voidclaw",
 			color = rgb(175, 100, 255),
-			sounds = { strike = "rbxassetid://9120717850" }, -- Whoosh Fast Swish By 4
+			sounds = { strike = { "rbxassetid://9120717850", "rbxassetid://9120711721", "rbxassetid://9120714365" } }, -- Whoosh Fast Swish By 4, 2, 5
 		},
 	},
 }

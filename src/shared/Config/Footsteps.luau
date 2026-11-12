@@ -15,7 +15,8 @@ return {
 	RANGE = 45,
 	MAX_OTHERS = 6,
 	ROLL_OFF = 40, -- studs: other players' steps fade out by here
-	-- volumes half of the first try's (the owner 2026-11-11: "lower the volume of the footsteps")
+	-- volumes: half of the first try's (the owner 2026-11-11: "lower the volume of the footsteps"), then under half again
+	-- (owner 2026-11-12: "lower footsteps volume")
 	SURFACES = {
 		grass = {
 			ids = {
@@ -23,7 +24,7 @@ return {
 				"rbxassetid://9118686853", -- Rocks Dirt Impacts In Ground 30
 				"rbxassetid://9114517148", -- Foliage Drop 5 (light rustle)
 			},
-			volume = 0.175,
+			volume = 0.08,
 		},
 		dirt = {
 			ids = {
@@ -32,14 +33,14 @@ return {
 				"rbxassetid://9118688024", -- Rocks Dirt Impacts In Ground 45
 				"rbxassetid://9118687440", -- Rocks Dirt Impacts In Ground 40
 			},
-			volume = 0.2,
+			volume = 0.09,
 		},
 		sand = {
 			ids = {
 				"rbxassetid://9118768256", -- Sand Impacts 4 (loose, sharp)
 				"rbxassetid://9118768193", -- Sand Impacts 5
 			},
-			volume = 0.175,
+			volume = 0.08,
 		},
 		snow = {
 			ids = {
@@ -47,14 +48,14 @@ return {
 				"rbxassetid://9119310903", -- Snowball Hits Lands Semi-Deep Snow 9
 				"rbxassetid://9119316983", -- Snow Scrape Multiple Short Slides Crispy 2
 			},
-			volume = 0.175,
+			volume = 0.08,
 		},
 		wood = {
 			ids = {
 				"rbxassetid://9120880067", -- Wood Grab Muted Thuds 15
 				"rbxassetid://9120880314", -- Wood Grab Muted Thuds 17
 			},
-			volume = 0.225,
+			volume = 0.1,
 		},
 		stone = {
 			ids = {
@@ -63,7 +64,7 @@ return {
 				"rbxassetid://9114523345", -- Foot Stomp 3
 				"rbxassetid://9114523358", -- Foot Stomp 4
 			},
-			volume = 0.15,
+			volume = 0.07,
 			region = 0.28,
 		},
 	},

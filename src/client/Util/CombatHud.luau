@@ -30,6 +30,7 @@ local HpBarRules = require(Shared:WaitForChild("Util"):WaitForChild("HpBarRules"
 local UiLayout = require(Shared:WaitForChild("Util"):WaitForChild("UiLayout"))
 local HpBar = require((script.Parent :: Instance):WaitForChild("HpBar"))
 local UIKit = require((script.Parent :: Instance):WaitForChild("UIKit"))
+local ElementBadge = require((script.Parent :: Instance):WaitForChild("ElementBadge"))
 local ScreenFx = require((script.Parent :: Instance):WaitForChild("ScreenFx"))
 
 local CombatHud = {}
@@ -73,7 +74,8 @@ export type View = {
 	creatureElement: string, -- for the pet button's tooltip (Util/SkillText.buttonTip)
 	petMove: string, -- its element ability's name ("Vine Snare"), for the pet button's name and tooltip
 	signatureMove: string?, -- its signature's name, when it has one
-	perkText: string?, -- its fight perk working now ("🔥 Hype: hits 23% harder"), for the chip under its bar
+	perkText: string?, -- its fight perk working now ("Hype: hits 23% harder"), for the chip under its bar
+	perkElement: string?, -- its element: the chip's icon (Util/ElementBadge)
 	perkColor: Color3?, -- its element's colour
 	creatureHp: number,
 	creatureMax: number,
@@ -716,10 +718,11 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 	local wasHurt = false
 	local swapped = false -- the first creature isn't a swap: no toast for it
 
-	-- Boss fights: the party strip under the status (owner 2026-11-05, option A); built again when the party changes
+	-- The party strip under the status (owner 2026-11-05, option A; boss fights, and wild fights since the owner's
+	-- 2026-11-12 "replace summoned pets with another"); built again when the party changes
 	local stripSpec = CombatHudConfig.PARTY_STRIP
 	local strip: Frame? = nil
-	if not wild then
+	do
 		local holder = Instance.new("Frame")
 		holder.Name = "PartyStrip"
 		holder.BackgroundTransparency = 1
@@ -894,7 +897,8 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		return buttons.swap.readyAt - os.clock()
 	end
 
-	-- A tap on a tile: a waiting card comes in once the swap is ready; anything else gives a small nudge
+	-- A tap on a tile: a waiting card comes in once the swap is ready; in a wild fight the card fighting is unsummoned
+	-- (owner 2026-11-12; you fight on with your sword, the server says so if you can't); anything else gives a nudge
 	local function onTile(info: PartyTile)
 		local tile: Tile? = nil
 		for _, each in tiles do
@@ -902,7 +906,7 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 				tile = each
 			end
 		end
-		local waiting = info.state == "swap" or info.state == "cooling"
+		local waiting = info.state == "swap" or info.state == "cooling" or (wild and info.state == "active")
 		if waiting and swapWait() <= 0.05 then
 			callbacks.swap(info.simId)
 		elseif tile then
@@ -922,7 +926,9 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		tile.edge.Thickness = if active then 3 else 2
 		tile.run.Enabled = active
 		tile.beat.Visible = active
-		tile.name.Visible = not active
+		-- a wild fight's card fighting says what a tap does
+		tile.name.Visible = not active or wild == true
+		tile.name.Text = if active and wild then stripSpec.UNSUMMON else info.name
 		if active then
 			tile.run.Rotation = (now * stripSpec.RUN.turn) % 360
 			local sweep = (now % stripSpec.BEAT.seconds) / stripSpec.BEAT.seconds
@@ -1008,14 +1014,64 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		end
 	end
 
-	-- The red edges (a hit's flash or the low-HP pulse), the portrait's shake and its red ring
+	-- Low HP (owner 2026-11-12: "an indication that I or my pet are low on health. like a heartbeat sound and more
+	-- agressive red flashes"): the lowest of yours (up, with a sword) and your creatures' on the field
+	-- its two thumps, each its own sound (the second would cut the first short)
+	local thumps: { Sound } = {}
+	for index = 1, 2 do
+		local thumpSound = Instance.new("Sound")
+		thumpSound.Name = `Heartbeat{index}`
+		thumpSound.SoundId = CombatHudConfig.SOUNDS.heartbeat.id
+		thumpSound.PlaybackSpeed = CombatHudConfig.SOUNDS.heartbeat.pitch
+		thumpSound.Parent = root
+		thumps[index] = thumpSound
+	end
+	local lastBeat: number? = nil
+	local function warnShare(view: View): number
+		local playerShare = if not creatureOnly and view.playerMax > 0 and not view.down and not view.out then view.playerHp / view.playerMax else nil
+		local creatures = {}
+		if view.creatureMax > 0 then
+			table.insert(creatures, view.creatureHp / view.creatureMax)
+		end
+		if view.secondMax and view.secondMax > 0 then
+			table.insert(creatures, (view.secondHp or 0) / view.secondMax)
+		end
+		return HpBarRules.lowestShare(playerShare, creatures)
+	end
+	-- A beat: its two thumps (the second softer) and, critical, the whole screen reddening a moment
+	local function beat(share: number)
+		local look = CombatHudConfig.HIT_FLASH
+		local critical = share < look.CRITICAL_SHARE
+		local sound = CombatHudConfig.SOUNDS.heartbeat
+		local volume = if critical then sound.criticalVolume else sound.volume
+		thumps[1].Volume = volume
+		thumps[1].TimePosition = 0
+		thumps[1]:Play()
+		task.delay(HpBarRules.beatSeconds(share, CombatHudConfig) * look.SECOND_AT, function()
+			if thumps[2].Parent then
+				thumps[2].Volume = volume * sound.second
+				thumps[2].TimePosition = 0
+				thumps[2]:Play()
+			end
+		end)
+		if critical then
+			ScreenFx.flash(color(look.COLOR), look.BEAT_FILL, look.FILL_SECONDS)
+		end
+	end
+
+	-- The red edges (a hit's flash or the low-HP heartbeat), the portrait's shake and its red ring
 	local function feedback(now: number)
 		local view = latest
-		local share = if view and view.playerMax > 0 then view.playerHp / view.playerMax else 1
-		local beaten = view ~= nil and (view.down or view.out)
+		local share = if view then warnShare(view) else 1
+		local beaten = view ~= nil and view.out
 		local alpha = HpBarRules.edgeAlpha(now, hitAt, hitPeak, share, beaten, CombatHudConfig)
 		vignette.Visible = alpha > 0.005
 		vignette.ImageTransparency = 1 - alpha
+		local beatNow = HpBarRules.beatIndex(now, share, beaten, CombatHudConfig)
+		if beatNow and beatNow ~= lastBeat then
+			beat(share)
+		end
+		lastBeat = beatNow
 		local x, y = HpBarRules.shake(now, hitAt, CombatHudConfig)
 		ring.Position = UDim2.fromOffset(x, y)
 		local hurt = now - hitAt < CombatHudConfig.PORTRAIT.HURT_SECONDS
@@ -1142,7 +1198,8 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 			end
 			lastPlayerHp = view.playerHp
 			playerBar.set(view.playerHp, view.playerMax)
-			creatureLabel.Text = `{view.creatureName} · {math.round(view.creatureHp)} / {math.round(view.creatureMax)}`
+			creatureLabel.Text = if view.creatureId == "" then stripSpec.NONE_OUT -- unsummoned: you fight alone
+				else `{view.creatureName} · {math.round(view.creatureHp)} / {math.round(view.creatureMax)}`
 			if secondLabel and secondBar then
 				local second = view.secondName ~= nil
 				secondLabel.Parent.Visible = second
@@ -1162,6 +1219,7 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 			end
 			local perkColor = view.perkColor or Color3.new(1, 1, 1)
 			chip.Text = view.perkText or ""
+			ElementBadge.prefix(chip, view.perkElement)
 			chip.Visible = view.perkText ~= nil
 			chipEdge.Color = perkColor
 			chipScale.Scale = 0.5

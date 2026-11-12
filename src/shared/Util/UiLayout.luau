@@ -139,11 +139,13 @@ end
 -- The quick weapon switch (Config/HudLayout WEAPON_SWITCH: < chip > with the weapon's name under it) on the right edge
 -- at mid height. Its HUD scale never shrinks the arrows under 48 px. In a fight it moves up above any fight button in
 -- its way (boss buttons by touch or mouse, wild buttons), so it never covers the Pet or Signature buttons.
-export type SwitchLook = { chip: number, arrow: number, gap: number, right: number, name: number }
+-- The carousel (owner 2026-11-12): < [before] [in hand] [next] >, the arrows drawn `arrow` px with a `hit`-sized tap
+-- area (48 px at least) that may overlap the small weapon beside them (both step the same way)
+export type SwitchLook = { chip: number, side: number, arrow: number, hit: number, gap: number, right: number, name: number }
 export type SwitchRect = { x: number, y: number, w: number, h: number, scale: number }
 function UiLayout.weaponSwitch(view: Size, look: SwitchLook, scale: number, fight: boolean): SwitchRect
-	local s = math.max(scale, 48 / look.arrow)
-	local w = (look.chip + 2 * (look.arrow + look.gap)) * s
+	local s = math.max(scale, 48 / look.hit)
+	local w = (look.chip + 2 * (look.side + look.gap) + 2 * (look.arrow + look.gap)) * s
 	local h = (look.chip + look.name) * s
 	local x = view.w - look.right - w
 	local y = view.h / 2 - h / 2

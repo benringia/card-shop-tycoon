@@ -19,6 +19,7 @@ local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local JobPanel = require(ClientUtil:WaitForChild("JobPanel"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local BinderController = require(Controllers:WaitForChild("BinderController"))
 
@@ -535,6 +536,7 @@ end
 function GradingController.Start()
 	local screenGui = UIController.GetScreenGui()
 	panel, list = UIKit.panel(screenGui, "GradingStation", "🏅 Grading Station")
+	JobPanel.attach(panel, "grading") -- a job inside: its card over the actions (spec 2026-11-12-timed-upgrades-revive-design)
 	palette = UIKit.colorsFor(panel)
 	panel.Size = UDim2.fromScale(0.94, 0.86)
 	local sizeLimit = panel:FindFirstChildOfClass("UISizeConstraint")

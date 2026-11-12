@@ -34,6 +34,7 @@ local MonsterController = {}
 local SwordFx = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("SwordFx"))
 local HitFx = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("HitFx"))
 local SoundBank = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("SoundBank"))
+local Combat = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Combat"))
 local ScreenFx = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("ScreenFx"))
 
 local ELITE_TAG_COLOR = Color3.fromRGB(255, 205, 60)
@@ -671,6 +672,42 @@ local function add(marker: BasePart)
 	-- A boss winding up an attack on a player (BattleService): a quick hit flashes it red; a big attack rears it back
 	-- (its roar pose, unless it has its own special wind-up clip, which Util/FightFx plays) with an orange glow, for
 	-- the warning's length; a thunderclap the same with a storm-blue glow
+	-- A dangerous monster starting to chase you (WildService ChasingUserId; owner 2026-11-12: "they would be scared"): a
+	-- red "!" pops over it and it growls
+	table.insert(monster.connections, marker:GetAttributeChangedSignal("ChasingUserId"):Connect(function()
+		if marker:GetAttribute("ChasingUserId") ~= game:GetService("Players").LocalPlayer.UserId or not body.root then
+			return
+		end
+		local cue = Combat.DANGER.chaseCue
+		local tall = if body.model then body.model:GetExtentsSize().Y else 6
+		local board = Instance.new("BillboardGui")
+		board.Name = "ChaseCue"
+		board.AlwaysOnTop = true
+		board.Size = UDim2.fromOffset(60, 60)
+		board.StudsOffsetWorldSpace = Vector3.new(0, tall * 0.6 + 2, 0)
+		board.Parent = body.root
+		local mark = Instance.new("TextLabel")
+		mark.BackgroundTransparency = 1
+		mark.Size = UDim2.fromScale(1, 1)
+		mark.Font = Enum.Font.FredokaOne
+		mark.Text = "!"
+		mark.TextScaled = true
+		mark.TextColor3 = Color3.fromRGB(cue.color[1], cue.color[2], cue.color[3])
+		mark.TextStrokeTransparency = 0
+		mark.Parent = board
+		local scale = Instance.new("UIScale")
+		scale.Scale = 0.2
+		scale.Parent = mark
+		TweenService:Create(scale, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+		task.delay(cue.seconds, function()
+			board:Destroy()
+		end)
+		local sound = SoundBank.make(cue.sound)
+		sound.Volume = cue.volume
+		sound.Parent = body.root
+		sound:Play()
+		game:GetService("Debris"):AddItem(sound, 6)
+	end))
 	table.insert(monster.connections, marker:GetAttributeChangedSignal("WindUps"):Connect(function()
 		local seconds = tonumber(marker:GetAttribute("WindUp")) or 0.5
 		local kind = marker:GetAttribute("WindUpKind")

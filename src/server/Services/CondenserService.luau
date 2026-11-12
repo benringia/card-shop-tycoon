@@ -9,6 +9,8 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local CondenserConfig = require(Config:WaitForChild("Condenser"))
+local Upgrades = require(Config:WaitForChild("Upgrades"))
+local UpgradeRules = require(Shared:WaitForChild("Util"):WaitForChild("UpgradeRules"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
@@ -20,6 +22,8 @@ local ItemService = require(Services:WaitForChild("ItemService"))
 local SHARD_ID = "starShard"
 local PlacementService = require(Services:WaitForChild("PlacementService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
+local Blocked = require(Util:WaitForChild("Blocked"))
+local UpgradeJobService = require(Services:WaitForChild("UpgradeJobService"))
 
 local CondenserService = {}
 
@@ -42,6 +46,27 @@ local function describeReason(reason: string?): string
 		return `Not enough duplicates: have {have}, need {need}.`
 	end
 	return "You don't have that card."
+end
+
+-- Refused before anything is taken (spec 2026-11-12-timed-upgrades-revive-design): the station busy, or a levelled main
+-- copy that can't go in (in the party, at a job, in a fight). Says why (Util/Blocked); true when refused.
+local function refused(player: Player, station: string, mainBeastId: unknown, card: any): boolean
+	local left = UpgradeJobService.Left(player, station)
+	if left then
+		Blocked.tell(player, UpgradeRules.busyText(Upgrades.STATIONS[station], left))
+		return true
+	end
+	if typeof(mainBeastId) == "string" then
+		local where = if CardService.IsPartied(player, mainBeastId) then "out of your party"
+			elseif CardService.IsWorking(player, mainBeastId) then "off its shop job"
+			elseif CardService.IsFighting(player, mainBeastId) then "out of the fight"
+			else nil
+		if where then
+			Blocked.tell(player, `Take {card.name} {where} first.`)
+			return true
+		end
+	end
+	return false
 end
 
 local function onCondense(player: Player, shelfUid: unknown, cardId: unknown, mainBeastId: unknown, mainFoil: unknown, mainGrade: unknown, useShards: unknown)
@@ -72,6 +97,9 @@ local function onCondense(player: Player, shelfUid: unknown, cardId: unknown, ma
 		return
 	end
 
+	if refused(player, "condenser", mainBeastId, card) then
+		return
+	end
 	-- Recounted here: the client's number is only a preview
 	local shards = if useShards == true then ItemService.GetCount(player, SHARD_ID) else 0
 	local beast, reason, shardsUsed = CardService.Condense(player, cardId, target, shards)
@@ -84,7 +112,16 @@ local function onCondense(player: Player, shelfUid: unknown, cardId: unknown, ma
 		ItemService.TakeItem(player, SHARD_ID, shardsUsed)
 	end
 	local shardText = if shardsUsed > 0 then ` (used {shardsUsed} Star Shard{if shardsUsed == 1 then "" else "s"})` else ""
-	notify(player, `{card.name} is now {BeastRules.describeGrowth(beast.level, beast.stars)}!{shardText}`, false)
+	-- The new star waits in the Condenser (spec 2026-11-12-timed-upgrades-revive-design): the card goes in now
+	local held = CardService.HoldBeast(player, beast.id)
+	if not held then
+		notify(player, `{card.name} is now {BeastRules.describeGrowth(beast.level, beast.stars)}!{shardText}`, false)
+		return
+	end
+	local now = os.time()
+	local seconds = UpgradeRules.seconds(Upgrades, "star", held.stars)
+	UpgradeJobService.Begin(player, "condenser", { kind = "star", startedAt = now, finishAt = now + seconds, beast = held })
+	notify(player, `{card.name} is in the Condenser ({UpgradeRules.clock(seconds)}){shardText}`, false)
 end
 
 function CondenserService.Start()

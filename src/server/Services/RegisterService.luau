@@ -12,6 +12,8 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local RegisterConfig = require(Shared:WaitForChild("Config"):WaitForChild("Register"))
 local CustomerConfig = require(Shared:WaitForChild("Config"):WaitForChild("Customers"))
 local HaggleRules = require(Shared:WaitForChild("Util"):WaitForChild("HaggleRules"))
+local RegisterBell = require(Shared:WaitForChild("Util"):WaitForChild("RegisterBell"))
+local BellConfig = require(Shared:WaitForChild("Config"):WaitForChild("RegisterBell"))
 local Town = require(Shared:WaitForChild("Config"):WaitForChild("Town"))
 local Packs = require(Shared:WaitForChild("Config"):WaitForChild("Packs"))
 local Products = require(Shared:WaitForChild("Config"):WaitForChild("Products"))
@@ -26,6 +28,7 @@ local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local PlotService = require(Services:WaitForChild("PlotService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
+local WildService = require(Services:WaitForChild("WildService"))
 
 type Customer = CustomerService.Customer
 type Plot = typeof(PlotService.GetPlots()[1])
@@ -38,6 +41,7 @@ type Checkout = {
 	total: number, -- sum of scanned items
 	haggleOffer: number?, -- a bargain hunter's offer once everything is scanned
 	haggling: boolean, -- the owner is answering that offer (OfferService)
+	lastProgressAt: number, -- its start, or its last scan (the bell rings when nobody scans: Util/RegisterBell)
 }
 
 type HaggleCallback = (plot: Plot, customer: Customer, offer: number, total: number) -> ()
@@ -125,6 +129,7 @@ local function scanItem(plot: Plot, checkout: Checkout, part: BasePart, byWorker
 	checkout.remaining -= 1
 	checkout.total = math.round((checkout.total + unitPrice) * 100) / 100
 	checkout.customer.lastScanAt = os.clock()
+	checkout.lastProgressAt = os.clock()
 	playScanSound(plot)
 	sendUpdate(checkout)
 	-- All scanned: a bargain hunter makes their offer (to the owner now; a cashier settles it when charging)
@@ -236,8 +241,27 @@ local function startCheckout(customer: Customer)
 		end
 	end
 
-	local checkout: Checkout = { customer = customer, pending = {}, remaining = #prices, count = #prices, total = 0, haggling = false }
+	local checkout: Checkout = { customer = customer, pending = {}, remaining = #prices, count = #prices, total = 0, haggling = false, lastProgressAt = os.clock() }
 	checkouts[plot] = checkout
+	-- The bell (owner 2026-11-12: "when a customer is at the cashier and there's no one there. play a 'Ding' sound then
+	-- notification"): while this checkout lasts, nobody scanning and the owner away from the counter, it rings on their
+	-- screen (Util/RegisterBell)
+	task.spawn(function()
+		local rings, lastRangAt = 0, nil
+		while checkouts[plot] == checkout and checkout.customer.owner.Parent do
+			task.wait(BellConfig.check)
+			local owner = checkout.customer.owner
+			if checkouts[plot] ~= checkout or checkout.remaining == 0 or checkout.haggling then
+				break
+			end
+			local now = os.clock()
+			if RegisterBell.due({ now = now, lastProgressAt = checkout.lastProgressAt, lastRangAt = lastRangAt, rings = rings, attended = isBehindCounter(owner, plot), outOfTown = WildService.IsInWild(owner) }, BellConfig) then
+				rings += 1
+				lastRangAt = now
+				Remotes.RegisterBell:FireClient(owner, rings)
+			end
+		end
+	end)
 
 	local register = plot.register
 	local size = RegisterConfig.ITEM_SIZE

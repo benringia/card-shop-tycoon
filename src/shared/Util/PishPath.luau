@@ -46,6 +46,14 @@ end
 
 -- A town dog's next stop (Town Chikin's, Config/Chikin TOWN.stops): its index, picked by `roll` (0-1) by weight, never
 -- `current` (the stop it stands at) while there's another; nil with no stops
+-- Where a shop visit comes in from and leaves by (owner 2026-11-12: "pish is phasing through items": the delivery pad
+-- beside its doors): straight out from the doorway past what stands on the sidewalk (`reach` studs out from the shop
+-- front) by `clearance`. `outward`: the shop's facing, a unit vector toward the street.
+function PishPath.shopApproach(doorway: Point, outward: Point, reach: number, clearance: number): Point
+	local out = reach + clearance
+	return { x = doorway.x + outward.x * out, z = doorway.z + outward.z * out }
+end
+
 function PishPath.pickStop(stops: { { weight: number } }, roll: number, current: number?): number?
 	if #stops == 0 then
 		return nil

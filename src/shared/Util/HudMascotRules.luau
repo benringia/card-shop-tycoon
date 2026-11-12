@@ -53,6 +53,24 @@ function HudMascotRules.duckTravel(height: number, cfg: any): number
 end
 
 -- Pixels the party bar keeps free above the cushion for the mascot's head (none until it has a picture)
+-- Which end of the party bar it sits on: "right" on a PC (the toasts come out of it), "left" on a touch screen
+function HudMascotRules.side(cfg: any, touch: boolean): string
+	return if touch then cfg.sides.touch else cfg.sides.pc
+end
+
+-- Its pieces' left edges along the bar (px): from the bar's left edge, or (fromRight) from its right edge, negative
+function HudMascotRules.layout(cfg: any, side: string): { fromRight: boolean, sticker: number, tail: number, tap: number }
+	local width = cfg.size.peek[1]
+	local fromRight = side == "right"
+	local sticker = if fromRight then -(cfg.offset.right + width) else cfg.offset.left
+	return {
+		fromRight = fromRight,
+		sticker = sticker,
+		tail = sticker + cfg.tail.at[1],
+		tap = sticker + width / 2 - cfg.tapArea.w / 2,
+	}
+end
+
 function HudMascotRules.headroom(cfg: any): number
 	return if cfg.images.peek ~= "" then cfg.headroom else 0
 end

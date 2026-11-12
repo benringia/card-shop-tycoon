@@ -28,6 +28,18 @@ end
 
 return {
 	-- Town Chikin (the owner 2026-11-11): his stops on the portal side, the trailheads more often than the far Arena
+	-- owner 2026-11-12: "pish is phasing through items" (the delivery pad beside a shop's doors): he comes and goes by a
+	-- spot out past the pad, straight in from there
+	["a shop visit comes in from past the delivery pad's outer edge, square to the door"] = function()
+		local doorway = { x = 10, z = 0 }
+		local outward = { x = 0, z = 1 } -- the street is +z
+		local spot = PishPath.shopApproach(doorway, outward, 6.6, 2)
+		expect.near(spot.x, 10, 1e-9, "straight out from the door")
+		expect.near(spot.z, 8.6, 1e-9, "past the pad (6.6 studs out) by the clearance")
+		local turned = PishPath.shopApproach({ x = 0, z = 0 }, { x = 1, z = 0 }, 6.6, 2)
+		expect.near(turned.x, 8.6, 1e-9, "any way the shop faces")
+	end,
+
 	["a town dog's next stop: by weight, never the one it's at"] = function()
 		local stops = { { x = 0, z = 0, weight = 3 }, { x = 10, z = 0, weight = 1 } }
 		expect.equal(PishPath.pickStop(stops, 0, nil), 1, "low roll: the first")

@@ -44,6 +44,13 @@ function ToastRules.leadingEmoji(message: string): (string?, string)
 end
 
 -- Whether Cindercub hops now: not since `lastHop` (nil: never) for `gap` seconds
+-- The toast stack's bottom-right corner (screen px) so a bubble's tail, `tailRight` px in from its right edge, ends
+-- just over `head` (Pish on the party bar, owner 2026-11-12: "make it seem like he's saying the notification"), at the
+-- HUD's `scale`
+function ToastRules.stackCorner(head: { x: number, y: number }, tailRight: number, tail: number, scale: number): { x: number, y: number }
+	return { x = head.x + tailRight * scale, y = head.y - tail / 2 * scale - 2 }
+end
+
 function ToastRules.hopNow(lastHop: number?, now: number, gap: number): boolean
 	return lastHop == nil or now - lastHop >= gap
 end

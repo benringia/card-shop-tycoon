@@ -36,7 +36,12 @@ end
 function CombatPreload.collect(combatHud: any, swordFx: any, swords: any, attackFx: any?, victory: any?, more: More?): Ids
 	local ids: Ids = { images = {}, sounds = {}, animations = {} }
 	local seenImages, seenSounds, seenAnimations = {}, {}, {}
-	scan(combatHud, ids.images, seenImages)
+	for key, value in combatHud do
+		if key ~= "SOUNDS" then
+			scan(value, ids.images, seenImages)
+		end
+	end
+	scan(combatHud.SOUNDS, ids.sounds, seenSounds) -- the low-HP heartbeat
 	scan(swordFx, ids.images, seenImages)
 	for _, sword in swords.SWORDS do
 		scan(sword.sounds, ids.sounds, seenSounds)

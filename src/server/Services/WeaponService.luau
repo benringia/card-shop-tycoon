@@ -19,6 +19,7 @@ local EconomyService = require(Services:WaitForChild("EconomyService"))
 local ItemService = require(Services:WaitForChild("ItemService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 local BattleSim = require(Util:WaitForChild("BattleSim"))
+local Blocked = require(Util:WaitForChild("Blocked"))
 
 type PlayerData = DataService.PlayerData
 export type Owned = WeaponRules.Owned
@@ -27,6 +28,9 @@ local WeaponService = {}
 
 local owned: { [Player]: { [string]: Owned } } = {} -- loaded players only
 local equipped: { [Player]: string } = {}
+-- weapons in the Forge (UpgradeJobService): out of the switch and not equippable till their job is done (spec
+-- 2026-11-12-timed-upgrades-revive-design)
+local locked: { [Player]: { [string]: boolean } } = {}
 local isFighting: (Player) -> boolean = function()
 	return false
 end
@@ -106,7 +110,7 @@ function WeaponService.Changed(player: Player)
 	if not owned[player] then
 		return
 	end
-	Remotes.WeaponsChanged:FireClient(player, { owned = snapshot(player), equipped = equipped[player] or Weapons.STARTER })
+	Remotes.WeaponsChanged:FireClient(player, { owned = snapshot(player), equipped = equipped[player] or Weapons.STARTER, locked = locked[player] or {} })
 	WeaponService.ApplyAttributes(player)
 end
 
@@ -169,6 +173,10 @@ local function onEquip(player: Player, weaponId: unknown)
 	if weaponId ~= Weapons.STARTER and not WeaponService.GetOwned(player, weaponId) then
 		return
 	end
+	if WeaponService.IsLocked(player, weaponId) then
+		Blocked.tell(player, `Your {weapon.name} is in the Forge.`)
+		return
+	end
 	local switched = equipped[player] ~= weaponId
 	equipped[player] = weaponId
 	WeaponService.Changed(player)
@@ -200,6 +208,24 @@ end
 local function unload(player: Player)
 	owned[player] = nil
 	equipped[player] = nil
+	locked[player] = nil
+end
+
+-- A weapon going into the Forge (or back out): while locked it can't be equipped and leaves the switch; the one in hand
+-- swaps for the Steel Sword
+function WeaponService.SetLocked(player: Player, weaponId: string, isLocked: boolean)
+	local mine = locked[player] or {}
+	locked[player] = mine
+	mine[weaponId] = if isLocked then true else nil
+	if isLocked and equipped[player] == weaponId then
+		equipped[player] = Weapons.STARTER
+	end
+	WeaponService.Changed(player)
+end
+
+function WeaponService.IsLocked(player: Player, weaponId: string): boolean
+	local mine = locked[player]
+	return mine ~= nil and mine[weaponId] == true
 end
 
 function WeaponService.Start()

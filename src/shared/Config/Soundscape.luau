@@ -20,7 +20,8 @@ export type Spot = {
 local BIRDS = { "rbxassetid://9117236709", "rbxassetid://9117236946", "rbxassetid://9113844972", "rbxassetid://9114891754" } -- Parakeet Chirps 4, 6; Cockatiel Bird Interior Whistling Chirps 1; Jungle Bird 1
 local OWLS = { "rbxassetid://9117181543", "rbxassetid://9117181035" } -- Owl Hooting Reverberant Dry Several 5, 1
 local WINGS = { "rbxassetid://9116383749", "rbxassetid://9116383743" } -- Magical Wing Flutter Pass By 5, 6
-local DRIPS = { "rbxassetid://9126190246", "rbxassetid://9126190364", "rbxassetid://9126190182" } -- Water Drips Into Filled Bowl Cave Water Drop
+-- one drop each (owner 2026-11-12: the Caves' "loud triple droplets" were Water Drips Into Filled Bowl clips of several)
+local DRIPS = { "rbxassetid://9126183559", "rbxassetid://9126181980", "rbxassetid://9126178890" } -- Water Drip Distant Single Splattering Drops
 local PEBBLES = { "rbxassetid://9117268152", "rbxassetid://9118689425" } -- Pebbles Movement 1; Rocks Knock Against Each Other 3
 local BUBBLES = { "rbxassetid://9120310416", "rbxassetid://9120306743" } -- Underwater Bubbles Deeper Med Short Bursts 6; Underwater Bubbles 6 (pitched down: lava)
 local ICE = { "rbxassetid://9114858761", "rbxassetid://9114858583" } -- Ice Cracks 2; Ice Crackle Large Block Cracks 1
@@ -52,7 +53,7 @@ return {
 			spot(WINGS, { 10, 20 }, { 10, 24 }, { 6, 16 }, 0.12, { 0.95, 1.1 }),
 		},
 		{
-			spot(DRIPS, { 2.5, 6 }, { 8, 26 }, { 0, 6 }, 0.22, { 0.85, 1.15 }),
+			spot(DRIPS, { 3, 7 }, { 8, 26 }, { 0, 6 }, 0.1, { 0.9, 1.1 }),
 			spot(WINGS, { 16, 30 }, { 8, 20 }, { 6, 14 }, 0.12, { 1.2, 1.4 }), -- bats: the flutter, faster
 		},
 		{
@@ -65,7 +66,7 @@ return {
 	-- The Dungeon (spec 2026-11-12-dungeon-atmosphere): drips, rubble, chains, whispers and crystal rings round you
 	-- all the way down (one group: the whole cavern)
 	DUNGEON = {
-		spot(DRIPS, { 6, 12 }, { 10, 26 }, { 4, 14 }, 0.16, { 0.85, 1.05 }),
+		spot(DRIPS, { 6, 12 }, { 10, 26 }, { 4, 14 }, 0.1, { 0.85, 1.05 }),
 		spot(PEBBLES, { 14, 26 }, { 14, 34 }, { 6, 16 }, 0.14, { 0.7, 0.9 }),
 		spot({ "rbxassetid://9113763252", "rbxassetid://9113763407" }, { 30, 55 }, { 20, 40 }, { 4, 12 }, 0.1, { 0.8, 0.95 }), -- Pro Sound Effects: Chain Rattle 2, 4
 		spot(WHISPERS, { 35, 60 }, { 16, 30 }, { 2, 8 }, 0.07, { 0.85, 1 }),

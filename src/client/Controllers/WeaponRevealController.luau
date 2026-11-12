@@ -623,7 +623,11 @@ function WeaponRevealController.Start()
 		pcall(ContentProvider.PreloadAsync, ContentProvider, sounds)
 	end)
 	Remotes.WeaponDropped.OnClientEvent:Connect(WeaponRevealController.Drop)
-	Remotes.ForgeResult.OnClientEvent:Connect(WeaponRevealController.Forge)
+	Remotes.ForgeResult.OnClientEvent:Connect(function(result: any)
+		if typeof(result) == "table" and result.finished ~= true then
+			WeaponRevealController.Forge(result)
+		end -- a finished Forge job: ForgeController plays it when the Forge is open
+	end)
 	Remotes.WeaponBeacon.OnClientEvent:Connect(beacon)
 	Remotes.WeaponAnnouncement.OnClientEvent:Connect(function(name: unknown, weaponId: unknown, grade: unknown, userId: unknown)
 		if userId == player.UserId or typeof(name) ~= "string" or typeof(weaponId) ~= "string" then

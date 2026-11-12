@@ -204,7 +204,7 @@ return {
 	LOCK = { STRIKE_COOLDOWN = 0.4 },
 	-- The secret wall in the plate room: TAPS shared taps break it; its chest's first find ever gives TITLE, later finds
 	-- MATERIAL at MATERIAL_CHANCE (a Hydra win: 80%, 1-2), else CASH
-	SECRET = { TAPS = 3, TAP_COOLDOWN = 0.5, TITLE = "Crystal Seeker", MATERIAL = "material_prismHydra", MATERIAL_CHANCE = 0.25, CASH = 250 },
+	SECRET = { TAPS = 3, TAP_COOLDOWN = 0.5, TITLE = "Seeker", MATERIAL = "material_prismHydra", MATERIAL_CHANCE = 0.25, CASH = 250 },
 	-- The puzzle and secret chests: the boss chests' model WIDTH studs wide, opened from DISTANCE studs
 	CHEST = { DISTANCE = 10, WIDTH = 4 },
 	-- The fight rooms' monsters in the Dungeon: rainbow crystal shards on the back and a soft rainbow glow (client)

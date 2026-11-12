@@ -72,7 +72,6 @@ export type PlayerData = {
 	pity: { legendary: number, epic: number, firstDone: boolean }, -- packs since the last Legendary / Epic or better (PackService)
 	bosses: { [string]: any }, -- bossId -> BossRules.Record (BossService)
 	stats: { packsOpened: number, customersServed: number, totalEarned: number },
-	purchases: { [string]: boolean },
 	seenWelcome: boolean, -- saw the first-visit welcome cinematic (WelcomeService)
 	seenSword: boolean, -- closed the "You got your first sword!" popup (SwordService)
 	swordFights: number, -- boss fights fought with the sword HUD; its buttons show names for the first few (SwordService)
@@ -81,6 +80,12 @@ export type PlayerData = {
 	tutorial: any, -- the first visit with Pish, his lessons and luck (TutorialService; Util/TutorialRules.Saved)
 	combat: any, -- Chikin's combat tutorial (CombatTutorialService; the same shape, Config/Chikin STEPS)
 	dungeon: { secretFound: boolean, seenIntro: boolean }, -- found the Dungeon's secret chest once (BossService: the title Crystal Seeker); saw the Hydra's full welcome
+	title: string, -- the title picked to show over their name (Config/Titles id; "" = automatic; TitleService)
+	upgrades: { [string]: any }, -- station jobs by station (UpgradeJobService; Util/UpgradeRules.Job)
+	skipTokens: { S: number, M: number, L: number }, -- "Finish now" skips bought with no job to finish (UpgradeJobService)
+	purchases: { string }, -- the last receipts granted, by PurchaseId (PurchaseService: never granted twice)
+	support: { gifts: number, best: number }, -- "Support the dev" gifts and the best tier (SupportService)
+	titles: { known: { string }, fresh: { string }, seeded: boolean }, -- titles ever earned, not yet seen ones (TitleService)
 }
 
 export type Handler = {
@@ -111,7 +116,6 @@ local TEMPLATE: PlayerData = {
 	pity = { legendary = 0, epic = 0, firstDone = false },
 	bosses = {},
 	stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
-	purchases = {},
 	seenWelcome = false,
 	seenSword = false,
 	swordFights = 0,
@@ -120,6 +124,12 @@ local TEMPLATE: PlayerData = {
 	tutorial = { firstVisit = "todo", step = 1, early = {}, firstGiven = false, giftClaimed = false, customerSent = false, lessons = {}, pishLuckAt = 0 },
 	combat = { firstVisit = "todo", step = 1, early = {}, firstGiven = false, giftClaimed = false, customerSent = false, lessons = {}, pishLuckAt = 0 },
 	dungeon = { secretFound = false, seenIntro = false },
+	title = "",
+	upgrades = {},
+	skipTokens = { S = 0, M = 0, L = 0 },
+	purchases = {},
+	support = { gifts = 0, best = 0 },
+	titles = { known = {}, fresh = {}, seeded = false },
 }
 
 local DataService = {}
@@ -252,6 +262,27 @@ local function onPlayerRemoving(player: Player)
 	end
 end
 
+-- Saves this player's profile now (a granted purchase: PurchaseService) and waits for it, `timeout` seconds at most
+-- (10 by default). Returns what the DataStore now holds (ProfileStore's LastSavedData: the receipt check looks for its
+-- PurchaseId there, ProfileStore's own developer product recipe), or nil (no profile, not saved in time).
+function DataService.SaveNow(player: Player, timeout: number?): any?
+	local profile = profiles[player]
+	if not profile or not profile:IsActive() then
+		return nil
+	end
+	local saved = false
+	local connection = profile.OnAfterSave:Connect(function()
+		saved = true
+	end)
+	profile:Save()
+	local deadline = os.clock() + (timeout or 10)
+	while not saved and os.clock() < deadline and profiles[player] == profile do
+		task.wait(0.1)
+	end
+	connection:Disconnect()
+	return if saved then profile.LastSavedData else nil
+end
+
 -- Services register in their Start(), before DataService.Start(). Load runs in registration order.
 function DataService.Register(handler: Handler)
 	table.insert(handlers, handler)
@@ -298,6 +329,14 @@ function DataService.Reclaim(player: Player)
 		end
 		attach(player, profile)
 	end)
+end
+
+-- A lifetime counter now (0 while their save isn't loaded; TitleService)
+function DataService.GetStat(player: Player, stat: string): number
+	local profile = profiles[player]
+	local stats = if profile then profile.Data.stats else nil
+	local value = if stats then (stats :: any)[stat] else nil
+	return if typeof(value) == "number" then value else 0
 end
 
 -- Lifetime counters (DESIGN stats). Written straight into the profile.

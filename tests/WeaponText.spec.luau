@@ -26,7 +26,7 @@ return {
 	["stats: Power to 2 decimals, the element and its bond, the perk in words"] = function()
 		local rows = WeaponText.stats(Weapons, "verdantBlade", nil, Combat)
 		expect.equal(valueOf(rows, "Power"), "x1.25")
-		expect.equal(valueOf(rows, "Element"), "Bloom · bonds with Bloom creatures")
+		expect.equal(valueOf(rows, "Element"), "Nature · bonds with Nature creatures") -- plain element names (owner 2026-11-12)
 		expect.equal(valueOf(rows, "Perk"), "Every 4th hit heals your creature 2%")
 		expect.equal(valueOf(rows, "Grade"), nil, "not owned: no grade or level")
 		local owned = WeaponText.stats(Weapons, "verdantBlade", { grade = "S", level = 4 }, Combat)
@@ -162,7 +162,7 @@ return {
 		expect.equal(held.sign, 0)
 		local even = WeaponText.versus(Weapons, Combat, "forgeSword_Ember", nil, "forgeSword_Tide", nil)
 		assert(even)
-		expect.equal(even.text, "Same Power as Tide Forge Sword")
+		expect.equal(even.text, "Same Power as Water Forge Sword")
 		expect.equal(even.sign, 0)
 		expect.equal(WeaponText.versus(Weapons, Combat, "titansLance", maxed, "nope", nil), nil, "an unknown weapon compares to nothing")
 	end,
@@ -230,7 +230,7 @@ return {
 	end,
 
 	["bond: what sharing its element with your creature gives, from Config/Weapons BOND"] = function()
-		expect.equal(WeaponText.bond(Weapons, "titansLance"), "+15% hits and a 50% faster super with Bloom creatures")
+		expect.equal(WeaponText.bond(Weapons, "titansLance"), "+15% hits and a 50% faster super with Nature creatures")
 		expect.equal(WeaponText.bond(Weapons, "prismBlade"), "+15% hits and a 50% faster super with every creature")
 		expect.equal(WeaponText.bond(Weapons, "starterSword"), nil, "no element, no bond")
 	end,

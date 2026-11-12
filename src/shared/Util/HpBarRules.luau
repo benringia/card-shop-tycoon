@@ -64,16 +64,55 @@ function HpBarRules.flashPeak(damage: number, maxHp: number, cfg: any): number
 end
 
 -- The red edges' opacity at `now`: the last hit's flash fading out, or the low-HP pulse if that's stronger
+-- Low HP (owner 2026-11-12: "an indication that I or my pet are low on health. like a heartbeat sound and more agressive
+-- red flashes"): a heartbeat's length at this HP share, shorter once critical
+function HpBarRules.beatSeconds(share: number, cfg: any): number
+	local flash = cfg.HIT_FLASH
+	return if share < flash.CRITICAL_SHARE then flash.CRITICAL_SECONDS else flash.PULSE_SECONDS
+end
+
+-- One thump's rise and fall over x from 0 to 1, nothing outside it
+local function thump(x: number): number
+	return if x <= 0 or x >= 1 then 0 else math.sin(math.pi * x)
+end
+
+-- The heartbeat's red at `now`: two thumps a beat (the second softer), resting between
+local function beatWave(now: number, share: number, cfg: any): number
+	local flash = cfg.HIT_FLASH
+	local period = HpBarRules.beatSeconds(share, cfg)
+	local t = (now % period) / period
+	return math.max(thump(t / flash.THUMP), flash.SECOND_SHARE * thump((t - flash.SECOND_AT) / flash.THUMP))
+end
+
 function HpBarRules.edgeAlpha(now: number, hitAt: number, peak: number, share: number, beaten: boolean, cfg: any): number
 	local flash = cfg.HIT_FLASH
 	local fade = 1 - progress(now, hitAt, flash.SECONDS)
 	local hit = peak * fade ^ 2
 	local pulse = 0
 	if not beaten and share < flash.LOW_SHARE then
-		local wave = (1 - math.cos(2 * math.pi * now / flash.PULSE_SECONDS)) / 2
-		pulse = flash.PULSE_MIN + (flash.PULSE_MAX - flash.PULSE_MIN) * wave
+		pulse = flash.PULSE_MIN + (flash.PULSE_MAX - flash.PULSE_MIN) * beatWave(now, share, cfg)
 	end
 	return math.max(hit, pulse)
+end
+
+-- Which heartbeat `now` is in (it changes once a beat: the client plays its thumps then), nil when not low or while down
+function HpBarRules.beatIndex(now: number, share: number, beaten: boolean, cfg: any): number?
+	if beaten or share >= cfg.HIT_FLASH.LOW_SHARE then
+		return nil
+	end
+	return math.floor(now / HpBarRules.beatSeconds(share, cfg))
+end
+
+-- The HP share the warning follows: the lowest of yours (nil: not in the fight with a sword) and your creatures' on the
+-- field still standing (a fainted one, at 0, doesn't count); 1 with nothing to watch
+function HpBarRules.lowestShare(playerShare: number?, creatureShares: { number }): number
+	local lowest = playerShare or 1
+	for _, share in creatureShares do
+		if share > 0 then
+			lowest = math.min(lowest, share)
+		end
+	end
+	return lowest
 end
 
 -- The portrait's offset in pixels at `now` after a hit at `hitAt`: through SHAKE's offsets, still at both ends

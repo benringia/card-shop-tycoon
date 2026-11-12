@@ -209,6 +209,48 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 		local saved = if typeof(data.dungeon) == "table" then data.dungeon else nil
 		data.dungeon = { secretFound = saved ~= nil and saved.secretFound == true, seenIntro = saved ~= nil and saved.seenIntro == true }
 	end,
+	-- v20 (2026-11-12): the title the player picked to show over their name ("" = automatic; TitleService, Config/Titles)
+	[19] = function(data)
+		data.title = if typeof(data.title) == "string" then data.title else ""
+	end,
+	-- v21 (spec 2026-11-12-timed-upgrades-revive-design): station jobs (UpgradeJobService), unused "Finish now" skips and
+	-- the last receipts granted (PurchaseService); a good skip count kept, junk replaced
+	[20] = function(data)
+		data.upgrades = if typeof(data.upgrades) == "table" then data.upgrades else {}
+		local tokens = if typeof(data.skipTokens) == "table" then data.skipTokens else {}
+		local clean = {}
+		for _, tier in { "S", "M", "L" } do
+			local count = tokens[tier]
+			clean[tier] = if typeof(count) == "number" and count >= 0 then math.floor(count) else 0
+		end
+		data.skipTokens = clean
+		data.purchases = if typeof(data.purchases) == "table" then data.purchases else {}
+	end,
+	-- "Support the dev" (owner 2026-11-12): gifts given and the best tier (SupportService)
+	[21] = function(data)
+		local support = if typeof(data.support) == "table" then data.support else {}
+		local function count(value: any): number
+			return if typeof(value) == "number" and value >= 0 then math.floor(value) else 0
+		end
+		data.support = { gifts = count(support.gifts), best = count(support.best) }
+	end,
+	-- Titles stay earned once earned (owner 2026-11-13: more titles, told when earned; TitleService): `known` ever
+	-- earned and told, `fresh` not seen in the Titles tab yet; `seeded` once the first load counted what's earned already
+	[22] = function(data)
+		local titles = if typeof(data.titles) == "table" then data.titles else {}
+		local function names(list: any): { string }
+			local clean = {}
+			if typeof(list) == "table" then
+				for _, id in list do
+					if typeof(id) == "string" then
+						table.insert(clean, id)
+					end
+				end
+			end
+			return clean
+		end
+		data.titles = { known = names(titles.known), fresh = names(titles.fresh), seeded = titles.seeded == true }
+	end,
 }
 
 local function lowestGrade(): string

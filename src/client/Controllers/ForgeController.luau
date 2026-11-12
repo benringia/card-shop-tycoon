@@ -22,6 +22,7 @@ local Items = require(Config:WaitForChild("Items"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local UIIcons = require(Config:WaitForChild("UIIcons"))
 local Weapons = require(Config:WaitForChild("Weapons"))
+local Upgrades = require(Config:WaitForChild("Upgrades"))
 local WeaponLooks = require(Config:WaitForChild("WeaponLooks"))
 local WeaponRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponRules"))
 local WeaponText = require(Shared:WaitForChild("Util"):WaitForChild("WeaponText"))
@@ -30,6 +31,8 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local JobPanel = require(ClientUtil:WaitForChild("JobPanel"))
+local ElementBadge = require(ClientUtil:WaitForChild("ElementBadge"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
 local WeaponFace = require(ClientUtil:WaitForChild("WeaponFace"))
 local UIController = require(Controllers:WaitForChild("UIController"))
@@ -522,7 +525,7 @@ local function renderPane(entry: Entry?)
 		if gradeLine then
 			addLabel(beside, gradeLine, Enum.Font.FredokaOne, 15, palette.ink, 2)
 		end
-		local kind = if weapon.prism then `{weapon.rarity} · every element` elseif weapon.element then `{weapon.rarity} · {weapon.element}` else weapon.rarity
+		local kind = if weapon.prism then `{weapon.rarity} · every element` elseif weapon.element then `{weapon.rarity} · {ElementBadge.name(weapon.element)}` else weapon.rarity
 		addLabel(beside, kind, Enum.Font.GothamBold, 13, palette.inkSoft, 3)
 		addLabel(beside, "Tap the card for its stats", Enum.Font.GothamBold, 11, palette.hint, 4)
 		-- a Forge weapon's element first, then what it is now and what it becomes
@@ -606,6 +609,36 @@ local function close()
 	machine = nil
 end
 
+-- Finished Forge jobs whose reveal waits for the Forge to be open (owner 2026-11-12: "the cinematic should only appear
+-- when I open forge")
+local pending: { any } = {}
+
+-- The waiting reveals now: the window steps aside, they play, it comes back
+local function playReveals()
+	if #pending == 0 or not panel.Visible then
+		return
+	end
+	local queue = pending
+	pending = {}
+	reopenAfterReveal = true -- before hiding: the Visible handler keeps the machine for the reopen
+	panel.Visible = false
+	for _, result in queue do
+		WeaponRevealController.Forge(result)
+	end
+	task.spawn(function()
+		task.wait(0.5)
+		while WeaponRevealController.IsPlaying() do
+			task.wait(0.25)
+		end
+		local part = machine
+		if reopenAfterReveal and part and part:IsDescendantOf(workspace) then
+			reopenAfterReveal = false
+			panel.Visible = true
+			render()
+		end
+	end)
+end
+
 -- Opens the window for your own Forge
 -- Desktops: the tabs under the header. Phones (short screens): nearly the whole screen, the tabs up in the header
 -- band, so the weapon, its cost and its button keep the room.
@@ -636,6 +669,7 @@ function ForgeController.Open(part: BasePart)
 	panel.Visible = true
 	Remotes.WeaponsChanged:FireServer() -- the latest weapons (rate-limited on the server)
 	render()
+	task.defer(playReveals) -- a job that finished while the Forge was closed
 end
 
 -- Closes once the owner walks away or the machine is moved or sold
@@ -654,30 +688,34 @@ local function watchDistance()
 end
 
 -- A result: the window steps aside for the reveal and comes back after it while you're still at the Forge
-local function onResult()
+local function onResult(result: any)
 	inFlight = false
-	if not panel.Visible then
+	if typeof(result) ~= "table" then
 		return
 	end
-	reopenAfterReveal = true -- before hiding: the Visible handler keeps the machine for the reopen
-	panel.Visible = false
-	task.spawn(function()
-		task.wait(0.5) -- the reveal queues on the same event
-		while WeaponRevealController.IsPlaying() do
-			task.wait(0.25)
-		end
-		local part = machine
-		if reopenAfterReveal and part and part:IsDescendantOf(workspace) then
-			reopenAfterReveal = false
-			panel.Visible = true
-			render()
-		end
-	end)
+	-- a job started (spec 2026-11-12-timed-upgrades-revive-design): the window stays, its job card shows (Util/JobPanel)
+	if typeof(result.waiting) == "number" then
+		render()
+		return
+	end
+	if result.finished ~= true then
+		return
+	end
+	-- a job done: its reveal now if the Forge is open, else a toast and the reveal when it opens
+	table.insert(pending, result)
+	if panel.Visible then
+		playReveals()
+		return
+	end
+	local weapon = Weapons.ById[result.weaponId]
+	local name = if weapon then weapon.name else "weapon"
+	UIController.Notify((string.gsub(Upgrades.FORGE_READY, "{name}", name)), false)
 end
 
 function ForgeController.Start()
 	local screenGui = UIController.GetScreenGui()
 	panel, list = UIKit.panel(screenGui, "Forge", "⚒️ Forge")
+	JobPanel.attach(panel, "forge") -- a job inside: its card over the actions (spec 2026-11-12-timed-upgrades-revive-design)
 	palette = UIKit.colorsFor(panel)
 	local sizeLimit = panel:FindFirstChildOfClass("UISizeConstraint")
 	if sizeLimit then

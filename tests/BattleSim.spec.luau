@@ -3076,6 +3076,172 @@ return {
 		expect.equal(BattleSim.setPylonFocus(state, "1", "b:Pylon2"), false, "a broken crystal can't be a target")
 	end,
 
+	-- Wild danger (owner 2026-11-12): every card resting, a sword: you alone against it, lost when you're down
+	["a sword-only fight: the player alone, lost when they're down"] = function()
+		local foe: any = monster("Ember", 100000, 30, 12)
+		foe.playerAttacks = { every = 100, warning = 0.5, big = 0, quick = 0.25 }
+		local state = BattleSim.new(combat, { fighters = { playerInput("1") }, abilities = false, canRun = false, creaturesDecide = false }, {
+			fighters = { foe },
+			abilities = false,
+			canRun = false,
+		}, 7)
+		local events = runFor(state, 40)
+		expect.equal(state.result, "b", "the monster wins")
+		expect.equal(count(events, function(event)
+			return event.type == "down"
+		end) >= 1, true, "the player went down")
+	end,
+
+	-- The owner 2026-11-12: "elite/aggressive monsters should still attack me even if my summons are not dead": their
+	-- playerAttacks `share` sends that share of their swings at the player while a creature stands
+	["a monster with a player share swings at the player while its creature stands"] = function()
+		local function playerHits(share: number?): number
+			local foe: any = monster("Ember", 100000, 1, 12)
+			foe.playerAttacks = { every = 1e9, warning = 0.5, big = 0, quick = 0.01, share = share }
+			local state = BattleSim.new(combat, { fighters = { owned("p1", "1", 1e9), playerInput("1") }, abilities = false, canRun = false }, {
+				fighters = { foe },
+				abilities = false,
+				canRun = false,
+			}, 9)
+			return count(runFor(state, 30), function(event)
+				return event.type == "telegraph" and event.to == "a:@1"
+			end)
+		end
+		expect.equal(playerHits(nil), 0, "no share: pets first, as bosses")
+		expect.equal(playerHits(1 / 3) > 2, true, "a third of its swings come at you")
+	end,
+
+	-- The hits on you come on top: it swings faster, so your creature takes what it took before (else an elite got
+	-- easier, the player soaking a third of its swings)
+	["a monster with a player share still hits the creature as often"] = function()
+		local function petHits(share: number?): number
+			local total = 0
+			for seed = 1, 10 do -- one seed's split is noisy
+				local foe: any = monster("Ember", 100000, 1, 12)
+				foe.playerAttacks = { every = 1e9, warning = 0.5, big = 0, quick = 0.001, share = share }
+				local state = BattleSim.new(combat, { fighters = { owned("p1", "1", 1e9), playerInput("1") }, abilities = false, canRun = false }, {
+					fighters = { foe },
+					abilities = false,
+					canRun = false,
+				}, seed)
+				total += count(runFor(state, 60), function(event)
+					return event.type == "attack" and event.from == "b:m" and event.to == "a:p1"
+				end)
+			end
+			return total
+		end
+		local ratio = petHits(1 / 3) / petHits(nil)
+		expect.equal(ratio > 0.85 and ratio < 1.15, true, `the creature's hits stay the same ({ratio})`)
+	end,
+
+	-- The owner 2026-11-12: "on combat with non boss monsters. I should have an unsummon button or replace summoned pets
+	-- with another": wild fights swap like boss fights, but a faint still ends the fight (no reserve comes in by itself)
+	["a wild fight swaps by hand, and a faint without a swap still loses it"] = function()
+		local function wildWithSwaps(seed: number, leaderHp: number): any
+			return BattleSim.new(combat, {
+				fighters = { owned("p1", "1", leaderHp) },
+				reserves = { owned("r1", "1") },
+				abilities = false,
+				canRun = true,
+				swapSeconds = 8,
+				autoSwap = false,
+				creaturesDecide = true,
+			}, { fighters = { monster("Ember", 100000, 60, 10) }, abilities = false, canRun = false }, seed)
+		end
+		local state = wildWithSwaps(3, 1e6)
+		runFor(state, combat.CALL_IN_SECONDS + 0.5) -- past the call-in window: a tap is a swap now
+		local events = BattleSim.swap(state, "a:r1", "1")
+		assert(events, "the swap went through")
+		local onField = {}
+		for _, fighter in (state.sides.a :: any).fighters do
+			if not fighter.benched then
+				onField[fighter.id] = true
+			end
+		end
+		expect.equal(onField["a:r1"] == true and onField["a:p1"] == nil, true, "the reserve came in, the first card went back")
+		local fainting = wildWithSwaps(4, 30)
+		runFor(fainting, 20)
+		expect.equal(fainting.result, "b", "its creature fainted: the fight is lost, the reserve not brought in")
+	end,
+
+	-- The owner 2026-11-12: "It still wouldn't let me unsummon my pet while in combat": in a wild fight your creature goes
+	-- back unhurt and you fight on with your sword; a swap brings it (or another) back at once
+	["a wild fight: unsummon your creature, fight on alone, bring it back"] = function()
+		local function wildFight(withSword: boolean): any
+			local fighters: { any } = { owned("p1", "1", 1e6) }
+			if withSword then
+				table.insert(fighters, playerInput("1"))
+			end
+			local foe: any = monster("Ember", 100000, 1, 10)
+			foe.playerAttacks = { every = 1e9, warning = 0.5, big = 0, quick = 0.01 }
+			return BattleSim.new(combat, {
+				fighters = fighters,
+				reserves = { owned("r1", "1") },
+				abilities = false,
+				canRun = true,
+				swapSeconds = 8,
+				autoSwap = false,
+				creaturesDecide = true,
+			}, { fighters = { foe }, abilities = false, canRun = false }, 5)
+		end
+		local state = wildFight(true)
+		runFor(state, combat.CALL_IN_SECONDS + 0.5)
+		local before
+		for _, fighter in (state.sides.a :: any).fighters do
+			if fighter.id == "a:p1" then
+				before = fighter.hp
+			end
+		end
+		local events = BattleSim.recall(state, "1")
+		assert(events, "the creature went back")
+		expect.equal(events[1].type == "recall" and events[1].from == "a:p1", true, "a recall event for it")
+		local hp
+		for _, fighter in (state.sides.a :: any).reserves do
+			if fighter.id == "a:p1" then
+				hp = fighter.hp
+			end
+		end
+		expect.equal(hp, before, "back in the reserves with the HP it had")
+		local after = runFor(state, 6)
+		expect.equal(state.result, nil, "the fight goes on: you stand")
+		expect.equal(count(after, function(e)
+			return e.type == "telegraph" and e.to == "a:@1"
+		end) > 0, true, "the monster comes for you now")
+		local back = BattleSim.swap(state, "a:p1", "1")
+		assert(back, "it comes back at once: none of yours stood")
+		expect.equal(back[1].type == "swap" and back[1].from == "a:p1" and back[1].to == "a:p1", true, "to the spot it left")
+		local again, why = BattleSim.recall(state, "1")
+		expect.equal(again == nil and why == "cooldown", true, "not straight out again: the swap's cooldown")
+
+		local alone = wildFight(false)
+		runFor(alone, combat.CALL_IN_SECONDS + 0.5)
+		local none, reason = BattleSim.recall(alone, "1")
+		expect.equal(none == nil and reason == "alone", true, "no sword: nobody would be left fighting")
+	end,
+
+	-- The owner 2026-11-12: "lets do party strength for defense" (DefenseRules; BattleService sets the scale)
+	["a player's defenseScale scales the hits on them"] = function()
+		local function takenWith(scale: number?): number
+			local me: any = playerInput("1")
+			me.defenseScale = scale
+			-- the player alone (a boss swings at a player only when no creature stands), small hits so nobody goes down
+			local state = bossFightWithPlayer(41, 1, {}, { every = 100, warning = 0.5, big = 0, quick = 0.05 }, { me }, {})
+			runFor(state, 12)
+			for _, fighter in (state.sides.a :: any).fighters do
+				if fighter.player then
+					return fighter.taken
+				end
+			end
+			return 0
+		end
+		local strong, weak, plain = takenWith(0.5), takenWith(1.5), takenWith(nil)
+		expect.equal(weak > 0, true, "the boss hit the player")
+		local ratio = strong / weak
+		expect.equal(ratio >= 0.25 and ratio <= 0.45, true, `a strong party's player takes about a third of a weak one's ({ratio})`)
+		local plainRatio = plain / weak
+		expect.equal(plainRatio > 0.55 and plainRatio < 0.8, true, `no scale is 1 ({plainRatio})`)
+	end,
+
 	-- The owner 2026-11-12: "every boss debuff should be shown below their healthbar with tooltips"
 	["a boss's states for its bar: shield, enraged, stunned, snared, cursed, burning, in the snapshot"] = function()
 		local state = bossFightWithPlayer(31, 1, { shield = { every = 0.3, fraction = 0.1, breakStun = 3 }, enrage = { below = 0.5, atkMultiplier = 1.15 } })

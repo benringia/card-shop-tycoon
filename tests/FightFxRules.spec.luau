@@ -39,7 +39,11 @@ return {
 	["every element attack has its sounds"] = function()
 		for element in AttackFx.ELEMENT do
 			local sounds = AttackFx.SOUNDS[element]
-			expect.equal(sounds ~= nil and typeof(sounds.hit) == "string", true, element)
+			-- a list of clips, one picked each hit (owner 2026-11-12; Util/SoundVary)
+			expect.equal(sounds ~= nil and typeof(sounds.hit) == "table" and #sounds.hit > 0, true, element)
+			for _, id in sounds.hit do
+				expect.equal(string.match(id, "^rbxassetid://%d+$") ~= nil, true, `{element} hit clip`)
+			end
 		end
 		expect.equal(typeof(AttackFx.SOUNDS.charge), "string")
 	end,
@@ -175,7 +179,9 @@ return {
 			expect.equal(Wild.SPECIES[species] ~= nil or Frontier.SPECIES[species] ~= nil, true, species)
 			expect.equal(styles[moves.strike], true, `{species} strike`)
 			expect.equal(#moves.color, 3, species)
-			expect.equal(string.match(moves.sounds.strike, "^rbxassetid://%d+$") ~= nil, true, `{species} sound`)
+			for _, id in moves.sounds.strike do
+				expect.equal(string.match(id, "^rbxassetid://%d+$") ~= nil, true, `{species} sound`)
+			end
 		end
 		local wild = 0
 		for _ in Wild.SPECIES do

@@ -34,6 +34,8 @@ local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"
 local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 local CombatMath = require(Shared:WaitForChild("Util"):WaitForChild("CombatMath"))
 local DebuffRules = require(Shared:WaitForChild("Util"):WaitForChild("DebuffRules"))
+local DefenseRules = require(Shared:WaitForChild("Util"):WaitForChild("DefenseRules"))
+local DangerRules = require(Shared:WaitForChild("Util"):WaitForChild("DangerRules"))
 local DefeatRules = require(Shared:WaitForChild("Util"):WaitForChild("DefeatRules"))
 local DungeonRules = require(Shared:WaitForChild("Util"):WaitForChild("DungeonRules"))
 local FightFxRules = require(Shared:WaitForChild("Util"):WaitForChild("FightFxRules"))
@@ -54,11 +56,13 @@ local CardService = require(Services:WaitForChild("CardService"))
 local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local ItemService = require(Services:WaitForChild("ItemService"))
+local KnockoutService = require(Services:WaitForChild("KnockoutService"))
 local PartyService = require(Services:WaitForChild("PartyService"))
 local SwordService = require(Services:WaitForChild("SwordService"))
 local WeaponService = require(Services:WaitForChild("WeaponService"))
 local WildService = require(Services:WaitForChild("WildService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
+local Blocked = require(Util:WaitForChild("Blocked"))
 
 type PlayerData = DataService.PlayerData
 type Monster = WildService.Monster
@@ -123,7 +127,7 @@ type SummonRun = { to: Vector3, face: Vector3, speed: number, startAt: number }
 -- (spec 2026-11-11-dungeon-puzzles) `swords`: players fight in this room with their swords (room 3); `pylons`: the
 -- crystal pylons shielding its pack (BattleSim pylons, broken by swords); `onPylon`: told "pylonBroken" (with the part)
 -- and "shieldDown" so the run can show them
-export type RunOptions = { pack: { Monster }?, hpLeft: { [Player]: { [string]: number } }?, run: boolean?, swords: boolean?, pylons: { { part: BasePart, hp: number } }?, onPylon: ((kind: string, pylon: BasePart?) -> ())?, packAtk: number?, leashCenter: Vector3? }
+export type RunOptions = { pack: { Monster }?, hpLeft: { [Player]: { [string]: number } }?, run: boolean?, swords: boolean?, pylons: { { part: BasePart, hp: number } }?, onPylon: ((kind: string, pylon: BasePart?) -> ())?, packAtk: number?, leashCenter: Vector3?, swordOnly: boolean? }
 
 local BattleService = {}
 
@@ -266,6 +270,35 @@ local function getPartyIds(player: Player): { string }
 		end
 	end
 	return ids
+end
+
+-- How hard hits land on this player in a fight against `monster` (owner 2026-11-12: "party strength for defense",
+-- bosses too): their party cards' Power added up (resting ones count) against the fight's reference (a boss's
+-- recommended Power, a wild zone's boss's); nil without a reference (a Dungeon room: as tuned)
+local function defenseScaleFor(player: Player, boss: any?, monster: Monster): number?
+	if not boss and Place.isDungeon() then
+		return nil -- a Dungeon room's pack: as tuned (its "zone" would read as the Hydra's)
+	end
+	local place = if Place.isFrontier() then "Frontier" else "Wild"
+	local reference = DefenseRules.referenceFor(boss, Bosses, place, if boss then nil else monster.zone, Combat)
+	if not reference then
+		return nil
+	end
+	local powers = {}
+	for _, beastId in getPartyIds(player) do
+		local beast = CardService.GetBeast(player, beastId)
+		local card = if beast then Cards.ById[beast.cardId] else nil
+		if beast and card then
+			table.insert(powers, BeastRules.getPower(card, beast.foil, beast.level, beast.stars, beast.grade))
+		end
+	end
+	return DefenseRules.scale(DefenseRules.defense(powers), reference, Combat)
+end
+
+-- Whether a wild monster stands in a dangerous place (Config/Wild, Config/Frontier ZONES danger; never the Dungeon)
+local function dangerAt(monster: Monster): boolean
+	local zone = Wild.ZONES[monster.zone]
+	return zone ~= nil and zone.danger == true and not Place.isDungeon() and monster.boss == nil
 end
 
 -- Sim ids: the party is side A ("a:<beastId>"), the monster side B ("b:m")
@@ -735,6 +768,12 @@ local function handleEvents(fight: Fight, events: { BattleSim.Event })
 			fight.monster.marker:SetAttribute("Enraged", true)
 		elseif (event.type == "callin" or event.type == "swap") and event.from then
 			enterField(fight, event, markers, allies)
+		elseif event.type == "recall" and event.from then
+			-- unsummoned mid-fight (BattleSim.recall): it leaves the ring, back to its owner
+			local member = memberOf(fight, event.from)
+			if member then
+				leaveField(member, string.sub(event.from, 3))
+			end
 		elseif event.type == "ring" and event.ring then
 			recordRing(fight, event)
 			local member = memberByOwner(fight, string.sub(event.to or "", 4))
@@ -1048,6 +1087,10 @@ local function endFight(fight: Fight, result: string)
 		if player.Parent then
 			Remotes.BattleEnded:FireClient(player, summary)
 			sendResting(player)
+			if DangerRules.knockout(result, dangerAt(fight.monster), fight.monster.boss ~= nil, fight.run) then
+				-- down where you fell: the countdown to the spring, "Revive here" (spec 2026-11-12-timed-upgrades-revive-design)
+				KnockoutService.KnockOut(player)
+			end
 		end
 	end
 end
@@ -1167,6 +1210,8 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 	local boss = if monster.boss then Bosses.BOSSES[monster.boss] else nil
 	local run = options ~= nil and options.run == true
 	local swords = options ~= nil and options.swords == true
+	-- every card resting in a dangerous place: the player alone with their sword (Util/DangerRules), no card XP
+	local swordOnly = options ~= nil and options.swordOnly == true
 	local hpLeft = if options then options.hpLeft else nil
 	local stats = if boss then { hp = boss.hp, atk = boss.atk, spd = boss.spd } else CombatMath.getMonsterStats(Wild, monster.species, monster.level, monster.elite)
 	if not stats or #players == 0 then
@@ -1199,7 +1244,9 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 			boss = boss ~= nil,
 			swings = swings,
 			-- A wild monster's quick hits on a player who fights with a sword (no rings outside boss fights)
-			playerAttacks = if boss then boss.playerAttacks else CombatMath.getMonsterAttacks(Wild, monster.elite),
+			-- elites and aggro / dangerous places' monsters also swing at you while your creature stands (owner 2026-11-12)
+			playerAttacks = if boss then boss.playerAttacks
+				else CombatMath.getMonsterAttacks(Wild, monster.elite, DangerRules.playerShare(monster.elite, Wild.ZONES[monster.zone], Combat.DANGER.playerShare)),
 		})
 	end
 	local pack = if options and options.pack then options.pack else {}
@@ -1221,15 +1268,17 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 		local leaderInput = fighterInput(CardService.GetBeast(player, leaderId) :: Beast, true)
 		leaderInput.owner = owner
 		leaderInput.hpNow = left[leaderId]
-		table.insert(leaders, leaderInput)
+		if not swordOnly then
+			table.insert(leaders, leaderInput)
+		end
 		if fightsWithSword(player, boss ~= nil, run, swords) then
 			-- The player fights beside their creature (never a creature's target; down instead of fainting)
-			table.insert(leaders, { id = `@{owner}`, player = true, owner = owner, element = "None", hp = Combat.PLAYER_HP, atk = 0, spd = 10 })
+			table.insert(leaders, { id = `@{owner}`, player = true, owner = owner, element = "None", hp = Combat.PLAYER_HP, atk = 0, spd = 10, defenseScale = defenseScaleFor(player, boss, monster) })
 		end
 		for _, beastId in partyIds do
 			local beast = CardService.GetBeast(player, beastId)
 			-- In a run, a card that fainted in an earlier room stays out even once it has rested
-			if beast and beastId ~= leaderId and not isResting(player, beastId) and DungeonRules.canFight(left, beastId) then
+			if not swordOnly and beast and beastId ~= leaderId and not isResting(player, beastId) and DungeonRules.canFight(left, beastId) then
 				local input = fighterInput(beast, true)
 				input.owner = owner
 				input.hpNow = left[beastId]
@@ -1240,10 +1289,21 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 		local swordId = SwordService.GetSword(player)
 		local sword = if swordId then Swords.SWORDS[swordId] else nil
 		local skillReady = if sword then SwordRules.openingSkillReady(os.clock(), sword.skill) else 0
-		table.insert(members, { player = player, owner = owner, leaderId = leaderId, markers = {}, fought = { [leaderId] = true }, partyIds = partyIds, died = nil, leashWarnedAt = 0, lastCut = nil, skillReady = skillReady, down = false, slow = nil, rings = 0, dodged = 0 })
+		table.insert(members, { player = player, owner = owner, leaderId = leaderId, markers = {}, fought = if swordOnly then {} else { [leaderId] = true }, partyIds = partyIds, died = nil, leashWarnedAt = 0, lastCut = nil, skillReady = skillReady, down = false, slow = nil, rings = 0, dodged = 0 })
 	end
-	-- Boss fights and Dungeon rooms allow swaps (and are tuned for them); in boss fights only one creature of yours fights
-	local sideA = { fighters = leaders, reserves = reserves, abilities = true, canRun = true, swapSeconds = if boss or run then Combat.BOSS_SWAP_SECONDS else nil, callIn = if boss then false else nil, creaturesDecide = not boss and (not run or swords) }
+	-- Boss fights and Dungeon rooms allow swaps (and are tuned for them); in boss fights only one creature of yours fights.
+	-- Wild fights swap too (owner 2026-11-12: "replace summoned pets with another"), by hand only: a faint still loses
+	local wildSwaps = not boss and not run and not swordOnly
+	local sideA = {
+		fighters = leaders,
+		reserves = reserves,
+		abilities = true,
+		canRun = true,
+		swapSeconds = if boss or run then Combat.BOSS_SWAP_SECONDS elseif wildSwaps then Combat.WILD_SWAP_SECONDS else nil,
+		autoSwap = if wildSwaps then false else nil,
+		callIn = if boss then false else nil,
+		creaturesDecide = not swordOnly and not boss and (not run or swords),
+	}
 	-- Room 3's pylons: the sim's by their part's name ("b:Pylon1"...)
 	local pylonInputs: { { id: string, hp: number } } = {}
 	local pylonParts: { [string]: BasePart } = {}
@@ -1416,6 +1476,81 @@ local function tryStart(player: Player, monster: Monster?): boolean
 	return startFight({ player }, monster :: Monster)
 end
 
+
+-- The first party slot whose card can fight now (the lead first), or nil
+local function restedSlot(player: Player): number?
+	local party = PartyService.GetParty(player)
+	if not party then
+		return nil
+	end
+	for slot = 1, 3 do
+		local beastId = party.slots[slot]
+		if beastId and CardService.GetBeast(player, beastId) and not isResting(player, beastId) then
+			return slot
+		end
+	end
+	return nil
+end
+
+-- Every card resting, a sword: the player alone against it (its summoned card holds back; the lead is summoned first
+-- if none is out)
+local function startSwordOnly(player: Player, monster: Monster): boolean
+	local party = PartyService.GetParty(player)
+	if not party or fights[player] or PartyService.IsLocked(player) or monster.fightingPlayer then
+		return false
+	end
+	if not party.summoned then
+		for slot = 1, 3 do
+			if party.slots[slot] and PartyService.SummonSlot(player, slot) then
+				break
+			end
+		end
+	end
+	for _, blocker in startBlockers do
+		if blocker(player) then
+			return false
+		end
+	end
+	if not party.summoned or not getRoot(player) or not PartyService.GetMarker(player) then
+		return false
+	end
+	return startFight({ player }, monster, { swordOnly = true })
+end
+
+-- A chasing monster caught you (owner 2026-11-11/12, Util/DangerRules; anywhere: elites and aggro places' monsters):
+-- a rested card is summoned for you, or you fight alone with your sword, or it shoves you off and you're told why
+local function onContact(player: Player, monster: Monster)
+	local party = PartyService.GetParty(player)
+	local summonedId = if party and party.summoned then party.slots[party.summoned] else nil
+	local hasCard = party ~= nil and (party.slots[1] ~= nil or party.slots[2] ~= nil or party.slots[3] ~= nil)
+	local action, slot = DangerRules.onContact({
+		fighting = fights[player] ~= nil,
+		locked = PartyService.IsLocked(player),
+		hasCard = hasCard,
+		summoned = summonedId ~= nil,
+		summonedRested = summonedId ~= nil and not isResting(player, summonedId),
+		restedSlot = restedSlot(player),
+		hasSword = SwordService.GetSword(player) ~= nil,
+	})
+	if action == "fight" then
+		tryStart(player, monster)
+	elseif action == "summon" and slot then
+		if PartyService.SummonSlot(player, slot) then
+			tryStart(player, monster)
+		end
+	elseif action == "shove" or (action == "swordOnly" and not startSwordOnly(player, monster)) then
+		-- nothing to fight with (or the sword fight couldn't start): it shoves you off and you're told why
+		local root = getRoot(player)
+		if root then
+			local away = Vector3.new(root.Position.X - monster.marker.Position.X, 0, root.Position.Z - monster.marker.Position.Z)
+			away = if away.Magnitude > 0.1 then away.Unit else Vector3.new(0, 0, 1)
+			local shove = Combat.DANGER.shove
+			Blocked.tell(player, Combat.DANGER.shoveText, { shove = away * shove.speed + Vector3.new(0, shove.up, 0) })
+		end
+	end
+end
+
+
 -- BossService: these players (the first leads) fight this monster together now (false and the first reason if any
 -- of them can't)
 -- options: a Dungeon run fight (DungeonService, BossService.StartRun)
@@ -1489,8 +1624,28 @@ local function onCallIn(player: Player, id: unknown)
 	if not allowCallIn(player) or not fight or not member or inIntro(fight) or typeof(id) ~= "string" or string.sub(id, 1, 2) ~= "a:" then
 		return
 	end
-	-- Only one of your own reserves (the sim checks the owner). Boss fights: a swap (a call-in early on).
+	-- Your own creature on the field, in a wild fight: unsummon it (owner 2026-11-12: "It still wouldn't let me unsummon my
+	-- pet while in combat"); you fight on with your sword
 	local events: { BattleSim.Event }? = nil
+	local onField = false
+	for _, fighter in (fight.sim.sides.a :: any).fighters do
+		onField = onField or (fighter.id == id and fighter.owner == member.owner and not fighter.player and not fighter.fainted)
+	end
+	if onField then
+		if fight.monster.boss or fight.run then
+			return -- boss fights and Dungeon rooms swap, they don't unsummon (the client never asks)
+		end
+		local why
+		events, why = BattleSim.recall(fight.sim, member.owner)
+		if why == "alone" then
+			Blocked.tell(player, Combat.UNSUMMON.alone, { title = Combat.UNSUMMON.title })
+		end
+		if events then
+			handleEvents(fight, events)
+		end
+		return
+	end
+	-- Only one of your own reserves (the sim checks the owner). Boss fights: a swap (a call-in early on).
 	if (fight.sim.sides.a :: any).swapSeconds then
 		events = BattleSim.swap(fight.sim, id, member.owner)
 	elseif BattleSim.callIn(fight.sim, id, member.owner) then
@@ -1850,7 +2005,14 @@ end
 
 function BattleService.Start()
 	DataService.Register({ name = "BattleService", load = load, save = save, unload = unload })
-	WildService.SetFightCheck(BattleService.IsFighting)
+	-- nobody chases into a ring, a knocked-out player or one just revived (KnockoutService)
+	WildService.SetFightCheck(function(player: Player): boolean
+		return BattleService.IsFighting(player) or KnockoutService.IsSpared(player)
+	end)
+	KnockoutService.SetWake(BattleService.ClearResting) -- a revive rests your cards
+	BattleService.AddStartBlocker(function(player: Player): string?
+		return if KnockoutService.IsOut(player) then Combat.DANGER.knockout.blocked else nil
+	end)
 	WeaponService.SetFightCheck(BattleService.IsFighting)
 	WeaponService.SetSwapHook(onSwap)
 	-- End a fight before the leave save, so cards that fainted in it are saved as resting
@@ -1892,10 +2054,8 @@ function BattleService.Start()
 	WildService.AddTravelBlocker(function(player)
 		return if fights[player] then "You can't travel during a fight." else nil
 	end)
-	-- A chasing monster caught you: fight, if you can (otherwise it just gives up)
-	WildService.OnContact(function(player, monster)
-		tryStart(player, monster)
-	end)
+	-- A chasing monster caught you: fight, if you can; in a dangerous place more (onContact)
+	WildService.OnContact(onContact)
 
 	local elapsed, sinceSpring = 0, 0
 	RunService.Heartbeat:Connect(function(dt)

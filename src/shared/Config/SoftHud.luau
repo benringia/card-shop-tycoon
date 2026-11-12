@@ -4,12 +4,12 @@
 -- and over the top edge, a squishy hover. Plain data (Lune-tested: tests/SquishRules); Config/HudLayout reads its sizes.
 return {
 	TILE = {
-		size = 84, -- px, square
+		size = 72, -- px, square (84 before the owner's 2026-11-12 "a little bit smaller"; 50 px at the smallest HUD scale)
 		gap = 20, -- between tiles in a row (and the Manage tray); the owner found 10 too close together
 		corner = 0.3, -- corner radius, a share of the tile's width
 		outline = 4, -- white outline (px)
-		keySize = 24, -- the key letter's white circle (px)
-		keyInset = 7, -- its centre sits this far in from the bottom-right corner (px)
+		keySize = 22, -- the key letter's white circle (px)
+		keyInset = 3, -- its centre sits this far in from the bottom-right corner (px): clear of the label on the smaller tile
 		icon = 0.74, -- the icon's size, a share of the tile's width
 		iconRise = 0.26, -- how far it sticks out over the top edge, a share of the tile's width
 		label = 0.26, -- the label's height, a share of the tile's height

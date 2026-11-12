@@ -632,10 +632,4 @@ return {
 		assert(tyrant.ringRadius >= 20, "his fighters stand clear of his bigger body")
 		assert(tyrant.introShot.back >= 46, "the intro camera fits him")
 	end,
-	["pickTitle: Dungeon Conqueror outranks Crystal Seeker"] = function()
-		expect.equal(BossRules.pickTitle("Dungeon Conqueror", true, "Crystal Seeker"), "Dungeon Conqueror", "both")
-		expect.equal(BossRules.pickTitle(nil, true, "Crystal Seeker"), "Crystal Seeker", "the secret only")
-		expect.equal(BossRules.pickTitle(nil, false, "Crystal Seeker"), nil, "neither")
-		expect.equal(BossRules.pickTitle("Dungeon Conqueror", false, "Crystal Seeker"), "Dungeon Conqueror", "the clear only")
-	end,
 }

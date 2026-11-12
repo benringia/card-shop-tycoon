@@ -39,6 +39,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local ElementBadge = require(ClientUtil:WaitForChild("ElementBadge"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
 local BossTints = require(ClientUtil:WaitForChild("BossTints"))
@@ -733,7 +734,7 @@ local function renderPills(parent: Instance, index: number, reveal: boolean): Fr
 	local secret = boss.phases ~= nil and not reveal -- the Hydra's element changes are one of its tricks
 	local element = UIKit.pill(pills, if secret then "???" elseif boss.phases then "All elements" else boss.element, if boss.phases then UIStyle.PANEL else Cards.ELEMENTS[boss.element] or UIStyle.PANEL, nil, BossTints.icon(bossId))
 	element.LayoutOrder = 1
-	Tooltip.attach(element, if secret then "Reach it to find out." elseif boss.phases then "It changes element as it gets hurt." else `Its element: {boss.element}`)
+	Tooltip.attach(element, if secret then "Reach it to find out." elseif boss.phases then "It changes element as it gets hurt." else `Its element: {ElementBadge.name(boss.element)}`)
 	local where = UIKit.pill(pills, whereText(bossId), UIStyle.PANEL, nil, "Travel")
 	where.LayoutOrder = 2
 	Tooltip.attach(where, whereTip(bossId))

@@ -68,8 +68,13 @@ local DungeonFallController = require(Controllers:WaitForChild("DungeonFallContr
 local DungeonCinematicController = require(Controllers:WaitForChild("DungeonCinematicController"))
 local DungeonRegionController = require(Controllers:WaitForChild("DungeonRegionController"))
 local TitleController = require(Controllers:WaitForChild("TitleController"))
+local SupportController = require(Controllers:WaitForChild("SupportController"))
+local ThanksController = require(Controllers:WaitForChild("ThanksController"))
 local SwordController = require(Controllers:WaitForChild("SwordController"))
 local WeaponSwitchController = require(Controllers:WaitForChild("WeaponSwitchController"))
+local CharacterController = require(Controllers:WaitForChild("CharacterController"))
+local CameraLimitController = require(Controllers:WaitForChild("CameraLimitController"))
+local StationTimerController = require(Controllers:WaitForChild("StationTimerController"))
 local MusicController = require(Controllers:WaitForChild("MusicController"))
 local FootstepController = require(Controllers:WaitForChild("FootstepController"))
 local WildLoadingController = require(Controllers:WaitForChild("WildLoadingController"))
@@ -83,6 +88,7 @@ local Remotes = require(game:GetService("ReplicatedStorage"):WaitForChild("Share
 LoadingController.Start() -- the loading screen's steps (ReplicatedFirst shows it from the first frame)
 -- What you can't do yet: a big locked card with the reason, locked prompts showing the level needed (every place)
 require(Controllers:WaitForChild("BlockedController")).Start()
+require(Controllers:WaitForChild("KnockoutController")).Start() -- knocked out in the Wild: the countdown, Revive here
 -- Effects toned to the scene: on bright ground (snow) they blend their colours in instead of adding light (Util/FxTone)
 require(script:WaitForChild("Util"):WaitForChild("FxTone")).Start()
 
@@ -106,9 +112,13 @@ if Place.isFrontier() or Place.isDungeon() then
 	WeaponRevealController.Start() -- a boss's weapon drop and forged weapons: the reveal on the stage
 	BossChestController.Start() -- a boss win's three chests on the stage (BossChestService)
 	SoundscapeController.Start() -- spot sounds round you, the town's night bed and gusts (not the Dungeon)
-	TitleController.Start() -- titles over names (Dungeon Conqueror)
+	TitleController.Start() -- titles over names (small, in their gradient)
+	SupportController.Start() -- "Support the dev": tap Pish for the card; he asks after a good moment
+	ThanksController.Start() -- a gift's thank-you: Pish and Chikin run in, then the glow
 	SwordController.Start() -- swords on characters, the first-sword popup
 	WeaponSwitchController.Start() -- the quick weapon switch chip on the right edge (Q)
+	CharacterController.Start() -- the character window: your character, Stats / Elements / Titles, your weapon (P)
+	CameraLimitController.Start() -- how far the camera zooms out (Config/CameraLimits)
 	LevelUpController.Start() -- the level-up light pillar on you, your creatures and players nearby
 	FootstepController.Start() -- footsteps on whatever you walk on
 	if Place.isDungeon() then
@@ -165,6 +175,7 @@ else
 	CondenserController.Start()
 	ForgeController.Start() -- the Forge window (weapons): forge, upgrade, reforge at your own Forge
 	GradingController.Start()
+	StationTimerController.Start() -- countdowns over your stations while they hold a job
 	JobsController.Start()
 	PartyController.Start()
 	BuffController.Start()
@@ -187,8 +198,12 @@ else
 	WeaponRevealController.Start() -- a boss's weapon drop and forged weapons: the reveal on the stage
 	BossChestController.Start() -- a boss win's three chests on the stage (BossChestService)
 	SoundscapeController.Start() -- spot sounds round you, the town's night bed and gusts (not the Dungeon)
-	TitleController.Start() -- titles over names (Dungeon Conqueror)
+	TitleController.Start() -- titles over names (small, in their gradient)
+	SupportController.Start() -- "Support the dev": tap Pish for the card; he asks after a good moment
+	ThanksController.Start() -- a gift's thank-you: Pish and Chikin run in, then the glow
 	SwordController.Start() -- swords on characters, the first-sword popup
 	WeaponSwitchController.Start() -- the quick weapon switch chip on the right edge (Q)
+	CharacterController.Start() -- the character window: your character, Stats / Elements / Titles, your weapon (P)
+	CameraLimitController.Start() -- how far the camera zooms out (Config/CameraLimits)
 	LevelUpController.Start() -- the level-up light pillar on you, your creatures and players nearby
 end

@@ -595,7 +595,14 @@ local function placeStatusRow(rowLayout: UIListLayout)
 	end
 	statusRow.Position = UDim2.new(1, -STATUS_MARGIN, 1, -bottom)
 	if toastStack then
-		-- Right over the column's top item (the cash pill, or the buff badge while one shows)
+		-- Out of Pish on the party bar, as if he says it (owner 2026-11-12); while he's hidden, right over the column's
+		-- top item (the cash pill, or the buff badge while one shows)
+		local head = HudMascotView.head()
+		if head then
+			local corner = ToastRules.stackCorner({ x = head.X, y = head.Y }, Toasts.TAIL_RIGHT, Toasts.TAIL, scale)
+			toastStack.Position = UDim2.fromOffset(corner.x, corner.y)
+			return
+		end
 		local column = if statusLayout then statusLayout.AbsoluteContentSize.Y else STATUS_HEIGHT * scale
 		toastStack.Position = UDim2.new(1, -STATUS_MARGIN, 1, -(bottom + column + PILL_GAP))
 	end
@@ -680,6 +687,7 @@ function UIController.Start()
 	toastLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	toastLayout.Parent = toastStack
 	place()
+	HudMascotView.onMoved(place) -- the toasts follow Pish's head (he's mounted on the party bar later)
 	-- Full-screen views (the binder) cover this corner with their own panels
 	Hud.hideWith(statusRow)
 

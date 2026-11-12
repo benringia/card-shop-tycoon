@@ -7,6 +7,8 @@
 -- (the starter combo landing 55-90% of the time, the skill on cooldown, 40-80% of quick hits dodged). Targets: normal
 -- monsters about 10-15 s, won about 90% fighting well and 75% standing still; elites about 25-35 s, about 65% fighting
 -- well. The creature uses its Pet button on cooldown; no call-ins.
+-- Elites and aggro / dangerous places' monsters send Combat.DANGER.playerShare of their swings at the player while the
+-- creature stands (Util/DangerRules.playerShare; NO_SHARE=1 in front: pets first, as before 2026-11-12).
 -- Usage: lune run tools/balance/wild [fights] [world: wild | frontier | both]
 local process = require("@lune/process")
 local BattleSim = require("../../src/server/Util/BattleSim")
@@ -19,9 +21,11 @@ local Party = require("../../src/shared/Config/Party")
 local Swords = require("../../src/shared/Config/Swords")
 local Wild = require("../../src/shared/Config/Wild")
 local CombatMath = require("../../src/shared/Util/CombatMath")
+local DangerRules = require("../../src/shared/Util/DangerRules")
 local PartyRules = require("../../src/shared/Util/PartyRules")
 
 local FIGHTS = tonumber(process.args[1] or "") or 200
+local NO_SHARE = process.env.NO_SHARE == "1"
 local WORLD = process.args[2] or "both"
 local ELEMENTS = { "Ember", "Tide", "Bloom", "Volt", "Shade" }
 local DT = 0.1
@@ -62,7 +66,7 @@ local function cardAt(level: number, target: number): Card
 end
 
 -- One fight; mode "creature" (no sword yet), "still" or "well". Returns (won, seconds)
-local function fight(world: any, species: string, level: number, elite: boolean, card: Card, element: string, seed: number, mode: string): (boolean, number)
+local function fight(world: any, zone: any, species: string, level: number, elite: boolean, card: Card, element: string, seed: number, mode: string): (boolean, number)
 	local s = stats(card, element)
 	local perk = PartyRules.getFightPerk(Party, element, card.rarity, card.stars)
 	local leaders: { any } = { { id = "c", element = element, hp = s.hp, atk = s.atk, spd = s.spd, owner = "1", perk = perk } }
@@ -77,7 +81,9 @@ local function fight(world: any, species: string, level: number, elite: boolean,
 		atk = m.atk,
 		spd = m.spd,
 		elite = elite,
-		playerAttacks = if mode ~= "creature" then CombatMath.getMonsterAttacks(world, elite) else nil,
+		playerAttacks = if mode ~= "creature"
+			then CombatMath.getMonsterAttacks(world, elite, if NO_SHARE then nil else DangerRules.playerShare(elite, zone, Combat.DANGER.playerShare))
+			else nil,
 	}
 	local state = BattleSim.new(Combat, { fighters = leaders, abilities = true, canRun = true, creaturesDecide = true }, { fighters = { foe }, abilities = false, canRun = false }, seed)
 	dice = seed
@@ -120,10 +126,10 @@ local function fight(world: any, species: string, level: number, elite: boolean,
 	return state.result == "a", state.time
 end
 
-local function run(world: any, species: string, level: number, elite: boolean, card: Card, mode: string): (number, number)
+local function run(world: any, zone: any, species: string, level: number, elite: boolean, card: Card, mode: string): (number, number)
 	local wins, seconds = 0, 0
 	for index = 1, FIGHTS do
-		local won, time = fight(world, species, level, elite, card, ELEMENTS[index % #ELEMENTS + 1], index * 7919 + level, mode)
+		local won, time = fight(world, zone, species, level, elite, card, ELEMENTS[index % #ELEMENTS + 1], index * 7919 + level, mode)
 		if won then
 			wins += 1
 			seconds += time
@@ -148,7 +154,7 @@ local function report(name: string, world: any, firstBoss: number)
 				for _, elite in { false, true } do
 					local parts = {}
 					for _, mode in { "creature", "still", "well" } do
-						local share, seconds = run(world, species, level, elite, card, mode)
+						local share, seconds = run(world, zone, species, level, elite, card, mode)
 						table.insert(parts, cell(share, seconds))
 					end
 					line ..= (if elite then "  ELITE " else " normal ") .. table.concat(parts, " | ")

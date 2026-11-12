@@ -15,9 +15,9 @@ return {
 	ZONE_GAP = 24,
 
 	ZONES = {
-		{ name = "Frostwood", minLevel = 15, maxLevel = 25, recommended = 15, species = { "Frost Wisp", "Shade Lynx" }, aggro = false, color = { 170, 200, 220 } },
-		{ name = "Stormpeak", minLevel = 25, maxLevel = 35, recommended = 25, species = { "Storm Hawk", "Lava Brute" }, aggro = false, color = { 110, 110, 130 } },
-		{ name = "The Rift", minLevel = 35, maxLevel = 50, recommended = 35, species = { "Rift Horror", "Prism Crab" }, aggro = true, color = { 70, 40, 90 }, elements = { "Ember", "Tide", "Bloom", "Volt", "Shade" } },
+		{ name = "Frostwood", minLevel = 15, maxLevel = 25, recommended = 15, species = { "Frost Wisp", "Shade Lynx" }, aggro = false, danger = true, color = { 170, 200, 220 } },
+		{ name = "Stormpeak", minLevel = 25, maxLevel = 35, recommended = 25, species = { "Storm Hawk", "Lava Brute" }, aggro = false, danger = true, color = { 110, 110, 130 } },
+		{ name = "The Rift", minLevel = 35, maxLevel = 50, recommended = 35, species = { "Rift Horror", "Prism Crab" }, aggro = true, danger = true, color = { 70, 40, 90 }, elements = { "Ember", "Tide", "Bloom", "Volt", "Shade" } },
 	},
 
 	-- Base stats at level 1; level L multiplies by 1 + MONSTER_GROWTH * (L - 1). HP and ATK tuned with

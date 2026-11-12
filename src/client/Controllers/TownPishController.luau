@@ -17,10 +17,16 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local PishVisual = require(ClientUtil:WaitForChild("PishVisual"))
+local GreetBubble = require(ClientUtil:WaitForChild("GreetBubble"))
 
 local TownPishController = {}
 
 local FIND_SECONDS = 15 -- how long to wait for the model and the server's marker on join
+local BUBBLE_UP = 4.2 -- studs over his marker: above his name tag (he's a small dog)
+local BUBBLE_EDGE = Color3.fromRGB(150, 170, 255)
+-- his hellos, then his thank-yous to supporters (the server's GreetLine counts through both; Util/TownDog)
+local GREET_LINES = table.clone(PishTalk.GREETS)
+table.move(PishTalk.THANKS, 1, #PishTalk.THANKS, #GREET_LINES + 1, GREET_LINES)
 
 local visual: PishVisual.Visual? = nil
 local marker: BasePart? = nil
@@ -86,6 +92,13 @@ local function attach(found: BasePart)
 	applyHidden()
 	table.insert(markerConnections, found:GetAttributeChangedSignal("ClipId"):Connect(playNamed))
 	table.insert(markerConnections, found:GetAttributeChangedSignal("VisitingOwner"):Connect(applyHidden))
+	-- his hello to a player who came near (owner 2026-11-12: "npc pish should also greet people like chikin")
+	table.insert(markerConnections, found:GetAttributeChangedSignal("GreetId"):Connect(function()
+		local current = marker
+		if current and visual and not hidden then
+			GreetBubble.show(current, visual, GREET_LINES, BUBBLE_UP, BUBBLE_EDGE)
+		end
+	end))
 	-- The prompt can arrive a moment after the part: hide it too while this player's own Pish is out
 	table.insert(markerConnections, found.ChildAdded:Connect(applyHidden))
 	playNamed()

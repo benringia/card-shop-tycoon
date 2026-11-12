@@ -27,7 +27,8 @@ Today it's Pish (round 5, 2026-11-10; Cindercub before), and tapping him is the 
 - `eyes`: each eye's box on the peek picture as shares of its width and height (find the dark eye pixels with
   Pillow, as done for Cindercub), for blinking.
 - `lid`: the fur colour right round the eyes; `crease`: the line drawn across a closed eye.
-- `tail.at`, `tail.angle`: where the tail's bottom sits (pixels from the cushion's left end, down from its top edge)
+- `tail.at`, `tail.angle`: where the tail's bottom sits (pixels right of the sticker's own left edge, down from the cushion's top edge)
+- `sides`, `seat`, `offset.right`: which end of the party bar it sits on (right on a PC, where the toasts come out of it; left on touch screens) and the seat kept for it
   and how it leans; `tail.period`, `tail.degrees`: its sway.
 - `voice`: its chirp when tapped (a Roblox-licensed Pro Sound Effects or APM sound), quiet.
 - `tapArea`: keep it at least 69 px each way (48 px at the smallest HUD scale) and covering the paws.

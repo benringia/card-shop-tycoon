@@ -11,6 +11,8 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Items = require(Config:WaitForChild("Items"))
 local Weapons = require(Config:WaitForChild("Weapons"))
+local Upgrades = require(Config:WaitForChild("Upgrades"))
+local UpgradeRules = require(Shared:WaitForChild("Util"):WaitForChild("UpgradeRules"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local WeaponRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -23,6 +25,7 @@ local ItemService = require(Services:WaitForChild("ItemService"))
 local PlacementService = require(Services:WaitForChild("PlacementService"))
 local WeaponService = require(Services:WaitForChild("WeaponService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
+local UpgradeJobService = require(Services:WaitForChild("UpgradeJobService"))
 
 type Action = "forge" | "reforge" | "upgrade"
 type Cost = WeaponRules.Cost
@@ -132,26 +135,28 @@ local function costOf(player: Player, action: Action, weapon: Weapons.Weapon): C
 	return WeaponRules.upgradeCost(Weapons, weapon.id, owned.level + 1)
 end
 
--- What the paid action does: a level up, or a grade rolled and given (forge, reforge); returns what ForgeResult tells
--- the client
+-- What the paid action does: a job in the Forge (spec 2026-11-12-timed-upgrades-revive-design: upgrades wait, crafting
+-- the longest): a level up, or a grade rolled now and given when its time is up (forge, reforge); the weapon is locked
+-- meanwhile (UpgradeJobService). Returns what ForgeResult tells the client: `waiting` seconds, nothing revealed yet.
 local function give(player: Player, action: Action, weapon: Weapons.Weapon): { [string]: any }
+	local now = os.time()
+	local job: UpgradeRules.Job
 	if action == "upgrade" then
 		local owned = WeaponService.GetOwned(player, weapon.id) :: WeaponService.Owned
 		local level = owned.level + 1
-		WeaponService.SetLevel(player, weapon.id, level)
-		return { action = action, weaponId = weapon.id, grade = owned.grade, level = level, kept = false, owned = owned.grade }
+		local seconds = UpgradeRules.seconds(Upgrades, "level", level)
+		job = { kind = "level", startedAt = now, finishAt = now + seconds, weaponId = weapon.id, grade = owned.grade, level = level }
+	else
+		local kind = if action == "forge" then "craft" else "reforge"
+		local seconds = UpgradeRules.seconds(Upgrades, kind)
+		job = { kind = kind, startedAt = now, finishAt = now + seconds, weaponId = weapon.id, grade = BeastRules.rollGrade(rng:NextNumber(), weapon.rarity) }
 	end
-	local grade = BeastRules.rollGrade(rng:NextNumber(), weapon.rarity)
-	local record = WeaponService.Give(player, weapon.id, grade, action)
-	local now = WeaponService.GetOwned(player, weapon.id)
-	return {
-		action = action,
-		weaponId = weapon.id,
-		grade = grade,
-		level = if now then now.level else 0,
-		kept = record == nil, -- a reforge that didn't beat the grade it had
-		owned = if now then now.grade else grade, -- the grade it has now
-	}
+	if not UpgradeJobService.Begin(player, "forge", job) then
+		error("the Forge is busy") -- checked before paying: the cost goes back (perform)
+	end
+	local seconds = job.finishAt - now
+	Remotes.Notify:FireClient(player, `The {weapon.name} is in the Forge ({UpgradeRules.clock(seconds)})`, false)
+	return { action = action, weaponId = weapon.id, waiting = seconds }
 end
 
 local function perform(player: Player, action: Action, weapon: Weapons.Weapon, shelfUid: unknown)
@@ -160,6 +165,12 @@ local function perform(player: Player, action: Action, weapon: Weapons.Weapon, s
 	end
 	if not WeaponRules.unlocked(Weapons, weapon.id, EconomyService.GetLevel(player)) then
 		Blocked.tell(player, `The {weapon.name} opens at shop level {Weapons.FORGE_UNLOCK_LEVEL}.`)
+		return
+	end
+	-- one job at a time (spec 2026-11-12-timed-upgrades-revive-design), refused before anything is taken
+	local left = UpgradeJobService.Left(player, "forge")
+	if left then
+		Blocked.tell(player, UpgradeRules.busyText(Upgrades.STATIONS.forge, left))
 		return
 	end
 	local cost = costOf(player, action, weapon)

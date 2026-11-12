@@ -46,6 +46,8 @@ local BossService = {}
 
 local records: { [Player]: { [string]: BossRules.Record } } = {} -- loaded players only
 local secretFound: { [Player]: boolean } = {} -- found the Dungeon's secret chest once (saved data.dungeon.secretFound)
+-- told whenever a player's boss clears or secret change (TitleService: the titles they've earned)
+local progressHooks: { (player: Player, progress: { cleared: { [string]: boolean }, secret: boolean }) -> () } = {}
 local seenIntro: { [Player]: boolean } = {} -- saw the Hydra's full welcome (saved data.dungeon.seenIntro)
 local arenas: { [string]: WildService.BossArena } = {}
 local occupants: { [string]: { [number]: WildService.Monster } } = {} -- the boss being fought in each arena copy
@@ -250,18 +252,33 @@ local function onPickUp(player: Player, raw: unknown)
 	end
 end
 
--- The title over this player's name: the last cleared boss on the ladder that gives one (Dungeon Conqueror)
-local function setTitle(player: Player)
-	local byBoss = records[player]
-	local title = nil
-	for _, bossId in Bosses.LADDER do
-		local record = if byBoss then byBoss[bossId] else nil
-		local clearTitle = Bosses.BOSSES[bossId].clearTitle
-		if record and record.cleared and clearTitle then
-			title = clearTitle
+-- What a player has done that titles come from: the bosses they've cleared and the Dungeon's secret
+local function progressOf(player: Player): { cleared: { [string]: boolean }, secret: boolean }
+	local cleared = {}
+	for bossId, record in records[player] or {} do
+		if record.cleared then
+			cleared[bossId] = true
 		end
 	end
-	player:SetAttribute("Title", BossRules.pickTitle(title, secretFound[player] == true, Dungeon.SECRET.TITLE))
+	return { cleared = cleared, secret = secretFound[player] == true }
+end
+
+-- Tells TitleService (the title over the name is its: Config/Titles; owner 2026-11-12) what changed
+local function setTitle(player: Player)
+	local progress = progressOf(player)
+	for _, hook in progressHooks do
+		task.spawn(hook, player, progress)
+	end
+end
+
+-- A player's boss clears and secret, for their titles (TitleService)
+function BossService.Progress(player: Player): { cleared: { [string]: boolean }, secret: boolean }
+	return progressOf(player)
+end
+
+-- Told whenever a player's progress changes (TitleService)
+function BossService.OnProgress(callback: (player: Player, progress: { cleared: { [string]: boolean }, secret: boolean }) -> ())
+	table.insert(progressHooks, callback)
 end
 
 -- A first clear the whole experience hears about: every other server shows it too (BossService.Start subscribes)

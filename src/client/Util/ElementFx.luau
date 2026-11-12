@@ -11,6 +11,7 @@ local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local AttackFx = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("AttackFx"))
+local SoundVary = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("SoundVary"))
 local Extras = require((script.Parent :: Instance):WaitForChild("Extras"))
 local SoundBank = require((script.Parent :: Instance):WaitForChild("SoundBank"))
 local PackEmitter = require((script.Parent :: Instance):WaitForChild("PackEmitter"))
@@ -196,16 +197,33 @@ function ElementFx.emitter(parent: Instance, texture: string, color: Color3, o: 
 	return emitter(parent, texture, color, o)
 end
 
-function ElementFx.sound(id: string?, at: Vector3, volume: number?)
+-- What each sound (an id, or a list of clips) played last: its clip and pitch (Util/SoundVary keeps the next apart)
+local lastPlayed: { [any]: { clip: number?, pitch: number? } } = setmetatable({}, { __mode = "k" }) :: any
+
+-- `id`: one clip, or a list of clips of one sound (a basic attack's hit, a monster's strike: a different one each time)
+function ElementFx.sound(id: (string | { string })?, at: Vector3, volume: number?)
 	if not id or id == "" then
 		return
 	end
+	local last = lastPlayed[id] or {}
+	lastPlayed[id] = last
+	local clip: string
+	if typeof(id) == "table" then
+		if #id == 0 then
+			return
+		end
+		last.clip = SoundVary.pick(#id, last.clip, math.random)
+		clip = id[last.clip :: number]
+	else
+		clip = id :: string
+	end
 	local anchor = holder(at, 4)
-	local sound = SoundBank.make(id) -- loaded already (a fresh Sound of a dropped id started late or not at all)
+	local sound = SoundBank.make(clip) -- loaded already (a fresh Sound of a dropped id started late or not at all)
 	-- A little different every time (pitch and loudness), so repeated hits don't sound like one clip on a loop
 	local vary = AttackFx.VARY
 	sound.Volume = AttackFx.VOLUME * (volume or 1) * (vary.volume[1] + math.random() * (vary.volume[2] - vary.volume[1]))
-	sound.PlaybackSpeed = vary.pitch[1] + math.random() * (vary.pitch[2] - vary.pitch[1])
+	last.pitch = SoundVary.pitch(vary.pitch, last.pitch, vary.pitchGap, math.random)
+	sound.PlaybackSpeed = last.pitch :: number
 	sound.RollOffMaxDistance = 140
 	sound.Parent = anchor
 	sound:Play()

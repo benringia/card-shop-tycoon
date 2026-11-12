@@ -133,6 +133,8 @@ return {
 	-- colours, Config/CardDesign BACK) with dizzy stars, one resting since an earlier fight with a Zzz; while swaps cool
 	-- down the others dim with the seconds left. A tap swaps; the strip replaces the Swap button.
 	PARTY_STRIP = {
+		UNSUMMON = "Unsummon", -- a wild fight's card fighting: its tile's word (a tap sends it back, owner 2026-11-12)
+		NONE_OUT = "No creature out · tap a card to bring one in", -- your creature's bar after an unsummon
 		TILE = 72, -- pixels wide (phones PHONE_TILE)
 		PHONE_TILE = 58,
 		ART = 0.7, -- the painting's height, of the tile's width
@@ -212,7 +214,10 @@ return {
 		SHAKE = { seconds = 0.25, offsets = { { -4, 1 }, { 4, -1 }, { -3, 0 }, { 2, 1 } } }, -- pixels at 20/40/60/80%
 	},
 	-- The screen's edges flash red when you're hit (not your creature): about half a second, stronger for a bigger
-	-- share of your HP; below LOW_SHARE they keep pulsing softly (0 turns the pulse off)
+	-- share of your HP. Below LOW_SHARE (you or your creature on the field; owner 2026-11-12: "a heartbeat sound and more
+	-- agressive red flashes") they beat like a heart: every PULSE_SECONDS (CRITICAL_SECONDS below CRITICAL_SHARE) a
+	-- thump THUMP of the beat long to PULSE_MAX, a second SECOND_SHARE as strong at SECOND_AT, with SOUNDS.heartbeat;
+	-- critical, each beat also reddens the whole screen BEAT_FILL (Util/HpBarRules)
 	HIT_FLASH = {
 		IMAGE = "rbxassetid://125905162394540",
 		COLOR = rgb(200, 0, 0),
@@ -223,8 +228,19 @@ return {
 		MIN = 0.35, -- opacity of the lightest hit
 		PER_SHARE = 2, -- more opacity per share of your HP lost (a 30% hit flashes fully)
 		LOW_SHARE = 0.3,
-		PULSE_SECONDS = 1.1,
-		PULSE_MIN = 0.15,
-		PULSE_MAX = 0.45,
+		CRITICAL_SHARE = 0.15,
+		PULSE_SECONDS = 0.9,
+		CRITICAL_SECONDS = 0.6,
+		PULSE_MIN = 0.12,
+		PULSE_MAX = 0.8,
+		THUMP = 0.16,
+		SECOND_AT = 0.24,
+		SECOND_SHARE = 0.65,
+		BEAT_FILL = 0.12,
+	},
+	-- The HUD's sounds (Util/CombatPreload fetches these as sounds; every other id here is an image). The low-HP
+	-- heartbeat: Pro Sound Effects has none, so a low synth thud, pitched down, twice a beat (the second `second` as loud)
+	SOUNDS = {
+		heartbeat = { id = "rbxassetid://9119882039", volume = 0.45, criticalVolume = 0.65, pitch = 0.7, second = 0.7 }, -- Synth Whomps 38
 	},
 }

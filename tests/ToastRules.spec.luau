@@ -9,6 +9,15 @@ local function entry(id: number, message: string): ToastRules.Entry
 end
 
 return {
+	-- owner 2026-11-12: "make the bubble come out of him ... like he's saying the notification"
+	["the toast stack sits so its tail ends just over Pish's head"] = function()
+		local head = { x = 900, y = 500 }
+		local corner = ToastRules.stackCorner(head, Toasts.TAIL_RIGHT, Toasts.TAIL, 1)
+		expect.near(corner.x - Toasts.TAIL_RIGHT, head.x, 1e-9, "the tail over his head")
+		expect.equal(corner.y < head.y and corner.y >= head.y - Toasts.TAIL, true, "just above it")
+		local scaled = ToastRules.stackCorner(head, Toasts.TAIL_RIGHT, Toasts.TAIL, 0.7)
+		expect.near(scaled.x - Toasts.TAIL_RIGHT * 0.7, head.x, 1e-9, "at a smaller HUD scale too")
+	end,
 	["sales are money, errors are errors, the rest is news"] = function()
 		expect.equal(ToastRules.kind(false, true), "money")
 		expect.equal(ToastRules.kind(true, false), "error")

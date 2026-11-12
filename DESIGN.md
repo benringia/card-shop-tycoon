@@ -1911,8 +1911,8 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   ("Strike") in the order shown over the door, the Hydra's phase order from `Bosses.prismHydra.phases` (Tide, Volt,
   Shade, Bloom, Ember); a wrong one flashes red and resets. **Chests**: each solved puzzle leaves a chest
   (`Util/ChestModel` drawn by `DungeonPuzzleController`), each member opens it once per run: the cash of the fight
-  room before it and its XP split over the party's creatures, like a won room's. The secret chest: the first find ever gives the title **Crystal Seeker**
-  (saved `data.dungeon.secretFound`; Dungeon Conqueror outranks it, `BossRules.pickTitle`), later finds a 25% chance
+  room before it and its XP split over the party's creatures, like a won room's. The secret chest: the first find ever gives the title **Seeker**
+  (saved `data.dungeon.secretFound`; Hydra Slayer outranks it, `BossRules.pickTitle`), later finds a 25% chance
   of 1 Prism Scale (`material_prismHydra`), else $250. **The look:** crystal-grown temple ruins (the owner's pick C):
   the props pack `tools/blender/build_dungeon_props.py` (16 props: Dungeon pillars whole and broken, a broken gateway,
   wall, slab, steps, brazier, the carved gate at every door, crystal clusters, and the puzzle pieces) imported once as
@@ -2068,6 +2068,113 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   HP bar, what's on it now (`BattleSim.statusesOf` in each snapshot, `Config/BossStatus`, `Util/BossStatusRules`,
   client `Util/BossStatusBar`): shield (its size), guarded (its summons standing), enraged, stunned, snared, cursed,
   burning, a chip each with its number, its tooltip on hover or tap (3 s).
+- **Wild danger, Defense, the character window, plain element names, titles** (owner 2026-11-12; spec
+  `docs/superpowers/specs/2026-11-12-wild-danger-character-window-design.md`):
+  - **Element names**: players read Fire, Water, Nature, Electric, Dark (Config/ElementNames over the internal keys Ember,
+    Tide, Bloom, Volt, Shade, which saves and configs keep), with image icons (Config/UIIcons, client
+    `Util/ElementBadge`) instead of emoji in the fight UI; the Forge weapons are "Fire Forge Sword" and so on.
+  - **Defense** (Util/DefenseRules, Combat.DEFENSE): your party cards' Power added up; hits on you (wild monsters' and
+    bosses') scale by 3 x the fight's recommended Power over it, between 0.5 and 1.5 (a wild zone's reference is its
+    boss's; Dungeon rooms as tuned). Boss win rates barely move with it (fights are the creatures'); the Prism Hydra was
+    retuned (ATK 38 -> 46: fighting well 83% at 1x).
+  - **Monsters that come for you** (Util/DangerRules): a chasing monster (an elite anywhere, any monster of an aggro
+    place) that catches you summons your first rested card for you, or (every card resting, a sword) fights you alone (no
+    card XP), or (nothing to fight with) shoves you off with a "Your creatures are resting!" card, never quietly giving up
+    (owner 2026-11-12: an elite in the Meadow caught a player with nothing out and did nothing). Elites and every monster
+    of an aggro or dangerous place also send a third of their swings at you (warned quick hits, Combat.DANGER
+    playerShare) while your creature stands, swinging that much faster so your creature takes what it took before
+    (owner: "should still attack me even if my summons are not dead"); the rest go for pets first.
+  - **Dangerous places**: Ember Ridge and every Frontier zone (`danger`); a lost fight there knocks you out: down where
+    you fell for 20 s, then you wake at the spring, or "Revive here" for Robux (7.8, Combat.DANGER.knockout). A monster that starts chasing you there
+    shows a red "!" and growls; the zone's trailhead sign reads "Lv 10-15 · DANGER".
+  - **The character window** (CharacterController, Util/CharacterStage, Config/CharacterWindow): opened by your face,
+    first on the party bar (your avatar's headshot; owner 2026-11-12 pick B: you and your team in one place; the HUD
+    mascot moved past it to peek over the Party pill), or the P key. Your character holding your weapon on a podium,
+    facing you, in your avatar's own idle animation (drag to turn), tabs on the binder Filters' segmented switch: Stats (Power: your strongest card, what a
+    boss's Power is checked against; Attack: your weapon's Power; Defense), Elements (the element wheel, owner pick A:
+    the five icons with an arrow to each one they beat, a pair side by side for Electric and Dark, your party's elements
+    glowing, a two-line legend; Util/ElementWheel, client Util/ElementWheelView) and Titles (pick one; locked ones say
+    how to earn them), your weapon along the bottom.
+  - **Wild fights swap** (owner 2026-11-12: "replace summoned pets with another"): the party strip under your bars, as
+    in boss fights; in the first seconds a tap still calls the card in beside yours, after that it swaps (8 s apart,
+    Combat.WILD_SWAP_SECONDS); by hand only: a faint still loses the fight (BattleSim `autoSwap` false). Tapping your
+    creature's tile (its word: "Unsummon") or its 1-3 key unsummons it (owner: "let me unsummon my pet while in combat";
+    BattleSim.recall): it goes back unhurt and you fight on with your sword (no sword: a card says why not), and a tap
+    brings it or another card back at once; it waits out the same swap cooldown.
+  - **Low health** (owner: "a heartbeat sound and more agressive red flashes"): below 30% (yours, or a creature of yours
+    on the field) the screen's edges beat like a heart, two thumps a beat up to a strong red, faster below 15% with the
+    whole screen reddening each beat, and a heartbeat (a low thud twice a beat; Config/CombatHud HIT_FLASH, SOUNDS;
+    Util/HpBarRules).
+  - **The weapon switch carousel** (owner: "make the buttons more smaller and add a carousel effect ... also add
+    tooltips"): < [before] [in hand] [next] >, the neighbours smaller and faded (tap one to step to it; two weapons show
+    only the next), small arrows with a 48 px tap area, the strip sliding a step on a switch, and under a mouse a tip
+    with the weapon's name, Power, element, perk, grade and level (Config/HudLayout WEAPON_SWITCH, Util/WeaponSwitch
+    neighbours, UiLayout.weaponSwitch).
+  - **The Caves' drips**: one drop each, quieter (owner: "a loud triple droplets"; Config/Soundscape, the Dungeon too).
+  - **Basic attack sounds** (owner: "randomize basic attack sound for pets ... same with monster basic attack"): each
+    element's hit and each monster's strike is three or four clips of one Pro Sound Effects series, a different one than
+    the last each time, at a pitch 0.8-1.22 at least 0.08 from the last (Config/AttackFx, Util/SoundVary).
+  - **Footsteps** under half as loud again (Config/Footsteps).
+  - **Waking at the spring** after a knockout in the main game sends you home the way a lost boss fight does
+    (WildService.SendToSpring): out of the Wild, its "Return to town" pill gone (owner: it stayed on screen in town).
+  - **The register's bell** (owner: "when a customer is at the cashier and there's no one there. play a 'Ding' sound
+    then notification"): a customer at the counter with nothing scanned for 2.5 s while you're away from it rings a
+    desk bell on your screen with "Someone is at the register!", again every 20 s, 3 times at most (a working cashier
+    scans first, so it stays quiet; Config/RegisterBell, Util/RegisterBell, remote RegisterBell). The toast shows on
+    the first ring and every second one after (owner: "only once every two dings"; `toastEvery`). Only while you're in
+    town (never in the Wild), softly (volume 0.12; owner: "only be heard when I'm in town. also lower the volume").
+  - **Town Pish greets** players who come near like Town Chikin (owner: "npc pish should also greet people like
+    chikin"; Pish.TOWN.greet, PishTalk.GREETS; one greet loop for both dogs, Server/Util/TownDog.greet, and one bubble,
+    client Util/GreetBubble). A hello is for walking up to him (GreetRules.pick's `inside`: not for standing there, not
+    in the first 15 s after spawning, when he used to greet you behind the loading screen), again after 30 s.
+  - **Town Pish keeps off the delivery pads**: a shop visit comes in square to the door from past the pad's outer
+    edge and leaves the same way (PishPath.shopApproach; owner: "pish is phasing through items").
+  - **The buff tooltip** draws over the weapon switch beside it (owner: they overlapped).
+  - **Pish says the notifications** (owner: "move pish's icon to the right side of the party UI, then make the bubble
+    come out of him"): on a PC the HUD's Pish sticker sits on a seat at the party bar's right end and the toast bubbles
+    stack over him, the bottom one's tail on his head (HudMascotRules.side / layout, ToastRules.stackCorner); on a touch
+    screen he stays on the left end (the level pill sits over the right) and the toasts keep their place.
+  - **HUD tiles** a little smaller: 72 px (84 before; Config/SoftHud TILE).
+  - **Fireflies over the Caves**: the whole floor and thicker along the trail (Config/Scenery EMITTERS, WildGorge).
+  - **Camera zoom** capped at 40 studs (the owner's pick; 70 in a boss fight; Roblox's default 128 showed the map's edges and made phones
+    draw much more; Config/CameraLimits, CameraLimitController).
+  - **More titles to earn, told when earned** (owner 2026-11-13: "add more titles that is obtainable in game. also add
+    a notification when a new title is unlocked, and make the character menu have a little notification indicator ...
+    show [locked] titles so that players know there are unlockable titles ... pish will appear ... to teach how to
+    activate it"): 18 titles. Supporter / Superfan / Legend; Hydra Slayer (the Prism Hydra), Trailblazer (the three
+    Frontier bosses), Wild Hunter (the three Wild bosses), Seeker (the Dungeon's secret); Shopkeeper / Tycoon / Card
+    Mogul (shop level 10 / 30 / 50), Millionaire ($1,000,000 from sales), Shop Star (1,000 customers served), Pack
+    Ripper (100 packs opened); Lucky Star (a Legendary card owned), Collector (20 different cards), Set Master (every
+    First Spark card); Duelist / Champion (10 / 50 duels won). TitleService checks every 5 s and when a boss, a gift or
+    a level changes; a title once earned stays earned in every place (data v23 `titles.known`), the first load after
+    this counted what players had already without telling (`seeded`). A new one: a "New title!" card under Pish's talk
+    card (its emoji, the name in its gradient, how it was earned, a chime, "Equip it" opens the Titles tab; not while the
+    character window is open; after any cinematic), a red dot on your face on the party bar till the Titles tab is seen
+    (`titles.fresh`; tapping your face then opens straight on Titles), and the first time ever Pish's lesson ("You
+    earned a title! Tap your face to equip it.", pointing at your face; wherever it was earned, he comes in town). The
+    Titles tab: "Tap Equip to show a title over your name.", Automatic, new titles first with NEW, the rest earned with
+    Equip / Equipped, then every title still to earn greyed with a lock and a bar of how far ("628 / 1,000", "$4,078 /
+    $1,000,000"). Studio: `/titles forget` (all new again), admin "Titles: unlock again", "Lesson: first title".
+    Owner 2026-11-13, next look: the window bigger (it was held to 460 wide by the panels' default cap; now up to 920 x
+    600, its body fitting a short screen so the weapon row stays in view), "Equip" / "Equipped" / "Equip it" for
+    Wear, and the player's name right under the title in one tag (TitleController, in place of Roblox's own name tag;
+    a player with no title gets the name alone).
+    Then (owner: "move [the weapon] to the top right of the character model's section as a small box with the weapon's
+    model and the details as tool tip. also add the equipped title inside. supporter glow should also be visible in
+    character model inside character menu"): the weapon row along the bottom is gone; the weapon's picture sits in a
+    64 px box at the stage's top right with its grade in the corner (its name, grade, level and element in a tooltip:
+    hover, or hold on touch), the title worn at the stage's top in its gradient, and a supporter's aura on the stage:
+    the ViewportFrame draws no particles, so Util/StageAura draws it in 2D (a soft glow of stacked circles behind the
+    character, breathing, and the 3D aura's own sparkle texture rising in front, in the tier's colours, 5 / 7 / 10 a
+    second; Support.STAGE; owner: crossed-bar twinkles read as X's, "show the actual effects"). The tabs and the stage
+    use the whole height.
+  - **Titles** (Config/Titles, Util/TitleRules, TitleService; data v20 `title`): Hydra Slayer, Seeker and the
+    supporter titles (Supporter, Superfan, Legend), one list; the Title attribute over the name is the picked one if
+    earned, else the first earned. **Their look** (owner 2026-11-12, after other games' titles: "lets do gradient, and
+    shorter"): one or two words (12 letters at most, renamed from Dungeon Conqueror, Crystal Seeker, Super Supporter
+    and Legendary Supporter), small above the name and sized in studs so they shrink with distance like the player
+    (TitleController), the name in its two-colour gradient (Config/Titles `gradient`; supporter titles' turn slowly,
+    `shimmer`) with its emoji beside it in its own colours.
 - **Smoothness** (owner 2026-11-12: "4 people in a party ... ensure smoothness"): measured in Studio during a Hydra
   fight, the worst moment (three cones landing at once with the shield, heal, enrage, storm and two rifts) built its
   three fissures in 21 ms in one frame (a 67 ms frame). Now a fissure's parts are made as it tears (never at once), a
@@ -2103,7 +2210,7 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   card with two Lv 1s 40%, three at 2400 75%, three maxed 88%; the recommended party reaches it with about 74% HP;
   groups: 2 players 60%, 4 players 50% (typical party), group ATK step 0.25.
 - **Conquest:** the first clear shows a full-screen "DUNGEON CONQUERED", gives the chest straight into the Bag
-  (trophy, 5 each of the four items), the title "Dungeon Conqueror" over your name in every place (player attribute
+  (trophy, 5 each of the four items), the title "Hydra Slayer" over your name in every place (player attribute
   `Title`, from the saved first clear, `Boss.clearTitle`; TitleController) and a chat message in every server of the
   experience ("Ben conquered the Dungeon!", MessagingService topic `BossCleared`, `announceEverywhere`). Then a portal
   home opens in the chamber (pick up your loot first). Later wins: "Victory!", the usual farm protection.
@@ -2826,6 +2933,41 @@ his card for a face.
   a white speech bubble over him says hello by their display name for 3 s with a bark (`ChikinTalk.GREETS`, never the
   same line twice running; the marker's GreetUserId / GreetLine / GreetId tell every client nearby).
 
+### 7.8 Timed station upgrades and the knockout revive
+
+Spec `docs/superpowers/specs/2026-11-12-timed-upgrades-revive-design.md` (owner 2026-11-12: "forge, condenser, and
+grading station should have a waiting time on upgrades, the higher the upgrade the longer wait time. also with an
+option to pay robux for instant upgrade"; "when I die, can we have a 20 second timer and add an option to be revived at
+the exact same spot with for robux?").
+
+- **One job per station.** The Condenser's +1 star, the Grading Station's grade up and the Forge's level up, reforge and
+  craft are paid and rolled at once, then the card or weapon stays inside the station till its time is up (locked
+  till done: a card out of the binder and party, a weapon out of the switch and refused if equipped, "Your <name> is in
+  the Forge."). A second job at a busy station is refused before anything is taken ("The Forge is busy (4:12 left)"),
+  and so is a card that's in your party, at a shop job or in a fight. The result comes back on its own, offline time
+  counting (UpgradeJobService checks once a second and on load); a reforge's grade stays a surprise till the end. A
+  finished Forge job's reveal plays when the Forge is open; while it's closed a toast says "Your <weapon> is ready! Open
+  the Forge to see it." and the reveal waits till you open it (owner 2026-11-12; Upgrades.FORGE_READY).
+- **Waits** (Config/Upgrades, up to 1 hour, crafting the longest): +1 star 0:30 / 2:00 / 6:00 / 15:00 / 30:00 (to 1-5
+  stars); grade B 1:00, A 8:00, S 25:00; weapon level +1 0:15 rising to 30:00 at +10; reforge 20:00; craft 60:00.
+- **In the window** (Util/JobPanel): a soft veil over the actions with the job's card: what's inside, what it's becoming,
+  the countdown and its bar, and "Finish now · R$ X". **Over the machine** (StationTimerController): a small "⏳ 1:01"
+  tag over your own Condenser, Grading Station and Forge while they work.
+- **Finish now**: one of three developer products by the time left (Config/Upgrades TIERS): SkipS (up to 5 minutes),
+  SkipM (up to 20), SkipL (up to an hour). The press names the station first (remote SkipUpgrade); a skip bought with no
+  job to finish (it ended meanwhile) is kept as a token for a later job of its size or smaller.
+- **Knocked out** (a lost fight in a dangerous place; KnockoutService, KnockoutController, Combat.DANGER.knockout): you
+  can't move and the "Knocked out!" card counts 20 s down to waking at the spring, with "Revive here · R$ X" and "Wake
+  at the spring". Revive (a developer product) stands you up where you fell with your cards rested; the countdown waits
+  while its prompt is open (60 s at most). Monsters leave you alone meanwhile and 5 s after a revive; no fight starts
+  while you're down. Going home another way (Return to town) ends it. Studio: `/knockout` (admin panel "Knock me out").
+- **Receipts** (PurchaseService, the game's one ProcessReceipt): a purchase is granted once, ever: its PurchaseId is
+  saved with the grant (the newest 100, Util/ReceiptRules) and reported granted only once the DataStore holds it.
+- **Product ids**: Config/Monetization PRODUCTS (`Revive`, `SkipS`, `SkipM`, `SkipL`); 0 means not created yet and its
+  button says "Coming soon". To create them: Creator Hub → the experience → Monetization → Developer Products → Create
+  (name, picture, price; set 2026-11-12: Revive R$ 25, SkipS R$ 12, SkipM R$ 30, SkipL R$ 70), then paste each id
+  into PRODUCTS (done 2026-11-12).
+
 ---
 
 ## 8. Monetization
@@ -2847,6 +2989,42 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 | Cash packs | $1k / $5k / $25k in-game | 25 / 99 / 399 R$ |
 | Lucky Hour | +50% Epic/Legendary odds for 60 min (new odds shown in UI) | 49 R$ |
 | Customer Rush | 2x customer spawns for 15 min | 29 R$ |
+| Revive (built) | Up where you were knocked out, your cards rested (7.8) | 25 R$ |
+| Finish now S / M / L (built) | A station job done now: up to 5 min / 20 min / 1 h left (7.8) | 12 / 30 / 70 R$ |
+| Support the dev 1 / 2 / 3 (built) | A gift: supporter title and golden aura (Support the dev below) | 160 / 325 / 510 R$ |
+
+Built products live in Config/Monetization PRODUCTS (0 = not created yet: "Coming soon"); create them on Creator Hub →
+the experience → Monetization → Developer Products, then paste the ids there. PurchaseService holds the one
+ProcessReceipt.
+
+### Support the dev (built 2026-11-12)
+Owner: "add a 'Support the dev' somewhere where the supporter will receive a supporters aura and title". Picks from the
+mockups: Pish asks now and then, golden sparkles, the town dogs thank you; three amounts (Creator Hub, managed pricing
+off). Config/Support, Util/SupportRules, Server/Services/SupportService, client SupportController.
+- **The card**: tap the HUD's Pish (when no tour leads) for "💛 Support the dev": Pish and Chikin holding a golden heart
+  (its own picture, 140 px: the card back's medallion was hard to see; `assets/ui/support/SupportDogs.png`), "Made by
+  one dev and two dogs", the three gifts with their price, "Yours!" on the tiers you have, how many times you gave,
+  and "Replay a tour" (Pish's tour offer moved here from his tap; main game, after his first visit).
+- **Tiers** (the best one given counts; a smaller gift later never lowers it): 💛 Supporter R$ 160, 💖 Superfan
+  R$ 325, 🌟 Legend R$ 510. Each earns its title and the ones below (Config/Titles `supporter` checks;
+  supporter titles come first when the title is on automatic).
+- **The aura** (SupporterTier attribute, built by the server on the HumanoidRootPart so everyone sees it, in every
+  place): golden sparkles bursting from the chest and drifting up in a soft glow; tier 2 pink and gold, tier 3 rainbow
+  with a warm light (14 / 20 / 28 sparkles a second).
+- **Pish asks** once a session, from his bubble, 10 s after a boss win or your own big pull: "Enjoying the shop? Tap me
+  to help Chikin and me! 💛". Never a supporter, never during a tour, never before Pish's first visit is done.
+- **The town dogs thank supporters**: Town Pish and Town Chikin say a thank-you line instead of a hello
+  (PishTalk/ChikinTalk THANKS).
+- **After a gift: the dogs' thank-you** (owner: "both dogs running towards the player, then saying ... 'thank you, for
+  your support, this is for you' and then a glow slowly coming out the players body"; client ThanksController,
+  Support.CINEMATIC): on the giver's screen Pish and Chikin run in through sparkles from the first clear ways in front
+  of them, stop at their front-left and front-right, Pish says "Thank you for your support, <name>!" and Chikin "This is
+  for you! 💛"; then a golden glow rises out of the player for 2.6 s and, as it ends, the aura and title appear (the
+  server waits `reveal` = 8.2 s) with Pish's toast "Thank you so much! You're a <tier> now! 💛" (or "Thank you
+  again!"); the dogs hop and vanish in stars. The camera frames the three from the front, then moves in; the player
+  holds still; a tap ends it. Mid-fight, during a tour or over another cinematic only the glow plays
+  (SupportRules.thanksMode). The town dogs hide meanwhile.
+- Studio: `/support <0-3>` (as if bought; 0: none again), admin panel "Supporter tier 1 / 3", "Not a supporter again".
 
 ### Cosmetics
 - Shop themes (floor, walls, lighting): retro arcade, neon, cozy wood, etc.
@@ -2947,6 +3125,10 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── DungeonPuzzleService.luau # Dungeon: prism beams, weight plates, the secret wall, the element lock, their chests
     │   │   ├── DevService.luau       # Studio-only test chat commands (/crowd: extra players counted in the Wild's biomes)
     │   │   ├── LevelUpService.luau   # shop level-up packs, opening Bag packs (OpenBagPack), the LevelUpFx broadcast (held mid-fight)
+    │   │   ├── PurchaseService.luau  # the one ProcessReceipt: developer products granted once, ever (receipt ids saved first)
+    │   │   ├── SupportService.luau   # "Support the dev": gifts, the best tier, the supporter aura (SupporterTier)
+    │   │   ├── UpgradeJobService.luau # the stations' timed jobs: held items, the countdown, Finish now, giving back (offline too)
+    │   │   ├── KnockoutService.luau  # knocked out in the Wild: held still, the countdown to the spring, the Revive product
     │   │   └── MonetizationService.luau # game passes (Extra Job Slot), cached checks, purchases
     │   └── Util/
     │       ├── Migrations.luau       # save migrations (pure, Lune-tested)
@@ -2974,6 +3156,10 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── PlacementController.luau
     │   │   ├── PricingController.luau
     │   │   ├── RegisterController.luau # checkout panel; the offer panel (kid offer, haggle, counter)
+    │   │   ├── StationTimerController.luau # the "⏳ 1:01" tags over your stations while they hold a job
+    │   │   ├── KnockoutController.luau # the "Knocked out!" screen: countdown, Revive here, Wake at the spring
+    │   │   ├── SupportController.luau # tap Pish: the "Support the dev" card; Pish asks after a good moment
+    │   │   ├── ThanksController.luau  # a gift's thank-you: Pish and Chikin run in, thank you, the glow rises
     │   │   ├── CustomerController.luau # collectors' thought bubbles, kids' rip reveals
     │   │   ├── RatingController.luau   # the rating chip and its tips window
     │   │   ├── CarryController.luau    # drop carried box
@@ -3013,7 +3199,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── DungeonCinematicController.luau # a solved puzzle's gate opening, the way to the Hydra (round 3)
     │   │   ├── DungeonRegionController.luau # Dungeon: each region's haze as you walk in, Volt's flicker (round 3 part 2)
     │   │   ├── DungeonFallController.luau # Dungeon: a fall into the chasm (a yell, the screen black)
-    │   │   ├── TitleController.luau     # titles over players' names (Dungeon Conqueror)
+    │   │   ├── TitleController.luau     # titles over players' names, each with its icon and colour (Config/Titles)
     │   │   ├── BattleController.luau    # Fight prompts, the Return to town pill in the wild, XP sparks after a win, fight bar (wild + PvP), boss HP bar and banners, damage numbers, end screen
     │   │   ├── LevelUpController.luau   # plays the level-up pillar on you, your creatures and players nearby (LevelUpFx)
     │   │   ├── SwordController.luau     # draws the equipped weapon (its glow ladder, WeaponLook) on backs and in hands, the first-sword popup, boss-fight actions (buttons, keys, dodge dash), trail, sounds, kneeling
@@ -3034,6 +3220,10 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   └── CaseSpinController.luau # case cards turn and bob over a pad and beam in their rarity colour (within range)
     │   └── Util/
     │       ├── UIKit.luau              # shared UI building helpers and the style (header, close, lip buttons)
+    │       ├── StationJobs.luau        # the stations' jobs on this client, counted down (remote UpgradeJobs)
+    │       ├── JobPanel.luau           # a station window's job card: countdown, bar, Finish now
+    │       ├── ProductPrice.luau       # developer products' Robux prices, asked once each
+    │       ├── StageAura.luau          # the supporter aura on the character window's stage, drawn in 2D
     │       ├── Motion.luau             # pop in/out, press squash, bumps
     │       ├── FontStyle.luau          # switches Gotham text to the game fonts (FredokaOne, Montserrat)
     │       ├── Hud.luau                # HUD layout: Manage tray, bottom tiles, context tiles, top bar; the calm HUD (the tours' focus)
@@ -3175,8 +3365,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Data.luau       # DataStore name, schema version, kick messages
         │   ├── Beasts.luau     # beast stats, value and XP numbers
         │   ├── Levels.luau
-        │   ├── Upgrades.luau
-        │   └── Monetization.luau # game pass IDs (0 = not created yet)
+        │   ├── Upgrades.luau   # the stations' job waits, Finish now tiers, station names
+        │   └── Monetization.luau # game pass and developer product IDs (0 = not created yet)
         ├── Remotes.luau        # all RemoteEvents/Functions defined in one place
         └── Util/
             ├── PlacementGrid.luau # grid maths shared by client preview + server validation
@@ -3289,6 +3479,10 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── AbyssLayout.luau   # the Crystal Abyss: its islands, bridges, what's stone, a fall (pure, Lune-tested)
             ├── NewPulls.luau      # which pulls are NEW to the collection, for the pack results (pure, Lune-tested)
             ├── LevelUpRules.luau  # level-up rewards (cash every level, a pack every 10th), held effects merged (pure, Lune-tested)
+            ├── UpgradeRules.luau  # station jobs: waits, Finish now tiers, the clock, saved jobs read back (pure, Lune-tested)
+            ├── ReceiptRules.luau  # receipts already granted, the newest 100 kept (pure, Lune-tested)
+            ├── SupportRules.luau  # "Support the dev": saved gifts read back, the best tier, when Pish asks (pure, Lune-tested)
+            ├── KnockoutRules.luau # the knockout countdown and its pause while the Revive prompt is open (pure, Lune-tested)
             └── LevelRules.luau    # XP → level maths and unlock lists
 ```
 
@@ -3302,10 +3496,10 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v19)
+### 10.4 Player data schema (v23)
 ```lua
 {
-    version = 19,
+    version = 21,
     cash = 200,
     xp = 0,
     level = 1,
@@ -3328,7 +3522,6 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     pity = { legendary = 0, epic = 0, firstDone = false }, -- packs since the last Legendary / Epic or better; had a first Legendary
     bosses = {},            -- { [bossId] = { unlocked, cleared, lootAt, day, rewardedToday, bonusDay } } boss ladder (5.10)
     stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
-    purchases = {},         -- processed dev product receipt IDs (for idempotency)
     seenWelcome = false,    -- saw the first-visit welcome cinematic (WelcomeService)
     seenSword = false,      -- closed the "You got your first sword!" popup (SwordService)
     swordFights = 0,        -- boss fights fought with the sword HUD; its buttons show names for the first 3 (SwordService)
@@ -3339,7 +3532,13 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
                  -- early, his first pack and end gift given, lesson visits (true seen, false waiting to be shown),
                  -- the last luck from petting him
     combat = { ... }, -- Chikin's combat tutorial: the same shape as `tutorial` (CombatTutorialService)
-    dungeon = { secretFound = false, seenIntro = false }, -- found the Dungeon's secret chest once (the title Crystal Seeker); saw the Hydra's full welcome
+    dungeon = { secretFound = false, seenIntro = false }, -- found the Dungeon's secret chest once (the title Seeker); saw the Hydra's full welcome
+    title = "", -- the title picked to show over the name (Config/Titles id; "" = automatic: the first earned; TitleService)
+    upgrades = {}, -- station jobs: { condenser|grading|forge = { kind, startedAt, finishAt, beast? | plain? | weaponId + grade + level? } } (UpgradeJobService)
+    skipTokens = { S = 0, M = 0, L = 0 }, -- "Finish now" skips bought with no job to finish (UpgradeJobService)
+    purchases = {}, -- the last 100 receipt PurchaseIds granted (PurchaseService: never twice)
+    support = { gifts = 0, best = 0 }, -- "Support the dev": gifts given and the best tier (SupportService; v22)
+    titles = { known = {}, fresh = {}, seeded = false }, -- titles ever earned (they stay), ones not seen in the Titles tab, first load counted (TitleService; v23)
 }
 ```
 Bump `version` and write a migration whenever the shape changes.
@@ -3358,7 +3557,7 @@ place loads it at once; before, the session only closed after they'd left, and t
 `TeleportInitFailed`), `Reclaim` opens the session again and the next save writes it. Changes in the moment before
 they leave aren't saved. A session this server ended (leaving, a hand-off) never kicks the player.
 
-Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; v17 added `tutorial` (the first visit with Pish; existing saves "done" with their first pack given and his gift still to come, so only new players go through it); each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity); `tutorial` gained `customerSent` (read as false when missing, true for v17's existing shops; no bump: an older server dropping it allows one more of Pish's customers). v18 added `combat` (Chikin's combat tutorial, the same shape; done for every shop past Pish's tour, still to do for a player mid-way through it). v19 added `dungeon` (`secretFound` and `seenIntro` false for everyone; a junk value is replaced). A service that didn't load for a player (e.g. no free plot) never overwrites
+Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; v17 added `tutorial` (the first visit with Pish; existing saves "done" with their first pack given and his gift still to come, so only new players go through it); each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity); `tutorial` gained `customerSent` (read as false when missing, true for v17's existing shops; no bump: an older server dropping it allows one more of Pish's customers). v18 added `combat` (Chikin's combat tutorial, the same shape; done for every shop past Pish's tour, still to do for a player mid-way through it). v19 added `dungeon` (`secretFound` and `seenIntro` false for everyone; a junk value is replaced). v20 added `title` ("" for everyone: automatic, the same title as before; a saved string kept, junk replaced). v21 added `upgrades`, `skipTokens` and `purchases` (empty for everyone; a good skip count kept, junk replaced). v22 added `support` (no gifts for everyone; good counts kept). v23 added `titles` (`known`, `fresh` empty, `seeded` false: the first load counts the titles a player already has without telling). A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
 
 ### 10.6 UI style and HUD

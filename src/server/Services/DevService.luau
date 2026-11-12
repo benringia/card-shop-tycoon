@@ -54,6 +54,9 @@ local TutorialService = require(Services:WaitForChild("TutorialService"))
 local CombatTutorialService = require(Services:WaitForChild("CombatTutorialService"))
 local SwordService = require(Services:WaitForChild("SwordService"))
 local BattleService = require(Services:WaitForChild("BattleService"))
+local KnockoutService = require(Services:WaitForChild("KnockoutService"))
+local SupportService = require(Services:WaitForChild("SupportService"))
+local TitleService = require(Services:WaitForChild("TitleService"))
 local JobService = require(Services:WaitForChild("JobService"))
 local BossChestService = require(Services:WaitForChild("BossChestService"))
 local BossService = require(Services:WaitForChild("BossService"))
@@ -670,6 +673,28 @@ function DevService.Start()
 		end
 	end)
 	addCommand(folder, "elite", spawnElite)
+	-- knocked out on the spot as after a lost fight in a dangerous place: the countdown, Revive here (in the Wild; at
+	-- home the countdown ends at once)
+	-- "Support the dev" as if bought: that tier's gift (aura, titles, thanks), or 0 for none again
+	addCommand(folder, "support", function(player, text)
+		local tier = tonumber(string.match(text, "/%w+%s+(%d+)"))
+		if not tier or tier > 3 or not SupportService.SetForTest(player, tier) then
+			Remotes.Notify:FireClient(player, "/support <0-3>", true)
+		end
+	end)
+	-- every title earned so far is new again: its "New title!" card, the dot, Pish's lesson (once more: /tutorial lesson titles)
+	addCommand(folder, "titles", function(player, text)
+		if string.match(text, "^/%w+%s+forget") == nil or not TitleService.ForgetForTest(player) then
+			Remotes.Notify:FireClient(player, "/titles forget", true)
+		end
+	end)
+	addCommand(folder, "knockout", function(player)
+		if Place.isDungeon() or not WildService.IsInWild(player) then
+			Remotes.Notify:FireClient(player, "/knockout: in the Wild or the Frontier.", true)
+			return
+		end
+		KnockoutService.KnockOut(player)
+	end)
 	addCommand(folder, "serve", function(player)
 		if not RegisterService.ServeForTest(player) then
 			Remotes.Notify:FireClient(player, "Nobody at the register.", true)
@@ -776,7 +801,7 @@ function DevService.Start()
 			run(player, text)
 		end
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /weapon <id> [grade] [level], /material <boss id> <amount>, /weapondrop <boss id>, /chests <boss id> [drop|miss|strong|tired], /boss <n> [fight|group], /jobslot, /jobtired, /wild, /rest, /tire, /bosshp <1-100>, /townchikin, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume], /victorysound <1-3>, /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S], /skillfx <sword> [cut1|cut2|cut3|skill] [level], /room <2-4>, /winroom, /puzzle <solve|beams|plates|lock>, /tap <piece>, /dungeonfx <intro|introshort|roar|glimpse>")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /weapon <id> [grade] [level], /material <boss id> <amount>, /weapondrop <boss id>, /chests <boss id> [drop|miss|strong|tired], /boss <n> [fight|group], /jobslot, /jobtired, /wild, /rest, /tire, /bosshp <1-100>, /townchikin, /elite, /knockout, /support <0-3>, /titles forget, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume], /victorysound <1-3>, /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S], /skillfx <sword> [cut1|cut2|cut3|skill] [level], /room <2-4>, /winroom, /puzzle <solve|beams|plates|lock>, /tap <piece>, /dungeonfx <intro|introshort|roar|glimpse>")
 end
 
 return DevService

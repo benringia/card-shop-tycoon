@@ -22,6 +22,7 @@ local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local ElementBadge = require(ClientUtil:WaitForChild("ElementBadge"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local BinderController = require(Controllers:WaitForChild("BinderController"))
 
@@ -256,7 +257,7 @@ local function describeDetails(listing: Listing, kind: string): string
 	local stats = listing.stats
 	local lines = {
 		`{listing.card.name}{if listing.foil then " (FOIL)" else ""}`,
-		`{listing.card.rarity} · {listing.card.element} · #{listing.card.number}`,
+		`{listing.card.rarity} · {ElementBadge.name(listing.card.element)} · #{listing.card.number}`,
 		describeGrowth(listing),
 		`Power {listing.power} · HP {stats.hp}  ATK {stats.atk}  SPD {stats.spd}`,
 		string.format("Market $%.2f · asking %d%%", listing.market, math.round(getMarketRatio(listing) * 100)),
@@ -550,7 +551,7 @@ local function describeCopy(entry: PickerEntry): string
 	local market = CardRules.getMarketValue(card, entry.foil, growth.level, growth.stars, growth.grade)
 	return table.concat({
 		`{card.name}{if entry.foil then " (FOIL)" else ""}`,
-		`{card.rarity} · {card.element} · #{card.number}`,
+		`{card.rarity} · {ElementBadge.name(card.element)} · #{card.number}`,
 		`{BeastRules.describeGrade(growth.grade)} · {BeastRules.describeGrowth(growth.level, growth.stars)}`,
 		`Power {power} · HP {stats.hp}  ATK {stats.atk}  SPD {stats.spd}`,
 		string.format("Market $%.2f", market),

@@ -66,5 +66,6 @@ return {
 	-- edge at mid height with your weapon's picture in its rarity's ring, < and > either side; its name shows under it
 	-- (in `name` px of room) for nameSeconds after a switch; a swipe of `swipe` px on the chip steps too. Placed by
 	-- UiLayout.weaponSwitch: never scaled under 48 px arrows, above the fight buttons in a fight
-	WEAPON_SWITCH = { chip = 64, arrow = 48, gap = 6, right = 12, name = 22, ring = 3, nameSeconds = 1.5, swipe = 30 },
+	-- the carousel (owner 2026-11-12: smaller buttons, the weapons before and after smaller beside it, a tooltip): px
+	WEAPON_SWITCH = { chip = 58, side = 40, arrow = 30, hit = 48, gap = 6, right = 12, name = 22, ring = 3, nameSeconds = 1.5, swipe = 30, slide = 0.18, sideFade = 0.35 },
 }

@@ -10,6 +10,8 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local GradingConfig = require(Config:WaitForChild("Grading"))
+local Upgrades = require(Config:WaitForChild("Upgrades"))
+local UpgradeRules = require(Shared:WaitForChild("Util"):WaitForChild("UpgradeRules"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CondenseRules = require(Shared:WaitForChild("Util"):WaitForChild("CondenseRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -24,6 +26,8 @@ local PlacementService = require(Services:WaitForChild("PlacementService"))
 local SEAL_ID = "gradingSeal"
 local GOLD_ID = "goldSeal"
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
+local Blocked = require(Util:WaitForChild("Blocked"))
+local UpgradeJobService = require(Services:WaitForChild("UpgradeJobService"))
 
 local GradingService = {}
 
@@ -51,6 +55,27 @@ local function describeReason(reason: string?): string
 		return `Not enough cash: grading costs ${(string.gsub(string.reverse(withCommas), "^,", ""))}.`
 	end
 	return "You don't have that card."
+end
+
+-- Refused before anything is taken (spec 2026-11-12-timed-upgrades-revive-design): the station busy, or a levelled main
+-- copy that can't go in (in the party, at a job, in a fight). Says why (Util/Blocked); true when refused.
+local function refused(player: Player, station: string, mainBeastId: unknown, card: any): boolean
+	local left = UpgradeJobService.Left(player, station)
+	if left then
+		Blocked.tell(player, UpgradeRules.busyText(Upgrades.STATIONS[station], left))
+		return true
+	end
+	if typeof(mainBeastId) == "string" then
+		local where = if CardService.IsPartied(player, mainBeastId) then "out of your party"
+			elseif CardService.IsWorking(player, mainBeastId) then "off its shop job"
+			elseif CardService.IsFighting(player, mainBeastId) then "out of the fight"
+			else nil
+		if where then
+			Blocked.tell(player, `Take {card.name} {where} first.`)
+			return true
+		end
+	end
+	return false
 end
 
 local function onGradeUp(player: Player, shelfUid: unknown, cardId: unknown, mainBeastId: unknown, mainFoil: unknown, mainGrade: unknown, useSeals: unknown, useGold: unknown)
@@ -81,6 +106,9 @@ local function onGradeUp(player: Player, shelfUid: unknown, cardId: unknown, mai
 		return
 	end
 
+	if refused(player, "grading", mainBeastId, card) then
+		return
+	end
 	-- The cash and seals are recomputed and taken inside the same step as the cards: the client's preview is never
 	-- trusted
 	local seals = if useSeals == true then ItemService.GetCount(player, SEAL_ID) else 0
@@ -106,7 +134,22 @@ local function onGradeUp(player: Player, shelfUid: unknown, cardId: unknown, mai
 	end
 	local sealText = (if sealsUsed > 0 then ` (used {sealsUsed} Grading Seal{if sealsUsed == 1 then "" else "s"})` else "")
 		.. (if goldUsed then " (a Gold Seal paid the cash)" else "")
-	notify(player, `{card.name} is now {BeastRules.describeGrade(grade)}!{sealText}`, false)
+	-- The new grade waits in the station (spec 2026-11-12-timed-upgrades-revive-design): the copy goes in now, a
+	-- levelled one lifted out, a plain one taken off its new grade's stack
+	local now = os.time()
+	local seconds = UpgradeRules.seconds(Upgrades, "grade", grade)
+	local job: UpgradeRules.Job = { kind = "grade", startedAt = now, finishAt = now + seconds }
+	if typeof(mainBeastId) == "string" then
+		job.beast = CardService.HoldBeast(player, mainBeastId)
+	elseif CardService.TakeFresh(player, cardId, mainFoil == true, grade) then
+		job.plain = { cardId = cardId, foil = mainFoil == true, grade = grade }
+	end
+	if not job.beast and not job.plain then
+		notify(player, `{card.name} is now {BeastRules.describeGrade(grade)}!{sealText}`, false)
+		return
+	end
+	UpgradeJobService.Begin(player, "grading", job)
+	notify(player, `{card.name} is in the Grading Station ({UpgradeRules.clock(seconds)}){sealText}`, false)
 end
 
 function GradingService.Start()

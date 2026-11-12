@@ -5,6 +5,17 @@ local expect = require("./lib/expect")
 local FIGHTERS = { { id = "a:b1", fainted = false }, { id = "a:b2", fainted = true } }
 
 return {
+	-- owner 2026-11-12: "It still wouldn't let me unsummon my pet while in combat"
+	["in a wild fight the card fighting unsummons, once the swap's cooldown is over"] = function()
+		local action, id = SwapKeys.pick("b1", {}, FIGHTERS, true, 0, true)
+		expect.equal(action, "unsummon")
+		expect.equal(id, "a:b1")
+		local cooling, seconds = SwapKeys.pick("b1", {}, FIGHTERS, true, 3, true)
+		expect.equal(cooling, "cooling")
+		expect.equal(seconds, 3)
+		expect.equal(SwapKeys.pick("b1", {}, FIGHTERS, true, 0), "active", "a boss fight: it's fighting, nothing more")
+	end,
+
 	["a key brings in its own party slot's card, whatever order the reserves are in"] = function()
 		local action, id = SwapKeys.pick("b3", { "a:b4", "a:b3" }, FIGHTERS, true, 0)
 		expect.equal(action, "swap")

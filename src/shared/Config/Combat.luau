@@ -6,6 +6,11 @@ return {
 	MAX_FIGHT_SECONDS = 120, -- a fight still going after this ends as a run (stuck or idle)
 	BOSS_MAX_FIGHT_SECONDS = 420, -- bosses have far more HP: their fights may run this long
 	BOSS_SWAP_SECONDS = 8, -- boss fights: seconds between a player's swaps (none needed when all of theirs fainted)
+	-- wild fights (owner 2026-11-12): seconds between swaps; by hand only, a faint still loses (BattleSim autoSwap false)
+	WILD_SWAP_SECONDS = 8,
+	-- wild fights: tapping your creature (its party strip tile or key) unsummons it, you fight on with your sword (owner
+	-- 2026-11-12); without a sword you're told why not
+	UNSUMMON = { title = "Can't unsummon", alone = "You'd have no one fighting. Swap in another card, or get a sword to fight alone." },
 	BOSS_MAX_STUN = 1, -- seconds: stuns on a boss last at most this long
 	BOSS_SKILL_GAP = 6, -- seconds between any two of a boss's skills (shield, heal, thunderclap): never back to back
 	CLAP_BREATHER = 1, -- seconds after a warned thunderclap lands before the boss's next big attack can start
@@ -102,6 +107,45 @@ return {
 
 	-- The player in boss fights (spec 2026-11-02-you-in-the-fight-design): a sword beside one summoned creature
 	PLAYER_HP = 100, -- everyone's; boss hits on players are shares of it (Config/Bosses playerAttacks)
+	-- Defense from party strength (owner 2026-11-12; Util/DefenseRules): hits on a player scale by (partySize x the
+	-- fight's recommended Power) over their party's Power added up, between min and max (never immune)
+	DEFENSE = { min = 0.5, max = 1.5, partySize = 3 },
+	-- The Wild's dangerous places (owner 2026-11-11/12; zones' `danger` in Config/Wild and Config/Frontier,
+	-- Util/DangerRules): a monster that catches you with nothing to fight shoves you off (`shove`: studs a second away
+	-- and up, applied by your client) with `shoveText`; a lost fight there knocks you out (`knockout`)
+	DANGER = {
+		shove = { speed = 55, up = 30 },
+		shoveText = "Your creatures are resting! Heal them at the spring before you fight.",
+		-- knocked out (spec 2026-11-12-timed-upgrades-revive-design; Server/Services/KnockoutService, client
+		-- KnockoutController): you can't move and the "Knocked out!" screen counts `seconds` down to waking at the spring
+		-- (WildService.SendToSpring, as after a lost boss fight); "Revive here" (the Revive developer product) stands you up
+		-- on the spot with your cards rested, the countdown waiting while its prompt is open (`promptWait` seconds at
+		-- most); monsters leave you alone meanwhile and `grace` seconds after a revive
+		knockout = {
+			seconds = 20,
+			promptWait = 60,
+			grace = 5,
+			title = "Knocked out!",
+			icon = "💫",
+			text = "Your creatures are worn out.",
+			untilSpring = "seconds till you wake at the spring",
+			waiting = "waiting for your purchase",
+			revive = "Revive here",
+			spring = "Wake at the spring",
+			comingSoon = "Coming soon",
+			blocked = "You're knocked out! Wake up first.",
+			wokeAtSpring = "You woke up at the spring. Rest your creatures and try again!",
+			revived = "Back on your feet! Your creatures are rested.",
+			rested = "Your creatures are rested!",
+		},
+		-- a dangerous monster that starts chasing you (MonsterController, WildService ChasingUserId): a red "!" over it
+		-- for `seconds` and one growl
+		chaseCue = { seconds = 1.6, color = { 255, 60, 50 }, sound = "rbxassetid://9125467848", volume = 0.35 }, -- Creature Growls Lion Deep Guttural Rumbling
+		signLine = "DANGER", -- under a dangerous zone's level on its trailhead sign
+		-- of an elite's or an aggro / dangerous place's monster's swings that go at you (a warned quick hit) while your
+		-- creature stands (owner 2026-11-12: "should still attack me even if my summons are not dead")
+		playerShare = 1 / 3,
+	},
 	DOWN_SECONDS = 5, -- at 0 HP you're down this long, then back up while one of your creatures stands
 	GET_UP_SHARE = 0.5, -- of your HP back when you get up
 	-- of a boss's swings go at a player (a quick hit) while a creature of theirs stands: none, bosses go for pets first

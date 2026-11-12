@@ -193,10 +193,8 @@ local foeElite = false -- this fight's monster is an elite (bigger: a bigger swo
 local COMBAT_ACTION = "BossCombat"
 local COMBAT_KEYS = { Enum.KeyCode.LeftShift, Enum.KeyCode.E, Enum.KeyCode.R, Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three }
 
-local function elementIcon(element: string): string
-	local perk = Party.PERKS[element]
-	return if perk then perk.icon else ""
-end
+-- An element's plain name and image icon (owner 2026-11-12: "use icons not emojis")
+local ElementBadge = require(ClientUtil:WaitForChild("ElementBadge"))
 
 local function makeBar(parent: Instance, height: number, fillColor: Color3): (Frame, Frame, TextLabel)
 	local track = Instance.new("Frame")
@@ -477,7 +475,8 @@ local function buildFighters(snapshot: Snapshot)
 		stroke.Color = Cards.ELEMENTS[fighter.element] or UIKit.Colors.Accent
 		stroke.Thickness = 1.5
 		stroke.Parent = frame
-		local name = UIKit.label(frame, `{elementIcon(fighter.element)} {fightNames[fighter.id] or "Creature"}`, Enum.Font.GothamBold, 13, UIKit.Colors.Text)
+		local name = UIKit.label(frame, fightNames[fighter.id] or "Creature", Enum.Font.GothamBold, 13, UIKit.Colors.Text)
+		ElementBadge.prefix(name, fighter.element)
 		name.Position = UDim2.fromOffset(8, 6)
 		name.Size = UDim2.new(INFO_SHARE, -12, 0, 16)
 		name.TextTruncate = Enum.TextTruncate.AtEnd
@@ -605,7 +604,8 @@ local function buildAllies(snapshot: Snapshot)
 		holder.Size = UDim2.new(1 / count, -6, 1, 0)
 		holder.BackgroundTransparency = 1
 		holder.Parent = allyRow
-		local name = UIKit.label(holder, `{elementIcon(ally.element)} {allyNames[ally.id] or "Ally"}`, Enum.Font.GothamBold, 11, UIKit.Colors.Text)
+		local name = UIKit.label(holder, allyNames[ally.id] or "Ally", Enum.Font.GothamBold, 11, UIKit.Colors.Text)
+		ElementBadge.prefix(name, ally.element)
 		name.Size = UDim2.new(1, 0, 0, 13)
 		name.TextTruncate = Enum.TextTruncate.AtEnd
 		local track, fill, text = makeBar(holder, 12, HP_COLOR)
@@ -627,7 +627,8 @@ local function buildEnemies(snapshot: Snapshot)
 		holder.Size = UDim2.new(1 / count, -6, 1, 0)
 		holder.BackgroundTransparency = 1
 		holder.Parent = enemyRow
-		local name = UIKit.label(holder, `{elementIcon(enemy.element)} {fightNames[enemy.id] or "?"}`, Enum.Font.GothamBold, 11, UIKit.Colors.Text)
+		local name = UIKit.label(holder, fightNames[enemy.id] or "?", Enum.Font.GothamBold, 11, UIKit.Colors.Text)
+		ElementBadge.prefix(name, enemy.element)
 		name.Size = UDim2.new(1, 0, 0, 13)
 		name.TextTruncate = Enum.TextTruncate.AtEnd
 		local bar, text = HpBar.small(holder, 12, UIKit.label, UIKit.Colors.Text)
@@ -648,7 +649,8 @@ local function buildAdds(snapshot: Snapshot)
 		holder.Size = UDim2.new(1 / math.max(#snapshot.adds, 1), -6, 1, 0)
 		holder.BackgroundTransparency = 1
 		holder.Parent = addsRow
-		local name = UIKit.label(holder, `{elementIcon(add.element)} {if bossId then "Spawn" else fightNames[add.id] or "Monster"}`, Enum.Font.GothamBold, 11, UIKit.Colors.Text)
+		local name = UIKit.label(holder, if bossId then "Spawn" else fightNames[add.id] or "Monster", Enum.Font.GothamBold, 11, UIKit.Colors.Text)
+		ElementBadge.prefix(name, add.element)
 		name.Size = UDim2.new(1, 0, 0, 13)
 		local bar, text = HpBar.small(holder, 12, UIKit.label, UIKit.Colors.Text)
 		addBars[add.id] = { bar = bar, text = text, frame = holder }
@@ -728,8 +730,9 @@ local function updateHud(hud: CombatHud.Hud, snapshot: Snapshot)
 		creatureMax = if creature then creature.maxHp else 1,
 		hasSignature = creature ~= nil and creature.signature ~= nil,
 		creatureElement = if creature then creature.element else "",
+		perkElement = if creature then creature.element else nil, -- the chip's icon (CombatHud)
 		perkText = if creature and creature.perk and Party.PERKS[creature.element]
-			then `{Party.PERKS[creature.element].icon} {creature.perk.kind}: {PartyRules.describeFight(creature.perk)}`
+			then `{creature.perk.kind}: {PartyRules.describeFight(creature.perk)}`
 			else nil,
 		perkColor = if creature then Cards.ELEMENTS[creature.element] else nil,
 		petMove = if creature and Combat.ABILITIES[creature.element] then Combat.ABILITIES[creature.element].name else "Pet move",
@@ -1307,10 +1310,10 @@ local function onEvents(events: { any })
 			shake(Bosses.PHASE_SHAKE.seconds, Bosses.PHASE_SHAKE.studs)
 		elseif event.type == "phase" and typeof(event.kind) == "string" then
 			-- The final boss changes element (the server lights that head on its model)
-			banner(`{elementIcon(event.kind)} {event.kind} phase!`, Cards.ELEMENTS[event.kind] or Color3.new(1, 1, 1))
+			banner(`{ElementBadge.name(event.kind)} phase!`, Cards.ELEMENTS[event.kind] or Color3.new(1, 1, 1))
 			shake(Bosses.ROAR_SHAKE.seconds, Bosses.ROAR_SHAKE.studs)
 			if bossId then
-				plateCrest.Text = elementIcon(event.kind)
+				ElementBadge.crest(plateCrest, event.kind)
 			end
 		end
 	end
@@ -1522,7 +1525,7 @@ local function playIntro(boss: any, seconds: number)
 		combatHud.setVisible(false)
 	end
 	bossBar.Visible = false
-	introName.Text = `{elementIcon(boss.element)} {boss.name}`
+	introName.Text = boss.name
 	introTitle.Text = boss.title
 	introCard.Visible = true
 	if camera and marker then
@@ -1626,8 +1629,8 @@ local function onCombatKey(_: string, state: Enum.UserInputState, input: InputOb
 		local slot = table.find({ Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three }, key)
 		if slot and latest then
 			local swapLeft = latestAt + latest.swapIn - os.clock()
-			local action, value = SwapKeys.pick(PartyController.GetSlots()[slot], latest.reserves, latest.fighters, latest.swaps, swapLeft)
-			if action == "swap" then
+			local action, value = SwapKeys.pick(PartyController.GetSlots()[slot], latest.reserves, latest.fighters, latest.swaps, swapLeft, combatWild)
+			if action == "swap" or action == "unsummon" then
 				swapTo(value)
 			elseif action == "cooling" then
 				UIController.Notify(`Swap ready in {math.ceil(value)}s`, true, 1.2)
@@ -1741,7 +1744,7 @@ local function onStarted(payload: any)
 		monsterName.Text = `⚔ vs {payload.opponentName or "Opponent"}{bet}`
 		monsterName.TextColor3 = UIKit.Colors.Text
 	else
-		monsterName.Text = `{if payload.elite then "ELITE " else ""}{elementIcon(payload.element or "")} {species} · Lv {payload.level or 1}`
+		monsterName.Text = `{if payload.elite then "ELITE " else ""}{species} · Lv {payload.level or 1}`
 		monsterName.TextColor3 = if payload.elite then ELITE_COLOR else UIKit.Colors.Text
 	end
 	local boss = if mode == "wild" and typeof(payload.boss) == "string" then Bosses.BOSSES[payload.boss] else nil
@@ -1757,13 +1760,14 @@ local function onStarted(payload: any)
 	statusBar.holder.Parent = bossBar
 	local topSpec = CombatHudConfig.TOP_BAR
 	if boss then
-		monsterName.Text = `BOSS {elementIcon(boss.element)} {boss.name}`
+		monsterName.Text = `BOSS {boss.name}`
 		monsterName.TextColor3 = UIKit.Colors.Danger
-		plateCrest.Text = elementIcon(boss.element)
+		ElementBadge.crest(plateCrest, boss.element)
 		bossName.Text = boss.name
 		plateTitle.Text = `{string.upper(boss.title)} · LV {boss.level}`
 	else
-		bossName.Text = `{elementIcon(payload.element or "")} {species} · Lv {payload.level or 1}`
+		bossName.Text = `{species} · Lv {payload.level or 1}`
+		ElementBadge.prefix(bossName, if typeof(payload.element) == "string" then payload.element else nil)
 		bossName.TextColor3 = if payload.elite then ELITE_COLOR else Color3.new(1, 1, 1)
 		slimTag.Visible = payload.elite == true
 		slim.hp.setLook(if payload.elite then CombatHudConfig.HP_BAR.ELITE else CombatHudConfig.HP_BAR.MONSTER)

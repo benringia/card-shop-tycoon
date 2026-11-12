@@ -38,6 +38,7 @@ local BattleSim = require("../../src/server/Util/BattleSim")
 local BeastMath = require("../../src/shared/Util/BeastMath")
 local Beasts = require("../../src/shared/Config/Beasts")
 local Bosses = require("../../src/shared/Config/Bosses")
+local DefenseRules = require("../../src/shared/Util/DefenseRules")
 local CardList = require("../../src/shared/Config/CardList")
 local Combat = require("../../src/shared/Config/Combat")
 local Dungeon = require("../../src/shared/Config/Dungeon")
@@ -200,6 +201,9 @@ end
 -- one creature, no call-in)
 local superCasts, superSeconds = 0, 0 -- over a row: supers fired and fight seconds they had
 local shieldTimes: { number } = {} -- the Dungeon's room 3: seconds until its pylons' shield fell (fights where it did)
+-- the row's party's Defense against its boss (owner 2026-11-12, Util/DefenseRules): how hard hits land on its players
+-- in the boss fight (Dungeon rooms: as tuned); NO_DEFENSE=1 runs without it, to compare
+local playerScale: number? = nil
 
 -- inRoom (a Dungeon room): the players fight in it (mode "still" or "well") beside their creatures, call-ins on;
 -- `pylons` (its room 3, spec 2026-11-11-dungeon-puzzles): they also swing at the pylons until the shield falls
@@ -224,7 +228,7 @@ local function battle(players: { { any } }, foes: { any }, hpLeft: { [string]: n
 		for index = 1, #players do
 			local owner = tostring(index)
 			table.insert(owners, owner)
-			table.insert(leaders, { id = `@{owner}`, player = true, owner = owner, element = "None", hp = Combat.PLAYER_HP, atk = 0, spd = 10 })
+			table.insert(leaders, { id = `@{owner}`, player = true, owner = owner, element = "None", hp = Combat.PLAYER_HP, atk = 0, spd = 10, defenseScale = if inRoom == true or pylons ~= nil then nil else playerScale })
 		end
 	end
 	local room = inRoom == true or pylons ~= nil -- a Dungeon room: call-ins on even with the players in it
@@ -414,6 +418,12 @@ end
 
 local function row(bossId: string, label: string, party: { Card })
 	superCasts, superSeconds = 0, 0
+	local powers = {}
+	for _, card in party do
+		table.insert(powers, power(card))
+	end
+	playerScale = if process.env.NO_DEFENSE == "1" then nil
+		else DefenseRules.scale(DefenseRules.defense(powers), DefenseRules.reference(Bosses.BOSSES[bossId].recommended, Combat), Combat)
 	local still, stillSeconds, share, reached = run(bossId, party, "still")
 	local stillEvery = if superCasts > 0 then superSeconds / superCasts else 0
 	superCasts, superSeconds = 0, 0
@@ -429,7 +439,7 @@ local function row(bossId: string, label: string, party: { Card })
 		then string.format("  reached it still %3d%% / well %3d%%, HP left %3d%% / %3d%%, room 3 shield down after %2ds", math.round(reached * 100), math.round(wellReached * 100), math.round(share * 100), math.round(wellShare * 100), math.round(shield))
 		else ""
 	local supers = if stillEvery > 0 or wellEvery > 0 then string.format("  supers every %3ds / %3ds", math.round(stillEvery), math.round(wellEvery)) else ""
-	print(string.format("  %-30s still %3d%% %3ds   well %3d%% %3ds%s%s", label, math.round(still * 100), math.round(stillSeconds), math.round(well * 100), math.round(wellSeconds), before, supers))
+	print(string.format("  %-30s still %3d%% %3ds   well %3d%% %3ds  hits x%.2f%s%s", label, math.round(still * 100), math.round(stillSeconds), math.round(well * 100), math.round(wellSeconds), playerScale or 1, before, supers))
 end
 
 local maxed: Card = { rarity = "Legendary", level = Beasts.MAX_LEVEL, stars = Beasts.MAX_STARS, grade = Beasts.GRADES[#Beasts.GRADES] }

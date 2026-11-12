@@ -81,8 +81,9 @@ end
 -- A wild monster's attacks on the player fighting beside their creature (BattleSim playerAttacks): quick hits only
 -- (PLAYER_QUICK of the player's HP, elites ELITE_PLAYER_QUICK), on the share of its swings Combat PLAYER_TARGET_SHARE
 -- picks; no rings (`every` never comes)
-function CombatMath.getMonsterAttacks(wild: any, elite: boolean): { every: number, warning: number, big: number, quick: number }
-	return { every = math.huge, warning = 1, big = 0, quick = if elite then wild.ELITE_PLAYER_QUICK else wild.PLAYER_QUICK }
+-- share: of its swings at a player while a creature stands (Util/DangerRules.playerShare), nil for pets first
+function CombatMath.getMonsterAttacks(wild: any, elite: boolean, share: number?): { every: number, warning: number, big: number, quick: number, share: number? }
+	return { every = math.huge, warning = 1, big = 0, quick = if elite then wild.ELITE_PLAYER_QUICK else wild.PLAYER_QUICK, share = share }
 end
 
 function CombatMath.getMonsterStats(wild: Wild, species: string, level: number, elite: boolean): { hp: number, atk: number, spd: number }?

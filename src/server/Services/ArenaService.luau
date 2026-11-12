@@ -30,6 +30,7 @@ local PartyService = require(Services:WaitForChild("PartyService"))
 local PlotService = require(Services:WaitForChild("PlotService"))
 local WildService = require(Services:WaitForChild("WildService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
+local TitleService = require(Services:WaitForChild("TitleService"))
 
 type PlayerData = DataService.PlayerData
 type Record = PvpRules.Record
@@ -904,6 +905,11 @@ end
 function ArenaService.Start()
 	buildArena()
 	DataService.Register({ name = "ArenaService", load = load, save = save, unload = unload })
+	-- duels won: the Duelist and Champion titles
+	TitleService.UsePvpWins(function(player: Player): number
+		local record = records[player]
+		return if record then record.wins else 0
+	end)
 	DataService.OnBeforeLeave(onLeaving)
 	Remotes.Challenge.OnServerEvent:Connect(onChallenge)
 	Remotes.ChallengeRespond.OnServerEvent:Connect(onRespond)

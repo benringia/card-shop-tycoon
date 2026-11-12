@@ -50,6 +50,7 @@ return {
 		{ id = "grading", level = 14, icon = "GradingSeal", shelf = "GradingStation" },
 		{ id = "jobs", level = 20, icon = "Jobs" },
 		{ id = "trophy", icon = "Trophy", trigger = "trophy" },
+		{ id = "titles", icon = "Trophy", trigger = "title" }, -- the first title earned: how to equip it (owner 2026-11-13)
 	} :: { { id: string, level: number?, icon: string, shelf: string?, product: string?, trigger: string? } },
 	-- The stuck helper: in a player's first `firstSeconds` of play, after `quiet` seconds without progress, at most
 	-- once per `gap` seconds
@@ -67,6 +68,11 @@ return {
 		shopChance = 0.5,
 		petHoldMax = 8, -- seconds petting can hold him in one place (Util/PishPath.holdEnd): pets every 2 s can't keep him
 		idleClips = { "sit", "sniff", "bark", "roll", "dig", "shake", "playBow", "headTilt", "yawnStretch", "tailChase", "happyHop", "scratch" },
+		-- He greets a player who comes near, like Town Chikin (owner 2026-11-12: "npc pish should also greet people like
+		-- chikin"; Util/GreetRules, Server/Util/TownDog.greet): the nearest within `range` studs he hasn't greeted in
+		-- `cooldown` seconds; he stops `hold` seconds, faces them, plays one of `clips` and barks, and a bubble over him
+		-- says one of PishTalk.GREETS with their name. Not a player his tutorial self is leading.
+		greet = { range = 16, cooldown = 30, every = 0.5, hold = 2.5, joinGrace = 15, clips = { "happyHop", "headTilt", "bark" } },
 	},
 	HEIGHT = 2.6, -- studs: a small dog beside a 5-stud player
 	-- His arrival after the welcome flight (Util/ArrivalShot; owner 2026-11-10: the camera close on his paws as he runs,

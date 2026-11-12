@@ -16,7 +16,8 @@ return {
 	ZONES = {
 		{ name = "Meadow", minLevel = 1, maxLevel = 5, recommended = 1, species = { "Mossling", "Puddle Crab" }, aggro = false, color = { 110, 180, 90 } },
 		{ name = "Caves", minLevel = 5, maxLevel = 10, recommended = 5, species = { "Cave Bat", "Spark Beetle" }, aggro = false, color = { 90, 85, 100 } },
-		{ name = "Ember Ridge", minLevel = 10, maxLevel = 15, recommended = 10, species = { "Magma Golem", "Ash Wolf" }, aggro = true, color = { 150, 80, 55 } },
+		-- danger: its monsters hurt you too and a lost fight knocks you out (owner 2026-11-12; Util/DangerRules)
+		{ name = "Ember Ridge", minLevel = 10, maxLevel = 15, recommended = 10, species = { "Magma Golem", "Ash Wolf" }, aggro = true, danger = true, color = { 150, 80, 55 } },
 	},
 
 	-- Base stats at level 1; level L multiplies by 1 + MONSTER_GROWTH * (L - 1). height: studs tall (elites ELITE_SIZE

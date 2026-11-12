@@ -7,13 +7,16 @@
 -- chips, your price and their face (from the server's edges, so the exact price they'd take never reaches here).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local SoundService = game:GetService("SoundService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local CustomerConfig = require(Config:WaitForChild("Customers"))
 local RegisterConfig = require(Config:WaitForChild("Register"))
+local BellConfig = require(Config:WaitForChild("RegisterBell"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
+local RegisterBell = require(Shared:WaitForChild("Util"):WaitForChild("RegisterBell"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -444,7 +447,24 @@ function RegisterController.IsShowing(): boolean
 	return (panel ~= nil and panel.Visible) or (offerPanel ~= nil and offerPanel.Visible)
 end
 
+-- A customer waits at your register with nobody there (owner 2026-11-12): the desk bell, then the note
+local function onBell(ring: unknown)
+	local look = BellConfig.sound
+	local bell = Instance.new("Sound")
+	bell.SoundId = look.id
+	bell.Volume = look.volume
+	bell.Parent = SoundService
+	bell.Ended:Once(function()
+		bell:Destroy()
+	end)
+	bell:Play()
+	if RegisterBell.says(if typeof(ring) == "number" then ring else 1, BellConfig) then
+		UIController.Notify(BellConfig.text, false)
+	end
+end
+
 function RegisterController.Start()
+	Remotes.RegisterBell.OnClientEvent:Connect(onBell)
 	local screen = UIController.GetScreenGui()
 	buildPanel(screen)
 	buildOfferPanel(screen)

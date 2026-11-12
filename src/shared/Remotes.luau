@@ -15,6 +15,15 @@ local NAMES = {
 	"StockShelf", -- client → server: (uid: string) put the carried box's units on this shelf
 	"SetPrices", -- client → server: ({ [productId: string]: number })
 	"CheckoutUpdate", -- server → client: (total: number?, remaining: number) nil total = checkout over
+	"RegisterBell", -- server → client: (ring: number) a customer waits at your register with nobody there (Config/RegisterBell)
+	"UpgradeJobs", -- server → client: { [station] = { kind, left, total, name, detail } } the stations' jobs (UpgradeJobService)
+	"SkipUpgrade", -- client → server: (station: string) the job "Finish now" is about to buy for (UpgradeJobService)
+	"Knockout", -- server → client: { left: number, paused: boolean } knocked out in the Wild, or nil when it's over (KnockoutService)
+	"KnockoutChoice", -- client → server: ("spring" | "revive") wake at the spring now, or open the Revive purchase
+	"SupportState", -- server → client: { gifts: number, best: number } "Support the dev" (SupportService); client → server: () ask for it
+	"SupportThanks", -- server → client: { tier: number, raised: boolean } a gift just given: the dogs' thank-you (ThanksController)
+	"TitleUnlocked", -- server → client: (titleId: string) a title earned for the first time: the "New title!" card (CharacterController)
+	"TitlesSeen", -- client → server: () the Titles tab was seen: no title is new any more (TitleService)
 	"Charge", -- client → server: take payment for the fully scanned checkout
 	-- server → owner: the open kid offer or haggle at the register, nil = closed. { id, kind: "kid"|"haggle",
 	-- card: { cardId, foil, grade }?, asking?, worth?, offer?, total?, range: { low, high }, step, edges: { sure, maybe },
@@ -74,7 +83,9 @@ local NAMES = {
 	"DevPanel", -- client → server: (command: string) a dev chat command from the admin panel; handled in Studio only
 	"DungeonRun", -- server → client: { room, rooms, stage = "waiting" | "room" | "gather" | "beams" | "plates" | "lock" | "boss" | "won" | "out", next?, here?, total? (gather: the next puzzle, players on its island / still in the run), message?, intro? = "full" | "short" (play the Hydra's welcome; sent until the client acks) } the Dungeon run; client → server: () ask for it, or ("introSeen") the welcome started
 	"DungeonLeave", -- client → server: () leave the Dungeon run (back to the Frontier)
-	"Blocked", -- server → client: { reason } you can't do that yet: a big locked card with what's needed (Util/Blocked, BlockedController)
+	"Titles", -- server → client: { earned = { titleId }, equipped = titleId ("" automatic) }; client → server: () ask (TitleService)
+	"EquipTitle", -- client → server: (titleId: string) show that earned title over your name ("" = automatic; TitleService)
+	"Blocked", -- server → client: { reason, title?, icon?, shove: Vector3? } you can't do that yet: a big locked card with what's needed (Util/Blocked, BlockedController); a knockout's card; a dangerous monster's shove for your client to apply
 	"DungeonCinematic", -- server → client: { kind = "door" | "hydra", door: Vector3, through: Vector3, sockets?: { Vector3 } } a puzzle's gate opening, or the way to the Hydra (DungeonCinematicController)
 	"DungeonChest", -- server → client: { key, kind = "puzzle" | "secret", cash?, xp?, item?, count?, title? } you opened that Dungeon chest
 	"UseXpTonic", -- client → server: (beastId: string) one XP Tonic on a party card
@@ -142,6 +153,15 @@ return {
 	StockShelf = remotes.StockShelf,
 	SetPrices = remotes.SetPrices,
 	CheckoutUpdate = remotes.CheckoutUpdate,
+	RegisterBell = remotes.RegisterBell,
+	UpgradeJobs = remotes.UpgradeJobs,
+	SkipUpgrade = remotes.SkipUpgrade,
+	Knockout = remotes.Knockout,
+	KnockoutChoice = remotes.KnockoutChoice,
+	SupportState = remotes.SupportState,
+	SupportThanks = remotes.SupportThanks,
+	TitleUnlocked = remotes.TitleUnlocked,
+	TitlesSeen = remotes.TitlesSeen,
 	Charge = remotes.Charge,
 	OfferUpdate = remotes.OfferUpdate,
 	OfferAction = remotes.OfferAction,
@@ -198,6 +218,8 @@ return {
 	DungeonLeave = remotes.DungeonLeave,
 	DungeonCinematic = remotes.DungeonCinematic,
 	Blocked = remotes.Blocked,
+	Titles = remotes.Titles,
+	EquipTitle = remotes.EquipTitle,
 	DungeonChest = remotes.DungeonChest,
 	UseXpTonic = remotes.UseXpTonic,
 	OpenBagPack = remotes.OpenBagPack,

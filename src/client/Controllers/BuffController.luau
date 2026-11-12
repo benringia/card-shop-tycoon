@@ -281,6 +281,7 @@ function BuffController.Start()
 	tooltip.BackgroundColor3 = UIKit.Colors.Panel
 	tooltip.BackgroundTransparency = 0.05
 	tooltip.Visible = false
+	tooltip.ZIndex = 50 -- over the weapon switch beside it (owner 2026-11-12: the carousel covered it)
 	tooltip.Parent = screenGui
 	UIKit.corner(tooltip, 10)
 	local tooltipPadding = Instance.new("UIPadding")

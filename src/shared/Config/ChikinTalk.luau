@@ -88,6 +88,12 @@ return {
 		"%s! Good to see you!",
 		"Arf! Hi %s! Train with me?",
 	},
+	-- ... and to a supporter ("Support the dev", owner 2026-11-12: the town dogs thank you)
+	THANKS = {
+		"Thanks for the help, %s! 💛",
+		"%s! You're the best! 💛",
+		"Woof! Thank you, %s! 💛",
+	},
 	NEXT = "Next",
 	BYE = "Bye!",
 	GO = "Let's go!", -- a hello's last button

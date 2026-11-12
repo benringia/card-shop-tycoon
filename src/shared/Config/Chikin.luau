@@ -75,7 +75,8 @@ return {
 		-- when your at a certain distance from them"; Util/GreetRules): the nearest one he hasn't greeted in `cooldown`
 		-- seconds, every `every` seconds at most; he stops `hold` seconds, faces them, plays one of `clips` and barks,
 		-- and a bubble over him says one of ChikinTalk.GREETS with their name
-		greet = { range = 16, cooldown = 120, every = 0.5, hold = 2.5, clips = { "playBow", "happyHop", "bark" } },
+		-- (owner 2026-11-12: a hello for walking up to him, again after `cooldown`; none in the first `joinGrace` seconds)
+		greet = { range = 16, cooldown = 30, every = 0.5, hold = 2.5, joinGrace = 15, clips = { "playBow", "happyHop", "bark" } },
 		stops = {
 			{ x = 110, z = -20, weight = 3 }, -- the Wild's trailhead
 			{ x = 110, z = 20, weight = 3 }, -- the Frontier's

@@ -9,9 +9,15 @@ local Remotes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("R
 local Blocked = {}
 
 -- `reason`: what's needed, in words ("The Prism Hydra opens at shop level 57.")
-function Blocked.tell(player: Player, reason: string)
+-- `extra`: another title and icon for the card (a knockout's), a shove for the player's client to apply
+function Blocked.tell(player: Player, reason: string, extra: { title: string?, icon: string?, shove: Vector3? }?)
 	if player.Parent then
-		Remotes.Blocked:FireClient(player, { reason = reason })
+		Remotes.Blocked:FireClient(player, {
+			reason = reason,
+			title = if extra then extra.title else nil,
+			icon = if extra then extra.icon else nil,
+			shove = if extra then extra.shove else nil,
+		})
 	end
 end
 

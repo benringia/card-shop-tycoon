@@ -332,7 +332,7 @@ local BOSSES: { [string]: Boss } = {
 		element = "Tide", -- phase 1's
 		level = 55,
 		hp = 60000,
-		atk = 38, -- 33 before the super moves (boss balance 2026-11-06: Legendary parties with the super meter)
+		atk = 46, -- 33 before the super moves (2026-11-06), 38 until its player attacks went to every 10 s and Defense came (2026-11-12: well 83% at 1x)
 		spd = 11,
 		recommended = 2400,
 		shopLevel = 57,
@@ -342,7 +342,7 @@ local BOSSES: { [string]: Boss } = {
 		playerAttacks = { every = 10, warning = 0.9, big = 0.60, quick = 0.20, doubleChance = 0.35, shape = "swipe", debuff = "byPhase" },
 		unlock = { item = "fragment_prismHydra", count = 10 },
 		announceEverywhere = true,
-		clearTitle = "Dungeon Conqueror",
+		clearTitle = "Hydra Slayer",
 		heads = { "Ember", "Tide", "Volt", "Shade", "Bloom" }, -- the middle head (0) is the finale's
 		phaseGlow = true, -- the Meshy temple guardian's rune lines (spec 2026-11-11-dungeon-puzzles)
 		arenaRadius = 48, -- a bigger chamber (owner 2026-11-12: "arenas should be bigger")

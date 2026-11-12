@@ -27,6 +27,7 @@ local CustomerService = require(Services:WaitForChild("CustomerService"))
 local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local ItemService = require(Services:WaitForChild("ItemService"))
+local TitleService = require(Services:WaitForChild("TitleService"))
 local PackService = require(Services:WaitForChild("PackService"))
 local PishService = require(Services:WaitForChild("PishService"))
 local PlacementService = require(Services:WaitForChild("PlacementService"))
@@ -116,6 +117,11 @@ local function queueEvent(player: Player, trigger: string, tell: boolean)
 	if tell then
 		publish(player)
 	end
+end
+
+-- A title earned for the first time (TitleService, wherever it was) brings the titles lesson: how to equip it
+local function onTitle(player: Player)
+	queueEvent(player, "title", inTown)
 end
 
 -- A trophy item given (a boss's first win, wherever it was) brings the trophy lesson
@@ -398,6 +404,7 @@ function TutorialService.StartLessonsOnly()
 		queueLessons(player, fromLevel, toLevel, false)
 	end)
 	ItemService.OnGiven(onItemGiven)
+	TitleService.OnUnlocked(onTitle)
 end
 
 function TutorialService.Start()
@@ -408,6 +415,7 @@ function TutorialService.Start()
 		queueLessons(player, fromLevel, toLevel, true)
 	end)
 	ItemService.OnGiven(onItemGiven)
+	TitleService.OnUnlocked(onTitle)
 	task.spawn(function()
 		while true do
 			task.wait(STUCK_CHECK)

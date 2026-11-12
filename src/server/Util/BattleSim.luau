@@ -54,7 +54,9 @@ export type Phase = { below: number, element: string, mechanics: Mechanics }
 -- leaves on the player (a Config/Bosses DEBUFFS kind, or "byPhase": its current element's)
 -- pets: a big attack also falls on this many random standing creatures (they can't step out), each hit stunning it
 -- `petFreeze` seconds and dealing `petHit` of a normal hit (the Frost Tyrant's ice spikes)
-export type PlayerAttacks = { every: number, warning: number, big: number, quick: number, doubleChance: number?, shape: string?, debuff: string?, pets: number?, petFreeze: number?, petHit: number? }
+-- share: of its swings go at a player while a creature stands (else Combat.PLAYER_TARGET_SHARE; fierce wild monsters,
+-- Util/DangerRules.playerShare)
+export type PlayerAttacks = { every: number, warning: number, big: number, quick: number, doubleChance: number?, shape: string?, debuff: string?, pets: number?, petFreeze: number?, petHit: number?, share: number? }
 -- What State.ringCheck is asked when a ring lands: its id (from the "ring" event), its target and shape
 export type RingInfo = { id: number, target: string, shape: string }
 -- hpNow: it starts hurt (the Dungeon: HP carried from the last room), max HP stays hp; callers never pass 0
@@ -70,13 +72,14 @@ export type SwordWeapon = {
 	meter: number,
 	perk: { kind: string, every: number?, share: number?, seconds: number? }?,
 }
-export type FighterInput = { id: string, element: string, hp: number, atk: number, spd: number, signature: string?, grade: string?, elite: boolean?, mechanics: Mechanics?, boss: boolean?, owner: string?, swings: number?, phases: { Phase }?, hpNow: number?, player: boolean?, playerAttacks: PlayerAttacks?, perk: Perk? }
+export type FighterInput = { id: string, element: string, hp: number, atk: number, spd: number, signature: string?, grade: string?, elite: boolean?, mechanics: Mechanics?, boss: boolean?, owner: string?, swings: number?, phases: { Phase }?, hpNow: number?, player: boolean?, playerAttacks: PlayerAttacks?, perk: Perk?, defenseScale: number? }
 -- callIn: false closes the call-in window (boss fights: only swaps); creaturesDecide: the side loses once its creatures
 -- have fainted, its players up or not (wild fights: the sword helps, the creature has to last)
 -- pylons (the Dungeon's room 3, spec 2026-11-11-dungeon-puzzles): while one stands, nothing hurts this side's fighters;
 -- only players' swords hit them (swordHit with the pylon's id, "<side>:<id>"); they never attack, are never a
 -- creature's target and never count for a side being beaten
-export type SideInput = { fighters: { FighterInput }, reserves: { FighterInput }?, abilities: boolean, canRun: boolean, swapSeconds: number?, callIn: boolean?, creaturesDecide: boolean?, pylons: { { id: string, hp: number } }? }
+-- autoSwap: false keeps a fainted creature's reserves out (wild fights: swaps by hand only; owner 2026-11-12)
+export type SideInput = { fighters: { FighterInput }, reserves: { FighterInput }?, abilities: boolean, canRun: boolean, swapSeconds: number?, callIn: boolean?, creaturesDecide: boolean?, autoSwap: boolean?, pylons: { { id: string, hp: number } }? }
 export type Event = {
 	-- "attack" | "ability" | "faint" | "callin" | "swap" (from: in, to: out or nil) | "run" | "end" | "heal" | "enrage" |
 	-- "leave" | "shield" (heal: its size) | "shieldBreak" | "thunderclap" (a warned one: kind "windup" with its seconds and
@@ -142,6 +145,7 @@ type Fighter = {
 	orbs: number, -- Overcharge's orbs: fast attack slots still to come (each spends one, clients draw them)
 	dodgeUntil: number,
 	protectedUntil: number, -- a player whose creature's super is playing its cinematic: nothing hits them till then
+	defenseScale: number, -- a player: how hard hits land on them, from their party's Defense (Util/DefenseRules; 1 = as tuned)
 	stunUntil: number,
 	slowUntil: number,
 	slow: number,
@@ -210,9 +214,11 @@ type Side = {
 	runReadyAt: number,
 	swapSeconds: number?, -- boss fights: seconds between one owner's swaps (nil: no swaps)
 	swapReadyAt: { [string]: number }, -- by owner
+	recalledFrom: { [string]: string }, -- by owner: the spot (fighter id) their unsummoned creature left (BattleSim.recall)
 	callIn: boolean, -- false: no call-in window (boss fights)
 	lastAtk: { [string]: number }, -- by owner: the ATK of their last creature on the field (their sword's damage)
 	creaturesDecide: boolean, -- lost once no creature stands (SideInput.creaturesDecide)
+	autoSwap: boolean, -- with swaps, a reserve comes in by itself when all of an owner's faint (SideInput.autoSwap)
 	meters: { [string]: number }, -- by owner: the super meter (combat.SUPER_METER; a super needs it full)
 	pylons: { Pylon }, -- SideInput.pylons (none: an empty list)
 }
@@ -270,6 +276,7 @@ local function makeFighter(combat: any, input: FighterInput, side: string, time:
 		orbs = 0,
 		dodgeUntil = 0,
 		protectedUntil = 0,
+		defenseScale = input.defenseScale or 1,
 		stunUntil = 0,
 		slowUntil = 0,
 		slow = 0,
@@ -358,9 +365,11 @@ local function makeSide(combat: any, input: SideInput, name: string): Side
 		runReadyAt = 0,
 		swapSeconds = input.swapSeconds,
 		swapReadyAt = {},
+		recalledFrom = {},
 		callIn = input.callIn ~= false,
 		lastAtk = lastAtk,
 		creaturesDecide = input.creaturesDecide == true,
+		autoSwap = input.autoSwap ~= false,
 		meters = meters,
 		pylons = pylons,
 	}
@@ -562,12 +571,15 @@ local function bringIn(state: State, side: Side, incoming: Fighter, events: { Ev
 		out.regenLeft = 0 -- Healing Rain stops when its creature leaves the field, and its orbs go
 		out.orbs = 0
 	end
-	table.insert(events, { type = "swap", from = incoming.id, to = if out then out.id else nil })
+	-- after an unsummon nobody stood: it takes the spot the unsummoned one left
+	local spot = if out then out.id else side.recalledFrom[key]
+	side.recalledFrom[key] = nil
+	table.insert(events, { type = "swap", from = incoming.id, to = spot })
 end
 
 -- Swap fights: when an owner has nobody standing, their healthiest reserve comes in (true if one did)
 local function autoSwap(state: State, side: Side, key: string, events: { Event }): boolean
-	if not side.swapSeconds then
+	if not side.swapSeconds or not side.autoSwap then
 		return false
 	end
 	for _, fighter in onField(side, key) do
@@ -590,6 +602,7 @@ end
 
 -- A player fighter at 0 HP goes down (never fainted); with nobody left standing its side loses
 local function hurtPlayer(state: State, target: Fighter, amount: number, events: { Event })
+	amount *= target.defenseScale -- their party's Defense (owner 2026-11-12: "party strength for defense")
 	fillMeter(state, target, state.combat.SUPER_METER.hurt * amount / target.maxHp)
 	target.taken += math.min(amount, target.hp)
 	target.hp = math.max(0, target.hp - amount)
@@ -811,7 +824,9 @@ end
 local function interval(state: State, fighter: Fighter): number
 	local value = CombatMath.getAttackInterval(state.combat, fighter.spd) / (1 + perkOf(state, fighter, "Hustle"))
 	if fighter.playerAttacks then
-		value *= state.combat.BOSS_PACE or 1 -- it goes for pets first (Config/Combat BOSS_PACE)
+		-- it goes for pets first (Config/Combat BOSS_PACE); one with a player share swings that much faster, so its pets
+		-- take what they took before and the hits on players come on top
+		value *= (state.combat.BOSS_PACE or 1) * (1 - (fighter.playerAttacks.share or 0))
 	end
 	if state.time < fighter.slowUntil then
 		value /= 1 - fighter.slow
@@ -837,7 +852,7 @@ local function swingAtPlayer(state: State, fighter: Fighter, enemySide: Side, sw
 		return false
 	end
 	local combat = state.combat
-	if #standingCreatures(enemySide) > 0 and random(state) >= combat.PLAYER_TARGET_SHARE then
+	if #standingCreatures(enemySide) > 0 and random(state) >= (attacks.share or combat.PLAYER_TARGET_SHARE) then
 		return false
 	end
 	local target = players[math.min(#players, 1 + math.floor(random(state) * #players))]
@@ -1409,6 +1424,47 @@ function BattleSim.swap(state: State, id: string, owner: string?): ({ Event }?, 
 	side.swapReadyAt[key] = state.time + side.swapSeconds
 	local events: { Event } = {}
 	bringIn(state, side, incoming, events)
+	return events, nil
+end
+
+-- Wild fights (owner 2026-11-12: "It still wouldn't let me unsummon my pet while in combat"): an owner's standing
+-- creatures on the field go back to their reserves unhurt and they fight on with their sword; with none of theirs
+-- standing, a swap brings one back at once (to the spot it left). Waits out the swap's cooldown like a swap; needs the
+-- owner's player fighter standing ("alone": nobody of theirs would be left fighting).
+function BattleSim.recall(state: State, owner: string): ({ Event }?, string?)
+	if state.result then
+		return nil, "ended"
+	end
+	local side = state.sides.a
+	if not side.swapSeconds then
+		return nil, "none"
+	end
+	local me = playerOf(state, owner)
+	if not me or me.down or me.fainted then
+		return nil, "alone"
+	end
+	for _, cast in state.casts do
+		if cast.super and ownerKey(cast.fighter) == owner and cast.side == side then
+			return nil, "casting" -- its super lands first
+		end
+	end
+	if state.time < (side.swapReadyAt[owner] or 0) then
+		return nil, "cooldown"
+	end
+	local events: { Event } = {}
+	for _, fighter in onField(side, owner) do
+		if not fighter.fainted then
+			table.remove(side.fighters, table.find(side.fighters, fighter) :: number)
+			table.insert(side.reserves, fighter)
+			fighter.regenLeft = 0
+			fighter.orbs = 0
+			side.recalledFrom[owner] = fighter.id
+			table.insert(events, { type = "recall", from = fighter.id })
+		end
+	end
+	if #events == 0 then
+		return nil, "missing"
+	end
 	return events, nil
 end
 

@@ -4,6 +4,11 @@
 -- (Util/WeaponRules). Three families with their own moves: swords now (round 1), spears and scythes later
 -- (`ready = false`: listed as "Coming soon"). Plain data so Lune tests can load it.
 
+-- the elements' plain names for the Forge weapons' names (owner 2026-11-12: "Fire Forge Sword"); by path in Lune
+local ElementNames = if game ~= nil
+	then require((script.Parent :: Instance):WaitForChild("ElementNames")) :: any
+	else require("./ElementNames") :: any
+
 export type Cost = { cash: number, items: { [string]: number }, unlockLevel: number? }
 export type Source = { kind: string, boss: string?, cost: Cost? } -- kind: "starter" | "forge" | "boss" | "masterwork"
 -- kind: "heal" | "burn" | "prism" | "erupt" | "chill" (BattleSim swordPerk)
@@ -53,7 +58,7 @@ local WEAPONS: { Weapon } = {
 for _, element in ELEMENTS do
 	table.insert(WEAPONS, {
 		id = `forgeSword_{element}`,
-		name = `{element} Forge Sword`,
+		name = `{ElementNames[element]} Forge Sword`,
 		family = "sword",
 		rarity = "Common",
 		element = element,
@@ -118,7 +123,7 @@ end
 for _, element in ELEMENTS do
 	table.insert(WEAPONS, {
 		id = `forgeSpear_{element}`,
-		name = `{element} Forge Spear`,
+		name = `{ElementNames[element]} Forge Spear`,
 		family = "spear",
 		rarity = "Common",
 		element = element,
@@ -185,7 +190,7 @@ end
 for _, element in ELEMENTS do
 	table.insert(WEAPONS, {
 		id = `forgeScythe_{element}`,
-		name = `{element} Forge Scythe`,
+		name = `{ElementNames[element]} Forge Scythe`,
 		family = "scythe",
 		rarity = "Common",
 		element = element,

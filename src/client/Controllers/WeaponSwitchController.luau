@@ -3,9 +3,14 @@
 -- right edge with your weapon's picture in its rarity's ring, < and > either side (or swipe the chip, or Q / Z). It
 -- steps through every weapon you own (Util/WeaponSwitch) and asks the server to equip it (EquipWeapon; in a fight a
 -- switch costs Weapons.SWAP_SECONDS with no cut or skill). Shown with two weapons or more, never over a window.
+-- A carousel (owner 2026-11-12: "make the buttons more smaller and add a carousel effect which I can see whats next or
+-- previous weapon but smaller. also add tooltips when hovering on the active weapon"): the weapons before and after
+-- smaller and faded beside it (tap one to step to it), the strip sliding a step on a switch, small arrows with a
+-- finger-sized tap area, the weapon's name, Power, element, perk, grade and level in a tip under a mouse.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -14,8 +19,11 @@ local Weapons = require(Config:WaitForChild("Weapons"))
 local WeaponLooks = require(Config:WaitForChild("WeaponLooks"))
 local Swords = require(Config:WaitForChild("Swords"))
 local HudLayout = require(Config:WaitForChild("HudLayout"))
+local Combat = require(Config:WaitForChild("Combat"))
+local UIStyle = require(Config:WaitForChild("UIStyle"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local WeaponSwitch = require(Shared:WaitForChild("Util"):WaitForChild("WeaponSwitch"))
+local WeaponText = require(Shared:WaitForChild("Util"):WaitForChild("WeaponText"))
 local UiLayout = require(Shared:WaitForChild("Util"):WaitForChild("UiLayout"))
 
 local Controllers = script.Parent :: Instance
@@ -34,28 +42,77 @@ local LOOK = HudLayout.WEAPON_SWITCH
 
 local owned: { [string]: any } = {}
 local equipped: string? = nil
+local locked: { [string]: boolean } = {} -- weapons in the Forge: out of the switch till they're back
 local list: { string } = {}
 local holder: Frame
 local holderScale: UIScale
+local track: Frame -- the three weapons, slid a step on a switch
 local portrait: ImageLabel
 local ring: UIStroke
+local sides: { [string]: { button: ImageButton, picture: ImageLabel, ring: UIStroke } } = {}
 local nameLabel: TextLabel
 local nameUntil = 0
+local tip: Frame
 
 local function unlocked(): boolean
 	local level = player:GetAttribute("Level")
 	return typeof(level) == "number" and level >= Swords.UNLOCK_SHOP_LEVEL
 end
 
--- The chip shows your equipped weapon (the first in the list if the server hasn't said yet)
-local function render()
-	list = WeaponSwitch.list(Weapons, owned, unlocked())
-	local id = if equipped and table.find(list, equipped) then equipped else list[1]
+-- A weapon's picture and its rarity's colour
+local function looksOf(id: string?): (string, Color3)
 	local weapon = if id then Weapons.ById[id] else nil
 	local look = if id then WeaponLooks.WEAPONS[id] else nil
-	portrait.Image = if look then look.portrait else ""
-	ring.Color = if weapon then CardFace.getRarityColor(weapon.rarity) else UIKit.Colors.Outline
+	return if look then look.portrait else "", if weapon then CardFace.getRarityColor(weapon.rarity) else UIKit.Colors.Outline
+end
+
+-- The weapon in hand (the first in the list if the server hasn't said yet)
+local function current(): string?
+	return if equipped and table.find(list, equipped) then equipped else list[1]
+end
+
+-- The chip shows your equipped weapon, the small ones beside it the weapons before and after
+local function render()
+	list = WeaponSwitch.list(Weapons, owned, unlocked(), locked)
+	local id = current()
+	local weapon = if id then Weapons.ById[id] else nil
+	portrait.Image, ring.Color = looksOf(id)
 	nameLabel.Text = if weapon then string.upper(weapon.name) else ""
+	local before, after = WeaponSwitch.neighbours(list, id)
+	for name, side in sides do
+		local sideId = if name == "Before" then before else after
+		side.button.Visible = sideId ~= nil
+		side.picture.Image, side.ring.Color = looksOf(sideId)
+	end
+end
+
+-- The tip under a mouse on the weapon in hand: its name in its rarity's colour, then Power, element, perk, grade, level
+local function showTip()
+	local id = current()
+	local weapon = if id then Weapons.ById[id] else nil
+	if not id or not weapon or not UserInputService.MouseEnabled then
+		return
+	end
+	for _, child in tip:GetChildren() do
+		if child:IsA("TextLabel") then
+			child:Destroy()
+		end
+	end
+	local title = UIKit.label(tip, weapon.name, Enum.Font.FredokaOne, 16, CardFace.getRarityColor(weapon.rarity))
+	title.Size = UDim2.new(1, 0, 0, 20)
+	title.LayoutOrder = 0
+	UIKit.outlined(title)
+	for index, row in WeaponText.stats(Weapons, id, owned[id], Combat) do
+		local line = UIKit.label(tip, `{row.label}: {row.value}`, Enum.Font.GothamBold, 12, Color3.new(1, 1, 1))
+		line.LayoutOrder = index
+		line.Size = UDim2.new(1, 0, 0, 0)
+		line.AutomaticSize = Enum.AutomaticSize.Y
+		line.TextWrapped = true
+	end
+	-- left of the switch, its middle level with the chip
+	local at = holder.AbsolutePosition
+	tip.Position = UDim2.fromOffset(at.X - LOOK.gap, at.Y + LOOK.chip * holderScale.Scale / 2)
+	tip.Visible = true
 end
 
 -- The server drops equips inside its cooldown, so the latest pick goes at once or when the cooldown has passed:
@@ -92,6 +149,13 @@ local function step(delta: number)
 	equipped = nextId -- shown at once; the server's WeaponsChanged confirms or puts it back
 	nameUntil = os.clock() + LOOK.nameSeconds
 	render()
+	-- the carousel slides a step: the new weapon comes in from the side it was on
+	local shift = (LOOK.side + LOOK.chip) / 2 + LOOK.gap
+	track.Position = UDim2.fromOffset(if delta > 0 then shift else -shift, 0)
+	TweenService:Create(track, TweenInfo.new(LOOK.slide, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Position = UDim2.new() }):Play()
+	if tip.Visible then
+		showTip()
+	end
 	send(nextId)
 end
 
@@ -117,45 +181,108 @@ local function build()
 	Hud.calmPiece(layer, "weapons") -- hidden through Pish's first visit (a calm HUD) and Chikin's but his sword step
 	holder = Instance.new("Frame")
 	holder.Name = "Switch"
-	holder.Size = UDim2.fromOffset(LOOK.chip + 2 * (LOOK.arrow + LOOK.gap), LOOK.chip + LOOK.name)
+	holder.Size = UDim2.fromOffset(LOOK.chip + 2 * (LOOK.side + LOOK.gap) + 2 * (LOOK.arrow + LOOK.gap), LOOK.chip + LOOK.name)
 	holder.BackgroundTransparency = 1
 	holder.Visible = false
 	holder.Parent = layer
 	holderScale = Instance.new("UIScale") -- set by relayout (UiLayout.weaponSwitch)
 	holderScale.Parent = holder
 
-	local previous = UIKit.button(holder, "<", UIKit.Colors.Secondary)
-	previous.Name = "Previous"
-	previous.Size = UDim2.fromOffset(LOOK.arrow, LOOK.arrow)
-	previous.Position = UDim2.fromOffset(0, (LOOK.chip - LOOK.arrow) / 2)
-	previous.Activated:Connect(function()
-		step(-1)
-	end)
-	local nextButton = UIKit.button(holder, ">", UIKit.Colors.Secondary)
-	nextButton.Name = "Next"
-	nextButton.Size = UDim2.fromOffset(LOOK.arrow, LOOK.arrow)
-	nextButton.Position = UDim2.fromOffset(LOOK.arrow + 2 * LOOK.gap + LOOK.chip, (LOOK.chip - LOOK.arrow) / 2)
-	nextButton.Activated:Connect(function()
-		step(1)
-	end)
+	-- < and >: drawn small, each with a finger-sized tap area round it (UiLayout.weaponSwitch)
+	local function arrow(name: string, text: string, x: number, delta: number): TextButton
+		local button = UIKit.button(holder, text, UIKit.Colors.Secondary)
+		button.Name = name
+		button.TextSize = 16
+		button.Size = UDim2.fromOffset(LOOK.arrow, LOOK.arrow)
+		button.Position = UDim2.fromOffset(x, (LOOK.chip - LOOK.arrow) / 2)
+		button.Activated:Connect(function()
+			step(delta)
+		end)
+		local hit = Instance.new("TextButton")
+		hit.Name = "Hit"
+		hit.Text = ""
+		hit.BackgroundTransparency = 1
+		hit.AnchorPoint = Vector2.new(0.5, 0.5)
+		hit.Position = UDim2.fromScale(0.5, 0.5)
+		hit.Size = UDim2.fromOffset(LOOK.hit, LOOK.hit)
+		hit.ZIndex = button.ZIndex + 3
+		hit.Parent = button
+		hit.Activated:Connect(function()
+			step(delta)
+		end)
+		return button
+	end
+	local previous = arrow("Previous", "<", 0, -1)
+	arrow("Next", ">", LOOK.chip + 2 * (LOOK.side + LOOK.gap) + LOOK.arrow + 2 * LOOK.gap, 1)
 
-	local chip = Instance.new("ImageButton")
-	chip.Name = "Chip"
-	chip.AutoButtonColor = false
-	chip.BackgroundColor3 = UIKit.Colors.Panel
-	chip.Size = UDim2.fromOffset(LOOK.chip, LOOK.chip)
-	chip.Position = UDim2.fromOffset(LOOK.arrow + LOOK.gap, 0)
-	chip.Parent = holder
-	UIKit.corner(chip, LOOK.chip // 2)
-	ring = UIKit.outline(chip, UIKit.Colors.Outline, LOOK.ring)
-	portrait = Instance.new("ImageLabel")
-	portrait.Name = "Portrait"
-	portrait.BackgroundTransparency = 1
-	portrait.ScaleType = Enum.ScaleType.Fit
-	portrait.AnchorPoint = Vector2.new(0.5, 0.5)
-	portrait.Position = UDim2.fromScale(0.5, 0.5)
-	portrait.Size = UDim2.fromScale(0.86, 0.86)
-	portrait.Parent = chip
+	-- the three weapons on one strip
+	track = Instance.new("Frame")
+	track.Name = "Track"
+	track.BackgroundTransparency = 1
+	track.Size = UDim2.fromScale(1, 1)
+	track.Parent = holder
+	local function round(name: string, size: number, x: number, edge: number): (ImageButton, ImageLabel, UIStroke)
+		local button = Instance.new("ImageButton")
+		button.Name = name
+		button.AutoButtonColor = false
+		button.BackgroundColor3 = UIKit.Colors.Panel
+		button.AnchorPoint = Vector2.new(0, 0.5)
+		button.Size = UDim2.fromOffset(size, size)
+		button.Position = UDim2.fromOffset(x, LOOK.chip / 2)
+		button.Parent = track
+		UIKit.corner(button, size // 2)
+		local stroke = UIKit.outline(button, UIKit.Colors.Outline, edge)
+		local picture = Instance.new("ImageLabel")
+		picture.Name = "Portrait"
+		picture.BackgroundTransparency = 1
+		picture.ScaleType = Enum.ScaleType.Fit
+		picture.AnchorPoint = Vector2.new(0.5, 0.5)
+		picture.Position = UDim2.fromScale(0.5, 0.5)
+		picture.Size = UDim2.fromScale(0.86, 0.86)
+		picture.Parent = button
+		return button, picture, stroke
+	end
+	local firstSide = LOOK.arrow + LOOK.gap
+	local chipX = firstSide + LOOK.side + LOOK.gap
+	for _, entry in { { "Before", firstSide, -1 }, { "After", chipX + LOOK.chip + LOOK.gap, 1 } } do
+		local name, x, delta = entry[1] :: string, entry[2] :: number, entry[3] :: number
+		local button, picture, stroke = round(name, LOOK.side, x, 2)
+		button.BackgroundTransparency = LOOK.sideFade
+		picture.ImageTransparency = LOOK.sideFade
+		stroke.Transparency = LOOK.sideFade
+		button.Activated:Connect(function()
+			step(delta)
+		end)
+		sides[name] = { button = button, picture = picture, ring = stroke }
+	end
+	local chip
+	chip, portrait, ring = round("Chip", LOOK.chip, chipX, LOOK.ring)
+
+	-- the tip: a small panel left of the switch while a mouse is on the weapon in hand
+	tip = Instance.new("Frame")
+	tip.Name = "WeaponTip"
+	tip.AnchorPoint = Vector2.new(1, 0.5)
+	tip.Size = UDim2.fromOffset(220, 0)
+	tip.AutomaticSize = Enum.AutomaticSize.Y
+	tip.BackgroundColor3 = UIStyle.PANEL
+	tip.Visible = false
+	tip.ZIndex = 20
+	tip.Parent = layer
+	UIKit.corner(tip, 12)
+	UIKit.outline(tip, UIStyle.EDGE, UIStyle.EDGE_THICKNESS)
+	local tipPad = Instance.new("UIPadding")
+	for _, side in { "PaddingTop", "PaddingBottom", "PaddingLeft", "PaddingRight" } do
+		(tipPad :: any)[side] = UDim.new(0, 10)
+	end
+	tipPad.Parent = tip
+	local tipList = Instance.new("UIListLayout")
+	tipList.SortOrder = Enum.SortOrder.LayoutOrder
+	tipList.Padding = UDim.new(0, 3)
+	tipList.Parent = tip
+	chip.MouseEnter:Connect(showTip)
+	chip.MouseLeave:Connect(function()
+		tip.Visible = false
+	end)
 
 	-- Q (the next weapon) on the chip and Z (the one before, owner 2026-11-09) on the < button, on keyboards, each in its
 	-- white circle like the HUD tiles' keys
@@ -177,7 +304,7 @@ local function build()
 		return frame
 	end
 	badge(chip, "Q", Vector2.new(1, 1), UDim2.new(1, 2, 1, 2))
-	badge(previous, Weapons.PREVIOUS_KEY, Vector2.new(0, 1), UDim2.new(0, -6, 1, 6))
+	badge(previous, Weapons.PREVIOUS_KEY, Vector2.new(0.5, 0), UDim2.new(0.5, 0, 1, 2))
 
 	nameLabel = UIKit.label(holder, "", Enum.Font.FredokaOne, 14, UIKit.Colors.Text)
 	nameLabel.Name = "WeaponName"
@@ -207,6 +334,11 @@ local function build()
 	end)
 end
 
+-- The weapons now (the character window): owned ones' grade and level, and the one in hand
+function WeaponSwitchController.GetState(): { owned: { [string]: any }, equipped: string? }
+	return { owned = owned, equipped = equipped }
+end
+
 function WeaponSwitchController.Start()
 	build()
 	render()
@@ -218,6 +350,7 @@ function WeaponSwitchController.Start()
 		if typeof(data.owned) == "table" then
 			owned = data.owned
 		end
+		locked = if typeof(data.locked) == "table" then data.locked else {}
 		if typeof(data.equipped) == "string" and not pendingId then -- a waiting send is newer than this reply
 			equipped = data.equipped
 		end
@@ -251,6 +384,9 @@ function WeaponSwitchController.Start()
 			and not PlacementController.IsActive()
 			and not RegisterController.IsShowing() -- the checkout sits in the same spot (owner 2026-11-10)
 		nameLabel.Visible = os.clock() < nameUntil
+		if tip.Visible and not holder.Visible then
+			tip.Visible = false
+		end
 	end)
 end
 

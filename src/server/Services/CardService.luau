@@ -377,6 +377,26 @@ function CardService.GradeUp(player: Player, cardId: string, main: XpTarget, pay
 	return plan.grade, nil, plan.seals
 end
 
+-- Lifts a levelled card out of the collection into a station job (UpgradeJobService; spec
+-- 2026-11-12-timed-upgrades-revive-design: an item being upgraded is locked till done). Nil and why when it can't go
+-- in: "partied", "working", "fighting" or "missing". It comes back with AddBeast.
+function CardService.HoldBeast(player: Player, beastId: string): (Beast?, string?)
+	local inventory = inventories[player]
+	local beast = if inventory then inventory.beasts[beastId] else nil
+	if not inventory or not beast then
+		return nil, "missing"
+	elseif inventory.partied[beastId] then
+		return nil, "partied"
+	elseif inventory.working[beastId] then
+		return nil, "working"
+	elseif inventory.fighting[beastId] then
+		return nil, "fighting"
+	end
+	inventory.beasts[beastId] = nil
+	sync(player)
+	return beast, nil
+end
+
 -- Splits one plain copy off its stack into its own card (to give it a job). Nil if there is no such copy.
 function CardService.MakeIndividual(player: Player, cardId: string, foil: boolean, grade: string): Beast?
 	local inventory = inventories[player]

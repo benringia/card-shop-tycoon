@@ -342,6 +342,15 @@ local focusKey, focusTarget, focusIcon, focusSituation = "", nil :: Target?, nil
 local focusName = ""
 local talking = false
 
+-- Your face on the party bar (CharacterController): the titles lesson points at it; the window it opens shows the
+-- Titles tab while a title is new
+local function faceButton(): GuiObject?
+	local gui = player:FindFirstChildOfClass("PlayerGui")
+	local main = if gui then gui:FindFirstChild("MainGui") else nil
+	local face = if main then main:FindFirstChild("Me", true) else nil
+	return if face and face:IsA("GuiObject") then face else nil
+end
+
 local function refreshFocus()
 	if step ~= "" then
 		local situation, target = stepSituation(step)
@@ -377,6 +386,10 @@ local function refreshFocus()
 			focusSituation, focusName = situation, name
 		else
 			focusKey, focusTarget = "lesson:" .. now.id, POINT_AT[now.id]
+			if now.id == "titles" then
+				local face = faceButton()
+				focusTarget = if face then { gui = face } else nil
+			end
 			focusIcon = if lesson then lesson.icon else nil
 		end
 	else
@@ -1027,27 +1040,37 @@ local function byeIdle()
 	end
 end
 
+-- Whether his tour can be offered again now: the main game, the first visit done, no visit on, Chikin not leading
+function TutorialController.CanReplay(): boolean
+	return workspace:GetAttribute("PlaceKind") == "Main" and replayShown() and step ~= "bye" and not visit and chikinAway()
+end
+
+-- "Want my shop tour again?" (and Chikin's lesson, once done): the Support card's "Replay a tour" (SupportController;
+-- tapping Pish opens that card since "Support the dev", owner 2026-11-12)
+function TutorialController.OfferReplay()
+	if not TutorialController.CanReplay() then
+		return -- never Pish's tour over Chikin's (final review I1)
+	end
+	TutorialCues.askReplay(function()
+		Remotes.TutorialAction:FireServer("replay")
+	end, if player:GetAttribute("CombatDone") == true then {
+		label = ChikinTalk.LABELS.replay,
+		onTap = function()
+			Remotes.CombatTutorialAction:FireServer("replay")
+		end,
+	} else nil)
+end
+
 function TutorialController.Start()
 	if workspace:GetAttribute("PlaceKind") ~= "Main" then
 		return
 	end
-	-- The peeking Pish over the party bar is the Pish button (owner 2026-11-10): at his goodbye a tap ends it; once
-	-- the first visit is done (no visit on) a tap offers his tour again
+	-- The peeking Pish over the party bar is the Pish button (owner 2026-11-10): at his goodbye a tap ends it (other
+	-- taps open the Support card, SupportController, with "Replay a tour" in it)
 	HudMascotView.onTap(function()
-		if step == "bye" then
-			if not byeSent then
-				byeSent = true
-				Remotes.TutorialAction:FireServer("bye")
-			end
-		elseif replayShown() and not visit and chikinAway() then -- never Pish's tour over Chikin's (final review I1)
-			TutorialCues.askReplay(function()
-				Remotes.TutorialAction:FireServer("replay")
-			end, if player:GetAttribute("CombatDone") == true then {
-				label = ChikinTalk.LABELS.replay,
-				onTap = function()
-					Remotes.CombatTutorialAction:FireServer("replay")
-				end,
-			} else nil)
+		if step == "bye" and not byeSent then
+			byeSent = true
+			Remotes.TutorialAction:FireServer("bye")
 		end
 	end)
 	player:GetAttributeChangedSignal("TutorialStep"):Connect(onStep)

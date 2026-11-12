@@ -29,6 +29,15 @@ return {
 		end
 	end,
 
+	-- Studio 2026-11-12: the low-HP heartbeat (a sound in Config/CombatHud) was fetched as an image ("Asset type does not
+	-- match requested type")
+	["the HUD's sounds are fetched as sounds, never as images"] = function()
+		local ids = CombatPreload.collect(CombatHud, SwordFx, Swords)
+		local heartbeat = CombatHud.SOUNDS.heartbeat.id
+		expect.equal(table.find(ids.sounds, heartbeat) ~= nil, true, "the heartbeat is a sound")
+		expect.equal(table.find(ids.images, heartbeat), nil, "and not an image")
+	end,
+
 	["every sword's sounds and published moves are preloaded"] = function()
 		local ids = CombatPreload.collect(CombatHud, SwordFx, Swords)
 		-- the round 1 swords share the starter's cut animations (sword skills round): each id counts once
@@ -70,7 +79,12 @@ return {
 		expect.equal(has(ids.sounds, AttackFx.SOUNDS.charge), true, "charge")
 		expect.equal(has(ids.sounds, AttackFx.SOUNDS.boom), true, "boom")
 		expect.equal(has(ids.sounds, AttackFx.BOSS.meadowWarden.sounds.release), true, "a boss's")
-		expect.equal(has(ids.sounds, AttackFx.MONSTER.Mossling.sounds.strike), true, "a monster's")
+		for _, clip in AttackFx.MONSTER.Mossling.sounds.strike do
+			expect.equal(has(ids.sounds, clip), true, "a monster's (each of its clips)")
+		end
+		for _, clip in AttackFx.SOUNDS.Ember.hit do
+			expect.equal(has(ids.sounds, clip), true, "a creature's hit (each of its clips)")
+		end
 		expect.equal(has(ids.images, AttackFx.SOUNDS.charge), false, "sounds aren't images")
 	end,
 	["the end screen's sounds are fetched ahead, so the fanfare plays on time"] = function()

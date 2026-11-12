@@ -3,6 +3,7 @@
 -- dog's pace round the plaza fountain (Util/PishPath), facing the way it goes, idle clips named by its Clip attribute
 -- (ClipId bumps each time; clients play it, Util/PishVisual), and holding still while it's petted, at most `holdMax`
 -- seconds at a time so one player petting again and again can't keep it in one place.
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -10,6 +11,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Plaza = require(Shared:WaitForChild("Config"):WaitForChild("Plaza"))
 local Wild = require(Shared:WaitForChild("Config"):WaitForChild("Wild"))
 local PishPath = require(Shared:WaitForChild("Util"):WaitForChild("PishPath"))
+local GreetRules = require(Shared:WaitForChild("Util"):WaitForChild("GreetRules"))
 
 local TownDog = {}
 
@@ -157,6 +159,83 @@ function TownDog.petted(dog: Dog, from: Vector3, userId: number)
 	task.delay(PETTED_SECONDS, function()
 		if os.clock() >= dog.pettedUntil then
 			dog.marker:SetAttribute("Petting", 0)
+		end
+	end)
+end
+
+-- Greeting players who come near (Town Chikin, the owner 2026-11-11; Town Pish, 2026-11-12: "npc pish should also greet
+-- people like chikin"; Util/GreetRules): every `cfg.every` seconds the nearest player who just walked within
+-- `cfg.range` and it hasn't greeted in `cfg.cooldown` (not `skip`ped: one its tutorial self is leading; not in their
+-- first `cfg.joinGrace` seconds after spawning: the loading screen) gets a hello: it stops, faces them and plays one of
+-- `cfg.clips`, and the marker's GreetUserId / GreetLine (1 to `lines` hellos, then `thanks` thank-yous for a supporter,
+-- "Support the dev" owner 2026-11-12; never the same twice running) / GreetId tell clients to show its bubble
+-- (Util/GreetBubble)
+function TownDog.greet(dog: Dog, cfg: { range: number, cooldown: number, every: number, hold: number, joinGrace: number, clips: { string } }, lines: number, thanks: number, skip: (player: Player) -> boolean, rng: Random)
+	local greetedAt: { [string]: number } = {} -- os.clock() it last greeted each player, by UserId
+	local spawnedAt: { [Player]: number } = {}
+	local inside: { [string]: boolean } = {} -- who was in range on its last look (a hello is for walking up)
+	local lastLine: number? = nil
+	local function watch(player: Player)
+		player.CharacterAdded:Connect(function()
+			spawnedAt[player] = os.clock()
+		end)
+		if player.Character then
+			spawnedAt[player] = os.clock()
+		end
+	end
+	Players.PlayerAdded:Connect(watch)
+	for _, player in Players:GetPlayers() do
+		watch(player)
+	end
+	Players.PlayerRemoving:Connect(function(player)
+		greetedAt[tostring(player.UserId)] = nil
+		inside[tostring(player.UserId)] = nil
+		spawnedAt[player] = nil
+	end)
+	task.spawn(function()
+		while true do
+			task.wait(cfg.every)
+			if os.clock() < dog.pettedUntil then
+				continue -- being petted or already saying hello
+			end
+			local here = dog.marker.Position
+			local near: { GreetRules.Near } = {}
+			local byKey: { [string]: Player } = {}
+			local nowInside: { [string]: boolean } = {}
+			for _, player in Players:GetPlayers() do
+				local character = player.Character
+				local root = if character then character:FindFirstChild("HumanoidRootPart") :: BasePart? else nil
+				if root then
+					local key = tostring(player.UserId)
+					local distance = (root.Position - here).Magnitude
+					local settling = os.clock() - (spawnedAt[player] or 0) < cfg.joinGrace
+					if distance <= cfg.range then
+						-- joining (or tutored) beside it counts as already there: no hello till they walk off and back
+						nowInside[key] = true
+						if settling or skip(player) then
+							inside[key] = true
+						end
+					end
+					if not settling and not skip(player) then
+						table.insert(near, { key = key, distance = distance })
+						byKey[key] = player
+					end
+				end
+			end
+			local key = GreetRules.pick(near, greetedAt, os.clock(), cfg, inside)
+			inside = nowInside
+			local player = if key then byKey[key] else nil
+			local character = if player then player.Character else nil
+			local root = if character then character:FindFirstChild("HumanoidRootPart") :: BasePart? else nil
+			if key and player and root then
+				greetedAt[key] = os.clock()
+				TownDog.hold(dog, root.Position, cfg.clips[rng:NextInteger(1, #cfg.clips)], cfg.hold)
+				local supporter = (tonumber(player:GetAttribute("SupporterTier")) or 0) > 0
+				lastLine = GreetRules.pickLine(lines, thanks, supporter, rng:NextNumber(), lastLine)
+				dog.marker:SetAttribute("GreetUserId", player.UserId)
+				dog.marker:SetAttribute("GreetLine", lastLine)
+				dog.marker:SetAttribute("GreetId", ((dog.marker:GetAttribute("GreetId") :: number?) or 0) + 1)
+			end
 		end
 	end)
 end

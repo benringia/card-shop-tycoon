@@ -6,6 +6,14 @@
 local WeaponRules = if game ~= nil
 	then require((script.Parent :: Instance):WaitForChild("WeaponRules")) :: any
 	else require("./WeaponRules") :: any
+-- the elements' plain names (Config/ElementNames, owner 2026-11-12)
+local Names = if game ~= nil
+	then require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Config"):WaitForChild("ElementNames")) :: any
+	else require("../Config/ElementNames") :: any
+local function elementName(key: string): string
+	local name = Names[key]
+	return if typeof(name) == "string" then name else key
+end
 
 export type Row = { label: string, value: string }
 export type Line = { text: string, enough: boolean }
@@ -73,7 +81,7 @@ function WeaponText.stats(cfg: any, weaponId: string, owned: { grade: string, le
 		{ label = "Power", value = string.format("x%.2f", WeaponRules.shownPower(cfg, combat, weaponId, grade, level)) },
 	}
 	local element = if weapon.prism then "Every element · bonds with every creature"
-		elseif weapon.element then `{weapon.element} · bonds with {weapon.element} creatures`
+		elseif weapon.element then `{elementName(weapon.element)} · bonds with {elementName(weapon.element)} creatures`
 		else "None"
 	table.insert(rows, { label = "Element", value = element })
 	local perk = WeaponRules.perk(cfg, weaponId, grade)
@@ -361,7 +369,7 @@ function WeaponText.bond(cfg: any, weaponId: string): string?
 	if not weapon or (not weapon.prism and not weapon.element) then
 		return nil
 	end
-	local who = if weapon.prism then "every creature" else `{weapon.element} creatures`
+	local who = if weapon.prism then "every creature" else `{elementName(weapon.element)} creatures`
 	return `+{percent(cfg.BOND.damage - 1)} hits and a {percent(cfg.BOND.meter - 1)} faster super with {who}`
 end
 

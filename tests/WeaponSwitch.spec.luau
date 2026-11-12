@@ -37,6 +37,37 @@ local function readyCopy(cfg: any): any
 end
 
 return {
+	-- owner 2026-11-12: "add a carousel effect which I can see whats next or previous weapon but smaller"
+	["the carousel's neighbours: both with three or more, only the next with two, none with one"] = function()
+		local before, after = WeaponSwitch.neighbours({ "a", "b", "c" }, "a")
+		expect.equal(before, "c", "the one before wraps round")
+		expect.equal(after, "b")
+		local middleBefore, middleAfter = WeaponSwitch.neighbours({ "a", "b", "c", "d" }, "c")
+		expect.equal(middleBefore, "b")
+		expect.equal(middleAfter, "d")
+		local twoBefore, twoAfter = WeaponSwitch.neighbours({ "a", "b" }, "a")
+		expect.equal(twoBefore, nil, "two weapons: the other one shows once, on the right")
+		expect.equal(twoAfter, "b")
+		local oneBefore, oneAfter = WeaponSwitch.neighbours({ "a" }, "a")
+		expect.equal(oneBefore == nil and oneAfter == nil, true, "one weapon: none")
+		local _, unknownAfter = WeaponSwitch.neighbours({ "a", "b", "c" }, "z")
+		expect.equal(unknownAfter, "b", "an unknown weapon counts as the first")
+	end,
+
+	-- spec 2026-11-12-timed-upgrades-revive-design: an item being upgraded is locked till done
+	["a weapon in the Forge is out of the switch till it's back"] = function()
+		local someOwnedId
+		for _, weapon in Weapons.WEAPONS do
+			if weapon.ready and weapon.id ~= Weapons.STARTER then
+				someOwnedId = weapon.id
+				break
+			end
+		end
+		local owned = { [someOwnedId] = { grade = "B", level = 2 } }
+		expect.equal(table.find(WeaponSwitch.list(Weapons, owned, true), someOwnedId) ~= nil, true, "owned: in the switch")
+		expect.equal(table.find(WeaponSwitch.list(Weapons, owned, true, { [someOwnedId] = true }), someOwnedId), nil, "in the Forge: out")
+	end,
+
 	["nothing to switch below the sword's shop level, or with only the Steel Sword"] = function()
 		expect.equal(#WeaponSwitch.list(Weapons, {}, false), 0)
 		local only = WeaponSwitch.list(Weapons, {}, true)
@@ -78,6 +109,7 @@ return {
 	["the scythes come after the spears, the Forge Scythes together, then by rarity"] = function()
 		local owned = { riftReaper = {}, forgeScythe_Volt = {}, stormReaper = {}, forgeScythe_Ember = {}, widowsReaper = {}, forgeSpear_Tide = {} }
 		local list = WeaponSwitch.list(readyCopy(Weapons), owned, true)
-		expect.equal(table.concat(list, ","), "starterSword,forgeSpear_Tide,forgeScythe_Ember,forgeScythe_Volt,widowsReaper,stormReaper,riftReaper")
+		-- the Forge Scythes by name: Electric before Fire since the plain element names (owner 2026-11-12)
+		expect.equal(table.concat(list, ","), "starterSword,forgeSpear_Tide,forgeScythe_Volt,forgeScythe_Ember,widowsReaper,stormReaper,riftReaper")
 	end,
 }

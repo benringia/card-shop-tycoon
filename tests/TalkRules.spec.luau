@@ -46,6 +46,10 @@ local function eachLine(visit: (where: string, text: string) -> ())
 			visit(`after {id}[{i}]`, text)
 		end
 	end
+	-- Town Pish's hellos (owner 2026-11-12: "npc pish should also greet people like chikin"), with a long name
+	for i, text in PishTalk.GREETS do
+		visit(`greet[{i}]`, string.format(text, "Twentycharactername1"))
+	end
 end
 
 return {
@@ -68,6 +72,15 @@ return {
 		end
 		for _, kind in { "order", "stock" } do
 			assert(PishTalk.NUDGES[kind], `nudge {kind}`)
+		end
+	end,
+
+	["Town Pish greets players who come near, like Town Chikin"] = function()
+		local greet = Pish.TOWN.greet
+		expect.equal(greet ~= nil and greet.range > 0 and greet.cooldown >= 20 and #greet.clips > 0, true, "his greet settings")
+		expect.equal(#PishTalk.GREETS >= 3, true, "a few hellos, so they don't repeat")
+		for i, text in PishTalk.GREETS do
+			expect.equal(string.find(text, "%s", 1, true) ~= nil, true, `greet[{i}] names the player`)
 		end
 	end,
 

@@ -290,7 +290,9 @@ local function buildValleySigns(folder: Instance)
 	end
 	TrailProps.trailhead(folder, facingTrail(ValleyConfig.RETURN_SIGN), ValleyConfig.HOME.title, nil)
 	for index, zone in Wild.ZONES do
-		TrailProps.trailhead(folder, facingTrail(ValleyConfig.BIOMES[index].board), string.upper(zone.name), `Lv {zone.minLevel}-{zone.maxLevel}`)
+		-- a dangerous zone says so under its levels (owner 2026-11-12)
+		local levels = `Lv {zone.minLevel}-{zone.maxLevel}`
+		TrailProps.trailhead(folder, facingTrail(ValleyConfig.BIOMES[index].board), string.upper(zone.name), if zone.danger then `{levels} · {Combat.DANGER.signLine}` else levels)
 	end
 	local homeColor = Props.color(Town.PORTAL_EFFECTS[ValleyConfig.HOME.look].ring)
 	for _, post in ValleyConfig.ARROWS do
@@ -594,32 +596,46 @@ local function nearestPlayer(position: Vector3, skipBusy: boolean?): (Player?, n
 	return best, bestDistance
 end
 
+-- Who a monster in a dangerous place is chasing (its marker's ChasingUserId: clients show a "!" and growl; owner
+-- 2026-11-12), or nobody
+local function setChasing(monster: Monster, userId: number?)
+	if monster.marker:GetAttribute("ChasingUserId") ~= userId then
+		monster.marker:SetAttribute("ChasingUserId", userId)
+	end
+end
+
 local function updateMonster(monster: Monster, dt: number, now: number)
 	if not monster.alive or monster.fightingPlayer or monster.boss then
+		setChasing(monster, nil)
 		return
 	end
 	local player, distance = nearestPlayer(monster.marker.Position)
 	if not player or distance > Wild.WAKE_RADIUS then
+		setChasing(monster, nil)
 		return -- asleep: nobody near
 	end
 	local zone = Wild.ZONES[monster.zone]
 	local aggressive = monster.elite or (zone ~= nil and zone.aggro)
+	local dangerous = zone ~= nil and zone.danger == true
 	local fromHome = (monster.marker.Position - monster.home).Magnitude
 	local prey, preyDistance = nearestPlayer(monster.marker.Position, true)
 	if aggressive and prey and now >= monster.chaseCooldownUntil and preyDistance <= Wild.AGGRO_RADIUS and fromHome <= Wild.CHASE_GIVE_UP then
 		player, distance = prey, preyDistance
 		local root = getRoot(player) :: BasePart
 		if distance <= Wild.CONTACT_DISTANCE then
+			setChasing(monster, nil)
 			monster.chaseCooldownUntil = now + Wild.CHASE_REST_SECONDS
 			monster.wanderTarget = monster.home
 			for _, callback in contactCallbacks do
 				task.spawn(callback, player, monster)
 			end
 		else
+			setChasing(monster, if dangerous then player.UserId else nil)
 			moveToward(monster, root.Position, Wild.CHASE_SPEED, dt)
 		end
 		return
 	end
+	setChasing(monster, nil)
 	if fromHome > Wild.CHASE_GIVE_UP then
 		monster.chaseCooldownUntil = now + Wild.CHASE_REST_SECONDS
 		monster.wanderTarget = monster.home -- too far from home: walk back

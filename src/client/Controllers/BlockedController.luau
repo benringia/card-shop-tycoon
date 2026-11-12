@@ -25,7 +25,8 @@ local function rgb(values: { number }): Color3
 end
 
 -- The locked card: a lock, "Not yet", the reason; pops in, shakes once, floats away
-local function showCard(reason: string)
+-- `title`, `icon`: another heading for the card (a knockout's "Knocked out!"), else Config/Blocked's
+local function showCard(reason: string, title: string?, icon: string?)
 	local now = os.clock()
 	if reason == lastShown.reason and now - lastShown.at < UiConfig.REPEAT_SECONDS then
 		return -- the same refusal again a moment later (a held key, a double tap)
@@ -88,8 +89,8 @@ local function showCard(reason: string)
 		stroke.Parent = label
 		label.Parent = card
 	end
-	line(UiConfig.ICON, 40, Color3.new(1, 1, 1), 1, Enum.Font.FredokaOne)
-	line(UiConfig.TITLE, 28, rgb(UiConfig.EDGE), 2, Enum.Font.FredokaOne)
+	line(icon or UiConfig.ICON, 40, Color3.new(1, 1, 1), 1, Enum.Font.FredokaOne)
+	line(title or UiConfig.TITLE, 28, rgb(UiConfig.EDGE), 2, Enum.Font.FredokaOne)
 	line(reason, 22, Color3.new(1, 1, 1), 3, Enum.Font.GothamBold)
 	local scale = Instance.new("UIScale")
 	scale.Scale = 0.4
@@ -150,7 +151,13 @@ end
 function BlockedController.Start()
 	Remotes.Blocked.OnClientEvent:Connect(function(payload)
 		if typeof(payload) == "table" and typeof(payload.reason) == "string" then
-			showCard(payload.reason)
+			showCard(payload.reason, if typeof(payload.title) == "string" then payload.title else nil, if typeof(payload.icon) == "string" then payload.icon else nil)
+			-- a dangerous monster shoving you off (BattleService onContact): your own character, so your client moves it
+			local character = player.Character
+			local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
+			if typeof(payload.shove) == "Vector3" and root and root:IsA("BasePart") then
+				root.AssemblyLinearVelocity = payload.shove
+			end
 		end
 	end)
 	ProximityPromptService.PromptShown:Connect(dressPrompt)

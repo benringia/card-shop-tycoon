@@ -257,6 +257,57 @@ return {
 		expect.equal(junk.combat.firstVisit, "done", "unknown counts as done")
 	end,
 
+	-- owner 2026-11-13: titles stay earned once earned; new ones are told once and marked new till the Titles tab is seen
+	["v23: titles known and new start empty, not seeded; junk cleaned"] = function()
+		local data: any = { version = 22 }
+		Migrations.run(data, 23)
+		expect.equal(data.version, 23)
+		expect.equal(#data.titles.known == 0 and #data.titles.fresh == 0 and data.titles.seeded == false, true)
+		local junk: any = { version = 22, titles = { known = { "tycoon", 5 }, fresh = "x", seeded = true } }
+		Migrations.run(junk, 23)
+		expect.equal(table.concat(junk.titles.known, ","), "tycoon", "only names kept")
+		expect.equal(#junk.titles.fresh == 0 and junk.titles.seeded == true, true)
+	end,
+
+	-- "Support the dev" (owner 2026-11-12): how many gifts and the best tier
+	["v22: support starts at no gifts; a saved one kept, junk cleaned"] = function()
+		local data: any = { version = 21 }
+		Migrations.run(data, 22)
+		expect.equal(data.version, 22)
+		expect.equal(data.support.gifts == 0 and data.support.best == 0, true, "nobody gave yet")
+		local junk: any = { version = 21, support = { gifts = "x", best = 2 } }
+		Migrations.run(junk, 22)
+		expect.equal(junk.support.gifts == 0 and junk.support.best == 2, true)
+	end,
+
+	-- spec 2026-11-12-timed-upgrades-revive-design: station jobs, unused skips, remembered receipts
+	["v21: upgrades, skip tokens and purchases start empty; junk replaced"] = function()
+		local data: any = { version = 20 }
+		Migrations.run(data, 21)
+		expect.equal(data.version, 21)
+		expect.equal(typeof(data.upgrades) == "table" and next(data.upgrades) == nil, true, "no jobs")
+		expect.equal(data.skipTokens.S == 0 and data.skipTokens.M == 0 and data.skipTokens.L == 0, true, "no skips")
+		expect.equal(typeof(data.purchases) == "table" and #data.purchases == 0, true, "no receipts")
+		local junk: any = { version = 20, purchases = "x", skipTokens = { S = 2, M = "y" }, upgrades = 5 }
+		Migrations.run(junk, 21)
+		expect.equal(typeof(junk.purchases) == "table" and #junk.purchases == 0, true, "junk receipts: none")
+		expect.equal(junk.skipTokens.S == 2 and junk.skipTokens.M == 0 and junk.skipTokens.L == 0, true, "a good count kept, junk zero")
+		expect.equal(typeof(junk.upgrades) == "table", true, "junk jobs: none")
+	end,
+
+	["v20: title added (\"\": automatic); a saved string kept"] = function()
+		local data: any = { version = 19 }
+		Migrations.run(data, 20)
+		expect.equal(data.title, "", "automatic for everyone")
+		expect.equal(data.version, 20)
+		local kept: any = { version = 19, title = "crystalSeeker" }
+		Migrations.run(kept, 20)
+		expect.equal(kept.title, "crystalSeeker")
+		local junk: any = { version = 19, title = 5 }
+		Migrations.run(junk, 20)
+		expect.equal(junk.title, "", "junk: automatic")
+	end,
+
 	["v19: dungeon.secretFound added, false; a present one kept"] = function()
 		local data: any = { version = 18 }
 		Migrations.run(data, 19)

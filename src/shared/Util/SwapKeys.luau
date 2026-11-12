@@ -5,9 +5,10 @@
 local SwapKeys = {}
 
 -- beastId: the key's party slot card; reserves: sim ids that may come in; fighters: yours on the field; swaps: a boss
--- fight's swaps (they cool down swapIn seconds). Returns "swap" and the sim id, "cooling" and the seconds left,
--- "active", "resting" or "none" (an empty slot)
-function SwapKeys.pick(beastId: string?, reserves: { string }, fighters: { { id: string, fainted: boolean } }, swaps: boolean, swapIn: number): (string, any)
+-- fight's swaps (they cool down swapIn seconds); unsummon: a wild fight, where the card fighting can be unsummoned
+-- (owner 2026-11-12; it waits out the same cooldown). Returns "swap" and the sim id, "unsummon" and the sim id,
+-- "cooling" and the seconds left, "active", "resting" or "none" (an empty slot)
+function SwapKeys.pick(beastId: string?, reserves: { string }, fighters: { { id: string, fainted: boolean } }, swaps: boolean, swapIn: number, unsummon: boolean?): (string, any)
 	if not beastId then
 		return "none", nil
 	end
@@ -20,7 +21,10 @@ function SwapKeys.pick(beastId: string?, reserves: { string }, fighters: { { id:
 	end
 	for _, fighter in fighters do
 		if fighter.id == id and not fighter.fainted then
-			return "active", nil
+			if unsummon and swaps and swapIn > 0.05 then
+				return "cooling", swapIn
+			end
+			return if unsummon then "unsummon" else "active", if unsummon then id else nil
 		end
 	end
 	return "resting", nil

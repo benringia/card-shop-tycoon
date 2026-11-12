@@ -20,6 +20,7 @@ local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local ElementBadge = require(ClientUtil:WaitForChild("ElementBadge"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 
 type Card = typeof(Cards.List[1])
@@ -218,7 +219,7 @@ local function renderPane(part: BasePart?)
 	local market = getMarket(part, card, foil)
 	local info = UIKit.label(pane, table.concat({
 		`{card.name}{if foil then " (FOIL)" else ""}`,
-		`{card.rarity} · {card.element} · #{card.number}`,
+		`{card.rarity} · {ElementBadge.name(card.element)} · #{card.number}`,
 		describeKind(part),
 		`Power {power} · HP {stats.hp}  ATK {stats.atk}  SPD {stats.spd}`,
 		BeastRules.describeStarProgress(stars),

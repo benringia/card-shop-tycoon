@@ -81,6 +81,7 @@ return {
 		grading = "The Grading Station is here! Grade your cards.",
 		jobs = "Your cards can work now! Tap Jobs.",
 		trophy = "You won a trophy! Show it off in your shop.",
+		titles = "You earned a title! Tap your face to equip it.",
 	} :: { [string]: string },
 
 	-- Once it's placed or ordered, Pish runs to it and says what it's for, one line at a time with Next (the last one
@@ -162,6 +163,19 @@ return {
 
 	-- The small Skip button and the tour card it opens (round 3, owner's pick A: "just put a skip icon on the top right
 	-- and if they click it. the progress and discouragement element shows up"); `tour` takes the step and the count
+	-- Town Pish's hellos to a player who comes near (owner 2026-11-12; %s: their name)
+	GREETS = {
+		"Woof! Hi, %s!",
+		"%s! Welcome back to town!",
+		"Hi %s! Sold any cards today?",
+		"Arf! %s! Pet me for luck!",
+	},
+	-- ... and to a supporter ("Support the dev", owner 2026-11-12: the town dogs thank you)
+	THANKS = {
+		"Thank you, %s! 💛",
+		"%s, you made our day! 💛",
+		"Woof! Our hero, %s! 💛",
+	},
 	LABELS = {
 		tour = "Pish's Tour · %d of %d",
 		skip = "Skip",

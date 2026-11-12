@@ -15,9 +15,11 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local CustomerConfig = require(Config:WaitForChild("Customers"))
 local Pish = require(Config:WaitForChild("Pish"))
+local PishTalk = require(Config:WaitForChild("PishTalk"))
 local Plaza = require(Config:WaitForChild("Plaza"))
 local PlotConfig = require(Config:WaitForChild("Plots"))
 local Town = require(Config:WaitForChild("Town"))
+local PishPath = require(Shared:WaitForChild("Util"):WaitForChild("PishPath"))
 local Wild = require(Config:WaitForChild("Wild"))
 local LuckRules = require(Shared:WaitForChild("Util"):WaitForChild("LuckRules"))
 local WalkerRules = require(Shared:WaitForChild("Util"):WaitForChild("WalkerRules"))
@@ -33,6 +35,7 @@ local PishService = {}
 
 local PET_COOLDOWN = 2 -- seconds between one player's pets (the cuddle plays every time)
 local DOOR_STEP = 3 -- studs out in front of a shop's doorway, on the sidewalk
+local PAD_CLEARANCE = 2 -- studs he keeps past the delivery pad's outer edge coming and going (PishPath.shopApproach)
 
 local rng = Random.new()
 local dog: TownDog.Dog
@@ -42,8 +45,8 @@ local allowPet = RateLimiter.new(PET_COOLDOWN)
 
 local ground = TownDog.ground
 
--- An open shop's doorway (its owner in the game), seen from the street, and its owner; or nil
-local function shopDoor(): (Vector3?, Vector3?, Player?)
+-- An open shop's doorway (its owner in the game), seen from the street, its owner, and where he comes in from; or nil
+local function shopDoor(): (Vector3?, Vector3?, Player?, Vector3?)
 	local open = {}
 	for _, plot in PlotService.GetPlots() do
 		if plot.owner and plot.owner.Parent then
@@ -51,24 +54,28 @@ local function shopDoor(): (Vector3?, Vector3?, Player?)
 		end
 	end
 	if #open == 0 then
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	end
 	local plot = open[rng:NextInteger(1, #open)]
 	local floor = plot.floor
 	local outward = Vector3.new(floor.CFrame.LookVector.X, 0, floor.CFrame.LookVector.Z).Unit
 	local doorway = floor.Position + outward * PlotConfig.DEPTH / 2
 	local outside = doorway + outward * DOOR_STEP
-	return ground(outside.X, outside.Z), ground(doorway.X, doorway.Z), plot.owner
+	-- out past the delivery pad beside the doors: he comes in square to the door from there and leaves the same way
+	local pad = Town.DELIVERY
+	local approach = PishPath.shopApproach({ x = doorway.X, z = doorway.Z }, { x = outward.X, z = outward.Z }, pad.GAP + pad.SIZE[3], PAD_CLEARANCE)
+	return ground(outside.X, outside.Z), ground(doorway.X, doorway.Z), plot.owner, ground(approach.x, approach.z)
 end
 
 local function day()
 	while true do
 		local town = Pish.TOWN
-		local door, doorway, owner = nil, nil, nil
+		local door, doorway, owner, approach = nil, nil, nil, nil
 		if rng:NextNumber() < town.shopChance then
-			door, doorway, owner = shopDoor()
+			door, doorway, owner, approach = shopDoor()
 		end
-		if door and doorway and owner then
+		if door and doorway and owner and approach then
+			TownDog.walkTo(dog, approach, town.speed)
 			TownDog.walkTo(dog, door, town.speed)
 			TownDog.face(dog, doorway)
 			TownDog.play(dog, if rng:NextNumber() < 0.5 then "sit" else "sniff")
@@ -76,6 +83,7 @@ local function day()
 			dog.marker:SetAttribute("VisitingOwner", owner.UserId)
 			TownDog.waitFor(dog, rng:NextNumber(town.visitSeconds[1], town.visitSeconds[2]))
 			dog.marker:SetAttribute("VisitingOwner", 0)
+			TownDog.walkTo(dog, approach, town.speed) -- back out past the pad before heading on
 		elseif #stops > 0 then
 			TownDog.walkTo(dog, stops[rng:NextInteger(1, #stops)], town.speed)
 			TownDog.idle(dog, town.idleClips, town.napChance, rng)
@@ -164,6 +172,11 @@ function PishService.Start()
 	dog = made
 	prompt.Triggered:Connect(onPet)
 	task.spawn(day)
+	-- He greets players who come near, like Town Chikin (owner 2026-11-12), not one his tutorial self is leading
+	TownDog.greet(made, Pish.TOWN.greet, #PishTalk.GREETS, #PishTalk.THANKS, function(player: Player): boolean
+		local step = player:GetAttribute("TutorialStep")
+		return typeof(step) == "string" and step ~= ""
+	end, rng)
 end
 
 return PishService
