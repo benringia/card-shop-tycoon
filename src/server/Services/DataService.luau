@@ -80,6 +80,7 @@ export type PlayerData = {
 	equippedWeapon: string, -- the weapon in hand (Config/Weapons id; the Steel Sword until another is equipped)
 	tutorial: any, -- the first visit with Pish, his lessons and luck (TutorialService; Util/TutorialRules.Saved)
 	combat: any, -- Chikin's combat tutorial (CombatTutorialService; the same shape, Config/Chikin STEPS)
+	dungeon: { secretFound: boolean, seenIntro: boolean }, -- found the Dungeon's secret chest once (BossService: the title Crystal Seeker); saw the Hydra's full welcome
 }
 
 export type Handler = {
@@ -118,6 +119,7 @@ local TEMPLATE: PlayerData = {
 	equippedWeapon = "starterSword",
 	tutorial = { firstVisit = "todo", step = 1, early = {}, firstGiven = false, giftClaimed = false, customerSent = false, lessons = {}, pishLuckAt = 0 },
 	combat = { firstVisit = "todo", step = 1, early = {}, firstGiven = false, giftClaimed = false, customerSent = false, lessons = {}, pishLuckAt = 0 },
+	dungeon = { secretFound = false, seenIntro = false },
 }
 
 local DataService = {}

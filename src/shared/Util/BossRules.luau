@@ -22,6 +22,15 @@ local function readCount(value: unknown): number
 end
 
 -- A saved record made safe; startsOpen: the boss needs no key
+-- The title over a player's name: a cleared boss's (Dungeon Conqueror) outranks the Dungeon's secret one (Crystal
+-- Seeker, `secretTitle`) once that is found; neither: none
+function BossRules.pickTitle(clearTitle: string?, secretFound: boolean, secretTitle: string): string?
+	if clearTitle then
+		return clearTitle
+	end
+	return if secretFound then secretTitle else nil
+end
+
 function BossRules.read(saved: unknown, startsOpen: boolean): Record
 	local data: any = if typeof(saved) == "table" then saved else {}
 	return {

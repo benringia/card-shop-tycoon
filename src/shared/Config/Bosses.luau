@@ -54,6 +54,7 @@ export type Boss = {
 	announceEverywhere: boolean?, -- its first clear is told to every server of the experience, not just this one
 	clearTitle: string?, -- shown over the name, in every place, of everyone who has cleared it
 	heads: { string }?, -- its model's heads' elements, head 0 first (bones Hydra_<n>_3): the active phase's head glows
+	phaseGlow: boolean?, -- its model's glow mask (rune lines) shines in the current phase's element colour
 	ringRadius: number?, -- how far its fighters stand from it (nil: RING_RADIUS); a huge model needs more room
 	-- Sometimes a swipe comes huge: this chance, its length and half angle times these (RingRules.swipeSize)
 	hugeSwipe: { chance: number, length: number, halfAngle: number }?,
@@ -323,7 +324,10 @@ local BOSSES: { [string]: Boss } = {
 		scale = 7.0,
 		ringRadius = 21,
 		introShot = { back = 44, up = 22 },
-		rainbowAura = true,
+		rainbowAura = false, -- off for now (owner 2026-11-12: "remove the Hydra's glow at the moment")
+		-- walks round its ring between its moves, more and further than other bosses (owner 2026-11-12: "add a walking
+		-- around movement instead of standing still"): Bosses.IDLE with these instead (MonsterController)
+		idle = { gap = { 0.3, 0.9 }, weights = { wander = 0.85, roar = 0.1, stomp = 0.05 }, wander = { radius = 7, front = 2, back = 1.2, speed = 8 } },
 		auroraFlame = true,
 		element = "Tide", -- phase 1's
 		level = 55,
@@ -334,16 +338,21 @@ local BOSSES: { [string]: Boss } = {
 		shopLevel = 57,
 		groupAtkStep = 0.3,
 		minFightSeconds = 120,
-		playerAttacks = { every = 5, warning = 0.9, big = 0.60, quick = 0.20, doubleChance = 0.35, shape = "swipe", debuff = "byPhase" }, -- prism beam
+		-- its rainbow rock fissure (the cone) or a quick bite at a player, every 10 s (owner 2026-11-12; was 5)
+		playerAttacks = { every = 10, warning = 0.9, big = 0.60, quick = 0.20, doubleChance = 0.35, shape = "swipe", debuff = "byPhase" },
 		unlock = { item = "fragment_prismHydra", count = 10 },
 		announceEverywhere = true,
 		clearTitle = "Dungeon Conqueror",
 		heads = { "Ember", "Tide", "Volt", "Shade", "Bloom" }, -- the middle head (0) is the finale's
+		phaseGlow = true, -- the Meshy temple guardian's rune lines (spec 2026-11-11-dungeon-puzzles)
+		arenaRadius = 48, -- a bigger chamber (owner 2026-11-12: "arenas should be bigger")
 		mechanics = {},
 		phases = {
 			{ below = 1, element = "Tide", mechanics = { shield = { every = 20, fraction = 0.06, breakStun = 3 } } },
-			{ below = 0.8, element = "Volt", mechanics = { thunderclap = { every = 14, seconds = 2.5, minFactor = 0.3, maxFactor = 1.5 } } },
-			{ below = 0.6, element = "Shade", mechanics = { adds = { at = { 0.6 }, count = 2, hpShare = 0.04, atkShare = 0.35, guard = 0.5, species = "Rift Horror" } } },
+			-- the Storm Sovereign's warned thunderclap and the Rift Devourer's summoning through rifts, with their looks
+			-- (owner 2026-11-12: "thunder clap and summons vfx you can reuse what we already have on frontier bosses")
+			{ below = 0.8, element = "Volt", mechanics = { thunderclap = { every = 14, seconds = 2.5, minFactor = 0.3, maxFactor = 1.5, warning = 2, radius = 26, debuff = "Electrocuted" } } },
+			{ below = 0.6, element = "Shade", mechanics = { adds = { at = { 0.6 }, count = 2, hpShare = 0.04, atkShare = 0.35, guard = 0.5, species = "Rift Horror", size = 2, cast = 1.6, emerge = 1.2, run = 2.8 } } },
 			{ below = 0.4, element = "Bloom", mechanics = { heal = { below = 0.4, fraction = 0.05, cooldown = 20, uses = 2 } } },
 			{ below = 0.2, element = "Ember", mechanics = { enrage = { below = 0.2, atkMultiplier = 1.15 } } },
 		},
@@ -451,6 +460,17 @@ return {
 		roarVolume = 0.45,
 		stompShake = 0.35,
 	},
+	-- A Dungeon room's monsters between their hits (owner 2026-11-12: "make them move around the arena instead of just
+	-- standing still"; MonsterController, BossIdleRules): mostly short walks round their own spot, now and then a roar
+	-- or a stomp; small walks, so a sword aimed at where the server has them still lands
+	IDLE_PACK = {
+		gap = { 0.5, 1.4 },
+		after = 0.25,
+		weights = { wander = 0.8, roar = 0.1, stomp = 0.1 },
+		wander = { radius = 5, front = 2, back = 1, speed = 9 },
+		roarVolume = 0.15, -- a room monster's roar, halved (owner 2026-11-12: "lower the roaring sound")
+		stompShake = 0.1,
+	},
 	-- The bosses' moment effects (moments.heal / enrage), ParticleEmitters on their Fx_ bones, numbers as Config/Wild FX;
 	-- `burst` emits that many at once (a one-off), else `rate` per second while it lasts. Sizes in studs at the boss's size;
 	-- `zOffset` draws them that many studs toward the camera (an effect that starts inside the model)
@@ -496,6 +516,7 @@ return {
 	-- these bones at `height` x its model's height, few and see-through so they sit over the glow without hiding it
 	-- (studs at the boss's size; per bone)
 	AURORA_FLAME = { bones = { "Spine_0", "Spine_1", "Pelvis" }, height = 0.5, rate = 12, sizeStart = 8, sizeEnd = 2.5, lifetimeMin = 1, lifetimeMax = 1.6, rise = 10, transparency = 0.3 },
+	FAR_MOVE = 300, -- a member this far from the ring is streamed in before being moved in (BossService)
 	ADD_SPACING = 6, -- studs between a boss and its adds (left and right of it)
 	-- Summons through rifts (adds.run, the Rift Devourer's; Util/SummonRules): each comes out at a corner of the arena,
 	-- `cornerShare` of its radius from the centre (random corners, different ones in a wave), runs to its pet at the

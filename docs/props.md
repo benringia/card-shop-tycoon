@@ -138,6 +138,76 @@ the Frame its PrimaryPart, the pivot at the bottom centre. Positions are `Config
 holds the pieces placed outside the scenery clearances (the ribcage over the trail, the arch round the Dungeon portal,
 the camp, the floating rocks hung at their own `y`).
 
+## Dungeon props (DungeonPillar ... CrackedWall)
+
+The Dungeon's crystal-grown temple ruins and its puzzle pieces (spec `2026-11-11-dungeon-puzzles-design.md`, the
+owner's look C; concept `assets/blender/DungeonProps/concept_look.png`), built by `tools/blender/build_dungeon_props.py`
+on `voxel_kit` / `portal_kit` (smooth chunky stone in cool indigo, gold trim, Glow for rune lines and crystals):
+`DungeonPillar`, `DungeonPillarBroken`, `DungeonArch` (a broken gateway), `DungeonWall`, `DungeonSlab`, `DungeonSteps`,
+`DungeonBrazier`, `DungeonGate` (round every door; its 14-stud opening fits the door), `DungeonCrystals`, and the puzzle
+pieces `BeamGem`, `CrystalMirror`, `DoorPrism`, `StonePlate`, `CrystalPylon`, `ElementCrystal`, `CrackedWall`. The ruins
+are named `Dungeon<Piece>` because the Wild valley already has `RuinPillar`, `RuinArch`... (and the script's palettes go
+to `assets/blender/<Name>/`).
+
+1. `blender -b --factory-startup --python tools/blender/build_dungeon_props.py` writes
+   `assets/blender/DungeonProps/DungeonProps.{blend,fbx}` (`EXPORT=0` to try without saving; preview renders:
+   `MODULE=build_dungeon_props PROPS=<Name> blender -b --factory-startup --python tools/blender/render_valley_props.py -- <out>`,
+   one prop per run: several in one run crashed Blender 5.2's background render).
+2. The owner imports the FBX in Studio once (default settings) and saves the imported model as
+   `assets/props-import/DungeonProps.rbxm`.
+3. `lune run tools/props/split_pack assets/props-import/DungeonProps.rbxm` writes `assets/props/<Name>.rbxm`.
+
+The Dungeon builds with them at 1 stud per Blender unit (`DungeonBuilder`'s `prop`): every puzzle piece keeps its part
+(prompt, checks, the sword's target) and wears the prop as a `Look` model under it, welded where the part turns (the
+mirrors); its Glow parts go Neon in the piece's colour, and `DungeonBuilder.tint` / `hide` change them (a lit prism, a
+held plate, a broken pylon, the opened wall). Missing props leave the code-built stand-ins.
+
+## The Hydra's castle (DungeonCastle)
+
+The castle at the end of the Crystal Abyss (owner 2026-11-12: "use Blender to draw a proper castle", then "a
+broken/abandoned castle instead of a proper castle"; concept `assets/blender/DungeonWorld/concept_castle.png`), built
+by `tools/blender/build_castle.py` in the Dungeon props' style (it reuses `build_dungeon_props.py`'s palette and pack
+export): a long-abandoned ruin round a 30-wide gate gap (the Frontier's Dungeon portal model at 1.3x stands in it, the
+Hydra's door sealing it): front, side and back walls of uneven height, breached in several places with rubble at their
+feet and most crenels gone, moss on their faces; two gatehouse towers (one a broken stump, one with a leaning spire),
+a battlement over the gate with the hydra's sigil, four corner towers (three broken off, one still spired), a keep
+with its roof fallen in and one window still lit (Glow), crystals growing through. About 10800 triangles in one prop
+of its own pack: run it in a background Blender, import `assets/blender/DungeonCastle/DungeonCastle.fbx` (default
+settings), save the model as `assets/props-import/DungeonCastle.rbxm` and run
+`lune run tools/props/split_pack assets/props-import/DungeonCastle.rbxm`. split_pack pivots it at the bottom centre
+of its bounds, not at the gate: the script prints where that pivot sits from the gate (`pivot = {...}`); copy it into
+`ABYSS.CASTLE.model.pivot` after a rebuild. `DungeonBuilder` stands its gate on the castle island's gate, gives its
+stone the region's rock colour and Slate under the texture (what shows while a fresh texture upload isn't served
+yet, instead of black), and makes its walls and towers solid with invisible blocks (`ABYSS.CASTLE.model`; a big
+mesh's collision can't be set by a script); Terrain walls stand in until it's imported.
+
+## Dungeon world props (DungeonIslandGate ... DungeonSigil) and the Dungeon portal
+
+The Crystal Abyss's pieces (spec `2026-11-12-dungeon-world-design.md`, the owner's concept A; concepts in
+`assets/blender/DungeonWorld/concept_*.png`), built by `tools/blender/build_dungeon_world.py` in the Dungeon props'
+style (it reuses `build_dungeon_props.py`'s palette, shards and pack export): `DungeonIslandGate` (the arch round each
+island's barrier; its opening 12 wide and 14 tall), `DungeonHydraDoor` (the Hydra's round door, radius 13, 2.4 thick: a
+five-headed hydra in relief whose eyes are the lock's sockets, placed by the game on an arc of radius 7.15 round a
+point 2 below its middle), `DungeonBridge` (an 8 x 12 segment, its walking top 1.4 over its bottom; the game tiles it),
+`DungeonChain` (60 long, hung from the ceiling) and `DungeonSigil` (the hydra sigil in each fight ring's floor). Caps
+2000 triangles, the door 4000. The game places each on a part of its own (the floors, the bridge slabs, the barriers stay
+code parts), so missing props leave code stand-ins.
+
+1. `blender -b --factory-startup --python tools/blender/build_dungeon_world.py` writes
+   `assets/blender/DungeonWorld/DungeonWorld.{blend,fbx}` (`PROPS=`, `EXPORT=0` as above; previews:
+   `MODULE=build_dungeon_world PROPS=<Name> blender -b --factory-startup --python tools/blender/render_valley_props.py -- <out>`).
+2. Import the FBX in Studio once (default settings), save the imported model as `assets/props-import/DungeonWorld.rbxm`.
+3. `lune run tools/props/split_pack assets/props-import/DungeonWorld.rbxm` writes `assets/props/<Name>.rbxm`.
+
+The Frontier's way into the Dungeon, `PortalDungeon` (a cave-mouth arch with five hydra heads, crystals, steps down into
+the swirl), is built by `tools/blender/build_portal_dungeon.py` on `portal_kit.py` like the town portals below: parts
+`Frame`, `Crystals` (glowing violet), `Opening`, `Fx_Base`, `Eye1`..`Eye5` (each dragon head's eyes, left to right:
+glowing in the Hydra's elements here, dark on the Hydra's castle gate until its lock is solved); five scowling dragon
+heads with horns and open jaws (owner 2026-11-12: "it looks like a duck"), 3904 triangles (the portal cap 4000); 26
+studs tall (`Town.SLOTS.PortalDungeon`), look
+`Town.PORTAL_LOOKS.Dungeon`; saved as `assets/props/PortalDungeon.rbxm`. Until it's saved the gate shows `PortalArena`
+in the Arena look (`FrontierValley.DUNGEON_GATE.fallback`).
+
 ## Models with unions (PlaceProps)
 
 Rojo's live sync can't carry union (CSG) shapes: a synced UnionOperation arrives empty and invisible. So models

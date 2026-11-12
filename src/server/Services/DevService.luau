@@ -55,6 +55,7 @@ local CombatTutorialService = require(Services:WaitForChild("CombatTutorialServi
 local SwordService = require(Services:WaitForChild("SwordService"))
 local BattleService = require(Services:WaitForChild("BattleService"))
 local JobService = require(Services:WaitForChild("JobService"))
+local BossChestService = require(Services:WaitForChild("BossChestService"))
 local BossService = require(Services:WaitForChild("BossService"))
 local CardService = require(Services:WaitForChild("CardService"))
 local CustomerService = require(Services:WaitForChild("CustomerService"))
@@ -69,6 +70,7 @@ local PackService = require(Services:WaitForChild("PackService"))
 local PartyService = require(Services:WaitForChild("PartyService"))
 local WildService = require(Services:WaitForChild("WildService"))
 local DungeonService = require(Services:WaitForChild("DungeonService"))
+local DungeonPuzzleService = require(Services:WaitForChild("DungeonPuzzleService"))
 local RateLimiter = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("RateLimiter"))
 
 type CommandHandler = (player: Player, text: string) -> ()
@@ -239,6 +241,20 @@ local function forceWeaponDrop(player: Player, text: string)
 	BossService.DropWeapon(player, weaponId)
 end
 
+-- "/chests meadowWarden [drop|miss|strong|tired]": that boss's three chests on your screen now, nothing given (a drop
+-- shows a new Grade A copy's reveal; strong / tired: a reduced win's empty chest); miss when left out (spec
+-- 2026-11-11-boss-chests-design)
+local function previewChests(player: Player, text: string)
+	local bossId, kind = string.match(text, "%s+([%w_]+)%s*(%a*)")
+	local weaponId = if bossId then BossService.WeaponOf(bossId) else nil
+	local kinds = { drop = true, miss = true, strong = true, tired = true }
+	if not bossId or not weaponId or (kind ~= "" and not kinds[kind]) then
+		Remotes.Notify:FireClient(player, "Usage: /chests <boss id with a built weapon> [drop|miss|strong|tired] (meadowWarden, prismHydra)", true)
+		return
+	end
+	BossChestService.Preview(player, bossId, weaponId, if kind == "" then "miss" else kind)
+end
+
 -- "/material meadowWarden 20": a boss's weapon material (Config/Weapons MATERIALS)
 local function giveMaterial(player: Player, text: string)
 	local bossId, amountText = string.match(text, "%s+([%w_]+)%s+(%d+)")
@@ -350,6 +366,7 @@ function DevService.Start()
 	addCommand(folder, "weapon", giveWeapon)
 	addCommand(folder, "material", giveMaterial)
 	addCommand(folder, "weapondrop", forceWeaponDrop)
+	addCommand(folder, "chests", previewChests)
 	addCommand(folder, "boss", function(player, text)
 		local index = tonumber(string.match(text, "%s+(%d+)") or "") or 0
 		local gate = BossService.GetGate(index)
@@ -375,6 +392,45 @@ function DevService.Start()
 			return
 		end
 		DungeonService.SkipTo(room, player)
+	end)
+	addCommand(folder, "winroom", function(player)
+		if not Place.isDungeon() then
+			Remotes.Notify:FireClient(player, "Usage (Dungeon window): /winroom (the room the run is at, won)", true)
+			return
+		end
+		DungeonService.WinRoom()
+	end)
+	addCommand(folder, "puzzle", function(player, text)
+		local kind = string.match(text, "%s+(%a+)")
+		if not Place.isDungeon() or not kind then
+			Remotes.Notify:FireClient(player, "Usage (Dungeon window): /puzzle solve (the puzzle the run is at) or /puzzle <beams|plates|lock> (go to it)", true)
+			return
+		end
+		if kind == "solve" then
+			DungeonService.SolvePuzzle(player)
+		else
+			DungeonService.SkipToPuzzle(kind, player)
+		end
+	end)
+	addCommand(folder, "dungeonfx", function(player, text)
+		local kind = string.match(text, "%s+(%a+)")
+		local known = { intro = true, introshort = true, roar = true, glimpse = true }
+		if not Place.isDungeon() or not kind or not known[kind] then
+			Remotes.Notify:FireClient(player, "Usage (Dungeon window): /dungeonfx <intro|introshort|roar|glimpse>", true)
+			return
+		end
+		player:SetAttribute("DungeonFxTest", `{kind}:{os.clock()}`) -- the Dungeon's intro and ambience controllers play it
+	end)
+	addCommand(folder, "tap", function(player, text)
+		local name = string.match(text, "%s+(%S+)")
+		local gate = if name then tonumber(string.match(name, "^RoomGate(%d)$")) else nil
+		if Place.isDungeon() and gate then
+			DungeonService.TapGate(player, gate)
+			return
+		end
+		if not Place.isDungeon() or not name or not DungeonPuzzleService.Tap(player, name) then
+			Remotes.Notify:FireClient(player, "Usage (Dungeon window): /tap <piece> (Mirror1, Plate2, SecretWall, LockCrystal_Tide, Chest_beams...)", true)
+		end
 	end)
 	addCommand(folder, "jobslot", toggleJobSlot)
 	addCommand(folder, "jobtired", function(player)
@@ -720,7 +776,7 @@ function DevService.Start()
 			run(player, text)
 		end
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /weapon <id> [grade] [level], /material <boss id> <amount>, /weapondrop <boss id>, /boss <n> [fight|group], /jobslot, /jobtired, /wild, /rest, /tire, /bosshp <1-100>, /townchikin, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume], /victorysound <1-3>, /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S], /skillfx <sword> [cut1|cut2|cut3|skill] [level]")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /weapon <id> [grade] [level], /material <boss id> <amount>, /weapondrop <boss id>, /chests <boss id> [drop|miss|strong|tired], /boss <n> [fight|group], /jobslot, /jobtired, /wild, /rest, /tire, /bosshp <1-100>, /townchikin, /elite, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume], /victorysound <1-3>, /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S], /skillfx <sword> [cut1|cut2|cut3|skill] [level], /room <2-4>, /winroom, /puzzle <solve|beams|plates|lock>, /tap <piece>, /dungeonfx <intro|introshort|roar|glimpse>")
 end
 
 return DevService

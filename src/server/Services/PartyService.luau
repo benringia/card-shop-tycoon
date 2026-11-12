@@ -36,9 +36,12 @@ type PartyState = {
 	sentPerk: number, -- perk value the client last got, to resend when stars make it grow
 	locked: boolean, -- in a fight (BattleService): no party changes or summons
 	hold: CFrame?, -- in a fight the summoned creature stands here instead of following
+	post: CFrame?, -- sent somewhere (the Dungeon's plates): it walks there and stays until called back or resummoned
 }
 
 local PartyService = {}
+
+local POST_STEP = 0.12 -- share of the way a sent creature's marker moves each tick (a walk, not a dash)
 
 local states: { [Player]: PartyState } = {}
 local changeBlocker: ((player: Player) -> string?)? = nil -- DungeonService: the run's party is set
@@ -97,6 +100,19 @@ function PartyService.SetHold(player: Player, cframe: CFrame?)
 				state.marker.CFrame = cframe
 			end
 		end
+	end
+end
+
+-- Sends the summoned creature to a spot (the Dungeon's plates): it walks there and stays (marker attribute Posted);
+-- nil calls it back. Resummoning or unsummoning calls it back too.
+function PartyService.SetPost(player: Player, cframe: CFrame?)
+	local state = states[player]
+	if not state then
+		return
+	end
+	state.post = cframe
+	if state.marker then
+		state.marker:SetAttribute("Posted", if cframe then true else nil)
 	end
 end
 
@@ -206,6 +222,9 @@ end
 
 local function despawn(player: Player)
 	local state = states[player]
+	if state then
+		state.post = nil -- a new creature follows again
+	end
 	if state and state.marker then
 		PartyService.Dismiss(state.marker)
 		state.marker = nil
@@ -264,6 +283,16 @@ local function moveMarkers()
 		local root = if player.Character then player.Character:FindFirstChild("HumanoidRootPart") :: BasePart? else nil
 		if marker and state.hold then
 			marker.CFrame = state.hold -- in a fight: BattleService places it
+		elseif marker and state.post then
+			-- sent to a spot: walks there (snaps when far, e.g. just summoned) and stays
+			local goal = state.post
+			if (goal.Position - marker.Position).Magnitude > Party.TELEPORT_DISTANCE then
+				marker.CFrame = goal
+			else
+				local step = marker.CFrame:Lerp(goal, POST_STEP)
+				local heading = Vector3.new(goal.X - marker.Position.X, 0, goal.Z - marker.Position.Z)
+				marker.CFrame = if heading.Magnitude > 0.3 then CFrame.lookAt(step.Position, step.Position + heading) else step
+			end
 		elseif marker and root then
 			local entry = Party.CREATURE_MODELS[marker:GetAttribute("CardName") :: string]
 			local target = getFollowCFrame(root, marker.CFrame, if entry and entry.size then entry.size else 1)
@@ -433,7 +462,7 @@ end
 -- Data ----------------------------------------------------------------------------------------------------
 
 local function load(player: Player, data: PlayerData)
-	local state: PartyState = { slots = {}, summoned = nil, marker = nil, hustle = 0, sentPerk = 0, locked = false, hold = nil }
+	local state: PartyState = { slots = {}, summoned = nil, marker = nil, hustle = 0, sentPerk = 0, locked = false, hold = nil, post = nil }
 	local saved: any = if typeof(data.party) == "table" then data.party else {}
 	local savedSlots = if typeof(saved.slots) == "table" then saved.slots else {}
 	local seen: { [string]: boolean } = {}

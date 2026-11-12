@@ -257,6 +257,24 @@ return {
 		expect.equal(junk.combat.firstVisit, "done", "unknown counts as done")
 	end,
 
+	["v19: dungeon.secretFound added, false; a present one kept"] = function()
+		local data: any = { version = 18 }
+		Migrations.run(data, 19)
+		expect.equal(typeof(data.dungeon), "table", "added")
+		expect.equal(data.dungeon.secretFound, false, "not found yet")
+		expect.equal(data.dungeon.seenIntro, false, "the Hydra's welcome not seen yet")
+		expect.equal(data.version, 19)
+		local seen: any = { version = 18, dungeon = { secretFound = false, seenIntro = true } }
+		Migrations.run(seen, 19)
+		expect.equal(seen.dungeon.seenIntro, true, "a seen welcome kept")
+		local found: any = { version = 18, dungeon = { secretFound = true } }
+		Migrations.run(found, 19)
+		expect.equal(found.dungeon.secretFound, true, "kept")
+		local junk: any = { version = 18, dungeon = "junk" }
+		Migrations.run(junk, 19)
+		expect.equal(junk.dungeon.secretFound, false, "junk replaced")
+	end,
+
 	["v5: already graded stacks untouched"] = function()
 		local data: any = { version = 4, cards = { FS01 = { S = { normal = 2, foil = 0 } } } }
 		Migrations.run(data, 5, sequence({ "C" }))

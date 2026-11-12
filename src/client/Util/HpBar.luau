@@ -195,4 +195,26 @@ function HpBar.new(parent: Instance, height: number, look: Look, ghost: Shade): 
 	return { frame = frame, topZIndex = base + 7, set = set, reset = reset, setLook = setLook, destroy = destroy }
 end
 
+-- A small foe's HP bar in the fight's own look, its number over it (owner 2026-11-12: "the second monster's health
+-- bar has no design"; BattleController's pack and adds rows): the top plate's monster bar `height` tall, 14 px under
+-- the holder's top (its name above); `label` makes the number (UIKit.label)
+function HpBar.small(holder: Frame, height: number, label: (Instance, string, Enum.Font, number, Color3) -> TextLabel, textColor: Color3): (Bar, TextLabel)
+	local spec = CombatHudConfig.HP_BAR
+	local bar = HpBar.new(holder, height, spec.MONSTER, spec.GHOST)
+	bar.frame.Position = UDim2.fromOffset(0, 14)
+	bar.frame.Size = UDim2.new(1, 0, 0, height)
+	local text = label(bar.frame, "", Enum.Font.GothamBold, 10, textColor)
+	text.Size = UDim2.fromScale(1, 1)
+	text.TextXAlignment = Enum.TextXAlignment.Center
+	text.TextStrokeTransparency = 0.4
+	text.ZIndex = 5
+	return bar, text
+end
+
+-- A small bar's HP and its number
+function HpBar.setSmall(bar: Bar, text: TextLabel, hp: number, maxHp: number)
+	bar.set(math.max(0, hp), math.max(maxHp, 1))
+	text.Text = `{math.max(0, math.round(hp))} / {math.round(maxHp)}`
+end
+
 return HpBar

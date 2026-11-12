@@ -549,7 +549,11 @@ return {
 
 	["the Dungeon gate is a real portal model"] = function()
 		local gate = valley.DUNGEON_GATE
-		assert(gate.model and fs.isFile(`assets/props/{gate.model}.rbxm`), "the gate's portal model")
+		-- its own model, or (until that's saved) its fallback's: never a bare ring
+		local shown = if gate.model and fs.isFile(`assets/props/{gate.model}.rbxm`) then gate.model
+			elseif gate.fallback and fs.isFile(`assets/props/{gate.fallback.model}.rbxm`) then gate.fallback.model
+			else nil
+		assert(shown ~= nil, "the gate's portal model")
 		assert(gate.look and gate.height and gate.height >= 16, "the gate's look and size")
 	end,
 

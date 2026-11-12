@@ -736,7 +736,7 @@ return {
 			{ 7, 1.1, 0.45, 0.15 },
 			{ 6.5, 1.0, 0.50, 0.17 },
 			{ 6, 1.0, 0.55, 0.18 },
-			{ 5, 0.9, 0.60, 0.20 },
+			{ 10, 0.9, 0.60, 0.20 }, -- the Prism Hydra: its rainbow fissure every 10 s (owner 2026-11-12; was 5), its phases' skills carry it
 		}
 		expect.equal(#Bosses.LADDER, #want, "one row per ladder boss")
 		for index, bossId in Bosses.LADDER do

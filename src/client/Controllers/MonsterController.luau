@@ -9,10 +9,12 @@
 -- current phase (marker attribute Phase) and drops its heads one by one when it falls.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Bosses = require(Config:WaitForChild("Bosses"))
+local Dungeon = require(Config:WaitForChild("Dungeon"))
 local Cards = require(Config:WaitForChild("Cards"))
 local Party = require(Config:WaitForChild("Party"))
 local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
@@ -26,6 +28,7 @@ local CreatureVisuals = require(((script.Parent :: Instance).Parent :: Instance)
 local Extras = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("Extras"))
 local PetAnimator = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("PetAnimator"))
 local ClipPlayer = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("ClipPlayer"))
+local CrystalLook = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("CrystalLook"))
 
 local MonsterController = {}
 local SwordFx = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("SwordFx"))
@@ -41,7 +44,7 @@ type Head = { element: string, light: PointLight, sparks: ParticleEmitter }
 -- A boss between its moves (Util/BossIdleRules): where it stands off its spot (x, z: its spot's own space), a walk
 -- under way (from, to, started), when it may do the next thing, until when a move holds it and when its intro ends (all
 -- os.clock), its roar sound
-type Idle = { x: number, z: number, walk: { ax: number, az: number, bx: number, bz: number, start: number }?, nextAt: number, busyUntil: number, introEnd: number, roar: string? }
+type Idle = { x: number, z: number, walk: { ax: number, az: number, bx: number, bz: number, start: number }?, nextAt: number, busyUntil: number, introEnd: number, roar: string?, cfg: any, scale: number }
 type Aura = { highlight: Highlight, light: PointLight, flames: { ParticleEmitter } }
 type Monster = {
 	marker: BasePart,
@@ -50,6 +53,8 @@ type Monster = {
 	connections: { RBXScriptConnection },
 	heads: { Head }, -- a boss with heads: one per Hydra_<n>_3 bone, n = index - 1
 	fallenAt: number?, -- os.clock() its death began (heads dropping)
+	runes: { SurfaceAppearance }?, -- a boss with phaseGlow: its glow-masked surfaces, tinted by phase
+	runePhase: any, -- the phase they were last tinted for (set only when it changes)
 	aura: Aura?, -- a boss with a rainbow aura
 	fx: { ParticleEmitter }, -- sparks or smoke on its Fx_ bones (Config/Wild SPECIES fx), on only near the camera
 	lasting: { ParticleEmitter }, -- a boss's plume while it is enraged (Config/Bosses moments.enrage)
@@ -155,6 +160,17 @@ end
 -- Only the current phase's head glows (marker attribute Phase, set by BattleService); none once it has fallen
 local function lightHeads(monster: Monster)
 	local phase = monster.marker:GetAttribute("Phase")
+	-- The rune lines in the phase's element colour: set once per phase (a tint that keeps changing costs about 6 ms of
+	-- render CPU a frame, docs/creatures.md "Glow masks")
+	if monster.runes and phase ~= monster.runePhase then
+		monster.runePhase = phase
+		local tint = if typeof(phase) == "string" and Cards.ELEMENTS[phase] then Cards.ELEMENTS[phase] else Color3.new(1, 1, 1)
+		for _, surface in monster.runes do
+			pcall(function()
+				surface.EmissiveTint = tint
+			end)
+		end
+	end
 	for _, head in monster.heads do
 		local on = monster.fallenAt == nil and head.element == phase
 		head.light.Enabled = on
@@ -405,6 +421,17 @@ end
 
 -- Lights the model's glow masks once: a SurfaceAppearance whose strength keeps changing costs about 6.6 ms of render
 -- CPU a frame, so glows stay steady
+-- A model's glow-masked SurfaceAppearances (its rune lines, markings)
+local function glowSurfaces(model: Model): { SurfaceAppearance }
+	local list = {}
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("SurfaceAppearance") and descendant.EmissiveMaskContent.SourceType ~= Enum.ContentSourceType.None then
+			table.insert(list, descendant)
+		end
+	end
+	return list
+end
+
 local function lightGlow(model: Model, strength: number)
 	for _, descendant in model:GetDescendants() do
 		if descendant:IsA("SurfaceAppearance") and descendant.EmissiveMaskContent.SourceType ~= Enum.ContentSourceType.None then
@@ -420,9 +447,9 @@ local idleRandom = Random.new()
 -- own, a roar, a stomp, a second or two apart. A move only stops its feet: it attacks from wherever it stands, facing
 -- the fight, so its attacks keep the server's clock
 local function stepIdle(monster: Monster, idle: Idle, now: number)
-	local cfg = Bosses.IDLE
+	local cfg = idle.cfg
 	local body = monster.body
-	local scale = monster.height / 17
+	local scale = idle.scale
 	local walk = idle.walk
 	if not BossIdleRules.free(now, idle.busyUntil, idle.introEnd, monster.marker:GetAttribute("Fainted") == true) then
 		if walk then
@@ -468,6 +495,51 @@ local function stepIdle(monster: Monster, idle: Idle, now: number)
 	end
 end
 
+-- A Dungeon room's monster rising (owner 2026-11-12: "a spawn effect instead of just popping out"): a ring of light
+-- spreading on the ground, a burst of sparks, a flash and a rising whoosh where it comes up (Dungeon.PACK_SPAWN)
+local function spawnBurst(at: Vector3, seconds: number)
+	local look = Dungeon.PACK_SPAWN
+	local color = rgb(look.color)
+	local ring = Instance.new("Part")
+	ring.Anchored = true
+	ring.CanCollide = false
+	ring.CanQuery = false
+	ring.CanTouch = false
+	ring.CastShadow = false
+	ring.Material = Enum.Material.Neon
+	ring.Color = color
+	ring.Shape = Enum.PartType.Cylinder
+	ring.Size = Vector3.new(0.2, 1, 1)
+	ring.CFrame = CFrame.new(at.X, at.Y - 2.6, at.Z) * CFrame.Angles(0, 0, math.rad(90))
+	ring.Transparency = 0.2
+	local light = Instance.new("PointLight")
+	light.Color = color
+	light.Range = 18
+	light.Brightness = 4
+	light.Parent = ring
+	local sparks = Instance.new("ParticleEmitter")
+	sparks.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	sparks.Color = ColorSequence.new(color)
+	sparks.LightEmission = 1
+	sparks.Rate = 0
+	sparks.Lifetime = NumberRange.new(0.6, 1.2)
+	sparks.Speed = NumberRange.new(6, 14)
+	sparks.SpreadAngle = Vector2.new(30, 30)
+	sparks.Size = NumberSequence.new(0.6, 0)
+	sparks.EmissionDirection = Enum.NormalId.Right -- the cylinder's axis: up
+	sparks.Parent = ring
+	ring.Parent = workspace
+	sparks:Emit(40)
+	local sound = SoundBank.make(look.sound)
+	sound.Volume = 0.4
+	sound.Parent = ring
+	sound:Play()
+	local spread = TweenInfo.new(seconds, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	TweenService:Create(ring, spread, { Size = Vector3.new(0.2, 12, 12), Transparency = 1 }):Play()
+	TweenService:Create(light, spread, { Brightness = 0 }):Play()
+	task.delay(seconds + 1.5, ring.Destroy, ring)
+end
+
 local function add(marker: BasePart)
 	local species = marker:GetAttribute("Species")
 	if monsters[marker] or typeof(species) ~= "string" then
@@ -494,6 +566,9 @@ local function add(marker: BasePart)
 	local styleKey = MonsterLooks.styleKey(species, if boss then bossId :: string else nil, template ~= nil)
 	local body = CreatureVisuals.build(model, marker, height, flying, styleKey)
 	body.fxColor = color
+	if Place.isDungeon() and not boss then
+		CrystalLook.apply(model, body.root, height) -- the fight rooms' monsters, crystal-touched (spec 2026-11-11-dungeon-puzzles)
+	end
 	local glow = if boss then boss.glow else (Wild.SPECIES[species] :: any).glow
 	if glow and template then
 		lightGlow(model, glow.strength)
@@ -519,6 +594,8 @@ local function add(marker: BasePart)
 		tag = CreatureVisuals.makeTag(body.root, height + (if flying then Party.MOTION.HOVER_HEIGHT else 0), TAG_COLOR),
 		connections = {},
 		heads = if boss and boss.heads and template then makeHeads(model, boss.heads) else {},
+		runes = if boss and boss.phaseGlow and template then glowSurfaces(model) else nil,
+		runePhase = nil,
 		fallenAt = nil,
 		aura = if boss and boss.rainbowAura then makeAura(body) else nil,
 		fx = if fxSpec then makeFx(model, fxSpec) else {},
@@ -537,6 +614,9 @@ local function add(marker: BasePart)
 	local emergeAt, emergeSeconds = tonumber(marker:GetAttribute("EmergeAt")), tonumber(marker:GetAttribute("Emerge"))
 	if emergeAt and emergeSeconds and emergeSeconds > 0 then
 		monster.emerge = { at = emergeAt, seconds = emergeSeconds }
+		if not size and workspace:GetServerTimeNow() - emergeAt < emergeSeconds then
+			spawnBurst(marker.Position, emergeSeconds) -- a room's pack, still rising
+		end
 	end
 	if size then
 		-- void wisps off a running summon (on while it runs, MonsterController's frame loop)
@@ -567,7 +647,14 @@ local function add(marker: BasePart)
 			busyUntil = 0,
 			introEnd = now + math.max(0, introLeft),
 			roar = if boss.moments then boss.moments.roar else nil,
+			-- its own idle numbers over the bosses' (the Prism Hydra walks more)
+			cfg = if boss.idle then setmetatable(table.clone(boss.idle), { __index = Bosses.IDLE }) else Bosses.IDLE,
+			scale = height / 17,
 		}
+	elseif workspace:GetAttribute("PlaceKind") == "Dungeon" then
+		-- a Dungeon room's monsters move round the arena between their hits too (owner 2026-11-12; Bosses.IDLE_PACK)
+		local now = os.clock()
+		monster.idle = { x = 0, z = 0, walk = nil, nextAt = now + 1, busyUntil = 0, introEnd = now, roar = nil, cfg = Bosses.IDLE_PACK, scale = 1 }
 	end
 	if monster.aura and boss and boss.auroraFlame then
 		monster.aura.flames = makeFlames(model, body.root)
@@ -590,7 +677,7 @@ local function add(marker: BasePart)
 		local big = kind == "big" or kind == "clap"
 		local tint = if kind == "clap" then SwordFx.WINDUP_CLAP_COLOR elseif big then SwordFx.WINDUP_BIG_COLOR else SwordFx.WINDUP_QUICK_COLOR
 		if monster.idle then
-			monster.idle.busyUntil = math.max(monster.idle.busyUntil, os.clock() + seconds + Bosses.IDLE.after)
+			monster.idle.busyUntil = math.max(monster.idle.busyUntil, os.clock() + seconds + monster.idle.cfg.after)
 		end
 		HitFx.flash(body.model, Color3.fromRGB(tint[1], tint[2], tint[3]), seconds, SwordFx.WINDUP_FILL)
 		if big and body.pet and not clips.specialWindup then
@@ -657,7 +744,7 @@ function MonsterController.PlayClip(marker: BasePart, name: string, speed: numbe
 	if monster and clip and monster.clipPlayer then
 		ClipPlayer.play(monster.clipPlayer, clip, speed, nil, hold)
 		if monster.idle then
-			monster.idle.busyUntil = math.max(monster.idle.busyUntil, os.clock() + clip.length / math.max(speed, 0.05) + hold + Bosses.IDLE.after)
+			monster.idle.busyUntil = math.max(monster.idle.busyUntil, os.clock() + clip.length / math.max(speed, 0.05) + hold + monster.idle.cfg.after)
 		end
 	end
 end

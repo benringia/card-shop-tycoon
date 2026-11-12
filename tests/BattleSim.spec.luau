@@ -2982,4 +2982,162 @@ return {
 		end
 		expect.equal(ticks, 4, "refreshed by the second hit, never stacked")
 	end,
+	["pylons: the pack takes no damage while one stands"] = function()
+		local state = BattleSim.new(combat, { fighters = { owned("p1", "1"), playerInput("1") }, abilities = false, canRun = false }, {
+			fighters = { monster("Bloom", 1000, 1, 10) },
+			pylons = { { id = "Pylon1", hp = 50 } },
+			abilities = false,
+			canRun = false,
+		}, 3)
+		local events = runFor(state, 5)
+		expect.equal((BattleSim.getFighter(state, "b:m") :: any).hp, 1000, "untouched")
+		expect.equal(count(events, function(event)
+			return event.to == "b:m" and event.pylonShield == true
+		end) > 0, true, "its hits show Shielded")
+		expect.equal(BattleSim.pylonsLeft(state, "b"), 1, "the pylon still stands")
+	end,
+
+	["pylons: sword hits break them, then the shield is down"] = function()
+		local state = BattleSim.new(combat, { fighters = { owned("p1", "1"), playerInput("1") }, abilities = false, canRun = false }, {
+			fighters = { monster("Bloom", 1000, 1, 10) },
+			pylons = { { id = "Pylon1", hp = 1 }, { id = "Pylon2", hp = 1 }, { id = "Pylon3", hp = 1 } },
+			abilities = false,
+			canRun = false,
+		}, 4)
+		local all = {}
+		for index = 1, 3 do
+			local events = BattleSim.swordHit(state, "1", `b:Pylon{index}`, 1, "Sword") :: { any }
+			expect.equal(events ~= nil, true, `pylon {index} hit`)
+			for _, event in events do
+				table.insert(all, event)
+			end
+		end
+		expect.equal(count(all, function(event)
+			return event.type == "pylonBroken"
+		end), 3, "three broken")
+		expect.equal(count(all, function(event)
+			return event.type == "shieldDown"
+		end), 1, "the shield falls once, with the last")
+		expect.equal(BattleSim.pylonsLeft(state, "b"), 0, "none left")
+		expect.equal(select(2, BattleSim.swordHit(state, "1", "b:Pylon1", 1, "Sword")), "target", "a broken pylon can't be hit")
+		runFor(state, 3)
+		expect.equal((BattleSim.getFighter(state, "b:m") :: any).hp < 1000, true, "the pack takes damage now")
+	end,
+
+	["pylons: a creature told to attack the crystals hits them, until told to stop"] = function()
+		local state = BattleSim.new(combat, { fighters = { owned("p1", "1"), playerInput("1") }, abilities = false, canRun = false }, {
+			fighters = { monster("Bloom", 1000, 1, 10) },
+			pylons = { { id = "Pylon1", hp = 100000 } },
+			abilities = false,
+			canRun = false,
+		}, 5)
+		expect.equal(BattleSim.setPylonFocus(state, "1", "b:Pylon1"), true, "told: the crystal stands")
+		local events = runFor(state, 6)
+		expect.equal(count(events, function(event)
+			return event.type == "pylonHit" and event.from == "a:p1"
+		end) > 0, true, "its creature hits the crystal")
+		local pylonHp = (state.sides.b :: any).pylons[1].hp
+		expect.equal(pylonHp < 100000, true, "the crystal took it")
+		BattleSim.setPylonFocus(state, "1", nil)
+		local after = runFor(state, 6)
+		expect.equal(count(after, function(event)
+			return event.type == "pylonHit" and event.from == "a:p1"
+		end), 0, "called back: no more")
+		expect.equal(BattleSim.setPylonFocus(state, "2", "b:Pylon1"), true, "a player with no creature here changes nothing")
+		expect.equal(BattleSim.setPylonFocus(state, "1", "b:Nope"), false, "no such crystal: not sent")
+	end,
+
+	["pylons: a creature sent at one crystal hits that one, and comes back to the fight when it breaks"] = function()
+		local state = BattleSim.new(combat, { fighters = { owned("p1", "1"), playerInput("1") }, abilities = false, canRun = false }, {
+			fighters = { monster("Bloom", 100000, 1, 10) },
+			pylons = { { id = "Pylon1", hp = 100000 }, { id = "Pylon2", hp = 30 } },
+			abilities = false,
+			canRun = false,
+		}, 6)
+		expect.equal(BattleSim.setPylonFocus(state, "1", "b:Pylon2"), true, "sent at the second crystal")
+		local events = runFor(state, 8)
+		expect.equal(count(events, function(event)
+			return event.type == "pylonHit" and event.to == "b:Pylon1"
+		end), 0, "the first crystal is left alone")
+		expect.equal(count(events, function(event)
+			return event.type == "pylonBroken" and event.to == "b:Pylon2"
+		end), 1, "the one it was sent at breaks")
+		expect.equal(BattleSim.pylonFocusOf(state, "1"), nil, "its order is done")
+		expect.equal(count(events, function(event)
+			return event.type == "petBack" and event.from == "a:p1"
+		end), 1, "the clients hear it came back")
+		local after = runFor(state, 6)
+		expect.equal(count(after, function(event)
+			return event.type == "pylonHit"
+		end), 0, "back in the fight: no more crystal hits")
+		expect.equal(count(after, function(event)
+			return event.from == "a:p1" and event.to == "b:m"
+		end) > 0, true, "it fights the pack again (still shielded by the other crystal)")
+		expect.equal(BattleSim.setPylonFocus(state, "1", "b:Pylon2"), false, "a broken crystal can't be a target")
+	end,
+
+	-- The owner 2026-11-12: "every boss debuff should be shown below their healthbar with tooltips"
+	["a boss's states for its bar: shield, enraged, stunned, snared, cursed, burning, in the snapshot"] = function()
+		local state = bossFightWithPlayer(31, 1, { shield = { every = 0.3, fraction = 0.1, breakStun = 3 }, enrage = { below = 0.5, atkMultiplier = 1.15 } })
+		local boss = (state.sides.b :: any).fighters[1]
+		local function kinds(): { [string]: any }
+			local found = {}
+			for _, status in BattleSim.statusesOf(state, boss) do
+				found[status.kind] = status
+			end
+			return found
+		end
+		expect.equal(next(kinds()), nil, "nothing on it at the start")
+		runFor(state, 0.5)
+		local shield = kinds().shield
+		assert(shield, "its shield shows")
+		expect.equal(shield.value, 10000, "with what it holds")
+		boss.hp = boss.maxHp * 0.4
+		runFor(state, 0.2)
+		local enraged = kinds().enraged
+		assert(enraged, "enraged shows")
+		expect.equal(enraged.value, 15, "hitting 15% harder")
+		boss.stunUntil = state.time + 2
+		boss.slowUntil, boss.slow = state.time + 3, 0.4
+		boss.curseUntil, boss.curse = state.time + 4, 0.3
+		boss.burnUntil = state.time + 5
+		local now = kinds()
+		expect.near(now.stunned.seconds, 2, 0.01, "stunned, for how long")
+		expect.equal(now.snared.value, 40, "snared: 40% slower")
+		expect.equal(now.cursed.value, 30, "cursed: 30% weaker")
+		expect.near(now.burning.seconds, 5, 0.01, "burning")
+		local view = BattleSim.snapshot(state).sides.b.fighters[1]
+		expect.equal(#view.statuses >= 5, true, "the snapshot carries them for its bar")
+		expect.equal(BattleSim.snapshot(state).sides.a.fighters[1].statuses, nil, "a creature's aren't sent")
+	end,
+
+	["a boss's guard while its adds stand shows as a state"] = function()
+		local state = bossFightWithPlayer(32, 1, { adds = { at = { 0.9 }, count = 1, hpShare = 0.05, atkShare = 0.1, guard = 0.5 } })
+		local boss = (state.sides.b :: any).fighters[1]
+		boss.hp = boss.maxHp * 0.85
+		runFor(state, 0.3)
+		local guarded = nil
+		for _, status in BattleSim.statusesOf(state, boss) do
+			if status.kind == "guarded" then
+				guarded = status
+			end
+		end
+		assert(guarded, "guarded while its add stands")
+		expect.equal(guarded.value, 50, "taking half the damage")
+	end,
+
+	["pylons: never attack, never a creature's target"] = function()
+		local state = BattleSim.new(combat, { fighters = { owned("p1", "1"), playerInput("1") }, abilities = false, canRun = false }, {
+			fighters = { monster("Bloom", 1000, 1, 10) },
+			pylons = { { id = "Pylon1", hp = 50 } },
+			abilities = false,
+			canRun = false,
+		}, 5)
+		local events = runFor(state, 5)
+		expect.equal(count(events, function(event)
+			return event.from == "b:Pylon1" or (event.to == "b:Pylon1" and event.type ~= "pylonHit")
+		end), 0, "no pylon in the creatures' fight")
+		expect.equal(BattleSim.pylonsLeft(state, "b"), 1, "it stands, untouched by the creatures")
+		expect.equal(state.result, nil, "still going")
+	end,
 }

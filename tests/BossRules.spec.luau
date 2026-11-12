@@ -156,7 +156,7 @@ return {
 		expect.equal(typeof(Bosses.DEATH_SECONDS) == "number" and Bosses.DEATH_SECONDS > 0, true, "a death scene")
 	end,
 
-	["config: the Hydra is the biggest boss, with room round it and a rainbow aura"] = function()
+	["config: the Hydra is the biggest boss, with room round it (its rainbow aura off for now)"] = function()
 		local hydra = Bosses.BOSSES.prismHydra
 		for id, boss in Bosses.BOSSES do
 			if id ~= "prismHydra" then
@@ -166,7 +166,7 @@ return {
 		expect.equal((hydra.ringRadius :: number) + 4 < Bosses.ARENA_RADIUS, true, "its fighters still stand inside the ring")
 		local shot = hydra.introShot :: any
 		expect.equal(shot.back > Bosses.INTRO_SHOT.back and shot.up > Bosses.INTRO_SHOT.up, true, "the intro camera stands further off")
-		expect.equal(hydra.rainbowAura, true, "a rainbow aura")
+		expect.equal(hydra.rainbowAura, false, "its rainbow aura off for now (owner 2026-11-12)")
 		local aura = Bosses.RAINBOW_AURA
 		for _, key in { "hueSeconds", "outlineTransparency", "fillTransparency", "lightBrightness", "lightRange" } do
 			expect.equal(typeof(aura[key]), "number", key)
@@ -616,7 +616,14 @@ return {
 		assert(clap.radius >= sovereign.ringRadius + 4, "its pets stand inside")
 		assert(clap.radius + 10 <= BossRules.arenaRadius(sovereign, Bosses), "room to run out of it")
 		assert(clap.radius > sovereign.ringRadius * Bosses.HIT_RADIUS_SHARE + 8, "a sword's reach is well inside it: you must run")
-		expect.equal(Bosses.BOSSES.prismHydra.phases[2].mechanics.thunderclap.warning, nil, "the Hydra's Volt phase claps as before")
+		-- the Hydra's Volt phase claps the same way (owner 2026-11-12: "reuse what we already have on frontier bosses")
+		local hydra = Bosses.BOSSES.prismHydra
+		local hydraClap = hydra.phases[2].mechanics.thunderclap
+		expect.equal(hydraClap.warning, 2, "the Hydra warns its clap too")
+		expect.equal(hydraClap.debuff, "Electrocuted")
+		assert(hydraClap.radius >= hydra.ringRadius + 4, "its pets stand inside the Hydra's circle")
+		assert(hydraClap.radius + 10 <= BossRules.arenaRadius(hydra, Bosses), "room to run out of the Hydra's")
+		assert(hydraClap.radius > hydra.ringRadius * Bosses.HIT_RADIUS_SHARE + 8, "a sword's reach is inside the Hydra's: you must run")
 	end,
 
 	["the Frost Tyrant stands bigger, his fighters further out"] = function()
@@ -624,5 +631,11 @@ return {
 		assert(tyrant.height >= 24, `height {tyrant.height}`)
 		assert(tyrant.ringRadius >= 20, "his fighters stand clear of his bigger body")
 		assert(tyrant.introShot.back >= 46, "the intro camera fits him")
+	end,
+	["pickTitle: Dungeon Conqueror outranks Crystal Seeker"] = function()
+		expect.equal(BossRules.pickTitle("Dungeon Conqueror", true, "Crystal Seeker"), "Dungeon Conqueror", "both")
+		expect.equal(BossRules.pickTitle(nil, true, "Crystal Seeker"), "Crystal Seeker", "the secret only")
+		expect.equal(BossRules.pickTitle(nil, false, "Crystal Seeker"), nil, "neither")
+		expect.equal(BossRules.pickTitle("Dungeon Conqueror", false, "Crystal Seeker"), "Dungeon Conqueror", "the clear only")
 	end,
 }

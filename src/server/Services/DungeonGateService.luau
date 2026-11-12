@@ -18,6 +18,7 @@ local Items = require(Config:WaitForChild("Items"))
 local Places = require(Config:WaitForChild("Places"))
 local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local Blocked = require((script.Parent :: Instance).Parent:WaitForChild("Util"):WaitForChild("Blocked"))
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
@@ -39,6 +40,10 @@ local allowEnter = RateLimiter.new(Bosses.START_COOLDOWN)
 local allowGroup = RateLimiter.new(Bosses.START_COOLDOWN)
 
 local function notify(player: Player, message: string, isError: boolean)
+	if isError then
+		Blocked.tell(player, message) -- a refusal: the big locked card with why (owner 2026-11-12), never just a toast
+		return
+	end
 	Remotes.Notify:FireClient(player, message, isError)
 end
 
@@ -228,6 +233,12 @@ function DungeonGateService.Start()
 	prompt.Parent = ring
 	CollectionService:AddTag(prompt, "BossGroupPrompt") -- the leader's copy says "Start now" (BossBoardController)
 	prompt.Triggered:Connect(onGroup)
+	-- its prompts (Enter, the group's) show the level needed while you're below it (BlockedController)
+	for _, each in ring:GetDescendants() do
+		if each:IsA("ProximityPrompt") then
+			each:SetAttribute("RequireLevel", Bosses.BOSSES[Dungeon.BOSS].shopLevel)
+		end
+	end
 	groupPrompt = prompt
 	updatePrompt()
 end

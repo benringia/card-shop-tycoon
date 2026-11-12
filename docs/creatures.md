@@ -560,7 +560,25 @@ In Studio: Import 3D (Rig Type Custom, Keep Zero Influence Bones), upload the gl
 `EmissiveMaskContent` = the mask, `EmissiveStrength` 2, the Colossus 2.5; the game lights it once at a boss's `glow`
 strength when it has one, the Colossus 4), name
 the model after the boss id and save it. Sizes, rings and moments: DESIGN 5.10. A moment effect that starts inside
-the body (the flare at the sac's centre) needs `zOffset` in `Bosses.MOMENT_FX` or the opaque mesh hides it. The Prism Hydra (`prismHydra`, the final boss) is a blocky remodel of the Crystal
+the body (the flare at the sac's centre) needs `zOffset` in `Bosses.MOMENT_FX` or the opaque mesh hides it. **The Prism Hydra since 2026-11-12** (spec `2026-11-11-dungeon-puzzles-design.md`, the owner's pick B "temple guardian"):
+a Meshy model from `assets/blender/PrismHydraGuardian/PrismHydraGuardian_concept.png` (concept B cut out of its grey
+background, the floor shadow between its legs cleared so Meshy doesn't make a slab): carved blue-grey stone armour,
+glowing rainbow rune lines, crystals bursting from its shoulders, five heads alike. Raw export
+`PrismHydraGuardian_raw.glb` (not in git), `NAME=PrismHydraGuardian YAW=0 HEIGHT=1 prep_frontier_model.py` (the preview
+renders ran out of memory with the 1.6M-face mesh; the .blend was saved before), then
+`tools/blender/rig_prismHydraGuardian.py`: `rig_kit.optimize` to 12,000 triangles, the old Hydra's 46 bone names
+(`Hydra_<n>_0..3`, `Jaw_<n>`, legs, `Tail_0..4`; positions read off the mesh: its 5 head clusters, feet and knees per
+quadrant, the necks' x at each height), the glow mask of every bright saturated texel (the runes and crystals), the
+FBX. `POSE_TEST=<folder>` renders a bend test (the background render came out black; the check was done by appending
+the rig into the live Blender and bending the necks, jaws, legs and tail). In Studio: Import 3D (Rig Type Custom, Keep
+Zero Influence Bones), the glow mask uploaded (`rbxassetid://94555177382022`), the MeshPart's `PivotOffset` rotation
+reset, the AnimationController removed, a SurfaceAppearance (Overlay, `ColorMapContent` = its TextureID,
+`EmissiveMaskContent` = the mask, `EmissiveStrength` 2), PrimaryPart the body, named `prismHydra`, saved over
+`assets/monsters/prismHydra.rbxm`. In game its rune lines glow in the current phase's element colour
+(`Bosses.prismHydra.phaseGlow`, MonsterController: `EmissiveTint` set once per phase, never animated). The blocky
+model below is its history (`build_prismHydra.py`, kept for reference).
+
+The Prism Hydra (`prismHydra`, the final boss) was first a blocky remodel of the Crystal
 Titans Rainbow Hydra built by `tools/blender/build_prismHydra.py` in a faceted low-poly "studded" style (`chunk()`:
 `round_box` with one flat bevel plus small raised square studs scattered over its faces): a heavy dark indigo brute
 with cream horns, muzzles and belly, a gold collar and claws, prism crystal shards down its back, five thick necks

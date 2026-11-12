@@ -74,6 +74,36 @@ return {
 		end
 	end,
 
+	-- The boss chests (spec 2026-11-11-boss-chests-design): /chests shows them for a boss without a fight or a reward
+	["admin panel: the Weapons section previews the boss chests"] = function()
+		local aliases = registered()
+		expect.equal(aliases.chests, true, "/chests exists")
+		local found = false
+		for _, section in AdminPanel.SECTIONS do
+			for _, button in section.buttons do
+				if section.title == "Weapons" and string.match(button.command, "^/chests") then
+					found = true
+				end
+			end
+		end
+		expect.equal(found, true, "a Boss chests button")
+	end,
+
+	-- The Dungeon's puzzles (spec 2026-11-11-dungeon-puzzles): /puzzle solve solves the one the run is at (Studio)
+	["admin panel: the Dungeon section solves the current puzzle"] = function()
+		local aliases = registered()
+		expect.equal(aliases.puzzle, true, "/puzzle exists")
+		local found = false
+		for _, section in AdminPanel.SECTIONS do
+			for _, button in section.buttons do
+				if string.match(section.title, "^Dungeon") and button.command == "/puzzle solve" then
+					found = true
+				end
+			end
+		end
+		expect.equal(found, true, "a Solve puzzle button")
+	end,
+
 	["admin panel: typed commands fill in the text box"] = function()
 		expect.equal(AdminPanel.fill("/maxcard %s foil", "solarion"), "/maxcard solarion foil", "fills the input")
 		expect.equal(AdminPanel.fill("/maxcard %s", "  "), nil, "an empty input sends nothing")

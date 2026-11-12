@@ -110,6 +110,9 @@ type Fight = {
 	runs: { [string]: SummonRun },
 	summonFocus: { [string]: string },
 	waveCorners: { number }?,
+	pylons: { [string]: BasePart }, -- the Dungeon's room 3: its pylons by sim id ("b:Pylon1"...), none elsewhere
+	onPylon: ((kind: string, pylon: BasePart?) -> ())?, -- RunOptions.onPylon
+	leashCenter: Vector3?, -- RunOptions.leashCenter: the leash from here instead of `center`
 }
 
 -- One summon on its way: to `to` (a bite's reach from its pet at `face`) at `speed` studs a second, from `startAt`
@@ -117,7 +120,10 @@ type Fight = {
 type SummonRun = { to: Vector3, face: Vector3, speed: number, startAt: number }
 
 -- The Dungeon: a room's pack (`monster` is its first, `pack` the others) and the HP left from earlier rooms
-export type RunOptions = { pack: { Monster }?, hpLeft: { [Player]: { [string]: number } }?, run: boolean? }
+-- (spec 2026-11-11-dungeon-puzzles) `swords`: players fight in this room with their swords (room 3); `pylons`: the
+-- crystal pylons shielding its pack (BattleSim pylons, broken by swords); `onPylon`: told "pylonBroken" (with the part)
+-- and "shieldDown" so the run can show them
+export type RunOptions = { pack: { Monster }?, hpLeft: { [Player]: { [string]: number } }?, run: boolean?, swords: boolean?, pylons: { { part: BasePart, hp: number } }?, onPylon: ((kind: string, pylon: BasePart?) -> ())?, packAtk: number?, leashCenter: Vector3? }
 
 local BattleService = {}
 
@@ -134,6 +140,7 @@ local allowCallIn = RateLimiter.new(Combat.ACTION_COOLDOWN)
 local allowRun = RateLimiter.new(Combat.ACTION_COOLDOWN)
 local allowStart = RateLimiter.new(1)
 local allowSwordAttack = RateLimiter.new(Combat.SWORD_ACTION_COOLDOWN)
+local allowPetPylon = RateLimiter.new(Combat.PET_PYLON_COOLDOWN)
 local allowSwordSkill = RateLimiter.new(Combat.SWORD_ACTION_COOLDOWN)
 local allowDodge = RateLimiter.new(Combat.SWORD_ACTION_COOLDOWN)
 local rng = Random.new()
@@ -677,6 +684,10 @@ local function handleEvents(fight: Fight, events: { BattleSim.Event })
 	local allies: { [string]: string } = {}
 	local addMonsters: { [string]: string } = {}
 	for _, event in events do
+		-- Room 3: a broken pylon and the fallen shield are the run's to show (DungeonService)
+		if (event.type == "pylonBroken" or event.type == "shieldDown") and fight.onPylon then
+			fight.onPylon(event.type, if event.to then fight.pylons[event.to] else nil)
+		end
 		if event.type == "attack" and event.from and event.to then
 			-- A summon whose pet fell (or swapped out) runs to the one it bites now; it doesn't lunge while it runs
 			local summon = fight.adds[event.from]
@@ -1073,6 +1084,15 @@ local function leave(fight: Fight, member: Member)
 	end
 end
 
+-- Takes a player out of their fight as if they ran (the Dungeon's fall: out of the run, never pulled back to the ring)
+function BattleService.Withdraw(player: Player)
+	local fight = fights[player]
+	local member = if fight then fight.members[player] else nil
+	if fight and member then
+		leave(fight, member)
+	end
+end
+
 -- Starting ------------------------------------------------------------------------------------------------
 
 -- Why this player can't start any fight now, or nil
@@ -1116,26 +1136,37 @@ function BattleService.WhyNotFight(player: Player): string?
 	return whyNotPlayer(player)
 end
 
+-- Room 3's pylons for the clients' sword aim (sim id, part, hit radius), or nil in any other fight
+local function pylonList(fight: Fight): { { id: string, part: BasePart, radius: number } }?
+	local list = {}
+	for id, part in fight.pylons do
+		table.insert(list, { id = id, part = part, radius = Dungeon.PUZZLE.PYLON_HIT_RADIUS })
+	end
+	return if #list > 0 then list else nil
+end
+
 -- A Dungeon room's monster as a fighter: its elite stats x Dungeon.PACK_SCALE, scaled to the group like a boss
-local function packInput(id: string, monster: Monster, size: number): BattleSim.FighterInput?
+-- (`atkScale`: the room's own softening, Config/Dungeon ROOMS[n].atk)
+local function packInput(id: string, monster: Monster, size: number, atkScale: number?): BattleSim.FighterInput?
 	local stats = CombatMath.getMonsterStats(Wild, monster.species, monster.level, monster.elite)
 	if not stats then
 		return nil
 	end
-	local hp, atk, swings = BossRules.groupStats(Bosses, stats.hp * Dungeon.PACK_SCALE.hp, stats.atk * Dungeon.PACK_SCALE.atk, size)
+	local hp, atk, swings = BossRules.groupStats(Bosses, stats.hp * Dungeon.PACK_SCALE.hp, stats.atk * Dungeon.PACK_SCALE.atk * (atkScale or 1), size)
 	return { id = id, element = monster.element, hp = hp, atk = atk, spd = stats.spd, elite = monster.elite, swings = swings }
 end
 
 -- Whether a player fights beside their creature: always against a boss, and against a wild monster once they have
--- a sword (owner 2026-11-03; a Dungeon room's pack stays the creatures' fight)
-local function fightsWithSword(player: Player, boss: boolean, run: boolean): boolean
-	return boss or (not run and SwordService.GetSword(player) ~= nil)
+-- a sword (owner 2026-11-03; a Dungeon room's pack stays the creatures' fight, but for room 3's pylons: `swords`)
+local function fightsWithSword(player: Player, boss: boolean, run: boolean, swords: boolean): boolean
+	return boss or ((swords or not run) and SwordService.GetSword(player) ~= nil)
 end
 
 -- Players (the first leads) against one monster (and a Dungeon room's pack). Every check is done by the caller.
 local function startFight(players: { Player }, monster: Monster, options: RunOptions?): boolean
 	local boss = if monster.boss then Bosses.BOSSES[monster.boss] else nil
 	local run = options ~= nil and options.run == true
+	local swords = options ~= nil and options.swords == true
 	local hpLeft = if options then options.hpLeft else nil
 	local stats = if boss then { hp = boss.hp, atk = boss.atk, spd = boss.spd } else CombatMath.getMonsterStats(Wild, monster.species, monster.level, monster.elite)
 	if not stats or #players == 0 then
@@ -1147,9 +1178,12 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 	end
 	local foes: { BattleSim.FighterInput } = {}
 	if run and not boss then
-		local first = packInput("m", monster, #players)
+		local first = packInput("m", monster, #players, if options then options.packAtk else nil)
 		if not first then
 			return false
+		end
+		if swords then
+			first.playerAttacks = CombatMath.getMonsterAttacks(Wild, true) -- quick hits on the players fighting in it
 		end
 		table.insert(foes, first)
 	else
@@ -1170,7 +1204,7 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 	end
 	local pack = if options and options.pack then options.pack else {}
 	for index, extra in pack do
-		local input = packInput(`p{index}`, extra, #players)
+		local input = packInput(`p{index}`, extra, #players, if options then options.packAtk else nil)
 		if input then
 			table.insert(foes, input)
 		end
@@ -1188,7 +1222,7 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 		leaderInput.owner = owner
 		leaderInput.hpNow = left[leaderId]
 		table.insert(leaders, leaderInput)
-		if fightsWithSword(player, boss ~= nil, run) then
+		if fightsWithSword(player, boss ~= nil, run, swords) then
 			-- The player fights beside their creature (never a creature's target; down instead of fainting)
 			table.insert(leaders, { id = `@{owner}`, player = true, owner = owner, element = "None", hp = Combat.PLAYER_HP, atk = 0, spd = 10 })
 		end
@@ -1209,8 +1243,15 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 		table.insert(members, { player = player, owner = owner, leaderId = leaderId, markers = {}, fought = { [leaderId] = true }, partyIds = partyIds, died = nil, leashWarnedAt = 0, lastCut = nil, skillReady = skillReady, down = false, slow = nil, rings = 0, dodged = 0 })
 	end
 	-- Boss fights and Dungeon rooms allow swaps (and are tuned for them); in boss fights only one creature of yours fights
-	local sideA = { fighters = leaders, reserves = reserves, abilities = true, canRun = true, swapSeconds = if boss or run then Combat.BOSS_SWAP_SECONDS else nil, callIn = if boss then false else nil, creaturesDecide = not boss and not run }
-	local sim = BattleSim.new(Combat, sideA, { fighters = foes, abilities = false, canRun = false }, rng:NextInteger(1, 2 ^ 30))
+	local sideA = { fighters = leaders, reserves = reserves, abilities = true, canRun = true, swapSeconds = if boss or run then Combat.BOSS_SWAP_SECONDS else nil, callIn = if boss then false else nil, creaturesDecide = not boss and (not run or swords) }
+	-- Room 3's pylons: the sim's by their part's name ("b:Pylon1"...)
+	local pylonInputs: { { id: string, hp: number } } = {}
+	local pylonParts: { [string]: BasePart } = {}
+	for _, pylon in if options and options.pylons then options.pylons else {} do
+		table.insert(pylonInputs, { id = pylon.part.Name, hp = pylon.hp })
+		pylonParts[`b:{pylon.part.Name}`] = pylon.part
+	end
+	local sim = BattleSim.new(Combat, sideA, { fighters = foes, abilities = false, canRun = false, pylons = pylonInputs }, rng:NextInteger(1, 2 ^ 30))
 	if boss or run then
 		sim.maxSeconds = Combat.BOSS_MAX_FIGHT_SECONDS
 	end
@@ -1252,6 +1293,9 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 		rings = {},
 		runs = {},
 		summonFocus = {},
+		pylons = pylonParts,
+		onPylon = if options then options.onPylon else nil,
+		leashCenter = if options then options.leashCenter else nil,
 	}
 	if boss then
 		sim.ringCheck = function(info: BattleSim.RingInfo): boolean
@@ -1264,11 +1308,21 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 	end
 	WildService.Lock(monster, players[1])
 	WildService.SetFightPose(monster, spots[MONSTER_ID])
-	-- A room's pack stands beside its first monster (left, right, further out), held still like a boss's adds
+	-- A room's pack holds where it rose (spread round the arena: DungeonRules.packSpots; owner 2026-11-12: "separate
+	-- them"), facing the creatures (the middle of their spots; owner: "they face the wrong way when attacking"), held
+	-- still like a boss's adds
+	local sum, count = Vector3.zero, 0
+	for id, spot in spots do
+		if string.sub(id, 1, 2) == "a:" then
+			sum += spot.Position
+			count += 1
+		end
+	end
+	local fightAt = if count > 0 then sum / count else spots[MONSTER_ID].Position + spots[MONSTER_ID].LookVector * 10
 	for index, extra in pack do
 		local id = `b:p{index}`
-		local sideways = (if index % 2 == 1 then 1 else -1) * Bosses.ADD_SPACING * ((index + 1) // 2)
-		local spot = spots[MONSTER_ID] * CFrame.new(sideways, 0, 0)
+		local at = extra.marker.Position
+		local spot = CFrame.lookAt(at, Vector3.new(fightAt.X, at.Y, fightAt.Z))
 		WildService.Lock(extra, players[1])
 		WildService.SetFightPose(extra, spot)
 		fight.adds[id] = extra
@@ -1295,9 +1349,13 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 
 	local markers: { [string]: BasePart } = { [MONSTER_ID] = monster.marker }
 	local foes: { [string]: string } = { [MONSTER_ID] = monster.species } -- a room's monsters by name (its HP bars)
+	-- Each foe's monster id: a marker made just before this message (a Dungeon room's pack) arrives as nil under
+	-- streaming, so clients find it by its name (Monster_<id>) instead
+	local monsterIds: { [string]: string } = { [MONSTER_ID] = monster.id }
 	for id, extra in fight.adds do
 		markers[id] = extra.marker
 		foes[id] = extra.species
+		monsterIds[id] = extra.id
 	end
 	for _, member in members do
 		local marker = PartyService.GetMarker(member.player)
@@ -1335,13 +1393,15 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 			intro = if boss then Bosses.INTRO_SECONDS else nil,
 			names = names,
 			buttonNames = SwordService.ShowButtonNames(player), -- the HUD names its buttons (first boss fights)
-			sword = fightsWithSword(player, boss ~= nil, run), -- the player is in the fight: the HUD's sword buttons
+			sword = fightsWithSword(player, boss ~= nil, run, swords), -- the player is in the fight: the HUD's sword buttons
+			pylons = pylonList(fight), -- room 3: the pylons to aim at while they stand
 			allies = allies,
 			group = #members > 1,
 			foes = foes,
 			side = "a",
 			markers = markers,
 			markerNames = MarkerNames.of(markers),
+			addMonsters = monsterIds,
 			snapshot = snapshot(fight),
 		})
 	end
@@ -1488,9 +1548,18 @@ local function swordFight(player: Player): (Fight?, Member?)
 	return fight, member
 end
 
--- Who a sword can hit: the boss and its adds (or a wild monster) still standing, with their sizes on the ground plane
+-- Who a sword can hit: the boss and its adds (or a wild monster) still standing, with their sizes on the ground plane;
+-- in room 3 only its standing pylons while any stands
 local function swordTargets(fight: Fight): { SwordRules.Target }
 	local list: { SwordRules.Target } = {}
+	if BattleSim.pylonsLeft(fight.sim, "b") > 0 then
+		for id, pylon in fight.pylons do
+			if pylon:GetAttribute("Broken") ~= true then
+				table.insert(list, { id = id, x = pylon.Position.X, z = pylon.Position.Z, radius = Dungeon.PUZZLE.PYLON_HIT_RADIUS })
+			end
+		end
+		return list
+	end
 	local boss = Bosses.BOSSES[fight.monster.boss or ""]
 	local function add(id: string, marker: BasePart, radius: number)
 		local fighter = BattleSim.getFighter(fight.sim, id)
@@ -1666,13 +1735,14 @@ local function keepNear(fight: Fight, member: Member)
 		return
 	end
 	local boss = Bosses.BOSSES[fight.monster.boss or ""]
-	-- big rings: a boss's own (BossRules.leashRadius; the Frontier's are wider), a Dungeon run's the usual one
-	local leash = if boss then BossRules.leashRadius(boss, Bosses) elseif fight.run then Bosses.LEASH_RADIUS else Combat.LEASH_RADIUS
-	local offset = Vector3.new(root.Position.X - fight.center.X, 0, root.Position.Z - fight.center.Z)
+	-- big rings: a boss's own (BossRules.leashRadius; the Frontier's are wider), a Dungeon run's the whole ring
+	local leash = if boss then BossRules.leashRadius(boss, Bosses) elseif fight.run then Dungeon.ROOM_LEASH else Combat.LEASH_RADIUS
+	local middle = fight.leashCenter or fight.center
+	local offset = Vector3.new(root.Position.X - middle.X, 0, root.Position.Z - middle.Z)
 	if offset.Magnitude <= leash then
 		return
 	end
-	local edge = fight.center + offset.Unit * (leash - 2)
+	local edge = middle + offset.Unit * (leash - 2)
 	local back = Vector3.new(edge.X, root.Position.Y, edge.Z)
 	root.AssemblyLinearVelocity = Vector3.zero
 	;(player.Character :: Model):PivotTo(CFrame.lookAt(back, Vector3.new(fight.center.X, back.Y, fight.center.Z)))
@@ -1796,6 +1866,26 @@ function BattleService.Start()
 	Remotes.UseAbility.OnServerEvent:Connect(onUseAbility)
 	Remotes.RunFight.OnServerEvent:Connect(onRun)
 	Remotes.SwordAttack.OnServerEvent:Connect(onSwordAttack)
+	-- The Dungeon's room 3: your creature sent at one crystal pylon (its prompt, within reach), or back to the fight
+	-- (false); owner 2026-11-12
+	Remotes.PetPylon.OnServerEvent:Connect(function(player: Player, target: unknown)
+		local fight = fights[player]
+		local member = if fight then fight.members[player] else nil
+		if not allowPetPylon(player) or not fight or not member or fight.ended or next(fight.pylons) == nil then
+			return
+		end
+		if target == false then
+			BattleSim.setPylonFocus(fight.sim, member.owner, nil)
+			return
+		end
+		local part = if typeof(target) == "string" then fight.pylons[target] else nil
+		local root = getRoot(player)
+		local reach = Dungeon.PUZZLE.PYLON_PROMPT
+		if not part or not root or (root.Position - part.Position).Magnitude > reach.distance + reach.slack then
+			return -- not a pylon of this fight, or out of the prompt's reach: only a tampered client sends these
+		end
+		BattleSim.setPylonFocus(fight.sim, member.owner, target :: string)
+	end)
 	Remotes.SwordSkill.OnServerEvent:Connect(onSwordSkill)
 	Remotes.Dodge.OnServerEvent:Connect(onDodge)
 

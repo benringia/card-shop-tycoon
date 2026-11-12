@@ -217,6 +217,9 @@ return {
 		IMAGE = "rbxassetid://125905162394540",
 		COLOR = rgb(200, 0, 0),
 		SECONDS = 0.55,
+		FILL = 0.35, -- the whole screen's red at a full hit's peak (ScreenFx.flash), and how fast it fades
+		FILL_SECONDS = 0.3,
+		SHAKE = 0.6, -- the camera's jolt at a full hit (ScreenFx.shake)
 		MIN = 0.35, -- opacity of the lightest hit
 		PER_SHARE = 2, -- more opacity per share of your HP lost (a 30% hit flashes fully)
 		LOW_SHARE = 0.3,

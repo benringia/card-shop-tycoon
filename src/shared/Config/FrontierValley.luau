@@ -134,7 +134,8 @@ return {
 	-- Roblox's clouds over the Frontier (SceneryService.StartValley): heavy and grey
 	CLOUDS = { cover = 0.78, density = 0.6, color = { 118, 122, 138 } },
 	-- The Dungeon portal (Config/Frontier DUNGEON_PORTAL): a crystal arch at the trail's west end, the farthest walk
-	DUNGEON_GATE = { x = -45, z = 622, faces = { x = -20, z = 620 }, model = "PortalArena", look = "Arena", height = 22 }, -- a real portal (the owner: "some portals dont have models")
+	-- its own model (spec 2026-11-12-dungeon-world: tools/blender/build_portal_dungeon.py), the Arena's until it's saved
+	DUNGEON_GATE = { x = -45, z = 622, faces = { x = -20, z = 620 }, model = "PortalDungeon", look = "Dungeon", height = 24, fallback = { model = "PortalArena", look = "Arena" } },
 
 	-- The terrain (shapes as Config/Scenery's; WildValley.terrainOps adds the hills, passes, trail and arenas). Each floor
 	-- is filled to its ground - 2; Stormpeak's floor starts at the climb's top (x 290) and ends at the drop's top (z 330)

@@ -203,6 +203,12 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 			pishLuckAt = 0,
 		}
 	end,
+	-- v19: the Dungeon's secret chest (spec 2026-11-11-dungeon-puzzles): whether this player ever found it (its first
+	-- find gives the title Crystal Seeker; BossService) and whether they saw the Hydra's full welcome (2026-11-12)
+	[18] = function(data)
+		local saved = if typeof(data.dungeon) == "table" then data.dungeon else nil
+		data.dungeon = { secretFound = saved ~= nil and saved.secretFound == true, seenIntro = saved ~= nil and saved.seenIntro == true }
+	end,
 }
 
 local function lowestGrade(): string

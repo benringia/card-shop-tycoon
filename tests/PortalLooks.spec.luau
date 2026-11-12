@@ -8,7 +8,7 @@ local PortalLooks = require("../src/shared/Util/PortalLooks")
 local expect = require("./lib/expect")
 local fs = require("@lune/fs")
 
-local LOOKS = { "Wild", "Frontier", "Arena" }
+local LOOKS = { "Wild", "Frontier", "Arena", "Dungeon" }
 
 local function joined(list: { string }): string
 	return table.concat(list, ",")

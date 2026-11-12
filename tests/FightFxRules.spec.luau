@@ -57,7 +57,7 @@ return {
 	["every boss move effect is a real boss's, with its looks and sounds"] = function()
 		-- frost: the Frost Tyrant's, drawn by Util/IceFx (2026-11-10); volt and storm: the Storm Sovereign's (2026-11-11);
 		-- voidbite and rift: the Rift Devourer's (2026-11-11)
-		local styles = { strike = { leaves = true, fangs = true, embers = true, frost = true, volt = true, voidbite = true }, release = { roots = true, web = true, lava = true, frost = true, storm = true, rift = true } }
+		local styles = { strike = { leaves = true, fangs = true, embers = true, frost = true, volt = true, voidbite = true, voidclaw = true }, release = { roots = true, web = true, lava = true, frost = true, storm = true, rift = true } }
 		for bossId, moves in AttackFx.BOSS do
 			expect.equal(Bosses.BOSSES[bossId] ~= nil, true, bossId)
 			expect.equal(styles.strike[moves.strike], true, `{bossId} strike`)
@@ -66,11 +66,55 @@ return {
 			expect.equal(string.match(moves.sounds.strike, "^rbxassetid://%d+$") ~= nil, true, `{bossId} strike sound`)
 			expect.equal(string.match(moves.sounds.release, "^rbxassetid://%d+$") ~= nil, true, `{bossId} release sound`)
 		end
-		expect.equal(AttackFx.BOSS.prismHydra, nil, "no Hydra until its remodel")
+		-- the Prism Hydra (owner 2026-11-12): a look per head's element, switched by its phase
+		local hydra = AttackFx.BOSS.prismHydra
+		for _, element in Bosses.BOSSES.prismHydra.heads do
+			local look = hydra.byPhase[element]
+			expect.equal(look ~= nil, true, `the Hydra's {element} phase has a look`)
+			expect.equal(styles.strike[look.strike] and styles.release[look.release] and #look.color == 3, true, `its {element} look is real`)
+		end
 		local rift = AttackFx.BOSS.riftDevourer
 		expect.equal(rift and rift.strike, "voidbite", "the Rift Devourer bites with its mandibles")
 		expect.equal(rift.release, "rift", "its swipe tears a rift")
 		expect.equal(rift.rift, true, "its summons come through rifts (Util/RiftFx)")
+	end,
+
+	-- The owner 2026-11-12: "what's that hydra attack that has an orange cone? add a rock fissure effect to it"
+	["the Prism Hydra's cone tears a rock fissure: cracks, thrown rocks, gone soon, within budget"] = function()
+		local fissure = AttackFx.BOSS.prismHydra.fissure
+		expect.equal(fissure ~= nil, true, "its cone attack has a fissure")
+		expect.equal(fissure.cracks >= 3 and fissure.cracks <= 7, true, "a fan of cracks across the cone")
+		expect.equal(fissure.segments >= 3 and fissure.segments <= 8, true, "each crack jagged in a few pieces")
+		expect.equal(fissure.rocks >= 6 and fissure.rocks <= 16, true, "rocks thrown up, not too many parts")
+		expect.equal(fissure.rockSize[1] < fissure.rockSize[2] and fissure.rise[1] < fissure.rise[2], true, "rock sizes and throws are ranges")
+		expect.equal(fissure.grow > 0 and fissure.grow + fissure.linger + fissure.fade <= 3, true, "it tears open fast and is gone in 3 s")
+		expect.equal(#fissure.rock == 3, true, "its rock colour")
+		-- the owner 2026-11-12: "just do a rainbow rock fissure with the tip being the biggest rock"
+		expect.equal(fissure.rainbow, true, "its cracks glow in every colour")
+		expect.equal(fissure.only, true, "the cone shows only the fissure (no phase effect over it)")
+		local spikes = fissure.spikes
+		expect.equal(spikes.base > 0 and spikes.grow > 0, true, "rock spikes grow along each crack")
+		expect.equal(spikes.tip > 1 and spikes.biggest > spikes.tip, true, "each crack's tip is its biggest rock, the middle one's the biggest of all")
+		expect.equal((spikes.base + spikes.grow) * spikes.biggest * spikes.height <= 14, true, "the biggest stays a rock, not a tower")
+		expect.equal(Bosses.BOSSES.prismHydra.playerAttacks.every, 10, "its attack on players comes every 10 s")
+	end,
+
+	-- The owner 2026-11-12: "shield, heal, and enrage should be noticeable" (any boss's; Util/BossSkillFx)
+	["a boss's heal and enrage are big and lit; the Hydra's shield is the ice bubble"] = function()
+		local skills = AttackFx.BOSS_SKILLS
+		local heal, enrage = skills.heal, skills.enrage
+		expect.equal(#heal.color == 3 and #enrage.color == 3 and #enrage.fire == 3, true, "their colours")
+		expect.equal(heal.pillar >= 1.5 and heal.ring >= 1.2, true, "the heal's pillar towers over it, its ring spreads wide")
+		expect.equal(heal.seconds >= 1.2 and heal.seconds <= 3, true, "the heal's moment is seen, then gone")
+		expect.equal(heal.glow > 0 and heal.glow < 1 and enrage.glow > 0 and enrage.glow < 1, true, "the body glows (a fill, never solid)")
+		expect.equal(enrage.ring >= 1.5 and enrage.flash > 0 and enrage.pulse > 0, true, "the enrage bursts out and its aura pulses")
+		for name, skill in { heal = heal, enrage = enrage } do
+			expect.equal(string.match(skill.sound, "^rbxassetid://%d+$") ~= nil, true, `{name} sound`)
+		end
+		local hydra = AttackFx.BOSS.prismHydra
+		expect.equal(hydra.iceShield, true, "the Hydra's Tide shield is the Frost Tyrant's ice bubble")
+		expect.equal(hydra.iceShieldMax < Bosses.BOSSES.prismHydra.ringRadius - 3, true, "its bubble stays off its fighters")
+		expect.equal(hydra.storm and hydra.rift, true, "its clap and summons reuse the Frontier bosses' looks")
 	end,
 
 	-- The owner 2026-11-11: "add a noticeable summoning effect when creatures are summoned"

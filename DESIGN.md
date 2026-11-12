@@ -224,7 +224,19 @@ sound each step at a random pitch, from their feet; none in the air, in water or
 Humanoid.FloorMaterial, others' from a short ray down. Roblox's own running loop is muted. Roblox's licensed library has
 no plain human footsteps, so they're Pro Sound Effects' nearest surface hits (dirt thuds and a foliage rustle, loose
 sand, snow crunches, muted wood thuds, the first stomp of a foot-stomp clip), at half the first try's volume (the owner:
-"lower the volume of the footsteps"). Code builds the fixed pieces (`Util/TownLayout`, same on every
+"lower the volume of the footsteps"). **Soundscape** (the owner 2026-11-11, away for 3 hours: "improve what you can
+improve in the worlds town/wilds/frontier, make it more immersive"; `SoundscapeController`, `Config/Soundscape`,
+`Util/SoundscapeRules`): on top of each area's ambient loop, small sounds now and then from somewhere round you, 8-110
+studs off, quiet and pitched a little differently each time: birds and wings in town by day and owls at night, birds
+and wings in the Meadow, drips and bats in the Caves, lava bloops and pebbles on Ember Ridge, ice cracking and far-off
+wolves in Frostwood, pebbles on Stormpeak, faint whispers and rocks in the Rift (never in a boss arena or the Dungeon).
+In town the birds' loop fades out and a crickets loop in as night falls (`SoundscapeRules.nightShare` on the day
+cycle's clock: in from 18.3 to 20, out from 3.5 to 5.8). Every 22-45 s the wind gusts through the town and the Meadow
+for 5 s: a rustle of leaves through trees swells and dies, the trees bend up to 2.6 times as far (`Util/Gust`,
+`TreeSwayController`) and leaves blow across the view (while the extras run). All Pro Sound Effects. **The town at
+night** (`TownNightController`, `Config/Ambient` NIGHT_LIGHTS): the street lights and lamps glow 4 times as bright and
+reach 1.75 times as far at night as by day (each light's own numbers, on the same night share), and fireflies drift
+over the grassy corners (the grove, the fox's grass, the west woods). Code builds the fixed pieces (`Util/TownLayout`, same on every
 server): modern black LED street lights (StreetLight slot, 11 tall, arm over the street) on the sidewalks at every plot gap
 and row end, 4 benches round the spring, a trimmed hedge on a concrete curb (Hedge slot) round the whole island just
 inside its edge, a frame at each portal. Nothing lands inside a plot, in the street (except street lights, portals
@@ -1866,15 +1878,215 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   (`DungeonRules.readyToStart`; after `ARRIVAL_WAIT` 60 s a player who never came, e.g. a failed teleport, is left
   behind). Then three rooms open in turn, each a sealed ring with a "Fight" gate. Its pack of elites appears (`Config/Dungeon.ROOMS`:
   2 Frost Wisp/Shade Lynx at Lv 45, 2 Storm Hawk/Lava Brute at Lv 47, 3 Rift Horror/Prism Crab/Lava Brute at Lv 50;
-  elite stats times `PACK_SCALE` HP x0.21 / ATK x0.33, which keeps the rooms as they were before the Frontier's
-  2026-11-03 retune, scaled to the group like a boss, with swings; the rooms stay creature-only) and each monster gets a
+  elite stats times `PACK_SCALE` HP x0.27 / ATK x0.33, scaled to the group like a boss, with swings; the players fight
+  in every room with their swords (owner 2026-11-12: the pack's first monster's quick hits on them), HP raised from
+  x0.21 so the Hydra is still reached with 73-86% HP fought well, as before) and each monster gets a
   small HP bar. Creatures keep their HP from room to room; a creature that faints is out for the rest of the run
   (even once its normal rest is over); no spring, no healing. A room win pays the pack's elite XP and cash, no cards
   or items, and opens the door on. A player whose whole party is down (they stay in the fight until it ends), who runs
   or who leaves is out: back to the Frontier after `OUT_DELAY`. Latecomers after the first fight go back too. The
   run line (top left) shows "Room n of 3" / "The Prism Hydra's chamber" with a Leave button (tap twice). On phones
   (`UIKit.isPhone`: touch only or a screen under 500 px tall) both are smaller and hide during fights.
-- **The Prism Hydra** ("Crown of Every Element"): in the chamber after room 3 (`BossService.StartRun` with the run's
+- **Puzzles and the crystal ruins** (owner 2026-11-11, spec `docs/superpowers/specs/2026-11-11-dungeon-puzzles-design.md`;
+  this replaces "three rooms in turn" above with the owner's order): fight 1 -> prism beams -> fight 2 -> weight plates
+  (the secret wall in that room) -> fight 3 with shield pylons -> element lock -> the Prism Hydra (`Config/Dungeon`
+  STEPS; `run.done` counts the steps done, `DungeonRules.canStartRoom` / `chamberOpen`: a fight or the chamber never
+  starts before the step before it is done, even for someone who walks through a door). Each step sits behind a door
+  that opens when it's done; the run line names the puzzle steps ("Prism beams"...) and a toast says what to do.
+  The puzzles are `DungeonPuzzleService` (server ProximityPrompts: a run member who isn't out, near, the open puzzle,
+  its cooldown) on pure rules: **Prism beams** (`Util/BeamRules`): a gem's beam crosses a 6x5 grid of 8-stud cells;
+  tap one of 4 crystal mirrors ("Turn", 0.4 s each) and it turns a quarter (a mirror joins two neighbouring sides of
+  its cell; the beam stops on its back); the server traces the beam and draws it; reaching the door's prism solves it.
+  Three layouts found by a search (one solution each, 6-9 taps), one picked per run. **Weight plates**
+  (`Util/PlateRules`): 2 plates (3 for runs of 3-4), all held at once opens the door for good; a plate is held by a
+  member standing on it or by their summoned creature sent there ("Send creature": the server walks the creature's
+  marker onto it, `PartyService.SetPost`, until called back, resummoned or the owner is out); never more plates needed
+  than the players left can cover (2 each). **The secret wall**: faint glowing cracks on the plate room's +z side;
+  3 shared taps ("Break", your sword swings) open a niche with the secret chest. **Shield pylons** (room 3): its pack
+  stands in a shield fed by 3 pylons (`BattleSim` pylons: while one stands the pack takes no damage, "Shielded!"); the
+  players fight in this room with their swords like a wild fight (their Attack aims at the pylons first, 450 HP each:
+  about 15 s fought well; the pack's quick hits on players), and its pack hits softer (`ROOMS[3].atk` 0.55) so the
+  Hydra is reached about as before (`lune run tools/balance/bosses 200 1 7`: reached 100% with 84% HP at 1x; a player
+  who never swings can't pass room 3). **Element lock** (`Util/LockRules`): five crystals across the room; strike them
+  ("Strike") in the order shown over the door, the Hydra's phase order from `Bosses.prismHydra.phases` (Tide, Volt,
+  Shade, Bloom, Ember); a wrong one flashes red and resets. **Chests**: each solved puzzle leaves a chest
+  (`Util/ChestModel` drawn by `DungeonPuzzleController`), each member opens it once per run: the cash of the fight
+  room before it and its XP split over the party's creatures, like a won room's. The secret chest: the first find ever gives the title **Crystal Seeker**
+  (saved `data.dungeon.secretFound`; Dungeon Conqueror outranks it, `BossRules.pickTitle`), later finds a 25% chance
+  of 1 Prism Scale (`material_prismHydra`), else $250. **The look:** crystal-grown temple ruins (the owner's pick C):
+  the props pack `tools/blender/build_dungeon_props.py` (16 props: Dungeon pillars whole and broken, a broken gateway,
+  wall, slab, steps, brazier, the carved gate at every door, crystal clusters, and the puzzle pieces) imported once as
+  `assets/props-import/DungeonProps.rbxm` and split into `assets/props`; each puzzle piece wears its prop as a "Look"
+  under its part (`DungeonBuilder.tint` / `hide` change it), code-built stand-ins until it's in. The fight rooms'
+  monsters are the Frontier's, crystal-touched in the Dungeon (`Util/CrystalLook`: rainbow shards on the back, a soft
+  glow). Room 3's cues: its start toast (`HINTS.pylons`), a beam from each standing pylon into the shield (off when
+  that pylon breaks, the shield flickering), "Shielded!" over the pack's hits, the pylons' own hit numbers and "Broken!",
+  the shield bursting outward and a "Shield down! Attack!" banner at the last (DungeonService `onPylon`, through
+  `RunOptions.onPylon`; BattleService knows nothing of the Dungeon). A pack's markers are made just before its fight,
+  so clients find them by name (`addMonsters` in the fight's start message: under streaming they arrived as nil and
+  no hit numbers showed on Dungeon packs). Studio: `/puzzle <beams|plates|lock>` (the admin panel's "To the
+  beams/plates/lock") jumps to a puzzle with every step before it done, `/tap <piece>` does what pressing that piece's
+  prompt does (every check included; `RoomGate<n>` for a room's Fight gate), `/puzzle solve` (and the admin panel's
+  "Solve puzzle") solves the puzzle the run is at; `/room <2-4>`
+  skips to a room's gate with every step before it done.
+- **The Crystal Abyss** (owner 2026-11-12, "the dungeon is still a wall and some props... world designed"; concept A;
+  spec `docs/superpowers/specs/2026-11-12-dungeon-world-design.md`): the Dungeon is a giant cave in Terrain (a rock
+  ceiling with stalactites, far walls lost in fog, no sky or stars) over a bottomless chasm with a faint violet glow
+  (dim lights deep down, `ABYSS.GLOW`). The run is islands over it (`Util/AbyssLayout`, `Config/Dungeon` ABYSS): the
+  entrance ledge (the spawn, the four braziers, the way back as an arch in the cave wall), then one island per step,
+  left and right of the line (`WIND`): round fight islands (the ring plus a 2-stud rim, the barrier at the edge),
+  square puzzle islands (half side 32), the plates island's secret niche on its own small ledge; each island's rock
+  hangs below it (`UNDERSIDE`). Bridges 8 wide with low broken railings link them; a gate (`DungeonIslandGate` round
+  the glowing barrier) closes the start of each island's bridge out until that step is done. The Hydra's round door
+  (`DungeonHydraDoor`) stands at the chamber island's edge: its five eyes are the lock's sockets (lit one by one), and
+  it opens onto the Hydra's arena when the lock is solved. Crystals and ruins round every rim, chains from the ceiling,
+  the hydra sigil in each fight ring. **Falling is death:** below `KILL_Y` (-60) the server sets you back on the ledge
+  and you're out of the run, back to the Frontier (`DungeonService` sweep; the Wild's fall rescue is off here); your
+  screen goes black with a yell (`DungeonFallController`). Run fights' leash is measured from the ring's centre
+  (`ROOM_LEASH` 42) so its put-back point is on the island. The Frontier's way in is its own portal (`PortalDungeon`,
+  the `Dungeon` look; the Arena's model until it's saved). Props: `tools/blender/build_dungeon_world.py` (one pack) and
+  `build_portal_dungeon.py` (docs/props.md "Dungeon world props").
+- **The Crystal Abyss, round 2** (owner 2026-11-12 after playing it; concepts `assets/blender/DungeonWorld/concept_arena_walls.png`,
+  `concept_backdrop.png`, `concept_hydra_eyes.png`): every gate stands on its bridge where only chasm lies past its ends
+  (`AbyssLayout.gateAlong`: nobody walks round it over an island's edge; the Hydra's door just before the chamber), with
+  Terrain rock columns under its posts down into the chasm (`ABYSS.COLUMN`) and the hydra seal standing in it (the
+  props pack's DungeonSigil upright, glowing, `ABYSS.SEAL`; it goes with the barrier when the gate opens). A fight
+  room's Fight gate is two DungeonPillars with the seal between them. Fight rooms are ringed by broken walls
+  (DungeonWall, CrackedWall, DungeonPillarBroken, `ABYSS.RUINS`: 14 pieces, open 28 degrees round the ways in and out,
+  sunk and leaning, solid). The far scenery (`AbyssLayout.backdrop`, `ABYSS.BACKDROP`): 18 giant crystals on the side
+  walls (6 lit), 8 far islands of rock with crystals, 6 falls of light from the ceiling into the chasm (Beams), the
+  Hydra's door three times its size carved on both side walls and the end wall, and a violet haze (the Atmosphere) so the
+  dark reads as depth, not black. Players fight with their swords in every room (`swords = true`; the pack's HP x0.27
+  keeps the run as it was). Puzzle rooms name themselves over the objective (`OBJECTIVE_LABELS`) with clues under it, a
+  new one every `CLUE_EVERY` 40 s (`CLUES`, `ObjectiveRules.label/hint`; the lock's last spells out its order). The
+  Dungeon's music is at 0.07 (was 0.35, then 0.15). The welcome's eyes are real eyes (an almond of glowing iris, a slit pupil, a
+  brow, the head's dark skull and snout lit by them): the first pair opens slowly and blinks, the rest open one by one,
+  the pupils narrow and the heads lean in, the roar; the full welcome is 15 s (the lights past the hall and the haze
+  go dark while it plays).
+- **The Crystal Abyss, round 3 part 1** (owner 2026-11-12 after playing round 2): a fight room's walls narrow to its
+  Fight gate (`RUINS.gapIn` 14 degrees, `gapOut` 28) behind an invisible wall (`wallHeight` 16), and its seal
+  (`RoomSeal`) is solid until the room is won: nobody walks in but by pressing Fight. A cleared room's seal and sigil go
+  (`DungeonService` openStep). Island gates stand on a stone landing (`COLUMN.landing`, `GATE_HALF` 11.5 each side, the
+  barrier as wide, invisible wings `GATE_WING` past its ends over the chasm so nobody jumps round it). The next puzzle waits for the
+  group: after a room is won the run is in a `gather` stage ("Gather on the puzzle island 0 / 2", `GATHER_MESSAGE`)
+  until every player still in the run stands on that puzzle's island (`AbyssLayout.onIsland`), then it opens. The beam
+  puzzle's target prism stands out (`PUZZLE.TARGET`: 1.6x, a column of light, a glow, sparkles, "Light this prism!";
+  gone once lit). Puzzle sounds (`PUZZLE_SOUNDS`, `DungeonPuzzleService` cue): a mirror's grind, a rising chime when
+  the light goes further, a ding when the prism lights, a plate's stone thud (lower when it rises), a ringing note per
+  right lock crystal (higher each time), a low buzz on a wrong one, a burst on a solve. A Dungeon chest rattles with a
+  creak, bursts open with a flash, a column of light and sparkles, and a big reward card pops in the middle of the
+  screen (`CHEST_REVEAL`). Cinematics (`CINEMATIC`, `DungeonCinematicController`, remote `DungeonCinematic`): a solved
+  puzzle's gate on camera, its seal cracking and shattering as the server opens it (1.6 s in); after the lock the
+  camera flies down the bridge to the Hydra's door, its five eye gems flare one by one, the door bursts open (4.8 s
+  in) and the roar. Room monsters walk round their spot between hits, now and then a roar or a stomp
+  (`Bosses.IDLE_PACK`, Dungeon place only), and the Frontier's monsters have attack looks (`AttackFx.MONSTER`: Frost
+  Wisp, Shade Lynx, Storm Hawk, Lava Brute, Prism Crab). Studio: `/winroom`.
+- **The Crystal Abyss, round 3 part 2: regions, a winding way, the Hydra's castle** (owner 2026-11-12, spec
+  `docs/superpowers/specs/2026-11-12-abyss-regions-design.md`, concept `assets/blender/DungeonWorld/concept_castle.png`):
+  the way winds (`ABYSS.ROUTE`, `AbyssLayout.islands`): from each island straight out to a small stop island, two stops
+  across the cave, a stop straight in front of the next island; 12-22 s of walking between steps (tests/AbyssLayout),
+  each step's island swinging 45-65 studs off the middle line. Rock spires (Terrain, chasm floor to ceiling,
+  `ABYSS.SPIRES`, `AbyssLayout.spires`) stand beside the turns. Islands are Terrain mesas (their top flat at y 0 over an
+  invisible exact floor part, a rocky lip, their region's rock hanging below). Fight rooms sit in craters (`ABYSS.CRATER`:
+  a rim 16 tall from the walls out to 50, open 13 degrees at the ways in and out; crystals crown it): a room can't be
+  seen till you reach it. Regions (`REGIONS`, `REGION_OF_STEP`, `CASTLE_REGION`): Tide (rooms 1, beams: Glacier tops,
+  ice-blue crystals, mist), Volt (room 2, plates: Slate, storm-yellow crystals, flickering light), Ember (room 3, lock:
+  Basalt over cracked lava, red-orange crystals, rising embers), Shade (the castle and the lair: violet Limestone,
+  violet and green crystals, motes); each region its own Terrain materials (colours are per material), crystals, light
+  falls, chasm glow and haze (`DungeonRegionController` blends the Atmosphere as you walk in). The last island is the
+  Hydra's castle (`ABYSS.CASTLE`: broken Terrain walls and towers, a fallen keep, crystals through it, violet braziers on
+  the forecourt), its gate the Frontier's Dungeon portal model (1.3x, its violet swirl) sealed by the Hydra's door; the
+  lock's cinematic opens it, and its prompt ("Enter: The Hydra's lair", `LAIR_PROMPT_DISTANCE`) takes a run member to
+  the lair: a Terrain dome (`ABYSS.LAIR`, radius 95) past the cave's east wall at `CHAMBER` (x 2200), the Hydra's ring in
+  it, crystals round it, the Hydra's carving 4x behind it. The lock's island has no gate of its own (the castle's door is
+  its step's door). The Dungeon's portals' swirls turn here too (`PortalFxController`).
+- **Round 3 fixes** (owner 2026-11-12 after playing part 2, and the round's review): a bridge leaves a round island on
+  the side facing where it goes and its planks lie end to end (every slab corner over stone, tests/AbyssLayout); Terrain
+  fills sit `TERRAIN_LIFT` 2 studs lower (Terrain stood 2 above a fill's top and buried the plates and chests). A room's
+  pack rises spread round the ring's far side (`DungeonRules.packSpots`, `PACK_SPAWN`: 18 out, room 3's 5 round its
+  shield) out of the ground (the Summon emerge, no size) with a ring of light, sparks and a whoosh, and holds
+  that spot in its fight (BattleService: only the first monster takes the fight's front spot). A hit on you also
+  flashes the whole screen red and jolts the camera (`CombatHud HIT_FLASH.FILL/SHAKE`). The lock's order is shown on
+  the lock island (`ABYSS.LOCK_SEAL`: the Hydra's seal, its eyes the sockets), the castle's door wears it in the
+  cinematic. The gather opens after `GATHER_TIMEOUT` 75 s for whoever's there; a far teleport (a room's or the
+  Hydra's start, `Bosses.FAR_MOVE` 300; a fall's rescue to the ledge, held anchored meanwhile) streams its spot in
+  first. Cinematics hold you still while they play (your Humanoid's walk and jump at 0: the game has no PlayerModule) and a new one ends the old one cleanly. The castle's gate
+  is solid across its opening until the door opens; then walking into the swirl (or its prompt) takes you into the lair
+  (`LairPortal` attribute Open), "The Hydra's door is open!" (`LAIR_MESSAGE`). A won room's Fight prompt goes off.
+- **Round 4** (owner 2026-11-12 after playing round 3): braziers burn (fire particles, sparks, a gently flickering light
+  tagged DungeonTorch; `TORCH`); crystals vary (`CRYSTAL_VARIETY`: clusters and single shards, 0.5-1.3x, now and then
+  1.8-2.8x, often leaning, sometimes a smaller one beside); every stop island has something on it (a fallen Hydra seal
+  with a crystal through it, a brazier pair, a broken pillar ring, a slab with a lit crystal, in turn); a room's pack faces
+  the creatures; a chest's rewards also show in the notifications; a pack's and a boss's adds' HP bars are the fight's
+  styled bar; room 3's pylons have 900 HP (was 450; the shield falls after about 29 s fought well, the Hydra reached
+  with 76% HP at 1x) and your creature can be sent at them (round 6: each pylon's "Send creature" prompt;
+  `Combat.PET_PYLON_SHARE` 0.5 of its ATK a hit); the castle is a Blender model (`build_castle.py`, DungeonCastle, see
+  docs/props.md); the lair's arena is dressed (`LAIR_ARENA`: violet floor, glowing cracks, crystal-tipped posts, the
+  rooms' seal gate) and its way in has the portal you came through on the dome's wall, a stone causeway and braziers.
+  The Hydra's gate refuses below shop level 57 (the Frontier's Dungeon entrance asks the same; a Studio window runs for
+  anyone: `/level 57`).
+- **Round 5** (owner 2026-11-12): never fail silently, across the game: a requirement refusal goes through server
+  `Util/Blocked` (remote `Blocked`) to a big locked card in the middle of the screen (client `BlockedController`, a lock,
+  "Not yet!", the reason, a little shake and a soft chime; `Config/Blocked`): the boss gates and the Dungeon's (every
+  error of BossService and DungeonGateService), the Hydra's start, the forge, jobs, shelves and stock unlocks; and a
+  prompt with a `RequireLevel` attribute (the boss gates and their group prompts, the Frontier's Dungeon portal) reads
+  "Locked · 🔒 Shop level N needed" while you're below it. The Manage tray shows only in town (`Util/Hud`: the main
+  place hides it in the Wild valley, past `MusicRules.inTown`; the Frontier and the Dungeon never make it, their party
+  bar has Party). The castle is a ruin (`build_castle.py`: towers broken to jagged stumps, two leaning spires, walls
+  breached, most crenels gone, the keep's roof fallen in, moss, rubble, crystals overgrowing it, one window still lit).
+  The Prism Hydra: its rainbow aura off for now (`rainbowAura = false`), its clips keyed on the guardian
+  (`tools/blender/anim_prismhydra.py`: windup, strike, specialWindup, specialRelease in
+  `assets/monster-animations/prismHydra`), its fight effects by phase (`AttackFx.BOSS.prismHydra.byPhase`: Ember embers
+  and lava, Volt sparks and a storm, Shade void claws and a rift, Bloom leaves and roots, Tide fangs and ice; FightFx
+  reads the marker's Phase), and it walks its ring between moves (`prismHydra.idle` over `Bosses.IDLE`). Gate seals and
+  their pillars fade while you're inside their arena and the camera is near (`CAMERA_FADE`).
+- **Round 6** (owner 2026-11-12): a fight's HP bars under the top bar are rebuilt for each fight (two rooms' packs share
+  ids, so room 2 showed room 1's names). The chest's reward sound is one soft 1.6 s bell (was a 3.3 s shimmer), its
+  creak quieter. Room 3's crystal pylons each have a "Send creature" prompt, like the plates (made on each fighter's
+  client, `Dungeon.PUZZLE.PYLON_PROMPT`; remote `PetPylon` with the pylon's id, or false to call it back): your
+  creature hits that pylon (`BattleSim.setPylonFocus(state, owner, pylonId?)`) and comes back to the fight when it
+  breaks ("petBack"); the pylon you sent it at reads "Call creature back"; the button is gone. The Frontier's Dungeon
+  portal (`PortalDungeon`, the castle's gate) has five scowling dragon heads (horns, open jaws with fangs, brow ridges,
+  eyes in their own parts `Eye1..5`); the Frontier's glow in the Hydra's five elements, the castle gate's stay dark
+  (`HYDRA_EYES`) until the lock is solved: the cinematic lights them one by one on the gate (framed on the heads,
+  `CINEMATIC.hydra` aimUp) and the server lights them for everyone as the door opens. The castle's forecourt has its dead
+  (`ABYSS.CASTLE.bones`: a dragon skeleton, a giant's skull and ribs, a horned skull, an adventurer's sword, bones). The
+  Hydra's cone (its big swipe at a player, the orange warning) tears the ground as it lands
+  (`AttackFx.BOSS.prismHydra.fissure`, `ElementFx.rockFissure`: jagged cracks fanned across the cone glowing in the
+  phase's colour, rocks thrown up, dust).
+- **Round 7** (owner 2026-11-12): the Prism Hydra's skills each have a clip and a look. Its clips
+  (`tools/blender/anim_prismhydra.py`): shield (necks tucked in, braced), heal (heads to the sky, swaying), enrage
+  (rears, thrashes, roars forward), clapWindup / clapRelease, summon; `MonsterMoves` plays "shield", "heal" and
+  "enrage" (cutting into a wind-up or strike, nothing cuts into them). Its Tide shield is the Frost Tyrant's ice bubble
+  (`iceShield`, kept inside its ring: `iceShieldMax` 16); any boss's heal is a green ring, a pillar of light, rising
+  motes and its body glowing green, and its enrage a red burst and shockwave with a roar, then a red aura for the rest of
+  the fight (heartbeat glow, embers, light; `AttackFx.BOSS_SKILLS`, `Util/BossSkillFx`). Its Volt clap is the Storm
+  Sovereign's warned one (2 s, 26 studs, Electrocuted; StormFx) and its Shade summons come through the Rift Devourer's
+  rifts (RiftFx). Its attack on players comes every 10 s (was 5) and its cone shows only a rainbow rock fissure: seams
+  in every colour, rock spikes bursting up along each crack, bigger the further out, a glowing crystal on each, the
+  tips the biggest and the middle crack's the biggest of all (`fissure.rainbow`, `only`, `spikes`). Under any boss's
+  HP bar, what's on it now (`BattleSim.statusesOf` in each snapshot, `Config/BossStatus`, `Util/BossStatusRules`,
+  client `Util/BossStatusBar`): shield (its size), guarded (its summons standing), enraged, stunned, snared, cursed,
+  burning, a chip each with its number, its tooltip on hover or tap (3 s).
+- **The Hydra's lair** (owner 2026-11-12, spec `docs/superpowers/specs/2026-11-12-dungeon-atmosphere-design.md`):
+  **the welcome** when the run opens (`DungeonIntroController`, beats in `Config/Dungeon` INTRO): the way back slams
+  shut, the hall's four braziers (`HALL_BRAZIERS`) die one by one, the eerie music starts, the camera drifts into the
+  dark, one pair of glowing eyes opens far ahead, four more in the heads' colours, the eyes narrow at a huge roar
+  (shake, dust), then the title "THE DUNGEON / Something waits below..." and back to you. The Hydra is never shown. The
+  full 15 s welcome plays the first time ever (saved `data.dungeon.seenIntro`, marked when the client starts it: every DungeonRun message carries the welcome until
+  its "introSeen" ack, and it waits for the loading screen; DungeonRun
+  `intro`), a 2.5 s short one after; always skippable (Skip, Space). **The objective** (`DungeonObjectiveController`,
+  `ObjectiveRules`, lines in `OBJECTIVES`): plain text at the top right, no box: "OBJECTIVE" over one line and its
+  progress (monsters beaten, plates held, pylons broken, crystals lit), a soft ring and a pop when the step changes,
+  hidden during the welcome. **Danger all the way down** (`DungeonAmbienceController`, `AmbienceRules`, `AMBIENCE`):
+  the eerie music ("Majestic Power", APM) with a heartbeat layer from the lock on, out during the Hydra's fight; a
+  distant roar every 50-80 s, louder room by room (half in fights), with dust and a tremble; the Hydra's eyes glimpsed
+  for 1.6 s in the dark ahead every 90-160 s (never in a fight); drips, rubble, chains, whispers and crystal rings round
+  you (`Soundscape.DUNGEON`); thicker fog (300, atmosphere 0.42). Never damage. **Bigger arenas**: the fight rings radius
+  40 (28 before), the Hydra's chamber 48 (`arenaRadius`); members enter 16 past a ring's gate (`ENTRY_STEP`, the camera
+  inside the ring) and a run fight's leash is 42 from the ring's centre (`ROOM_LEASH`: the ring plus its rim; tests/Dungeon). Studio: `/dungeonfx <intro|introshort|roar|glimpse>` (and the
+  admin panel's buttons).
+- **The Prism Hydra** ("Crown of Every Element"): in the chamber after the element lock (`BossService.StartRun` with the run's
   HP). Five phases by HP (`phases`, `BattleSim` with `BossRules.phaseAt`: forward only, a heal never takes it back):
   100-80% Tide ice shield, 80-60% Volt thunderclap, 60-40% Shade 2 Rift Spawn, 40-20% Bloom heal (5% every 20 s),
   under 20% Ember enrage (x1.15). Each phase switches its element (so the element wheel changes mid-fight), shows a
@@ -1887,7 +2099,10 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   `Title`, from the saved first clear, `Boss.clearTitle`; TitleController) and a chat message in every server of the
   experience ("Ben conquered the Dungeon!", MessagingService topic `BossCleared`, `announceEverywhere`). Then a portal
   home opens in the chamber (pick up your loot first). Later wins: "Victory!", the usual farm protection.
-- **The model:** a blocky remodel of the Crystal Titans Rainbow Hydra (`tools/blender/build_prismHydra.py`,
+- **The model (2026-11-12):** a Meshy "temple guardian" (the owner's pick B: carved stone armour, rune lines glowing
+  in the current phase's element colour, `phaseGlow`; crystals; five heads alike), rigged with the old bone names by
+  `tools/blender/rig_prismHydraGuardian.py` (docs/creatures.md). Before it:
+- **The first model:** a blocky remodel of the Crystal Titans Rainbow Hydra (`tools/blender/build_prismHydra.py`,
   `assets/monsters/prismHydra.rbxm`) in a faceted low-poly "studded" style from the user's references (our own
   creature): chamfered chunky shapes with small raised square studs over a dark indigo hide, cream horns, muzzles and
   belly, a gold collar and claws, prism crystal shards down its back, glowing gold eyes under heavy brows and a crystal
@@ -1983,6 +2198,35 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   and Legendary drops are toasted to the server (not a duplicate: it says "Already yours", no card or column). A
   weapon's pity resets only once it was really given; the server refuses to reforge a Grade S weapon, and anything
   failing after a Forge payment gives it back.
+- **Boss chests** (owner 2026-11-11, spec `docs/superpowers/specs/2026-11-11-boss-chests-design.md`;
+  `BossChestService`, `BossChestController`, `Util/ChestModel`, `Util/ChestRules`, `Config/BossChests`): every loot
+  win of a boss with a weapon (all seven; full or reduced: the owner 2026-11-11, "I defeated a boss and no chests
+  appeared", picked "chests every win") ends with three chests on the pack opening's stage (owner's pick B)
+  after the victory screen: "Pick a chest!", a 20 s countdown, a tap, a click or keys 1-3. Everything is decided and
+  given at the win, before the pick: the weapon rolls as above (same odds, pity, grade, "Already yours" refund) and, if
+  it dropped, is always in the chest you pick; otherwise you get its material, 1-3 (weights 85/10/5%, averaging the
+  old 80% x 1-2 roll it replaces, so making a weapon takes as long as before), straight into the Bag. A reduced win
+  (over-powered: party Power over 2.5x the recommended; or past the day's soft cap) rolls no weapon, as before, and its
+  material keeps the reduced chance: missed, your chest is empty with why ("Too strong here! Harder bosses fill
+  chests" / "Empty for today: full chests again tomorrow", `ChestRules.reason`). Your chest opens
+  with a burst of light and its card rises ("Yours!": the weapon, or the material with "9/15 for ..."), then the other
+  two (shown only, never given): on a miss one shows the weapon darkened under a "?" (only while you don't have it: the
+  owner 2026-11-11, `ChestRules.showsMystery`) and one a material amount; otherwise both show material. A drop then hands the stage to the drop cinematic (`WeaponRevealController.HandOver`); a
+  miss closes on a tap after 1.5 s or by itself after 5. Abuse-proof: the client only sends a chest index; the server
+  checks the set's id, that it isn't opened and the index (1-3), rate-limited; not picked in 22 s the server opens one;
+  a newer win opens the older set first; leaving keeps everything (an Epic or Legendary is still announced). Carried
+  members get no chests (they roll no weapon). The chest (owner's pick A of three Blender looks, "classic wood"): a
+  chunky cartoon chest, brown wood, gold bands and studs, a lock and a purple gem, its barrel lid a separate mesh
+  (`tools/blender/build_chest.py`, `assets/packs/Chest.rbxm`: Body and Lid; until it's imported a stand-in built from
+  parts); `/chests <boss id> [drop|miss|strong|tired]` previews them (nothing given). The opening plays in beats (the
+  owner 2026-11-11: "more immersive", storyboard approved; `Config/BossChests` BEATS, `Util/ChestMotion`): the chests
+  drop in one after another (thud, dust, a small shake); while you choose they rattle now and then with light leaking
+  from a cracked lid, glints run along their gold and the one under your pointer hops and glows; your pick pushes the
+  camera in, the others slide back into the dark and it shakes harder and harder (a rising whoosh) until it bursts:
+  flash, shake, a burst and rays in the reward's colour, gold shards like coins, its card rising out spinning (an empty
+  chest only puffs); the camera eases back, the others pop open, and a tap sends your card off to the top right.
+  Sounds: Pro Sound Effects' Wood Bench Hits 2, Coins Or Keys Jingle 6 and Doppler Whooshes Crackly Airy Bursts 1, with
+  the stage's creak, rise, chimes and shimmer.
   The weapon is scaled to 3.2 studs on the stage so all of it shows. The Forge's results play the same stage with the
   anvil's face under the weapon and a 1.5 s build-up with its own sounds (a fire whoosh, three rising hammer strikes),
   the hit by the grade (an anvil clank; A adds a fire burst, S and +10 a deep boom), a sword's ring as the banner pops;
@@ -2649,7 +2893,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 ├── assets/weapons-source/     # ForgeSword.rbxm, the source of the Forge Sword's five element copies (tools/weapons/forge_variants); not synced
 ├── assets/ui/weapon-portraits/ # the swords cut out for their cards (tools/ui-art/cut_product_picture.py), uploaded as images (WeaponLooks portrait ids)
 ├── assets/ui/weapon-glow-maps/ # each weapon model's glow map (tools/textures/make_glow_maps.py), uploaded (WeaponLooks GLOW_MAPS), baked in by tools/weapons/add_glow_maps
-├── tools/blender/              # Blender build scripts: creatures, bosses, the pack models and effects (pack_kit.py), the plaza fountain, the town portals (portal_kit.py), the Wild boss arenas' props (build_arena_props.py), the starter sword (build_starter_sword.py), the weapons' cleanup (weapon_kit.py, build_weapon_<id>.py; spears: build_spear), the sword moves (anim_kit.py, anim_starter_sword.py; run_sword_moves.py exports them in a background Blender, `--sword <name>` for a round 1 sword's skill: anim_forge_sword.py, anim_verdant_blade.py, anim_sunforged_blade.py, anim_prism_blade.py; `--sword spear` for the spear moveset, anim_spear.py)
+├── tools/blender/              # Blender build scripts: creatures, bosses, the pack models and effects (pack_kit.py), the plaza fountain, the town portals (portal_kit.py), the Wild boss arenas' props (build_arena_props.py), the Dungeon's ruins and puzzle pieces (build_dungeon_props.py), the starter sword (build_starter_sword.py), the weapons' cleanup (weapon_kit.py, build_weapon_<id>.py; spears: build_spear), the sword moves (anim_kit.py, anim_starter_sword.py; run_sword_moves.py exports them in a background Blender, `--sword <name>` for a round 1 sword's skill: anim_forge_sword.py, anim_verdant_blade.py, anim_sunforged_blade.py, anim_prism_blade.py; `--sword spear` for the spear moveset, anim_spear.py)
 ├── tools/anim/                 # build_kfs.luau: exported sword moves (JSON) → KeyframeSequence .rbxm; build_bone_clips.luau: monster/boss clips (Lune)
 ├── tools/weapons/              # finish_sword.luau: colours, pivots and PrimaryPart for an imported sword model; forge_variants.luau: the Forge Sword's five element copies (Lune)
 ├── tools/textures/             # pack textures and flipbook sheets, the HUD's slanted buttons and the rings, the sword effects (make_sword_fx.py) (Pillow)
@@ -2688,9 +2932,11 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── ArenaService.luau     # PvP: challenges, bet escrow, arena pad + queue, fights, saved record
     │   │   ├── ItemService.luau      # item inventory (Star Shards, boss items): give, take, save; OnGiven (Pish's trophy lesson)
     │   │   ├── BossService.luau      # boss ladder: saved progress, arena gates and copies, keys, boss wins' items (farm protection)
+    │   │   ├── BossChestService.luau # a boss win's three chests: the material roll, the pick, the timeout (spec 2026-11-11)
     │   │   ├── FrontierService.luau  # teleports: plaza Frontier portal, Explore / Join friend, back home (Dungeon: back to the Frontier)
     │   │   ├── DungeonGateService.luau # Frontier: the Dungeon portal's checks, groups and reserved-server teleport
-    │   │   ├── DungeonService.luau   # Dungeon: the run (arrivals, rooms, carried HP, out, the chamber, the way back)
+    │   │   ├── DungeonService.luau   # Dungeon: the run (arrivals, its steps, rooms, carried HP, out, the chamber, the way back)
+    │   │   ├── DungeonPuzzleService.luau # Dungeon: prism beams, weight plates, the secret wall, the element lock, their chests
     │   │   ├── DevService.luau       # Studio-only test chat commands (/crowd: extra players counted in the Wild's biomes)
     │   │   ├── LevelUpService.luau   # shop level-up packs, opening Bag packs (OpenBagPack), the LevelUpFx broadcast (held mid-fight)
     │   │   └── MonetizationService.luau # game passes (Extra Job Slot), cached checks, purchases
@@ -2699,7 +2945,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── NpcMotion.luau        # NPC rigs, animations and path walking (customers and workers)
     │       ├── SaleRules.luau        # player-to-player buy check (pure, Lune-tested)
     │       ├── BattleSim.luau        # seeded fight simulation: packs, boss mechanics and phases, carried HP (pure, Lune-tested)
-    │       ├── DungeonBuilder.luau   # the Dungeon's cavern: rooms, barriers, doors, crystals, lighting
+    │       ├── DungeonBuilder.luau   # the Dungeon's cavern: its steps' rooms and puzzle pieces, doors, the ruins props, lighting
     │       ├── PlazaBuild.luau       # the Card Festival Square: gazebo, card fan, stalls, cafe sets and townsfolk, lights, planters
     │       ├── BloomFountain.luau    # the healing spring's Elemental Bloom lotus fountain
     │       ├── PortalBuild.luau      # dresses a town portal model: vortex, glow, effects, light (and the old frame's emitters)
@@ -2737,7 +2983,9 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── DayCycleController.luau # the town's day cycle on this client (afternoon outside town)
     │   │   ├── MusicController.luau     # music where you are: the town, the Wild valley's areas, its boss arenas (crossfades)
     │   │   ├── FootstepController.luau  # footsteps on whatever you and players near you walk on
-    │   │   ├── TreeSwayController.luau # trees near the camera lean in the wind
+    │   │   ├── TreeSwayController.luau # trees near the camera lean in the wind (further in a gust)
+    │   │   ├── SoundscapeController.luau # spot sounds round you per area, the town's night bed, gusts of wind
+    │   │   ├── TownNightController.luau # the town at night: street lights brighter, fireflies
     │   │   ├── TownCritterController.luau # eight Cute Pets animals running round their homes (or laps, or resting)
     │   │   ├── PlazaNpcController.luau # the plaza's sitting townsfolk: sit animation and sips (client only)
     │   │   ├── FountainFxController.luau # the healing fountain's rune circle, light column and orbs (client only)
@@ -2750,12 +2998,20 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │   │   ├── PartyBarController.luau  # bottom-right party cushion: Party pill + 3 round portraits (and the mascot), tap or 1/2/3 to summon
     │   │   ├── MonsterController.luau   # draws wild monsters on their markers (model or placeholder) at their species' height, glow masks, Fx_ bone effects; boss rigs, head glow, death
     │   │   ├── DungeonController.luau   # Dungeon: the run line and Leave
+    │   │   ├── DungeonPuzzleController.luau # Dungeon: the puzzle and secret chests (lid, sparkle, toast), the sword swing at a tap
+    │   │   ├── DungeonObjectiveController.luau # Dungeon: the objective at the top right (plain text)
+    │   │   ├── DungeonIntroController.luau # Dungeon: the Hydra's welcome (eyes in the dark, the roar)
+    │   │   ├── DungeonAmbienceController.luau # Dungeon: eerie music, distant roars, eyes glimpsed, spot sounds
+    │   │   ├── DungeonCinematicController.luau # a solved puzzle's gate opening, the way to the Hydra (round 3)
+    │   │   ├── DungeonRegionController.luau # Dungeon: each region's haze as you walk in, Volt's flicker (round 3 part 2)
+    │   │   ├── DungeonFallController.luau # Dungeon: a fall into the chasm (a yell, the screen black)
     │   │   ├── TitleController.luau     # titles over players' names (Dungeon Conqueror)
     │   │   ├── BattleController.luau    # Fight prompts, the Return to town pill in the wild, XP sparks after a win, fight bar (wild + PvP), boss HP bar and banners, damage numbers, end screen
     │   │   ├── LevelUpController.luau   # plays the level-up pillar on you, your creatures and players nearby (LevelUpFx)
     │   │   ├── SwordController.luau     # draws the equipped weapon (its glow ladder, WeaponLook) on backs and in hands, the first-sword popup, boss-fight actions (buttons, keys, dodge dash), trail, sounds, kneeling
     │   │   ├── WeaponSwitchController.luau # the quick weapon switch chip on the right edge: < and >, a swipe, Q / Z (EquipWeapon)
     │   │   ├── WeaponRevealController.luau # a boss's weapon drop and the Forge's results: the reveal on the opening stage
+    │   │   ├── BossChestController.luau # a boss win's three chests on the opening stage: the pick and the opening
     │   │   ├── ForgeController.luau     # the Forge window: Forge / Upgrade / Reforge tabs and what each does, weapon rows, the chosen weapon's card, Now / After boxes, cost chips and one button
     │   │   ├── WeaponDetailController.luau # a weapon's card view: pills, Your weapon / How to get it, skill, perk, bond, Equip
     │   │   ├── BossBoardController.luau # Bosses HUD tile and the Boss Ladder: bosses' list with status chips and Next, the chosen one's banner, To fight it checklist, Rewards with odds, footer with next step and Take me there
@@ -2787,6 +3043,9 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
     │       ├── WeaponFace.luau         # draws a weapon's card (owned: portrait on the Armory painting, Power, grade, +level; locked: its shadow, a lock, source and progress) on CardFace's parts
     │       ├── WeaponLook.luau         # a weapon model's glow ladder: shell, aura, trail, burst, Awakened effect, twinkle, light; the stand-in model
     │       ├── OpeningStage.luau       # the opening's 3D stage: backdrop, lights, camera, post effects, bars, flash, shake, sounds
+    │       ├── ChestModel.luau         # a boss chest built from parts: box, gold bands, lock, hinged lid, its light
+    │       ├── CrystalLook.luau        # the Dungeon's fight-room monsters: rainbow shards and a soft glow
+    │       ├── Gust.luau               # the wind's strength now (SoundscapeController sets it, the trees bend by it)
     │       ├── OpeningPack.luau        # the pack (or deck box) on the stage: idle sway, drag, the cinematic tear, the lid
     │       ├── OpeningCards.luau       # the pulled cards: stacking, flips with teases and hits, alive, the row, the lineup
     │       ├── OpeningFx.luau          # the opening's effects: rip burst, foil shards, glints, light leak, rays, aura, motes
@@ -2886,6 +3145,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Dungeon.luau    # the Dungeon: rooms and packs, timings, layout, lighting
         │   ├── Items.luau      # every item: name, icon, description; stack limit
         │   ├── Bosses.luau     # boss ladder: bosses, drops, chests, farm protection, arenas
+        │   ├── BossChests.luau # the boss chests: count, pick time, material weights, look (plain data)
         │   ├── Town.luau       # main town: prop slots, decor layout, shop shell sizes, plot themes, portal areas, trails, walk edge, signposts
         │   ├── Scenery.luau    # terrain shapes and scenery round the town and in the portal areas (plain data)
         │   ├── Music.luau      # the town music's tracks, volume, fades and edge (plain data)
@@ -2894,6 +3154,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
         │   ├── Ambient.luau    # tree sway, the frame watchdog, the town's animals (plain data)
         │   ├── Welcome.luau    # the welcome cinematic's flight, its place cards, cues, lens and confetti (plain data)
         │   ├── Footsteps.luau  # footsteps: surfaces by floor material, their sounds, the stride (plain data)
+        │   ├── Soundscape.luau # the worlds' spot sounds per area, the night bed, gusts (plain data)
         │   ├── Pish.luau       # the tutorial: steps and pictures, gifts, luck, lessons, stuck helper, Town Pish, sounds
         │   ├── PishTalk.luau   # what Pish says: each step's intro and now lines, lessons, nudges, the Skip and tour card labels
         │   ├── Game.luau       # the game's name (a placeholder until it's decided)
@@ -2932,6 +3193,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── Wander.luau        # ambient animals wandering round home (pure, Lune-tested)
             ├── WelcomePath.luau   # the welcome cinematic's camera path, place cards, cues and lens (pure, Lune-tested)
             ├── FootstepRules.luau # footsteps: a floor's surface, when a step comes, which sound (pure, Lune-tested)
+            ├── SoundscapeRules.luau # the soundscape: night share, the next sound and where from, gusts (pure, Lune-tested)
             ├── GreetRules.luau    # Town Chikin's greeting: whom he greets next and which line (pure, Lune-tested)
             ├── TutorialRules.luau # the first visit's saved table: read, steps recorded, skip, replay (pure, Lune-tested)
             ├── LuckRules.luau     # Pish's Luck: the hit slot's boost, the gift's floor, cooldown, badge text (pure, Lune-tested)
@@ -2995,6 +3257,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── OddsRules.luau     # pull odds per card from a pack's slots (pure, Lune-tested)
             ├── PityRules.luau     # pack pity: when a hit slot is raised to a Legendary or Epic (pure, Lune-tested)
             ├── BossRules.luau     # boss unlocks, loot cooldown, soft cap, over-power, phases, board words, where a loss sends you (pure, Lune-tested)
+            ├── ChestRules.luau    # the boss chests: material count, the other chests, the row, pick checks (pure, Lune-tested)
+            ├── ChestMotion.luau   # the boss chests: their drop, rattle and tension shake (pure, Lune-tested)
             ├── WeaponRules.luau   # weapon Power, element wheel, bond, perks, costs, paying, material goals, drop chance (pure, Lune-tested)
             ├── WeaponText.luau    # a weapon in words: stats, source, cost lines, the Forge's button, pickup and upgrade lines (pure, Lune-tested)
             ├── WeaponSwitch.luau  # the quick switch's weapons in order and the step through them (pure, Lune-tested)
@@ -3008,7 +3272,13 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
             ├── CombatPreload.luau # every image, sound and animation id the boss fight needs, from its configs (pure, Lune-tested)
             ├── TownPreload.luau   # the town's pictures the loading screen keeps drawn before you walk in (pure, Lune-tested)
             ├── BossMoments.luau   # the Wild bosses' moments: when the intro roar is due, when a heal flares, which effect bones a moment uses (pure, Lune-tested)
-            ├── DungeonRules.luau  # the run: carried HP, out, run size, packs (pure, Lune-tested)
+            ├── DungeonRules.luau  # the run: carried HP, out, run size, packs, its steps, chests once, the secret's prize (pure, Lune-tested)
+            ├── BeamRules.luau     # the Dungeon's prism beams: the beam's path through the mirrors (pure, Lune-tested)
+            ├── PlateRules.luau    # the Dungeon's weight plates: how many, which are held, open (pure, Lune-tested)
+            ├── LockRules.luau     # the Dungeon's element lock: the order, a strike (pure, Lune-tested)
+            ├── ObjectiveRules.luau # the Dungeon's objective line and progress (pure, Lune-tested)
+            ├── AmbienceRules.luau # the Dungeon's danger: when the next roar or glimpse comes, how loud (pure, Lune-tested)
+            ├── AbyssLayout.luau   # the Crystal Abyss: its islands, bridges, what's stone, a fall (pure, Lune-tested)
             ├── NewPulls.luau      # which pulls are NEW to the collection, for the pack results (pure, Lune-tested)
             ├── LevelUpRules.luau  # level-up rewards (cash every level, a pack every 10th), held effects merged (pure, Lune-tested)
             └── LevelRules.luau    # XP → level maths and unlock lists
@@ -3024,10 +3294,10 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v17)
+### 10.4 Player data schema (v19)
 ```lua
 {
-    version = 16,
+    version = 19,
     cash = 200,
     xp = 0,
     level = 1,
@@ -3060,6 +3330,8 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
                  pishLuckAt = 0 }, -- the first visit with Pish ("todo" | "done" | "skipped"), its step and steps done
                  -- early, his first pack and end gift given, lesson visits (true seen, false waiting to be shown),
                  -- the last luck from petting him
+    combat = { ... }, -- Chikin's combat tutorial: the same shape as `tutorial` (CombatTutorialService)
+    dungeon = { secretFound = false, seenIntro = false }, -- found the Dungeon's secret chest once (the title Crystal Seeker); saw the Hydra's full welcome
 }
 ```
 Bump `version` and write a migration whenever the shape changes.
@@ -3078,7 +3350,7 @@ place loads it at once; before, the session only closed after they'd left, and t
 `TeleportInitFailed`), `Reclaim` opens the session again and the next save writes it. Changes in the moment before
 they leave aren't saved. A session this server ended (leaving, a hand-off) never kicks the player.
 
-Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; v17 added `tutorial` (the first visit with Pish; existing saves "done" with their first pack given and his gift still to come, so only new players go through it); each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity); `tutorial` gained `customerSent` (read as false when missing, true for v17's existing shops; no bump: an older server dropping it allows one more of Pish's customers). v18 added `combat` (Chikin's combat tutorial, the same shape; done for every shop past Pish's tour, still to do for a player mid-way through it). A service that didn't load for a player (e.g. no free plot) never overwrites
+Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; v17 added `tutorial` (the first visit with Pish; existing saves "done" with their first pack given and his gift still to come, so only new players go through it); each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity); `tutorial` gained `customerSent` (read as false when missing, true for v17's existing shops; no bump: an older server dropping it allows one more of Pish's customers). v18 added `combat` (Chikin's combat tutorial, the same shape; done for every shop past Pish's tour, still to do for a player mid-way through it). v19 added `dungeon` (`secretFound` and `seenIntro` false for everyone; a junk value is replaced). A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
 
 ### 10.6 UI style and HUD

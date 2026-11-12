@@ -144,6 +144,43 @@ return {
 				release = "rbxassetid://9120016037", -- Thunder Cracks Big Rumbling Blasts Booming 1
 			},
 		},
+		-- The Prism Hydra (owner 2026-11-12: "add the attack/skill animation/particles for its skill"): its five heads bite
+		-- and slam (assets/monster-animations/prismHydra); its look follows its phase's element (FightFx: `byPhase`, the
+		-- marker's Phase attribute): Ember embers and lava, Volt sparks and a storm, Shade void claws and a rift, Bloom
+		-- leaves and roots, Tide fangs and ice
+		prismHydra = {
+			strike = "fangs",
+			release = "storm",
+			iceShield = true, -- its Tide phase's shield: the Frost Tyrant's ice bubble (Util/IceFx; owner 2026-11-12)
+			iceShieldMax = 16, -- studs: its necks spread wide, the bubble stays inside its ring (21) and off its fighters
+			storm = true, -- its Volt phase's thunderclap: the Storm Sovereign's storm circle and clap (Util/StormFx)
+			rift = true, -- its Shade phase's Rift Horrors come through rifts (Util/RiftFx)
+			color = rgb(200, 170, 255),
+			sounds = {
+				strike = "rbxassetid://9125466994", -- Creature Bite Pterodactyl Crunch Flying Bug 7
+				release = "rbxassetid://9120729339", -- Whoosh Heavy Punches 7: five heads coming down
+			},
+			-- its cone (the big swipe at a player, the orange warning) tears the ground open as it lands, and that's all
+			-- it shows (`only`; owner 2026-11-12: "just do a rainbow rock fissure with the tip being the biggest rock";
+			-- ElementFx.rockFissure): `cracks` jagged cracks fanned across the cone, `segments` pieces each `jag` studs off
+			-- line at most, `width` wide, a seam glowing every colour along it (`rainbow`); rock `spikes` bursting up where
+			-- each piece ends, `base` + `grow` x how far out (studs wide, `height` x that tall), each crack's tip `tip`
+			-- times bigger, the middle crack's `biggest` times (a rainbow crystal on it); `rocks` chunks (`rockSize`
+			-- studs) thrown `rise` studs up; it tears open over `grow`, stays `linger`, sinks over `fade` (seconds)
+			fissure = {
+				cracks = 5, segments = 6, jag = 1.6, width = 2, grow = 0.3, linger = 1.4, fade = 0.6,
+				rocks = 10, rockSize = { 1, 2.2 }, rise = { 4, 9 }, rock = { 118, 104, 138 },
+				rainbow = true, only = true,
+				spikes = { base = 0.8, grow = 1.4, height = 2.1, tip = 1.5, biggest = 2.3 },
+			},
+			byPhase = {
+				Ember = { strike = "embers", release = "lava", color = rgb(255, 120, 50) },
+				Volt = { strike = "volt", release = "storm", color = rgb(250, 214, 60) },
+				Shade = { strike = "voidclaw", release = "rift", color = rgb(175, 100, 255) },
+				Bloom = { strike = "leaves", release = "roots", color = rgb(120, 220, 96) },
+				Tide = { strike = "fangs", release = "frost", color = rgb(110, 200, 255) },
+			},
+		},
 		-- The owner 2026-11-11 (Util/RiftFx, Config RIFT below): a void bite, its mandibles snapping shut; its ring a rift
 		-- torn along the swipe; its summons (`rift`) come out of rifts it tears open at the arena's corners
 		riftDevourer = {
@@ -229,6 +266,14 @@ return {
 	},
 	-- The effects' textures (tools/textures/make_attack_fx.py, the owner's reference look): white, tinted per use, a
 	-- coloured layer under a white core
+	-- Any boss's heal and enrage, made noticeable (owner 2026-11-12; Util/BossSkillFx): the heal's ring (x its height,
+	-- radius), pillar of light (x its height, tall), motes a second, light, body glow (a Highlight's fill, 0 solid) and
+	-- seconds; the enrage's shockwave ring, its aura's embers a second, light, body glow, its heartbeat (seconds a pulse)
+	-- and the red flash on the screen of a player near (strength)
+	BOSS_SKILLS = {
+		heal = { color = { 110, 240, 130 }, ring = 1.6, pillar = 2.4, motes = 40, light = 6, glow = 0.45, seconds = 1.8, sound = "rbxassetid://9116418035", volume = 0.7 }, -- Magic Tone Falling Shimmer
+		enrage = { color = { 255, 45, 30 }, fire = { 255, 140, 40 }, ring = 2, embers = 30, light = 4, glow = 0.6, pulse = 0.9, flash = 0.35, sound = "rbxassetid://9116290951", volume = 0.35 }, -- Lion Growls 7 (0.8 before "lower the roaring sound")
+	},
 	TEXTURES = {
 		glow = "rbxassetid://111832033900052",
 		flare = "rbxassetid://83939810863438",
@@ -359,6 +404,33 @@ return {
 			strike = "embers", -- a ground punch: a fiery burst, rock dust, a ground ring
 			color = rgb(255, 112, 32),
 			sounds = { strike = "rbxassetid://9119037874" }, -- Shale Break 15
+		},
+		-- The Frontier's other monsters (owner 2026-11-12: "add attack effects on the normal monsters" in the Dungeon's
+		-- rooms): their Wild counterparts' strikes in their own colours
+		["Frost Wisp"] = {
+			strike = "headbutt",
+			color = rgb(150, 220, 255),
+			sounds = { strike = "rbxassetid://9125703162" }, -- Mud Puddle Splash 19
+		},
+		["Shade Lynx"] = {
+			strike = "bite",
+			color = rgb(170, 110, 255),
+			sounds = { strike = "rbxassetid://9125466994" }, -- Creature Bite Pterodactyl Crunch Flying Bug 7
+		},
+		["Storm Hawk"] = {
+			strike = "dive",
+			color = rgb(250, 214, 60),
+			sounds = { strike = "rbxassetid://9114375469" }, -- Fast Pass By Airy Whooshes Windy 4
+		},
+		["Lava Brute"] = {
+			strike = "embers",
+			color = rgb(255, 112, 32),
+			sounds = { strike = "rbxassetid://9119037874" }, -- Shale Break 15
+		},
+		["Prism Crab"] = {
+			strike = "snap",
+			color = rgb(255, 150, 230),
+			sounds = { strike = "rbxassetid://9125703162" }, -- Mud Puddle Splash 19
 		},
 		-- The Frontier's Rift Horror (the Rift Devourer's summons, 2026-11-11): three void claw slashes, a dark burst and
 		-- violet shards

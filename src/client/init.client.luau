@@ -56,7 +56,17 @@ local FrontierController = require(Controllers:WaitForChild("FrontierController"
 local FrontierRevealController = require(Controllers:WaitForChild("FrontierRevealController"))
 local FrontierFxController = require(Controllers:WaitForChild("FrontierFxController"))
 local WeaponRevealController = require(Controllers:WaitForChild("WeaponRevealController"))
+local SoundscapeController = require(Controllers:WaitForChild("SoundscapeController"))
+local TownNightController = require(Controllers:WaitForChild("TownNightController"))
+local BossChestController = require(Controllers:WaitForChild("BossChestController"))
 local DungeonController = require(Controllers:WaitForChild("DungeonController"))
+local DungeonPuzzleController = require(Controllers:WaitForChild("DungeonPuzzleController"))
+local DungeonObjectiveController = require(Controllers:WaitForChild("DungeonObjectiveController"))
+local DungeonIntroController = require(Controllers:WaitForChild("DungeonIntroController"))
+local DungeonAmbienceController = require(Controllers:WaitForChild("DungeonAmbienceController"))
+local DungeonFallController = require(Controllers:WaitForChild("DungeonFallController"))
+local DungeonCinematicController = require(Controllers:WaitForChild("DungeonCinematicController"))
+local DungeonRegionController = require(Controllers:WaitForChild("DungeonRegionController"))
 local TitleController = require(Controllers:WaitForChild("TitleController"))
 local SwordController = require(Controllers:WaitForChild("SwordController"))
 local WeaponSwitchController = require(Controllers:WaitForChild("WeaponSwitchController"))
@@ -68,8 +78,11 @@ local WildLoadingController = require(Controllers:WaitForChild("WildLoadingContr
 require(script:WaitForChild("Util"):WaitForChild("FontStyle")).start()
 
 local Place = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("Place"))
+local Remotes = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Remotes"))
 
 LoadingController.Start() -- the loading screen's steps (ReplicatedFirst shows it from the first frame)
+-- What you can't do yet: a big locked card with the reason, locked prompts showing the level needed (every place)
+require(Controllers:WaitForChild("BlockedController")).Start()
 -- Effects toned to the scene: on bright ground (snow) they blend their colours in instead of adding light (Util/FxTone)
 require(script:WaitForChild("Util"):WaitForChild("FxTone")).Start()
 
@@ -91,6 +104,8 @@ if Place.isFrontier() or Place.isDungeon() then
 	AnnouncementController.Start() -- Frontier card finds in chat
 	FrontierRevealController.Start() -- the big moment when you find a Frontier card
 	WeaponRevealController.Start() -- a boss's weapon drop and forged weapons: the reveal on the stage
+	BossChestController.Start() -- a boss win's three chests on the stage (BossChestService)
+	SoundscapeController.Start() -- spot sounds round you, the town's night bed and gusts (not the Dungeon)
 	TitleController.Start() -- titles over names (Dungeon Conqueror)
 	SwordController.Start() -- swords on characters, the first-sword popup
 	WeaponSwitchController.Start() -- the quick weapon switch chip on the right edge (Q)
@@ -98,6 +113,16 @@ if Place.isFrontier() or Place.isDungeon() then
 	FootstepController.Start() -- footsteps on whatever you walk on
 	if Place.isDungeon() then
 		DungeonController.Start() -- the run line and Leave
+		DungeonPuzzleController.Start() -- the puzzles' chests and swings
+		DungeonObjectiveController.Start() -- the objective at the top right
+		DungeonIntroController.Start() -- the Hydra's welcome when the run opens
+		DungeonAmbienceController.Start() -- the eerie music, distant roars, eyes in the dark, spot sounds
+		DungeonFallController.Start() -- a fall into the chasm: a yell and the screen going black
+		DungeonCinematicController.Start() -- a puzzle's gate opening, the way to the Hydra
+		DungeonRegionController.Start() -- each region's haze as you walk in, Volt's flicker
+		PortalFxController.Start() -- the castle gate's swirl turning
+		-- the arrival message may have come before these listened (a RemoteEvent's queue goes to the first listener)
+		Remotes.DungeonRun:FireServer()
 	else
 		DayCycleController.Start() -- the Frontier valley's skies (Config/DayCycle FRONTIER)
 		MusicController.Start() -- its areas' and boss arenas' music (Config/Music FRONTIER)
@@ -118,6 +143,7 @@ else
 	FootstepController.Start() -- footsteps on whatever you walk on
 	WildLoadingController.Start() -- the Wild's loading screen: holds you still until the valley round you is in
 	TreeSwayController.Start()
+	TownNightController.Start() -- the street lights brighter and fireflies at night
 	TownCritterController.Start()
 	TownPishController.Start() -- Town Pish, drawn on the server's marker (main game)
 	TownChikinController.Start() -- Town Chikin on the portal side, the same way (main game)
@@ -159,6 +185,8 @@ else
 	FrontierController.Start() -- the portal menu
 	FrontierRevealController.Start() -- Frontier cards found with /frontierdrop in Studio
 	WeaponRevealController.Start() -- a boss's weapon drop and forged weapons: the reveal on the stage
+	BossChestController.Start() -- a boss win's three chests on the stage (BossChestService)
+	SoundscapeController.Start() -- spot sounds round you, the town's night bed and gusts (not the Dungeon)
 	TitleController.Start() -- titles over names (Dungeon Conqueror)
 	SwordController.Start() -- swords on characters, the first-sword popup
 	WeaponSwitchController.Start() -- the quick weapon switch chip on the right edge (Q)

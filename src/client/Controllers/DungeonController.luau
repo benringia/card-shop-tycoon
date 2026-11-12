@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local Dungeon = require(Shared:WaitForChild("Config"):WaitForChild("Dungeon"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
@@ -35,6 +36,10 @@ local function textFor(state: any): string
 		return "⏳ Waiting for your group..."
 	elseif stage == "room" then
 		return `⚔ Room {state.room} of {state.rooms}`
+	elseif stage == "gather" and Dungeon.STAGES[state.next or ""] then
+		return `🧩 Next: {Dungeon.STAGES[state.next]}`
+	elseif Dungeon.STAGES[stage] then
+		return `🧩 {Dungeon.STAGES[stage]}`
 	elseif stage == "boss" then
 		return "🐉 The Prism Hydra's chamber"
 	elseif stage == "won" then
@@ -108,7 +113,6 @@ function DungeonController.Start()
 		showLine()
 	end)
 	Remotes.DungeonRun.OnClientEvent:Connect(onRun)
-	Remotes.DungeonRun:FireServer() -- the arrival message may have come before this listened
 end
 
 return DungeonController

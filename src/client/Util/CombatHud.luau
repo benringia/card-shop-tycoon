@@ -30,6 +30,7 @@ local HpBarRules = require(Shared:WaitForChild("Util"):WaitForChild("HpBarRules"
 local UiLayout = require(Shared:WaitForChild("Util"):WaitForChild("UiLayout"))
 local HpBar = require((script.Parent :: Instance):WaitForChild("HpBar"))
 local UIKit = require((script.Parent :: Instance):WaitForChild("UIKit"))
+local ScreenFx = require((script.Parent :: Instance):WaitForChild("ScreenFx"))
 
 local CombatHud = {}
 
@@ -1134,6 +1135,10 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 			if lastPlayerHp and view.playerHp < lastPlayerHp then
 				hitAt = os.clock()
 				hitPeak = HpBarRules.flashPeak(lastPlayerHp - view.playerHp, view.playerMax, CombatHudConfig)
+				-- the whole screen flashes red and the camera jolts (owner 2026-11-12: "no indication I've been hit")
+				local flash = CombatHudConfig.HIT_FLASH
+				ScreenFx.flash(color(flash.COLOR), flash.FILL * hitPeak, flash.FILL_SECONDS)
+				ScreenFx.shake(flash.SHAKE * hitPeak)
 			end
 			lastPlayerHp = view.playerHp
 			playerBar.set(view.playerHp, view.playerMax)

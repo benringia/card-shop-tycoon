@@ -11,6 +11,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Bosses = require(Config:WaitForChild("Bosses"))
+local Dungeon = require(Config:WaitForChild("Dungeon"))
+local DungeonRules = require(Shared:WaitForChild("Util"):WaitForChild("DungeonRules"))
 local WildConfig = require(Config:WaitForChild("Wild")) -- the main game's: a remote arena copy streams in within its STREAM_TIMEOUT
 local Cards = require(Config:WaitForChild("Cards"))
 local Items = require(Config:WaitForChild("Items"))
@@ -18,8 +20,10 @@ local Weapons = require(Config:WaitForChild("Weapons"))
 local Victory = require(Config:WaitForChild("Victory"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
+local ChestRules = require(Shared:WaitForChild("Util"):WaitForChild("ChestRules"))
 local WeaponRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local Blocked = require((script.Parent :: Instance).Parent:WaitForChild("Util"):WaitForChild("Blocked"))
 local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 local ValleyConfig = Place.getValley() -- ARENA_HOLD: how far from a remote copy's middle its fighters hold it (remote copies are a valley's)
 local Combat = require(Config:WaitForChild("Combat"))
@@ -27,6 +31,7 @@ local Combat = require(Config:WaitForChild("Combat"))
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
 local BattleService = require(Services:WaitForChild("BattleService"))
+local BossChestService = require(Services:WaitForChild("BossChestService"))
 local CardService = require(Services:WaitForChild("CardService"))
 local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
@@ -40,6 +45,8 @@ type Grant = { item: string, count: number }
 local BossService = {}
 
 local records: { [Player]: { [string]: BossRules.Record } } = {} -- loaded players only
+local secretFound: { [Player]: boolean } = {} -- found the Dungeon's secret chest once (saved data.dungeon.secretFound)
+local seenIntro: { [Player]: boolean } = {} -- saw the Hydra's full welcome (saved data.dungeon.seenIntro)
 local arenas: { [string]: WildService.BossArena } = {}
 local occupants: { [string]: { [number]: WildService.Monster } } = {} -- the boss being fought in each arena copy
 local fighters: { [string]: { [number]: { Player } } } = {} -- who fought in each remote copy (they hold it until they leave)
@@ -63,6 +70,10 @@ for bossId, boss in Bosses.BOSSES do
 end
 
 local function notify(player: Player, message: string, isError: boolean)
+	if isError then
+		Blocked.tell(player, message) -- a refusal: the big locked card with why (owner 2026-11-12), never just a toast
+		return
+	end
 	Remotes.Notify:FireClient(player, message, isError)
 end
 
@@ -250,7 +261,7 @@ local function setTitle(player: Player)
 			title = clearTitle
 		end
 	end
-	player:SetAttribute("Title", title)
+	player:SetAttribute("Title", BossRules.pickTitle(title, secretFound[player] == true, Dungeon.SECRET.TITLE))
 end
 
 -- A first clear the whole experience hears about: every other server shows it too (BossService.Start subscribes)
@@ -273,44 +284,83 @@ for _, weapon in Weapons.WEAPONS do
 	end
 end
 
--- A boss's weapon drops for this player (weapons round 1): its grade rolled like a card's, given (one already owned
--- turns into DUPLICATE_MATERIAL of its material), the drop cinematic on their screen and, for an Epic or Legendary,
--- the whole server hears. `delay`: seconds before the cinematic and the announcement (a win's: after its victory
--- screen; the weapon is given at once). Studio's /weapondrop forces it through here too.
-function BossService.DropWeapon(player: Player, weaponId: string, delay: number?): { weaponId: string, grade: string, refund: number, material: string? }?
+type WeaponPayload = { weaponId: string, grade: string, refund: number, material: string? }
+
+-- A boss's weapon is given to this player (weapons round 1): its grade rolled like a card's (one already owned turns
+-- into DUPLICATE_MATERIAL of its material). Nothing shows yet: AnnounceWeapon does that. nil: it couldn't be given.
+-- The Dungeon's secret chest found (DungeonPuzzleService): true the first time ever (saved; the title Crystal Seeker
+-- shows unless Dungeon Conqueror outranks it), false after or for a player whose data isn't loaded
+function BossService.MarkSecretFound(player: Player): boolean
+	if not records[player] or secretFound[player] then
+		return false
+	end
+	secretFound[player] = true
+	setTitle(player)
+	return true
+end
+
+-- Which welcome the Dungeon gives this player as its run opens (spec 2026-11-12-dungeon-atmosphere): the full one the
+-- first time ever, then short ones; marks it seen (saved)
+function BossService.IntroKind(player: Player): "full" | "short"
+	return DungeonRules.introKind(seenIntro[player] == true)
+end
+
+-- The player's client started the Hydra's welcome (DungeonService, on its ack): the full one is seen
+function BossService.MarkIntroSeen(player: Player)
+	if records[player] then
+		seenIntro[player] = true
+	end
+end
+
+-- Whether this player found the Dungeon's secret chest before
+function BossService.HasFoundSecret(player: Player): boolean
+	return secretFound[player] == true
+end
+
+function BossService.GiveWeapon(player: Player, weaponId: string): WeaponPayload?
 	local weapon = Weapons.ById[weaponId]
 	if not weapon or not WeaponService.IsLoaded(player) then
 		return nil
 	end
 	local grade = BeastRules.rollGrade(rng:NextNumber(), weapon.rarity)
 	local _, refund = WeaponService.Give(player, weaponId, grade, "drop")
-	local payload = { weaponId = weaponId, grade = grade, refund = refund, material = WeaponRules.material(Weapons, weaponId) }
-	task.delay(delay or 0, function()
-		if not player.Parent then
-			return
-		end
+	return { weaponId = weaponId, grade = grade, refund = refund, material = WeaponRules.material(Weapons, weaponId) }
+end
+
+-- A given weapon's moment: the drop cinematic on their screen, a new one's light column for everyone near (each client
+-- checks the distance, WeaponLookRules.seesBeacon) and, for an Epic or Legendary, the whole server hears (even when
+-- they've just left: `here` false)
+function BossService.AnnounceWeapon(player: Player, payload: WeaponPayload, here: boolean?)
+	if here ~= false and player.Parent then
 		Remotes.WeaponDropped:FireClient(player, payload)
-		-- A new weapon: its light column for everyone near (each client checks the distance, WeaponLookRules.seesBeacon)
 		local root = if player.Character then player.Character:FindFirstChild("HumanoidRootPart") else nil
-		if refund <= 0 and root and root:IsA("BasePart") then
-			Remotes.WeaponBeacon:FireAllClients(player.UserId, weaponId, root.Position)
+		if payload.refund <= 0 and root and root:IsA("BasePart") then
+			Remotes.WeaponBeacon:FireAllClients(player.UserId, payload.weaponId, root.Position)
 		end
-		if WeaponRules.announces(Weapons, weaponId, refund) then
-			Remotes.WeaponAnnouncement:FireAllClients(player.DisplayName, weaponId, grade, player.UserId)
-		end
-	end)
+	end
+	if WeaponRules.announces(Weapons, payload.weaponId, payload.refund) then
+		Remotes.WeaponAnnouncement:FireAllClients(player.DisplayName, payload.weaponId, payload.grade, player.UserId)
+	end
+end
+
+-- A boss's weapon drops for this player now, shown after `delay` seconds (Studio's /weapondrop)
+function BossService.DropWeapon(player: Player, weaponId: string, delay: number?): WeaponPayload?
+	local payload = BossService.GiveWeapon(player, weaponId)
+	if payload then
+		task.delay(delay or 0, BossService.AnnounceWeapon, player, payload)
+	end
 	return payload
 end
 
--- On a full-loot win (BossRules.rollsWeapon): the boss's weapon at WeaponRules.dropChance of its pity; a drop given
--- resets the pity, anything else adds one (BossRules.nextWeaponPity)
-local function rollWeapon(player: Player, bossId: string, record: BossRules.Record): any
+-- On a full-loot win (BossRules.rollsWeapon): the boss's weapon at WeaponRules.dropChance of its pity, given at once
+-- (its chest shows it, BossChestService); a drop given resets the pity, anything else adds one (BossRules.nextWeaponPity)
+local function rollWeapon(player: Player, bossId: string, record: BossRules.Record): WeaponPayload?
 	local weaponId = weaponOf[bossId]
 	if not weaponId then
 		return nil
 	end
 	local rolled = rng:NextNumber() < WeaponRules.dropChance(Weapons, weaponId, record.weaponPity)
-	local payload = if rolled then BossService.DropWeapon(player, weaponId, Victory.SECONDS) else nil
+	local payload = if rolled then BossService.GiveWeapon(player, weaponId) else nil
 	record.weaponPity = BossRules.nextWeaponPity(record.weaponPity, rolled, payload ~= nil)
 	return payload
 end
@@ -351,12 +401,23 @@ local function onBossWin(player: Player, monster: WildService.Monster, fight: { 
 	if fight.seconds < boss.minFightSeconds then
 		result.flagged = true
 	elseif BossRules.lootEligible(record, now) then
-		local factor = BossRules.dropFactor(Bosses, record, partyPower(player, fight.fighterIds), boss.recommended)
+		local power = partyPower(player, fight.fighterIds)
+		local softCap = BossRules.softCapFactor(Bosses, record.rewardedToday)
+		local overPower = BossRules.overPowerFactor(Bosses, power, boss.recommended)
+		local factor = BossRules.dropFactor(Bosses, record, power, boss.recommended)
 		result.reduced = factor < 1
 		record.lootAt = now + Bosses.LOOT_COOLDOWN
 		record.rewardedToday += 1
+		-- Its chests (BossChestService) after every loot win of those who helped (the owner 2026-11-11: "chests every
+		-- win", reduced ones too); they hold the weapon or its material, so the material's own roll is skipped here
+		local weaponId = weaponOf[bossId]
+		local material = Weapons.MATERIALS[bossId]
+		local chests = weaponId ~= nil and material ~= nil and not carried
 		local drops: { Grant } = {}
 		for _, drop in boss.drops do
+			if chests and drop.item == material then
+				continue
+			end
 			local chance = drop.chance * factor
 			if carried then
 				chance = BossRules.carriedDrop(Bosses, drop.item, chance, opensBoss[drop.item] ~= nil)
@@ -370,6 +431,14 @@ local function onBossWin(player: Player, monster: WildService.Monster, fight: { 
 		-- roll it, like key fragments)
 		if BossRules.rollsWeapon(factor, carried) then
 			result.weapon = rollWeapon(player, bossId, record)
+		end
+		if chests and weaponId then
+			BossChestService.Prepare(player, bossId, weaponId, result.weapon, factor, ChestRules.reason(softCap, overPower), function(payload, here)
+				BossService.AnnounceWeapon(player, payload, here)
+			end)
+		elseif result.weapon then
+			-- No chests to show it in (a config gap): its moment after the victory screen, as before the chests
+			task.delay(Victory.SECONDS, BossService.AnnounceWeapon, player, result.weapon)
 		end
 		if record.bonusDay ~= today and not carried then
 			record.bonusDay = today
@@ -519,7 +588,18 @@ local function startBoss(bossId: string, players: { Player }, index: number, opt
 		local character = player.Character
 		if character then
 			local sideways = (slot - (#players + 1) / 2) * Bosses.INSIDE_STEP
-			character:PivotTo(copy.inside * CFrame.new(sideways, 0, 0))
+			local spot = copy.inside * CFrame.new(sideways, 0, 0)
+			if (character:GetPivot().Position - spot.Position).Magnitude > Bosses.FAR_MOVE then
+				-- far off (the Dungeon's lair is 2000 studs from its ledge): its floor streamed in first, or they'd fall
+				task.spawn(function()
+					WildService.Prestream(player, spot.Position)
+					if player.Character == character then
+						character:PivotTo(spot)
+					end
+				end)
+			else
+				character:PivotTo(spot)
+			end
 		end
 	end
 	clearRing(copy, players, BossRules.arenaRadius(boss, Bosses))
@@ -790,6 +870,8 @@ local function load(player: Player, data: DataService.PlayerData)
 		byBoss[bossId] = BossRules.read(saved[bossId], Bosses.BOSSES[bossId].unlock == nil)
 	end
 	records[player] = byBoss
+	secretFound[player] = typeof(data.dungeon) == "table" and data.dungeon.secretFound == true
+	seenIntro[player] = typeof(data.dungeon) == "table" and data.dungeon.seenIntro == true
 	setTitle(player)
 	task.defer(sendBosses, player) -- after the other services load (fragment counts)
 end
@@ -800,10 +882,13 @@ local function save(player: Player, data: DataService.PlayerData)
 		return -- never loaded: keep what's saved
 	end
 	data.bosses = BossRules.write(data.bosses, byBoss)
+	data.dungeon = { secretFound = secretFound[player] == true, seenIntro = seenIntro[player] == true }
 end
 
 local function unload(player: Player)
 	records[player] = nil
+	secretFound[player] = nil
+	seenIntro[player] = nil
 	pending[player] = nil -- loot left on the ground is gone
 	-- Out of any group forming: the next member leads, the prompt shows the new count
 	for bossId, lobby in lobbies do

@@ -31,6 +31,7 @@ local ScreenFx = require((script.Parent :: Instance):WaitForChild("ScreenFx"))
 local IceFx = require((script.Parent :: Instance):WaitForChild("IceFx"))
 local StormFx = require((script.Parent :: Instance):WaitForChild("StormFx"))
 local RiftFx = require((script.Parent :: Instance):WaitForChild("RiftFx"))
+local BossSkillFx = require((script.Parent :: Instance):WaitForChild("BossSkillFx"))
 local Spotlight = require((script.Parent :: Instance):WaitForChild("Spotlight"))
 
 local FightFx = {}
@@ -696,6 +697,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 	local moves: { [BasePart]: MonsterMoves.State } = {}
 	local rings: { [string]: any } = {} -- each player's latest ring (by sim id): where its hit lands
 	local iceShields: { [BasePart]: IceFx.Shield } = {} -- the Frost Tyrant's shield, by his marker
+	local auras: { [BasePart]: BossSkillFx.Aura } = {} -- an enraged boss's aura, by its marker
 	local storms: { [BasePart]: StormFx.Windup } = {} -- the Storm Sovereign's thunderclap winding up, by its marker
 	local riftCalls: { [BasePart]: number } = {} -- the Rift Devourer's last call (os.clock), one a wave, by its marker
 	local gathering: { [BasePart]: () -> () } = {} -- a boss's sparks pulling in for a ring
@@ -737,8 +739,8 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		end
 	end
 
-	-- A boss's or wild monster's move: its clip (MonsterMoves) and, with looks (AttackFx BOSS or MONSTER), the effect
-	local function onMonster(event: any, marker: BasePart, view: MonsterView)
+	-- A boss's or wild monster's clip for an event (MonsterMoves)
+	local function playMove(event: any, marker: BasePart, view: MonsterView)
 		local state = moves[marker]
 		if not state then
 			state = MonsterMoves.new()
@@ -748,9 +750,35 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		if move and resolve.playClip then
 			resolve.playClip(marker, move.clip, move.speed, move.hold)
 		end
+	end
+
+	-- A boss's or wild monster's move: its clip and, with looks (AttackFx BOSS or MONSTER), the effect
+	local function onMonster(event: any, marker: BasePart, view: MonsterView)
+		playMove(event, marker, view)
+		if event.type == "enrage" then
+			-- any boss's enrage: its burst and roar, then its aura for the rest of the fight (Util/BossSkillFx)
+			if not auras[marker] then
+				auras[marker] = BossSkillFx.enrage(view.root, view.height)
+				local flash = AttackFx.BOSS_SKILLS.enrage
+				if ScreenFx.distance(view.root.Position) <= AttackFx.SHAKE.NEAR then
+					ScreenFx.flash(color(flash.color), flash.flash, 0.4)
+				end
+			end
+			return
+		end
 		local spec = AttackFx.BOSS[view.key] or AttackFx.MONSTER[view.key]
 		if not spec then
 			return
+		end
+		-- a look that follows its phase (the Prism Hydra: its element's strike, release and colour)
+		local phase = marker:GetAttribute("Phase")
+		local variant = if spec.byPhase and typeof(phase) == "string" then spec.byPhase[phase] else nil
+		if variant then
+			local merged = table.clone(spec)
+			for key, value in variant do
+				merged[key] = value
+			end
+			spec = merged
 		end
 		local tint = color(spec.color)
 		if event.type == "spawn" then
@@ -812,7 +840,14 @@ function FightFx.new(resolve: Resolve): Dispatcher
 				rings[event.to] = nil
 				local ground = Vector3.new(ring.x, RingFx.groundY(ring.x, ring.y, ring.z), ring.z)
 				local direction = Vector3.new(tonumber(ring.dirX) or 0, 0, tonumber(ring.dirZ) or -1)
-				if spec.release == "frost" then
+				-- its cone tears the ground open (the Prism Hydra: a rainbow rock fissure, and only that)
+				local fissure = spec.fissure and ring.shape == "swipe" and (ring.length or 0) > 0
+				if fissure then
+					ElementFx.rockFissure(ground, direction, ring.length, ring.halfAngle or 30, tint, spec.fissure)
+				end
+				if fissure and spec.fissure.only then
+					-- nothing else over it
+				elseif spec.release == "frost" then
 					IceFx.release(ground, ring.radius or 7)
 				else
 					ElementFx.bossRelease(spec.release, ground, ring.radius or 7, direction, ring.length or 0, ring.halfAngle or 0, tint, view.height)
@@ -886,10 +921,23 @@ function FightFx.new(resolve: Resolve): Dispatcher
 					end
 				end
 			end
-			-- A boss's shield going up or breaking (no sender: its target is the boss): the Frost Tyrant's ice bubble
+			-- A boss's heal (no sender: its target is the boss): its clip, its pillar of light (Util/BossSkillFx)
+			if typeof(event) == "table" and event.type == "heal" and event.from == nil and typeof(event.to) == "string" then
+				local boss, bossView = monsterOf(event.to)
+				if boss and bossView then
+					playMove(event, boss, bossView)
+					BossSkillFx.heal(bossView.root, bossView.height)
+					continue
+				end
+			end
+			-- A boss's shield going up or breaking (no sender: its target is the boss): its clip, the ice bubble (the Frost
+			-- Tyrant's, the Prism Hydra's)
 			if typeof(event) == "table" and (event.type == "shield" or event.type == "shieldBreak") and typeof(event.to) == "string" then
 				local boss, bossView = monsterOf(event.to)
 				local spec = if bossView then AttackFx.BOSS[bossView.key] else nil
+				if boss and bossView and event.type == "shield" then
+					playMove(event, boss, bossView)
+				end
 				if boss and bossView and spec and spec.iceShield then
 					local current = iceShields[boss]
 					iceShields[boss] = nil
@@ -901,7 +949,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 						end
 					end
 					if event.type == "shield" then
-						iceShields[boss] = IceFx.shield(bossView.root, bossView.height)
+						iceShields[boss] = IceFx.shield(bossView.root, bossView.height, spec.iceShieldMax)
 					end
 				end
 				continue
@@ -961,6 +1009,10 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		for boss, shield in iceShields do
 			iceShields[boss] = nil
 			shield.remove()
+		end
+		for boss, aura in auras do
+			auras[boss] = nil
+			aura.stop()
 		end
 		for boss, storm in storms do
 			storms[boss] = nil

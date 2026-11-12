@@ -218,11 +218,11 @@ export type Shield = { shatter: () -> (), remove: () -> () }
 
 -- His shield: a frosted ice bubble round `root` (about his `height` across) with shards jutting out of it, growing in
 -- with an ice crackle and following him; shatter() bursts it (pieces, ice smoke, a crash), remove() just takes it away
-function IceFx.shield(root: BasePart, height: number): Shield
+function IceFx.shield(root: BasePart, height: number, maxRadius: number?): Shield
 	local look = ICE.shield
 	local lift, size = bodyBox(root, height)
 	-- round his whole body: half its largest side, and a little more
-	local radius = math.max(size.X, size.Y, size.Z) * look.radius
+	local radius = math.min(math.max(size.X, size.Y, size.Z) * look.radius, maxRadius or math.huge) -- a wide body (the Hydra's necks): kept inside its ring
 	local centre = root.Position + lift
 	local holder = model("IceShield", centre)
 	-- a camera moment that fades him out of its way fades his shield too

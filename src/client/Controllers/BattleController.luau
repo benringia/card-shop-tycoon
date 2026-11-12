@@ -38,6 +38,7 @@ local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local CombatHud = require(ClientUtil:WaitForChild("CombatHud"))
 local HpBar = require(ClientUtil:WaitForChild("HpBar"))
+local BossStatusBar = require(ClientUtil:WaitForChild("BossStatusBar"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
 local HitFx = require(ClientUtil:WaitForChild("HitFx"))
 local ElementFx = require(ClientUtil:WaitForChild("ElementFx"))
@@ -93,6 +94,7 @@ local NUMBER_LIFT = 4 -- studs over a fighter a damage number starts
 local HUD_NAMES = { "HudSide", "HudBottom", "HudFan", "StatusRow", "ReturnToTown" } -- the Wild's pill sits in its holder
 
 local BattleController = {}
+BattleController.pylonTargets = {} :: { { id: string, part: BasePart, radius: number } } -- the Dungeon's room 3 (swordTargets)
 
 -- Fight bar layout (pixels): kept short so the fight stays visible on a landscape phone
 local PAD = 8
@@ -104,7 +106,7 @@ local INFO_SHARE = 0.4 -- of a creature's card: name and HP; the rest is buttons
 
 type Snapshot = {
 	time: number,
-	monster: { hp: number, maxHp: number, element: string, elite: boolean },
+	monster: { hp: number, maxHp: number, element: string, elite: boolean, statuses: { any }? },
 	fighters: { { id: string, hp: number, maxHp: number, element: string, abilityIn: number, signature: string?, superMeter: number, fainted: boolean, perk: { kind: string, value: number }? } },
 	reserves: { string },
 	benched: { string }, -- yours that fainted and were swapped out (the party strip shows them face down)
@@ -135,7 +137,7 @@ local monsterHpFill: Frame
 local monsterHpText: TextLabel
 local monsterTrack: Frame
 local enemyRow: Frame -- PvP: one small HP bar per enemy creature
-local enemyBars: { [string]: { fill: Frame, text: TextLabel, frame: Frame } } = {}
+local enemyBars: { [string]: { bar: HpBar.Bar, text: TextLabel, frame: Frame } } = {}
 local allyRow: Frame -- group fights: the other players' creatures
 local allyBars: { [string]: { fill: Frame, text: TextLabel, frame: Frame } } = {}
 local allyNames: { [string]: string } = {} -- sim id -> "<Player> · <Card>" (from the server)
@@ -161,7 +163,8 @@ local bossName: TextLabel
 local bossHp: HpBar.Bar
 local bossHpText: TextLabel
 local addsRow: Frame -- boss fights: its adds' HP, under the boss bar
-local addBars: { [string]: { fill: Frame, text: TextLabel, frame: Frame } } = {}
+local statusBar: BossStatusBar.Bar -- boss fights: under its bar, its adds' HP, then what's on it (a chip each, a tooltip)
+local addBars: { [string]: { bar: HpBar.Bar, text: TextLabel, frame: Frame } } = {}
 local bossId: string? = nil -- the boss being fought (Config/Bosses id)
 local shopButton: TextButton
 local introCard: Frame -- boss intro: the boss's name and title in the middle of the screen
@@ -253,7 +256,15 @@ end
 
 local function markerFor(id: string): BasePart?
 	local marker = markers[id]
-	return if marker and marker.Parent then marker else nil
+	if marker and marker.Parent then
+		return marker
+	end
+	for _, pylon in BattleController.pylonTargets do -- the Dungeon's room 3: its pylons take numbers too
+		if pylon.id == id and pylon.part.Parent then
+			return pylon.part
+		end
+	end
+	return nil
 end
 
 -- The server's two-sided snapshot as the bar's view: my fighters, my call-ins and run, and the enemy's first
@@ -294,7 +305,7 @@ local function toView(raw: any): Snapshot
 	end
 	return {
 		time = raw.time,
-		monster = { hp = foe.hp, maxHp = foe.maxHp, element = foe.element, elite = foe.elite == true },
+		monster = { hp = foe.hp, maxHp = foe.maxHp, element = foe.element, elite = foe.elite == true, statuses = if typeof(foe.statuses) == "table" then foe.statuses else nil },
 		adds = adds,
 		bossShield = if typeof(enemy.shield) == "number" then enemy.shield else 0,
 		fighters = own,
@@ -619,11 +630,8 @@ local function buildEnemies(snapshot: Snapshot)
 		local name = UIKit.label(holder, `{elementIcon(enemy.element)} {fightNames[enemy.id] or "?"}`, Enum.Font.GothamBold, 11, UIKit.Colors.Text)
 		name.Size = UDim2.new(1, 0, 0, 13)
 		name.TextTruncate = Enum.TextTruncate.AtEnd
-		local track, fill, text = makeBar(holder, 12, MONSTER_HP_COLOR)
-		track.Position = UDim2.fromOffset(0, 14)
-		track.Size = UDim2.new(1, 0, 0, 12)
-		text.TextSize = 10
-		enemyBars[enemy.id] = { fill = fill, text = text, frame = holder }
+		local bar, text = HpBar.small(holder, 12, UIKit.label, UIKit.Colors.Text)
+		enemyBars[enemy.id] = { bar = bar, text = text, frame = holder }
 	end
 end
 
@@ -642,11 +650,8 @@ local function buildAdds(snapshot: Snapshot)
 		holder.Parent = addsRow
 		local name = UIKit.label(holder, `{elementIcon(add.element)} {if bossId then "Spawn" else fightNames[add.id] or "Monster"}`, Enum.Font.GothamBold, 11, UIKit.Colors.Text)
 		name.Size = UDim2.new(1, 0, 0, 13)
-		local track, fill, text = makeBar(holder, 12, MONSTER_HP_COLOR)
-		track.Position = UDim2.fromOffset(0, 14)
-		track.Size = UDim2.new(1, 0, 0, 12)
-		text.TextSize = 10
-		addBars[add.id] = { fill = fill, text = text, frame = holder }
+		local bar, text = HpBar.small(holder, 12, UIKit.label, UIKit.Colors.Text)
+		addBars[add.id] = { bar = bar, text = text, frame = holder }
 	end
 end
 
@@ -782,10 +787,11 @@ local function applySnapshot(snapshot: Snapshot)
 		if idsOf(snapshot.adds) ~= addsKey then
 			buildAdds(snapshot)
 		end
+		statusBar.update(if bossId then snapshot.monster.statuses else nil)
 		for _, add in snapshot.adds do
 			local view = addBars[add.id]
 			if view then
-				setBar(view.fill, view.text, add.hp, add.maxHp)
+				HpBar.setSmall(view.bar, view.text, add.hp, add.maxHp)
 				view.frame.Visible = not add.fainted
 			end
 		end
@@ -794,7 +800,7 @@ local function applySnapshot(snapshot: Snapshot)
 		for _, enemy in snapshot.enemies do
 			local view = enemyBars[enemy.id]
 			if view then
-				setBar(view.fill, view.text, enemy.hp, enemy.maxHp)
+				HpBar.setSmall(view.bar, view.text, enemy.hp, enemy.maxHp)
 				view.frame.BackgroundTransparency = 1
 			end
 		end
@@ -1067,6 +1073,47 @@ local function onSuperEvent(event: any)
 	end
 end
 
+-- The Dungeon's room 3 (owner 2026-11-12: "make the crystal interactable so my pet will start attacking it, like the
+-- plates' send"): a prompt on each crystal pylon, made here so its text is yours: "Send creature" sends your creature
+-- at that pylon (Remotes.PetPylon; the server's sim hits it), the one it's at says "Call creature back". It comes back
+-- by itself when its pylon breaks ("petBack").
+local pylonUi = { prompts = {} :: { [string]: ProximityPrompt }, sent = nil :: string? }
+function pylonUi.refresh()
+	local look = Dungeon.PUZZLE.PYLON_PROMPT
+	for id, prompt in pylonUi.prompts do
+		prompt.ActionText = if id == pylonUi.sent then look.back else look.send
+	end
+end
+
+function pylonUi.clear()
+	for _, prompt in pylonUi.prompts do
+		prompt:Destroy()
+	end
+	pylonUi.prompts = {}
+	pylonUi.sent = nil
+end
+
+function pylonUi.make()
+	pylonUi.clear()
+	local look = Dungeon.PUZZLE.PYLON_PROMPT
+	for _, pylon in BattleController.pylonTargets do
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.Name = "SendCreature"
+		prompt.ObjectText = look.object
+		prompt.HoldDuration = 0
+		prompt.MaxActivationDistance = look.distance
+		prompt.RequiresLineOfSight = false
+		prompt.Parent = pylon.part
+		prompt.Triggered:Connect(function()
+			pylonUi.sent = if pylonUi.sent == pylon.id then nil else pylon.id
+			Remotes.PetPylon:FireServer(pylonUi.sent or false)
+			pylonUi.refresh()
+		end)
+		pylonUi.prompts[pylon.id] = prompt
+	end
+	pylonUi.refresh()
+end
+
 local function onEvents(events: { any })
 	if fightFx then
 		-- Pictures only: a broken effect must never stop the damage numbers and HUD below
@@ -1130,8 +1177,24 @@ local function onEvents(events: { any })
 			SwordController.GetUp()
 		elseif event.type == "out" and event.to == me then
 			banner("You're out: watching", UIKit.Colors.Danger)
+		elseif event.type == "pylonHit" and event.to then
+			floatText(event.to, `-{event.damage}`, STRONG_COLOR, false, "strong")
+		elseif event.type == "pylonBroken" and event.to then
+			floatText(event.to, "Broken!", CRIT_COLOR, true)
+			local prompt = pylonUi.prompts[event.to]
+			if prompt then
+				prompt:Destroy()
+				pylonUi.prompts[event.to] = nil
+			end
+		elseif event.type == "petBack" and event.from and string.sub(event.from, 1, 2) == "a:" and fightNames[event.from] then
+			pylonUi.sent = nil -- your creature's pylon broke: it's back in the fight
+			pylonUi.refresh()
+		elseif event.type == "shieldDown" then
+			banner("Shield down! Attack!", CRIT_COLOR)
 		elseif event.type == "attack" and event.to then
-			if event.dodged then
+			if event.pylonShield then
+				floatText(event.to, "Shielded!", WEAK_COLOR, false, "weak") -- room 3: break the pylons first
+			elseif event.dodged then
 				floatText(event.to, "Dodge", WEAK_COLOR, false, "weak")
 			elseif event.crit then
 				floatText(event.to, `CRIT -{event.damage}`, CRIT_COLOR, true)
@@ -1495,6 +1558,16 @@ end
 -- big a hit's effects are on each (its model's size, HitFx.scaleFor)
 local function swordTargets(): { any }
 	local list = {}
+	-- The Dungeon's room 3: its pylons while any stands (the pack is shielded; the server hits only pylons too). Kept on
+	-- the module table: this file is at the 200-local limit.
+	for _, pylon in BattleController.pylonTargets do
+		if pylon.part.Parent and pylon.part:GetAttribute("Broken") ~= true then
+			table.insert(list, { id = pylon.id, x = pylon.part.Position.X, z = pylon.part.Position.Z, radius = pylon.radius, fx = 1 })
+		end
+	end
+	if #list > 0 then
+		return list
+	end
 	local boss = if bossId then Bosses.BOSSES[bossId] else nil
 	for id, marker in markers do
 		if string.sub(id, 1, 2) == "b:" and marker.Parent then
@@ -1571,6 +1644,7 @@ local weaponWatch: RBXScriptConnection? = nil
 
 -- A boss fight: the combat HUD instead of the bar, and your sword on; a wild fight (`wild`): the same HUD, its buttons
 -- always named, the sword on once the player has one (`sword`)
+
 local function startCombat(showNames: boolean, wild: boolean?, sword: boolean?)
 	combatWild = wild == true
 	combatSword = sword ~= false
@@ -1590,6 +1664,9 @@ local function startCombat(showNames: boolean, wild: boolean?, sword: boolean?)
 		end,
 	}, showNames, wild, combatSword)
 	combatHud = hud
+	if #BattleController.pylonTargets > 0 then
+		pylonUi.make()
+	end
 	if combatSword then
 		SwordController.SetCombat(true, swordTargets, hud.setCooldown)
 		hud.setSkill(SwordController.EquippedMoveset())
@@ -1610,6 +1687,7 @@ end
 
 local function stopCombat()
 	SuperCinematic.release()
+	pylonUi.clear()
 	local hud = combatHud
 	combatHud = nil
 	if weaponWatch then
@@ -1634,6 +1712,7 @@ local function onStarted(payload: any)
 	mySide = if payload.side == "b" then "b" else "a"
 	markers = {}
 	addMarkers(payload.markers, payload.markerNames)
+	addMonsterMarkers(payload.addMonsters) -- foes whose markers hadn't streamed in yet (a Dungeon room's pack)
 	if fightFx then
 		fightFx.destroy()
 	end
@@ -1646,6 +1725,10 @@ local function onStarted(payload: any)
 	end
 	allyNames = {}
 	addAllies(payload.allies)
+	-- a new fight's adds row is built fresh: two Dungeon rooms' packs share ids (b:p1...), and the last room's names
+	-- stayed on the bars (owner 2026-11-12: "my enemies are Lava Brute and Storm Hawk, and the bar's name is Lynx")
+	addsKey = ""
+	statusBar.reset() -- the boss's states too
 	groupFight = payload.group == true
 	allyBars = {}
 	clear(allyRow)
@@ -1671,7 +1754,7 @@ local function onStarted(payload: any)
 	local otherBar = if boss then slim else plate
 	otherBar.frame.Visible = false
 	bossBar, bossName, bossHp, bossHpText = topBar.frame, topBar.name, topBar.hp, topBar.text
-	addsRow.Parent = bossBar
+	statusBar.holder.Parent = bossBar
 	local topSpec = CombatHudConfig.TOP_BAR
 	if boss then
 		monsterName.Text = `BOSS {elementIcon(boss.element)} {boss.name}`
@@ -1689,6 +1772,7 @@ local function onStarted(payload: any)
 	combatWild = false
 	combatSword = false
 	foeElite = payload.elite == true
+	BattleController.pylonTargets = if typeof(payload.pylons) == "table" then payload.pylons else {}
 	if boss then
 		startCombat(payload.buttonNames == true)
 	elseif mode == "wild" then
@@ -2035,19 +2119,35 @@ local function build()
 	slim = { frame = slimFrame, name = slimName, hp = slimHp, text = slimText }
 	bossBar, bossName, bossHp, bossHpText = plateFrame, plateName, plateHp, plateText -- until a fight picks one
 
-	addsRow = Instance.new("Frame")
-	addsRow.Name = "BossAdds"
-	addsRow.AnchorPoint = Vector2.new(0.5, 0)
-	addsRow.Position = UDim2.new(0.5, 0, 1, 4)
-	addsRow.Size = UDim2.new(1, 0, 0, 26)
-	addsRow.BackgroundTransparency = 1
-	addsRow.Visible = false
-	addsRow.Parent = bossBar
-	local addsLayout = Instance.new("UIListLayout")
-	addsLayout.FillDirection = Enum.FillDirection.Horizontal
-	addsLayout.Padding = UDim.new(0, 6)
-	addsLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	addsLayout.Parent = addsRow
+	-- under the boss bar, stacked: its adds' HP, its states, a state's tooltip (a block: the Start function is at Luau's 200 locals)
+	do
+		local underBar = Instance.new("Frame")
+		underBar.Name = "UnderBossBar"
+		underBar.AnchorPoint = Vector2.new(0.5, 0)
+		underBar.Position = UDim2.new(0.5, 0, 1, 4)
+		underBar.Size = UDim2.new(1, 0, 0, 0)
+		underBar.AutomaticSize = Enum.AutomaticSize.Y
+		underBar.BackgroundTransparency = 1
+		underBar.Parent = bossBar
+		local underList = Instance.new("UIListLayout")
+		underList.SortOrder = Enum.SortOrder.LayoutOrder
+		underList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+		underList.Padding = UDim.new(0, 4)
+		underList.Parent = underBar
+		addsRow = Instance.new("Frame")
+		addsRow.Name = "BossAdds"
+		addsRow.LayoutOrder = 1
+		addsRow.Size = UDim2.new(1, 0, 0, 26)
+		addsRow.BackgroundTransparency = 1
+		addsRow.Visible = false
+		addsRow.Parent = underBar
+		statusBar = BossStatusBar.new(underBar, phone, 2, rgb(CombatHudConfig.PANEL_COLOR), rgb(topSpec.TITLE_COLOR))
+		local addsLayout = Instance.new("UIListLayout")
+		addsLayout.FillDirection = Enum.FillDirection.Horizontal
+		addsLayout.Padding = UDim.new(0, 6)
+		addsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+		addsLayout.Parent = addsRow
+	end
 
 
 	-- Back to your shop while in the wild: top centre (the left HUD stack has no room left on phones). A sky cotton

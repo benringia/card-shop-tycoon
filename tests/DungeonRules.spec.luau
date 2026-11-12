@@ -1,5 +1,6 @@
 --!strict
 local DungeonRules = require("../src/shared/Util/DungeonRules")
+local Dungeon = require("../src/shared/Config/Dungeon")
 local expect = require("./lib/expect")
 local fs = require("@lune/fs")
 local luau = require("@lune/luau")
@@ -78,10 +79,75 @@ return {
 		expect.equal(DungeonRules.skipRoom(2.7, 3), 2, "whole rooms")
 	end,
 
+	["steps: a room's gate opens only when its fight is the next step"] = function()
+		local steps = Dungeon.STEPS
+		expect.equal(DungeonRules.canStartRoom(steps, 0, 1), true, "room 1 first")
+		expect.equal(DungeonRules.canStartRoom(steps, 1, 2), false, "beams not solved")
+		expect.equal(DungeonRules.canStartRoom(steps, 2, 2), true, "after the beams")
+		expect.equal(DungeonRules.canStartRoom(steps, 5, 3), false, "room 3 already won")
+		expect.equal(DungeonRules.canStartRoom(steps, 0, 3), false, "skipping ahead")
+		expect.equal(DungeonRules.chamberOpen(steps, 5), false, "lock not solved")
+		expect.equal(DungeonRules.chamberOpen(steps, 6), true, "all done")
+		expect.equal(DungeonRules.stepKind(steps, 1), "beams", "after fight 1")
+		expect.equal(DungeonRules.stepKind(steps, 0), "fight", "first")
+		expect.equal(DungeonRules.stepKind(steps, 6), "boss", "past the last")
+	end,
+
+	["doneBefore: /room n lands at its fight; 4 is the chamber"] = function()
+		expect.equal(DungeonRules.doneBefore(Dungeon.STEPS, 1), 0, "room 1")
+		expect.equal(DungeonRules.doneBefore(Dungeon.STEPS, 2), 2, "room 2 after the beams")
+		expect.equal(DungeonRules.doneBefore(Dungeon.STEPS, 3), 4, "room 3 after plates")
+		expect.equal(DungeonRules.doneBefore(Dungeon.STEPS, 4), 6, "chamber")
+	end,
+
+	["stepIndex: where a puzzle sits in the run (/puzzle <kind> skips to it)"] = function()
+		expect.equal(DungeonRules.stepIndex(Dungeon.STEPS, "beams"), 2, "after fight 1")
+		expect.equal(DungeonRules.stepIndex(Dungeon.STEPS, "plates"), 4, "after fight 2")
+		expect.equal(DungeonRules.stepIndex(Dungeon.STEPS, "lock"), 6, "the last")
+		expect.equal(DungeonRules.stepIndex(Dungeon.STEPS, "nope"), nil, "no such step")
+	end,
+
+	["introKind: the full welcome first, the short one after"] = function()
+		expect.equal(DungeonRules.introKind(false), "full", "never seen")
+		expect.equal(DungeonRules.introKind(true), "short", "seen")
+	end,
+
+	["canAct and once: members not out, each player once"] = function()
+		expect.equal(DungeonRules.canAct(true, false), true, "member")
+		expect.equal(DungeonRules.canAct(true, true), false, "out")
+		expect.equal(DungeonRules.canAct(false, false), false, "not in the run")
+		local opened = {}
+		expect.equal(DungeonRules.once(opened, 7), true, "first")
+		expect.equal(DungeonRules.once(opened, 7), false, "second")
+		expect.equal(DungeonRules.once(opened, 8), true, "another player")
+	end,
+
+	["secretPrize: title first, then 25% material, else cash"] = function()
+		expect.equal(DungeonRules.secretPrize(false, 0.99, 0.25), "title", "first find")
+		expect.equal(DungeonRules.secretPrize(false, 0.01, 0.25), "title", "first find, lucky roll too")
+		expect.equal(DungeonRules.secretPrize(true, 0.1, 0.25), "material", "lucky")
+		expect.equal(DungeonRules.secretPrize(true, 0.5, 0.25), "cash", "not")
+	end,
+
 	["every rule exists as soon as the module loads (none nested inside another)"] = function()
 		local fresh = luau.load(luau.compile(fs.readFile("src/shared/Util/DungeonRules.luau")), { debugName = "DungeonRules" })()
-		for _, name in { "canFight", "merge", "isOut", "expectedSize", "pack", "gateCheck", "leftRun", "canChangeParty", "readyToStart", "skipRoom" } do
+		for _, name in { "canFight", "merge", "isOut", "expectedSize", "pack", "gateCheck", "leftRun", "canChangeParty", "readyToStart", "skipRoom", "canStartRoom", "chamberOpen", "stepKind", "doneBefore", "canAct", "once", "secretPrize", "stepIndex", "introKind" } do
 			expect.equal(typeof(fresh[name]), "function", name)
 		end
+	end,
+	["packSpots: spread round the ring's far side, apart, the same each seed"] = function()
+		local spots = DungeonRules.packSpots(3, 18, 5)
+		expect.equal(#spots, 3, "one each")
+		for index, spot in spots do
+			local reach = math.sqrt(spot.x * spot.x + spot.z * spot.z)
+			expect.equal(reach > 18 * 0.7 and reach < 18 * 1.3, true, `spot {index} out on the ring`)
+			expect.equal(spot.x > -2, true, `spot {index} on the far side from the gate (-x)`)
+			for other = index + 1, #spots do
+				local apart = math.sqrt((spot.x - spots[other].x) ^ 2 + (spot.z - spots[other].z) ^ 2)
+				expect.equal(apart > 10, true, `spots {index} and {other} apart`)
+			end
+		end
+		expect.equal(DungeonRules.packSpots(3, 18, 5)[2].z, spots[2].z, "the same each seed")
+		expect.equal(#DungeonRules.packSpots(1, 18, 2), 1, "a lone monster")
 	end,
 }

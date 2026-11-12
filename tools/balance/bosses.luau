@@ -199,8 +199,11 @@ end
 -- mode: nil (creatures only: Dungeon rooms; each player's call-in), "still" or "well" (a boss: the player fights beside
 -- one creature, no call-in)
 local superCasts, superSeconds = 0, 0 -- over a row: supers fired and fight seconds they had
+local shieldTimes: { number } = {} -- the Dungeon's room 3: seconds until its pylons' shield fell (fights where it did)
 
-local function battle(players: { { any } }, foes: { any }, hpLeft: { [string]: number }, seed: number, mode: string?): (boolean, number, { [string]: number })
+-- inRoom (a Dungeon room): the players fight in it (mode "still" or "well") beside their creatures, call-ins on;
+-- `pylons` (its room 3, spec 2026-11-11-dungeon-puzzles): they also swing at the pylons until the shield falls
+local function battle(players: { { any } }, foes: { any }, hpLeft: { [string]: number }, seed: number, mode: string?, pylons: { any }?, inRoom: boolean?): (boolean, number, { [string]: number })
 	local leaders, reserves = {}, {}
 	for _, own in players do
 		local led = false
@@ -224,10 +227,13 @@ local function battle(players: { { any } }, foes: { any }, hpLeft: { [string]: n
 			table.insert(leaders, { id = `@{owner}`, player = true, owner = owner, element = "None", hp = Combat.PLAYER_HP, atk = 0, spd = 10 })
 		end
 	end
-	local state = BattleSim.new(Combat, { fighters = leaders, reserves = reserves, abilities = true, canRun = true, swapSeconds = Combat.BOSS_SWAP_SECONDS, callIn = mode == nil }, {
+	local room = inRoom == true or pylons ~= nil -- a Dungeon room: call-ins on even with the players in it
+	local shieldAt: number? = nil
+	local state = BattleSim.new(Combat, { fighters = leaders, reserves = reserves, abilities = true, canRun = true, swapSeconds = Combat.BOSS_SWAP_SECONDS, callIn = mode == nil or room, creaturesDecide = room }, {
 		fighters = foes,
 		abilities = false,
 		canRun = false,
+		pylons = pylons,
 	}, seed)
 	state.maxSeconds = Combat.BOSS_MAX_FIGHT_SECONDS
 	dice = seed
@@ -248,6 +254,10 @@ local function battle(players: { { any } }, foes: { any }, hpLeft: { [string]: n
 	while not state.result do
 		local events = BattleSim.step(state, DT)
 		local side = state.sides.a
+		if pylons and not shieldAt and BattleSim.pylonsLeft(state, "b") == 0 then
+			shieldAt = state.time -- broken by a sword hit last step
+			table.insert(shieldTimes, shieldAt)
+		end
 		if mode == "well" then
 			for _, event in events do
 				local owner = if event.type == "telegraph" and event.to then string.sub(event.to, 4) else nil
@@ -257,7 +267,12 @@ local function battle(players: { { any } }, foes: { any }, hpLeft: { [string]: n
 			end
 			for _, owner in owners do
 				local target = nil
-				for _, foe in state.sides.b.fighters do
+				for _, pylon in (state.sides.b :: any).pylons do
+					if pylon.hp > 0 and not target then
+						target = pylon -- the pylons first while any stands
+					end
+				end
+				for _, foe in if target then {} else state.sides.b.fighters do
 					if not foe.fainted then
 						target = if target == nil or not foe.boss then foe else target -- adds first
 					end
@@ -286,7 +301,7 @@ local function battle(players: { { any } }, foes: { any }, hpLeft: { [string]: n
 				end
 			end
 		end
-		if not mode and state.time > 1 then
+		if (not mode or room) and state.time > 1 then
 			for _, reserve in side.reserves do
 				local owner = reserve.owner :: string
 				if not calledIn[owner] then
@@ -321,16 +336,26 @@ local function hpShare(players: { { any } }, hpLeft: { [string]: number }): numb
 end
 
 -- The Dungeon's rooms before its boss: (cleared them all, HP left after)
-local function runRooms(players: { { any } }, seed: number): (boolean, { [string]: number })
+local function runRooms(players: { { any } }, seed: number, mode: string): (boolean, { [string]: number })
 	local hpLeft: { [string]: number } = {}
 	for index, room in Dungeon.ROOMS do
 		local foes = {}
 		for slot, species in DungeonRules.pack(room, seed + index) do
 			local base = CombatMath.getMonsterStats(Frontier, species, room.level, true) :: any
-			local hp, atk, swings = BossRules.groupStats(Bosses, base.hp * Dungeon.PACK_SCALE.hp, base.atk * Dungeon.PACK_SCALE.atk, PLAYERS)
+			local hp, atk, swings = BossRules.groupStats(Bosses, base.hp * Dungeon.PACK_SCALE.hp, base.atk * Dungeon.PACK_SCALE.atk * (room.atk or 1), PLAYERS)
 			table.insert(foes, { id = `p{slot}`, element = Frontier.SPECIES[species].element, hp = hp, atk = atk, spd = base.spd, elite = true, swings = swings })
 		end
-		local won, _seconds, after = battle(players, foes, hpLeft, seed * 31 + index)
+		-- The players fight in every room with their swords (owner 2026-11-12; the first monster's quick hits on them);
+		-- room 3 also has its pylons
+		foes[1].playerAttacks = CombatMath.getMonsterAttacks(Frontier, true)
+		local pylons: { any }? = nil
+		if room.pylons then
+			pylons = {}
+			for slot = 1, room.pylons.count do
+				table.insert(pylons :: { any }, { id = `Pylon{slot}`, hp = room.pylons.hp })
+			end
+		end
+		local won, _seconds, after = battle(players, foes, hpLeft, seed * 31 + index, mode, pylons, true)
 		hpLeft = after
 		if not won then
 			return false, hpLeft
@@ -356,7 +381,7 @@ local function fight(bossId: string, party: { Card }, element: string, seed: num
 	local hpLeft: { [string]: number } = {}
 	if bossId == Dungeon.BOSS then
 		local cleared
-		cleared, hpLeft = runRooms(players, seed)
+		cleared, hpLeft = runRooms(players, seed, mode)
 		if not cleared then
 			return false, 0, 0
 		end
@@ -392,9 +417,17 @@ local function row(bossId: string, label: string, party: { Card })
 	local still, stillSeconds, share, reached = run(bossId, party, "still")
 	local stillEvery = if superCasts > 0 then superSeconds / superCasts else 0
 	superCasts, superSeconds = 0, 0
-	local well, wellSeconds = run(bossId, party, "well")
+	table.clear(shieldTimes)
+	local well, wellSeconds, wellShare, wellReached = run(bossId, party, "well")
 	local wellEvery = if superCasts > 0 then superSeconds / superCasts else 0
-	local before = if bossId == Dungeon.BOSS then string.format("  reached it %3d%%, HP left %3d%%", math.round(reached * 100), math.round(share * 100)) else ""
+	local shield = 0
+	for _, seconds in shieldTimes do
+		shield += seconds / #shieldTimes
+	end
+	-- Room 3 needs swords against its pylons: a player standing still never gets past it
+	local before = if bossId == Dungeon.BOSS
+		then string.format("  reached it still %3d%% / well %3d%%, HP left %3d%% / %3d%%, room 3 shield down after %2ds", math.round(reached * 100), math.round(wellReached * 100), math.round(share * 100), math.round(wellShare * 100), math.round(shield))
+		else ""
 	local supers = if stillEvery > 0 or wellEvery > 0 then string.format("  supers every %3ds / %3ds", math.round(stillEvery), math.round(wellEvery)) else ""
 	print(string.format("  %-30s still %3d%% %3ds   well %3d%% %3ds%s%s", label, math.round(still * 100), math.round(stillSeconds), math.round(well * 100), math.round(wellSeconds), before, supers))
 end

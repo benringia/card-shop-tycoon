@@ -23,6 +23,7 @@ return {
 		PortalWild = { height = 28, collide = false },
 		PortalFrontier = { height = 28, collide = false },
 		PortalArena = { height = 28, collide = false },
+		PortalDungeon = { height = 26, collide = false }, -- the Frontier's way into the Dungeon (FrontierValley DUNGEON_GATE)
 		Terminal = { height = 0, collide = false }, -- the POS terminal on the checkout (fits COUNTER.REGISTER)
 		CounterDecor = { height = 1.2, collide = false },
 		-- fixtures: drawn on their part (which becomes an invisible hitbox) only when the model file exists
@@ -60,7 +61,8 @@ return {
 	},
 	PORTAL_CLEARANCE = 10, -- nothing but the portal frame this close to a portal
 	-- Butterflies (ButterflyController, client only): a flock round the healing spring and more at Forest Falls and the
-	-- east trails' start; each spot's flock loops round its centre between its radii. Studs; colours as { r, g, b }.
+	-- east trails' start; each spot's flock loops round its centre between its radii. They rest at night (the town's
+	-- clock, 2026-11-11). Studs; colours as { r, g, b }.
 	BUTTERFLIES = {
 		SPOTS = {
 			{ x = 0, z = 0, count = 10, minRadius = 6.5, maxRadius = 8.5 }, -- under the plaza gazebo's dome, round the fountain
@@ -216,6 +218,28 @@ return {
 				{ kind = "beam", from = "Fx_DripA", to = "Fx_Pool", texture = "rbxassetid://139671283074387", width = 0.6, speed = 0.8, color = { 255, 120, 30 } },
 				{ kind = "beam", from = "Fx_DripB", to = "Fx_Pool", texture = "rbxassetid://139671283074387", width = 0.6, speed = 0.8, color = { 255, 120, 30 } },
 				{ kind = "emitter", at = "Fx_Pool", texture = "rbxasset://textures/particles/sparkles_main.dds", rate = 20, lifetime = { 1.2, 1.8 }, speed = { 3, 5 }, size = { 0.6, 0 }, rise = 3, spin = 90, colors = { { 255, 205, 90 }, { 255, 90, 40 } } },
+			},
+		},
+		-- The Dungeon's entrance in the Frontier (spec 2026-11-12-dungeon-world): a cave-mouth arch split open in the
+		-- ground, crystal-grown, hydra heads on top, steps down into a violet swirl
+		Dungeon = {
+			slot = "PortalDungeon",
+			ground = { part = "Fx_Base", bottom = 0.2 },
+			vortex = { colors = { { 150, 70, 255 }, { 90, 200, 255 } }, core = { 60, 20, 130 }, spin = 22, transparency = 0.05 },
+			light = { color = { 180, 140, 255 }, brightness = 1, range = 16 },
+			-- its five dragon heads' eyes (left to right) in the Hydra's five elements: Ember, Volt, Shade, Bloom, Tide (the
+			-- Hydra's castle gate keeps them dark until its lock is solved: Config/Dungeon HYDRA_EYES)
+			glow = {
+				Crystals = { 190, 150, 255 },
+				Eye1 = { 255, 120, 50 },
+				Eye2 = { 250, 214, 60 },
+				Eye3 = { 190, 110, 255 },
+				Eye4 = { 120, 230, 96 },
+				Eye5 = { 110, 200, 255 },
+			},
+			effects = {
+				{ kind = "emitter", at = "Fx_Base", texture = "rbxasset://textures/particles/smoke_main.dds", rate = 3, lifetime = { 3, 4 }, speed = { 0.3, 0.8 }, size = { 3, 6 }, rise = 0.3, spin = 20, transparency = { 0.8, 1 }, colors = { { 120, 90, 170 } } },
+				{ kind = "emitter", at = "Opening", texture = "rbxasset://textures/particles/sparkles_main.dds", rate = 12, lifetime = { 2, 3 }, speed = { 0.5, 1.2 }, size = { 0.7, 0 }, rise = 0.5, spin = 40, colors = { { 200, 160, 255 }, { 120, 220, 255 } } },
 			},
 		},
 		-- The Wild valley's boss portals (WildService): the obsidian arch with a purple swirl, its lava glowing purple

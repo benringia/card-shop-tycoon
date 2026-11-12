@@ -72,6 +72,72 @@ function DungeonRules.skipRoom(room: number, rooms: number): number
 	return math.clamp(math.floor(room), 1, rooms + 1)
 end
 
+type Step = { kind: string, room: number? }
+
+-- Whether room `room`'s gate may start its fight: its fight is the next step (`done` steps of Config/Dungeon STEPS done)
+function DungeonRules.canStartRoom(steps: { Step }, done: number, room: number): boolean
+	local step = steps[done + 1]
+	return step ~= nil and step.kind == "fight" and step.room == room
+end
+
+-- Whether the Prism Hydra's chamber is open: every step done
+function DungeonRules.chamberOpen(steps: { Step }, done: number): boolean
+	return done >= #steps
+end
+
+-- The current step's kind ("fight", "beams", "plates", "lock"), "boss" past the last
+function DungeonRules.stepKind(steps: { Step }, done: number): string
+	local step = steps[done + 1]
+	return if step then step.kind else "boss"
+end
+
+-- Steps done when /room n (Studio) skips to room n's gate: every step before its fight (past the last room: all)
+function DungeonRules.doneBefore(steps: { Step }, room: number): number
+	for index, step in steps do
+		if step.kind == "fight" and step.room == room then
+			return index - 1
+		end
+	end
+	return #steps
+end
+
+-- Where a step of this kind sits in the run (its index in Config/Dungeon STEPS), nil when there's none
+function DungeonRules.stepIndex(steps: { Step }, kind: string): number?
+	for index, step in steps do
+		if step.kind == kind then
+			return index
+		end
+	end
+	return nil
+end
+
+-- The welcome a player gets when the run opens: the full one the first time ever, the short one after
+function DungeonRules.introKind(seen: boolean): "full" | "short"
+	return if seen then "short" else "full"
+end
+
+-- Whether a player may work a puzzle piece or open a chest: a run member who isn't out
+function DungeonRules.canAct(isMember: boolean, isOut: boolean): boolean
+	return isMember and not isOut
+end
+
+-- True the first time this player (UserId) does it this run (a chest), marking it; false after
+function DungeonRules.once(opened: { [number]: boolean }, userId: number): boolean
+	if opened[userId] then
+		return false
+	end
+	opened[userId] = true
+	return true
+end
+
+-- The secret chest's prize: the title on a player's first find ever, then the material on a roll under `chance`, else cash
+function DungeonRules.secretPrize(foundBefore: boolean, roll: number, chance: number): "title" | "material" | "cash"
+	if not foundBefore then
+		return "title"
+	end
+	return if roll < chance then "material" else "cash"
+end
+
 -- A room's pack: `count` species names, cycling through the room's list from a seeded start (mixed elements)
 function DungeonRules.pack(room: { species: { string }, count: number, level: number }, seed: number): { string }
 	local names = {}
@@ -80,6 +146,26 @@ function DungeonRules.pack(room: { species: { string }, count: number, level: nu
 		table.insert(names, room.species[(start + index - 1) % #room.species + 1])
 	end
 	return names
+end
+
+-- Where a room's pack rises (owner 2026-11-12: "spawn in a different side of the arena, not sticking together"):
+-- `count` spots `radius` studs round the ring's middle, spread over its far side from the gate (the gate is at -x),
+-- each a little in or out and to the side; offsets (x, z) from the ring's middle, the same for a seed
+function DungeonRules.packSpots(count: number, radius: number, seed: number): { { x: number, z: number } }
+	local spots = {}
+	local state = math.abs(math.floor(seed)) % 2147483646 + 1
+	local function roll(): number
+		state = (state * 16807) % 2147483647
+		return (state - 1) / 2147483646
+	end
+	local arc = math.rad(160) -- the far half, its ends clear of the gate's side
+	for index = 1, count do
+		local angle = if count == 1 then 0 else -arc / 2 + (index - 1) / (count - 1) * arc
+		angle += (roll() - 0.5) * math.rad(16)
+		local reach = radius * (0.88 + roll() * 0.24)
+		table.insert(spots, { x = math.cos(angle) * reach, z = math.sin(angle) * reach })
+	end
+	return spots
 end
 
 return DungeonRules

@@ -73,7 +73,10 @@ export type SwordWeapon = {
 export type FighterInput = { id: string, element: string, hp: number, atk: number, spd: number, signature: string?, grade: string?, elite: boolean?, mechanics: Mechanics?, boss: boolean?, owner: string?, swings: number?, phases: { Phase }?, hpNow: number?, player: boolean?, playerAttacks: PlayerAttacks?, perk: Perk? }
 -- callIn: false closes the call-in window (boss fights: only swaps); creaturesDecide: the side loses once its creatures
 -- have fainted, its players up or not (wild fights: the sword helps, the creature has to last)
-export type SideInput = { fighters: { FighterInput }, reserves: { FighterInput }?, abilities: boolean, canRun: boolean, swapSeconds: number?, callIn: boolean?, creaturesDecide: boolean? }
+-- pylons (the Dungeon's room 3, spec 2026-11-11-dungeon-puzzles): while one stands, nothing hurts this side's fighters;
+-- only players' swords hit them (swordHit with the pylon's id, "<side>:<id>"); they never attack, are never a
+-- creature's target and never count for a side being beaten
+export type SideInput = { fighters: { FighterInput }, reserves: { FighterInput }?, abilities: boolean, canRun: boolean, swapSeconds: number?, callIn: boolean?, creaturesDecide: boolean?, pylons: { { id: string, hp: number } }? }
 export type Event = {
 	-- "attack" | "ability" | "faint" | "callin" | "swap" (from: in, to: out or nil) | "run" | "end" | "heal" | "enrage" |
 	-- "leave" | "shield" (heal: its size) | "shieldBreak" | "thunderclap" (a warned one: kind "windup" with its seconds and
@@ -114,6 +117,8 @@ export type Event = {
 	arrive: number?,
 	-- Tidal Shield's "ability": the allies it warded, for `seconds`; "shieldGone" (to: whose ward broke or ran out)
 	shielded: { string }?,
+	-- The Dungeon's pylons: "pylonHit" (to: the pylon, damage), "pylonBroken", "shieldDown"; a hit their shield took
+	pylonShield: boolean?,
 }
 
 type Fighter = {
@@ -209,7 +214,10 @@ type Side = {
 	lastAtk: { [string]: number }, -- by owner: the ATK of their last creature on the field (their sword's damage)
 	creaturesDecide: boolean, -- lost once no creature stands (SideInput.creaturesDecide)
 	meters: { [string]: number }, -- by owner: the super meter (combat.SUPER_METER; a super needs it full)
+	pylons: { Pylon }, -- SideInput.pylons (none: an empty list)
 }
+
+type Pylon = { id: string, hp: number, maxHp: number }
 
 export type State = {
 	combat: any,
@@ -329,6 +337,10 @@ local function makeSide(combat: any, input: SideInput, name: string): Side
 	for _, fighter in input.reserves or {} do
 		table.insert(reserves, makeFighter(combat, fighter, name, 0))
 	end
+	local pylons: { Pylon } = {}
+	for _, pylon in input.pylons or {} do
+		table.insert(pylons, { id = `{name}:{pylon.id}`, hp = pylon.hp, maxHp = pylon.hp })
+	end
 	local meters: { [string]: number } = {}
 	for _, list in { fighters, reserves } do
 		for _, fighter in list do
@@ -350,6 +362,7 @@ local function makeSide(combat: any, input: SideInput, name: string): Side
 		lastAtk = lastAtk,
 		creaturesDecide = input.creaturesDecide == true,
 		meters = meters,
+		pylons = pylons,
 	}
 end
 
@@ -380,6 +393,16 @@ local function find(state: State, id: string): (Fighter?, Side?)
 		end
 	end
 	return nil, nil
+end
+
+-- Whether a pylon of this side still stands (its fighters take no damage)
+local function pylonsUp(side: Side): boolean
+	for _, pylon in side.pylons do
+		if pylon.hp > 0 then
+			return true
+		end
+	end
+	return false
 end
 
 local function standing(side: Side): { Fighter }
@@ -657,6 +680,9 @@ local function takeDamage(state: State, target: Fighter, amount: number, events:
 		hurtPlayer(state, target, amount, events)
 		return
 	end
+	if pylonsUp((state.sides :: any)[target.side]) then
+		return -- its pylons' shield takes every hit (burns and abilities too)
+	end
 	fillMeter(state, target, state.combat.SUPER_METER.hurt * amount / target.maxHp)
 	target.taken += math.min(amount, target.hp)
 	target.hp = math.max(0, target.hp - amount)
@@ -680,6 +706,9 @@ end
 
 -- A boss with adds standing takes only part of the damage (adds.guard)
 local function guarded(side: Side, target: Fighter): number
+	if not target.player and pylonsUp(side) then
+		return 0
+	end
 	local adds = if target.boss and target.mechanics then target.mechanics.adds else nil
 	if not adds then
 		return 1
@@ -740,6 +769,7 @@ local function hit(
 	local atk = from.atk * multiplier * (if state.time < from.curseUntil then 1 - from.curse else 1) * (1 + perkOf(state, from, "Hype")) * (1 + boost)
 	local elementMult, strength = CombatMath.getElementMultiplier(state.combat, element or from.element, target.element)
 	local side = (state.sides :: any)[target.side] :: Side
+	local shielded = not target.player and pylonsUp(side)
 	local raw = CombatMath.getDamage(state.combat, atk, elementMult, random(state)) * guarded(side, target)
 	-- Haggle rolls only when there's a chance, so fights without it draw the same randoms as before
 	local critChance = perkOf(state, from, "Haggle")
@@ -771,6 +801,7 @@ local function hit(
 		strength = strength,
 		crit = if crit then true else nil,
 		absorbed = if absorbed > 0 then absorbed else nil, -- what its ward and its side's shield took (the ward ripples)
+		pylonShield = if shielded then true else nil, -- its pylons' shield took it all ("Shielded!")
 	})
 	from.dealt += math.min(taken, target.hp)
 	takeDamage(state, target, taken, events)
@@ -824,8 +855,43 @@ end
 
 -- One attack: the usual target, then (a boss against a group) the next most hurt standing creatures, each once; a
 -- boss with playerAttacks may send any of these swings at a player instead
+-- A creature its owner sent at a crystal (the Dungeon's room 3; BattleSim.setPylonFocus): its auto-attack hits that
+-- pylon instead, its ATK times Combat.PET_PYLON_SHARE; once it breaks the order is done and the creature is back in
+-- the fight ("petBack"). False when it wasn't sent, or its crystal is gone.
+local function petHitsPylon(state: State, fighter: Fighter, enemySide: Side, events: { Event }): boolean
+	local told = (state :: any).pylonFocus
+	local owner = ownerKey(fighter)
+	local targetId = if told and not fighter.player then told[owner] else nil
+	if not targetId then
+		return false
+	end
+	for _, pylon in enemySide.pylons do
+		if pylon.id == targetId and pylon.hp > 0 then
+			local taken = math.min(math.max(1, math.round(fighter.atk * (state.combat.PET_PYLON_SHARE or 0.5))), pylon.hp)
+			pylon.hp -= taken
+			table.insert(events, { type = "pylonHit", from = fighter.id, to = pylon.id, damage = taken })
+			if pylon.hp <= 0 then
+				table.insert(events, { type = "pylonBroken", to = pylon.id })
+				if not pylonsUp(enemySide) then
+					table.insert(events, { type = "shieldDown" })
+				end
+				told[owner] = nil
+				table.insert(events, { type = "petBack", from = fighter.id })
+			end
+			return true
+		end
+	end
+	-- its crystal broke under someone else's hits: back to the fight
+	told[owner] = nil
+	table.insert(events, { type = "petBack", from = fighter.id })
+	return false
+end
+
 local function attack(state: State, fighter: Fighter, events: { Event })
 	local enemySide = other(state, (state.sides :: any)[fighter.side])
+	if petHitsPylon(state, fighter, enemySide, events) then
+		return
+	end
 	local swungAt: { [Fighter]: boolean } = {}
 	local target: Fighter? = nil
 	if not swingAtPlayer(state, fighter, enemySide, swungAt, events) then
@@ -1764,6 +1830,62 @@ end
 -- equipped `weapon` (nil: the old neutral hit) adds its element on the wheel, its bond and its perk. The server checks
 -- reach and timing first (SwordRules). `share` (default 1): this strike's part of one hit (Prism Judgment's five
 -- strikes are a fifth each), so together they fill the super meter as one hit.
+-- A sword hit on a pylon: the player's sword damage (their creature's ATK) times `multiplier`, no element, crit or
+-- perk; the last one standing breaking drops the shield
+local function hitPylon(state: State, fighter: Fighter, pylon: Pylon, multiplier: number): ({ Event }?, string?)
+	if pylon.hp <= 0 then
+		return nil, "target"
+	end
+	local side = (state.sides :: any)[fighter.side] :: Side
+	local damage = math.max(1, math.round(creatureAtk(state, side, ownerKey(fighter)) * multiplier))
+	local taken = math.min(damage, pylon.hp)
+	pylon.hp -= taken
+	local events: { Event } = { { type = "pylonHit", from = fighter.id, to = pylon.id, damage = taken } }
+	if pylon.hp <= 0 then
+		table.insert(events, { type = "pylonBroken", to = pylon.id })
+		if not pylonsUp(state.sides.b) then
+			table.insert(events, { type = "shieldDown" })
+		end
+	end
+	return events, nil
+end
+
+-- A player sends their creature at one crystal pylon (its sim id, "b:Pylon2") or calls it back to the fight (nil): the
+-- Dungeon's room 3's crystal prompts (owner 2026-11-12: "make the crystal interactable, like the plates"). False when
+-- that crystal isn't standing (nothing changes).
+function BattleSim.setPylonFocus(state: State, owner: string, target: string?): boolean
+	local told = (state :: any).pylonFocus or {}
+	;(state :: any).pylonFocus = told
+	if target == nil then
+		told[owner] = nil
+		return true
+	end
+	for _, pylon in state.sides.b.pylons do
+		if pylon.id == target and pylon.hp > 0 then
+			told[owner] = target
+			return true
+		end
+	end
+	return false
+end
+
+-- The crystal a player's creature was sent at, or nil while it fights
+function BattleSim.pylonFocusOf(state: State, owner: string): string?
+	local told = (state :: any).pylonFocus
+	return if told then told[owner] else nil
+end
+
+-- Pylons still standing on this side ("a" or "b")
+function BattleSim.pylonsLeft(state: State, sideName: string): number
+	local left = 0
+	for _, pylon in ((state.sides :: any)[sideName] :: Side).pylons do
+		if pylon.hp > 0 then
+			left += 1
+		end
+	end
+	return left
+end
+
 function BattleSim.swordHit(state: State, owner: string, targetId: string, power: number, kind: string, weapon: SwordWeapon?, share: number?): ({ Event }?, string?)
 	if state.result then
 		return nil, "ended"
@@ -1777,6 +1899,11 @@ function BattleSim.swordHit(state: State, owner: string, targetId: string, power
 	local _, spec = debuffOn(state, fighter)
 	if stunnedNow(state, fighter) then
 		return nil, "stunned"
+	end
+	for _, pylon in state.sides.b.pylons do
+		if pylon.id == targetId then
+			return hitPylon(state, fighter, pylon, power * (if spec and spec.sword then spec.sword else 1) * (if weapon then weapon.bond else 1) * (share or 1))
+		end
 	end
 	local target, targetSide = find(state, targetId)
 	if not target or targetSide ~= state.sides.b or target.fainted or target.left then
@@ -1962,6 +2089,37 @@ local function swapWaits(state: State, side: Side): { [string]: number }
 end
 
 -- Plain view for the clients' fight bars
+-- What's on a boss now, for its bar (owner 2026-11-12: "every boss debuff should be shown below their healthbar with
+-- tooltips"; Config/BossStatus): its shield (value: what it holds), enraged (value: % harder), guarded while its adds
+-- stand (value: % less damage taken), and what's on it with how long: stunned, snared (value: % slower), cursed
+-- (value: % weaker), burning
+export type Status = { kind: string, value: number?, seconds: number? }
+function BattleSim.statusesOf(state: State, fighter: Fighter): { Status }
+	local list: { Status } = {}
+	local side = (state.sides :: any)[fighter.side] :: Side
+	if side.shield > 0 then
+		table.insert(list, { kind = "shield", value = math.round(side.shield) })
+	end
+	if fighter.enraged then
+		local enrage = if fighter.mechanics then fighter.mechanics.enrage else nil
+		table.insert(list, { kind = "enraged", value = if enrage then math.round((enrage.atkMultiplier - 1) * 100) else nil })
+	end
+	local guard = guarded(side, fighter)
+	if guard > 0 and guard < 1 then
+		table.insert(list, { kind = "guarded", value = math.round((1 - guard) * 100) })
+	end
+	local function timed(kind: string, untilTime: number, value: number?)
+		if state.time < untilTime then
+			table.insert(list, { kind = kind, seconds = untilTime - state.time, value = value })
+		end
+	end
+	timed("stunned", fighter.stunUntil)
+	timed("snared", fighter.slowUntil, math.round(fighter.slow * 100))
+	timed("cursed", fighter.curseUntil, math.round(fighter.curse * 100))
+	timed("burning", fighter.burnUntil)
+	return list
+end
+
 function BattleSim.snapshot(state: State): any
 	local function sideView(side: Side): any
 		local fighters = {}
@@ -1984,6 +2142,7 @@ function BattleSim.snapshot(state: State): any
 				down = fighter.down,
 				downIn = if fighter.down and not fighter.out then math.max(0, fighter.downUntil - state.time) else 0,
 				out = fighter.out,
+				statuses = if fighter.boss then BattleSim.statusesOf(state, fighter) else nil, -- its bar's states
 			})
 		end
 		local reserves = {}

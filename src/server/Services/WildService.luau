@@ -438,13 +438,18 @@ local function buildPlaza()
 			end
 		end)
 		local signHeight = Wild.PORTAL_SIGN_HEIGHT
-		if gate and gate.model and Props.hasModel(gate.model) then
+		-- its own model, or its fallback's (and look) until that's saved
+		local gateModel, gateLook = if gate then gate.model else nil, if gate then gate.look else nil
+		if gate and gate.fallback and not (gateModel and Props.hasModel(gateModel)) then
+			gateModel, gateLook = gate.fallback.model, gate.fallback.look
+		end
+		if gate and gateModel and Props.hasModel(gateModel) then
 			-- a portal model round the ring (its prompts stay on the hidden ring), dressed and swirling like the others
-			local arch = Props.place(gate.model, CFrame.lookAt(dungeonSpot, dungeonSpot + dungeonFacing), folder)
-			arch:ScaleTo(arch:GetScale() * gate.height / Town.SLOTS[gate.model].height)
+			local arch = Props.place(gateModel, CFrame.lookAt(dungeonSpot, dungeonSpot + dungeonFacing), folder)
+			arch:ScaleTo(arch:GetScale() * gate.height / Town.SLOTS[gateModel].height)
 			local box, size = arch:GetBoundingBox()
 			arch:PivotTo(arch:GetPivot() + Vector3.new(0, dungeonSpot.Y - (box.Position.Y - size.Y / 2), 0))
-			PortalBuild.dress(arch, (Town.PORTAL_LOOKS :: any)[gate.look])
+			PortalBuild.dress(arch, (Town.PORTAL_LOOKS :: any)[gateLook])
 			arch.Name = "DungeonPortal"
 			ring.Transparency = 1
 			signHeight = gate.height + 4
@@ -486,7 +491,7 @@ end
 -- A boss's summon (Config/Bosses adds.size and adds.emerge, the Rift Devourer's): drawn `size` times its species'
 -- height, rising out of its rift over `emerge` seconds from the moment it's made (marker attributes Size, Emerge,
 -- EmergeAt, set before clients see it)
-export type Summon = { size: number, emerge: number }
+export type Summon = { size: number?, emerge: number } -- size: a boss's summon's (nil: its own, a Dungeon room's pack)
 
 local function createMonster(species: string, level: number, elite: boolean, zone: number, home: Vector3, spawnPoint: BasePart?, boss: string?, summon: Summon?): Monster?
 	local info: { element: string }? = if boss then Bosses.BOSSES[boss] else Wild.SPECIES[species]
@@ -525,7 +530,9 @@ local function createMonster(species: string, level: number, elite: boolean, zon
 		marker:SetAttribute("SpawnedAt", workspace:GetServerTimeNow()) -- clients time its intro roar from this (Util/BossMoments)
 	end
 	if summon then
-		marker:SetAttribute("Size", summon.size)
+		if summon.size then
+			marker:SetAttribute("Size", summon.size)
+		end
 		marker:SetAttribute("Emerge", summon.emerge)
 		marker:SetAttribute("EmergeAt", workspace:GetServerTimeNow())
 	end
@@ -845,6 +852,7 @@ local function gatePrompts(part: BasePart, boss: any, bossId: string, onGate: (p
 	prompt.HoldDuration = 0
 	prompt.MaxActivationDistance = Bosses.GATE_PROMPT_DISTANCE
 	prompt.RequiresLineOfSight = false
+	prompt:SetAttribute("RequireLevel", boss.shopLevel) -- locked text below it (BlockedController)
 	prompt.Parent = part
 	prompt.Triggered:Connect(function(player)
 		onGate(player, bossId)
@@ -856,6 +864,7 @@ local function gatePrompts(part: BasePart, boss: any, bossId: string, onGate: (p
 	groupPrompt.HoldDuration = 0
 	groupPrompt.MaxActivationDistance = Bosses.GATE_PROMPT_DISTANCE
 	groupPrompt.RequiresLineOfSight = false
+	groupPrompt:SetAttribute("RequireLevel", boss.shopLevel)
 	groupPrompt.KeyboardKeyCode = Enum.KeyCode.F
 	groupPrompt.UIOffset = Vector2.new(0, Bosses.GROUP_PROMPT_OFFSET)
 	groupPrompt.Parent = part
@@ -1031,13 +1040,20 @@ function WildService.BuildBossArenas(onGate: (player: Player, bossId: string) ->
 		end
 		local center = if here == "Dungeon" then vec(Dungeon.CHAMBER)
 			else zoneCenter(boss.zone) + Vector3.new(Wild.ZONE_SIZE / 2 + Bosses.ARENA_GAP + Bosses.ARENA_RADIUS, 0, 0)
-		local bossAt, barrier, inside, gateSpot = buildRing(folder, boss, center, nil, 0)
+		-- the Hydra's lair dresses its ring (violet floor, glowing cracks, crystal-tipped stone posts; owner 2026-11-12)
+		local bossAt, barrier, inside, gateSpot = buildRing(folder, boss, center, if here == "Dungeon" then Dungeon.LAIR_ARENA else nil, 0)
 		local gatePart = block(folder, "BossGate", Vector3.new(1, 9, 12), CFrame.new(gateSpot + Vector3.new(0, 4.5, 0)), PORTAL_COLOR, Enum.Material.Neon)
 		gatePart.CanCollide = false
-		gatePart.Transparency = 0.6
+		gatePart.Transparency = if here == "Dungeon" then 1 else 0.6 -- the lair's gate wears DungeonBuilder's seal
 		local groupPrompt = gatePrompts(gatePart, boss, bossId, onGate, onGroup)
-		-- (these boards face the ring, so players walking up from the zone see their backs)
-		sign(folder, `BOSS: {boss.name}\nRecommended Power {boss.recommended}`, CFrame.new(gateSpot + Vector3.new(-1, 11, 0)) * CFrame.Angles(0, -math.rad(90), 0))
+		local text = `BOSS: {boss.name}\nRecommended Power {boss.recommended}`
+		if here == "Dungeon" then
+			-- over the lair's arena gate, facing where the castle's portal sets you down
+			sign(folder, text, CFrame.new(gateSpot + Vector3.new(-1, Dungeon.LAIR_ARENA.signHeight, 0)) * CFrame.Angles(0, math.rad(90), 0))
+		else
+			-- (these boards face the ring, so players walking up from the zone see their backs)
+			sign(folder, text, CFrame.new(gateSpot + Vector3.new(-1, 11, 0)) * CFrame.Angles(0, -math.rad(90), 0))
+		end
 		local gate = CFrame.lookAt(gateSpot - Vector3.new(4, 0, 0), center) -- where /boss puts you, outside the gate
 		arenas[bossId] = {
 			gate = gate,
@@ -1087,10 +1103,14 @@ local function moveCharacter(player: Player, cframe: CFrame): boolean
 	return true
 end
 
--- Safety net: anyone in the wild who falls well below its floor goes back to the entrance
+-- Safety net: anyone in the wild who falls well below its floor goes back to the entrance. Not in the Dungeon: its
+-- chasm is death there (DungeonService: out of the run), not a rescue.
 local function rescueFallen()
+	if dungeonLayout then
+		return
+	end
 	local entrance = ORIGIN + vec(Wild.ENTRANCE_OFFSET)
-	local target = if dungeonLayout then dungeonLayout.entrance else CFrame.lookAt(entrance, entrance + Vector3.new(0, 0, 1))
+	local target = CFrame.lookAt(entrance, entrance + Vector3.new(0, 0, 1))
 	for player in inWild do
 		local root = getRoot(player)
 		if root and root.Position.Y < ORIGIN.Y - Wild.FALL_RESCUE_DEPTH and not root.Anchored then
@@ -1228,7 +1248,8 @@ function WildService.Start()
 		-- No wild map or spawns: the cavern, and monsters only while a room is fought
 		mapFolder = Instance.new("Folder")
 		mapFolder.Name = "Dungeon"
-		local layout = DungeonBuilder.build(mapFolder)
+		-- one prism beam layout per run (one run per server)
+		local layout = DungeonBuilder.build(mapFolder, Random.new():NextInteger(1, #Dungeon.BEAMS.LAYOUTS))
 		mapFolder.Parent = workspace
 		dungeonLayout = layout
 		frontierSpawn = layout.spawn

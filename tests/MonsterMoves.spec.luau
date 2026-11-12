@@ -12,7 +12,31 @@ end
 local SOVEREIGN = { windup = 0.6, strike = 0.5, specialWindup = 1.4, specialRelease = 0.8, clapWindup = 2, clapRelease = 1.2 }
 local DEVOURER = { windup = 0.6, strike = 0.5, specialWindup = 1.4, specialRelease = 0.8, summon = 1.6 }
 
+local HYDRA = { windup = 0.6, strike = 0.5, specialWindup = 1.4, specialRelease = 0.8, shield = 1.6, heal = 2, enrage = 1.8 }
+
 return {
+	-- The owner 2026-11-12: "we need an animation ... on all of those skills" (the Prism Hydra's shield, heal, enrage)
+	["a boss's shield, heal and enrage play their own clips once; nothing cuts in"] = function()
+		for _, case in { { event = { type = "shield", to = "b:m" }, clip = "shield" }, { event = { type = "heal", to = "b:m" }, clip = "heal" }, { event = { type = "enrage", from = "b:m" }, clip = "enrage" } } do
+			local state = MonsterMoves.new()
+			local move = play(state, case.event, 0, HYDRA)
+			assert(move, `its {case.clip}`)
+			expect.equal(move.clip, case.clip)
+			expect.equal(move.speed, 1)
+			expect.equal(play(state, { type = "charge", seconds = 0.6 }, 0.5, HYDRA), nil, `no wind-up mid {case.clip}`)
+			expect.equal(play(state, { type = "attack" }, 0.5, HYDRA), nil, `no strike mid {case.clip}`)
+			expect.equal(play(state, { type = "ring", kind = "swipe", seconds = 1 }, 0.5, HYDRA), nil, `no ring mid {case.clip}`)
+			local later = play(state, { type = "attack" }, 2.5, HYDRA)
+			assert(later and later.clip == "strike", `after its {case.clip}, it bites again`)
+			expect.equal(play(MonsterMoves.new(), case.event, 0), nil, `a body without a {case.clip} clip plays nothing`)
+		end
+		-- a skill cuts into a plain wind-up or strike (it's the moment to see)
+		local state = MonsterMoves.new()
+		play(state, { type = "charge", seconds = 0.6 }, 0, HYDRA)
+		local cut = play(state, { type = "heal", to = "b:m" }, 0.2, HYDRA)
+		assert(cut and cut.clip == "heal", "a heal cuts into a wind-up")
+	end,
+
 	-- The owner 2026-11-11: the Rift Devourer's summoning, its special skill
 	["a summon plays its summon clip once a wave; nothing cuts in"] = function()
 		local state = MonsterMoves.new()

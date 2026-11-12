@@ -72,8 +72,11 @@ local NAMES = {
 	"PickUpLoot", -- client → server: (ids: { string }) pick up your boss drops close by (up to Bosses.LOOT_PICKUP_BATCH)
 	"BossTravel", -- client → server: (index: number) the board's Take me there: to boss n's gate when its arena is in this place
 	"DevPanel", -- client → server: (command: string) a dev chat command from the admin panel; handled in Studio only
-	"DungeonRun", -- server → client: { room, rooms, stage = "waiting" | "room" | "boss" | "won" | "out", message? } the Dungeon run; client → server: () ask for it
+	"DungeonRun", -- server → client: { room, rooms, stage = "waiting" | "room" | "gather" | "beams" | "plates" | "lock" | "boss" | "won" | "out", next?, here?, total? (gather: the next puzzle, players on its island / still in the run), message?, intro? = "full" | "short" (play the Hydra's welcome; sent until the client acks) } the Dungeon run; client → server: () ask for it, or ("introSeen") the welcome started
 	"DungeonLeave", -- client → server: () leave the Dungeon run (back to the Frontier)
+	"Blocked", -- server → client: { reason } you can't do that yet: a big locked card with what's needed (Util/Blocked, BlockedController)
+	"DungeonCinematic", -- server → client: { kind = "door" | "hydra", door: Vector3, through: Vector3, sockets?: { Vector3 } } a puzzle's gate opening, or the way to the Hydra (DungeonCinematicController)
+	"DungeonChest", -- server → client: { key, kind = "puzzle" | "secret", cash?, xp?, item?, count?, title? } you opened that Dungeon chest
 	"UseXpTonic", -- client → server: (beastId: string) one XP Tonic on a party card
 	"OpenBagPack", -- client → server: (itemId: string) open one pack item from the Bag (LevelUpService; main game)
 	"LevelUpFx", -- server → clients: { kind = "shop", userId, from, to } or { kind = "creature", userId, beastId, element, from, to, fromFight }
@@ -84,6 +87,7 @@ local NAMES = {
 	"SwordSeen", -- client → server: () the first-sword popup was closed
 	"SwordAttack", -- client → server: () an Attack tap in a boss fight (the server picks the cut and checks reach)
 	"SwordSkill", -- client → server: () the sword skill in a boss fight
+	"PetPylon", -- client → server: (pylonId: string | false) your creature attacks that Dungeon room 3 crystal pylon (its sim id), or comes back
 	"SwordCast", -- server → all clients: (userId, move, x, z) a round 1 sword's cut ("cut1"-"cut3") or "skill" starts there: its effects for others
 	"Dodge", -- client → server: () a dodge in a boss fight (the dash is the client's; the server makes you untouchable)
 	"EquipWeapon", -- client → server: (weaponId: string) hold an owned weapon (WeaponService; not in a fight)
@@ -95,6 +99,9 @@ local NAMES = {
 	"WeaponDropped", -- server → client: { weaponId, grade, refund, material } a boss dropped its weapon (refund > 0: you had it)
 	"WeaponAnnouncement", -- server → all clients: (displayName, weaponId, grade, userId) an Epic or Legendary weapon dropped
 	"WeaponBeacon", -- server → all clients: (userId, weaponId, position) a new boss weapon dropped there: its light column
+	"BossChests", -- server → owner: { id, bossId, seconds } a boss win's three chests to pick from (no contents yet)
+	"OpenBossChest", -- client → server: (id: string, index: number) the chest tapped (1-3)
+	"BossChestOpened", -- server → owner: { id, index, contents = { { kind = "weapon"|"material"|"mystery", weaponId?, item?, count? } x3 } }
 	"PishPetted", -- server → all clients: (userId, lucky: boolean) Town Pish was petted: his hearts, and the luck it gave
 	"ChikinPetted", -- server → all clients: (userId, granted: boolean) Town Chikin was petted: his hearts, and the Courage it gave
 	"TutorialAction", -- client → server: (action: "skip" | "replay" | "bye" | "lessonDone", lessonId: string?) the tutorial
@@ -189,6 +196,9 @@ return {
 	DevPanel = remotes.DevPanel,
 	DungeonRun = remotes.DungeonRun,
 	DungeonLeave = remotes.DungeonLeave,
+	DungeonCinematic = remotes.DungeonCinematic,
+	Blocked = remotes.Blocked,
+	DungeonChest = remotes.DungeonChest,
 	UseXpTonic = remotes.UseXpTonic,
 	OpenBagPack = remotes.OpenBagPack,
 	LevelUpFx = remotes.LevelUpFx,
@@ -199,6 +209,7 @@ return {
 	SwordSeen = remotes.SwordSeen,
 	SwordAttack = remotes.SwordAttack,
 	SwordSkill = remotes.SwordSkill,
+	PetPylon = remotes.PetPylon,
 	SwordCast = remotes.SwordCast,
 	Dodge = remotes.Dodge,
 	EquipWeapon = remotes.EquipWeapon,
@@ -210,6 +221,9 @@ return {
 	WeaponDropped = remotes.WeaponDropped,
 	WeaponAnnouncement = remotes.WeaponAnnouncement,
 	WeaponBeacon = remotes.WeaponBeacon,
+	BossChests = remotes.BossChests,
+	OpenBossChest = remotes.OpenBossChest,
+	BossChestOpened = remotes.BossChestOpened,
 	PishPetted = remotes.PishPetted,
 	ChikinPetted = remotes.ChikinPetted,
 	TutorialAction = remotes.TutorialAction,
