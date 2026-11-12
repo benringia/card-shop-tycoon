@@ -107,15 +107,7 @@ local function taken(id: string)
 	end
 	-- Its card pops at the top right (Util/ItemPopup; the owner 2026-11-10: the old "+1" note was too easy to miss); a
 	-- weapon material's says how far it is toward its weapon
-	local line = nil
-	if weaponMaterial[drop.item] then
-		local weaponId, need = WeaponRules.materialGoal(Weapons, drop.item, ownedWeapons)
-		local weapon = if weaponId then Weapons.ById[weaponId] else nil
-		if need then
-			line = `{itemCounts[drop.item] or 0}/{need} for {if weapon then weapon.name else "its weapon"}`
-		end
-	end
-	ItemPopup.show(drop.item, drop.count, line)
+	ItemPopup.show(drop.item, drop.count, LootController.GoalLine(drop.item))
 end
 
 local function onLoot(payload: any)
@@ -166,6 +158,19 @@ local function step()
 		end
 		Remotes.PickUpLoot:FireServer(ask)
 	end
+end
+
+-- A weapon material's progress toward what it's for ("9/15 for Verdant Blade"), from the Bag now; nil for anything else
+function LootController.GoalLine(item: string): string?
+	if not weaponMaterial[item] then
+		return nil
+	end
+	local weaponId, need = WeaponRules.materialGoal(Weapons, item, ownedWeapons)
+	local weapon = if weaponId then Weapons.ById[weaponId] else nil
+	if not need then
+		return nil
+	end
+	return `{itemCounts[item] or 0}/{need} for {if weapon then weapon.name else "its weapon"}`
 end
 
 function LootController.Start()

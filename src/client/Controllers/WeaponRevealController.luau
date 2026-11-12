@@ -58,6 +58,7 @@ local WeaponRevealController = {}
 
 local queue: { Reveal } = {}
 local playing = false
+local handedOver = false -- the boss chests left the stage shown for the next reveal (HandOver)
 
 local function rarityColor(rarity: string): Color3
 	local tier = (Rarities.Tiers :: any)[rarity]
@@ -463,9 +464,10 @@ local function drain()
 	end
 	playing = true
 	while #queue > 0 do
-		while OpeningStage.isShown() do
+		while OpeningStage.isShown() and not handedOver do
 			task.wait(0.25)
 		end
+		handedOver = false
 		local reveal = table.remove(queue, 1) :: Reveal
 		local ok, err = pcall(play, reveal)
 		if not ok then
@@ -474,6 +476,11 @@ local function drain()
 		end
 	end
 	playing = false
+end
+
+-- The boss chests (BossChestController) give the stage, still shown, to the waiting reveal: it starts on it at once
+function WeaponRevealController.HandOver()
+	handedOver = true
 end
 
 -- Whether a reveal is playing or waiting (the Forge window steps aside meanwhile)

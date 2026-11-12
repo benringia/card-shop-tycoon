@@ -89,3 +89,19 @@ timings, if the opening gets heavy on phones.
 `PackOpening.SOUNDS` holds one Creator Store id per moment (crinkle, snap, stack, flip, tease, the three hits,
 shimmer, land, chime), with `VOLUMES` beside it. An empty id plays nothing. Each play is a one-shot of its own, so
 quick repeats overlap; the tease fades out when the hit lands. Credits are in DESIGN.md 5.7.
+
+## The boss chest
+
+The three chests after a boss win (`BossChestController`, `Util/ChestModel`; spec
+`docs/superpowers/specs/2026-11-11-boss-chests-design.md`) use `PackModels.Chest`: a Model with two MeshParts, `Body`
+and `Lid`. The game scales it to the stage, swings the lid on the body's top back edge and adds the light inside;
+without it, a stand-in built from parts shows. Built by `tools/blender/build_chest.py` (owner's pick: the `classic`
+look; `render_concepts()` renders every look in `LOOKS`), flat colours from one palette texture
+(`assets/blender/Chest/Chest_palette.png`), about 3,200 triangles. Rebuild: in Blender (MCP) open
+`assets/blender/Chest/Chest.blend` first (a new empty file has no context under the MCP), then
+`runpy.run_path("tools/blender/build_chest.py")["export"]("classic")`; it writes `Chest.blend` and `Chest.fbx`.
+
+1. Studio (stopped) -> Import 3D -> `assets/blender/Chest/Chest.fbx` (default settings).
+2. Name the Model `Chest`, check it holds the MeshParts `Body` and `Lid`, right-click it -> **Save to File...** ->
+   `assets/packs/Chest.rbxm`.
+3. Delete the Workspace copy. Stop and Play; `/chests meadowWarden` shows it.
