@@ -7,6 +7,8 @@
 -- previous weapon but smaller. also add tooltips when hovering on the active weapon"): the weapons before and after
 -- smaller and faded beside it (tap one to step to it), the strip sliding a step on a switch, small arrows with a
 -- finger-sized tap area, the weapon's name, Power, element, perk, grade and level in a tip under a mouse.
+-- Phones (owner 2026-11-13, pick A: "the UI on phone is really crowded"; UIController.OnCompact): only the weapon in
+-- hand, a bigger chip (tap it for the next weapon, swipe it back), a dot per weapon under it, its name beside it.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -53,6 +55,10 @@ local sides: { [string]: { button: ImageButton, picture: ImageLabel, ring: UIStr
 local nameLabel: TextLabel
 local nameUntil = 0
 local tip: Frame
+local compact = false -- the phone's single chip (UIController.OnCompact)
+local chipButton: ImageButton
+local arrows: { GuiObject } = {}
+local dotsRow: Frame
 
 local function unlocked(): boolean
 	local level = player:GetAttribute("Level")
@@ -81,8 +87,30 @@ local function render()
 	local before, after = WeaponSwitch.neighbours(list, id)
 	for name, side in sides do
 		local sideId = if name == "Before" then before else after
-		side.button.Visible = sideId ~= nil
+		side.button.Visible = sideId ~= nil and not compact
 		side.picture.Image, side.ring.Color = looksOf(sideId)
+	end
+	-- the phone's dots: one per weapon (LOOK.maxDots at most), the one in hand lit
+	if dotsRow then
+		for _, child in dotsRow:GetChildren() do
+			if child:IsA("Frame") then
+				child:Destroy()
+			end
+		end
+		dotsRow.Visible = compact
+		if compact then
+			local count = math.min(#list, LOOK.maxDots)
+			local at = math.min(table.find(list, id or "") or 1, count)
+			for index = 1, count do
+				local dot = Instance.new("Frame")
+				dot.LayoutOrder = index
+				dot.Size = UDim2.fromOffset(LOOK.dot, LOOK.dot)
+				dot.BackgroundColor3 = if index == at then ring.Color else Color3.new(1, 1, 1)
+				dot.BackgroundTransparency = if index == at then 0 else 0.35
+				dot.Parent = dotsRow
+				UIKit.corner(dot, LOOK.dot / 2)
+			end
+		end
 	end
 end
 
@@ -163,9 +191,38 @@ end
 -- changes or a fight's controls come or go
 local laidOutSize = Vector2.zero
 local laidOutFight = false
+local laidOutClear = ""
+-- On touch screens the status column (cash, rating, XP, the party bar under it) hangs from the top right: the switch
+-- keeps clear of it (owner 2026-11-13: it sat on the party bar on a short phone)
+local function clearOf(): { UiLayout.Rect }
+	local main = holder.Parent and holder:FindFirstAncestorOfClass("ScreenGui")
+	local column = if main then main:FindFirstChild("StatusRow") else nil
+	if not UserInputService.TouchEnabled or not column or not column:IsA("GuiObject") or not column.Visible then
+		return {}
+	end
+	-- what's drawn in it (the pills and the party bar), not its whole box, which has room to spare under them
+	local origin = (holder.Parent :: GuiObject).AbsolutePosition
+	local left, top, right, bottom = math.huge, math.huge, -math.huge, -math.huge
+	for _, child in column:GetChildren() do
+		if child:IsA("GuiObject") and child.Visible and child.AbsoluteSize.Y > 0 then
+			local at, size = child.AbsolutePosition - origin, child.AbsoluteSize
+			left, top = math.min(left, at.X), math.min(top, at.Y)
+			right, bottom = math.max(right, at.X + size.X), math.max(bottom, at.Y + size.Y)
+		end
+	end
+	if left == math.huge then
+		return {}
+	end
+	return { { x = left, y = top, w = right - left, h = bottom - top } }
+end
+local function clearKey(): string
+	local list = clearOf()
+	local b = list[1]
+	return if b then `{math.floor(b.x)},{math.floor(b.y)},{math.floor(b.w)},{math.floor(b.h)}` else ""
+end
 local function relayout(view: Vector2, fight: boolean)
-	laidOutSize, laidOutFight = view, fight
-	local rect = UiLayout.weaponSwitch({ w = view.X, h = view.Y }, LOOK, Hud.scaleFor(), fight)
+	laidOutSize, laidOutFight, laidOutClear = view, fight, clearKey()
+	local rect = UiLayout.weaponSwitch({ w = view.X, h = view.Y }, LOOK, Hud.scaleFor(), fight, clearOf(), compact)
 	holder.Position = UDim2.fromOffset(rect.x, rect.y)
 	holderScale.Scale = rect.scale
 end
@@ -213,7 +270,8 @@ local function build()
 		return button
 	end
 	local previous = arrow("Previous", "<", 0, -1)
-	arrow("Next", ">", LOOK.chip + 2 * (LOOK.side + LOOK.gap) + LOOK.arrow + 2 * LOOK.gap, 1)
+	local nextArrow = arrow("Next", ">", LOOK.chip + 2 * (LOOK.side + LOOK.gap) + LOOK.arrow + 2 * LOOK.gap, 1)
+	arrows = { previous, nextArrow }
 
 	-- the three weapons on one strip
 	track = Instance.new("Frame")
@@ -257,6 +315,21 @@ local function build()
 	end
 	local chip
 	chip, portrait, ring = round("Chip", LOOK.chip, chipX, LOOK.ring)
+	chipButton = chip
+	dotsRow = Instance.new("Frame")
+	dotsRow.Name = "Dots"
+	dotsRow.BackgroundTransparency = 1
+	dotsRow.AnchorPoint = Vector2.new(0.5, 0)
+	dotsRow.Position = UDim2.new(0.5, 0, 0, LOOK.compactChip + 4)
+	dotsRow.Size = UDim2.new(1, 0, 0, LOOK.dot)
+	dotsRow.Visible = false
+	dotsRow.Parent = holder
+	local dotsLayout = Instance.new("UIListLayout")
+	dotsLayout.FillDirection = Enum.FillDirection.Horizontal
+	dotsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	dotsLayout.Padding = UDim.new(0, 3)
+	dotsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	dotsLayout.Parent = dotsRow
 
 	-- the tip: a small panel left of the switch while a mouse is on the weapon in hand
 	tip = Instance.new("Frame")
@@ -317,6 +390,7 @@ local function build()
 
 	-- A horizontal swipe on the chip steps too: left for the next weapon, right for the one before
 	local pressedAt: Vector3? = nil
+	local swipedAt = 0
 	chip.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
 			pressedAt = input.Position
@@ -328,9 +402,18 @@ local function build()
 		if from and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1) then
 			local dx = input.Position.X - from.X
 			if math.abs(dx) >= LOOK.swipe then
+				swipedAt = os.clock()
 				step(if dx < 0 then 1 else -1)
 			end
 		end
+	end)
+	-- the phone's chip: a tap (not a swipe) is the next weapon; deferred so a swipe's InputEnded is seen first
+	chip.Activated:Connect(function()
+		task.defer(function()
+			if compact and os.clock() - swipedAt > 0.25 then
+				step(1)
+			end
+		end)
 	end)
 end
 
@@ -339,9 +422,35 @@ function WeaponSwitchController.GetState(): { owned: { [string]: any }, equipped
 	return { owned = owned, equipped = equipped }
 end
 
+-- The phone's single chip, or the carousel: arrows and the side weapons hide, the chip grows and sits alone, the name
+-- goes beside it (left), the dots under it
+local function setCompact(on: boolean)
+	compact = on
+	for _, button in arrows do
+		button.Visible = not on
+	end
+	local size = if on then LOOK.compactChip else LOOK.chip
+	chipButton.Size = UDim2.fromOffset(size, size)
+	local corner = chipButton:FindFirstChildOfClass("UICorner")
+	if corner then
+		corner.CornerRadius = UDim.new(0, size // 2)
+	end
+	chipButton.Position = UDim2.fromOffset(if on then 0 else LOOK.arrow + LOOK.gap + LOOK.side + LOOK.gap, size / 2)
+	holder.Size = if on
+		then UDim2.fromOffset(LOOK.compactChip, LOOK.compactChip + LOOK.dots)
+		else UDim2.fromOffset(LOOK.chip + 2 * (LOOK.side + LOOK.gap) + 2 * (LOOK.arrow + LOOK.gap), LOOK.chip + LOOK.name)
+	nameLabel.AnchorPoint = if on then Vector2.new(1, 0.5) else Vector2.new(0.5, 0)
+	nameLabel.Position = if on then UDim2.new(0, -8, 0, size / 2) else UDim2.new(0.5, 0, 0, LOOK.chip + 4)
+	nameLabel.Size = if on then UDim2.fromOffset(200, 18) else UDim2.new(1, 40, 0, 18)
+	nameLabel.TextXAlignment = if on then Enum.TextXAlignment.Right else Enum.TextXAlignment.Center
+	laidOutSize = Vector2.zero -- lay it out again
+	render()
+end
+
 function WeaponSwitchController.Start()
 	build()
 	render()
+	UIController.OnCompact(setCompact)
 	Remotes.WeaponsChanged.OnClientEvent:Connect(function(state: unknown)
 		if typeof(state) ~= "table" then
 			return
@@ -376,7 +485,7 @@ function WeaponSwitchController.Start()
 	RunService.Heartbeat:Connect(function()
 		local view = (holder.Parent :: GuiObject).AbsoluteSize
 		local fight = screenGui:FindFirstChild("CombatHud") ~= nil
-		if view ~= laidOutSize or fight ~= laidOutFight then
+		if view ~= laidOutSize or fight ~= laidOutFight or clearKey() ~= laidOutClear then
 			relayout(view, fight)
 		end
 		holder.Visible = WeaponSwitch.visible(list)

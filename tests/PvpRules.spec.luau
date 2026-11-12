@@ -4,6 +4,14 @@ local config = require("../src/shared/Config/Pvp")
 local expect = require("./lib/expect")
 
 return {
+	-- owner 2026-11-13: PvP comes in the first update, a week after launch; till then the Arena says "Coming soon"
+	-- and players can't challenge each other (the duel titles still show)
+	["the arena is closed for launch, with its coming-soon words"] = function()
+		expect.equal(config.OPEN, false, "closed till the first update")
+		expect.equal(#config.SOON.sign > 0 and #config.SOON.sign <= 14, true, "a short sign")
+		expect.equal(#config.SOON.text > 0 and #config.SOON.title > 0, true, "its card's words")
+	end,
+
 	["bet cap: lower cash, lower shop level x CAP_PER_LEVEL, floored to the step"] = function()
 		expect.equal(PvpRules.getBetCap(config, 1000, 300, 4, 9), config.CAP_PER_LEVEL * 4, "CAP_PER_LEVEL x level 4")
 		expect.equal(PvpRules.getBetCap(config, 1000, 133, 9, 9), 130, "cash, floored to 5")

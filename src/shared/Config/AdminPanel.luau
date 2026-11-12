@@ -141,6 +141,8 @@ AdminPanel.SECTIONS = {
 			{ label = "Supporter tier 3 (as if bought)", command = "/support 3" },
 			{ label = "Not a supporter again", command = "/support 0" },
 			{ label = "Titles: unlock again (new card, dot)", command = "/titles forget" },
+			{ label = "Review: happy customer", command = "/review happyMoment" },
+			{ label = "Review: empty shelves", command = "/review noStock" },
 			{ label = "Go to the Wild", command = "/wild" },
 			{ label = "Go to the arena", command = "/arena" },
 			{ label = "Toggle Extra Job Slot", command = "/jobslot" },

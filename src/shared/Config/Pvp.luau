@@ -2,6 +2,17 @@
 -- PvP challenges and the arena (battles part 2 spec). Plain data only (positions are { x, y, z } tables) so
 -- Lune tests can load this file.
 return {
+	-- PvP opens in the first update, a week after launch (owner 2026-11-13: "I need to put on alot of planning to make
+	-- the pvp good"): while false the plaza Arena portal says SOON instead of taking you to the stands, the Challenge
+	-- prompt isn't made (ChallengeController) and the server refuses challenges (ArenaService); the duel titles still
+	-- show. Studio's /arena still goes to the stands.
+	OPEN = false,
+	SOON = {
+		sign = "Coming soon",
+		title = "Coming soon!",
+		icon = "⚔️",
+		text = "The Arena opens in our first update: duel other players with your creatures!",
+	},
 	CHALLENGE_DISTANCE = 8, -- studs between the players for the Challenge prompt (and the server check)
 	CHALLENGE_SECONDS = 15, -- the target has this long to answer
 	CHALLENGE_COOLDOWN = 10, -- seconds between challenges from one player

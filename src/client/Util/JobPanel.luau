@@ -19,6 +19,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local ClientUtil = script.Parent :: Instance
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local StationJobs = require(ClientUtil:WaitForChild("StationJobs"))
+local ScreenClear = require(ClientUtil:WaitForChild("ScreenClear"))
 local ProductPrice = require(ClientUtil:WaitForChild("ProductPrice"))
 
 local JobPanel = {}
@@ -100,6 +101,7 @@ function JobPanel.attach(window: Frame, station: string)
 			return -- "Coming soon": the button says so
 		end
 		Remotes.SkipUpgrade:FireServer(station)
+		ScreenClear.prompt()
 		MarketplaceService:PromptProductPurchase(Players.LocalPlayer, productId)
 	end)
 

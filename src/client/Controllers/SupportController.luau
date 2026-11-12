@@ -23,6 +23,7 @@ local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local HudMascotView = require(ClientUtil:WaitForChild("HudMascotView"))
 local ProductPrice = require(ClientUtil:WaitForChild("ProductPrice"))
+local ScreenClear = require(ClientUtil:WaitForChild("ScreenClear"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local TutorialController = require(Controllers:WaitForChild("TutorialController"))
 
@@ -124,6 +125,7 @@ local function build()
 		button.Size = UDim2.fromOffset(104, 48)
 		button.Activated:Connect(function()
 			if id ~= 0 then
+				ScreenClear.prompt()
 				MarketplaceService:PromptProductPurchase(player, id)
 			end
 		end)

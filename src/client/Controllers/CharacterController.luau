@@ -33,6 +33,7 @@ local ElementBadge = require(ClientUtil:WaitForChild("ElementBadge"))
 local CharacterStage = require(ClientUtil:WaitForChild("CharacterStage"))
 local StageAura = require(ClientUtil:WaitForChild("StageAura"))
 local Tooltip = require(ClientUtil:WaitForChild("Tooltip"))
+local ScreenClear = require(ClientUtil:WaitForChild("ScreenClear"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local BinderController = require(Controllers:WaitForChild("BinderController"))
 local PartyController = require(Controllers:WaitForChild("PartyController"))
@@ -483,6 +484,7 @@ local function showUnlocks()
 			while workspace.CurrentCamera and workspace.CurrentCamera.CameraType ~= Enum.CameraType.Custom and waited < 30 do
 				waited += task.wait(0.5)
 			end
+			ScreenClear.wait()
 			local id = table.remove(unlockQueue, 1) :: string
 			local title = Titles.ById[id]
 			if not title or panel.Visible then

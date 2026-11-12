@@ -19,7 +19,7 @@ return {
 		buildRack = {
 			intro = {},
 			now = {
-				default = "Shops need shelves! Tap Manage.",
+				default = "Shops need shelves! Tap the Phone.",
 				trayOpen = "Tap Shop.",
 				shopOpen = "Pick the Small Pack Rack.",
 				placing = "Put it on the floor and tap to place!",
@@ -141,7 +141,7 @@ return {
 
 	-- A lesson teaching its new thing, by where the player is (%s: the thing's name, or the Build tab's)
 	TEACH = {
-		default = "Tap Manage.",
+		default = "Tap the Phone.",
 		trayOpen = "Tap Shop.",
 		tab = "Tap %s.",
 		tile = "Tap the %s!",

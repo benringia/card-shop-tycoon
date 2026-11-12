@@ -30,6 +30,7 @@ local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local OpeningStage = require(ClientUtil:WaitForChild("OpeningStage"))
+local ScreenClear = require(ClientUtil:WaitForChild("ScreenClear"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local WeaponFace = require(ClientUtil:WaitForChild("WeaponFace"))
 local WeaponLook = require(ClientUtil:WaitForChild("WeaponLook"))
@@ -467,6 +468,7 @@ local function drain()
 		while OpeningStage.isShown() and not handedOver do
 			task.wait(0.25)
 		end
+		ScreenClear.wait() -- a purchase dialog or the Roblox menu first (owner 2026-11-13)
 		handedOver = false
 		local reveal = table.remove(queue, 1) :: Reveal
 		local ok, err = pcall(play, reveal)

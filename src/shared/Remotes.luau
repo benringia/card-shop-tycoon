@@ -21,9 +21,10 @@ local NAMES = {
 	"Knockout", -- server → client: { left: number, paused: boolean } knocked out in the Wild, or nil when it's over (KnockoutService)
 	"KnockoutChoice", -- client → server: ("spring" | "revive") wake at the spring now, or open the Revive purchase
 	"SupportState", -- server → client: { gifts: number, best: number } "Support the dev" (SupportService); client → server: () ask for it
-	"SupportThanks", -- server → client: { tier: number, raised: boolean } a gift just given: the dogs' thank-you (ThanksController)
+	"SupportThanks", -- server → client: { tier: number, raised: boolean } a gift just given: the dogs' thank-you (ThanksController); client → server: () its glow ended, show the aura
 	"TitleUnlocked", -- server → client: (titleId: string) a title earned for the first time: the "New title!" card (CharacterController)
 	"TitlesSeen", -- client → server: () the Titles tab was seen: no title is new any more (TitleService)
+	"Reviews", -- server → client: { posts } the feed, or { post } a new one (ReviewService); client → server: () ask for the feed
 	"Charge", -- client → server: take payment for the fully scanned checkout
 	-- server → owner: the open kid offer or haggle at the register, nil = closed. { id, kind: "kid"|"haggle",
 	-- card: { cardId, foil, grade }?, asking?, worth?, offer?, total?, range: { low, high }, step, edges: { sure, maybe },
@@ -162,6 +163,7 @@ return {
 	SupportThanks = remotes.SupportThanks,
 	TitleUnlocked = remotes.TitleUnlocked,
 	TitlesSeen = remotes.TitlesSeen,
+	Reviews = remotes.Reviews,
 	Charge = remotes.Charge,
 	OfferUpdate = remotes.OfferUpdate,
 	OfferAction = remotes.OfferAction,

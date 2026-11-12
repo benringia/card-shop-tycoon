@@ -169,6 +169,21 @@ return {
 			end
 		end
 	end,
+	-- owner 2026-11-13 (a phone screenshot): on a short phone the switch sat on the party bar, which hangs under the cash
+	-- and XP column at the top right; it goes just under whatever it's told to keep clear of, on screen
+	["weapon switch: on a phone, under the top-right column and party bar, never on them"] = function()
+		local look = { chip = 58, side = 40, arrow = 30, hit = 48, gap = 6, right = 12, name = 22 }
+		for _, view in { { w = 750, h = 381 }, { w = 667, h = 375 }, { w = 844, h = 390 } } do
+			local column = { x = view.w - 270, y = 8, w = 258, h = 165 }
+			local r = UiLayout.weaponSwitch(view, look, 0.7, false, { column })
+			local overlap = r.x < column.x + column.w and column.x < r.x + r.w and r.y < column.y + column.h and column.y < r.y + r.h
+			expect.equal(overlap, false, `{view.w}x{view.h}: clear of the column`)
+			expect.equal(r.y + r.h <= view.h, true, `{view.w}x{view.h}: on screen`)
+		end
+		local far = UiLayout.weaponSwitch({ w = 1920, h = 1080 }, look, 1, false, { { x = 1600, y = 8, w = 300, h = 165 } })
+		expect.near(far.y + far.h / 2, 540, 1e-6, "a big screen: still mid height (the column is far above)")
+	end,
+
 	["weapon switch: out of a fight, at mid height on the right edge"] = function()
 		local look = { chip = 58, side = 40, arrow = 30, hit = 48, gap = 6, right = 12, name = 22 }
 		for _, view in { { w = 844, h = 390 }, { w = 1180, h = 820 }, { w = 1920, h = 1080 } } do

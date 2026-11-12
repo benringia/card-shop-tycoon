@@ -1,6 +1,9 @@
 --!strict
 -- The HUD layout, in one place: controllers register their buttons here instead of positioning them.
---   Side:    candy icon tiles down the left middle; the Manage tile slides out a tray of tiles to its right.
+--   Side:    candy icon tiles down the left middle; the Phone tile (it was Manage, and its id still is) opens the
+--            phone: it rises in the middle with the world dimmed behind, its apps on the home screen (owner
+--            2026-11-13: "no more manage button. replace it with a phone"; HudLayout.PHONE). An app may open a page
+--            inside the phone (Hud.phonePage: the Reviews feed) instead of its own window.
 --   Bottom:  candy icon tiles in a centred row (Cards, Bag, Bosses); Context tiles (orange) join the row while visible.
 -- Each tile in the cotton candy look (Config/SoftHud, HudLayout.CANDY; spec 2026-11-03-cotton-candy-ui-design): a
 -- squircle in a baby colour with its icon popping out over the top edge and a squishy hover.
@@ -37,13 +40,24 @@ export type TileSpec = {
 	order: number,
 	onClick: () -> (),
 }
-export type FanSpec = { id: string, icon: string, label: string, order: number, onClick: () -> () }
+-- An app on the phone; `stay`: tapping it keeps the phone open (it shows a page inside it)
+export type FanSpec = { id: string, icon: string, label: string, order: number, onClick: () -> (), stay: boolean? }
 
 local Hud = {}
 
 local side: Frame
 local bottom: Frame
-local fan: Frame
+local fan: Frame -- the phone's layer: the dim and the phone (still named HudFan: fights hide it by that name)
+local phone: Frame
+local dim: TextButton
+local apps: Frame -- the home screen's app grid
+local phoneScreen: Frame -- inside the bezel: the status bar, the home screen and the app pages
+local homeScreen: Frame
+local statusRight: TextLabel
+local clockLabel: TextLabel
+local pages: { [string]: Frame } = {}
+local openPage: string? = nil
+local badges: { [string]: TextLabel } = {}
 local manageTile: TextButton? = nil
 local fanOpen = false
 local tiles: { [string]: TextButton } = {}
@@ -319,8 +333,27 @@ local function makeTile(parent: Instance, spec: TileSpec, candy: Candy): TextBut
 	return tile
 end
 
--- Opens or folds the Manage tray: its tiles pop in one after another, left to right
+local PHONE = HudLayout.PHONE
+
+local function rgbOf(values: { number }): Color3
+	return Color3.fromRGB(values[1], values[2], values[3])
+end
+
+-- Back to the home screen (an app's page closes)
+local function showHome()
+	openPage = nil
+	for _, page in pages do
+		page.Visible = false
+	end
+	homeScreen.Visible = true
+end
+
+-- Opens or puts away the phone: it rises from the bottom into the middle as the world dims, its apps popping in one
+-- after another; put away, it drops back down
 local function setFan(open: boolean)
+	if open == fanOpen then
+		return
+	end
 	fanOpen = open
 	local tile = manageTile
 	if tile then
@@ -330,35 +363,42 @@ local function setFan(open: boolean)
 		if fill and fill:IsA("UIGradient") then
 			fill.Color = gradientOf(HudLayout.CANDY.Manage, if open then HudLayout.CANDY_OPEN_SHADE else 0)
 		end
-		setTileIcon(tile, if open then "Close" else "Manage")
+		setTileIcon(tile, if open then "Close" else PHONE.icon)
 		if label then
-			label.Text = if open then "Close" else "Manage"
+			label.Text = if open then "Close" else PHONE.label
 		end
 	end
 	table.sort(fanButtons, function(a, b)
 		return a.order < b.order
 	end)
+	local slide = TweenInfo.new(PHONE.slide, Enum.EasingStyle.Back, if open then Enum.EasingDirection.Out else Enum.EasingDirection.In)
 	if open then
+		showHome()
+		clockLabel.Text = os.date("%H:%M") :: string
 		fan.Visible = true
-		Motion.popIn(fan)
-	end
-	for index, entry in fanButtons do
-		local button = entry.button
-		if open then
+		dim.BackgroundTransparency = 1
+		phone.Position = UDim2.fromScale(0.5, 1.6)
+		TweenService:Create(dim, TweenInfo.new(PHONE.slide), { BackgroundTransparency = PHONE.dim }):Play()
+		TweenService:Create(phone, slide, { Position = UDim2.fromScale(0.5, 0.5) }):Play()
+		for index, entry in fanButtons do
+			local button = entry.button
 			button.Visible = false
-			task.delay((index - 1) * UIMotion.FAN_STAGGER, function()
+			task.delay(PHONE.slide * 0.6 + (index - 1) * UIMotion.FAN_STAGGER, function()
 				if fanOpen then
 					button.Visible = true
 					Motion.popIn(button)
 				end
 			end)
 		end
+		return
 	end
-	if not open then
-		Motion.popOut(fan, function()
+	TweenService:Create(dim, TweenInfo.new(PHONE.slide), { BackgroundTransparency = 1 }):Play()
+	TweenService:Create(phone, slide, { Position = UDim2.fromScale(0.5, 1.6) }):Play()
+	task.delay(PHONE.slide, function()
+		if not fanOpen then
 			fan.Visible = false
-		end)
-	end
+		end
+	end)
 end
 
 local function ensureManageTile()
@@ -366,9 +406,9 @@ local function ensureManageTile()
 		return
 	end
 	manageTile = makeTile(side, {
-		id = "Manage",
-		icon = "Manage",
-		label = "Manage",
+		id = "Manage", -- the Phone tile keeps the Manage id (the tutorial points at it by that name)
+		icon = PHONE.icon,
+		label = PHONE.label,
 		group = "Side",
 		order = 0,
 		onClick = function()
@@ -427,6 +467,151 @@ local function watchTown()
 	end)
 end
 
+-- The phone (HudLayout.PHONE): a layer over the HUD with the dim (tapping it puts the phone away) and the phone in the
+-- middle: its bezel, the screen with a status bar (the time, and what Hud.setPhoneStatus says: the shop rating), the
+-- home screen (the shop's name, Pish and Chikin, the app grid) and the app pages (Hud.phonePage)
+local function buildPhone(screenGui: ScreenGui)
+	fan = Instance.new("Frame")
+	fan.Name = "HudFan"
+	fan.BackgroundTransparency = 1
+	fan.Size = UDim2.fromScale(1, 1)
+	fan.ZIndex = 30 -- over the HUD and the windows
+	fan.Visible = false
+	fan.Parent = screenGui
+
+	dim = Instance.new("TextButton")
+	dim.Name = "Dim"
+	dim.Text = ""
+	dim.AutoButtonColor = false
+	dim.Position = UDim2.fromOffset(0, -80) -- up under Roblox's top bar too (the screen starts below its inset)
+	dim.Size = UDim2.new(1, 0, 1, 80)
+	dim.BackgroundColor3 = Color3.new(0, 0, 0)
+	dim.BackgroundTransparency = 1
+	dim.ZIndex = 30
+	dim.Parent = fan
+	dim.Activated:Connect(function()
+		setFan(false)
+	end)
+
+	phone = Instance.new("Frame")
+	phone.Name = "Phone"
+	phone.AnchorPoint = Vector2.new(0.5, 0.5)
+	phone.Position = UDim2.fromScale(0.5, 1.6)
+	phone.Size = UDim2.fromOffset(PHONE.size[1], PHONE.size[2])
+	phone.BackgroundColor3 = rgbOf(PHONE.bezel)
+	phone.ZIndex = 31
+	phone.Parent = fan
+	UIKit.corner(phone, 38)
+	UIKit.outline(phone, Color3.new(1, 1, 1), 4)
+	local fit = Instance.new("UIScale")
+	fit.Parent = phone
+	local function scaleToScreen()
+		fit.Scale = math.min(1, (screenGui.AbsoluteSize.Y * PHONE.fit) / PHONE.size[2])
+	end
+	screenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(scaleToScreen)
+	scaleToScreen()
+
+	phoneScreen = Instance.new("Frame")
+	phoneScreen.Name = "Screen"
+	phoneScreen.Position = UDim2.fromOffset(10, 10)
+	phoneScreen.Size = UDim2.new(1, -20, 1, -20)
+	phoneScreen.BackgroundColor3 = Color3.new(1, 1, 1)
+	phoneScreen.ClipsDescendants = true
+	phoneScreen.ZIndex = 32
+	phoneScreen.Parent = phone
+	UIKit.corner(phoneScreen, 30)
+	local wall = Instance.new("UIGradient")
+	wall.Rotation = 120
+	wall.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, rgbOf(PHONE.wall[1])),
+		ColorSequenceKeypoint.new(0.6, rgbOf(PHONE.wall[2])),
+		ColorSequenceKeypoint.new(1, rgbOf(PHONE.wall[3])),
+	})
+	wall.Parent = phoneScreen
+	local ink = rgbOf(PHONE.ink)
+
+	-- the status bar: the time on the left, the shop rating on the right, the notch between
+	local notch = Instance.new("Frame")
+	notch.AnchorPoint = Vector2.new(0.5, 0)
+	notch.Position = UDim2.new(0.5, 0, 0, 6)
+	notch.Size = UDim2.fromOffset(84, 20)
+	notch.BackgroundColor3 = rgbOf(PHONE.bezel)
+	notch.ZIndex = 40
+	notch.Parent = phoneScreen
+	UIKit.corner(notch, 10)
+	clockLabel = UIKit.label(phoneScreen, "", Enum.Font.FredokaOne, 16, ink)
+	clockLabel.Position = UDim2.fromOffset(22, 6)
+	clockLabel.Size = UDim2.fromOffset(70, 22)
+	clockLabel.ZIndex = 40
+	statusRight = UIKit.label(phoneScreen, "", Enum.Font.FredokaOne, 15, ink)
+	statusRight.AnchorPoint = Vector2.new(1, 0)
+	statusRight.Position = UDim2.new(1, -20, 0, 6)
+	statusRight.Size = UDim2.fromOffset(80, 22)
+	statusRight.TextXAlignment = Enum.TextXAlignment.Right
+	statusRight.ZIndex = 40
+
+	-- the home screen: the shop's name, Pish and Chikin, the apps
+	homeScreen = Instance.new("Frame")
+	homeScreen.Name = "Home"
+	homeScreen.BackgroundTransparency = 1
+	homeScreen.Position = UDim2.fromOffset(0, 34)
+	homeScreen.Size = UDim2.new(1, 0, 1, -34)
+	homeScreen.ZIndex = 33
+	homeScreen.Parent = phoneScreen
+	local name = UIKit.label(homeScreen, string.format(PHONE.title, Players.LocalPlayer.DisplayName), Enum.Font.FredokaOne, 20, ink)
+	name.Position = UDim2.fromOffset(12, 4)
+	name.Size = UDim2.new(1, -24, 0, 26)
+	name.TextXAlignment = Enum.TextXAlignment.Center
+	name.ZIndex = 34
+	local dogs = Instance.new("ImageLabel")
+	dogs.BackgroundTransparency = 1
+	dogs.Image = PHONE.picture
+	dogs.ScaleType = Enum.ScaleType.Fit
+	dogs.AnchorPoint = Vector2.new(0.5, 0)
+	dogs.Position = UDim2.new(0.5, 0, 0, 34)
+	dogs.Size = UDim2.new(1, -60, 0, 110)
+	dogs.ZIndex = 34
+	dogs.Parent = homeScreen
+	apps = Instance.new("Frame")
+	apps.Name = "Apps"
+	apps.BackgroundTransparency = 1
+	apps.Position = UDim2.fromOffset(10, 160)
+	apps.Size = UDim2.new(1, -20, 1, -190)
+	apps.ZIndex = 34
+	apps.Parent = homeScreen
+	local grid = Instance.new("UIGridLayout")
+	grid.CellSize = UDim2.fromOffset(HudLayout.TILE_SIZE.X, HudLayout.TILE_SIZE.Y)
+	grid.CellPadding = UDim2.fromOffset(12, 26)
+	grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	grid.SortOrder = Enum.SortOrder.LayoutOrder
+	grid.FillDirectionMaxCells = PHONE.columns
+	grid.Parent = apps
+	local pad = Instance.new("UIPadding")
+	pad.PaddingTop = UDim.new(0, 22) -- room for the icons popping over their tiles' top edge
+	pad.Parent = apps
+
+	-- the home bar along the bottom: tapping it goes back home (or puts the phone away from home)
+	local home = Instance.new("TextButton")
+	home.Name = "HomeBar"
+	home.Text = ""
+	home.AutoButtonColor = false
+	home.AnchorPoint = Vector2.new(0.5, 1)
+	home.Position = UDim2.new(0.5, 0, 1, -6)
+	home.Size = UDim2.fromOffset(110, 8)
+	home.BackgroundColor3 = ink
+	home.BackgroundTransparency = 0.4
+	home.ZIndex = 41
+	home.Parent = phoneScreen
+	UIKit.corner(home, 4)
+	home.Activated:Connect(function()
+		if openPage then
+			showHome()
+		else
+			setFan(false)
+		end
+	end)
+end
+
 function Hud.mount(screenGui: ScreenGui)
 	screen = screenGui
 	watchTown()
@@ -463,42 +648,8 @@ function Hud.mount(screenGui: ScreenGui)
 	bottomList.SortOrder = Enum.SortOrder.LayoutOrder
 	bottomList.Parent = bottom
 
-	-- The Manage tray: a soft white bar right of the Manage tile holding its tiles in a row
-	fan = Instance.new("Frame")
-	fan.Name = "HudFan"
-	fan.AnchorPoint = Vector2.new(0, 0.5)
-	fan.Size = UDim2.fromOffset(0, HudLayout.TILE_SIZE.Y + HudLayout.TRAY.PADDING * 2)
-	fan.AutomaticSize = Enum.AutomaticSize.X
-	fan.BackgroundColor3 = Color3.new(1, 1, 1)
-	fan.BackgroundTransparency = HudLayout.TRAY.TRANSPARENCY
-	fan.Visible = false
-	fan.ZIndex = 3
-	fan.Parent = screenGui
-	UIKit.corner(fan, 18)
-	UIKit.outline(fan, Color3.new(1, 1, 1), 2)
-	local padding = Instance.new("UIPadding")
-	for _, side_ in { "PaddingLeft", "PaddingRight", "PaddingTop", "PaddingBottom" } do
-		(padding :: any)[side_] = UDim.new(0, HudLayout.TRAY.PADDING)
-	end
-	padding.Parent = fan
-	local row = Instance.new("UIListLayout")
-	row.FillDirection = Enum.FillDirection.Horizontal
-	row.VerticalAlignment = Enum.VerticalAlignment.Center
-	row.Padding = UDim.new(0, HudLayout.GAP)
-	row.SortOrder = Enum.SortOrder.LayoutOrder
-	row.Parent = fan
-	local function placeFan()
-		local tile = manageTile
-		if tile then
-			local left = tile.AbsolutePosition.X + tile.AbsoluteSize.X + HudLayout.GAP
-			local middle = tile.AbsolutePosition.Y + tile.AbsoluteSize.Y / 2
-			fan.Position = UDim2.fromOffset(left, middle)
-		end
-	end
-	side:GetPropertyChangedSignal("AbsolutePosition"):Connect(placeFan)
-	side:GetPropertyChangedSignal("AbsoluteSize"):Connect(placeFan)
-	task.defer(placeFan)
-	for _, frame in { side, bottom, fan } do
+	buildPhone(screenGui)
+	for _, frame in { side, bottom } do
 		Hud.scaleWith(frame)
 	end
 end
@@ -510,23 +661,115 @@ function Hud.tile(spec: TileSpec): TextButton
 	return tile
 end
 
--- A tile in the Manage tray (HudLayout.CANDY_FAN colours by its order); tapping it also folds the tray away
+-- An app on the phone's home screen (HudLayout.CANDY_FAN colours by its order); tapping it puts the phone away and
+-- opens its window, or (`stay`) keeps the phone open for a page inside it
 function Hud.fanButton(spec: FanSpec): TextButton
 	ensureManageTile()
-	local button = makeTile(fan, {
+	local button = makeTile(apps, {
 		id = spec.id,
 		icon = spec.icon,
 		label = spec.label,
 		group = "Side",
 		order = spec.order,
 		onClick = function()
-			setFan(false)
+			if not spec.stay then
+				setFan(false)
+			end
 			spec.onClick()
 		end,
 	}, HudLayout.CANDY_FAN[(math.max(spec.order, 1) - 1) % #HudLayout.CANDY_FAN + 1])
-	button.ZIndex = fan.ZIndex + 1
+	button.ZIndex = 35
+	-- a red count on its corner (Hud.setBadge), hidden at 0
+	local badge = Instance.new("TextLabel")
+	badge.Name = "Badge"
+	badge.AnchorPoint = Vector2.new(0.5, 0.5)
+	badge.Position = UDim2.new(1, -6, 0, -10)
+	badge.Size = UDim2.fromOffset(24, 24)
+	badge.BackgroundColor3 = rgbOf(PHONE.badge)
+	badge.Font = Enum.Font.FredokaOne
+	badge.TextColor3 = Color3.new(1, 1, 1)
+	badge.TextSize = 15
+	badge.ZIndex = 20
+	badge.Visible = false
+	badge.Parent = button
+	UIKit.corner(badge, 12)
+	UIKit.outline(badge, Color3.new(1, 1, 1), 2)
+	badges[spec.id] = badge
 	table.insert(fanButtons, { order = spec.order, button = button })
 	return button
+end
+
+-- An app's page inside the phone (made once): a header with a back arrow and its title, and the content frame it
+-- returns. Hud.showPhonePage opens it
+function Hud.phonePage(id: string, title: string): Frame
+	local made = pages[id]
+	if not made then
+		made = Instance.new("Frame")
+		made.Name = `Page_{id}`
+		made.BackgroundTransparency = 1
+		made.Position = UDim2.fromOffset(0, 34)
+		made.Size = UDim2.new(1, 0, 1, -34)
+		made.ZIndex = 33
+		made.Visible = false
+		made.Parent = phoneScreen
+		local ink = rgbOf(PHONE.ink)
+		local back = Instance.new("TextButton")
+		back.Name = "Back"
+		back.BackgroundTransparency = 1
+		back.Position = UDim2.fromOffset(8, 0)
+		back.Size = UDim2.fromOffset(48, 48)
+		back.Font = Enum.Font.FredokaOne
+		back.Text = "<"
+		back.TextSize = 30
+		back.TextColor3 = ink
+		back.ZIndex = 36
+		back.Parent = made
+		back.Activated:Connect(showHome)
+		local heading = UIKit.label(made, title, Enum.Font.FredokaOne, 22, ink)
+		heading.Position = UDim2.fromOffset(56, 8)
+		heading.Size = UDim2.new(1, -112, 0, 32)
+		heading.TextXAlignment = Enum.TextXAlignment.Center
+		heading.ZIndex = 36
+		local content = Instance.new("Frame")
+		content.Name = "Content"
+		content.BackgroundTransparency = 1
+		content.Position = UDim2.fromOffset(10, 50)
+		content.Size = UDim2.new(1, -20, 1, -70)
+		content.ZIndex = 34
+		content.Parent = made
+		pages[id] = made
+	end
+	return made:FindFirstChild("Content") :: Frame
+end
+
+-- Shows an app's page (the phone opens if it isn't)
+function Hud.showPhonePage(id: string)
+	local page = pages[id]
+	if not page then
+		return
+	end
+	setFan(true)
+	homeScreen.Visible = false
+	for other, frame in pages do
+		frame.Visible = other == id
+	end
+	openPage = id
+end
+
+-- The red count on an app's icon (0 hides it)
+function Hud.setBadge(id: string, count: number)
+	local badge = badges[id]
+	if badge then
+		badge.Visible = count > 0
+		badge.Text = if count > 9 then "9+" else tostring(count)
+	end
+end
+
+-- The words on the right of the phone's status bar (the shop rating)
+function Hud.setPhoneStatus(text: string)
+	if statusRight then
+		statusRight.Text = text
+	end
 end
 
 -- A HUD button by id: a tile, a Manage tray button, or "Manage" (the tray's own tile); nil when there's none. The

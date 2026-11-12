@@ -18,6 +18,7 @@ local ArrivalShot = require(Shared:WaitForChild("Util"):WaitForChild("ArrivalSho
 
 local PishVisual = require((script.Parent :: Instance):WaitForChild("PishVisual"))
 local DogMagic = require((script.Parent :: Instance):WaitForChild("DogMagic"))
+local ScreenClear = require((script.Parent :: Instance):WaitForChild("ScreenClear"))
 
 local DogArrival = {}
 
@@ -28,7 +29,7 @@ local MAGIC = ARRIVAL.MAGIC
 export type Intro = { name: string, role: string, color: Color3 }
 
 -- `at`: the player's root; `dog`: his marker (placed at the start here); `playBark`: his bark clip; `intro`: his card
-function DogArrival.run(at: BasePart, dog: BasePart, visual: PishVisual.Visual?, character: Model?, playBark: () -> (), done: () -> (), intro: Intro?)
+local function runNow(at: BasePart, dog: BasePart, visual: PishVisual.Visual?, character: Model?, playBark: () -> (), done: () -> (), intro: Intro?)
 	local up = Vector3.yAxis
 	local look = Vector3.new(at.CFrame.LookVector.X, 0, at.CFrame.LookVector.Z).Unit
 	local feet = at.Position - Vector3.new(0, 3, 0)
@@ -185,6 +186,15 @@ function DogArrival.run(at: BasePart, dog: BasePart, visual: PishVisual.Visual?,
 		tap:Disconnect()
 		camera.CameraType = Enum.CameraType.Custom
 		done()
+	end)
+end
+
+-- Runs once the screen is clear (no purchase dialog or Roblox menu: Util/ScreenClear; owner 2026-11-13): at once when
+-- it already is
+function DogArrival.run(at: BasePart, dog: BasePart, visual: PishVisual.Visual?, character: Model?, playBark: () -> (), done: () -> (), intro: Intro?)
+	task.spawn(function()
+		ScreenClear.wait()
+		runNow(at, dog, visual, character, playBark, done, intro)
 	end)
 end
 

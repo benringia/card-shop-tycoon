@@ -30,6 +30,7 @@ local PartyService = require(Services:WaitForChild("PartyService"))
 local PlotService = require(Services:WaitForChild("PlotService"))
 local WildService = require(Services:WaitForChild("WildService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
+local Blocked = require(Util:WaitForChild("Blocked"))
 local TitleService = require(Services:WaitForChild("TitleService"))
 
 type PlayerData = DataService.PlayerData
@@ -234,6 +235,34 @@ local function buildArena()
 	plaza.Name = "Plaza"
 	plaza.Parent = workspace
 	local facing = PortalTrails.areaFacing(Town.PORTAL_AREAS, "Arena")
+	if not Pvp.OPEN then
+		-- the first update's: a "Coming soon" sign over it and a card saying so (Pvp.SOON)
+		local soon = Pvp.SOON
+		portal(plaza, "Arena", vec(Pvp.ARENA_PORTAL), Vector3.new(facing.x, 0, facing.z), soon.sign, function(player)
+			Blocked.tell(player, soon.text, { title = soon.title, icon = soon.icon })
+		end)
+		local ring = plaza:FindFirstChild("Arena")
+		if ring and ring:IsA("BasePart") then
+			local sign = Instance.new("BillboardGui")
+			sign.Name = "ComingSoon"
+			sign.Size = UDim2.new(10, 0, 2, 0)
+			sign.StudsOffsetWorldSpace = Vector3.new(0, 7.5, 0)
+			sign.MaxDistance = 140
+			sign.LightInfluence = 0
+			sign.Parent = ring
+			local label = Instance.new("TextLabel")
+			label.Size = UDim2.fromScale(1, 1)
+			label.BackgroundTransparency = 1
+			label.Font = Enum.Font.FredokaOne
+			label.TextScaled = true
+			label.TextColor3 = Color3.fromRGB(255, 225, 120)
+			label.TextStrokeColor3 = Color3.fromRGB(60, 30, 20)
+			label.TextStrokeTransparency = 0.2
+			label.Text = `{soon.icon} {soon.sign}`
+			label.Parent = sign
+		end
+		return
+	end
 	portal(plaza, "Arena", vec(Pvp.ARENA_PORTAL), Vector3.new(facing.x, 0, facing.z), "Watch", function(player)
 		if not ArenaService.IsBusy(player) and not BattleService.IsFighting(player) then
 			ArenaService.TravelToStands(player)
@@ -294,6 +323,10 @@ end
 local function onChallenge(player: Player, targetUserId: unknown, bet: unknown)
 	if not allowAction(player) or typeof(targetUserId) ~= "number" or typeof(bet) ~= "number" then
 		return
+	end
+	if not Pvp.OPEN then
+		Blocked.tell(player, Pvp.SOON.text, { title = Pvp.SOON.title, icon = Pvp.SOON.icon })
+		return -- the first update's (Pvp.OPEN)
 	end
 	local target = Players:GetPlayerByUserId(targetUserId)
 	if not target or target == player then

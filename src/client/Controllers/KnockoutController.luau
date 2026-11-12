@@ -19,6 +19,7 @@ local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local ProductPrice = require(ClientUtil:WaitForChild("ProductPrice"))
+local ScreenClear = require(ClientUtil:WaitForChild("ScreenClear"))
 
 local KnockoutController = {}
 
@@ -122,6 +123,7 @@ function KnockoutController.Start()
 
 	reviveButton.Activated:Connect(function()
 		if reviveId() ~= 0 then
+			ScreenClear.prompt() -- the server opens the Revive dialog
 			Remotes.KnockoutChoice:FireServer("revive")
 		end
 	end)

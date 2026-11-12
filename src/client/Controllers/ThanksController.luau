@@ -5,7 +5,9 @@
 -- Remotes.SupportThanks): on the giver's screen Pish and Chikin run in from the first clear ways in front of them
 -- (Util/ArrivalShot.pickRun) in sparkles, stop side by side, Pish says thank you and Chikin "This is for you!", then a
 -- golden glow rises out of the player as the server's aura appears, and the dogs hop and vanish in stars. The camera
--- frames the three of them and moves in for the glow; the player holds still; a tap ends it early. Mid-fight, during a
+-- frames the three of them and moves in for the glow; the player holds still. It starts only once the screen is clear
+-- (the purchase dialog's OK pressed: Util/ScreenClear; owner 2026-11-13: a click ended it) and no click ends it; as the
+-- glow ends it tells the server (Remotes.SupportThanks), which shows the aura then. Mid-fight, during a
 -- tour or another cinematic only the glow plays (Util/SupportRules.thanksMode). The town dogs hide meanwhile, so there's
 -- one of each.
 local Players = game:GetService("Players")
@@ -13,7 +15,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
@@ -30,6 +31,7 @@ local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local PishVisual = require(ClientUtil:WaitForChild("PishVisual"))
 local DogMagic = require(ClientUtil:WaitForChild("DogMagic"))
 local GreetBubble = require(ClientUtil:WaitForChild("GreetBubble"))
+local ScreenClear = require(ClientUtil:WaitForChild("ScreenClear"))
 local BattleController = require(Controllers:WaitForChild("BattleController"))
 local WeaponRevealController = require(Controllers:WaitForChild("WeaponRevealController"))
 local TownPishController = require(Controllers:WaitForChild("TownPishController"))
@@ -183,6 +185,11 @@ local function say(dog: Dog, line: string, bubble: { up: number, edge: { number 
 	PishVisual.play(dog.visual, "headTilt")
 end
 
+-- The glow has ended: the server shows the aura, the titles and its toast now
+local function revealed()
+	Remotes.SupportThanks:FireServer()
+end
+
 -- The whole scene (`mode` "full"), or only the glow at its time ("glow")
 local function play(mode: "full" | "glow")
 	local character = player.Character
@@ -197,6 +204,7 @@ local function play(mode: "full" | "glow")
 				glowOut(character, CINEMATIC.glow.seconds)
 			end
 		end)
+		task.delay(CINEMATIC.reveal, revealed)
 		return
 	end
 	playing = true
@@ -239,7 +247,6 @@ local function play(mode: "full" | "glow")
 	end
 	local started = os.clock()
 	local finished = false
-	local tap: RBXScriptConnection? = nil
 	local frame: RBXScriptConnection? = nil
 	local function finish()
 		if finished then
@@ -247,9 +254,7 @@ local function play(mode: "full" | "glow")
 		end
 		finished = true
 		playing = false
-		if tap then
-			tap:Disconnect()
-		end
+		revealed() -- if the scene ended before its glow did (the server ignores a second one)
 		if frame then
 			frame:Disconnect()
 		end
@@ -275,11 +280,6 @@ local function play(mode: "full" | "glow")
 	camera.CameraType = Enum.CameraType.Scriptable
 	camera.CFrame = shot()
 
-	tap = UserInputService.InputBegan:Connect(function(input: InputObject)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			finish() -- the aura still comes at its time (the server)
-		end
-	end)
 	frame = RunService.RenderStepped:Connect(function(dt: number)
 		if finished then
 			return
@@ -329,6 +329,8 @@ local function play(mode: "full" | "glow")
 		end
 		close = true
 		glowOut(character, CINEMATIC.glow.seconds)
+		at(CINEMATIC.reveal)
+		revealed()
 		at(CINEMATIC.at.leave)
 		if finished then
 			return
@@ -355,6 +357,9 @@ function ThanksController.Start()
 		if typeof(view) ~= "table" or playing then
 			return
 		end
+		playing = true -- held while it waits for a clear screen
+		ScreenClear.wait() -- the purchase dialog's OK first (owner 2026-11-13)
+		playing = false
 		local touring = TutorialRules.tourLeading(stepOf("TutorialStep"), stepOf("CombatStep"), Chikin.WAIT_STEP)
 		play(SupportRules.thanksMode({ fighting = BattleController.IsFighting(), touring = touring, busy = busy() }))
 	end)

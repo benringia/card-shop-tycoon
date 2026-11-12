@@ -57,6 +57,7 @@ local BattleService = require(Services:WaitForChild("BattleService"))
 local KnockoutService = require(Services:WaitForChild("KnockoutService"))
 local SupportService = require(Services:WaitForChild("SupportService"))
 local TitleService = require(Services:WaitForChild("TitleService"))
+local ReviewService = require(Services:WaitForChild("ReviewService"))
 local JobService = require(Services:WaitForChild("JobService"))
 local BossChestService = require(Services:WaitForChild("BossChestService"))
 local BossService = require(Services:WaitForChild("BossService"))
@@ -688,6 +689,14 @@ function DevService.Start()
 			Remotes.Notify:FireClient(player, "/titles forget", true)
 		end
 	end)
+	-- a customer's post in the phone's Reviews app, as if they just had that visit (paid, happyMoment, annoyed,
+	-- gaveUp, noStock)
+	addCommand(folder, "review", function(player, text)
+		local outcome = string.match(text, "^/%w+%s+(%w+)")
+		if not outcome or not ReviewService.PostForTest(player, outcome) then
+			Remotes.Notify:FireClient(player, "/review <paid|happyMoment|annoyed|gaveUp|noStock>", true)
+		end
+	end)
 	addCommand(folder, "knockout", function(player)
 		if Place.isDungeon() or not WildService.IsInWild(player) then
 			Remotes.Notify:FireClient(player, "/knockout: in the Wild or the Frontier.", true)
@@ -801,7 +810,7 @@ function DevService.Start()
 			run(player, text)
 		end
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /weapon <id> [grade] [level], /material <boss id> <amount>, /weapondrop <boss id>, /chests <boss id> [drop|miss|strong|tired], /boss <n> [fight|group], /jobslot, /jobtired, /wild, /rest, /tire, /bosshp <1-100>, /townchikin, /elite, /knockout, /support <0-3>, /titles forget, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume], /victorysound <1-3>, /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S], /skillfx <sword> [cut1|cut2|cut3|skill] [level], /room <2-4>, /winroom, /puzzle <solve|beams|plates|lock>, /tap <piece>, /dungeonfx <intro|introshort|roar|glimpse>")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /weapon <id> [grade] [level], /material <boss id> <amount>, /weapondrop <boss id>, /chests <boss id> [drop|miss|strong|tired], /boss <n> [fight|group], /jobslot, /jobtired, /wild, /rest, /tire, /bosshp <1-100>, /townchikin, /elite, /knockout, /support <0-3>, /titles forget, /review <outcome>, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume], /victorysound <1-3>, /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S], /skillfx <sword> [cut1|cut2|cut3|skill] [level], /room <2-4>, /winroom, /puzzle <solve|beams|plates|lock>, /tap <piece>, /dungeonfx <intro|introshort|roar|glimpse>")
 end
 
 return DevService

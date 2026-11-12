@@ -59,10 +59,13 @@ return {
 	-- ThanksController): Pish and Chikin run in from `run.from` studs (the first clear way of their `pish` / `chikin`
 	-- angles from the player's front, Util/ArrivalShot.pickRun) to `stop` studs in front, `side` apart, and say their
 	-- `lines`; then a golden glow rises out of the player for `glow.seconds`; the server's aura and title appear at
-	-- `reveal` (SupportService), as the glow ends; the dogs hop and vanish in stars. Seconds in `at` count from the start.
+	-- `reveal` (the client tells SupportService then; the server shows it anyway after `fallback` seconds), as the glow
+	-- ends; the dogs hop and vanish in stars. Seconds in `at` count from the start, which waits for a clear screen (the
+	-- purchase dialog's OK: Util/ScreenClear).
 	-- Mid-fight, a tour or another cinematic: only the glow (Util/SupportRules.thanksMode).
 	CINEMATIC = {
 		reveal = 8.2,
+		fallback = 90,
 		at = { talkPish = 2.4, talkChikin = 4.6, glow = 5.6, leave = 8.9, done = 9.9 },
 		run = { from = 16, minRun = 6, wallGap = 1.5, stop = 3.5, side = 5, speed = 7, pish = { 35, 60, 15, 90, 120 }, chikin = { -35, -60, -15, -90, -120 } },
 		camera = { back = 10, side = 1.5, up = 4.5, close = { back = 7.5, side = 1, up = 2.8 }, follow = 3 }, -- studs off the player: in front, to their right, up

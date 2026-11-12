@@ -229,6 +229,9 @@ local function onStatus(payload: any)
 end
 
 local function watchCharacter(other: Player, character: Model)
+	if not Pvp.OPEN then
+		return -- PvP comes in the first update (Pvp.OPEN): no Challenge prompt till then
+	end
 	local root = character:WaitForChild("HumanoidRootPart", 10)
 	if not root then
 		return

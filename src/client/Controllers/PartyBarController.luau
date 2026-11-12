@@ -755,6 +755,10 @@ function PartyBarController.Start()
 	-- mouse (it grows a little and lifts BAR.PILL_HOVER.lift px)
 	Motion.press(partyButton, true)
 	partyButton.Activated:Connect(PartyController.Toggle)
+	-- phones: no "Party" word (Party is a Phone app; the cushion still opens it), owner 2026-11-13 pick A
+	UIController.OnCompact(function(compact: boolean)
+		partyButton.Visible = not compact
+	end)
 	local pillGrow = Instance.new("UIScale")
 	pillGrow.Parent = partyPill
 	local hoverIn = TweenInfo.new(BAR.PILL_HOVER.seconds, Enum.EasingStyle.Back, Enum.EasingDirection.Out)

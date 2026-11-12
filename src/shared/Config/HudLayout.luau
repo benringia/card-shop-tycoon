@@ -32,6 +32,26 @@ return {
 	GAP = TILE.gap,
 	SIDE_GAP = TILE.gap + math.ceil(TILE.size * TILE.iconRise), -- the left column: room for each icon over its tile's top
 	TRAY = { PADDING = 8, TRANSPARENCY = 0.35 }, -- the bar the Manage tiles slide out in
+	-- The phone (owner 2026-11-13: "no more manage button. replace it with a phone", pick B: it rises in the middle
+	-- like you're holding it, the world dimmed behind; Util/Hud): the Manage tile is the Phone tile (`icon`, `label`;
+	-- town only), and its apps (the old tray's Shop, Prices, Jobs, Party, and Reviews) sit on its home screen. `size` px
+	-- at most `fit` of the screen's height; `dim` the world's darkness behind it; `picture` on the home screen (Pish and
+	-- Chikin, Config/Support CARD.picture); `title` the shop's name ("%s": the player's)
+	PHONE = {
+		icon = "📱",
+		label = "Phone",
+		size = { 300, 580 },
+		fit = 0.9,
+		dim = 0.5,
+		bezel = { 43, 35, 64 },
+		wall = { { 255, 224, 240 }, { 217, 204, 255 }, { 194, 230, 255 } },
+		ink = { 91, 61, 110 },
+		picture = "rbxassetid://131467700155398",
+		title = "%s's shop",
+		slide = 0.35,
+		columns = 3,
+		badge = { 255, 79, 106 },
+	},
 	KEY_CHIP = rgb(BabyColors.INK), -- the key letter in its white circle
 	CANDY = candy, -- by tile id: Manage butter, Cards sky, Bag pink, Bosses lilac, Admin grey-lilac, Rip and Drop peach
 	CANDY_FAN = fanCandy, -- the Manage tray's tiles by their order, round and round: mint, peach, sky, lilac
@@ -67,5 +87,11 @@ return {
 	-- (in `name` px of room) for nameSeconds after a switch; a swipe of `swipe` px on the chip steps too. Placed by
 	-- UiLayout.weaponSwitch: never scaled under 48 px arrows, above the fight buttons in a fight
 	-- the carousel (owner 2026-11-12: smaller buttons, the weapons before and after smaller beside it, a tooltip): px
-	WEAPON_SWITCH = { chip = 58, side = 40, arrow = 30, hit = 48, gap = 6, right = 12, name = 22, ring = 3, nameSeconds = 1.5, swipe = 30, slide = 0.18, sideFade = 0.35 },
+	WEAPON_SWITCH = { chip = 58, side = 40, arrow = 30, hit = 48, gap = 6, right = 12, name = 22, ring = 3, nameSeconds = 1.5, swipe = 30, slide = 0.18, sideFade = 0.35, compactChip = 64, dots = 12, dot = 6, maxDots = 7 },
+	-- The phone HUD, slimmed (owner 2026-11-13, pick A: "the UI on phone is really crowded"): on touch screens one pill
+	-- holds the cash ("$53,661") and the level badge, its XP in a `ring`-thick ring round it (`track` behind, `fill` as
+	-- it fills); the rating chip and the XP pill hide (the rating is on the Phone's status bar and in Reviews); the
+	-- party bar drops its "Party" word (Party is a Phone app); the weapon switch is one bigger chip (WEAPON_SWITCH
+	-- compactChip: tap for the next, swipe back) with a dot per weapon
+	COMPACT = { badge = 38, ring = 4, track = Color3.fromRGB(225, 215, 240), fill = Color3.fromRGB(150, 110, 255) },
 }

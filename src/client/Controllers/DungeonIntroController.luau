@@ -23,6 +23,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
 local UIController = require(Controllers:WaitForChild("UIController"))
+local ScreenClear = require((Controllers.Parent :: Instance):WaitForChild("Util"):WaitForChild("ScreenClear"))
 
 local DungeonIntroController = {}
 
@@ -263,6 +264,7 @@ local function play(kind: string)
 	if not beats then
 		return
 	end
+	ScreenClear.wait() -- a purchase dialog or the Roblox menu first (owner 2026-11-13)
 	if currentFinish then
 		currentFinish() -- restore first, so this one saves the real lighting, camera and HUD
 	end

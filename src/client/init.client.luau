@@ -70,6 +70,7 @@ local DungeonRegionController = require(Controllers:WaitForChild("DungeonRegionC
 local TitleController = require(Controllers:WaitForChild("TitleController"))
 local SupportController = require(Controllers:WaitForChild("SupportController"))
 local ThanksController = require(Controllers:WaitForChild("ThanksController"))
+local ReviewsController = require(Controllers:WaitForChild("ReviewsController"))
 local SwordController = require(Controllers:WaitForChild("SwordController"))
 local WeaponSwitchController = require(Controllers:WaitForChild("WeaponSwitchController"))
 local CharacterController = require(Controllers:WaitForChild("CharacterController"))
@@ -178,6 +179,7 @@ else
 	StationTimerController.Start() -- countdowns over your stations while they hold a job
 	JobsController.Start()
 	PartyController.Start()
+	ReviewsController.Start() -- the phone's Reviews app (after the other apps: it's the last icon)
 	BuffController.Start()
 	PartyBarController.Start()
 	CardEffectsController.Start()

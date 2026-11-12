@@ -26,6 +26,7 @@ local WelcomePath = require(SharedUtil:WaitForChild("WelcomePath"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local ClientUtil = ((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util")
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local ScreenClear = require(ClientUtil:WaitForChild("ScreenClear"))
 local WelcomeFx = require(ClientUtil:WaitForChild("WelcomeFx"))
 
 local WelcomeController = {}
@@ -154,6 +155,7 @@ local function play(plot: Model)
 		return
 	end
 	playing = true
+	ScreenClear.wait() -- a purchase dialog or the Roblox menu first (owner 2026-11-13)
 	local floor = plot:FindFirstChild("Floor")
 	if not floor or not floor:IsA("BasePart") then
 		playing = false

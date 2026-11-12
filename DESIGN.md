@@ -230,6 +230,8 @@ improve in the worlds town/wilds/frontier, make it more immersive"; `SoundscapeC
 studs off, quiet and pitched a little differently each time: birds and wings in town by day and owls at night, birds
 and wings in the Meadow, drips and bats in the Caves, lava bloops and pebbles on Ember Ridge, ice cracking and far-off
 wolves in Frostwood, pebbles on Stormpeak, faint whispers and rocks in the Rift (never in a boss arena or the Dungeon).
+The Cockatiel whistle (owner 2026-11-13: "a really loud whistling bird in town. lower its volume"; it measured 55,
+the other birds 17-29) has its own spot in town and the Meadow: volume 0.06 against the birds' 0.18, every 20-40 s.
 In town the birds' loop fades out and a crickets loop in as night falls (`SoundscapeRules.nightShare` on the day
 cycle's clock: in from 18.3 to 20, out from 3.5 to 5.8). Every 22-45 s the wind gusts through the town and the Meadow
 for 5 s: a rustle of leaves through trees swells and dies, the trees bend up to 2.6 times as far (`Util/Gust`,
@@ -756,6 +758,41 @@ fit small screens; the book and its corner buttons hide behind it. The Cards tab
 up to half of a star's cost. One codebase, two places: `frontier.project.json` sets the Workspace attribute
 `PlaceKind = "Frontier"` and both entry scripts start only that place's parts (`Util/Place`). Numbers:
 `Config/Frontier`, `Config/Items`, `Config/Places` (place ids: main 75599593337434, Frontier 73033858769620).
+
+**The phone** (owner 2026-11-13: "no more manage button. replace it with a phone"; mockup pick B; Util/Hud,
+HudLayout.PHONE): the Manage tile is now the 📱 Phone tile (town only, as before). Tapping it dims the world and a phone
+rises into the middle: a status bar (the time, ⭐ the shop rating), "<name>'s shop", Pish and Chikin with the golden
+heart, and the apps: Shop, Prices, Jobs, Party (each opens its window as before and the phone drops away) and
+**Reviews**, a page inside the phone with a red count of new posts. Tapping the dim, the home bar or the tile again puts
+it away; the home bar on an app's page goes back home. Pish's lessons now say "Tap the Phone." and point at the app
+inside it. **Reviews** (the small version for the testers; Config/Reviews, Util/ReviewRules, ReviewService,
+ReviewsController): every customer visit's outcome may post (a sale 35% of the time, a happy moment 60%, a failed
+haggle, a long wait at the register or empty shelves always): a name, a coloured face, ⭐ stars in its range, a short
+line, how long ago; the newest 20 this session, not saved. On top: the rating and its two weakest parts as tips
+(Customers.RATING_TIPS). Studio: `/review <paid|happyMoment|annoyed|gaveUp|noStock>`, admin "Review: ...".
+On phones (owner 2026-11-13, a phone screenshot): the cash, rating and XP column hangs from the top right with the
+party bar under it, as before, but the weapon switch now keeps clear of it (UiLayout.weaponSwitch `clear`: just under
+it on a short phone), and the corner's touch or PC arrangement is applied again whenever it changes mid-play (Studio's
+device simulator had left the party bar at the top centre).
+**The phone HUD, slimmed** (owner 2026-11-13: "the UI on phone is really crowded", mockup pick A; touch screens only,
+PC unchanged; HudLayout.COMPACT, Util/CompactHud, UIController.OnCompact): one pill at the top right holds the cash
+("$53,661") and the level badge, whose XP into the level fills a ring round it; the rating chip and the XP pill hide
+(the rating is on the Phone's status bar and in Reviews); the party bar drops its "Party" word (Party is a Phone app,
+the cushion still opens it); the weapon switch is one bigger chip (tap it for the next weapon, swipe it back) with a
+dot per weapon under it and its name beside it, just under the party bar, clear of the jump button.
+Nothing overlaps (owner 2026-11-13: "pish and coins overlapping. move them higher up. make sure nothing is
+overlapping"): Pish pokes 43 px up over the party bar (his picture's height less its paws' overlap,
+CompactHud.mascotRise), so the column keeps that much (and 8 px of air) free between the pill and the party bar and lifts
+itself as far into the free strip beside Roblox's top bar (CompactHud.lift, never closer than 4 px to the screen's top),
+the party bar staying where it was; toasts drop under the party bar left of the weapon chip. Checked on an iPhone 17 Pro
+in Studio's device simulator: the pill, Pish, the party bar, the chip, a toast, the Phone tiles and the bottom tiles
+all clear of each other.
+
+**PvP opens in the first update** (owner 2026-11-13: a week after launch, "I need to put on alot of planning to make
+the pvp good"): `Pvp.OPEN = false` till then. The plaza Arena portal shows "⚔️ Coming soon" and its card ("The Arena
+opens in our first update: duel other players with your creatures!") instead of the stands, the Challenge (C) prompt
+isn't made and the server refuses challenges; the Duelist and Champion titles still show. Studio's `/arena` still goes
+to the stands.
 
 **Battles part 2: PvP.** Walk up to another player (within 8 studs) and press C (Challenge): pick a bet (Friendly, or up to
 min(both players' cash, $25 × the lower shop level), in $5 steps) and see both parties' Power. They have 15 s to
@@ -2030,7 +2067,7 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   "Not yet!", the reason, a little shake and a soft chime; `Config/Blocked`): the boss gates and the Dungeon's (every
   error of BossService and DungeonGateService), the Hydra's start, the forge, jobs, shelves and stock unlocks; and a
   prompt with a `RequireLevel` attribute (the boss gates and their group prompts, the Frontier's Dungeon portal) reads
-  "Locked · 🔒 Shop level N needed" while you're below it. The Manage tray shows only in town (`Util/Hud`: the main
+  "Locked · 🔒 Shop level N needed" while you're below it. The Phone (it was the Manage tray) shows only in town (`Util/Hud`: the main
   place hides it in the Wild valley, past `MusicRules.inTown`; the Frontier and the Dungeon never make it, their party
   bar has Party). The castle is a ruin (`build_castle.py`: towers broken to jagged stumps, two leaning spires, walls
   breached, most crenels gone, the keep's roof fallen in, moss, rubble, crystals overgrowing it, one window still lit).
@@ -3022,8 +3059,15 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
   for you! 💛"; then a golden glow rises out of the player for 2.6 s and, as it ends, the aura and title appear (the
   server waits `reveal` = 8.2 s) with Pish's toast "Thank you so much! You're a <tier> now! 💛" (or "Thank you
   again!"); the dogs hop and vanish in stars. The camera frames the three from the front, then moves in; the player
-  holds still; a tap ends it. Mid-fight, during a tour or over another cinematic only the glow plays
-  (SupportRules.thanksMode). The town dogs hide meanwhile.
+  holds still. Mid-fight, during a tour or over another cinematic only the glow plays (SupportRules.thanksMode). The
+  town dogs hide meanwhile. Owner 2026-11-13 ("when a player donates then clicks OK or even when clicking/pressing
+  something in general, the cinematic stops, make the cinematic start only after the player screen is clear. same with
+  other cinematics"): it starts once the purchase dialog's OK is pressed and no click ends it; the client tells the
+  server as its glow ends (Remotes.SupportThanks) and the aura, titles and toast come then (90 s fallback).
+- **Cinematics wait for a clear screen** (client Util/ScreenClear, Util/ScreenClearRules): the thank-you, Pish's and
+  Chikin's arrivals, the welcome flight, the Dungeon intros, weapon reveals and the "New title!" card start only once no
+  purchase dialog (marked open by the game's own Robux buttons, closed by Roblox's PromptProductPurchaseFinished /
+  PromptGamePassPurchaseFinished once its OK or Cancel is pressed; 120 s at most) and no Roblox menu is open.
 - Studio: `/support <0-3>` (as if bought; 0: none again), admin panel "Supporter tier 1 / 3", "Not a supporter again".
 
 ### Cosmetics
@@ -3127,6 +3171,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── LevelUpService.luau   # shop level-up packs, opening Bag packs (OpenBagPack), the LevelUpFx broadcast (held mid-fight)
     │   │   ├── PurchaseService.luau  # the one ProcessReceipt: developer products granted once, ever (receipt ids saved first)
     │   │   ├── SupportService.luau   # "Support the dev": gifts, the best tier, the supporter aura (SupporterTier)
+    │   │   ├── ReviewService.luau    # the phone's Reviews: customers' posts from their visits (runtime)
     │   │   ├── UpgradeJobService.luau # the stations' timed jobs: held items, the countdown, Finish now, giving back (offline too)
     │   │   ├── KnockoutService.luau  # knocked out in the Wild: held still, the countdown to the spring, the Revive product
     │   │   └── MonetizationService.luau # game passes (Extra Job Slot), cached checks, purchases
@@ -3160,6 +3205,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── KnockoutController.luau # the "Knocked out!" screen: countdown, Revive here, Wake at the spring
     │   │   ├── SupportController.luau # tap Pish: the "Support the dev" card; Pish asks after a good moment
     │   │   ├── ThanksController.luau  # a gift's thank-you: Pish and Chikin run in, thank you, the glow rises
+    │   │   ├── ReviewsController.luau # the phone's Reviews app: rating, tips, customers' posts
     │   │   ├── CustomerController.luau # collectors' thought bubbles, kids' rip reveals
     │   │   ├── RatingController.luau   # the rating chip and its tips window
     │   │   ├── CarryController.luau    # drop carried box
@@ -3226,7 +3272,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │       ├── StageAura.luau          # the supporter aura on the character window's stage, drawn in 2D
     │       ├── Motion.luau             # pop in/out, press squash, bumps
     │       ├── FontStyle.luau          # switches Gotham text to the game fonts (FredokaOne, Montserrat)
-    │       ├── Hud.luau                # HUD layout: Manage tray, bottom tiles, context tiles, top bar; the calm HUD (the tours' focus)
+    │       ├── Hud.luau                # HUD layout: the phone (its apps and pages), bottom tiles, context tiles, top bar; the calm HUD
     │       ├── Icon.luau               # draws a UIIcons icon (or an emoji) into a holder
     │       ├── CardTips.luau           # card tooltips in the style kit: binder card summary, party copy (bars, perk, rest)
     │       ├── CopyCompare.luau        # the kid swap comparison: verdict badge and sentence, IN -> OUT cards, paired stat bars, perk line
@@ -3481,6 +3527,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── LevelUpRules.luau  # level-up rewards (cash every level, a pack every 10th), held effects merged (pure, Lune-tested)
             ├── UpgradeRules.luau  # station jobs: waits, Finish now tiers, the clock, saved jobs read back (pure, Lune-tested)
             ├── ReceiptRules.luau  # receipts already granted, the newest 100 kept (pure, Lune-tested)
+            ├── ReviewRules.luau   # the Reviews app: a visit's post, the feed, unseen posts (pure, Lune-tested)
             ├── SupportRules.luau  # "Support the dev": saved gifts read back, the best tier, when Pish asks (pure, Lune-tested)
             ├── KnockoutRules.luau # the knockout countdown and its pause while the Revive prompt is open (pure, Lune-tested)
             └── LevelRules.luau    # XP → level maths and unlock lists
@@ -4263,5 +4310,5 @@ boss models; the ranch and Heroic tiers come after those.
   builds them at once, the client had them in 0.05 s, assets preloaded); waiting on how long and which restock.
 - Boss cash pays on every win with no cooldown (only items wait LOOT_COOLDOWN): a strong party farming the Meadow
   Warden makes about $2000 an hour. Owner to decide: the loot cooldown or the overpower shrink on cash too.
-- Phone instead of the Manage tray (owner's idea 2026-11-06): the manage buttons as phone apps, the shop rating as a
-  Reviews app (a feed of customer reviews from real visits, each with its tip). Brainstorm with mockups first.
+- The phone's Reviews app, next week (owner 2026-11-13: "we could also do a simple one for now"): saved history,
+  likes, replies from Pish, a post of the day, posts about other players' shops.

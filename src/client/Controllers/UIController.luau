@@ -19,6 +19,12 @@ local Motion = require(ClientUtil:WaitForChild("Motion"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
 local HudLayout = require(Shared:WaitForChild("Config"):WaitForChild("HudLayout"))
 local XpPill = require(Shared:WaitForChild("Util"):WaitForChild("XpPill"))
+local CompactHud = require(Shared:WaitForChild("Util"):WaitForChild("CompactHud"))
+local HudMascotConfig = require(Shared:WaitForChild("Config"):WaitForChild("HudMascot"))
+local GuiService = game:GetService("GuiService")
+-- Phones: Pish pokes up over the party bar, so the column keeps his height free above it, and lifts itself that much
+-- into the strip beside Roblox's top bar so the party bar stays put (owner 2026-11-13: "pish and coins overlapping")
+local MASCOT_RISE = CompactHud.mascotRise(HudMascotConfig) + 8 -- and a little air (the coin hangs under its pill)
 local SquishRules = require(Shared:WaitForChild("Util"):WaitForChild("SquishRules"))
 local SoftHud = require(Shared:WaitForChild("Config"):WaitForChild("SoftHud"))
 local Toasts = require(Shared:WaitForChild("Config"):WaitForChild("Toasts"))
@@ -62,6 +68,14 @@ local shownXp: number? = nil -- the XP into the level the pill shows now (it cou
 local countToken = 0
 local cashPill: Frame
 local levelBadge: Frame
+-- The phone's slim HUD (HudLayout.COMPACT): the level badge on the cash pill with its XP ring
+local ringBadge: Frame? = nil
+local ringLabel: TextLabel? = nil
+local ringHalves: { UIGradient } = {}
+local compactListeners: { (boolean) -> () } = {}
+local function isCompact(): boolean
+	return UserInputService.TouchEnabled
+end
 
 local function getNumber(name: string, default: number): number
 	local value = player:GetAttribute(name)
@@ -72,7 +86,7 @@ local function updateCash()
 	local cash = player:GetAttribute("Cash")
 	-- No Cash yet = the save is still loading (can take a while in Studio): say so, so it never looks like a reset
 	local loaded = typeof(cash) == "number"
-	local text = if loaded then string.format("$%.2f", cash) else "Loading..."
+	local text = if not loaded then "Loading..." elseif isCompact() then CompactHud.money(cash) else string.format("$%.2f", cash)
 	if cashLabel.Text ~= text and cashLabel.Text ~= "" then
 		Motion.bump(cashPill)
 	end
@@ -95,6 +109,14 @@ local function updateXp()
 	end
 	levelLabel.Text = level
 	local into, span = LevelRules.getProgress(xp)
+	if ringLabel then
+		ringLabel.Text = level
+		local right, left = CompactHud.ring(if span > 0 then into / span else 1)
+		if ringHalves[1] then
+			ringHalves[1].Rotation = right
+			ringHalves[2].Rotation = left
+		end
+	end
 	xpTotal.Text = XpPill.total(span)
 	xpFill.Size = UDim2.fromScale(if span > 0 then math.clamp(into / span, 0, 1) else 1, 1)
 	-- The number counts up from what it shows (a newer change restarts from there; a new level starts from 0)
@@ -129,6 +151,17 @@ end
 -- Bottom-right column: items stack upwards, right-aligned. Buff 1, cash 2, level 4 (bottom).
 function UIController.GetStatusFrame(): Frame
 	return statusFrame
+end
+
+-- Whether the phone's slim HUD is on (touch screens, HudLayout.COMPACT), and told when it changes (Studio's device
+-- simulator switches mid-play); `listener` is called at once with today's answer too
+function UIController.IsCompact(): boolean
+	return isCompact()
+end
+
+function UIController.OnCompact(listener: (boolean) -> ())
+	table.insert(compactListeners, listener)
+	task.spawn(listener, isCompact())
 end
 
 -- The whole bottom-right corner, laid out left to right; the status column (GetStatusFrame) is LayoutOrder 10
@@ -502,10 +535,68 @@ local function buildStatusPills()
 	cashLabel = addValue(cashPill, Color3.new(1, 1, 1))
 	UIKit.outlined(cashLabel, 2)
 
+	-- The phone's level badge at the cash pill's right end (HudLayout.COMPACT): the gold star with the level on it in a
+	-- ring that fills with the XP into the level (two clipped halves whose stroke gradients turn: Util/CompactHud.ring)
+	local look = HudLayout.COMPACT
+	local badge = Instance.new("Frame")
+	badge.Name = "LevelRing"
+	badge.LayoutOrder = 3
+	badge.BackgroundTransparency = 1
+	badge.Size = UDim2.fromOffset(look.badge, look.badge)
+	badge.Visible = isCompact()
+	badge.Parent = cashPill
+	local function circle(parent: Instance, color: Color3, name: string): Frame
+		local frame = Instance.new("Frame")
+		frame.Name = name
+		frame.BackgroundTransparency = 1
+		frame.Size = UDim2.fromOffset(look.badge, look.badge)
+		frame.Parent = parent
+		UIKit.corner(frame, look.badge / 2)
+		local stroke = Instance.new("UIStroke")
+		stroke.Color = color
+		stroke.Thickness = look.ring
+		stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		stroke.Parent = frame
+		return frame
+	end
+	circle(badge, look.track, "Track")
+	for index, side in { "Right", "Left" } do
+		local half = Instance.new("Frame")
+		half.Name = side
+		half.BackgroundTransparency = 1
+		half.ClipsDescendants = true
+		half.Position = UDim2.fromOffset(if side == "Right" then look.badge / 2 else 0, 0)
+		half.Size = UDim2.fromOffset(look.badge / 2, look.badge)
+		half.Parent = badge
+		local ringFrame = circle(half, look.fill, "Fill")
+		ringFrame.Position = UDim2.fromOffset(if side == "Right" then -look.badge / 2 else 0, 0)
+		local turn = Instance.new("UIGradient")
+		-- the right half shows where the gradient's first half falls, the left half its second (CompactHud.ring)
+		turn.Transparency = if side == "Right"
+			then NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 0), NumberSequenceKeypoint.new(0.501, 1), NumberSequenceKeypoint.new(1, 1) })
+			else NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 1), NumberSequenceKeypoint.new(0.501, 0), NumberSequenceKeypoint.new(1, 0) })
+		turn.Parent = ringFrame:FindFirstChildOfClass("UIStroke")
+		ringHalves[index] = turn
+	end
+	local star = Icon.make(badge, "Level", UDim2.fromOffset(look.badge - look.ring * 2 - 2, look.badge - look.ring * 2 - 2))
+	star.AnchorPoint = Vector2.new(0.5, 0.5)
+	star.Position = UDim2.fromScale(0.5, 0.5)
+	local number = UIKit.label(badge, "", Enum.Font.FredokaOne, 15, Color3.new(1, 1, 1))
+	number.Size = UDim2.fromScale(1, 0.9)
+	number.Position = UDim2.fromScale(0, 0.08)
+	number.TextXAlignment = Enum.TextXAlignment.Center
+	number.ZIndex = 4
+	local numberEdge = Instance.new("UIStroke")
+	numberEdge.Color = Color3.fromRGB(120, 70, 0)
+	numberEdge.Thickness = 2
+	numberEdge.Parent = number
+	ringBadge, ringLabel = badge, number
+
 	-- The level number sits on the star; the XP fills the white pill
 	local levelAnchor
 	levelBadge, levelAnchor = makePill(column, 4, "Level")
 	levelBadge.Name = "Level"
+	levelBadge.Visible = not isCompact() -- phones: the ring badge on the cash pill instead
 	levelBadge.BackgroundColor3 = Color3.new(1, 1, 1)
 	levelBadge.BackgroundTransparency = 0
 	local levelStroke = levelBadge:FindFirstChildOfClass("UIStroke") :: UIStroke
@@ -575,11 +666,66 @@ end
 -- The bottom-right corner (PC). On a narrow window the party bar would reach over the bottom-centre tiles (Cards,
 -- Bag ...): then the corner lifts above the tile row. The toasts stay just above it. On touch screens the
 -- corner is a column from the top right instead, the toasts under it.
+local appliedTouch: boolean? = nil
+local columnLayout: UIListLayout? = nil
+
+-- The corner's arrangement for touch or not (a column from the top right on touch screens, a row in the bottom right
+-- otherwise), done again if it changes while playing (Studio's device simulator, owner 2026-11-13: the party bar landed
+-- at the top centre after switching to a phone)
+local function arrange(rowLayout: UIListLayout)
+	local touch = UserInputService.TouchEnabled
+	if touch == appliedTouch then
+		return
+	end
+	appliedTouch = touch
+	statusRow.AnchorPoint = if touch then Vector2.new(1, 0) else Vector2.new(1, 1)
+	statusRow.Size = if touch then UDim2.fromOffset(STATUS_WIDTH, STATUS_HEIGHT + 8 + TOUCH_PARTY_HEIGHT) else UDim2.fromOffset(STATUS_ROW_WIDTH, STATUS_HEIGHT)
+	rowLayout.FillDirection = if touch then Enum.FillDirection.Vertical else Enum.FillDirection.Horizontal
+	rowLayout.Padding = UDim.new(0, if touch then 8 + MASCOT_RISE else 8)
+	rowLayout.VerticalAlignment = if touch then Enum.VerticalAlignment.Top else Enum.VerticalAlignment.Bottom
+	if statusFrame then
+		statusFrame.LayoutOrder = if touch then -1 else 10
+		statusFrame.Size = if touch then UDim2.fromOffset(STATUS_WIDTH, 0) else UDim2.fromOffset(STATUS_WIDTH, STATUS_HEIGHT)
+		statusFrame.AutomaticSize = if touch then Enum.AutomaticSize.Y else Enum.AutomaticSize.None
+	end
+	if columnLayout then
+		columnLayout.VerticalAlignment = if touch then Enum.VerticalAlignment.Top else Enum.VerticalAlignment.Bottom
+	end
+	if toastStack then
+		toastStack.AnchorPoint = if touch then Vector2.new(1, 0) else Vector2.new(1, 1)
+		local toastLayout = toastStack:FindFirstChildOfClass("UIListLayout")
+		if toastLayout then
+			toastLayout.VerticalAlignment = if touch then Enum.VerticalAlignment.Top else Enum.VerticalAlignment.Bottom
+		end
+	end
+end
+
 local function placeStatusRow(rowLayout: UIListLayout)
+	local wasCompact = appliedTouch
+	arrange(rowLayout)
+	if wasCompact ~= appliedTouch then
+		-- the slim phone HUD on or off: the XP pill or the ring badge, the cash's words, and whoever listens
+		local compact = appliedTouch == true
+		if levelBadge then
+			levelBadge.Visible = not compact
+		end
+		if ringBadge then
+			ringBadge.Visible = compact
+		end
+		if cashLabel then
+			updateCash()
+		end
+		for _, listener in compactListeners do
+			task.spawn(listener, compact)
+		end
+	end
 	if UserInputService.TouchEnabled then
-		statusRow.Position = UDim2.new(1, -STATUS_MARGIN, 0, TOUCH_TOP)
+		local lift = CompactHud.lift(MASCOT_RISE, Hud.scaleFor(), GuiService:GetGuiInset().Y, TOUCH_TOP)
+		statusRow.Position = UDim2.new(1, -STATUS_MARGIN, 0, TOUCH_TOP - lift)
 		if toastStack then
-			toastStack.Position = UDim2.new(1, -STATUS_MARGIN, 0, TOUCH_TOP + rowLayout.AbsoluteContentSize.Y + 6)
+			-- under the column, left of the weapon chip that hangs there too (WeaponSwitchController, phones)
+			local chipRoom = (HudLayout.WEAPON_SWITCH.compactChip + 12) * math.max(Hud.scaleFor(), 1) -- the chip never shrinks (a tap target)
+			toastStack.Position = UDim2.new(1, -(STATUS_MARGIN + chipRoom), 0, TOUCH_TOP - lift + rowLayout.AbsoluteContentSize.Y + 6)
 		end
 		return
 	end
@@ -632,14 +778,7 @@ function UIController.Start()
 	rowLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
 	rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	rowLayout.Parent = statusRow
-	local touch = UserInputService.TouchEnabled
-	if touch then
-		-- One column down the right edge from the top (placeStatusRow)
-		statusRow.AnchorPoint = Vector2.new(1, 0)
-		statusRow.Size = UDim2.fromOffset(STATUS_WIDTH, STATUS_HEIGHT + 8 + TOUCH_PARTY_HEIGHT)
-		rowLayout.FillDirection = Enum.FillDirection.Vertical
-		rowLayout.VerticalAlignment = Enum.VerticalAlignment.Top
-	end
+	local touch = UserInputService.TouchEnabled -- touch screens: one column down the right edge from the top (arrange)
 	Hud.scaleWith(statusRow)
 	local function place()
 		placeStatusRow(rowLayout)
@@ -659,14 +798,15 @@ function UIController.Start()
 	statusFrame.AutomaticSize = if touch then Enum.AutomaticSize.Y else Enum.AutomaticSize.None
 	statusFrame.BackgroundTransparency = 1
 	statusFrame.Parent = statusRow
-	local columnLayout = Instance.new("UIListLayout")
-	columnLayout.Padding = UDim.new(0, PILL_GAP)
-	columnLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
-	columnLayout.VerticalAlignment = if touch then Enum.VerticalAlignment.Top else Enum.VerticalAlignment.Bottom
-	columnLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	columnLayout.Parent = statusFrame
-	statusLayout = columnLayout
-	columnLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(place) -- the buff badge comes and goes
+	local column = Instance.new("UIListLayout")
+	column.Padding = UDim.new(0, PILL_GAP)
+	column.HorizontalAlignment = Enum.HorizontalAlignment.Right
+	column.VerticalAlignment = if touch then Enum.VerticalAlignment.Top else Enum.VerticalAlignment.Bottom
+	column.SortOrder = Enum.SortOrder.LayoutOrder
+	column.Parent = statusFrame
+	statusLayout = column
+	columnLayout = column
+	column:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(place) -- the buff badge comes and goes
 
 	buildStatusPills()
 

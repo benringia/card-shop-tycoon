@@ -148,7 +148,7 @@ local function onUpdate(payload: unknown)
 	end
 	local update = payload :: Update
 	latest = update
-	chip.Visible = true
+	chip.Visible = not UIController.IsCompact() -- phones: the rating is on the Phone (its status bar, Reviews)
 	numberLabel.Text = string.format("%.1f", update.rating)
 	for index, clip in fills do
 		clip.Size = UDim2.fromScale(math.floor(math.clamp(update.rating - (index - 1), 0, 1) * 4) / 4, 1)
@@ -167,6 +167,13 @@ function RatingController.Start()
 		window.Visible = not window.Visible
 	end)
 	Remotes.RatingUpdate.OnClientEvent:Connect(onUpdate)
+	UIController.OnCompact(function(compact: boolean)
+		if compact then
+			chip.Visible = false
+		elseif latest then
+			chip.Visible = true
+		end
+	end)
 end
 
 return RatingController

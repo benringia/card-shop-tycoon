@@ -25,6 +25,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local ScreenClear = require(ClientUtil:WaitForChild("ScreenClear"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
 local CardTips = require(ClientUtil:WaitForChild("CardTips"))
@@ -491,6 +492,7 @@ local function buildLockedRow(slot: number, current: JobsState)
 		buy.ZIndex = row.ZIndex + 1
 		buy.Activated:Connect(function()
 			if available then
+				ScreenClear.prompt()
 				MarketplaceService:PromptGamePassPurchase(player, current.passId)
 			end
 		end)

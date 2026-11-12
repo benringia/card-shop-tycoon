@@ -29,6 +29,8 @@ local CHEST = Vector3.new(0, 0.5, 0)
 local states: { [Player]: SupportRules.State } = {} -- loaded players only
 local listeners: { (player: Player) -> () } = {}
 local allowAsk = RateLimiter.new(1)
+local allowReveal = RateLimiter.new(0.5)
+local reveals: { [Player]: () -> () } = {} -- a gift's aura, titles and toast waiting for its thank-you's glow
 
 local function rgb(values: { number }): Color3
 	return Color3.fromRGB(values[1], values[2], values[3])
@@ -141,8 +143,12 @@ local function grant(player: Player, tier: number): boolean
 	states[player] = now
 	send(player)
 	local raised = now.best > state.best
-	Remotes.SupportThanks:FireClient(player, { tier = now.best, raised = raised })
-	task.delay(Support.CINEMATIC.reveal, function()
+	-- shown when the player's thank-you reaches its glow (they say so: Remotes.SupportThanks), or `fallback` seconds on
+	local function reveal()
+		if reveals[player] ~= reveal then
+			return -- shown already, or a newer gift's waits instead
+		end
+		reveals[player] = nil
 		if not states[player] then
 			return -- left meanwhile: the gift is saved, the aura comes on their next join
 		end
@@ -151,7 +157,14 @@ local function grant(player: Player, tier: number): boolean
 			task.spawn(listener, player)
 		end
 		Remotes.Notify:FireClient(player, if raised then string.format(Support.THANKS, Support.TIERS[now.best].name) else Support.THANKS_AGAIN, false)
-	end)
+	end
+	local older = reveals[player]
+	if older then
+		older() -- a gift still waiting: shown now
+	end
+	reveals[player] = reveal
+	Remotes.SupportThanks:FireClient(player, { tier = now.best, raised = raised })
+	task.delay(Support.CINEMATIC.fallback, reveal)
 	return true
 end
 
@@ -177,6 +190,7 @@ end
 
 local function unload(player: Player)
 	states[player] = nil
+	reveals[player] = nil
 end
 
 -- The best tier given (0: none, or not loaded)
@@ -214,6 +228,12 @@ function SupportService.Start()
 			return grant(player, index)
 		end)
 	end
+	Remotes.SupportThanks.OnServerEvent:Connect(function(player: Player)
+		local reveal = reveals[player]
+		if reveal and allowReveal(player) then
+			reveal() -- their thank-you's glow has ended
+		end
+	end)
 	Remotes.SupportState.OnServerEvent:Connect(function(player: Player)
 		if allowAsk(player) then
 			send(player) -- the card asking (it started listening late)

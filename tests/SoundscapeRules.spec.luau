@@ -28,6 +28,27 @@ local function each(fn: (any, string) -> ())
 end
 
 return {
+	-- owner 2026-11-13: "there's a really loud whistling bird in town. lower its volume": the Cockatiel whistle measured
+	-- 55 (peak 110) against the other birds' 17-29, so it's no longer one of the birds' clips at their volume; it has its
+	-- own quieter, rarer spot in town and the Meadow
+	["the loud whistling bird plays quieter and rarer than the other birds"] = function()
+		local WHISTLE = "rbxassetid://9113844972"
+		for label, list in { town = Soundscape.TOWN.day, meadow = Soundscape.WILD[1] } do
+			local birds, whistle
+			for _, spot in list do
+				if table.find(spot.ids, WHISTLE) then
+					assert(#spot.ids == 1, `{label}: the whistle has a spot of its own`)
+					whistle = spot
+				elseif table.find(spot.ids, "rbxassetid://9117236709") then
+					birds = spot
+				end
+			end
+			assert(birds and whistle, `{label}: both`)
+			expect.equal(whistle.volume <= birds.volume * 0.45, true, `{label}: under half the birds' volume`)
+			expect.equal(whistle.every[1] > birds.every[2], true, `{label}: rarer`)
+		end
+	end,
+
 	["night share: none by day, in at dusk, full at night, out by morning"] = function()
 		expect.equal(SoundscapeRules.nightShare(12, NIGHT), 0, "noon")
 		expect.equal(SoundscapeRules.nightShare(NIGHT.from - 0.1, NIGHT), 0, "before dusk")

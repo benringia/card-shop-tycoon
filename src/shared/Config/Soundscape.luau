@@ -17,7 +17,10 @@ export type Spot = {
 	range: number,
 }
 
-local BIRDS = { "rbxassetid://9117236709", "rbxassetid://9117236946", "rbxassetid://9113844972", "rbxassetid://9114891754" } -- Parakeet Chirps 4, 6; Cockatiel Bird Interior Whistling Chirps 1; Jungle Bird 1
+local BIRDS = { "rbxassetid://9117236709", "rbxassetid://9117236946", "rbxassetid://9114891754" } -- Parakeet Chirps 4, 6; Jungle Bird 1
+-- Cockatiel Bird Interior Whistling Chirps 1: measured 55 (peak 110) against the other birds' 17-29 (owner 2026-11-13:
+-- "a really loud whistling bird in town. lower its volume"), so its own spot, at about the others' loudness and rarer
+local WHISTLE = { "rbxassetid://9113844972" }
 local OWLS = { "rbxassetid://9117181543", "rbxassetid://9117181035" } -- Owl Hooting Reverberant Dry Several 5, 1
 local WINGS = { "rbxassetid://9116383749", "rbxassetid://9116383743" } -- Magical Wing Flutter Pass By 5, 6
 -- one drop each (owner 2026-11-12: the Caves' "loud triple droplets" were Water Drips Into Filled Bowl clips of several)
@@ -38,6 +41,7 @@ return {
 	TOWN = {
 		day = {
 			spot(BIRDS, { 3, 7 }, { 18, 40 }, { 8, 20 }, 0.18, { 0.9, 1.15 }),
+			spot(WHISTLE, { 20, 40 }, { 24, 45 }, { 10, 20 }, 0.06, { 0.95, 1.05 }),
 			spot(WINGS, { 14, 26 }, { 10, 22 }, { 6, 14 }, 0.12, { 0.95, 1.1 }),
 		},
 		night = {
@@ -50,6 +54,7 @@ return {
 	WILD = {
 		{
 			spot(BIRDS, { 3, 6 }, { 18, 45 }, { 8, 22 }, 0.18, { 0.9, 1.2 }),
+			spot(WHISTLE, { 20, 40 }, { 24, 50 }, { 10, 22 }, 0.06, { 0.95, 1.05 }),
 			spot(WINGS, { 10, 20 }, { 10, 24 }, { 6, 16 }, 0.12, { 0.95, 1.1 }),
 		},
 		{
