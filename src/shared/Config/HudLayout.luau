@@ -25,6 +25,7 @@ end
 local TILE = SoftHud.TILE
 
 return {
+	TOWN_CHECK = 0.5, -- seconds between checks of whether you're in town (the Manage tray shows only there: Util/Hud)
 	TILE_SIZE = Vector2.new(TILE.size, TILE.size),
 	SIDE_X = 12, -- left edge of the side column
 	BOTTOM_MARGIN = 16, -- the bottom row sits this far above the screen's bottom

@@ -21,6 +21,7 @@ local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"
 local PartyRules = require(Shared:WaitForChild("Util"):WaitForChild("PartyRules"))
 local CompareRules = require(Shared:WaitForChild("Util"):WaitForChild("CompareRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
@@ -427,7 +428,10 @@ function PartyController.Start()
 		text(item, entry[2], UIKit.textSize("small"), UIKit.Colors.Subtext).LayoutOrder = 2
 	end
 
-	Hud.fanButton({ id = "Party", icon = "Party", label = "Party", order = 4, onClick = toggle })
+	-- in town's Manage tray; the Frontier and the Dungeon have no tray (their party bar's Party button opens it)
+	if not Place.isFrontier() and not Place.isDungeon() then
+		Hud.fanButton({ id = "Party", icon = "Party", label = "Party", order = 4, onClick = toggle })
+	end
 
 	Remotes.PartyChanged.OnClientEvent:Connect(function(payload: PartyState)
 		if typeof(payload) ~= "table" or typeof(payload.slots) ~= "table" then

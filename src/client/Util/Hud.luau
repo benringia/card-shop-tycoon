@@ -6,12 +6,18 @@
 -- squircle in a baby colour with its icon popping out over the top edge and a squishy hover.
 -- Rows use list layouts, so a controller can simply show or hide its tile and the row re-centres.
 -- Numbers: Config/HudLayout. Motion: Util/Motion.
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local HudLayout = require(Shared:WaitForChild("Config"):WaitForChild("HudLayout"))
+local Music = require(Shared:WaitForChild("Config"):WaitForChild("Music"))
+local Town = require(Shared:WaitForChild("Config"):WaitForChild("Town"))
+local MusicRules = require(Shared:WaitForChild("Util"):WaitForChild("MusicRules"))
+local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 local UIMotion = require(Shared:WaitForChild("Config"):WaitForChild("UIMotion"))
 
 local SoftHud = require(Shared:WaitForChild("Config"):WaitForChild("SoftHud"))
@@ -388,8 +394,42 @@ function Hud.scaleWith(frame: GuiObject, min: number?): UIScale
 end
 
 -- Builds the HUD containers on the main ScreenGui; UIController calls it first thing
+-- Town-only buttons (the Manage tray: build, jobs, prices) show only in town (owner 2026-11-12: "remove unnecessary
+-- buttons when it's only needed in town"): in the main place they hide in the Wild valley (MusicRules.inTown, the
+-- music's own town edge); the Frontier and the Dungeon never make them
+local townShown = true
+local function watchTown()
+	if Place.isFrontier() or Place.isDungeon() then
+		return
+	end
+	local since = 0
+	RunService.Heartbeat:Connect(function(dt)
+		since += dt
+		if since < HudLayout.TOWN_CHECK then
+			return
+		end
+		since = 0
+		local character = Players.LocalPlayer.Character
+		local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
+		if not root or not root:IsA("BasePart") then
+			return
+		end
+		local inTown = MusicRules.inTown(root.Position.X, root.Position.Z, Town.BOUNDS, Music.TOWN.margin)
+		if inTown ~= townShown then
+			townShown = inTown
+			if manageTile then
+				manageTile.Visible = inTown
+			end
+			if not inTown and fanOpen then
+				setFan(false)
+			end
+		end
+	end)
+end
+
 function Hud.mount(screenGui: ScreenGui)
 	screen = screenGui
+	watchTown()
 	screenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
 		for _, entry in scaled do
 			entry.scale.Scale = Hud.scaleFor(entry.min)

@@ -13,6 +13,7 @@ local Config = Shared:WaitForChild("Config")
 local Products = require(Config:WaitForChild("Products"))
 local StockConfig = require(Config:WaitForChild("Stock"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local Blocked = require((script.Parent :: Instance).Parent:WaitForChild("Util"):WaitForChild("Blocked"))
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
@@ -225,7 +226,7 @@ local function onOrder(player: Player, productId: unknown)
 		return
 	end
 	if EconomyService.GetLevel(player) < product.unlockLevel then
-		notify(player, `Unlocks at shop level {product.unlockLevel}.`, true)
+		Blocked.tell(player, `Unlocks at shop level {product.unlockLevel}.`)
 		return
 	end
 	if #shop.incoming + #shop.waiting + #shop.carried + #shop.workerBoxes >= StockConfig.MAX_BOXES_PER_PLOT then

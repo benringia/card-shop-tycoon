@@ -28,6 +28,7 @@ local PackModels = require(Shared:WaitForChild("Util"):WaitForChild("PackModels"
 local BrandBox = require(Shared:WaitForChild("Util"):WaitForChild("BrandBox"))
 local ShowcaseLayout = require(Shared:WaitForChild("Util"):WaitForChild("ShowcaseLayout"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local Blocked = require((script.Parent :: Instance).Parent:WaitForChild("Util"):WaitForChild("Blocked"))
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
@@ -662,7 +663,7 @@ local function onPlace(player: Player, shelfId: unknown, gridX: unknown, gridZ: 
 	local gx, gz, rot = gridX :: number, gridZ :: number, rotation :: number
 
 	if EconomyService.GetLevel(player) < def.unlockLevel then
-		notify(player, `Unlocks at shop level {def.unlockLevel}.`, true)
+		Blocked.tell(player, `Unlocks at shop level {def.unlockLevel}.`)
 		return
 	end
 	if countShelves(layout) >= PlacementConfig.MAX_SHELVES_PER_PLOT then

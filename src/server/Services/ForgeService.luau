@@ -14,6 +14,7 @@ local Weapons = require(Config:WaitForChild("Weapons"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local WeaponRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local Blocked = require((script.Parent :: Instance).Parent:WaitForChild("Util"):WaitForChild("Blocked"))
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
@@ -158,7 +159,7 @@ local function perform(player: Player, action: Action, weapon: Weapons.Weapon, s
 		return
 	end
 	if not WeaponRules.unlocked(Weapons, weapon.id, EconomyService.GetLevel(player)) then
-		notify(player, `The {weapon.name} opens at shop level {Weapons.FORGE_UNLOCK_LEVEL}.`)
+		Blocked.tell(player, `The {weapon.name} opens at shop level {Weapons.FORGE_UNLOCK_LEVEL}.`)
 		return
 	end
 	local cost = costOf(player, action, weapon)

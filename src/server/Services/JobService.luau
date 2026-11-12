@@ -25,6 +25,7 @@ local JobRules = require(Shared:WaitForChild("Util"):WaitForChild("JobRules"))
 local TiredRules = require(Shared:WaitForChild("Util"):WaitForChild("TiredRules"))
 local CreatureFlight = require(Shared:WaitForChild("Util"):WaitForChild("CreatureFlight"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local Blocked = require((script.Parent :: Instance).Parent:WaitForChild("Util"):WaitForChild("Blocked"))
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
@@ -555,7 +556,7 @@ local function onAssign(player: Player, target: unknown, job: unknown)
 	end
 	local count = getSlotCount(player)
 	if count == 0 then
-		notify(player, `Jobs unlock at shop level {Jobs.UNLOCK_LEVEL}.`, true)
+		Blocked.tell(player, `Jobs unlock at shop level {Jobs.UNLOCK_LEVEL}.`)
 		return
 	end
 	local freeSlotNumber: number? = nil
