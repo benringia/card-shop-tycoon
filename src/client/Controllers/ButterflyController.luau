@@ -2,7 +2,9 @@
 -- Butterflies (main town only, client side, so they cost the server nothing): a flock round the plaza's healing spring
 -- and more at Forest Falls and the east trails' start. Each is a tiny body with two wings that flap; they wander in
 -- smooth noise loops round their spot at different heights. Flocks far from the camera stand still, and all of them
--- hide while the extras are off (Util/Extras). Numbers: Config/Town BUTTERFLIES, Config/Ambient BUTTERFLY_RANGE.
+-- hide while the extras are off (Util/Extras) and rest at night (the clock's night share past half,
+-- Util/SoundscapeRules; the fireflies come out then). Numbers: Config/Town BUTTERFLIES, Config/Ambient BUTTERFLY_RANGE.
+local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -11,6 +13,8 @@ local Town = require(Shared:WaitForChild("Config"):WaitForChild("Town"))
 local Ambient = require(Shared:WaitForChild("Config"):WaitForChild("Ambient"))
 local Extras = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("Extras"))
 local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
+local Soundscape = require(Shared:WaitForChild("Config"):WaitForChild("Soundscape"))
+local SoundscapeRules = require(Shared:WaitForChild("Util"):WaitForChild("SoundscapeRules"))
 
 type Butterfly = {
 	body: Part,
@@ -91,7 +95,7 @@ function ButterflyController.Start()
 		table.insert(flocks, flock)
 	end
 	RunService.RenderStepped:Connect(function(dt)
-		local enabled = Extras.enabled()
+		local enabled = Extras.enabled() and SoundscapeRules.nightShare(Lighting.ClockTime, Soundscape.NIGHT) < 0.5
 		folder.Parent = if enabled then workspace else nil
 		if not enabled then
 			return

@@ -24,6 +24,25 @@ return {
 		WARMUP_SECONDS = 15, -- frames after joining are ignored this long: the join's loading hitches hid the animals for 25-50 s
 	},
 	BUTTERFLY_RANGE = 120, -- studs: flocks further from the camera stand still
+	-- The town at night (the owner 2026-11-11: "make it more immersive"; TownNightController): the street lights and
+	-- lamps (`models`: their lights) glow brighter and reach further as night falls (Config/Soundscape NIGHT's share;
+	-- times each light's own brightness and range, by day and at full night), fireflies drift over the grassy corners
+	-- (box `size` studs round each spot, `rate` a second at full night; only while the extras run)
+	NIGHT_LIGHTS = {
+		models = { "StreetLight", "Lamp" },
+		roots = { "Town", "TownDecor", "Scenery" },
+		lamp = { brightness = { 0.4, 1.6 }, range = { 0.8, 1.4 } },
+		fireflies = {
+			rate = 6,
+			height = 2.5,
+			spots = {
+				{ x = 180, z = 12, size = { x = 30, z = 30 } }, -- the grove by the bunny
+				{ x = 150, z = -62, size = { x = 26, z = 22 } }, -- the fox's grass
+				{ x = -145, z = -125, size = { x = 30, z = 30 } }, -- the west woods
+				{ x = -145, z = 125, size = { x = 30, z = 30 } },
+			},
+		},
+	},
 	-- Animals running round their homes (TownCritterController): Cute Pets models (ReplicatedStorage.CreatureModels
 	-- .CutePets), 3 in town, 2 in the plaza and one in each portal area. radius: how far from home they wander; avoid:
 	-- kept clear in the middle; orbit: instead runs laps round a circle this far from home, along the curve, up to

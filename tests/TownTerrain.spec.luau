@@ -284,6 +284,21 @@ return {
 		end
 	end,
 
+	-- The owner 2026-11-11: "make it more immersive": the plaza's fountain trickles, heard round the plaza only
+	["the plaza fountain trickles, quietly and only round the plaza"] = function()
+		local fountain = nil
+		for _, sound in scenery.SOUNDS do
+			if sound.name == "Fountain" then
+				fountain = sound
+			end
+		end
+		assert(fountain, "a Fountain sound")
+		expect.equal(fountain.x, 0, "at the spring")
+		expect.equal(fountain.z, 0)
+		assert(fountain.range <= 60, "heard round the plaza only")
+		assert(fountain.volume <= 0.3, "a trickle, not a waterfall")
+	end,
+
 	["props stand on the drawn ground, up hills too"] = function()
 		expect.near(TownTerrain.groundAt(OPS, 150, -125) :: number, 0, 0.6, "flat forest floor")
 		local hill = TownTerrain.groundAt(OPS, 208, 0) :: number

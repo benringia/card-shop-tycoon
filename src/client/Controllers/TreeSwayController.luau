@@ -2,14 +2,18 @@
 -- Trees near the camera lean gently in the wind, on this client only (Portal Worlds spec): each tree's canopy (its
 -- highest mesh; a one-mesh tree sways whole from its foot) turns a little about a point low in the canopy, moved in one
 -- BulkMoveTo a few times a second. Trees stream in and out, so the list is rescanned now and then. Off (trees back at
--- rest) while the extras are off (Util/Extras). Numbers in Config/Ambient SWAY.
+-- rest) while the extras are off (Util/Extras). Numbers in Config/Ambient SWAY; a gust of wind (Util/Gust) bends them
+-- further.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Ambient = require(Shared:WaitForChild("Config"):WaitForChild("Ambient"))
 local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
-local Extras = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("Extras"))
+local ClientUtil = ((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util")
+local Extras = require(ClientUtil:WaitForChild("Extras"))
+local Gust = require(ClientUtil:WaitForChild("Gust"))
+local Soundscape = require(Shared:WaitForChild("Config"):WaitForChild("Soundscape"))
 
 type Swayer = { part: BasePart, pivot: CFrame, offset: CFrame, phase: number }
 
@@ -110,11 +114,13 @@ function TreeSwayController.Start()
 		local now = os.clock()
 		local camera = workspace.CurrentCamera.CFrame.Position
 		local parts, cframes = {}, {}
+		-- A gust (SoundscapeController, Config/Soundscape GUST) bends them further
+		local angle = sway.ANGLE * (1 + (Soundscape.GUST.sway - 1) * Gust.strength())
 		for part, swayer in swayers do
 			if (swayer.pivot.Position - camera).Magnitude < sway.RANGE then
 				local s = now * sway.SPEED + swayer.phase
 				table.insert(parts, part)
-				table.insert(cframes, swayer.pivot * CFrame.Angles(math.sin(s) * sway.ANGLE, 0, math.cos(s * 0.8) * sway.ANGLE * 0.8) * swayer.offset)
+				table.insert(cframes, swayer.pivot * CFrame.Angles(math.sin(s) * angle, 0, math.cos(s * 0.8) * angle * 0.8) * swayer.offset)
 			end
 		end
 		workspace:BulkMoveTo(parts, cframes, Enum.BulkMoveMode.FireCFrameChanged)
