@@ -1,5 +1,5 @@
 --!strict
--- Place ids in the Cardshop Simulator experience (10772040916). Teleports only go to these.
+-- Place ids in the One More Pack experience (10772040916). Teleports only go to these.
 -- Setting FRONTIER_PLACE_ID (or DUNGEON_PLACE_ID) to 0 turns its portal into "coming soon".
 return {
 	MAIN_PLACE_ID = 75599593337434,

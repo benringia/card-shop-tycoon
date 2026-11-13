@@ -108,7 +108,7 @@ return {
 		local intro = PishTalk.STEPS.giftPack.intro
 		expect.equal(intro[1], "Hi! I'm Pish!")
 		expect.equal(TalkRules.fill(intro[2], "Card Town"), "Welcome to Card Town!")
-		expect.equal(Game.NAME, "Cardshop Simulator", "the placeholder until the name is decided")
+		expect.equal(TalkRules.fill(intro[2], Game.NAME), "Welcome to One More Pack!", "the name decided 2026-11-13")
 	end,
 
 	["show: the intro one line at a time with Next, then the line for now, by situation"] = function()

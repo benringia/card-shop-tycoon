@@ -2,6 +2,7 @@
 -- The Wild's loading screen (owner 2026-11-05: "make sure everything is loaded before player can walk in", look A)
 local WildLoadingRules = require("../src/shared/Util/WildLoadingRules")
 local WildLoading = require("../src/shared/Config/WildLoading")
+local LoadingScreen = require("../src/shared/Config/LoadingScreen")
 local Music = require("../src/shared/Config/Music")
 local WildValley = require("../src/shared/Config/WildValley")
 local expect = require("./lib/expect")
@@ -71,10 +72,10 @@ return {
 	["one step per thing it waits for, and plain text"] = function()
 		expect.equal(#WildLoading.STEPS, #WildLoadingRules.ORDER)
 		expect.equal(WildLoading.MIN_SECONDS < WildLoading.MAX_SECONDS and WildLoading.MAX_SECONDS < WildLoading.WAIT_SECONDS, true)
-		for _, line in { WildLoading.TITLE, WildLoading.READY, table.unpack(WildLoading.STEPS) } do
+		for _, line in { WildLoading.READY, table.unpack(WildLoading.STEPS) } do
 			assert(not string.find(line, "[^\32-\126]"), `plain ASCII: {line}`)
 		end
-		for _, line in WildLoading.TIPS do
+		for _, line in LoadingScreen.LOOKS.Wild.TIPS do -- the binder shows the Wild's tips (Config/LoadingScreen)
 			assert(not string.find(line, "[^\32-\126]"), `plain ASCII: {line}`)
 		end
 	end,

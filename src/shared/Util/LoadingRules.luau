@@ -5,13 +5,15 @@ local LoadingRules = {}
 
 -- art: your own cards' paintings have downloaded (the binder opens with every face drawn); shop: the product models,
 -- icons, pack fronts, covers and effect textures a first window shows (round 4: nothing pops in after the screen)
--- valley: the Frontier's terrain and scenery round you are in (spec 2026-11-10-frontier-valley-design); nil (the main
--- game, the Dungeon) counts as ready, only false holds the screen
-export type Status = { character: boolean, data: boolean, art: boolean, shop: boolean, creature: boolean, gear: boolean, valley: boolean? }
+-- valley: the Frontier's terrain and scenery round you are in (spec 2026-11-10-frontier-valley-design); cavern: the
+-- Dungeon's cave round you, ground under you and its world's meshes (spec 2026-11-13-loading-screen-binder-design);
+-- nil (a place without one) counts as ready, only false holds the screen
+export type Status = { character: boolean, data: boolean, art: boolean, shop: boolean, creature: boolean, gear: boolean, valley: boolean?, cavern: boolean? }
 
 -- Each step and what it waits for: the cards step is the save and your cards' paintings; the third, the shop's
--- pictures and (in the Frontier) its valley
-local ORDER = { { "character" }, { "data", "art" }, { "shop", "valley" }, { "creature" }, { "gear" } }
+-- pictures and the place's own world (the Frontier's valley, the Dungeon's cavern)
+local ORDER = { { "character" }, { "data", "art" }, { "shop", "valley", "cavern" }, { "creature" }, { "gear" } }
+local OPTIONAL = { valley = true, cavern = true }
 
 -- (step 1-4, or 5 once all are done; the bar's share; done: all done or out of time; slow: the save still loading
 -- after SLOW_SECONDS). The bar follows the first step not done, so a later one finishing early doesn't jump it ahead.
@@ -20,7 +22,7 @@ function LoadingRules.progress(status: Status, elapsed: number, cfg: any): (numb
 	for index, keys in ORDER do
 		for _, key in keys do
 			local value = (status :: any)[key]
-			if not value and not (key == "valley" and value == nil) then
+			if not value and not (OPTIONAL[key] and value == nil) then
 				step = index
 				break
 			end
@@ -34,8 +36,17 @@ function LoadingRules.progress(status: Status, elapsed: number, cfg: any): (numb
 	return step, (step - 1) / #ORDER, done, slow
 end
 
--- The screen's settings for a place (`kind`: Workspace PlaceKind): the main look with the place's own LOOKS (the
--- Frontier's title, colours, steps and tips) laid over it; unchanged for a place without one
+-- How many of the binder's `total` pockets hold a card at `share` of the way: one fewer than all while loading, so
+-- the last card goes in only when everything's done (or the time's up)
+function LoadingRules.pockets(share: number, done: boolean, total: number): number
+	if done then
+		return total
+	end
+	return math.clamp(math.floor(share * (total - 1) + 1e-6), 0, total - 1)
+end
+
+-- The screen's settings for a place (`kind`: Workspace PlaceKind, or "Wild" for the portal): the main look with the
+-- place's own LOOKS (its painting, colour, name, steps and tips) laid over it; unchanged for a place without one
 function LoadingRules.look(cfg: any, kind: string): any
 	local own = cfg.LOOKS and cfg.LOOKS[kind]
 	if not own then

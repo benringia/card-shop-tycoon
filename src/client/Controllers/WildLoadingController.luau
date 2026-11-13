@@ -1,41 +1,38 @@
 --!strict
 -- The Wild's loading screen (owner 2026-11-05: "when entering wilds can we do a loading screen that make sure
--- everything is loaded before player can walk in", look A "Portal swirl"; Config/WildLoading, Util/WildLoadingRules).
--- Up the moment WildService sends you (WildTravel "loading"): the portal's greens swirling over a dimmed valley, the
--- title, a bar, the step and a tip. Once you've arrived ("wild") it holds you still (your root anchored on your
--- device) until the ground under you, the valley's scenery round you, the monsters' models and the area's music are
--- in, then fades and lets you walk. "stay" (the trip didn't happen) or "home" closes it.
+-- everything is loaded before player can walk in"; Config/WildLoading, Util/WildLoadingRules). Since 2026-11-13 it's
+-- the binder like every loading screen (ReplicatedFirst/LoadingScreen/LoadingGui, Config/LoadingScreen LOOKS.Wild, or
+-- LOOKS.Frontier inside the Frontier): up the moment WildService sends you (WildTravel "loading"), a card into a
+-- pocket for each thing loaded. Once you've arrived ("wild") it holds you still (your root anchored on your device)
+-- until the ground under you, the valley's scenery round you, the monsters' models and the area's music are in, shows
+-- the last card and "Here we go!", then fades and lets you walk. "stay" (the trip didn't happen) or "home" closes it.
 local ContentProvider = game:GetService("ContentProvider")
 local Players = game:GetService("Players")
+local ReplicatedFirst = game:GetService("ReplicatedFirst")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
-local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
+local Util = Shared:WaitForChild("Util")
 local WildLoading = require(Config:WaitForChild("WildLoading"))
+local LoadingScreen = require(Config:WaitForChild("LoadingScreen"))
 local Music = require(Config:WaitForChild("Music"))
-local WildLoadingRules = require(Shared:WaitForChild("Util"):WaitForChild("WildLoadingRules"))
-local WildValley = require(Shared:WaitForChild("Util"):WaitForChild("Place")).getValley() -- the place's valley config
+local WildLoadingRules = require(Util:WaitForChild("WildLoadingRules"))
+local LoadingRules = require(Util:WaitForChild("LoadingRules"))
+local Place = require(Util:WaitForChild("Place"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local LoadingGui = require(ReplicatedFirst:WaitForChild("LoadingScreen"):WaitForChild("LoadingGui")) :: any
 
 local player = Players.LocalPlayer
+local WildValley = Place.getValley() -- the place's valley config
+local LOOK = LoadingRules.look(LoadingScreen, if Place.isFrontier() then "Frontier" else "Wild")
 
 local WildLoadingController = {}
 
-type Screen = {
-	gui: ScreenGui,
-	group: CanvasGroup,
-	swirl: ImageLabel,
-	swirlBack: ImageLabel,
-	glow: ImageLabel,
-	fill: Frame,
-	step: TextLabel,
-	tip: TextLabel,
-}
+type Screen = { gui: ScreenGui, stop: () -> () }
 
-local TIP_SECONDS = 4
 local RELEASE_SECONDS = 6 -- the area's music stays loaded this long after the screen closes (its player starts it)
 
 local screen: Screen? = nil
@@ -47,106 +44,14 @@ local anchored: BasePart? = nil
 local held: { Sound } = {}
 local monstersLoaded = false -- once a session: the models stay fetched
 local ticker: RBXScriptConnection? = nil
-local barShare = 0
-
-local function color(rgb: { number }): Color3
-	return Color3.fromRGB(rgb[1], rgb[2], rgb[3])
-end
-
-local function text(parent: Instance, font: Enum.Font, size: number, rgb: { number }, y: number): TextLabel
-	local label = Instance.new("TextLabel")
-	label.BackgroundTransparency = 1
-	label.Font = font
-	label.TextSize = size
-	label.TextColor3 = color(rgb)
-	label.TextStrokeTransparency = 0.55
-	label.AnchorPoint = Vector2.new(0.5, 0.5)
-	label.Position = UDim2.fromScale(0.5, y)
-	label.Size = UDim2.new(0.9, 0, 0, size + 8)
-	label.TextWrapped = true
-	label.Parent = parent
-	return label
-end
-
-local function image(parent: Instance, id: string, size: number, rgb: { number }, transparency: number): ImageLabel
-	local picture = Instance.new("ImageLabel")
-	picture.BackgroundTransparency = 1
-	picture.Image = id
-	picture.ImageColor3 = color(rgb)
-	picture.ImageTransparency = transparency
-	picture.AnchorPoint = Vector2.new(0.5, 0.5)
-	picture.Position = UDim2.fromScale(0.5, 0.4)
-	picture.Size = UDim2.fromScale(size, size)
-	picture.SizeConstraint = Enum.SizeConstraint.RelativeYY
-	picture.Parent = parent
-	return picture
-end
+local finishing = false -- the last card is in: "Here we go!" a moment, then it closes
 
 local function build(): Screen
-	local colors = WildLoading.COLORS
-	local gui = Instance.new("ScreenGui")
+	local gui = LoadingGui.build(LOOK, WildLoading.STEPS[1])
 	gui.Name = "WildLoading"
-	gui.IgnoreGuiInset = true
-	gui.ResetOnSpawn = false
 	gui.DisplayOrder = 900 -- over every screen but the join loading screen
-	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-	local group = Instance.new("CanvasGroup")
-	group.Size = UDim2.fromScale(1, 1)
-	group.BackgroundColor3 = color(colors.back)
-	group.Active = true -- taps don't reach the world under it
-	group.Parent = gui
-	local backdrop = Instance.new("ImageLabel")
-	backdrop.BackgroundTransparency = 1
-	backdrop.Image = WildLoading.BACKDROP
-	backdrop.ScaleType = Enum.ScaleType.Crop
-	local rect = WildLoading.BACKDROP_RECT
-	backdrop.ImageRectOffset = Vector2.new(rect[1], rect[2])
-	backdrop.ImageRectSize = Vector2.new(rect[3], rect[4])
-	backdrop.ImageTransparency = 0.6
-	backdrop.Size = UDim2.fromScale(1, 1)
-	backdrop.Parent = group
-	local shade = Instance.new("Frame")
-	shade.BackgroundColor3 = color(colors.back)
-	shade.Size = UDim2.fromScale(1, 1)
-	shade.Parent = group
-	local fade = Instance.new("UIGradient")
-	fade.Rotation = 90
-	fade.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.45),
-		NumberSequenceKeypoint.new(0.45, 0.9),
-		NumberSequenceKeypoint.new(1, 0.1),
-	})
-	fade.Parent = shade
-	local swirlBack = image(group, WildLoading.SWIRL, WildLoading.SWIRL_SIZE * 1.35, colors.swirlBack, 0.55)
-	local swirl = image(group, WildLoading.SWIRL, WildLoading.SWIRL_SIZE, colors.swirl, 0)
-	local glow = image(group, WildLoading.GLOW, WildLoading.SWIRL_SIZE * 0.45, colors.glow, 0.2)
-	local phone = workspace.CurrentCamera.ViewportSize.Y < 500
-	local title = text(group, Enum.Font.FredokaOne, if phone then 30 else 42, colors.text, 0.75)
-	title.Text = WildLoading.TITLE
-	local track = Instance.new("Frame")
-	track.AnchorPoint = Vector2.new(0.5, 0.5)
-	track.Position = UDim2.fromScale(0.5, 0.83)
-	track.Size = UDim2.fromOffset(260, 10)
-	track.BackgroundColor3 = color(colors.track)
-	track.BackgroundTransparency = 0.82
-	track.Parent = group
-	local trackCorner = Instance.new("UICorner")
-	trackCorner.CornerRadius = UDim.new(1, 0)
-	trackCorner.Parent = track
-	local fill = Instance.new("Frame")
-	fill.BackgroundColor3 = Color3.new(1, 1, 1)
-	fill.Size = UDim2.fromScale(0, 1)
-	fill.Parent = track
-	local fillCorner = Instance.new("UICorner")
-	fillCorner.CornerRadius = UDim.new(1, 0)
-	fillCorner.Parent = fill
-	local fillColor = Instance.new("UIGradient")
-	fillColor.Color = ColorSequence.new(color(colors.bar), color(colors.barEnd))
-	fillColor.Parent = fill
-	local step = text(group, Enum.Font.GothamBold, if phone then 13 else 15, colors.text, 0.875)
-	local tip = text(group, Enum.Font.Gotham, if phone then 12 else 14, colors.tip, 0.95)
 	gui.Parent = player:WaitForChild("PlayerGui")
-	return { gui = gui, group = group, swirl = swirl, swirlBack = swirlBack, glow = glow, fill = fill, step = step, tip = tip }
+	return { gui = gui, stop = LoadingGui.animate(gui, LOOK) }
 end
 
 -- Lets you walk again (only the root this screen anchored, if it's still yours)
@@ -164,6 +69,7 @@ local function close()
 		return
 	end
 	screen = nil
+	finishing = false
 	trip += 1
 	if ticker then
 		ticker:Disconnect()
@@ -177,30 +83,28 @@ local function close()
 			sound:Destroy()
 		end
 	end)
-	local fadeOut = TweenService:Create(current.group, TweenInfo.new(WildLoading.FADE_SECONDS), { GroupTransparency = 1 })
-	fadeOut.Completed:Once(function()
-		current.gui:Destroy()
-	end)
-	fadeOut:Play()
+	current.stop()
+	LoadingGui.fadeOut(current.gui, WildLoading.FADE_SECONDS)
 end
 
-local function animate(now: number, dt: number)
+local function animate(now: number)
 	local current = screen
-	if not current then
+	if not current or finishing then
 		return
 	end
-	current.swirl.Rotation = (now * WildLoading.SWIRL_TURN[1]) % 360
-	current.swirlBack.Rotation = (now * WildLoading.SWIRL_TURN[2]) % 360
-	current.glow.ImageTransparency = 0.25 + 0.15 * math.sin(now * 2.4)
 	local arrivedFor = if arrivedAt then now - arrivedAt else nil
 	local step, share, finished = WildLoadingRules.progress(status, arrivedFor, now - shownAt, WildLoading)
-	barShare += (share - barShare) * math.min(1, dt * 6)
-	current.fill.Size = UDim2.fromScale(barShare, 1)
-	current.step.Text = WildLoading.STEPS[step] or WildLoading.READY
-	local tips = WildLoading.TIPS
-	current.tip.Text = tips[math.floor((now - shownAt) / TIP_SECONDS) % #tips + 1]
+	local text = WildLoading.STEPS[step] or WildLoading.READY
+	LoadingGui.set(current.gui, text, LoadingRules.pockets(share, finished, LOOK.POCKETS), "")
 	if finished then
-		close()
+		-- the last cards land and "Here we go!" shows a moment, then it closes (unless a close came first)
+		finishing = true
+		local mine = trip
+		task.delay(LoadingGui.settleSeconds(current.gui) + LOOK.READY_HOLD, function()
+			if trip == mine then
+				close()
+			end
+		end)
 	end
 end
 
@@ -211,11 +115,11 @@ local function show()
 	screen = build()
 	shownAt = os.clock()
 	arrivedAt = nil
-	barShare = 0
+	finishing = false
 	status = { ground = false, scenery = false, monsters = false, sounds = false }
 	trip += 1
-	ticker = RunService.RenderStepped:Connect(function(dt)
-		animate(os.clock(), dt)
+	ticker = RunService.RenderStepped:Connect(function()
+		animate(os.clock())
 	end)
 end
 
@@ -297,14 +201,18 @@ local function arrive()
 	load(mine, "sounds", areaSounds)
 end
 
--- The screen's pictures, kept drawn tiny and nearly invisible from the start (Roblox only finishes loading an image
--- once something draws it), so the first trip's swirl is there at once
+-- The screen's pictures (the world's painting and the nine cards), kept drawn tiny and nearly invisible from the start
+-- (Roblox only finishes loading an image once something draws it), so the first trip's screen is whole at once
 local function keepPictures()
 	local cache = Instance.new("ScreenGui")
 	cache.Name = "WildLoadingCache"
 	cache.ResetOnSpawn = false
 	cache.DisplayOrder = -10
-	for _, id in { WildLoading.SWIRL, WildLoading.GLOW, WildLoading.BACKDROP } do
+	local images = { LOOK.BACKDROP }
+	for _, card in LOOK.DOG_CARDS do
+		table.insert(images, card.image)
+	end
+	for _, id in images do
 		local keep = Instance.new("ImageLabel")
 		keep.BackgroundTransparency = 1
 		keep.Size = UDim2.fromOffset(2, 2)

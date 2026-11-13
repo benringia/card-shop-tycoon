@@ -1,9 +1,7 @@
 --!strict
 local LoadingRules = require("../src/shared/Util/LoadingRules")
 local LoadingScreen = require("../src/shared/Config/LoadingScreen")
-local WildLoading = require("../src/shared/Config/WildLoading")
-local BinderCovers = require("../src/shared/Config/BinderCovers")
-local CardArt = require("../src/shared/Config/CardArt")
+local Game = require("../src/shared/Config/Game")
 local expect = require("./lib/expect")
 
 local cfg = LoadingScreen
@@ -14,16 +12,78 @@ local function status(character: boolean, data: boolean, creature: boolean, gear
 end
 
 return {
+	-- Owner 2026-11-13: "Update to the new One More Pack game name"
+	["the game is called One More Pack"] = function()
+		expect.equal(Game.NAME, "One More Pack")
+		expect.equal(cfg.TITLE, "ONE MORE PACK")
+	end,
+
 	-- The Frontier valley (spec 2026-11-10-frontier-valley-design, plan Task 6): its own look and a wait for its valley
-	["the Frontier's look keeps the screen and changes its title, colours and steps"] = function()
+	["the Frontier's look keeps the screen and changes its name, colours and steps"] = function()
 		local look = LoadingRules.look(cfg, "Frontier")
-		expect.equal(look.TITLE, "The Frontier")
-		assert(look.SWIRL_COLORS[1][1] ~= cfg.SWIRL_COLORS[1][1], "the Frontier's swirl is its own colour")
+		expect.equal(look.PLACE, "THE FRONTIER")
+		assert(look.ACCENT[1] ~= cfg.ACCENT[1], "the Frontier's accent is its own colour")
 		assert(look.STEPS[3] ~= cfg.STEPS[3], "no shelves to stock in the Frontier")
 		expect.equal(#look.STEPS, #cfg.STEPS, "the same number of steps")
 		expect.equal(look.MAX_SECONDS, cfg.MAX_SECONDS, "the rest is the screen's")
-		expect.equal(LoadingRules.look(cfg, "Main").TITLE, cfg.TITLE, "the main game keeps its look")
-		expect.equal(LoadingRules.look(cfg, "Dungeon").TITLE, cfg.TITLE, "the Dungeon too, for now")
+		expect.equal(look.TITLE, cfg.TITLE, "the ribbon is the game's name everywhere")
+	end,
+
+	-- Owner 2026-11-13: the binder, Pish, Chikin and Turts on the cards, a background per world
+	["the pockets fill with progress, the last only when done"] = function()
+		expect.equal(LoadingRules.pockets(0, false, 9), 0)
+		expect.equal(LoadingRules.pockets(0.8, false, 9), 6)
+		expect.equal(LoadingRules.pockets(1, false, 9), 8, "never all 9 before done")
+		expect.equal(LoadingRules.pockets(1.4, false, 9), 8)
+		expect.equal(LoadingRules.pockets(-1, false, 9), 0)
+		expect.equal(LoadingRules.pockets(0.2, true, 9), 9, "done (or out of time): all 9")
+	end,
+
+	["the binder holds nine dog cards, three each of Pish, Chikin and Turts, each with a rim"] = function()
+		expect.equal(cfg.POCKETS, 9)
+		expect.equal(#cfg.DOG_CARDS, 9)
+		local dogs = {}
+		for _, card in cfg.DOG_CARDS do
+			assert(string.match(card.image, "^rbxassetid://%d+$"), card.image)
+			assert(cfg.RIMS[card.rarity], card.rarity)
+			dogs[card.dog] = (dogs[card.dog] or 0) + 1
+		end
+		expect.equal(dogs.Pish, 3)
+		expect.equal(dogs.Chikin, 3)
+		expect.equal(dogs.Turts, 3)
+	end,
+
+	["every place has its own picture, colour and name; the ribbon is the same everywhere"] = function()
+		local seen = {}
+		for _, kind in { "Main", "Wild", "Frontier", "Dungeon" } do
+			local look = LoadingRules.look(cfg, kind)
+			assert(string.match(look.BACKDROP, "^rbxassetid://%d+$"), kind)
+			assert(not seen[look.BACKDROP], `{kind} shares a picture`)
+			seen[look.BACKDROP] = true
+			expect.equal(look.TITLE, "ONE MORE PACK")
+			expect.equal(#look.ACCENT, 3, kind)
+			expect.equal(#look.ACCENT_DROP, 3, kind)
+			expect.equal(#look.BACKDROP_RECT, 4, kind)
+			assert(#look.TIPS > 0, kind)
+			for _, line in look.TIPS do
+				assert(not string.find(line, "[^\32-\126]"), `plain ASCII: {line}`)
+			end
+		end
+		expect.equal(LoadingRules.look(cfg, "Main").PLACE, "")
+		expect.equal(LoadingRules.look(cfg, "Wild").PLACE, "THE WILD")
+		expect.equal(LoadingRules.look(cfg, "Dungeon").PLACE, "THE DUNGEON")
+	end,
+
+	["the Dungeon's loading waits for its cavern"] = function()
+		local waiting = status(true, true, true, true) :: any
+		waiting.cavern = false
+		local step, _, done = LoadingRules.progress(waiting, 1, cfg)
+		expect.equal(step, 3, "held on the third step")
+		expect.equal(done, false)
+		waiting.cavern = true
+		_, _, done = LoadingRules.progress(waiting, 1, cfg)
+		expect.equal(done, true)
+		expect.equal(LoadingRules.stepText(3, "Dungeon", LoadingRules.look(cfg, "Dungeon")), "Lighting the crystal cave...")
 	end,
 
 	["the main game's teleport screen is the Frontier's"] = function()
@@ -108,13 +168,6 @@ return {
 		expect.equal(LoadingRules.stepText(1, "Elsewhere", cfg), cfg.STEPS[1], "an unknown place: the plain first step")
 	end,
 
-	["the fan's cards all have a small painting"] = function()
-		expect.equal(#cfg.FAN_CARDS, 3)
-		for _, name in cfg.FAN_CARDS do
-			expect.equal(typeof(CardArt.SMALL[name]), "string", name)
-		end
-	end,
-
 	["the cards step also waits for your cards' paintings, but only a slow save gets the note"] = function()
 		local step = LoadingRules.progress(status(true, true, true, true, false), 1, cfg)
 		expect.equal(step, 2, "save in, paintings still downloading")
@@ -131,16 +184,5 @@ return {
 		expect.equal(table.concat(ids, ","), "c1,c2,c3")
 		expect.equal(#LoadingRules.ownedCardIds({}), 0)
 		expect.equal(#LoadingRules.ownedCardIds("junk" :: any), 0)
-	end,
-	-- The owner (2026-11-05, option B): the join screen in the Wild's feel, the card fan in front of a turning swirl
-	-- over the First Spark cover's sky
-	["the join screen swirls the Wild's spiral over the First Spark cover's sky"] = function()
-		expect.equal(cfg.SWIRL, WildLoading.SWIRL, "the same spiral as the Wild's screen")
-		expect.equal(cfg.BACKDROP, BinderCovers.SETS["First Spark"].art)
-		local rect = cfg.BACKDROP_RECT
-		expect.equal(rect[1] >= 0 and rect[2] >= 0 and rect[1] + rect[3] <= 680 and rect[2] + rect[4] <= 1014, true, "inside the 680 x 1014 painting")
-		expect.equal(rect[2] < 300, true, "its sky: the golden star and the element orbs")
-		expect.equal(cfg.SWIRL_SECONDS[1] > 0 and cfg.SWIRL_SECONDS[2] > 0, true, "both copies turn")
-		expect.equal(#cfg.SWIRL_COLORS, 2)
 	end,
 }

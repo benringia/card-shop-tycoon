@@ -9,6 +9,16 @@ local AdminPanel = {}
 
 AdminPanel.SECTIONS = {
 	{
+		-- The binder loading screens (spec 2026-11-13-loading-screen-binder-design), each played on your screen
+		title = "Loading screens",
+		buttons = {
+			{ label = "Town", command = "/loading main" },
+			{ label = "The Wild", command = "/loading wild" },
+			{ label = "The Frontier", command = "/loading frontier" },
+			{ label = "The Dungeon", command = "/loading dungeon" },
+		},
+	},
+	{
 		title = "Money and levels",
 		buttons = {
 			{ label = "+$1,000", command = "/cash 1000" },

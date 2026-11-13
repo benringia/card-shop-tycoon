@@ -1,6 +1,7 @@
-# Card Shop Tycoon — Game Design Doc
+# One More Pack — Game Design Doc
 
-> Working title. Roblox game inspired by TCG card shop simulators.
+> Named One More Pack (owner 2026-11-13; "Card Shop Tycoon" and "Cardshop Simulator" before). Roblox game inspired by
+> TCG card shop simulators.
 > This doc is the source of truth for scope, systems, numbers and code structure.
 > If something in code disagrees with this doc, either fix the code or update the doc. Don't let them drift.
 
@@ -1169,8 +1170,8 @@ the Frontier leaves out; `HOME` (the way-home portal and the trailhead title) an
   off (x 1600+, z 1400+): the Frost Tyrant's frozen hall (ice pillars, snowy pines, his ice throne), the Storm
   Sovereign's summit (glowing storm stones, rock spires) and the Rift Devourer's island over a dark void; walls 72-74
   studs out for the big bosses; each its own sky, ambient loop and music. `/boss 4-6` goes to their portals.
-- **Loading screen:** the Frontier look (`Config/LoadingScreen LOOKS.Frontier`, `Util/LoadingRules.look`): "The
-  Frontier", the swirl in icy blue and violet, Frostwood's picture, its own steps and tips; the main game's teleport
+- **Loading screen:** the Frontier look (`Config/LoadingScreen LOOKS.Frontier`, `Util/LoadingRules.look`): the binder
+  over Frostwood, "THE FRONTIER" in icy blue, its own steps and tips; the main game's teleport
   carries it (`LoadingRules.teleportLook`, the Dungeon's way back too), and arrival holds until the valley round you is
   in (`Status.valley`: the terrain filled, the area round you streamed and the scenery's meshes fetched). The place
   makes its own lighting effects (atmosphere, bloom, colour, sun rays) for its sky looks.
@@ -3352,12 +3353,12 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │       └── RateLimiter.luau      # per-player remote cooldowns
     ├── first/                  # → ReplicatedFirst.LoadingScreen (runs before anything else loads)
     │   ├── Show.client.luau    # the loading screen from the first frame (or the one a teleport brought), fades when done
-    │   └── LoadingGui.luau     # builds, animates, updates and fades the "card fan" loading screen
+    │   └── LoadingGui.luau     # builds, fills, updates and fades the binder loading screen (every loading screen)
     ├── client/                 # → StarterPlayerScripts
     │   ├── init.client.luau
     │   ├── Controllers/
-    │   │   ├── LoadingController.luau  # the loading screen's steps (character, save, shop pictures, creature, fight gear), the teleport screen
-    │   │   ├── WildLoadingController.luau # the Wild's loading screen: portal swirl, holds you still until the valley round you is in
+    │   │   ├── LoadingController.luau  # the loading screen's steps (character, save, shop pictures, creature, fight gear, the Dungeon's cavern), holds you still, the teleport screen, /loading previews
+    │   │   ├── WildLoadingController.luau # the Wild's loading screen (the binder): holds you still until the valley round you is in
     │   │   ├── UIController.luau       # main ScreenGui, status corner (cash, level + XP), the toasts' speech bubbles over the cash
     │   │   ├── OrderController.luau
     │   │   ├── BuildController.luau    # Build menu (category tabs, 3D model tiles), shelf prompts, shelf edit menu
@@ -3548,7 +3549,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
         │   ├── SwordFx.luau    # rings, hit feel and hit-stop, the swing arcs and hit effects, slash trail, wind-up glow (plain data)
         │   ├── SwordSkillFx.luau # the round 1 swords' looks: slash, finisher and skill numbers, element particles, shakes, the camera moment (plain data)
         │   ├── Wild.luau       # wild zones, monster species, spawns, rewards
-        │   ├── WildLoading.luau # the Wild's loading screen: steps, tips, times, swirl and colours (plain data)
+        │   ├── WildLoading.luau # the Wild's loading screen: steps and times (its look: LoadingScreen LOOKS.Wild; plain data)
         │   ├── SuperFx.luau    # the super moves: ten looks by grade, cinematic tiers, camera, skies, textures, sounds (plain data)
         │   ├── WildValley.luau # the Wild valley: biomes, trail, passes, hills, terrain, props, stream, bridge, cave, cracks, vents, volcano, population, signs, arena field and looks, edge (plain data)
         │   ├── Pvp.luau        # challenge timings, bet cap and steps, arena layout
@@ -3629,7 +3630,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── OpeningFlow.luau   # the opening's phases and what a tap does (pure, Lune-tested)
             ├── OpeningLayout.luau # stage depths for on-screen card sizes, the row and the lineup (pure, Lune-tested)
             ├── PartyRules.luau    # perk strength and text, fight perks, party changes and their toasts (pure, Lune-tested)
-            ├── LoadingRules.luau  # the loading screen's step, bar share, slow-save note and time limit (pure, Lune-tested)
+            ├── LoadingRules.luau  # the loading screen's step, share, pockets filled, each place's look, slow-save note and time limit (pure, Lune-tested)
             ├── WildLoadingRules.luau # the Wild's loading screen's step, bar share and when it may close (pure, Lune-tested)
             ├── SuperFxRules.luau # a super's grade, cinematic beats and camera framing (pure, Lune-tested)
             ├── AttackTiming.luau  # when an attack effect releases and lands, charge expiry, combo hit times (pure, Lune-tested)
@@ -3779,19 +3780,33 @@ Schema history: v1 first release; v2 moved displayed cards onto `layout` entries
 their saved data.
 
 ### 10.6 UI style and HUD
-- **Loading screen** (option C "card fan", `Config/LoadingScreen`): from the first frame (`ReplicatedFirst`, replacing
-  Roblox's once the configs arrive), three cards fanning out over a slim gold bar and the step it's on (since
-  2026-11-05 in the Wild screen's feel, the owner's option B "the card fan in the swirl": the fan in front of the Wild
-  screen's spiral twice, gold in front and pink behind, turning against each other, over the First Spark cover's sky
-  dimmed and darker at the top and bottom; the teleport copy too): "Opening your
-  shop..." (the Frontier and the Dungeon name themselves), "Loading your cards...", "Stocking the shelves...", "Waking up your creature...",
+- **Loading screen: the binder** (owner 2026-11-13, spec `docs/superpowers/specs/2026-11-13-loading-screen-binder-design.md`;
+  `Config/LoadingScreen`, built by `ReplicatedFirst/LoadingScreen/LoadingGui`): every loading screen (joining each
+  place, the copy a teleport carries, the Wild portal) is a binder open over the world's own painting (town: Pish and
+  Chikin's shop at night, the two peeking from the corners; the Wild: the First Spark cover's flowery valley; the
+  Frontier: Frostwood; the Dungeon: the Crystal Abyss, `assets/ui/loading/dungeon_abyss.jpg`), a pink "ONE MORE PACK"
+  ribbon over its top edge (Bangers). Its left page holds nine pockets; a card of Pish, Chikin or Turts slides into the
+  next as loading goes (`LoadingRules.pockets`: 0-8 while loading, the 9th only when everything's done or the time's
+  up). The cards are the dogs painted like the card art (owner 2026-11-14: art, not their models), facing you, each in
+  an element's scene, each dog's name on a plate (docs/card-art.md, `tools/ui-art/make_dog_cards.py`, uploaded,
+  `DOG_CARDS`), each with a
+  rarity rim. The right page: the place's name outside town ("THE WILD", "THE FRONTIER", "THE DUNGEON"), the count "N /
+  9", the step, the slow-save note and a tip in a cream bubble; each place has its accent (town gold, Wild green,
+  Frontier icy blue, Dungeon violet) on the count, the stitching and "Ready!". Text is sized by the binder
+  (`TextScaled`), so it fits any screen. When the last card has landed, "Ready!" a moment (`READY_HOLD`), then a fade.
+  A teleport's screen covers the gap while this place's configs arrive, then a fresh one in this place's look takes
+  over. You're held still while it's up (your root anchored on your device, a respawn too), released just before
+  `LoadingDone`. Studio: `/loading <main|wild|frontier|dungeon>` plays a place's screen (admin panel "Loading
+  screens"). Steps: "Opening your shop..." (the Frontier and the Dungeon name themselves), "Loading your cards...", "Stocking the shelves...", "Waking up your creature...",
   "Getting the fight gear ready...", then "Ready!" and a fade. It waits for the character, the save (`DataLoaded`) and
   your own cards' paintings (small copies from the first `CollectionChanged`, kept drawn tiny in a hidden
   `CardArtCache` for the session, cards you get later too: Roblox only gets an image ready once something draws it,
   and preloading by id reports failures for pictures that draw fine; so binder pages show every face as they turn),
   the shop's first pictures (round 4: the `PackModels` folder with every look, every UI icon, the pack fronts, the mascot
   stickers, the binder covers and the level-up textures, images kept drawn; a failed or timed-out fetch counts as done,
-  `LoadingRules.settled`, and the step can never hold the screen), the summoned creature's model downloaded
+  `LoadingRules.settled`, and the step can never hold the screen; the Dungeon's third step waits for its cavern:
+  `workspace.Dungeon` built, the area round you streamed, ground under you, the world's meshes fetched, "Lighting the
+  crystal cave..."), the summoned creature's model downloaded
   (`CreatureReady`, set by CreatureController; none summoned counts as done) and
   the fight art, sounds and moves (`Util/CombatAssets`). Owner 2026-11-09 ("make sure all effects/models etc are
   loaded before any fight starts. same with in town. make sure models and weapon effects are ready"; a Studio check of
@@ -3805,22 +3820,22 @@ their saved data.
   drone (`Util/CombatPreload`), and in the
   Frontier and the Dungeon the monsters' and bosses' models; as a fight starts every fight picture is checked again
   (`CombatAssets.ensureFight`). Measured in Studio: the screen closes about 10 s in; a save still loading after 6 s gets a note ("Your save is
-  still closing on another server, almost there!"); after 30 s it fades anyway. Tips cycle at the bottom. The same
+  still closing on another server, almost there!"); after 30 s it fades anyway. Tips cycle every 4 s. The same
   screen is handed to `TeleportService:SetTeleportGui`, so teleports show it and the next place carries it on. The
   first-visit welcome cinematic starts when it fades. The shop step preloads the menus' product pictures
   (`Config/ProductPictures`, uploaded images since round 5) with the other images.
 - **The Wild's loading screen** (owner 2026-11-05: "when entering wilds can we do a loading screen that make sure
-  everything is loaded before player can walk in", look A "Portal swirl"; `Config/WildLoading`,
-  `Controllers/WildLoadingController`): the moment a trip to the Wild starts (the portal, `/wild`, a boss gate's Take
-  me) WildService fires `WildTravel` "loading" and the screen covers everything: two copies of a white spiral
-  (`tools/textures/make_portal_swirl.py`, `assets/ui/fx-portal`) turning against each other in the portal's greens
-  over the First Spark cover's hills, "The Wild", a green bar, the step and a tip. After the move ("wild") your root is
+  everything is loaded before player can walk in"; `Config/WildLoading`, `Controllers/WildLoadingController`): the
+  moment a trip to the Wild starts (the portal, `/wild`, a boss gate's Take me) WildService fires `WildTravel` "loading"
+  and the binder covers everything (since 2026-11-13; the portal swirl before), in the Wild's look (`LOOKS.Wild`;
+  inside the Frontier, the Frontier's), a card into a pocket for each thing loaded. After the move ("wild") your root is
   anchored on your device until the ground under you, the valley's scenery (its meshes and textures), the monsters'
   models and the arrival area's music and ambience, and every boss arena's battle music and ambience (owner
   2026-11-09, `WildLoadingRules.sounds`) are in ("Opening the portal...", "Growing the valley...", "Waking
   the monsters...", "Tuning the sounds..."; `Util/WildLoadingRules`, Lune-tested), then it fades and you walk. It
   stays up at least 1.2 s, never holds you more than 12 s after arriving or 30 s before; "stay" (the trip didn't
-  happen) or "home" closes it. Its pictures are kept drawn from the start, so the first trip's swirl is there at once.
+  happen) or "home" closes it; when it's all in, the last card lands and "Here we go!" shows a moment first. Its
+  pictures (the painting, the nine cards) are kept drawn from the start, so the first trip's screen is whole at once.
 Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
 `docs/superpowers/specs/2026-10-29-collection-screens-ui-design.md`.
 - **Style** (`Util/UIKit` with the tokens in `Config/UIStyle`): windows and their buttons wear the **cotton candy**

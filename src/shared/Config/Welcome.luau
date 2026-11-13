@@ -20,7 +20,7 @@ return {
 	SKIP_SIZE = { 140, 56 }, -- pixels
 	STREAM_TIMEOUT = 3, -- seconds at most to wait for the scenery along the flight to stream in (all keys at once)
 	BAR_SHARE = 0.09, -- the black cinema bars, share of the screen's height each
-	TITLE = "Welcome to Cardshop Simulator!",
+	TITLE = "Welcome to One More Pack!",
 	TITLE_SECONDS = { 0.6, 3.6 }, -- when the title shows
 	-- A card at the bottom as the camera passes each place (seconds into the flight; the camera reaches Frostpeak at
 	-- about 3.7 s, the plaza 5.6, Ember Canyon 7.4, your shop at the end): its icon, name and what you do there

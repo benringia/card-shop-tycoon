@@ -212,4 +212,39 @@ The other 38 follow the same template with descriptions read off each model's re
 Salamander, Voidmaw violet Hydra...). Redo one that comes out off-model (Ashbeak first came out a white owl, Voltkit on
 four legs: say "made of dark charcoal-grey stone blocks", "standing upright on two legs like a person").
 
+## The loading screen's dog cards
+
+The binder loading screen's nine cards (owner 2026-11-14: painted art, not the dogs' models) are Pish, Chikin and Turts
+painted with the same prompt, `gemini-3.1-flash-image`, 768 x 1088 requested, in "Card Shop Tycoon - Card Art". Changes
+to the prompt: "facing the viewer and looking straight at the viewer" instead of "three-quarter view", "in the middle of
+the picture" (the name plate covers the bottom), the Tide scene "a sunny tropical lagoon shore, clear turquoise water
+with colourful corals, light rays, floating bubbles, pale sand" (a dog underwater looks wrong), the Shade scene "a
+moonlit garden at night" (no graveyard). Legendary ones: "legendary", "epic dramatic ... light with a soft magical
+glow". Each PNG is resized to 680 wide and kept as `assets/ui/loading/dog_cards/art/<Dog>_<pose>.jpg`;
+`python tools/ui-art/make_dog_cards.py` puts the name plate on and writes the 340 x 507 cards to upload (ids in
+`Config/LoadingScreen` DOG_CARDS).
+
+- **Pish**: a cute chubby cartoon Shih Tzu dog, rounded stylized style, a fluffy white coat with soft light grey-taupe
+  floppy ears and a small light brown patch on his back, big round shiny dark brown eyes, a small black nose, a little
+  underbite with two tiny white bottom teeth showing, a proud slightly grumpy look, a fluffy white tail curled up.
+- **Chikin**: a cute chubby cartoon black curly puppy (a Shih Tzu and toy poodle mix), rounded stylized style, a soft
+  curly glossy jet black coat, curly floppy black ears, big round shiny dark brown eyes with little highlights, a small
+  black nose, a happy open smile with a little pink tongue out.
+- **Turts**: a cute chubby cartoon shaggy black Shih Tzu dog, rounded stylized style, long messy shaggy black fur with
+  warm dark brown highlights, long shaggy floppy ears, big round googly eyes that are a little cross-eyed with big black
+  pupils, a small black nose, an underbite with two tiny white bottom teeth, the tip of his pink tongue sticking out, a
+  funny goofy look. The black dogs on dark scenes: "a bright rim light on his fur".
+
+| Card | Pose | Scene |
+|---|---|---|
+| Pish_point | sitting proudly and pointing one front paw forward | Shade (moonlit garden) |
+| Pish_tilt | sitting with his head tilted to one side curiously | Bloom |
+| Pish_bow | a playful play bow, front legs flat, rump and tail up | Tide (lagoon) |
+| Chikin_point | standing happily and raising one front paw to point forward | Ember |
+| Chikin_sit | sitting up neatly | Tide (lagoon) |
+| Chikin_hop | hopping up with all four paws off the ground, little yellow sparks | Volt |
+| Turts_sit | sitting up neatly | Volt |
+| Turts_tilt | sitting with his head tilted to one side curiously | Ember |
+| Turts_cheer | leaping up in the air with joy, all four paws off the ground, sparkles | Bloom |
+
 Binder set covers (not card art) follow the same steps: 680 wide in `assets/ui/covers/`, ids in `Config/BinderCovers`.
