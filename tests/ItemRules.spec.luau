@@ -36,6 +36,20 @@ return {
 		end
 	end,
 
+	-- Owner 2026-11-13 (Turts' window showed "Forges the Magma Halberd (coming soon)"): an item never calls a weapon
+	-- that's out "coming soon"
+	["no item calls a released weapon coming soon"] = function()
+		local Weapons = require("../src/shared/Config/Weapons")
+		for id, info in config.ITEMS do
+			local text = string.lower(info.description or "")
+			for _, weapon in Weapons.WEAPONS do
+				if weapon.ready ~= false and string.find(text, string.lower(weapon.name), 1, true) then
+					assert(not string.find(text, "coming soon", 1, true), `{id} calls the {weapon.name} coming soon`)
+				end
+			end
+		end
+	end,
+
 	-- Pish's end gift (spec 2026-11-09-tutorial-pish-design 5): a First Spark pack whose hit card is Very Rare or better
 	["openablePack: the gift opens a First Spark pack with a Very Rare floor"] = function()
 		local product, floor = ItemRules.openablePack(config, "pishGift")
