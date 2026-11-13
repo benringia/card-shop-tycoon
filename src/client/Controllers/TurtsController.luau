@@ -31,7 +31,10 @@ local TurtsController = {}
 local FIND_SECONDS = 30
 local RUG_FORWARD = 1.6 -- studs: the rug's middle in front of him (he sits at its back)
 -- the offers' stands, from his spot: an arc in front of him, low, the middle one furthest out, so he shows between them
-local SLOTS = { { x = -3, z = -2.6 }, { x = 0, z = -4.6 }, { x = 3, z = -2.6 } }
+local SLOTS = { { x = -3.1, z = -2.4 }, { x = 0, z = -5 }, { x = 3.1, z = -2.4 } }
+-- Each offer's tag over its stand, sized in studs so it shrinks with distance (sized in pixels, the middle one covered
+-- his face from a few steps back)
+local TAG_STUDS = Vector2.new(1.6, 1.9)
 local STAND_HEIGHT = 0.7
 local WOOD = Color3.fromRGB(150, 100, 60)
 local RUG_COLORS = { Color3.fromRGB(200, 72, 56), Color3.fromRGB(242, 176, 66) }
@@ -147,23 +150,26 @@ local function buildSlot(parent: Instance): Slot
 	stand.Shape = Enum.PartType.Cylinder
 	stand.Parent = parent
 	local gui = Instance.new("BillboardGui")
-	gui.Size = UDim2.fromOffset(84, 92)
-	gui.StudsOffset = Vector3.new(0, 1.3, 0)
+	gui.Size = UDim2.fromScale(TAG_STUDS.X, TAG_STUDS.Y)
+	gui.StudsOffset = Vector3.new(0, 1.25, 0)
 	gui.MaxDistance = 60
 	gui.AlwaysOnTop = false
 	gui.Adornee = stand
 	gui.Parent = stand
-	local icon = Icon.make(gui, "BoosterPack", UDim2.fromOffset(56, 56))
+	local icon = Icon.make(gui, "BoosterPack", UDim2.fromScale(0.62, 0.52))
+	icon.SizeConstraint = Enum.SizeConstraint.RelativeYY
 	icon.AnchorPoint = Vector2.new(0.5, 0)
-	icon.Position = UDim2.new(0.5, 0, 0, 0)
+	icon.Position = UDim2.fromScale(0.5, 0)
 	local price = UIKit.label(gui, "", Enum.Font.FredokaOne, 20, Color3.fromRGB(255, 214, 110))
-	price.Position = UDim2.fromOffset(0, 58)
-	price.Size = UDim2.new(1, 0, 0, 24)
+	price.Position = UDim2.fromScale(0, 0.6)
+	price.Size = UDim2.fromScale(1, 0.3)
+	price.TextScaled = true
 	price.TextXAlignment = Enum.TextXAlignment.Center
 	UIKit.outlined(price, 2)
 	local sold = UIKit.label(gui, "SOLD", Enum.Font.FredokaOne, 22, Color3.fromRGB(255, 255, 255))
-	sold.Position = UDim2.fromOffset(0, 22)
-	sold.Size = UDim2.new(1, 0, 0, 26)
+	sold.Position = UDim2.fromScale(0, 0.18)
+	sold.Size = UDim2.fromScale(1, 0.3)
+	sold.TextScaled = true
 	sold.TextXAlignment = Enum.TextXAlignment.Center
 	sold.Rotation = -12
 	UIKit.outlined(sold, 2)
