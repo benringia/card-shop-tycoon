@@ -17,6 +17,8 @@ local PropFit = require(Shared:WaitForChild("Util"):WaitForChild("PropFit"))
 local RegisterConfig = require(Config:WaitForChild("Register"))
 
 local Props = require(Shared:WaitForChild("Util"):WaitForChild("Props"))
+local Decor = require(Config:WaitForChild("Decor"))
+local DecorRules = require(Shared:WaitForChild("Util"):WaitForChild("DecorRules"))
 
 local COMPUTER_FIXTURE_ID = "OrderComputer"
 
@@ -609,6 +611,106 @@ function PlotService.Claim(player: Player)
 	end
 end
 
+-- A shop's look inside (shop decor, spec 2026-11-14-shop-decor-design; DecorService): the floor, a liner along each
+-- side wall and the back wall (FeatureWall) recoloured, all three wearing the wallpaper, a panel band along their
+-- bottoms with a glowing trim, and the look's extra. Everything sits inside the walls, so the placement grid is
+-- unchanged; nothing collides or casts shadows. Nil takes the look off (today's oak floor and greige back wall).
+function PlotService.SetLook(plot: Plot, look: DecorRules.Look?)
+	local old = plot.model:FindFirstChild("ShopLook")
+	if old then
+		old:Destroy()
+	end
+	local feature = plot.model:FindFirstChild("FeatureWall")
+	local back = if feature and feature:IsA("BasePart") then feature else nil
+	if back then
+		for _, child in back:GetChildren() do
+			if child.Name == "LookWallpaper" then
+				child:Destroy()
+			end
+		end
+	end
+	if not look then
+		plot.floor.Material = Enum.Material.WoodPlanks
+		plot.floor.Color = Props.color(Town.SHOP.FLOOR)
+		if back then
+			back.Color = Props.color(Town.SHOP.FEATURE_WALL)
+		end
+		return
+	end
+
+	local shell = Decor.SHELL
+	local base = plot.floor.CFrame
+	local floorTop = plot.floor.Size.Y / 2
+	local halfWidth, halfDepth = PlotConfig.WIDTH / 2, PlotConfig.DEPTH / 2
+	local folder = Instance.new("Folder")
+	folder.Name = "ShopLook"
+	local function part(name: string, size: Vector3, at: CFrame, color: { number }, material: Enum.Material?): Part
+		local piece = Instance.new("Part")
+		piece.Name = name
+		piece.Anchored = true
+		piece.CanCollide = false
+		piece.CanQuery = false
+		piece.CanTouch = false
+		piece.CastShadow = false
+		piece.Size = size
+		piece.CFrame = base * at
+		piece.Color = Props.color(color)
+		piece.Material = material or Enum.Material.SmoothPlastic
+		piece.Parent = folder
+		return piece
+	end
+	local function wallpaper(target: BasePart, face: Enum.NormalId)
+		if look.wallpaper == "" then
+			return
+		end
+		local texture = Instance.new("Texture")
+		texture.Name = "LookWallpaper"
+		texture.Texture = look.wallpaper
+		texture.Face = face
+		texture.StudsPerTileU = look.tile
+		texture.StudsPerTileV = look.tile
+		texture.Parent = target
+	end
+	-- A strip along the three walls at `height` above the floor (`thick` tall, `deep` out from the wall)
+	local function alongWalls(name: string, height: number, thick: number, deep: number, color: { number }, material: Enum.Material)
+		for _, side in { -1, 1 } do
+			part(name, Vector3.new(deep, thick, PlotConfig.DEPTH), CFrame.new(side * (halfWidth - 0.1 - deep / 2), floorTop + height, 0), color, material)
+		end
+		part(name, Vector3.new(PlotConfig.WIDTH, thick, deep), CFrame.new(0, floorTop + height, halfDepth - 0.1 - deep / 2), color, material)
+	end
+
+	plot.floor.Color = Props.color(look.floor)
+	plot.floor.Material = (Enum.Material :: any)[look.floorMaterial] or Enum.Material.SmoothPlastic
+	if back then
+		back.Color = Props.color(look.wall)
+		wallpaper(back, Enum.NormalId.Front) -- its room side faces -Z, toward the street
+	end
+	for _, side in { -1, 1 } do
+		local liner = part("Liner", Vector3.new(0.1, shell.HEIGHT, PlotConfig.DEPTH), CFrame.new(side * (halfWidth - 0.05), floorTop + shell.HEIGHT / 2, 0), look.wall)
+		wallpaper(liner, if side < 0 then Enum.NormalId.Right else Enum.NormalId.Left)
+	end
+	local bandMaterial = (Enum.Material :: any)[look.bandMaterial] or Enum.Material.SmoothPlastic
+	alongWalls("Band", shell.BAND / 2, shell.BAND, 0.2, look.band, bandMaterial)
+	alongWalls("Trim", shell.BAND + shell.TRIM / 2, shell.TRIM, 0.25, look.trim, Enum.Material.Neon)
+	local extraColor = look.extraColor or look.trim
+	if look.extra == "topStrip" then
+		alongWalls("TopStrip", shell.TOP_STRIP, shell.TRIM, 0.25, extraColor, Enum.Material.Neon)
+	elseif look.extra == "crystals" then
+		local rng = Random.new(7)
+		for _ = 1, shell.CRYSTALS do
+			local wall = rng:NextInteger(1, 3)
+			local along = rng:NextNumber(-halfWidth + 1, halfWidth - 1)
+			local height = rng:NextNumber(1.5, 3.5)
+			local at = if wall == 3
+				then CFrame.new(along, floorTop + height / 2, halfDepth - 0.45)
+				else CFrame.new((if wall == 1 then -1 else 1) * (halfWidth - 0.45), floorTop + height / 2, along)
+			local crystal = part("Crystal", Vector3.new(0.5, height, 0.5), at * CFrame.Angles(0, math.rad(45), math.rad(rng:NextNumber(-12, 12))), extraColor, Enum.Material.Neon)
+			crystal.Transparency = 0.25
+		end
+	end
+	folder.Parent = plot.model
+end
+
 -- Called by DataService after the player's data has been saved
 function PlotService.Release(player: Player)
 	local plot = plotByPlayer[player]
@@ -619,6 +721,7 @@ function PlotService.Release(player: Player)
 	plotByPlayer[player] = nil
 	plot.owner = nil
 	plot.model:SetAttribute("OwnerUserId", 0)
+	PlotService.SetLook(plot, nil) -- the next owner never sees this one's look
 	plot.floor.Color = PlotConfig.FREE_COLOR
 	plot.signLabel.Text = PlotConfig.FREE_SIGN_TEXT
 	-- The next owner gets the default layout

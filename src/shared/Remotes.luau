@@ -29,6 +29,7 @@ local NAMES = {
 	"BinderShown", -- client → server: (shown: boolean) your binder opened or closed: you're posed reading it (BinderReadService)
 	"TurtsBuy", -- client → server: (offerId: string, seen: number) buy one of your offers from Turts; seen: the restock your window showed (TurtsService)
 	"TurtsRestockNow", -- client → server: () open the Robux "restock now" purchase
+	"ShopLook", -- client → server: (action: "buy" | "use", lookId: string) buy or switch your shop's look from the Decor tab (DecorService)
 	"Charge", -- client → server: take payment for the fully scanned checkout
 	-- server → owner: the open kid offer or haggle at the register, nil = closed. { id, kind: "kid"|"haggle",
 	-- card: { cardId, foil, grade }?, asking?, worth?, offer?, total?, range: { low, high }, step, edges: { sure, maybe },
@@ -155,6 +156,7 @@ return {
 	TurtsBuy = remotes.TurtsBuy,
 	BinderShown = remotes.BinderShown,
 	TurtsRestockNow = remotes.TurtsRestockNow,
+	ShopLook = remotes.ShopLook,
 	PlaceShelf = remotes.PlaceShelf,
 	MoveShelf = remotes.MoveShelf,
 	MoveFixture = remotes.MoveFixture,

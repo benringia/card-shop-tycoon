@@ -5,6 +5,7 @@
 -- Displayed card parts carry CardId, Foil, Grade, Price, Slot, ShelfUid, OwnerUserId, ShelfKind, Level, Stars, BeastId.
 local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
@@ -27,6 +28,8 @@ local ShelfStock = require(Shared:WaitForChild("Util"):WaitForChild("ShelfStock"
 local PackModels = require(Shared:WaitForChild("Util"):WaitForChild("PackModels"))
 local BrandBox = require(Shared:WaitForChild("Util"):WaitForChild("BrandBox"))
 local ShowcaseLayout = require(Shared:WaitForChild("Util"):WaitForChild("ShowcaseLayout"))
+local DecorRules = require(Shared:WaitForChild("Util"):WaitForChild("DecorRules"))
+local DecorLooks = require(Shared:WaitForChild("Util"):WaitForChild("DecorLooks"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Blocked = require((script.Parent :: Instance).Parent:WaitForChild("Util"):WaitForChild("Blocked"))
 
@@ -97,7 +100,18 @@ end
 local function countShelves(layout: { [string]: PlacedShelf }): number
 	local count = 0
 	for _, shelf in layout do
-		if shelf.def.kind ~= "Trophy" then
+		if shelf.def.kind ~= "Trophy" and shelf.def.kind ~= "Decor" then
+			count += 1
+		end
+	end
+	return count
+end
+
+-- Shop decor pieces (spec 2026-11-14-shop-decor-design): their own cap, apart from the shelves
+local function countDecor(layout: { [string]: PlacedShelf }): number
+	local count = 0
+	for _, shelf in layout do
+		if shelf.def.kind == "Decor" then
 			count += 1
 		end
 	end
@@ -132,6 +146,10 @@ end
 -- Boss trophies: decorations placed from a trophy item (Config/Shelves requiresItem)
 local function isTrophy(def: ShelfDef): boolean
 	return def.kind == "Trophy"
+end
+
+local function isDecor(def: ShelfDef): boolean
+	return def.kind == "Decor"
 end
 
 local function countCards(shelf: PlacedShelf): number
@@ -445,6 +463,11 @@ local function updateInfo(shelf: PlacedShelf)
 		part:SetAttribute("Info", `🏆 {shelf.def.name}`)
 		return
 	end
+	-- A decor piece holds nothing: its name, never "Empty" (it would draw an Empty badge)
+	if isDecor(shelf.def) then
+		part:SetAttribute("Info", `🪴 {shelf.def.name} · Decor +{shelf.def.decor or 0}`)
+		return
+	end
 	if isCardCase(shelf.def) then
 		part:SetAttribute("Info", `{KIND_LABELS[shelf.def.kind]} · {countCards(shelf)}/{shelf.def.capacity}`)
 		return
@@ -578,7 +601,9 @@ local function createShelf(
 	part.Material = if isCardCase(def)
 		then Enum.Material.Glass
 		elseif isMachine(def) or isTrophy(def) then Enum.Material.Metal
+		elseif isDecor(def) then Enum.Material.SmoothPlastic
 		else Enum.Material.Wood
+	part.CanCollide = not def.flat -- a rug: walked over
 	part:SetAttribute("BlocksPlacement", true)
 	part:SetAttribute("ShelfUid", uid)
 	part:SetAttribute("ShelfId", def.id)
@@ -610,6 +635,9 @@ local function createShelf(
 			if color then
 				(descendant :: BasePart).Color = color
 			end
+		end
+		if isDecor(def) then
+			DecorLooks.finish(visual, def.prop)
 		end
 		shelf.visual = visual
 	end
@@ -666,7 +694,12 @@ local function onPlace(player: Player, shelfId: unknown, gridX: unknown, gridZ: 
 		Blocked.tell(player, `Unlocks at shop level {def.unlockLevel}.`)
 		return
 	end
-	if countShelves(layout) >= PlacementConfig.MAX_SHELVES_PER_PLOT then
+	if isDecor(def) then
+		if not DecorRules.fitsCap(countDecor(layout), PlacementConfig.MAX_DECOR_PER_PLOT) then
+			Blocked.tell(player, `Your shop has room for {PlacementConfig.MAX_DECOR_PER_PLOT} decorations. Sell one to make space.`)
+			return
+		end
+	elseif countShelves(layout) >= PlacementConfig.MAX_SHELVES_PER_PLOT then
 		notify(player, "Your shop can't fit any more shelves.", true)
 		return
 	end
@@ -875,15 +908,20 @@ local function restoreShelf(player: Player, plot: Plot, saved: SavedShelf, lefto
 	if valid and def then
 		gridX, gridZ = nearestFreeCell(plot, def.size, saved.gridX, saved.gridZ, saved.rotation, PlotService.COMPUTER_FIXTURE_ID)
 	end
-	if not def or not gridX or not gridZ then
+	local paid = if def and typeof(saved.paid) == "number" then math.clamp(saved.paid, 0, def.cost) else 0
+	-- A decor piece over the cap (the cap shrank) or with no room: its price back, never lost
+	local decorFull = def ~= nil and isDecor(def) and not DecorRules.fitsCap(countDecor(layouts[player]), PlacementConfig.MAX_DECOR_PER_PLOT)
+	if not def or not gridX or not gridZ or decorFull then
 		readSavedCards(nil, saved.cards, leftovers)
 		if def and def.requiresItem then
 			ItemService.GiveItem(player, def.requiresItem, 1) -- no room for the trophy: back to the bag, never lost
 		end
+		if def and isDecor(def) and paid > 0 then
+			EconomyService.AddCash(player, paid)
+		end
 		return
 	end
 
-	local paid = if typeof(saved.paid) == "number" then math.clamp(saved.paid, 0, def.cost) else 0
 	local shelf = createShelf(player, plot, def, gridX, gridZ, saved.rotation, paid)
 	local units = if typeof(saved.units) == "number" then math.floor(saved.units) else 0
 	if typeof(saved.productId) == "string" and Products.ById[saved.productId] and units > 0 then
@@ -980,6 +1018,30 @@ function PlacementService.GetShelf(player: Player, uid: string): PlacedShelf?
 end
 
 -- A shelf bought and placed (the tutorial's "build a rack" step)
+-- Studio's "/decor pieces" (DevService): one free copy of a shelf at the free cell nearest the shop's middle, within
+-- the caps. False when it doesn't fit or this isn't Studio.
+function PlacementService.DevPlace(player: Player, shelfId: string): boolean
+	local def = Shelves.ById[shelfId]
+	local plot = PlotService.GetPlot(player)
+	local layout = layouts[player]
+	if not RunService:IsStudio() or not def or not plot or not layout then
+		return false
+	end
+	local full = if isDecor(def)
+		then not DecorRules.fitsCap(countDecor(layout), PlacementConfig.MAX_DECOR_PER_PLOT)
+		else countShelves(layout) >= PlacementConfig.MAX_SHELVES_PER_PLOT
+	if full then
+		return false
+	end
+	local grid = PlacementConfig.GRID_SIZE
+	local gridX, gridZ = nearestFreeCell(plot, def.size, PlotConfig.WIDTH // grid // 2, PlotConfig.DEPTH // grid // 2, 0, nil)
+	if not gridX or not gridZ then
+		return false
+	end
+	createShelf(player, plot, def, gridX, gridZ, 0, 0)
+	return true
+end
+
 function PlacementService.OnPlaced(callback: (player: Player, shelfId: string) -> ())
 	table.insert(placedHandlers, callback)
 end

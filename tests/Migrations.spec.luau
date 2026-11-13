@@ -259,6 +259,24 @@ return {
 
 	-- Turts' rug shop (spec 2026-11-13-turts-shop-design): the restock a player last saw, what they bought in it, and a
 	-- "restock now" roll if they bought one
+	-- Shop decor (spec 2026-11-14-shop-decor-design): the look in use and the looks bought
+	["v25: every shop starts in Cozy Wood with no looks bought; junk cleaned"] = function()
+		local data: any = { version = 24, cash = 50 }
+		Migrations.run(data, 25)
+		expect.equal(data.version, 25)
+		expect.equal(data.decor.look, "CozyWood")
+		expect.equal(#data.decor.owned, 0)
+		expect.equal(data.cash, 50, "the rest untouched")
+		local kept: any = { version = 24, decor = { look = "NeonArcade", owned = { "NeonArcade", 3 } } }
+		Migrations.run(kept, 25)
+		expect.equal(kept.decor.look, "NeonArcade")
+		expect.equal(table.concat(kept.decor.owned, ","), "NeonArcade", "only ids kept")
+		local junk: any = { version = 24, decor = { look = 4, owned = "x" } }
+		Migrations.run(junk, 25)
+		expect.equal(junk.decor.look, "CozyWood")
+		expect.equal(#junk.decor.owned, 0)
+	end,
+
 	["v24: Turts' shop starts with nothing bought; a saved one kept, junk cleaned"] = function()
 		local data: any = { version = 23, cash = 50 }
 		Migrations.run(data, 24)

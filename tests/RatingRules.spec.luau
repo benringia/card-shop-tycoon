@@ -1,6 +1,6 @@
 --!strict
 -- Shop rating (spec 2026-11-06-customers-design): a weighted list of 0-1 parts mapped to 1-5 stars, smoothed, speeding up
--- or slowing down customers; decor is a part already, at weight 0 until the Decor system exists
+-- or slowing down customers; decor (spec 2026-11-14-shop-decor-design) is about a tenth of it
 local RatingRules = require("../src/shared/Util/RatingRules")
 local Customers = require("../src/shared/Config/Customers")
 local expect = require("./lib/expect")
@@ -12,18 +12,15 @@ local function near(actual: number, expected: number, label: string?)
 end
 
 return {
-	["a well-run shop rates 4.5"] = function()
-		near(RatingRules.score({ stocked = 1, prices = 1, displays = 0.5, happy = 0.8 }, WEIGHTS), 4.5)
+	["a well-run, decorated shop rates about 4.5"] = function()
+		near(RatingRules.score({ stocked = 1, prices = 1, displays = 0.5, happy = 0.8, decor = 1 }, WEIGHTS), 1 + 4 * 0.975 / 1.1)
 		near(RatingRules.score({ stocked = 0, prices = 0, displays = 0, happy = 0 }, WEIGHTS), 1, "nothing: 1 star")
-		near(RatingRules.score({ stocked = 1, prices = 1, displays = 1, happy = 1 }, WEIGHTS), 5, "everything: 5 stars")
+		near(RatingRules.score({ stocked = 1, prices = 1, displays = 1, happy = 1, decor = 1 }, WEIGHTS), 5, "everything: 5 stars")
 	end,
 
-	["decor counts only once it has a weight"] = function()
-		local parts = { stocked = 1, prices = 1, displays = 0.5, happy = 0.8, decor = 0 }
-		near(RatingRules.score(parts, WEIGHTS), 4.5, "decor at weight 0 changes nothing")
-		local withDecor = table.clone(WEIGHTS)
-		withDecor.decor = 0.15
-		assert(RatingRules.score(parts, withDecor) < 4.5, "an empty decor part lowers it once it has a weight")
+	["decor is about a tenth: a perfect shop with no decor is about 4.6 stars"] = function()
+		near(RatingRules.score({ stocked = 1, prices = 1, displays = 1, happy = 1, decor = 0 }, WEIGHTS), 1 + 4 / 1.1)
+		near(RatingRules.score({ stocked = 1, prices = 1, displays = 1, happy = 1, decor = 1 }, WEIGHTS), 5, "decorated too: 5 stars")
 	end,
 
 	["three stars is today's customer flow"] = function()
@@ -62,7 +59,7 @@ return {
 		for _, tip in tips do
 			byName[tip.name] = tip.good
 		end
-		expect.equal(byName.decor, nil, "decor absent at weight 0")
+		expect.equal(byName.decor, false, "decor counts: an undecorated shop is asked to decorate")
 		expect.equal(byName.stocked, true)
 		expect.equal(byName.prices, false)
 		expect.equal(byName.displays, true, "0.7 counts as good")

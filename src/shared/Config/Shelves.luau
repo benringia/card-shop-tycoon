@@ -8,7 +8,9 @@
 --   kind "Grading":       the Grading Station, a machine that raises a card's grade (holds nothing)
 --   kind "Forge":         the Forge, a machine that makes, upgrades and reforges weapons (holds nothing)
 --   kind "Trophy":        a boss trophy (holds nothing): placing it takes its trophy item, selling gives it back
-export type ShelfKind = "Products" | "CustomerCards" | "PlayerCards" | "Condenser" | "Grading" | "Forge" | "Trophy"
+--   kind "Decor":         a shop decoration (holds nothing; spec 2026-11-14-shop-decor-design): its own cap
+--                         (Placement.MAX_DECOR_PER_PLOT), `decor` points toward the rating (Config/Decor)
+export type ShelfKind = "Products" | "CustomerCards" | "PlayerCards" | "Condenser" | "Grading" | "Forge" | "Trophy" | "Decor"
 
 export type Shelf = {
 	id: string,
@@ -23,7 +25,9 @@ export type Shelf = {
 	prop: string?, -- a prop slot (Config/Town) drawn on the shelf, which becomes its invisible hitbox (when the model exists)
 	cardsUpright: boolean?, -- card cases: cards stand upright over their slots and spin (CaseLayout.UPRIGHT, CaseSpinController)
 	propColors: { [string]: Color3 }?, -- recolour the prop's parts by name (e.g. Support, Carpet)
-	category: "Shelves" | "Cases" | "Fixtures" | "Trophies", -- the Build menu tab it's listed under
+	category: "Shelves" | "Cases" | "Fixtures" | "Trophies" | "Decor", -- the Build menu tab it's listed under
+	decor: number?, -- decor pieces: points toward the shop rating's decor part
+	flat: boolean?, -- decor pieces: the hitbox doesn't collide (a rug you walk over)
 	requiresItem: string?, -- a Config/Items id placing it takes (and selling gives back); trophies only
 	-- Products shelves whose model isn't a plain one-sided rack: their own stock levels and sides
 	-- (Util/ShelfStock StockOverride; fractions measured from the prop model)
@@ -248,6 +252,165 @@ local List: { Shelf } = {
 		color = Color3.fromRGB(120, 80, 55),
 		-- Double-sided: shelf tops at 1.04 / 2.54 / 3.85 of 7 studs, a row each side of the middle divider
 		stock = { SIDES = { -0.19, 0.19 }, DEPTH_FILL = 0.33 }, -- the same levels as the other racks, so plates line up
+	},
+	-- Shop decor (spec 2026-11-14-shop-decor-design): placed like shelves, drawn by their prop (Util/DecorLooks
+	-- stand-ins until the Blender pack is imported), in unlock order
+	{
+		id = "PottedPlant",
+		prop = "PottedPlant",
+		name = "Potted Plant",
+		kind = "Decor",
+		category = "Decor", -- Build menu tab
+		capacity = 0,
+		cost = 80,
+		unlockLevel = 1,
+		size = Vector3.new(2, 4, 2),
+		color = Color3.fromRGB(90, 170, 110),
+		decor = 1, -- rating points (Config/Decor FULL)
+	},
+	{
+		id = "StarRug",
+		prop = "StarRug",
+		name = "Star Rug",
+		kind = "Decor",
+		category = "Decor", -- Build menu tab
+		capacity = 0,
+		cost = 150,
+		unlockLevel = 1,
+		size = Vector3.new(6, 0.2, 6),
+		color = Color3.fromRGB(250, 215, 120),
+		decor = 1, -- rating points (Config/Decor FULL)
+		flat = true, -- walk over it
+	},
+	{
+		id = "FloorLamp",
+		prop = "FloorLamp",
+		name = "Floor Lamp",
+		kind = "Decor",
+		category = "Decor", -- Build menu tab
+		capacity = 0,
+		cost = 120,
+		unlockLevel = 2,
+		size = Vector3.new(2, 6, 2),
+		color = Color3.fromRGB(255, 225, 160),
+		decor = 1, -- rating points (Config/Decor FULL)
+	},
+	{
+		id = "Beanbag",
+		prop = "Beanbag",
+		name = "Beanbag",
+		kind = "Decor",
+		category = "Decor", -- Build menu tab
+		capacity = 0,
+		cost = 200,
+		unlockLevel = 2,
+		size = Vector3.new(4, 2.5, 4),
+		color = Color3.fromRGB(245, 140, 180),
+		decor = 1, -- rating points (Config/Decor FULL)
+	},
+	{
+		id = "BalloonBunch",
+		prop = "BalloonBunch",
+		name = "Balloon Bunch",
+		kind = "Decor",
+		category = "Decor", -- Build menu tab
+		capacity = 0,
+		cost = 250,
+		unlockLevel = 3,
+		size = Vector3.new(2, 7, 2),
+		color = Color3.fromRGB(255, 120, 140),
+		decor = 1, -- rating points (Config/Decor FULL)
+	},
+	{
+		id = "BoosterTower",
+		prop = "BoosterTower",
+		name = "Booster Box Tower",
+		kind = "Decor",
+		category = "Decor", -- Build menu tab
+		capacity = 0,
+		cost = 400,
+		unlockLevel = 4,
+		size = Vector3.new(2, 6, 2),
+		color = Color3.fromRGB(250, 200, 70),
+		decor = 2, -- rating points (Config/Decor FULL)
+	},
+	{
+		id = "ElementPennants",
+		prop = "ElementPennants",
+		name = "Element Pennants",
+		kind = "Decor",
+		category = "Decor", -- Build menu tab
+		capacity = 0,
+		cost = 500,
+		unlockLevel = 5,
+		size = Vector3.new(6, 5, 2),
+		color = Color3.fromRGB(140, 100, 70),
+		decor = 2, -- rating points (Config/Decor FULL)
+	},
+	{
+		id = "PlayTable",
+		prop = "PlayTable",
+		name = "Play Table",
+		kind = "Decor",
+		category = "Decor", -- Build menu tab
+		capacity = 0,
+		cost = 900,
+		unlockLevel = 7,
+		size = Vector3.new(4, 3, 4),
+		color = Color3.fromRGB(70, 160, 100),
+		decor = 2, -- rating points (Config/Decor FULL)
+	},
+	{
+		id = "CardFrame",
+		prop = "CardFrame",
+		name = "Card Frame",
+		kind = "Decor",
+		category = "Decor", -- Build menu tab
+		capacity = 0,
+		cost = 1200,
+		unlockLevel = 9,
+		size = Vector3.new(4, 6, 2),
+		color = Color3.fromRGB(240, 190, 70),
+		decor = 2, -- rating points (Config/Decor FULL)
+	},
+	{
+		id = "DogStandee",
+		prop = "DogStandee",
+		name = "Pish & Chikin Standee",
+		kind = "Decor",
+		category = "Decor", -- Build menu tab
+		capacity = 0,
+		cost = 1500,
+		unlockLevel = 10,
+		size = Vector3.new(4, 6, 2),
+		color = Color3.fromRGB(215, 180, 130),
+		decor = 3, -- rating points (Config/Decor FULL)
+	},
+	{
+		id = "CardPedestal",
+		prop = "CardPedestal",
+		name = "Card Pedestal",
+		kind = "Decor",
+		category = "Decor", -- Build menu tab
+		capacity = 0,
+		cost = 2500,
+		unlockLevel = 13,
+		size = Vector3.new(2, 5, 2),
+		color = Color3.fromRGB(200, 200, 215),
+		decor = 3, -- rating points (Config/Decor FULL)
+	},
+	{
+		id = "PackStatue",
+		prop = "PackStatue",
+		name = "Giant Pack Statue",
+		kind = "Decor",
+		category = "Decor", -- Build menu tab
+		capacity = 0,
+		cost = 4000,
+		unlockLevel = 18,
+		size = Vector3.new(4, 8, 4),
+		color = Color3.fromRGB(255, 200, 70),
+		decor = 3, -- rating points (Config/Decor FULL)
 	},
 }
 

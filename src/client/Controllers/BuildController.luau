@@ -19,6 +19,7 @@ local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
+local LookTiles = require(ClientUtil:WaitForChild("LookTiles"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local PlacementController = require(Controllers:WaitForChild("PlacementController"))
 local ShowcaseController = require(Controllers:WaitForChild("ShowcaseController"))
@@ -33,7 +34,7 @@ local CASE_BUYERS = {
 	PlayerCards = "players buy",
 }
 
--- Build menu tabs (Config/Shelves `category`); Decor has nothing yet and says so
+-- Build menu tabs (Config/Shelves `category`); Decor also lists the shop looks first (Util/LookTiles)
 local BUILD_TABS = {
 	{ name = "Shelves", icon = "Shelves" },
 	{ name = "Cases", icon = "Cases" },
@@ -200,6 +201,7 @@ local function buildTile(parent: Instance, order: number, def: ShelfDef)
 		elseif def.kind == "Grading" then "Duplicates to grades"
 		elseif def.kind == "Forge" then "Make and upgrade weapons"
 		elseif def.kind == "Trophy" then `Beat the {trophyBoss(def)}`
+		elseif def.kind == "Decor" then `Decor +{def.decor or 0}`
 		else `{def.capacity} cards, {CASE_BUYERS[def.kind]}`
 	local info = UIKit.label(tile, detail, Enum.Font.GothamBold, 13, UIKit.Colors.Subtext)
 	info.Position = UDim2.fromOffset(10, BUILD_TILE.PICTURE + 34)
@@ -252,10 +254,7 @@ local function buildShopPanel(parent: Instance)
 	grid.SortOrder = Enum.SortOrder.LayoutOrder
 	grid.Parent = list
 
-	local soon = UIKit.label(list, "Decor is coming soon!", Enum.Font.FredokaOne, 22, UIKit.Colors.Text)
-	soon.Name = "ComingSoon"
-	soon.Visible = false
-
+	local lookTiles: { GuiObject } = {}
 	local tabButtons: { [string]: TextButton } = {}
 	local function showCategory(category: string)
 		for name, button in tabButtons do
@@ -265,13 +264,13 @@ local function buildShopPanel(parent: Instance)
 				UIKit.softText(label, button.BackgroundColor3) -- plum on the open tab's butter, white on the others' sky
 			end
 		end
-		local any = false
 		for _, row in shopRows do
 			local tile = row.button.Parent :: GuiObject
 			tile.Visible = row.def.category == category
-			any = any or tile.Visible
 		end
-		soon.Visible = not any
+		for _, tile in lookTiles do
+			tile.Visible = category == "Decor"
+		end
 		list.CanvasPosition = Vector2.zero
 	end
 	for index, tab in BUILD_TABS do
@@ -311,8 +310,9 @@ local function buildShopPanel(parent: Instance)
 		tabButtons[tab.name] = button
 	end
 
+	lookTiles = LookTiles.build(list, palette)
 	for index, def in Shelves.List do
-		buildTile(list, index, def)
+		buildTile(list, 100 + index, def) -- after the six shop looks
 	end
 	showCategory(BUILD_TABS[1].name)
 	player:GetAttributeChangedSignal("Cash"):Connect(refreshShopRows)
@@ -332,10 +332,11 @@ local function openEditPanel(part: BasePart)
 	removeStockRow.Visible = def.kind == "Products"
 	moveDetail.Text = if isCase
 		then "Pick a new spot. Cards stay in it."
-		elseif def.kind == "Condenser" or def.kind == "Grading" or def.kind == "Forge" or def.kind == "Trophy" then "Pick a new spot."
+		elseif def.kind == "Condenser" or def.kind == "Grading" or def.kind == "Forge" or def.kind == "Trophy" or def.kind == "Decor" then "Pick a new spot."
 		else "Pick a new spot. Stock stays on it."
 	sellDetail.Text = if def.requiresItem
 		then "Put it back in your bag."
+		elseif def.kind == "Decor" then string.format("Get back $%.2f.", getNumberAttribute(part, "Refund", 0))
 		else string.format("Get back $%.2f. Must be empty.", getNumberAttribute(part, "Refund", 0))
 	shopPanel.Visible = false
 	editPanel.Visible = true

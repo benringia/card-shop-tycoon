@@ -22,6 +22,7 @@ local TextChatService = game:GetService("TextChatService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
+local Shelves = require(Config:WaitForChild("Shelves"))
 local Bosses = require(Config:WaitForChild("Bosses"))
 local Beasts = require(Config:WaitForChild("Beasts"))
 local Cards = require(Config:WaitForChild("Cards"))
@@ -76,6 +77,8 @@ local PartyService = require(Services:WaitForChild("PartyService"))
 local WildService = require(Services:WaitForChild("WildService"))
 local DungeonService = require(Services:WaitForChild("DungeonService"))
 local DungeonPuzzleService = require(Services:WaitForChild("DungeonPuzzleService"))
+local PlacementService = require(Services:WaitForChild("PlacementService"))
+local DecorService = require(Services:WaitForChild("DecorService"))
 local RateLimiter = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("RateLimiter"))
 
 type CommandHandler = (player: Player, text: string) -> ()
@@ -443,6 +446,26 @@ function DevService.Start()
 	end)
 	addCommand(folder, "intro", function(player)
 		WelcomeService.Replay(player)
+	end)
+	-- "/decor <look id>": that shop look owned and in use; "/decor pieces": one of every decor piece in your shop's
+	-- free cells, as many as fit (shop decor, spec 2026-11-14-shop-decor-design)
+	addCommand(folder, "decor", function(player, text)
+		local arg = string.match(text, "^/%w+%s+(%w+)")
+		if arg == "pieces" then
+			local placed = 0
+			for _, def in Shelves.List do
+				if def.kind == "Decor" and PlacementService.DevPlace(player, def.id) then
+					placed += 1
+				end
+			end
+			Remotes.Notify:FireClient(player, `Placed {placed} decor pieces.`, false)
+			return
+		end
+		if arg and DecorService.SetLookForDev(player, arg) then
+			Remotes.Notify:FireClient(player, `Shop look: {arg}.`, false)
+			return
+		end
+		Remotes.Notify:FireClient(player, "Usage: /decor <CozyWood|CandyPastel|EnchantedForest|NeonArcade|CrystalCave|StarryNight|pieces>", true)
 	end)
 	-- "/loading <main|wild|frontier|dungeon>": that place's loading screen played on your screen (LoadingController)
 	addCommand(folder, "loading", function(player, text)
@@ -835,7 +858,7 @@ function DevService.Start()
 			run(player, text)
 		end
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /weapon <id> [grade] [level], /material <boss id> <amount>, /weapondrop <boss id>, /chests <boss id> [drop|miss|strong|tired], /boss <n> [fight|group], /jobslot, /jobtired, /wild, /rest, /tire, /bosshp <1-100>, /townchikin, /turts <restock|move|offer <id>>, /elite, /knockout, /support <0-3>, /titles forget, /review <outcome>, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /loading <main|wild|frontier|dungeon>, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume], /victorysound <1-3>, /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S], /skillfx <sword> [cut1|cut2|cut3|skill] [level], /room <2-4>, /winroom, /puzzle <solve|beams|plates|lock>, /tap <piece>, /dungeonfx <intro|introshort|roar|glimpse>")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /weapon <id> [grade] [level], /material <boss id> <amount>, /weapondrop <boss id>, /chests <boss id> [drop|miss|strong|tired], /boss <n> [fight|group], /jobslot, /jobtired, /wild, /rest, /tire, /bosshp <1-100>, /townchikin, /turts <restock|move|offer <id>>, /elite, /knockout, /support <0-3>, /titles forget, /review <outcome>, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /decor <look id|pieces>, /loading <main|wild|frontier|dungeon>, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume], /victorysound <1-3>, /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S], /skillfx <sword> [cut1|cut2|cut3|skill] [level], /room <2-4>, /winroom, /puzzle <solve|beams|plates|lock>, /tap <piece>, /dungeonfx <intro|introshort|roar|glimpse>")
 end
 
 return DevService

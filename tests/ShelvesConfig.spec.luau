@@ -31,13 +31,36 @@ return {
 	end,
 
 	["every shelf sits in a Build menu category that matches its kind"] = function()
-		local byKind = { Products = "Shelves", CustomerCards = "Cases", PlayerCards = "Cases", Condenser = "Fixtures", Grading = "Fixtures", Forge = "Fixtures", Trophy = "Trophies" }
+		local byKind = { Products = "Shelves", CustomerCards = "Cases", PlayerCards = "Cases", Condenser = "Fixtures", Grading = "Fixtures", Forge = "Fixtures", Trophy = "Trophies", Decor = "Decor" }
 		for _, entry in entries() do
 			local kind = string.match(entry.body, 'kind = "([%w_]+)"')
 			local category = string.match(entry.body, 'category = "([%w_]+)"')
 			assert(category, `{entry.id} has no category`)
 			assert(category == byKind[kind], `{entry.id} ({kind}) is in {category}, expected {byKind[kind]}`)
 		end
+	end,
+
+	-- Shop decor (spec 2026-11-14-shop-decor-design): the twelve placeable pieces
+	["decor pieces: twelve, each with points, a prop slot of its own id, a grid footprint, in unlock order"] = function()
+		local town = fs.readFile("src/shared/Config/Town.luau")
+		local pieces, lastLevel = 0, 0
+		for _, entry in entries() do
+			if string.match(entry.body, 'kind = "Decor"') then
+				pieces += 1
+				assert(string.match(entry.body, 'category = "Decor"'), `{entry.id} in the Decor tab`)
+				assert(string.match(entry.body, "capacity = 0,"), `{entry.id} holds nothing`)
+				assert(string.match(entry.body, 'prop = "([%w_]+)"') == entry.id, `{entry.id} draws its own prop slot`)
+				local points = tonumber(string.match(entry.body, "decor = (%d+)"))
+				assert(points and points >= 1 and points <= 3, `{entry.id} gives 1-3 decor points`)
+				local x, z = string.match(entry.body, "size = Vector3.new%(([%d%.]+), [%d%.]+, ([%d%.]+)%)")
+				assert(x and z and tonumber(x) :: number % 2 == 0 and tonumber(z) :: number % 2 == 0, `{entry.id} fills whole 2-stud cells`)
+				local level = tonumber(string.match(entry.body, "unlockLevel = (%d+)")) :: number
+				assert(level >= lastLevel, `{entry.id} unlocks no earlier than the piece before it`)
+				lastLevel = level
+				assert(string.find(town, "%s" .. entry.id .. " = {"), `Town.SLOTS has {entry.id}`)
+			end
+		end
+		assert(pieces == 12, `expected 12 decor pieces, found {pieces}`)
 	end,
 
 	["each boss trophy is placed from its own trophy item"] = function()

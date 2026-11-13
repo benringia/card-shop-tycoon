@@ -274,6 +274,20 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 			personal = if keep then { index = personal.index, offers = ids(personal.offers) } else nil,
 		}
 	end,
+	-- Shop decor (spec 2026-11-14-shop-decor-design): the look in use and the looks bought; ids are checked against
+	-- Config/Decor on load (DecorRules.clean)
+	[24] = function(data)
+		local decor = if typeof(data.decor) == "table" then data.decor else {}
+		local owned = {}
+		if typeof(decor.owned) == "table" then
+			for _, id in decor.owned do
+				if typeof(id) == "string" then
+					table.insert(owned, id)
+				end
+			end
+		end
+		data.decor = { look = if typeof(decor.look) == "string" then decor.look else "CozyWood", owned = owned }
+	end,
 }
 
 local function lowestGrade(): string

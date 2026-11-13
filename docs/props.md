@@ -208,6 +208,28 @@ studs tall (`Town.SLOTS.PortalDungeon`), look
 `Town.PORTAL_LOOKS.Dungeon`; saved as `assets/props/PortalDungeon.rbxm`. Until it's saved the gate shows `PortalArena`
 in the Arena look (`FrontierValley.DUNGEON_GATE.fallback`).
 
+## Decor props (PottedPlant ... PackStatue)
+
+Shop decor's twelve placeable pieces (spec 2026-11-14-shop-decor-design, Config/Shelves kind "Decor"): `PottedPlant`,
+`StarRug`, `FloorLamp`, `Beanbag`, `BalloonBunch`, `BoosterTower`, `ElementPennants`, `PlayTable`, `CardFrame`,
+`DogStandee`, `CardPedestal`, `PackStatue`. Built by `tools/blender/build_decor_props.py` on `voxel_kit.py` and
+`portal_kit.py` in the concept sheet's chunky cartoon style (background Blender, `PROPS=`, `EXPORT=0` as above; under
+1500 triangles each, each shrunk evenly to fit its footprint). ONE pack: `assets/blender/DecorProps/DecorProps.fbx`
+holds every piece as an Empty `<Name>` over its meshes `<Name>__Frame` and the parts the game finishes by name
+(`Util/DecorLooks.finish`): `Glow` / `Bulb` turn Neon in `Config/Decor GLOW_COLORS` (the lamp's Bulb also lights),
+`Picture` wears `Config/Decor PICTURES` (the standee's Pish and Chikin, the pack statue's front, the card frame's
+painting), `Spin` is the Card Pedestal's card (the card back, turning). Import the FBX with default settings,
+save the imported model as `assets/props-import/DecorProps.rbxm` (gitignored), then `lune run tools/props/split_pack
+assets/props-import/DecorProps.rbxm` writes `assets/props/<Name>.rbxm` per piece. Until then each slot draws a
+code-built stand-in (`Town.SLOTS` `standIn = true`, `Util/DecorLooks`); once the model file exists it wins.
+
+The `Beanbag` and `PottedPlant` are free Creator Store models instead (owner 2026-11-14: "better looking ... from
+creator store"), kept in the place file's `ReplicatedStorage.PlaceProps` (they load from there like the union
+props): the beanbag is mattmatveev's "Bean Bag Chair / Blue Beanbag" (14395439176, its Seat and weld removed, the
+mesh tinted pink 245, 140, 180), the plant ATOMICRAVI0LI's "low poly potted plant" (9253654788). Both had no
+scripts. To put one back: Toolbox insert by id into `PlaceProps`, rename it to the slot, redo the clean-up, save the
+place. The store's rugs and play tables looked no better than ours, so those stay ours.
+
 ## Turts' rug (TurtsRug)
 
 Turts' rug and things (DESIGN 7.9): `tools/blender/build_turts_rug.py` on `voxel_kit.py` and `portal_kit.py`, run in a

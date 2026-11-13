@@ -1,8 +1,9 @@
 --!strict
 -- What your own shelves hold, only when you want it: point at a shelf, the order computer or the checkout (or tap it on a phone)
 -- and it gets a soft outline, with a tooltip by the cursor showing its Info attribute (product and stock, a card
--- case's count, "Order Stock", "Register"), and an "Empty" badge floats over any product shelf with nothing on it so
--- you can spot it across the shop. PlacementService (shelves) and PlotService (fixtures) set Info; Empty is shelves only.
+-- case's count, "Order Stock", "Register"), and an "Empty" badge floats over a product shelf with nothing on it so
+-- you can spot it across the shop: the nearest few only, never two overlapping (Util/BadgeRules, Placement
+-- EMPTY_BADGES). PlacementService (shelves) and PlotService (fixtures) set Info; Empty is shelves only.
 -- Visitors see neither. Price tags keep their own "Set Price" tooltip (PriceTagController).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -15,6 +16,7 @@ local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local PlacementConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Placement"))
+local BadgeRules = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("BadgeRules"))
 
 local TIP_COLOR = Color3.fromRGB(20, 24, 36) -- the windows' midnight
 local TIP_TEXT = Color3.fromRGB(255, 250, 235)
@@ -30,6 +32,7 @@ local tip: TextLabel
 local highlight: Highlight
 local tipUntil = 0 -- a tap's tooltip stays up until this time
 local watched: { [BasePart]: boolean } = {}
+local badges: { [BasePart]: BillboardGui } = {} -- every own shelf's Empty badge; showBadges picks which are on
 
 local function getOwnPlot(): Instance?
 	local plotId = player:GetAttribute("PlotId")
@@ -116,18 +119,51 @@ local function showTip(shelf: BasePart?, screen: Vector2)
 	tip.Visible = true
 end
 
--- The floating "Empty" badge over one of your shelves, shown while its Empty attribute is true
+-- Where a shelf's Empty badge floats: out past its front, above it
+local function badgeOffset(shelf: BasePart): Vector3
+	local look = PlacementConfig.SHELF_INFO
+	return Vector3.new(0, shelf.Size.Y / 2 + look.EMPTY_GAP, -(shelf.Size.Z / 2 + look.EMPTY_FORWARD))
+end
+
+-- Turns on the badges of the nearest empty shelves, at most EMPTY_BADGES.MAX, none overlapping another on screen
+local function showBadges()
+	local camera = workspace.CurrentCamera
+	if not camera then
+		return
+	end
+	local cfg = PlacementConfig.SHELF_INFO
+	local eye = camera.CFrame.Position
+	local view = camera.ViewportSize
+	local candidates: { BadgeRules.Candidate } = {}
+	for shelf in badges do
+		local at = shelf.CFrame:PointToWorldSpace(badgeOffset(shelf))
+		local distance = (at - eye).Magnitude
+		if shelf:GetAttribute("Empty") == true and distance <= cfg.EMPTY_MAX_DISTANCE then
+			local point, inFront = camera:WorldToViewportPoint(at)
+			local onScreen = inFront and point.X >= 0 and point.Y >= 0 and point.X <= view.X and point.Y <= view.Y
+			table.insert(candidates, { id = shelf, distance = distance, x = point.X, y = point.Y, onScreen = onScreen })
+		end
+	end
+	local picked = BadgeRules.pick(candidates, PlacementConfig.EMPTY_BADGES.MAX, PlacementConfig.EMPTY_BADGES.SPACE)
+	for shelf, board in badges do
+		board.Enabled = picked[shelf] == true
+	end
+end
+
+-- The floating "Empty" badge over one of your shelves (showBadges turns it on while its Empty attribute is true)
 local function watchShelf(shelf: Instance)
 	if not shelf:IsA("BasePart") or watched[shelf] then
 		return
 	end
 	watched[shelf] = true
 	local look = PlacementConfig.SHELF_INFO
+	local size = PlacementConfig.EMPTY_BADGES.SIZE
 	local board = Instance.new("BillboardGui")
 	board.Name = "EmptyBadge"
-	board.Size = UDim2.fromOffset(96, 30)
+	board.Size = UDim2.fromOffset(size.w, size.h)
+	board.Enabled = false
 	-- Out past the shelf's front (its own space, so it follows moves): a wall behind it can't cut through the badge
-	board.StudsOffsetWorldSpace = Vector3.new(0, shelf.Size.Y / 2 + look.EMPTY_GAP, -(shelf.Size.Z / 2 + look.EMPTY_FORWARD))
+	board.StudsOffsetWorldSpace = badgeOffset(shelf)
 	board.MaxDistance = look.EMPTY_MAX_DISTANCE
 	board.LightInfluence = 0
 	local badge = UIKit.label(board, "📦 Empty", Enum.Font.FredokaOne, 16, Color3.new(1, 1, 1))
@@ -139,13 +175,10 @@ local function watchShelf(shelf: Instance)
 	UIKit.outline(badge, Color3.new(1, 1, 1), 2)
 	board.Adornee = shelf
 	board.Parent = shelf
-	local function refresh()
-		board.Enabled = shelf:GetAttribute("Empty") == true
-	end
-	refresh()
-	shelf:GetAttributeChangedSignal("Empty"):Connect(refresh)
+	badges[shelf] = board
 	shelf.Destroying:Connect(function()
 		watched[shelf] = nil
+		badges[shelf] = nil
 	end)
 end
 
@@ -191,6 +224,12 @@ function ShelfInfoController.Start()
 
 	watchPlot()
 	player:GetAttributeChangedSignal("PlotId"):Connect(watchPlot)
+	task.spawn(function()
+		while true do
+			showBadges()
+			task.wait(PlacementConfig.EMPTY_BADGES.REFRESH)
+		end
+	end)
 
 	-- Mouse: the shelf under the pointer
 	RunService.RenderStepped:Connect(function()

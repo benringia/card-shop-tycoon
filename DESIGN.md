@@ -312,7 +312,9 @@ Shelves, cases and fixtures carry no floating labels: on your own shop, pointing
 soft white outline and a tooltip by the cursor with its product and stock ("First Spark Booster Pack · 24/96"), a
 case's kind and count, "✨ Card Condenser", "📦 Order Stock" or "💰 Register"
 (`ShelfInfoController`, within 30 studs; the server sets the part's `Info` attribute), and an empty product shelf shows a red "📦 Empty" badge over it
-(the `Empty` attribute, out past the shelf's front so walls never cut it) so it can be spotted across the shop.
+(the `Empty` attribute, out past the shelf's front so walls never cut it) so it can be spotted across the shop: the
+nearest 3 only, never two overlapping on screen (owner 2026-11-14: a full shop buried the screen; `Util/BadgeRules`,
+`Placement.EMPTY_BADGES`); decor pieces and other things that hold nothing never get one.
 Visitors see neither (`Placement.SHELF_INFO`). World hovers and taps are off while a window is open or the pointer
 is over UI (`UIKit.pointerBlocked`).
 
@@ -459,8 +461,9 @@ is over UI (`UIKit.pointerBlocked`).
   shop is scored on weighted 0-1 parts: product shelves stocked 35%, fair prices 25% (each stocked product's buy chance
   at its price against the best band's; neutral with nothing stocked), cards on display 15% (Epic 1, Legendary 3, foil
   +1 point, full at 6), happy customers 25% (paid and happy moments against annoyed, gave up and no stock over the
-  last 20 visits; neutral with none) and decor at weight 0 until the Decor system (then a config weight plus its
-  score). 1 + 4 x the weighted mean, smoothed over about 90 s (a fresh join starts at its score). Not saved. The stars
+  last 20 visits; neutral with none) and decor 10% (since 2026-11-14, Shop decor below: a bought look 2 points, each
+  placed piece 1-3, full at 8; `Util/DecorRules.score`; a perfect shop with no decor rates about 4.6). 1 + 4 x the
+  weighted mean, smoothed over about 90 s (a fresh join starts at its score). Not saved. The stars
   show on the shop's sign, filled by quarters (`PlotService.SetSignRating`); the gap between customers is x1.4 at 1
   star, x1.0 at 3, x0.6 at 5. The owner gets `RatingUpdate` (rating and parts; a part with nothing to score yet, like
   prices with nothing stocked, is marked unknown). Scoring starts once the shop has loaded (RatingService registers
@@ -471,6 +474,39 @@ is over UI (`UIKit.pointerBlocked`).
   what to fix (`Customers.RATING_TIPS`); unknown parts get no line.
 
 ---
+
+### 4.8 Shop decor
+Spec `docs/superpowers/specs/2026-11-14-shop-decor-design.md` (owner 2026-11-14: "next is Decors", looks plus pieces
+for launch, plushies after). Cash only, no Robux.
+- [x] **Shop looks** (`Config/Decor LOOKS`, `Util/DecorRules`, `DecorService`, `PlotService.SetLook`): six whole-shop
+  insides, bought once in the Decor tab and switched free after (remote `ShopLook` "buy" / "use"; every refusal a
+  Blocked card): Cozy Wood (free, every shop's default), Candy Pastel ($500, Lv 3), Enchanted Forest ($1,000, Lv 5),
+  Neon Arcade ($2,000, Lv 8, a pink strip near the ceiling), Crystal Cave ($3,500, Lv 12, glowing crystals along the
+  walls), Starry Night ($5,000, Lv 16). A look recolours the floor and back wall, lines the side walls, lays a tiling
+  wallpaper on all three (Figma-generated, made seamless by `tools/textures/make_seamless.py`,
+  `assets/ui/decor-wallpapers`, 16 studs a repeat) and runs a panel band with a glowing trim along their bottoms;
+  the outside never changes. Visitors see it; a released plot goes back to plain. The owner's client reads the
+  attributes `ShopLook` and `ShopLooksOwned`; the Decor tab's look tiles (`Util/LookTiles`) show a swatch and
+  "Using" / "Use" / the price / "Lv N". Saved as `decor` (v25).
+- [x] **Decor pieces** (`Config/Shelves` kind "Decor"): twelve, placed, moved and sold (half back) like shelves, up
+  to 20 a shop (`Placement.MAX_DECOR_PER_PLOT`, apart from the 30 shelves; at the cap a Blocked card): Potted Plant
+  ($80, Lv 1, 1 point), Star Rug ($150, Lv 1, 1, walked over), Floor Lamp ($120, Lv 2, 1, a small shadowless light),
+  Beanbag ($200, Lv 2, 1), Balloon Bunch ($250, Lv 3, 1), Booster Box Tower ($400, Lv 4, 2, a glowing star on top),
+  Element Pennants ($500, Lv 5, 2), Play Table ($900, Lv 7, 2: a play mat with cards and two stools), Card Frame
+  ($1,200, Lv 9, 2: a giant framed card painting on an easel), Pish & Chikin Standee ($1,500, Lv 10, 3),
+  Card Pedestal ($2,500, Lv 13, 3: the card back floats and turns, `DecorSpinController`), Giant Pack Statue ($4,000,
+  Lv 18, 3). Models: one Blender pack (`tools/blender/build_decor_props.py`, under 1,500 triangles each, docs/props.md
+  "Decor props") the owner imports once; code-built stand-ins (`Util/DecorLooks`, `Town.SLOTS standIn`) until then.
+  The Beanbag and Potted Plant are free Creator Store models in the place's `ReplicatedStorage.PlaceProps` (they looked
+  better than ours; the store's rugs and tables didn't). Parts finished by name (`DecorLooks.finish`): Glow / Bulb, Picture, Spin. Owner 2026-11-14 after trying it: pieces
+  that raise "how do I use or fill it?" went (the Fish Tank, Gumball Machine and Arcade Cabinet became the Play Table,
+  Booster Box Tower and Card Frame, same price, level and points). A piece that can't come back
+  on load (no room, over the cap) is refunded its price.
+- [x] **Pish's decor lesson** at level 2 (`Config/Pish LESSONS` "decor", on the Potted Plant): one lesson for the whole
+  tab, not one per piece.
+- Measured 2026-11-14: 120 stand-in pieces (six shops at the cap) from the street: +0.2 ms render CPU, +0.1 ms GPU.
+- Studio: `/decor <look id>` (that look owned and in use), `/decor pieces` (one of every piece in your shop, as many
+  as fit); the admin panel's "Decor" section.
 
 ## 5. Cards & packs
 
@@ -3307,6 +3343,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── RegisterService.luau  # checkout flow; a bargain hunter's offer (OnHaggle / SettleHaggle), OnSaleCompleted
     │   │   ├── OfferService.luau     # kid rips and offers, haggles: the open offer per shop, OfferAction
     │   │   ├── RatingService.luau    # shop rating: parts, smoothing, the sign's stars, RatingUpdate, the spawn gap
+    │   │   ├── DecorService.luau     # shop looks: the look in use and bought (saved `decor`), ShopLook buy/use, PlotService.SetLook
     │   │   ├── PackService.luau      # server-side pack rolls
     │   │   ├── CardService.luau      # binder contents (not named CollectionService to avoid clashing with Roblox's)
     │   │   ├── ShowcaseService.luau  # display cards, price them, player buys, customer card buys
@@ -3428,9 +3465,11 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── CreatureController.luau  # draws summoned creatures: model or placeholder, motion, glow, name tag
     │   │   ├── CardBuyController.luau  # visitors browse other players' cases (marketplace style); buy from Collector Cases
     │   │   ├── CardEffectsController.luau # displayed cards: card face with price, halo, glows, sparkles, listing bursts
-    │   │   └── CaseSpinController.luau # case cards turn and bob over a pad and beam in their rarity colour (within range)
+    │   │   ├── CaseSpinController.luau # case cards turn and bob over a pad and beam in their rarity colour (within range)
+    │   │   └── DecorSpinController.luau # the Card Pedestals' floating cards turn (shop decor, within range)
     │   └── Util/
     │       ├── UIKit.luau              # shared UI building helpers and the style (header, close, lip buttons)
+    │       ├── LookTiles.luau          # the Decor tab's six shop look tiles (swatch, Using / Use / price / Lv N)
     │       ├── StationJobs.luau        # the stations' jobs on this client, counted down (remote UpgradeJobs)
     │       ├── JobPanel.luau           # a station window's job card: countdown, bar, Finish now
     │       ├── ProductPrice.luau       # developer products' Robux prices, asked once each
@@ -3503,6 +3542,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
         │   ├── Rarities.luau   # odds, values, colors
         │   ├── Products.luau   # stock catalog
         │   ├── Shelves.luau
+        │   ├── Decor.luau      # shop decor: the six looks, decor points, wallpapers, the pieces' glow colours and pictures (plain data)
         │   ├── Plots.luau      # plot layout and fixtures
         │   ├── Economy.luau    # starting cash/level
         │   ├── Stock.luau      # delivery, carrying
@@ -3584,6 +3624,8 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
         ├── Remotes.luau        # all RemoteEvents/Functions defined in one place
         └── Util/
             ├── PlacementGrid.luau # grid maths shared by client preview + server validation
+            ├── DecorRules.luau    # shop decor: buy / use a look, a save cleaned, the decor score, the piece cap (pure, Lune-tested)
+            ├── DecorLooks.luau    # shop decor pieces' code-built stand-ins and their finish by part name
             ├── PriceRules.luau    # price clamping and buy bands
             ├── BeastMath.luau     # pure beast stat/value/XP maths (no Roblox APIs, Lune-tested)
             ├── BeastRules.luau    # BeastMath bound to the game configs
@@ -3714,7 +3756,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v24)
+### 10.4 Player data schema (v25)
 ```lua
 {
     version = 21,
@@ -3758,6 +3800,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     support = { gifts = 0, best = 0 }, -- "Support the dev": gifts given and the best tier (SupportService; v22)
     titles = { known = {}, fresh = {}, seeded = false }, -- titles ever earned (they stay), ones not seen in the Titles tab, first load counted (TitleService; v23)
     turts = { index = 0, bought = {} }, -- Turts' rug shop: the restock last seen, the offers bought in it, a "restock now" roll `personal = { index, offers }` while it lasts (TurtsService; v24)
+    decor = { look = "CozyWood", owned = {} }, -- shop decor: the look in use and the looks bought; the default never stored (DecorService; v25)
 }
 ```
 Bump `version` and write a migration whenever the shape changes.
@@ -3776,7 +3819,7 @@ place loads it at once; before, the session only closed after they'd left, and t
 `TeleportInitFailed`), `Reclaim` opens the session again and the next save writes it. Changes in the moment before
 they leave aren't saved. A session this server ended (leaving, a hand-off) never kicks the player.
 
-Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; v17 added `tutorial` (the first visit with Pish; existing saves "done" with their first pack given and his gift still to come, so only new players go through it); each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity); `tutorial` gained `customerSent` (read as false when missing, true for v17's existing shops; no bump: an older server dropping it allows one more of Pish's customers). v18 added `combat` (Chikin's combat tutorial, the same shape; done for every shop past Pish's tour, still to do for a player mid-way through it). v19 added `dungeon` (`secretFound` and `seenIntro` false for everyone; a junk value is replaced). v20 added `title` ("" for everyone: automatic, the same title as before; a saved string kept, junk replaced). v21 added `upgrades`, `skipTokens` and `purchases` (empty for everyone; a good skip count kept, junk replaced). v22 added `support` (no gifts for everyone; good counts kept). v23 added `titles` (`known`, `fresh` empty, `seeded` false: the first load counts the titles a player already has without telling). v24 added `turts` (nothing bought for everyone; good ids kept, a broken "restock now" roll dropped). A service that didn't load for a player (e.g. no free plot) never overwrites
+Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; v17 added `tutorial` (the first visit with Pish; existing saves "done" with their first pack given and his gift still to come, so only new players go through it); each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity); `tutorial` gained `customerSent` (read as false when missing, true for v17's existing shops; no bump: an older server dropping it allows one more of Pish's customers). v18 added `combat` (Chikin's combat tutorial, the same shape; done for every shop past Pish's tour, still to do for a player mid-way through it). v19 added `dungeon` (`secretFound` and `seenIntro` false for everyone; a junk value is replaced). v20 added `title` ("" for everyone: automatic, the same title as before; a saved string kept, junk replaced). v21 added `upgrades`, `skipTokens` and `purchases` (empty for everyone; a good skip count kept, junk replaced). v22 added `support` (no gifts for everyone; good counts kept). v23 added `titles` (`known`, `fresh` empty, `seeded` false: the first load counts the titles a player already has without telling). v24 added `turts` (nothing bought for everyone; good ids kept, a broken "restock now" roll dropped). v25 added `decor` (Cozy Wood in use and no looks bought for everyone; good ids kept, cleaned against Config/Decor on load). A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
 
 ### 10.6 UI style and HUD
@@ -4098,7 +4141,8 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   icons ("replaces") and the perk it brings or that you lose; then "Swap with <card>" (gold, filling the row) or a
   compact Back. Phones lay the comparison out in two columns. The party bar's toast confirms the change.
 - **Shop menu** (`BuildController`; was "Build"): a "Shop" panel (shop icon in its header) with icon tabs Shelves / Cases / Fixtures / Decor (each shelf's
-  `category` in `Config/Shelves`; Decor says "coming soon") and a grid of tiles. Each tile shows a 3D picture of
+  `category` in `Config/Shelves`; Decor lists the six shop looks first, then the decor pieces, see Shop decor) and a
+  grid of tiles. Each tile shows a 3D picture of
   the real prop model (in its own colours) on a peach backdrop, the name, what it holds, and a price button:
   green price, red when you can't afford it, grey "Lv N" while locked. Buying places it as before.
 

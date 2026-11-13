@@ -13,6 +13,7 @@ local PropFit = require(Shared:WaitForChild("Util"):WaitForChild("PropFit"))
 local TownLayout = require(Shared:WaitForChild("Util"):WaitForChild("TownLayout"))
 local ShelfLooks = require(Shared:WaitForChild("Util"):WaitForChild("ShelfLooks"))
 local CaseLook = require(Shared:WaitForChild("Util"):WaitForChild("CaseLook"))
+local DecorLooks = require(Shared:WaitForChild("Util"):WaitForChild("DecorLooks"))
 
 local Props = {}
 
@@ -459,6 +460,8 @@ local function buildFallback(slot: string, height: number, size: Vector3?, varia
 		buildForge(model)
 	elseif slot == "Trophy" then
 		buildTrophy(model)
+	elseif DecorLooks.isDecor(slot) then
+		DecorLooks.draw(model, slot, size or Vector3.new(2, math.max(height, 2), 2))
 	elseif slot == "Computer" then
 		-- A modern workstation, its front (-Z) the room side: a white desk on black panel legs, a slim widescreen
 		-- facing the chair, keyboard, mouse, a small plant, a drawer unit underneath and an office chair
@@ -618,10 +621,11 @@ function Props.hasModel(slot: string): boolean
 	return #getVariants(slot) > 0
 end
 
--- True when the slot has a real look: a model, or a code-built one (Town.SLOTS built = true)
+-- True when the slot has a real look: a model, or a code-built one (Town.SLOTS built = true: always the code's;
+-- standIn = true: the code's until a model file exists)
 function Props.hasLook(slot: string): boolean
-	local info = Town.SLOTS[slot]
-	return Props.hasModel(slot) or (info ~= nil and (info :: any).built == true)
+	local info = Town.SLOTS[slot] :: any
+	return Props.hasModel(slot) or (info ~= nil and (info.built == true or info.standIn == true))
 end
 
 -- The size a slot's model will have before scaling (first variant, turned by its yaw), or nil with no model

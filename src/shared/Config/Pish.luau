@@ -37,6 +37,8 @@ return {
 	-- The two cases unlock at 1 and are taught once his first visit has given you cards. Combat is Chikin's.
 	LESSONS = {
 		{ id = "showcase", level = 2, icon = "Cases", shelf = "GlassShowcase" },
+		-- shop decor: one lesson for the whole Decor tab (looks and pieces), on its first piece (spec 2026-11-14-shop-decor)
+		{ id = "decor", level = 2, icon = "Decor", shelf = "PottedPlant" },
 		{ id = "sleeves", level = 3, icon = "Sleeves", product = "CardSleeves" },
 		{ id = "collectorCase", level = 3, icon = "Cases", shelf = "CollectorCase" },
 		{ id = "sword", level = 4, icon = "Sword" },

@@ -68,6 +68,7 @@ return {
 	-- Each lesson visit's first line (what's new and why); a shelf or stock lesson then teaches it with TEACH
 	LESSONS = {
 		showcase = "Sell your spare cards in a Glass Showcase!",
+		decor = "Decor is here! Make your shop look cosy.",
 		sleeves = "New at the computer: Card Sleeves!",
 		collectorCase = "Sell cards to other players in a Collector Case!",
 		sword = "You got a sword! Try it in the Wild!",
@@ -124,6 +125,11 @@ return {
 		trophy = {
 			"Everyone who visits your shop sees it!",
 			"Beat more bosses for more trophies.",
+		},
+		decor = {
+			"Decor makes your shop look like yours!",
+			"A cosy shop brings customers more often.",
+			"Try a new shop look in the Decor tab too!",
 		},
 		sleeves = {
 			"Your box is on its way!",

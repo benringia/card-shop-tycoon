@@ -5,6 +5,7 @@ return {
 	ROTATION_STEPS = 4, -- 90° turns
 	SELL_REFUND = 0.5, -- fraction of the price paid you get back
 	MAX_SHELVES_PER_PLOT = 30,
+	MAX_DECOR_PER_PLOT = 20, -- decor pieces (Config/Shelves kind "Decor"), counted apart from the shelves
 	RESERVED_MARGIN = 1, -- free cells kept around the computer, delivery pad and spawn
 
 	ACTION_COOLDOWN = 0.3, -- seconds between place/move/sell requests per player
@@ -24,4 +25,8 @@ return {
 	-- tooltip saying what it holds; an empty
 	-- product shelf shows a floating "Empty" badge. Studs.
 	SHELF_INFO = { REACH = 30, TAP_SECONDS = 2.5, EMPTY_GAP = 0.8, EMPTY_FORWARD = 1.5, EMPTY_MAX_DISTANCE = 60 },
+	-- The "Empty" badges (Util/BadgeRules; owner 2026-11-14: a full shop's badges buried the screen): at most this
+	-- many show, the nearest first, never two overlapping on screen (the badge's size in pixels, plus a margin), picked
+	-- again every EMPTY_REFRESH seconds
+	EMPTY_BADGES = { MAX = 3, SIZE = { w = 96, h = 30 }, SPACE = { w = 104, h = 36 }, REFRESH = 0.2 },
 }

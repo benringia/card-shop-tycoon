@@ -88,6 +88,7 @@ export type PlayerData = {
 	titles: { known: { string }, fresh: { string }, seeded: boolean }, -- titles ever earned, not yet seen ones (TitleService)
 	-- Turts' rug shop: the restock last seen, the offers bought in it, a "restock now" roll (TurtsService)
 	turts: { index: number, bought: { string }, personal: { index: number, offers: { string } }? },
+	decor: { look: string, owned: { string } }, -- shop decor: the look in use and the looks bought (DecorService)
 }
 
 export type Handler = {
@@ -133,6 +134,7 @@ local TEMPLATE: PlayerData = {
 	support = { gifts = 0, best = 0 },
 	titles = { known = {}, fresh = {}, seeded = false },
 	turts = { index = 0, bought = {} },
+	decor = { look = "CozyWood", owned = {} },
 }
 
 local DataService = {}

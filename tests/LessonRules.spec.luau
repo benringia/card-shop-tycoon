@@ -5,6 +5,7 @@ local LessonRules = require("../src/shared/Util/LessonRules")
 local Pish = require("../src/shared/Config/Pish")
 local Products = require("../src/shared/Config/Products")
 local Jobs = require("../src/shared/Config/Jobs")
+local PishTalk = require("../src/shared/Config/PishTalk")
 local expect = require("./lib/expect")
 
 -- Config/Shelves holds Vector3s, so Lune reads its text: each entry's id, kind and unlock level
@@ -70,6 +71,16 @@ return {
 		expect.equal(levels.jobs, 20)
 	end,
 
+	-- Shop decor (spec 2026-11-14-shop-decor-design): one lesson for the Decor tab, at level 2 (a level-1 lesson
+	-- never comes: lessons arrive with a level-up)
+	["the decor lesson comes at level 2 and points at the Potted Plant"] = function()
+		local due = LessonRules.due(Pish.LESSONS, 1, 2, {})
+		assert(table.find(due, "decor"), "the level 1 to 2 level-up brings the decor lesson")
+		expect.equal(LessonRules.forShelf(Pish.LESSONS, "PottedPlant", "Decor"), "decor")
+		assert(PishTalk.LESSONS.decor, "Pish says what decor is")
+		assert(PishTalk.AFTER.decor, "and what it's for once placed")
+	end,
+
 	["due: only levels crossed now, in level order, not seen"] = function()
 		same(
 			LessonRules.due(Pish.LESSONS, 2, 6, {}),
@@ -79,7 +90,7 @@ return {
 		same(LessonRules.due(Pish.LESSONS, 6, 7, { expand = true, accessoryHook = true }), {}, "seen")
 		same(LessonRules.due(Pish.LESSONS, 20, 20, {}), {}, "an old save loading at 20 gets none")
 		same(LessonRules.due(Pish.LESSONS, 3, 4, {}), { "sword", "wallShelf" }, "the level gained, not the one left")
-		same(LessonRules.due(Pish.LESSONS, 1, 2, {}), { "showcase" }, "the Glass Showcase right after his first visit")
+		same(LessonRules.due(Pish.LESSONS, 1, 2, {}), { "showcase", "decor" }, "the Glass Showcase right after his first visit, then decor")
 	end,
 
 	["due: leaves out lessons already waiting (false) as well as seen"] = function()
@@ -112,10 +123,12 @@ return {
 				expect.equal(lesson.level, product.unlockLevel, `{product.id}'s lesson comes at its unlock`)
 			end
 		end
-		local trophies = 0
+		local trophies, decor = 0, 0
 		for _, shelf in shelves() do
 			if shelf.kind == "Trophy" then
 				trophies += 1
+			elseif shelf.kind == "Decor" then
+				decor += 1 -- one lesson for the whole Decor tab (the decor lesson test), not one per piece
 			elseif shelf.unlockLevel > 1 then
 				local lesson = lessonWhere("shelf", shelf.id)
 				assert(lesson, `{shelf.id} (Lv {shelf.unlockLevel}) has a lesson`)
@@ -126,6 +139,7 @@ return {
 			end
 		end
 		assert(trophies > 0, "the trophies were read")
+		assert(decor > 0, "the decor pieces were read")
 		local trophy = lessonWhere("trigger", "trophy")
 		assert(trophy and trophy.level == nil, "the first trophy has an event lesson")
 		local jobs = lessonWhere("id", "jobs")
@@ -157,6 +171,6 @@ return {
 		expect.equal(after.showcase, true, "a waiting lesson is done")
 		expect.equal(seen.showcase, false, "a copy")
 		expect.equal(LessonRules.used({}, "collectorCase").collectorCase, true, "placed at level 1: never taught later")
-		same(LessonRules.due(Pish.LESSONS, 1, 3, LessonRules.used({}, "showcase")), { "sleeves", "collectorCase" }, "not queued at level 2")
+		same(LessonRules.due(Pish.LESSONS, 1, 3, LessonRules.used({}, "showcase")), { "decor", "sleeves", "collectorCase" }, "not queued at level 2")
 	end,
 }

@@ -115,12 +115,12 @@ return {
 		retries = 1,
 		patience = 25,
 	},
-	-- Shop rating (Util/RatingRules, RatingService): parts scored 0-1 with these weights (decor waits at 0 for the Decor
-	-- system), over the last `history` visits for happiness, smoothed over smoothSeconds, worked out every `tick` s; the
+	-- Shop rating (Util/RatingRules, RatingService): parts scored 0-1 with these weights (decor: the shop's look and
+	-- placed pieces, Util/DecorRules.score; about a tenth of the rating), over the last `history` visits for happiness, smoothed over smoothSeconds, worked out every `tick` s; the
 	-- spawn gap is spawnAt1 x at 1 star and spawnAt5 x at 5 (3 stars: today's flow); display points per card shown,
 	-- displayFull points = a full score; a tip is good from goodFrom
 	RATING = {
-		parts = { stocked = 0.35, prices = 0.25, displays = 0.15, happy = 0.25, decor = 0 },
+		parts = { stocked = 0.35, prices = 0.25, displays = 0.15, happy = 0.25, decor = 0.10 },
 		history = 20,
 		smoothSeconds = 90,
 		tick = 5,

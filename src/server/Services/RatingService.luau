@@ -1,7 +1,7 @@
 --!strict
 -- Shop rating (spec 2026-11-06-customers-design, Util/RatingRules, Config/Customers RATING): every few seconds each
 -- open shop is scored on its parts (product shelves stocked, fair prices on what's stocked, Epic / Legendary / foil
--- cards on display, happy customers over the last visits, decor at weight 0 until the Decor system), mapped to 1-5
+-- cards on display, happy customers over the last visits, the shop's decor), mapped to 1-5
 -- stars and smoothed. The stars show on the shop's sign (PlotService.SetSignRating), the owner gets RatingUpdate for
 -- the tips chip, and the gap between customers scales with it (CustomerService.UseSpawnScale). Not saved: worked out
 -- live, a fresh join starts from what's on the shelves with happiness neutral.
@@ -11,15 +11,18 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local CustomerConfig = require(Config:WaitForChild("Customers"))
+local Decor = require(Config:WaitForChild("Decor"))
 local Pricing = require(Config:WaitForChild("Pricing"))
 local Products = require(Config:WaitForChild("Products"))
 local PriceRules = require(Shared:WaitForChild("Util"):WaitForChild("PriceRules"))
 local RatingRules = require(Shared:WaitForChild("Util"):WaitForChild("RatingRules"))
+local DecorRules = require(Shared:WaitForChild("Util"):WaitForChild("DecorRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
 local CustomerService = require(Services:WaitForChild("CustomerService"))
 local DataService = require(Services:WaitForChild("DataService"))
+local DecorService = require(Services:WaitForChild("DecorService"))
 local PlacementService = require(Services:WaitForChild("PlacementService"))
 local PlotService = require(Services:WaitForChild("PlotService"))
 local PricingService = require(Services:WaitForChild("PricingService"))
@@ -51,8 +54,11 @@ local function partsFor(owner: Player, state: State): { [string]: number }
 	local productShelves, stocked = 0, 0
 	local stockedProducts: { [string]: boolean } = {}
 	local shown: { { rarity: string, foil: boolean } } = {}
+	local decorPoints: { number } = {}
 	for _, shelf in PlacementService.GetShelves(owner) do
-		if shelf.def.kind == "Products" then
+		if shelf.def.kind == "Decor" then
+			table.insert(decorPoints, shelf.def.decor or 0)
+		elseif shelf.def.kind == "Products" then
 			productShelves += 1
 			local productId = shelf.productId
 			if shelf.units > 0 and productId then
@@ -83,7 +89,7 @@ local function partsFor(owner: Player, state: State): { [string]: number }
 		prices = RatingRules.prices(chances, Pricing.BUY_BANDS[1].chance),
 		displays = RatingRules.displays(CustomerConfig, shown),
 		happy = RatingRules.happy(state.history),
-		decor = 0, -- the Decor system's score goes here (its weight is 0 until then)
+		decor = DecorRules.score(Decor, DecorService.GetLook(owner), decorPoints),
 	}
 end
 

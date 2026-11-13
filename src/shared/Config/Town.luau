@@ -33,6 +33,20 @@ return {
 		GradingStation = { height = 0, collide = false, built = true }, -- the Grading Station (GRADING_LOOK)
 		Forge = { height = 0, collide = false, built = true }, -- the Forge (FORGE_LOOK), until its model is made
 		Trophy = { height = 0, collide = false, built = true }, -- a boss trophy (TROPHY_LOOK; its Gem in the boss's colour)
+		-- shop decor pieces (Config/Shelves kind "Decor"): their model once the Blender pack is imported (docs/props.md
+		-- "Decor props"), a code-built stand-in until then (standIn = drawn by Util/DecorLooks when no model exists)
+		PottedPlant = { height = 0, collide = false, standIn = true },
+		StarRug = { height = 0, collide = false, standIn = true },
+		FloorLamp = { height = 0, collide = false, standIn = true },
+		Beanbag = { height = 0, collide = false, standIn = true },
+		BalloonBunch = { height = 0, collide = false, standIn = true },
+		BoosterTower = { height = 0, collide = false, standIn = true },
+		ElementPennants = { height = 0, collide = false, standIn = true },
+		PlayTable = { height = 0, collide = false, standIn = true },
+		CardFrame = { height = 0, collide = false, standIn = true },
+		DogStandee = { height = 0, collide = false, standIn = true },
+		CardPedestal = { height = 0, collide = false, standIn = true },
+		PackStatue = { height = 0, collide = false, standIn = true },
 		-- each product shelf's look (Config/Shelves prop): code-built modern shelving (Util/ShelfLooks, SHELF_LOOK)
 		Shelf = { height = 0, collide = false, built = true }, -- Small Pack Rack: a one-sided gondola
 		WallShelf = { height = 0, collide = false, built = true },

@@ -19,6 +19,19 @@ AdminPanel.SECTIONS = {
 		},
 	},
 	{
+		-- Shop decor (spec 2026-11-14-shop-decor-design): each shop look as if bought and in use, every piece placed
+		title = "Decor",
+		buttons = {
+			{ label = "Cozy Wood", command = "/decor CozyWood" },
+			{ label = "Candy Pastel", command = "/decor CandyPastel" },
+			{ label = "Enchanted Forest", command = "/decor EnchantedForest" },
+			{ label = "Neon Arcade", command = "/decor NeonArcade" },
+			{ label = "Crystal Cave", command = "/decor CrystalCave" },
+			{ label = "Starry Night", command = "/decor StarryNight" },
+			{ label = "Every piece", command = "/decor pieces" },
+		},
+	},
+	{
 		title = "Money and levels",
 		buttons = {
 			{ label = "+$1,000", command = "/cash 1000" },
@@ -226,6 +239,7 @@ AdminPanel.SECTIONS = {
 			{ label = "First visit again (a new player's)", command = "/tutorial reset" },
 			{ label = "Jump to a step", command = "/tutorial step %s", placeholder = "step 1-8" },
 			{ label = "Lesson: Glass Showcase (Lv 2)", command = "/tutorial lesson showcase" },
+			{ label = "Lesson: Decor (Lv 2)", command = "/tutorial lesson decor" },
 			{ label = "Lesson: Card Sleeves (Lv 3)", command = "/tutorial lesson sleeves" },
 			{ label = "Lesson: Collector Case (Lv 3)", command = "/tutorial lesson collectorCase" },
 			{ label = "Lesson: first sword (Lv 4)", command = "/tutorial lesson sword" },
