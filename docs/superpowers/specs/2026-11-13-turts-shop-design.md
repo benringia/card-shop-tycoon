@@ -76,7 +76,7 @@ spend, a drop's farming time at $700 an hour) sits next to its price, and a test
 | Star Shard | $300 | $90 | 10 | 3% from Frontier monsters: about 33 fights |
 | Grading Seal | $400 | $150 | 8 | mid boss loot (Ember Colossus, Frost Tyrant) and their daily bonus |
 | A boss weapon material (one of the seven, each its own offer) | $350 | $150 | 1.5 each | about 1.2 per full-loot win, once per 15 minutes per boss; a boss weapon needs 15-40 |
-| Gold Seal | $12,500 | $10,000 | 1.5 | pays one grade step's cash, up to $10,000: always more than it can pay |
+| Gold Seal | $15,000 | $10,000 | 1.5 | pays one grade step's cash, up to $10,000: always more than it can pay (first written $12,500, under the 1.5x rule) |
 
 Never sold: boss key fragments (they unlock the boss ladder), trophies, Pish's presents.
 
