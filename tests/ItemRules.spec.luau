@@ -13,6 +13,29 @@ return {
 		expect.isNil(ItemRules.openablePack(config, nil), "nil")
 	end,
 
+	-- Turts' rug shop (spec 2026-11-13-turts-shop-design): his packs open from the Bag with their floors; the Legendary
+	-- Pack's Legendary rolls the stingy pity grades, so it can't skip the long Grade S chase
+	["Turts' packs open from the Bag with their floors; the Legendary Pack's grade is the stingy one"] = function()
+		local product, floor, stingy = ItemRules.openablePack(config, "legendaryPack")
+		expect.equal(product, "FirstSparkPack")
+		expect.equal(floor, "Legendary")
+		expect.equal(stingy, true)
+		local _, epicFloor, epicStingy = ItemRules.openablePack(config, "epicPack")
+		expect.equal(epicFloor, "Epic")
+		expect.equal(epicStingy, false)
+		local _, vrFloor, vrStingy = ItemRules.openablePack(config, "vrPack")
+		expect.equal(vrFloor, "Very Rare")
+		expect.equal(vrStingy, false)
+		local _, giftFloor, giftStingy = ItemRules.openablePack(config, "pishGift")
+		expect.equal(giftFloor, "Very Rare")
+		expect.equal(giftStingy, false, "Pish's gift rolls its grade as usual")
+		-- every item Turts sells exists
+		local Turts = require("../src/shared/Config/Turts")
+		for id, offer in Turts.OFFERS do
+			assert(config.ITEMS[offer.item], `{id} sells {offer.item}, which isn't an item`)
+		end
+	end,
+
 	-- Pish's end gift (spec 2026-11-09-tutorial-pish-design 5): a First Spark pack whose hit card is Very Rare or better
 	["openablePack: the gift opens a First Spark pack with a Very Rare floor"] = function()
 		local product, floor = ItemRules.openablePack(config, "pishGift")

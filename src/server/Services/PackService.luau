@@ -228,9 +228,10 @@ local function onRip(player: Player)
 end
 
 -- A pack from the Bag (LevelUpService, after it took the item): the same roll, pity and stat as ripping one from a
--- carried box; `floor` keeps its hit card at that rarity or better (Pish's gift). Returns false (nothing rolled) for a
--- product that isn't a pack.
-function PackService.OpenItemPack(player: Player, productId: string, floor: string?, itemId: string?): boolean
+-- carried box; `floor` keeps its hit card at that rarity or better (Pish's gift); `stingy`: the hit card's grade rolls
+-- Packs.PITY.LEGENDARY_GRADES (Turts' Legendary Pack: a bought Legendary can't skip the long Grade S chase). Returns
+-- false (nothing rolled) for a product that isn't a pack.
+function PackService.OpenItemPack(player: Player, productId: string, floor: string?, itemId: string?, stingy: boolean?): boolean
 	local pack = Packs.ById[productId]
 	if not pack then
 		return false
@@ -238,6 +239,10 @@ function PackService.OpenItemPack(player: Player, productId: string, floor: stri
 	DataService.AddStat(player, "packsOpened", 1)
 	local results = rollPack(pack, player, floor)
 	applyPity(player, results)
+	if stingy then
+		local hit = results[#results]
+		hit.grade = BeastRules.rollGradeFrom(rng:NextNumber(), Packs.PITY.LEGENDARY_GRADES)
+	end
 	deliverPack(player, productId, results, itemId)
 	return true
 end
