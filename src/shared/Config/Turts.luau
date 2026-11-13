@@ -60,6 +60,9 @@ return {
 	PRODUCT = "TurtsRestock", -- Config/Monetization PRODUCTS: Robux "restock now" (a new roll for that player)
 	BEACON_SECONDS = 30, -- a light over his rug after he moves
 	RUG_RADIUS = 4, -- studs
+	-- How high he stands: on his cushion's top (TurtsRug's cushion is 0.3-0.38 under his paws; on the street they went
+	-- through it, owner 2026-11-13: "turts feet are through the rug")
+	SEAT_HEIGHT = 0.32,
 	PROMPT_RANGE = 10, -- studs: his "Shop" prompt; buying needs you this near (plus a little)
 	SHAKE = { degrees = 7, hz = 3.2 }, -- his head's constant wobble (owner: "main animation will be the head shake")
 	SIT_EVERY = { 20, 40 }, -- seconds between his sit-downs

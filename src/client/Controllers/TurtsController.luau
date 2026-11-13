@@ -43,6 +43,7 @@ local SOLD_FADE = 0.6
 type Slot = { stand: Part, gui: BillboardGui, icon: Frame, price: TextLabel, sold: TextLabel }
 
 local marker: BasePart
+local seat: Part -- where he's drawn: his marker raised onto his cushion (Turts.SEAT_HEIGHT)
 local visual: PishVisual.Visual? = nil
 local head: Bone? = nil
 local rug: Model
@@ -125,8 +126,8 @@ local function buildRug(): Model
 		disc.CFrame = CFrame.new(0, 0.05 + ring * 0.01, -RUG_FORWARD) * CFrame.Angles(0, 0, math.rad(90))
 		disc.Parent = model
 	end
-	local cushion = part("Cushion", Vector3.new(2.6, 0.18, 2.4), Color3.fromRGB(120, 86, 170), Enum.Material.Fabric)
-	cushion.CFrame = CFrame.new(0, 0.15, 0.2)
+	local cushion = part("Cushion", Vector3.new(2.6, Turts.SEAT_HEIGHT, 2.4), Color3.fromRGB(120, 86, 170), Enum.Material.Fabric)
+	cushion.CFrame = CFrame.new(0, Turts.SEAT_HEIGHT / 2, 0.2)
 	cushion.Parent = model
 	for index, x in { -2.9, 2.9 } do
 		local crate = part("Crate", Vector3.new(1.4, 1.2, 1.4), WOOD, Enum.Material.WoodPlanks)
@@ -213,6 +214,7 @@ end
 -- The rug and the stands at his spot; the stands show this player's offers
 local function layOut()
 	local base = marker.CFrame
+	seat.CFrame = base * CFrame.new(0, Turts.SEAT_HEIGHT, 0)
 	rug:PivotTo(base)
 	for index, slot in slots do
 		local spot = SLOTS[index]
@@ -368,7 +370,7 @@ local function beacon()
 end
 
 local function makeVisual()
-	visual = PishVisual.new(marker, "Turts") or PishVisual.new(marker, "Chikin")
+	visual = PishVisual.new(seat, "Turts") or PishVisual.new(seat, "Chikin")
 	head = nil
 	if visual then
 		local bone = visual.body.model:FindFirstChild("Head_0", true)
@@ -415,6 +417,10 @@ function TurtsController.Start()
 			return -- not the main game, or his service isn't running
 		end
 		marker = found
+		seat = part("TurtsSeat", Vector3.new(2, 1, 2), Color3.new(), nil)
+		seat.Transparency = 1
+		seat.CFrame = marker.CFrame * CFrame.new(0, Turts.SEAT_HEIGHT, 0)
+		seat.Parent = workspace
 		rug = buildRug()
 		rug.Parent = workspace
 		for _ = 1, #SLOTS do
