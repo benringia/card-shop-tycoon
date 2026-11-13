@@ -111,7 +111,9 @@ local function buildGazebo(parent: Instance)
 	model.Parent = parent
 end
 
--- One giant card: gold, its art inset with a rim in its rarity colour; the card back on the other side
+-- One giant card: gold, its art inset with a rim in its rarity colour; the card back on the other side. A card with a
+-- `list` is one of the leaderboard's: its front is left for LeaderboardService (Server/Util/LeaderboardBoard) to draw,
+-- found by its LeaderboardList attribute
 local function giantCard(parent: Instance, spec: any, cframe: CFrame)
 	local fan = Plaza.FAN
 	local width = spec.height / 1.4
@@ -119,29 +121,34 @@ local function giantCard(parent: Instance, spec: any, cframe: CFrame)
 	card.CastShadow = true
 	local tier = (Rarities.Tiers :: any)[spec.rarity]
 	local rim = if tier then tier.color else Color3.new(1, 1, 1)
-	local front = Instance.new("SurfaceGui")
-	front.Face = Enum.NormalId.Front
-	front.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	front.PixelsPerStud = fan.pixelsPerStud
-	front.LightInfluence = 0.3
-	front.MaxDistance = fan.distance
-	front.Parent = card
-	local art = Instance.new("ImageLabel")
-	art.AnchorPoint = Vector2.new(0.5, 0.5)
-	art.Position = UDim2.fromScale(0.5, 0.5)
-	art.Size = UDim2.fromScale(0.86, 0.9)
-	art.BackgroundColor3 = rim
-	art.Image = (CardDesign.ART_IMAGES :: any)[spec.card] or ""
-	art.ScaleType = Enum.ScaleType.Crop
-	art.Parent = front
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0.05, 0)
-	corner.Parent = art
-	local stroke = Instance.new("UIStroke")
-	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	stroke.Color = rim
-	stroke.Thickness = 6
-	stroke.Parent = art
+	card:SetAttribute("Rarity", spec.rarity)
+	if spec.list then
+		card:SetAttribute("LeaderboardList", spec.list)
+	else
+		local front = Instance.new("SurfaceGui")
+		front.Face = Enum.NormalId.Front
+		front.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		front.PixelsPerStud = fan.pixelsPerStud
+		front.LightInfluence = 0.3
+		front.MaxDistance = fan.distance
+		front.Parent = card
+		local art = Instance.new("ImageLabel")
+		art.AnchorPoint = Vector2.new(0.5, 0.5)
+		art.Position = UDim2.fromScale(0.5, 0.5)
+		art.Size = UDim2.fromScale(0.86, 0.9)
+		art.BackgroundColor3 = rim
+		art.Image = (CardDesign.ART_IMAGES :: any)[spec.card] or ""
+		art.ScaleType = Enum.ScaleType.Crop
+		art.Parent = front
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0.05, 0)
+		corner.Parent = art
+		local stroke = Instance.new("UIStroke")
+		stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		stroke.Color = rim
+		stroke.Thickness = 6
+		stroke.Parent = art
+	end
 	local back = Instance.new("SurfaceGui")
 	back.Face = Enum.NormalId.Back
 	back.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
@@ -180,16 +187,20 @@ local function buildFan(parent: Instance)
 	local face = Vector3.new(fan.face.x, 0, fan.face.z)
 	local facing = CFrame.lookAt(middle, face)
 	local cards = PlazaLayout.fanCards(Plaza)
-	-- A long stone plinth under all five, a gold band along its top
+	-- A long stone plinth under them all, a gold band along its top
 	local base = fan.base
-	local width = (#cards - 1) * fan.step + 4
+	local widest = 0
+	for _, card in cards do
+		widest = math.max(widest, card.width)
+	end
+	local width = (#cards - 1) * fan.step + widest + 0.6
 	local plinth = facing * CFrame.new(0, base.height / 2, fan.depthStep)
 	piece(model, "Plinth", Vector3.new(width, base.height, base.depth), plinth, rgb(base.color), Enum.Material.Limestone)
 	detail(piece(model, "PlinthBand", Vector3.new(width + 0.16, 0.2, base.depth + 0.16), plinth * CFrame.new(0, base.height / 2 - 0.16, 0), rgb(fan.gold), Enum.Material.Metal))
 	for index, spec in fan.cards do
 		local card = cards[index]
 		local foot = CFrame.lookAt(Vector3.new(card.x, 0, card.z) + centre() * Vector3.new(1, 0, 1), Vector3.new(card.x, 0, card.z) + centre() * Vector3.new(1, 0, 1) + facing.LookVector)
-		-- Leaning out from its foot (and a little back), so the five open like a hand of cards
+		-- Leaning out from its foot (and a little back), so they open like a hand of cards
 		local stand = foot * CFrame.new(0, base.height, 0) * CFrame.Angles(0, 0, math.rad(card.lean)) * CFrame.Angles(math.rad(-fan.tilt), 0, 0)
 		giantCard(model, spec, stand * CFrame.new(0, card.height / 2, 0))
 	end

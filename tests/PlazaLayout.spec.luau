@@ -83,16 +83,15 @@ return {
 		assert(g.radius < combat.SPRING_RADIUS, "the healing area reaches past the columns")
 	end,
 
-	["the giant cards face where new players appear"] = function()
-		expect.equal(#plaza.FAN.cards, 5, "five cards")
-		local rarities = {}
+	-- Owner 2026-11-13: the plaza leaderboard as two giant cards (pick A), "replace the cards on the plaza with it"
+	["the giant cards are the leaderboard's two lists, facing where new players appear"] = function()
+		expect.equal(#plaza.FAN.cards, 2, "two cards")
+		local byList = {}
 		for _, card in plaza.FAN.cards do
-			rarities[card.rarity] = true
+			byList[card.list] = card
 		end
-		for _, rarity in { "Common", "Rare", "Very Rare", "Epic", "Legendary" } do
-			expect.equal(rarities[rarity], true, rarity)
-		end
-		expect.equal(plaza.FAN.cards[3].rarity, "Legendary", "the Legendary in the middle")
+		expect.equal(byList.allTime and byList.allTime.rarity, "Legendary", "all time in a Legendary rim")
+		expect.equal(byList.server and byList.server.rarity, "Rare", "this server in a Rare rim")
 		-- New players appear in front of it, within 45 degrees of straight on
 		local centre = PlazaLayout.at(plaza.FAN.angle, plaza.FAN.r)
 		local fx, fz = plaza.FAN.face.x - centre.x, plaza.FAN.face.z - centre.z
@@ -101,17 +100,39 @@ return {
 		assert(cos >= math.cos(math.rad(45)), "the spawn isn't in front of the giant cards")
 	end,
 
-	["the five giant cards stand side by side, each showing, fanned from the middle"] = function()
+	["the two list cards stand side by side, neither hiding the other, all time on the left as you face them"] = function()
 		local cards = PlazaLayout.fanCards(plaza)
-		expect.equal(#cards, 5, "five")
-		for index = 2, #cards do
-			local a, b = cards[index - 1], cards[index]
-			local gap = math.sqrt((a.x - b.x) ^ 2 + (a.z - b.z) ^ 2)
-			assert(gap >= (a.width + b.width) / 2 * 0.7, `cards {index - 1} and {index} hide each other`)
-			assert(b.lean < a.lean, "each leans out a little more to the right")
+		expect.equal(#cards, 2, "two")
+		local a, b = cards[1], cards[2]
+		local gap = math.sqrt((a.x - b.x) ^ 2 + (a.z - b.z) ^ 2)
+		assert(gap >= (a.width + b.width) / 2 + 0.3, "the cards overlap")
+		expect.near(a.lean, -b.lean, 1e-9, "leaning out alike")
+		-- Facing the cards (looking back along their facing), your left is the cards' own right side
+		local centre = PlazaLayout.at(plaza.FAN.angle, plaza.FAN.r)
+		local fx, fz = plaza.FAN.face.x - centre.x, plaza.FAN.face.z - centre.z
+		local rx, rz = -fz, fx
+		local function leftness(index: number): number
+			return (cards[index].x - centre.x) * rx + (cards[index].z - centre.z) * rz
 		end
-		expect.equal(cards[3].lean, 0, "the middle card stands straight")
-		assert(cards[1].back > cards[3].back, "the outer cards stand behind the middle one")
+		local allTime = if plaza.FAN.cards[1].list == "allTime" then 1 else 2
+		assert(leftness(allTime) > leftness(3 - allTime), "all time stands on the right")
+		assert(a.height <= 7.5 and b.height <= 7.5, "smaller than the old board")
+	end,
+
+	-- The leaderboard is read up close: no cafe table (and its sitter) in front of a list card
+	["no table stands in front of the leaderboard's cards"] = function()
+		local centre = PlazaLayout.at(plaza.FAN.angle, plaza.FAN.r)
+		local fx, fz = plaza.FAN.face.x - centre.x, plaza.FAN.face.z - centre.z
+		local length = math.sqrt(fx * fx + fz * fz)
+		fx, fz = fx / length, fz / length
+		for _, card in PlazaLayout.fanCards(plaza) do
+			for index, angle in plaza.TABLES.angles do
+				local t = PlazaLayout.at(angle, plaza.TABLES.r)
+				local ahead = (t.x - card.x) * fx + (t.z - card.z) * fz
+				local aside = math.abs((t.x - card.x) * -fz + (t.z - card.z) * fx)
+				assert(not (ahead > 0 and ahead < 8 and aside < card.width / 2 + plaza.TABLE.reach), `table {index} hides a list card`)
+			end
+		end
 	end,
 
 	["string lights sag between the gazebo and each lamp"] = function()
@@ -263,10 +284,10 @@ return {
 		expect.equal(sleepers, 1, "one sleeper")
 	end,
 
-	["eight lamps, three stalls, six tables, four potted trees"] = function()
+	["eight lamps, three stalls, five tables, four potted trees"] = function()
 		expect.equal(#plaza.LAMPS.angles, 8, "lamps")
 		expect.equal(#plaza.STALLS, 3, "stalls")
-		expect.equal(#plaza.TABLES.angles, 6, "tables")
+		expect.equal(#plaza.TABLES.angles, 5, "tables (the one in front of the leaderboard went)")
 		expect.equal(#plaza.TREES, 4, "potted trees")
 	end,
 	["the plaza's signpost stands in a planter beside the spawn, clear of the lamps and trees"] = function()

@@ -19,6 +19,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	ProductPictureRules = require("./ProductPictureRules.spec"),
 	PartyRules = require("./PartyRules.spec"),
 	PartyDock = require("./PartyDock.spec"),
+	LeaderboardRules = require("./LeaderboardRules.spec"),
 	CreatureMotion = require("./CreatureMotion.spec"),
 	CreatureAssets = require("./CreatureAssets.spec"),
 	CombatMath = require("./CombatMath.spec"),

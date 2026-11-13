@@ -1,8 +1,9 @@
 --!strict
 -- The Card Festival Square plaza (the user's pick C, 2026-10-30), built at server start by Server/Util/PlazaBuild:
 -- a cream gazebo with a teal tiled dome over the healing fountain (the Elemental Bloom lotus, round 2's pick B, built
--- by Server/Util/BloomFountain), a fan of five giant cards (real card art, gold rims), three festival carts with
--- striped canopies, six cafe tables with townsfolk sitting at three, string lights from the gazebo to eight lamp
+-- by Server/Util/BloomFountain), two giant cards that are the leaderboard (owner 2026-11-13; five cards of real card
+-- art stood there before), three festival carts with
+-- striped canopies, five cafe tables with townsfolk sitting at three, string lights from the gazebo to eight lamp
 -- posts, planters of bushes and flowers along the edge holding the lamps and the trees. Places are polar round the spring:
 -- angle in degrees (0 = +X, 90 = +Z: x = cos, z = sin), r in studs. The lanes (to the two shop doors and along the
 -- street) stay clear (Lune-tested, Util/PlazaLayout). Plain data, read by Lune tests. Colours { r, g, b }.
@@ -86,21 +87,22 @@ return {
 		beacon = { rate = 5, speed = { 4, 7 }, lifetime = { 3, 4.5 }, size = 0.6, spread = 15 },
 	},
 
+	-- The leaderboard's two giant cards (owner 2026-11-13: design A, "replace the cards on the plaza with it"; Config/
+	-- Leaderboard, LeaderboardService draws their faces): ALL TIME in a Legendary rim, THIS SERVER in a Rare rim, side by
+	-- side on a stone plinth facing the spawn. `list` names the list a card shows; the first card stands on the right as
+	-- you face them (all time reads first, on the left)
 	FAN = {
 		angle = 225,
 		r = 19,
 		face = { x = -10, z = 0 }, -- turned toward the plaza, with the spawn in front (and the street beyond)
 		base = { height = 1.2, depth = 3, color = { 214, 206, 190 } }, -- the long stone plinth they stand on
-		step = 3.4, -- studs between the cards' middles
-		lean = 9, -- degrees each card leans out per step from the middle
+		step = 5.5, -- studs between the cards' middles
+		lean = 6, -- degrees each card leans out per step from the middle
 		tilt = 6, -- degrees every card leans back
 		depthStep = 0.5, -- each step out stands this much further back, so faces never fight
 		cards = {
-			{ card = "Cindercub", rarity = "Common", height = 5 },
-			{ card = "Boltlynx", rarity = "Rare", height = 5.6 },
-			{ card = "Solarion", rarity = "Legendary", height = 7 },
-			{ card = "Thunderhorn", rarity = "Epic", height = 6 },
-			{ card = "Tidecaller", rarity = "Very Rare", height = 5.4 },
+			{ list = "server", rarity = "Rare", height = 7 },
+			{ list = "allTime", rarity = "Legendary", height = 7 },
 		},
 		gold = { 242, 193, 78 },
 		back = { 70, 110, 245 },
@@ -137,7 +139,8 @@ return {
 		reach = 3.6,
 	},
 
-	TABLES = { angles = { 24, 66, 114, 156, 204, 336 }, r = 18.4 },
+	-- (the one at 204 went: it stood in front of the leaderboard's cards, owner 2026-11-13)
+	TABLES = { angles = { 24, 66, 114, 156, 336 }, r = 18.4 },
 	-- A round wooden cafe table with a cloth just under its top and a little vase, bistro chairs round it (a round
 	-- seat on four thin dark legs, a round back on two posts), facing it
 	TABLE = {
@@ -150,7 +153,7 @@ return {
 		seat = { radius = 0.62, height = 1.55, thickness = 0.18 },
 		back = { radius = 0.58, y = 2.75, lean = 8 },
 		leg = 0.12,
-		-- townsfolk sitting at every other table (the customers' look), sipping now and then (PlazaNpcController)
+		-- townsfolk sitting at three of the tables (the customers' look), sipping now and then (PlazaNpcController)
 		sitters = {
 			{ table = 1, chair = 1 },
 			{ table = 3, chair = 2 },

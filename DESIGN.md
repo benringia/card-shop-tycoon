@@ -77,15 +77,15 @@ plaza concepts, 2026-10-30; `Config/Plaza`, `Util/PlazaLayout`, `Server/Util/Pla
 a gazebo with eight cream plaster columns and a stepped teal dome of roof tiles over the fountain (a warm light and
 a lantern inside, a dark teal inlay in its floor; matte mid tones, since white plastic and a shiny roof glared in the
 sun and mirrored the sky); a
-fan of five giant cards on a long stone plinth (real card art, gold edges, rims in their rarity colour: Cindercub,
-Boltlynx, Solarion in the middle, Thunderhorn, Tidecaller) in the north-west corner, facing where new players appear;
+pair of giant cards on a stone plinth in the north-west corner, facing where new players appear: the leaderboard (owner
+2026-11-13, see 9. Social features; five giant cards of real card art stood there before);
 three festival carts (the user's pick A of three stall designs; pink PACKS, blue CARDS, green SNACKS): a wooden
 box with a slatted front in its colour and white, two big spoked wheels, a handle with a prop leg, turned posts under
 a rounded striped canopy with a scalloped fringe and gold corner balls, a warm lantern at one corner, card packs and
-boxes on the counter and a chalkboard sign beside it (empty counters otherwise, ready for event NPCs); six round
-wooden cafe tables
+boxes on the counter and a chalkboard sign beside it (empty counters otherwise, ready for event NPCs); five round
+wooden cafe tables (the sixth stood in front of the leaderboard's cards)
 (a cloth under the top, a little vase of flowers) with three bistro chairs each (round seat on thin dark legs, round
-back on two posts); three townsfolk sitting at every other table (the customers' blocky look, a cup in hand; anchored
+back on two posts); three townsfolk sitting at three of them (the customers' blocky look, a cup in hand; anchored
 rigs, so no physics; each client plays the sit animation and lifts their cups to sip now and then, `PlazaNpcController`,
 only near the camera with the extras on); string lights sagging from the gazebo's rim to eight lamp posts at the edge;
 five curved stone planters along the edge between the lanes (radius 25, 2 wide, grass on top; the card fan's quarter
@@ -3166,7 +3166,20 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
 1. Server-wide pull announcements (MVP, cheap win)
 2. Buy singles from other players' Collector Cases (done)
 3. Trading window (with confirm + both sides lock)
-4. Leaderboards: richest shop, rarest collection
+4. Leaderboards: richest shop, rarest collection. First one built (owner 2026-11-13: "Remove roblox leaderboards on
+   load, we will be adding a leaderboard in game at the plaza for most cards opened"): Roblox's player list is hidden
+   on join (UIController) and the lists are two giant trading cards on the plaza (pick A of three designs, "replace the
+   cards on the plaza with it": they stand where the five-card fan stood, facing the spawn; a board in the street was
+   "too big", twice; Config/Plaza FAN, Config/Leaderboard FACE): ALL TIME in a Legendary gold rim, the top 10 across
+   every server ("names of all time players across all servers"), on the left; THIS SERVER in a Rare blue rim,
+   everyone here now, new players at 0 included ("names of the players within their server"). Each card: a sky window
+   with its title, "MOST PACKS OPENED" and the top three on a podium (avatar, name, count, gold, silver and bronze
+   steps), then a cream text box of rows 4-10 (rank, avatar, display name, count) in the game's window colours;
+   lifetime packs opened (stats.packsOpened, ripped boxes and Bag packs). Every place sends a player's changed total to an
+   OrderedDataStore named after the save store (`<STORE_NAME>_PacksOpened`, so the launch wipe clears it) at most once
+   a minute and as they leave, never from Studio (LeaderboardService); the main game reads the all-time top every two
+   minutes and shows it with the players here counted live (LeaderboardRules.merge). Drawn on the server
+   (Server/Util/LeaderboardBoard on the cards PlazaBuild marks), no remotes. No reward for now.
 5. Play Glimmerbeasts at tables (simple card battle mini-game), tournaments bring customers
 6. Weekly limited packs / events
 
@@ -3249,6 +3262,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── DungeonPuzzleService.luau # Dungeon: prism beams, weight plates, the secret wall, the element lock, their chests
     │   │   ├── DevService.luau       # Studio-only test chat commands (/crowd: extra players counted in the Wild's biomes)
     │   │   ├── LevelUpService.luau   # shop level-up packs, opening Bag packs (OpenBagPack), the LevelUpFx broadcast (held mid-fight)
+    │   │   ├── LeaderboardService.luau # the plaza leaderboard: packs-opened totals to an OrderedDataStore (every place), the cards' lists (main game)
     │   │   ├── PurchaseService.luau  # the one ProcessReceipt: developer products granted once, ever (receipt ids saved first)
     │   │   ├── SupportService.luau   # "Support the dev": gifts, the best tier, the supporter aura (SupporterTier)
     │   │   ├── ReviewService.luau    # the phone's Reviews: customers' posts from their visits (runtime)
@@ -3261,7 +3275,8 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │       ├── SaleRules.luau        # player-to-player buy check (pure, Lune-tested)
     │       ├── BattleSim.luau        # seeded fight simulation: packs, boss mechanics and phases, carried HP (pure, Lune-tested)
     │       ├── DungeonBuilder.luau   # the Dungeon's cavern: its steps' rooms and puzzle pieces, doors, the ruins props, lighting
-    │       ├── PlazaBuild.luau       # the Card Festival Square: gazebo, card fan, stalls, cafe sets and townsfolk, lights, planters
+    │       ├── PlazaBuild.luau       # the Card Festival Square: gazebo, the leaderboard's giant cards, stalls, cafe sets and townsfolk, lights, planters
+    │       ├── LeaderboardBoard.luau # the plaza leaderboard's card faces: podium and rows (LeaderboardService fills them)
     │       ├── BloomFountain.luau    # the healing spring's Elemental Bloom lotus fountain
     │       ├── PortalBuild.luau      # dresses a town portal model: vortex, glow, effects, light (and the old frame's emitters)
     │       ├── ScenePieces.luau      # anchored parts and scaled prop copies for the code-built scenery
@@ -3432,6 +3447,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
         │   ├── PackOpening.luau # the 3D opening: stage, camera, tear, stack, flips, alive, results, sounds (client)
         │   ├── PackOpeningLayout.luau # where the opening's cards sit on screen (plain data)
         │   ├── LevelUpFx.luau  # the level-up pillar's textures, timing, sizes, colours, sound options (plain data)
+        │   ├── Leaderboard.luau  # the plaza leaderboard: store name, timings, the list cards' face (plain data)
         │   ├── PackFx.luau     # the opening's effect sheets and images (plain data)
         │   ├── UIMotion.luau   # UI motion timings and scales (client)
         │   ├── UIFonts.luau    # the game fonts (client)
@@ -3605,6 +3621,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── AbyssLayout.luau   # the Crystal Abyss: its islands, bridges, what's stone, a fall (pure, Lune-tested)
             ├── NewPulls.luau      # which pulls are NEW to the collection, for the pack results (pure, Lune-tested)
             ├── LevelUpRules.luau  # level-up rewards (cash every level, a pack every 10th), held effects merged (pure, Lune-tested)
+            ├── LeaderboardRules.luau  # the plaza leaderboard's lists, store writes and counts (pure, Lune-tested)
             ├── UpgradeRules.luau  # station jobs: waits, Finish now tiers, the clock, saved jobs read back (pure, Lune-tested)
             ├── ReceiptRules.luau  # receipts already granted, the newest 100 kept (pure, Lune-tested)
             ├── ReviewRules.luau   # the Reviews app: a visit's post, the feed, unseen posts (pure, Lune-tested)

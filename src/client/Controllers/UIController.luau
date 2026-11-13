@@ -636,6 +636,10 @@ local function placeStatusRow(rowLayout: UIListLayout)
 end
 
 function UIController.Start()
+	-- Roblox's player list goes: the plaza leaderboard ranks players (owner 2026-11-13, Config/Leaderboard)
+	pcall(function()
+		game:GetService("StarterGui"):SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
+	end)
 	screenGui = Instance.new("ScreenGui")
 	screenGui.Name = "MainGui"
 	screenGui.ResetOnSpawn = false

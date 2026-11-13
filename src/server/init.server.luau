@@ -50,6 +50,7 @@ local DevService = require(Services:WaitForChild("DevService"))
 local DungeonService = require(Services:WaitForChild("DungeonService"))
 local DungeonGateService = require(Services:WaitForChild("DungeonGateService"))
 local LevelUpService = require(Services:WaitForChild("LevelUpService"))
+local LeaderboardService = require(Services:WaitForChild("LeaderboardService"))
 
 local Place = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("Place"))
 
@@ -74,6 +75,7 @@ if Place.isDungeon() then
 	FrontierService.Start() -- back to the Frontier
 	TutorialService.StartLessonsOnly() -- Pish's lessons a level-up here unlocks wait for the town (saved)
 	LevelUpService.Start() -- level-up packs and Bag pack openings (after EconomyService, ItemService, BattleService)
+	LeaderboardService.StartWrites() -- packs opened here count on the plaza leaderboard
 	DevService.Start() -- Studio only
 	DataService.Start() -- last: starts loading players
 elseif Place.isFrontier() then
@@ -100,6 +102,7 @@ elseif Place.isFrontier() then
 	DungeonGateService.Start() -- the Dungeon portal: checks, groups, the teleport (after WildService builds the plaza)
 	TutorialService.StartLessonsOnly() -- Pish's lessons a level-up here unlocks wait for the town (saved)
 	LevelUpService.Start() -- level-up packs and Bag pack openings (after EconomyService, ItemService, BattleService)
+	LeaderboardService.StartWrites() -- packs opened here count on the plaza leaderboard
 	DevService.Start() -- Studio only
 	DataService.Start() -- last: starts loading players
 else
@@ -147,6 +150,7 @@ else
 	CombatTutorialService.Start() -- Chikin's combat tutorial after Pish's (after TutorialService; before DataService.Start)
 	WelcomeService.Start() -- the first-visit welcome cinematic's saved flag (before DataService.Start)
 	LevelUpService.Start() -- level-up packs and Bag pack openings (after EconomyService, ItemService, BattleService)
+	LeaderboardService.Start() -- the plaza leaderboard: most packs opened (after PlotService and the plaza)
 	DevService.Start() -- Studio only
 	DataService.Start() -- last: starts loading players
 end
