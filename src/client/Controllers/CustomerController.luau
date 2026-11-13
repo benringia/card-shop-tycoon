@@ -13,7 +13,7 @@ local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local CreamTheme = require(Config:WaitForChild("CreamTheme"))
 local Customers = require(Config:WaitForChild("Customers"))
-local PackOpening = require(Config:WaitForChild("PackOpening"))
+local RevealSounds = require(Config:WaitForChild("RevealSounds"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CardFace = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("CardFace"))
@@ -95,15 +95,15 @@ local function rarityOrder(rarity: string): number
 	return if tier then tier.order else 0
 end
 
+-- A customer's big pull: its rarity's main reveal hit (Config/RevealSounds), heard round the shop
 local function playHit(rarity: string, parent: Instance)
-	local key = if rarity == "Legendary" then "hitLegendary" elseif rarity == "Epic" then "hitEpic" else "hitRare"
-	local id = PackOpening.SOUNDS[key]
-	if not id or id == "" then
+	local look = RevealSounds.BY_RARITY[rarity]
+	if not look then
 		return
 	end
 	local sound = Instance.new("Sound")
-	sound.SoundId = id
-	sound.Volume = PackOpening.VOLUMES[key] or 0.5
+	sound.SoundId = look.hit[1].id
+	sound.Volume = look.hit[1].volume
 	sound.RollOffMaxDistance = Customers.REVEAL.maxDistance
 	sound.Parent = parent
 	sound.Ended:Once(function()

@@ -17,6 +17,8 @@ local Cards = require(Config:WaitForChild("Cards"))
 local CardEffects = require(Config:WaitForChild("CardEffects"))
 local PackOpening = require(Config:WaitForChild("PackOpening"))
 local PackOpeningLayout = require(Config:WaitForChild("PackOpeningLayout"))
+local RevealSounds = require(Config:WaitForChild("RevealSounds"))
+local RevealSoundRules = require(Shared:WaitForChild("Util"):WaitForChild("RevealSoundRules"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local OpeningLayout = require(Shared:WaitForChild("Util"):WaitForChild("OpeningLayout"))
 local RevealRules = require(Shared:WaitForChild("Util"):WaitForChild("RevealRules"))
@@ -167,7 +169,8 @@ local function buildCard(pull: Pull, index: number): Shown
 	part.Name = "Card"
 	part.Size = Vector3.new(CARD_W, SIZE.HEIGHT, SIZE.THICKNESS)
 	part.Anchored, part.CanCollide, part.CanQuery, part.CanTouch, part.CastShadow = true, false, false, false, false
-	part.Color = Color3.fromRGB(20, 18, 30)
+	-- Unseen: only its rounded faces show (its dark square corners and edges peeked round the rim as it turned)
+	part.Transparency = 1
 	part.Parent = model
 	local halo = Instance.new("Part")
 	halo.Name = "Halo"
@@ -179,7 +182,7 @@ local function buildCard(pull: Pull, index: number): Shown
 	halo.Parent = model
 	model.PrimaryPart = part
 	local faceGui, faceFrame, faceStroke = surface(part, Enum.NormalId.Front)
-	CardFace.render(faceFrame, faceStroke, pull.card, pull.foil, true, { level = 1, stars = BeastRules.START_STARS, grade = pull.grade }, nil)
+	CardFace.render(faceFrame, faceStroke, pull.card, pull.foil, true, { level = 1, stars = BeastRules.START_STARS, grade = pull.grade, fresh = true }, nil)
 	local backGui, backFrame, backStroke = surface(part, Enum.NormalId.Back)
 	CardFace.renderBack(backFrame, backStroke)
 	local color = rarityColor(pull.card)
@@ -398,8 +401,16 @@ local function startAlive(shown: Shown)
 	end
 end
 
-local function hitSound(plan: RevealRules.Plan): string
-	return if plan.goldShards then "hitLegendary" elseif plan.cinematic then "hitEpic" else "hitRare"
+-- A reveal's hit (Config/RevealSounds): its layers, each `at` seconds after the landing
+local function playHit(stack: RevealSoundRules.Stack)
+	for _, sound in stack.hit do
+		local volume = sound.volume * RevealSounds.MASTER
+		if (sound.at or 0) > 0 then
+			task.delay(sound.at :: number, OpeningStage.playId, "hit", sound.id, volume)
+		else
+			OpeningStage.playId("hit", sound.id, volume)
+		end
+	end
 end
 
 -- Flips card `index` (reveal order): a tease first for a Rare-or-better (or foil) card, then the flip, then its
@@ -413,8 +424,18 @@ function OpeningCards.flip(index: number)
 	local color = shown.color
 	local raised = shown.at * CFrame.new(0, FLIP.LIFT, 0)
 	local mine = session
+	local stack = RevealSoundRules.stack(RevealSounds, shown.pull.card.rarity, shown.pull.foil, CardFace.isFrontier(shown.pull.card))
 	if plan.tease > 0 then
-		OpeningStage.play("tease")
+		-- the riser swells under the tease and peaks as the card lands
+		local riser = if stack then stack.riser else nil
+		if riser then
+			local timing = RevealSoundRules.riserTiming(riser.peak, plan.tease + FLIP.TEASE_SECONDS)
+			task.delay(timing.delay, function()
+				if session == mine then
+					OpeningStage.playId("riser", riser.id, riser.volume * RevealSounds.MASTER, timing.startAt)
+				end
+			end)
+		end
 		shown.halo.Color = color
 		TweenService:Create(shown.halo, TweenInfo.new(plan.tease, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Transparency = FLIP.GLOW_TRANSPARENCY }):Play()
 		OpeningFx.aura(true, color, behind(shown.at))
@@ -462,8 +483,10 @@ function OpeningCards.flip(index: number)
 	play(shown.shine, FLIP.SHINE_SECONDS, 0)
 	OpeningFx.glint((landing * CFrame.new(CARD_W * 0.42, SIZE.HEIGHT * 0.42, -0.1)).Position, 0.8)
 	if plan.tease > 0 then
-		OpeningStage.fade("tease", PackOpening.TEASE_FADE_SECONDS)
-		OpeningStage.play(hitSound(plan))
+		OpeningStage.fade("riser", RevealSounds.FADE)
+		if stack then
+			playHit(stack)
+		end
 		OpeningFx.burst(landing.Position, color, if plan.goldShards then FLIP.BIG_BURST_SIZE else FLIP.BURST_SIZE)
 		if plan.banner then
 			showBanner(plan.banner, color)

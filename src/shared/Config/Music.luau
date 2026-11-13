@@ -70,7 +70,7 @@ return {
 			option("Jackpot (game show, fast and driving)", "1836301731"),
 			option("Mr Happy Go Lucky (cheerful pizzicato)", "9043031481"),
 		},
-		volume = 0.1, -- the owner's number (2026-11-10, after trying 0.06); "/music opening 3 <volume>" to try others
+		volume = 0.07, -- owner 2026-11-13: "lower music/sound volume" (0.1 before, their 2026-11-10 number after trying 0.06); "/music opening 3 <volume>" to try others
 		compressor = LEVELER,
 		fade = 0.8, -- seconds: quick, so the music changes as the pack comes up
 	},

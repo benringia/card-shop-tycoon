@@ -168,10 +168,7 @@ return {
 		snap = "rbxassetid://9125724621", -- Paper Tear Fast Harsh Rip (Pro Sound Effects): the strip tears off
 		stack = "rbxassetid://105273485659548", -- cardswipe: each card landing on the pile
 		flip = "rbxassetid://3456145589", -- card_flip (f4ngy, Freesound)
-		tease = "rbxassetid://9120747429", -- Whooshy Magic Sucks, a synthy rise (Pro Sound Effects); cut at the hit
-		hitRare = "rbxassetid://9116394545", -- Magic Glows Soft Clusters Of Chiming Hits 1 (Pro Sound Effects)
-		hitEpic = "rbxassetid://94978851787238", -- Deep Impact Boom (Daily Sounds)
-		hitLegendary = "rbxassetid://1844539433", -- Orchestral Hits (APM)
+		-- A Rare-or-better card's riser and layered hit: Config/RevealSounds (owner 2026-11-13: "more premium")
 		shimmer = "rbxassetid://9116418035", -- Magic Tone Falling Shimmer (Pro Sound Effects): a shown card comes alive
 		-- The lineup: its own sounds, not the boss victory's tiles and chime (owner 2026-11-10: "similar to the sound
 		-- after killing a boss")
@@ -198,14 +195,13 @@ return {
 		chestPoof = "rbxassetid://9114156934", -- Doppler Whooshes Crackly Airy Bursts 1 (Pro Sound Effects): an empty chest
 	},
 	VOLUMES = {
-		-- The rip at about half (owner 2026-11-10: lower the ripping sound)
-		crinkle = 0.3, snap = 0.3, stack = 0.35, flip = 0.45, tease = 0.5,
-		hitRare = 0.55, hitEpic = 0.65, hitLegendary = 0.75, shimmer = 0.3, land = 0.3, chime = 0.4,
+		-- The rip at about half (owner 2026-11-10: lower the ripping sound); then all of the opening's sounds 0.7 of that
+		-- (owner 2026-11-13: "lower music/sound volume"; the reveals: Config/RevealSounds MASTER)
+		crinkle = 0.21, snap = 0.21, stack = 0.25, flip = 0.32, shimmer = 0.21, land = 0.21, chime = 0.28,
 		-- The Forge's: half their first levels (owner 2026-11-06: good, but loud)
 		forgeFire = 0.22, forgeStrike = 0.25, forgeClank = 0.32, forgeBurst = 0.25, forgeBoom = 0.3, forgeRing = 0.2,
 		-- The drop cinematic's: half again (owner 2026-11-06: good, but loud)
 		dropRise = 0.12, dropBurst = 0.15, dropRing = 0.08, dropSting = 0.11, dropBoom = 0.12, dropFlip = 0.2,
 		chestCreak = 0.35, chestThud = 0.35, chestCoins = 0.3, chestPoof = 0.25,
 	},
-	TEASE_FADE_SECONDS = 0.12, -- the tease's rise fades out this fast when the hit lands
 }

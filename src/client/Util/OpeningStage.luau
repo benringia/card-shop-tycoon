@@ -13,6 +13,7 @@ local TweenService = game:GetService("TweenService")
 
 local Config = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config")
 local PackOpening = require(Config:WaitForChild("PackOpening"))
+local RevealSounds = require(Config:WaitForChild("RevealSounds"))
 local CardDesign = require(Config:WaitForChild("CardDesign"))
 
 local ClientUtil = script.Parent :: Instance
@@ -379,16 +380,13 @@ local function silence(sound: Sound)
 	sound:Destroy()
 end
 
--- Plays one of Config/PackOpening SOUNDS (nothing while its id is empty) as a one-shot of its own, so quick repeats
--- (a card per 0.19s) overlap instead of cutting each other off. Made on the client, so only this player hears it.
-function OpeningStage.play(name: string, speed: number?)
-	local id = (PackOpening.SOUNDS :: any)[name]
-	if typeof(id) ~= "string" or id == "" then
-		return
-	end
+-- Plays sound `id` at `volume` as a one-shot of its own, so quick repeats (a card per 0.19s) overlap instead of
+-- cutting each other off; `startAt` seconds into it (a reveal's riser, timed to peak on the hit); kept under `name`,
+-- which fade() finds it by. Made on the client, so only this player hears it.
+function OpeningStage.playId(name: string, id: string, volume: number, startAt: number?, speed: number?)
 	local sound = Instance.new("Sound")
 	sound.SoundId = id
-	sound.Volume = volumeOf(name)
+	sound.Volume = volume
 	sound.PlaybackSpeed = speed or 1 -- the Forge's hammer strikes climb
 	sound.Parent = SoundService
 	live[sound] = name
@@ -396,6 +394,18 @@ function OpeningStage.play(name: string, speed: number?)
 		silence(sound)
 	end)
 	sound:Play()
+	if startAt and startAt > 0 then
+		sound.TimePosition = startAt
+	end
+end
+
+-- Plays one of Config/PackOpening SOUNDS (nothing while its id is empty)
+function OpeningStage.play(name: string, speed: number?)
+	local id = (PackOpening.SOUNDS :: any)[name]
+	if typeof(id) ~= "string" or id == "" then
+		return
+	end
+	OpeningStage.playId(name, id, volumeOf(name), nil, speed)
 end
 
 -- Fades the playing copies of a sound out over `seconds` (the tease's rise at the reveal's hit)
@@ -413,13 +423,22 @@ function OpeningStage.fade(name: string, seconds: number)
 	end
 end
 
--- The sounds to preload (ContentProvider) when the stage first shows
+-- The sounds to preload (ContentProvider) when the stage first shows: the stage's and the reveals' (Config/RevealSounds)
 function OpeningStage.soundIds(): { string }
 	local ids = {}
 	for _, id in PackOpening.SOUNDS do
 		if id ~= "" then
 			table.insert(ids, id)
 		end
+	end
+	for _, look in RevealSounds.BY_RARITY do
+		table.insert(ids, look.riser.id)
+		for _, sound in look.hit do
+			table.insert(ids, sound.id)
+		end
+	end
+	for _, sound in RevealSounds.FOIL do
+		table.insert(ids, sound.id)
 	end
 	return ids
 end

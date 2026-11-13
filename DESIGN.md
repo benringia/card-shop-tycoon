@@ -690,16 +690,28 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
   27 ms or less through the tear, flips and results.
 - **Sounds** (`PackOpening.SOUNDS` and `VOLUMES`, free Creator Store sounds, only the opener hears them): a crinkle
   while the strip parts and a rip when it tears off (both at 0.3, owner 2026-11-10: lower), a card swipe per card
-  stacking up, a card flick per flip; Rare and better get a rising tease (cut short when the card lands) and a hit
-  (soft chimes for Rare and Very Rare, a deep boom for Epic, orchestral hits for Legendary and Frontier) and a shimmer
+  stacking up, a card flick per flip; Rare and better (owner 2026-11-13: "more premium sounding? specially when you
+  got rare cards and above"; `Config/RevealSounds`, `Util/RevealSoundRules`) swell into the flip with a riser started
+  so its loudest moment lands on the card (each riser's peak measured in Studio) and land on a stack of layers,
+  bigger each step up: Rare an airy rising whoosh into a magic pulse and a bell ding; Very Rare a phasey magic suck
+  into sparkling chimes, a magic burst and spinning chimes; Epic a reverse-cymbal build into a tonal impact, a sub
+  boom, a glistening harp sting (APM) and an angel sparkle; Legendary and Frontier a long reverse-cymbal build into
+  the orchestral hits (APM), a sub boom, a tonal impact, a heavenly sting (APM) and a long angel sparkle; a foil card
+  adds a fairy-dust shimmer (a foil Common swells like a Rare). Each sound's loudness was measured at full volume, so
+  the heard loudness climbs Rare 142, Very Rare 223, Epic 389, Legendary 475 (`tests/RevealSounds`; the old Rare
+  chime measured 11 against the Epic boom's 300, so a Rare barely sounded). A customer's big pull in the shop plays
+  its rarity's main hit (owner 2026-11-13 after hearing them: "lower music/sound volume": the opening's sounds at 0.7 of
+  their levels, `RevealSounds.MASTER`, and its music 0.07). The pulled cards are just their rounded faces (the card's
+  block is unseen: its dark square corners and edge showed round the rim as it turned) and a fresh pull shows no
+  "Lv 1" or empty stars (`CardFace` Growth `fresh`; owner: "clean up cards, remove excess borders"). Then a shimmer
   while the card is alive; the results swipe in per landing card and end on a bright UI ding (PSE "Synth Sparkle Tone
   High Pitch Bell Tone Ding 4"): the lineup's sounds are never the boss victory's (owner 2026-11-10: it sounded like
   killing a boss; `tests/OpeningSounds`). **Music**: the opening has its own music (`Music.OPENING`, crossfading in from
-  wherever you are and back out, through the leveler, at 0.1, the owner's number; owner 2026-11-10: "change the music on this
+  wherever you are and back out, through the leveler, at 0.07, 0.1 the owner's first number; owner 2026-11-10: "change the music on this
   screen. too plain"): each opening plays the next of three APM pieces, looping while it's up ("Magic and Mayhem",
   "Enchanted Butterflies", "Mischievous Elves"; `rotate = "visit"`, `MusicRules.visitTrack`; owner: "so that when
   players open lots of pack its not the same music always"); `/music opening <n> [volume]` plays any of the six. Most come from Roblox's licensed libraries (Pro Sound Effects,
-  APM) and Daily Sounds (made from scratch); the flip is "card_flip" by f4ngy (Freesound, CC BY).
+  APM; the reveals all are) and Daily Sounds (made from scratch); the flip is "card_flip" by f4ngy (Freesound, CC BY).
 - Card faces (`Util/CardFace`, `Config/CardDesign`), clean full-art style (like the top Roblox card games),
   built in code with no frame images: the art fills the card inside a thin rounded rim in the rarity colour
   (white Common, blue Rare, teal Very Rare, purple Epic, gold Legendary; a turning rainbow on foil, aurora on
@@ -3458,6 +3470,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
         │   ├── BabyColors.luau # the cotton candy baby colours, roles, element rims, the soft glow, soft buttons (plain data)
         │   ├── SoftHud.luau    # the squircle HUD tiles: sizes, colours, the squishy hover (plain data)
         │   ├── CardReveal.luau # how big each pull's reveal is: tease, rays, spotlight, sparks, banner (plain data)
+        │   ├── RevealSounds.luau # each rarity's reveal riser and layered hit, with measured loudness (plain data)
         │   ├── CardDesign.luau # card face layout, colours and image ids (client)
         │   ├── Collection.luau # binder request limits
         │   ├── BinderDesk.luau # the 3D binder: stage, camera, page and pocket sizes, tabs, desk colours, page turns, the lift
@@ -3589,6 +3602,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
             ├── RevealRules.luau   # a card's reveal plan from rarity, foil and set (pure, Lune-tested)
+            ├── RevealSoundRules.luau  # a card's reveal sounds and its riser's timing (pure, Lune-tested)
             ├── BinderSpreads.luau # binder spreads, card ranges, which page a card is on, the page counter (pure, Lune-tested)
             ├── PageCurl.luau      # a turning page's bend, its strips, drag-to-turn, fast-turn pacing, swipes and taps (pure, Lune-tested)
             ├── BinderFit.luau     # the 3D binder's pockets on a page and the camera fit for a screen rectangle (pure, Lune-tested)

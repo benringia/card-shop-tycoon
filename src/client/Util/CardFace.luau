@@ -23,7 +23,9 @@ local CardArt = require(Shared:WaitForChild("Util"):WaitForChild("CardArt"))
 type Card = typeof(Cards.List[1])
 type Box = CardDesign.Box
 -- A copy's level, stars and grade; nil means a plain Grade C copy (level 1, 0 stars)
-export type Growth = { level: number, stars: number, grade: string }
+-- `fresh`: a card just pulled (the pack opening): no level chip or stars, every pull has Lv 1 and none (owner
+-- 2026-11-13: "clean up cards, remove excess borders, make it look clean/premium/polished/immersive")
+export type Growth = { level: number, stars: number, grade: string, fresh: boolean? }
 
 local NEUTRAL_STROKE = Color3.fromRGB(120, 120, 140)
 local WHITE = Color3.new(1, 1, 1)
@@ -532,8 +534,10 @@ function CardFace.render(frame: Frame, stroke: UIStroke, card: Card, foil: boole
 	valueLabel.TextXAlignment = Enum.TextXAlignment.Center
 
 	if detail ~= false then
-		addStars(face, stars, layout.STARS)
-		chip(face, "Level", `Lv {level}`, layout.LEVEL, CardDesign.LEVEL_CHIP, CardDesign.LEVEL_CHIP_TRANSPARENCY)
+		if not (growth and growth.fresh) then
+			addStars(face, stars, layout.STARS)
+			chip(face, "Level", `Lv {level}`, layout.LEVEL, CardDesign.LEVEL_CHIP, CardDesign.LEVEL_CHIP_TRANSPARENCY)
+		end
 		if foil or frontier then
 			local tag = chip(face, "Foil", if frontier then "FRONTIER" else "FOIL", layout.FOIL, BLACK, 0.4)
 			local gradient = Instance.new("UIGradient")
