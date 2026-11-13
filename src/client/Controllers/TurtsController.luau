@@ -66,12 +66,48 @@ local function part(name: string, size: Vector3, color: Color3, material: Enum.M
 	return made
 end
 
--- His rug and things (PropModels.TurtsRug when it's imported), laid out round the origin facing -Z (his customers)
+-- The lantern's glow and the sign's word, on the imported rug (Frame, Glow, Sign) or the stand-in
+local function dress(model: Model)
+	local glass = model:FindFirstChild("Glow", true)
+	if glass and glass:IsA("BasePart") then
+		glass.Material = Enum.Material.Neon
+		local light = Instance.new("PointLight")
+		light.Color = Color3.fromRGB(255, 196, 110)
+		light.Range = 9
+		light.Brightness = 0.8
+		light.Parent = glass
+	end
+	local board = model:FindFirstChild("Sign", true)
+	if board and board:IsA("BasePart") then
+		local gui = Instance.new("SurfaceGui")
+		gui.Face = Enum.NormalId.Front
+		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		gui.PixelsPerStud = 60
+		gui.LightInfluence = 0.3
+		gui.Parent = board
+		local word = UIKit.label(gui, "TURTS", Enum.Font.FredokaOne, 44, Color3.fromRGB(255, 248, 236))
+		word.Size = UDim2.fromScale(1, 1)
+		word.TextXAlignment = Enum.TextXAlignment.Center
+	end
+	for _, item in model:GetDescendants() do
+		if item:IsA("BasePart") then
+			item.Anchored = true
+			item.CanCollide = false
+			item.CanQuery = false
+			item.CanTouch = false
+		end
+	end
+end
+
+-- His rug and things (PropModels.TurtsRug when it's imported: Frame, Glow, Sign, origin where he sits, built by
+-- tools/blender/build_turts_rug.py), laid out round the origin facing -Z (his customers)
 local function buildRug(): Model
 	local props = ReplicatedStorage:FindFirstChild("PropModels")
 	local template = if props then props:FindFirstChild("TurtsRug") else nil
 	if template and template:IsA("Model") then
-		return template:Clone()
+		local model = template:Clone()
+		dress(model)
+		return model
 	end
 	local model = Instance.new("Model")
 	model.Name = "TurtsRug"
@@ -90,25 +126,13 @@ local function buildRug(): Model
 		crate.CFrame = CFrame.new(x, 0.65, 0.6) * CFrame.Angles(0, math.rad(index * 12), 0)
 		crate.Parent = model
 	end
-	local lantern = part("Lantern", Vector3.new(0.5, 0.7, 0.5), Color3.fromRGB(255, 196, 110), Enum.Material.Neon)
+	local lantern = part("Glow", Vector3.new(0.5, 0.7, 0.5), Color3.fromRGB(255, 196, 110))
 	lantern.CFrame = CFrame.new(-2.9, 1.65, 0.6)
 	lantern.Parent = model
-	local light = Instance.new("PointLight")
-	light.Color = lantern.Color
-	light.Range = 9
-	light.Brightness = 0.8
-	light.Parent = lantern
 	local sign = part("Sign", Vector3.new(2.2, 1.2, 0.15), Color3.fromRGB(44, 52, 56), Enum.Material.Slate)
 	sign.CFrame = CFrame.new(2.9, 1.9, 0.6) * CFrame.Angles(math.rad(-12), 0, 0)
 	sign.Parent = model
-	local board = Instance.new("SurfaceGui")
-	board.Face = Enum.NormalId.Front
-	board.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	board.PixelsPerStud = 60
-	board.Parent = sign
-	local word = UIKit.label(board, "TURTS", Enum.Font.FredokaOne, 44, Color3.fromRGB(255, 248, 236))
-	word.Size = UDim2.fromScale(1, 1)
-	word.TextXAlignment = Enum.TextXAlignment.Center
+	dress(model)
 	model.WorldPivot = CFrame.new() -- laid out round the origin: PivotTo puts the origin on his spot
 	return model
 end
