@@ -96,6 +96,18 @@ return {
 		expect.equal(SuperFxRules.look(SuperFx, "Devour", nil, true), SuperFx.LOOKS.Devour.grades.C)
 	end,
 
+	-- Owner 2026-11-13 ("Light touch" for other players' effects in boss fights): another player's super plays no richer
+	-- than OTHERS_GRADE (about half an S look's particles); your own keeps its grade
+	["another player's super plays at most OTHERS_GRADE; yours keeps its grade"] = function()
+		expect.equal(SuperFx.OTHERS_GRADE, "B")
+		expect.equal(SuperFxRules.grade("S", true, SuperFx, true), "B")
+		expect.equal(SuperFxRules.grade("A", true, SuperFx, true), "B")
+		expect.equal(SuperFxRules.grade("C", true, SuperFx, true), "C")
+		expect.equal(SuperFxRules.grade("S", true, SuperFx, false), "S")
+		local s, b = SuperFx.LOOKS.Inferno.grades.S, SuperFx.LOOKS.Inferno.grades.B
+		assert(b.particles <= s.particles * 0.6, "about half the particles")
+	end,
+
 	["the beats: the call, the impact at the wind-up's end, control back after the tail"] = function()
 		local epic = SuperFxRules.beats("Epic", Combat.SUPER_PROTECT_TAIL, SuperFx)
 		expect.near(epic.call, 0.3, 1e-9)

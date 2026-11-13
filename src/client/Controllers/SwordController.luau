@@ -39,6 +39,7 @@ local SwordAnims = require(ClientUtil:WaitForChild("SwordAnims"))
 local SwordSkillFx = require(ClientUtil:WaitForChild("SwordSkillFx"))
 local SkillCinematic = require(ClientUtil:WaitForChild("SkillCinematic"))
 local Spotlight = require(ClientUtil:WaitForChild("Spotlight"))
+local Extras = require(ClientUtil:WaitForChild("Extras"))
 local ScreenFx = require(ClientUtil:WaitForChild("ScreenFx"))
 local WeaponLook = require(ClientUtil:WaitForChild("WeaponLook"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
@@ -1443,7 +1444,8 @@ local function showPopup(swordId: string)
 end
 
 -- The weapon glow's budget (Config/WeaponLooks BUDGET): your own sword and the nearest few others within range get the
--- full aura, every other sword the cheap creature-style glow, checked every few tenths of a second
+-- full aura, every other sword the cheap creature-style glow, checked every few tenths of a second; in your boss fight
+-- another player's full aura stays on with fewer particles, and low graphics thins every one (WeaponLookRules.auraShare)
 local function auraBudget()
 	local budget = WeaponLooks.BUDGET
 	while true do
@@ -1452,6 +1454,7 @@ local function auraBudget()
 		local from = if camera then camera.Focus.Position else Vector3.zero
 		local candidates: { WeaponLookRules.Candidate } = {}
 		local byKey: { [string]: View } = {}
+		local mineView: View? = nil
 		for character, view in views do
 			if not view.model.Parent then
 				continue
@@ -1463,10 +1466,15 @@ local function auraBudget()
 				distance = (view.handle.Position - from).Magnitude,
 				mine = character == player.Character,
 			})
+			if character == player.Character then
+				mineView = view
+			end
 		end
 		local full = WeaponLookRules.fullAuras(candidates, budget.nearest, budget.range)
+		local bossFight, low = Extras.bossFight(), not Extras.enabled()
 		for key, view in byKey do
-			WeaponLook.setDetail(view.model, full[key] == true)
+			local share = WeaponLookRules.auraShare(budget, view == mineView, bossFight, low)
+			WeaponLook.setDetail(view.model, full[key] == true, share)
 		end
 	end
 end

@@ -139,6 +139,18 @@ return {
 		assert(Looks.BUDGET.nearest >= 1 and Looks.BUDGET.range > 0 and Looks.BUDGET.every > 0)
 	end,
 
+	-- Owner 2026-11-13: "their weapon auras should not be completely off though on fights. it removes the FLEX aspects.
+	-- make the performance better without affecting flexing too much"
+	["another player's aura in a boss fight stays on, thinner; low graphics thins every aura"] = function()
+		expect.equal(WeaponLookRules.auraShare(Looks.BUDGET, true, true, false), 1, "your own in a fight: whole")
+		expect.equal(WeaponLookRules.auraShare(Looks.BUDGET, false, false, false), 1, "another's outside a fight: whole")
+		local fight = WeaponLookRules.auraShare(Looks.BUDGET, false, true, false)
+		assert(fight >= 0.4 and fight < 1, "another's in a boss fight: thinner, never off")
+		local low = WeaponLookRules.auraShare(Looks.BUDGET, true, false, true)
+		assert(low > 0 and low < 1, "low graphics: yours thinner too")
+		expect.near(WeaponLookRules.auraShare(Looks.BUDGET, false, true, true), fight * low, 1e-9, "both cuts")
+	end,
+
 	-- Owner 2026-11-08 (free VFX packs, picked in game): Ember weapons blaze with the Euphoric pack's fire, Tide weapons
 	-- with its water, Bloom weapons glow with the Yona pack's aura in green ("apply this glow to all green weapons");
 	-- 2026-11-13 ("some scythes and spears doesnt have the ... effects we got from the store ... make sure no old effects

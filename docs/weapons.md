@@ -136,6 +136,7 @@ Some effects come from free Creator Store VFX packs (owner 2026-11-08, picked fr
 | Pack | Store id | Used for | Our config |
 |---|---|---|---|
 | Euphoric Games VFX Pack | 112672322113504 | the Ember and Tide weapon auras (its Fire-Aura-01 and Water-Aura-01) | `WeaponLooks.ELEMENT_AURA` |
+| Euphoric Games VFX Pack and Yona VFX Pack | both | since 2026-11-13 the creatures' element auras (Legendaries, grade S and A copies; Util/BeastAura): Ember fire and Tide water from Euphoric, Bloom, Shade and Volt from Yona's aura (Volt with its crackling bolts), on spread bones, from the ground and in the Divine halo and orbs. Far dimmer and smaller than on a blade: a creature-sized cloud at the blade's brightness washed the body out white | `BeastFx.ELEMENTS` |
 | Yona VFX Pack | 18170940328 | the Bloom weapon aura (its Player-VFX Aura, recoloured green); since 2026-11-13 the Volt (yellow, with its Electricity Impact's crackling bolts) and Shade (violet) weapon auras too, so no weapon wears our old flames but the Prism Blade and the Steel Sword | `WeaponLooks.ELEMENT_AURA` |
 | Euphoric Games VFX Pack and Yona VFX Pack | both | a landed cut's slash streaks (Slash-Impact-01 and Slash-01); since 2026-11-09 also every creature's basic attack (the streaks only on the Bloom combo and Shade moon slash, `Util/PackHit`); since 2026-11-13 the perk hits too (the Magma Halberd's Eruption, the Storm Reaper's Chain Lightning, the Rift Reaper's Reap: our drawn star burst is gone) | `SwordFx.IMPACT` |
 

@@ -1,7 +1,10 @@
 --!strict
--- Maths for the big beasts' effects (Util/BeastAura on the client): which bones to burn on so the fire covers the
--- whole body, and the jagged path of a lightning arc. Points are plain { x, y, z } tables. Pure, Lune-tested.
+-- Maths for the creatures' element auras (Util/BeastAura on the client): which bones carry it so it covers the whole
+-- body, how much of it this screen shows (the budget), the Divine halo's ring and orbs. Points are plain { x, y, z }
+-- tables. Pure, Lune-tested.
 export type Point = { number }
+-- How much of its aura a creature shows on this screen: `rate` times its tier's particles, and which extras
+export type Shown = { rate: number, ground: boolean, light: boolean, dust: boolean, embers: boolean, halo: boolean }
 
 local BeastFxRules = {}
 
@@ -77,23 +80,50 @@ function BeastFxRules.withMirrors(names: { string }, picked: { number }): { numb
 	return out
 end
 
--- The corners of a lightning arc from `from` to `to`: segments + 1 points, the ends exact, the ones between
--- pushed off the line by up to jitter times its length. random() gives a number in 0..1.
-function BeastFxRules.arc(from: Point, to: Point, segments: number, jitter: number, random: () -> number): { Point }
-	local count = math.max(1, segments)
-	local reach = distance(from, to) * jitter
-	local path: { Point } = { from }
-	for step = 1, count - 1 do
-		local t = step / count
-		local push = { (random() * 2 - 1) * reach, (random() * 2 - 1) * reach, (random() * 2 - 1) * reach }
-		table.insert(path, {
-			from[1] + (to[1] - from[1]) * t + push[1],
-			from[2] + (to[2] - from[2]) * t + push[2],
-			from[3] + (to[3] - from[3]) * t + push[3],
-		})
+-- The aura tier a copy wears (Config/BeastFx BY_RARITY): by its card's rarity and grade; nil for none
+function BeastFxRules.tier(cfg: any, rarity: string, grade: string?): string?
+	local row = cfg.BY_RARITY[rarity]
+	if not row then
+		return nil
 	end
-	table.insert(path, to)
-	return path
+	return (if grade then row[grade] else nil) or row.any
+end
+
+-- The size an aura's effects are drawn at for a creature of `size` (height / 3 studs) wearing `tier`: never under
+-- cfg.MIN_SCALE, so a small creature's aura still shows
+function BeastFxRules.scale(cfg: any, size: number, tier: any): number
+	return math.max(size, cfg.MIN_SCALE) * tier.size
+end
+
+-- How much of its tier's aura a creature shows here (owner 2026-11-13: "pets that glows alot on boss battles specially
+-- on full party I think will be heavy", "Light touch" for others, "without affecting flexing too much"): your own, and
+-- another player's outside your boss fight, all of it; another player's in your boss fight (`bossFight`) `others` of
+-- its particles, without ground flames, light, dust or embers (its look and a Divine halo kept); with low graphics or a
+-- struggling frame rate (`low`) `low` of them, yours too. `tier` is a Config/BeastFx TIERS entry, `budget` its BUDGET
+function BeastFxRules.budget(tier: any, budget: any, mine: boolean, bossFight: boolean, low: boolean): Shown
+	local shown: Shown = {
+		rate = 1,
+		ground = tier.ground == true,
+		light = true,
+		dust = tier.dust == true,
+		embers = tier.divine == true,
+		halo = tier.divine == true,
+	}
+	local cuts = {}
+	if bossFight and not mine then
+		table.insert(cuts, budget.others)
+	end
+	if low then
+		table.insert(cuts, budget.low)
+	end
+	for _, cut in cuts do
+		shown.rate *= cut.rate
+		shown.ground = shown.ground and cut.ground
+		shown.light = shown.light and cut.light
+		shown.dust = shown.dust and cut.dust
+		shown.embers = shown.embers and cut.embers
+	end
+	return shown
 end
 
 -- `count` points evenly round a flat circle of `radius`, turned `angle` radians: { x, y } in the circle's plane

@@ -67,6 +67,9 @@ return {
 		Legendary = { windup = 2, call = 0.3, bars = true, impactFrame = true, sky = true, swoop = 14 },
 	},
 	LOW_GRAPHICS_GRADE = "B", -- extras off: a look plays no richer than its B grade (and no black-and-white frame)
+	-- Another player's super plays no richer than this (owner 2026-11-13, "Light touch" for others' effects in boss
+	-- fights: B is about half an S look's particles); the caster's own screen keeps its grade
+	OTHERS_GRADE = "B",
 	-- The caster's camera, in multiples of the creature's height: the call's low close shot in front of it and to one
 	-- side (the charge drifts closer), then the impact's wide shot from behind it framing it and its target; fov in degrees, ease in
 	-- seconds (the swoop in and the ease back)

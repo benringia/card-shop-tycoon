@@ -9,12 +9,21 @@ export type Beats = { call: number, impact: number, back: number }
 local VALID = { C = true, B = true, A = true, S = true }
 local RANK = { C = 1, B = 2, A = 3, S = 4 }
 
--- The grade a look plays: C for none or an unknown one; with the extras switch off, no richer than LOW_GRAPHICS_GRADE
-function SuperFxRules.grade(grade: string?, extrasOn: boolean, cfg: any): string
+-- The grade a look plays: C for none or an unknown one; with the extras switch off, no richer than LOW_GRAPHICS_GRADE;
+-- another player's (`others`) no richer than OTHERS_GRADE (owner 2026-11-13: a full party's boss fight stays smooth)
+function SuperFxRules.grade(grade: string?, extrasOn: boolean, cfg: any, others: boolean?): string
 	local g = if grade and VALID[grade] then grade else "C"
-	local cap = cfg.LOW_GRAPHICS_GRADE
-	if not extrasOn and RANK[g] > RANK[cap] then
-		return cap
+	local caps: { string } = {}
+	if not extrasOn then
+		table.insert(caps, cfg.LOW_GRAPHICS_GRADE)
+	end
+	if others then
+		table.insert(caps, cfg.OTHERS_GRADE)
+	end
+	for _, cap in caps do
+		if RANK[g] > RANK[cap] then
+			g = cap
+		end
 	end
 	return g
 end

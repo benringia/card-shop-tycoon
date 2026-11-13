@@ -400,7 +400,8 @@ function FightFx.new(resolve: Resolve): Dispatcher
 	end
 
 	local function superGrade(view: View): string
-		local grade = SuperFxRules.grade(view.grade, Extras.enabled(), SuperFxConfig)
+		-- another player's plays lighter (Config/SuperFx OTHERS_GRADE)
+		local grade = SuperFxRules.grade(view.grade, Extras.enabled(), SuperFxConfig, not view.mine)
 		if not view.mine and not FightFxRules.budget(active, Extras.enabled(), AttackFx) then
 			return "C"
 		end

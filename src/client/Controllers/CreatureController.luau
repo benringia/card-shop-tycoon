@@ -20,6 +20,8 @@ local TutorialRules = require(Shared:WaitForChild("Util"):WaitForChild("Tutorial
 local AttackFx = require(Config:WaitForChild("AttackFx"))
 local FightMotion = require(Shared:WaitForChild("Util"):WaitForChild("FightMotion"))
 local Rarities = require(Config:WaitForChild("Rarities"))
+local BeastFx = require(Config:WaitForChild("BeastFx"))
+local BeastFxRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastFxRules"))
 local CreatureCull = require(Shared:WaitForChild("Util"):WaitForChild("CreatureCull"))
 local CreatureVisuals = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("CreatureVisuals"))
 local SummonFx = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("SummonFx"))
@@ -314,14 +316,12 @@ local function add(marker: BasePart)
 	local height = CreatureVisuals.cardHeight(card.name, card.rarity)
 	local body = CreatureVisuals.build(model, marker, height, flying, if template then template.Name else nil)
 	body.fxColor = Cards.ELEMENTS[card.element] or body.fxColor
-	-- The element aura: more than all of it on grade S Legendaries (Divine), all of it on other Legendaries, a lighter
-	-- touch on grade S and A copies of the rest
+	-- The element aura (BeastFx BY_RARITY): more than all of it on grade S Legendaries (Divine), all of it on other
+	-- Legendaries, a lighter touch on grade S Commons and Rares and grade A and S Very Rares and Epics
 	local grade = marker:GetAttribute("Grade")
-	local tier = if card.rarity == "Legendary" then (if grade == "S" then "Divine" else "Legendary")
-		elseif grade == "S" or grade == "A" then grade
-		else nil
+	local tier = BeastFxRules.tier(BeastFx, card.rarity, if typeof(grade) == "string" then grade else nil)
 	if tier then
-		CreatureVisuals.addBeastFx(body, card.element, tier :: string)
+		CreatureVisuals.addBeastFx(body, card.element, tier :: string, marker:GetAttribute("OwnerUserId") == Players.LocalPlayer.UserId)
 	end
 	local tagColor = rarityColor(card.rarity):Lerp(Color3.new(1, 1, 1), 0.35)
 	local creature: Creature = {

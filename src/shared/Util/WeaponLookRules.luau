@@ -116,13 +116,13 @@ function WeaponLookRules.seesBeacon(distance: number, range: number, mine: boole
 	return not mine and distance <= range
 end
 
--- Which swords get the full aura: your own always, then the nearest `nearest` others within `range` studs (set of keys)
 -- A pack aura layer's ZOffset: its own (`base`, from Config/WeaponLooks ELEMENT_AURA) while its part is in view,
 -- BEHIND_BODY.shift studs nearer the camera while the wearer's body hides the part
 function WeaponLookRules.packZOffset(looks: any, base: number, hidden: boolean): number
 	return if hidden then base + looks.BEHIND_BODY.shift else base
 end
 
+-- Which swords get the full aura: your own always, then the nearest `nearest` others within `range` studs (set of keys)
 function WeaponLookRules.fullAuras(candidates: { Candidate }, nearest: number, range: number): { [string]: boolean }
 	local full: { [string]: boolean } = {}
 	local others: { Candidate } = {}
@@ -140,6 +140,15 @@ function WeaponLookRules.fullAuras(candidates: { Candidate }, nearest: number, r
 		full[others[index].key] = true
 	end
 	return full
+end
+
+-- How much of a full aura's particles a weapon draws on this screen (owner 2026-11-13: others' auras "should not be
+-- completely off though on fights. it removes the FLEX aspects"): all of them for your own and for others outside a
+-- boss fight; another player's in your boss fight `othersInFight` of them; with low graphics or a struggling frame
+-- rate (`low`) every aura `low` of them, yours too. `budget` is Config/WeaponLooks BUDGET
+function WeaponLookRules.auraShare(budget: any, mine: boolean, bossFight: boolean, low: boolean): number
+	local share = if bossFight and not mine then budget.othersInFight else 1
+	return if low then share * budget.low else share
 end
 
 -- The weapon window's family icon (Config/WeaponLooks ICONS; a Config/UIIcons name)

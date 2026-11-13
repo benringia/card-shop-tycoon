@@ -279,7 +279,7 @@ end
 -- Shows what the model's layers and detail call for (setPlace stores the layers on the model)
 local function refresh(model: Model)
 	local full = model:GetAttribute("FullAura") == true
-	local density = (model:GetAttribute("AuraDensity") :: number?) or 0
+	local density = ((model:GetAttribute("AuraDensity") :: number?) or 0) * ((model:GetAttribute("AuraShare") :: number?) or 1)
 	local size = (model:GetAttribute("AuraSize") :: number?) or 1
 	local ribbons = model:GetAttribute("Ribbons") == true
 	local sparkles = (model:GetAttribute("SparkleRate") :: number?) or 0
@@ -376,12 +376,14 @@ function WeaponLook.drawPastBody(model: Model, eye: Vector3, body: RaycastParams
 	end
 end
 
--- The full aura on or off (SwordController's budget: your own sword and the nearest few get it, the rest stay cheap)
-function WeaponLook.setDetail(model: Model, full: boolean)
-	if model:GetAttribute("FullAura") == full then
+-- The full aura on or off (SwordController's budget: your own sword and the nearest few get it, the rest stay cheap),
+-- `share` of its particles (WeaponLookRules.auraShare: another player's in your boss fight, low graphics)
+function WeaponLook.setDetail(model: Model, full: boolean, share: number)
+	if model:GetAttribute("FullAura") == full and model:GetAttribute("AuraShare") == share then
 		return
 	end
 	model:SetAttribute("FullAura", full)
+	model:SetAttribute("AuraShare", share)
 	refresh(model)
 end
 

@@ -1749,6 +1749,8 @@ local function onStarted(payload: any)
 	end
 	local boss = if mode == "wild" and typeof(payload.boss) == "string" then Bosses.BOSSES[payload.boss] else nil
 	bossId = if boss then payload.boss else nil
+	-- others' auras and supers drawn lighter (Config/BeastFx BUDGET...; required here: this file is at the 200 locals)
+	require(ClientUtil:WaitForChild("Extras")).setBossFight(boss ~= nil)
 	-- Your Prism Blade's trail takes the colour strong against this foe
 	local foeElement = if boss then boss.element elseif typeof(payload.element) == "string" then payload.element else nil
 	SwordController.SetFoeElement(if mode == "wild" then foeElement else nil)
@@ -1862,6 +1864,7 @@ local function onEnded(summary: any)
 	bar.Visible = false
 	bossBar.Visible = false
 	bossId = nil
+	require(ClientUtil:WaitForChild("Extras")).setBossFight(false)
 	latest = nil
 	setHudHidden(false)
 	for marker, prompt in prompts do

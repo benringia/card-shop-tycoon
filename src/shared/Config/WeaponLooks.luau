@@ -148,8 +148,10 @@ return {
 	-- per level, more for Grade S (like the creatures' Party.GLOW)
 	SPARKLES = { byRarity = { Common = 1, Rare = 2, ["Very Rare"] = 3, Epic = 4, Legendary = 5 }, perLevel = 0.3, gradeS = 2 },
 	-- The full aura: who gets it (your own sword and the nearest `nearest` others within `range` studs, checked every
-	-- `every` seconds; Studio 2026-11-06: 20 full auras in view cost about 2 ms of render CPU at max graphics)
-	BUDGET = { nearest = 3, range = 60, every = 0.5 },
+	-- `every` seconds; Studio 2026-11-06: 20 full auras in view cost about 2 ms of render CPU at max graphics); in your
+	-- boss fight another player's full aura draws `othersInFight` of its particles (owner 2026-11-13: on, for the flex,
+	-- but lighter), and on low graphics or a struggling frame rate every aura `low` of them (WeaponLookRules.auraShare)
+	BUDGET = { nearest = 3, range = 60, every = 0.5, othersInFight = 0.5, low = 0.6 },
 	-- The aura's emitters at full density (studs, seconds; textures are Config/AttackFx TEXTURES keys). They fill the
 	-- blade's box (the guard and grip get `otherParts` of each rate); flames rise from the deep colour to the bright,
 	-- the core hugs the blade, smoke drifts, sparks fly; +10 adds ribbons streaming off the blade. Brightness over 1

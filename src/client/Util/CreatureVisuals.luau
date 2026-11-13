@@ -49,7 +49,7 @@ export type Body = {
 	-- Creatures without bones: a whole-body fidget now and then while standing (PET_ANIM.BODY_FIDGETS)
 	idle: { kind: string?, start: number, length: number, side: number, nextAt: number, random: Random, fired: boolean, amount: number? },
 	fxColor: Color3, -- roar shockwaves and sparks (the card's element colour)
-	aura: BeastAura.Aura?, -- Legendaries and grade S/A copies: element fire, lightning, footstep dust (addBeastFx)
+	aura: BeastAura.Aura?, -- Legendaries and grade S/A copies: the element aura and footstep dust (addBeastFx)
 	grow: number?, -- popping in or shrinking away (Util/SummonFx): drawn at this share of its size
 	faintedAt: number?, -- os.clock when it fainted: it tips over from then (Util/SummonMotion.faintRoll)
 }
@@ -174,9 +174,10 @@ function CreatureVisuals.preloadTemplates(templates: { Model })
 	end
 end
 
--- The element aura (Util/BeastAura): fire on its bones, lightning, ground flames, at a tier (Legendary, S, A)
-function CreatureVisuals.addBeastFx(body: Body, element: string, tier: string)
-	body.aura = BeastAura.attach(body.model, body.cframe, element, body.size, tier)
+-- The element aura (Util/BeastAura): the store packs' effects on its bones and from the ground, at a tier (Divine,
+-- Legendary, S, A); `mine`: this player's own creature (others' are drawn lighter in a boss fight)
+function CreatureVisuals.addBeastFx(body: Body, element: string, tier: string, mine: boolean)
+	body.aura = BeastAura.attach(body.model, body.cframe, element, body.size, tier, mine)
 end
 
 -- How tall a card's creature stands: its rarity's size (Party.SIZE_BY_RARITY), times its model entry's size

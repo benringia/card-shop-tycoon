@@ -1,15 +1,21 @@
 --!strict
 local BeastFxRules = require("../src/shared/Util/BeastFxRules")
 local BeastFx = require("../src/shared/Config/BeastFx")
+local AttackFx = require("../src/shared/Config/AttackFx")
 local expect = require("./lib/expect")
 
-local function counter(): () -> number
-	local values = { 0, 1, 0.5, 0.25, 0.75 }
-	local index = 0
-	return function()
-		index = index % #values + 1
-		return values[index]
+local ELEMENTS = { "Ember", "Tide", "Bloom", "Volt", "Shade" }
+
+-- A layer's particles a second at full strength, summed over its layers with this texture
+local function rateOf(layers: { any }, texture: string, color: { number }?): number
+	local total = 0
+	for _, layer in layers do
+		local sameColor = color == nil or (typeof(layer.color) == "table" and layer.color[1] == color[1] and layer.color[2] == color[2] and layer.color[3] == color[3])
+		if layer.texture == texture and sameColor then
+			total += layer.rate
+		end
 	end
+	return total
 end
 
 return {
@@ -52,34 +58,41 @@ return {
 		assert(has[5] and #out == 4, "a side bone without a mirror stays alone")
 	end,
 
-	["an arc runs exactly from one bone to the other"] = function()
-		local from, to = { 0, 0, 0 }, { 10, 0, 0 }
-		local path = BeastFxRules.arc(from, to, 6, 0.2, counter())
-		expect.equal(#path, 7, "segments + 1 corners")
-		expect.equal(path[1], from, "starts at the first bone")
-		expect.equal(path[#path], to, "ends at the second bone")
-	end,
-
-	["an arc's corners stay within its jitter"] = function()
-		local path = BeastFxRules.arc({ 0, 0, 0 }, { 10, 0, 0 }, 5, 0.2, counter())
-		for index = 2, #path - 1 do
-			local t = (index - 1) / 5
-			local point = path[index]
-			assert(math.abs(point[1] - 10 * t) <= 2 + 1e-9, `x at {index}`)
-			assert(math.abs(point[2]) <= 2 + 1e-9 and math.abs(point[3]) <= 2 + 1e-9, `off the line at {index}`)
-		end
-	end,
-
-	["every element has fire, ground flames, a light and lightning"] = function()
-		for _, element in { "Ember", "Tide", "Bloom", "Volt", "Shade" } do
+	-- Owner 2026-11-13 ("finalize all" the pet glows and auras): the store packs' effects on the bones, like the weapons'
+	-- (Config/WeaponLooks ELEMENT_AURA): no Roblox built-in fire, no drawn lightning
+	["every element wears the store packs: body, ground, halo and orb layers, and a light"] = function()
+		for _, element in ELEMENTS do
 			local look = BeastFx.ELEMENTS[element]
 			assert(look, `{element} has a look`)
-			assert(#look.flames > 0 and #look.ground > 0, `{element} burns`)
-			assert(look.arcs.every[1] > 0 and look.arcs.every[1] <= look.arcs.every[2], `{element} arc timing`)
-			for _, flame in look.flames do
-				assert(flame.lifetime[1] <= flame.lifetime[2], `{element} flame lifetime`)
+			assert(#look.layers > 0 and #look.ground > 0 and #look.halo > 0 and #look.orb > 0, `{element} has every layer`)
+			for _, group in { look.layers, look.ground, look.halo, look.orb } do
+				for _, layer in group do
+					assert((AttackFx.TEXTURES :: any)[layer.texture], `{element}: {layer.texture} is a pack texture`)
+					assert(layer.rate > 0, `{element}: {layer.texture} emits`)
+					assert(layer.lifetime[1] <= layer.lifetime[2], `{element}: {layer.texture} lifetime`)
+				end
+			end
+			assert(look.light.brightness > 0 and look.light.range > 0, `{element} glows`)
+			expect.equal((look :: any).arcs, nil, `{element}: no drawn lightning`)
+		end
+	end,
+
+	["Ember burns thin, Volt reads bright with crackling bolts, Shade keeps its dark smoke"] = function()
+		local ember, tide = BeastFx.ELEMENTS.Ember, BeastFx.ELEMENTS.Tide
+		assert(rateOf(ember.layers, "fireAura") > 0 and rateOf(tide.layers, "waterAura") > 0, "Euphoric fire and water")
+		-- the first test drowned Solarion in fire: small flames, no more of them than the weapon blade's own aura
+		assert(rateOf(ember.layers, "fireAura") <= 60, "Ember's fire is thin")
+		for _, layer in ember.layers do
+			if layer.texture == "fireAura" then
+				assert(layer.size[1][2] <= 0.7, "Ember's flames are small")
 			end
 		end
+		local volt = BeastFx.ELEMENTS.Volt
+		assert(rateOf(volt.layers, "lightningGrow") > 0, "Volt crackles with the pack's bolts")
+		expect.equal(rateOf(volt.layers, "auraSmoke", { 0, 0, 0 }), 0, "no dark smoke swallowing Volt's yellow")
+		assert(rateOf(volt.layers, "auraSmoke") > 0, "Volt's bright smoke")
+		assert(rateOf(BeastFx.ELEMENTS.Shade.layers, "auraSmoke", { 0, 0, 0 }) > 0, "Shade's dark smoke")
+		assert(rateOf(BeastFx.ELEMENTS.Bloom.layers, "auraSmoke") > 0, "Bloom's green smoke")
 	end,
 
 	["grade S and A auras are lighter than a Legendary's, and A lighter than S"] = function()
@@ -89,8 +102,8 @@ return {
 			assert(legendary[field] > s[field], `S {field} isn't below Legendary`)
 			assert(s[field] > a[field], `A {field} isn't below S`)
 		end
-		assert(legendary.ground and legendary.arcs and legendary.dust, "the Legendary aura is complete")
-		assert(not s.ground and not a.ground and not a.arcs, "S and A keep it small")
+		assert(legendary.ground and legendary.dust, "the Legendary aura is complete")
+		assert(not s.ground and not a.ground, "S and A keep it small")
 	end,
 
 	["a grade S Legendary's Divine aura is more than a Legendary's, with the extras"] = function()
@@ -99,11 +112,76 @@ return {
 		for _, field in { "bones", "rate", "size", "light" } do
 			assert(divine[field] > legendary[field], `Divine {field} isn't above Legendary`)
 		end
-		assert(divine.arcSlow < legendary.arcSlow, "more lightning")
-		assert(divine.ground and divine.arcs and divine.dust and divine.divine, "the whole aura plus the extras")
+		assert(divine.ground and divine.dust and divine.divine, "the whole aura plus the extras")
 		assert(not legendary.divine, "plain Legendaries don't get the extras")
 		local cfg = BeastFx.DIVINE
 		assert(cfg.HALO.count >= 3 and cfg.ORBS.count >= 1 and cfg.EMBERS.max >= 1, "something to show")
+	end,
+
+	-- Owner 2026-11-13: "pets that glows alot on boss battles specially on full party I think will be heavy", picked
+	-- "Light touch" for other players' effects in boss fights, "make the performance better without affecting flexing
+	-- too much"
+	["your own creature's aura is always whole; another's is whole outside a boss fight"] = function()
+		local legendary = BeastFx.TIERS.Legendary
+		for _, shown in { BeastFxRules.budget(legendary, BeastFx.BUDGET, true, true, false), BeastFxRules.budget(legendary, BeastFx.BUDGET, false, false, false) } do
+			expect.equal(shown.rate, 1)
+			expect.equal(shown.ground, true)
+			expect.equal(shown.light, true)
+			expect.equal(shown.dust, true)
+		end
+		local s = BeastFxRules.budget(BeastFx.TIERS.S, BeastFx.BUDGET, true, false, false)
+		expect.equal(s.ground, false, "a tier without ground flames gets none")
+		expect.equal(s.dust, false)
+		expect.equal(s.embers, false, "no embers without the Divine tier")
+		expect.equal(BeastFxRules.budget(BeastFx.TIERS.Divine, BeastFx.BUDGET, true, false, false).embers, true)
+	end,
+
+	["another player's creature in a boss fight: a light touch that still shows off"] = function()
+		local divine = BeastFxRules.budget(BeastFx.TIERS.Divine, BeastFx.BUDGET, false, true, false)
+		assert(divine.rate > 0.2 and divine.rate < 1, "fewer particles, never none (flex kept)")
+		expect.equal(divine.ground, false, "no ground flames")
+		expect.equal(divine.light, false, "no light of its own")
+		expect.equal(divine.dust, false)
+		expect.equal(divine.embers, false, "no embers left on the ground")
+		expect.equal(divine.halo, true, "a grade S Legendary keeps its halo and orbs")
+	end,
+
+	["low graphics or a struggling frame rate steps every aura down, yours too"] = function()
+		local mine = BeastFxRules.budget(BeastFx.TIERS.Legendary, BeastFx.BUDGET, true, false, true)
+		assert(mine.rate > 0 and mine.rate < 1, "thinner")
+		expect.equal(mine.ground, false)
+		expect.equal(mine.dust, false)
+		expect.equal(mine.light, true, "your own keeps its light")
+		local both = BeastFxRules.budget(BeastFx.TIERS.Legendary, BeastFx.BUDGET, false, true, true)
+		expect.near(both.rate, BeastFx.BUDGET.others.rate * BeastFx.BUDGET.low.rate, 1e-9, "both cuts")
+		expect.equal(BeastFxRules.budget(BeastFx.TIERS.Divine, BeastFx.BUDGET, true, false, true).halo, true, "the halo stays")
+	end,
+
+	-- Owner 2026-11-13: "add them only for grade S commons and rares. grade A/S very rares too"
+	["which copies glow: Commons and Rares at S, Very Rares and Epics at A and S, every Legendary"] = function()
+		for _, rarity in { "Common", "Rare" } do
+			expect.equal(BeastFxRules.tier(BeastFx, rarity, "S"), "S", `{rarity} S`)
+			expect.equal(BeastFxRules.tier(BeastFx, rarity, "A"), nil, `{rarity} A stays plain`)
+			expect.equal(BeastFxRules.tier(BeastFx, rarity, "B"), nil)
+		end
+		for _, rarity in { "Very Rare", "Epic" } do
+			expect.equal(BeastFxRules.tier(BeastFx, rarity, "S"), "S", `{rarity} S`)
+			expect.equal(BeastFxRules.tier(BeastFx, rarity, "A"), "A", `{rarity} A`)
+			expect.equal(BeastFxRules.tier(BeastFx, rarity, "C"), nil)
+		end
+		expect.equal(BeastFxRules.tier(BeastFx, "Legendary", "S"), "Divine")
+		expect.equal(BeastFxRules.tier(BeastFx, "Legendary", "C"), "Legendary")
+		expect.equal(BeastFxRules.tier(BeastFx, "Legendary", nil), "Legendary", "no grade yet: still a Legendary")
+		expect.equal(BeastFxRules.tier(BeastFx, "Common", nil), nil)
+		expect.equal(BeastFxRules.tier(BeastFx, "Mythic", "S"), nil, "an unknown rarity")
+	end,
+
+	-- A grade S Common (about 2 studs tall) drew its aura so small it barely showed (Studio 2026-11-13)
+	["small creatures' auras are drawn no smaller than MIN_SCALE"] = function()
+		local s = BeastFx.TIERS.S
+		expect.near(BeastFxRules.scale(BeastFx, 0.7, s), BeastFx.MIN_SCALE * s.size, 1e-9, "a Common is lifted")
+		expect.near(BeastFxRules.scale(BeastFx, 3, s), 3 * s.size, 1e-9, "a big creature keeps its own size")
+		assert(BeastFx.MIN_SCALE >= 0.8 and BeastFx.MIN_SCALE <= 1, "the floor")
 	end,
 
 	["ring spaces its points evenly round the circle"] = function()

@@ -573,13 +573,24 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
   Blazehound (flame dachshund), Thornback (thorn boar, Meshy), Duskstalker (shadow wolf, Meshy), Eclipse Fox
   (shadow kitsune, Meshy, three tails built in code) and Voltkit (storm pangolin, Meshy),
   each with its own signature idle; the more common the card, the cuter the creature. The Legendaries stand 2.2x their rarity size (about 9
-  studs), follow further out to match, burn with their element (`Util/BeastAura`, `Config/BeastFx`: fire on bones
-  spread over the body, lightning arcing between them, ground flames, a flickering light; Ember orange fire, Shade
-  purple-black fire, Tide blue spirit fire, Volt white fire with constant lightning), kick up dust as they move (grade S and A copies of other cards get a lighter aura,
-  `BeastFx.TIERS`: S fire on 6 bones with now-and-then lightning, A a faint flame on 4 and a soft glow; grade S
-  Legendaries get more, tier Divine: fire on 11 bones, more lightning, a turning ring of flames behind the head,
-  three small suns circling it and burning embers where it walks, `BeastFx.DIVINE`; for Shade, black holes and dark
-  smoking rifts instead; Epics stand
+  studs), follow further out to match, wear their element (`Util/BeastAura`, `Config/BeastFx`; owner 2026-11-13,
+  "finalize all" the pet glows and auras: the store packs' effects like the weapons', docs/weapons.md "Pack effects",
+  on bones spread over the body, rising from the ground, a flickering light; Ember the Euphoric pack's fire kept thin,
+  Tide its water, Bloom the Yona aura in green, Shade in violet over dark smoke, Volt in bright yellow with the pack's
+  crackling bolts and no dark smoke; our drawn lightning is gone), kick up dust as they move (other cards get a
+  lighter aura, owner 2026-11-13 "only for grade S commons and rares. grade A/S very rares too": grade S Commons and
+  Rares, grade A and S Very Rares and Epics, `BeastFx.BY_RARITY`; `BeastFx.TIERS`: S on 6 bones at 0.75 of the
+  particles, A on 4 at half, drawn no smaller than a 3-stud creature's, `MIN_SCALE`, so a Common's shows; grade S
+  Legendaries get more, tier Divine: 11 bones, a turning ring of light and element wisps behind the head, three small
+  orbs circling it and embers where it walks, `BeastFx.DIVINE`; for Shade, black holes and dark rifts instead). How
+  much shows follows a budget (owner 2026-11-13: "pets that glows alot on boss battles specially on full party I think
+  will be heavy", "Light touch", "make the performance better without affecting flexing too much";
+  `BeastFxRules.budget`, `BeastFx.BUDGET`): your own creature always whole; another player's in your boss fight keeps
+  its look, halo and orbs at 0.45 of the particles with no ground layers, light, dust or embers; low graphics or a
+  struggling frame rate thins every aura to half, yours too, and drops the ground layers. The same boss fight draws
+  another player's weapon aura at half its particles, still on for the flex (`WeaponLooks.BUDGET` othersInFight,
+  `WeaponLookRules.auraShare`; low graphics 0.6), and their super moves no richer than grade B, about half an S
+  look's particles (`SuperFx.OTHERS_GRADE`). Epics stand
   1.5x, `Party.SIZE_BY_RARITY`), and between their idle, now and then roar (rear back, lunge, an element-coloured
   shockwave ring and sparks) or stomp (a dust ring). The pets' bones are animated in code on
   each client (`Util/PetRig`, `Util/PetAnimator`, `Party.PET_ANIM`): trotting or stepping (Thunderhorn gallops, owner
