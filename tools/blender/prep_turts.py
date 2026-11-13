@@ -148,6 +148,73 @@ def decimate_face_kept(mesh, target):
     print("decimated to", sum(len(p.vertices) - 2 for p in mesh.data.polygons), "triangles")
 
 
+HULL_VOXEL = float(os.environ.get("HULL_VOXEL", "0.035"))  # metres: big enough to close the gaps between fur flaps
+HULL_INSET = float(os.environ.get("HULL_INSET", "0.022"))  # metres under the fur's outer surface
+HULL_TRIS = int(os.environ.get("HULL_TRIS", "2500"))
+
+
+def dark_uv(mesh):
+    """A UV on the colour map where the fur is darkest (15th percentile): the under-coat's colour"""
+    import numpy as np
+
+    image = next(n.image for n in mesh.data.materials[0].node_tree.nodes if n.type == "TEX_IMAGE" and n.image)
+    w, h = image.size
+    pixels = np.array(image.pixels[:]).reshape(h, w, 4)[:, :, :3]
+    light = pixels.mean(axis=2)
+    target = np.percentile(light, 15)
+    y, x = np.unravel_index(np.abs(light - target).argmin(), light.shape)
+    print("under-coat colour", [round(float(c), 3) for c in pixels[y, x]], "at", int(x), int(y))
+    return (x + 0.5) / w, (y + 0.5) / h
+
+
+def add_undercoat(mesh):
+    """A closed dark shell just inside his fur (owner 2026-11-13: "turts got so many holes on him"): Meshy's fur is
+    thousands of open flaps, and the cut down to his triangle budget opened gaps between them that showed the sky.
+    The shell is his own shape voxel-remeshed (closing the gaps), pushed HULL_INSET inward and joined into his mesh,
+    every corner on a dark texel of his colour map, so a gap shows dark fur."""
+    import bmesh
+
+    u, v = dark_uv(mesh)
+    bpy.ops.object.select_all(action="DESELECT")
+    mesh.select_set(True)
+    bpy.context.view_layer.objects.active = mesh
+    bpy.ops.object.duplicate()
+    hull = bpy.context.active_object
+    hull.name = "Turts_Undercoat"
+    remesh = hull.modifiers.new("Remesh", "REMESH")
+    remesh.mode = "VOXEL"
+    remesh.voxel_size = HULL_VOXEL
+    remesh.adaptivity = 0
+    bpy.ops.object.modifier_apply(modifier=remesh.name)
+    tris = sum(len(p.vertices) - 2 for p in hull.data.polygons)
+    if tris > HULL_TRIS:
+        mod = hull.modifiers.new("Decimate", "DECIMATE")
+        mod.decimate_type = "COLLAPSE"
+        mod.use_collapse_triangulate = True
+        mod.ratio = HULL_TRIS / tris
+        bpy.ops.object.modifier_apply(modifier=mod.name)
+    bm = bmesh.new()
+    bm.from_mesh(hull.data)
+    bm.normal_update()
+    for vert in bm.verts:
+        vert.co -= vert.normal * HULL_INSET
+    bmesh.ops.triangulate(bm, faces=bm.faces)
+    bm.to_mesh(hull.data)
+    bm.free()
+    name = mesh.data.uv_layers.active.name
+    layer = hull.data.uv_layers.get(name) or hull.data.uv_layers.new(name=name)
+    for loop in layer.data:
+        loop.uv = (u, v)
+    hull.data.materials.clear()
+    hull.data.materials.append(mesh.data.materials[0])
+    print("under-coat:", sum(len(p.vertices) - 2 for p in hull.data.polygons), "triangles")
+    bpy.ops.object.select_all(action="DESELECT")
+    hull.select_set(True)
+    mesh.select_set(True)
+    bpy.context.view_layer.objects.active = mesh
+    bpy.ops.object.join()
+
+
 def measure(mesh):
     """Prints the shape rig_turts.py places its bones by: the bounds and the spine's top along y"""
     rows = {}
@@ -204,6 +271,7 @@ dog = import_raw()
 straighten(dog)
 decimate_face_kept(dog, FACE_TRIS)
 rig_kit.optimize(dog, NAME, target_tris=FACE_TRIS)
+add_undercoat(dog)
 dog.name = "Turts_Dog"
 measure(dog)
 bpy.ops.outliner.orphans_purge(do_recursive=True)

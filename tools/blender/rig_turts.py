@@ -171,7 +171,7 @@ def test_pose(rig):
 
 bpy.ops.wm.save_as_mainfile(filepath=os.path.join(rig_kit.REPO, "assets", "blender", NAME, f"{NAME}.blend"))
 mesh = bpy.data.objects["Turts_Dog"]
-rig_kit.optimize(mesh, NAME, target_tris=16000)  # prep_turts kept his face dense: never cut him back to 10,000
+rig_kit.optimize(mesh, NAME, target_tris=19000)  # his dense face and under-coat (prep_turts): never cut him back
 rig = rig_kit.build_rig("TurtsRig", BONES)
 rig_kit.skin(mesh, rig, BONES, params)
 stiffen(mesh)
