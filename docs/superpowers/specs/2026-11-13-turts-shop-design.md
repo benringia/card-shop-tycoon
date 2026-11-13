@@ -80,8 +80,9 @@ spend, a drop's farming time at $700 an hour) sits next to its price, and a test
 
 Never sold: boss key fragments (they unlock the boss ladder), trophies, Pish's presents.
 
-With these weights, about 7.5 restocks an hour: a Legendary Pack shows up about once every two hours of play, an Epic
-Pack two or three times an hour, a boss material once or twice an hour. Rare, not impossible. Packs bought from Turts
+With these weights (lowered after the owner's first look: "lower the chances of getting a rare items like legendary
+card pack and other high level boss items"; Config/Turts holds the numbers), about 7.5 restocks an hour: a Legendary
+Pack about every 3.5 hours of play, an Epic Pack two an hour, a later boss's material about every 8 hours. Rare, not impossible. Packs bought from Turts
 open from the Bag (like Pish's gift) and count as packs opened (pity, the leaderboard, titles), like any other.
 
 ## Abuse-proofing

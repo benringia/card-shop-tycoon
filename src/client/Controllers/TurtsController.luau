@@ -302,7 +302,19 @@ local function buildWindow()
 	local made: Frame
 	made, list = UIKit.panel(UIController.GetScreenGui(), "TurtsShop", "Turts' Shop")
 	panel = made
+	made.Size = UDim2.fromScale(0.92, 0.92) -- the three offers and Restock now in view on a desktop (520 high at most)
 	local palette = UIKit.colorsFor(made)
+	-- his face peeking over the window's top edge, paws on the header
+	local peek = Instance.new("ImageLabel")
+	peek.Name = "TurtsPeek"
+	peek.BackgroundTransparency = 1
+	peek.Image = Turts.PEEK.image
+	peek.ScaleType = Enum.ScaleType.Fit
+	peek.AnchorPoint = Vector2.new(0.5, 1)
+	peek.Position = UDim2.new(0.5, 0, 0, Turts.PEEK.overlap)
+	peek.Size = UDim2.fromOffset(Turts.PEEK.size[1], Turts.PEEK.size[2])
+	peek.ZIndex = 60
+	peek.Parent = made
 	local line = UIKit.label(list, "", Enum.Font.GothamBold, 15, palette.inkSoft)
 	line.LayoutOrder = 0
 	line.Size = UDim2.new(1, 0, 0, 22)
@@ -315,6 +327,12 @@ local function buildWindow()
 	holder.AutomaticSize = Enum.AutomaticSize.Y
 	holder.Size = UDim2.new(1, 0, 0, 0)
 	holder.Parent = list
+	local inset = Instance.new("UIPadding")
+	inset.PaddingLeft = UDim.new(0, Turts.WINDOW_INSET)
+	inset.PaddingRight = UDim.new(0, Turts.WINDOW_INSET)
+	inset.PaddingTop = UDim.new(0, Turts.WINDOW_INSET)
+	inset.PaddingBottom = UDim.new(0, Turts.WINDOW_INSET)
+	inset.Parent = holder
 	local layout = Instance.new("UIListLayout")
 	layout.Padding = UDim.new(0, 8)
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -322,7 +340,13 @@ local function buildWindow()
 	cards = holder
 	local productId = (Monetization.PRODUCTS :: any)[Turts.PRODUCT] :: number
 	local soon = productId == 0
-	local restock = UIKit.button(list, if soon then "Restock now · Coming soon" else "Restock now", UIKit.Colors.Secondary)
+	local restockRow = Instance.new("Frame")
+	restockRow.Name = "RestockRow"
+	restockRow.LayoutOrder = 2
+	restockRow.BackgroundTransparency = 1
+	restockRow.Size = UDim2.new(1, 0, 0, 52 + 3 * Turts.WINDOW_INSET)
+	restockRow.Parent = list
+	local restock = UIKit.button(restockRow, if soon then "Restock now · Coming soon" else "Restock now", UIKit.Colors.Secondary)
 	if not soon then
 		-- its Robux price on the button, from Roblox (the price is set on Creator Hub)
 		task.spawn(function()
@@ -334,8 +358,8 @@ local function buildWindow()
 			end
 		end)
 	end
-	restock.LayoutOrder = 2
-	restock.Size = UDim2.new(1, 0, 0, 52)
+	restock.Position = UDim2.fromOffset(Turts.WINDOW_INSET, Turts.WINDOW_INSET)
+	restock.Size = UDim2.new(1, -2 * Turts.WINDOW_INSET, 0, 52)
 	restock.Activated:Connect(function()
 		if not soon then
 			Remotes.TurtsRestockNow:FireServer()

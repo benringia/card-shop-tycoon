@@ -16,28 +16,32 @@ export type Offer = {
 }
 export type Spot = { name: string, group: string, x: number, z: number, face: { x: number, z: number } }
 
-local function material(boss: string, name: string): Offer
-	return { name = name, item = `material_{boss}`, count = 1, price = 350, value = 150, weight = 1.5, excited = true }
+-- `weight`: the later bosses' materials rarer (owner 2026-11-13: "lower the chances of getting ... other high level
+-- boss items")
+local function material(boss: string, name: string, weight: number): Offer
+	return { name = name, item = `material_{boss}`, count = 1, price = 350, value = 150, weight = weight, excited = true }
 end
 
 local OFFERS: { [string]: Offer } = {
 	vrPack = { name = "Very Rare Pack", item = "vrPack", count = 1, price = 25, value = 10, weight = 16, glow = "Very Rare" },
-	epicPack = { name = "Epic Pack", item = "epicPack", count = 1, price = 75, value = 25, weight = 8, excited = true, glow = "Epic" },
-	legendaryPack = { name = "Legendary Pack", item = "legendaryPack", count = 1, price = 600, value = 300, weight = 2.5, excited = true, glow = "Legendary" },
+	-- owner 2026-11-13: "lower the chances of getting a rare items like legendary card pack": 2.5 gave one about every
+	-- 1.3 hours of play; now about every 3.5
+	epicPack = { name = "Epic Pack", item = "epicPack", count = 1, price = 75, value = 25, weight = 6, excited = true, glow = "Epic" },
+	legendaryPack = { name = "Legendary Pack", item = "legendaryPack", count = 1, price = 600, value = 300, weight = 0.8, excited = true, glow = "Legendary" },
 	wildOre10 = { name = "Wild Ore x10", item = "wildOre", count = 10, price = 400, value = 165, weight = 20 },
 	xpTonic = { name = "XP Tonic", item = "xpTonic", count = 1, price = 120, value = 35, weight = 16 },
 	starShard = { name = "Star Shard", item = "starShard", count = 1, price = 300, value = 90, weight = 10 },
 	gradingSeal = { name = "Grading Seal", item = "gradingSeal", count = 1, price = 400, value = 150, weight = 8 },
 	-- value: the most grading cash it can pay (an Epic's A to S step); the spec's $12,500 broke its own 1.5x rule
-	goldSeal = { name = "Gold Seal", item = "goldSeal", count = 1, price = 15000, value = 10000, weight = 1.5 },
+	goldSeal = { name = "Gold Seal", item = "goldSeal", count = 1, price = 15000, value = 10000, weight = 0.4 },
 	-- each boss's weapon material, its own rare offer (owner: "you can add boss materials but at a low odds")
-	material_meadowWarden = material("meadowWarden", "Warden Heartwood"),
-	material_caveBroodQueen = material("caveBroodQueen", "Brood Silk"),
-	material_emberColossus = material("emberColossus", "Colossus Core"),
-	material_frostTyrant = material("frostTyrant", "Frost Heart"),
-	material_stormSovereign = material("stormSovereign", "Storm Crystal"),
-	material_riftDevourer = material("riftDevourer", "Rift Shard"),
-	material_prismHydra = material("prismHydra", "Prism Scale"),
+	material_meadowWarden = material("meadowWarden", "Warden Heartwood", 0.6),
+	material_caveBroodQueen = material("caveBroodQueen", "Brood Silk", 0.6),
+	material_emberColossus = material("emberColossus", "Colossus Core", 0.6),
+	material_frostTyrant = material("frostTyrant", "Frost Heart", 0.35),
+	material_stormSovereign = material("stormSovereign", "Storm Crystal", 0.35),
+	material_riftDevourer = material("riftDevourer", "Rift Shard", 0.35),
+	material_prismHydra = material("prismHydra", "Prism Scale", 0.2),
 }
 
 -- Where he sets up (owner: "spawn him randomly on the corner of the streets or the side of the plaza with his rug"):
@@ -66,6 +70,12 @@ return {
 	PROMPT_RANGE = 10, -- studs: his "Shop" prompt; buying needs you this near (plus a little)
 	SHAKE = { degrees = 7, hz = 3.2 }, -- his head's constant wobble (owner: "main animation will be the head shake")
 	SIT_EVERY = { 20, 40 }, -- seconds between his sit-downs
+	-- His face peeking over his shop window's top edge, paws on its header (owner 2026-11-13: "put turts' icon/face like
+	-- pish above the window"): a sticker cut by tools/ui-art/cutout.py (assets/ui/mascot/Turts_peek.png, 512x395),
+	-- `size` pixels, `overlap` of them over the header; `inset` pixels round the window's rows and button, so their
+	-- outlines aren't clipped by its list ("there are some cut off borders on the shop window")
+	PEEK = { image = "rbxassetid://88230243259299", size = { 132, 102 }, overlap = 28 },
+	WINDOW_INSET = 5,
 	-- Drawn like Pish and Chikin (Util/PishVisual: NpcModels.Turts, his clips in MonsterAnimations.Turts): his height
 	-- and Pish's licensed barks a little lower (a gruffer little dog)
 	HEIGHT = 2.6, -- studs

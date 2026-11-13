@@ -3126,11 +3126,15 @@ proof and balance. restock also stocks only 1qty per item").
   until its id is set in `Config/Monetization`): a fresh roll for that player until the next restock, still paid in
   cash.
 - What he sells (`Config/Turts OFFERS`; each price at least 1.5 times its usual value, the cash it takes to earn it the
-  normal way, Lune-tested): Very Rare Pack $25 (weight 16), Epic Pack $75 (8), Legendary Pack $600 (2.5; its Legendary's
+  normal way, Lune-tested): Very Rare Pack $25 (weight 16), Epic Pack $75 (6), Legendary Pack $600 (0.8; its Legendary's
   grade rolls the pity Legendary's stingy odds, so it can't skip the long Grade S chase), Wild Ore x10 $400 (20), XP
-  Tonic $120 (16), Star Shard $300 (10), Grading Seal $400 (8), each boss's weapon material $350 (1.5 each; owner: "boss
-  materials but at a low odds"), Gold Seal $15,000 (1.5; it pays up to $10,000 of grading). Never: key fragments,
-  trophies. A Legendary Pack shows up in about 8% of restocks (about once every two hours of play). His packs open from
+  Tonic $120 (16), Star Shard $300 (10), Grading Seal $400 (8), each boss's weapon material $350 (owner: "boss materials
+  but at a low odds"; then "lower the chances of getting a rare items like legendary card pack and other high level boss
+  items": the first three bosses' 0.6, the Frost Tyrant's, Storm Sovereign's and Rift Devourer's 0.35, the Prism
+  Hydra's 0.2), Gold Seal $15,000 (0.4; it pays up to $10,000 of grading). Never: key fragments, trophies. At 7.5
+  restocks an hour: a Legendary Pack about every 3.5 hours of play, a Gold Seal about every 7, an early boss's material
+  about every 4.7, a later boss's about every 8, the Prism Hydra's about every 15. His window has his face peeking over
+  its top edge, paws on the header (`Turts.PEEK`, `assets/ui/mascot/Turts_peek.png`, cut like Pish's sticker). His packs open from
   the Bag (`vrPack`, `epicPack`, `legendaryPack`: First Spark packs, the hit card floored) and count as packs opened.
 - Server authoritative (`TurtsService`): the buy checks it's the same restock, in that player's stock, not bought, the
   player is near him (prompt range + 4) and has the cash; refusals through `Util/Blocked`. Studio: `/turts restock |

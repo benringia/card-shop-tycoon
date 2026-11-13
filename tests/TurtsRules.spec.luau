@@ -63,8 +63,15 @@ return {
 		assert(share("wildOre10") > share("vrPack"), "Wild Ore more often than a Very Rare Pack")
 		assert(share("vrPack") > share("epicPack"), "a Very Rare Pack more often than an Epic Pack")
 		assert(share("epicPack") > share("legendaryPack"), "an Epic Pack more often than a Legendary Pack")
+		-- owner 2026-11-13: "lower the chances of getting a rare items like legendary card pack and other high level boss
+		-- items": a Legendary Pack about once every 3-4 hours of play (7.5 restocks an hour), never impossible
 		local legendary = share("legendaryPack")
-		assert(legendary >= 0.04 and legendary <= 0.12, `a Legendary Pack in {legendary * 100}% of restocks (rare, not impossible)`)
+		assert(legendary >= 0.02 and legendary <= 0.05, `a Legendary Pack in {legendary * 100}% of restocks`)
+		assert(share("goldSeal") <= 0.03 and share("goldSeal") > 0, "the Gold Seal is rare")
+		-- the later bosses' materials rarer than the first ones', the Prism Hydra's the rarest
+		assert(share("material_meadowWarden") > share("material_frostTyrant"), "a high-level boss's material is rarer")
+		assert(share("material_frostTyrant") > share("material_prismHydra"), "the Prism Hydra's is the rarest")
+		assert(share("material_prismHydra") > 0, "never impossible")
 		-- the same seed gives the same roll (every server agrees)
 		local a = TurtsRules.roll(Turts.OFFERS, 3, lcg(42))
 		local b = TurtsRules.roll(Turts.OFFERS, 3, lcg(42))
