@@ -251,6 +251,29 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 		end
 		data.titles = { known = names(titles.known), fresh = names(titles.fresh), seeded = titles.seeded == true }
 	end,
+	-- Turts' rug shop (spec 2026-11-13-turts-shop-design): the restock a player last saw, the offers they bought in it,
+	-- and a "restock now" roll (TurtsService; Util/TurtsRules.State)
+	[23] = function(data)
+		local turts = if typeof(data.turts) == "table" then data.turts else {}
+		local function ids(list: any): { string }
+			local clean = {}
+			if typeof(list) == "table" then
+				for _, id in list do
+					if typeof(id) == "string" then
+						table.insert(clean, id)
+					end
+				end
+			end
+			return clean
+		end
+		local personal = turts.personal
+		local keep = typeof(personal) == "table" and typeof(personal.index) == "number" and typeof(personal.offers) == "table"
+		data.turts = {
+			index = if typeof(turts.index) == "number" then turts.index else 0,
+			bought = ids(turts.bought),
+			personal = if keep then { index = personal.index, offers = ids(personal.offers) } else nil,
+		}
+	end,
 }
 
 local function lowestGrade(): string

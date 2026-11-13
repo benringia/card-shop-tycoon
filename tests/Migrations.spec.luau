@@ -257,6 +257,28 @@ return {
 		expect.equal(junk.combat.firstVisit, "done", "unknown counts as done")
 	end,
 
+	-- Turts' rug shop (spec 2026-11-13-turts-shop-design): the restock a player last saw, what they bought in it, and a
+	-- "restock now" roll if they bought one
+	["v24: Turts' shop starts with nothing bought; a saved one kept, junk cleaned"] = function()
+		local data: any = { version = 23, cash = 50 }
+		Migrations.run(data, 24)
+		expect.equal(data.version, 24)
+		expect.equal(data.turts.index, 0)
+		expect.equal(#data.turts.bought, 0)
+		expect.equal(data.turts.personal, nil)
+		expect.equal(data.cash, 50, "the rest untouched")
+		local kept: any = { version = 23, turts = { index = 9, bought = { "vrPack", 3 }, personal = { index = 9, offers = { "goldSeal", "xpTonic", "starShard" } } } }
+		Migrations.run(kept, 24)
+		expect.equal(kept.turts.index, 9)
+		expect.equal(table.concat(kept.turts.bought, ","), "vrPack", "only offer ids kept")
+		expect.equal(#kept.turts.personal.offers, 3)
+		local junk: any = { version = 23, turts = { index = "x", bought = "y", personal = { index = 9, offers = "z" } } }
+		Migrations.run(junk, 24)
+		expect.equal(junk.turts.index, 0)
+		expect.equal(#junk.turts.bought, 0)
+		expect.equal(junk.turts.personal, nil, "a broken roll dropped")
+	end,
+
 	-- owner 2026-11-13: titles stay earned once earned; new ones are told once and marked new till the Titles tab is seen
 	["v23: titles known and new start empty, not seeded; junk cleaned"] = function()
 		local data: any = { version = 22 }
