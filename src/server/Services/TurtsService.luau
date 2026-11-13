@@ -38,6 +38,7 @@ local marker: Part
 local devShift = 0 -- /turts move: spots further along than the clock's
 local buyLimit = RateLimiter.new(0.5)
 local restockLimit = RateLimiter.new(2)
+local stockLimit = RateLimiter.new(1)
 
 local function randomFrom(random: Random): () -> number
 	return function()
@@ -130,8 +131,9 @@ local REFUSALS = {
 	bought = "You already bought that from Turts this restock.",
 }
 
-local function onBuy(player: Player, offerId: unknown)
-	if typeof(offerId) ~= "string" or not buyLimit(player) then
+-- `seen`: the restock the player's window showed (a buy pressed just before a restock lands after it: refused)
+local function onBuy(player: Player, offerId: unknown, seen: unknown)
+	if typeof(offerId) ~= "string" or typeof(seen) ~= "number" or not buyLimit(player) then
 		return
 	end
 	local state = states[player]
@@ -145,7 +147,7 @@ local function onBuy(player: Player, offerId: unknown)
 	end
 	state = TurtsRules.refresh(state, currentIndex)
 	states[player] = state
-	local ok, why = TurtsRules.canBuy(state, currentIndex, TurtsRules.stockFor(state, currentIndex, globalStock), offerId)
+	local ok, why = TurtsRules.canBuy(state, currentIndex, TurtsRules.stockFor(state, currentIndex, globalStock), offerId, seen :: number)
 	if not ok then
 		Blocked.tell(player, REFUSALS[why :: string] or "Turts can't sell that now.", { title = "Turts' shop" })
 		send(player)
@@ -265,7 +267,12 @@ function TurtsService.Start()
 	})
 
 	Remotes.TurtsBuy.OnServerEvent:Connect(onBuy)
-	Remotes.TurtsStock.OnServerEvent:Connect(send) -- a client asking again (its window opened before the stock came)
+	Remotes.TurtsStock.OnServerEvent:Connect(function(player)
+		-- a client asking again (its window opened before the stock came)
+		if stockLimit(player) then
+			send(player)
+		end
+	end)
 	Remotes.TurtsRestockNow.OnServerEvent:Connect(function(player)
 		if not restockLimit(player) then
 			return

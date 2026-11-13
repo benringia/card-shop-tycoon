@@ -48,10 +48,11 @@ function TurtsRules.roll(offers: { [string]: any }, picks: number, random: () ->
 	return chosen
 end
 
--- Whether a player can buy `offerId` now: it's still restock `state.index`, it's in their `stock` and they haven't
--- bought it this restock; else why not ("restocked", "notInStock", "bought")
-function TurtsRules.canBuy(state: State, index: number, stock: { string }, offerId: string): (boolean, string?)
-	if state.index ~= index then
+-- Whether a player can buy `offerId` now: it's still restock `state.index` (and `seen`, the restock their window
+-- showed, when they say), it's in their `stock` and they haven't bought it this restock; else why not ("restocked",
+-- "notInStock", "bought")
+function TurtsRules.canBuy(state: State, index: number, stock: { string }, offerId: string, seen: number?): (boolean, string?)
+	if state.index ~= index or (seen ~= nil and seen ~= index) then
 		return false, "restocked"
 	end
 	if not table.find(stock, offerId) then

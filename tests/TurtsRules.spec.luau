@@ -78,6 +78,11 @@ return {
 		expect.equal(select(2, TurtsRules.canBuy(state, 5, stock, "vrPack")), "bought")
 		expect.equal(select(2, TurtsRules.canBuy(state, 5, stock, "goldSeal")), "notInStock")
 		expect.equal(select(2, TurtsRules.canBuy(state, 6, stock, "xpTonic")), "restocked")
+		-- a buy pressed on the last restock's window lands after the new one: refused, even when the new stock has an
+		-- offer of the same name (the player saw, and meant, the old one)
+		local fresh = { index = 6, bought = {} }
+		expect.equal(select(2, TurtsRules.canBuy(fresh, 6, stock, "xpTonic", 5)), "restocked")
+		expect.equal(TurtsRules.canBuy(fresh, 6, stock, "xpTonic", 6), true)
 	end,
 
 	["every price is at least 1.5x its usual value; the Gold Seal above the most it can pay"] = function()

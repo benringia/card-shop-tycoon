@@ -46,6 +46,10 @@ local rug: Model
 local slots: { Slot } = {}
 local timerLabel: TextLabel
 local stock = { index = 0, offers = {} :: { string }, bought = {} :: { string }, endsAt = 0 }
+-- The shake last put on his head and the transform it left, so it's swapped each frame, never piled up (nothing else
+-- rewrites his head every frame: a shake multiplied on top grew to 50-88 degrees in Studio)
+local shakeOn = CFrame.identity
+local shakeLeft: CFrame? = nil
 local panel: Frame? = nil
 local cards: Frame? = nil
 local countdown: TextLabel? = nil
@@ -279,7 +283,7 @@ local function fillWindow()
 			buy.Position = UDim2.new(1, -12, 0.5, 0)
 			buy.Size = UDim2.fromOffset(112, 48)
 			buy.Activated:Connect(function()
-				Remotes.TurtsBuy:FireServer(offerId)
+				Remotes.TurtsBuy:FireServer(offerId, stock.index)
 			end)
 		end
 	end
@@ -445,8 +449,12 @@ function TurtsController.Start()
 			PishVisual.step(visual, dt)
 			local bone = head
 			if bone then
-				-- his head always shakes (owner: "main animation will be the head shake"), on top of the clips
-				bone.Transform = bone.Transform * CFrame.Angles(0, math.rad(TurtsRules.shakeAngle(os.clock(), Turts.SHAKE)), 0)
+				-- his head always shakes (owner: "main animation will be the head shake"), on top of the clips: the last
+				-- frame's shake taken off first, unless something else has set the head since
+				local base = if shakeLeft and bone.Transform == shakeLeft then shakeLeft * shakeOn:Inverse() else bone.Transform
+				shakeOn = CFrame.Angles(0, math.rad(TurtsRules.shakeAngle(os.clock(), Turts.SHAKE)), 0)
+				bone.Transform = base * shakeOn
+				shakeLeft = bone.Transform
 			end
 		end)
 	end)
