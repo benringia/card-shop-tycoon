@@ -208,6 +208,16 @@ studs tall (`Town.SLOTS.PortalDungeon`), look
 `Town.PORTAL_LOOKS.Dungeon`; saved as `assets/props/PortalDungeon.rbxm`. Until it's saved the gate shows `PortalArena`
 in the Arena look (`FrontierValley.DUNGEON_GATE.fallback`).
 
+## Turts' rug (TurtsRug)
+
+Turts' rug and things (DESIGN 7.9): `tools/blender/build_turts_rug.py` on `voxel_kit.py` and `portal_kit.py`, run in a
+background Blender (`blender -b --factory-startup --python tools/blender/build_turts_rug.py`), writes
+`assets/blender/TurtsRug/TurtsRug.{blend,fbx}` (about 1,140 triangles). Three objects keep their names: `Frame` (the rug,
+cushion, crates, lantern post, packs, coins; palette texture), `Glow` (the lantern's glass: TurtsController makes it neon
+with a light) and `Sign` (the board: TurtsController writes TURTS on it). The origin is where Turts sits, his customers
+toward -Y. Import the FBX in Studio (default settings), save the model as `assets/props/TurtsRug.rbxm` and delete the
+Workspace copy; TurtsController clones it under him (a code-built stand-in until then).
+
 ## Models with unions (PlaceProps)
 
 Rojo's live sync can't carry union (CSG) shapes: a synced UnionOperation arrives empty and invisible. So models

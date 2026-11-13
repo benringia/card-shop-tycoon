@@ -3099,6 +3099,43 @@ the exact same spot with for robux?").
 
 ---
 
+### 7.9 Turts' rug shop
+
+Spec `docs/superpowers/specs/2026-11-13-turts-shop-design.md`, plan `docs/superpowers/plans/2026-11-13-turts-shop.md`
+(owner 2026-11-13: "a dog on the rug selling stuff. called Turts ... v-rare, epic, legendary packs, items that drops
+anywhere. highlevel/rarer items have lower chances to be restocked. after the timer ends, the shop restocks 3 random
+items"; "make sure the prices are higher than usual. otherwise players will just wait for restocks. make sure its abuse
+proof and balance. restock also stocks only 1qty per item").
+
+- Turts, the owner's dog (a shaggy black Shih Tzu: cross-eyed with big pupils, an underbite with two little teeth, his
+  tongue always out), sits on his rug with his things (a woven medallion rug, a cushion, two crates, a lantern, a stack
+  of packs, coins and a TURTS sign; `tools/blender/build_turts_rug.py`, `assets/props/TurtsRug.rbxm`, a code-built
+  stand-in until it's saved). His head always shakes (`TurtsRules.shakeAngle` on Head_0, on top of his clips); he sits
+  now and then and spins ("celebrate") when a restock lands or someone buys an Epic Pack, a Legendary Pack or a boss
+  material. Model: Meshy from concept A with bigger pupils (the owner's pick), `prep_turts.py` (his face split off and
+  kept dense: a plain 10,000 cut smeared his pupils, nose and tongue; 15,802 triangles), `rig_turts.py` (Chikin's rig on
+  his shape), Pish's `sit` and `celebrate` clips (`DOG=Turts anim_pish.py`); Chikin stands in until `NpcModels.Turts`.
+- Every 8 minutes, on one clock in every server (`floor(os.time() / 480)`), a restock rolls 3 different offers by
+  weight (seeded from the restock number and a server-only salt, `Server/Util/TurtsSeed`) and he moves (owner: "every
+  restock"): street corners on even restocks, plaza edges on odd ones, a seeded random one of the group, so every server
+  agrees and he never sets up on the same spot twice in a row (`TurtsRules.spotFor`, `Config/Turts SPOTS`, clear of
+  lanes, crosswalks, walker stops, doors and plaza props: Lune-tested). A toast "Turts set up shop by <place>!" for
+  players in town, a 30-second beam of light over him, a timer over him and in his window.
+- Each player sees the restock's 3 offers on his rug and in his "Shop" window and can buy each once per restock (saved
+  `turts`: a rejoin or a server hop never resets it). Robux "Restock now" (`TurtsRestock`, about 49 R$; "Coming soon"
+  until its id is set in `Config/Monetization`): a fresh roll for that player until the next restock, still paid in
+  cash.
+- What he sells (`Config/Turts OFFERS`; each price at least 1.5 times its usual value, the cash it takes to earn it the
+  normal way, Lune-tested): Very Rare Pack $25 (weight 16), Epic Pack $75 (8), Legendary Pack $600 (2.5; its Legendary's
+  grade rolls the pity Legendary's stingy odds, so it can't skip the long Grade S chase), Wild Ore x10 $400 (20), XP
+  Tonic $120 (16), Star Shard $300 (10), Grading Seal $400 (8), each boss's weapon material $350 (1.5 each; owner: "boss
+  materials but at a low odds"), Gold Seal $15,000 (1.5; it pays up to $10,000 of grading). Never: key fragments,
+  trophies. A Legendary Pack shows up in about 8% of restocks (about once every two hours of play). His packs open from
+  the Bag (`vrPack`, `epicPack`, `legendaryPack`: First Spark packs, the hit card floored) and count as packs opened.
+- Server authoritative (`TurtsService`): the buy checks it's the same restock, in that player's stock, not bought, the
+  player is near him (prompt range + 4) and has the cash; refusals through `Util/Blocked`. Studio: `/turts restock |
+  move | offer <id>` and the admin panel's "Turts' rug shop" buttons.
+
 ## 8. Monetization
 
 Principle: sell **convenience, speed and looks**, not "win". Never sell anything that makes another player's experience worse.
@@ -3275,6 +3312,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── DevService.luau       # Studio-only test chat commands (/crowd: extra players counted in the Wild's biomes)
     │   │   ├── LevelUpService.luau   # shop level-up packs, opening Bag packs (OpenBagPack), the LevelUpFx broadcast (held mid-fight)
     │   │   ├── LeaderboardService.luau # the plaza leaderboard: packs-opened totals to an OrderedDataStore (every place), the cards' lists (main game)
+    │   │   ├── TurtsService.luau     # Turts' rug shop: the restock clock, his spot, each player's offers and buys, Robux restock now (DESIGN 7.9)
     │   │   ├── PurchaseService.luau  # the one ProcessReceipt: developer products granted once, ever (receipt ids saved first)
     │   │   ├── SupportService.luau   # "Support the dev": gifts, the best tier, the supporter aura (SupporterTier)
     │   │   ├── ReviewService.luau    # the phone's Reviews: customers' posts from their visits (runtime)
@@ -3289,6 +3327,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │       ├── DungeonBuilder.luau   # the Dungeon's cavern: its steps' rooms and puzzle pieces, doors, the ruins props, lighting
     │       ├── PlazaBuild.luau       # the Card Festival Square: gazebo, the leaderboard's giant cards, stalls, cafe sets and townsfolk, lights, planters
     │       ├── LeaderboardBoard.luau # the plaza leaderboard's card faces: podium and rows (LeaderboardService fills them)
+    │       ├── TurtsSeed.luau        # Turts' restock seed: the restock number with a server-only salt
     │       ├── BloomFountain.luau    # the healing spring's Elemental Bloom lotus fountain
     │       ├── PortalBuild.luau      # dresses a town portal model: vortex, glow, effects, light (and the old frame's emitters)
     │       ├── ScenePieces.luau      # anchored parts and scaled prop copies for the code-built scenery
@@ -3341,6 +3380,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── TutorialController.luau # this player's own Pish: his arrival, the first visit's cues, Skip and the tour card, replay; lesson visits that teach each unlock step by step, nudge visits
     │   │   ├── TownPishController.luau # Town Pish drawn on the server's marker, his clips and hearts
     │   │   ├── TownChikinController.luau # Town Chikin drawn the same way, his pet prompt once the combat tour is done
+    │   │   ├── TurtsController.luau  # Turts on his rug (head shake, sit, spin), your offers on it, his timer and beacon, the shop window
     │   │   ├── PriceTagController.luau  # point at / tap your shelf price tags to set the price
     │   │   ├── PartyBarController.luau  # bottom-right party cushion: Party pill + 3 round portraits (and the mascot), tap or 1/2/3 to summon
     │   │   ├── MonsterController.luau   # draws wild monsters on their markers (model or placeholder) at their species' height, glow masks, Fx_ bone effects; boss rigs, head glow, death
@@ -3460,6 +3500,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
         │   ├── PackOpeningLayout.luau # where the opening's cards sit on screen (plain data)
         │   ├── LevelUpFx.luau  # the level-up pillar's textures, timing, sizes, colours, sound options (plain data)
         │   ├── Leaderboard.luau  # the plaza leaderboard: store name, timings, the list cards' face (plain data)
+        │   ├── Turts.luau  # Turts' rug shop: timer, offers (price, usual value, weight), his spots, shake, size and barks (plain data)
         │   ├── PackFx.luau     # the opening's effect sheets and images (plain data)
         │   ├── UIMotion.luau   # UI motion timings and scales (client)
         │   ├── UIFonts.luau    # the game fonts (client)
@@ -3636,6 +3677,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── NewPulls.luau      # which pulls are NEW to the collection, for the pack results (pure, Lune-tested)
             ├── LevelUpRules.luau  # level-up rewards (cash every level, a pack every 10th), held effects merged (pure, Lune-tested)
             ├── LeaderboardRules.luau  # the plaza leaderboard's lists, store writes and counts (pure, Lune-tested)
+            ├── TurtsRules.luau  # Turts' restock clock, roll, buy check, saved state, spots, price rule, head shake (pure, Lune-tested)
             ├── UpgradeRules.luau  # station jobs: waits, Finish now tiers, the clock, saved jobs read back (pure, Lune-tested)
             ├── ReceiptRules.luau  # receipts already granted, the newest 100 kept (pure, Lune-tested)
             ├── ReviewRules.luau   # the Reviews app: a visit's post, the feed, unseen posts (pure, Lune-tested)
