@@ -12,6 +12,7 @@ export type Offer = {
 	value: number,
 	weight: number,
 	excited: boolean?, -- Turts spins when someone buys it
+	glow: string?, -- a Config/Rarities tier: its icon glows in that colour on his rug and in his window (his packs)
 }
 export type Spot = { name: string, group: string, x: number, z: number, face: { x: number, z: number } }
 
@@ -20,9 +21,9 @@ local function material(boss: string, name: string): Offer
 end
 
 local OFFERS: { [string]: Offer } = {
-	vrPack = { name = "Very Rare Pack", item = "vrPack", count = 1, price = 25, value = 10, weight = 16 },
-	epicPack = { name = "Epic Pack", item = "epicPack", count = 1, price = 75, value = 25, weight = 8, excited = true },
-	legendaryPack = { name = "Legendary Pack", item = "legendaryPack", count = 1, price = 600, value = 300, weight = 2.5, excited = true },
+	vrPack = { name = "Very Rare Pack", item = "vrPack", count = 1, price = 25, value = 10, weight = 16, glow = "Very Rare" },
+	epicPack = { name = "Epic Pack", item = "epicPack", count = 1, price = 75, value = 25, weight = 8, excited = true, glow = "Epic" },
+	legendaryPack = { name = "Legendary Pack", item = "legendaryPack", count = 1, price = 600, value = 300, weight = 2.5, excited = true, glow = "Legendary" },
 	wildOre10 = { name = "Wild Ore x10", item = "wildOre", count = 10, price = 400, value = 165, weight = 20 },
 	xpTonic = { name = "XP Tonic", item = "xpTonic", count = 1, price = 120, value = 35, weight = 16 },
 	starShard = { name = "Star Shard", item = "starShard", count = 1, price = 300, value = 90, weight = 10 },
