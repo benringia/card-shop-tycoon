@@ -17,6 +17,7 @@ local TownCritterController = require(Controllers:WaitForChild("TownCritterContr
 local TownPishController = require(Controllers:WaitForChild("TownPishController"))
 local TownChikinController = require(Controllers:WaitForChild("TownChikinController"))
 local TurtsController = require(Controllers:WaitForChild("TurtsController"))
+local BinderPoseController = require(Controllers:WaitForChild("BinderPoseController"))
 local TutorialController = require(Controllers:WaitForChild("TutorialController"))
 local ChikinController = require(Controllers:WaitForChild("ChikinController"))
 local PlazaNpcController = require(Controllers:WaitForChild("PlazaNpcController"))
@@ -98,6 +99,7 @@ if Place.isFrontier() or Place.isDungeon() then
 	-- The Frontier and Dungeon places: no shop, so only the binder, party, creatures and fights
 	UIController.Start()
 	BinderController.Start()
+	BinderPoseController.Start() -- anyone with their binder open holds it up, reading
 	PartyController.Start()
 	BuffController.Start()
 	PartyBarController.Start()
@@ -173,6 +175,7 @@ else
 	CarryController.Start()
 	PackOpeningController.Start()
 	BinderController.Start()
+	BinderPoseController.Start() -- anyone with their binder open holds it up, reading
 	ShowcaseController.Start()
 	CardBuyController.Start()
 	CondenserController.Start()

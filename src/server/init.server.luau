@@ -52,6 +52,7 @@ local DungeonGateService = require(Services:WaitForChild("DungeonGateService"))
 local LevelUpService = require(Services:WaitForChild("LevelUpService"))
 local LeaderboardService = require(Services:WaitForChild("LeaderboardService"))
 local TurtsService = require(Services:WaitForChild("TurtsService"))
+local BinderReadService = require(Services:WaitForChild("BinderReadService"))
 
 local Place = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("Place"))
 
@@ -77,6 +78,7 @@ if Place.isDungeon() then
 	TutorialService.StartLessonsOnly() -- Pish's lessons a level-up here unlocks wait for the town (saved)
 	LevelUpService.Start() -- level-up packs and Bag pack openings (after EconomyService, ItemService, BattleService)
 	LeaderboardService.StartWrites() -- packs opened here count on the plaza leaderboard
+	BinderReadService.Start() -- your binder open shows you reading it (after BattleService)
 	DevService.Start() -- Studio only
 	DataService.Start() -- last: starts loading players
 elseif Place.isFrontier() then
@@ -104,6 +106,7 @@ elseif Place.isFrontier() then
 	TutorialService.StartLessonsOnly() -- Pish's lessons a level-up here unlocks wait for the town (saved)
 	LevelUpService.Start() -- level-up packs and Bag pack openings (after EconomyService, ItemService, BattleService)
 	LeaderboardService.StartWrites() -- packs opened here count on the plaza leaderboard
+	BinderReadService.Start() -- your binder open shows you reading it (after BattleService)
 	DevService.Start() -- Studio only
 	DataService.Start() -- last: starts loading players
 else
@@ -153,6 +156,7 @@ else
 	LevelUpService.Start() -- level-up packs and Bag pack openings (after EconomyService, ItemService, BattleService)
 	LeaderboardService.Start() -- the plaza leaderboard: most packs opened (after PlotService and the plaza)
 	TurtsService.Start() -- Turts' rug shop: restocks, his spot, buys, "restock now" (after PurchaseService and WildService)
+	BinderReadService.Start() -- your binder open shows you reading it (after BattleService)
 	DevService.Start() -- Studio only
 	DataService.Start() -- last: starts loading players
 end

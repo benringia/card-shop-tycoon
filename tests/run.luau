@@ -121,6 +121,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	OpeningSounds = require("./OpeningSounds.spec"),
 	RevealSounds = require("./RevealSounds.spec"),
 	TurtsRules = require("./TurtsRules.spec"),
+	BinderPoseRules = require("./BinderPoseRules.spec"),
 	ArrivalShot = require("./ArrivalShot.spec"),
 	ChikinRules = require("./ChikinRules.spec"),
 	PishWalk = require("./PishWalk.spec"),

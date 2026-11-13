@@ -607,6 +607,18 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
 
 ### 5.6 What you do with pulled cards
 - **Binder:** collection book UI, shows owned/missing, completion % (cards on display count as owned).
+- **Reading it in the world** (owner 2026-11-13: "Opening the binder should also show the character opening a binder,
+  so that other players know you are opening a binder", "like reading a book", pose and binder only): while your
+  binder is open, everyone sees you holding a small open binder at chest height and reading it, head tipped down,
+  a page turning over every 3.5-7 s (only for viewers within 70 studs; your own camera is on the binder's stage, so
+  you never see yourself). The binder is built from parts in the real one's colours: dark leather with gold stitching
+  and a gold diamond on the outside, dark pages with eight cards in white-bordered pockets in the rarities' colours
+  inside (`Config/BinderPose`). The client tells the server it opened or closed (`Remotes.BinderShown`, opening
+  rate-limited, refused mid-fight); `BinderReadService` sets the player attribute `ReadingBinder`, clears it when
+  the character goes and when a fight starts. Every client poses each reader (`BinderPoseController`): arms and head
+  through the joints' Transform after the animations (player joints are AnimationConstraints since Roblox's avatar
+  joint upgrade, so C0 can't pose them), easing in and out over 0.3 s, held over the walk. Rules
+  `Util/BinderPoseRules` (Lune-tested). Cosmetic only, not saved.
 - **Glass Showcase:** put singles on display for NPC customers. Some customers (about 30%) look at it; whether they
   take a card depends on your price vs its market value, using the same bands as packs (4.4). They pay at the register.
   If they give up in the queue, the card goes back in the case.

@@ -1967,6 +1967,7 @@ local function buildPanel(parent: Instance)
 	panel:GetPropertyChangedSignal("Visible"):Connect(function()
 		hideTooltip()
 		Hud.setHidden("Binder", panel.Visible)
+		Remotes.BinderShown:FireServer(panel.Visible) -- others see you reading it (BinderPoseController)
 		if panel.Visible then
 			BinderDesk.show()
 			layoutBook()
