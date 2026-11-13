@@ -304,17 +304,24 @@ local function buildWindow()
 	panel = made
 	made.Size = UDim2.fromScale(0.92, 0.92) -- the three offers and Restock now in view on a desktop (520 high at most)
 	local palette = UIKit.colorsFor(made)
-	-- his face peeking over the window's top edge, paws on the header
+	-- his face peeking over the window's top-left corner, paws on the header; the title moves right past him
+	local look = Turts.PEEK
 	local peek = Instance.new("ImageLabel")
 	peek.Name = "TurtsPeek"
 	peek.BackgroundTransparency = 1
-	peek.Image = Turts.PEEK.image
+	peek.Image = look.image
 	peek.ScaleType = Enum.ScaleType.Fit
-	peek.AnchorPoint = Vector2.new(0.5, 1)
-	peek.Position = UDim2.new(0.5, 0, 0, Turts.PEEK.overlap)
-	peek.Size = UDim2.fromOffset(Turts.PEEK.size[1], Turts.PEEK.size[2])
+	peek.AnchorPoint = Vector2.new(0, 1)
+	peek.Position = UDim2.fromOffset(look.left, look.overlap)
+	peek.Size = UDim2.fromOffset(look.size[1], look.size[2])
 	peek.ZIndex = 60
 	peek.Parent = made
+	local title = made:FindFirstChild("Title")
+	if title and title:IsA("TextLabel") then
+		local past = look.left + look.size[1] + 6
+		title.Position = UDim2.fromOffset(past, title.Position.Y.Offset)
+		title.Size = UDim2.new(1, -(past + 72), title.Size.Y.Scale, title.Size.Y.Offset)
+	end
 	local line = UIKit.label(list, "", Enum.Font.GothamBold, 15, palette.inkSoft)
 	line.LayoutOrder = 0
 	line.Size = UDim2.new(1, 0, 0, 22)

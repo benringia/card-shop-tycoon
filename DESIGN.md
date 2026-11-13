@@ -3134,7 +3134,8 @@ proof and balance. restock also stocks only 1qty per item").
   Hydra's 0.2), Gold Seal $15,000 (0.4; it pays up to $10,000 of grading). Never: key fragments, trophies. At 7.5
   restocks an hour: a Legendary Pack about every 3.5 hours of play, a Gold Seal about every 7, an early boss's material
   about every 4.7, a later boss's about every 8, the Prism Hydra's about every 15. His window has his face peeking over
-  its top edge, paws on the header (`Turts.PEEK`, `assets/ui/mascot/Turts_peek.png`, cut like Pish's sticker). His packs open from
+  its top-left corner, small, paws on the header, the title beside him (`Turts.PEEK`, `assets/ui/mascot/Turts_peek.png`,
+  cut like Pish's sticker; owner: "put it near the left corner of the window and make it smaller"). His packs open from
   the Bag (`vrPack`, `epicPack`, `legendaryPack`: First Spark packs, the hit card floored) and count as packs opened.
 - Server authoritative (`TurtsService`): the buy checks it's the same restock, in that player's stock, not bought, the
   player is near him (prompt range + 4) and has the cash; refusals through `Util/Blocked`. Studio: `/turts restock |

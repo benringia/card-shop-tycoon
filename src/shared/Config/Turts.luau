@@ -71,10 +71,11 @@ return {
 	SHAKE = { degrees = 7, hz = 3.2 }, -- his head's constant wobble (owner: "main animation will be the head shake")
 	SIT_EVERY = { 20, 40 }, -- seconds between his sit-downs
 	-- His face peeking over his shop window's top edge, paws on its header (owner 2026-11-13: "put turts' icon/face like
-	-- pish above the window"): a sticker cut by tools/ui-art/cutout.py (assets/ui/mascot/Turts_peek.png, 512x395),
-	-- `size` pixels, `overlap` of them over the header; `inset` pixels round the window's rows and button, so their
-	-- outlines aren't clipped by its list ("there are some cut off borders on the shop window")
-	PEEK = { image = "rbxassetid://88230243259299", size = { 132, 102 }, overlap = 28 },
+	-- pish above the window"; then "too large ... put it near the left corner of the window and make it smaller"): a
+	-- sticker cut by tools/ui-art/cutout.py (assets/ui/mascot/Turts_peek.png, 512x395), `size` pixels, `left` from the
+	-- window's left edge, `overlap` of them over the header (the title moves right past him); WINDOW_INSET: pixels round
+	-- the window's rows and button, so their outlines aren't clipped by its list ("cut off borders on the shop window")
+	PEEK = { image = "rbxassetid://88230243259299", size = { 70, 54 }, left = 10, overlap = 26 },
 	WINDOW_INSET = 5,
 	-- Drawn like Pish and Chikin (Util/PishVisual: NpcModels.Turts, his clips in MonsterAnimations.Turts): his height
 	-- and Pish's licensed barks a little lower (a gruffer little dog)
