@@ -312,8 +312,20 @@ local function buildWindow()
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = holder
 	cards = holder
-	local soon = (Monetization.PRODUCTS :: any)[Turts.PRODUCT] == 0
-	local restock = UIKit.button(list, if soon then "Restock now · Coming soon" else "Restock now (Robux)", UIKit.Colors.Secondary)
+	local productId = (Monetization.PRODUCTS :: any)[Turts.PRODUCT] :: number
+	local soon = productId == 0
+	local restock = UIKit.button(list, if soon then "Restock now · Coming soon" else "Restock now", UIKit.Colors.Secondary)
+	if not soon then
+		-- its Robux price on the button, from Roblox (the price is set on Creator Hub)
+		task.spawn(function()
+			local ok, info = pcall(function()
+				return game:GetService("MarketplaceService"):GetProductInfo(productId, Enum.InfoType.Product)
+			end)
+			if ok and typeof(info) == "table" and typeof(info.PriceInRobux) == "number" then
+				restock.Text = `Restock now · R$ {info.PriceInRobux}`
+			end
+		end)
+	end
 	restock.LayoutOrder = 2
 	restock.Size = UDim2.new(1, 0, 0, 52)
 	restock.Activated:Connect(function()
