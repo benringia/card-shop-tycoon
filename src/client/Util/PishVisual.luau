@@ -13,6 +13,7 @@ local Config = Shared:WaitForChild("Config")
 local Party = require(Config:WaitForChild("Party"))
 local Pish = require(Config:WaitForChild("Pish"))
 local Chikin = require(Config:WaitForChild("Chikin"))
+local Turts = require(Config:WaitForChild("Turts"))
 local SoundLevels = require(Config:WaitForChild("SoundLevels"))
 local SoundLevel = require(Shared:WaitForChild("Util"):WaitForChild("SoundLevel"))
 
@@ -29,13 +30,14 @@ export type Visual = {
 	onDone: (() -> ())?,
 	dirt: ParticleEmitter,
 	shown: boolean,
-	dog: string, -- "Pish" or "Chikin"
+	dog: string, -- "Pish", "Chikin" or "Turts"
 }
 
 -- Each dog's size and sounds (Config/Pish, Config/Chikin)
 local DOGS: { [string]: { HEIGHT: number, SOUNDS: { [string]: string }, SOUND_PITCH: { [string]: number }, SOUND_VOLUME: number } } = {
 	Pish = Pish :: any,
 	Chikin = Chikin :: any,
+	Turts = Turts :: any, -- the plaza shopkeeper (TurtsController)
 }
 
 local PishVisual = {}

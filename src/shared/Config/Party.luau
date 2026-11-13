@@ -161,6 +161,8 @@ return {
 		-- strolling and 3.2 trotting (tests/PishWalk), a soft bob
 		Pish = { fidgets = { "look", "tilt", "sniff" }, tailSpeed = 0.9, tailAmount = 1, bounce = 0.35, stride = 1.8 },
 		Chikin = { fidgets = { "look", "tilt", "sniff" }, tailSpeed = 1.1, tailAmount = 1, bounce = 0.4, stride = 1.8 }, -- Pish's buddy, a bit bouncier
+		-- Turts, the plaza shopkeeper: he never walks; his head's shake is TurtsController's, so no head fidgets
+		Turts = { fidgets = { "sniff" }, tailSpeed = 1.3, tailAmount = 1.1, bounce = 0, stride = 1.8 },
 		Voidmaw = { fidgets = { "look", "sniff", "yawn", "shake", "tilt", "stretch", "stomp" }, tailSpeed = 0.35, tailAmount = 0.7, bounce = 0.4, stride = 1.2 }, -- a huge prowling dragon
 		prismHydra = { fidgets = { "look", "shake", "stomp" }, tailSpeed = 0.3, tailAmount = 0.5, bounce = 0.2, stride = 0.9 }, -- the final boss: heavy, slow
 		-- Wild monsters (keyed by species, spec 2026-11-01-wild-monster-models-design)

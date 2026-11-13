@@ -63,6 +63,18 @@ return {
 	PROMPT_RANGE = 10, -- studs: his "Shop" prompt; buying needs you this near (plus a little)
 	SHAKE = { degrees = 7, hz = 3.2 }, -- his head's constant wobble (owner: "main animation will be the head shake")
 	SIT_EVERY = { 20, 40 }, -- seconds between his sit-downs
+	-- Drawn like Pish and Chikin (Util/PishVisual: NpcModels.Turts, his clips in MonsterAnimations.Turts): his height
+	-- and Pish's licensed barks a little lower (a gruffer little dog)
+	HEIGHT = 2.6, -- studs
+	SOUNDS = {
+		bark = "rbxassetid://9113955093",
+		whimper = "rbxassetid://9113951583",
+		yawn = "",
+		yip = "rbxassetid://9113955748",
+		dig = "",
+	} :: { [string]: string },
+	SOUND_PITCH = { bark = 1.3, whimper = 1.1, yip = 1.6 } :: { [string]: number },
+	SOUND_VOLUME = 1,
 	OFFERS = OFFERS,
 	SPOTS = {
 		corner("the north-west corner", -80, -32),
