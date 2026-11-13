@@ -22,6 +22,7 @@ local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"
 local CharacterStats = require(Shared:WaitForChild("Util"):WaitForChild("CharacterStats"))
 local WeaponRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local LevelRules = require(Shared:WaitForChild("Util"):WaitForChild("LevelRules"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
@@ -39,6 +40,8 @@ local BinderController = require(Controllers:WaitForChild("BinderController"))
 local PartyController = require(Controllers:WaitForChild("PartyController"))
 local PartyBarController = require(Controllers:WaitForChild("PartyBarController"))
 local WeaponSwitchController = require(Controllers:WaitForChild("WeaponSwitchController"))
+local BossBoardController = require(Controllers:WaitForChild("BossBoardController"))
+local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 
 local CharacterController = {}
 
@@ -62,6 +65,7 @@ local titleState = {
 }
 local newShown: { [string]: boolean } = {} -- tagged NEW while this window stays open (the server forgets them once seen)
 local faceDot: Frame? = nil
+local stageParty: Frame? = nil -- the party's portraits on the stage's floor
 local TITLES = Look.TITLES
 
 local function rgb(values: { number }): Color3
@@ -135,7 +139,70 @@ local function weaponNow(): (string?, string, number, number)
 	return id, grade, level, WeaponRules.shownPower(Weapons, Combat, id, grade, level)
 end
 
+-- The four progress tiles over the stats (owner 2026-11-13, pick A): Level with its XP, Cards, Bosses, Titles
+local function showProgress()
+	local xp = tonumber(player:GetAttribute("XP")) or 0
+	local into, span = LevelRules.getProgress(xp)
+	local cards, cardsTotal = BinderController.CollectedCount()
+	local bosses, bossesTotal = BossBoardController.BeatenCount()
+	local tiles = CharacterStats.progress({
+		level = tonumber(player:GetAttribute("Level")) or 1,
+		into = into,
+		span = span,
+		cards = cards,
+		cardsTotal = cardsTotal,
+		bosses = bosses,
+		bossesTotal = bossesTotal,
+		titles = #titleState.earned,
+		titlesTotal = #Titles.ORDER,
+	})
+	local row = Instance.new("Frame")
+	row.Name = "Progress"
+	row.LayoutOrder = 0
+	row.BackgroundTransparency = 1
+	row.Size = UDim2.new(1, -10, 0, Look.TILE_HEIGHT)
+	row.Parent = page
+	local grid = Instance.new("UIGridLayout")
+	grid.CellPadding = UDim2.fromOffset(6, 0)
+	grid.CellSize = UDim2.new(0.25, -5, 1, 0)
+	grid.SortOrder = Enum.SortOrder.LayoutOrder
+	grid.Parent = row
+	for index, tile in tiles do
+		local cell = Instance.new("Frame")
+		cell.LayoutOrder = index
+		cell.BackgroundColor3 = palette.row
+		cell.Parent = row
+		UIKit.corner(cell, 12)
+		local edge = Instance.new("UIStroke")
+		edge.Color = palette.rowEdge
+		edge.Thickness = 2
+		edge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		edge.Parent = cell
+		local name = UIKit.label(cell, tile.name, Enum.Font.GothamBold, 11, palette.inkSoft)
+		name.Position = UDim2.fromOffset(8, 4)
+		name.Size = UDim2.new(1, -16, 0, 14)
+		local value = UIKit.label(cell, tile.value, Enum.Font.FredokaOne, 18, palette.ink)
+		value.Position = UDim2.fromOffset(8, 18)
+		value.Size = UDim2.new(1, -16, 0, 20)
+		local track = Instance.new("Frame")
+		track.AnchorPoint = Vector2.new(0, 1)
+		track.Position = UDim2.new(0, 8, 1, -7)
+		track.Size = UDim2.new(1, -16, 0, 6)
+		track.BackgroundColor3 = palette.rowEdge
+		track.BorderSizePixel = 0
+		track.Parent = cell
+		UIKit.corner(track, 3)
+		local fill = Instance.new("Frame")
+		fill.Size = UDim2.fromScale(tile.share, 1)
+		fill.BackgroundColor3 = Color3.fromRGB(154, 107, 255)
+		fill.BorderSizePixel = 0
+		fill.Parent = track
+		UIKit.corner(fill, 3)
+	end
+end
+
 local function showStats()
+	showProgress()
 	local powers = {}
 	for _, each in partyCards() do
 		table.insert(powers, each.power)
@@ -432,12 +499,57 @@ local function show(tab: string)
 	end
 end
 
+-- Your three party creatures as round portraits on the stage's floor (owner 2026-11-13, pick A), the one out bigger
+-- in the middle
+local function showStageParty()
+	if stageParty then
+		stageParty:Destroy()
+	end
+	local look = Look.STAGE_PARTY
+	local holder = Instance.new("Frame")
+	holder.Name = "StageParty"
+	holder.BackgroundTransparency = 1
+	holder.Size = UDim2.fromScale(1, 1)
+	holder.ZIndex = 5
+	holder.Parent = stageHolder
+	stageParty = holder
+	local beasts = BinderController.GetBeasts()
+	local summoned = PartyController.GetSummoned()
+	local order = { 1, 2, 3 }
+	if summoned then
+		order = { if summoned == 1 then 2 else 1, summoned, if summoned == 3 then 2 else 3 }
+	end
+	for index, slot in order do
+		local beastId = PartyController.GetSlots()[slot]
+		local beast = if beastId then beasts[beastId] else nil
+		local cardInfo = if beast then Cards.ById[beast.cardId] else nil
+		if cardInfo and beast then
+			local out = slot == summoned
+			local size = if out then look.out else look.size
+			local portrait = Instance.new("ImageLabel")
+			portrait.Name = `Pal{slot}`
+			portrait.AnchorPoint = Vector2.new(0.5, 0.5)
+			portrait.Position = UDim2.fromScale(0.5 + (index - 2) * look.spread, look.y)
+			portrait.Size = UDim2.fromOffset(size, size)
+			portrait.BackgroundColor3 = Cards.ELEMENTS[cardInfo.element] or Color3.new(0.5, 0.5, 0.5)
+			portrait.Image = CardFace.artImage(cardInfo)
+			portrait.ScaleType = Enum.ScaleType.Crop
+			portrait.ZIndex = 5
+			portrait.Parent = holder
+			UIKit.corner(portrait, size / 2)
+			UIKit.outline(portrait, if out then Color3.fromRGB(255, 138, 58) else Color3.new(1, 1, 1), 3)
+			Tooltip.attach(portrait, `{cardInfo.name} · Lv {beast.level}`)
+		end
+	end
+end
+
 local function refresh()
 	local title = panel:FindFirstChild("Title", true)
 	if title and title:IsA("TextLabel") then
 		title.Text = `{player.DisplayName} · Lv {player:GetAttribute("Level") or 1}`
 	end
 	stage.refresh()
+	showStageParty()
 	show(openTab)
 	showWeapon()
 	showStageTitle()
@@ -590,6 +702,17 @@ local function build()
 	stageHolder.ClipsDescendants = true -- the aura's sparkles stay on the stage
 	stageHolder.Parent = body
 	UIKit.corner(stageHolder, 16)
+	-- your shop at night behind you (owner 2026-11-13, pick A: "character window is a bit plain")
+	local backdrop = Instance.new("ImageLabel")
+	backdrop.Name = "Backdrop"
+	backdrop.BackgroundTransparency = 1
+	backdrop.Size = UDim2.fromScale(1, 1)
+	backdrop.Image = Look.BACKDROP.image
+	backdrop.ImageColor3 = rgb(Look.BACKDROP.tint)
+	backdrop.ScaleType = Enum.ScaleType.Crop
+	backdrop.ZIndex = 1
+	backdrop.Parent = stageHolder
+	UIKit.corner(backdrop, 16)
 	stage = CharacterStage.new(stageHolder)
 	stage.frame.ZIndex = 3 -- the supporter glow (2) behind the character, its sparkles (4) and the boxes (5) in front
 	aura = StageAura.attach(stageHolder, 2, 4, function(): boolean
@@ -630,22 +753,23 @@ local function build()
 	end
 end
 
--- Your face first on the party bar (owner 2026-11-12, pick B: you and your team in one place): your avatar's headshot
--- in a white ring; tapping it opens the window, and so does Look.FACE.key (a key chip on it with a keyboard)
+-- Your face first in the party dock's row (owner 2026-11-12, pick B: you and your team in one place; 2026-11-13 the
+-- Palworld-style dock): your avatar's headshot in a white ring; tapping it opens the window, and so does Look.FACE.key
+-- (a key chip on it with a keyboard)
 local function addFace()
-	local cushion = PartyBarController.GetCushion()
-	if not cushion then
+	local row = PartyBarController.GetMeRow()
+	if not row then
 		return
 	end
 	local bar = Party.BAR
 	local hit = Instance.new("TextButton")
 	hit.Name = "Me"
-	hit.LayoutOrder = -1 -- before the Party pill
+	hit.LayoutOrder = -1 -- before your bars
 	hit.Text = ""
 	hit.AutoButtonColor = false
 	hit.BackgroundTransparency = 1
-	hit.Size = UDim2.fromOffset(bar.HIT, bar.HIT)
-	hit.Parent = cushion
+	hit.Size = UDim2.fromOffset(bar.DOCK.meHeight, bar.DOCK.meHeight)
+	hit.Parent = row
 	local face = Instance.new("ImageLabel")
 	face.Name = "Face"
 	face.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -701,11 +825,15 @@ local function addFace()
 		if processed or input.KeyCode ~= key or UserInputService:GetFocusedTextBox() then
 			return
 		end
-		local barFrame = cushion.Parent :: GuiObject?
-		local row = if barFrame then barFrame.Parent :: GuiObject? else nil
-		if barFrame and barFrame.Visible and (not row or row.Visible) then
-			toggle()
+		-- your row and everything holding it showing (the dock on a PC, the corner's column on a phone)
+		local shown: Instance? = row
+		while shown and shown:IsA("GuiObject") do
+			if not shown.Visible then
+				return
+			end
+			shown = shown.Parent
 		end
+		toggle()
 	end)
 end
 

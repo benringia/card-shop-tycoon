@@ -8,7 +8,10 @@ return {
 	Shard = "rbxassetid://122664780125158",
 	Level = "rbxassetid://125329144164489",
 	Manage = "rbxassetid://110633075550609",
-	Cards = "rbxassetid://121767879661951",
+	-- the Cards tile's open binder with a gold star card, and the Phone tile's pink phone (owner 2026-11-13 picks B1
+	-- and P1: "we also need a better icon for binder and phone"; each made alone on magenta, slice_icons.py single)
+	Cards = "rbxassetid://132472706395603",
+	Phone = "rbxassetid://122197916686033",
 	Bag = "rbxassetid://79888737133829",
 	Build = "rbxassetid://79914528871070",
 	Prices = "rbxassetid://93124614398604",

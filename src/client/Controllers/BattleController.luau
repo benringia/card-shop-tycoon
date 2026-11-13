@@ -91,7 +91,7 @@ local POISON_COLOR = Color3.fromRGB(140, 230, 90)
 local BURN_COLOR = Color3.fromRGB(255, 140, 50)
 local NUMBER_LIFT = 4 -- studs over a fighter a damage number starts
 -- HUD hidden while fighting so nothing gets tapped by mistake
-local HUD_NAMES = { "HudSide", "HudBottom", "HudFan", "StatusRow", "ReturnToTown" } -- the Wild's pill sits in its holder
+local HUD_NAMES = { "HudSide", "HudBottom", "HudFan", "StatusRow", "PartyDock", "ReturnToTown" } -- the Wild's pill sits in its holder
 
 local BattleController = {}
 BattleController.pylonTargets = {} :: { { id: string, part: BasePart, radius: number } } -- the Dungeon's room 3 (swordTargets)
@@ -1238,7 +1238,7 @@ local function onEvents(events: { any })
 				local erupt = SwordFx.ERUPT
 				local tint = Color3.fromRGB(erupt.color[1], erupt.color[2], erupt.color[3])
 				local at = marker.Position + Vector3.new(0, 3, 0)
-				HitFx.burst(at, erupt.size, tint)
+				HitFx.impact(at, erupt.size / SwordFx.BURST.size, tint, "Ember") -- the packs' slash, not our old star
 				HitFx.ring(at, erupt.ring, tint)
 			end
 		elseif event.type == "swordChain" and event.to then
@@ -1248,7 +1248,7 @@ local function onEvents(events: { any })
 				local chain = SwordFx.CHAIN
 				local tint = Color3.fromRGB(chain.color[1], chain.color[2], chain.color[3])
 				local at = marker.Position + Vector3.new(0, 3, 0)
-				HitFx.burst(at, chain.size, tint)
+				HitFx.impact(at, chain.size / SwordFx.BURST.size, tint, "Volt")
 				HitFx.ring(at, chain.ring, tint)
 				for _, id in (if typeof(event.arcs) == "table" then event.arcs else {}) :: { any } do
 					local other = if typeof(id) == "string" then markerFor(id) else nil
@@ -1264,7 +1264,7 @@ local function onEvents(events: { any })
 				local reap = SwordFx.EXECUTE
 				local tint = Color3.fromRGB(reap.color[1], reap.color[2], reap.color[3])
 				local at = marker.Position + Vector3.new(0, 3, 0)
-				HitFx.burst(at, reap.size, tint)
+				HitFx.impact(at, reap.size / SwordFx.BURST.size, tint, "Shade")
 				HitFx.ring(at, reap.ring, tint)
 			end
 		elseif event.type == "run" and event.ok == false then

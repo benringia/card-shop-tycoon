@@ -760,7 +760,10 @@ up to half of a star's cost. One codebase, two places: `frontier.project.json` s
 `Config/Frontier`, `Config/Items`, `Config/Places` (place ids: main 75599593337434, Frontier 73033858769620).
 
 **The phone** (owner 2026-11-13: "no more manage button. replace it with a phone"; mockup pick B; Util/Hud,
-HudLayout.PHONE): the Manage tile is now the 📱 Phone tile (town only, as before). Tapping it dims the world and a phone
+HudLayout.PHONE): the Manage tile is now the Phone tile (town only, as before; its icon a pink phone with app squares
+and the Cards tile's an open binder with a gold star card since 2026-11-13, owner picks P1 and B1: "we also need a
+better icon for binder and phone"; Config/UIIcons Phone and Cards, each generated alone on magenta and cut by
+`tools/ui-icons/slice_icons.py <png> single <Name>`). Tapping it dims the world and a phone
 rises into the middle: a status bar (the time, ⭐ the shop rating), "<name>'s shop", Pish and Chikin with the golden
 heart, and the apps: Shop, Prices, Jobs, Party (each opens its window as before and the phone drops away) and
 **Reviews**, a page inside the phone with a red count of new posts. Tapping the dim, the home bar or the tile again puts
@@ -775,7 +778,7 @@ party bar under it, as before, but the weapon switch now keeps clear of it (UiLa
 it on a short phone), and the corner's touch or PC arrangement is applied again whenever it changes mid-play (Studio's
 device simulator had left the party bar at the top centre).
 **The phone HUD, slimmed** (owner 2026-11-13: "the UI on phone is really crowded", mockup pick A; touch screens only,
-PC unchanged; HudLayout.COMPACT, Util/CompactHud, UIController.OnCompact): one pill at the top right holds the cash
+PC unchanged; Util/CompactHud, UIController.OnCompact): one pill at the top right holds the cash
 ("$53,661") and the level badge, whose XP into the level fills a ring round it; the rating chip and the XP pill hide
 (the rating is on the Phone's status bar and in Reviews); the party bar drops its "Party" word (Party is a Phone app,
 the cushion still opens it); the weapon switch is one bigger chip (tap it for the next weapon, swipe it back) with a
@@ -786,7 +789,73 @@ CompactHud.mascotRise), so the column keeps that much (and 8 px of air) free bet
 itself as far into the free strip beside Roblox's top bar (CompactHud.lift, never closer than 4 px to the screen's top),
 the party bar staying where it was; toasts drop under the party bar left of the weapon chip. Checked on an iPhone 17 Pro
 in Studio's device simulator: the pill, Pish, the party bar, the chip, a toast, the Phone tiles and the bottom tiles
-all clear of each other.
+all clear of each other. (The level ring, the party bar and Pish's room over it later gave way to the party dock
+below.)
+Round 2 (owner 2026-11-13: "it's still alot, still crowded", mockup pick A plus "move the admin tile inside phone and
+move binder tile under phone"; touch screens only, PC unchanged; Util/CompactHud.spot /
+phoneTile): **no bottom row** (Drop and Rip still pop up there): Cards sits in the left column under the
+Phone (`Hud.tile` `phoneSide`), Bag, Bosses and Admin are Phone apps (`phoneApp`; 8 apps in town). The Phone shows
+everywhere on a phone: away from town its shop apps (Shop, Prices, Jobs, Reviews) hide and Party, Bag, Bosses and Admin
+stay (Party is an app in the Frontier and the Dungeon too). The weapon chip stays in town too (owner 2026-11-13:
+"weapons are missing in town"). Pish's lessons point at the Phone while what they show is inside it
+(`Hud.inPhone`). Checked on Studio's iPhone 16 Pro simulator: town, the Phone's apps, the Wild and back.
+**The party dock** (owner 2026-11-13: "lets make the party UI like this in palworld. pets carousel, then under it is the
+character menu model then beside it is health. Both mobile and Desktop", then "no box", Pish pick A; PartyBarController,
+Util/PartyDock, `Party.BAR.DOCK`): it replaces the party bar (and the round 2 "+2" bubble) on PC and phones, with no
+box: every piece carries its own white rim. On PC it sits in the bottom-left corner, every row flush left (owner
+2026-11-13: "on desktop can we move character info and party on the bottom left. align them"; UIController
+`GetDockHolder`, "PartyDock"): lifted above the bottom tiles on a window too narrow for both, the side column (the Phone,
+Admin) lifted clear of it on a short one, hidden in fights and behind the binder like the corner; the weapon carousel sits just above the cash column in the
+bottom right (owner 2026-11-13: "move weapon lower to close the gap"; UiLayout.weaponSwitch `above`). Also on PC (owner
+2026-11-13): only Cards and Bag stay in the bottom row; Bosses and Admin are Phone apps on a computer too (`Hud.tile`
+`phoneAlways`, CompactHud.spot `always`), so the left column is just the Phone; the rating chip has a hover tip (what it
+is, what raises it, "Click it for what to fix"); the weapon carousel's Q sits under its > arrow (Z under <). On a phone it
+hangs under the cash at the top right. On top a **carousel** of your 3 party slots: the creature that's out (else the one last
+in the middle, else the first card) big in the middle with the orange glow and OUT (at its foot), the other two smaller either side, each with its level in a gold
+chip at the top centre of its circle (owner 2026-11-13),
+each with its key number; tap a side one or press its key and it comes out and slides to the middle, tap the middle one
+to send it back; an empty slot's "+" picks a card in the binder; holding or hovering shows its tooltip, resting ones dim
+with their timer. Under it the middle one's name and its element. Under that, **you**: your face
+(the character window, its new-title dot) and your **level** (the gold star) with its **XP bar** (a health bar beside it
+went the same day, owner: "whats the point of this HP bar here when we got our own HP bar when we get attacked?")
+("264 / 18.2K", PartyDock.xpText), which replaces the XP pill on PC and the ring on the phone's cash pill (owner: "the
+exp/level looks broken"); the cash pill is just cash again. On a phone (owner 2026-11-13: "align them all right ...
+move them at the very top ... weapon should be below the character menu"; then "I want the character info to be at
+the very top. leveled with the roblox icons on the other side. below the exp is the coins, make the coins smaller") the
+column is flush right from the very top: your row (face, health, XP) centred on Roblox's top bar strip, level with its
+buttons on the other side; under it the cash pill, smaller (`HudLayout.CASH.touchScale` 0.72); then the carousel and
+its name line; then the weapon chip on its own row (`PartyBarController.GetWeaponSpot`). Never smaller than
+`HudLayout.SCALE.TOUCH_MIN` (0.85); toasts pop in left of the column; in a fight the chip moves above the fight buttons
+as before. Decluttered (owner 2026-11-13: "make these elements cleaner on phone, better UX", pick A; phones only): no
+key numbers on the creatures; the side creatures under a dark veil (`DOCK.sideVeil`) so the middle one is clearly the
+one; the name and level as one soft pill ("Sprouthop · Lv 30") centred under the middle creature, its element on that
+portrait's corner; the weapon's dots became a small "13/13" on the chip's corner (CompactHud.weaponCount); the coin
+sits inside its pill (`HudLayout.CASH.touchCoin`). Buffs on a phone (owner 2026-11-13: "any suggestions on where buffs should go? icons with
+tooltips?", pick A; BuffController, `HudLayout.BUFF_ICONS`): the creature's perk, Pish's Luck and Chikin's Courage are
+round icons without words left of your face in your row (two high, a third starts a column further out), a timed one in
+a ring that empties as it runs out (LuckRules.share, CompactHud.ring); the icons are one tap target and a tap lists every
+buff in the tooltip ("🍀 2:41 · Pish's Luck: better pulls"). PC keeps its chips with words above the cash. The Party panel opens from
+the Phone's Party app, which is now there everywhere on PC too. **Pish** (owner 2026-11-13 pick P1: "over the cash, saying the toasts"; on a computer only) peeks over the cash pill
+from a seat in the corner's column (UIController "PishSeat", `HudMascot.perch`), behind the pill, and the toasts come
+out of his head again as his speech bubbles (ToastRules.stackCorner); tapping him opens "Support the dev". A phone has
+no room for him: Pish and Chikin are on the Phone's home screen, with a **Support** app (💛) on every screen (owner:
+"also put an app inside the phone for donation"). The Phone tile shows wherever it holds an app (CompactHud.phoneTile;
+Party, Support, Bosses and Admin are everywhere). On PC the weapon carousel sits beside the cash column, its foot with
+the column's (above it only on a window too narrow), so Pish's toasts rise over the column with nothing under them.
+**Buffs** (owner: "buffs should appear near the character info side"): round icons in your row on PC too (after your
+bars; left of your face on a phone), hover or tap for the list.
+**The character window** (owner 2026-11-13 pick A: "character window is a bit plain"; `CharacterWindow.BACKDROP`,
+`STAGE_PARTY`, `TILE_HEIGHT`): your shop at night behind you on the stage (the pack opening's painting, tinted), your
+three party creatures as round portraits on the stage's floor (the one out bigger, in the middle; a tooltip with its
+name and level), and four progress tiles over the stats: Level with its XP, Cards collected (BinderController
+.CollectedCount), Bosses beaten (BossBoardController.BeatenCount), Titles earned (Util/CharacterStats.progress).
+The town fountain's sound is quieter up close (Scenery SOUNDS Fountain volume 0.08, 0.22 before).
+Owner 2026-11-13 (more): the dock's XP bar is longer (`DOCK.barWidth` 150) and stands alone and the buff icons sit right
+after them on PC; the Wild fight's Call in button shows the creature it brings as a round portrait in a white ring
+(the square art looked broken on the slanted button); and no weapon wears our old effects any more ("make sure no old
+effects on weapons"): Volt and Shade weapons (the Storm, Widow's and Rift Reapers, the Volt and Shade Forge weapons) wear
+the Yona pack aura in their colours, Volt with its crackling bolts (`WeaponLooks.ELEMENT_AURA`), and the perk hits
+(Eruption, Chain Lightning, Reap) burst with the packs' slash (`HitFx.impact`) instead of our drawn star.
 
 **PvP opens in the first update** (owner 2026-11-13: a week after launch, "I need to put on alot of planning to make
 the pvp good"): `Pvp.OPEN = false` till then. The plaza Arena portal shows "⚔️ Coming soon" and its card ("The Arena

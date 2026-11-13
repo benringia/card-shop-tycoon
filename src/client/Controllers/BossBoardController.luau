@@ -1020,6 +1020,18 @@ local function watchGroupPrompt(prompt: Instance)
 	refresh()
 end
 
+-- How many bosses of the ladder you've beaten, and how many there are (the character window's tile)
+function BossBoardController.BeatenCount(): (number, number)
+	local beaten = 0
+	for _, bossId in Bosses.LADDER do
+		local state = states[bossId]
+		if state and state.cleared then
+			beaten += 1
+		end
+	end
+	return beaten, #Bosses.LADDER
+end
+
 function BossBoardController.Start()
 	CollectionService:GetInstanceAddedSignal("BossGroupPrompt"):Connect(watchGroupPrompt)
 	for _, prompt in CollectionService:GetTagged("BossGroupPrompt") do
@@ -1066,7 +1078,7 @@ function BossBoardController.Start()
 	UIKit.outline(details, palette.rowEdge, 2)
 
 	-- hidden through Pish's first visit (a calm HUD)
-	Hud.calmPiece(Hud.tile({ id = "Bosses", icon = "Trophy", label = "Bosses", key = "K", group = "Bottom", order = 3, onClick = toggle }), "bosses")
+	Hud.calmPiece(Hud.tile({ id = "Bosses", icon = "Trophy", label = "Bosses", key = "K", group = "Bottom", order = 3, phoneApp = 7, phoneAlways = true, onClick = toggle }), "bosses")
 
 	Remotes.WeaponsChanged.OnClientEvent:Connect(function(state: unknown)
 		if typeof(state) == "table" and typeof((state :: any).owned) == "table" then

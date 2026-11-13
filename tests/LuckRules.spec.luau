@@ -84,6 +84,16 @@ return {
 		expect.equal(LuckRules.badgeText(1180, 1000, "💪"), "💪 3:00", "Chikin's Courage: its own icon")
 	end,
 
+	-- owner 2026-11-13 (buffs pick A): a timed buff's ring on a phone empties as it runs out
+	["share: how much of a timed buff is left, 0 to 1"] = function()
+		expect.equal(LuckRules.share(1180, 1000, 180), 1)
+		expect.equal(LuckRules.share(1090, 1000, 180), 0.5)
+		expect.equal(LuckRules.share(900, 1000, 180), 0, "over")
+		expect.equal(LuckRules.share(nil, 1000, 180), 0)
+		expect.equal(LuckRules.share(1400, 1000, 180), 1, "never past full")
+		expect.equal(LuckRules.share(1180, 1000, 0), 0, "no length: nothing")
+	end,
+
 	["left: seconds of luck left, never below 0"] = function()
 		expect.equal(LuckRules.left(1180, 1000), 180)
 		expect.equal(LuckRules.left(900, 1000), 0)

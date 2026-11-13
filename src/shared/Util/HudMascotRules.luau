@@ -1,7 +1,7 @@
 --!strict
 -- The HUD mascot's timing (spec 2026-11-03-hud-creature-pals-design; numbers in Config/HudMascot, drawn by
--- Util/HudMascotView): when it blinks, how it ducks behind the party cushion on a summon and comes back up, its tap
--- bounce, and the room the party bar keeps above the cushion for it. Pure, Lune-tested.
+-- Util/HudMascotView): when it blinks, how it ducks behind the cash pill and comes back up, its tap bounce, and where
+-- it sits. Pure, Lune-tested.
 local HudMascotRules = {}
 
 -- Seconds until the next blink, `roll` 0-1 picking within cfg.blink.every
@@ -52,27 +52,15 @@ function HudMascotRules.duckTravel(height: number, cfg: any): number
 	return height * (1 + cfg.breath.scale + cfg.tap.scale)
 end
 
--- Pixels the party bar keeps free above the cushion for the mascot's head (none until it has a picture)
--- Which end of the party bar it sits on: "right" on a PC (the toasts come out of it), "left" on a touch screen
-function HudMascotRules.side(cfg: any, touch: boolean): string
-	return if touch then cfg.sides.touch else cfg.sides.pc
-end
-
--- Its pieces' left edges along the bar (px): from the bar's left edge, or (fromRight) from its right edge, negative
-function HudMascotRules.layout(cfg: any, side: string): { fromRight: boolean, sticker: number, tail: number, tap: number }
+-- Its pieces' left edges (px) from its seat's left edge: the sticker, its tail, its tap area
+function HudMascotRules.layout(cfg: any): { sticker: number, tail: number, tap: number }
 	local width = cfg.size.peek[1]
-	local fromRight = side == "right"
-	local sticker = if fromRight then -(cfg.offset.right + width) else cfg.offset.left
+	local sticker = cfg.perch.x
 	return {
-		fromRight = fromRight,
 		sticker = sticker,
 		tail = sticker + cfg.tail.at[1],
 		tap = sticker + width / 2 - cfg.tapArea.w / 2,
 	}
-end
-
-function HudMascotRules.headroom(cfg: any): number
-	return if cfg.images.peek ~= "" then cfg.headroom else 0
 end
 
 return HudMascotRules

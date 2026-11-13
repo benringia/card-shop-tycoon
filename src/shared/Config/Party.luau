@@ -628,18 +628,16 @@ return {
 	CULL_INTERVAL = 0.5, -- seconds between checks
 	ACTION_COOLDOWN = 0.5,
 
-	-- The quick party bar in the bottom-right corner (PartyBarController). Pixels; colours as { r, g, b }.
-	-- The creature pals look (spec 2026-11-03-hud-creature-pals-design): a cream cushion with round portraits in white
-	-- rings, the summoned one bigger with an orange ring; the mascot peeks over its top (Config/HudMascot)
+	-- The party dock (PartyBarController, owner 2026-11-13: Palworld's layout, no box). Pixels; colours as { r, g, b }.
+	-- The creature pals look (spec 2026-11-03-hud-creature-pals-design): round portraits in their element's rim, the
+	-- summoned one with an orange ring and glow
 	BAR = {
 		PORTRAIT = 48, -- a party portrait's size
-		PORTRAIT_OUT = 56, -- the summoned one
-		HIT = 70, -- a portrait's (and the Party pill's) tap area: 48 px even at the smallest HUD scale (0.7)
+		HIT = 70, -- a portrait's (and your face's) tap area: 48 px even at the smallest HUD scale (0.7)
 		-- The portrait's 3D rim (owner 2026-11-03, avatar pick b; spec 2026-11-03-cotton-candy-ui-design): a rim in the
 		-- creature's element colour (Config/BabyColors ELEMENTS) RIM px wide, its deep shade showing RIM_BASE px under it,
 		-- a thin white ring (INNER_RING px) round the picture, a dark fade over the picture's top SINK share (sunk in), a
-		-- shine across the top (a share of the portrait wide and tall, from TOP down, see-through). The summoned one also
-		-- sits RIM_BASE px higher.
+		-- shine across the top (a share of the portrait wide and tall, from TOP down, see-through).
 		RIM = 5,
 		RIM_BASE = 4,
 		INNER_RING = 2,
@@ -648,14 +646,45 @@ return {
 		POP = 1.35, -- a card joining the party pops up this much, then settles
 		POP_SECONDS = 0.5,
 		NAME_WAIT = 2, -- seconds the "joined your party" toast waits for a new card's name to arrive with the binder
-		CUSHION = { top = { 255, 246, 234 }, bottom = { 246, 223, 196 }, base = { 233, 201, 162 } },
-		OUTLINE = 4, -- the cushion's white outline
 		EMPTY = { 238, 220, 196 }, -- an empty slot's fill
 		EMPTY_EDGE = { 214, 188, 156 }, -- its faint ring
-		TEXT = { 107, 74, 42 }, -- brown words on cream (levels, Party, the "+")
+		TEXT = { 107, 74, 42 }, -- brown words on cream (levels, the "+")
 		OUT = { 255, 138, 58 }, -- the summoned portrait's ring, glow and tag
-		PARTY_PILL = { 52, 28 }, -- the "Party" pill, drawn inside its HIT-sized tap area
-		PILL_HOVER = { scale = 1.05, lift = 3, seconds = 0.3 }, -- a small hop under a mouse, like the HUD tiles
+		-- The dock (Util/PartyDock): the carousel's box (`width` x `height`), the side slots' centres `sideX` in from its
+		-- ends and `sideY` lower, portraits scaled `center` (the middle one) and `side`, `slide` seconds to a new spot;
+		-- `gap` between the carousel, the name line and your row; the name and its level chip (gold, brown words); your
+		-- row `meHeight` tall: the XP bar `barWidth` wide and `xpHeight` tall (words `barText`) after a `badge`-sized
+		-- level star, on a see-through dark track with a white rim (the health bar went, owner 2026-11-13: "whats the
+		-- point of this HP bar here when we got our own HP bar when we get attacked?")
+		DOCK = {
+			width = 200,
+			height = 78,
+			sideX = 36,
+			sideY = 8,
+			center = 1.2,
+			side = 0.75,
+			slide = 0.25,
+			gap = 2,
+			nameText = 15,
+			levelText = 12, -- the level chip on top of each portrait (gold `chip`, brown `chipText`)
+			chip = { 255, 201, 60 },
+			chipText = { 122, 74, 0 },
+			meHeight = 64,
+			barWidth = 150, -- owner 2026-11-13: longer, "to close the gap on the buffs" (118 before)
+			xpHeight = 18,
+			barText = 12,
+			badge = 28,
+			trackTransparency = 0.55,
+			xpFill = { { 199, 168, 255 }, { 154, 107, 255 } },
+			-- Phones (owner 2026-11-13, declutter pick A): no key numbers; the side creatures under a dark veil
+			-- (`sideVeil` see-through); the name and level as one soft pill (`pill`: its fill, see-through share,
+			-- padding) centred under the middle creature, its element on the middle portrait's corner (`badge`
+			-- px, `badgeAt` px right and down of its centre)
+			sideVeil = 0.6,
+			pill = { fill = { 20, 22, 34 }, transparency = 0.45, pad = 8 },
+			elementBadge = 20,
+			elementAt = 21,
+		},
 		-- The XP sparks after a monster win (spec 2026-11-03-windows-round3-design, Util/SparkPath): min to max sparks per
 		-- portrait (more for more XP), each `seconds` on a curve bowed `lift` px up, `stagger` s apart, `size` px, lilac;
 		-- then "+N XP" pops over the portrait (`popText` px), rising `popRise` px over `popSeconds`

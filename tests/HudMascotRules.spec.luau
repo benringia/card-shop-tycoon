@@ -7,26 +7,21 @@ local CFG: any = {
 	blink = { every = { 3, 7 }, seconds = 0.12 },
 	duck = { down = 0.15, hold = 0.35, up = 0.3 },
 	tap = { seconds = 0.35, scale = 0.12 },
-	headroom = 40,
 	images = { peek = "rbxassetid://1", tail = "" },
 }
 
 return {
-	-- owner 2026-11-12: "move pish's icon to the right side of the party UI ... make the bubble come out of him"
-	["on a PC he sits on the party bar's right end; on a phone its left end (the level pill sits over the right)"] = function()
-		expect.equal(HudMascotRules.side(HudMascot, false), "right")
-		expect.equal(HudMascotRules.side(HudMascot, true), "left")
+	-- owner 2026-11-13 (the party dock has no box; pick A "peeking over the Phone tile"): he peeks over the Phone tile's
+	-- top edge, right of its icon, reaching past its side
+	["he peeks over the Phone tile's top edge, his tap area centred on him"] = function()
+		local spots = HudMascotRules.layout(HudMascot)
 		local width = HudMascot.size.peek[1]
-		local right = HudMascotRules.layout(HudMascot, "right")
-		expect.equal(right.fromRight, true, "measured from the bar's right edge")
-		expect.near(right.sticker, -(HudMascot.offset.right + width), 1e-9, "his left edge, right offset plus his width in")
-		expect.near(right.tail, right.sticker + HudMascot.tail.at[1], 1e-9, "the tail by his side, as on the left")
-		expect.near(right.tap + HudMascot.tapArea.w / 2, right.sticker + width / 2, 1e-9, "the tap area centred on him")
-		local left = HudMascotRules.layout(HudMascot, "left")
-		expect.equal(left.fromRight, false)
-		expect.near(left.sticker, HudMascot.offset.left, 1e-9)
-		expect.equal(HudMascot.seat >= width - 16, true, "the bar keeps a seat for him on the right, clear of the third card")
+		expect.equal(spots.sticker, HudMascot.perch.x)
+		expect.near(spots.tail, spots.sticker + HudMascot.tail.at[1], 1e-9, "the tail by his side")
+		expect.near(spots.tap + HudMascot.tapArea.w / 2, spots.sticker + width / 2, 1e-9, "the tap area centred on him")
+		expect.equal(HudMascot.perch.overlap >= 0 and HudMascot.perch.overlap < HudMascot.size.peek[2] / 2, true, "his head over the edge")
 	end,
+
 	["blinks come 3-7 s apart"] = function()
 		expect.equal(HudMascotRules.nextBlink(0, CFG), 3)
 		expect.equal(HudMascotRules.nextBlink(1, CFG), 7)
@@ -59,11 +54,6 @@ return {
 	["a duck goes far enough that a breathing, bouncing sticker still hides"] = function()
 		local cfg = { breath = { scale = 0.03 }, tap = { scale = 0.12 } }
 		expect.near(HudMascotRules.duckTravel(100, cfg :: any), 115, 1e-9)
-	end,
-
-	["no picture means no headroom"] = function()
-		expect.equal(HudMascotRules.headroom(CFG), 40)
-		expect.equal(HudMascotRules.headroom({ headroom = 40, images = { peek = "", tail = "" } } :: any), 0)
 	end,
 
 	["the game's mascot config is sane"] = function()

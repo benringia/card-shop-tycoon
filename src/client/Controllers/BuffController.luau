@@ -1,18 +1,23 @@
 --!strict
--- Small buff badges above the cash in the status corner, side by side in one row: a summoned creature's perk
--- ("⚡ +10%"), Pish's Luck while it lasts ("🍀 2:41", from the PishLuckUntil attribute, Server/Services/PishService) and
--- Chikin's Courage ("💪 4:12", ChikinCourageUntil, Server/Services/TownChikinService).
--- Hover one (or tap on a phone) for a tooltip saying what it does and where it comes from.
+-- The buffs on you, by your character info in the party dock (owner 2026-11-13, buffs pick A, then "buffs should appear
+-- near the character info side"): a summoned creature's perk, Pish's Luck while it lasts (the PishLuckUntil attribute,
+-- Server/Services/PishService) and Chikin's Courage (ChikinCourageUntil, Server/Services/TownChikinService), each a
+-- round icon without words, two high; a timed one in a ring that empties as it runs out (LuckRules.share). The icons
+-- are one target (BuffController.GetStack, which PartyBarController puts in your row: left of your face on a phone,
+-- after your bars on a computer): hover it, or tap it, for a tooltip listing every buff.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local Chikin = require(Config:WaitForChild("Chikin"))
+local Pish = require(Config:WaitForChild("Pish"))
+local HudLayout = require(Config:WaitForChild("HudLayout"))
 local Party = require(Config:WaitForChild("Party"))
-local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
+local CompactHud = require(Shared:WaitForChild("Util"):WaitForChild("CompactHud"))
 local LuckRules = require(Shared:WaitForChild("Util"):WaitForChild("LuckRules"))
 local PartyRules = require(Shared:WaitForChild("Util"):WaitForChild("PartyRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -26,31 +31,38 @@ local BinderController = require(Controllers:WaitForChild("BinderController"))
 
 type Perk = { kind: string, value: number, text: string }
 
+-- A buff's round icon; `fill` turns a timed one's ring, `time` its "2:41" for the tooltip
+type Buff = {
+	active: boolean,
+	icon: Frame,
+	glyph: TextLabel,
+	edge: UIStroke,
+	pop: UIScale,
+	fill: ((number) -> ())?,
+	time: string,
+}
+
 local TAP_TOOLTIP_SECONDS = 4
 local POP_TWEEN = TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 local LUCK_GREEN = Color3.fromRGB(70, 175, 95)
 local COURAGE_RED = Color3.fromRGB(230, 95, 70)
 local COURAGE_ICON = "💪"
 local LUCK_TICK = 0.25 -- seconds between countdown updates
+local ICONS = HudLayout.BUFF_ICONS
 
 local BuffController = {}
 
-type Chip = { badge: TextButton, pill: TextLabel, stroke: UIStroke, scale: UIScale }
-
 local player = Players.LocalPlayer
-local row: Frame
-local creature: Chip
-local luck: Chip
-local courage: Chip
+local stack: TextButton
+local creature: Buff
+local luck: Buff
+local courage: Buff
 local tooltip: Frame
-local tooltipTitle: TextLabel
 local tooltipBody: TextLabel
-local tooltipFor: Chip? = nil
 local perk: Perk? = nil
 local sourceBeastId: string? = nil
 local tapToken = 0
-local luckRunning = false
-local courageRunning = false
+local running: { [Buff]: boolean } = {} -- a timed buff's countdown is going (one at a time)
 
 -- Icon and element colour for a perk kind ("Hustle" -> the Volt icon and colour)
 local function getPerkLook(kind: string): (string, Color3)
@@ -62,243 +74,268 @@ local function getPerkLook(kind: string): (string, Color3)
 	return "", UIKit.Colors.Accent
 end
 
-local function describeSource(): string
-	local beast = if sourceBeastId then BinderController.GetBeasts()[sourceBeastId] else nil
-	local card = if beast then Cards.ById[beast.cardId] else nil
-	if not beast or not card then
-		return "From your summoned party creature."
+-- One line per buff on you: what it does, where it's from, how long is left
+local function buffLines(): { string }
+	local lines: { string } = {}
+	local current = perk
+	if creature.active and current then
+		local icon = getPerkLook(current.kind)
+		local beast = if sourceBeastId then BinderController.GetBeasts()[sourceBeastId] else nil
+		local card = if beast then Cards.ById[beast.cardId] else nil
+		local line = `{icon} {current.text}` .. (if card then ` · from {card.name}` else "")
+		local fight = if card and beast then PartyRules.getFightPerk(Party, card.element, card.rarity, beast.stars) else nil
+		if fight then
+			line ..= ` · in fights: {PartyRules.describeFight(fight)}`
+		end
+		table.insert(lines, line)
 	end
-	local fight = PartyRules.getFightPerk(Party, card.element, card.rarity, beast.stars)
-	local fightLine = if fight then `In fights: {PartyRules.describeFight(fight)}. ` else ""
-	return `{fightLine}From {card.name} ({BeastRules.describeGrowth(beast.level, beast.stars)}), your summoned party creature. More stars make it stronger. Change it in Party.`
+	if luck.active then
+		table.insert(lines, `{luck.time} · Pish's Luck: better pulls in your packs`)
+	end
+	if courage.active then
+		table.insert(lines, `{courage.time} · Chikin's Courage: your creatures hit {math.round(Chikin.COURAGE.share * 100)}% harder`)
+	end
+	return lines
 end
 
--- The tooltip over a chip, right edges lined up: the creature's perk and its card, or Pish's Luck
-local function showTooltip(chip: Chip, visible: boolean)
-	local current = perk
-	local shown = visible and (chip == luck or chip == courage or current ~= nil)
+-- The tooltip listing every buff: under the icons on a phone (they're at the top), over them on a computer (bottom left)
+local function showTooltip(visible: boolean)
+	local lines = buffLines()
+	local shown = visible and #lines > 0
 	if shown then
-		local badge = chip.badge
-		tooltip.Position = UDim2.fromOffset(badge.AbsolutePosition.X + badge.AbsoluteSize.X, badge.AbsolutePosition.Y - 4)
-		if chip == luck then
-			tooltipTitle.Text = "🍀 Pish's Luck · better pulls"
-			tooltipTitle.TextColor3 = LUCK_GREEN:Lerp(Color3.new(1, 1, 1), 0.3)
-			tooltipBody.Text = "Petting Pish makes Very Rare, Epic and Legendary cards more likely in your packs for a while."
-		elseif chip == courage then
-			tooltipTitle.Text = `{COURAGE_ICON} Chikin's Courage · hits {math.round(Chikin.COURAGE.share * 100)}% harder`
-			tooltipTitle.TextColor3 = COURAGE_RED:Lerp(Color3.new(1, 1, 1), 0.3)
-			tooltipBody.Text = "Petting Chikin by the portals makes your creatures hit harder in fights for a while."
-		elseif current then
-			local icon, color = getPerkLook(current.kind)
-			tooltipTitle.Text = `{icon} {current.text}`
-			tooltipTitle.TextColor3 = color:Lerp(Color3.new(1, 1, 1), 0.3)
-			tooltipBody.Text = describeSource()
+		local at, size = stack.AbsolutePosition, stack.AbsoluteSize
+		if UIController.IsCompact() then
+			tooltip.AnchorPoint = Vector2.new(1, 0)
+			tooltip.Position = UDim2.fromOffset(at.X + size.X, at.Y + size.Y + 4)
+		else
+			tooltip.AnchorPoint = Vector2.new(0, 1)
+			tooltip.Position = UDim2.fromOffset(at.X, at.Y - 4)
 		end
+		tooltipBody.Text = table.concat(lines, "\n")
 	end
-	tooltipFor = if shown then chip else nil
 	tooltip.Visible = shown
 end
 
--- The row shows while either chip does (an empty one would still take a gap in the column)
-local function refreshRow()
-	row.Visible = (creature.badge.Visible or luck.badge.Visible or courage.badge.Visible) and not Hud.hides("buffs") -- hidden through the tours
-	if tooltipFor and not tooltipFor.badge.Visible then
-		showTooltip(tooltipFor, false)
+-- The icons show while any buff is on (none leaves no gap in your row); hidden through the tours
+local function refresh()
+	local any = creature.active or luck.active or courage.active
+	stack.Visible = any and not Hud.hides("buffs")
+	if not any and tooltip.Visible then
+		tooltip.Visible = false
 	end
 end
 
 -- A small pop instead of a toast: noticeable, not loud
-local function pop(chip: Chip)
-	chip.scale.Scale = 0.6
-	TweenService:Create(chip.scale, POP_TWEEN, { Scale = 1 }):Play()
+local function pop(buff: Buff)
+	buff.pop.Scale = 0.6
+	TweenService:Create(buff.pop, POP_TWEEN, { Scale = 1 }):Play()
+end
+
+local function setActive(buff: Buff, on: boolean)
+	local appeared = on and not buff.active
+	buff.active = on
+	buff.icon.Visible = on
+	if appeared then
+		pop(buff)
+	end
 end
 
 local function update(newPerk: Perk?, newSource: string?)
-	local appeared = newPerk ~= nil and (perk == nil or perk.kind ~= newPerk.kind)
 	perk, sourceBeastId = newPerk, newSource
-	if not newPerk then
-		creature.badge.Visible = false
-		refreshRow()
-		return
+	if newPerk then
+		local icon, color = getPerkLook(newPerk.kind)
+		creature.glyph.Text = icon
+		creature.edge.Color = color
 	end
-	local icon, color = getPerkLook(newPerk.kind)
-	creature.pill.Text = `{icon} +{math.round(newPerk.value * 100)}%`
-	creature.pill.TextColor3 = color:Lerp(Color3.new(0, 0, 0), 0.25) -- the perk's colour, a touch darker to read on white
-	creature.stroke.Color = color
-	creature.badge.Visible = true
-	refreshRow()
-	if tooltipFor == creature then
-		showTooltip(creature, true)
-	end
-	if appeared then
-		pop(creature)
+	setActive(creature, newPerk ~= nil)
+	refresh()
+	if tooltip.Visible then
+		showTooltip(true)
 	end
 end
 
--- Pish's Luck counting down to 0:00, then hidden
+-- A timed buff counting down from its attribute (`untilName`), then hidden; `length` its full time (its ring)
+local function runTimed(buff: Buff, untilName: string, length: number, icon: string?)
+	if running[buff] then
+		return
+	end
+	running[buff] = true
+	task.spawn(function()
+		while true do
+			local untilTime = player:GetAttribute(untilName) :: number?
+			local now = workspace:GetServerTimeNow()
+			local text = LuckRules.badgeText(untilTime, now, icon)
+			setActive(buff, text ~= nil)
+			refresh()
+			if not text then
+				break
+			end
+			buff.time = text
+			local fill = buff.fill
+			if fill then
+				fill(LuckRules.share(untilTime, now, length))
+			end
+			task.wait(LUCK_TICK)
+		end
+		running[buff] = nil
+	end)
+end
+
 local function runLuck()
-	if luckRunning then
-		return
-	end
-	luckRunning = true
-	task.spawn(function()
-		local first = true
-		while true do
-			local text = LuckRules.badgeText(player:GetAttribute("PishLuckUntil") :: number?, workspace:GetServerTimeNow())
-			luck.badge.Visible = text ~= nil
-			refreshRow()
-			if not text then
-				break
-			end
-			luck.pill.Text = text
-			if first then
-				first = false
-				pop(luck)
-			end
-			task.wait(LUCK_TICK)
-		end
-		luckRunning = false
-	end)
+	runTimed(luck, "PishLuckUntil", Pish.LUCK.seconds, nil)
 end
 
--- Chikin's Courage counting down to 0:00, then hidden
 local function runCourage()
-	if courageRunning then
-		return
-	end
-	courageRunning = true
-	task.spawn(function()
-		local first = true
-		while true do
-			local text = LuckRules.badgeText(player:GetAttribute("ChikinCourageUntil") :: number?, workspace:GetServerTimeNow(), COURAGE_ICON)
-			courage.badge.Visible = text ~= nil
-			refreshRow()
-			if not text then
-				break
-			end
-			courage.pill.Text = text
-			if first then
-				first = false
-				pop(courage)
-			end
-			task.wait(LUCK_TICK)
-		end
-		courageRunning = false
-	end)
+	runTimed(courage, "ChikinCourageUntil", Chikin.COURAGE.seconds, COURAGE_ICON)
 end
 
--- A 48px tall hit area (phones) with a small white chip drawn inside it (the creature pals look, spec 2026-11-03)
-local function makeChip(name: string, order: number): Chip
-	local badge = Instance.new("TextButton")
-	badge.Name = name
-	badge.LayoutOrder = order
-	badge.Text = ""
-	badge.AutoButtonColor = false
-	badge.BackgroundTransparency = 1
-	badge.Size = UDim2.fromOffset(48, 48)
-	badge.AutomaticSize = Enum.AutomaticSize.X
-	badge.Visible = false
-	badge.Parent = row
+-- A ring round a round icon that empties as a timed buff runs out: two clipped halves whose strokes' gradients turn
+-- (CompactHud.ring); returns its setter (0-1 left)
+local function makeRing(parent: GuiObject, color: Color3): (number) -> ()
+	local size = ICONS.icon
+	local function circle(holder: Instance, name: string, stroke: Color3): Frame
+		local frame = Instance.new("Frame")
+		frame.Name = name
+		frame.BackgroundTransparency = 1
+		frame.Size = UDim2.fromOffset(size, size)
+		frame.Parent = holder
+		UIKit.corner(frame, size / 2)
+		local edge = Instance.new("UIStroke")
+		edge.Color = stroke
+		edge.Thickness = ICONS.ring
+		edge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		edge.Parent = frame
+		return frame
+	end
+	local track = circle(parent, "RingTrack", ICONS.track)
+	local trackEdge = track:FindFirstChildOfClass("UIStroke") :: UIStroke
+	trackEdge.Transparency = 0.4
+	local halves: { UIGradient } = {}
+	for index, side in { "Right", "Left" } do
+		local half = Instance.new("Frame")
+		half.Name = side
+		half.BackgroundTransparency = 1
+		half.ClipsDescendants = true
+		half.Position = UDim2.fromOffset(if side == "Right" then size / 2 else 0, 0)
+		half.Size = UDim2.fromOffset(size / 2, size)
+		half.ZIndex = 3
+		half.Parent = parent
+		local ring = circle(half, "Fill", color)
+		ring.Position = UDim2.fromOffset(if side == "Right" then -size / 2 else 0, 0)
+		local turn = Instance.new("UIGradient")
+		turn.Transparency = if side == "Right"
+			then NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 0), NumberSequenceKeypoint.new(0.501, 1), NumberSequenceKeypoint.new(1, 1) })
+			else NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 1), NumberSequenceKeypoint.new(0.501, 0), NumberSequenceKeypoint.new(1, 0) })
+		turn.Parent = ring:FindFirstChildOfClass("UIStroke")
+		halves[index] = turn
+	end
+	return function(share: number)
+		local right, left = CompactHud.ring(share)
+		halves[1].Rotation = right
+		halves[2].Rotation = left
+	end
+end
 
-	local pill = UIKit.label(badge, "", Enum.Font.FredokaOne, 14, UIKit.Colors.Text)
-	pill.AnchorPoint = Vector2.new(0, 0.5)
-	pill.Position = UDim2.fromScale(0, 0.5)
-	pill.Size = UDim2.fromOffset(0, 28)
-	pill.AutomaticSize = Enum.AutomaticSize.X
-	pill.TextXAlignment = Enum.TextXAlignment.Center
-	pill.BackgroundColor3 = Color3.new(1, 1, 1)
-	pill.BackgroundTransparency = 0
-	UIKit.corner(pill, 14)
-	local padding = Instance.new("UIPadding")
-	padding.PaddingLeft = UDim.new(0, 10)
-	padding.PaddingRight = UDim.new(0, 10)
-	padding.Parent = pill
-	local stroke = Instance.new("UIStroke")
-	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	stroke.Thickness = 1.5
-	stroke.Transparency = 0.2
-	stroke.Parent = pill
+-- A buff's round icon: a white disc with its emoji, edged in its colour; a timed one (`ring`) in a ring that empties
+local function makeBuff(name: string, order: number, color: Color3, glyphText: string, ring: boolean): Buff
+	local frame = Instance.new("Frame")
+	frame.Name = name
+	frame.LayoutOrder = order
+	frame.BackgroundColor3 = Color3.new(1, 1, 1)
+	frame.Size = UDim2.fromOffset(ICONS.icon, ICONS.icon)
+	frame.Visible = false
+	frame.Parent = stack
+	UIKit.corner(frame, ICONS.icon / 2)
+	local edge = UIKit.outline(frame, color, 2)
+	edge.Enabled = not ring
+	local glyph = UIKit.label(frame, glyphText, Enum.Font.FredokaOne, 14, UIKit.Colors.Text)
+	glyph.Size = UDim2.fromScale(1, 1)
+	glyph.TextXAlignment = Enum.TextXAlignment.Center
+	glyph.ZIndex = 2
 	local scale = Instance.new("UIScale")
-	scale.Parent = pill
-	local chip: Chip = { badge = badge, pill = pill, stroke = stroke, scale = scale }
-
-	badge.MouseEnter:Connect(function()
-		showTooltip(chip, true)
-	end)
-	badge.MouseLeave:Connect(function()
-		showTooltip(chip, false)
-	end)
-	-- Phones have no hover: a tap shows it for a few seconds
-	badge.Activated:Connect(function(input: InputObject)
-		if input.UserInputType ~= Enum.UserInputType.Touch then
-			return
-		end
-		tapToken += 1
-		local token = tapToken
-		showTooltip(chip, tooltipFor ~= chip)
-		task.delay(TAP_TOOLTIP_SECONDS, function()
-			if tapToken == token then
-				showTooltip(chip, false)
-			end
-		end)
-	end)
-	return chip
+	scale.Parent = frame
+	return {
+		active = false,
+		icon = frame,
+		glyph = glyph,
+		edge = edge,
+		pop = scale,
+		fill = if ring then makeRing(frame, color) else nil,
+		time = "",
+	}
 end
 
 function BuffController.Start()
-	local screenGui = UIController.GetScreenGui()
+	-- The icons: two high (your row's height), a third starts a column; one hover / tap target
+	stack = Instance.new("TextButton")
+	stack.Name = "BuffStack"
+	stack.Text = ""
+	stack.AutoButtonColor = false
+	stack.BackgroundTransparency = 1
+	stack.Size = UDim2.new(0, ICONS.width, 1, 0)
+	stack.Visible = false
+	local grid = Instance.new("UIGridLayout")
+	grid.CellSize = UDim2.fromOffset(ICONS.icon, ICONS.icon)
+	grid.CellPadding = UDim2.fromOffset(ICONS.gap, ICONS.gap)
+	grid.FillDirection = Enum.FillDirection.Vertical
+	grid.FillDirectionMaxCells = 2
+	grid.StartCorner = Enum.StartCorner.TopRight
+	grid.HorizontalAlignment = Enum.HorizontalAlignment.Right
+	grid.VerticalAlignment = Enum.VerticalAlignment.Center
+	grid.SortOrder = Enum.SortOrder.LayoutOrder
+	grid.Parent = stack
+	-- toward your bars on a computer (the icons come after them), toward your face on a phone (before it)
+	UIController.OnCompact(function(on: boolean)
+		grid.StartCorner = if on then Enum.StartCorner.TopRight else Enum.StartCorner.TopLeft
+		grid.HorizontalAlignment = if on then Enum.HorizontalAlignment.Right else Enum.HorizontalAlignment.Left
+	end)
+	stack.MouseEnter:Connect(function()
+		if UserInputService.MouseEnabled then
+			showTooltip(true)
+		end
+	end)
+	stack.MouseLeave:Connect(function()
+		showTooltip(false)
+	end)
+	stack.Activated:Connect(function()
+		tapToken += 1
+		local token = tapToken
+		showTooltip(not tooltip.Visible)
+		task.delay(TAP_TOOLTIP_SECONDS, function()
+			if tapToken == token then
+				showTooltip(false)
+			end
+		end)
+	end)
 
-	-- One row above the cash: the creature's chip, then Pish's Luck to its right
-	row = Instance.new("Frame")
-	row.Name = "BuffRow"
-	row.LayoutOrder = 1
-	row.BackgroundTransparency = 1
-	row.Size = UDim2.fromOffset(0, 48)
-	row.AutomaticSize = Enum.AutomaticSize.X
-	row.Visible = false
-	row.Parent = UIController.GetStatusFrame()
-	local rowLayout = Instance.new("UIListLayout")
-	rowLayout.FillDirection = Enum.FillDirection.Horizontal
-	rowLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
-	rowLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-	rowLayout.Padding = UDim.new(0, 6)
-	rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	rowLayout.Parent = row
-
-	creature = makeChip("BuffBadge", 1)
-	luck = makeChip("LuckBadge", 2)
-	luck.pill.TextColor3 = LUCK_GREEN:Lerp(Color3.new(0, 0, 0), 0.25)
-	luck.stroke.Color = LUCK_GREEN
-	courage = makeChip("CourageBadge", 3)
-	courage.pill.TextColor3 = COURAGE_RED:Lerp(Color3.new(0, 0, 0), 0.25)
-	courage.stroke.Color = COURAGE_RED
+	creature = makeBuff("BuffBadge", 1, UIKit.Colors.Accent, "", false)
+	luck = makeBuff("LuckBadge", 2, LUCK_GREEN, "🍀", true)
+	courage = makeBuff("CourageBadge", 3, COURAGE_RED, COURAGE_ICON, true)
 
 	tooltip = Instance.new("Frame")
 	tooltip.Name = "BuffTooltip"
-	tooltip.AnchorPoint = Vector2.new(1, 1)
-	tooltip.Size = UDim2.fromOffset(250, 0)
+	tooltip.Size = UDim2.fromOffset(260, 0)
 	tooltip.AutomaticSize = Enum.AutomaticSize.Y
 	tooltip.BackgroundColor3 = UIKit.Colors.Panel
 	tooltip.BackgroundTransparency = 0.05
 	tooltip.Visible = false
-	tooltip.ZIndex = 50 -- over the weapon switch beside it (owner 2026-11-12: the carousel covered it)
-	tooltip.Parent = screenGui
+	tooltip.ZIndex = 50 -- over the weapon switch and the dock
+	tooltip.Parent = UIController.GetScreenGui()
 	UIKit.corner(tooltip, 10)
-	local tooltipPadding = Instance.new("UIPadding")
-	tooltipPadding.PaddingTop = UDim.new(0, 8)
-	tooltipPadding.PaddingBottom = UDim.new(0, 8)
-	tooltipPadding.PaddingLeft = UDim.new(0, 10)
-	tooltipPadding.PaddingRight = UDim.new(0, 10)
-	tooltipPadding.Parent = tooltip
-	local tooltipLayout = Instance.new("UIListLayout")
-	tooltipLayout.Padding = UDim.new(0, 4)
-	tooltipLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	tooltipLayout.Parent = tooltip
-	tooltipTitle = UIKit.label(tooltip, "", Enum.Font.GothamBold, 14, UIKit.Colors.Text)
-	tooltipTitle.LayoutOrder = 1
-	tooltipTitle.Size = UDim2.new(1, 0, 0, 0)
-	tooltipTitle.AutomaticSize = Enum.AutomaticSize.Y
-	tooltipTitle.TextWrapped = true
+	local padding = Instance.new("UIPadding")
+	padding.PaddingTop = UDim.new(0, 8)
+	padding.PaddingBottom = UDim.new(0, 8)
+	padding.PaddingLeft = UDim.new(0, 10)
+	padding.PaddingRight = UDim.new(0, 10)
+	padding.Parent = tooltip
+	local layout = Instance.new("UIListLayout")
+	layout.Padding = UDim.new(0, 4)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = tooltip
+	local title = UIKit.label(tooltip, "Your buffs", Enum.Font.GothamBold, 14, UIKit.Colors.Text)
+	title.LayoutOrder = 1
+	title.Size = UDim2.new(1, 0, 0, 0)
+	title.AutomaticSize = Enum.AutomaticSize.Y
 	tooltipBody = UIKit.label(tooltip, "", Enum.Font.Gotham, 12, UIKit.Colors.Subtext)
 	tooltipBody.LayoutOrder = 2
 	tooltipBody.Size = UDim2.new(1, 0, 0, 0)
@@ -307,7 +344,7 @@ function BuffController.Start()
 
 	player:GetAttributeChangedSignal("PishLuckUntil"):Connect(runLuck)
 	player:GetAttributeChangedSignal("ChikinCourageUntil"):Connect(runCourage)
-	Hud.onCalm(refreshRow)
+	Hud.onCalm(refresh)
 	runLuck()
 	runCourage()
 
@@ -325,6 +362,11 @@ function BuffController.Start()
 		end
 		update(if typeof(payload.perk) == "table" then payload.perk else nil, source)
 	end)
+end
+
+-- The buffs' icons (the party dock's row holds them: left of your face on a phone, after your bars on a computer)
+function BuffController.GetStack(): TextButton
+	return stack
 end
 
 return BuffController

@@ -179,20 +179,6 @@ function HitFx.swingArc(origin: CFrame, arc: ArcLook, slash: SlashLook)
 	end)
 end
 
--- A hit's spiky star burst popping out at `at` (the burst flipbook), `size` studs, a white core over the tint
-function HitFx.burst(at: Vector3, size: number, tint: Color3)
-	local seconds = SwordFx.BURST.seconds
-	local part = holder(CFrame.new(at), seconds + 0.2)
-	for _, layer in { { tint, size }, { WHITE, size * 0.55 } } do
-		local emitter = burster(part, SwordFx.TEXTURES.burst, ColorSequence.new(layer[1] :: Color3), seconds)
-		emitter.FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4
-		emitter.FlipbookMode = Enum.ParticleFlipbookMode.OneShot
-		emitter.Size = NumberSequence.new(layer[2] :: number)
-		emitter.Rotation = NumberRange.new(0, 360)
-		emitter:Emit(1)
-	end
-end
-
 -- How big a hit's effects are on `model` (Util/PackHit.scaleFor: from its size; 1 with no model)
 function HitFx.scaleFor(model: Model?): number
 	return PackHit.scaleFor(model)

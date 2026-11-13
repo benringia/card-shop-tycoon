@@ -1,12 +1,18 @@
 --!strict
--- Quick party bar in the bottom-right corner, left of the cash (spec 2026-11-03-hud-creature-pals-design): a cream
--- cushion with a "Party" pill (opens the Party panel, as does tapping the cushion) and your 3 party slots as round
--- portraits in white rings with their level under them; the summoned one is bigger with an orange ring, glow and OUT
--- tag; an empty one is a faint ring with a "+" (picks a card in the binder). The mascot peeks over the cushion
--- (Util/HudMascotView), so the bar keeps headroom above it. Tap a slot, or press 1 / 2 / 3, to summon it (again to unsummon). Cards resting after a fight dim and show
--- an hourglass and "2:41". Hovering a card (or holding a finger on it) shows its tooltip above the bar: Power, HP / ATK / SPD
--- bars, perk and rest (Util/CardTips), so you don't need the binder. Numbers: Config/Party BAR.
+-- The party dock (owner 2026-11-13: "lets make the party UI like this in palworld. pets carousel, then under it is the
+-- character menu model then beside it is health. Both mobile and Desktop", no box; Util/PartyDock), where the party bar
+-- was: bottom right left of the cash on a PC, under the cash at the top right on a phone. On top your 3 party slots as
+-- a carousel: the creature that's out (or the one last in the middle) big in the middle, the other two smaller either
+-- side, each a round portrait in its element's rim with its key number; the summoned one has the orange glow and OUT
+-- tag; an empty one is a faint ring with a "+" (picks a card in the binder). Tap a side one, or press 1 / 2 / 3, to
+-- summon it (it slides to the middle); tap the one out to send it back. Its name, level and element under it. Under
+-- that, you: your face (CharacterController: the character window), your health (full outside fights; a fight shows its
+-- own) and your level with its XP bar; on a phone everything flush right, your row at the very top over the cash pill,
+-- the weapon chip on a row under the name (WeaponSwitchController). Cards resting after a
+-- fight dim and show an hourglass and "2:41". Hovering a card (or holding a finger on it) shows its tooltip above it:
+-- Power, HP / ATK / SPD bars, perk and rest (Util/CardTips). Numbers: Config/Party BAR (DOCK).
 local ContextActionService = game:GetService("ContextActionService")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -19,11 +25,12 @@ local CardDesign = require(Config:WaitForChild("CardDesign"))
 local Party = require(Config:WaitForChild("Party"))
 local UIStyle = require(Config:WaitForChild("UIStyle"))
 local BabyColors = require(Config:WaitForChild("BabyColors"))
-local HudMascot = require(Config:WaitForChild("HudMascot"))
-local HudMascotRules = require(Shared:WaitForChild("Util"):WaitForChild("HudMascotRules"))
+local HudLayout = require(Config:WaitForChild("HudLayout"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local PartyRules = require(Shared:WaitForChild("Util"):WaitForChild("PartyRules"))
 local UiLayout = require(Shared:WaitForChild("Util"):WaitForChild("UiLayout"))
+local PartyDock = require(Shared:WaitForChild("Util"):WaitForChild("PartyDock"))
+local LevelRules = require(Shared:WaitForChild("Util"):WaitForChild("LevelRules"))
 local SparkPath = require(Shared:WaitForChild("Util"):WaitForChild("SparkPath"))
 local XpPill = require(Shared:WaitForChild("Util"):WaitForChild("XpPill"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -34,7 +41,6 @@ local RestTimers = require(ClientUtil:WaitForChild("RestTimers"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Motion = require(ClientUtil:WaitForChild("Motion"))
-local HudMascotView = require(ClientUtil:WaitForChild("HudMascotView"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
 local CardTips = require(ClientUtil:WaitForChild("CardTips"))
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
@@ -42,6 +48,7 @@ local CreatureVisuals = require(ClientUtil:WaitForChild("CreatureVisuals"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local BinderController = require(Controllers:WaitForChild("BinderController"))
 local PartyController = require(Controllers:WaitForChild("PartyController"))
+local BuffController = require(Controllers:WaitForChild("BuffController"))
 
 type SlotView = {
 	hit: TextButton, -- the tap area round the portrait (Party.BAR.HIT)
@@ -60,14 +67,15 @@ type SlotView = {
 	glow: ImageLabel,
 	rest: TextLabel,
 	shade: Frame,
+	veil: Frame, -- the phone's dark veil over a side creature
 }
 
 local BAR = Party.BAR
+local player = Players.LocalPlayer
 local function rgb(color: { number }): Color3
 	return Color3.fromRGB(color[1], color[2], color[3])
 end
 local SLOT_SIZE = UDim2.fromOffset(BAR.PORTRAIT, BAR.PORTRAIT)
-local LIFT = BAR.PORTRAIT_OUT / BAR.PORTRAIT -- the summoned portrait's scale
 local EMPTY = rgb(BAR.EMPTY)
 local EMPTY_EDGE = rgb(BAR.EMPTY_EDGE)
 local BROWN = rgb(BAR.TEXT)
@@ -93,7 +101,8 @@ local swallowTap: { [number]: boolean } = {} -- a long press shows the tooltip i
 local partyKnown = false -- the first PartyChanged is the party loading, not a change to announce
 local pendingChanges: { PartyRules.Change } = {}
 local announcing = false
-local cushion: Frame -- the cream cushion the slots sit on (the mascot sits on it too)
+local dock: Frame -- the whole dock (carousel, name, you)
+local carousel: Frame -- the slots' box
 local summonedChanged = Instance.new("BindableEvent")
 
 -- Fires when the summoned slot changes (a summon, an unsummon or a swap): the mascot ducks
@@ -159,6 +168,48 @@ local function showTip(slot: number)
 	placeTip()
 end
 
+local DOCK = BAR.DOCK
+-- The carousel (Util/PartyDock.carousel): the slot last in the middle stays there when sent back in
+local focus: number? = nil
+local centerSlot = 1
+-- Under it: the middle creature's name, level and element, and your row
+local nameLabel: TextLabel
+local nameElement: Frame
+local meRow: Frame
+local weaponSpot: Frame
+local levelBadge: Frame
+local levelNumber: TextLabel
+local xpFill: Frame
+local xpWords: TextLabel
+-- Phones (owner 2026-11-13, declutter pick A): the name pill and the middle portrait's element badge
+local compact = false
+local nameLine: Frame
+local nameEdge: UIStroke
+local namePad: UIPadding
+local elementBadge: Frame
+local elementIcon: Frame
+
+-- The name line: the middle creature's name (its level sits on top of its portrait, owner 2026-11-13), on a computer
+-- its element after it, on a phone a soft pill with the element on the portrait's corner
+local function writeName()
+	if not nameLabel then
+		return
+	end
+	local beast = BinderController.GetBeasts()[slots[centerSlot] or ""]
+	local card = if beast then Cards.ById[beast.cardId] else nil
+	nameLabel.Text = if card then card.name else "Add a creature"
+	nameElement.Visible = card ~= nil and not compact
+	elementBadge.Visible = card ~= nil and compact
+	if card then
+		Icon.set(nameElement, card.element)
+		Icon.set(elementIcon, card.element)
+	end
+	nameLine.BackgroundTransparency = if compact then DOCK.pill.transparency else 1
+	nameEdge.Enabled = compact
+	local pad = UDim.new(0, if compact then DOCK.pill.pad else 0)
+	namePad.PaddingLeft, namePad.PaddingRight = pad, pad
+end
+
 -- Tap or key: an empty slot asks for a card, a party card summons, the summoned one goes back
 local function useSlot(slot: number)
 	if not slots[slot] then
@@ -208,6 +259,7 @@ local function makeSlot(parent: Instance, slot: number): SlotView
 	hit.Text = ""
 	hit.BackgroundTransparency = 1
 	hit.Size = UDim2.fromOffset(BAR.HIT, BAR.HIT)
+	hit.AnchorPoint = Vector2.new(0.5, 0.5)
 	hit.Parent = parent
 	local button = Instance.new("Frame")
 	button.Name = "Portrait"
@@ -292,22 +344,24 @@ local function makeSlot(parent: Instance, slot: number): SlotView
 	shine.Parent = button
 	UIKit.corner(shine, BAR.PORTRAIT)
 
-	-- The level in a white pill under the portrait
-	local level = UIKit.label(button, "", Enum.Font.FredokaOne, 10, BROWN)
+	-- The level in a gold chip at the top centre of the portrait (owner 2026-11-13: "Put the level at the center top of
+	-- each circle on party"); it rolls up there after a fight (rollLevel)
+	local level = UIKit.label(button, "", Enum.Font.FredokaOne, DOCK.levelText, rgb(DOCK.chipText))
 	level.Name = "Level"
 	level.AnchorPoint = Vector2.new(0.5, 0.5)
-	level.Position = UDim2.new(0.5, 0, 1, 2)
-	level.Size = UDim2.fromOffset(0, 14)
+	level.Position = UDim2.new(0.5, 0, 0, -1)
+	level.Size = UDim2.fromOffset(0, DOCK.levelText + 4)
 	level.AutomaticSize = Enum.AutomaticSize.X
 	level.TextWrapped = false
 	level.TextXAlignment = Enum.TextXAlignment.Center
-	level.BackgroundColor3 = WHITE
+	level.BackgroundColor3 = rgb(DOCK.chip)
 	level.BackgroundTransparency = 0
-	level.ZIndex = 5
-	UIKit.corner(level, 8)
+	level.ZIndex = 8
+	UIKit.corner(level, (DOCK.levelText + 4) / 2)
+	UIKit.outline(level, WHITE, 1.5)
 	local levelPad = Instance.new("UIPadding")
-	levelPad.PaddingLeft = UDim.new(0, 4)
-	levelPad.PaddingRight = UDim.new(0, 4)
+	levelPad.PaddingLeft = UDim.new(0, 5)
+	levelPad.PaddingRight = UDim.new(0, 5)
 	levelPad.Parent = level
 
 	-- Empty: a faint ring with a "+"
@@ -327,7 +381,7 @@ local function makeSlot(parent: Instance, slot: number): SlotView
 	local outTag = UIKit.label(button, "OUT", Enum.Font.FredokaOne, 11, WHITE)
 	outTag.Name = "Out"
 	outTag.AnchorPoint = Vector2.new(0.5, 0.5)
-	outTag.Position = UDim2.new(0.5, 0, 0, -2)
+	outTag.Position = UDim2.new(0.5, 0, 1, 1) -- at the bottom: the level has the top
 	outTag.Size = UDim2.fromOffset(32, 15)
 	outTag.TextXAlignment = Enum.TextXAlignment.Center
 	outTag.BackgroundColor3 = OUT_COLOR
@@ -360,11 +414,24 @@ local function makeSlot(parent: Instance, slot: number): SlotView
 	rest.ZIndex = 7
 	UIKit.outlined(rest, 1.5)
 
+	local veil = Instance.new("Frame")
+	veil.Name = "Veil"
+	veil.Size = UDim2.fromScale(1, 1)
+	veil.BackgroundColor3 = Color3.new(0, 0, 0)
+	veil.BackgroundTransparency = DOCK.sideVeil
+	veil.ZIndex = 6
+	veil.Visible = false
+	veil.Parent = button
+	UIKit.corner(veil, BAR.PORTRAIT / 2)
+
 	local chipEdge = keyChip(button, tostring(slot))
 	hit.Activated:Connect(function()
 		if swallowTap[slot] then
 			swallowTap[slot] = nil
 			return
+		end
+		if slots[slot] then
+			focus = slot -- it slides to the middle (and stays there when sent back in)
 		end
 		useSlot(slot)
 	end)
@@ -420,6 +487,7 @@ local function makeSlot(parent: Instance, slot: number): SlotView
 		glow = glow,
 		rest = rest,
 		shade = shade,
+		veil = veil,
 	}
 end
 
@@ -443,6 +511,26 @@ local function preloadModels(beasts: { [string]: any })
 	end
 	preloaded = true
 	CreatureVisuals.preload(names)
+end
+
+-- The carousel (Util/PartyDock.carousel): each slot slides to its spot, the middle one big and in front, and the name
+-- line under it tells who it is
+local function placeCarousel()
+	local spots = PartyDock.carousel(slots, summoned, focus, Party.PARTY_SIZE)
+	focus, centerSlot = spots.center, spots.center
+	local slide = TweenInfo.new(DOCK.slide, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+	local middle = DOCK.width / 2
+	for slot, view in slotViews do
+		local inMiddle = slot == spots.center
+		local x = if inMiddle then middle elseif slot == spots.left then DOCK.sideX else DOCK.width - DOCK.sideX
+		local y = DOCK.height / 2 + (if inMiddle then 0 else DOCK.sideY)
+		view.hit.ZIndex = if inMiddle then 3 else 2
+		view.veil.Visible = compact and not inMiddle
+		;(view.chipEdge.Parent :: GuiObject).Visible = not compact -- no key numbers on a phone
+		TweenService:Create(view.hit, slide, { Position = UDim2.fromOffset(x, y) }):Play()
+		TweenService:Create(view.lift, slide, { Scale = if inMiddle then DOCK.center else DOCK.side }):Play()
+	end
+	writeName()
 end
 
 local function render()
@@ -480,11 +568,8 @@ local function render()
 		else
 			view.chipEdge.Color = BROWN
 		end
-		TweenService:Create(view.lift, TweenInfo.new(0.15, Enum.EasingStyle.Back), { Scale = if isSummoned then LIFT else 1 }):Play()
-		TweenService:Create(view.button, TweenInfo.new(0.15, Enum.EasingStyle.Back), {
-			Position = UDim2.new(0.5, 0, 0.5, if isSummoned then -BAR.RIM_BASE else 0),
-		}):Play()
 	end
+	placeCarousel()
 end
 
 local function nameOf(beastId: string?): string?
@@ -499,7 +584,7 @@ local function celebrate(slot: number)
 	if not view then
 		return
 	end
-	local rest = if summoned == slot then LIFT else 1
+	local rest = if slot == centerSlot then DOCK.center else DOCK.side
 	local half = BAR.POP_SECONDS / 2
 	local up = TweenService:Create(view.lift, TweenInfo.new(half, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Scale = rest * BAR.POP })
 	up.Completed:Once(function()
@@ -586,7 +671,7 @@ end
 function PartyBarController.ShowXpGains(from: Vector2, gains: { XpGain }, xp: number)
 	local look = BAR.SPARKS
 	local screen = UIController.GetScreenGui()
-	if not cushion or not cushion.Visible or UIKit.anyPanelOpen() or xp <= 0 then
+	if not dock or not dock.Visible or UIKit.anyPanelOpen() or xp <= 0 then
 		for _, gain in gains do
 			landed(gain.id)
 		end
@@ -679,109 +764,223 @@ function PartyBarController.ShowXpGains(from: Vector2, gains: { XpGain }, xp: nu
 	end
 end
 
--- The cushion the party sits on (the mascot sits on it too)
-function PartyBarController.GetCushion(): Frame
-	return cushion
+-- Your row under the carousel (CharacterController puts your face first in it)
+function PartyBarController.GetMeRow(): Frame
+	return meRow
+end
+
+-- The weapon chip's spot under your row (WeaponSwitchController shows it and sits the chip on it, phones)
+function PartyBarController.GetWeaponSpot(): Frame
+	return weaponSpot
 end
 
 function PartyBarController.Start()
-	-- The bar: room above for the mascot's head (none until it has a picture), then the cushion
+	-- The dock: no box (owner 2026-11-13), each piece with its own white rim; the carousel, the name line, your row
 	local bar = Instance.new("Frame")
 	bar.Name = "PartyBar"
-	bar.LayoutOrder = 0 -- left of the buff / cash / XP column
+	bar.LayoutOrder = 0 -- left of the buff / cash column
 	bar.Size = UDim2.new()
 	bar.AutomaticSize = Enum.AutomaticSize.XY
 	bar.BackgroundTransparency = 1
-	bar.Parent = UIController.GetStatusRow()
+	bar.Parent = UIController.GetDockHolder() -- a PC's bottom left; a phone's status row (OnCompact below)
 	Hud.calmPiece(bar, "party") -- hidden through Pish's first visit (a calm HUD) and Chikin's but his summon step
-	local headroom = Instance.new("UIPadding")
-	headroom.PaddingTop = UDim.new(0, HudMascotRules.headroom(HudMascot))
-	headroom.Parent = bar
+	dock = bar
+	local stack = Instance.new("UIListLayout")
+	stack.FillDirection = Enum.FillDirection.Vertical
+	stack.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	stack.Padding = UDim.new(0, DOCK.gap)
+	stack.SortOrder = Enum.SortOrder.LayoutOrder
+	stack.Parent = bar
 
-	-- The cushion: cream, a white outline, a darker base line along its bottom; tapping it opens the Party panel
-	local pad = BAR.CUSHION
-	local seat = Instance.new("TextButton")
-	seat.Name = "Cushion"
-	seat.Text = ""
-	seat.AutoButtonColor = false
-	seat.Size = UDim2.new()
-	seat.AutomaticSize = Enum.AutomaticSize.XY
-	seat.BackgroundColor3 = WHITE
-	seat.Parent = bar
-	UIKit.corner(seat, 22)
-	UIKit.outline(seat, WHITE, BAR.OUTLINE)
-	local fill = Instance.new("UIGradient")
-	fill.Rotation = 90
-	fill.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, rgb(pad.top)),
-		ColorSequenceKeypoint.new(0.86, rgb(pad.bottom)),
-		ColorSequenceKeypoint.new(0.861, rgb(pad.base)),
-		ColorSequenceKeypoint.new(1, rgb(pad.base)),
-	})
-	fill.Parent = seat
-	local padding = Instance.new("UIPadding")
-	padding.PaddingLeft = UDim.new(0, 6)
-	padding.PaddingRight = UDim.new(0, 12)
-	padding.PaddingTop = UDim.new(0, 2)
-	padding.PaddingBottom = UDim.new(0, 6)
-	padding.Parent = seat
-	local layout = Instance.new("UIListLayout")
-	layout.FillDirection = Enum.FillDirection.Horizontal
-	layout.VerticalAlignment = Enum.VerticalAlignment.Center
-	layout.Padding = UDim.new(0, 0) -- the tap areas already space the portraits
-	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Parent = seat
-	seat.Activated:Connect(PartyController.Toggle)
-	cushion = seat
+	carousel = Instance.new("Frame")
+	carousel.Name = "Carousel"
+	carousel.LayoutOrder = 1
+	carousel.BackgroundTransparency = 1
+	carousel.Size = UDim2.fromOffset(DOCK.width, DOCK.height)
+	carousel.Parent = bar
 
-	-- The "Party" pill at the cushion's left end (a 48 px tall tap area round it): opens the Party panel
-	local partyButton = Instance.new("TextButton")
-	partyButton.Name = "Party"
-	partyButton.LayoutOrder = 0
-	partyButton.Text = ""
-	partyButton.BackgroundTransparency = 1
-	partyButton.Size = UDim2.fromOffset(BAR.HIT, BAR.HIT)
-	partyButton.Parent = seat
-	local partyPill = UIKit.label(partyButton, "Party", Enum.Font.FredokaOne, 14, BROWN)
-	partyPill.AnchorPoint = Vector2.new(0.5, 0.5)
-	partyPill.Position = UDim2.fromScale(0.5, 0.5)
-	partyPill.Size = UDim2.fromOffset(BAR.PARTY_PILL[1], BAR.PARTY_PILL[2])
-	partyPill.TextXAlignment = Enum.TextXAlignment.Center
-	partyPill.BackgroundColor3 = WHITE
-	partyPill.BackgroundTransparency = 0
-	UIKit.corner(partyPill, BAR.PARTY_PILL[2] / 2)
-	UIKit.outline(partyPill, EMPTY_EDGE, 1.5)
-	-- The cotton candy motion (spec 2026-11-03-cotton-candy-ui-design): the squishy press, and a small hop under a
-	-- mouse (it grows a little and lifts BAR.PILL_HOVER.lift px)
-	Motion.press(partyButton, true)
-	partyButton.Activated:Connect(PartyController.Toggle)
-	-- phones: no "Party" word (Party is a Phone app; the cushion still opens it), owner 2026-11-13 pick A
-	UIController.OnCompact(function(compact: boolean)
-		partyButton.Visible = not compact
-	end)
-	local pillGrow = Instance.new("UIScale")
-	pillGrow.Parent = partyPill
-	local hoverIn = TweenInfo.new(BAR.PILL_HOVER.seconds, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-	local hoverOut = TweenInfo.new(BAR.PILL_HOVER.seconds * 0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-	partyButton.MouseEnter:Connect(function()
-		if UserInputService.MouseEnabled then
-			TweenService:Create(pillGrow, hoverIn, { Scale = BAR.PILL_HOVER.scale }):Play()
-			TweenService:Create(partyPill, hoverIn, { Position = UDim2.new(0.5, 0, 0.5, -BAR.PILL_HOVER.lift) }):Play()
+	-- The middle one's name, its level in a gold chip, its element; a row as wide as the carousel with the line centred
+	-- under the middle creature (on a phone the line is a soft pill)
+	local nameRow = Instance.new("Frame")
+	nameRow.Name = "NameRow"
+	nameRow.LayoutOrder = 2
+	nameRow.BackgroundTransparency = 1
+	nameRow.Size = UDim2.fromOffset(DOCK.width, DOCK.nameText + 6)
+	nameRow.Parent = bar
+	local line = Instance.new("Frame")
+	line.Name = "NameLine"
+	line.AnchorPoint = Vector2.new(0.5, 0.5)
+	line.Position = UDim2.fromScale(0.5, 0.5)
+	line.BackgroundColor3 = rgb(DOCK.pill.fill)
+	line.BackgroundTransparency = 1
+	line.Size = UDim2.fromOffset(0, DOCK.nameText + 6)
+	line.AutomaticSize = Enum.AutomaticSize.X
+	line.Parent = nameRow
+	UIKit.corner(line, (DOCK.nameText + 6) / 2)
+	nameEdge = UIKit.outline(line, WHITE, 1.5)
+	nameEdge.Transparency = 0.3
+	nameEdge.Enabled = false
+	namePad = Instance.new("UIPadding")
+	namePad.Parent = line
+	nameLine = line
+	local lineList = Instance.new("UIListLayout")
+	lineList.FillDirection = Enum.FillDirection.Horizontal
+	lineList.VerticalAlignment = Enum.VerticalAlignment.Center
+	lineList.Padding = UDim.new(0, 5)
+	lineList.SortOrder = Enum.SortOrder.LayoutOrder
+	lineList.Parent = line
+	nameLabel = UIKit.label(line, "", Enum.Font.FredokaOne, DOCK.nameText, WHITE)
+	nameLabel.LayoutOrder = 1
+	nameLabel.Size = UDim2.fromOffset(0, DOCK.nameText + 4)
+	nameLabel.AutomaticSize = Enum.AutomaticSize.X
+	nameLabel.TextWrapped = false
+	UIKit.outlined(nameLabel, 1.5)
+	nameElement = Icon.make(line, "Ember", UDim2.fromOffset(DOCK.nameText + 2, DOCK.nameText + 2))
+	nameElement.LayoutOrder = 3
+
+	-- the phone's element badge on the middle portrait's corner: a white disc with the element on it
+	elementBadge = Instance.new("Frame")
+	elementBadge.Name = "ElementBadge"
+	elementBadge.AnchorPoint = Vector2.new(0.5, 0.5)
+	elementBadge.Position = UDim2.fromOffset(DOCK.width / 2 + DOCK.elementAt, DOCK.height / 2 + DOCK.elementAt)
+	elementBadge.Size = UDim2.fromOffset(DOCK.elementBadge, DOCK.elementBadge)
+	elementBadge.BackgroundColor3 = WHITE
+	elementBadge.ZIndex = 5
+	elementBadge.Visible = false
+	elementBadge.Parent = carousel
+	UIKit.corner(elementBadge, DOCK.elementBadge / 2)
+	elementIcon = Icon.make(elementBadge, "Ember", UDim2.fromScale(0.78, 0.78))
+	elementIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+	elementIcon.Position = UDim2.fromScale(0.5, 0.5)
+	elementIcon.ZIndex = 6
+
+	-- You: your face (CharacterController), your health and your level with its XP, the phone's weapon chip
+	meRow = Instance.new("Frame")
+	meRow.Name = "MeRow"
+	meRow.LayoutOrder = 3
+	meRow.BackgroundTransparency = 1
+	meRow.Size = UDim2.fromOffset(0, DOCK.meHeight)
+	meRow.AutomaticSize = Enum.AutomaticSize.X
+	meRow.Parent = bar
+	-- your buffs as round icons by your character info (owner 2026-11-13, buffs pick A; BuffController): left of your
+	-- face on a phone, after your bars on a computer (OnCompact below)
+	local buffs = BuffController.GetStack()
+	if buffs then
+		buffs.Parent = meRow
+	end
+	local meList = Instance.new("UIListLayout")
+	meList.FillDirection = Enum.FillDirection.Horizontal
+	meList.VerticalAlignment = Enum.VerticalAlignment.Center
+	meList.Padding = UDim.new(0, 4)
+	meList.SortOrder = Enum.SortOrder.LayoutOrder
+	meList.Parent = meRow
+	local bars = Instance.new("Frame")
+	bars.Name = "Bars"
+	bars.LayoutOrder = 1
+	bars.BackgroundTransparency = 1
+	bars.Size = UDim2.fromOffset(DOCK.barWidth + DOCK.badge + 4, DOCK.badge + 4)
+	bars.Parent = meRow
+	-- one bar: a white-rimmed track with its fill and its words over it, a badge at its left end
+	local function makeBar(name: string, top: number, height: number, fill: { { number } }): (Frame, TextLabel)
+		local track = Instance.new("Frame")
+		track.Name = name
+		track.Position = UDim2.fromOffset(DOCK.badge + 4, top)
+		track.Size = UDim2.fromOffset(DOCK.barWidth, height)
+		track.BackgroundColor3 = Color3.new(0, 0, 0)
+		track.BackgroundTransparency = DOCK.trackTransparency
+		track.ClipsDescendants = true
+		track.Parent = bars
+		UIKit.corner(track, height / 2)
+		UIKit.outline(track, WHITE, 2)
+		local inner = Instance.new("Frame")
+		inner.Name = "Fill"
+		inner.Size = UDim2.fromScale(1, 1)
+		inner.BackgroundColor3 = WHITE
+		inner.BorderSizePixel = 0
+		inner.Parent = track
+		UIKit.corner(inner, height / 2)
+		local shade = Instance.new("UIGradient")
+		shade.Rotation = 90
+		shade.Color = ColorSequence.new(rgb(fill[1]), rgb(fill[2]))
+		shade.Parent = inner
+		local words = UIKit.label(track, "", Enum.Font.FredokaOne, DOCK.barText, WHITE)
+		words.Size = UDim2.new(1, -8, 1, 0)
+		words.Position = UDim2.fromOffset(4, 0)
+		words.TextXAlignment = Enum.TextXAlignment.Right
+		words.ZIndex = 3
+		UIKit.outlined(words, 1.5)
+		return inner, words
+	end
+	-- your XP bar alone (the health bar went, owner 2026-11-13: a fight shows your health), centred on the row
+	local xpTop = (DOCK.badge + 4 - DOCK.xpHeight) / 2
+	xpFill, xpWords = makeBar("Xp", xpTop, DOCK.xpHeight, DOCK.xpFill)
+	levelBadge = Instance.new("Frame")
+	levelBadge.Name = "Level"
+	levelBadge.AnchorPoint = Vector2.new(0.5, 0.5)
+	levelBadge.Position = UDim2.fromOffset(DOCK.badge / 2, xpTop + DOCK.xpHeight / 2)
+	levelBadge.Size = UDim2.fromOffset(DOCK.badge, DOCK.badge)
+	levelBadge.BackgroundTransparency = 1
+	levelBadge.Parent = bars
+	local star = Icon.make(levelBadge, "Level", UDim2.fromScale(1, 1))
+	star.ZIndex = 2
+	levelNumber = UIKit.label(levelBadge, "", Enum.Font.FredokaOne, DOCK.barText, WHITE)
+	levelNumber.Size = UDim2.fromScale(1, 0.9)
+	levelNumber.Position = UDim2.fromScale(0, 0.08)
+	levelNumber.TextXAlignment = Enum.TextXAlignment.Center
+	levelNumber.ZIndex = 4
+	local levelEdge = Instance.new("UIStroke")
+	levelEdge.Color = Color3.fromRGB(120, 70, 0)
+	levelEdge.Thickness = 2
+	levelEdge.Parent = levelNumber
+	-- the phone's weapon chip on its own row under the name (owner 2026-11-13: "weapon should be below the character
+	-- menu"), its count on its corner
+	local look = HudLayout.WEAPON_SWITCH
+	weaponSpot = Instance.new("Frame")
+	weaponSpot.Name = "WeaponSpot"
+	weaponSpot.LayoutOrder = 4
+	weaponSpot.BackgroundTransparency = 1
+	weaponSpot.Size = UDim2.fromOffset(look.compactChip, look.compactChip)
+	weaponSpot.Visible = false
+	weaponSpot.Parent = bar
+
+	-- Phones (owner 2026-11-13: "align them all right"; "I want the character info to be at the very top. leveled with
+	-- the roblox icons on the other side. below the exp is the coins"): every row flush right, and your row leaves the
+	-- dock for the top of the corner's column, over the cash pill (UIController places the column)
+	UIController.OnCompact(function(on: boolean)
+		compact = on
+		-- a PC (owner 2026-11-13: "on desktop can we move character info and party on the bottom left. align them"):
+		-- the dock in the bottom-left corner, every row flush left
+		bar.Parent = if on then UIController.GetStatusRow() else UIController.GetDockHolder()
+		stack.HorizontalAlignment = if on then Enum.HorizontalAlignment.Right else Enum.HorizontalAlignment.Left
+		meRow.Parent = if on then UIController.GetStatusRow() else bar
+		meRow.LayoutOrder = if on then -2 else 3
+		if buffs then
+			buffs.LayoutOrder = if on then -3 else 10
 		end
-	end)
-	partyButton.MouseLeave:Connect(function()
-		TweenService:Create(pillGrow, hoverOut, { Scale = 1 }):Play()
-		TweenService:Create(partyPill, hoverOut, { Position = UDim2.fromScale(0.5, 0.5) }):Play()
+		placeCarousel() -- the phone's look: no key numbers, veiled sides, the name pill, the element badge
 	end)
 
-	-- The mascot peeks over the cushion and ducks when the summoned creature changes
-	HudMascotView.mount(seat)
-	-- The peeking Pish waits till a tour is over (the owner 2026-11-11), even while Chikin shows the party bar
-	Hud.onCalm(function()
-		HudMascotView.setHidden(Hud.hides("mascot"))
-	end)
-	HudMascotView.setHidden(Hud.hides("mascot"))
-	PartyBarController.Summoned:Connect(HudMascotView.duck)
+	-- your level and XP (the XP pill's job before, owner 2026-11-13: "the exp/level looks broken")
+	local function updateXp()
+		local xp = player:GetAttribute("XP")
+		if typeof(xp) ~= "number" then
+			levelNumber.Text = ""
+			xpWords.Text = "Loading..."
+			xpFill.Size = UDim2.fromScale(0, 1)
+			return
+		end
+		local level = tostring(player:GetAttribute("Level") or 1)
+		if levelNumber.Text ~= level and levelNumber.Text ~= "" then
+			Motion.bump(levelBadge)
+		end
+		levelNumber.Text = level
+		local into, span = LevelRules.getProgress(xp)
+		xpFill.Size = UDim2.fromScale(if span > 0 then math.clamp(into / span, 0, 1) else 1, 1)
+		xpWords.Text = PartyDock.xpText(into, span)
+	end
+	updateXp()
+	player:GetAttributeChangedSignal("XP"):Connect(updateXp)
+	player:GetAttributeChangedSignal("Level"):Connect(updateXp)
 
 	tip = Instance.new("Frame")
 	tip.Name = "PartyTip"
@@ -801,7 +1000,7 @@ function PartyBarController.Start()
 	tip:GetPropertyChangedSignal("AbsoluteSize"):Connect(placeTip) -- it sizes itself after its content
 
 	for slot = 1, Party.PARTY_SIZE do
-		slotViews[slot] = makeSlot(cushion, slot)
+		slotViews[slot] = makeSlot(carousel, slot)
 	end
 	render()
 
@@ -813,6 +1012,9 @@ function PartyBarController.Start()
 		local slot = table.find(SUMMON_KEYS, input.KeyCode)
 		if not slot or not bar.Visible or not (bar.Parent :: GuiObject).Visible then
 			return Enum.ContextActionResult.Pass
+		end
+		if slots[slot] then
+			focus = slot
 		end
 		useSlot(slot)
 		return Enum.ContextActionResult.Sink

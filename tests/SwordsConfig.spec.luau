@@ -685,7 +685,7 @@ return {
 
 	-- The sword-moves round's effect textures (tools/textures/make_sword_fx.py), uploaded as images
 	["the sword effects' textures are uploaded images"] = function()
-		for _, key in { "crescent", "burst", "line", "star" } do
+		for _, key in { "crescent", "line", "star" } do -- the old star burst gave way to the packs' slash (2026-11-13)
 			local id = (SwordFx.TEXTURES :: any)[key]
 			expect.equal(typeof(id) == "string" and string.match(id, "^rbxassetid://%d+$") ~= nil, true, `TEXTURES.{key}: {id}`)
 		end

@@ -199,6 +199,30 @@ return {
 				{ texture = "auraLight", rate = 2, lifetime = { 1.3, 1.3 }, speed = { 0.001, 0.001 }, size = { { 0, 3.375, 0 }, { 1, 3.375, 0 } }, transparency = { { 0, 1 }, { 0.499, 0.736 }, { 1, 1 } }, color = { 123, 255, 163 }, emission = 0.6, brightness = 5, zOffset = 0.05, rotation = { -360, 360 }, direction = "Front" },
 			},
 		},
+		-- Owner 2026-11-13 ("make sure no old effects on weapons"): Volt and Shade weapons in the same Yona aura, in their
+		-- colours (Volt's electric yellow with the pack's crackling bolts, Shade's violet)
+		Volt = {
+			byGrade = { C = 0.3, B = 0.5, A = 0.75, S = 1 },
+			otherScale = 0.8,
+			emitters = {
+				{ texture = "auraEmber", rate = 552, lifetime = { 0.45, 0.9 }, speed = { 0.001, 0.001 }, size = { { 0, 0, 0 }, { 0.508, 0.0375, 0.0375 }, { 1, 0, 0 } }, transparency = { { 0, 0 }, { 1, 0 } }, color = { 255, 222, 74 }, emission = 1, brightness = 3, zOffset = 4, drag = 5, direction = "Bottom", squash = { { 0, -0.1, 0 }, { 1, -0.1, 0 } } },
+				{ texture = "auraSmoke", rate = 120, lifetime = { 1, 1 }, speed = { 0, 2 }, spread = { 5, 5 }, size = { { 0, 0.235, 0 }, { 1, 0.797, 0 } }, transparency = { { 0, 1 }, { 0.486, 0 }, { 0.615, 0 }, { 1, 1 } }, color = { 0, 0, 0 }, emission = 0.6, brightness = 10, zOffset = 0, rotation = { -360, 360 }, rotSpeed = { -30, 30 }, drag = 5, inOut = true, timeScale = 0.6, flipbook = { layout = "Grid8x8" } },
+				{ texture = "auraSmoke", rate = 66, lifetime = { 1, 1 }, speed = { 0, 1 }, spread = { 5, 5 }, size = { { 0, 0.235, 0 }, { 1, 1.079, 0 } }, transparency = { { 0, 1 }, { 0.486, 0 }, { 0.605, 0 }, { 1, 1 } }, color = { 255, 222, 74 }, emission = 1, brightness = 10, zOffset = 0.05, rotation = { -360, 360 }, rotSpeed = { -30, 30 }, drag = 5, inOut = true, timeScale = 0.6, flipbook = { layout = "Grid8x8" } },
+				{ texture = "auraLight", rate = 2, lifetime = { 1.3, 1.3 }, speed = { 0.001, 0.001 }, size = { { 0, 3.375, 0 }, { 1, 3.375, 0 } }, transparency = { { 0, 1 }, { 0.499, 0.736 }, { 1, 1 } }, color = { 255, 222, 74 }, emission = 0.6, brightness = 5, zOffset = 0.05, rotation = { -360, 360 }, direction = "Front" },
+				-- Yona's Electricity Impact's crackling bolts, small, flickering along the blade
+				{ texture = "lightningGrow", rate = 9, lifetime = { 0.2, 0.35 }, speed = { 0.001, 0.001 }, size = { { 0, 0.9, 0.3 }, { 1, 0.9, 0.3 } }, transparency = { { 0, 0 }, { 1, 0.4 } }, color = { 255, 244, 170 }, emission = 1, brightness = 4, zOffset = 0.1, rotation = { -180, 180 }, flipbook = {} },
+			},
+		},
+		Shade = {
+			byGrade = { C = 0.3, B = 0.5, A = 0.75, S = 1 },
+			otherScale = 0.8,
+			emitters = {
+				{ texture = "auraEmber", rate = 552, lifetime = { 0.45, 0.9 }, speed = { 0.001, 0.001 }, size = { { 0, 0, 0 }, { 0.508, 0.0375, 0.0375 }, { 1, 0, 0 } }, transparency = { { 0, 0 }, { 1, 0 } }, color = { 168, 102, 255 }, emission = 1, brightness = 3, zOffset = 4, drag = 5, direction = "Bottom", squash = { { 0, -0.1, 0 }, { 1, -0.1, 0 } } },
+				{ texture = "auraSmoke", rate = 120, lifetime = { 1, 1 }, speed = { 0, 2 }, spread = { 5, 5 }, size = { { 0, 0.235, 0 }, { 1, 0.797, 0 } }, transparency = { { 0, 1 }, { 0.486, 0 }, { 0.615, 0 }, { 1, 1 } }, color = { 0, 0, 0 }, emission = 0.6, brightness = 10, zOffset = 0, rotation = { -360, 360 }, rotSpeed = { -30, 30 }, drag = 5, inOut = true, timeScale = 0.6, flipbook = { layout = "Grid8x8" } },
+				{ texture = "auraSmoke", rate = 66, lifetime = { 1, 1 }, speed = { 0, 1 }, spread = { 5, 5 }, size = { { 0, 0.235, 0 }, { 1, 1.079, 0 } }, transparency = { { 0, 1 }, { 0.486, 0 }, { 0.605, 0 }, { 1, 1 } }, color = { 168, 102, 255 }, emission = 1, brightness = 10, zOffset = 0.05, rotation = { -360, 360 }, rotSpeed = { -30, 30 }, drag = 5, inOut = true, timeScale = 0.6, flipbook = { layout = "Grid8x8" } },
+				{ texture = "auraLight", rate = 2, lifetime = { 1.3, 1.3 }, speed = { 0.001, 0.001 }, size = { { 0, 3.375, 0 }, { 1, 3.375, 0 } }, transparency = { { 0, 1 }, { 0.499, 0.736 }, { 1, 1 } }, color = { 168, 102, 255 }, emission = 0.6, brightness = 5, zOffset = 0.05, rotation = { -360, 360 }, direction = "Front" },
+			},
+		},
 	},
 	-- The pack auras' layers draw `shift` studs nearer the camera while the wearer's body hides their part (a sword on
 	-- the back seen from the front; WeaponLook.drawPastBody): the fire then spills over the shoulders and hat; more

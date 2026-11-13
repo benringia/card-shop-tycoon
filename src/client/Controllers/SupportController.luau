@@ -22,6 +22,7 @@ local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local HudMascotView = require(ClientUtil:WaitForChild("HudMascotView"))
+local Hud = require(ClientUtil:WaitForChild("Hud"))
 local ProductPrice = require(ClientUtil:WaitForChild("ProductPrice"))
 local ScreenClear = require(ClientUtil:WaitForChild("ScreenClear"))
 local UIController = require(Controllers:WaitForChild("UIController"))
@@ -171,6 +172,8 @@ function SupportController.Start()
 			open() -- a tour's own taps (Pish's goodbye) are TutorialController's
 		end
 	end)
+	-- and an app on the Phone, everywhere (owner 2026-11-13: "also put an app inside the phone for donation")
+	Hud.fanButton({ id = "Support", icon = "💛", label = "Support", order = 8, everywhere = true, onClick = open })
 	Remotes.SupportState.OnClientEvent:Connect(function(state: unknown)
 		if typeof(state) == "table" and typeof((state :: any).gifts) == "number" then
 			gifts = (state :: any).gifts

@@ -141,18 +141,28 @@ end
 -- its way (boss buttons by touch or mouse, wild buttons), so it never covers the Pet or Signature buttons.
 -- The carousel (owner 2026-11-12): < [before] [in hand] [next] >, the arrows drawn `arrow` px with a `hit`-sized tap
 -- area (48 px at least) that may overlap the small weapon beside them (both step the same way)
-export type SwitchLook = { chip: number, side: number, arrow: number, hit: number, gap: number, right: number, name: number, compactChip: number?, dots: number? }
+export type SwitchLook = { chip: number, side: number, arrow: number, hit: number, gap: number, right: number, name: number, compactChip: number? }
 export type SwitchRect = { x: number, y: number, w: number, h: number, scale: number }
 -- `clear`: boxes it keeps out of (a phone's top-right column with the party bar under it, owner 2026-11-13): it
 -- moves just under one it would sit on, kept on screen. `compact` (phones, owner 2026-11-13 pick A): only the weapon in
--- hand, a bigger chip (`compactChip`) with its dots under it
-function UiLayout.weaponSwitch(view: Size, look: SwitchLook, scale: number, fight: boolean, clear: { Rect }?, compact: boolean?): SwitchRect
+-- hand, a bigger chip (`compactChip`), its count on its corner. `above` (a computer, owner 2026-11-13: "move weapon
+-- lower to close the gap"): the cash column; out of a fight it sits beside it, its foot with the column's (Pish's toasts
+-- rise over the column), or just above it when that would reach the screen's middle (the bottom tiles)
+function UiLayout.weaponSwitch(view: Size, look: SwitchLook, scale: number, fight: boolean, clear: { Rect }?, compact: boolean?, above: Rect?): SwitchRect
 	local s = math.max(scale, 48 / look.hit)
 	local chip = if compact then look.compactChip or look.chip else look.chip
 	local w = if compact then chip * s else (look.chip + 2 * (look.side + look.gap) + 2 * (look.arrow + look.gap)) * s
-	local h = (chip + (if compact then look.dots or look.name else look.name)) * s
+	local h = (chip + (if compact then 0 else look.name)) * s
 	local x = view.w - look.right - w
 	local y = view.h / 2 - h / 2
+	if above and not fight then
+		local besideX = above.x - look.gap - w
+		if besideX >= view.w * 0.6 then
+			x, y = besideX, above.y + above.h - h
+		else
+			y = above.y - look.gap - h
+		end
+	end
 	for _, b in clear or {} do
 		if x < b.x + b.w and b.x < x + w and y < b.y + b.h and b.y < y + h then
 			y = math.min(b.y + b.h + look.gap, view.h - h)

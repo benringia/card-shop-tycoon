@@ -9,7 +9,8 @@ local function entry(id: number, message: string): ToastRules.Entry
 end
 
 return {
-	-- owner 2026-11-12: "make the bubble come out of him ... like he's saying the notification"
+	-- owner 2026-11-12: "make the bubble come out of him ... like he's saying the notification"; 2026-11-13 pick P1: Pish
+	-- peeks over the cash pill on a computer and says the toasts again
 	["the toast stack sits so its tail ends just over Pish's head"] = function()
 		local head = { x = 900, y = 500 }
 		local corner = ToastRules.stackCorner(head, Toasts.TAIL_RIGHT, Toasts.TAIL, 1)

@@ -2017,8 +2017,9 @@ end
 
 -- Bottom-centre tiles: Cards (the binder) and Bag
 local function buildButtons()
-	Hud.tile({ id = "Cards", icon = "Cards", label = "Cards", key = "B", group = "Bottom", order = 1, onClick = toggle })
-	Hud.tile({ id = "Bag", icon = "Bag", label = "Bag", key = "I", group = "Bottom", order = 2, onClick = toggleBag })
+	-- phones (owner 2026-11-13): Cards under the Phone, Bag inside it
+	Hud.tile({ id = "Cards", icon = "Cards", label = "Cards", key = "B", group = "Bottom", order = 1, phoneSide = 1, onClick = toggle })
+	Hud.tile({ id = "Bag", icon = "Bag", label = "Bag", key = "I", group = "Bottom", order = 2, phoneApp = 6, onClick = toggleBag })
 end
 
 -- Batches bursts of card parts appearing or leaving into one refresh
@@ -2052,6 +2053,17 @@ local function watchOwnPlot()
 	table.insert(plotConnections, shelves.DescendantAdded:Connect(onChanged))
 	table.insert(plotConnections, shelves.DescendantRemoving:Connect(onChanged))
 	queueRefresh()
+end
+
+-- How many of the game's cards you've collected (in the binder or on display), and how many there are
+function BinderController.CollectedCount(): (number, number)
+	local have = 0
+	for _, card in Cards.List do
+		if isCollected(card.id) then
+			have += 1
+		end
+	end
+	return have, #Cards.List
 end
 
 -- The cards in the player's binder (not counting ones on display), summed over grades

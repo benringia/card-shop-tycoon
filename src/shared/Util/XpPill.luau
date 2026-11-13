@@ -1,31 +1,7 @@
 --!strict
--- The level pill's XP (owner 2026-11-03, round 3 pick B "big number, thin bar"; spec 2026-11-03-windows-round3-design):
--- the XP into this level big and exact, the level's total small after it, a count-up when it changes. Pure,
--- Lune-tested.
+-- A number counting up when it changes (the party's level chips, the level-up pillar's number; it began as the XP
+-- pill's, owner 2026-11-03 round 3 pick B, now in the party dock: Util/PartyDock). Pure, Lune-tested.
 local XpPill = {}
-
--- 1234567 -> "1,234,567"
-local function withCommas(n: number): string
-	local text = tostring(math.floor(math.max(0, n)))
-	local grouped = string.reverse((string.gsub(string.reverse(text), "(%d%d%d)", "%1,")))
-	return (string.gsub(grouped, "^,", ""))
-end
-
--- "99,800 XP"; "MAX" at the top level (a span of 0 or less)
-function XpPill.amount(into: number, span: number): string
-	if span <= 0 then
-		return "MAX"
-	end
-	return `{withCommas(into)} XP`
-end
-
--- "/ 226,000"; nothing at the top level
-function XpPill.total(span: number): string
-	if span <= 0 then
-		return ""
-	end
-	return `/ {withCommas(span)}`
-end
 
 -- The number shown `t` (0-1) of the way through a count from `from` to `to`: eased out, whole numbers, never past `to`
 function XpPill.countUp(from: number, to: number, t: number): number

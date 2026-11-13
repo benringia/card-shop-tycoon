@@ -485,7 +485,7 @@ local function targetButton(): GuiObject?
 	if not spec or not spec.hud then
 		return nil
 	end
-	if spec.tray and not Hud.isTrayOpen() then
+	if (spec.tray or Hud.inPhone(spec.hud)) and not Hud.isTrayOpen() then
 		return Hud.find("Manage")
 	end
 	return Hud.find(spec.hud)

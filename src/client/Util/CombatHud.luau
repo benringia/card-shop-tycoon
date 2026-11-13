@@ -1155,7 +1155,20 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 			icon.Image = art
 			icon.ImageColor3 = Color3.new(1, 1, 1)
 			icon.ScaleType = Enum.ScaleType.Crop
-			icon.Size = UDim2.fromScale(0.72, 0.72)
+			-- a round portrait in a white ring (owner 2026-11-13: the square art on the slanted button "looks broken")
+			icon.Size = UDim2.fromScale(0.62, 0.62)
+			icon.SizeConstraint = Enum.SizeConstraint.RelativeYY
+			if not icon:FindFirstChild("Round") then
+				local round = Instance.new("UICorner")
+				round.Name = "Round"
+				round.CornerRadius = UDim.new(0.5, 0)
+				round.Parent = icon
+				local ring = Instance.new("UIStroke")
+				ring.Color = Color3.new(1, 1, 1)
+				ring.Thickness = 2
+				ring.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+				ring.Parent = icon
+			end
 		end
 	end
 

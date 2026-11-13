@@ -38,7 +38,7 @@ return {
 	-- at most `fit` of the screen's height; `dim` the world's darkness behind it; `picture` on the home screen (Pish and
 	-- Chikin, Config/Support CARD.picture); `title` the shop's name ("%s": the player's)
 	PHONE = {
-		icon = "📱",
+		icon = "Phone", -- Config/UIIcons (owner 2026-11-13 pick P1; the 📱 emoji before)
 		label = "Phone",
 		size = { 300, 580 },
 		fit = 0.9,
@@ -60,38 +60,23 @@ return {
 	KEY_SIZE = TILE.keySize,
 	-- The status corner in the same look: a green cash pill with a gold coin, a white level pill with a gold star and
 	-- the XP big with a thin bar (Util/XpPill), a white buff chip
-	CASH = { top = Color3.fromRGB(142, 224, 154), bottom = Color3.fromRGB(63, 179, 90) },
+	-- touchScale: the cash pill smaller on a touch screen, under your row (owner 2026-11-13: "make the coins smaller");
+	-- touchCoin: its coin inside the pill there, not bigger than it (declutter pick A)
+	CASH = { top = Color3.fromRGB(142, 224, 154), bottom = Color3.fromRGB(63, 179, 90), touchScale = 0.72, touchCoin = 34 },
 	PILL_EDGE = Color3.fromRGB(236, 224, 208), -- the white pills' soft edge
-	-- The level pill's XP (owner 2026-11-03, round 3 pick B; Util/XpPill): the XP into the level big ("99,800 XP"),
-	-- the level's total small after it ("/ 226,000"), a thin bar under them (lilac to sky); a change counts up over
-	-- countSeconds. Sizes in px.
-	XP_PILL = {
-		width = 150,
-		amountText = 16,
-		totalText = 11,
-		bar = 6,
-		gap = 2,
-		ink = rgb(BabyColors.INK),
-		soft = rgb({ 123, 90, 142 }),
-		fillLeft = rgb(BabyColors.COLORS.lilac.fill),
-		fillRight = rgb(BabyColors.COLORS.sky.fill),
-		track = rgb({ 243, 230, 248 }),
-		countSeconds = 0.6,
-	},
-	STATUS_ICON = 54, -- the coin and the star, bigger than their pills
+	STATUS_ICON = 54, -- the coin, bigger than its pill
 	-- The whole HUD shrinks with the screen's height on small screens (landscape phones): 1 at REFERENCE_HEIGHT
 	-- and up, never below MIN (tiles stay over 48 px to tap)
-	SCALE = { REFERENCE_HEIGHT = 560, MIN = 0.7 },
+	-- TOUCH_MIN: the corner (cash and the party dock) never smaller than this on a touch screen (owner 2026-11-13: "make
+	-- them look pretty", the dock read too small on a phone)
+	SCALE = { REFERENCE_HEIGHT = 560, MIN = 0.7, TOUCH_MIN = 0.85 },
+	-- The phone's buffs (owner 2026-11-13, buffs pick A; BuffController): round icons `icon` px stacked left of your face
+	-- in a `width` px wide tap area (one tap: every buff in a tooltip), a timed one in a `ring` px ring that empties
+	BUFF_ICONS = { icon = 26, ring = 3, gap = 4, width = 56, track = Color3.fromRGB(255, 255, 255) },
 	-- The quick weapon switch (spec 2026-11-07-weapons-round2-design 6, the owner's pick A): a round chip on the right
 	-- edge at mid height with your weapon's picture in its rarity's ring, < and > either side; its name shows under it
 	-- (in `name` px of room) for nameSeconds after a switch; a swipe of `swipe` px on the chip steps too. Placed by
 	-- UiLayout.weaponSwitch: never scaled under 48 px arrows, above the fight buttons in a fight
 	-- the carousel (owner 2026-11-12: smaller buttons, the weapons before and after smaller beside it, a tooltip): px
-	WEAPON_SWITCH = { chip = 58, side = 40, arrow = 30, hit = 48, gap = 6, right = 12, name = 22, ring = 3, nameSeconds = 1.5, swipe = 30, slide = 0.18, sideFade = 0.35, compactChip = 64, dots = 12, dot = 6, maxDots = 7 },
-	-- The phone HUD, slimmed (owner 2026-11-13, pick A: "the UI on phone is really crowded"): on touch screens one pill
-	-- holds the cash ("$53,661") and the level badge, its XP in a `ring`-thick ring round it (`track` behind, `fill` as
-	-- it fills); the rating chip and the XP pill hide (the rating is on the Phone's status bar and in Reviews); the
-	-- party bar drops its "Party" word (Party is a Phone app); the weapon switch is one bigger chip (WEAPON_SWITCH
-	-- compactChip: tap for the next, swipe back) with a dot per weapon
-	COMPACT = { badge = 38, ring = 4, track = Color3.fromRGB(225, 215, 240), fill = Color3.fromRGB(150, 110, 255) },
+	WEAPON_SWITCH = { chip = 58, side = 40, arrow = 30, hit = 48, gap = 6, right = 12, name = 22, ring = 3, nameSeconds = 1.5, swipe = 30, slide = 0.18, sideFade = 0.35, compactChip = 64, countText = 12 },
 }

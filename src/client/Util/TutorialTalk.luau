@@ -189,7 +189,7 @@ local function build(): Frame
 			bottom = math.min(bottom, placing.AbsolutePosition.Y - BAR_GAP)
 		end
 		local height = HEIGHT * math.min(WIDTH, screenSize.X * SCREEN_SHARE) / WIDTH
-		for _, columnName in { "StatusRow", "HudSide" } do
+		for _, columnName in { "StatusRow", "HudSide", "PartyDock" } do
 			local column = gui and gui:FindFirstChild(columnName)
 			if column and column:IsA("GuiObject") and column.Visible then
 				local top, low = column.AbsolutePosition.Y, column.AbsolutePosition.Y + column.AbsoluteSize.Y

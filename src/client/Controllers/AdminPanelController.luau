@@ -161,7 +161,7 @@ function AdminPanelController.Start()
 	panel, list = UIKit.panel(UIController.GetScreenGui(), "AdminPanel", "🛠 Admin (Studio)")
 	palette = UIKit.colorsFor(panel)
 	build()
-	Hud.tile({ id = "Admin", icon = "🛠", label = "Admin", group = "Side", order = 90, onClick = toggle })
+	Hud.tile({ id = "Admin", icon = "🛠", label = "Admin", group = "Side", order = 90, phoneApp = 90, phoneAlways = true, onClick = toggle }) -- in the Phone (owner 2026-11-13)
 end
 
 return AdminPanelController

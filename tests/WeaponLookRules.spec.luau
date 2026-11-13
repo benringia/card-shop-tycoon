@@ -141,13 +141,12 @@ return {
 
 	-- Owner 2026-11-08 (free VFX packs, picked in game): Ember weapons blaze with the Euphoric pack's fire, Tide weapons
 	-- with its water, Bloom weapons glow with the Yona pack's aura in green ("apply this glow to all green weapons");
-	-- Volt, Shade and the Prism Blade keep our flames
-	["Ember, Tide and Bloom weapons wear the pack auras; the rest keep our flames"] = function()
-		expect.equal(WeaponLookRules.auraStyle(Looks, "Ember", false), "Ember")
-		expect.equal(WeaponLookRules.auraStyle(Looks, "Tide", false), "Tide")
-		expect.equal(WeaponLookRules.auraStyle(Looks, "Bloom", false), "Bloom")
-		for _, element in { "Volt", "Shade" } do
-			expect.equal(WeaponLookRules.auraStyle(Looks, element, false), nil, element)
+	-- 2026-11-13 ("some scythes and spears doesnt have the ... effects we got from the store ... make sure no old effects
+	-- on weapons"): Volt and Shade weapons too, the Yona aura in their colours (Volt with its crackling bolts); only the
+	-- Prism Blade (its own rainbow) and the Steel Sword keep ours
+	["every element's weapons wear the pack auras; only the Prism Blade and the Steel Sword keep ours"] = function()
+		for _, element in { "Ember", "Tide", "Bloom", "Volt", "Shade" } do
+			expect.equal(WeaponLookRules.auraStyle(Looks, element, false), element, element)
 		end
 		expect.equal(WeaponLookRules.auraStyle(Looks, nil, false), nil, "the Steel Sword")
 		expect.equal(WeaponLookRules.auraStyle(Looks, nil, true), nil, "the Prism Blade")

@@ -15,6 +15,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
 local UIKit = require((Controllers.Parent :: Instance):WaitForChild("Util"):WaitForChild("UIKit"))
+local Tooltip = require((Controllers.Parent :: Instance):WaitForChild("Util"):WaitForChild("Tooltip"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 
 type Part = { name: string, score: number, weight: number, known: boolean? }
@@ -104,6 +105,15 @@ local function buildChip()
 	gap.Parent = numberLabel
 end
 
+-- Its tooltip under a mouse (owner 2026-11-13: "Add tool tip on the shop rating on the bottom right")
+local function addTooltip()
+	Tooltip.rich(chip, "Shop rating", {
+		"How customers rate your shop: stock, prices, cards on display, service and decor.",
+		"A higher rating brings customers more often.",
+		"Click it for what to fix.",
+	})
+end
+
 local function addLine(order: number, text: string, color: Color3)
 	local label = UIKit.label(list, text, Enum.Font.GothamBold, UIKit.textSize("body"), color)
 	label.LayoutOrder = order
@@ -160,6 +170,7 @@ end
 
 function RatingController.Start()
 	buildChip()
+	addTooltip()
 	window, list = UIKit.panel(UIController.GetScreenGui(), "RatingTips", "Shop rating")
 	window.Size = UDim2.new(0.92, 0, 0, Customers.RATING.tipsHeight) -- a few lines, not a full list
 	chip.Activated:Connect(function()

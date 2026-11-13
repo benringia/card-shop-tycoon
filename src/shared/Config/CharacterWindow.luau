@@ -11,6 +11,13 @@ return {
 	IDLE_FALLBACK = "rbxassetid://507766666", -- Roblox's default R15 idle, for an avatar without its own
 	STAGE_SHARE = 0.34, -- the stage's share of the width (a phone: above the tabs, this share of the height)
 	STAT_ROW = 72, -- px: a stat's row (name, number, a two-line note)
+	-- Owner 2026-11-13 pick A ("character window is a bit plain"): your shop at night behind you on the stage (the pack
+	-- opening's painting, tinted a little dark so you stand out), your three party creatures as round portraits on the
+	-- stage's floor (`size`, the one out `out`, their centres `y` down the stage), and four progress tiles over the stats
+	-- (`TILE_HEIGHT` px: Level with its XP, Cards, Bosses, Titles; Util/CharacterStats.progress)
+	BACKDROP = { image = "rbxassetid://89947475330742", tint = { 205, 195, 225 } },
+	STAGE_PARTY = { size = 44, out = 56, y = 0.88, spread = 0.3 },
+	TILE_HEIGHT = 58,
 	TABS = { "Stats", "Elements", "Titles" },
 	STATS = {
 		{ key = "power", icon = "Power", name = "Power", line = "Your strongest card. Bosses check it." },

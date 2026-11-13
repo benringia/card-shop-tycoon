@@ -21,7 +21,6 @@ local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"
 local PartyRules = require(Shared:WaitForChild("Util"):WaitForChild("PartyRules"))
 local CompareRules = require(Shared:WaitForChild("Util"):WaitForChild("CompareRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
-local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
@@ -383,6 +382,11 @@ function PartyController.GetSlots(): { [number]: string }
 	return out
 end
 
+-- The summoned slot (nil: none out)
+function PartyController.GetSummoned(): number?
+	return if state then state.summoned else nil
+end
+
 function PartyController.Start()
 	local screenGui = UIController.GetScreenGui()
 	local scroller: ScrollingFrame
@@ -428,10 +432,9 @@ function PartyController.Start()
 		text(item, entry[2], UIKit.textSize("small"), UIKit.Colors.Subtext).LayoutOrder = 2
 	end
 
-	-- in town's Manage tray; the Frontier and the Dungeon have no tray (their party bar's Party button opens it)
-	if not Place.isFrontier() and not Place.isDungeon() then
-		Hud.fanButton({ id = "Party", icon = "Party", label = "Party", order = 4, onClick = toggle })
-	end
+	-- a Phone app everywhere: on a computer the Phone shows only in town (the party bar's Party button opens it
+	-- elsewhere); on a phone it shows everywhere (owner 2026-11-13: Bag and Bosses live in it too)
+	Hud.fanButton({ id = "Party", icon = "Party", label = "Party", order = 4, everywhere = true, onClick = toggle })
 
 	Remotes.PartyChanged.OnClientEvent:Connect(function(payload: PartyState)
 		if typeof(payload) ~= "table" or typeof(payload.slots) ~= "table" then

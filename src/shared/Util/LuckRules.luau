@@ -72,6 +72,14 @@ end
 
 -- The luck badge's text: a clover (or `icon`: Chikin's Courage's) and the time left as m:ss (part of a second shows as
 -- a whole one), nil once over
+-- How much of a timed buff `length` seconds long is left (its ring on a phone empties as it runs out), 0 to 1
+function LuckRules.share(untilTime: number?, now: number, length: number): number
+	if length <= 0 then
+		return 0
+	end
+	return math.clamp(LuckRules.left(untilTime, now) / length, 0, 1)
+end
+
 function LuckRules.badgeText(untilTime: number?, now: number, icon: string?): string?
 	local seconds = math.ceil(LuckRules.left(untilTime, now))
 	if seconds <= 0 then

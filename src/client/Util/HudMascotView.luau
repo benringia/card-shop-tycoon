@@ -1,15 +1,14 @@
 --!strict
--- The mascot peeking over the party cushion (spec 2026-11-03-hud-creature-pals-design; who it is in Config/HudMascot,
--- its timing in Util/HudMascotRules). Its sticker sits over the cushion's left end with its paws on the edge and its
--- tail poking up behind it. It breathes and its tail sways (looping tweens), it blinks now and then (one timer), it
--- ducks behind the cushion when you summon, unsummon or swap (HudMascotView.duck), and a tap makes it bounce and
--- chirp. It lives in the party bar, so it hides whenever the bar does.
+-- The mascot peeking over the cash pill on a computer (spec 2026-11-03-hud-creature-pals-design; owner 2026-11-13 pick
+-- P1: "over the cash, saying the toasts"; who it is in Config/HudMascot, its timing in Util/HudMascotRules). Its sticker
+-- sits behind the pill with its paws behind the top edge and its tail poking up beside it; the toasts come out of its
+-- head (HudMascotView.head, UIController). It breathes and its tail sways (looping tweens), it blinks now and then (one
+-- timer), it ducks when asked (HudMascotView.duck), and a tap makes it bounce and chirp (the "Support the dev" card).
 local Debris = game:GetService("Debris")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local HudMascot = require(Shared:WaitForChild("Config"):WaitForChild("HudMascot"))
@@ -22,8 +21,6 @@ local body: Frame? = nil -- the sticker's frame inside the clip: breathes, and s
 local bounceScale: UIScale? = nil
 local tapButton: TextButton? = nil -- its tap area (HudMascotView.tapArea)
 local pieces: { GuiObject } = {} -- what mount made (its tail, the clip, the tap area): hidden while a tour runs
-local side = "left" -- which end of the party bar it sits on (HudMascotRules.side)
-local movedHandlers: { () -> () } = {} -- told when it moves or hides (the toasts follow its head, UIController)
 local hidden = false
 local duckDistance = 0 -- pixels a full duck moves the sticker down
 local duckStart: number? = nil
@@ -127,62 +124,42 @@ local function bounce()
 	end
 end
 
-local function moved()
-	for _, handler in movedHandlers do
-		task.spawn(handler)
-	end
-end
-
--- Puts the mascot on `cushion` (nothing when it has no picture). The cushion is laid out by a list, so the mascot
--- goes beside it in the bar, over the cushion's top edge at one end (HudMascotRules.side / layout): the right end on a
--- PC, on a seat kept free for it there (owner 2026-11-12), the left end on a touch screen.
-function HudMascotView.mount(cushion: GuiObject)
-	local host = cushion.Parent
-	if CFG.images.peek == "" or not host then
+-- Puts the mascot on its `seat` (nothing when it has no picture): its paws on the line `baseY` px down from the seat's
+-- top (the cash pill's top edge), behind whatever is drawn over that line (HudMascotRules.layout)
+function HudMascotView.mount(tile: GuiObject, baseY: number)
+	if CFG.images.peek == "" then
 		return
 	end
 	local width, height = CFG.size.peek[1], CFG.size.peek[2]
 	local pad = CFG.clipPad
 	duckDistance = HudMascotRules.duckTravel(height, CFG)
-	cushion.ZIndex = 2
-	side = HudMascotRules.side(CFG, UserInputService.TouchEnabled)
-	local spots = HudMascotRules.layout(CFG, side)
-	local function along(x: number, y: number): UDim2
-		return if spots.fromRight then UDim2.new(1, x, 0, y) else UDim2.fromOffset(x, y)
-	end
-	if spots.fromRight then
-		local seat = Instance.new("Frame")
-		seat.Name = "PishSeat"
-		seat.LayoutOrder = 99 -- after the party cards: the cushion's right end
-		seat.BackgroundTransparency = 1
-		seat.Size = UDim2.fromOffset(CFG.seat, 1)
-		seat.Parent = cushion
-	end
+	local spots = HudMascotRules.layout(CFG)
+	local overlap = CFG.perch.overlap
 
 	local tail = Instance.new("ImageLabel")
 	tail.Name = "MascotTail"
 	tail.BackgroundTransparency = 1
 	tail.Image = CFG.images.tail
 	tail.AnchorPoint = Vector2.new(0.5, 1)
-	tail.Position = along(spots.tail, CFG.tail.at[2])
+	tail.Position = UDim2.fromOffset(spots.tail, baseY + CFG.tail.at[2])
 	tail.Size = UDim2.fromOffset(CFG.size.tail[1], CFG.size.tail[2])
 	tail.Rotation = CFG.tail.angle
-	tail.ZIndex = 1 -- behind the cushion, poking up past its edge
+	tail.ZIndex = 0 -- behind the tile, poking up past its edge
 	tail.Visible = CFG.images.tail ~= ""
-	tail.Parent = host
+	tail.Parent = tile
 	loop(tail, CFG.tail.period / 2, { Rotation = CFG.tail.angle + CFG.tail.degrees })
 
-	-- The clip: its bottom edge `overlap` px into the cushion, so a duck slides the sticker out of sight; `pad` px of room
-	-- round the sticker so breathing and bouncing never get cut off
+	-- The clip: its bottom edge `overlap` px down behind the tile, so a duck slides the sticker out of sight; `pad` px of
+	-- room round the sticker so breathing and bouncing never get cut off. Under the tile's face (its Body, ZIndex 2)
 	local clip = Instance.new("Frame")
 	clip.Name = "Mascot"
 	clip.BackgroundTransparency = 1
 	clip.ClipsDescendants = true
 	clip.AnchorPoint = Vector2.new(0, 1)
-	clip.Position = along(spots.sticker - pad, CFG.offset.overlap)
+	clip.Position = UDim2.fromOffset(spots.sticker - pad, baseY + overlap)
 	clip.Size = UDim2.fromOffset(width + pad * 2, height + pad)
-	clip.ZIndex = 3
-	clip.Parent = host
+	clip.ZIndex = 1
+	clip.Parent = tile
 
 	local frame = Instance.new("Frame")
 	frame.Name = "Body"
@@ -190,7 +167,6 @@ function HudMascotView.mount(cushion: GuiObject)
 	frame.AnchorPoint = Vector2.new(0.5, 1)
 	frame.Position = UDim2.fromScale(0.5, 1)
 	frame.Size = UDim2.fromOffset(width, height)
-	frame.ZIndex = 3
 	frame.Parent = clip
 	local breath = Instance.new("UIScale")
 	breath.Parent = frame
@@ -205,7 +181,6 @@ function HudMascotView.mount(cushion: GuiObject)
 	peek.Position = UDim2.fromScale(0.5, 1)
 	peek.Size = UDim2.fromScale(1, 1)
 	peek.Rotation = -CFG.tilt.degrees
-	peek.ZIndex = 4
 	peek.Parent = frame
 	loop(peek, CFG.tilt.period / 2, { Rotation = CFG.tilt.degrees })
 	local scale = Instance.new("UIScale")
@@ -213,38 +188,31 @@ function HudMascotView.mount(cushion: GuiObject)
 	bounceScale = scale
 	blinkLoop(makeLids(peek))
 
-	-- Its tap area: on the bar (not in the clip), finger-sized at any HUD scale and over its paws, so a tap on the cub
-	-- never reaches the Party pill underneath
+	-- Its tap area: centred on it, above the pill's top edge (a tap on the pill is the pill's)
 	local tap = Instance.new("TextButton")
 	tap.Name = "MascotTap"
 	tap.Text = ""
 	tap.BackgroundTransparency = 1
 	tap.AnchorPoint = Vector2.new(0, 1)
-	tap.Position = along(spots.tap, CFG.offset.overlap)
+	tap.Position = UDim2.fromOffset(spots.tap, baseY)
 	tap.Size = UDim2.fromOffset(CFG.tapArea.w, CFG.tapArea.h)
-	tap.ZIndex = 6
-	tap.Parent = host
+	tap.ZIndex = 8
+	tap.Parent = tile
 	tap.Activated:Connect(bounce)
 	tapButton = tap
 	pieces = { tail, clip, tap }
-	clip:GetPropertyChangedSignal("AbsolutePosition"):Connect(moved)
 	HudMascotView.setHidden(hidden)
 end
 
 -- The top of its head on screen, where the toasts' tails point (owner 2026-11-12: "make the bubble come out of him");
--- nil when it isn't on the right end of the bar (touch screens) or is hidden
+-- nil while it's hidden or not mounted
 function HudMascotView.head(): Vector2?
 	local frame = body
-	if side ~= "right" or hidden or not frame or not frame.Parent then
+	if hidden or not frame or not frame.Parent then
 		return nil
 	end
 	local at, size = frame.AbsolutePosition, frame.AbsoluteSize
 	return Vector2.new(at.X + size.X / 2, at.Y + size.Y * 0.12)
-end
-
--- Told when it moves or hides or shows
-function HudMascotView.onMoved(callback: () -> ())
-	table.insert(movedHandlers, callback)
 end
 
 -- Hides it (a tour on: Util/Hud's calm "mascot" piece) or shows it again; its tail only when it has a picture
@@ -253,7 +221,6 @@ function HudMascotView.setHidden(on: boolean)
 	for _, piece in pieces do
 		piece.Visible = not on and (piece.Name ~= "MascotTail" or CFG.images.tail ~= "")
 	end
-	moved()
 end
 
 -- Called after each tap on the mascot (it's the Pish button: TutorialController offers his tour again)
@@ -266,12 +233,12 @@ function HudMascotView.tapArea(): GuiObject?
 	return tapButton
 end
 
--- A silent hop (a toast arriving over the cash pill, UIController); nothing before it's mounted
+-- A silent hop (a toast arriving, UIController); nothing before it's mounted
 function HudMascotView.hop()
 	hop()
 end
 
--- Ducks behind the cushion and pops back up; called again mid-duck it carries on from where it is
+-- Ducks behind the pill and pops back up; called again mid-duck it carries on from where it is
 function HudMascotView.duck()
 	local frame = body
 	if not frame then

@@ -8,11 +8,10 @@ end
 
 return {
 	-- The sword-moves round's effect textures (tools/textures/make_sword_fx.py, assets/ui/fx-sword), white, tinted in
-	-- game: the swing arc's body (upright: a Beam runs a texture's height along its length), the hit's star burst (a
-	-- 4 x 4 flipbook), the dash slash's cut lines (upright) and the stars the arc sheds
+	-- game: the swing arc's body (upright: a Beam runs a texture's height along its length), the dash slash's cut lines
+	-- (upright) and the stars the arc sheds (the hit's old star burst gave way to the packs' slash, IMPACT)
 	TEXTURES = {
 		crescent = "rbxassetid://103655929836006",
-		burst = "rbxassetid://114900780647359",
 		line = "rbxassetid://111098556704939",
 		star = "rbxassetid://117269166059195",
 	},
@@ -124,7 +123,7 @@ return {
 		},
 	},
 	-- The Magma Halberd's Eruption perk (weapons round 2): a lava burst and ring on the foe, on top of the extra hit's own
-	ERUPT = { color = { 255, 120, 40 }, size = 9, ring = 10 },
+	ERUPT = { color = { 255, 120, 40 }, size = 9, ring = 10 }, -- `size` studs: the packs' impact (IMPACT) at size / BURST.size
 	-- The Storm Reaper's Chain Lightning (a burst on the target, a bolt to each foe it arcs to, `boltSeconds` long) and
 	-- the Rift Reaper's Reap (a violet burst and ring on a foe under 30%; weapons round 3)
 	CHAIN = { color = { 255, 225, 90 }, size = 7, ring = 8, boltSeconds = 0.3 },

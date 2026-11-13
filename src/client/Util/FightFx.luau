@@ -740,8 +740,9 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		end
 	end
 
-	-- A boss's or wild monster's clip for an event (MonsterMoves)
-	local function playMove(event: any, marker: BasePart, view: MonsterView)
+	-- A boss's or wild monster's clip for an event (MonsterMoves); the move it plays, if any (its wind-up gathers light
+	-- and its slam has a release sound, onMonster)
+	local function playMove(event: any, marker: BasePart, view: MonsterView): any
 		local state = moves[marker]
 		if not state then
 			state = MonsterMoves.new()
@@ -751,11 +752,12 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		if move and resolve.playClip then
 			resolve.playClip(marker, move.clip, move.speed, move.hold)
 		end
+		return move
 	end
 
 	-- A boss's or wild monster's move: its clip and, with looks (AttackFx BOSS or MONSTER), the effect
 	local function onMonster(event: any, marker: BasePart, view: MonsterView)
-		playMove(event, marker, view)
+		local move = playMove(event, marker, view)
 		if event.type == "enrage" then
 			-- any boss's enrage: its burst and roar, then its aura for the rest of the fight (Util/BossSkillFx)
 			if not auras[marker] then

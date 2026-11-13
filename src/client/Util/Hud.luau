@@ -5,6 +5,10 @@
 --            2026-11-13: "no more manage button. replace it with a phone"; HudLayout.PHONE). An app may open a page
 --            inside the phone (Hud.phonePage: the Reviews feed) instead of its own window.
 --   Bottom:  candy icon tiles in a centred row (Cards, Bag, Bosses); Context tiles (orange) join the row while visible.
+--   Phones (owner 2026-11-13, round 2 pick A: "move the admin tile inside phone and move binder tile under phone"):
+--            Bag, Bosses and Admin become Phone apps, Cards moves to the side column under the Phone, and the Phone
+--            shows everywhere with its shop apps (Shop, Prices, Jobs, Reviews) only in town (Util/CompactHud.spot;
+--            UIController calls Hud.setCompact).
 -- Each tile in the cotton candy look (Config/SoftHud, HudLayout.CANDY; spec 2026-11-03-cotton-candy-ui-design): a
 -- squircle in a baby colour with its icon popping out over the top edge and a squishy hover.
 -- Rows use list layouts, so a controller can simply show or hide its tile and the row re-centres.
@@ -22,6 +26,7 @@ local Town = require(Shared:WaitForChild("Config"):WaitForChild("Town"))
 local MusicRules = require(Shared:WaitForChild("Util"):WaitForChild("MusicRules"))
 local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 local UIMotion = require(Shared:WaitForChild("Config"):WaitForChild("UIMotion"))
+local CompactHud = require(Shared:WaitForChild("Util"):WaitForChild("CompactHud"))
 
 local SoftHud = require(Shared:WaitForChild("Config"):WaitForChild("SoftHud"))
 
@@ -39,9 +44,13 @@ export type TileSpec = {
 	group: Group,
 	order: number,
 	onClick: () -> (),
+	phoneApp: number?, -- on a phone screen: a Phone app at this order (Bag, Bosses, Admin)
+	phoneAlways: boolean?, -- with phoneApp: a Phone app on a computer too (Bosses, Admin)
+	phoneSide: number?, -- on a phone screen: in the side column under the Phone at this order (Cards)
 }
--- An app on the phone; `stay`: tapping it keeps the phone open (it shows a page inside it)
-export type FanSpec = { id: string, icon: string, label: string, order: number, onClick: () -> (), stay: boolean? }
+-- An app on the phone; `stay`: tapping it keeps the phone open (it shows a page inside it); `everywhere`: shown away
+-- from town too (Party), where the other apps (the shop's) hide
+export type FanSpec = { id: string, icon: string, label: string, order: number, onClick: () -> (), stay: boolean?, everywhere: boolean? }
 
 local Hud = {}
 
@@ -61,7 +70,20 @@ local badges: { [string]: TextLabel } = {}
 local manageTile: TextButton? = nil
 local fanOpen = false
 local tiles: { [string]: TextButton } = {}
-local fanButtons: { { order: number, button: TextButton } } = {}
+-- Every tile and app with where it may go (CompactHud.spot): its home frame, its order there, in the Phone, at the side
+type Entry = {
+	button: TextButton,
+	rule: { app: boolean?, everywhere: boolean?, phone: boolean?, side: boolean?, always: boolean? },
+	home: Frame,
+	order: number,
+	appOrder: number,
+	sideOrder: number,
+}
+local entries: { Entry } = {}
+local compact = false -- the phone's slim HUD (UIController: touch screens)
+-- In town (Hud.inTown): the Frontier and the Dungeon never are; the main place checks where you stand (watchTown)
+local townShown = not (Place.isFrontier() or Place.isDungeon())
+local townListeners: { (boolean) -> () } = {}
 local screen: ScreenGui
 local scaled: { { scale: UIScale, min: number } } = {}
 local TILE = SoftHud.TILE
@@ -339,6 +361,24 @@ local function rgbOf(values: { number }): Color3
 	return Color3.fromRGB(values[1], values[2], values[3])
 end
 
+local function spotOf(entry: Entry): CompactHud.Spot
+	return CompactHud.spot(entry.rule, compact, townShown)
+end
+
+-- The apps inside the phone now, in order
+local function phoneApps(): { Entry }
+	local list = {}
+	for _, entry in entries do
+		if spotOf(entry) == "phone" then
+			table.insert(list, entry)
+		end
+	end
+	table.sort(list, function(a, b)
+		return a.appOrder < b.appOrder
+	end)
+	return list
+end
+
 -- Back to the home screen (an app's page closes)
 local function showHome()
 	openPage = nil
@@ -368,9 +408,6 @@ local function setFan(open: boolean)
 			label.Text = if open then "Close" else PHONE.label
 		end
 	end
-	table.sort(fanButtons, function(a, b)
-		return a.order < b.order
-	end)
 	local slide = TweenInfo.new(PHONE.slide, Enum.EasingStyle.Back, if open then Enum.EasingDirection.Out else Enum.EasingDirection.In)
 	if open then
 		showHome()
@@ -380,7 +417,12 @@ local function setFan(open: boolean)
 		phone.Position = UDim2.fromScale(0.5, 1.6)
 		TweenService:Create(dim, TweenInfo.new(PHONE.slide), { BackgroundTransparency = PHONE.dim }):Play()
 		TweenService:Create(phone, slide, { Position = UDim2.fromScale(0.5, 0.5) }):Play()
-		for index, entry in fanButtons do
+		for _, entry in entries do
+			if entry.rule.app and spotOf(entry) ~= "phone" then
+				entry.button.Visible = false -- a shop app away from town
+			end
+		end
+		for index, entry in phoneApps() do
 			local button = entry.button
 			button.Visible = false
 			task.delay(PHONE.slide * 0.6 + (index - 1) * UIMotion.FAN_STAGGER, function()
@@ -417,6 +459,40 @@ local function ensureManageTile()
 	}, HudLayout.CANDY.Manage)
 end
 
+-- Puts every tile and app where it goes now (CompactHud.spot: a phone screen or not, in town or not) and shows the
+-- Phone tile where it holds an app (CompactHud.phoneTile)
+local function layout()
+	local spots: { CompactHud.Spot } = {}
+	for _, entry in entries do
+		local spot = spotOf(entry)
+		table.insert(spots, spot)
+		local button = entry.button
+		if entry.rule.app then
+			if fanOpen then
+				button.Visible = spot == "phone"
+			end
+			continue
+		end
+		local parent = if spot == "phone" then apps elseif spot == "side" then side else entry.home
+		button.LayoutOrder = if spot == "phone" then entry.appOrder elseif spot == "side" then entry.sideOrder else entry.order
+		if button.Parent ~= parent then
+			local wasInPhone = button.Parent == apps
+			button.Parent = parent
+			button.ZIndex = if spot == "phone" then 35 else 1
+			if wasInPhone then
+				button.Visible = true -- the phone's pop-in may have left it hidden
+			end
+		end
+	end
+	local tile = manageTile
+	if tile then
+		tile.Visible = CompactHud.phoneTile(spots)
+		if not tile.Visible and fanOpen then
+			setFan(false)
+		end
+	end
+end
+
 -- How big the HUD draws on this screen (HudLayout.SCALE): 1 on roomy screens, smaller on short ones, at least min
 function Hud.scaleFor(min: number?): number
 	local look = HudLayout.SCALE
@@ -434,10 +510,10 @@ function Hud.scaleWith(frame: GuiObject, min: number?): UIScale
 end
 
 -- Builds the HUD containers on the main ScreenGui; UIController calls it first thing
--- Town-only buttons (the Manage tray: build, jobs, prices) show only in town (owner 2026-11-12: "remove unnecessary
--- buttons when it's only needed in town"): in the main place they hide in the Wild valley (MusicRules.inTown, the
--- music's own town edge); the Frontier and the Dungeon never make them
-local townShown = true
+-- Town-only buttons (the Phone's shop apps: Shop, Prices, Jobs, Reviews) show only in town (owner 2026-11-12: "remove
+-- unnecessary buttons when it's only needed in town"): in the main place they hide in the Wild valley
+-- (MusicRules.inTown, the music's own town edge); the Frontier and the Dungeon never make them. The Phone itself stays
+-- with its other apps (Party, Support, Bosses, Admin; on a phone Bag too) (layout)
 local function watchTown()
 	if Place.isFrontier() or Place.isDungeon() then
 		return
@@ -457,11 +533,9 @@ local function watchTown()
 		local inTown = MusicRules.inTown(root.Position.X, root.Position.Z, Town.BOUNDS, Music.TOWN.margin)
 		if inTown ~= townShown then
 			townShown = inTown
-			if manageTile then
-				manageTile.Visible = inTown
-			end
-			if not inTown and fanOpen then
-				setFan(false)
+			layout()
+			for _, listener in townListeners do
+				task.spawn(listener, inTown)
 			end
 		end
 	end)
@@ -652,12 +726,44 @@ function Hud.mount(screenGui: ScreenGui)
 	for _, frame in { side, bottom } do
 		Hud.scaleWith(frame)
 	end
+	ensureManageTile() -- the Phone tile, shown once it holds an app (layout)
+	layout()
+end
+
+-- Lifts the side column (the Phone, Cards) `px` up from the screen's middle: the party dock under it on a short PC
+-- window (UIController)
+function Hud.liftSide(px: number)
+	if side then
+		side.Position = UDim2.new(0, HudLayout.SIDE_X, 0.5, -px)
+	end
 end
 
 function Hud.tile(spec: TileSpec): TextButton
 	local parent = if spec.group == "Side" then side else bottom
-	local tile = makeTile(parent, spec, HudLayout.CANDY[spec.id] or HudLayout.CANDY.Manage)
+	local onClick = spec.onClick
+	local tile: TextButton
+	-- inside the Phone (spec.phoneApp on a phone screen) a tap puts the phone away first, like any app
+	local made = table.clone(spec)
+	made.onClick = function()
+		if tile.Parent == apps then
+			setFan(false)
+		end
+		onClick()
+	end
+	tile = makeTile(parent, made, HudLayout.CANDY[spec.id] or HudLayout.CANDY.Manage)
 	tiles[spec.id] = tile
+	if spec.phoneApp then
+		ensureManageTile()
+	end
+	table.insert(entries, {
+		button = tile,
+		rule = { phone = spec.phoneApp ~= nil, side = spec.phoneSide ~= nil, always = spec.phoneAlways },
+		home = parent,
+		order = spec.order,
+		appOrder = spec.phoneApp or spec.order,
+		sideOrder = spec.phoneSide or spec.order,
+	})
+	layout()
 	return tile
 end
 
@@ -695,8 +801,44 @@ function Hud.fanButton(spec: FanSpec): TextButton
 	UIKit.corner(badge, 12)
 	UIKit.outline(badge, Color3.new(1, 1, 1), 2)
 	badges[spec.id] = badge
-	table.insert(fanButtons, { order = spec.order, button = button })
+	table.insert(entries, {
+		button = button,
+		rule = { app = true, everywhere = spec.everywhere },
+		home = apps,
+		order = spec.order,
+		appOrder = spec.order,
+		sideOrder = spec.order,
+	})
+	layout()
 	return button
+end
+
+-- The phone's slim HUD on or off (UIController, touch screens): tiles move into the Phone or under it, and back
+function Hud.setCompact(on: boolean)
+	if on == compact then
+		return
+	end
+	compact = on
+	layout()
+end
+
+-- Whether you're in town now (the main place's town; never in the Frontier or the Dungeon), and told when it changes
+function Hud.inTown(): boolean
+	return townShown
+end
+
+function Hud.onTown(listener: (boolean) -> ())
+	table.insert(townListeners, listener)
+end
+
+-- Whether a tile or app sits inside the Phone now (the tutorial points at the Phone tile while it's shut)
+function Hud.inPhone(id: string): boolean
+	for _, entry in entries do
+		if entry.button.Name == id then
+			return spotOf(entry) == "phone"
+		end
+	end
+	return false
 end
 
 -- An app's page inside the phone (made once): a header with a back arrow and its title, and the content frame it
@@ -782,7 +924,7 @@ function Hud.find(id: string): GuiObject?
 	if tile then
 		return tile
 	end
-	for _, entry in fanButtons do
+	for _, entry in entries do
 		if entry.button.Name == id then
 			return entry.button
 		end

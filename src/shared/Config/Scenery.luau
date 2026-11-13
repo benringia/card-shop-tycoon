@@ -420,8 +420,9 @@ return {
 		{ name = "Wind", id = "rbxassetid://5799870105", x = 195, y = 20, z = 130, volume = 0.35, range = 100 }, -- Ambient wind (Mukar)
 		{ name = "Embers", id = "rbxassetid://9112780462", x = -200, y = 4, z = 0, volume = 0.3, range = 70 }, -- Pro Sound Effects: Fireplace Constant Burning Flame 4
 		{ name = "Birds", id = "rbxassetid://9112831666", x = 0, y = 18, z = 0, volume = 0.25, range = 170 }, -- Pro Sound Effects: Morning Birds 2 (loop)
-		-- the plaza fountain's trickle (2026-11-11, "more immersive"): heard round the plaza only
-		{ name = "Fountain", id = "rbxassetid://9120552550", x = 0, y = 3, z = 0, volume = 0.22, range = 45 }, -- Pro Sound Effects: Waterfall Steady Stream 1 (distant)
+		-- the plaza fountain's trickle (2026-11-11, "more immersive"): heard round the plaza only; quieter up close (owner
+		-- 2026-11-13: "fountain sound effects when your near is too loud", 0.22 before)
+		{ name = "Fountain", id = "rbxassetid://9120552550", x = 0, y = 3, z = 0, volume = 0.08, range = 45 }, -- Pro Sound Effects: Waterfall Steady Stream 1 (distant)
 	},
 	SMALL_DECOR_SIZE = 4, -- studs: hand-placed decor parts smaller than this cast no shadow
 	-- Terrain colours (Grass takes Town.GRASS_COLOR); Basalt and CrackedLava appear only in the canyon (the caldera)

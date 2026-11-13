@@ -184,6 +184,27 @@ return {
 		expect.near(far.y + far.h / 2, 540, 1e-6, "a big screen: still mid height (the column is far above)")
 	end,
 
+	-- owner 2026-11-13 (a PC screenshot): "move weapon lower to close the gap"; then Pish over the cash says the toasts,
+	-- which rise over the column: on a computer the switch sits beside the cash column, its foot with the column's, or
+	-- just above the column on a window too narrow for that (clear of the bottom tiles in the middle)
+	["weapon switch: on a computer, beside the cash column (above it on a narrow window)"] = function()
+		local look = { chip = 58, side = 40, arrow = 30, hit = 48, gap = 6, right = 12, name = 22 }
+		for _, view in { { w = 1726, h = 567 }, { w = 1920, h = 1080 }, { w = 1366, h = 768 } } do
+			local column = { x = view.w - 180, y = view.h - 150, w = 168, h = 138 }
+			local r = UiLayout.weaponSwitch(view, look, 1, false, nil, false, column)
+			expect.near(r.x + r.w, column.x - look.gap, 1e-6, `{view.w}x{view.h}: left of the column`)
+			expect.near(r.y + r.h, column.y + column.h, 1e-6, `{view.w}x{view.h}: its foot with the column's`)
+			expect.equal(r.x >= view.w * 0.6, true, `{view.w}x{view.h}: clear of the middle`)
+		end
+		local narrow = { w = 900, h = 560 }
+		local column = { x = narrow.w - 180, y = narrow.h - 150, w = 168, h = 138 }
+		local r = UiLayout.weaponSwitch(narrow, look, 1, false, nil, false, column)
+		expect.near(r.y + r.h, column.y - look.gap, 1e-6, "narrow: just above the column")
+		expect.near(r.x + r.w, narrow.w - look.right, 1e-6, "narrow: on the right edge")
+		local fight = UiLayout.weaponSwitch({ w = 1920, h = 1080 }, look, 1, true, nil, false, nil)
+		expect.equal(fight.y < 1080 / 2 + 60, true, "in a fight (the column hidden): placed as before")
+	end,
+
 	["weapon switch: out of a fight, at mid height on the right edge"] = function()
 		local look = { chip = 58, side = 40, arrow = 30, hit = 48, gap = 6, right = 12, name = 22 }
 		for _, view in { { w = 844, h = 390 }, { w = 1180, h = 820 }, { w = 1920, h = 1080 } } do
