@@ -33,10 +33,6 @@ local function lcg(seed: number): () -> number
 	end
 end
 
-local function has(list: { string }, value: string): boolean
-	return table.find(list, value) ~= nil
-end
-
 return {
 	["the clock: every server restocks on the same 480 s boundary"] = function()
 		expect.equal(TurtsRules.restockIndex(960, 480), 2)
@@ -120,19 +116,22 @@ return {
 		expect.equal(next.index, 6)
 	end,
 
-	["he never sets up on the same spot twice in a row"] = function()
-		local random = lcg(3)
-		local count = #Turts.SPOTS
-		assert(count >= 6, "enough places to wander")
-		for previous = 1, count do
-			for _ = 1, 200 do
-				local spot = TurtsRules.nextSpot(previous, count, random)
-				assert(spot >= 1 and spot <= count, `spot {spot}`)
-				assert(spot ~= previous, "the same spot twice in a row")
-			end
+	-- every server works his spot out from the restock number alone (a new server has no "last spot"): street corners
+	-- and plaza edges take turns, a random one of the group, so he never sets up on the same spot twice in a row
+	["every server puts him on the same spot, never the last restock's"] = function()
+		local groups: { [string]: number } = {}
+		for _, spot in Turts.SPOTS do
+			groups[spot.group] = (groups[spot.group] or 0) + 1
 		end
-		local first = TurtsRules.nextSpot(nil, count, random)
-		assert(first >= 1 and first <= count, "the first spot")
+		assert((groups.corner or 0) >= 2 and (groups.edge or 0) >= 2, "both groups have a choice")
+		local last: number? = nil
+		for index = 1000, 1400 do
+			local spot = TurtsRules.spotFor(index, Turts.SPOTS, lcg(index))
+			expect.equal(spot, TurtsRules.spotFor(index, Turts.SPOTS, lcg(index)), "the same in every server")
+			assert(spot ~= last, `the same spot twice in a row at restock {index}`)
+			expect.equal(Turts.SPOTS[spot].group, if index % 2 == 0 then "corner" else "edge")
+			last = spot
+		end
 	end,
 
 	["his spots stay clear of walker stops and exits, crosswalks, the plaza's props and the shops"] = function()

@@ -13,7 +13,7 @@ export type Offer = {
 	weight: number,
 	excited: boolean?, -- Turts spins when someone buys it
 }
-export type Spot = { name: string, x: number, z: number, face: { x: number, z: number } }
+export type Spot = { name: string, group: string, x: number, z: number, face: { x: number, z: number } }
 
 local function material(boss: string, name: string): Offer
 	return { name = name, item = `material_{boss}`, count = 1, price = 350, value = 150, weight = 1.5, excited = true }
@@ -41,14 +41,15 @@ local OFFERS: { [string]: Offer } = {
 
 -- Where he sets up (owner: "spawn him randomly on the corner of the streets or the side of the plaza with his rug"):
 -- the four street corners past the outer crosswalks and the plaza's four diagonal edges, clear of lanes, crosswalks,
--- doors, walker stops and plaza props (Lune-tested). -Z is north, +X east; `face`: the point his rug faces
+-- doors, walker stops and plaza props (Lune-tested). -Z is north, +X east; `face`: the point his rug faces. The groups
+-- take turns (TurtsRules.spotFor: corners on even restocks, plaza edges on odd), so he never stays put
 local function corner(name: string, x: number, z: number): Spot
-	return { name = name, x = x, z = z, face = { x = x, z = 0 } }
+	return { name = name, group = "corner", x = x, z = z, face = { x = x, z = 0 } }
 end
 local function edge(name: string, degrees: number, r: number): Spot
 	local a = math.rad(degrees)
 	local x, z = math.cos(a) * r, math.sin(a) * r
-	return { name = name, x = x, z = z, face = { x = x * 2, z = z * 2 } }
+	return { name = name, group = "edge", x = x, z = z, face = { x = x * 2, z = z * 2 } }
 end
 
 return {

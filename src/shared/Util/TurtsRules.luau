@@ -86,14 +86,21 @@ function TurtsRules.stockFor(state: State, index: number, global: { string }): {
 	return global
 end
 
--- His next spot (1..count), never the one he's on (`previous`; nil the first time)
-function TurtsRules.nextSpot(previous: number?, count: number, random: () -> number): number
-	if not previous or count < 2 then
-		return math.clamp(math.floor(random() * count) + 1, 1, count)
+-- His spot at restock `index`, worked out from the index alone so every server agrees (a new server has no last spot):
+-- street corners on even restocks, plaza edges on odd ones, a random one of the group (`random`: seeded from the
+-- index), so he never sets up on the same spot twice in a row
+function TurtsRules.spotFor(index: number, spots: { { group: string } }, random: () -> number): number
+	local group = if index % 2 == 0 then "corner" else "edge"
+	local choices: { number } = {}
+	for at, spot in spots do
+		if spot.group == group then
+			table.insert(choices, at)
+		end
 	end
-	-- one of the other count - 1 spots, the ones after `previous` wrapping round
-	local step = math.clamp(math.floor(random() * (count - 1)) + 1, 1, count - 1)
-	return (previous - 1 + step) % count + 1
+	if #choices == 0 then
+		return 1
+	end
+	return choices[math.clamp(math.floor(random() * #choices) + 1, 1, #choices)]
 end
 
 -- Whether an offer costs at least `premium` times its usual value (owner: "the prices are higher than usual")

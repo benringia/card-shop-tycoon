@@ -50,6 +50,7 @@ local ArenaService = require(Services:WaitForChild("ArenaService"))
 local WelcomeService = require(Services:WaitForChild("WelcomeService"))
 local PishService = require(Services:WaitForChild("PishService"))
 local TownChikinService = require(Services:WaitForChild("TownChikinService"))
+local TurtsService = require(Services:WaitForChild("TurtsService"))
 local TutorialService = require(Services:WaitForChild("TutorialService"))
 local CombatTutorialService = require(Services:WaitForChild("CombatTutorialService"))
 local SwordService = require(Services:WaitForChild("SwordService"))
@@ -767,6 +768,21 @@ function DevService.Start()
 		TownChikinService.ComeTo(player)
 		TownChikinService.SetCourageAt(player, 0) -- petting gives Courage again now
 	end)
+	-- Turts' rug shop: /turts restock (a new roll for you now), /turts move (he moves now), /turts offer <id> (that
+	-- offer in your stock now; ids in Config/Turts OFFERS)
+	addCommand(folder, "turts", function(player, text)
+		local word, value = string.match(text, "^/%w+%s+(%w+)%s*([%w_]*)")
+		word = if word then string.lower(word) else nil
+		if word == "restock" then
+			TurtsService.DevRestock(player)
+		elseif word == "move" then
+			TurtsService.DevMove()
+		elseif word == "offer" and value and TurtsService.DevOffer(player, value) then
+			return
+		else
+			warn("[DevService] /turts restock | move | offer <id>")
+		end
+	end)
 	addCommand(folder, "frontierdrop", function(player)
 		ItemService.GiveItem(player, "starShard", 1)
 		local pool = Cards.BySet.Frontier
@@ -810,7 +826,7 @@ function DevService.Start()
 			run(player, text)
 		end
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /weapon <id> [grade] [level], /material <boss id> <amount>, /weapondrop <boss id>, /chests <boss id> [drop|miss|strong|tired], /boss <n> [fight|group], /jobslot, /jobtired, /wild, /rest, /tire, /bosshp <1-100>, /townchikin, /elite, /knockout, /support <0-3>, /titles forget, /review <outcome>, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume], /victorysound <1-3>, /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S], /skillfx <sword> [cut1|cut2|cut3|skill] [level], /room <2-4>, /winroom, /puzzle <solve|beams|plates|lock>, /tap <piece>, /dungeonfx <intro|introshort|roar|glimpse>")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /weapon <id> [grade] [level], /material <boss id> <amount>, /weapondrop <boss id>, /chests <boss id> [drop|miss|strong|tired], /boss <n> [fight|group], /jobslot, /jobtired, /wild, /rest, /tire, /bosshp <1-100>, /townchikin, /turts <restock|move|offer <id>>, /elite, /knockout, /support <0-3>, /titles forget, /review <outcome>, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume], /victorysound <1-3>, /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S], /skillfx <sword> [cut1|cut2|cut3|skill] [level], /room <2-4>, /winroom, /puzzle <solve|beams|plates|lock>, /tap <piece>, /dungeonfx <intro|introshort|roar|glimpse>")
 end
 
 return DevService

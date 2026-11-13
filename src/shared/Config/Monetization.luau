@@ -21,6 +21,9 @@ return {
 		Support1 = 3730645585,
 		Support2 = 3730651831,
 		Support3 = 3730651906,
+		-- Turts' rug shop: "restock now", a fresh roll of offers for that player until the next restock (TurtsService);
+		-- about 49 R$ on Creator Hub
+		TurtsRestock = 0,
 	},
 	PURCHASE_MEMORY = 100, -- receipts remembered in a save, so a retried one is never granted twice
 }

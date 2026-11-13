@@ -51,6 +51,7 @@ local DungeonService = require(Services:WaitForChild("DungeonService"))
 local DungeonGateService = require(Services:WaitForChild("DungeonGateService"))
 local LevelUpService = require(Services:WaitForChild("LevelUpService"))
 local LeaderboardService = require(Services:WaitForChild("LeaderboardService"))
+local TurtsService = require(Services:WaitForChild("TurtsService"))
 
 local Place = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("Place"))
 
@@ -151,6 +152,7 @@ else
 	WelcomeService.Start() -- the first-visit welcome cinematic's saved flag (before DataService.Start)
 	LevelUpService.Start() -- level-up packs and Bag pack openings (after EconomyService, ItemService, BattleService)
 	LeaderboardService.Start() -- the plaza leaderboard: most packs opened (after PlotService and the plaza)
+	TurtsService.Start() -- Turts' rug shop: restocks, his spot, buys, "restock now" (after PurchaseService and WildService)
 	DevService.Start() -- Studio only
 	DataService.Start() -- last: starts loading players
 end

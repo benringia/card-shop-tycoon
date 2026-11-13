@@ -235,6 +235,17 @@ AdminPanel.SECTIONS = {
 		},
 	},
 	{
+		-- Turts' rug shop (spec 2026-11-13-turts-shop-design)
+		title = "Turts' rug shop",
+		buttons = {
+			{ label = "New roll for me now", command = "/turts restock" },
+			{ label = "Turts moves now", command = "/turts move" },
+			{ label = "Legendary Pack in my stock", command = "/turts offer legendaryPack" },
+			{ label = "Boss material in my stock", command = "/turts offer material_meadowWarden" },
+			{ label = "Gold Seal in my stock", command = "/turts offer goldSeal" },
+		},
+	},
+	{
 		-- Chikin's combat tutorial (spec 2026-11-10-chikin-combat-tutorial-design): after Pish's, and at shop level 4
 		title = "Chikin (combat tutorial)",
 		buttons = {

@@ -25,6 +25,9 @@ local NAMES = {
 	"TitleUnlocked", -- server → client: (titleId: string) a title earned for the first time: the "New title!" card (CharacterController)
 	"TitlesSeen", -- client → server: () the Titles tab was seen: no title is new any more (TitleService)
 	"Reviews", -- server → client: { posts } the feed, or { post } a new one (ReviewService); client → server: () ask for the feed
+	"TurtsStock", -- server → client: (index: number, offers: { string }, bought: { string }, endsAt: number) your offers on Turts' rug; client → server: () ask again
+	"TurtsBuy", -- client → server: (offerId: string) buy one of your offers from Turts (TurtsService)
+	"TurtsRestockNow", -- client → server: () open the Robux "restock now" purchase
 	"Charge", -- client → server: take payment for the fully scanned checkout
 	-- server → owner: the open kid offer or haggle at the register, nil = closed. { id, kind: "kid"|"haggle",
 	-- card: { cardId, foil, grade }?, asking?, worth?, offer?, total?, range: { low, high }, step, edges: { sure, maybe },
@@ -147,6 +150,9 @@ return {
 	OpenOrderMenu = remotes.OpenOrderMenu,
 	OrderProduct = remotes.OrderProduct,
 	Notify = remotes.Notify,
+	TurtsStock = remotes.TurtsStock,
+	TurtsBuy = remotes.TurtsBuy,
+	TurtsRestockNow = remotes.TurtsRestockNow,
 	PlaceShelf = remotes.PlaceShelf,
 	MoveShelf = remotes.MoveShelf,
 	MoveFixture = remotes.MoveFixture,
