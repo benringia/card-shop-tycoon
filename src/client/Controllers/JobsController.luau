@@ -42,6 +42,7 @@ type JobsState = {
 	unlockLevel: number,
 	hasPass: boolean,
 	passId: number,
+	productId: number, -- the slot sold as a one-time developer product (0: not made; then the pass)
 	slots: { SlotInfo },
 }
 
@@ -479,11 +480,12 @@ local function buildLockedRow(slot: number, current: JobsState)
 	local early = not needsPass or (typeof(level) == "number" and level < current.unlockLevel)
 	local title = text(row, `Slot {slot}`, UIKit.textSize("body") + 2, palette.ink, true)
 	title.Position = UDim2.fromOffset(86, 14)
-	local detail = text(row, if early then `Opens at shop level {current.unlockLevel}` else "Extra Job Slot pass: one more card working in your shop", UIKit.textSize("small"), UIKit.Colors.Subtext)
+	local detail = text(row, if early then `Opens at shop level {current.unlockLevel}` else "Extra Job Slot: one more card working in your shop", UIKit.textSize("small"), UIKit.Colors.Subtext)
 	detail.Position = UDim2.fromOffset(86, 42)
 	if needsPass and not current.hasPass then
-		local available = current.passId ~= 0
-		local buy = UIKit.iconButton(row, if available then "Get the pass" else "Coming soon", "Cash", if available then UIKit.Colors.Accent else UIKit.Colors.Locked)
+		local product = current.productId or 0
+		local available = product ~= 0 or current.passId ~= 0
+		local buy = UIKit.iconButton(row, if available then "Get it" else "Coming soon", "Cash", if available then UIKit.Colors.Accent else UIKit.Colors.Locked)
 		buy.AnchorPoint = Vector2.new(1, 0.5)
 		buy.Position = UDim2.new(1, -12, 0.5, 0)
 		buy.Size = UDim2.fromOffset(170, BUTTON)
@@ -491,8 +493,13 @@ local function buildLockedRow(slot: number, current: JobsState)
 		buy.AutoButtonColor = available
 		buy.ZIndex = row.ZIndex + 1
 		buy.Activated:Connect(function()
-			if available then
-				ScreenClear.prompt()
+			if not available then
+				return
+			end
+			ScreenClear.prompt()
+			if product ~= 0 then
+				Remotes.BuyUnlock:FireServer("ExtraJobSlot") -- the server opens it while you don't own it
+			else
 				MarketplaceService:PromptGamePassPurchase(player, current.passId)
 			end
 		end)

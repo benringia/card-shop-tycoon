@@ -259,6 +259,39 @@ return {
 
 	-- Turts' rug shop (spec 2026-11-13-turts-shop-design): the restock a player last saw, what they bought in it, and a
 	-- "restock now" roll if they bought one
+	-- One-time unlocks bought as developer products (the Extra Job Slot, owner 2026-11-14): none at first; a saved list
+	-- kept for MonetizationService to clean
+	["v28: every save starts with no bought unlocks; a saved list kept"] = function()
+		local data: any = { version = 27, cash = 50 }
+		Migrations.run(data, 28)
+		expect.equal(data.version, 28)
+		expect.equal(typeof(data.unlocks), "table")
+		expect.isNil(data.unlocks.ExtraJobSlot)
+		local kept: any = { version = 27, unlocks = { ExtraJobSlot = true } }
+		Migrations.run(kept, 28)
+		expect.equal(kept.unlocks.ExtraJobSlot, true)
+		local junk: any = { version = 27, unlocks = 5 }
+		Migrations.run(junk, 28)
+		expect.equal(typeof(junk.unlocks), "table")
+	end,
+
+	-- Luck bought with Robux (Config/Luck, owner 2026-11-14): every save starts with none of either strength; a saved
+	-- one is kept for LuckService to clean
+	["v27: every save starts with no bought luck; a saved one kept"] = function()
+		local data: any = { version = 26, cash = 50 }
+		Migrations.run(data, 27)
+		expect.equal(data.version, 27)
+		expect.equal(data.luck.x2, 0)
+		expect.equal(data.luck.x3, 0)
+		expect.equal(data.cash, 50, "the rest untouched")
+		local kept: any = { version = 26, luck = { x2 = 600, x3 = 0 } }
+		Migrations.run(kept, 27)
+		expect.equal(kept.luck.x2, 600)
+		local junk: any = { version = 26, luck = "x" }
+		Migrations.run(junk, 27)
+		expect.equal(junk.luck.x2, 0)
+	end,
+
 	-- Shop windows (spec 2026-11-14-shop-windows-design): every shop starts with none; a list already there is kept
 	-- for WindowService to clean (it pays back what no longer fits)
 	["v26: every shop starts with no windows; a saved list kept"] = function()

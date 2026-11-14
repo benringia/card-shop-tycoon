@@ -43,6 +43,7 @@ local allowRip = RateLimiter.new(Packs.RIP_COOLDOWN)
 local pendingAnnouncements: { [Player]: { PullResult } } = {}
 local pityStates: { [Player]: PityRules.State } = {} -- loaded players only
 local luckUntil: { [Player]: number } = {} -- os.time Pish's Luck runs out
+local boughtLuck: { [Player]: number } = {} -- luck bought with Robux running now (LuckService): its boost
 local openedHandlers: { (player: Player, productId: string, itemId: string?) -> () } = {}
 
 local function publishPity(player: Player, state: PityRules.State)
@@ -66,19 +67,20 @@ local function rollRarity(slot: { Weighted }): string
 	return slot[#slot].rarity
 end
 
--- A player's own pack: the hit (last) slot floored (Pish's gift) and raised while they have Pish's Luck; a customer's
--- (no player) rolls the plain odds
+-- A player's own pack: the hit (last) slot floored (Pish's gift) and raised while they have Pish's Luck, luck bought
+-- with Robux (Config/Luck) on top; a customer's (no player) rolls the plain odds
 local function rollPack(pack: Pack, player: Player?, floor: string?): { PullResult }
 	local results: { PullResult } = {}
-	local lucky = player ~= nil and LuckRules.left(luckUntil[player], os.time()) > 0
+	local pish = if player ~= nil and LuckRules.left(luckUntil[player], os.time()) > 0 then Pish.LUCK.boost else 0
+	local luck = pish + (if player then boughtLuck[player] or 0 else 0)
 	for index, slot in pack.slots do
 		local odds: { Weighted } = slot
 		if index == #pack.slots then
 			if floor then
 				odds = LuckRules.atLeast(odds, Packs.RANK, floor) :: any
 			end
-			if lucky then
-				odds = LuckRules.boost(odds, Packs.RANK, Pish.LUCK.fromRarity, Pish.LUCK.boost) :: any
+			if luck > 0 then
+				odds = LuckRules.boost(odds, Packs.RANK, Pish.LUCK.fromRarity, luck) :: any
 			end
 		end
 		local pool = Cards.ByRarity[rollRarity(odds)]
@@ -247,6 +249,11 @@ function PackService.OpenItemPack(player: Player, productId: string, floor: stri
 	return true
 end
 
+-- Luck bought with Robux running now (LuckService): its boost on the last card (0: none), added to Pish's
+function PackService.SetBoughtLuck(player: Player, boost: number)
+	boughtLuck[player] = if boost > 0 then boost else nil
+end
+
 -- Pish's Luck until os.time `untilTime` (nil: none), from petting Town Pish (PishService)
 function PackService.SetLuck(player: Player, untilTime: number?)
 	luckUntil[player] = untilTime
@@ -318,6 +325,7 @@ function PackService.Start()
 	Players.PlayerRemoving:Connect(function(player)
 		pendingAnnouncements[player] = nil
 		luckUntil[player] = nil
+		boughtLuck[player] = nil
 	end)
 end
 

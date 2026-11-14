@@ -75,6 +75,8 @@ local TitleController = require(Controllers:WaitForChild("TitleController"))
 local SupportController = require(Controllers:WaitForChild("SupportController"))
 local ThanksController = require(Controllers:WaitForChild("ThanksController"))
 local ReviewsController = require(Controllers:WaitForChild("ReviewsController"))
+local StoreController = require(Controllers:WaitForChild("StoreController"))
+local StoreWinController = require(Controllers:WaitForChild("StoreWinController"))
 local SwordController = require(Controllers:WaitForChild("SwordController"))
 local WeaponSwitchController = require(Controllers:WaitForChild("WeaponSwitchController"))
 local CharacterController = require(Controllers:WaitForChild("CharacterController"))
@@ -189,6 +191,8 @@ else
 	JobsController.Start()
 	PartyController.Start()
 	ReviewsController.Start() -- the phone's Reviews app (after the other apps: it's the last icon)
+	StoreController.Start() -- the phone's Store app: luck boosts and the Extra Job Slot for Robux
+	StoreWinController.Start() -- the win card when a Store purchase goes through
 	BuffController.Start()
 	PartyBarController.Start()
 	CardEffectsController.Start()

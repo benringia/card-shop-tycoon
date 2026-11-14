@@ -35,6 +35,7 @@ local WildService = require(Services:WaitForChild("WildService"))
 local BattleService = require(Services:WaitForChild("BattleService"))
 local KnockoutService = require(Services:WaitForChild("KnockoutService"))
 local SupportService = require(Services:WaitForChild("SupportService"))
+local LuckService = require(Services:WaitForChild("LuckService"))
 local ReviewService = require(Services:WaitForChild("ReviewService"))
 local ArenaService = require(Services:WaitForChild("ArenaService"))
 local BossChestService = require(Services:WaitForChild("BossChestService"))
@@ -74,6 +75,7 @@ if Place.isDungeon() then
 	BossChestService.Start() -- the boss chests after a win (BossService hands them over)
 	BossService.Start() -- the Prism Hydra's chamber
 	SupportService.Start() -- "Support the dev" gifts: aura, best tier (before TitleService: its titles)
+	LuckService.Start() -- luck bought with Robux: its time running down while you play (after PurchaseService)
 	TitleService.Start() -- the title over the name (after BossService and SupportService: their progress)
 	DungeonService.Start() -- the run: arrivals, rooms, carried HP (after BattleService and WildService's cavern)
 	FrontierService.Start() -- back to the Frontier
@@ -102,6 +104,7 @@ elseif Place.isFrontier() then
 	BossService.Start() -- the Frontier bosses: after BattleService and WildService (it uses both)
 	KnockoutService.Start() -- knocked out in the Wild: the countdown, Revive here (after PurchaseService)
 	SupportService.Start() -- "Support the dev" gifts: aura, best tier (before TitleService: its titles)
+	LuckService.Start() -- luck bought with Robux: its time running down while you play (after PurchaseService)
 	TitleService.Start() -- the title over the name (after BossService and SupportService: their progress)
 	FrontierService.Start() -- the Return portal and home button: back to the main game
 	DungeonGateService.Start() -- the Dungeon portal: checks, groups, the teleport (after WildService builds the plaza)
@@ -148,6 +151,7 @@ else
 	BossService.Start() -- the boss ladder: after BattleService and WildService (it uses both)
 	KnockoutService.Start() -- knocked out in the Wild: the countdown, Revive here (after PurchaseService)
 	SupportService.Start() -- "Support the dev" gifts: aura, best tier (before TitleService: its titles)
+	LuckService.Start() -- luck bought with Robux: its time running down while you play (after PurchaseService)
 	TitleService.Start() -- the title over the name (after BossService and SupportService: their progress)
 	FrontierService.Start() -- the plaza Frontier portal (after WildService builds the plaza)
 	TownService.Start() -- street, decor, portal frames and lighting around the plots and portals

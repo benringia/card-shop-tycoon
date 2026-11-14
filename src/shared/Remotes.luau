@@ -33,6 +33,9 @@ local NAMES = {
 	"PlaceWindow", -- client → server: (style: string, side: string, at: number) buy a window into your shop's wall (WindowService)
 	"MoveWindow", -- client → server: (index: number, side: string, at: number) move one of your windows
 	"SellWindow", -- client → server: (index: number) sell one of your windows (half its price back)
+	"BuyLuck", -- client → server: (product: string) open the Robux purchase of a Config/Luck product from the Store (LuckService)
+	"BuyUnlock", -- client → server: (key: string) open the Robux purchase of a one-time unlock (Monetization UNLOCKS; MonetizationService)
+	"StoreWin", -- server → client: (kind: "x2" | "x3" | "jobslot", seconds: number) a Store purchase went through: its win card (StoreWinController)
 	"Charge", -- client → server: take payment for the fully scanned checkout
 	-- server → owner: the open kid offer or haggle at the register, nil = closed. { id, kind: "kid"|"haggle",
 	-- card: { cardId, foil, grade }?, asking?, worth?, offer?, total?, range: { low, high }, step, edges: { sure, maybe },
@@ -163,6 +166,9 @@ return {
 	PlaceWindow = remotes.PlaceWindow,
 	MoveWindow = remotes.MoveWindow,
 	SellWindow = remotes.SellWindow,
+	BuyLuck = remotes.BuyLuck,
+	BuyUnlock = remotes.BuyUnlock,
+	StoreWin = remotes.StoreWin,
 	PlaceShelf = remotes.PlaceShelf,
 	MoveShelf = remotes.MoveShelf,
 	MoveFixture = remotes.MoveFixture,

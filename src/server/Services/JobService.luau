@@ -191,6 +191,7 @@ local function sendJobs(player: Player)
 		unlockLevel = Jobs.UNLOCK_LEVEL,
 		hasPass = hasPass,
 		passId = Monetization.PASSES[PASS_KEY],
+		productId = Monetization.PRODUCTS[PASS_KEY] or 0, -- sold as a one-time developer product (Monetization UNLOCKS)
 		slots = slots,
 	})
 	state.dirty = false

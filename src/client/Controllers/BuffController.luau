@@ -15,6 +15,7 @@ local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local Chikin = require(Config:WaitForChild("Chikin"))
 local Pish = require(Config:WaitForChild("Pish"))
+local Luck = require(Config:WaitForChild("Luck"))
 local HudLayout = require(Config:WaitForChild("HudLayout"))
 local Party = require(Config:WaitForChild("Party"))
 local CompactHud = require(Shared:WaitForChild("Util"):WaitForChild("CompactHud"))
@@ -46,6 +47,7 @@ local TAP_TOOLTIP_SECONDS = 4
 local POP_TWEEN = TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 local LUCK_GREEN = Color3.fromRGB(70, 175, 95)
 local COURAGE_RED = Color3.fromRGB(230, 95, 70)
+local BOUGHT_GOLD = Color3.fromRGB(240, 175, 40)
 local COURAGE_ICON = "💪"
 local LUCK_TICK = 0.25 -- seconds between countdown updates
 local ICONS = HudLayout.BUFF_ICONS
@@ -56,6 +58,7 @@ local player = Players.LocalPlayer
 local stack: TextButton
 local creature: Buff
 local luck: Buff
+local bought: Buff -- luck bought in the Store (LuckService's BoughtLuck attributes)
 local courage: Buff
 local tooltip: Frame
 local tooltipBody: TextLabel
@@ -92,6 +95,11 @@ local function buffLines(): { string }
 	if luck.active then
 		table.insert(lines, `{luck.time} · Pish's Luck: better pulls in your packs`)
 	end
+	if bought.active then
+		local strength = player:GetAttribute("BoughtLuck")
+		local info = if typeof(strength) == "string" then Luck.STRENGTHS[strength] else nil
+		table.insert(lines, `{bought.time} · {if info then info.name else "Luck"}: better last cards in your packs`)
+	end
 	if courage.active then
 		table.insert(lines, `{courage.time} · Chikin's Courage: your creatures hit {math.round(Chikin.COURAGE.share * 100)}% harder`)
 	end
@@ -118,7 +126,7 @@ end
 
 -- The icons show while any buff is on (none leaves no gap in your row); hidden through the tours
 local function refresh()
-	local any = creature.active or luck.active or courage.active
+	local any = creature.active or luck.active or bought.active or courage.active
 	stack.Visible = any and not Hud.hides("buffs")
 	if not any and tooltip.Visible then
 		tooltip.Visible = false
@@ -187,6 +195,38 @@ end
 
 local function runCourage()
 	runTimed(courage, "ChikinCourageUntil", Chikin.COURAGE.seconds, COURAGE_ICON)
+end
+
+-- Luck bought in the Store (Config/Luck; LuckService): its strength's icon (🍀 2x, 🌈 3x), its time and a ring that
+-- empties from the time it had when it started; a purchase while it runs sets a new end and length
+local function runBought()
+	if running[bought] then
+		return
+	end
+	running[bought] = true
+	task.spawn(function()
+		while true do
+			local strength = player:GetAttribute("BoughtLuck")
+			local info = if typeof(strength) == "string" then Luck.STRENGTHS[strength] else nil
+			local untilTime = player:GetAttribute("BoughtLuckUntil") :: number?
+			local now = workspace:GetServerTimeNow()
+			local text = if info then LuckRules.badgeText(untilTime, now, info.icon) else nil
+			setActive(bought, text ~= nil)
+			refresh()
+			if not text or not info then
+				break
+			end
+			bought.time = text
+			bought.glyph.Text = info.icon
+			local length = player:GetAttribute("BoughtLuckLength")
+			local fill = bought.fill
+			if fill then
+				fill(LuckRules.share(untilTime, now, if typeof(length) == "number" then length else 0))
+			end
+			task.wait(LUCK_TICK)
+		end
+		running[bought] = nil
+	end)
 end
 
 -- A ring round a round icon that empties as a timed buff runs out: two clipped halves whose strokes' gradients turn
@@ -310,7 +350,8 @@ function BuffController.Start()
 
 	creature = makeBuff("BuffBadge", 1, UIKit.Colors.Accent, "", false)
 	luck = makeBuff("LuckBadge", 2, LUCK_GREEN, "🍀", true)
-	courage = makeBuff("CourageBadge", 3, COURAGE_RED, COURAGE_ICON, true)
+	bought = makeBuff("BoughtLuckBadge", 3, BOUGHT_GOLD, "🍀", true)
+	courage = makeBuff("CourageBadge", 4, COURAGE_RED, COURAGE_ICON, true)
 
 	tooltip = Instance.new("Frame")
 	tooltip.Name = "BuffTooltip"
@@ -344,8 +385,11 @@ function BuffController.Start()
 
 	player:GetAttributeChangedSignal("PishLuckUntil"):Connect(runLuck)
 	player:GetAttributeChangedSignal("ChikinCourageUntil"):Connect(runCourage)
+	player:GetAttributeChangedSignal("BoughtLuck"):Connect(runBought)
+	player:GetAttributeChangedSignal("BoughtLuckUntil"):Connect(runBought)
 	Hud.onCalm(refresh)
 	runLuck()
+	runBought()
 	runCourage()
 
 	Remotes.PartyChanged.OnClientEvent:Connect(function(payload)

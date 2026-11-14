@@ -3261,7 +3261,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 | Product | Effect | Suggested price |
 |---|---|---|
 | Cash packs | $1k / $5k / $25k in-game | 25 / 99 / 399 R$ |
-| Lucky Hour | +50% Epic/Legendary odds for 60 min (new odds shown in UI) | 49 R$ |
+| 2x Luck 15 / 30 min, 3x Super Luck 30 min (built) | Your packs' last card better (below) | 29 / 49 / 139 R$ |
 | Customer Rush | 2x customer spawns for 15 min | 29 R$ |
 | Revive (built) | Up where you were knocked out, your cards rested (7.8) | 25 R$ |
 | Finish now S / M / L (built) | A station job done now: up to 5 min / 20 min / 1 h left (7.8) | 12 / 30 / 70 R$ |
@@ -3270,6 +3270,46 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 Built products live in Config/Monetization PRODUCTS (0 = not created yet: "Coming soon"); create them on Creator Hub →
 the experience → Monetization → Developer Products, then paste the ids there. PurchaseService holds the one
 ProcessReceipt.
+
+### Luck for Robux and the Store (built 2026-11-14)
+Owner: "LUCK BOOSTER for ROBUX suggestions on how much, and the job extra slot". From the economy simulator (a player
+opens ~350 packs an hour, 1 in 100 last cards a Legendary) 2x Luck is about one extra Legendary every 30 minutes;
+grades are untouched, so a Grade S is earned, never bought. The owner made three developer products on Creator Hub
+(managed pricing on: R$ 29 / 49 / 139 when made, regional prices may be lower, so the Store reads them live):
+- **2x Luck 15 min, 2x Luck 30 min, 3x Super Luck 30 min** (Config/Luck, Util/BoughtLuck, LuckService): the last card's
+  Very Rare, Epic and Legendary weights doubled (2x) or tripled (3x) (`LuckRules.boost`, the same as Pish's Luck, which
+  adds on top). First Spark's last card: Legendary 1% / 2% / 3%, Epic 14% / 28% / 42%. Each purchase adds time to its
+  strength (at most 6 h); the strongest runs first and only it runs down, so a 2x bought under a Super Luck waits its
+  turn; the time runs only while you play, in every place (saved: data.luck, v27). A toast says what you got.
+- **The Store** (the phone's 🛒 app, StoreController; owner: "make it more premium, make it feel like a WIN", option
+  A of two): a green "Feeling lucky?" banner with Pish peeking, clovers floating and a shine, with what's running
+  ("🌈 3x Super Luck on · 12:31 (+20 min)", else "Pick a boost below!"); the three boosts as colourful tiles (the 30
+  min outlined with a true BEST VALUE tag, Super Luck in a moving rainbow with BEST LUCK), each with its win in a chip
+  ("Legendary 1% to 2%", from the real odds: `BoughtLuck.oddsText`), a shine sweeping the tagged ones, and chunky gold
+  price buttons with their live price (managed pricing gives each player theirs: the owner's account saw ~40%); the
+  Extra Job Slot as a gold "Forever" tile ("Owned" once yours). A boost tap asks the server (remote BuyLuck;
+  validated, rate-limited, LuckService prompts the purchase). Where Roblox restricts paid random items
+  (PolicyService ArePaidRandomItemsRestricted) the luck tiles say "Not sold where you live" and the server won't
+  prompt. No fake timers, scarcity or "most popular" without sales behind it.
+- **The win card** (StoreWinController, remote StoreWin, `Luck.WIN`): the moment a boost or the slot is granted, once
+  the purchase dialog has closed, a card pops in the middle of the screen: light rays turning behind a big clover (a
+  briefcase for the slot) swinging in, "2x LUCK!" (green) / "SUPER LUCK!" (rainbow) / "+1 WORKER!" (gold), its line
+  ("30 minutes of luckier packs!"), the Support gift's shimmer, and clovers bursting round your character. Studio's
+  `/luck` plays it too.
+- **The lucky aura** (owner: "there should be a lucky aura around the character while the lucky buff that is bought
+  from the store is active"; Luck.AURA, LuckService): built by the server on the character so everyone sees it, in
+  every place and after a respawn, while bought luck runs: white four-leaf clovers (`assets/ui/fx-luck/clover.png`,
+  `tools/textures/make_luck_clover.py`) tinted green (2x) or running through the rainbow (3x Super Luck) floating out of
+  the body and up (9 / 13 a second), golden glints and a soft glow. It goes when the luck runs out.
+- **The chip**: a timed buff icon by Pish's Luck (🍀 2x, 🌈 3x) with a ring emptying from the time it had when it
+  started; its tooltip line "🍀 19:50 · 2x Luck: better last cards in your packs" (BuffController).
+- **The odds**: the rarity guide shows the last card with no luck, 2x and 3x (`LuckRules.chances`).
+- **The Extra Job Slot** (+1 worker next to the free one; JobService): sold as a one-time developer product (the
+  owner's id 3731134573, R$ 160; `Monetization.UNLOCKS`, `Util/UnlockRules`): once bought it's saved (data.unlocks,
+  v28) and MonetizationService counts it as owning the pass everywhere (HasExtraJobSlot); its purchase opens only while
+  it isn't owned (remote BuyUnlock, from the Store and the Jobs panel's "Get it"), so it's never sold twice. A game
+  pass id in `PASSES.ExtraJobSlot` would work too.
+- Studio: `/luck <x2|x3> [minutes]`, `/luck clear` (the admin panel's luck buttons).
 
 ### Support the dev (built 2026-11-12)
 Owner: "add a 'Support the dev' somewhere where the supporter will receive a supporters aura and title". Picks from the
@@ -3814,7 +3854,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v26)
+### 10.4 Player data schema (v28)
 ```lua
 {
     version = 21,
@@ -3860,6 +3900,8 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     turts = { index = 0, bought = {} }, -- Turts' rug shop: the restock last seen, the offers bought in it, a "restock now" roll `personal = { index, offers }` while it lasts (TurtsService; v24)
     decor = { look = "CozyWood", owned = {} }, -- shop decor: the look in use and the looks bought; the default never stored (DecorService; v25)
     windows = { { style = "Square", side = "left", at = 0 } }, -- the shop's windows: style, wall, studs from its middle (WindowService; v26)
+    luck = { x2 = 0, x3 = 0 }, -- luck bought with Robux: seconds left of 2x and 3x Super Luck (LuckService, Config/Luck; v27)
+    unlocks = { ExtraJobSlot = true }, -- one-time unlocks bought as developer products (MonetizationService; v28)
 }
 ```
 Bump `version` and write a migration whenever the shape changes.

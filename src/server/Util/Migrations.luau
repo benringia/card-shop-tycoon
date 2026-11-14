@@ -295,6 +295,20 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 			data.windows = {}
 		end
 	end,
+	-- 26 -> 27: luck bought with Robux (Config/Luck): seconds left per strength, none yet; a saved one stays for
+	-- LuckService to clean (Util/BoughtLuck.clean)
+	[26] = function(data)
+		if typeof(data.luck) ~= "table" then
+			data.luck = { x2 = 0, x3 = 0 }
+		end
+	end,
+	-- 27 -> 28: one-time unlocks bought as developer products (Config/Monetization UNLOCKS: the Extra Job Slot), none yet;
+	-- a saved list stays for MonetizationService to clean (Util/UnlockRules.clean)
+	[27] = function(data)
+		if typeof(data.unlocks) ~= "table" then
+			data.unlocks = {}
+		end
+	end,
 }
 
 local function lowestGrade(): string

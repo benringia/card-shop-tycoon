@@ -16,6 +16,8 @@ local CardEffects = require(Config:WaitForChild("CardEffects"))
 local Frontier = require(Config:WaitForChild("Frontier"))
 local OddsRules = require(Shared:WaitForChild("Util"):WaitForChild("OddsRules"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
+local LuckRules = require(Shared:WaitForChild("Util"):WaitForChild("LuckRules"))
+local Luck = require(Config:WaitForChild("Luck"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
@@ -191,6 +193,13 @@ local function build(): Frame
 	local sLegendary = OddsRules.perPack(pack, "Legendary") * (BeastRules.gradeChances("Legendary").S or 0)
 	addLine(list, 22, string.format("👑 Grade S is rarer on rare cards: %s. A Grade S Legendary: about 1 in %d %s packs.",
 		table.concat(sParts, " · "), OddsRules.oneIn(sLegendary), pack.name))
+	-- Luck from the Store changes the odds you pay for, so they're shown (owner 2026-11-14; Config/Luck)
+	local hit = pack.slots[#pack.slots]
+	local function lastCard(boost: number): string
+		local chances = LuckRules.chances(if boost > 0 then LuckRules.boost(hit, Packs.RANK, Luck.FROM_RARITY, boost) else hit)
+		return `Legendary {percent(chances.Legendary or 0)}, Epic {percent(chances.Epic or 0)}, Very Rare {percent(chances["Very Rare"] or 0)}`
+	end
+	addLine(list, 24, `🍀 Luck (Phone, Store) makes the last card in each pack better. Normal: {lastCard(0)}. {Luck.STRENGTHS.x2.name}: {lastCard(Luck.STRENGTHS.x2.boost)}. {Luck.STRENGTHS.x3.name}: {lastCard(Luck.STRENGTHS.x3.boost)}. Pish's Luck adds a little more.`)
 	addLine(list, 23, `🛡️ Pity: your first Legendary within {Packs.PITY.FIRST_LEGENDARY_PACKS} packs, then one at least every {Packs.PITY.LEGENDARY_PACKS} (a pity one is almost never high grade: S {percent(Packs.PITY.LEGENDARY_GRADES.S)}); an Epic or better every {Packs.PITY.EPIC_PACKS}.`)
 	return frame
 end

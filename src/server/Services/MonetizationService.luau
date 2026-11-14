@@ -3,21 +3,37 @@
 -- Each owned pass is mirrored as a player attribute Has<PassKey> (e.g. HasExtraJobSlot) for the client.
 -- A failed Roblox check counts as "not owned" and is retried on the next check, so it never errors.
 -- Studio: the DevPass_<PassKey> attribute (toggled by /jobslot) stands in for owning the pass.
+-- Some pass keys are also sold as one-time developer products (Config/Monetization UNLOCKS, owner 2026-11-14: the Extra
+-- Job Slot): a bought one is saved (data.unlocks) and counts as owning the pass; its purchase opens only while it isn't
+-- owned (remote BuyUnlock, Util/UnlockRules), so it's never sold twice.
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local Monetization = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Monetization"))
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Monetization = require(Shared:WaitForChild("Config"):WaitForChild("Monetization"))
+local UnlockRules = require(Shared:WaitForChild("Util"):WaitForChild("UnlockRules"))
+local Remotes = require(Shared:WaitForChild("Remotes"))
+local Services = script.Parent :: Instance
+local DataService = require(Services:WaitForChild("DataService"))
+local PurchaseService = require(Services:WaitForChild("PurchaseService"))
+local RateLimiter = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("RateLimiter"))
 
 local MonetizationService = {}
 
 local owned: { [Player]: { [string]: boolean } } = {} -- only successful checks are cached
 local retryAt: { [Player]: { [string]: number } } = {} -- failed checks: don't ask Roblox again before this
 local passChangedCallbacks: { (player: Player, passKey: string) -> () } = {}
+local unlocks: { [Player]: { [string]: boolean } } = {} -- one-time unlocks bought (saved), once loaded
+local buyLimit = RateLimiter.new(2)
 
 local function check(player: Player, passKey: string): boolean
 	if RunService:IsStudio() and player:GetAttribute(`DevPass_{passKey}`) == true then
+		return true
+	end
+	local bought = unlocks[player]
+	if bought and bought[passKey] then
 		return true
 	end
 	local passId = Monetization.PASSES[passKey]
@@ -86,7 +102,56 @@ function MonetizationService.SetDevPass(player: Player, passKey: string, value: 
 	refresh(player, passKey)
 end
 
+-- Opens a one-time unlock's purchase (the Store, the Jobs panel) while it's for sale: known, made, not owned yet
+local function onBuyUnlock(player: Player, key: unknown)
+	if typeof(key) ~= "string" or not buyLimit(player) then
+		return
+	end
+	local bought = unlocks[player]
+	if not bought or check(player, key) then
+		return -- not loaded yet, or owned: the button says "Owned"
+	end
+	local productId = PurchaseService.ProductId(key)
+	if UnlockRules.canBuy(bought, key, productId, Monetization.UNLOCKS) then
+		MarketplaceService:PromptProductPurchase(player, productId)
+	end
+end
+
 function MonetizationService.Start()
+	DataService.Register({
+		name = "MonetizationService",
+		load = function(player, data)
+			unlocks[player] = UnlockRules.clean(data.unlocks, Monetization.UNLOCKS)
+			for key in unlocks[player] do
+				refresh(player, key)
+			end
+		end,
+		-- nothing for a player this never loaded, so a failed load can't wipe what they bought
+		save = function(player, data)
+			local bought = unlocks[player]
+			if bought then
+				data.unlocks = table.clone(bought)
+			end
+		end,
+		unload = function(player)
+			unlocks[player] = nil
+		end,
+	})
+	for _, key in Monetization.UNLOCKS do
+		PurchaseService.OnProduct(key, function(player: Player): boolean
+			local bought = unlocks[player]
+			if not bought then
+				return false -- not loaded here yet: Roblox asks again
+			end
+			bought[key] = true
+			refresh(player, key)
+			if key == "ExtraJobSlot" then
+				Remotes.StoreWin:FireClient(player, "jobslot", 0) -- its win card
+			end
+			return true
+		end)
+	end
+	Remotes.BuyUnlock.OnServerEvent:Connect(onBuyUnlock)
 	local function onPlayerAdded(player: Player)
 		for passKey in Monetization.PASSES do
 			task.spawn(refresh, player, passKey)

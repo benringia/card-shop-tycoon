@@ -85,6 +85,8 @@ export type PlayerData = {
 	skipTokens: { S: number, M: number, L: number }, -- "Finish now" skips bought with no job to finish (UpgradeJobService)
 	purchases: { string }, -- the last receipts granted, by PurchaseId (PurchaseService: never granted twice)
 	support: { gifts: number, best: number }, -- "Support the dev" gifts and the best tier (SupportService)
+	luck: { [string]: number }, -- luck bought with Robux: seconds left per strength, x2 and x3 (LuckService, Config/Luck)
+	unlocks: { [string]: boolean }, -- one-time unlocks bought as developer products (MonetizationService; Monetization UNLOCKS)
 	titles: { known: { string }, fresh: { string }, seeded: boolean }, -- titles ever earned, not yet seen ones (TitleService)
 	-- Turts' rug shop: the restock last seen, the offers bought in it, a "restock now" roll (TurtsService)
 	turts: { index: number, bought: { string }, personal: { index: number, offers: { string } }? },
@@ -137,6 +139,8 @@ local TEMPLATE: PlayerData = {
 	turts = { index = 0, bought = {} },
 	decor = { look = "CozyWood", owned = {} },
 	windows = {},
+	luck = { x2 = 0, x3 = 0 },
+	unlocks = {},
 }
 
 local DataService = {}

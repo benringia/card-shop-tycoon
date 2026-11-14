@@ -39,6 +39,19 @@ function LuckRules.boost(slot: { Weighted }, rank: { [string]: number }, fromRar
 	return out
 end
 
+-- Each rarity's chance in a slot (its weights shared out to add up to 1), for the rarity guide's luck line
+function LuckRules.chances(slot: { Weighted }): { [string]: number }
+	local total = 0
+	for _, option in slot do
+		total += option.weight
+	end
+	local out: { [string]: number } = {}
+	for _, option in slot do
+		out[option.rarity] = (out[option.rarity] or 0) + (if total > 0 then option.weight / total else 0)
+	end
+	return out
+end
+
 -- The gift: only `minRarity` and better (their own weights); none left: `minRarity` for sure
 function LuckRules.atLeast(slot: { Weighted }, rank: { [string]: number }, minRarity: string): { Weighted }
 	local floor = rank[minRarity] or 0
