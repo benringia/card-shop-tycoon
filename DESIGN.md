@@ -1265,7 +1265,13 @@ card" (opens the binder). A legend along the bottom names the stat icons once (P
 every icon without a label has a word tooltip (`Util/Tooltip`; Remove says "Remove from party"). Phones get a smaller card and slimmer bars so every
 column fits. One creature is summoned at a time: the server moves
 an invisible marker behind you on the ground (`workspace.Creatures`, 20 Hz, teleports when 40+ studs away) and every
-client draws the creature on it with walking, breathing and a rarity glow (`docs/creatures.md`). Party cards can't
+client draws the creature on it with walking, breathing and a rarity glow (`docs/creatures.md`), under a name tag
+like a gacha title (owner 2026-11-14, after looking at how Palworld, Pokemon, gacha and pet games do it, option B of
+three; `Util/CreatureTag`, client `Util/CreatureTagGui`, `Party.TAG`): its stars crown the name (earned bright, the
+rest faint), the name big in its rarity colour with a dark outline (a rainbow for a foil), a dark pill under it with
+the element icon, the level and the grade chip in its colour, and the owner's name small on top only on other
+players' creatures (your own never repeats your name). Its bottom sits where the old two-line tag's did and it grows
+upward; the spring's "+ Healing" pill rests on it. Party cards can't
 be displayed or given a job; they can be condensed. While a creature is summoned, a small buff badge above the cash
 (bottom-right corner) shows its perk (element icon, colour, +%); hover or tap it for what it does and which card it comes from. Left of it, the party bar (a cream
 cushion, `Config/Party` BAR, see "Creature pals HUD" in 10.6) shows a "Party" pill (opens Party, as does tapping the

@@ -169,6 +169,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	DamagePop = require("./DamagePop.spec"),
 	VictoryRules = require("./VictoryRules.spec"),
 	MarkerNames = require("./MarkerNames.spec"),
+	CreatureTag = require("./CreatureTag.spec"),
 	DebuffRules = require("./DebuffRules.spec"),
 	SwapKeys = require("./SwapKeys.spec"),
 	SummonMotion = require("./SummonMotion.spec"),

@@ -576,6 +576,27 @@ return {
 	SPARKLES_PER_STAR = 1,
 	GRADE_S_SPARKLES = 2,
 	MAX_OUTLINES = 31, -- Roblox draws at most 31 Highlights on a screen
+	-- A summoned creature's name tag (Util/CreatureTag, client Util/CreatureTagGui; owner 2026-11-14, the gacha title):
+	-- pixels on screen (the same size near or far, out to MAX_DISTANCE studs). Rows top to bottom: the owner's name
+	-- (OWNER, others' creatures only), the stars (STARS), the name (NAME, its rarity colour NAME_LIGHTEN of the way to
+	-- white, a dark outline), the pill (PILL: element icon ICON, level, grade chip), GAP between rows. Its bottom sits
+	-- BELOW pixels under its point (height + 1 studs over the creature); HEAL_PILL: Util/HealFx's "+ Healing" pill above
+	TAG = {
+		WIDTH = 260,
+		OWNER = 14,
+		STARS = 18,
+		NAME = 30,
+		PILL = 22,
+		GAP = 2,
+		ICON = 17,
+		BELOW = 22,
+		HEAL_PILL = 22,
+		MAX_DISTANCE = 60,
+		EMPTY_STAR = 0.7,
+		NAME_LIGHTEN = 0.15,
+		INK = { 27, 20, 38 }, -- the name's outline, the pill and the grade chip's letter
+		PILL_TRANSPARENCY = 0.2,
+	},
 	-- A creature appearing, leaving and fainting (owner 2026-11-04; Util/SummonFx, Util/SummonMotion): a summon pops in
 	-- out of a ring and pillar of light over `pop` seconds when it was stamped (SummonedAt) at most `window` seconds ago;
 	-- an unsummon shrinks it away and a light flies back into its owner over `unsummon` seconds (the server waits that

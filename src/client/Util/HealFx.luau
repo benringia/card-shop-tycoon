@@ -10,6 +10,7 @@ local TweenService = game:GetService("TweenService")
 
 local Party = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Party"))
 local ElementFx = require((script.Parent :: Instance):WaitForChild("ElementFx"))
+local CreatureTag = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("CreatureTag"))
 
 local HealFx = {}
 
@@ -51,11 +52,12 @@ local function plus(root: BasePart, height: number)
 	Debris:AddItem(gui, CFG.plusLife + 0.1)
 end
 
--- "+ Healing" in a green pill just above the creature's name tag (CreatureVisuals.makeTag sits at `height` + 1)
+-- "+ Healing" in a green pill resting on the creature's name tag (Util/CreatureTagGui, its point `height` + 1 too)
 local function pill(root: BasePart, height: number): (BillboardGui, UIScale)
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "HealTag"
-	gui.Size = UDim2.fromOffset(160, 92) -- the tag's 44 px in the middle, the pill on top
+	gui.Size = UDim2.fromOffset(160, Party.TAG.HEAL_PILL)
+	gui.SizeOffset = Vector2.new(0, CreatureTag.healLift(Party.TAG))
 	gui.StudsOffset = Vector3.new(0, height + 1, 0)
 	gui.MaxDistance = 60
 	gui.LightInfluence = 0
@@ -63,7 +65,7 @@ local function pill(root: BasePart, height: number): (BillboardGui, UIScale)
 	local label = Instance.new("TextLabel")
 	label.AnchorPoint = Vector2.new(0.5, 0)
 	label.Position = UDim2.fromScale(0.5, 0)
-	label.Size = UDim2.fromOffset(0, 22)
+	label.Size = UDim2.fromOffset(0, Party.TAG.HEAL_PILL)
 	label.AutomaticSize = Enum.AutomaticSize.X
 	label.BackgroundColor3 = GREEN:Lerp(Color3.new(0, 0, 0), 0.25)
 	label.Text = "  + Healing  "

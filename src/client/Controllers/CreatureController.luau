@@ -30,6 +30,9 @@ local PetVoice = require(Shared:WaitForChild("Util"):WaitForChild("PetVoice"))
 local HealFx = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("HealFx"))
 local RestTimers = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("RestTimers"))
 local SoundBank = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("SoundBank"))
+local CreatureTagGui = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("CreatureTagGui"))
+local CreatureTag = require(Shared:WaitForChild("Util"):WaitForChild("CreatureTag"))
+local Beasts = require(Config:WaitForChild("Beasts"))
 
 local CreatureController = {}
 
@@ -51,7 +54,7 @@ type Creature = {
 	outline: boolean,
 	highlight: Highlight?,
 	light: PointLight?,
-	tag: TextLabel,
+	tag: BillboardGui, -- its name tag (Util/CreatureTagGui)
 	hpBar: BillboardGui?, -- in an arena fight: a bar everyone can see
 	hpFill: Frame?,
 	height: number,
@@ -160,20 +163,24 @@ local function tagShown(marker: BasePart): boolean
 	return not TutorialRules.tourLeading(if typeof(pish) == "string" then pish else "", if typeof(combat) == "string" then combat else "", Chikin.WAIT_STEP)
 end
 
+-- Its name tag (owner 2026-11-14, the gacha title: Util/CreatureTag): the stars over its name in its rarity colour, the
+-- element, level and grade under it, the owner's name only on other players' creatures
 local function updateTag(creature: Creature)
 	local marker = creature.marker
-	local board = creature.tag.Parent
-	if board and board:IsA("BillboardGui") then
-		board.Enabled = tagShown(marker)
-	end
+	creature.tag.Enabled = tagShown(marker)
 	local card = Cards.ById[marker:GetAttribute("CardId") :: string]
-	local level = marker:GetAttribute("Level")
-	local stars = marker:GetAttribute("Stars")
-	local owner = Players:GetPlayerByUserId(marker:GetAttribute("OwnerUserId") :: number)
-	local name = if card then card.name else "Creature"
-	local starText = if typeof(stars) == "number" and stars > 0 then " · " .. string.rep("⭐", stars) else ""
-	local ownerText = if owner then `{owner.DisplayName}'s ` else ""
-	creature.tag.Text = `{ownerText}{name}\nLv {if typeof(level) == "number" then level else 1}{starText}`
+	local ownerId = marker:GetAttribute("OwnerUserId")
+	local owner = if typeof(ownerId) == "number" then Players:GetPlayerByUserId(ownerId) else nil
+	CreatureTagGui.set(creature.tag, CreatureTag.info({
+		cardName = if card then card.name else nil,
+		level = marker:GetAttribute("Level"),
+		stars = marker:GetAttribute("Stars"),
+		grade = marker:GetAttribute("Grade"),
+		foil = marker:GetAttribute("Foil") == true,
+		ownerName = if owner then owner.DisplayName else nil,
+		mine = ownerId == Players.LocalPlayer.UserId,
+		maxStars = Beasts.MAX_STARS,
+	}))
 end
 
 local HP_HIGH = Color3.fromRGB(90, 210, 110)
@@ -323,7 +330,6 @@ local function add(marker: BasePart)
 	if tier then
 		CreatureVisuals.addBeastFx(body, card.element, tier :: string, marker:GetAttribute("OwnerUserId") == Players.LocalPlayer.UserId)
 	end
-	local tagColor = rarityColor(card.rarity):Lerp(Color3.new(1, 1, 1), 0.35)
 	local creature: Creature = {
 		marker = marker,
 		body = body,
@@ -340,7 +346,7 @@ local function add(marker: BasePart)
 		outline = false,
 		highlight = nil,
 		light = nil,
-		tag = CreatureVisuals.makeTag(body.root, height + (if flying then Party.MOTION.HOVER_HEIGHT else 0), tagColor),
+		tag = CreatureTagGui.build(body.root, height + (if flying then Party.MOTION.HOVER_HEIGHT else 0), rarityColor(card.rarity), card.element),
 		hpBar = nil,
 		hpFill = nil,
 		height = height + (if flying then Party.MOTION.HOVER_HEIGHT else 0),

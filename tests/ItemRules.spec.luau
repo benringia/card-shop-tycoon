@@ -5,6 +5,26 @@ local Bosses = require("../src/shared/Config/Bosses")
 local expect = require("./lib/expect")
 
 return {
+	-- Owner 2026-11-14: "item description should be rewritten, it should easily be understandable by a child". The
+	-- Bag shows each item's three lines (what it does, where to get it, how to use it): plain words our fonts draw
+	-- (ASCII plus "·"; the "→" arrows were drawn as boxes), short, no trading-card jargon
+	["item text is short, plain and kid-friendly"] = function()
+		local JARGON = { "duplicate", "condens", "forges and upgrades", "booster" }
+		for id, info in config.ITEMS do
+			for _, field in { "description", "source", "use" } do
+				local text = info[field]
+				assert(type(text) == "string" and text ~= "", `{id} has a {field}`)
+				local plain = string.gsub(text, "·", "")
+				assert(not string.find(plain, "[^\32-\126]"), `{id}'s {field} is plain text: {text}`)
+			end
+			assert(#info.description <= 90, `{id}'s description is short ({#info.description} letters)`)
+			local lower = string.lower(info.description)
+			for _, word in JARGON do
+				assert(not string.find(lower, word, 1, true), `{id}'s description says "{word}": {info.description}`)
+			end
+		end
+	end,
+
 	["only pack items open"] = function()
 		expect.equal(ItemRules.openablePack(config, "sparkPack"), "FirstSparkPack", "the level-up pack")
 		for _, bad in { "xpTonic", "nope", 42, nil } do
