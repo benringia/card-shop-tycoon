@@ -582,7 +582,22 @@ In Studio: Import 3D (Rig Type Custom, Keep Zero Influence Bones), upload the gl
 `EmissiveMaskContent` = the mask, `EmissiveStrength` 2, the Colossus 2.5; the game lights it once at a boss's `glow`
 strength when it has one, the Colossus 4), name
 the model after the boss id and save it. Sizes, rings and moments: DESIGN 5.10. A moment effect that starts inside
-the body (the flare at the sac's centre) needs `zOffset` in `Bosses.MOMENT_FX` or the opaque mesh hides it. **The Prism Hydra since 2026-11-12** (spec `2026-11-11-dungeon-puzzles-design.md`, the owner's pick B "temple guardian"):
+the body (the flare at the sac's centre) needs `zOffset` in `Bosses.MOMENT_FX` or the opaque mesh hides it. **The prologue's young Hydra** (`prismHydraYoung`, 2026-11-15; `Config/Prologue` HYDRA.model): one horned head, two
+crystal buds on its chest where the other heads will grow, in the Guardian's look (the owner's pick A of three concepts:
+one head with buds, two heads, a winged dragon). Two tries came first: folding three necks into the chest by bone
+Transforms stretched the smooth skin ("the hydra is deformed"), and cutting them off the mesh left a hole in the chest.
+Concept `assets/blender/PrismHydraYoung/PrismHydraYoung_concept.png` (Figma, cut off its grey background, the enclosed
+grey gaps between the legs too), one Meshy image-to-3D generation (raw `PrismHydraYoung_raw.glb`, not in git),
+`NAME=PrismHydraYoung YAW=0 HEIGHT=1 prep_frontier_model.py`, then `tools/blender/rig_prismHydraYoung.py`: the body moved
+onto x = 0 (its tail curls out to its left, which had pulled the centring off), `rig_kit.optimize` to 12,000 triangles,
+the parts the concept hid (hind legs, belly, the tail's root: Meshy painted them pale mint and cream) repainted the chest's
+stone blue keeping their shading, the Prism Hydra's bone names with one neck (`Hydra_0_0..2`, head `Hydra_0_3`, `Jaw_0`,
+legs, `Tail_0..4`: its clips play on it), the glow mask (`rbxassetid://139310713520895`) and the FBX. In Studio: Import
+3D (Rig Type Custom), the MeshPart's `PivotOffset` rotation reset, the AnimationController removed, a SurfaceAppearance
+(Overlay, `ColorMapContent` = its TextureID, `EmissiveMaskContent` = the mask, `EmissiveStrength` 2), PrimaryPart the
+body, named `prismHydraYoung`, saved as `assets/monsters/prismHydraYoung.rbxm`. The fight draws it for a marker with the
+`Prologue` attribute (MonsterController); the cinematics with `Util/PrologueHydra`; until it's saved the five-headed model
+stands in. **The Prism Hydra since 2026-11-12** (spec `2026-11-11-dungeon-puzzles-design.md`, the owner's pick B "temple guardian"):
 a Meshy model from `assets/blender/PrismHydraGuardian/PrismHydraGuardian_concept.png` (concept B cut out of its grey
 background, the floor shadow between its legs cleared so Meshy doesn't make a slab): carved blue-grey stone armour,
 glowing rainbow rune lines, crystals bursting from its shoulders, five heads alike. Raw export

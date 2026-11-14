@@ -24,6 +24,7 @@ local PlazaNpcController = require(Controllers:WaitForChild("PlazaNpcController"
 local FountainFxController = require(Controllers:WaitForChild("FountainFxController"))
 local PortalFxController = require(Controllers:WaitForChild("PortalFxController"))
 local WelcomeController = require(Controllers:WaitForChild("WelcomeController"))
+local PrologueController = require(Controllers:WaitForChild("PrologueController"))
 local CondenserFxController = require(Controllers:WaitForChild("CondenserFxController"))
 local CaseSpinController = require(Controllers:WaitForChild("CaseSpinController"))
 local DecorSpinController = require(Controllers:WaitForChild("DecorSpinController"))
@@ -172,6 +173,7 @@ else
 	FountainFxController.Start()
 	PortalFxController.Start()
 	task.spawn(WelcomeController.Start) -- waits for the Plots folder
+	PrologueController.Start() -- a new player's first join: the Hydra takes it all (the welcome flight waits for it)
 	task.spawn(CondenserFxController.Start) -- waits for the Plots folder
 	task.spawn(CaseSpinController.Start) -- waits for the Plots folder
 	DecorSpinController.Start() -- the Card Pedestals' turning cards (shop decor)

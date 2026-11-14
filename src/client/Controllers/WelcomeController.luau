@@ -330,6 +330,9 @@ local function check()
 	if player:GetAttribute("SeenWelcome") ~= false or playing or player:GetAttribute("LoadingDone") ~= true then
 		return -- seen, playing, or the loading screen still up (it starts when that fades)
 	end
+	if player:GetAttribute("SeenPrologue") ~= true then
+		return -- the prologue plays first (PrologueController; WelcomeService sets it seen when it's over)
+	end
 	local plot = ownPlot()
 	if plot and player.Character then
 		task.spawn(play, plot)
@@ -341,6 +344,7 @@ function WelcomeController.Start()
 		return
 	end
 	player:GetAttributeChangedSignal("SeenWelcome"):Connect(check)
+	player:GetAttributeChangedSignal("SeenPrologue"):Connect(check)
 	player:GetAttributeChangedSignal("LoadingDone"):Connect(check)
 	player.CharacterAdded:Connect(function()
 		task.delay(1, check)

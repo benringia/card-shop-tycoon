@@ -35,6 +35,10 @@ local NAMES = {
 	"SellWindow", -- client → server: (index: number) sell one of your windows (half its price back)
 	"BuyLuck", -- client → server: (product: string) open the Robux purchase of a Config/Luck product from the Store (LuckService)
 	"BuyUnlock", -- client → server: (key: string) open the Robux purchase of a one-time unlock (Monetization UNLOCKS; MonetizationService)
+	"PrologueSeen", -- client → server: () the prologue is over (finished or skipped): saved as seen (WelcomeService)
+	"PrologueReplay", -- server → client: () Studio's /prologue: play it now (PrologueController)
+	"PrologueStep", -- client → server: (step: "begin" | "fight" | "vanish" | "take") the prologue's next part (PrologueService)
+	"PrologueArena", -- server → client: (centre: Vector3?) this player's lair, its loadout lent; nil: no prologue now
 	"StoreWin", -- server → client: (kind: "x2" | "x3" | "jobslot", seconds: number) a Store purchase went through: its win card (StoreWinController)
 	"Charge", -- client → server: take payment for the fully scanned checkout
 	-- server → owner: the open kid offer or haggle at the register, nil = closed. { id, kind: "kid"|"haggle",
@@ -169,6 +173,10 @@ return {
 	BuyLuck = remotes.BuyLuck,
 	BuyUnlock = remotes.BuyUnlock,
 	StoreWin = remotes.StoreWin,
+	PrologueSeen = remotes.PrologueSeen,
+	PrologueReplay = remotes.PrologueReplay,
+	PrologueStep = remotes.PrologueStep,
+	PrologueArena = remotes.PrologueArena,
 	PlaceShelf = remotes.PlaceShelf,
 	MoveShelf = remotes.MoveShelf,
 	MoveFixture = remotes.MoveFixture,

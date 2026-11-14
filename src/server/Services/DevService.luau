@@ -463,6 +463,16 @@ function DevService.Start()
 	addCommand(folder, "jobtired", function(player)
 		JobService.ToggleTiredForTest(player)
 	end)
+	-- The prologue (spec 2026-11-14-prologue-hydra-design): /prologue plays it now on your screen; /prologue reset
+	-- makes your save unseen so it plays on your next join
+	addCommand(folder, "prologue", function(player, text)
+		if string.match(text, "reset") then
+			WelcomeService.ResetPrologue(player)
+			Remotes.Notify:FireClient(player, "The prologue plays on your next join (Studio)", false)
+		else
+			WelcomeService.ReplayPrologue(player)
+		end
+	end)
 	addCommand(folder, "intro", function(player)
 		WelcomeService.Replay(player)
 	end)
@@ -522,7 +532,9 @@ function DevService.Start()
 	addCommand(folder, "music", function(player, text)
 		local counts: { [string]: number } = { [Music.TOWN.key] = #Music.TOWN.options }
 		local keys = { Music.TOWN.key }
-		for _, list in { Music.WILD.areas, Music.WILD.arenas, (Music :: any).FRONTIER.areas, (Music :: any).FRONTIER.arenas, { Music.OPENING, (Music :: any).WELCOME } } do
+		local prologue = (Music :: any).PROLOGUE
+		local prologueParts = { prologue.lair, prologue.fight, prologue.taken, prologue.wake }
+		for _, list in { Music.WILD.areas, Music.WILD.arenas, (Music :: any).FRONTIER.areas, (Music :: any).FRONTIER.arenas, { Music.OPENING, (Music :: any).WELCOME }, prologueParts } do
 			for _, place in list do
 				counts[place.key] = #place.options
 				table.insert(keys, place.key)
@@ -891,7 +903,7 @@ function DevService.Start()
 			run(player, text)
 		end
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /weapon <id> [grade] [level], /material <boss id> <amount>, /weapondrop <boss id>, /chests <boss id> [drop|miss|strong|tired], /boss <n> [fight|group], /jobslot, /luck <x2|x3> [minutes] | clear, /jobtired, /wild, /rest, /tire, /bosshp <1-100>, /townchikin, /turts <restock|move|offer <id>>, /elite, /knockout, /support <0-3>, /titles forget, /review <outcome>, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /decor <look id|pieces>, /window <style> <side> <at>, /loading <main|wild|frontier|dungeon>, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume], /victorysound <1-3>, /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S], /skillfx <sword> [cut1|cut2|cut3|skill] [level], /room <2-4>, /winroom, /puzzle <solve|beams|plates|lock>, /tap <piece>, /dungeonfx <intro|introshort|roar|glimpse>")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /weapon <id> [grade] [level], /material <boss id> <amount>, /weapondrop <boss id>, /chests <boss id> [drop|miss|strong|tired], /boss <n> [fight|group], /jobslot, /luck <x2|x3> [minutes] | clear, /prologue [reset], /jobtired, /wild, /rest, /tire, /bosshp <1-100>, /townchikin, /turts <restock|move|offer <id>>, /elite, /knockout, /support <0-3>, /titles forget, /review <outcome>, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /decor <look id|pieces>, /window <style> <side> <at>, /loading <main|wild|frontier|dungeon>, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume], /victorysound <1-3>, /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S], /skillfx <sword> [cut1|cut2|cut3|skill] [level], /room <2-4>, /winroom, /puzzle <solve|beams|plates|lock>, /tap <piece>, /dungeonfx <intro|introshort|roar|glimpse>")
 end
 
 return DevService

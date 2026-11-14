@@ -70,6 +70,11 @@ function MusicRules.find(music: any, key: string): any
 	if music.WELCOME and music.WELCOME.key == key then
 		return music.WELCOME
 	end
+	for _, place in music.PROLOGUE or {} do
+		if place.key == key then
+			return place
+		end
+	end
 	local lists = { music.WILD.areas, music.WILD.arenas }
 	if music.FRONTIER then
 		table.insert(lists, music.FRONTIER.areas)

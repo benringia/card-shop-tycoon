@@ -1646,9 +1646,9 @@ end
 local weaponWatch: RBXScriptConnection? = nil
 
 -- A boss fight: the combat HUD instead of the bar, and your sword on; a wild fight (`wild`): the same HUD, its buttons
--- always named, the sword on once the player has one (`sword`)
+-- always named, the sword on once the player has one (`sword`); `noRun`: no Run button (the prologue's fight)
 
-local function startCombat(showNames: boolean, wild: boolean?, sword: boolean?)
+local function startCombat(showNames: boolean, wild: boolean?, sword: boolean?, noRun: boolean?)
 	combatWild = wild == true
 	combatSword = sword ~= false
 	local hud = CombatHud.new(screenGui, {
@@ -1662,7 +1662,7 @@ local function startCombat(showNames: boolean, wild: boolean?, sword: boolean?)
 			usePet("signature")
 		end,
 		swap = swapTo,
-		run = function()
+		run = if noRun then nil else function()
 			Remotes.RunFight:FireServer()
 		end,
 	}, showNames, wild, combatSword)
@@ -1780,7 +1780,7 @@ local function onStarted(payload: any)
 	foeElite = payload.elite == true
 	BattleController.pylonTargets = if typeof(payload.pylons) == "table" then payload.pylons else {}
 	if boss then
-		startCombat(payload.buttonNames == true)
+		startCombat(payload.buttonNames == true, nil, nil, payload.noRun == true)
 	elseif mode == "wild" then
 		startCombat(true, true, payload.sword == true)
 	end
@@ -1812,9 +1812,9 @@ local function onStarted(payload: any)
 		prompt.Enabled = false
 	end
 	if boss then
-		-- The Wild's boss arenas have their own battle music (Config/Music WILD, MusicController); the drone is the
-		-- Frontier's and the Dungeon's
-		if boss.place ~= "Wild" then
+		-- The Wild's boss arenas have their own battle music (Config/Music WILD, MusicController), and so does the
+		-- prologue's fight (Music PROLOGUE); the drone is the Frontier's and the Dungeon's
+		if boss.place ~= "Wild" and player:GetAttribute("PrologueMusic") == nil then
 			playMusic()
 		end
 		-- A boss spawns the moment its fight starts, so its marker can arrive just after this message
@@ -1870,7 +1870,7 @@ local function onEnded(summary: any)
 	for marker, prompt in prompts do
 		prompt.Enabled = marker:GetAttribute("Fighting") ~= true
 	end
-	if typeof(summary) == "table" then
+	if typeof(summary) == "table" and summary.result ~= "prologue" then -- the prologue's act 3 follows instead (PrologueController)
 		showEnd(summary, wasBoss, monsterAt)
 	end
 end

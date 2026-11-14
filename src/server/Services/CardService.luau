@@ -44,13 +44,24 @@ type Inventory = {
 local CardService = {}
 
 local inventories: { [Player]: Inventory } = {}
+-- the prologue's lent cards (PrologueService): they fight like the player's own and are sent to the client with them,
+-- but never saved, levelled or traded
+local lent: { [Player]: { [string]: Beast } } = {}
 local beastLevelUpHandlers: { (player: Player, beast: Beast, from: number, to: number, source: string?) -> () } = {}
 local allowRequest = RateLimiter.new(Collection.REQUEST_COOLDOWN)
 
 local function sync(player: Player)
 	local inventory = inventories[player]
 	if inventory then
-		Remotes.CollectionChanged:FireClient(player, { stacks = inventory.stacks, beasts = inventory.beasts, working = inventory.working, partied = inventory.partied, fighting = inventory.fighting })
+		local beasts = inventory.beasts
+		local borrowed = lent[player]
+		if borrowed then
+			beasts = table.clone(beasts)
+			for id, beast in borrowed do
+				beasts[id] = beast
+			end
+		end
+		Remotes.CollectionChanged:FireClient(player, { stacks = inventory.stacks, beasts = beasts, working = inventory.working, partied = inventory.partied, fighting = inventory.fighting })
 	end
 end
 
@@ -147,8 +158,43 @@ function CardService.TakeBeast(player: Player, beastId: string): Beast?
 end
 
 function CardService.GetBeast(player: Player, beastId: string): Beast?
+	local borrowed = lent[player]
+	if borrowed and borrowed[beastId] then
+		return borrowed[beastId]
+	end
 	local inventory = inventories[player]
 	return if inventory then inventory.beasts[beastId] else nil
+end
+
+-- The prologue: these cards fight for the player until EndLend (ids no saved card has: PrologueRules.lentBeasts)
+function CardService.Lend(player: Player, beasts: { Beast })
+	local inventory = inventories[player]
+	if not inventory then
+		return
+	end
+	local borrowed: { [string]: Beast } = {}
+	for _, beast in beasts do
+		if Cards.ById[beast.cardId] and not inventory.beasts[beast.id] then
+			borrowed[beast.id] = table.clone(beast)
+		end
+	end
+	lent[player] = borrowed
+	sync(player)
+end
+
+function CardService.EndLend(player: Player)
+	local borrowed = lent[player]
+	local inventory = inventories[player]
+	if not borrowed then
+		return
+	end
+	lent[player] = nil
+	if inventory then
+		for id in borrowed do
+			inventory.fighting[id] = nil
+		end
+	end
+	sync(player)
 end
 
 function CardService.GetBeasts(player: Player): { [string]: Beast }
@@ -440,7 +486,8 @@ end
 -- Marks a levelled card as fighting (BattleService); false when the fight ends
 function CardService.SetFighting(player: Player, beastId: string, fighting: boolean)
 	local inventory = inventories[player]
-	if not inventory or (fighting and not inventory.beasts[beastId]) then
+	local isLent = lent[player] ~= nil and (lent[player] :: { [string]: Beast })[beastId] ~= nil
+	if not inventory or (fighting and not inventory.beasts[beastId] and not isLent) then
 		return
 	end
 	inventory.fighting[beastId] = if fighting then true else nil
@@ -546,6 +593,7 @@ function CardService.Start()
 		save = save,
 		unload = function(player: Player)
 			inventories[player] = nil
+			lent[player] = nil
 		end,
 	})
 

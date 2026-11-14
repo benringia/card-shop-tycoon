@@ -309,6 +309,13 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 			data.unlocks = {}
 		end
 	end,
+	-- 28 -> 29: the prologue (spec 2026-11-14-prologue-hydra-design): every save from before it counts it as seen, so
+	-- only new players (the template's false) play it
+	[28] = function(data)
+		if typeof(data.seenPrologue) ~= "boolean" then
+			data.seenPrologue = true
+		end
+	end,
 }
 
 local function lowestGrade(): string

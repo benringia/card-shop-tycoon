@@ -73,6 +73,7 @@ export type PlayerData = {
 	bosses: { [string]: any }, -- bossId -> BossRules.Record (BossService)
 	stats: { packsOpened: number, customersServed: number, totalEarned: number },
 	seenWelcome: boolean, -- saw the first-visit welcome cinematic (WelcomeService)
+	seenPrologue: boolean, -- saw the prologue (the Hydra takes it all; WelcomeService, PrologueController)
 	seenSword: boolean, -- closed the "You got your first sword!" popup (SwordService)
 	swordFights: number, -- boss fights fought with the sword HUD; its buttons show names for the first few (SwordService)
 	weapons: { [string]: { grade: string, level: number } }, -- weaponId -> its grade and upgrade level (WeaponService)
@@ -123,6 +124,7 @@ local TEMPLATE: PlayerData = {
 	bosses = {},
 	stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
 	seenWelcome = false,
+	seenPrologue = false, -- new saves play the prologue once (saves from before: Migrations v29)
 	seenSword = false,
 	swordFights = 0,
 	weapons = {},

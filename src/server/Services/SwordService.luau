@@ -47,7 +47,8 @@ end
 
 local function sendState(player: Player)
 	local sword = SwordService.GetSword(player)
-	Remotes.SwordState:FireClient(player, { sword = sword, popup = sword ~= nil and seen[player] == false })
+	-- a lent weapon (the prologue's) is never "your first sword"
+	Remotes.SwordState:FireClient(player, { sword = sword, popup = sword ~= nil and seen[player] == false and not WeaponService.IsLent(player) })
 end
 
 local function setSwordAttribute(player: Player)
@@ -197,7 +198,7 @@ function SwordService.Start()
 		end
 	end)
 	Remotes.SwordSeen.OnServerEvent:Connect(function(player)
-		if allowSeen(player) and seen[player] ~= nil and SwordService.GetSword(player) then
+		if allowSeen(player) and seen[player] ~= nil and SwordService.GetSword(player) and not WeaponService.IsLent(player) then
 			seen[player] = true
 		end
 	end)

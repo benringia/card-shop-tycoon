@@ -31,6 +31,8 @@ local equipped: { [Player]: string } = {}
 -- weapons in the Forge (UpgradeJobService): out of the switch and not equippable till their job is done (spec
 -- 2026-11-12-timed-upgrades-revive-design)
 local locked: { [Player]: { [string]: boolean } } = {}
+-- the prologue's lent weapon (PrologueService): in hand whatever the shop level, never saved or in the switch
+local lent: { [Player]: { id: string, record: Owned } } = {}
 local isFighting: (Player) -> boolean = function()
 	return false
 end
@@ -51,6 +53,10 @@ end
 
 -- The weapon in hand: nil below the sword's shop level, otherwise the equipped one (the Steel Sword by default)
 function WeaponService.GetEquipped(player: Player): string?
+	local borrowed = lent[player]
+	if borrowed then
+		return borrowed.id
+	end
 	if EconomyService.GetLevel(player) < Swords.UNLOCK_SHOP_LEVEL then
 		return nil
 	end
@@ -62,6 +68,10 @@ function WeaponService.IsLoaded(player: Player): boolean
 end
 
 function WeaponService.GetOwned(player: Player, weaponId: string): Owned?
+	local borrowed = lent[player]
+	if borrowed and borrowed.id == weaponId then
+		return borrowed.record
+	end
 	local mine = owned[player]
 	return if mine then mine[weaponId] else nil
 end
@@ -103,6 +113,26 @@ local function snapshot(player: Player): { [string]: Owned }
 		copy[id] = { grade = record.grade, level = record.level }
 	end
 	return copy
+end
+
+-- The prologue: `weaponId` at `record` in hand until EndLend (the character's attributes follow; nothing is saved)
+function WeaponService.Lend(player: Player, weaponId: string, record: Owned)
+	if not owned[player] or not Weapons.ById[weaponId] then
+		return
+	end
+	lent[player] = { id = weaponId, record = { grade = record.grade, level = record.level } }
+	WeaponService.ApplyAttributes(player)
+end
+
+function WeaponService.EndLend(player: Player)
+	if lent[player] then
+		lent[player] = nil
+		WeaponService.ApplyAttributes(player)
+	end
+end
+
+function WeaponService.IsLent(player: Player): boolean
+	return lent[player] ~= nil
 end
 
 -- Tells the client and refreshes the character after any change
@@ -161,6 +191,10 @@ local function onEquip(player: Player, weaponId: unknown)
 	if not allowEquip(player) or typeof(weaponId) ~= "string" or not owned[player] then
 		return
 	end
+	if lent[player] then
+		Blocked.tell(player, "You can't switch weapons right now.")
+		return
+	end
 	local weapon = Weapons.ById[weaponId]
 	if not weapon or not weapon.ready or not WeaponService.GetEquipped(player) then
 		return
@@ -209,6 +243,7 @@ local function unload(player: Player)
 	owned[player] = nil
 	equipped[player] = nil
 	locked[player] = nil
+	lent[player] = nil
 end
 
 -- A weapon going into the Forge (or back out): while locked it can't be equipped and leaves the switch; the one in hand

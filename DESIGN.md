@@ -201,7 +201,44 @@ set graphics at 3 or below; a sleeper's "z Z z" hides with it: `Util/FrameWatchd
 run round their homes, drawn by the summoned-pet code (`TownCritterController`, `Util/Wander`): a fox at the forest edge,
 a bunny on the grass by the grove, a capybara on the sidewalk outside the south shops (the tall grass between
 the shops hid it), a fawn at Forest Falls, a penguin on Frostpeak, two baby dragons
-in Ember Canyon's caldera in its colours (the Cute Pets Shadow and Golden variants, `variant` in `Ambient.CRITTERS`). **Welcome cinematic** (`WelcomeController`, `WelcomeService`, `Config/Welcome`, `Util/WelcomePath`): on a
+in Ember Canyon's caldera in its colours (the Cute Pets Shadow and Golden variants, `variant` in `Ambient.CRITTERS`). **The prologue** (owner 2026-11-14, reworked 2026-11-15; spec `docs/superpowers/specs/2026-11-14-prologue-hydra-design.md`;
+`PrologueController`, `Util/PrologueStage`, `Util/PrologueHydra`, `Util/PrologueBody`, `Util/PrologueWake`, server
+`PrologueService`, `Util/PrologueRules`, `Config/Prologue`): before the welcome flight, on a new player's very first join,
+you at your strongest lose everything to the Hydra (~2 min). Act 1 (a cinematic on your screen): the Hydra's crystal lair
+at night high above the world (each player's its own spot, `PrologueRules.arenaCentre`; the Dungeon's sigil, pillars and
+crystals), "Long ago, you were the greatest card master...", the young Hydra rises and roars, "FIGHT!" (no creature
+out yet: owner 2026-11-15, it blocked the view). The Hydra here is the young one, its own model `prismHydraYoung`: one horned head and two crystal buds on its chest
+where the other heads will grow, in the Dungeon's Prism Hydra's look (owner's pick A 2026-11-15, after the cut two-headed
+model showed a hole; Meshy, `tools/blender/rig_prismHydraYoung.py`; the five-headed one stands in until it's in the
+game). Act 2 is the real boss fight (owner 2026-11-14: "just use the combat we already built"): BattleService
+against the Prism Hydra with the boss HUD, its intro card, cuts, the skill, supers, swaps and dodges, its rings and
+phases, with a lent loadout: the Rift Reaper in hand and Solarion, Voidmaw and Stormking (max level, max stars, Grade S,
+foil) as your party, Solarion coming out as the fight starts, lent by `PrologueService` (`CardService` / `PartyService` /
+`WeaponService` `.Lend`: in memory only, never saved, levelled, traded or switched; your own party is what's saved
+meanwhile; the first-sword popup never shows for it). The Hydra hits at `FIGHT.atk` 30 (the real one's 46) and its HP is
+held between two curves: never at 25% before 35 s, always there by 60 s (`PrologueRules.hpShare`), then the fight ends
+with no rewards, records, rest, knockout or end screen (`BattleService` RunOptions `prologue`; tested idle in Studio: 60
+s, Solarion never fainted). Run ends it early. Act 3 (a cinematic, owner 2026-11-15): Solarion goes back into its card
+under a flash and the Hydra looms close (`KNOCK.near`); its strike shatters your weapon, your aura goes out and you're
+thrown back tumbling onto your face (`PrologueRules.knock`, never off the floor: `knockRoom`); you crawl toward it,
+reaching, arms sweeping along the floor (`PrologueRules.crawl`; your joints posed after the animations, `Util/PrologueBody`),
+while every card you have flies out of you into its mouth (your three Legendaries first, then 17 others:
+`PrologueRules.stolenCards`), its runes flaring; your head sinks; a flash and it has five heads (the Dungeon's Hydra,
+grown from your power); you black out (blur, dark; the server gives your own loadout back in the dark: steps "vanish",
+"take"); "...until the Hydra took everything." You wake in town on your back on the street in front of your shop
+(`Util/PrologueWake`): the camera is your eyes, your eyelids open with a blink between (`PrologueRules.lids`) while the
+blur clears, Pish and Chikin lean in over you (the town's own two hidden meanwhile), Pish barks, "Hey! Wake up!", "Are
+you okay?", Chikin: "The Hydra took it all? Let's get it all back!"; you get up, they hop for joy, then the welcome
+flight and Pish's tutorial as before (they wait for it). Only `seenPrologue` is saved (v29: saves from before it count it
+as seen). The opening and the fight can't be skipped (owner 2026-11-15: "the first fight should not be skippable. only
+after the fight when hydra is taking your cards"): the Skip button shows 1 s into act 3, and the fight has no Run
+(BattleStarted `noRun`; BattleService refuses a Run anyway with "No running from this fight!"). Skip, a death or a
+respawn end it the same way: everything put back (your own loadout, HUD, lighting, camera, your body), seen. Music (owner
+2026-11-15, `Config/Music` PROLOGUE, APM; MusicController follows the local PrologueMusic attribute): Mythic Mountain in
+the lair, Dragons Attack in the fight (instead of the boss drone), Tragic Loss as it takes everything, Rising Hope as you
+wake (volumes 0.05, 0.05, 0.06, 0.04: owner "lower volume"); then the town's. Its models are fetched during the
+loading screen. Studio: `/prologue` plays it now, `/prologue reset` plays it on your next join (the admin panel too).
+**Welcome cinematic** (`WelcomeController`, `WelcomeService`, `Config/Welcome`, `Util/WelcomePath`): on a
 player's first visit, a 12 s flight past Forest Falls, Frostpeak, over the plaza and past Ember Canyon to their own shop,
 as a time-lapse from morning to sunset that holds sunset for the last half; cinema bars, a title, the rest of the UI off
 and the player standing still, a Skip button (top right) from the first frame. Livelier since the owner 2026-11-11 ("a
@@ -3854,7 +3891,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v28)
+### 10.4 Player data schema (v29)
 ```lua
 {
     version = 21,
@@ -3902,6 +3939,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     windows = { { style = "Square", side = "left", at = 0 } }, -- the shop's windows: style, wall, studs from its middle (WindowService; v26)
     luck = { x2 = 0, x3 = 0 }, -- luck bought with Robux: seconds left of 2x and 3x Super Luck (LuckService, Config/Luck; v27)
     unlocks = { ExtraJobSlot = true }, -- one-time unlocks bought as developer products (MonetizationService; v28)
+    seenPrologue = false, -- the prologue played (WelcomeService; new saves false, saves from before true: v29)
 }
 ```
 Bump `version` and write a migration whenever the shape changes.
@@ -3920,7 +3958,7 @@ place loads it at once; before, the session only closed after they'd left, and t
 `TeleportInitFailed`), `Reclaim` opens the session again and the next save writes it. Changes in the moment before
 they leave aren't saved. A session this server ended (leaving, a hand-off) never kicks the player.
 
-Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; v17 added `tutorial` (the first visit with Pish; existing saves "done" with their first pack given and his gift still to come, so only new players go through it); each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity); `tutorial` gained `customerSent` (read as false when missing, true for v17's existing shops; no bump: an older server dropping it allows one more of Pish's customers). v18 added `combat` (Chikin's combat tutorial, the same shape; done for every shop past Pish's tour, still to do for a player mid-way through it). v19 added `dungeon` (`secretFound` and `seenIntro` false for everyone; a junk value is replaced). v20 added `title` ("" for everyone: automatic, the same title as before; a saved string kept, junk replaced). v21 added `upgrades`, `skipTokens` and `purchases` (empty for everyone; a good skip count kept, junk replaced). v22 added `support` (no gifts for everyone; good counts kept). v23 added `titles` (`known`, `fresh` empty, `seeded` false: the first load counts the titles a player already has without telling). v24 added `turts` (nothing bought for everyone; good ids kept, a broken "restock now" roll dropped). v25 added `decor` (Cozy Wood in use and no looks bought for everyone; good ids kept, cleaned against Config/Decor on load). v26 added `windows` (none for everyone; a saved list kept and cleaned on load by `WindowRules.clean`, which pays back any window that no longer fits). A service that didn't load for a player (e.g. no free plot) never overwrites
+Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; v17 added `tutorial` (the first visit with Pish; existing saves "done" with their first pack given and his gift still to come, so only new players go through it); each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity); `tutorial` gained `customerSent` (read as false when missing, true for v17's existing shops; no bump: an older server dropping it allows one more of Pish's customers). v18 added `combat` (Chikin's combat tutorial, the same shape; done for every shop past Pish's tour, still to do for a player mid-way through it). v19 added `dungeon` (`secretFound` and `seenIntro` false for everyone; a junk value is replaced). v20 added `title` ("" for everyone: automatic, the same title as before; a saved string kept, junk replaced). v21 added `upgrades`, `skipTokens` and `purchases` (empty for everyone; a good skip count kept, junk replaced). v22 added `support` (no gifts for everyone; good counts kept). v23 added `titles` (`known`, `fresh` empty, `seeded` false: the first load counts the titles a player already has without telling). v24 added `turts` (nothing bought for everyone; good ids kept, a broken "restock now" roll dropped). v25 added `decor` (Cozy Wood in use and no looks bought for everyone; good ids kept, cleaned against Config/Decor on load). v26 added `windows` (none for everyone; a saved list kept and cleaned on load by `WindowRules.clean`, which pays back any window that no longer fits). v27 added `luck` (no bought luck for everyone). v28 added `unlocks` (none for everyone). v29 added `seenPrologue` (true for every save from before it, so the prologue only greets new players). A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
 
 ### 10.6 UI style and HUD

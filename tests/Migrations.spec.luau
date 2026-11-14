@@ -259,6 +259,19 @@ return {
 
 	-- Turts' rug shop (spec 2026-11-13-turts-shop-design): the restock a player last saw, what they bought in it, and a
 	-- "restock now" roll if they bought one
+	-- The prologue (spec 2026-11-14-prologue-hydra-design): new saves play it once; every save from before counts it as
+	-- seen, so existing players never see it
+	["v29: saves from before the prologue count it as seen"] = function()
+		local data: any = { version = 28, cash = 50 }
+		Migrations.run(data, 29)
+		expect.equal(data.version, 29)
+		expect.equal(data.seenPrologue, true)
+		expect.equal(data.cash, 50, "the rest untouched")
+		local kept: any = { version = 28, seenPrologue = false }
+		Migrations.run(kept, 29)
+		expect.equal(kept.seenPrologue, false, "a flag already there is kept")
+	end,
+
 	-- One-time unlocks bought as developer products (the Extra Job Slot, owner 2026-11-14): none at first; a saved list
 	-- kept for MonetizationService to clean
 	["v28: every save starts with no bought unlocks; a saved list kept"] = function()

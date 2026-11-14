@@ -194,6 +194,8 @@ AdminPanel.SECTIONS = {
 			{ label = "Night", command = "/time night" },
 			{ label = "Dawn", command = "/time dawn" },
 			{ label = "Replay intro", command = "/intro" },
+			{ label = "Play the prologue", command = "/prologue" },
+			{ label = "Prologue on next join", command = "/prologue reset" },
 			{ label = "Music 1: White Owl", command = "/music 1" },
 			{ label = "Music 2: Wistful Wonderings", command = "/music 2" },
 			{ label = "Music 3: Soft Tranquility", command = "/music 3" },

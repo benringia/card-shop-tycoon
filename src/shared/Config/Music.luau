@@ -93,6 +93,62 @@ return {
 		fade = 0.5,
 	},
 
+	-- The prologue (owner 2026-11-15: "add some music"): a piece for each part, picked by PrologueController (its local
+	-- PrologueMusic attribute, MusicController): the Hydra's lair as it rises, the fight (in place of the boss fights'
+	-- drone), the Hydra taking everything and your blackout, and waking up in town. APM pieces (Roblox-licensed); Studio:
+	-- "/music <key> <n> [volume]" to try the options.
+	PROLOGUE = {
+		lair = {
+			key = "prologue",
+			tracks = { "rbxassetid://1843501727" }, -- "Mythic Mountain" (no percussion): dark, rising, epic
+			options = {
+				option("Mythic Mountain, no percussion (dark epic, rising)", "1843501727"),
+				option("Ghastly Unknown (dark fantasy underscore)", "1843501883"),
+				option("Dark Minds (haunting choir)", "9041780692"),
+			},
+			volume = 0.05, -- owner 2026-11-15: "lower volume" (0.1 first)
+			compressor = LEVELER,
+			fade = 1.5,
+		},
+		fight = {
+			key = "prologuefight",
+			tracks = { "rbxassetid://9038842025" }, -- "Dragons Attack A": epic orchestral battle
+			options = {
+				option("Dragons Attack A (epic orchestral battle)", "9038842025"),
+				option("Combat Of Giants (epic adventure trailer)", "1839391532"),
+				option("Battle Of Wonderland (epic fantasy)", "1845108839"),
+				option("Evil Overlord (A), with choir (epic action)", "9044584201"),
+			},
+			volume = 0.05, -- under the fight's hits and skills (owner 2026-11-15: "lower volume"; 0.1 first)
+			compressor = LEVELER,
+			fade = 0.8,
+		},
+		taken = {
+			key = "prologuetaken",
+			tracks = { "rbxassetid://1839850977" }, -- "Tragic Loss": slow, sad strings
+			options = {
+				option("Tragic Loss (sad strings)", "1839850977"),
+				option("Hope Amidst Desolation 30B (strings)", "1835239060"),
+				option("Funeral for a King (b 30)", "1841800780"),
+			},
+			volume = 0.06, -- owner 2026-11-15: "lower volume" (0.12 first)
+			compressor = LEVELER,
+			fade = 1,
+		},
+		wake = {
+			key = "prologuewake",
+			tracks = { "rbxassetid://1842797951" }, -- "Rising Hope" (underscore): gentle, hopeful
+			options = {
+				option("Rising Hope, underscore (gentle, hopeful)", "1842797951"),
+				option("Tender Reunion (warm)", "9038472013"),
+				option("Hope Rising (hopeful)", "1836781759"),
+			},
+			volume = 0.04, -- owner 2026-11-15: "lower volume" (0.08 first)
+			compressor = LEVELER,
+			fade = 2,
+		},
+	},
+
 	-- The Wild valley (owner 2026-11-04: "finalize the wilds": music in the valley and in every boss arena). Each area
 	-- (Config/WildValley BIOMES order) has its own piece, crossfading as you walk from one to the next (on a pass
 	-- between them the last one keeps playing); each boss arena (the same zone order) has its own battle piece while

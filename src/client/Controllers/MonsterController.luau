@@ -14,6 +14,7 @@ local TweenService = game:GetService("TweenService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Bosses = require(Config:WaitForChild("Bosses"))
+local Prologue = require(Config:WaitForChild("Prologue"))
 local Dungeon = require(Config:WaitForChild("Dungeon"))
 local Cards = require(Config:WaitForChild("Cards"))
 local Party = require(Config:WaitForChild("Party"))
@@ -554,8 +555,10 @@ local function add(marker: BasePart)
 	end
 	local elite = marker:GetAttribute("Elite") == true
 	local color = Cards.ELEMENTS[info.element] or Color3.new(0.6, 0.6, 0.6)
-	-- A boss model, when it exists, is saved under the boss's id
-	local template = CreatureVisuals.getTemplate("MonsterModels", if boss then bossId :: string else species, Wild.MAX_MODEL_PARTS)
+	-- A boss model, when it exists, is saved under the boss's id; the prologue's Hydra (PrologueService's marker) has its
+	-- own two-headed one (Config/Prologue HYDRA.model; set before the marker is parented, so it's here already)
+	local prologueModel = if marker:GetAttribute("Prologue") == true then CreatureVisuals.getTemplate("MonsterModels", Prologue.HYDRA.model, Wild.MAX_MODEL_PARTS) else nil
+	local template = prologueModel or CreatureVisuals.getTemplate("MonsterModels", if boss then bossId :: string else species, Wild.MAX_MODEL_PARTS)
 	local model = if template then template:Clone() else makePlaceholder(info.shape, color)
 	CreatureVisuals.strip(model)
 	model.Name = `{species}_{marker:GetAttribute("MonsterId")}`

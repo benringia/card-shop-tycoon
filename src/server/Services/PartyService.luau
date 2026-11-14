@@ -44,6 +44,8 @@ local PartyService = {}
 local POST_STEP = 0.12 -- share of the way a sent creature's marker moves each tick (a walk, not a dash)
 
 local states: { [Player]: PartyState } = {}
+-- the prologue (PrologueService): the player's own party, kept here while lent cards fill the slots; it's what's saved
+local ownParty: { [Player]: { slots: { [number]: string }, summoned: number? } } = {}
 local changeBlocker: ((player: Player) -> string?)? = nil -- DungeonService: the run's party is set
 local allowAction = RateLimiter.new(Party.ACTION_COOLDOWN)
 local creaturesFolder: Folder
@@ -331,6 +333,10 @@ local function onSetSlot(player: Player, slot: unknown, target: unknown)
 		notify(player, "You can't change your party during a fight.", true)
 		return
 	end
+	if ownParty[player] then
+		notify(player, "You can't change your party right now.", true)
+		return
+	end
 	local blocked = if changeBlocker then changeBlocker(player) else nil
 	if blocked then
 		notify(player, blocked, true)
@@ -398,6 +404,10 @@ local function onSummon(player: Player, slot: unknown)
 		notify(player, "You can't change your party during a fight.", true)
 		return
 	end
+	if ownParty[player] then
+		notify(player, "You can't change your party right now.", true)
+		return
+	end
 	if slot == nil then
 		unsummon(player)
 	elseif isSlot(slot) and state.slots[slot :: number] then
@@ -427,6 +437,55 @@ function PartyService.SummonSlot(player: Player, slot: number): boolean
 	applyHustle(player)
 	sendParty(player)
 	return true
+end
+
+-- The prologue: lent cards (CardService.Lend) fill the slots in order, none summoned yet (SummonSlot brings the first
+-- out); the player's own party is kept and saved. False if there's no state, a fight is on or it's already lent.
+function PartyService.Lend(player: Player, beastIds: { string }): boolean
+	local state = states[player]
+	if not state or state.locked or ownParty[player] then
+		return false
+	end
+	ownParty[player] = { slots = state.slots, summoned = state.summoned }
+	state.slots = {}
+	for slot, beastId in beastIds do
+		if slot <= Party.PARTY_SIZE then
+			state.slots[slot] = beastId
+		end
+	end
+	state.summoned = nil
+	despawn(player)
+	applyHustle(player)
+	sendParty(player)
+	return true
+end
+
+-- The prologue: the lent creature that's out goes back into its card (the Hydra takes it); only while lent
+function PartyService.Recall(player: Player)
+	local state = states[player]
+	if not state or not ownParty[player] or state.locked then
+		return
+	end
+	unsummon(player)
+	sendParty(player)
+end
+
+-- The player's own party back (its summoned creature out again)
+function PartyService.EndLend(player: Player)
+	local state = states[player]
+	local own = ownParty[player]
+	if not state or not own then
+		return
+	end
+	ownParty[player] = nil
+	state.slots = own.slots
+	state.summoned = own.summoned
+	despawn(player)
+	if state.summoned then
+		spawnMarker(player)
+	end
+	applyHustle(player)
+	sendParty(player)
 end
 
 -- One XP Tonic (a boss drop) on a card in the party; never wasted on a max-level card
@@ -497,16 +556,18 @@ local function save(player: Player, data: PlayerData)
 	if not state then
 		return
 	end
+	local own = ownParty[player] -- lent cards are never saved
 	local slots: { [string]: string } = {}
-	for slot, beastId in state.slots do
+	for slot, beastId in if own then own.slots else state.slots do
 		slots[tostring(slot)] = beastId
 	end
-	data.party = { slots = slots, summoned = state.summoned }
+	data.party = { slots = slots, summoned = if own then own.summoned else state.summoned }
 end
 
 local function unload(player: Player)
 	despawn(player)
 	states[player] = nil
+	ownParty[player] = nil
 end
 
 function PartyService.Start()

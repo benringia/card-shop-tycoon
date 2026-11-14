@@ -69,8 +69,31 @@ return {
 		end
 	end,
 
+	-- The prologue (owner 2026-11-15: "add some music"): a piece for each of its parts
+	["the prologue has a piece for each part, found by its key"] = function()
+		local prologue = (Music :: any).PROLOGUE
+		assert(prologue, "the prologue's music")
+		for _, part in { "lair", "fight", "taken", "wake" } do
+			local place = prologue[part]
+			assert(place and #place.tracks >= 1, `{part}: a piece`)
+			expect.equal(MusicRules.find(Music, place.key), place)
+			assert(place.volume > 0 and place.volume <= 0.3, `{part}: under the fight and the cinematics' sounds`)
+			local listed = false
+			for _, option in place.options do
+				assert(string.match(option.id, "^rbxassetid://%d+$"), option.name)
+				listed = listed or option.id == place.tracks[1]
+			end
+			assert(listed, `{part}: its piece is one of its options (/music can play it back)`)
+		end
+	end,
+
 	["music keys are unique across the town, the Wild, the Frontier and the opening"] = function()
 		local seen = { [Music.TOWN.key] = true, [Music.OPENING.key] = true, [(Music :: any).WELCOME.key] = true }
+		for _, place in (Music :: any).PROLOGUE do
+			assert(not seen[place.key], `{place.key} twice`)
+			assert(string.match(place.key, "^%a+$"), `{place.key}: /music reads letters only`)
+			seen[place.key] = true
+		end
 		for _, world in { Music.WILD, (Music :: any).FRONTIER } do
 			for _, list in { world.areas, world.arenas } do
 				for _, place in list do

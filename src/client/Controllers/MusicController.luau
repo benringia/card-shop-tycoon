@@ -142,7 +142,13 @@ function MusicController.Start()
 			local inTown = not FRONTIER and MusicRules.inTown(x, z, Town.BOUNDS, Music.TOWN.margin)
 			last = MusicRules.place(Music, arena, area, inTown, last, World)
 		end
-		-- The welcome flight and the pack opening have their own music while they show; where you are (`last`) is kept
+		-- The prologue, the welcome flight and the pack opening have their own music while they show; where you are
+		-- (`last`) is kept. The prologue's part: its local PrologueMusic attribute (PrologueController)
+		local part = player:GetAttribute("PrologueMusic")
+		local prologue = (Music :: any).PROLOGUE
+		if typeof(part) == "string" and prologue and prologue[part] then
+			return prologue[part]
+		end
 		if player:GetAttribute("WelcomePlaying") == true then
 			return (Music :: any).WELCOME
 		end
@@ -211,7 +217,7 @@ function MusicController.Start()
 		end)
 	end
 
-	for _, attribute in { "MusicPreviewPlace", "MusicPreview", "MusicPreviewVolume", "WelcomePlaying" } do
+	for _, attribute in { "MusicPreviewPlace", "MusicPreview", "MusicPreviewVolume", "WelcomePlaying", "PrologueMusic" } do
 		player:GetAttributeChangedSignal(attribute):Connect(update)
 	end
 	task.spawn(function()

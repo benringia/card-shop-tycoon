@@ -27,6 +27,7 @@ local Chikin = require(Config:WaitForChild("Chikin"))
 local Dungeon = require(Config:WaitForChild("Dungeon"))
 local Defeat = require(Config:WaitForChild("Defeat"))
 local Party = require(Config:WaitForChild("Party"))
+local Prologue = require(Config:WaitForChild("Prologue"))
 local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 -- The server wild map in the main game, the Frontier in the Frontier place (same shape, plus Frontier drops)
 local Wild = Place.getWorld()
@@ -41,6 +42,7 @@ local DungeonRules = require(Shared:WaitForChild("Util"):WaitForChild("DungeonRu
 local FightFxRules = require(Shared:WaitForChild("Util"):WaitForChild("FightFxRules"))
 local MarkerNames = require(Shared:WaitForChild("Util"):WaitForChild("MarkerNames"))
 local PartyRules = require(Shared:WaitForChild("Util"):WaitForChild("PartyRules"))
+local PrologueRules = require(Shared:WaitForChild("Util"):WaitForChild("PrologueRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Swords = require(Config:WaitForChild("Swords"))
 local Weapons = require(Config:WaitForChild("Weapons"))
@@ -117,6 +119,7 @@ type Fight = {
 	pylons: { [string]: BasePart }, -- the Dungeon's room 3: its pylons by sim id ("b:Pylon1"...), none elsewhere
 	onPylon: ((kind: string, pylon: BasePart?) -> ())?, -- RunOptions.onPylon
 	leashCenter: Vector3?, -- RunOptions.leashCenter: the leash from here instead of `center`
+	prologue: boolean, -- RunOptions.prologue
 }
 
 -- One summon on its way: to `to` (a bite's reach from its pet at `face`) at `speed` studs a second, from `startAt`
@@ -126,8 +129,10 @@ type SummonRun = { to: Vector3, face: Vector3, speed: number, startAt: number }
 -- The Dungeon: a room's pack (`monster` is its first, `pack` the others) and the HP left from earlier rooms
 -- (spec 2026-11-11-dungeon-puzzles) `swords`: players fight in this room with their swords (room 3); `pylons`: the
 -- crystal pylons shielding its pack (BattleSim pylons, broken by swords); `onPylon`: told "pylonBroken" (with the part)
--- and "shieldDown" so the run can show them
-export type RunOptions = { pack: { Monster }?, hpLeft: { [Player]: { [string]: number } }?, run: boolean?, swords: boolean?, pylons: { { part: BasePart, hp: number } }?, onPylon: ((kind: string, pylon: BasePart?) -> ())?, packAtk: number?, leashCenter: Vector3?, swordOnly: boolean? }
+-- and "shieldDown" so the run can show them. `prologue`: the prologue's fight (PrologueService, Config/Prologue): the
+-- boss hits at FIGHT.atk, its HP is held to PrologueRules' pace and the fight ends at END_SHARE with no rewards,
+-- records, rest or knockout
+export type RunOptions = { pack: { Monster }?, hpLeft: { [Player]: { [string]: number } }?, run: boolean?, swords: boolean?, pylons: { { part: BasePart, hp: number } }?, onPylon: ((kind: string, pylon: BasePart?) -> ())?, packAtk: number?, leashCenter: Vector3?, swordOnly: boolean?, prologue: boolean? }
 
 local BattleService = {}
 
@@ -152,6 +157,7 @@ local startBlockers: { (player: Player) -> string? } = {} -- ArenaService: no wi
 -- BossService: a boss win's items (the loot rules live there); its result goes to the client as summary.boss
 local fightEndedHandlers: { (monster: Monster, result: string, hpLeft: { [Player]: { [string]: number } }, stillIn: { Player }) -> () } = {}
 local memberLeftHandlers: { (player: Player, monster: Monster) -> () } = {}
+local prologueEndedHandlers: { (player: Player) -> () } = {}
 local bossRewards: ((player: Player, monster: Monster, fight: { seconds: number, fighterIds: { string }, contributed: boolean }) -> any)? = nil
 
 local function notify(player: Player, message: string, isError: boolean)
@@ -995,7 +1001,7 @@ local function release(fight: Fight, member: Member): { string }
 	end
 	-- Fainted fighters rest, whatever the result (a run or a win doesn't wake them)
 	local rested = {}
-	local entries = resting[player]
+	local entries = if fight.prologue then nil else resting[player] -- the prologue's lent cards never rest
 	if entries then
 		for _, beastId in BattleSim.getFainted(fight.sim, "a") do
 			if table.find(member.partyIds, beastId) then
@@ -1041,6 +1047,27 @@ end
 
 local function endFight(fight: Fight, result: string)
 	if fight.ended then
+		return
+	end
+	if fight.prologue then
+		-- the prologue (PrologueService): the Hydra goes (act 3's cinematic one takes its place where it stood), nothing
+		-- is paid, recorded or rested, nobody is knocked out
+		fight.ended = true
+		running[fight] = nil
+		for _, add in fight.adds do
+			WildService.Defeat(add)
+		end
+		local hydraAt = fight.monster.marker.CFrame
+		WildService.Defeat(fight.monster)
+		for player, member in table.clone(fight.members) do
+			release(fight, member)
+			if player.Parent then
+				Remotes.BattleEnded:FireClient(player, { result = "prologue", hydraAt = hydraAt })
+			end
+			for _, handler in prologueEndedHandlers do
+				task.spawn(handler, player)
+			end
+		end
 		return
 	end
 	local reported = if fight.sim.timedOut then "timeout" else result
@@ -1213,7 +1240,8 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 	-- every card resting in a dangerous place: the player alone with their sword (Util/DangerRules), no card XP
 	local swordOnly = options ~= nil and options.swordOnly == true
 	local hpLeft = if options then options.hpLeft else nil
-	local stats = if boss then { hp = boss.hp, atk = boss.atk, spd = boss.spd } else CombatMath.getMonsterStats(Wild, monster.species, monster.level, monster.elite)
+	local prologue = options ~= nil and options.prologue == true
+	local stats = if boss then { hp = boss.hp, atk = if prologue then Prologue.FIGHT.atk else boss.atk, spd = boss.spd } else CombatMath.getMonsterStats(Wild, monster.species, monster.level, monster.elite)
 	if not stats or #players == 0 then
 		return false
 	end
@@ -1356,6 +1384,7 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 		pylons = pylonParts,
 		onPylon = if options then options.onPylon else nil,
 		leashCenter = if options then options.leashCenter else nil,
+		prologue = prologue,
 	}
 	if boss then
 		sim.ringCheck = function(info: BattleSim.RingInfo): boolean
@@ -1397,7 +1426,9 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 		CardService.SetFighting(player, member.leaderId, true)
 		if boss then
 			SwordService.SetBackHidden(player, true)
-			SwordService.CountFight(player)
+			if not prologue then
+				SwordService.CountFight(player) -- the prologue doesn't count as one of your first boss fights
+			end
 		end
 		local humanoid = (player.Character :: Model):FindFirstChildOfClass("Humanoid")
 		if humanoid then
@@ -1457,6 +1488,7 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 			pylons = pylonList(fight), -- room 3: the pylons to aim at while they stand
 			allies = allies,
 			group = #members > 1,
+			noRun = prologue or nil, -- the prologue's fight: no Run button (onRun refuses it too)
 			foes = foes,
 			side = "a",
 			markers = markers,
@@ -1577,6 +1609,20 @@ end
 
 -- DevService's /bosshp: the boss of this player's fight down to `share` of its HP (Studio only), to reach a boss's
 -- summons, phases and heals without fighting there
+-- The prologue's fight (PrologueService): the player alone against `monster` (its Prism Hydra), with the lent loadout
+-- already in place. Every check is the caller's.
+function BattleService.StartPrologue(player: Player, monster: Monster): boolean
+	if fights[player] or not getRoot(player) then
+		return false
+	end
+	return startFight({ player }, monster, { prologue = true })
+end
+
+-- Told when a player's prologue fight is over (however it ended)
+function BattleService.OnPrologueEnded(handler: (player: Player) -> ())
+	table.insert(prologueEndedHandlers, handler)
+end
+
 function BattleService.SetBossHpShare(player: Player, share: number): boolean
 	local fight = fights[player]
 	if not RunService:IsStudio() or not fight or not fight.monster.boss then
@@ -1679,6 +1725,10 @@ local function onRun(player: Player)
 	local fight = fights[player]
 	local member = if fight then fight.members[player] else nil
 	if not allowRun(player) or not fight or not member or inIntro(fight) then
+		return
+	end
+	if fight.prologue then
+		Blocked.tell(player, Prologue.NO_RUN) -- the story's fight is fought to its end (owner 2026-11-15)
 		return
 	end
 	-- In a group fight, Run is leaving (the others fight on), even for the last one still in it: never a run roll
@@ -1924,6 +1974,21 @@ local function stepFights(dt: number)
 			continue -- the intro: nothing moves yet
 		end
 		handleEvents(fight, BattleSim.step(fight.sim, dt))
+		if fight.prologue and not fight.sim.result then
+			-- the prologue's pace: its HP between PrologueRules' curves, the fight over at END_SHARE
+			local hydra = BattleSim.getFighter(fight.sim, MONSTER_ID)
+			if hydra and hydra.maxHp > 0 then
+				local share = hydra.hp / hydra.maxHp
+				local held = PrologueRules.hpShare(fight.sim.time, 1 - share, Prologue)
+				if math.abs(held - share) * hydra.maxHp >= 1 then
+					BattleSim.setHpShare(fight.sim, MONSTER_ID, held)
+				end
+				if PrologueRules.done(held, Prologue) then
+					endFight(fight, "prologue")
+					continue
+				end
+			end
+		end
 		moveSummons(fight, dt)
 		for _, member in fight.members do
 			followDebuff(fight, member)

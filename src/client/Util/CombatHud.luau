@@ -96,7 +96,7 @@ export type Callbacks = {
 	pet: () -> (),
 	signature: () -> (),
 	swap: (id: string) -> (),
-	run: () -> (),
+	run: (() -> ())?, -- nil: no Run button (the prologue's fight can't be run from)
 }
 export type Hud = {
 	update: (view: View) -> (),
@@ -794,8 +794,10 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		pet = callbacks.pet,
 		signature = callbacks.signature,
 		swap = onSwap,
-		run = callbacks.run,
 	}
+	if callbacks.run then
+		presses.run = callbacks.run
+	end
 	-- The tooltip: the button's name in its colour, then what it does, just above the button
 	local tip = Instance.new("Frame")
 	tip.Name = "ButtonTip"
@@ -884,7 +886,7 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 	end
 
 	for _, name in (if creatureOnly then WILD_ORDER else BUTTON_ORDER) do
-		if name ~= "attack" or not clicks then
+		if (name ~= "attack" or not clicks) and presses[name] then
 			buttons[name] = makeButton(root, name, presses[name], onTip)
 		end
 	end

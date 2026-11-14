@@ -172,6 +172,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	CreatureTag = require("./CreatureTag.spec"),
 	BoughtLuck = require("./BoughtLuck.spec"),
 	UnlockRules = require("./UnlockRules.spec"),
+	PrologueRules = require("./PrologueRules.spec"),
 	DebuffRules = require("./DebuffRules.spec"),
 	SwapKeys = require("./SwapKeys.spec"),
 	SummonMotion = require("./SummonMotion.spec"),
