@@ -634,15 +634,16 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
   until 170, `Party.CULL`, `Util/CreatureCull`); the rest stay invisible server markers, so a full server stays light
   on phones. Most cards use the bought Ultra Detailed pack (`Party.CREATURE_MODELS`: a pack model per card,
   a few shared ones tinted to their element); two Legendaries use the bought Crystal Titans pack with its own walk,
-  run and idle animations (Stormking is now an original storm titan beetle and Tideborne Kirin (was Aurora Drake) an original celestial kirin;
+  run and idle animations (Stormking is now an original storm titan beetle and Tideborne Kirin (was Aurora Drake) an original colossal celestial sea kirin, remade 2026-11-14;
   `Util/KeyframePlayer` plays the saved animations on each client). Original Blender models are replacing
   them card by card (`Originals` pack, `tools/blender/`, docs/creatures.md): Boltlynx (cartoon electric lynx, generated with Meshy), Cindercub (fire bear cub, Meshy), Zappit (lavender electric bunny, Meshy), Mossmole (forest mole with a mushroom garden, Meshy), Petalpaw (flower squirrel, Meshy), Gloomlet (flying shadow bat, Meshy), Ashbeak (ember chick, Meshy), Shellshy (shy baby sea turtle, Meshy), Fizzlebug (flying electric bee, Meshy), Wispurr (ghost kitten, Meshy), Emberwing (flying fire swallow, Meshy), Tidecaller (sea dragon, Meshy), Briarhorn (thorn-vined forest bull, Meshy), Abyssal Koi (swimming abyss fish, Meshy), Thunderhorn (gold-armoured thunder stag, Meshy), Riftwalker (void dragon, Meshy), Cinder Titan (volcano gorilla, Meshy), Voidmaw
-  (cosmic void dragon, Meshy), Solarion (sun fire god titan, Meshy),
+  (cosmic void dragon, Meshy), Solarion (eclipse sun phoenix, Meshy, flies; remade 2026-11-14, before it a sun god titan),
   Sprouthop (tree sprite), Stormjack (storm ram, Meshy), Infernox (T-rex), Puffpuddle (sea otter on all fours),
   Blazehound (flame dachshund), Thornback (thorn boar, Meshy), Duskstalker (shadow wolf, Meshy), Eclipse Fox
   (shadow kitsune, Meshy, three tails built in code) and Voltkit (storm pangolin, Meshy),
   each with its own signature idle; the more common the card, the cuter the creature. The Legendaries stand 2.2x their rarity size (about 9
-  studs), follow further out to match, wear their element (`Util/BeastAura`, `Config/BeastFx`; owner 2026-11-13,
+  studs), follow further out to match, wear their element (`Util/BeastAura`, `Config/BeastFx`; the old rarity outlines and a Legendary's own point light
+  removed 2026-11-14, owner: "kirin is too bright, also remove the blue outlines, that's old effects"; owner 2026-11-13,
   "finalize all" the pet glows and auras: the store packs' effects like the weapons', docs/weapons.md "Pack effects",
   on bones spread over the body, rising from the ground, a flickering light; Ember the Euphoric pack's fire kept thin,
   Tide its water, Bloom the Yona aura in green, Shade in violet over dark smoke, Volt in bright yellow with the pack's
@@ -1611,7 +1612,9 @@ group, checked before its fragments and every time (not only the first). Below i
   creatures stand back like the other ranged ones (`FightFxRules.isRanged`). The limbs attack with the body (owner 2026-11-05: the Eclipse Fox "doesnt have a basic attack
   animation"; `Party.PET_ANIM` `ATTACK_*`): the charge lowers the head and raises the tail, a strike bites, a combo
   swipes a front paw (two-legged rigs: an arm) each third, left, right, left, the head dipping with each, and a cast
-  rears the head back then thrusts it forward. Studio: `/attackfx [C|B|A|S]` plays three of your summoned creature's
+  rears the head back then thrusts it forward. A flyer without arms (the sun phoenix, Emberwing...) fights with its
+  wings (owner 2026-11-14, `PET_ANIM.WING_FIGHT`): raised for a charge, a sunburst and a super's leap, beaten down on a
+  strike's hit and a cast's throw, one at a time with each combo swipe. Studio: `/attackfx [C|B|A|S]` plays three of your summoned creature's
   basic attacks at a dummy. Ranged attackers (a projectile or a bolt: Ember, Tide, Volt, `FightFxRules.isRanged`) stand
   `Combat.RANGED_BACK` 7 studs further back from the foe than their ring spot (owner 2026-11-03, "ranged, not
   melee": 13 studs from a wild monster, 22-28 from a boss), set on the server (`BattleService` `standSpot`; a swap or
@@ -3884,7 +3887,12 @@ their saved data.
   an element's scene, each dog's name on a plate (docs/card-art.md, `tools/ui-art/make_dog_cards.py`, uploaded,
   `DOG_CARDS`), each with a
   rarity rim. The right page: the place's name outside town ("THE WILD", "THE FRONTIER", "THE DUNGEON"), the count "N /
-  9", the step, the slow-save note and a tip in a cream bubble; each place has its accent (town gold, Wild green,
+  9", the step, Pish trotting, the slow-save note and a tip in a cream bubble. Something moves from the first frame
+  (owner 2026-11-14: "before the cards start moving at first glance look static", option B of three): the step's dots
+  count up (`LoadingRules.dotted`, the hidden ones see-through so the words keep their size) and Pish trots on the spot
+  under it over a road of dashes in the accent colour running back under him (his trot sheet, `TROT`,
+  `LoadingRules.trotFrame` / `roadShift`), until the screen is gone; never progress, the pockets alone say how far.
+  Each place has its accent (town gold, Wild green,
   Frontier icy blue, Dungeon violet) on the count, the stitching and "Ready!". Text is sized by the binder
   (`TextScaled`), so it fits any screen. When the last card has landed, "Ready!" a moment (`READY_HOLD`), then a fade.
   A teleport's screen covers the gap while this place's configs arrive, then a fresh one in this place's look takes

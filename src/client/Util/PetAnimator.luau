@@ -44,6 +44,7 @@ export type Rig = {
 	bounce: number,
 	sway: number?, -- Party.CREATURE_STYLE: a heavy gait's hip roll and leg swing
 	legSwing: number?,
+	legHang: { hip: number, knee: number, foot: number, sway: number }?, -- Party.CREATURE_STYLE: a flyer's hanging legs
 	gait: string?, -- Party.CREATURE_STYLE: "gallop", else a trot
 	jawAmount: number?, -- Party.CREATURE_STYLE jaw: its share of a full gape
 	phase: number, -- the walk cycle this frame, radians
@@ -198,6 +199,7 @@ function PetAnimator.attach(model: Model, root: BasePart, sourceName: string, si
 		bounce = style and style.bounce or 1,
 		sway = style and style.sway,
 		legSwing = style and style.legSwing,
+		legHang = style and style.legHang,
 		gait = style and style.gait,
 		jawAmount = style and style.jaw,
 		phase = 0,
@@ -295,6 +297,7 @@ function PetAnimator.step(rig: Rig, dt: number, now: number, walking: boolean, w
 		wingAmount = rig.wingAmount,
 		sway = rig.sway,
 		legSwing = rig.legSwing,
+		legHang = rig.legHang,
 		gait = rig.gait,
 		jawAmount = rig.jawAmount,
 		undulate = rig.undulate,

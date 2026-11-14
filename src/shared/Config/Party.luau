@@ -81,7 +81,6 @@ return {
 		Mossmole = { hang = 0, forward = 0, bend = 0, swing = 4 }, -- hugging its moss garden
 		Petalpaw = { hang = 0, forward = 0, bend = 15, swing = 24 },
 		CinderTitan = { hang = 6, forward = 8, bend = 20, swing = 30 }, -- heavy knuckle-dragging swing
-		Solarion = { hang = 0, forward = 0, bend = 8, swing = 22 }, -- a god's measured stride, arms at its sides as modelled
 		Ashbeak = { hang = 0, forward = 0, bend = 0, swing = 10 }, -- folded wings, fluttering a little
 		Fizzlebug = { hang = 0, forward = 0, bend = 15, swing = 12 },
 		Wispurr = { hang = 0, forward = 0, bend = 0, swing = 12 }, -- paws held up in front
@@ -152,7 +151,9 @@ return {
 	-- A heavy gait: stride (times PET_ANIM.STRIDE: longer, slower steps), legSwing (times LEG_SWING) and sway (times
 	-- the two-legged hip roll; above 1 it also sinks onto a bent standing knee, PET_ANIM.HEAVY_KNEE). gait "gallop":
 	-- PET_ANIM.GALLOP. jaw: the share of a full gape its Jaw_0 opens (mouths modelled shut and cut open by
-	-- rig_kit.mouth_cut crease if they gape wide; 1 when nil).
+	-- rig_kit.mouth_cut crease if they gape wide; 1 when nil). legHang: a flyer's legs hang in the air instead of
+	-- tucking up (hip, knee, foot: degrees each joint rests at, + forward; sway: degrees each swings with the beat,
+	-- PET_ANIM.LEG_HANG).
 	CREATURE_STYLE = {
 		Boltlynx = { fidgets = { "look", "tilt", "sniff", "stretch", "sit", "scratch", "yawn", "shake", "wag" }, tailSpeed = 0.45, tailAmount = 0.9, bounce = 0.5 },
 		-- Pish, the tutorial's guide puppy (spec 2026-11-09-tutorial-pish-design): a small dog's quick wag and bouncy trot;
@@ -224,9 +225,11 @@ return {
 		Thornback = { fidgets = { "look", "sniff", "sniff", "shake", "stomp", "yawn" }, tailSpeed = 1.1, tailAmount = 0.7, bounce = 0.7 }, -- a snuffling boar, its curly tail flicking
 		EclipseFox = { fidgets = { "look", "tilt", "sniff", "stretch", "sit", "scratch", "yawn", "shake" }, tailSpeed = 0.5, tailAmount = 1.1, bounce = 0.7, jaw = 0.6 },
 		Duskstalker = { fidgets = { "look", "tilt", "sniff", "stretch", "shake", "yawn" }, tailSpeed = 0.7, tailAmount = 0.9, stride = 1.1 }, -- a prowling wolf
-		Solarion = { fidgets = { "look", "stomp", "stretch", "shake", "look" }, bounce = 0.5, stride = 1.25, legSwing = 0.7, sway = 1.6 }, -- a fire god: slow, heavy, majestic steps
+		-- its legs hang relaxed in flight (owner 2026-11-14 "relaxed and natural. right now it looks stiff"; tucked, its
+		-- forward-reaching talons pointed up): the hip a little forward, the shin back, the foot drooping talons-down
+		Solarion = { fidgets = { "look", "tilt", "shake", "look" }, tailSpeed = 0.45, tailAmount = 0.7, legHang = { hip = 20, knee = -25, foot = -43, sway = 6 } }, -- the sun phoenix (owner 2026-11-14): a god's calm hover, no hops or spins, its flame tail drifting
 		Voltkit = { fidgets = { "look", "tilt", "sniff", "stretch", "shake", "yawn" }, tailSpeed = 0.6, tailAmount = 0.8, bounce = 0.7, stride = 0.9 }, -- an armoured pangolin waddle
-	} :: { [string]: { fidgets: { string }?, tailSpeed: number?, tailAmount: number?, wingAmount: number?, bounce: number?, stride: number?, legSwing: number?, sway: number?, gait: string?, jaw: number? } },
+	} :: { [string]: { fidgets: { string }?, tailSpeed: number?, tailAmount: number?, wingAmount: number?, bounce: number?, stride: number?, legSwing: number?, sway: number?, gait: string?, jaw: number?, legHang: { hip: number, knee: number, foot: number, sway: number }? } },
 	-- Wingbeat speed for big winged models (times PET_ANIM.FLAP_SECONDS' pace; under 1 is slower)
 	WING_SPEED = {
 		HeronDemon = 0.55,
@@ -235,6 +238,7 @@ return {
 		GaleSprite = 0.8, -- a swift's quick wingbeat
 		Hushmoth = 0.7, -- a moth's soft flutter
 		Reefray = 0.45, -- a manta's slow, deep wingbeat
+		Solarion = 0.5, -- the sun phoenix: slow, mighty wingbeats
 	} :: { [string]: number },
 	-- Pack models whose body waves side to side instead of walking: "swim" floats and swims (fish), "slither"
 	-- stays on the ground and waves mostly while moving (snakes)
@@ -339,6 +343,10 @@ return {
 		WING_REST = 3, -- degrees folded wings shift with each breath on the ground
 		WING_SPREAD = 40, -- degrees folded wings spread for a roar
 		WING_LAG = 0.5, -- radians the next wing bone trails its parent
+		-- A flyer without arms fights with its wings (owner 2026-11-14, the sun phoenix: "no unnatural animations, ready
+		-- for their attack/skill animations"): degrees raised to charge and for a sunburst or a super's leap, beaten down
+		-- on a strike's hit and with each combo swipe (one wing at a time); the wingbeat calms by `calm` meanwhile
+		WING_FIGHT = { raise = 55, beat = 45, calm = 0.6 },
 		-- Rigs named by Util/RigGuess: arms lowered from a T-pose swing against the legs; IK feet lift as they step;
 		-- fish swim and snakes slither with a wave down the body (Party.UNDULATE)
 		ARM_SWING = 24,
@@ -352,6 +360,9 @@ return {
 		SLITHER_STILL = 0.25, -- how much a snake waves standing still
 		LEG_TUCK = 38,
 		KNEE_TUCK = 30,
+		-- Hanging legs (CREATURE_STYLE legHang): each joint swings `lag` radians of the wingbeat after the one above it,
+		-- the right leg `side` more, so they dangle instead of moving as one stiff lever
+		LEG_HANG = { lag = 0.6, side = 0.35 },
 		FLY_FIDGETS = { "look", "tilt", "spin", "wag" },
 		FIDGET_GAP = { 2.5, 6 },
 		FIDGET_SECONDS = {
@@ -401,7 +412,8 @@ return {
 		SLAM_POUND = 45,
 		SLAM_RAISE = 66,
 		SLAM_LIFT = 0.25,
-		-- Solarion's sunburst: how far both arms swing up overhead (degrees) and how far it rises (studs at size 1)
+		-- A sunburst: how far a two-legged creature's arms swing up overhead (degrees) and how far it rises (studs at size
+		-- 1); Solarion, the sun phoenix, raises its wings instead (WING_FIGHT)
 		SUN_RAISE = 160,
 		SUN_LIFT = 0.15,
 		-- Tideborne Kirin's celestial blessing: how far it rears (degrees) and lifts (studs at size 1) before the light rises
@@ -530,14 +542,14 @@ return {
 		["Eclipse Fox"] = { pack = "Originals", model = "EclipseFox", size = 1.8 }, -- original, tools/blender/rig_eclipsefox.py (Meshy-generated shadow kitsune; was the voxel build_eclipsefox.py)
 		Duskstalker = { pack = "Originals", model = "Duskstalker", size = 1.5 }, -- original, tools/blender/rig_duskstalker.py (Meshy-generated shadow wolf; was the voxel build_duskstalker.py monkey king)
 		-- Legendaries: Crystal Titans (bought Accretion "Stud Pet Pack 03"), with their own Idle/Walk/Run animations
-		Solarion = { pack = "Originals", model = "Solarion", size = 3 }, -- original, tools/blender/rig_solarion.py (Meshy-generated sun fire god; was the voxel build_solarion.py)
+		Solarion = { pack = "Originals", model = "Solarion", size = 3, flies = true }, -- original, tools/blender/rig_solarion.py (Meshy-generated eclipse sun phoenix, owner 2026-11-14; was the sun god titan, before it the voxel cerberus)
 		Voidmaw = { pack = "Originals", model = "Voidmaw", size = 2.6 }, -- original, tools/blender/rig_voidmaw.py (Meshy-generated cosmic void dragon; was the voxel build_voidmaw.py hydra)
 		-- Frontier set
 		Frostfang = { pack = "Originals", model = "Frostfang", size = 2 }, -- original, tools/blender/rig_frostfang.py (Meshy-generated ice fox)
 		["Gale Sprite"] = { pack = "Originals", model = "GaleSprite", size = 1.9, flies = true }, -- original, tools/blender/rig_galesprite.py (Meshy-generated storm swift)
 		Riftwalker = { pack = "Originals", model = "Riftwalker", size = 1.5 }, -- original, tools/blender/rig_riftwalker.py (Meshy-generated void dragon)
 		["Cinder Titan"] = { pack = "Originals", model = "CinderTitan", size = 2 }, -- original, tools/blender/rig_cindertitan.py (Meshy-generated volcano gorilla)
-		["Tideborne Kirin"] = { pack = "Originals", model = "Kirin", size = 2.5 }, -- original, tools/blender/rig_kirin.py (Meshy-generated celestial sea kirin; was Aurora Drake)
+		["Tideborne Kirin"] = { pack = "Originals", model = "Kirin", size = 2.5 }, -- original, tools/blender/rig_kirin.py (Meshy-generated celestial sea kirin, remade big and heavy-set 2026-11-14; was Aurora Drake)
 		Stormking = { pack = "Originals", model = "Stormking", size = 2.4 }, -- original, tools/blender/rig_stormking.py (Meshy-generated storm titan beetle)
 	} :: { [string]: { pack: string, model: string, variant: string?, tint: { number }?, hue: number?, size: number?, flies: boolean? } },
 	-- Saved-animation models (Util/KeyframePlayer): idle below WALK_FROM, run blending in from RUN_FROM to RUN_FULL
@@ -555,8 +567,11 @@ return {
 		Common = { light = 0, lightRange = 0, sparkles = 0, outline = false, pulse = false },
 		Rare = { light = 0.4, lightRange = 5, sparkles = 0, outline = false, pulse = false },
 		["Very Rare"] = { light = 0.6, lightRange = 6, sparkles = 2, outline = false, pulse = false },
-		Epic = { light = 0.8, lightRange = 7, sparkles = 3, outline = true, pulse = false },
-		Legendary = { light = 1.2, lightRange = 9, sparkles = 5, outline = true, pulse = true },
+		-- No element outline (owner 2026-11-14 "remove the blue outlines, that's old effects": the element auras of
+		-- Util/BeastAura took over; foils keep their rainbow one). Legendaries take no light of their own either: their
+		-- aura already lights them, and the two together washed the pearl-white Kirin out ("kirin is too bright").
+		Epic = { light = 0.8, lightRange = 7, sparkles = 3, outline = false, pulse = false },
+		Legendary = { light = 0, lightRange = 0, sparkles = 5, outline = false, pulse = false },
 	},
 	SPARKLES_PER_STAR = 1,
 	GRADE_S_SPARKLES = 2,

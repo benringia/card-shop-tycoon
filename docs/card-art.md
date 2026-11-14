@@ -132,10 +132,13 @@ Element scenes (matching `CardDesign.SCENES`):
 - **Cinder Titan** (original volcano gorilla, Epic): a massive menacing volcano gorilla lava golem, huge bulky body,
   dark charcoal rock skin with glowing molten cracks across its chest, black volcanic rock shoulder armour, glowing orange
   eyes, giant flaming boulder fists slamming the ground in a ring of fire and lava (lighting: dramatic fiery).
-- **Tideborne Kirin** (original celestial sea kirin, Legendary; was Aurora Drake): a majestic divine sea kirin
-  standing proudly, pearl-white with aqua shading, a flowing aqua water mane and wave tail, glowing aqua eyes, curved
-  golden horns, a golden halo, golden armour, glowing aqua hooves, water and golden light spiralling round it (lighting:
-  epic divine golden and aqua).
+- **Tideborne Kirin** (original celestial sea kirin, Legendary; was Aurora Drake; remade big and heavy-set 2026-11-14):
+  a colossal godlike celestial sea kirin, rounded stylized toy-like 3D style, big and heavy-set like a powerful draft
+  horse with a deep broad chest, a thick strong neck and thick sturdy legs, a pearly white body with shimmering aqua
+  dragon scales on its neck and lower legs, a big flowing mane of seafoam green water ripples, two golden antler horns,
+  a glowing golden halo ring behind its head, ornate golden chest armour with a glowing aqua gem, glowing turquoise water
+  flames around its hooves, a thick tail shaped like a curling ocean wave, calm glowing aqua eyes, water and golden light
+  spiralling round it (pose: standing proudly on the sea floor; lighting: epic divine golden and aqua).
 - **Stormking** (original storm titan beetle, Legendary): a colossal godlike storm titan beetle, a massive armoured
   sapphire shell with glowing blue crystal spikes and gold trim, a huge golden horn crackling with lightning, four thick
   armoured legs, a long tail spike, lightning striking in a ring round it (lighting: epic dramatic storm).
@@ -200,30 +203,14 @@ Element scenes (matching `CardDesign.SCENES`):
   lighting: eerie violet moonlight in a dusky night forest under a huge pale crescent moon).
 
 Tone follows rarity: the more common the card, the cuter and less dangerous the creature and its art.
-- **Solarion** (original sun fire god, Legendary; Meshy remake): a colossal godlike sun fire god titan, rounded
-  stylized toy-like 3D style, a huge heavy muscular humanoid body of glowing flame-orange skin standing upright with
-  fists clenched at its sides, polished golden armour on its chest, shoulders, forearms and shins, a golden loincloth,
-  a stern regal bearded face with fierce glowing white eyes, a crown of golden sun rays, a huge spiky blazing sun disc
-  behind its head and shoulders like a halo, small glowing suns orbiting it, flames and embers rising off its body
-  (pose: standing on a scorched rocky summit; lighting: blazing golden sunlight under a giant sun).
-
-The other 38 follow the same template with descriptions read off each model's render, part names and colours
-(the tinted ones described in their tint: Zappit lemon-yellow and Wispurr lavender FairyRabbit, Magmaw fire-orange
-Salamander, Voidmaw violet Hydra...). Redo one that comes out off-model (Ashbeak first came out a white owl, Voltkit on
-four legs: say "made of dark charcoal-grey stone blocks", "standing upright on two legs like a person").
-
-## The loading screen's dog cards
-
-The binder loading screen's nine cards (owner 2026-11-14: painted art, not the dogs' models) are Pish, Chikin and Turts
-painted with the same prompt, `gemini-3.1-flash-image`, 768 x 1088 requested, in "Card Shop Tycoon - Card Art". Changes
-to the prompt: "facing the viewer and looking straight at the viewer" instead of "three-quarter view", "in the middle of
-the picture" (the name plate covers the bottom), the Tide scene "a sunny tropical lagoon shore, clear turquoise water
-with colourful corals, light rays, floating bubbles, pale sand" (a dog underwater looks wrong), the Shade scene "a
-moonlit garden at night" (no graveyard). Legendary ones: "legendary", "epic dramatic ... light with a soft magical
-glow". Each PNG is resized to 680 wide and kept as `assets/ui/loading/dog_cards/art/<Dog>_<pose>.jpg`;
-`python tools/ui-art/make_dog_cards.py` puts the name plate on and writes the 340 x 507 cards to upload (ids in
-`Config/LoadingScreen` DOG_CARDS).
-
+- **Solarion** (the eclipse sun phoenix, Legendary; owner 2026-11-14 "change solarion model into a legendary phoenix",
+  concept C; was the sun fire god titan): a colossal godlike eclipse sun phoenix, rounded stylized toy-like 3D style, a
+  powerful heavy-built firebird with a broad muscular chest covered in golden scale armour, an armoured golden helm-like
+  head with a sharp golden beak and fierce glowing amber eyes, enormous wings spread wide whose feathers fade from deep
+  red at the base to blazing gold and white-hot tips, a giant burning golden sun ring halo with flare spikes behind its
+  head, golden feather blades floating at its shoulders, strong golden talons, a long tail of three flame ribbons,
+  flames and embers rising off its wings (pose: rising up from a scorched rocky summit with its wings spread; lighting:
+  epic dramatic, blazing golden sunlight).
 - **Pish**: a cute chubby cartoon Shih Tzu dog, rounded stylized style, a fluffy white coat with soft light grey-taupe
   floppy ears and a small light brown patch on his back, big round shiny dark brown eyes, a small black nose, a little
   underbite with two tiny white bottom teeth showing, a proud slightly grumpy look, a fluffy white tail curled up.

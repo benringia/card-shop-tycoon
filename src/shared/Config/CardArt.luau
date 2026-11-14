@@ -35,7 +35,7 @@ return {
 		["Abyssal Koi"] = "rbxassetid://102778519848890",
 		Thunderhorn = "rbxassetid://99651725753080",
 		["Eclipse Fox"] = "rbxassetid://140066833494827",
-		Solarion = "rbxassetid://94344316072048",
+		Solarion = "rbxassetid://91050512736812", -- the eclipse sun phoenix (2026-11-14)
 		Voidmaw = "rbxassetid://85829654802401",
 		Emberwing = "rbxassetid://74189264541735",
 		Tidecaller = "rbxassetid://133334447011122",
@@ -46,7 +46,7 @@ return {
 		["Gale Sprite"] = "rbxassetid://139554335157891",
 		Riftwalker = "rbxassetid://134478592556938",
 		["Cinder Titan"] = "rbxassetid://72010145388086",
-		["Tideborne Kirin"] = "rbxassetid://140707784458440",
+		["Tideborne Kirin"] = "rbxassetid://106778581218668", -- remade big and heavy-set (2026-11-14)
 		Stormking = "rbxassetid://109056817412625",
 	} :: { [string]: string },
 	SMALL = {
@@ -78,7 +78,7 @@ return {
 		["Abyssal Koi"] = "rbxassetid://113851143944851",
 		Thunderhorn = "rbxassetid://72071757489783",
 		["Eclipse Fox"] = "rbxassetid://137031211189351",
-		Solarion = "rbxassetid://121095932236272",
+		Solarion = "rbxassetid://128635529878418",
 		Voidmaw = "rbxassetid://97439389681828",
 		Emberwing = "rbxassetid://104899360467147",
 		Tidecaller = "rbxassetid://76502834444163",
@@ -89,7 +89,7 @@ return {
 		["Gale Sprite"] = "rbxassetid://103749312211933",
 		Riftwalker = "rbxassetid://122291250350932",
 		["Cinder Titan"] = "rbxassetid://114557517809552",
-		["Tideborne Kirin"] = "rbxassetid://126635566516543",
+		["Tideborne Kirin"] = "rbxassetid://133138452894238",
 		Stormking = "rbxassetid://93959793017843",
 	} :: { [string]: string },
 	SMALL_HEIGHT = 507, -- pixels: the small copy's height; faces drawn taller use the full painting

@@ -103,6 +103,39 @@ function LoadingRules.ownedCardIds(payload: any): { string }
 	return ids
 end
 
+-- Which frame of Pish's trot sheet (Config/LoadingScreen TROT) shows `seconds` in, from 0, looping
+function LoadingRules.trotFrame(seconds: number, trot: any): number
+	return math.floor(seconds * trot.FPS) % trot.FRAMES
+end
+
+-- Where that frame sits on the sheet (its top-left corner, pixels)
+function LoadingRules.trotRect(frame: number, trot: any): (number, number)
+	return (frame % trot.COLUMNS) * trot.FRAME_SIZE, math.floor(frame / trot.COLUMNS) * trot.FRAME_SIZE
+end
+
+-- How far the road's dashes have run back under him: 0 .. 1 of one dash and its gap
+function LoadingRules.roadShift(seconds: number, trot: any): number
+	return (seconds * trot.ROAD_SPEED) % 1
+end
+
+local function escapeRich(text: string): string
+	return (string.gsub(string.gsub(string.gsub(text, "&", "&amp;"), "<", "&lt;"), ">", "&gt;"))
+end
+
+-- The step's words (rich text) with their three trailing dots counting up every `step` seconds. The dots not shown yet
+-- stay, see-through, so the words keep their size (the label scales its text to fit)
+function LoadingRules.dotted(text: string, seconds: number, step: number): string
+	local words = string.match(text, "^(.-)%.%.%.$")
+	if not words then
+		return escapeRich(text)
+	end
+	local shown = math.floor(seconds / step) % 4
+	if shown == 3 then
+		return escapeRich(words) .. "..."
+	end
+	return `{escapeRich(words)}{string.rep(".", shown)}<font transparency="1">{string.rep(".", 3 - shown)}</font>`
+end
+
 -- The words for a step; the first is the place's own ("Opening your shop..." in the main game)
 function LoadingRules.stepText(step: number, placeKind: string, cfg: any): string
 	if step > #cfg.STEPS then

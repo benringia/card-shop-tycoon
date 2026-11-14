@@ -142,7 +142,7 @@ return {
 			rifts = { 3, 4, 5, 7 },
 			shards = { 8, 12, 16, 24 },
 		}, "riftroar"),
-		-- The sky turns to space; Solarion's sun grows over its hands, rises slowly over the boss, swells and bursts (S:
+		-- The sky turns to space; Solarion's sun grows over its raised wings, rises slowly over the boss, swells and bursts (S:
 		-- two impact frames, pillars of light). Its own pace: grow, rise, then what's left hangs and swells.
 		Supernova = withTiming(withSky(look("Legendary", "Solarion", "Ember", rgb(255, 209, 102), {
 			sun = { 4, 5, 6.5, 8.5 },

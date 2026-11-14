@@ -44,7 +44,7 @@
 -- * kungfu (Thornback): leaves whirl out round it as it chops.
 -- * eclipse (Eclipse Fox): a dark orb ringed with golden light rises over its head, glowing violet, then fades.
 -- * backflip (Duskstalker): shadow smoke where it takes off and a smoky trail through the flip.
--- * sunburst (Solarion): arms raised, a small sun forms above its fists and bursts in rays and a ring of fire.
+-- * sunburst (Solarion): wings raised, a small sun forms over its halo and bursts in rays and a ring of fire.
 -- * tailstrike (Voltkit): its tail curls up over its back; the orb crackles, then lightning strikes down from it twice.
 -- (Roars also get CreatureVisuals' shockwave ring and sparks.) Everything is anchored, never collides, and cleans
 -- itself up, also if the creature is removed first.
@@ -1255,8 +1255,8 @@ local function backflip(model: Model, size: number)
 	end
 end
 
--- A sunburst: with both arms raised, a small sun forms above its fists, swells, then bursts: rays of sunlight shoot
--- out, a ring of fire races out over the ground and the light flares
+-- A sunburst: wings raised (the sun phoenix; a creature with arms raises them), a small sun forms above its head (or
+-- its fists), swells, then bursts: rays of sunlight shoot out, a ring of fire races out over the ground and the light flares
 local SUN_CORE = Color3.fromRGB(255, 245, 190)
 local SUN_EDGE = Color3.fromRGB(255, 150, 40)
 local SUN_FORM, SUN_HOLD = 0.4, 0.15 -- seconds the sun takes to swell, and hangs before it bursts

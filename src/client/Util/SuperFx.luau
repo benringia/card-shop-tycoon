@@ -1623,7 +1623,7 @@ function SuperFx.blink(root: BasePart, index: number)
 end
 
 -- Supernova (Solarion, Legendary, Ember; owner 2026-11-05 "sun grows, rises up, then explodes. dont rush"): a small sun
--- grows over Solarion's hands pulling light in, rises slowly high over the boss trailing sparks, hangs there swelling
+-- grows over Solarion (the sun phoenix since 2026-11-14: over its raised wings) pulling light in, rises slowly high over the boss trailing sparks, hangs there swelling
 -- and throbbing, then bursts: a white-out in the sky, shockwave rings, fire raining down, then a dome of fire, rays of
 -- light and heat shimmer over the crater (the deep space and the impact frame are on the caster's screen). Its own
 -- pace (Config/SuperFx timing). By grade: a bigger sun, more rings and rays; S: two impact frames, pillars of light.
@@ -1662,7 +1662,7 @@ local function novaCharge(view: View, grade: string, seconds: number, target: Ve
 	local grow = seconds * NOVA.timing.grow
 	local rise = seconds * NOVA.timing.rise
 	local swell = math.max(0.2, seconds - grow - rise)
-	-- It grows over its hands, light pulling in
+	-- It grows over its head and raised wings, light pulling in
 	local core, corona = sunBall(b, above, 0.5, gold)
 	local smooth = TweenInfo.new(grow, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
 	TweenService:Create(core, smooth, { Size = Vector3.one * g.sun }):Play()

@@ -4,7 +4,10 @@
 -- Pish, Chikin and Turts as loading goes, the place's name, the count, the step, a slow-save note and a tip on the
 -- right page, under a pink "ONE MORE PACK" ribbon. Lives in ReplicatedFirst so it shows from the first frame; the
 -- join screen, the copy TeleportService carries and the Wild portal's screen (WildLoadingController) all build it
--- here. Works on the gui's instances by name, so any copy is driven the same way.
+-- here. Works on the gui's instances by name, so any copy is driven the same way. From its first frame Pish trots under
+-- the step and the step's dots count up (owner 2026-11-14: it looked static until the first card flew in).
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local LoadingGui = {}
@@ -143,7 +146,46 @@ local function page(book: Frame, look: any)
 	end
 end
 
--- The right page: the place's name, the count, the step, the slow-save note, a tip in a cream bubble
+-- Pish trotting on the spot over a road (Config/LoadingScreen TROT), under the step: the road's dashes (one more than
+-- fit, so one is always coming in as they run back), then him standing on them
+local function trot(column: Frame, look: any)
+	local track = frame(column, "Trot")
+	track.Size = UDim2.fromScale(1, 0.26)
+	track.LayoutOrder = 4
+	local cfg = look.TROT
+	if not cfg then
+		track.Visible = false
+		return
+	end
+	local road = frame(track, "Road")
+	road.AnchorPoint = Vector2.new(0.5, 0.5)
+	road.Position = UDim2.fromScale(0.5, cfg.FEET)
+	road.Size = UDim2.fromScale(0.62, 0.06)
+	road.ClipsDescendants = true
+	for index = 1, cfg.DASHES + 1 do
+		local dash = frame(road, `Dash{index}`, look.ACCENT)
+		dash.BackgroundTransparency = 0.35
+		dash.AnchorPoint = Vector2.new(0, 0.5)
+		dash.Position = UDim2.fromScale((index - 1) / cfg.DASHES, 0.5)
+		dash.Size = UDim2.fromScale(0.55 / cfg.DASHES, 1)
+		corner(dash, 0.5)
+	end
+	local pish = Instance.new("ImageLabel")
+	pish.Name = "Pish"
+	pish.BackgroundTransparency = 1
+	pish.Image = cfg.IMAGE
+	pish.ImageRectSize = Vector2.new(cfg.FRAME_SIZE, cfg.FRAME_SIZE)
+	pish.AnchorPoint = Vector2.new(0.5, 0)
+	pish.Position = UDim2.fromScale(0.5, 0)
+	pish.Size = UDim2.fromScale(1, 1)
+	pish.ZIndex = 2
+	local square = Instance.new("UIAspectRatioConstraint")
+	square.AspectRatio = 1
+	square.Parent = pish
+	pish.Parent = track
+end
+
+-- The right page: the place's name, the count, the step, Pish trotting, the slow-save note, a tip in a cream bubble
 local function rightPage(book: Frame, look: any, firstStep: string)
 	local column = frame(book, "Info")
 	column.AnchorPoint = Vector2.new(0, 0.5)
@@ -180,14 +222,16 @@ local function rightPage(book: Frame, look: any, firstStep: string)
 	slash.Text = `/ {look.POCKETS}`
 	slash.ZIndex = 7
 	local step = label(column, "Step", Enum.Font.GothamBold, 0.075, { 255, 255, 255 })
+	step.RichText = true -- its dots count up (LoadingRules.dotted)
 	step.Text = firstStep
 	step.LayoutOrder = 3
+	trot(column, look)
 	local note = label(column, "Note", Enum.Font.GothamBold, 0.06, look.ACCENT)
-	note.LayoutOrder = 4
+	note.LayoutOrder = 5
 	note.Visible = false
 	local bubble = frame(column, "TipBox", look.TIP_COLORS.back)
 	bubble.Size = UDim2.fromScale(0.94, 0.17)
-	bubble.LayoutOrder = 5
+	bubble.LayoutOrder = 6
 	corner(bubble, 0.3)
 	local tip = label(bubble, "Tip", Enum.Font.GothamBold, 0.7, look.TIP_COLORS.text)
 	tip.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -212,6 +256,7 @@ function LoadingGui.build(look: any, firstStep: string): ScreenGui
 	gui:SetAttribute("FlySeconds", look.FLY_SECONDS)
 	gui:SetAttribute("FlyStagger", look.FLY_STAGGER)
 	gui:SetAttribute("Accent", color(look.ACCENT))
+	gui:SetAttribute("StepText", firstStep)
 
 	local back = frame(gui, "Back", { 255, 255, 255 })
 	back.Size = UDim2.fromScale(1, 1)
@@ -265,9 +310,55 @@ function LoadingGui.build(look: any, firstStep: string): ScreenGui
 	return gui
 end
 
--- Cycles the tips; returns a stop
+-- Pish's trot, the road and the step's dots, every frame until the screen is gone (through its fade too).
+-- Util/LoadingRules is in ReplicatedStorage, there by the time a screen animates (Show waits for it)
+local function moveAlong(gui: ScreenGui, look: any)
+	local shared = ReplicatedStorage:FindFirstChild("Shared")
+	local util = shared and shared:FindFirstChild("Util")
+	local rulesModule = util and util:FindFirstChild("LoadingRules")
+	if not rulesModule or not rulesModule:IsA("ModuleScript") then
+		return
+	end
+	local rules = require(rulesModule) :: any
+	local cfg = look.TROT
+	local pish = gui:FindFirstChild("Pish", true)
+	local road = gui:FindFirstChild("Road", true)
+	local step = gui:FindFirstChild("Step", true)
+	local started = os.clock()
+	local connection: RBXScriptConnection
+	connection = RunService.RenderStepped:Connect(function()
+		if not gui.Parent then
+			connection:Disconnect()
+			return
+		end
+		local seconds = os.clock() - started
+		if cfg and pish and pish:IsA("ImageLabel") then
+			local x, y = rules.trotRect(rules.trotFrame(seconds, cfg), cfg)
+			pish.ImageRectOffset = Vector2.new(x, y)
+		end
+		if cfg and road then
+			local shift = rules.roadShift(seconds, cfg)
+			for index = 1, cfg.DASHES + 1 do
+				local dash = road:FindFirstChild(`Dash{index}`)
+				if dash and dash:IsA("Frame") then
+					dash.Position = UDim2.fromScale((index - 1 - shift) / cfg.DASHES, 0.5)
+				end
+			end
+		end
+		local words = gui:GetAttribute("StepText")
+		if step and step:IsA("TextLabel") and typeof(words) == "string" then
+			local text = rules.dotted(words, seconds, look.DOTS_SECONDS or 0.35)
+			if step.Text ~= text then
+				step.Text = text
+			end
+		end
+	end)
+end
+
+-- Cycles the tips and starts Pish trotting; returns a stop (for the tips)
 function LoadingGui.animate(gui: ScreenGui, look: any): () -> ()
 	local running = true
+	moveAlong(gui, look)
 	local tip = gui:FindFirstChild("Tip", true)
 	task.spawn(function()
 		local tips = look.TIPS
@@ -327,6 +418,7 @@ function LoadingGui.set(gui: ScreenGui, stepText: string, pockets: number, note:
 			end
 		end
 	end
+	gui:SetAttribute("StepText", stepText)
 	local step = gui:FindFirstChild("Step", true)
 	if step and step:IsA("TextLabel") then
 		step.Text = stepText

@@ -27,6 +27,7 @@ export type State = {
 	wingAmount: number?, -- and the wingbeat's (a flat manta's broad wings beat shallow), else 1
 	sway: number?, -- a heavy gait (Party.CREATURE_STYLE): how much more the hips roll and twist walking, else 1
 	legSwing: number?, -- and how much of PET_ANIM.LEG_SWING its legs use, else 1
+	legHang: { hip: number, knee: number, foot: number, sway: number }?, -- in the air its legs hang (Party.CREATURE_STYLE), else they tuck
 	gait: string?, -- "gallop" (Party.CREATURE_STYLE gait): four legs going in pairs, the body rocking; else a trot
 	jawAmount: number?, -- how far its jaw opens of a full gape (Party.CREATURE_STYLE jaw: mouths cut open later), else 1
 	undulate: string?, -- "swim" (fish: always) or "slither" (snakes: mostly moving): the body waves side to side
@@ -631,6 +632,10 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 	end
 	local flying = state.flying == true
 	local flap = if flying then math.sin(state.flapPhase or 0) else 0
+	local hasArms = false
+	for _, role in roles do
+		hasArms = hasArms or role.kind == "arm"
+	end
 	-- Signature idles (Party.SIGNATURE): a pose held for a butterfly, or a roar that rears back and lunges
 	local roaring = fidget ~= nil and ROARS[fidget] == true and fidget ~= "roar"
 	local settle = 1 - math.clamp((progress - 0.85) / 0.15, 0, 1)
@@ -712,7 +717,13 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 	local pose: { [string]: Angles } = {}
 	for _, role in roles do
 		local x, y, z = 0, 0, 0
-		if role.kind == "leg" and flying then
+		if role.kind == "leg" and flying and state.legHang then
+			-- Hanging below it, each joint swinging a beat after the one above it, the right leg a little later
+			local hang = state.legHang :: { hip: number, knee: number, foot: number, sway: number }
+			local rest = if role.segment == 0 then hang.hip elseif role.segment == 1 then hang.knee else hang.foot
+			local lag = (role.segment + 1) * cfg.LEG_HANG.lag + (if role.side == "Right" then cfg.LEG_HANG.side else 0)
+			x = rad(rest) + rad(hang.sway) * math.sin((state.flapPhase or 0) - lag)
+		elseif role.kind == "leg" and flying then
 			-- Tucked up under the body, swinging a little with each beat
 			x = if role.segment == 0 then rad(cfg.LEG_TUCK) + rad(4) * flap else rad(cfg.KNEE_TUCK) / role.segment
 		elseif role.kind == "leg" and state.undulate == "swim" then
@@ -949,6 +960,18 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 				else rad(cfg.WING_REST) * math.sin(state.time * TAU / cfg.BREATH_SECONDS - role.segment * cfg.WING_LAG)
 					+ (if roaring and role.segment == 0 then rad(cfg.WING_SPREAD) * hold(progress) * idle else 0)
 			beat *= state.wingAmount or 1
+			if flying and not hasArms then
+				-- A flyer without arms fights with its wings (PET_ANIM.WING_FIGHT; down is a flap's downstroke): raised
+				-- to charge, for the sunburst and a super's leap, and as a cast rears; beaten down on a strike's hit, a
+				-- cast's throw and each combo swipe on that swipe's side; the wingbeat calms meanwhile
+				local wf = cfg.WING_FIGHT
+				local rear = math.max(0, -castHead) / rad(cfg.CAST_REAR)
+				local throw = math.max(0, castHead) / rad(cfg.CAST_THRUST)
+				local up = math.max(coil, sunning, rear)
+				local down = math.max(bite, throw, if role.side == swipeSide then swipe else 0)
+				local share = if role.segment == 0 then 1 else 0.3
+				beat = beat * (1 - wf.calm * math.max(up, down)) + (rad(wf.beat) * down - rad(wf.raise) * up) * share
+			end
 			z = if role.side == "Left" then -beat else beat
 		elseif role.kind == "ear" then
 			local flop = rad(cfg.EAR_FLOP) * (math.sin(state.phase * 2 + role.segment) * moving + 0.3 * math.sin(state.time * 1.7 + role.segment) * idle)

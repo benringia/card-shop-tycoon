@@ -84,6 +84,12 @@ Don't add models in Studio straight into `CreatureModels`: Rojo owns that folder
   `Idle` and `Walk`, and keep the model's Humanoid or AnimationController. Animations must be owned by you or
   the group that owns the game, or Roblox won't play them.
 - Flyers: add the card name to `Party.FLYING`.
+- A flyer's legs tuck up in the air (`PET_ANIM.LEG_TUCK`, `KNEE_TUCK`); a big upright one can let them hang relaxed
+  instead (`CREATURE_STYLE` `legHang`, the sun phoenix).
+- Fights with wings: a flyer without arms (the sun phoenix, Emberwing, Nightowl...) raises its wings to charge, for a
+  sunburst and a super's leap, beats them down on a strike's hit and a cast's throw, and one at a time with each combo
+  swipe, its wingbeat calming meanwhile (`PET_ANIM.WING_FIGHT`, `PetRig.pose`; owner 2026-11-14: "ready for their
+  attack/skill animations"). Creatures with arms fight with them; folded wings on the ground stay as they were.
 
 ## Packs and colour variants
 
@@ -365,10 +371,18 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   glowing claws and rock shoulder armour; lumbers upright with a heavy gait (long slow steps, rolling from foot to
   foot onto a bent knee: `CREATURE_STYLE` stride/legSwing/sway), its huge arms swinging low (`ARM_POSE`). Remeshed and baked.
   18 bones, 10,000 triangles. Replaced the GorillaVulcano.
-- **Tideborne Kirin** (was Aurora Drake; `rig_kirin.py`, model `Kirin`, Meshy, Legendary): a celestial sea kirin,
-  pearl-white with an aqua water mane and wave tail, golden horns (as `Ear_` bones), a golden halo and golden armour.
-  Meshy made it prancing: the raised right front leg was replaced by a mirror of the left (see `rig_kirin.py`). Walks
-  with a long unhurried stride at size 2.5. 25 bones, 14,000 triangles. Replaced the Crystal Titans RainbowHydra.
+- **Tideborne Kirin** (was Aurora Drake; `rig_kirin.py`, model `Kirin`, Meshy, Legendary; remade 2026-11-14 from concept
+  A, "make it big"): a colossal celestial sea kirin, heavy-set like a draft horse, pearl-white with aqua scales, a big
+  seafoam wave mane, golden antlers and halo, golden chest armour with an aqua gem, water flames round its hooves and a
+  wave tail curling up on its left side. Meshy copied the concept's three-quarter view (the body turned about 47 degrees, the
+  head a further 35 to its left): `rig_kirin.py` turns it back and turns the head in line about the top of the neck,
+  blended down it. The first turn (43) left it 4.5 degrees to its right (owner: "a little sideways"): measured by how
+  mirror-symmetric its white coat is at each turn; leg and tail bones turned with it. The wave tail is one solid curl
+  bending back over the rump: skinned along its four bones it smeared when it swished (owner: "kirin tail is
+  stretching"), so it swings whole on `Tail_0` from the rump (`lock_tail`: its aqua vertices, the white rump left on the
+  body; `rig_kit.confine` `only`), `Tail_1..3` kept without weights for PetRig. The antlers and halo are marked as pieces of the raw model (`rig_kit.mark_pieces`) and locked to
+  `Head_0`; the hoof flames (wider than a leg's skin, they smeared when a leg moved) go to each leg's lower bones. Each
+  left leg stands a little behind its right, so each leg's bones are placed on their own. 18,000 triangles, 22 bones.
 - **Stormking** (`rig_stormking.py`, Meshy, Legendary): a colossal storm titan beetle, an armoured sapphire shell with
   glowing crystal spikes, a gold horn and a long tail spike, on four thick armoured legs. Remeshed and baked. 21 bones,
   12,000 triangles. Replaced the Crystal Titans SapphireCrab.
@@ -454,11 +468,17 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   the lightning, so it was added by hand: yellow crests (painted, its `Ear_` bones), a yellow bolt on each flank
   (`rig_kit.bolt`) and a glowing orb on its tail tip (`rig_kit.orb`, riding `Tail_3`). Size 1.5. 24 bones, 10,000
   triangles. (No creature wears a cape now; the `Cape_` rig support stays for future ones.)
-- **Solarion** (`rig_solarion.py`, Meshy, Legendary; was the voxel `build_solarion.py` three-headed cerberus): a sun
-  fire god titan on two legs, a stern bearded face, flame-orange skin, golden armour and a spiky sun disc behind it.
-  Meshy hung its arms at its sides (`ARM_POSE` hang 0) and grew the disc to three times its width, so the disc was
-  shrunk by hand to frame its head and shoulders; it rides `Spine_1`, rigid. The bake left the metallic gold armour
-  khaki, so those texels were turned gold. Size 3. 18 bones, 12,000 triangles.
+- **Solarion** (`rig_solarion.py`, Meshy, Legendary; owner 2026-11-14 "change solarion model into a legendary
+  phoenix", concept C; before it a sun god titan, before that the voxel cerberus): an eclipse sun phoenix with a golden
+  helm and scale armour, wings fading from deep red to white-hot gold, a sun ring halo with a star behind its head,
+  feather blades at its shoulders and three flame-ribbon tails. Right first time (symmetrical, facing -Y). It flies
+  (`flies = true`, slow mighty wingbeats `WING_SPEED` 0.5): `Wing_<Side>_0..2` out to the raised tips, the tail hanging behind. Its legs
+  hang relaxed in flight instead of tucking up (owner 2026-11-14: tucked, its forward-reaching talons pointed up and
+  looked stiff; `CREATURE_STYLE` `legHang`: the hip 20 degrees forward, the shin back, the foot drooping talons-down,
+  each joint swinging a beat after the one above it, `PET_ANIM.LEG_HANG`). The halo's pieces are marked on the raw model and locked to `Head_0` (they move with
+  the head, never bend with a wing); everything out past the torso goes to the wing bones (a flap never drags the body
+  or stretches onto a leg). 18,000 triangles (at 12,000 the wings' backs turned to flat sheets), 21 bones. Its sunburst
+  and super raise its wings instead of arms (`PET_ANIM.WING_FIGHT`).
 
 Import the `.fbx` with Studio's 3D Importer (rig type Custom, Keep Zero Influence Bones on), check the model
 faces -Z and its bones move the mesh, then save it into the `Originals` pack file as above. The importer turns
@@ -468,9 +488,11 @@ upright and the creature lies on its back.
 
 ## Glow
 
-Set per rarity in `Party.GLOW`: a point light in the element colour, sparkles (more with stars and an S grade),
-and an outline for Epic and Legendary (Legendary pulses). Foils get a rainbow outline and sparkles. Roblox draws
-at most 31 outlines on screen, so the rarest and nearest creatures get them first.
+Set per rarity in `Party.GLOW`: a point light in the element colour (not on Legendaries: their element aura,
+`Util/BeastAura`, already lights them, and both together washed the pearl-white Kirin out) and sparkles (more with
+stars and an S grade). Rarities have no outline since 2026-11-14 (owner: "remove the blue outlines, that's old
+effects"; the element auras took over); foils keep a rainbow outline. Roblox draws at most 31 outlines on screen, so
+the rarest and nearest foils get them first.
 
 ## Wild monsters
 

@@ -66,7 +66,7 @@ Turts), and never let anyone in before what they need is there (no models poppin
 - No font change elsewhere in the game (the HUD and windows keep Fredoka One / Montserrat).
 - No new tips or step wording beyond "Ready!" and the Dungeon's new step.
 - Pish's trot sheet (`assets/ui/loading/pish_walk.png`, `tools/blender/build_pish_walk_sheet.py`) is kept for later,
-  not used here.
+  not used here. (Later, 2026-11-14: he trots under the step so the screen moves from its first frame, DESIGN.md.)
 
 ## Anti-goals (a failure even if it works)
 

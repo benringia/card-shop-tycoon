@@ -52,6 +52,23 @@ return {
 		muted = rgb(205, 210, 230),
 	},
 	TIP_COLORS = { back = rgb(255, 248, 230), text = rgb(59, 42, 82) },
+	-- Something moving from the first frame, before any card flies in (owner 2026-11-14: "at first glance look static.
+	-- add some elements that indicates it is loading", option B of three): Pish trots on the spot under the step over a
+	-- road running back under him. His trot sheet (assets/ui/loading/pish_walk.png, tools/blender/build_pish_walk_sheet.py:
+	-- FRAMES frames of FRAME_SIZE pixels, COLUMNS across, trotting left to right; FEET: where his feet land, down a frame)
+	-- at FPS frames a second; the road's DASHES dashes run back ROAD_SPEED dash-lengths a second. Never progress: the
+	-- pockets alone say how far it is.
+	TROT = {
+		IMAGE = "rbxassetid://123917292492684",
+		FRAMES = 12,
+		COLUMNS = 4,
+		FRAME_SIZE = 256,
+		FPS = 14,
+		FEET = 0.8,
+		DASHES = 9,
+		ROAD_SPEED = 1.6,
+	},
+	DOTS_SECONDS = 0.35, -- the step's dots count up one at a time this often ("Stocking the shelves...")
 	FLY_SECONDS = 0.45, -- a card sliding into its pocket
 	FLY_STAGGER = 0.12, -- seconds between cards when several pockets fill at once
 	READY_HOLD = 0.4, -- "Ready!" shows this long before the screen fades

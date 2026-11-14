@@ -253,6 +253,98 @@ return {
 		expect.near(shallow["wing:Left:0"].z, up["wing:Left:0"].z * 0.3, 1e-9, "wingAmount doesn't scale the beat")
 	end,
 
+	-- owner 2026-11-14 (the sun phoenix): "no unnatural animations, they also should be ready for their attack/skill
+	-- animations": a flyer without arms fights with its wings (PET_ANIM.WING_FIGHT): raised to charge and for the
+	-- sunburst or a super's leap, both beating down on a strike's hit, one at a time through a combo's swipes
+	["a flyer without arms fights with its wings"] = function()
+		local WINGED = table.clone(BIRD)
+		for _, name in { "Wing_Left_0", "Wing_Left_1", "Wing_Right_0", "Wing_Right_1" } do
+			table.insert(WINGED, name)
+		end
+		local function fight(fidget: string?, progress: number, names: { string }?): { [string]: PetRig.Angles }
+			return poseAt(names or WINGED, { time = 1, phase = 0, moving = 0, fidget = fidget, fidgetProgress = progress, flying = true, flapPhase = 0 })
+		end
+		local rest = fight(nil, 0)
+		local wf = CFG.WING_FIGHT
+		assert(wf and wf.raise > 0 and wf.beat > 0, "PET_ANIM.WING_FIGHT")
+		-- a flap's downstroke turns the left wing's z down (a roar spreads the same way): raised is the other way
+		local function raised(pose: { [string]: PetRig.Angles }, side: string): number
+			local z = pose[`wing:{side}:0`].z - rest[`wing:{side}:0`].z
+			return if side == "Left" then z else -z
+		end
+		local charge = fight("charge", 0.5)
+		assert(raised(charge, "Left") > math.rad(wf.raise) * 0.8, "the wings rise to charge")
+		expect.near(raised(charge, "Left"), raised(charge, "Right"), 1e-6, "both wings together")
+		local sun = fight("sunburst", 0.5)
+		assert(raised(sun, "Left") > math.rad(wf.raise) * 0.8, "the wings rise for the sunburst")
+		local hit = fight("strike", 0.4)
+		assert(raised(hit, "Left") < -math.rad(wf.beat) * 0.8, "the wings beat down on the strike's hit")
+		local swipe = fight("combo", 1 / 6)
+		assert(raised(swipe, "Left") < -math.rad(wf.beat) * 0.5, "the first swipe beats the left wing down")
+		assert(math.abs(raised(swipe, "Right")) < math.rad(5), "and leaves the right one")
+		assertBounded(charge, "charging")
+		-- a winged creature with arms fights with its arms; its wings stay as they were
+		local ARMED = table.clone(WINGED)
+		for _, name in { "Arm_Left_0", "Arm_Right_0" } do
+			table.insert(ARMED, name)
+		end
+		local armedRest, armedCharge = fight(nil, 0, ARMED), fight("charge", 0.5, ARMED)
+		expect.near(armedCharge["wing:Left:0"].z, armedRest["wing:Left:0"].z, 1e-9, "an armed flyer's wings join in")
+		-- on the ground (not flying) the wings rest as before
+		local ground = poseAt(WINGED, { time = 1, phase = 0, moving = 0, fidget = "charge", fidgetProgress = 0.5 })
+		local groundRest = poseAt(WINGED, still(1))
+		expect.near(ground["wing:Left:0"].z, groundRest["wing:Left:0"].z, 1e-9, "a grounded creature's folded wings join in")
+	end,
+
+	-- Owner 2026-11-14, "improve solarion feet to be relaxed and natural. right now it looks stiff": a big upright flyer
+	-- (Party.CREATURE_STYLE legHang) lets its legs hang instead of tucking them: the hip a little forward, the shin back
+	-- under it, the foot drooping talons-down, each joint swinging a beat after the one above it, the legs not as one
+	["a flyer's legs can hang relaxed instead of tucked"] = function()
+		local LEGS = { "Pelvis", "0_Left_Limb_0", "0_Left_Limb_1", "0_Left_Limb_2", "0_Right_Limb_0", "0_Right_Limb_1", "0_Right_Limb_2" }
+		local style = party.CREATURE_STYLE.Solarion
+		local hang = style and style.legHang
+		assert(hang, "Solarion's legs hang (CREATURE_STYLE legHang)")
+		assert(hang.hip > 0 and hang.knee < 0 and hang.foot < 0, "the hip a little forward, the shin and foot back and down")
+		local STEPS = 64
+		local poses = {}
+		for i = 1, STEPS do
+			poses[i] = poseAt(LEGS, { time = 1, phase = 0, moving = 0, fidgetProgress = 0, flying = true, flapPhase = (i - 1) / STEPS * math.pi * 2, legHang = hang })
+		end
+		local function mean(key: string): number
+			local sum = 0
+			for _, pose in poses do
+				sum += pose[key].x
+			end
+			return sum / STEPS
+		end
+		expect.near(mean("leg:0:Left:0"), math.rad(hang.hip), math.rad(0.5), "the hip rests at its angle")
+		expect.near(mean("leg:0:Left:1"), math.rad(hang.knee), math.rad(0.5), "the shin")
+		expect.near(mean("leg:0:Left:2"), math.rad(hang.foot), math.rad(0.5), "the foot")
+		local function peak(key: string): number
+			local best, at = -math.huge, 0
+			for i, pose in poses do
+				if pose[key].x > best then
+					best, at = pose[key].x, i
+				end
+			end
+			return at
+		end
+		assert(peak("leg:0:Left:1") > peak("leg:0:Left:0"), "the shin swings after the hip")
+		assert(peak("leg:0:Left:2") > peak("leg:0:Left:1"), "and the foot after the shin")
+		local apart = 0
+		for _, pose in poses do
+			apart = math.max(apart, math.abs(pose["leg:0:Left:2"].x - pose["leg:0:Right:2"].x))
+		end
+		assert(apart > math.rad(1), "the two legs don't swing as one")
+		for i = 1, STEPS, 8 do
+			assertBounded(poses[i], "hanging")
+		end
+		-- flyers without the style still tuck their legs up
+		local tucked = poseAt(LEGS, { time = 1, phase = 0, moving = 0, fidgetProgress = 0, flying = true, flapPhase = 0 })
+		expect.near(tucked["leg:0:Left:0"].x, math.rad(CFG.LEG_TUCK), 1e-9, "a tucked hip")
+		expect.near(tucked["leg:0:Left:1"].x, math.rad(CFG.KNEE_TUCK), 1e-9, "a tucked knee")
+	end,
+
 	["arms hang down at the sides and swing against the legs"] = function()
 		local BIPED = { "Pelvis", "Spine_0", "Head_0", "0_Left_Limb_0", "0_Right_Limb_0", "Arm_Left_0", "Arm_Left_1", "Arm_Right_0" }
 		local role = PetRig.role("Arm_Left_1")

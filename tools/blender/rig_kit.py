@@ -740,18 +740,70 @@ def vertex_colours(mesh):
     return colours
 
 
-def confine(mesh, bones, share_of, fallback, whole=None):
+def is_gold(rgb):
+    """A golden colour (0..1 rgb): armour, horns, halos"""
+    r, g, b = rgb
+    top, low = max(rgb), min(rgb)
+    sat = (top - low) / top if top > 0 else 0
+    return sat > 0.3 and r > 0.45 and g > 0.3 and g / max(r, 1e-6) > 0.55 and b < g * 0.7
+
+
+def mark_pieces(mesh, group_name, keep):
+    """Marks whole pieces of a raw generated mesh (its separate islands: a halo, horns) in a vertex group before
+    optimize() welds them to the body; the reduction keeps vertex groups, so marked() finds them afterwards (skin()
+    clears the groups: read them before it). keep(centre, colours) says which pieces: their middle (a Vector) and their
+    vertices' colours (rgb tuples). Returns how many vertices were marked."""
+    import bmesh
+
+    colours = vertex_colours(mesh)
+    bm = bmesh.new()
+    bm.from_mesh(mesh.data)
+    seen, picked = set(), []
+    for v in bm.verts:
+        if v.index in seen:
+            continue
+        stack, members = [v], []
+        seen.add(v.index)
+        while stack:
+            cur = stack.pop()
+            members.append(cur.index)
+            for e in cur.link_edges:
+                w = e.other_vert(cur)
+                if w.index not in seen:
+                    seen.add(w.index)
+                    stack.append(w)
+        centre = sum((mesh.data.vertices[i].co for i in members), Vector()) / len(members)
+        if keep(centre, [colours.get(i, (0, 0, 0)) for i in members]):
+            picked.extend(members)
+    bm.free()
+    group = mesh.vertex_groups.get(group_name) or mesh.vertex_groups.new(name=group_name)
+    group.add(picked, 1.0, "REPLACE")
+    return len(picked)
+
+
+def marked(mesh, group_name):
+    """The vertices mark_pieces() marked (after optimize())"""
+    group = mesh.vertex_groups.get(group_name)
+    if not group:
+        return set()
+    return {v.index for v in mesh.data.vertices for g in v.groups if g.group == group.index and g.weight > 0.5}
+
+
+def confine(mesh, bones, share_of, fallback, whole=None, only=None):
     """Hands a part of the mesh to its own bones after skin(), so it moves as one piece (a chibi's big head: skin()'s
     nearest-bone weights left the back of Pish's skull on the spine, which stretched it whenever the head moved).
     share_of(point) gives each vertex's share (0..1, blending at the part's edge): that share of its weight goes to
     `bones` in the proportions it already had among them (all to `fallback` if it had none), the rest stays as it was.
-    whole(vertex index) can claim a vertex outright (an ear hanging below the head's edge). Four bones at most."""
+    whole(vertex index) can claim a vertex outright (an ear hanging below the head's edge); only(vertex index) limits
+    it to some vertices (the Kirin's tail by its colour, not the white rump round its root). Four bones at most."""
     names = {g.index: g.name for g in mesh.vertex_groups}
     groups = {g.name: g for g in mesh.vertex_groups}
     for bone in list(bones) + [fallback]:
         if bone not in groups:
             groups[bone] = mesh.vertex_groups.new(name=bone)
     for v in mesh.data.vertices:
+        if only and not only(v.index):
+            continue
         old = {names[g.group]: g.weight for g in v.groups if g.weight > 0}
         share = share_of(mesh.matrix_world @ v.co)
         if whole and whole(v.index):

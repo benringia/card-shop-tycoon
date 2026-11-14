@@ -12,6 +12,42 @@ local function status(character: boolean, data: boolean, creature: boolean, gear
 end
 
 return {
+	-- Owner 2026-11-14: "this loading screen before the cards start moving at first glance look static. add some
+	-- elements that indicates it is loading" (option B): Pish trots on a road under the step, the step's dots count up
+	["Pish trots through his sheet's frames in a loop"] = function()
+		local trot = cfg.TROT
+		assert(type(trot.IMAGE) == "string" and string.find(trot.IMAGE, "^rbxassetid://%d+$"), "TROT.IMAGE is an uploaded image")
+		expect.equal(LoadingRules.trotFrame(0, trot), 0, "the first frame")
+		expect.equal(LoadingRules.trotFrame(1.01 / trot.FPS, trot), 1, "the next one a frame later")
+		expect.equal(LoadingRules.trotFrame((trot.FRAMES + 0.01) / trot.FPS, trot), 0, "round again after the last")
+		local x, y = LoadingRules.trotRect(trot.COLUMNS + 1, trot)
+		expect.equal(x, trot.FRAME_SIZE, "frame COLUMNS + 1: second column")
+		expect.equal(y, trot.FRAME_SIZE, "second row")
+		local lastX, lastY = LoadingRules.trotRect(trot.FRAMES - 1, trot)
+		assert(lastX + trot.FRAME_SIZE <= trot.COLUMNS * trot.FRAME_SIZE, "the last frame is on the sheet")
+		assert(lastY + trot.FRAME_SIZE <= math.ceil(trot.FRAMES / trot.COLUMNS) * trot.FRAME_SIZE, "and on its rows")
+	end,
+
+	["the road runs back under him, one dash at a time"] = function()
+		local trot = cfg.TROT
+		expect.near(LoadingRules.roadShift(0, trot), 0, 1e-9, "starts lined up")
+		local a, b = LoadingRules.roadShift(0.05, trot), LoadingRules.roadShift(0.1, trot)
+		assert(a > 0 and b > a, "it moves on with time")
+		local lap = 1 / trot.ROAD_SPEED -- seconds to move one dash and gap
+		expect.near(LoadingRules.roadShift(lap * 1.25, trot), 0.25, 1e-6, "and loops every dash")
+	end,
+
+	["the step's dots count up and keep their room"] = function()
+		local step = cfg.DOTS_SECONDS
+		local hidden = '<font transparency="1">'
+		expect.equal(LoadingRules.dotted("Stocking the shelves...", 0, step), `Stocking the shelves{hidden}...</font>`, "none shown")
+		expect.equal(LoadingRules.dotted("Stocking the shelves...", step * 1.01, step), `Stocking the shelves.{hidden}..</font>`, "one")
+		expect.equal(LoadingRules.dotted("Stocking the shelves...", step * 3.01, step), "Stocking the shelves...", "all three")
+		expect.equal(LoadingRules.dotted("Stocking the shelves...", step * 4.01, step), `Stocking the shelves{hidden}...</font>`, "and round again")
+		expect.equal(LoadingRules.dotted("Ready!", 1, step), "Ready!", "words without dots stay as they are")
+		expect.equal(LoadingRules.dotted("A <b> & c...", 0, step), `A &lt;b&gt; &amp; c{hidden}...</font>`, "rich text marks in the words are escaped")
+	end,
+
 	-- Owner 2026-11-13: "Update to the new One More Pack game name"
 	["the game is called One More Pack"] = function()
 		expect.equal(Game.NAME, "One More Pack")
