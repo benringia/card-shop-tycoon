@@ -22,7 +22,7 @@ shows its stand-in.
 | `HookRack` | the Accessory Hook: a code-built pegboard with hooks (`built`) | fills 4 x 7 x 2 | (its own hitbox) |
 | `DisplayRack` | the Big Display Rack: code-built, double-sided (`built`) | fills 8 x 7 x 4 | (its own hitbox) |
 | `CardCase` | the Glass Showcase and the Collector Case: code-built (`built`, Util/CaseLook, `CASE_LOOK`), a glass case whose cards stand upright and spin over rarity beams (`cardsUpright`, CaseSpinController); the Collector Case recolours its Support, Frame, Carpet and Strip parts (`propColors` in Config/Shelves) | fills 6 x 4 x 2 | (its own hitbox) |
-| `BoxPacks`, `BoxSleeves`, `BoxDecks`, `BoxBooster` | each product's delivery box (Products `boxProp`), welded to the box so it travels when carried; without a model the box is a branded case drawn on it (`Stock.CASE`: product colour, art in a gold frame, name, count pill, hand holes) | fits 2.5 x 1.5 x 2 | no |
+| `BoxPacks`, `BoxSleeves`, `BoxDecks`, `BoxBooster` | each product's delivery box (Products `boxProp`), welded to the box so it travels when carried; the Blender pack's cardboard boxes (see "Delivery boxes"), their `Picture` / `PictureBack` sticker panels given the product's icon (`DeliveryLooks.finishBox`); without a model the box is a branded case drawn on it (`Stock.CASE`: product colour, art in a gold frame, name, count pill, hand holes) | fits 2.5 x 1.5 x 2 | no |
 | `Shelf` | the Small Pack Rack: a code-built one-sided gondola (`built`) | fills 4 x 7 x 2 | (the shelf's own hitbox) |
 
 **Variants:** a slot also uses every file named after it plus a suffix starting with a capital letter or digit:
@@ -299,3 +299,21 @@ ground. Turn it with `YawOffset`, not by rotating parts: fitted props use the tu
 
 Inno's Stylized Asset Pack allows commercial use without credit (no redistribution). Check every other model's
 licence and creator before launch, and plan original art later (DESIGN 5.5).
+
+## Delivery boxes
+
+The four delivery boxes (owner 2026-11-14; Products `boxProp`) come from `tools/blender/build_delivery_props.py` as ONE
+pack the owner imports once:
+
+1. `blender -b --factory-startup --python tools/blender/build_delivery_props.py` writes
+   `assets/blender/Delivery/DeliveryProps.{blend,fbx}` (pieces `BoxPacks`, `BoxSleeves`, `BoxDecks`, `BoxBooster`; each
+   an Empty holding `<Name>__Frame`, `<Name>__Picture` and `<Name>__PictureBack`, one part per sticker since a decal
+   covers its part's whole face).
+2. Import the FBX in Studio (default settings) and save the imported model as `assets/props-import/DeliveryProps.rbxm`.
+3. `lune run tools/props/split_pack assets/props-import/DeliveryProps.rbxm` writes `assets/props/<Name>.rbxm`.
+
+`Props.weldFit` welds each to its box with Welds (a WeldConstraint took the parts' offset when the box entered the
+world, after it was moved onto the pad, and left the model behind). The importer once gave `BoxDecks` a texture that
+loads as a picture but never on a mesh (black box): its palette was uploaded again and written into
+`assets/props/BoxDecks.rbxm` (`TextureContent`, Lune); check after a re-import. Until they're split in, the boxes are
+branded cases (`Util/BrandBox`).

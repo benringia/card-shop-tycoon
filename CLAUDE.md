@@ -78,6 +78,9 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   pieces' models: one pack from `tools/blender/build_decor_props.py` (`assets/blender/DecorProps/`), imported once as
   `assets/props-import/DecorProps.rbxm` and split by `lune run tools/props/split_pack` (docs/props.md "Decor props");
   code-built stand-ins (`Util/DecorLooks`) until then.
+- The four delivery boxes (Products `boxProp`): one pack from `tools/blender/build_delivery_props.py`
+  (`assets/blender/Delivery/`), imported once as `assets/props-import/DeliveryProps.rbxm` and split by
+  `lune run tools/props/split_pack` (docs/props.md "Delivery boxes"); `Util/BrandBox` cases until then.
 - `assets/ui/support`: the Support card's picture (Pish and Chikin holding a golden heart; id in `Config/Support`
   CARD.picture), Figma-generated on flat green and cut out by `tools/ui-art/cutout.py`. Not synced by Rojo.
 - `assets/ui/mascot`: the HUD mascot's stickers (Pish, the Pish button) (peek and tail; ids in `Config/HudMascot`), Figma-generated on flat green

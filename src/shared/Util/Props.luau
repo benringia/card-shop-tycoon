@@ -695,9 +695,12 @@ function Props.weldFit(slot: string, part: BasePart): Model?
 			descendant.Massless = true
 			descendant.CanCollide = false
 			descendant.CanQuery = false
-			local weld = Instance.new("WeldConstraint")
+			-- a Weld keeps the fitted offset whenever it switches on: a WeldConstraint takes the parts' offset when the
+			-- part enters the world, and a delivery box is moved onto the pad before that (its model stayed behind)
+			local weld = Instance.new("Weld")
 			weld.Part0 = part
 			weld.Part1 = descendant
+			weld.C0 = part.CFrame:ToObjectSpace(descendant.CFrame)
 			weld.Parent = descendant
 		end
 	end

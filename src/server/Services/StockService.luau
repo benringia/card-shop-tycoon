@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Props = require(Shared:WaitForChild("Util"):WaitForChild("Props"))
 local BrandBox = require(Shared:WaitForChild("Util"):WaitForChild("BrandBox"))
+local DeliveryLooks = require(Shared:WaitForChild("Util"):WaitForChild("DeliveryLooks"))
 local Config = Shared:WaitForChild("Config")
 local Products = require(Config:WaitForChild("Products"))
 local StockConfig = require(Config:WaitForChild("Stock"))
@@ -189,8 +190,10 @@ local function createBox(shop: Shop, productId: string, units: number)
 	box:SetAttribute("ProductId", productId)
 	box:SetAttribute("Units", units)
 	-- The product's own box model, welded on, when assets/props has it; the part stays as the hitbox
-	if Props.weldFit(product.boxProp, box) then
+	local model = Props.weldFit(product.boxProp, box)
+	if model then
 		box.Transparency = 1
+		DeliveryLooks.finishBox(model, product.icon)
 	else
 		BrandBox.draw(box, product, `x{units}`)
 	end

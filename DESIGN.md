@@ -276,12 +276,17 @@ ringed by three gold cards spins and bobs, with a ring of small cards below it a
 way, out of step; a white cap with a violet ring. The rings are Rotors moved by `CondenserFxController` on each client
 within 80 studs, each with its own `Spin` and `Phase`; no lights). The delivery spot is outside on the sidewalk, left of the doors (`Town.DELIVERY`, built in code): a
 concrete platform level with the shop floor, a charcoal mat with a yellow safety border, "📦 DELIVERIES" on its street
-face and two black bollards with yellow bands at its street corners; boxes stand on the mat, and stocker pets fetch
+face and two black bollards with yellow bands at its street corners (owner 2026-11-14 tried a parcel chute station on
+it, a Meshy model with a slide boxes came down, and had it reverted: "it looks so bad ... revert the station to default
+one"); boxes stand on the mat, and stocker pets fetch
 them from its doorway side. Delivery boxes are branded cases (the user's pick of three concepts, 2026-10-30;
 `StockService`, `Stock.CASE`): printed in the product's colour with darker bands, the product's art in a gold frame
 (its UI icon when it has no pack art), its name and an "x24" count pill on the front and back, hand holes on the ends
-and the name on the lid, all drawn on the box itself so it travels when carried (a per-product model, Products
-`boxProp`, would replace it). Products shelves and up to 12 stock boxes in
+and the name on the lid, all drawn on the box itself so it travels when carried, until the Blender pack's box models
+are imported (Products `boxProp`: `BoxPacks`, `BoxSleeves`, `BoxDecks`, `BoxBooster`, owner 2026-11-14): cardboard
+shipping boxes with packing tape in the product's colour over the top and down the faces, a sticker in that colour on
+the front and back whose white panels (`Picture`, `PictureBack`) wear the product's icon (`DeliveryLooks.finishBox`;
+`tools/blender/build_delivery_props.py`, docs/props.md "Delivery boxes"). Products shelves and up to 12 stock boxes in
 the product's colour (3 levels of 4, filling from the bottom; any stock shows at least one; `Util/ShelfStock`,
 `Town.SHELF_STOCK`, `Products.color`). Every rack is 7 studs tall with its plates at the same three levels, so they
 line up side by side. A shelf whose model isn't a one-sided rack sets its own sides (`Shelves` `stock`): the
