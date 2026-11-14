@@ -36,9 +36,26 @@ return {
 		BOB_SECONDS = 2.4,
 		RANGE = 80, -- studs from the camera; further cases stand still
 		PAD = Vector3.new(0.06, 0.7, 0.7), -- a glowing disc under each card (cylinder: height, diameter)
-		PAD_TRANSPARENCY = 0.35,
-		BEAM_HEIGHT = 1.9, -- the light beam rising from the pad
-		BEAM_WIDTH = 0.75,
-		BEAM_TRANSPARENCY = 0.45, -- at its foot; it fades out to the top
+		PAD_TRANSPARENCY = 0.2,
+		-- the museum vitrine (owner 2026-11-14, concept B): a metal ring round each pad, a soft beam to the case's lid
+		-- with a bright core, a light spiralling up it (SWIRL, Util/CaseSwirl) and sparkles rising (SPARKLES)
+		RING = Vector3.new(0.08, 0.86, 0.86),
+		RING_COLOR = Color3.fromRGB(214, 218, 228),
+		BEAM_HEIGHT = 2.4, -- the light beam rising from the pad
+		BEAM_WIDTH = 0.9,
+		BEAM_TRANSPARENCY = 0.25, -- at its foot; it fades out to the top
+		BEAM_BRIGHTNESS = 2, -- over the bloom's threshold: the beams glow
+		CORE_WIDTH = 0.3, -- the beam's bright middle
+		CORE_TRANSPARENCY = 0.05,
+		SWIRL = { seconds = 2.6, turns = 1.6, radius = 0.55, bottom = 0.1, top = 2.3, width = 0.07, lifetime = 1, bead = 0.08, brightness = 3 }, -- thin (owner 2026-11-14)
+		SPARKLES = {
+			image = "rbxassetid://117269166059195", -- Config/SwordFx TEXTURES.star: a four-point star
+			rate = 10,
+			lifetime = { 1.6, 2.4 },
+			speed = { 0.5, 0.9 },
+			spread = 28, -- degrees off straight up
+			size = 0.28,
+			brightness = 2,
+		},
 	},
 }

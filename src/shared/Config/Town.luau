@@ -373,21 +373,36 @@ return {
 		},
 	},
 
-	-- The Glass Showcase / Collector Case (Util/CaseLook, code-built; UI project 3): a dark base with the bed on top,
-	-- corner posts and top rails, tall glass sides and lid, and a light strip along the top front edge. Part names
-	-- Support, Carpet, Frame, Glass, Strip (Shelves propColors recolour them). The bed sits at CaseLayout.UPRIGHT
-	-- bedHeight. Studs; colours { r, g, b }.
+	-- The Glass Showcase / Collector Case (Util/CaseLook, code-built), the museum vitrine (owner 2026-11-14, concept B:
+	-- "make it look exactly like that. with the glows and everything"): a white pedestal with a warm glow strip round
+	-- its foot (a white lip under it) and a pool of light on the floor, a silver plate on top that the cards float over
+	-- (each on its glowing pad and beam, Config/Showcase SPIN), a brass plaque on the front, and clear glass with
+	-- bright edges and two shine streaks. Part names Support, Carpet (the plate), Frame (the glass's edges), Glass,
+	-- Strip (the glow strip) as Shelves propColors recolour them; Plaque, Shine and FloorGlow keep theirs. The plate's
+	-- top is at CaseLayout.UPRIGHT bedHeight. Studs; colours { r, g, b }.
 	CASE_LOOK = {
-		SUPPORT = { 40, 44, 58 }, -- charcoal base
-		CARPET = { 70, 40, 110 }, -- violet bed
-		FRAME = { 205, 210, 220 }, -- chrome posts and rails
-		GLASS = { 210, 235, 255 },
-		GLASS_TRANSPARENCY = 0.85,
-		GLASS_REFLECTANCE = 0.15,
-		STRIP = { 70, 230, 255 }, -- cyan light strip
-		POST = 0.12, -- corner post and rail thickness
-		BED = 0.06, -- bed thickness
-		STRIP_HEIGHT = 0.1,
+		SUPPORT = { 250, 250, 252 }, -- the white pedestal
+		CARPET = { 222, 226, 236 }, -- the silver plate
+		FRAME = { 250, 252, 255 }, -- the glass's bright edges
+		GLASS = { 228, 240, 255 },
+		GLASS_TRANSPARENCY = 0.9,
+		GLASS_REFLECTANCE = 0.25,
+		STRIP = { 255, 214, 140 }, -- the warm glow round the pedestal's foot
+		PLAQUE = { 206, 166, 82 }, -- brass
+		PLAQUE_EDGE = { 160, 120, 52 },
+		EDGE = 0.05, -- the glass's edges
+		PLATE = 0.1, -- the plate's thickness
+		PLATE_INSET = 0.14, -- the plate stops this far in from the pedestal's sides
+		LIP = 0.05, -- the white lip under the glow strip
+		STRIP_HEIGHT = 0.17,
+		STRIP_INSET = 0.03, -- the glow strip sits this far into the pedestal
+		PLAQUE_SIZE = { 1.3, 0.36 }, -- width, height (on the pedestal's front, its middle at half the pedestal's height)
+		SHINE = { 0.08, 0.035 }, -- the two streaks' widths across the front glass
+		SHINE_TRANSPARENCY = 0.7,
+		-- the pool of light on the floor round the foot, `reach` studs past the pedestal on every side: a picture that
+		-- is brightest at the foot and fades outward (tools/textures/make_case_glow.py, assets/ui/fx-case; a round glow's
+		-- bright middle hid under the case), on a SurfaceGui over an invisible part
+		FLOOR_GLOW = { reach = 1.1, transparency = 0.2, image = "rbxassetid://84801725248486", pixelsPerStud = 20 },
 	},
 
 	-- The Forge (Props, code-built stand-in, weapons round 1): the machines' pod (a dark plinth with a glowing rim, a

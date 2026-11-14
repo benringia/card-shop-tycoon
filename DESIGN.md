@@ -265,11 +265,17 @@ dark price rails, an oak slat back and a charcoal header sign ("TRADING CARDS", 
 (one-sided gondola), Wall Shelf → WallShelf (the same, wider and taller), Accessory Hook → HookRack (a grey pegboard with
 chrome wire shelves and a row of hooks over each level), Big Display Rack → DisplayRack (double-sided: plates through an
 oak middle divider, a price rail and header text on both faces). Glass Showcase and Collector Case → CardCase
-(code-built, `Util/CaseLook`, `Town.CASE_LOOK`: a support, a carpet bed, a frame, see-through glass and a neon strip;
-the Collector Case's strip is gold, `propColors`). Their cards stand upright in two rows, the back row a stud behind
-and raised (`Util/ShowcaseLayout.uprightSlots`, `Config/CaseLayout`), and each turns slowly and bobs over a small
-glowing pad with a beam of light in its rarity colour (`CaseSpinController`, each client, within 80 studs,
-`Showcase.SPIN`); the card's back shows when it turns away. Condenser → Condenser (code-built, `Town.CONDENSER_LOOK`, restyled
+(code-built, `Util/CaseLook`, `Town.CASE_LOOK`), the **museum vitrine** (owner 2026-11-14, pick B of three concepts:
+a jewelry counter, a museum vitrine, a neon cabinet; "make it look exactly like that. with the glows and everything"):
+a white pedestal 40% of the case's height with a warm glow strip round its foot over a white lip, a pool of light on
+the floor round it (a picture brightest at the foot, `tools/textures/make_case_glow.py`), a silver plate on top, a
+brass plaque on its front, and clear glass with bright edges and two shine streaks; the Collector Case is navy with
+gold edges, a royal blue plate and a gold glow (`propColors`). Their cards stand upright in two rows, the back row a
+stud behind and raised (`Util/ShowcaseLayout.uprightSlots`, `Config/CaseLayout`), and each floats 0.3 studs over a
+glowing pad in a metal ring, turning slowly and bobbing, in a beam of light in its rarity colour that reaches the lid
+with a bright core, a light spiralling up it trailing its colour (`Util/CaseSwirl`) and star sparkles rising round it
+(`CaseSpinController`, each client; the spin, swirl and sparkles within 80 studs, `Showcase.SPIN`); the card's back
+shows when it turns away. Condenser → Condenser (code-built, `Town.CONDENSER_LOOK`, restyled
 2026-10-30 to match the Grading Station's scan pod: a dark plinth with a violet rim, a white body with a light band, a
 glowing card slot and a "✨ CONDENSER" strip, a see-through chamber with a glowing floor in which a violet crystal
 ringed by three gold cards spins and bobs, with a ring of small cards below it and one above it turning the other
@@ -3483,7 +3489,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── CreatureController.luau  # draws summoned creatures: model or placeholder, motion, glow, name tag
     │   │   ├── CardBuyController.luau  # visitors browse other players' cases (marketplace style); buy from Collector Cases
     │   │   ├── CardEffectsController.luau # displayed cards: card face with price, halo, glows, sparkles, listing bursts
-    │   │   ├── CaseSpinController.luau # case cards turn and bob over a pad and beam in their rarity colour (within range)
+    │   │   ├── CaseSpinController.luau # case cards float, turn and bob over a pad and beam in their rarity colour, a spiral light and sparkles (within range)
     │   │   └── DecorSpinController.luau # the Card Pedestals' floating cards turn (shop decor, within range)
     │   └── Util/
     │       ├── UIKit.luau              # shared UI building helpers and the style (header, close, lip buttons)
@@ -3685,7 +3691,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── ShelfStock.luau    # stock boxes, display box fill and price tags on shelves (pure, Lune-tested)
             ├── PackModels.luau    # the 3D pack, deck box and display box (assets/packs, or stand-ins), dressed in a pack's look
             ├── ProductPictureRules.luau # a menu row's pack / deck box picture, else its icon (pure, Lune-tested)
-            ├── CaseLook.luau      # the code-built CardCase prop: support, carpet, frame, glass, strip
+            ├── CaseLook.luau      # the code-built CardCase prop, the museum vitrine: pedestal, glow strip, plate, plaque, glass
             ├── ShowcaseLayout.luau # upright case card slots in rows (pure, Lune-tested)
             ├── OpeningFlow.luau   # the opening's phases and what a tap does (pure, Lune-tested)
             ├── OpeningLayout.luau # stage depths for on-screen card sizes, the row and the lineup (pure, Lune-tested)

@@ -107,6 +107,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	RatingRules = require("./RatingRules.spec"),
 	DecorRules = require("./DecorRules.spec"),
 	BadgeRules = require("./BadgeRules.spec"),
+	CaseSwirl = require("./CaseSwirl.spec"),
 	WalkerRules = require("./WalkerRules.spec"),
 	StageRules = require("./StageRules.spec"),
 	WalkStep = require("./WalkStep.spec"),

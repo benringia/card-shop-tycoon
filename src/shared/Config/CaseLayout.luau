@@ -9,6 +9,8 @@ return {
 		spacing = 1.9, -- between card centres in a row
 		rowDepth = 1.0, -- front row to back row (more than a card's width: they spin clear of each other)
 		backRaise = 0.6, -- the back row stands this much higher, so it shows over the front one
-		bedHeight = 0.3, -- the front cards' feet, as a share of the case height from its bottom
+		bedHeight = 0.4, -- the plate the front cards' pads sit on, as a share of the case height from its bottom (the
+		-- vitrine's pedestal, owner 2026-11-14 concept B: a tall white pedestal under the glass)
+		float = 0.3, -- each card floats this far over its glowing pad (concept B)
 	},
 }

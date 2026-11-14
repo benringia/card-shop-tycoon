@@ -33,4 +33,16 @@ return {
 		equal(slots[1].z, slots[2].z, "same row")
 		equal(slots[1].x < slots[2].x, true, "left to right")
 	end,
+
+	-- the museum vitrine (owner 2026-11-14, concept B): each card floats `float` studs over its glowing pad on the plate
+	["the cards float over their pads, the back row still under the lid"] = function()
+		local look = CaseLayout.UPRIGHT
+		expect.equal(look.float > 0, true, "they float")
+		local slots = ShowcaseLayout.uprightSlots(6, CASE, look)
+		local plate = -CASE.y / 2 + look.bedHeight * CASE.y
+		expect.near(slots[1].y - look.cardSize.y / 2, plate + look.float, 1e-6, "the front row's feet: the plate plus the float")
+		expect.near(ShowcaseLayout.padY(slots[4], look), plate + look.backRaise, 1e-6, "the back row's pad: the plate plus its raise")
+		expect.equal(slots[4].y + look.cardSize.y / 2 + 0.08 <= CASE.y / 2, true, "the back row clears the lid as it bobs")
+	end,
 }
+

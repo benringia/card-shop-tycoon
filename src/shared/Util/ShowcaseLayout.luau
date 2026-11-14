@@ -9,11 +9,13 @@ export type Upright = {
 	rowDepth: number,
 	backRaise: number,
 	bedHeight: number,
+	float: number,
 }
 
 local ShowcaseLayout = {}
 
--- Rows of `columns` left to right, the front row first; each row behind stands `backRaise` higher
+-- Rows of `columns` left to right, the front row first; each row behind stands `backRaise` higher; every card floats
+-- `float` over its pad
 function ShowcaseLayout.uprightSlots(count: number, size: Vec, look: Upright): { Vec }
 	local rows = math.max(1, math.ceil(count / look.columns))
 	local feet = -size.y / 2 + look.bedHeight * size.y
@@ -23,11 +25,16 @@ function ShowcaseLayout.uprightSlots(count: number, size: Vec, look: Upright): {
 		local column = (index - 1) % look.columns
 		table.insert(slots, {
 			x = (column - (look.columns - 1) / 2) * look.spacing,
-			y = feet + look.cardSize.y / 2 + row * look.backRaise,
+			y = feet + look.float + look.cardSize.y / 2 + row * look.backRaise,
 			z = (row - (rows - 1) / 2) * look.rowDepth,
 		})
 	end
 	return slots
+end
+
+-- Where a slot's glowing pad sits (its height in the case part's space): `float` under the card's feet
+function ShowcaseLayout.padY(slot: Vec, look: Upright): number
+	return slot.y - look.cardSize.y / 2 - look.float
 end
 
 return ShowcaseLayout
