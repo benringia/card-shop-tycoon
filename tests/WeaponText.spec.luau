@@ -234,4 +234,14 @@ return {
 		expect.equal(WeaponText.bond(Weapons, "prismBlade"), "+15% hits and a 50% faster super with every creature")
 		expect.equal(WeaponText.bond(Weapons, "starterSword"), nil, "no element, no bond")
 	end,
+
+	-- the dial's name under its title (owner 2026-11-14 pick C): the upgrade level and the element, in plain words
+	["the weapon switch's line: upgrade level and element"] = function()
+		expect.equal(WeaponText.switchLine(Weapons, "verdantBlade", { grade = "A", level = 4 }), "+4 · Nature")
+		expect.equal(WeaponText.switchLine(Weapons, "forgeSword_Ember", { grade = "C", level = 0 }), "Fire", "+0 is left out")
+		expect.equal(WeaponText.switchLine(Weapons, "prismBlade", { grade = "S", level = 10 }), "+10 · Every element")
+		expect.equal(WeaponText.switchLine(Weapons, "starterSword", nil), "", "no element, not upgraded: nothing")
+		expect.equal(WeaponText.switchLine(Weapons, "nope", nil), "")
+	end,
 }
+

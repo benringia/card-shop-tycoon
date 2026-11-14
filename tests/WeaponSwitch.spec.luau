@@ -37,21 +37,64 @@ local function readyCopy(cfg: any): any
 end
 
 return {
-	-- owner 2026-11-12: "add a carousel effect which I can see whats next or previous weapon but smaller"
-	["the carousel's neighbours: both with three or more, only the next with two, none with one"] = function()
-		local before, after = WeaponSwitch.neighbours({ "a", "b", "c" }, "a")
-		expect.equal(before, "c", "the one before wraps round")
-		expect.equal(after, "b")
-		local middleBefore, middleAfter = WeaponSwitch.neighbours({ "a", "b", "c", "d" }, "c")
-		expect.equal(middleBefore, "b")
-		expect.equal(middleAfter, "d")
-		local twoBefore, twoAfter = WeaponSwitch.neighbours({ "a", "b" }, "a")
-		expect.equal(twoBefore, nil, "two weapons: the other one shows once, on the right")
-		expect.equal(twoAfter, "b")
-		local oneBefore, oneAfter = WeaponSwitch.neighbours({ "a" }, "a")
-		expect.equal(oneBefore == nil and oneAfter == nil, true, "one weapon: none")
-		local _, unknownAfter = WeaponSwitch.neighbours({ "a", "b", "c" }, "z")
-		expect.equal(unknownAfter, "b", "an unknown weapon counts as the first")
+	-- owner 2026-11-12: "add a carousel effect which I can see whats next or previous weapon but smaller"; owner
+	-- 2026-11-14 pick C (the medallion dial): the one before on the left, the next on top, the one after it between
+	["the dial's track: before and next with three or more, the one after next with four, only the next with two"] = function()
+		local three = WeaponSwitch.track({ "a", "b", "c" }, "a")
+		expect.equal(three.before, "c", "the one before wraps round")
+		expect.equal(three.after, "b")
+		expect.equal(three.later, nil, "three weapons: the one after next is the one before")
+		local four = WeaponSwitch.track({ "a", "b", "c", "d" }, "c")
+		expect.equal(four.before, "b")
+		expect.equal(four.after, "d")
+		expect.equal(four.later, "a", "four weapons: the one after next, wrapping round")
+		local two = WeaponSwitch.track({ "a", "b" }, "a")
+		expect.equal(two.before, nil, "two weapons: the other one shows once, as the next")
+		expect.equal(two.after, "b")
+		expect.equal(two.later, nil)
+		local one = WeaponSwitch.track({ "a" }, "a")
+		expect.equal(one.before == nil and one.after == nil and one.later == nil, true, "one weapon: none")
+		expect.equal(WeaponSwitch.track({ "a", "b", "c" }, "z").after, "b", "an unknown weapon counts as the first")
+	end,
+
+	-- the dial rolls (owner 2026-11-14): each weapon starts where it was (the medallion, another spot) and moves to its
+	-- new spot; one that wasn't showing fades in where it lands
+	["the dial's roll: each weapon starts where it was"] = function()
+		local list = { "a", "b", "c", "d", "e" }
+		local forward = WeaponSwitch.roll(list, "b", "c")
+		expect.equal(forward.current, "after", "the next weapon comes in from the top")
+		expect.equal(forward.before, "center", "the old one leaves the medallion for the left")
+		expect.equal(forward.after, "later", "the one after next moves up")
+		expect.equal(forward.later, nil, "a new one fades in")
+		local back = WeaponSwitch.roll(list, "b", "a")
+		expect.equal(back.current, "before", "the one before comes in from the left")
+		expect.equal(back.after, "center")
+		expect.equal(back.later, "after")
+		expect.equal(back.before, nil)
+		local threeList = { "a", "b", "c" }
+		local around = WeaponSwitch.roll(threeList, "b", "c")
+		expect.equal(around.after, "before", "three weapons: the one on the left rolls round to the top")
+		expect.equal(around.before, "center")
+		local two = WeaponSwitch.roll({ "a", "b" }, "a", "b")
+		expect.equal(two.current, "after")
+		expect.equal(two.after, "center", "two weapons: they swap")
+		local same = WeaponSwitch.roll(list, "b", "b")
+		expect.equal(same.current, "center", "no switch: nothing moves")
+		expect.equal(same.before, "before")
+		expect.equal(same.after, "after")
+		expect.equal(same.later, "later")
+	end,
+
+	["a spot on the dial: degrees round the medallion, y down the screen"] = function()
+		local x, y = WeaponSwitch.arcPoint(180, 70)
+		expect.near(x, -70, 1e-6, "180: left")
+		expect.near(y, 0, 1e-6)
+		x, y = WeaponSwitch.arcPoint(90, 70)
+		expect.near(x, 0, 1e-6, "90: straight up")
+		expect.near(y, -70, 1e-6)
+		x, y = WeaponSwitch.arcPoint(135, 10)
+		expect.near(x, -10 * math.sqrt(0.5), 1e-6, "135: up and left")
+		expect.near(y, -10 * math.sqrt(0.5), 1e-6)
 	end,
 
 	-- spec 2026-11-12-timed-upgrades-revive-design: an item being upgraded is locked till done

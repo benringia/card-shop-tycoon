@@ -822,9 +822,12 @@ Items: `items = { [itemId] = count }`, listed in `Config/Items` (name, icon, des
 and changed only by ItemService. The binder has two tabs, Cards and Bag (icon tabs; key I opens the Bag). The Bag
 is an inventory window in the middle of the whole screen ("Bag", "1 / 20 slots" in its header): a 5x4 grid of slots (more rows if
 needed), filled ones slate with the item icon and an outlined "x2" count, the rest empty; boss items (key fragments,
-trophies) are tinted for their boss (`Util/BossTints`: its element's colour, the Hydra's pale prism) with the boss's
-ladder number in a corner chip (`ItemRules.bossOf`), so every key looks different; the chosen item's details on the
-right in a dark panel (big icon in the same tint, name, "You have 2", What it does / Where to get it / How to use it
+trophies) each have their own picture (owner 2026-11-14: "all card pack in my inventory look the same ... samewith
+the trophies and keys"; UIIcons sheet 10: a spider key, lava, snowflake, lightning, void and crystal keys, and a trophy
+per boss: leafy antlers, spider, flames, frost, lightning, void, crystal hydra) with the boss's ladder number in a
+corner chip in its colour (`ItemRules.bossOf`, `Util/BossTints`); Turts' Very Rare, Epic and Legendary Packs are teal,
+purple and gold packs (the First Spark Pack keeps the orange one); the chosen item's details on the
+right in a dark panel (big icon ringed in the boss's colour, name, "You have 2", What it does / Where to get it / How to use it
 boxes). Counts and boss numbers stay at least 14 px tall on screen when the window shrinks for a phone. It scales down to
 fit small screens; the book and its corner buttons hide behind it. The Cards tab (and the case card picker) has a Frontier filter and a progress bar per set (First Spark, Frontier). Star Shards in the Condenser ("Use Star Shards"): real duplicates first, shards cover the rest
 up to half of a star's cost. One codebase, two places: `frontier.project.json` sets the Workspace attribute
@@ -881,7 +884,7 @@ Admin) lifted clear of it on a short one, hidden in fights and behind the binder
 bottom right (owner 2026-11-13: "move weapon lower to close the gap"; UiLayout.weaponSwitch `above`). Also on PC (owner
 2026-11-13): only Cards and Bag stay in the bottom row; Bosses and Admin are Phone apps on a computer too (`Hud.tile`
 `phoneAlways`, CompactHud.spot `always`), so the left column is just the Phone; the rating chip has a hover tip (what it
-is, what raises it, "Click it for what to fix"); the weapon carousel's Q sits under its > arrow (Z under <). On a phone it
+is, what raises it, "Click it for what to fix"); the weapon dial's Q sits beside its next weapon (Z under the one before). On a phone it
 hangs under the cash at the top right. On top a **carousel** of your 3 party slots: the creature that's out (else the one last
 in the middle, else the first card) big in the middle with the orange glow and OUT (at its foot), the other two smaller either side, each with its level in a gold
 chip at the top centre of its circle (owner 2026-11-13),
@@ -1966,7 +1969,7 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   the Rewards column, `BossRules.detailsLayout`, so the columns keep their room)
   (tooltip: the zone and world) and the element to bring (`BossRules.counterElements` on `Combat.BEATS`: "Bring Shade",
   tooltip "Shade cards hit it 1.5x harder"; the Hydra "Bring a mix"); then two columns, each scrolling when it doesn't fit. **To fight it:** a checklist of what it needs, each row with a
-  check, cross or "!" mark: shop level (You: n), its key fragments (n/N tinted for that boss, "Opened" once used,
+  check, cross or "!" mark: shop level (You: n), its key fragments (n/N with that boss's key picture, "Opened" once used,
   "No key needed" for the first; tooltip: the item, that it's used up on the first fight, and where it drops; tapping
   the row while short shows the boss before), and Power (the Power it's built for against your best party card, with
   a bar; a warning, not a lock); and its tricks spelled out under "Watch out" (`BossRules.watchOut`: shield,
@@ -2287,7 +2290,7 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
     tooltips"): < [before] [in hand] [next] >, the neighbours smaller and faded (tap one to step to it; two weapons show
     only the next), small arrows with a 48 px tap area, the strip sliding a step on a switch, and under a mouse a tip
     with the weapon's name, Power, element, perk, grade and level (Config/HudLayout WEAPON_SWITCH, Util/WeaponSwitch
-    neighbours, UiLayout.weaponSwitch).
+    neighbours, UiLayout.weaponSwitch). Replaced 2026-11-14 by the medallion dial (see "Quick weapon switch")
   - **The Caves' drips**: one drop each, quieter (owner: "a loud triple droplets"; Config/Soundscape, the Dungeon too).
   - **Basic attack sounds** (owner: "randomize basic attack sound for pets ... same with monster basic attack"): each
     element's hit and each monster's strike is three or four clips of one Pro Sound Effects series, a different one than
@@ -2796,7 +2799,17 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   weapon's portrait in its rarity's ring, `<` and `>` either side, Q (next) / Z (previous, `Weapons.PREVIOUS_KEY`, its
   badge on `<`; owner 2026-11-09; Shift+Q too, but Shift is the dodge in a fight) on keyboards, a swipe on the chip; it
   steps through every weapon you own (swords, spears, scythes; by rarity, then name: `Util/WeaponSwitch`, Lune-tested)
-  and asks the server to equip it (`EquipWeapon`), its name under the chip for 1.5 s. Shown with two weapons or more,
+  and asks the server to equip it (`EquipWeapon`), its name under the chip for 1.5 s. **The medallion dial** (owner
+  2026-11-14 pick C of three mockups: card hand, hotbar, dial; the arrows and the flat carousel went): the weapon in hand
+  in a 72 px medallion, its rarity's ring with a shine going round every 4 s, its inside the element's colour (lavender
+  for the Prism Blade, slate with none), its grade on its corner; on a curved track 70 px from its middle the one before
+  on the left (Z under it), the next on top (Q beside it) and, with four weapons or more, the one after that between
+  them, smaller and faded (Util/WeaponSwitch `track`). Tap one on the track to step to it (each a 48 px tap area); a
+  switch rolls the dial: each weapon slides along the track from where it was, the new one in hand slides into the
+  medallion from its spot, one that wasn't showing fades in (`WeaponSwitch.roll`, `arcPoint`). The name in its rarity's
+  colour with its line ("+4 · Nature", `WeaponText.switchLine`) shows left of the track for 1.5 s after a switch only
+  (owner: "only briefly"); the stats tip under a mouse on the medallion. Phones: the medallion alone (64 px, "2/6" on
+  its corner, tap for the next, swipe back). Shown with two weapons or more,
   never over a window or while placing (`WeaponSwitchController`, sizes in `Config/HudLayout` WEAPON_SWITCH). In a fight a
   switch is allowed but costs `Weapons.SWAP_SECONDS` (1 s) with no cut or skill (the dodge still works), the combo
   starts again, the old weapon's cut or skill still on its way is cancelled (the server checks `SwordRules.skillDodged`
@@ -3451,7 +3464,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── BattleController.luau    # Fight prompts, the Return to town pill in the wild, XP sparks after a win, fight bar (wild + PvP), boss HP bar and banners, damage numbers, end screen
     │   │   ├── LevelUpController.luau   # plays the level-up pillar on you, your creatures and players nearby (LevelUpFx)
     │   │   ├── SwordController.luau     # draws the equipped weapon (its glow ladder, WeaponLook) on backs and in hands, the first-sword popup, boss-fight actions (buttons, keys, dodge dash), trail, sounds, kneeling
-    │   │   ├── WeaponSwitchController.luau # the quick weapon switch chip on the right edge: < and >, a swipe, Q / Z (EquipWeapon)
+    │   │   ├── WeaponSwitchController.luau # the quick weapon switch: the medallion dial on the right edge, a swipe, Q / Z (EquipWeapon)
     │   │   ├── WeaponRevealController.luau # a boss's weapon drop and the Forge's results: the reveal on the opening stage
     │   │   ├── BossChestController.luau # a boss win's three chests on the opening stage: the pick and the opening
     │   │   ├── ForgeController.luau     # the Forge window: Forge / Upgrade / Reforge tabs and what each does, weapon rows, the chosen weapon's card, Now / After boxes, cost chips and one button
@@ -3481,7 +3494,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │       ├── CardTips.luau           # card tooltips in the style kit: binder card summary, party copy (bars, perk, rest)
     │       ├── CopyCompare.luau        # the kid swap comparison: verdict badge and sentence, IN -> OUT cards, paired stat bars, perk line
     │       ├── Tooltip.luau            # word tooltips for icons without a label (hover, or hold a finger on it); rich item tips
-    │       ├── BossTints.luau          # a boss's UI icon and its key fragments' tint (ladder, Bag)
+    │       ├── BossTints.luau          # a boss's UI icon and its colour (the Bag's number chips and detail ring)
     │       ├── BinderDesk.luau         # the 3D binder's scene: desk, painted lamp light, case, rings, page canvases, set tabs, camera framing, picking by raycast
     │       ├── StageSpot.luau          # puts the binder, card view and pack opening stages right above the player (clear box, claims) and moves their parts
     │       ├── PageTurner.luau         # the binder's turning page: bending strips with light cards on both sides, shade, shadow, page sound, drag
@@ -3994,9 +4007,11 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   HUD tiles (Close included), the top bar, the Shop's header and tabs, Bag items and customer mood bubbles
   (Angry, Thinking, Happy); made as four sheets with Figma's image generator and cut by
   `tools/ui-icons/slice_icons.py <sheet> <1-4>` (PNGs in `assets/ui/icons`). Sheet 4 (the style kit) adds Power, Hp,
-  Atk, Spd, Xp, Copies, Summon, Remove, Job, KeyFragment (pale, tinted per boss in code), XpTonic, GradingSeal,
+  Atk, Spd, Xp, Copies, Summon, Remove, Job, KeyFragment (pale; the boss keys use sheet 10 now), XpTonic, GradingSeal,
   GoldSeal, Travel, Best and Pvp; sheet 7 (weapons round 1) the boss materials and Wild Ore (WardenHeartwood ...
-  WildOre) and spare Forge icons (Anvil, Hammer, Upgrade, Reforge, Spear, Scythe, Elements, Awakened); Bag items use icon names (`Config/Items` `icon`), not emoji. Every icon is kept drawn, tiny and nearly invisible,
+  WildOre) and spare Forge icons (Anvil, Hammer, Upgrade, Reforge, Spear, Scythe, Elements, Awakened); sheet 10 each
+  boss's key fragment and trophy (KeyBrood ... KeyHydra, TrophyWarden ... TrophyHydra) and Turts' packs (PackVeryRare,
+  PackEpic, PackLegendary); Bag items use icon names (`Config/Items` `icon`), not emoji. Every icon is kept drawn, tiny and nearly invisible,
   from the moment you join (Roblox only finishes loading an image once it's drawn), so hidden tiles open with
   their icons ready. Names without a picture show as text (⌛ in a bubble). **Toasts** (owner's pick A, 2026-11-06;
   `Config/Toasts`, `Util/ToastRules`, `UIController.Notify(message, isError, duration, icon)` and `NotifySide` for

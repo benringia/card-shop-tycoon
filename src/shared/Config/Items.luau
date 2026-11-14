@@ -12,45 +12,46 @@ return {
 			source = "Frontier monsters · 3% (elites 10%)",
 			use = "Card Condenser → Use Star Shards (covers up to half of a star)",
 		},
-		-- Boss ladder (Config/Bosses): fragments open the next boss, the rest help you climb. Account-bound.
+		-- Boss ladder (Config/Bosses): fragments open the next boss, the rest help you climb. Account-bound. Every key
+		-- fragment and trophy has its own picture (Config/UIIcons sheet 10, owner 2026-11-14)
 		fragment_caveBroodQueen = {
 			name = "Brood Queen Key Fragment",
-			icon = "KeyFragment",
+			icon = "KeyBrood",
 			description = "3 of these open the Cave Brood Queen's arena.",
 			source = "Meadow Warden (boss)",
 			use = "Opens the Cave Brood Queen the first time you fight her",
 		},
 		fragment_emberColossus = {
 			name = "Colossus Key Fragment",
-			icon = "KeyFragment",
+			icon = "KeyColossus",
 			description = "5 of these open the Ember Colossus's arena.",
 			source = "Cave Brood Queen (boss)",
 			use = "Opens the Ember Colossus the first time you fight it",
 		},
 		fragment_frostTyrant = {
 			name = "Frost Tyrant Key Fragment",
-			icon = "KeyFragment",
+			icon = "KeyFrost",
 			description = "5 of these open the Frost Tyrant's arena in the Frontier.",
 			source = "Ember Colossus (boss)",
 			use = "Opens the Frost Tyrant the first time you fight it",
 		},
 		fragment_stormSovereign = {
 			name = "Sovereign Key Fragment",
-			icon = "KeyFragment",
+			icon = "KeyStorm",
 			description = "8 of these open the Storm Sovereign's arena in the Frontier.",
 			source = "Frost Tyrant (boss)",
 			use = "Opens the Storm Sovereign the first time you fight it",
 		},
 		fragment_riftDevourer = {
 			name = "Devourer Key Fragment",
-			icon = "KeyFragment",
+			icon = "KeyRift",
 			description = "8 of these open the Rift Devourer's arena in the Frontier.",
 			source = "Storm Sovereign (boss)",
 			use = "Opens the Rift Devourer the first time you fight it",
 		},
 		fragment_prismHydra = {
 			name = "Hydra Key Fragment",
-			icon = "KeyFragment",
+			icon = "KeyHydra",
 			description = "10 of these open the Prism Hydra in the Dungeon.",
 			source = "Rift Devourer (boss)",
 			use = "Opens the Prism Hydra the first time you fight it",
@@ -147,7 +148,7 @@ return {
 		-- the hit card at least the pack's tier; the Legendary Pack's Legendary rolls the stingy pity grades (`stingyGrade`)
 		vrPack = {
 			name = "Very Rare Pack",
-			icon = "BoosterPack",
+			icon = "PackVeryRare",
 			description = "A First Spark pack: its last card is Very Rare or better.",
 			source = "Turts' rug shop",
 			use = "Bag: tap Open",
@@ -156,7 +157,7 @@ return {
 		},
 		epicPack = {
 			name = "Epic Pack",
-			icon = "BoosterPack",
+			icon = "PackEpic",
 			description = "A First Spark pack: its last card is Epic or better.",
 			source = "Turts' rug shop",
 			use = "Bag: tap Open",
@@ -165,7 +166,7 @@ return {
 		},
 		legendaryPack = {
 			name = "Legendary Pack",
-			icon = "BoosterPack",
+			icon = "PackLegendary",
 			description = "A First Spark pack: its last card is a Legendary.",
 			source = "Turts' rug shop",
 			use = "Bag: tap Open",
@@ -182,7 +183,7 @@ return {
 		},
 		trophy_frostTyrant = {
 			name = "Frost Tyrant Trophy",
-			icon = "Trophy",
+			icon = "TrophyFrost",
 			description = "For beating the Frost Tyrant.",
 			source = "Frost Tyrant, first win",
 			use = "Build → Trophies: place it in your shop",
@@ -190,7 +191,7 @@ return {
 		},
 		trophy_stormSovereign = {
 			name = "Storm Sovereign Trophy",
-			icon = "Trophy",
+			icon = "TrophyStorm",
 			description = "For beating the Storm Sovereign.",
 			source = "Storm Sovereign, first win",
 			use = "Build → Trophies: place it in your shop",
@@ -198,7 +199,7 @@ return {
 		},
 		trophy_riftDevourer = {
 			name = "Rift Devourer Trophy",
-			icon = "Trophy",
+			icon = "TrophyRift",
 			description = "For beating the Rift Devourer.",
 			source = "Rift Devourer, first win",
 			use = "Build → Trophies: place it in your shop",
@@ -206,7 +207,7 @@ return {
 		},
 		trophy_prismHydra = {
 			name = "Prism Hydra Trophy",
-			icon = "Trophy",
+			icon = "TrophyHydra",
 			description = "For conquering the Dungeon: beating the Prism Hydra.",
 			source = "Prism Hydra, first win",
 			use = "Build → Trophies: place it in your shop",
@@ -229,7 +230,7 @@ return {
 		},
 		trophy_meadowWarden = {
 			name = "Meadow Warden Trophy",
-			icon = "Trophy",
+			icon = "TrophyWarden",
 			description = "For beating the Meadow Warden.",
 			source = "Meadow Warden, first win",
 			use = "Build → Trophies: place it in your shop",
@@ -237,7 +238,7 @@ return {
 		},
 		trophy_caveBroodQueen = {
 			name = "Brood Queen Trophy",
-			icon = "Trophy",
+			icon = "TrophyBrood",
 			description = "For beating the Cave Brood Queen.",
 			source = "Cave Brood Queen, first win",
 			use = "Build → Trophies: place it in your shop",
@@ -245,7 +246,7 @@ return {
 		},
 		trophy_emberColossus = {
 			name = "Ember Colossus Trophy",
-			icon = "Trophy",
+			icon = "TrophyColossus",
 			description = "For beating the Ember Colossus.",
 			source = "Ember Colossus, first win",
 			use = "Build → Trophies: place it in your shop",

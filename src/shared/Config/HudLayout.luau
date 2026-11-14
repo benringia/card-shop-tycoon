@@ -73,10 +73,18 @@ return {
 	-- The phone's buffs (owner 2026-11-13, buffs pick A; BuffController): round icons `icon` px stacked left of your face
 	-- in a `width` px wide tap area (one tap: every buff in a tooltip), a timed one in a `ring` px ring that empties
 	BUFF_ICONS = { icon = 26, ring = 3, gap = 4, width = 56, track = Color3.fromRGB(255, 255, 255) },
-	-- The quick weapon switch (spec 2026-11-07-weapons-round2-design 6, the owner's pick A): a round chip on the right
-	-- edge at mid height with your weapon's picture in its rarity's ring, < and > either side; its name shows under it
-	-- (in `name` px of room) for nameSeconds after a switch; a swipe of `swipe` px on the chip steps too. Placed by
-	-- UiLayout.weaponSwitch: never scaled under 48 px arrows, above the fight buttons in a fight
-	-- the carousel (owner 2026-11-12: smaller buttons, the weapons before and after smaller beside it, a tooltip): px
-	WEAPON_SWITCH = { chip = 58, side = 40, arrow = 30, hit = 48, gap = 6, right = 12, name = 22, ring = 3, nameSeconds = 1.5, swipe = 30, slide = 0.18, sideFade = 0.35, compactChip = 64, countText = 12 },
+	-- The quick weapon switch (spec 2026-11-07-weapons-round2-design 6), the medallion dial (owner 2026-11-14 pick C):
+	-- the weapon in hand in a `chip` px medallion, its rarity's ring `ring` px with a shine going round every
+	-- shineSeconds, its inside the element's colour; the others `side` px (a `hit` px tap area) on a track `arc` px from
+	-- its middle at `angles` (degrees: 180 left, 90 up), the one after next faded (laterFade) and smaller (laterScale);
+	-- a switch rolls them along the track in `roll` s. The name and its line show left of the track for nameSeconds
+	-- after a switch (owner: "only briefly"); a swipe of `swipe` px on the medallion steps too. Placed by
+	-- UiLayout.weaponSwitch: never scaled under 48 px tap areas, above the fight buttons in a fight. Phones: the
+	-- medallion alone (`compactChip`), its "2/6" count `countText` px
+	WEAPON_SWITCH = {
+		chip = 72, side = 36, arc = 70, hit = 48, gap = 6, right = 12, ring = 4, shineSeconds = 4,
+		angles = { before = 180, after = 90, later = 135 },
+		sideFade = 0.15, laterFade = 0.55, laterScale = 0.8, roll = 0.28, nameSeconds = 1.5, swipe = 30,
+		compactChip = 64, countText = 12,
+	},
 }

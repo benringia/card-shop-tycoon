@@ -76,7 +76,7 @@ return {
 	end,
 
 	["one weapon chip on a phone: just the chip, a big tap target, on the right edge"] = function()
-		local look = { chip = 58, side = 40, arrow = 30, hit = 48, gap = 6, right = 12, name = 22, compactChip = 64 }
+		local look = { chip = 72, side = 36, arc = 70, hit = 48, gap = 6, right = 12, compactChip = 64 }
 		for _, view in { { w = 750, h = 381 }, { w = 667, h = 375 } } do
 			local r = UiLayout.weaponSwitch(view, look, 0.7, false, nil, true)
 			expect.near(r.w, look.compactChip * r.scale, 1e-6, "as wide as the chip")

@@ -1,7 +1,7 @@
 """Cuts the UI icon sheet (a 4x4 grid on a magenta background, made with Figma's image generator) into separate
 transparent PNGs in assets/ui/icons, one per name below. Needs Pillow.
 
-Usage: python tools/ui-icons/slice_icons.py <sheet.jpg> [sheet number 1-9, default 1]
+Usage: python tools/ui-icons/slice_icons.py <sheet.jpg> [sheet number 1-10, default 1]
        python tools/ui-icons/slice_icons.py <icon.png> single <Name>   (one icon on magenta, e.g. DashSkill)
 """
 import os
@@ -69,6 +69,14 @@ SHEETS = {
         "HalberdFlames", "HalberdCrack", "Volcano", "HalberdSpin",
         "TridentWave", "TridentDrops", "TridentIcicles", "Whirlpool",
         "LanceBloom", "LanceLeaves", "GiantThorn", "LanceSun",
+    ],
+    # The Bag's boss items and Turts' packs, each its own picture (owner 2026-11-14: "all card pack in my inventory look
+    # the same ... same with the trophies and keys"): the six key fragments, the seven trophies, three rarity packs
+    10: [
+        "KeyBrood", "KeyColossus", "KeyFrost", "KeyStorm",
+        "KeyRift", "KeyHydra", "TrophyWarden", "TrophyBrood",
+        "TrophyColossus", "TrophyFrost", "TrophyStorm", "TrophyRift",
+        "TrophyHydra", "PackVeryRare", "PackEpic", "PackLegendary",
     ],
 }
 GRID = 4

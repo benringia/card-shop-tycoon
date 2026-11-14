@@ -74,6 +74,26 @@ return {
 		assert(UIIcons.PishPresent and UIIcons.PishGift, "both pictures uploaded")
 	end,
 
+	-- owner 2026-11-14: "all card pack in my inventory look the same (epic/legendary/first cardpack) ... samewith the
+	-- trophies and keys": each key fragment, trophy and Turts pack has its own uploaded picture
+	["every key fragment, trophy and rarity pack has its own picture"] = function()
+		local UIIcons = require("../src/shared/Config/UIIcons")
+		local seen: { [string]: string } = {}
+		local checked = 0
+		for id, item in config.ITEMS do
+			local own = string.match(id, "^fragment_") or string.match(id, "^trophy_") or item.floor ~= nil and item.icon ~= "PishGift"
+			if own then
+				checked += 1
+				assert(UIIcons[item.icon], `{id}: its icon {item.icon} is uploaded`)
+				expect.equal(item.icon ~= "KeyFragment" and item.icon ~= "Trophy" and item.icon ~= "BoosterPack", true, `{id}: not the shared picture`)
+				expect.isNil(seen[item.icon], `{id} shares {item.icon} with {seen[item.icon]}`)
+				seen[item.icon] = id
+			end
+		end
+		expect.equal(checked, 6 + 7 + 3, "six keys, seven trophies, three packs")
+		expect.equal(config.ITEMS.sparkPack.icon, "BoosterPack", "the First Spark Pack keeps the orange pack")
+	end,
+
 	["sanitize: unknown ids, bad counts dropped; whole numbers; capped"] = function()
 		local items = ItemRules.sanitize(config, { starShard = 4.9, mystery = 3, [5] = 1 })
 		expect.equal(items.starShard, 4, "floored")

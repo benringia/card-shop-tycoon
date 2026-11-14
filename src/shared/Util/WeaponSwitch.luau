@@ -56,18 +56,58 @@ function WeaponSwitch.sendAt(now: number, lastSentAt: number?, gap: number): num
 	return if lastSentAt then math.max(now, lastSentAt + gap) else now
 end
 
--- The carousel's smaller weapons either side of the one in hand (owner 2026-11-12): the one before and the next,
--- wrapping round; with two weapons only the next (on the right: the same weapon twice would look odd); none with one
-function WeaponSwitch.neighbours(list: { string }, current: string?): (string?, string?)
+-- The medallion dial's track (owner 2026-11-12 carousel, 2026-11-14 pick C): the weapon before (left of the
+-- medallion), the next (on top) and the one after it (between them, faded), wrapping round; with two weapons only the
+-- next (the same weapon twice would look odd), the one after next only with four or more; none with one
+export type Track = { before: string?, after: string?, later: string? }
+function WeaponSwitch.track(list: { string }, current: string?): Track
 	if #list < 2 then
-		return nil, nil
+		return {}
 	end
 	local index = (if current then table.find(list, current) else nil) or 1
-	local after = list[index % #list + 1]
-	if #list == 2 then
-		return nil, after
+	local function at(offset: number): string
+		return list[(index - 1 + offset) % #list + 1]
 	end
-	return list[(index - 2) % #list + 1], after
+	if #list == 2 then
+		return { after = at(1) }
+	end
+	return { before = at(-1), after = at(1), later = if #list >= 4 then at(2) else nil }
+end
+
+-- Where each weapon on the dial was before a switch from `old` to `new`: "center" (the medallion), "before", "after",
+-- "later", or nil for one that wasn't showing (it fades in where it lands). `current` is where the new weapon in hand
+-- came from.
+export type Spot = "center" | "before" | "after" | "later"
+export type Roll = { current: Spot?, before: Spot?, after: Spot?, later: Spot? }
+function WeaponSwitch.roll(list: { string }, old: string?, new: string?): Roll
+	local was: { [string]: Spot } = {}
+	if old then
+		was[old] = "center"
+	end
+	local oldTrack = WeaponSwitch.track(list, old)
+	for _, spot in { "before", "after", "later" } :: { Spot } do
+		local id = (oldTrack :: any)[spot]
+		if id and not was[id] then
+			was[id] = spot
+		end
+	end
+	local newTrack = WeaponSwitch.track(list, new)
+	local function from(id: string?): Spot?
+		return if id then was[id] else nil
+	end
+	return {
+		current = from(new),
+		before = from(newTrack.before),
+		after = from(newTrack.after),
+		later = from(newTrack.later),
+	}
+end
+
+-- A spot on the dial: `degrees` round the medallion's middle (180 left, 90 straight up), `radius` px out; screen
+-- offsets (y grows down)
+function WeaponSwitch.arcPoint(degrees: number, radius: number): (number, number)
+	local angle = math.rad(degrees)
+	return math.cos(angle) * radius, -math.sin(angle) * radius
 end
 
 -- The chip shows when there's something to switch to

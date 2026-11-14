@@ -132,6 +132,25 @@ function WeaponText.pickup(name: string, gained: number, have: number, need: num
 	return if need then `{name} +{gained} ({have}/{need})` else `{name} +{gained}`
 end
 
+-- The weapon switch's line under the name (owner 2026-11-14 pick C): the upgrade level (none at +0) and the element in
+-- plain words ("+4 · Nature", "Fire", "+10 · Every element"); empty for the Steel Sword or an unknown weapon
+function WeaponText.switchLine(cfg: any, weaponId: string, owned: { grade: string, level: number }?): string
+	local weapon = cfg.ById[weaponId]
+	if not weapon then
+		return ""
+	end
+	local parts = {}
+	if owned and owned.level > 0 then
+		table.insert(parts, `+{owned.level}`)
+	end
+	if weapon.prism then
+		table.insert(parts, "Every element")
+	elseif weapon.element then
+		table.insert(parts, elementName(weapon.element))
+	end
+	return table.concat(parts, " · ")
+end
+
 -- The Forge's one button (owner's pick B): what it does when everything's there ("Forge · $2,000", "Upgrade to +4 ·
 -- $1,200", "Reforge · $1,000"), else what's missing first: the shop level, an item ("Need 6 more Warden Heartwood"),
 -- then cash ("Need $500 more"). `cost` nil: an upgrade past +10. Returns the text and whether it can be pressed.

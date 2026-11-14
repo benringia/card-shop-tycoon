@@ -1,16 +1,15 @@
 --!strict
--- The quick weapon switch (spec 2026-11-07-weapons-round2-design 6; the owner's pick A, 2026-11-07): a round chip on the
--- right edge with your weapon's picture in its rarity's ring, < and > either side (or swipe the chip, or Q / Z). It
--- steps through every weapon you own (Util/WeaponSwitch) and asks the server to equip it (EquipWeapon; in a fight a
--- switch costs Weapons.SWAP_SECONDS with no cut or skill). Shown with two weapons or more, never over a window.
--- A carousel (owner 2026-11-12: "make the buttons more smaller and add a carousel effect which I can see whats next or
--- previous weapon but smaller. also add tooltips when hovering on the active weapon"): the weapons before and after
--- smaller and faded beside it (tap one to step to it), the strip sliding a step on a switch, small arrows with a
--- finger-sized tap area, the weapon's name, Power, element, perk, grade and level in a tip under a mouse.
--- Phones (owner 2026-11-13, pick A: "the UI on phone is really crowded"; UIController.OnCompact): only the weapon in
--- hand, a bigger chip (tap it for the next weapon, swipe it back), "1/6" on its corner (CompactHud.weaponCount; dots
--- before, owner 2026-11-13 declutter pick A), its name beside it; out of
--- a fight it sits at the end of your row in the party dock (PartyBarController.GetWeaponSpot, owner 2026-11-13).
+-- The quick weapon switch (spec 2026-11-07-weapons-round2-design 6), the medallion dial (owner 2026-11-14 pick C; the
+-- carousel before it, owner 2026-11-12): the weapon in hand in a medallion on the right edge, its rarity's ring with a
+-- shine going round, its inside the element's colour, its grade on its corner; the one before on a curved track to its
+-- left (Z), the next on top (Q) and the one after that between them, faded. Tap one on the track (or swipe the
+-- medallion, or Q / Z) and the dial rolls a step. It steps through every weapon you own (Util/WeaponSwitch) and asks
+-- the server to equip it (EquipWeapon; in a fight a switch costs Weapons.SWAP_SECONDS with no cut or skill). Shown with
+-- two weapons or more, never over a window; the name and its line (WeaponText.switchLine) show for a moment after a
+-- switch (owner: "only briefly"), the stats tip under a mouse on the medallion.
+-- Phones (owner 2026-11-13, pick A: "the UI on phone is really crowded"; UIController.OnCompact): the medallion alone,
+-- bigger (tap it for the next weapon, swipe it back), "1/6" on its corner (CompactHud.weaponCount), its name beside it;
+-- out of a fight it sits at the end of your row in the party dock (PartyBarController.GetWeaponSpot, owner 2026-11-13).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -20,6 +19,7 @@ local UserInputService = game:GetService("UserInputService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Weapons = require(Config:WaitForChild("Weapons"))
+local Cards = require(Config:WaitForChild("Cards"))
 local WeaponLooks = require(Config:WaitForChild("WeaponLooks"))
 local Swords = require(Config:WaitForChild("Swords"))
 local HudLayout = require(Config:WaitForChild("HudLayout"))
@@ -45,6 +45,11 @@ local WeaponSwitchController = {}
 
 local player = Players.LocalPlayer
 local LOOK = HudLayout.WEAPON_SWITCH
+-- the dial's box: the medallion in its bottom-right corner, the track up and to the left of its middle
+local DIAL = LOOK.arc + LOOK.hit / 2 + LOOK.chip / 2
+local CENTER = Vector2.new(DIAL - LOOK.chip / 2, DIAL - LOOK.chip / 2)
+local NO_ELEMENT = Color3.fromRGB(110, 120, 150)
+local PRISM = Color3.fromRGB(200, 170, 255)
 
 local owned: { [string]: any } = {}
 local equipped: string? = nil
@@ -52,17 +57,24 @@ local locked: { [string]: boolean } = {} -- weapons in the Forge: out of the swi
 local list: { string } = {}
 local holder: Frame
 local holderScale: UIScale
-local track: Frame -- the three weapons, slid a step on a switch
+local chipButton: ImageButton -- the medallion
 local portrait: ImageLabel
-local ring: UIStroke
-local sides: { [string]: { button: ImageButton, picture: ImageLabel, ring: UIStroke } } = {}
+local shine: UIGradient -- the ring's colour, its bright spot going round
+local inside: UIGradient -- the medallion's inside: the element's colour
+local gradeBadge: Frame
+local gradeLabel: TextLabel
+type Orb = { button: ImageButton, picture: ImageLabel, ring: UIStroke, scale: UIScale, fade: number }
+local orbs: { [string]: Orb } = {} -- before, after, later on the track
+local SPOTS = { "before", "after", "later" }
+local STEPS = { before = -1, after = 1, later = 2 }
+local nameFrame: Frame
 local nameLabel: TextLabel
+local lineLabel: TextLabel
 local nameUntil = 0
 local tip: Frame
-local compact = false -- the phone's single chip (UIController.OnCompact)
-local chipButton: ImageButton
-local arrows: { GuiObject } = {}
-local countLabel: TextLabel -- the phone's "1/6" on the chip's corner
+local compact = false -- the phone's medallion alone (UIController.OnCompact)
+local countLabel: TextLabel -- the phone's "1/6" on the medallion's corner
+local rollTween: Tween? = nil
 
 local function unlocked(): boolean
 	local level = player:GetAttribute("Level")
@@ -81,28 +93,78 @@ local function current(): string?
 	return if equipped and table.find(list, equipped) then equipped else list[1]
 end
 
--- The chip shows your equipped weapon, the small ones beside it the weapons before and after
+-- A spot on the track: its offset from the medallion's middle, rolled `t` of the way from where it was
+local function spotOffset(spot: string, from: string?, t: number): Vector2
+	local angle = LOOK.angles[spot]
+	local fromAngle, fromRadius = angle, LOOK.arc
+	if from == "center" then
+		fromRadius = 0
+	elseif from then
+		fromAngle = LOOK.angles[from]
+	end
+	local x, y = WeaponSwitch.arcPoint(fromAngle + (angle - fromAngle) * t, fromRadius + (LOOK.arc - fromRadius) * t)
+	return Vector2.new(x, y)
+end
+
+-- The track's weapons and the medallion's picture `t` of the way through a roll (1: at rest)
+local function placeRoll(roll: any, t: number)
+	for spot, orb in orbs do
+		local from = if roll then (roll :: any)[spot] else spot
+		local at = CENTER + spotOffset(spot, from, t)
+		orb.button.Position = UDim2.fromOffset(at.X, at.Y)
+		-- one that wasn't showing fades in where it lands
+		local seen = if from == nil then t else 1
+		local fade = 1 - (1 - orb.fade) * seen
+		orb.button.BackgroundTransparency = fade
+		orb.picture.ImageTransparency = fade
+		orb.ring.Transparency = fade
+	end
+	-- the new weapon in hand slides into the medallion from where it was, growing
+	local from = if roll then roll.current else "center"
+	local start = if from and from ~= "center" then spotOffset(from, nil, 1) else Vector2.zero
+	local offset = start * (1 - t)
+	local size = 0.86 * (if from and from ~= "center" then LOOK.side / LOOK.chip + (1 - LOOK.side / LOOK.chip) * t else 1)
+	portrait.Position = UDim2.new(0.5, offset.X, 0.5, offset.Y)
+	portrait.Size = UDim2.fromScale(size, size)
+end
+
+-- The medallion shows your equipped weapon, the track the ones before and after
 local function render()
 	list = WeaponSwitch.list(Weapons, owned, unlocked(), locked)
 	local id = current()
 	local weapon = if id then Weapons.ById[id] else nil
-	portrait.Image, ring.Color = looksOf(id)
-	nameLabel.Text = if weapon then string.upper(weapon.name) else ""
-	local before, after = WeaponSwitch.neighbours(list, id)
-	for name, side in sides do
-		local sideId = if name == "Before" then before else after
-		side.button.Visible = sideId ~= nil and not compact
-		side.picture.Image, side.ring.Color = looksOf(sideId)
+	local color
+	portrait.Image, color = looksOf(id)
+	shine.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, color),
+		ColorSequenceKeypoint.new(0.4, color),
+		ColorSequenceKeypoint.new(0.5, color:Lerp(Color3.new(1, 1, 1), 0.85)),
+		ColorSequenceKeypoint.new(0.6, color),
+		ColorSequenceKeypoint.new(1, color),
+	})
+	local element = if weapon and weapon.prism then PRISM elseif weapon and weapon.element then Cards.ELEMENTS[weapon.element] or NO_ELEMENT else NO_ELEMENT
+	inside.Color = ColorSequence.new(element:Lerp(Color3.new(1, 1, 1), 0.45), element:Lerp(Color3.new(0, 0, 0), 0.35))
+	local entry = if id then owned[id] else nil
+	local grade = if typeof(entry) == "table" and typeof(entry.grade) == "string" then entry.grade else nil
+	gradeLabel.Text = grade or ""
+	gradeBadge.Visible = grade ~= nil
+	nameLabel.Text = if weapon then weapon.name else ""
+	nameLabel.TextColor3 = color
+	lineLabel.Text = if id then WeaponText.switchLine(Weapons, id, if typeof(entry) == "table" then entry else nil) else ""
+	lineLabel.Visible = lineLabel.Text ~= ""
+	local track = WeaponSwitch.track(list, id)
+	for spot, orb in orbs do
+		local spotId = (track :: any)[spot]
+		orb.button.Visible = spotId ~= nil and not compact
+		orb.picture.Image, orb.ring.Color = looksOf(spotId)
 	end
-	-- the phone's count on the chip's corner, edged in the weapon's rarity colour
-	if countLabel then
-		local count = CompactHud.weaponCount(list, id)
-		countLabel.Text = count
-		countLabel.Visible = compact and count ~= ""
-		local edge = countLabel:FindFirstChildOfClass("UIStroke")
-		if edge then
-			edge.Color = ring.Color
-		end
+	-- the phone's count on the medallion's corner, edged in the weapon's rarity colour
+	local count = CompactHud.weaponCount(list, id)
+	countLabel.Text = count
+	countLabel.Visible = compact and count ~= ""
+	local edge = countLabel:FindFirstChildOfClass("UIStroke")
+	if edge then
+		edge.Color = color
 	end
 end
 
@@ -129,9 +191,10 @@ local function showTip()
 		line.AutomaticSize = Enum.AutomaticSize.Y
 		line.TextWrapped = true
 	end
-	-- left of the switch, its middle level with the chip
+	-- left of the dial, its middle level with the medallion
 	local at = holder.AbsolutePosition
-	tip.Position = UDim2.fromOffset(at.X - LOOK.gap, at.Y + LOOK.chip * holderScale.Scale / 2)
+	local middle = if compact then LOOK.compactChip / 2 else CENTER.Y
+	tip.Position = UDim2.fromOffset(at.X - LOOK.gap, at.Y + middle * holderScale.Scale)
 	tip.Visible = true
 end
 
@@ -157,22 +220,39 @@ local function send(weaponId: string)
 	end)
 end
 
--- One step through your weapons: the server equips it (and redraws your character); the name shows for a moment
+-- One step through your weapons: the server equips it (and redraws your character); the dial rolls a step and the name
+-- shows for a moment
 local function step(delta: number)
 	if not WeaponSwitch.visible(list) then
 		return
 	end
+	local was = current()
 	local nextId = WeaponSwitch.step(list, equipped, delta)
 	if not nextId or nextId == equipped then
 		return
 	end
+	local roll = WeaponSwitch.roll(list, was, nextId)
 	equipped = nextId -- shown at once; the server's WeaponsChanged confirms or puts it back
 	nameUntil = os.clock() + LOOK.nameSeconds
 	render()
-	-- the carousel slides a step: the new weapon comes in from the side it was on
-	local shift = (LOOK.side + LOOK.chip) / 2 + LOOK.gap
-	track.Position = UDim2.fromOffset(if delta > 0 then shift else -shift, 0)
-	TweenService:Create(track, TweenInfo.new(LOOK.slide, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Position = UDim2.new() }):Play()
+	if rollTween then
+		rollTween:Cancel()
+	end
+	local progress = Instance.new("NumberValue")
+	progress.Changed:Connect(function(t)
+		placeRoll(roll, t)
+	end)
+	placeRoll(roll, 0)
+	local tween = TweenService:Create(progress, TweenInfo.new(LOOK.roll, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Value = 1 })
+	rollTween = tween
+	tween.Completed:Connect(function()
+		progress:Destroy()
+		if rollTween == tween then
+			rollTween = nil
+			placeRoll(nil, 1)
+		end
+	end)
+	tween:Play()
 	if tip.Visible then
 		showTip()
 	end
@@ -250,7 +330,7 @@ local function relayout(view: Vector2, fight: boolean)
 end
 
 local function build()
-	-- A full-screen layer the HUD hides with its tiles (the binder, the stages); the chip shows or hides inside it
+	-- A full-screen layer the HUD hides with its tiles (the binder, the stages); the dial shows or hides inside it
 	local layer = Instance.new("Frame")
 	layer.Name = "WeaponSwitch"
 	layer.Size = UDim2.fromScale(1, 1)
@@ -260,23 +340,61 @@ local function build()
 	Hud.calmPiece(layer, "weapons") -- hidden through Pish's first visit (a calm HUD) and Chikin's but his sword step
 	holder = Instance.new("Frame")
 	holder.Name = "Switch"
-	holder.Size = UDim2.fromOffset(LOOK.chip + 2 * (LOOK.side + LOOK.gap) + 2 * (LOOK.arrow + LOOK.gap), LOOK.chip + LOOK.name)
+	holder.Size = UDim2.fromOffset(DIAL, DIAL)
 	holder.BackgroundTransparency = 1
 	holder.Visible = false
 	holder.Parent = layer
 	holderScale = Instance.new("UIScale") -- set by relayout (UiLayout.weaponSwitch)
 	holderScale.Parent = holder
 
-	-- < and >: drawn small, each with a finger-sized tap area round it (UiLayout.weaponSwitch)
-	local function arrow(name: string, text: string, x: number, delta: number): TextButton
-		local button = UIKit.button(holder, text, UIKit.Colors.Secondary)
-		button.Name = name
-		button.TextSize = 16
-		button.Size = UDim2.fromOffset(LOOK.arrow, LOOK.arrow)
-		button.Position = UDim2.fromOffset(x, (LOOK.chip - LOOK.arrow) / 2)
-		button.Activated:Connect(function()
-			step(delta)
-		end)
+	-- Q (the next weapon) and Z (the one before, owner 2026-11-09) beside their weapons on the track, on keyboards, each
+	-- in its white circle like the HUD tiles' keys
+	local function badge(parent: GuiObject, text: string, anchor: Vector2, position: UDim2): Frame
+		local frame = Instance.new("Frame")
+		frame.Name = "Key"
+		frame.AnchorPoint = anchor
+		frame.Position = position
+		frame.Size = UDim2.fromOffset(HudLayout.KEY_SIZE, HudLayout.KEY_SIZE)
+		frame.BackgroundColor3 = Color3.new(1, 1, 1)
+		frame.Visible = UserInputService.KeyboardEnabled
+		frame.ZIndex = parent.ZIndex + 2
+		frame.Parent = parent
+		UIKit.corner(frame, HudLayout.KEY_SIZE // 2)
+		local key = UIKit.label(frame, text, Enum.Font.GothamBold, 13, HudLayout.KEY_CHIP)
+		key.Size = UDim2.fromScale(1, 1)
+		key.TextXAlignment = Enum.TextXAlignment.Center
+		key.ZIndex = frame.ZIndex + 1
+		return frame
+	end
+
+	-- the track's weapons: small and round, each with a finger-sized tap area; a tap steps to it
+	local track = Instance.new("Frame")
+	track.Name = "Track"
+	track.BackgroundTransparency = 1
+	track.Size = UDim2.fromScale(1, 1)
+	track.Parent = holder
+	for _, spot in SPOTS do
+		local button = Instance.new("ImageButton")
+		button.Name = spot
+		button.AutoButtonColor = false
+		button.BackgroundColor3 = UIKit.Colors.Panel
+		button.AnchorPoint = Vector2.new(0.5, 0.5)
+		button.Size = UDim2.fromOffset(LOOK.side, LOOK.side)
+		button.Visible = false
+		button.Parent = track
+		UIKit.corner(button, LOOK.side // 2)
+		local ring = UIKit.outline(button, UIKit.Colors.Outline, 3)
+		local scale = Instance.new("UIScale")
+		scale.Scale = if spot == "later" then LOOK.laterScale else 1
+		scale.Parent = button
+		local picture = Instance.new("ImageLabel")
+		picture.Name = "Portrait"
+		picture.BackgroundTransparency = 1
+		picture.ScaleType = Enum.ScaleType.Fit
+		picture.AnchorPoint = Vector2.new(0.5, 0.5)
+		picture.Position = UDim2.fromScale(0.5, 0.5)
+		picture.Size = UDim2.fromScale(0.82, 0.82)
+		picture.Parent = button
 		local hit = Instance.new("TextButton")
 		hit.Name = "Hit"
 		hit.Text = ""
@@ -286,58 +404,58 @@ local function build()
 		hit.Size = UDim2.fromOffset(LOOK.hit, LOOK.hit)
 		hit.ZIndex = button.ZIndex + 3
 		hit.Parent = button
+		local delta = STEPS[spot]
 		hit.Activated:Connect(function()
 			step(delta)
 		end)
-		return button
+		orbs[spot] = { button = button, picture = picture, ring = ring, scale = scale, fade = if spot == "later" then LOOK.laterFade else LOOK.sideFade }
 	end
-	local previous = arrow("Previous", "<", 0, -1)
-	local nextArrow = arrow("Next", ">", LOOK.chip + 2 * (LOOK.side + LOOK.gap) + LOOK.arrow + 2 * LOOK.gap, 1)
-	arrows = { previous, nextArrow }
+	badge(orbs.before.button, Weapons.PREVIOUS_KEY, Vector2.new(0.5, 0), UDim2.new(0.5, 0, 1, 2))
+	badge(orbs.after.button, "Q", Vector2.new(0, 0.5), UDim2.new(1, 3, 0.5, 0))
 
-	-- the three weapons on one strip
-	track = Instance.new("Frame")
-	track.Name = "Track"
-	track.BackgroundTransparency = 1
-	track.Size = UDim2.fromScale(1, 1)
-	track.Parent = holder
-	local function round(name: string, size: number, x: number, edge: number): (ImageButton, ImageLabel, UIStroke)
-		local button = Instance.new("ImageButton")
-		button.Name = name
-		button.AutoButtonColor = false
-		button.BackgroundColor3 = UIKit.Colors.Panel
-		button.AnchorPoint = Vector2.new(0, 0.5)
-		button.Size = UDim2.fromOffset(size, size)
-		button.Position = UDim2.fromOffset(x, LOOK.chip / 2)
-		button.Parent = track
-		UIKit.corner(button, size // 2)
-		local stroke = UIKit.outline(button, UIKit.Colors.Outline, edge)
-		local picture = Instance.new("ImageLabel")
-		picture.Name = "Portrait"
-		picture.BackgroundTransparency = 1
-		picture.ScaleType = Enum.ScaleType.Fit
-		picture.AnchorPoint = Vector2.new(0.5, 0.5)
-		picture.Position = UDim2.fromScale(0.5, 0.5)
-		picture.Size = UDim2.fromScale(0.86, 0.86)
-		picture.Parent = button
-		return button, picture, stroke
-	end
-	local firstSide = LOOK.arrow + LOOK.gap
-	local chipX = firstSide + LOOK.side + LOOK.gap
-	for _, entry in { { "Before", firstSide, -1 }, { "After", chipX + LOOK.chip + LOOK.gap, 1 } } do
-		local name, x, delta = entry[1] :: string, entry[2] :: number, entry[3] :: number
-		local button, picture, stroke = round(name, LOOK.side, x, 2)
-		button.BackgroundTransparency = LOOK.sideFade
-		picture.ImageTransparency = LOOK.sideFade
-		stroke.Transparency = LOOK.sideFade
-		button.Activated:Connect(function()
-			step(delta)
-		end)
-		sides[name] = { button = button, picture = picture, ring = stroke }
-	end
-	local chip
-	chip, portrait, ring = round("Chip", LOOK.chip, chipX, LOOK.ring)
+	-- the medallion: the element's colour inside, the rarity's ring with its shine
+	local chip = Instance.new("ImageButton")
+	chip.Name = "Chip"
+	chip.AutoButtonColor = false
+	chip.BackgroundColor3 = Color3.new(1, 1, 1)
+	chip.AnchorPoint = Vector2.new(0.5, 0.5)
+	chip.Size = UDim2.fromOffset(LOOK.chip, LOOK.chip)
+	chip.Position = UDim2.fromOffset(CENTER.X, CENTER.Y)
+	chip.ZIndex = 2
+	chip.Parent = holder
 	chipButton = chip
+	UIKit.corner(chip, LOOK.chip // 2)
+	inside = Instance.new("UIGradient")
+	inside.Rotation = 90
+	inside.Parent = chip
+	local ring = UIKit.outline(chip, Color3.new(1, 1, 1), LOOK.ring)
+	shine = Instance.new("UIGradient")
+	shine.Parent = ring
+	portrait = Instance.new("ImageLabel")
+	portrait.Name = "Portrait"
+	portrait.BackgroundTransparency = 1
+	portrait.ScaleType = Enum.ScaleType.Fit
+	portrait.AnchorPoint = Vector2.new(0.5, 0.5)
+	portrait.Position = UDim2.fromScale(0.5, 0.5)
+	portrait.Size = UDim2.fromScale(0.86, 0.86)
+	portrait.ZIndex = 3
+	portrait.Parent = chip
+
+	-- the grade on the medallion's corner
+	gradeBadge = Instance.new("Frame")
+	gradeBadge.Name = "Grade"
+	gradeBadge.AnchorPoint = Vector2.new(0.5, 0.5)
+	gradeBadge.Position = UDim2.fromScale(0.15, 0.15)
+	gradeBadge.Size = UDim2.fromOffset(20, 20)
+	gradeBadge.BackgroundColor3 = Color3.new(1, 1, 1)
+	gradeBadge.ZIndex = 5
+	gradeBadge.Parent = chip
+	UIKit.corner(gradeBadge, 10)
+	gradeLabel = UIKit.label(gradeBadge, "", Enum.Font.FredokaOne, 13, HudLayout.KEY_CHIP)
+	gradeLabel.Size = UDim2.fromScale(1, 1)
+	gradeLabel.TextXAlignment = Enum.TextXAlignment.Center
+	gradeLabel.ZIndex = 6
+
 	countLabel = UIKit.label(chip, "", Enum.Font.FredokaOne, LOOK.countText, Color3.fromRGB(20, 28, 60))
 	countLabel.Name = "Count"
 	countLabel.AnchorPoint = Vector2.new(1, 1)
@@ -357,7 +475,7 @@ local function build()
 	countPad.PaddingRight = UDim.new(0, 4)
 	countPad.Parent = countLabel
 
-	-- the tip: a small panel left of the switch while a mouse is on the weapon in hand
+	-- the tip: a small panel left of the dial while a mouse is on the medallion
 	tip = Instance.new("Frame")
 	tip.Name = "WeaponTip"
 	tip.AnchorPoint = Vector2.new(1, 0.5)
@@ -383,38 +501,25 @@ local function build()
 		tip.Visible = false
 	end)
 
-	-- Q (the next weapon) on the > button (owner 2026-11-13: "put "Q" to the other arrow not on the weapon") and Z (the
-	-- one before, owner 2026-11-09) on the < button, on keyboards, each in its white circle like the HUD tiles' keys
-	local function badge(parent: GuiObject, text: string, anchor: Vector2, position: UDim2): Frame
-		local frame = Instance.new("Frame")
-		frame.Name = "Key"
-		frame.AnchorPoint = anchor
-		frame.Position = position
-		frame.Size = UDim2.fromOffset(HudLayout.KEY_SIZE, HudLayout.KEY_SIZE)
-		frame.BackgroundColor3 = Color3.new(1, 1, 1)
-		frame.Visible = UserInputService.KeyboardEnabled
-		frame.ZIndex = parent.ZIndex + 2
-		frame.Parent = parent
-		UIKit.corner(frame, HudLayout.KEY_SIZE // 2)
-		local key = UIKit.label(frame, text, Enum.Font.GothamBold, 13, HudLayout.KEY_CHIP)
-		key.Size = UDim2.fromScale(1, 1)
-		key.TextXAlignment = Enum.TextXAlignment.Center
-		key.ZIndex = frame.ZIndex + 1
-		return frame
-	end
-	badge(nextArrow, "Q", Vector2.new(0.5, 0), UDim2.new(0.5, 0, 1, 2))
-	badge(previous, Weapons.PREVIOUS_KEY, Vector2.new(0.5, 0), UDim2.new(0.5, 0, 1, 2))
-
-	nameLabel = UIKit.label(holder, "", Enum.Font.FredokaOne, 14, UIKit.Colors.Text)
-	nameLabel.Name = "WeaponName"
-	nameLabel.AnchorPoint = Vector2.new(0.5, 0)
-	nameLabel.Position = UDim2.new(0.5, 0, 0, LOOK.chip + 4)
-	nameLabel.Size = UDim2.new(1, 40, 0, 18)
-	nameLabel.TextXAlignment = Enum.TextXAlignment.Center
-	nameLabel.Visible = false
+	-- the name in its rarity's colour and its line (upgrade level, element), left of the track for a moment
+	nameFrame = Instance.new("Frame")
+	nameFrame.Name = "WeaponName"
+	nameFrame.BackgroundTransparency = 1
+	nameFrame.AnchorPoint = Vector2.new(1, 0.5)
+	nameFrame.Size = UDim2.fromOffset(200, 34)
+	nameFrame.Visible = false
+	nameFrame.Parent = holder
+	nameLabel = UIKit.label(nameFrame, "", Enum.Font.FredokaOne, 16, UIKit.Colors.Text)
+	nameLabel.Size = UDim2.new(1, 0, 0, 19)
+	nameLabel.TextXAlignment = Enum.TextXAlignment.Right
 	UIKit.outlined(nameLabel)
+	lineLabel = UIKit.label(nameFrame, "", Enum.Font.GothamBold, 11, Color3.new(1, 1, 1))
+	lineLabel.Position = UDim2.fromOffset(0, 19)
+	lineLabel.Size = UDim2.new(1, 0, 0, 14)
+	lineLabel.TextXAlignment = Enum.TextXAlignment.Right
+	UIKit.outlined(lineLabel)
 
-	-- A horizontal swipe on the chip steps too: left for the next weapon, right for the one before
+	-- A horizontal swipe on the medallion steps too: left for the next weapon, right for the one before
 	local pressedAt: Vector3? = nil
 	local swipedAt = 0
 	chip.InputBegan:Connect(function(input)
@@ -433,7 +538,7 @@ local function build()
 			end
 		end
 	end)
-	-- the phone's chip: a tap (not a swipe) is the next weapon; deferred so a swipe's InputEnded is seen first
+	-- the phone's medallion: a tap (not a swipe) is the next weapon; deferred so a swipe's InputEnded is seen first
 	chip.Activated:Connect(function()
 		task.defer(function()
 			if compact and os.clock() - swipedAt > 0.25 then
@@ -441,6 +546,7 @@ local function build()
 			end
 		end)
 	end)
+	placeRoll(nil, 1)
 end
 
 -- The weapons now (the character window): owned ones' grade and level, and the one in hand
@@ -448,27 +554,21 @@ function WeaponSwitchController.GetState(): { owned: { [string]: any }, equipped
 	return { owned = owned, equipped = equipped }
 end
 
--- The phone's single chip, or the carousel: arrows and the side weapons hide, the chip grows and sits alone, the name
--- goes beside it (left), the dots under it
+-- The phone's medallion alone, or the dial: the track hides, the medallion grows and sits alone, the name goes beside it
 local function setCompact(on: boolean)
 	compact = on
-	for _, button in arrows do
-		button.Visible = not on
-	end
 	local size = if on then LOOK.compactChip else LOOK.chip
 	chipButton.Size = UDim2.fromOffset(size, size)
 	local corner = chipButton:FindFirstChildOfClass("UICorner")
 	if corner then
 		corner.CornerRadius = UDim.new(0, size // 2)
 	end
-	chipButton.Position = UDim2.fromOffset(if on then 0 else LOOK.arrow + LOOK.gap + LOOK.side + LOOK.gap, size / 2)
-	holder.Size = if on
-		then UDim2.fromOffset(LOOK.compactChip, LOOK.compactChip)
-		else UDim2.fromOffset(LOOK.chip + 2 * (LOOK.side + LOOK.gap) + 2 * (LOOK.arrow + LOOK.gap), LOOK.chip + LOOK.name)
-	nameLabel.AnchorPoint = if on then Vector2.new(1, 0.5) else Vector2.new(0.5, 0)
-	nameLabel.Position = if on then UDim2.new(0, -8, 0, size / 2) else UDim2.new(0.5, 0, 0, LOOK.chip + 4)
-	nameLabel.Size = if on then UDim2.fromOffset(200, 18) else UDim2.new(1, 40, 0, 18)
-	nameLabel.TextXAlignment = if on then Enum.TextXAlignment.Right else Enum.TextXAlignment.Center
+	local middle = if on then Vector2.new(size / 2, size / 2) else CENTER
+	chipButton.Position = UDim2.fromOffset(middle.X, middle.Y)
+	holder.Size = if on then UDim2.fromOffset(size, size) else UDim2.fromOffset(DIAL, DIAL)
+	-- the name left of the track (left of the medallion on a phone), level with the medallion's middle
+	local nameRight = if on then -8 else CENTER.X - LOOK.arc - LOOK.side / 2 - LOOK.gap
+	nameFrame.Position = UDim2.fromOffset(nameRight, middle.Y)
 	laidOutSize = Vector2.zero -- lay it out again
 	render()
 end
@@ -525,7 +625,10 @@ function WeaponSwitchController.Start()
 			and not UIKit.anyPanelOpen()
 			and not PlacementController.IsActive()
 			and not RegisterController.IsShowing() -- the checkout sits in the same spot (owner 2026-11-10)
-		nameLabel.Visible = os.clock() < nameUntil
+		nameFrame.Visible = os.clock() < nameUntil
+		if holder.Visible then
+			shine.Rotation = (os.clock() / LOOK.shineSeconds * 360) % 360
+		end
 		if tip.Visible and not holder.Visible then
 			tip.Visible = false
 		end

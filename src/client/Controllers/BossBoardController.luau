@@ -161,13 +161,6 @@ local function lootStatus(state: BossState): (string, Color3)
 	return if left > 0 then `Loot in {clock(left)}` else "Loot ready", if left > 0 then UIStyle.PANEL else UIStyle.GREEN
 end
 
-local function tinted(holder: Instance?, color: Color3)
-	local glyph = if holder then holder:FindFirstChild("Glyph") else nil
-	if glyph and glyph:IsA("ImageLabel") then
-		glyph.ImageColor3 = color
-	end
-end
-
 local function text(parent: Instance, value: string, size: number, color: Color3, bold: boolean?): TextLabel
 	local label = UIKit.label(parent, value, if bold then Enum.Font.FredokaOne else Enum.Font.Gotham, size, color)
 	label.TextWrapped = false
@@ -479,10 +472,6 @@ local function itemCell(parent: Instance, order: number, itemId: string, size: n
 	picture.AnchorPoint = Vector2.new(0.5, 0.5)
 	picture.Position = UDim2.fromScale(0.5, 0.45)
 	picture.ZIndex = cell.ZIndex + 1
-	local boss = ItemRules.bossOf(itemId, Bosses.LADDER)
-	if boss then
-		tinted(picture, BossTints.key(Bosses.LADDER[boss]))
-	end
 	local glyph = picture:FindFirstChild("Glyph")
 	if faded and glyph and glyph:IsA("ImageLabel") then
 		glyph.ImageTransparency = LOCKED_FADE
@@ -564,8 +553,7 @@ local function renderNeeds(column: ScrollingFrame, index: number, power: number,
 	if unlock then
 		local item = Items.ITEMS[unlock.item]
 		local opened = state ~= nil and state.unlocked
-		local keyRow = needRow(column, 6, if opened or have >= unlock.count then "ok" else "no", "KeyFragment", `{unlock.count} {item.name}s`, if opened then "Opened" else `{have}/{unlock.count}`)
-		tinted(keyRow:FindFirstChild("Picture"), BossTints.key(bossId))
+		local keyRow = needRow(column, 6, if opened or have >= unlock.count then "ok" else "no", item.icon, `{unlock.count} {item.name}s`, if opened then "Opened" else `{have}/{unlock.count}`)
 		local lines: { Line } = { item.description, if opened then "Used up: this boss is open for good." else "Used up the first time you fight it." }
 		if previous and not opened then
 			table.insert(lines, { text = `Drops from the {previous.name}. Tap to see it.`, color = UIStyle.GOOD })

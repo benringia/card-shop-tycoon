@@ -1,5 +1,5 @@
 --!strict
--- The game's UI icons, by name. Made as seven sheets with Figma's image generator and cut up by
+-- The game's UI icons, by name. Made as sheets with Figma's image generator and cut up by
 -- tools/ui-icons/slice_icons.py; the PNGs are in assets/ui/icons. Sheets 1-4 and 7 are glossy cartoon icons, sheets 5 and 6
 -- white line art. HUD tiles, the top bar and customer bubbles use these names; anything not listed here is drawn as text (an
 -- emoji). See DESIGN.md 10.6.
@@ -59,7 +59,7 @@ return {
 	Heart = "rbxassetid://81178736634418",
 	Star = "rbxassetid://109389918339627",
 	Gem = "rbxassetid://78526112614740",
-	-- Sheet 4 (the style kit): stats, party, items, travel. KeyFragment is pale so code can tint it per boss.
+	-- Sheet 4 (the style kit): stats, party, items, travel. KeyFragment is pale (the boss keys have their own, sheet 10).
 	Power = "rbxassetid://128038471570566",
 	Hp = "rbxassetid://112373838122329",
 	Atk = "rbxassetid://98440307208346",
@@ -140,4 +140,22 @@ return {
 	Scythe = "rbxassetid://108828969595376",
 	Elements = "rbxassetid://119331400498090",
 	Awakened = "rbxassetid://75384398964475",
+	-- Sheet 10 (owner 2026-11-14: "all card pack in my inventory look the same ... samewith the trophies and keys"):
+	-- each boss's key fragment and trophy, and Turts' rarity packs, their own pictures (Config/Items)
+	KeyBrood = "rbxassetid://113632522334775",
+	KeyColossus = "rbxassetid://88732427680222",
+	KeyFrost = "rbxassetid://77973303177590",
+	KeyStorm = "rbxassetid://111108274280492",
+	KeyRift = "rbxassetid://93836354579836",
+	KeyHydra = "rbxassetid://115885263375315",
+	TrophyWarden = "rbxassetid://134421579759919",
+	TrophyBrood = "rbxassetid://114207263816319",
+	TrophyColossus = "rbxassetid://103695871063411",
+	TrophyFrost = "rbxassetid://133462661436733",
+	TrophyStorm = "rbxassetid://81531103488489",
+	TrophyRift = "rbxassetid://76960656656913",
+	TrophyHydra = "rbxassetid://113456775130926",
+	PackVeryRare = "rbxassetid://71917662803913",
+	PackEpic = "rbxassetid://134699935687986",
+	PackLegendary = "rbxassetid://125325445890293",
 } :: { [string]: string }

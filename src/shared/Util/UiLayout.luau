@@ -136,12 +136,13 @@ function UiLayout.forgePhoneContent(look: ForgeLook, tab: string): number
 	return look.PAD * 2 + math.max(look.CARD.h, beside) + look.GAP + look.CHIP
 end
 
--- The quick weapon switch (Config/HudLayout WEAPON_SWITCH: < chip > with the weapon's name under it) on the right edge
--- at mid height. Its HUD scale never shrinks the arrows under 48 px. In a fight it moves up above any fight button in
--- its way (boss buttons by touch or mouse, wild buttons), so it never covers the Pet or Signature buttons.
--- The carousel (owner 2026-11-12): < [before] [in hand] [next] >, the arrows drawn `arrow` px with a `hit`-sized tap
--- area (48 px at least) that may overlap the small weapon beside them (both step the same way)
-export type SwitchLook = { chip: number, side: number, arrow: number, hit: number, gap: number, right: number, name: number, compactChip: number? }
+-- The quick weapon switch (Config/HudLayout WEAPON_SWITCH) on the right edge at mid height. Its HUD scale never shrinks
+-- a tap area under 48 px. In a fight it moves up above any fight button in its way (boss buttons by touch or mouse,
+-- wild buttons), so it never covers the Pet or Signature buttons.
+-- The medallion dial (owner 2026-11-14 pick C): the weapon in hand in a `chip` px medallion in the box's bottom-right
+-- corner, the others on a track `arc` px from its middle, the one before on the left and the next on top, each with a
+-- `hit`-sized tap area: a square box from the left one's tap area to the medallion's edge
+export type SwitchLook = { chip: number, side: number, arc: number, hit: number, gap: number, right: number, compactChip: number? }
 export type SwitchRect = { x: number, y: number, w: number, h: number, scale: number }
 -- `clear`: boxes it keeps out of (a phone's top-right column with the party bar under it, owner 2026-11-13): it
 -- moves just under one it would sit on, kept on screen. `compact` (phones, owner 2026-11-13 pick A): only the weapon in
@@ -151,8 +152,8 @@ export type SwitchRect = { x: number, y: number, w: number, h: number, scale: nu
 function UiLayout.weaponSwitch(view: Size, look: SwitchLook, scale: number, fight: boolean, clear: { Rect }?, compact: boolean?, above: Rect?): SwitchRect
 	local s = math.max(scale, 48 / look.hit)
 	local chip = if compact then look.compactChip or look.chip else look.chip
-	local w = if compact then chip * s else (look.chip + 2 * (look.side + look.gap) + 2 * (look.arrow + look.gap)) * s
-	local h = (chip + (if compact then 0 else look.name)) * s
+	local w = (if compact then chip else look.arc + look.hit / 2 + look.chip / 2) * s
+	local h = w
 	local x = view.w - look.right - w
 	local y = view.h / 2 - h / 2
 	if above and not fight then

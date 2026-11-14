@@ -1012,20 +1012,14 @@ local BAG = {
 	WINDOW = Vector2.new(5 * 84 + 4 * 8 + 32 + 280 + 16, 484), -- grid + padding + details
 }
 
--- A boss item's tint and ladder number (key fragments: the boss they open; trophies: the boss beaten), or nil
+-- A boss item's colour (its number chip, the detail's ring) and ladder number (key fragments: the boss they open;
+-- trophies: the boss beaten), or nil
 local function bossMark(id: string): (Color3?, number?)
 	local index = ItemRules.bossOf(id, Bosses.LADDER)
 	if not index then
 		return nil, nil
 	end
 	return BossTints.key(Bosses.LADDER[index]), index
-end
-
-local function tintIcon(holder: Frame, color: Color3?)
-	local glyph = holder:FindFirstChild("Glyph")
-	if color and glyph and glyph:IsA("ImageLabel") then
-		glyph.ImageColor3 = color
-	end
 end
 
 local function bagLabel(parent: Instance, text: string, font: Enum.Font, size: number, color: Color3, y: number, height: number): TextLabel
@@ -1078,7 +1072,6 @@ local function renderBagDetail()
 	icon.Position = UDim2.fromScale(0.5, 0.5)
 	icon.ZIndex = 34
 	Icon.set(icon, info.icon)
-	tintIcon(icon, tint)
 	local name = bagLabel(bagDetail, info.name, Enum.Font.FredokaOne, 20, bagPalette.ink, 102, 26)
 	name.TextXAlignment = Enum.TextXAlignment.Center
 	local owned = bagLabel(bagDetail, `You have {bagItems[selectedItem] or 0}`, Enum.Font.FredokaOne, 15, bagPalette.hint, 128, 20)
@@ -1152,11 +1145,10 @@ local function addSlot(order: number, id: string?)
 	icon.Position = UDim2.fromScale(0.5, 0.46)
 	icon.ZIndex = 33
 	Icon.set(icon, info.icon)
-	-- Boss items: tinted for their boss, its ladder number in the corner, so every key looks different
+	-- Boss items: their own pictures (owner 2026-11-14), the boss's ladder number in its colour in the corner
 	-- The window shrinks to fit small screens (UIScale); counts and numbers stay at least 14 px tall on screen
 	local countSize = math.max(15, math.ceil(14 / math.max(bagFit.Scale, 0.1)))
 	local tint, bossNumber = bossMark(id)
-	tintIcon(icon, tint)
 	if tint and bossNumber then
 		local chip = UIKit.pill(slot, tostring(bossNumber), tint)
 		chip.Position = UDim2.fromOffset(4, 4)
