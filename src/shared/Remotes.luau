@@ -30,6 +30,9 @@ local NAMES = {
 	"TurtsBuy", -- client → server: (offerId: string, seen: number) buy one of your offers from Turts; seen: the restock your window showed (TurtsService)
 	"TurtsRestockNow", -- client → server: () open the Robux "restock now" purchase
 	"ShopLook", -- client → server: (action: "buy" | "use", lookId: string) buy or switch your shop's look from the Decor tab (DecorService)
+	"PlaceWindow", -- client → server: (style: string, side: string, at: number) buy a window into your shop's wall (WindowService)
+	"MoveWindow", -- client → server: (index: number, side: string, at: number) move one of your windows
+	"SellWindow", -- client → server: (index: number) sell one of your windows (half its price back)
 	"Charge", -- client → server: take payment for the fully scanned checkout
 	-- server → owner: the open kid offer or haggle at the register, nil = closed. { id, kind: "kid"|"haggle",
 	-- card: { cardId, foil, grade }?, asking?, worth?, offer?, total?, range: { low, high }, step, edges: { sure, maybe },
@@ -157,6 +160,9 @@ return {
 	BinderShown = remotes.BinderShown,
 	TurtsRestockNow = remotes.TurtsRestockNow,
 	ShopLook = remotes.ShopLook,
+	PlaceWindow = remotes.PlaceWindow,
+	MoveWindow = remotes.MoveWindow,
+	SellWindow = remotes.SellWindow,
 	PlaceShelf = remotes.PlaceShelf,
 	MoveShelf = remotes.MoveShelf,
 	MoveFixture = remotes.MoveFixture,

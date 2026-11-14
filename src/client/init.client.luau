@@ -27,6 +27,7 @@ local WelcomeController = require(Controllers:WaitForChild("WelcomeController"))
 local CondenserFxController = require(Controllers:WaitForChild("CondenserFxController"))
 local CaseSpinController = require(Controllers:WaitForChild("CaseSpinController"))
 local DecorSpinController = require(Controllers:WaitForChild("DecorSpinController"))
+local WindowController = require(Controllers:WaitForChild("WindowController"))
 local WorkerVisualController = require(Controllers:WaitForChild("WorkerVisualController"))
 local LevelUpController = require(Controllers:WaitForChild("LevelUpController"))
 local RegisterController = require(Controllers:WaitForChild("RegisterController"))
@@ -172,6 +173,7 @@ else
 	task.spawn(CondenserFxController.Start) -- waits for the Plots folder
 	task.spawn(CaseSpinController.Start) -- waits for the Plots folder
 	DecorSpinController.Start() -- the Card Pedestals' turning cards (shop decor)
+	WindowController.Start() -- placing shop windows on the walls, and their Edit prompts
 	task.spawn(WorkerVisualController.Start) -- waits for the Workers folder
 	RegisterController.Start()
 	CarryController.Start()

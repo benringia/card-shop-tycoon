@@ -36,6 +36,7 @@ type State = { equipped: string, known: { string }, fresh: { string }, seeded: b
 
 local states: { [Player]: State } = {} -- loaded players only
 local unlockListeners: { (player: Player, id: string) -> () } = {}
+local progressListeners: { (player: Player, progress: TitleRules.Progress) -> () } = {} -- achievement decor
 local pvpWins: (player: Player) -> number = function()
 	return 0 -- the main game's ArenaService hands its count in (UsePvpWins); elsewhere a duel title holds by `known`
 end
@@ -142,6 +143,9 @@ local function refresh(player: Player, boss: TitleRules.Progress?, tell: boolean
 	if tell or changed then
 		send(player, state, earned, progress)
 	end
+	for _, listener in progressListeners do
+		task.spawn(listener, player, progress)
+	end
 end
 
 local function load(player: Player, data: any)
@@ -182,6 +186,18 @@ local function onEquip(player: Player, id: unknown)
 	end
 	state.equipped = id
 	refresh(player, nil, true)
+end
+
+-- Told every time a player's progress is looked at (every few seconds and on boss wins, level-ups...): achievement
+-- decor (WindowService) keeps what's unlocked up to date
+function TitleService.OnProgress(listener: (player: Player, progress: TitleRules.Progress) -> ())
+	table.insert(progressListeners, listener)
+end
+
+-- Whether the player meets one achievement check now (Config/Windows and Config/Shelves `needs`: the titles' checks
+-- without a title)
+function TitleService.Meets(player: Player, check: any): boolean
+	return TitleRules.meets(check, progressOf(player))
 end
 
 -- Told when a player earns a title for the first time (TutorialService: Pish's lesson)

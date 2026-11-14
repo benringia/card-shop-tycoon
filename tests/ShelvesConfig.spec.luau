@@ -55,8 +55,13 @@ return {
 				local x, z = string.match(entry.body, "size = Vector3.new%(([%d%.]+), [%d%.]+, ([%d%.]+)%)")
 				assert(x and z and tonumber(x) :: number % 2 == 0 and tonumber(z) :: number % 2 == 0, `{entry.id} fills whole 2-stud cells`)
 				local level = tonumber(string.match(entry.body, "unlockLevel = (%d+)")) :: number
-				assert(level >= lastLevel, `{entry.id} unlocks no earlier than the piece before it`)
-				lastLevel = level
+				if string.match(entry.body, "needs = {") then
+					-- achievement decor (spec 2026-11-14-shop-windows-design): out of the level order, says what it needs
+					assert(string.match(entry.body, 'how = "[^"]+"'), `{entry.id} says what unlocks it`)
+				else
+					assert(level >= lastLevel, `{entry.id} unlocks no earlier than the piece before it`)
+					lastLevel = level
+				end
 				assert(string.find(town, "%s" .. entry.id .. " = {"), `Town.SLOTS has {entry.id}`)
 			end
 		end

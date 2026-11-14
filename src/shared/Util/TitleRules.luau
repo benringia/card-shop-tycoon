@@ -54,6 +54,13 @@ local function measure(check: any, progress: Progress): (number, number)
 	return 0, 1
 end
 
+-- Whether one check is met (achievement decor, Config/Windows `needs` and Config/Shelves `needs`: the titles' checks
+-- without a title)
+function TitleRules.meets(check: any, progress: Progress): boolean
+	local have, need = measure(check, progress)
+	return need > 0 and have >= need
+end
+
 -- The ids earned now, in the list's order
 function TitleRules.earned(cfg: any, progress: Progress): { string }
 	local list = {}

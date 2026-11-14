@@ -26,6 +26,7 @@ local DecorService = require(Services:WaitForChild("DecorService"))
 local PlacementService = require(Services:WaitForChild("PlacementService"))
 local PlotService = require(Services:WaitForChild("PlotService"))
 local PricingService = require(Services:WaitForChild("PricingService"))
+local WindowService = require(Services:WaitForChild("WindowService"))
 
 type State = {
 	rating: number?, -- nil until the first tick (then it starts at the shop's score, not at 3)
@@ -55,6 +56,9 @@ local function partsFor(owner: Player, state: State): { [string]: number }
 	local stockedProducts: { [string]: boolean } = {}
 	local shown: { { rarity: string, foil: boolean } } = {}
 	local decorPoints: { number } = {}
+	for _, points in WindowService.GetPoints(owner) do
+		table.insert(decorPoints, points) -- windows count as decor (spec 2026-11-14-shop-windows-design)
+	end
 	for _, shelf in PlacementService.GetShelves(owner) do
 		if shelf.def.kind == "Decor" then
 			table.insert(decorPoints, shelf.def.decor or 0)

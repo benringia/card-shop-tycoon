@@ -27,6 +27,8 @@ export type Shelf = {
 	propColors: { [string]: Color3 }?, -- recolour the prop's parts by name (e.g. Support, Carpet)
 	category: "Shelves" | "Cases" | "Fixtures" | "Trophies" | "Decor", -- the Build menu tab it's listed under
 	decor: number?, -- decor pieces: points toward the shop rating's decor part
+	needs: any?, -- achievement decor (spec 2026-11-14-shop-windows-design): a Config/Titles check, met to buy it
+	how: string?, -- its words on a locked tile ("Open 500 packs")
 	flat: boolean?, -- decor pieces: the hitbox doesn't collide (a rug you walk over)
 	requiresItem: string?, -- a Config/Items id placing it takes (and selling gives back); trophies only
 	-- Products shelves whose model isn't a plain one-sided rack: their own stock levels and sides
@@ -407,7 +409,9 @@ local List: { Shelf } = {
 		category = "Decor", -- Build menu tab
 		capacity = 0,
 		cost = 4000,
-		unlockLevel = 18,
+		unlockLevel = 1, -- an achievement, not a level (owner 2026-11-14: "certain decors must unlock at ... achievement")
+		needs = { kind = "stat", stat = "packsOpened", min = 500 },
+		how = "Open 500 packs",
 		size = Vector3.new(4, 8, 4),
 		color = Color3.fromRGB(255, 200, 70),
 		decor = 3, -- rating points (Config/Decor FULL)

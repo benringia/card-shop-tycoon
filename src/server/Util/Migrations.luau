@@ -288,6 +288,13 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 		end
 		data.decor = { look = if typeof(decor.look) == "string" then decor.look else "CozyWood", owned = owned }
 	end,
+	-- 25 -> 26: shop windows (spec 2026-11-14-shop-windows-design): none yet; a saved list stays for WindowService to
+	-- clean on load (Util/WindowRules.clean pays back what no longer fits)
+	[25] = function(data)
+		if typeof(data.windows) ~= "table" then
+			data.windows = {}
+		end
+	end,
 }
 
 local function lowestGrade(): string

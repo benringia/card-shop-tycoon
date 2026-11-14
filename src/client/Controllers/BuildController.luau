@@ -20,6 +20,7 @@ local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
 local LookTiles = require(ClientUtil:WaitForChild("LookTiles"))
+local WindowController = require(Controllers:WaitForChild("WindowController"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local PlacementController = require(Controllers:WaitForChild("PlacementController"))
 local ShowcaseController = require(Controllers:WaitForChild("ShowcaseController"))
@@ -83,8 +84,17 @@ local function getNumberAttribute(instance: Instance, name: string, default: num
 	return if typeof(value) == "number" then value else default
 end
 
+-- Achievement decor (spec 2026-11-14-shop-windows-design): unlocked when WindowService's DecorAchieved names it
+local function needsAchievement(def: ShelfDef): boolean
+	if not def.needs then
+		return false
+	end
+	local keys = player:GetAttribute("DecorAchieved")
+	return not (typeof(keys) == "string" and table.find(string.split(keys, ","), `shelf:{def.id}`) ~= nil)
+end
+
 local function isLocked(def: ShelfDef): boolean
-	return getNumberAttribute(player, "Level", 1) < def.unlockLevel
+	return getNumberAttribute(player, "Level", 1) < def.unlockLevel or needsAchievement(def)
 end
 
 -- "Meadow Warden Trophy" -> "Meadow Warden"
@@ -104,7 +114,9 @@ local function refreshShopRows()
 		end
 		local locked = isLocked(row.def)
 		local short = not locked and cash < row.def.cost
-		row.button.Text = if locked then `🔒 Lv {row.def.unlockLevel}` else string.format("$%d", row.def.cost)
+		local achievement = needsAchievement(row.def)
+		row.button.Text = if achievement then `🔒 {row.def.how}` elseif locked then `🔒 Lv {row.def.unlockLevel}` else string.format("$%d", row.def.cost)
+		row.button.TextSize = if achievement then 14 else 20
 		-- Soft buttons (UIKit): mint when you can buy it, pink when you're short, grey-lilac while locked
 		row.button.BackgroundColor3 = if locked then UIKit.Colors.Locked elseif short then UIKit.Colors.Danger else UIKit.Colors.Success
 	end
@@ -113,6 +125,10 @@ end
 local function onBuy(def: ShelfDef)
 	if def.requiresItem and (items[def.requiresItem] or 0) < 1 then
 		UIController.Notify(`Beat the {trophyBoss(def)} to earn this trophy.`, true)
+		return
+	end
+	if needsAchievement(def) then
+		UIController.Notify(`{def.name}: {def.how}.`, true)
 		return
 	end
 	if isLocked(def) then
@@ -255,6 +271,7 @@ local function buildShopPanel(parent: Instance)
 	grid.Parent = list
 
 	local lookTiles: { GuiObject } = {}
+	local windowTiles: { GuiObject } = {}
 	local tabButtons: { [string]: TextButton } = {}
 	local function showCategory(category: string)
 		for name, button in tabButtons do
@@ -269,6 +286,9 @@ local function buildShopPanel(parent: Instance)
 			tile.Visible = row.def.category == category
 		end
 		for _, tile in lookTiles do
+			tile.Visible = category == "Decor"
+		end
+		for _, tile in windowTiles do
 			tile.Visible = category == "Decor"
 		end
 		list.CanvasPosition = Vector2.zero
@@ -311,11 +331,16 @@ local function buildShopPanel(parent: Instance)
 	end
 
 	lookTiles = LookTiles.build(list, palette)
+	-- the windows after the looks, before the pieces (shop windows, spec 2026-11-14-shop-windows-design)
+	windowTiles = WindowController.Tiles(list, palette, 50, function()
+		shopPanel.Visible = false
+	end)
 	for index, def in Shelves.List do
 		buildTile(list, 100 + index, def) -- after the six shop looks
 	end
 	showCategory(BUILD_TABS[1].name)
 	player:GetAttributeChangedSignal("Cash"):Connect(refreshShopRows)
+	player:GetAttributeChangedSignal("DecorAchieved"):Connect(refreshShopRows)
 end
 
 local function openEditPanel(part: BasePart)

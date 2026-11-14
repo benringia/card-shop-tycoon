@@ -32,6 +32,16 @@ AdminPanel.SECTIONS = {
 		},
 	},
 	{
+		title = "Windows",
+		buttons = {
+			{ label = "Square (left)", command = "/window Square left -12" },
+			{ label = "Wide (left)", command = "/window Wide left 4" },
+			{ label = "Arched (right)", command = "/window Arched right -12" },
+			{ label = "Porthole (right)", command = "/window Porthole right 0" },
+			{ label = "Stained (back)", command = "/window Stained back 0" },
+		},
+	},
+	{
 		title = "Money and levels",
 		buttons = {
 			{ label = "+$1,000", command = "/cash 1000" },

@@ -79,6 +79,7 @@ local DungeonService = require(Services:WaitForChild("DungeonService"))
 local DungeonPuzzleService = require(Services:WaitForChild("DungeonPuzzleService"))
 local PlacementService = require(Services:WaitForChild("PlacementService"))
 local DecorService = require(Services:WaitForChild("DecorService"))
+local WindowService = require(Services:WaitForChild("WindowService"))
 local RateLimiter = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("RateLimiter"))
 
 type CommandHandler = (player: Player, text: string) -> ()
@@ -466,6 +467,20 @@ function DevService.Start()
 			return
 		end
 		Remotes.Notify:FireClient(player, "Usage: /decor <CozyWood|CandyPastel|EnchantedForest|NeonArcade|CrystalCave|StarryNight|pieces>", true)
+	end)
+	-- "/window <style> <left|right|back> <at>": that window put in your shop for free, wherever it fits (shop windows,
+	-- spec 2026-11-14-shop-windows-design)
+	addCommand(folder, "window", function(player, text)
+		local style, side, at = string.match(text, "^/%w+%s+(%w+)%s+(%a+)%s+(%-?[%d%.]+)")
+		local ok, why = false, nil
+		if style and side and at then
+			ok, why = WindowService.DevPlace(player, style, side, tonumber(at) :: number)
+		end
+		if ok then
+			Remotes.Notify:FireClient(player, `Window: {style} on the {side} wall.`, false)
+		else
+			Remotes.Notify:FireClient(player, `Usage: /window <Square|Wide|Arched|Porthole|Stained> <left|right|back> <at>{if why then " (" .. why .. ")" else ""}`, true)
+		end
 	end)
 	-- "/loading <main|wild|frontier|dungeon>": that place's loading screen played on your screen (LoadingController)
 	addCommand(folder, "loading", function(player, text)
@@ -858,7 +873,7 @@ function DevService.Start()
 			run(player, text)
 		end
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /weapon <id> [grade] [level], /material <boss id> <amount>, /weapondrop <boss id>, /chests <boss id> [drop|miss|strong|tired], /boss <n> [fight|group], /jobslot, /jobtired, /wild, /rest, /tire, /bosshp <1-100>, /townchikin, /turts <restock|move|offer <id>>, /elite, /knockout, /support <0-3>, /titles forget, /review <outcome>, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /decor <look id|pieces>, /loading <main|wild|frontier|dungeon>, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume], /victorysound <1-3>, /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S], /skillfx <sword> [cut1|cut2|cut3|skill] [level], /room <2-4>, /winroom, /puzzle <solve|beams|plates|lock>, /tap <piece>, /dungeonfx <intro|introshort|roar|glimpse>")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /weapon <id> [grade] [level], /material <boss id> <amount>, /weapondrop <boss id>, /chests <boss id> [drop|miss|strong|tired], /boss <n> [fight|group], /jobslot, /jobtired, /wild, /rest, /tire, /bosshp <1-100>, /townchikin, /turts <restock|move|offer <id>>, /elite, /knockout, /support <0-3>, /titles forget, /review <outcome>, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /decor <look id|pieces>, /window <style> <side> <at>, /loading <main|wild|frontier|dungeon>, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume], /victorysound <1-3>, /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S], /skillfx <sword> [cut1|cut2|cut3|skill] [level], /room <2-4>, /winroom, /puzzle <solve|beams|plates|lock>, /tap <piece>, /dungeonfx <intro|introshort|roar|glimpse>")
 end
 
 return DevService

@@ -38,6 +38,7 @@ local Util = (Services.Parent :: Instance):WaitForChild("Util")
 local CardService = require(Services:WaitForChild("CardService"))
 local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
+local TitleService = require(Services:WaitForChild("TitleService"))
 local ItemService = require(Services:WaitForChild("ItemService"))
 local PlotService = require(Services:WaitForChild("PlotService"))
 local PricingService = require(Services:WaitForChild("PricingService"))
@@ -692,6 +693,10 @@ local function onPlace(player: Player, shelfId: unknown, gridX: unknown, gridZ: 
 
 	if EconomyService.GetLevel(player) < def.unlockLevel then
 		Blocked.tell(player, `Unlocks at shop level {def.unlockLevel}.`)
+		return
+	end
+	if def.needs and not TitleService.Meets(player, def.needs) then
+		Blocked.tell(player, `{def.name}: {def.how or "not unlocked yet"}.`)
 		return
 	end
 	if isDecor(def) then

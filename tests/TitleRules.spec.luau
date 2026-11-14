@@ -109,4 +109,15 @@ return {
 		expect.equal(TitleRules.canEquip("dungeonConqueror", { "crystalSeeker" }), false, "not earned: refused")
 		expect.equal(TitleRules.canEquip("madeUp", { "crystalSeeker" }), false)
 	end,
+
+	-- achievement decor (spec 2026-11-14-shop-windows-design): one check met or not, the titles' own measure
+	["one achievement check, met or not"] = function()
+		local progress = { cleared = { frostTyrant = true }, secret = false, stats = { packsOpened = 499 } }
+		expect.equal(TitleRules.meets({ kind = "bossClear", boss = "frostTyrant" }, progress), true)
+		expect.equal(TitleRules.meets({ kind = "bossClear", boss = "prismHydra" }, progress), false)
+		expect.equal(TitleRules.meets({ kind = "stat", stat = "packsOpened", min = 500 }, progress), false)
+		progress.stats = { packsOpened = 500 }
+		expect.equal(TitleRules.meets({ kind = "stat", stat = "packsOpened", min = 500 }, progress), true)
+	end,
 }
+

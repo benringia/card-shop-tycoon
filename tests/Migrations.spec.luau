@@ -259,6 +259,23 @@ return {
 
 	-- Turts' rug shop (spec 2026-11-13-turts-shop-design): the restock a player last saw, what they bought in it, and a
 	-- "restock now" roll if they bought one
+	-- Shop windows (spec 2026-11-14-shop-windows-design): every shop starts with none; a list already there is kept
+	-- for WindowService to clean (it pays back what no longer fits)
+	["v26: every shop starts with no windows; a saved list kept"] = function()
+		local data: any = { version = 25, cash = 50 }
+		Migrations.run(data, 26)
+		expect.equal(data.version, 26)
+		expect.equal(typeof(data.windows), "table")
+		expect.equal(#data.windows, 0)
+		expect.equal(data.cash, 50, "the rest untouched")
+		local kept: any = { version = 25, windows = { { style = "Square", side = "left", at = 0 } } }
+		Migrations.run(kept, 26)
+		expect.equal(#kept.windows, 1)
+		local junk: any = { version = 25, windows = "x" }
+		Migrations.run(junk, 26)
+		expect.equal(typeof(junk.windows), "table")
+	end,
+
 	-- Shop decor (spec 2026-11-14-shop-decor-design): the look in use and the looks bought
 	["v25: every shop starts in Cozy Wood with no looks bought; junk cleaned"] = function()
 		local data: any = { version = 24, cash = 50 }
