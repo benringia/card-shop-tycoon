@@ -28,6 +28,8 @@ local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local ScreenClear = require(ClientUtil:WaitForChild("ScreenClear"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
+local GiftMotion = require(ClientUtil:WaitForChild("GiftMotion")) -- the gift window's shine and stars, on the slot offer
+local ProductPrice = require(ClientUtil:WaitForChild("ProductPrice"))
 local CardTips = require(ClientUtil:WaitForChild("CardTips"))
 local Tooltip = require(ClientUtil:WaitForChild("Tooltip"))
 local UIController = require(Controllers:WaitForChild("UIController"))
@@ -466,8 +468,98 @@ local function buildFreeRow(slot: number)
 	end)
 end
 
+-- The Extra Job Slot on offer (owner 2026-11-15: "slot 2 should already say Unlock and make the window more enticing to
+-- buy"): a golden row with a light sweeping across it, the worker icon with a "+1" and stars twinkling round it, what it
+-- does in a line, and a big Unlock with its live Robux price
+local function buildOfferRow(slot: number, current: JobsState)
+	local offer = Jobs.OFFER
+	local row = makeRow(slot, offer.height)
+	row.Name = "SlotOffer"
+	row.BackgroundColor3 = Color3.new(1, 1, 1)
+	local fill = Instance.new("UIGradient")
+	fill.Rotation = 90
+	fill.Color = ColorSequence.new(Color3.fromRGB(offer.top[1], offer.top[2], offer.top[3]), Color3.fromRGB(offer.bottom[1], offer.bottom[2], offer.bottom[3]))
+	fill.Parent = row
+	local gold = Color3.fromRGB(offer.edge[1], offer.edge[2], offer.edge[3])
+	UIKit.outline(row, gold, 3)
+	UIKit.glow(row, gold, 12, 0, 0.35)
+	GiftMotion.shine(row, 12, offer.shineEvery)
+	local worker = Icon.make(row, "Jobs", UDim2.fromOffset(56, 56))
+	worker.AnchorPoint = Vector2.new(0, 0.5)
+	worker.Position = UDim2.new(0, 18, 0.5, 0)
+	worker.ZIndex = row.ZIndex + 2
+	local plus = UIKit.label(worker, "+1", Enum.Font.FredokaOne, 18, Color3.new(1, 1, 1))
+	plus.Name = "Plus"
+	plus.AnchorPoint = Vector2.new(0.5, 0.5)
+	plus.Position = UDim2.new(1, -2, 0, 4)
+	plus.Size = UDim2.fromOffset(34, 26)
+	plus.TextXAlignment = Enum.TextXAlignment.Center
+	plus.BackgroundColor3 = UIStyle.GREEN
+	plus.BackgroundTransparency = 0
+	plus.ZIndex = worker.ZIndex + 2
+	UIKit.corner(plus, 13)
+	UIKit.outline(plus, Color3.new(1, 1, 1), 2)
+	UIKit.outlined(plus, 1.5)
+	GiftMotion.sparkles(row, worker, offer.stars)
+	local title = text(row, offer.title, UIKit.textSize("body") + 4, palette.ink, true)
+	title.Position = UDim2.fromOffset(106, 14)
+	title.AutomaticSize = Enum.AutomaticSize.None
+	title.Size = UDim2.new(1, -(106 + 200), 0, 30)
+	local detail = text(row, offer.line, UIKit.textSize("small"), palette.inkSoft)
+	detail.Position = UDim2.fromOffset(106, 48)
+	detail.AutomaticSize = Enum.AutomaticSize.None
+	detail.Size = UDim2.new(1, -(106 + 200), 0, 44)
+	detail.TextWrapped = true
+	detail.TextYAlignment = Enum.TextYAlignment.Top
+	local product = current.productId or 0
+	local available = product ~= 0 or current.passId ~= 0
+	local buy = UIKit.button(row, if available then "Unlock" else "Coming soon", if available then UIKit.Colors.Success else UIKit.Colors.Locked)
+	buy.Name = "Unlock"
+	buy.AnchorPoint = Vector2.new(1, 0.5)
+	buy.Position = UDim2.new(1, -14, 0.5, 0)
+	buy.Size = UDim2.fromOffset(176, 60)
+	buy.Font = Enum.Font.FredokaOne
+	buy.TextSize = UIKit.textSize("body") + 4
+	buy.AutoButtonColor = available
+	buy.ZIndex = row.ZIndex + 1
+	if available then
+		GiftMotion.breathe(buy, 1.05)
+		-- its price as Roblox has it now (managed pricing), once known
+		task.spawn(function()
+			for _ = 1, 20 do
+				local price = if product ~= 0 then ProductPrice.of(product) else ProductPrice.ofPass(current.passId)
+				if price then
+					if buy.Parent then
+						buy.Text = `Unlock · R$ {price}`
+					end
+					return
+				end
+				task.wait(0.5)
+			end
+		end)
+	end
+	buy.Activated:Connect(function()
+		if not available then
+			return
+		end
+		ScreenClear.prompt()
+		if product ~= 0 then
+			Remotes.BuyUnlock:FireServer("ExtraJobSlot") -- the server opens it while you don't own it
+		else
+			MarketplaceService:PromptGamePassPurchase(player, current.passId)
+		end
+	end)
+end
+
 -- A slot you can't use yet: before the unlock level, or the pass slot
 local function buildLockedRow(slot: number, current: JobsState)
+	local needsPass = slot > Jobs.FREE_SLOTS
+	local level = player:GetAttribute("Level")
+	local early = not needsPass or (typeof(level) == "number" and level < current.unlockLevel)
+	if needsPass and not early and not current.hasPass then
+		buildOfferRow(slot, current)
+		return
+	end
 	local row = makeRow(slot, FREE_ROW_HEIGHT)
 	UIKit.outline(row, palette.rowEdge, 2)
 	row.BackgroundColor3 = palette.slotEmpty
@@ -475,9 +567,6 @@ local function buildLockedRow(slot: number, current: JobsState)
 	lock.AnchorPoint = Vector2.new(0, 0.5)
 	lock.Position = UDim2.new(0, 22, 0.5, 0)
 	lock.ZIndex = row.ZIndex + 1
-	local needsPass = slot > Jobs.FREE_SLOTS
-	local level = player:GetAttribute("Level")
-	local early = not needsPass or (typeof(level) == "number" and level < current.unlockLevel)
 	local title = text(row, `Slot {slot}`, UIKit.textSize("body") + 2, palette.ink, true)
 	title.Position = UDim2.fromOffset(86, 14)
 	local detail = text(row, if early then `Opens at shop level {current.unlockLevel}` else "Extra Job Slot: one more card working in your shop", UIKit.textSize("small"), UIKit.Colors.Subtext)

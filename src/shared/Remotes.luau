@@ -40,6 +40,8 @@ local NAMES = {
 	"PrologueStep", -- client → server: (step: "begin" | "fight" | "vanish" | "take") the prologue's next part (PrologueService)
 	"PrologueArena", -- server → client: (centre: Vector3?) this player's lair, its loadout lent; nil: no prologue now
 	"StoreWin", -- server → client: (kind: "x2" | "x3" | "jobslot", seconds: number) a Store purchase went through: its win card (StoreWinController)
+	"GiftState", -- server → client: (view: GiftRules.View, counting: boolean) the daily, weekly and monthly gifts; client → server: () send it again (GiftService)
+	"GiftClaim", -- client → server: (kind: "daily" | "weekly" | "monthly") claim it; server → client: (kind, day: number, lines: { GiftRules.Line }) its win moment (GiftController)
 	"Charge", -- client → server: take payment for the fully scanned checkout
 	-- server → owner: the open kid offer or haggle at the register, nil = closed. { id, kind: "kid"|"haggle",
 	-- card: { cardId, foil, grade }?, asking?, worth?, offer?, total?, range: { low, high }, step, edges: { sure, maybe },
@@ -173,6 +175,8 @@ return {
 	BuyLuck = remotes.BuyLuck,
 	BuyUnlock = remotes.BuyUnlock,
 	StoreWin = remotes.StoreWin,
+	GiftState = remotes.GiftState,
+	GiftClaim = remotes.GiftClaim,
 	PrologueSeen = remotes.PrologueSeen,
 	PrologueReplay = remotes.PrologueReplay,
 	PrologueStep = remotes.PrologueStep,

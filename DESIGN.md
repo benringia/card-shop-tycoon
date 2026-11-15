@@ -1001,6 +1001,13 @@ after them on PC; the Wild fight's Call in button shows the creature it brings a
 effects on weapons"): Volt and Shade weapons (the Storm, Widow's and Rift Reapers, the Volt and Shade Forge weapons) wear
 the Yona pack aura in their colours, Volt with its crackling bolts (`WeaponLooks.ELEMENT_AURA`), and the perk hits
 (Eruption, Chain Lightning, Reap) burst with the packs' slash (`HitFx.impact`) instead of our drawn star.
+Owner 2026-11-15: an 8 px gap between the XP bar's end and the buff icons (`DOCK.buffGap`); a round lilac **quick Party
+button** with the Party icon just past the right portrait (`DOCK.quick`, 48 px) opens the Party window ("add a quick
+access party button somewhere here"); and a summoned creature **hurt after fainting** shows it on the creature itself,
+for everyone ("add noticeable indicator ON the pet that it's injured"; `Party.HURT`, client `Util/HurtBadge`): while
+its card rests (the marker's `RestUntil`, os.time, set by PartyService from BattleService's resting) a red "Hurt 4:41"
+pill with a beating heart sits over its name tag (the "+ Healing" pill takes the spot at the spring) and three gold
+stars circle its head; hidden in a fight.
 
 **PvP opens in the first update** (owner 2026-11-13: a week after launch, "I need to put on alot of planning to make
 the pvp good"): `Pvp.OPEN = false` till then. The plaza Arena portal shows "⚔️ Coming soon" and its card ("The Arena
@@ -2992,7 +2999,10 @@ for the default) and the admin panel's "Level sound" buttons. Measured: about 59
 
 ### 7.4 Staff: shop jobs (cards that work)
 Hired staff became **shop jobs**: your levelled cards do the work (spec `2026-10-21-shop-jobs-design.md`).
-- **Slots:** 1 at shop Lv 20; the "Extra Job Slot" game pass adds 1 more (max 2). Assign from the binder card
+- **Slots:** 1 at shop Lv 20; the "Extra Job Slot" game pass adds 1 more (max 2). Once you can buy it, its row is an
+  offer (owner 2026-11-15: "slot 2 should already say Unlock and make the window more enticing to buy"; `Jobs.OFFER`):
+  golden, a light sweeping across it, the worker icon with a green "+1" and stars twinkling round it, "Unlock a 2nd
+  worker!" and what it does, and a big breathing green "Unlock · R$ <live price>". Assign from the binder card
   view ("Assign job"): the **Assign job** picker (round 5, owner pick A "Two big tiles", `JobRules.assignTiles`) covers
   the panel under its band with the Job icon, "Assign job" and "Job slots: used / total", one big tile per job side by
   side (its picture, Restocker: Shelves, Cashier: Register; its name; what it does; "Works: <word>", this copy's speed
@@ -3280,6 +3290,46 @@ proof and balance. restock also stocks only 1qty per item").
 - Server authoritative (`TurtsService`): the buy checks it's the same restock, in that player's stock, not bought, the
   player is near him (prompt range + 4) and has the cash; refusals through `Util/Blocked`. Studio: `/turts restock |
   move | offer <id>` and the admin panel's "Turts' rug shop" buttons.
+
+### 7.10 Daily, weekly and monthly gifts (built 2026-11-15)
+
+Spec `docs/superpowers/specs/2026-11-15-daily-gifts-design.md` (owner 2026-11-15: "lets add the daily reward", then
+"go, can we also have weekly and monthly. design must feel like a WIN. yes 10 min timer should start when they actually
+start playing"; layout A, the calendar strip, picked from the mockups; their 2026-11-09 list wanted it "shown only after
+10-15 min of play").
+
+- **Daily gift**, one per UTC day after 10 minutes of play that day (`Config/Gifts PLAY_SECONDS`), a 7-day round:
+  1. $300 + First Spark Pack, 2. XP Tonic, 3. Very Rare Pack, 4. Wild Ore x10, 5. Grading Seal, 6. Star Shard,
+  7. BIG GIFT: Epic Pack + 15 minutes of 2x Luck (a free taste of the Store's luck); then day 1 again. A missed day
+  resets nothing: the round carries on from the day reached.
+- **Weekly Chest**: earned on the 5th daily gift claimed in a week (weeks start Monday, UTC): Epic Pack, Star Shard,
+  $1,000. **Monthly Chest**: on the 20th daily gift claimed in a month (UTC; November 2026, the launch month, needs 8):
+  Legendary Pack, 30 minutes of 3x Super Luck, $5,000, and a toast to the whole server ("<name> opened the Monthly
+  Chest!"). An earned chest waits until opened (never lost); its bar starts over with the new week or month.
+- Play time counts only once the first visit is done (the prologue and Pish's tutorial: TutorialDone, or the saved
+  tutorial in the Frontier and the Dungeon), in every place; gifts are claimed in the main game (not mid-fight).
+  Idle time still counts.
+- **Look**: the **Gift** tile on the HUD's side under the Phone (Pish's present, pink; on a phone in the column under
+  it): the play time left counting down, then "Open!" with a pulsing red "!", the present rattling now and then, and a
+  toast "Your gift is ready!"; once claimed, the time until the next gift ("18h 10m"; owner: "Tomorrow" looked
+  cramped); hidden until the first visit is done. The **Daily Gifts** window: the 7 day tiles in a row (done ones
+  faded under a green check icon, today's glowing gold and breathing with CLAIM! or its time, day 7 wide and golden
+  "BIG GIFT"), then the Weekly Chest bar (purple, "3 / 5 days", what's inside, "new week Monday") and the Monthly Chest
+  bar (gold), each with OPEN! once earned and a check once opened. It moves (owner: "it's a bit flat. add animation
+  that kids/player will get excited to"; `Util/GiftMotion`, `Gifts.MOTION`): the tiles pop in one after another as it
+  opens, today's gift bobs while it waits and rattles once ready (something's inside!) with glossy stars twinkling
+  round it, day 7 rocks under a shine sweeping across it, the bars fill up from empty with a shine running over them,
+  an earned chest rattles with stars and its OPEN! breathes. **The win moment** (`Util/GiftWin`, `Gifts.WIN`): the screen dims, light rays turn, the gift drops in (a daily
+  gift: Pish's Gift picture; a chest: the boss chest in a viewport tinted purple or gold), rattles three times, harder
+  each time, over a rising whoosh, bursts in a flash and confetti (a chest's lid flies open on its glow) with its big
+  title ("DAY 3!", "BIG GIFT!", "WEEKLY CHEST!", "MONTHLY CHEST!", the big ones in rainbow), and its gifts flip in as
+  cards (gold for the big ones). A pack among them offers **OPEN IT NOW!** (ripped from the Bag once the last win
+  moment closes); **Nice!** closes. A chest a daily gift earned plays right after it.
+- Server authoritative (`GiftService`, `Util/GiftRules`, Lune-tested): the server counts play time (every second),
+  decides what's claimable and hands the fixed gifts out (cash through EconomyService, items through ItemService, luck
+  through `LuckService.Give`); the client only asks for "daily" | "weekly" | "monthly" (remote `GiftClaim`, 1 a
+  second); refusals through `Util/Blocked`. Saved `gifts` (v30). Studio: `/gift ready | day <1-7> | week <n> | month
+  <n> | reset | tutorial | win <daily|big|weekly|monthly>` and the admin panel's "Gifts" buttons.
 
 ## 8. Monetization
 
@@ -3891,7 +3941,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v29)
+### 10.4 Player data schema (v30)
 ```lua
 {
     version = 21,
@@ -3940,6 +3990,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     luck = { x2 = 0, x3 = 0 }, -- luck bought with Robux: seconds left of 2x and 3x Super Luck (LuckService, Config/Luck; v27)
     unlocks = { ExtraJobSlot = true }, -- one-time unlocks bought as developer products (MonetizationService; v28)
     seenPrologue = false, -- the prologue played (WelcomeService; new saves false, saves from before true: v29)
+    gifts = { streak = 0, lastDay = -1, playDay = -1, played = 0, week = -1, weekDays = 0, weekEarned = false, month = -1, monthDays = 0, monthEarned = false, claims = 0 }, -- daily, weekly and monthly gifts: the 7-day round, today's play time, the week's and month's bars and earned chests (GiftService, Util/GiftRules; v30)
 }
 ```
 Bump `version` and write a migration whenever the shape changes.
@@ -3958,7 +4009,7 @@ place loads it at once; before, the session only closed after they'd left, and t
 `TeleportInitFailed`), `Reclaim` opens the session again and the next save writes it. Changes in the moment before
 they leave aren't saved. A session this server ended (leaving, a hand-off) never kicks the player.
 
-Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; v17 added `tutorial` (the first visit with Pish; existing saves "done" with their first pack given and his gift still to come, so only new players go through it); each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity); `tutorial` gained `customerSent` (read as false when missing, true for v17's existing shops; no bump: an older server dropping it allows one more of Pish's customers). v18 added `combat` (Chikin's combat tutorial, the same shape; done for every shop past Pish's tour, still to do for a player mid-way through it). v19 added `dungeon` (`secretFound` and `seenIntro` false for everyone; a junk value is replaced). v20 added `title` ("" for everyone: automatic, the same title as before; a saved string kept, junk replaced). v21 added `upgrades`, `skipTokens` and `purchases` (empty for everyone; a good skip count kept, junk replaced). v22 added `support` (no gifts for everyone; good counts kept). v23 added `titles` (`known`, `fresh` empty, `seeded` false: the first load counts the titles a player already has without telling). v24 added `turts` (nothing bought for everyone; good ids kept, a broken "restock now" roll dropped). v25 added `decor` (Cozy Wood in use and no looks bought for everyone; good ids kept, cleaned against Config/Decor on load). v26 added `windows` (none for everyone; a saved list kept and cleaned on load by `WindowRules.clean`, which pays back any window that no longer fits). v27 added `luck` (no bought luck for everyone). v28 added `unlocks` (none for everyone). v29 added `seenPrologue` (true for every save from before it, so the prologue only greets new players). A service that didn't load for a player (e.g. no free plot) never overwrites
+Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; v17 added `tutorial` (the first visit with Pish; existing saves "done" with their first pack given and his gift still to come, so only new players go through it); each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity); `tutorial` gained `customerSent` (read as false when missing, true for v17's existing shops; no bump: an older server dropping it allows one more of Pish's customers). v18 added `combat` (Chikin's combat tutorial, the same shape; done for every shop past Pish's tour, still to do for a player mid-way through it). v19 added `dungeon` (`secretFound` and `seenIntro` false for everyone; a junk value is replaced). v20 added `title` ("" for everyone: automatic, the same title as before; a saved string kept, junk replaced). v21 added `upgrades`, `skipTokens` and `purchases` (empty for everyone; a good skip count kept, junk replaced). v22 added `support` (no gifts for everyone; good counts kept). v23 added `titles` (`known`, `fresh` empty, `seeded` false: the first load counts the titles a player already has without telling). v24 added `turts` (nothing bought for everyone; good ids kept, a broken "restock now" roll dropped). v25 added `decor` (Cozy Wood in use and no looks bought for everyone; good ids kept, cleaned against Config/Decor on load). v26 added `windows` (none for everyone; a saved list kept and cleaned on load by `WindowRules.clean`, which pays back any window that no longer fits). v27 added `luck` (no bought luck for everyone). v28 added `unlocks` (none for everyone). v29 added `seenPrologue` (true for every save from before it, so the prologue only greets new players). v30 added `gifts` (the round at day 1, nothing played or earned, for everyone; a saved table kept and cleaned on load by `GiftRules.clean`). A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
 
 ### 10.6 UI style and HUD
@@ -4206,7 +4257,8 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   $105,607" in a white pill at the bottom; then page 1. The pocket under the pointer lifts to 1.05 in 0.14 s with a
   small overshoot and settles in 0.1 s (`BinderDesk.HOVER`, one tween per pocket), with no border.
   The page counter pill ("2-3 / 9") sits just under the binder, arrows with Q/E key chips either side of it on wide
-  screens; phones (under 900 px wide) get compact corner buttons in slim lanes (Rarity guide bottom left, Filters
+  screens (round soft buttons with the glossy blue arrow icon, `UIIcons.Next`, mirrored for back, their glow round too
+  through `UIKit.makeRound`; owner 2026-11-15: "improve binder arrow icons"); phones (under 900 px wide) get compact corner buttons in slim lanes (Rarity guide bottom left, Filters
   under the close button), no arrows and no progress card. Top right: Filters (F) and close. The **Filters window**
   (owner 2026-11-03, round 3 pick A "tidy column"; `Collection.FILTERS`, plain data in `Config/FiltersLayout`) opens
   on the right while the camera moves the binder into the room left of it: a cotton candy window with a pink band,
@@ -4226,7 +4278,7 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   each strip only the cards across its slice), built once and parked out of view between turns, so a turn only
   swaps pictures; the next turn of a riffle starts a frame after the last one lands; the page under it shows the next cards at once and the full cards are
   back as it lands. Q / E and the arrows, a tap on a page (right page forward, left page back; also on a "?" or an
-  empty pocket), a swipe across the binder, or holding Q / E (repeats every 0.18 s) turn pages; requests add up to
+  empty pocket, but never on a weapon: a locked one opens its window, which says how to get it; owner 2026-11-15), a swipe across the binder, or holding Q / E (repeats every 0.18 s) turn pages; requests add up to
   a target spread and turns get quicker the further there is to go (up to 4 times), so quick presses riffle through
   a set and stop at its first or last spread. A press on a page's outer 30% that moves toward the spine picks the
   page up: it follows the pointer and, let go, finishes the turn past halfway or when flicked on (else falls back).

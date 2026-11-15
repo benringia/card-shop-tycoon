@@ -11,6 +11,19 @@ return {
 	UNLOCK_LEVEL = 20, -- shop level for the first job slot
 	FREE_SLOTS = 1,
 	PASS_SLOTS = 1, -- extra slots from the Extra Job Slot game pass
+	-- The Extra Job Slot on offer in the Shop Jobs window (owner 2026-11-15: "slot 2 should already say Unlock and make
+	-- the window more enticing to buy"; JobsController): a golden row (`top` to `bottom`, `edge` outline and glow) with a
+	-- light sweeping across it every `shineEvery` s, `stars` twinkling round the worker, its title and line
+	OFFER = {
+		height = 104,
+		top = { 255, 249, 222 },
+		bottom = { 255, 226, 140 },
+		edge = { 255, 196, 60 },
+		shineEvery = 3,
+		stars = 2,
+		title = "Unlock a 2nd worker!",
+		line = "Two cards work in your shop at once: one can restock while the other runs the register.",
+	},
 	XP_PER_MINUTE = 2, -- per working card, while the owner is online
 	-- Work speed = (SPD / REFERENCE_SPD) ^ SPEED_EXPONENT, clamped. The exponent widens the gap between
 	-- rarities: a fresh Grade C Common (SPD 10) works at ~0.6x, a fresh Legendary (SPD 20) at ~1.7x.

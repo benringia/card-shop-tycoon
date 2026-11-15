@@ -1754,12 +1754,25 @@ local function buildCover(canvas: Frame)
 	coverValue = coverPill("Worth", UDim2.fromScale(0.5, 0.9), 0.66)
 end
 
--- A round arrow button beside the book, with its key chip
-local function arrowButton(parent: Instance, text: string, key: string, onClick: () -> ()): TextButton
-	local button = UIKit.button(parent, text, UIKit.Colors.Accent)
-	button.Size = UDim2.fromOffset(64, 64)
-	button.Font = Enum.Font.FredokaOne
-	button.TextSize = 30
+-- A round arrow button beside the book, with its key chip: the glossy arrow icon (owner 2026-11-15: "improve binder
+-- arrow icons"), mirrored for the back one
+local function arrowButton(parent: Instance, back: boolean, key: string, onClick: () -> ()): TextButton
+	local button = UIKit.button(parent, "", UIKit.Colors.Row)
+	UIKit.makeRound(button, 64) -- a circle with a round glow (owner 2026-11-15: its glow was square)
+	local arrow = Icon.make(button, "Next", UDim2.fromScale(0.78, 0.78))
+	arrow.Name = "Arrow"
+	arrow.AnchorPoint = Vector2.new(0.5, 0.5)
+	arrow.Position = UDim2.fromScale(0.5, 0.47)
+	arrow.ZIndex = button.ZIndex + 1
+	local glyph = arrow:FindFirstChild("Glyph")
+	if glyph and glyph:IsA("ImageLabel") then
+		glyph.ZIndex = arrow.ZIndex
+		if back then
+			-- read right to left (the icon is 256 px square): the arrow points back
+			glyph.ImageRectOffset = Vector2.new(256, 0)
+			glyph.ImageRectSize = Vector2.new(-256, 256)
+		end
+	end
 	addKeyChip(button, key)
 	button.Activated:Connect(onClick)
 	return button
@@ -1824,7 +1837,7 @@ local function buildPanel(parent: Instance)
 		lane.ZIndex = panel.ZIndex + 2
 		lane.Parent = panel
 		arrowLanes[index] = lane
-		arrowButton(lane, if step < 0 then "<" else ">", if step < 0 then "Q" else "E", function()
+		arrowButton(lane, step < 0, if step < 0 then "Q" else "E", function()
 			turnBy(step)
 		end).Size = UDim2.fromScale(1, 1)
 	end
@@ -2270,9 +2283,12 @@ function BinderController.Start()
 			turnBy(pageStep(pick.side))
 		elseif tapped and pick and pick.kind == "pocket" then
 			local tile = tileAt(pick.side, pick.index)
-			if tile and isCollected(tile.card.id) and not PageTurner.busy() then
+			-- a weapon always opens its window, a locked one too (it says how to get it; owner 2026-11-15: "clicking
+			-- locked weapon card turns the binder page. fix it")
+			local opens = tile ~= nil and (isCollected(tile.card.id) or weaponOf(tile.card) ~= nil)
+			if tile and opens and not PageTurner.busy() then
 				pickCard(pick.side, pick.index, tile)
-			elseif not tile or not isCollected(tile.card.id) then
+			elseif not opens then
 				turnBy(pageStep(pick.side)) -- a "?" or an empty pocket turns the page
 			end
 		elseif not tapped then

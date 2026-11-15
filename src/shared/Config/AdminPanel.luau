@@ -285,6 +285,23 @@ AdminPanel.SECTIONS = {
 		},
 	},
 	{
+		-- Daily, weekly and monthly gifts (spec 2026-11-15-daily-gifts-design)
+		title = "Gifts",
+		buttons = {
+			{ label = "Today's gift ready", command = "/gift ready" },
+			{ label = "Day 3 ready", command = "/gift day 3" },
+			{ label = "Day 7 (big gift) ready", command = "/gift day 7" },
+			{ label = "Weekly chest earned", command = "/gift week 5" },
+			{ label = "Monthly chest earned", command = "/gift month 20" },
+			{ label = "Win moment: daily", command = "/gift win daily" },
+			{ label = "Win moment: big gift", command = "/gift win big" },
+			{ label = "Win moment: weekly", command = "/gift win weekly" },
+			{ label = "Win moment: monthly", command = "/gift win monthly" },
+			{ label = "Gift time counting on/off", command = "/gift tutorial" },
+			{ label = "Reset my gifts", command = "/gift reset" },
+		},
+	},
+	{
 		-- Chikin's combat tutorial (spec 2026-11-10-chikin-combat-tutorial-design): after Pish's, and at shop level 4
 		title = "Chikin (combat tutorial)",
 		buttons = {

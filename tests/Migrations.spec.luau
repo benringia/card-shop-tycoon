@@ -259,6 +259,24 @@ return {
 
 	-- Turts' rug shop (spec 2026-11-13-turts-shop-design): the restock a player last saw, what they bought in it, and a
 	-- "restock now" roll if they bought one
+	-- Daily, weekly and monthly gifts (spec 2026-11-15-daily-gifts-design): every save starts the round at day 1 with
+	-- nothing played or earned; a saved table stays for GiftService to clean (Util/GiftRules.clean)
+	["v30: every save starts the gifts fresh; a saved table kept"] = function()
+		local data: any = { version = 29, cash = 50 }
+		Migrations.run(data, 30)
+		expect.equal(data.version, 30)
+		expect.equal(data.gifts.streak, 0)
+		expect.equal(data.gifts.lastDay, -1)
+		expect.equal(data.gifts.claims, 0)
+		expect.equal(data.cash, 50, "the rest untouched")
+		local kept: any = { version = 29, gifts = { streak = 3, claims = 9 } }
+		Migrations.run(kept, 30)
+		expect.equal(kept.gifts.streak, 3)
+		local junk: any = { version = 29, gifts = "junk" }
+		Migrations.run(junk, 30)
+		expect.equal(junk.gifts.streak, 0)
+	end,
+
 	-- The prologue (spec 2026-11-14-prologue-hydra-design): new saves play it once; every save from before counts it as
 	-- seen, so existing players never see it
 	["v29: saves from before the prologue count it as seen"] = function()

@@ -212,6 +212,15 @@ local function unload(player: Player)
 	PackService.SetBoughtLuck(player, 0)
 end
 
+-- Luck given, not bought (the daily and monthly gifts, GiftService): its time added like a purchase's, no Store card
+-- (the gift's own win moment shows it); false when this player isn't loaded here
+function LuckService.Give(player: Player, strength: string, seconds: number): boolean
+	if not Luck.STRENGTHS[strength] or seconds <= 0 then
+		return false
+	end
+	return give(player, strength, seconds)
+end
+
 -- Studio: luck as if bought (DevService /luck); 0 seconds clears both strengths
 function LuckService.DevGive(player: Player, strength: string, seconds: number): boolean
 	if seconds <= 0 then

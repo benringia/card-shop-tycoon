@@ -57,6 +57,7 @@ local LevelUpService = require(Services:WaitForChild("LevelUpService"))
 local LeaderboardService = require(Services:WaitForChild("LeaderboardService"))
 local TurtsService = require(Services:WaitForChild("TurtsService"))
 local BinderReadService = require(Services:WaitForChild("BinderReadService"))
+local GiftService = require(Services:WaitForChild("GiftService"))
 
 local Place = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("Place"))
 
@@ -77,6 +78,7 @@ if Place.isDungeon() then
 	BossService.Start() -- the Prism Hydra's chamber
 	SupportService.Start() -- "Support the dev" gifts: aura, best tier (before TitleService: its titles)
 	LuckService.Start() -- luck bought with Robux: its time running down while you play (after PurchaseService)
+	GiftService.Start() -- daily, weekly and monthly gifts: play time counts here too (claimed in the main game)
 	TitleService.Start() -- the title over the name (after BossService and SupportService: their progress)
 	DungeonService.Start() -- the run: arrivals, rooms, carried HP (after BattleService and WildService's cavern)
 	FrontierService.Start() -- back to the Frontier
@@ -106,6 +108,7 @@ elseif Place.isFrontier() then
 	KnockoutService.Start() -- knocked out in the Wild: the countdown, Revive here (after PurchaseService)
 	SupportService.Start() -- "Support the dev" gifts: aura, best tier (before TitleService: its titles)
 	LuckService.Start() -- luck bought with Robux: its time running down while you play (after PurchaseService)
+	GiftService.Start() -- daily, weekly and monthly gifts: play time counts here too (claimed in the main game)
 	TitleService.Start() -- the title over the name (after BossService and SupportService: their progress)
 	FrontierService.Start() -- the Return portal and home button: back to the main game
 	DungeonGateService.Start() -- the Dungeon portal: checks, groups, the teleport (after WildService builds the plaza)
@@ -166,6 +169,7 @@ else
 	LevelUpService.Start() -- level-up packs and Bag pack openings (after EconomyService, ItemService, BattleService)
 	LeaderboardService.Start() -- the plaza leaderboard: most packs opened (after PlotService and the plaza)
 	TurtsService.Start() -- Turts' rug shop: restocks, his spot, buys, "restock now" (after PurchaseService and WildService)
+	GiftService.Start() -- daily, weekly and monthly gifts: play time, claims (after EconomyService, ItemService, LuckService, BattleService)
 	BinderReadService.Start() -- your binder open shows you reading it (after BattleService)
 	DevService.Start() -- Studio only
 	DataService.Start() -- last: starts loading players

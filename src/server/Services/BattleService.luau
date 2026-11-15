@@ -217,6 +217,7 @@ local function sendResting(player: Player)
 		end
 	end
 	Remotes.RestChanged:FireClient(player, { entries = list, nearSpring = nearSpring[player] == true })
+	PartyService.RefreshRest(player) -- the summoned creature looks hurt while it rests
 end
 
 function BattleService.ClearResting(player: Player)
@@ -2075,6 +2076,9 @@ function BattleService.Start()
 		return BattleService.IsFighting(player) or KnockoutService.IsSpared(player)
 	end)
 	KnockoutService.SetWake(BattleService.ClearResting) -- a revive rests your cards
+	PartyService.SetRestLookup(function(player: Player, beastId: string): number?
+		return if isResting(player, beastId) then resting[player][beastId] else nil
+	end)
 	BattleService.AddStartBlocker(function(player: Player): string?
 		return if KnockoutService.IsOut(player) then Combat.DANGER.knockout.blocked else nil
 	end)

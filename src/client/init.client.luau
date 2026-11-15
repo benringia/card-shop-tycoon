@@ -78,6 +78,7 @@ local ThanksController = require(Controllers:WaitForChild("ThanksController"))
 local ReviewsController = require(Controllers:WaitForChild("ReviewsController"))
 local StoreController = require(Controllers:WaitForChild("StoreController"))
 local StoreWinController = require(Controllers:WaitForChild("StoreWinController"))
+local GiftController = require(Controllers:WaitForChild("GiftController"))
 local SwordController = require(Controllers:WaitForChild("SwordController"))
 local WeaponSwitchController = require(Controllers:WaitForChild("WeaponSwitchController"))
 local CharacterController = require(Controllers:WaitForChild("CharacterController"))
@@ -195,6 +196,7 @@ else
 	ReviewsController.Start() -- the phone's Reviews app (after the other apps: it's the last icon)
 	StoreController.Start() -- the phone's Store app: luck boosts and the Extra Job Slot for Robux
 	StoreWinController.Start() -- the win card when a Store purchase goes through
+	GiftController.Start() -- daily, weekly and monthly gifts: the Gift tile, the window, the win moments
 	BuffController.Start()
 	PartyBarController.Start()
 	CardEffectsController.Start()

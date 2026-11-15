@@ -731,6 +731,22 @@ function UIKit.button(parent: Instance, text: string, color: Color3): TextButton
 	return button
 end
 
+-- A soft button made a circle `size` px across, its glow following the circle instead of a rounded square (the
+-- binder's arrows, the party dock's quick button)
+function UIKit.makeRound(button: TextButton, size: number)
+	button.Size = UDim2.fromOffset(size, size)
+	local round = button:FindFirstChildOfClass("UICorner")
+	if round then
+		round.CornerRadius = UDim.new(0.5, 0)
+	end
+	local old = button:FindFirstChild("Glow")
+	if old then
+		old:Destroy()
+		local look = BabyColors.SOFT_BUTTON
+		UIKit.glow(button, button.BackgroundColor3, size / 2, look.glowDrop, look.glowTransparency)
+	end
+end
+
 -- The red close button that sits on a panel's top-right corner
 function UIKit.closeButton(parent: GuiObject): TextButton
 	local close = UIKit.button(parent, "X", UIKit.Colors.Danger)

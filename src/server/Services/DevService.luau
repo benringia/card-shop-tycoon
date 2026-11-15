@@ -52,6 +52,7 @@ local WelcomeService = require(Services:WaitForChild("WelcomeService"))
 local PishService = require(Services:WaitForChild("PishService"))
 local TownChikinService = require(Services:WaitForChild("TownChikinService"))
 local TurtsService = require(Services:WaitForChild("TurtsService"))
+local GiftService = require(Services:WaitForChild("GiftService"))
 local TutorialService = require(Services:WaitForChild("TutorialService"))
 local CombatTutorialService = require(Services:WaitForChild("CombatTutorialService"))
 local SwordService = require(Services:WaitForChild("SwordService"))
@@ -860,6 +861,18 @@ function DevService.Start()
 			warn("[DevService] /turts restock | move | offer <id>")
 		end
 	end)
+	-- Daily, weekly and monthly gifts (Config/Gifts): /gift ready (today's now), /gift day <1-7> (that day's gift ready),
+	-- /gift week <n> | month <n> (days claimed this week or month: the chest earned at its target), /gift reset,
+	-- /gift tutorial (play time counting on or off), /gift win <daily|big|weekly|monthly> (only its win moment)
+	addCommand(folder, "gift", function(player, text)
+		local word, value = string.match(text, "^/%w+%s+(%w+)%s*(%w*)")
+		local said = if word then GiftService.Dev(player, string.lower(word), if value ~= "" then string.lower(value) else nil) else nil
+		if said then
+			Remotes.Notify:FireClient(player, said, false)
+		else
+			Remotes.Notify:FireClient(player, "Usage: /gift ready | day <1-7> | week <n> | month <n> | reset | tutorial | win <daily|big|weekly|monthly>", true)
+		end
+	end)
 	addCommand(folder, "frontierdrop", function(player)
 		ItemService.GiveItem(player, "starShard", 1)
 		local pool = Cards.BySet.Frontier
@@ -903,7 +916,7 @@ function DevService.Start()
 			run(player, text)
 		end
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /weapon <id> [grade] [level], /material <boss id> <amount>, /weapondrop <boss id>, /chests <boss id> [drop|miss|strong|tired], /boss <n> [fight|group], /jobslot, /luck <x2|x3> [minutes] | clear, /prologue [reset], /jobtired, /wild, /rest, /tire, /bosshp <1-100>, /townchikin, /turts <restock|move|offer <id>>, /elite, /knockout, /support <0-3>, /titles forget, /review <outcome>, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /decor <look id|pieces>, /window <style> <side> <at>, /loading <main|wild|frontier|dungeon>, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume], /victorysound <1-3>, /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S], /skillfx <sword> [cut1|cut2|cut3|skill] [level], /room <2-4>, /winroom, /puzzle <solve|beams|plates|lock>, /tap <piece>, /dungeonfx <intro|introshort|roar|glimpse>")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /weapon <id> [grade] [level], /material <boss id> <amount>, /weapondrop <boss id>, /chests <boss id> [drop|miss|strong|tired], /boss <n> [fight|group], /jobslot, /luck <x2|x3> [minutes] | clear, /prologue [reset], /jobtired, /wild, /rest, /tire, /bosshp <1-100>, /townchikin, /turts <restock|move|offer <id>>, /gift <ready|day n|week n|month n|reset|tutorial|win kind>, /elite, /knockout, /support <0-3>, /titles forget, /review <outcome>, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /decor <look id|pieces>, /window <style> <side> <at>, /loading <main|wild|frontier|dungeon>, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-3> [volume], /victorysound <1-3>, /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S], /skillfx <sword> [cut1|cut2|cut3|skill] [level], /room <2-4>, /winroom, /puzzle <solve|beams|plates|lock>, /tap <piece>, /dungeonfx <intro|introshort|roar|glimpse>")
 end
 
 return DevService

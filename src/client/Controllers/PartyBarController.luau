@@ -798,6 +798,26 @@ function PartyBarController.Start()
 	carousel.BackgroundTransparency = 1
 	carousel.Size = UDim2.fromOffset(DOCK.width, DOCK.height)
 	carousel.Parent = bar
+	do
+		-- A quick way to the Party window right by your creatures (owner 2026-11-15: "add a quick access party button
+		-- somewhere here"): a round lilac button with the Party icon past the right portrait
+		local quick = Instance.new("Frame")
+		quick.Name = "PartyQuick"
+		quick.AnchorPoint = Vector2.new(0, 0.5)
+		quick.Position = UDim2.new(1, DOCK.quick.gap, 0.5, DOCK.quick.lift)
+		quick.Size = UDim2.fromOffset(DOCK.quick.size, DOCK.quick.size)
+		quick.BackgroundTransparency = 1
+		quick:SetAttribute("SoftButtons", true) -- the cotton candy button look
+		quick.Parent = carousel
+		local open = UIKit.button(quick, "", rgb(DOCK.quick.fill))
+		open.Name = "OpenParty"
+		UIKit.makeRound(open, DOCK.quick.size)
+		local picture = Icon.make(open, "Party", UDim2.fromScale(0.7, 0.7))
+		picture.AnchorPoint = Vector2.new(0.5, 0.5)
+		picture.Position = UDim2.fromScale(0.5, 0.5)
+		picture.ZIndex = open.ZIndex + 1
+		open.Activated:Connect(PartyController.Toggle)
+	end
 
 	-- The middle one's name, its level in a gold chip, its element; a row as wide as the carousel with the line centred
 	-- under the middle creature (on a phone the line is a soft pill)
@@ -878,7 +898,7 @@ function PartyBarController.Start()
 	bars.Name = "Bars"
 	bars.LayoutOrder = 1
 	bars.BackgroundTransparency = 1
-	bars.Size = UDim2.fromOffset(DOCK.barWidth + DOCK.badge + 4, DOCK.badge + 4)
+	bars.Size = UDim2.fromOffset(DOCK.barWidth + DOCK.badge + 4 + DOCK.buffGap, DOCK.badge + 4) -- room after the bars before the buffs
 	bars.Parent = meRow
 	-- one bar: a white-rimmed track with its fill and its words over it, a badge at its left end
 	local function makeBar(name: string, top: number, height: number, fill: { { number } }): (Frame, TextLabel)

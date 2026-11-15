@@ -28,6 +28,7 @@ local SummonFx = require(((script.Parent :: Instance).Parent :: Instance):WaitFo
 local SummonMotion = require(Shared:WaitForChild("Util"):WaitForChild("SummonMotion"))
 local PetVoice = require(Shared:WaitForChild("Util"):WaitForChild("PetVoice"))
 local HealFx = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("HealFx"))
+local HurtBadge = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("HurtBadge"))
 local RestTimers = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("RestTimers"))
 local SoundBank = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("SoundBank"))
 local CreatureTagGui = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("CreatureTagGui"))
@@ -55,6 +56,7 @@ type Creature = {
 	highlight: Highlight?,
 	light: PointLight?,
 	tag: BillboardGui, -- its name tag (Util/CreatureTagGui)
+	hurt: HurtBadge.Badge, -- "Hurt 4:41" and dizzy stars while its card rests after fainting
 	hpBar: BillboardGui?, -- in an arena fight: a bar everyone can see
 	hpFill: Frame?,
 	height: number,
@@ -232,6 +234,7 @@ local function remove(marker: BasePart)
 	if creature.healStop then
 		creature.healStop()
 	end
+	HurtBadge.destroy(creature.hurt)
 	creature.body.model:Destroy()
 end
 
@@ -293,6 +296,16 @@ end
 
 -- Your creature at the healing spring (owner 2026-11-04): the heal effect while you stand there (RestTimers.IsNearSpring,
 -- from the server) and it's out and about
+-- Hurt while its card rests (the marker's RestUntil, everyone's creatures): hidden in a fight, while it's fainted or
+-- leaving, and while the spring's "+ Healing" pill takes its spot
+local function updateHurt(creature: Creature)
+	local marker = creature.marker
+	local restUntil = marker:GetAttribute("RestUntil")
+	HurtBadge.set(creature.hurt, if typeof(restUntil) == "number" then restUntil else nil)
+	local busy = marker:GetAttribute("InFight") == true or marker:GetAttribute("Fainted") == true or marker:GetAttribute("Unsummon") == true
+	HurtBadge.hide(creature.hurt, busy or creature.healStop ~= nil)
+end
+
 local function updateHealing(creature: Creature)
 	local want = creature.voice ~= nil and RestTimers.IsNearSpring() and PetVoice.isFree(freeState(creature))
 	if want and not creature.healStop then
@@ -301,6 +314,7 @@ local function updateHealing(creature: Creature)
 		creature.healStop()
 		creature.healStop = nil
 	end
+	updateHurt(creature)
 end
 
 local function add(marker: BasePart)
@@ -347,6 +361,7 @@ local function add(marker: BasePart)
 		highlight = nil,
 		light = nil,
 		tag = CreatureTagGui.build(body.root, height + (if flying then Party.MOTION.HOVER_HEIGHT else 0), rarityColor(card.rarity), card.element),
+		hurt = HurtBadge.new(body.root, height + (if flying then Party.MOTION.HOVER_HEIGHT else 0)),
 		hpBar = nil,
 		hpFill = nil,
 		height = height + (if flying then Party.MOTION.HOVER_HEIGHT else 0),
@@ -461,6 +476,7 @@ local function refreshCull()
 end
 
 local function step(creature: Creature, dt: number, now: number, origin: Vector3)
+	HurtBadge.step(creature.hurt, now) -- its heart beats and its dizzy stars circle while it's hurt
 	-- Frozen solid: it stays exactly as it was, mid-step (the owner 2026-11-10: "still moves around while frozen")
 	if now < creature.frozenUntil then
 		return

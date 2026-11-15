@@ -47,6 +47,7 @@ local states: { [Player]: PartyState } = {}
 -- the prologue (PrologueService): the player's own party, kept here while lent cards fill the slots; it's what's saved
 local ownParty: { [Player]: { slots: { [number]: string }, summoned: number? } } = {}
 local changeBlocker: ((player: Player) -> string?)? = nil -- DungeonService: the run's party is set
+local restUntil: ((player: Player, beastId: string) -> number?)? = nil -- BattleService: when a fainted card is rested
 local allowAction = RateLimiter.new(Party.ACTION_COOLDOWN)
 local creaturesFolder: Folder
 local defaultWalkSpeed = StarterPlayer.CharacterWalkSpeed
@@ -174,6 +175,8 @@ local function setMarkerAttributes(marker: BasePart, player: Player, beast: Card
 	marker:SetAttribute("Grade", beast.grade)
 	marker:SetAttribute("Level", beast.level)
 	marker:SetAttribute("Stars", beast.stars)
+	-- hurt after fainting: everyone sees it on the creature until it's rested (owner 2026-11-15; os.time)
+	marker:SetAttribute("RestUntil", if restUntil then restUntil(player, beast.id) else nil)
 end
 
 local function refreshMarker(player: Player)
@@ -423,6 +426,17 @@ end
 -- The Dungeon: no party changes once its run has started fighting (the reason shown), nil to allow them
 function PartyService.SetChangeBlocker(blocker: (player: Player) -> string?)
 	changeBlocker = blocker
+end
+
+-- BattleService: when each fainted card is rested (os.time, nil when it isn't resting), for the summoned creature's
+-- hurt look
+function PartyService.SetRestLookup(lookup: (player: Player, beastId: string) -> number?)
+	restUntil = lookup
+end
+
+-- BattleService: a card's rest changed (it fainted, rested, or the spring healed it): the summoned creature shows it
+function PartyService.RefreshRest(player: Player)
+	refreshMarker(player)
 end
 
 -- The Dungeon: summons a party slot from the server (a creature that can still fight in the run). False if the party

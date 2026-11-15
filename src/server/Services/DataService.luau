@@ -93,6 +93,20 @@ export type PlayerData = {
 	turts: { index: number, bought: { string }, personal: { index: number, offers: { string } }? },
 	decor: { look: string, owned: { string } }, -- shop decor: the look in use and the looks bought (DecorService)
 	windows: { { style: string, side: string, at: number } }, -- the shop's windows (WindowService)
+	-- daily, weekly and monthly gifts: the round, today's play time, the week's and month's bars (GiftService; GiftRules.State)
+	gifts: {
+		streak: number,
+		lastDay: number,
+		playDay: number,
+		played: number,
+		week: number,
+		weekDays: number,
+		weekEarned: boolean,
+		month: number,
+		monthDays: number,
+		monthEarned: boolean,
+		claims: number,
+	},
 }
 
 export type Handler = {
@@ -143,6 +157,7 @@ local TEMPLATE: PlayerData = {
 	windows = {},
 	luck = { x2 = 0, x3 = 0 },
 	unlocks = {},
+	gifts = { streak = 0, lastDay = -1, playDay = -1, played = 0, week = -1, weekDays = 0, weekEarned = false, month = -1, monthDays = 0, monthEarned = false, claims = 0 },
 }
 
 local DataService = {}

@@ -316,6 +316,25 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 			data.seenPrologue = true
 		end
 	end,
+	-- 29 -> 30: daily, weekly and monthly gifts (spec 2026-11-15-daily-gifts-design): the round at day 1, nothing played
+	-- or earned (Util/GiftRules.fresh); a saved table stays for GiftService to clean (Util/GiftRules.clean)
+	[29] = function(data)
+		if typeof(data.gifts) ~= "table" then
+			data.gifts = {
+				streak = 0,
+				lastDay = -1,
+				playDay = -1,
+				played = 0,
+				week = -1,
+				weekDays = 0,
+				weekEarned = false,
+				month = -1,
+				monthDays = 0,
+				monthEarned = false,
+				claims = 0,
+			}
+		end
+	end,
 }
 
 local function lowestGrade(): string
