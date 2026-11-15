@@ -243,5 +243,13 @@ return {
 		expect.equal(WeaponText.switchLine(Weapons, "starterSword", nil), "", "no element, not upgraded: nothing")
 		expect.equal(WeaponText.switchLine(Weapons, "nope", nil), "")
 	end,
+	-- A boss material's line on its chest card and pick-up card (owner 2026-11-16 saw "84/4 for Verdant Blade": the 4
+	-- was the next upgrade's cost of a sword already owned)
+	["a material's goal line says make or upgrade, and when there's enough"] = function()
+		expect.equal(WeaponText.goalLine(9, 15, "Verdant Blade", false), "9/15 to make the Verdant Blade")
+		expect.equal(WeaponText.goalLine(3, 4, "Verdant Blade", true), "3/4 to upgrade the Verdant Blade")
+		expect.equal(WeaponText.goalLine(84, 4, "Verdant Blade", true), "Enough to upgrade the Verdant Blade!")
+		expect.equal(WeaponText.goalLine(15, 15, "Verdant Blade", false), "Enough to make the Verdant Blade!")
+	end,
 }
 

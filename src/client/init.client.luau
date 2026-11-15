@@ -79,6 +79,7 @@ local ReviewsController = require(Controllers:WaitForChild("ReviewsController"))
 local StoreController = require(Controllers:WaitForChild("StoreController"))
 local StoreWinController = require(Controllers:WaitForChild("StoreWinController"))
 local GiftController = require(Controllers:WaitForChild("GiftController"))
+local TeamController = require(Controllers:WaitForChild("TeamController"))
 local SwordController = require(Controllers:WaitForChild("SwordController"))
 local WeaponSwitchController = require(Controllers:WaitForChild("WeaponSwitchController"))
 local CharacterController = require(Controllers:WaitForChild("CharacterController"))
@@ -148,6 +149,7 @@ if Place.isFrontier() or Place.isDungeon() then
 		MusicController.Start() -- its areas' and boss arenas' music (Config/Music FRONTIER)
 		PortalFxController.Start() -- its portals' swirls turning (the owner 2026-11-10: "some are no animations")
 		FrontierFxController.Start() -- its snow, red eyes, lightning, tornado, vortex, floating rocks and tremors
+		TeamController.Start() -- teams in the Frontier: Team up prompts, invites, the team strip, boss calls
 	end
 else
 	UIController.Start()
@@ -197,6 +199,7 @@ else
 	StoreController.Start() -- the phone's Store app: luck boosts and the Extra Job Slot for Robux
 	StoreWinController.Start() -- the win card when a Store purchase goes through
 	GiftController.Start() -- daily, weekly and monthly gifts: the Gift tile, the window, the win moments
+	TeamController.Start() -- teams in this world: Team up prompts, invites, the team strip, boss calls
 	BuffController.Start()
 	PartyBarController.Start()
 	CardEffectsController.Start()

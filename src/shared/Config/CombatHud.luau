@@ -40,6 +40,11 @@ return {
 			tip = "Switch to another creature.",
 		},
 		run = { color = rgb(248, 113, 113), icon = "Run", emoji = "🏃", key = nil, name = "RUN", tip = "Leave the fight." },
+		-- the soft lock (owner 2026-11-15, look A; Util/SoftLock): the next enemy, nearest first
+		target = {
+			color = rgb(255, 210, 63), icon = "Target", emoji = "🎯", key = "Tab", name = "TARGET",
+			tip = "Lock on to the next enemy: your sword and your creature go for it. You can also tap an enemy.",
+		},
 	},
 	-- The skill button per sword (owner's picks 2026-11-07): a round 1 sword's own icon (Config/UIIcons), name (its
 	-- tooltip's title; shown in capitals under the button) and tooltip, by its Config/Swords moveset; the Steel Sword

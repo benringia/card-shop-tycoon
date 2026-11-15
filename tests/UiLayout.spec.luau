@@ -77,7 +77,8 @@ return {
 	["combat buttons: big enough, on screen, never overlapping, clear of the thumbstick"] = function()
 		for _, view in { { w = 844, h = 390 }, { w = 667, h = 375 }, { w = 1920, h = 1080 }, { w = 1280, h = 720 } } do
 			local rects = UiLayout.combatButtons(view)
-			local names = { "attack", "dodge", "skill", "pet", "signature", "swap", "run" }
+			-- target: the soft lock's button (owner 2026-11-15), above the skill
+			local names = { "attack", "dodge", "skill", "pet", "signature", "swap", "run", "target" }
 			for _, name in names do
 				local r = (rects :: any)[name] :: UiLayout.Rect
 				local where = `{name} at {view.w}x{view.h}`
@@ -101,7 +102,7 @@ return {
 	["combat buttons with a mouse: no Attack, the Pet button in its corner, Dodge and Skill beside it"] = function()
 		for _, view in { { w = 1920, h = 1080 }, { w = 1280, h = 720 }, { w = 844, h = 390 } } do
 			local rects = UiLayout.combatButtons(view, true)
-			local names = { "dodge", "skill", "pet", "signature", "swap", "run" }
+			local names = { "dodge", "skill", "pet", "signature", "swap", "run", "target" }
 			for i, a in names do
 				local r = (rects :: any)[a] :: UiLayout.Rect
 				expect.equal(r.x >= 0 and r.y >= 0 and r.x + r.w <= view.w and r.y + r.h <= view.h, true, `{a} at {view.w}x{view.h}: on screen`)

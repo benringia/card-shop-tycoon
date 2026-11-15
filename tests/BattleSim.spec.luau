@@ -3306,4 +3306,46 @@ return {
 		expect.equal(BattleSim.pylonsLeft(state, "b"), 1, "it stands, untouched by the creatures")
 		expect.equal(state.result, nil, "still going")
 	end,
+	-- The soft lock (owner 2026-11-15, look A): a player picks an enemy and their creature attacks it, instead of the
+	-- usual choice (a boss's adds first, then the lowest share of HP left)
+	["a player's soft lock: their creature attacks the enemy they picked"] = function()
+		local function fight(): any
+			return BattleSim.new(combat, {
+				fighters = { owned("p1", "1"), playerInput("1") },
+				reserves = {},
+				abilities = false,
+				canRun = true,
+				swapSeconds = 10,
+				callIn = false,
+			}, {
+				fighters = {
+					{ id = "m", element = "Bloom", hp = 100000, atk = 1, spd = 10, boss = true, mechanics = {} },
+					{ id = "x", element = "Bloom", hp = 100000, atk = 1, spd = 10 },
+				},
+				abilities = false,
+				canRun = false,
+			}, 3)
+		end
+		local function hitsOn(events: { any }, to: string): number
+			local count = 0
+			for _, e in events do
+				if e.type == "attack" and e.from == "a:p1" and e.to == to then
+					count += 1
+				end
+			end
+			return count
+		end
+		local plain = runFor(fight(), 5)
+		expect.equal(hitsOn(plain, "b:x") > 0, true, "no lock: the add first")
+		expect.equal(hitsOn(plain, "b:m"), 0)
+		local state = fight()
+		expect.equal(BattleSim.setFocus(state, "1", "b:m"), true)
+		local locked = runFor(state, 5)
+		expect.equal(hitsOn(locked, "b:m") > 0, true, "locked on the boss: the boss")
+		expect.equal(hitsOn(locked, "b:x"), 0)
+		expect.equal(BattleSim.setFocus(state, "1", "b:nobody"), false, "not an enemy here")
+		expect.equal(BattleSim.setFocus(state, "1", nil), true, "let go")
+		local after = runFor(state, 5)
+		expect.equal(hitsOn(after, "b:x") > 0, true, "back to the usual choice")
+	end,
 }

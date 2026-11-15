@@ -94,14 +94,20 @@ function VictoryRules.toast(summary: any, cardsById: { [string]: any }, restLine
 		table.insert(extras, `+{ore} Wild Ore`)
 	end
 	local foe = if typeof(summary.foe) == "string" and summary.foe ~= "" then summary.foe else "Monster"
+	local pills = {
+		{ icon = "Cash", text = string.format("+$%.2f", tonumber(summary.cash) or 0) },
+		{ icon = "Xp", text = `+{tonumber(summary.xpEach) or 0} XP` },
+	}
+	-- teammates near you added to it (spec 2026-11-15-teams-design)
+	local team = tonumber(summary.team) or 0
+	if team > 0 then
+		table.insert(pills, { icon = "Party", text = `+{math.floor(team * 100 + 0.5)}% team` })
+	end
 	return {
 		kind = if rare then "rare" else "win",
 		title = `{foe} defeated`,
 		line = if #extras > 0 then table.concat(extras, " · ") else nil,
-		pills = {
-			{ icon = "Cash", text = string.format("+$%.2f", tonumber(summary.cash) or 0) },
-			{ icon = "Xp", text = `+{tonumber(summary.xpEach) or 0} XP` },
-		},
+		pills = pills,
 	}
 end
 

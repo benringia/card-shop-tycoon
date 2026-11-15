@@ -66,7 +66,7 @@ end
 -- thumbstick (bottom-left). Sizes follow the screen's height; every button is at least 48 px. With a mouse
 -- (`noAttack`: a click attacks, owner 2026-11-03) there's no Attack button: the Pet button takes its corner and Dodge
 -- and Skill move up beside it.
-export type CombatButtons = { attack: Rect, dodge: Rect, skill: Rect, pet: Rect, signature: Rect, swap: Rect, run: Rect }
+export type CombatButtons = { attack: Rect, dodge: Rect, skill: Rect, pet: Rect, signature: Rect, swap: Rect, run: Rect, target: Rect }
 function UiLayout.combatButtons(view: Size, noAttack: boolean?): CombatButtons
 	local u = math.clamp(view.h * 0.17, 52, 110)
 	local function dim(k: number): number
@@ -89,7 +89,10 @@ function UiLayout.combatButtons(view: Size, noAttack: boolean?): CombatButtons
 	local run = { w = dim(0.75), h = dim(0.75), x = 0, y = 0 }
 	run.x, run.y = dodge.x - 0.4 * u - run.w, view.h - margin - run.h
 	local swap = { w = run.w, h = run.h, x = run.x - 0.2 * u - run.w, y = run.y }
-	return { attack = attack, dodge = dodge, skill = skill, pet = pet, signature = signature, swap = swap, run = run }
+	-- the soft lock's Target (owner 2026-11-15): small, above the skill
+	local target = { w = dim(0.75), h = dim(0.75), x = 0, y = 0 }
+	target.x, target.y = skill.x + (skill.w - target.w) / 2, skill.y - gap - target.h
+	return { attack = attack, dodge = dodge, skill = skill, pet = pet, signature = signature, swap = swap, run = run, target = target }
 end
 
 -- A wild monster fight's controls (owner 2026-11-03, layout A: the boss HUD's look without the sword): the Pet button

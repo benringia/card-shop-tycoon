@@ -34,6 +34,7 @@ local Wild = Place.getWorld()
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 local CombatMath = require(Shared:WaitForChild("Util"):WaitForChild("CombatMath"))
+local TeamRules = require(Shared:WaitForChild("Util"):WaitForChild("TeamRules"))
 local DebuffRules = require(Shared:WaitForChild("Util"):WaitForChild("DebuffRules"))
 local DefenseRules = require(Shared:WaitForChild("Util"):WaitForChild("DefenseRules"))
 local DangerRules = require(Shared:WaitForChild("Util"):WaitForChild("DangerRules"))
@@ -60,6 +61,7 @@ local EconomyService = require(Services:WaitForChild("EconomyService"))
 local ItemService = require(Services:WaitForChild("ItemService"))
 local KnockoutService = require(Services:WaitForChild("KnockoutService"))
 local PartyService = require(Services:WaitForChild("PartyService"))
+local TeamService = require(Services:WaitForChild("TeamService"))
 local SwordService = require(Services:WaitForChild("SwordService"))
 local WeaponService = require(Services:WaitForChild("WeaponService"))
 local WildService = require(Services:WaitForChild("WildService"))
@@ -928,9 +930,12 @@ local function payOut(fight: Fight, member: Member): any
 		return { xpEach = xpEach, cash = cash, shards = 0, party = party }
 	end
 	local rewards = CombatMath.getRewards(Wild, monster.level, monster.elite)
-	local each = CombatMath.splitXp(rewards.xp, #member.partyIds)
+	-- your own win only, plus the hunting bonus for teammates near you (spec 2026-11-15-teams-design)
+	local team = TeamService.HuntBonus(player)
+	local cash = TeamRules.boostCash(rewards.cash, team)
+	local each = CombatMath.splitXp(TeamRules.boostXp(rewards.xp, team), #member.partyIds)
 	local party = giveXp(player, member.partyIds, each)
-	EconomyService.AddCash(player, rewards.cash)
+	EconomyService.AddCash(player, cash)
 	local dropped = nil
 	if rng:NextNumber() < rewards.dropChance then
 		local cardId = rollDrop(monster)
@@ -968,7 +973,7 @@ local function payOut(fight: Fight, member: Member): any
 			end
 		end
 	end
-	return { xpEach = each, cash = rewards.cash, card = frontierCard or dropped, shards = shards, ore = ore, party = party }
+	return { xpEach = each, cash = cash, card = frontierCard or dropped, shards = shards, ore = ore, party = party, team = if team > 0 then team else nil }
 end
 
 -- Ending --------------------------------------------------------------------------------------------------
@@ -1106,6 +1111,7 @@ local function endFight(fight: Fight, result: string)
 			local paid = payOut(fight, member)
 			summary.xpEach, summary.cash, summary.card, summary.shards, summary.boss = paid.xpEach, paid.cash, paid.card, paid.shards, paid.boss
 			summary.ore = paid.ore
+			summary.team = paid.team -- the hunting bonus from teammates near you, if any (the toast's pill)
 			summary.partyIds = member.partyIds
 			summary.party = paid.party -- each card's XP bar before and after (the victory screen)
 			summary.seconds = fight.sim.time
@@ -2116,6 +2122,20 @@ function BattleService.Start()
 			return -- not a pylon of this fight, or out of the prompt's reach: only a tampered client sends these
 		end
 		BattleSim.setPylonFocus(fight.sim, member.owner, target :: string)
+	end)
+	-- The soft lock (owner 2026-11-15, look A): your creature attacks the enemy you locked (nil: the usual choice);
+	-- an id that isn't a standing enemy of this fight changes nothing (BattleSim.setFocus)
+	local allowSoftLock = RateLimiter.new(require(Config:WaitForChild("SoftLock")).REMOTE_GAP)
+	Remotes.SoftLock.OnServerEvent:Connect(function(player: Player, target: unknown)
+		local fight = fights[player]
+		local member = if fight then fight.members[player] else nil
+		if not allowSoftLock(player) or not fight or not member or fight.ended then
+			return
+		end
+		if target ~= nil and (typeof(target) ~= "string" or #(target :: string) > 64) then
+			return
+		end
+		BattleSim.setFocus(fight.sim, member.owner, target :: string?)
 	end)
 	Remotes.SwordSkill.OnServerEvent:Connect(onSwordSkill)
 	Remotes.Dodge.OnServerEvent:Connect(onDodge)

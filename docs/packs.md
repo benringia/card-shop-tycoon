@@ -95,13 +95,20 @@ quick repeats overlap; the tease fades out when the hit lands. Credits are in DE
 The three chests after a boss win (`BossChestController`, `Util/ChestModel`; spec
 `docs/superpowers/specs/2026-11-11-boss-chests-design.md`) use `PackModels.Chest`: a Model with two MeshParts, `Body`
 and `Lid`. The game scales it to the stage, swings the lid on the body's top back edge and adds the light inside;
-without it, a stand-in built from parts shows. Built by `tools/blender/build_chest.py` (owner's pick: the `classic`
-look; `render_concepts()` renders every look in `LOOKS`), flat colours from one palette texture
-(`assets/blender/Chest/Chest_palette.png`), about 3,200 triangles. Rebuild: in Blender (MCP) open
-`assets/blender/Chest/Chest.blend` first (a new empty file has no context under the MCP), then
-`runpy.run_path("tools/blender/build_chest.py")["export"]("classic")`; it writes `Chest.blend` and `Chest.fbx`.
+without it, a stand-in built from parts shows.
 
-1. Studio (stopped) -> Import 3D -> `assets/blender/Chest/Chest.fbx` (default settings).
+Since 2026-11-16 (owner: "we need a chest design for after the boss is killed. it looks too ugly"; pick A of
+`assets/blender/Chest/concepts_v2.png`, Figma): a Meshy model from `assets/blender/ChestA/ChestA_concept.png` (honey
+wood, chunky riveted gold bands, a glowing purple gem lock), cleaned by `tools/blender/build_chestA.py`: reduced to
+18,000 triangles (Body about 10,600, Lid about 8,400; 9,000 crumpled the bands), smooth by angle (35 degrees), cut at
+the lid's seam (`SEAM_Z`, the top of the gold band) and both cuts capped flat in the back's dark wood. The committed
+`ChestA.blend` holds only Body and Lid (the raw 38 MB Meshy mesh was deleted). Rebuild: in Blender (MCP) open
+`ChestA.blend`, import a fresh generation from the concept as `ChestA_Src` (one Meshy credit), then
+`runpy.run_path("tools/blender/build_chestA.py")` (`PREVIEW=1` renders it closed and open); it writes `ChestA.blend`
+and `ChestA.fbx`. The older code-built chest
+(`tools/blender/build_chest.py`, flat palette colours, about 3,200 triangles) stays for reference.
+
+1. Studio (stopped) -> Import 3D -> `assets/blender/ChestA/ChestA.fbx` (default settings).
 2. Name the Model `Chest`, check it holds the MeshParts `Body` and `Lid`, right-click it -> **Save to File...** ->
    `assets/packs/Chest.rbxm`.
 3. Delete the Workspace copy. Stop and Play; `/chests meadowWarden` shows it.

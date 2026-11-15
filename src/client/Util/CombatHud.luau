@@ -97,6 +97,7 @@ export type Callbacks = {
 	signature: () -> (),
 	swap: (id: string) -> (),
 	run: (() -> ())?, -- nil: no Run button (the prologue's fight can't be run from)
+	target: (() -> ())?, -- the soft lock's Target (boss fights; Util/SoftLock): the next enemy
 }
 export type Hud = {
 	update: (view: View) -> (),
@@ -121,7 +122,7 @@ type Button = {
 	fillShape: UIGradient?,
 }
 
-local BUTTON_ORDER = { "attack", "dodge", "skill", "pet", "signature", "swap", "run" }
+local BUTTON_ORDER = { "attack", "dodge", "skill", "pet", "signature", "swap", "run", "target" }
 local WILD_ORDER = { "pet", "signature", "swap", "run" }
 local PORTRAIT_BACK = Color3.fromRGB(42, 29, 51) -- behind the headshot and the card while they load
 local CHIP_POP = TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
@@ -797,6 +798,9 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 	}
 	if callbacks.run then
 		presses.run = callbacks.run
+	end
+	if callbacks.target then
+		presses.target = callbacks.target
 	end
 	-- The tooltip: the button's name in its colour, then what it does, just above the button
 	local tip = Instance.new("Frame")

@@ -42,6 +42,10 @@ local NAMES = {
 	"StoreWin", -- server → client: (kind: "x2" | "x3" | "jobslot", seconds: number) a Store purchase went through: its win card (StoreWinController)
 	"GiftState", -- server → client: (view: GiftRules.View, counting: boolean) the daily, weekly and monthly gifts; client → server: () send it again (GiftService)
 	"GiftClaim", -- client → server: (kind: "daily" | "weekly" | "monthly") claim it; server → client: (kind, day: number, lines: { GiftRules.Line }) its win moment (GiftController)
+	"TeamInvite", -- client → server: (userId: number) invite that player to your team; server → client: (fromUserId: number, members: { number }, seconds: number) an invite card (TeamService)
+	"TeamAnswer", -- client → server: (fromUserId: number, join: boolean) answer an invite
+	"TeamState", -- server → client: (team: { leader: number, members: { number } }?) your team now (nil: none); client → server: () leave your team
+	"TeamFight", -- server → client: (bossId: string, fromUserId: number, joined: { number }, seconds: number) a teammate's boss fight is forming; client → server: (bossId: string) join it
 	"Charge", -- client → server: take payment for the fully scanned checkout
 	-- server → owner: the open kid offer or haggle at the register, nil = closed. { id, kind: "kid"|"haggle",
 	-- card: { cardId, foil, grade }?, asking?, worth?, offer?, total?, range: { low, high }, step, edges: { sure, maybe },
@@ -116,6 +120,7 @@ local NAMES = {
 	"SwordSeen", -- client → server: () the first-sword popup was closed
 	"SwordAttack", -- client → server: () an Attack tap in a boss fight (the server picks the cut and checks reach)
 	"SwordSkill", -- client → server: () the sword skill in a boss fight
+	"SoftLock", -- client → server: (targetId: string?) the enemy you locked in a fight: your creature attacks it (nil: let go)
 	"PetPylon", -- client → server: (pylonId: string | false) your creature attacks that Dungeon room 3 crystal pylon (its sim id), or comes back
 	"SwordCast", -- server → all clients: (userId, move, x, z) a round 1 sword's cut ("cut1"-"cut3") or "skill" starts there: its effects for others
 	"Dodge", -- client → server: () a dodge in a boss fight (the dash is the client's; the server makes you untouchable)
@@ -177,6 +182,10 @@ return {
 	StoreWin = remotes.StoreWin,
 	GiftState = remotes.GiftState,
 	GiftClaim = remotes.GiftClaim,
+	TeamInvite = remotes.TeamInvite,
+	TeamAnswer = remotes.TeamAnswer,
+	TeamState = remotes.TeamState,
+	TeamFight = remotes.TeamFight,
 	PrologueSeen = remotes.PrologueSeen,
 	PrologueReplay = remotes.PrologueReplay,
 	PrologueStep = remotes.PrologueStep,
@@ -266,6 +275,7 @@ return {
 	SwordState = remotes.SwordState,
 	SwordSeen = remotes.SwordSeen,
 	SwordAttack = remotes.SwordAttack,
+	SoftLock = remotes.SoftLock,
 	SwordSkill = remotes.SwordSkill,
 	PetPylon = remotes.PetPylon,
 	SwordCast = remotes.SwordCast,

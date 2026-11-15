@@ -66,6 +66,15 @@ return {
 		expect.equal(VictoryRules.subtitle("Meadow Warden", 84), "Meadow Warden defeated · 1:24")
 		expect.equal(VictoryRules.subtitle(nil, nil), "Fight won")
 	end,
+	-- Teams (spec 2026-11-15-teams-design): teammates near you add their bonus to your own win, shown as a third pill
+	["a win with teammates near shows the team bonus"] = function()
+		local toast = VictoryRules.toast({ result = "win", foe = "Mossling", cash = 16.12, xpEach = 49, team = 0.3 }, {})
+		expect.equal(#toast.pills, 3)
+		expect.equal(toast.pills[3].icon, "Party")
+		expect.equal(toast.pills[3].text, "+30% team")
+		local alone = VictoryRules.toast({ result = "win", foe = "Mossling", cash = 12.4, xpEach = 38 }, {})
+		expect.equal(#alone.pills, 2, "no team, no pill")
+	end,
 	["a normal monster's win is a toast: who fell, cash and XP"] = function()
 		local toast = VictoryRules.toast({ result = "win", foe = "Mossling", cash = 12.4, xpEach = 38 }, {})
 		expect.equal(toast.kind, "win")

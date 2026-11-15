@@ -392,4 +392,15 @@ function WeaponText.bond(cfg: any, weaponId: string): string?
 	return `+{percent(cfg.BOND.damage - 1)} hits and a {percent(cfg.BOND.meter - 1)} faster super with {who}`
 end
 
+-- A boss material toward its weapon (the chest card, the pick-up card): "9/15 to make the Verdant Blade",
+-- "3/4 to upgrade the Verdant Blade", or "Enough to upgrade the Verdant Blade!" once there's enough (`owned`: the
+-- weapon is yours, so `need` is its next upgrade's cost)
+function WeaponText.goalLine(have: number, need: number, weaponName: string, owned: boolean): string
+	local verb = if owned then "upgrade" else "make"
+	if have >= need then
+		return `Enough to {verb} the {weaponName}!`
+	end
+	return `{have}/{need} to {verb} the {weaponName}`
+end
+
 return WeaponText

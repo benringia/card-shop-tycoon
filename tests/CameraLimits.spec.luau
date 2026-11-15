@@ -6,7 +6,8 @@ local expect = require("./lib/expect")
 
 return {
 	["the camera zooms out less than Roblox's 128 studs, a boss fight a little further"] = function()
-		expect.equal(CameraLimits.MAX_ZOOM >= 30 and CameraLimits.MAX_ZOOM < 128, true, "a closer cap")
+		-- owner 2026-11-15: about 25 studs ("make zoomout limited to about this size"), still far enough to see round you
+		expect.equal(CameraLimits.MAX_ZOOM >= 20 and CameraLimits.MAX_ZOOM <= 30, true, "a close cap")
 		expect.equal(CameraLimits.BOSS_MAX_ZOOM > CameraLimits.MAX_ZOOM and CameraLimits.BOSS_MAX_ZOOM <= 100, true, "room for a big boss")
 	end,
 }

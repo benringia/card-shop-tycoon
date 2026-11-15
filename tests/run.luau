@@ -186,6 +186,8 @@ local specs: { [string]: { [string]: () -> () } } = {
 	SoftColors = require("./SoftColors.spec"),
 	SquishRules = require("./SquishRules.spec"),
 	GiftRules = require("./GiftRules.spec"),
+	TeamRules = require("./TeamRules.spec"),
+	SoftLockRules = require("./SoftLockRules.spec"),
 }
 
 -- `lune run tests/run <SpecName>` runs only that spec

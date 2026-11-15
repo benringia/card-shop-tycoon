@@ -2402,7 +2402,7 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
     screen he stays on the left end (the level pill sits over the right) and the toasts keep their place.
   - **HUD tiles** a little smaller: 72 px (84 before; Config/SoftHud TILE).
   - **Fireflies over the Caves**: the whole floor and thicker along the trail (Config/Scenery EMITTERS, WildGorge).
-  - **Camera zoom** capped at 40 studs (the owner's pick; 70 in a boss fight; Roblox's default 128 showed the map's edges and made phones
+  - **Camera zoom** capped at 25 studs (owner 2026-11-15 from a screenshot, 40 before; 70 in a boss fight; Roblox's default 128 showed the map's edges and made phones
     draw much more; Config/CameraLimits, CameraLimitController).
   - **More titles to earn, told when earned** (owner 2026-11-13: "add more titles that is obtainable in game. also add
     a notification when a new title is unlocked, and make the character menu have a little notification indicator ...
@@ -2500,6 +2500,25 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
 - Studio: the Dungeon window (`rojo serve dungeon.project.json`) starts the run for whoever is there; `/room <2-4>`
   opens the doors up to that room and puts you at its gate (4: the chamber), also in the admin panel's Dungeon section. Teleports only work in
   the published game.
+
+### 5.10b Soft lock in fights (built 2026-11-16)
+
+Owner 2026-11-15: "next we do this: IDEA: Soft lock system on combat", then look **A** from the mockups ("Ring under
+the enemy + arrow over it"). No camera lock: the camera stays yours.
+
+- **Locking**: tap or click an enemy (`SoftLockRules.pick`, a short still press; a drag turns the camera), press
+  **Tab**, or press the fight's gold **Target** button (above the skill, `UiLayout.combatButtons` `target`): Tab and
+  the button go nearest first, then on outward, round again (`SoftLockRules.cycle`). Tapping your target again, or it
+  falling, lets go (`SoftLockRules.afterTap`, `has`).
+- **What it does**: your sword turns to the locked enemy when you attack (SwordController's soft aim, wherever it is),
+  and the server points your creature at it (remote `SoftLock`, `BattleSim.setFocus`: its auto-attacks go there
+  instead of a boss's adds first / the lowest share of HP); an id that isn't a standing enemy changes nothing.
+- **The look** (`Config/SoftLock`, client `Util/SoftLock`): a solid gold ring of neon pieces over the fight rings'
+  glow, lifted 1 stud over the ground (the arenas' tall grass hid a flat one), gently pulsing; three bobbing glossy gold
+  chevrons over the enemy's model (owner's pick 2 of a Figma sheet, `assets/ui/target/TargetChevrons.png`) (always on top; slid down a big boss's body to stay under the boss bar,
+  nudged toward the camera). With nothing locked a soft white ring (no arrow) shows who your sword would hit (the
+  nearest in front, `SwordRules.aimTarget`). Boss fights, Dungeon rooms (its pylons too) and wild fights with the
+  sword; the ring, arrow and taps last as long as the fight.
 
 ### 5.11 Weapons (round 1; spec docs/superpowers/specs/2026-11-06-weapons-round1-design.md; rounds 2-3, spears and scythes, below)
 - **Catalogue** (`Config/Weapons`, looks in `Config/WeaponLooks`): the Steel Sword (everyone's), the Forge Sword in five
@@ -3330,6 +3349,36 @@ start playing"; layout A, the calendar strip, picked from the mockups; their 202
   through `LuckService.Give`); the client only asks for "daily" | "weekly" | "monthly" (remote `GiftClaim`, 1 a
   second); refusals through `Util/Blocked`. Saved `gifts` (v30). Studio: `/gift ready | day <1-7> | week <n> | month
   <n> | reset | tutorial | win <daily|big|weekly|monthly>` and the admin panel's "Gifts" buttons.
+
+### 7.11 Teams in the same world (built 2026-11-15)
+
+Spec `docs/superpowers/specs/2026-11-15-teams-design.md` (owner 2026-11-15: "players can only team on the same world for
+the boss. not necessarily at the portal ... if they are in a party while killing normal monster, it will have party
+bonus ... you will not get an EXP for normal monsters that your teammate killed. only the monster you kills + party
+bonus"; the strip "at the right side"). Teams across worlds (going to the Frontier or the Dungeon together) come later.
+
+- **A team**: up to 4 players in one server. A "Team up" prompt (Y) on every other player not on your team (above
+  Challenge, `Teams.PROMPT`); they get a card for 15 s ("<name> wants to team up!", the team's faces, Join team / No
+  thanks). Joining someone on a team joins that team; the first player leads (a crown); leaving (the strip's X, the
+  game or the world) passes the lead on and a team of one ends. Not saved. Town and the Wild valley are one world, the
+  Frontier another; the Dungeon keeps its run groups.
+- **Bosses together**: a teammate's Fight at a boss's portal opens that gate's group (the same group as Start group,
+  so others at the gate can join too; Fight again starts it at once) and every other teammate in the world not in a
+  fight gets "<name> is fighting the <boss>!" (its trophy, who's in, Join the fight! / Not now) for the group's 15 s.
+  Join puts them in the group and takes them to the gate (the Wild's loading screen covers the trip); the group waits
+  up to `TRAVEL_WAIT` (8 s) for teammates still on their way as it starts. The gate's usual checks apply; a refusal
+  says why (`Util/Blocked`).
+- **Hunting bonus**: monsters stay solo (only your own wins pay you). Each teammate within 150 studs at your win adds
+  15% to its XP and cash, up to +45% (`TeamRules.bonus`); the win toast shows "+30% team".
+- **The team strip** (top right; under the cash row on a phone), only while you're on a team (owner 2026-11-15): "Team",
+  each teammate's headshot (their first letter when there's none, as for Studio's test players) and name, a crown on
+  the leader, a green dot on those near enough for the bonus, and Leave; under it, on its own (owner: "move the team
+  bonus text outside the team strip"), a "Team bonus +30%" pill while the bonus is on. Fights and full-screen views hide
+  them with the rest of the HUD (a holder the HUD hides; the team alone decides the strip).
+- Server authoritative (`TeamService`, pure `Util/TeamRules`, Lune-tested): invites expire, a target on another team
+  or a full team is refused, every remote rate-limited, the invite checked for distance; BossService calls teammates
+  (remote `TeamFight`), BattleService pays the bonus. Remotes `TeamInvite`, `TeamAnswer`, `TeamState`, `TeamFight`.
+  Test with two players: Studio's Test tab, Local Server, 2 players.
 
 ## 8. Monetization
 

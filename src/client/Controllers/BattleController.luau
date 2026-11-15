@@ -1577,8 +1577,11 @@ local function swordTargets(): { any }
 			local radius = if id == MONSTER_ID and boss then (boss.ringRadius or Bosses.RING_RADIUS) * Bosses.HIT_RADIUS_SHARE
 				elseif id == MONSTER_ID and foeElite then Bosses.ADD_HIT_RADIUS * Wild.ELITE_SIZE
 				else Bosses.ADD_HIT_RADIUS * (tonumber(marker:GetAttribute("Size")) or 1) -- a summon (adds.size) is bigger
-			local fx = HitFx.scaleFor(MonsterController.GetModel(marker))
-			table.insert(list, { id = id, x = marker.Position.X, z = marker.Position.Z, radius = radius, fx = fx })
+			local model = MonsterController.GetModel(marker)
+			local fx = HitFx.scaleFor(model)
+			-- its model's top: the soft lock's arrow goes just over it (Util/SoftLock)
+			local box, size = if model then model:GetBoundingBox() else marker.CFrame, Vector3.new(0, 6, 0)
+			table.insert(list, { id = id, x = marker.Position.X, z = marker.Position.Z, radius = radius, fx = fx, top = box.Position.Y + size.Y / 2 })
 		end
 	end
 	return list
@@ -1665,6 +1668,7 @@ local function startCombat(showNames: boolean, wild: boolean?, sword: boolean?, 
 		run = if noRun then nil else function()
 			Remotes.RunFight:FireServer()
 		end,
+		target = SwordController.CycleTarget, -- the soft lock's Target (boss fights; the wild HUD has none)
 	}, showNames, wild, combatSword)
 	combatHud = hud
 	if #BattleController.pylonTargets > 0 then

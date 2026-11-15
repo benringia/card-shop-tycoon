@@ -43,11 +43,15 @@ local Extras = require(ClientUtil:WaitForChild("Extras"))
 local ScreenFx = require(ClientUtil:WaitForChild("ScreenFx"))
 local WeaponLook = require(ClientUtil:WaitForChild("WeaponLook"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local SoftLock = require(ClientUtil:WaitForChild("SoftLock"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 
 local player = Players.LocalPlayer
 
 local SwordController = {}
+
+-- The fight's Target button and Tab: lock the next enemy (Util/SoftLock)
+SwordController.CycleTarget = SoftLock.cycle
 
 -- One character's sword: its weapon (a Config/Weapons id), grade and level
 type View = {
@@ -749,12 +753,20 @@ local function ownParts(): (Model?, BasePart?, Humanoid?)
 	return character, root, humanoid
 end
 
--- Turn to the nearest target in front of you, if one is close (SwordRules.aimTarget)
+-- Turn to the enemy you locked (Util/SoftLock, wherever it is), else to the nearest target in front of you if one is
+-- close (SwordRules.aimTarget)
 local function softAim(root: BasePart)
 	if not combatTargets then
 		return
 	end
 	local targets = combatTargets()
+	local locked = SoftLock.locked()
+	for _, target in targets do
+		if target.id == locked then
+			root.CFrame = CFrame.lookAt(root.Position, Vector3.new(target.x, root.Position.Y, target.z))
+			return
+		end
+	end
 	local look = root.CFrame.LookVector
 	local id = SwordRules.aimTarget(root.Position.X, root.Position.Z, look.X, look.Z, targets, Swords.SOFT_AIM_RANGE, Swords.SOFT_AIM_ANGLE)
 	for _, target in targets do
@@ -768,6 +780,12 @@ end
 -- fight opens with the skill on its full cooldown (owner 2026-11-09), as the server's does (BattleService)
 function SwordController.SetCombat(active: boolean, targets: (() -> { SwordRules.Target })?, cooldown: ((name: string, readyAt: number, total: number) -> ())?)
 	combatTargets = if active then targets else nil
+	-- the soft lock's ring, arrow and taps live as long as the fight (owner 2026-11-15, look A)
+	if active and targets then
+		SoftLock.start(targets :: any)
+	else
+		SoftLock.stop()
+	end
 	onCooldown = if active then cooldown else nil
 	lastCut = nil
 	SwingGate.cancel(gate)

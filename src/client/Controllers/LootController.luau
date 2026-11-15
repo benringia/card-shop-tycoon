@@ -15,6 +15,7 @@ local Items = require(Config:WaitForChild("Items"))
 local Weapons = require(Config:WaitForChild("Weapons"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local WeaponRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponRules"))
+local WeaponText = require(Shared:WaitForChild("Util"):WaitForChild("WeaponText"))
 
 local Controllers = script.Parent :: Instance
 local ItemPopup = require((Controllers.Parent :: Instance):WaitForChild("Util"):WaitForChild("ItemPopup"))
@@ -170,7 +171,7 @@ function LootController.GoalLine(item: string): string?
 	if not need then
 		return nil
 	end
-	return `{itemCounts[item] or 0}/{need} for {if weapon then weapon.name else "its weapon"}`
+	return WeaponText.goalLine(itemCounts[item] or 0, need, if weapon then weapon.name else "weapon", weaponId ~= nil and ownedWeapons[weaponId] ~= nil)
 end
 
 function LootController.Start()

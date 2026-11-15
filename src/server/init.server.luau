@@ -58,6 +58,7 @@ local LeaderboardService = require(Services:WaitForChild("LeaderboardService"))
 local TurtsService = require(Services:WaitForChild("TurtsService"))
 local BinderReadService = require(Services:WaitForChild("BinderReadService"))
 local GiftService = require(Services:WaitForChild("GiftService"))
+local TeamService = require(Services:WaitForChild("TeamService"))
 
 local Place = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("Place"))
 
@@ -109,6 +110,7 @@ elseif Place.isFrontier() then
 	SupportService.Start() -- "Support the dev" gifts: aura, best tier (before TitleService: its titles)
 	LuckService.Start() -- luck bought with Robux: its time running down while you play (after PurchaseService)
 	GiftService.Start() -- daily, weekly and monthly gifts: play time counts here too (claimed in the main game)
+	TeamService.Start() -- teams in this world: invites, the team strip, the hunting bonus (bosses call teammates)
 	TitleService.Start() -- the title over the name (after BossService and SupportService: their progress)
 	FrontierService.Start() -- the Return portal and home button: back to the main game
 	DungeonGateService.Start() -- the Dungeon portal: checks, groups, the teleport (after WildService builds the plaza)
@@ -170,6 +172,7 @@ else
 	LeaderboardService.Start() -- the plaza leaderboard: most packs opened (after PlotService and the plaza)
 	TurtsService.Start() -- Turts' rug shop: restocks, his spot, buys, "restock now" (after PurchaseService and WildService)
 	GiftService.Start() -- daily, weekly and monthly gifts: play time, claims (after EconomyService, ItemService, LuckService, BattleService)
+	TeamService.Start() -- teams in this world: invites, the team strip, the hunting bonus (bosses call teammates)
 	BinderReadService.Start() -- your binder open shows you reading it (after BattleService)
 	DevService.Start() -- Studio only
 	DataService.Start() -- last: starts loading players

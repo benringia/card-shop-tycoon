@@ -27,6 +27,7 @@ local Blocked = require((script.Parent :: Instance).Parent:WaitForChild("Util"):
 local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 local ValleyConfig = Place.getValley() -- ARENA_HOLD: how far from a remote copy's middle its fighters hold it (remote copies are a valley's)
 local Combat = require(Config:WaitForChild("Combat"))
+local Teams = require(Config:WaitForChild("Teams"))
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
@@ -38,6 +39,7 @@ local EconomyService = require(Services:WaitForChild("EconomyService"))
 local ItemService = require(Services:WaitForChild("ItemService"))
 local WeaponService = require(Services:WaitForChild("WeaponService"))
 local WildService = require(Services:WaitForChild("WildService"))
+local TeamService = require(Services:WaitForChild("TeamService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 
 type Grant = { item: string, count: number }
@@ -54,7 +56,9 @@ local occupants: { [string]: { [number]: WildService.Monster } } = {} -- the bos
 local fighters: { [string]: { [number]: { Player } } } = {} -- who fought in each remote copy (they hold it until they leave)
 local reserved: { [string]: { [number]: boolean } } = {} -- remote copies being loaded for a fight about to start
 local entering: { [Player]: boolean } = {} -- players whose fight is being set up
-local lobbies: { [string]: { members: { Player } } } = {} -- a group forming at each gate (the first member leads)
+local lobbies: { [string]: { members: { Player }, closesAt: number } } = {} -- a group forming at each gate (the first member leads)
+local traveling: { [Player]: boolean } = {} -- teammates on their way to a group's gate (it waits for them as it starts)
+local allowTeamJoin = RateLimiter.new(1)
 local allowStart = RateLimiter.new(Bosses.START_COOLDOWN)
 local allowPickUp = RateLimiter.new(Bosses.LOOT_PICKUP_COOLDOWN)
 local allowGroup = RateLimiter.new(Bosses.START_COOLDOWN) -- its own, so Fight then F right after both work
@@ -678,31 +682,6 @@ local function enterCopy(bossId: string, players: { Player }, reach: number, opt
 	return startBoss(bossId, ready, index, options)
 end
 
--- The Fight prompt: the boss for this player alone (the Dungeon: its run decides who fights)
-local function onGate(player: Player, bossId: string)
-	if runGate then
-		runGate(player, bossId)
-		return
-	end
-	if not allowStart(player) or not Bosses.BOSSES[bossId] or not arenas[bossId] or entering[player] then
-		return
-	end
-	local lobby = lobbies[bossId]
-	if lobby and table.find(lobby.members, player) then
-		notify(player, "You're in the group forming here: it starts soon (the leader can start it now with F).", true)
-		return
-	end
-	local reason = whyArenaBusy(player, bossId) or whyNotMember(player, bossId, Bosses.GATE_DISTANCE)
-	if reason then
-		notify(player, reason, true)
-		return
-	end
-	local started, why = enterCopy(bossId, { player }, Bosses.GATE_DISTANCE)
-	if not started and why then
-		notify(player, why, true)
-	end
-end
-
 -- Out of a remote arena copy and back to the boss's portal, whatever loot is still lying going into the Bag first.
 -- Never yields (it runs inside a fight's leave): the move, which streams the portal in first, has its own thread, and
 -- nobody dead or gone is moved (a dead player respawns at their shop)
@@ -770,6 +749,18 @@ local function closeLobby(bossId: string)
 	end
 	lobbies[bossId] = nil
 	updateGroupPrompt(bossId)
+	-- teammates still on their way to the gate (spec 2026-11-15-teams-design) get a few seconds to arrive
+	local deadline = os.clock() + Teams.TRAVEL_WAIT
+	while os.clock() < deadline do
+		local onTheWay = false
+		for _, member in lobby.members do
+			onTheWay = onTheWay or traveling[member] == true
+		end
+		if not onTheWay then
+			break
+		end
+		task.wait(0.2)
+	end
 	local boss = Bosses.BOSSES[bossId]
 	local ready: { Player } = {}
 	for _, player in lobby.members do
@@ -791,6 +782,78 @@ local function closeLobby(bossId: string)
 			notify(player, why, true)
 		end
 	end
+end
+
+-- The leader's teammates anywhere in this world hear of a forming group (spec 2026-11-15-teams-design): who's in and
+-- the seconds left, on a "Join the fight?" card (TeamController); those in it or in a fight already aren't asked
+local function callTeam(bossId: string)
+	local lobby = lobbies[bossId]
+	if not lobby then
+		return
+	end
+	local leader = lobby.members[1]
+	local joined = {}
+	for _, member in lobby.members do
+		table.insert(joined, member.UserId)
+	end
+	local left = math.max(0, lobby.closesAt - os.clock())
+	for _, mate in TeamService.MatesOf(leader) do
+		if not table.find(lobby.members, mate) and not BattleService.IsFighting(mate) then
+			Remotes.TeamFight:FireClient(mate, bossId, leader.UserId, joined, left)
+		end
+	end
+end
+
+-- A group opens at the gate with `player` leading: it starts by itself after JOIN_SECONDS (or when full)
+local function openLobby(player: Player, bossId: string)
+	local opened = { members = { player }, closesAt = os.clock() + Bosses.JOIN_SECONDS }
+	lobbies[bossId] = opened
+	updateGroupPrompt(bossId)
+	task.delay(Bosses.JOIN_SECONDS, function()
+		if lobbies[bossId] == opened then
+			closeLobby(bossId)
+		end
+	end)
+	callTeam(bossId)
+end
+
+-- A teammate answers a "Join the fight?" card from anywhere in this world: into the group, then to its gate (the
+-- loading screen covers the trip); the group waits a few seconds for them as it starts
+local function onTeamJoin(player: Player, bossId: unknown)
+	if typeof(bossId) ~= "string" or not allowTeamJoin(player) or runGate then
+		return
+	end
+	local boss = Bosses.BOSSES[bossId]
+	local lobby = lobbies[bossId]
+	if not boss or not arenas[bossId] then
+		return
+	end
+	if not lobby then
+		Blocked.tell(player, "That fight has already started.", { title = "Team" })
+		return
+	end
+	local leader = lobby.members[1]
+	if not TeamService.AreMates(player, leader) or table.find(lobby.members, player) then
+		return
+	end
+	if #lobby.members >= Bosses.GROUP_MAX then
+		Blocked.tell(player, "That group is full.", { title = "Team" })
+		return
+	end
+	local reason = whyNotMember(player, bossId, math.huge)
+	if reason then
+		Blocked.tell(player, reason, { title = boss.name })
+		return
+	end
+	table.insert(lobby.members, player)
+	updateGroupPrompt(bossId)
+	for _, member in lobby.members do
+		notify(member, `{player.DisplayName} joined the {boss.name} group ({#lobby.members}/{Bosses.GROUP_MAX}).`, false)
+	end
+	callTeam(bossId) -- the others' cards show who's in now
+	traveling[player] = true
+	WildService.TravelToWild(player, arenas[bossId].gate)
+	traveling[player] = nil
 end
 
 -- The group prompt: open a group (the leader), join one, or (the leader again) start it now
@@ -837,15 +900,42 @@ local function onGroup(player: Player, bossId: string)
 		notify(player, reason, true)
 		return
 	end
-	local opened = { members = { player } }
-	lobbies[bossId] = opened
-	updateGroupPrompt(bossId)
+	openLobby(player, bossId)
 	notify(player, `Group open: others have {Bosses.JOIN_SECONDS} s to join at the gate (F). Press F again to start now.`, false)
-	task.delay(Bosses.JOIN_SECONDS, function()
-		if lobbies[bossId] == opened then
-			closeLobby(bossId)
-		end
-	end)
+end
+
+-- The Fight prompt: the boss for this player alone; with teammates in this world, a group they're called to (spec
+-- 2026-11-15-teams-design), which the leader can start at once with Fight again (the Dungeon: its run decides)
+local function onGate(player: Player, bossId: string)
+	if runGate then
+		runGate(player, bossId)
+		return
+	end
+	if not allowStart(player) or not Bosses.BOSSES[bossId] or not arenas[bossId] or entering[player] then
+		return
+	end
+	local lobby = lobbies[bossId]
+	if lobby and lobby.members[1] == player then
+		closeLobby(bossId)
+		return
+	elseif lobby and table.find(lobby.members, player) then
+		notify(player, "You're in the group forming here: it starts soon (the leader can start it now with F).", true)
+		return
+	end
+	local reason = whyArenaBusy(player, bossId) or whyNotMember(player, bossId, Bosses.GATE_DISTANCE)
+	if reason then
+		notify(player, reason, true)
+		return
+	end
+	if not lobby and #TeamService.MatesOf(player) > 0 then
+		openLobby(player, bossId)
+		notify(player, `Your team has {Bosses.JOIN_SECONDS} s to join. Press Fight again to start now.`, false)
+		return
+	end
+	local started, why = enterCopy(bossId, { player }, Bosses.GATE_DISTANCE)
+	if not started and why then
+		notify(player, why, true)
+	end
 end
 
 -- /boss <n> fight and /boss <n> group: the gate's prompts, as if used (same checks)
@@ -1006,6 +1096,7 @@ function BossService.Start()
 	end)
 	Remotes.PickUpLoot.OnServerEvent:Connect(onPickUp)
 	Remotes.BossTravel.OnServerEvent:Connect(onTravel)
+	Remotes.TeamFight.OnServerEvent:Connect(onTeamJoin) -- a teammate's boss group (spec 2026-11-15-teams-design)
 	if Place.isDungeon() then
 		for _, arena in arenas do
 			arena.groupPrompt.Enabled = false -- the run is the group

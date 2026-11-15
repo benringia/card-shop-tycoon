@@ -1525,6 +1525,28 @@ function BattleSim.creatureElement(state: State, owner: string): string?
 	return nil
 end
 
+-- A player's soft lock (owner 2026-11-15, look A): `owner`'s creatures attack `targetId` (a standing enemy's sim id,
+-- "b:m") while it stands, then the usual choice again; nil lets go. False (nothing changed) when there's no such enemy.
+function BattleSim.setFocus(state: State, owner: string, targetId: string?): boolean
+	if targetId then
+		local found = false
+		for _, enemy in standingCreatures(state.sides.b) do
+			found = found or enemy.id == targetId
+		end
+		if not found then
+			return false
+		end
+	end
+	for _, list in { state.sides.a.fighters, state.sides.a.reserves } do
+		for _, fighter in list do
+			if ownerKey(fighter) == owner and not fighter.player then
+				fighter.focus = targetId
+			end
+		end
+	end
+	return true
+end
+
 -- What each of `owner`'s fighters dealt, by sim id (its player's sword hits under "a:@<owner>"), the ones swapped out
 -- too: the defeat screen's numbers
 function BattleSim.damageBy(state: State, owner: string): { [string]: number }
