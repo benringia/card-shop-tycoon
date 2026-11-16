@@ -6,6 +6,15 @@ local fs = require("@lune/fs")
 local luau = require("@lune/luau")
 
 return {
+	-- Security review 2026-11-16: a client can start a teleport to any place in the game, so the Dungeon only keeps a
+	-- player who arrived in a reserved server (made only by the Frontier's portal, after its checks)
+	["only a reserved server's arrivals stay; anyone else goes back to the Frontier"] = function()
+		expect.equal(DungeonRules.arrivalAllowed(false, "a1b2c3", 0), true, "the portal's reserved server")
+		expect.equal(DungeonRules.arrivalAllowed(false, "", 0), false, "a public server: a teleport of their own")
+		expect.equal(DungeonRules.arrivalAllowed(false, "a1b2c3", 12345), false, "someone's private server")
+		expect.equal(DungeonRules.arrivalAllowed(true, "", 0), true, "Studio has no reserved servers")
+	end,
+
 	["canFight: fresh, hurt, and out for the run (even rested again)"] = function()
 		expect.equal(DungeonRules.canFight({}, "a"), true, "never fought")
 		expect.equal(DungeonRules.canFight({ a = 12 }, "a"), true, "hurt")

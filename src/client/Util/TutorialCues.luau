@@ -3,11 +3,13 @@
 -- a bouncing paw (and a gold ring) over what to tap (a HUD button, a button in a window or a thing in the shop), the
 -- small Skip at the top right and the tour card it opens (the step of the tour, the paw row, his gift, Keep going or
 -- Skip tour) (Pish's words: Util/TutorialTalk). Each returns a remover, or is set again.
+local PathfindingService = game:GetService("PathfindingService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local PishTalk = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("PishTalk"))
+local TrailRules = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("TrailRules"))
 
 local ClientUtil = script.Parent :: Instance
 local Icon = require(ClientUtil:WaitForChild("Icon"))
@@ -16,7 +18,7 @@ local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local TutorialCues = {}
 
 local PRINT_GAP = 3 -- studs between paw prints
-local PRINT_MAX = 24
+local PRINT_MAX = 48 -- a walking route to the Wild runs ~300 studs: about one paw every 6
 local PRINT_PX = 46 -- px: a paw print up close (PRINT_NEAR studs away), smaller further off down to PRINT_MIN
 local PRINT_NEAR = 12
 local PRINT_MIN = 16
@@ -27,6 +29,8 @@ local RING_THICKNESS = 4
 local RING_CORNER = 14
 local BOUNCE = 10 -- px (studs * 0.4 on a thing in the shop)
 local BOUNCE_SPEED = 6
+local SCROLL_SWIPE = 60 -- px the scroll paw slides down each time
+local SCROLL_SPEED = 0.9 -- swipes a second
 local GOLD = Color3.fromRGB(255, 214, 90)
 -- The small Skip at the top right (round 3, owner's pick A) and the tour card it opens: the step of the tour, the paw
 -- row, his gift at the end, Keep going and Skip tour. On a phone the HUD's right column (cash, weapon switch) runs
@@ -94,11 +98,29 @@ local function onScreen(at: Vector3): (Vector2?, number)
 	return if visible then Vector2.new(point.X, point.Y) else nil, point.Z
 end
 
--- Glowing paw prints along the ground from `from` to `to`, lighting up one after another. Drawn on the screen over
--- the world (owner 2026-11-10: "paw prints are not visible when the door is closed"), smaller further away
+-- The walking route from `from` to `to` (owner 2026-11-16: "chikin paws are passes through things. fix it and make
+-- the paws go through the correct path"): Roblox's pathfinding round walls, shops and props; a straight line when it
+-- finds none (the ground under the target isn't walkable, say). Yields.
+local function route(from: Vector3, to: Vector3): { TrailRules.Point }
+	local path = PathfindingService:CreatePath({ AgentRadius = 1.5, AgentHeight = 5, AgentCanJump = false, WaypointSpacing = 4 })
+	local ok = pcall(function()
+		path:ComputeAsync(from, to)
+	end)
+	local points: { TrailRules.Point } = {}
+	if ok and path.Status == Enum.PathStatus.Success then
+		for _, waypoint in path:GetWaypoints() do
+			table.insert(points, { x = waypoint.Position.X, y = waypoint.Position.Y, z = waypoint.Position.Z })
+		end
+	end
+	if #points < 2 then
+		points = { { x = from.X, y = to.Y, z = from.Z }, { x = to.X, y = to.Y, z = to.Z } }
+	end
+	return points
+end
+
+-- Glowing paw prints along the walking route from `from` to `to`, lighting up one after another. Drawn on the screen
+-- over the world (owner 2026-11-10: "paw prints are not visible when the door is closed"), smaller further away
 function TutorialCues.trail(from: Vector3, to: Vector3): () -> ()
-	local flat = Vector3.new(to.X - from.X, 0, to.Z - from.Z)
-	local count = math.clamp(math.floor(flat.Magnitude / PRINT_GAP), 1, PRINT_MAX)
 	local holder = Instance.new("Frame")
 	holder.Name = "PawTrail"
 	holder.BackgroundTransparency = 1
@@ -106,33 +128,71 @@ function TutorialCues.trail(from: Vector3, to: Vector3): () -> ()
 	holder.ZIndex = 5
 	holder.Parent = gui()
 	local prints: { { at: Vector3, paw: Frame } } = {}
-	local facing = math.deg(math.atan2(flat.X, -flat.Z))
-	for i = 1, count do
-		local at = from + flat * (i / (count + 1))
-		local paw = Icon.make(holder, "Paw", UDim2.fromOffset(PRINT_PX, PRINT_PX))
-		paw.AnchorPoint = Vector2.new(0.5, 0.5)
-		paw.Rotation = facing
-		tint(paw, GOLD)
-		table.insert(prints, { at = Vector3.new(at.X, to.Y + 0.15, at.Z), paw = paw })
-	end
-	local started = os.clock()
-	local connection = RunService.RenderStepped:Connect(function()
-		local wave = (os.clock() - started) * 6
-		for i, entry in prints do
-			local point, depth = onScreen(entry.at)
-			entry.paw.Visible = point ~= nil
-			if point then
-				local size = math.clamp(PRINT_PX * PRINT_NEAR / depth, PRINT_MIN, PRINT_PX)
-				entry.paw.Position = UDim2.fromOffset(point.X, point.Y)
-				entry.paw.Size = UDim2.fromOffset(size, size)
-				local glow = 0.5 + 0.5 * math.sin(wave - i * 0.7)
-				for _, image in entry.paw:GetDescendants() do
-					if image:IsA("ImageLabel") then
-						image.ImageTransparency = 0.55 - glow * 0.5
+	local stopped = false
+	local connection: RBXScriptConnection? = nil
+	task.spawn(function()
+		local paws = TrailRules.along(route(from, to), PRINT_GAP, PRINT_MAX)
+		if stopped then
+			return
+		end
+		for _, spot in paws do
+			local paw = Icon.make(holder, "Paw", UDim2.fromOffset(PRINT_PX, PRINT_PX))
+			paw.AnchorPoint = Vector2.new(0.5, 0.5)
+			paw.Rotation = spot.facing
+			paw.Visible = false
+			tint(paw, GOLD)
+			table.insert(prints, { at = Vector3.new(spot.x, spot.y + 0.15, spot.z), paw = paw })
+		end
+		local started = os.clock()
+		connection = RunService.RenderStepped:Connect(function()
+			local wave = (os.clock() - started) * 6
+			for i, entry in prints do
+				local point, depth = onScreen(entry.at)
+				entry.paw.Visible = point ~= nil
+				if point then
+					local size = math.clamp(PRINT_PX * PRINT_NEAR / depth, PRINT_MIN, PRINT_PX)
+					entry.paw.Position = UDim2.fromOffset(point.X, point.Y)
+					entry.paw.Size = UDim2.fromOffset(size, size)
+					local glow = 0.5 + 0.5 * math.sin(wave - i * 0.7)
+					for _, image in entry.paw:GetDescendants() do
+						if image:IsA("ImageLabel") then
+							image.ImageTransparency = 0.55 - glow * 0.5
+						end
 					end
 				end
 			end
+		end)
+	end)
+	return function()
+		stopped = true
+		if connection then
+			connection:Disconnect()
 		end
+		holder:Destroy()
+	end
+end
+
+-- A paw inside a scrolling list's bottom edge, toes down, sliding downward again and again: scroll down (owner
+-- 2026-11-16: the paw pointed at a tile out of view)
+function TutorialCues.scrollPaw(list: GuiObject): () -> ()
+	local started = os.clock()
+	local holder = Instance.new("Frame")
+	holder.Name = "ScrollPaw"
+	holder.BackgroundTransparency = 1
+	holder.AnchorPoint = Vector2.new(0.5, 1)
+	holder.Size = UDim2.fromOffset(PAW_SIZE, PAW_SIZE)
+	holder.ZIndex = 20
+	holder.Parent = gui()
+	local paw = Icon.make(holder, "Paw", UDim2.fromScale(1, 1))
+	paw.Rotation = 180
+	tint(paw, GOLD)
+	local connection = RunService.RenderStepped:Connect(function()
+		local at, size = list.AbsolutePosition, list.AbsoluteSize
+		holder.Visible = list.Parent ~= nil and list.Visible and size.Y > PAW_SIZE * 2
+		-- a downward swipe: slides SCROLL_SWIPE px down, fading out at the bottom, then starts again
+		local cycle = ((os.clock() - started) * SCROLL_SPEED) % 1
+		holder.Position = UDim2.fromOffset(at.X + size.X / 2, at.Y + size.Y - 8 - SCROLL_SWIPE + cycle * SCROLL_SWIPE)
+		paw.ImageTransparency = if cycle > 0.7 then (cycle - 0.7) / 0.3 else 0
 	end)
 	return function()
 		connection:Disconnect()
@@ -169,11 +229,22 @@ function TutorialCues.pawOn(target: GuiObject | BasePart): () -> ()
 		local connection = RunService.RenderStepped:Connect(function()
 			local beat = math.abs(math.sin((os.clock() - started) * BOUNCE_SPEED))
 			local at, size = target.AbsolutePosition, target.AbsoluteSize
-			local shown = target.Parent ~= nil and target.Visible and size.X > 0
+			-- a tile half scrolled out of its list: only the part showing, so the ring and paw stay inside the list
+			local list = target:FindFirstAncestorWhichIsA("ScrollingFrame")
+			local clipped = false
+			if list then
+				local top = math.max(at.Y, list.AbsolutePosition.Y)
+				local bottom = math.min(at.Y + size.Y, list.AbsolutePosition.Y + list.AbsoluteSize.Y)
+				clipped = top > at.Y
+				at, size = Vector2.new(at.X, top), Vector2.new(size.X, math.max(0, bottom - top))
+			end
+			local shown = target.Parent ~= nil and target.Visible and size.X > 0 and size.Y > 0
 			local pawSize = math.clamp(size.Y * 0.9, PAW_MIN, PAW_SIZE)
 			holder.Visible = shown
 			holder.Size = UDim2.fromOffset(pawSize, pawSize)
-			holder.Position = UDim2.fromOffset(at.X + size.X / 2, at.Y - 4 - beat * BOUNCE)
+			-- above it, or just inside its top when that is the list's edge (not over the window's tabs)
+			local pawBottom = if clipped then at.Y + pawSize + 4 else at.Y - 4
+			holder.Position = UDim2.fromOffset(at.X + size.X / 2, pawBottom - beat * BOUNCE)
 			ring.Visible = shown
 			ring.Position = UDim2.fromOffset(at.X - RING_PAD, at.Y - RING_PAD)
 			ring.Size = UDim2.fromOffset(size.X + RING_PAD * 2, size.Y + RING_PAD * 2)

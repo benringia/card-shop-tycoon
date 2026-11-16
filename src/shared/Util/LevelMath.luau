@@ -5,6 +5,15 @@ local LevelMath = {}
 
 type Config = { BASE_XP: number, POWER: number, ROUND_TO: number, MAX_LEVEL: number }
 
+-- Shop XP for a sale (its total) or a pack ripped from your stock (its market price: what selling it would give; owner
+-- 2026-11-16): the amount rounded, at least `minXp`
+function LevelMath.saleXp(amount: number, minXp: number): number
+	if amount ~= amount or amount == math.huge or amount == -math.huge then
+		return minXp
+	end
+	return math.max(minXp, math.round(amount))
+end
+
 -- Total XP needed to reach this level (levels past the cap cost what the cap does)
 function LevelMath.getRequiredXp(config: Config, level: number): number
 	local capped = math.min(math.floor(level), config.MAX_LEVEL)

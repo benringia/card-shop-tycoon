@@ -62,6 +62,13 @@ return {
 	PICKS = 3, -- offers per restock, each buyable once per player (owner: "only 1qty per item")
 	PREMIUM = 1.5, -- every price at least this times its usual value
 	PRODUCT = "TurtsRestock", -- Config/Monetization PRODUCTS: Robux "restock now" (a new roll for that player)
+	-- A paid re-roll is a chance-based purchase: where Roblox restricts those (Util/PaidRandomRules) it isn't sold
+	RESTOCK_RESTRICTED = "Restock now isn't available where you live. Turts restocks for free soon!",
+	-- His rug opens once Pish's first visit is over (owner 2026-11-16: a new player's $200 is for Pish's rack and stock):
+	-- the server's TutorialDone attribute; the prompt says so before you press
+	AFTER_TOUR = "Turts opens his rug once Pish's tour is done!",
+	AFTER_TOUR_PROMPT = "After Pish's tour",
+	RESTOCK_RESTRICTED_BUTTON = "Restock now · Not available here",
 	BEACON_SECONDS = 30, -- a light over his rug after he moves
 	RUG_RADIUS = 4, -- studs
 	-- How high he stands: on his cushion's top (TurtsRug's cushion is 0.3-0.38 under his paws; on the street they went

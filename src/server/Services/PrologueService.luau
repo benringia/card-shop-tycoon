@@ -102,8 +102,21 @@ local function begin(player: Player)
 	local slot = PrologueRules.freeSlot(slots)
 	local at = PrologueRules.arenaCentre(slot, Prologue)
 	slots[slot] = player
-	sessions[player] = { slot = slot, centre = Vector3.new(at.x, at.y, at.z), step = "begun", monster = nil }
-	Remotes.PrologueArena:FireClient(player, sessions[player].centre)
+	local session: Session = { slot = slot, centre = Vector3.new(at.x, at.y, at.z), step = "begun", monster = nil }
+	sessions[player] = session
+	Remotes.PrologueArena:FireClient(player, session.centre)
+	-- Whatever the client does, the lent loadout goes back in time (a real prologue gives it back long before)
+	task.delay(Prologue.MAX_SESSION, function()
+		if sessions[player] ~= session then
+			return
+		end
+		if BattleService.IsFighting(player) then
+			BattleService.Withdraw(player)
+		end
+		giveBack(player)
+		close(player)
+		WelcomeService.FinishPrologue(player)
+	end)
 end
 
 local function startFight(player: Player, session: Session)
@@ -153,6 +166,11 @@ end
 
 function PrologueService.Start()
 	Remotes.PrologueStep.OnServerEvent:Connect(onStep)
+	-- The lent loadout fights only the Hydra (security review 2026-11-16): no wild, boss or Dungeon fight while it's lent
+	BattleService.AddStartBlocker(function(player: Player): string?
+		local session = sessions[player]
+		return if session and session.step ~= "returned" then Prologue.BUSY else nil
+	end)
 	BattleService.OnPrologueEnded(function(player: Player)
 		local session = sessions[player]
 		if session and session.step == "fighting" then

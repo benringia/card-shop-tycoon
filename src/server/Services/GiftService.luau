@@ -104,7 +104,9 @@ local function claim(player: Player, kind: GiftRules.Kind)
 	grant(player, reward)
 	Remotes.GiftClaim:FireClient(player, kind, index, GiftRules.lines(reward, Items, Luck), earned)
 	if kind == "monthly" then
-		local message = string.gsub(Gifts.MONTHLY.announce, "{name}", player.DisplayName)
+		local message = string.gsub(Gifts.MONTHLY.announce, "{name}", function()
+			return player.DisplayName -- a function: a "%" in a name is never read as a gsub capture
+		end)
 		announce(message)
 	end
 	send(player)

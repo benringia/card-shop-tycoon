@@ -1,10 +1,10 @@
 --!strict
--- The soft lock in fights (owner 2026-11-15, look A: "Ring under the enemy + arrow over it"; Config/SoftLock,
--- Util/SoftLockRules): no camera lock. Tap or click an enemy, press Tab or the fight's Target button to lock it: a gold
--- ring under it and a bobbing gold arrow over it with "Target"; your sword turns to it as you attack
--- (SwordController's soft aim asks `locked`) and the server points your creature at it (Remotes.SoftLock,
--- BattleSim.setFocus). Tapping it again, or it falling, lets go. With nothing locked a soft white ring shows who your
--- sword would hit (the nearest in front, SwordRules.aimTarget). SwordController starts and stops it with the fight.
+-- The soft lock in fights (owner 2026-11-15; Config/SoftLock, Util/SoftLockRules): no camera lock. Tap or click an
+-- enemy, press Tab or the fight's Target button to lock it: a cyan outline on it and bobbing cyan chevrons over it,
+-- nothing on the ground (owner 2026-11-16, pick A: a ring there passed for a boss's warning); your sword turns to it as
+-- you attack (SwordController's soft aim asks `locked`) and the server points your creature at it (Remotes.SoftLock,
+-- BattleSim.setFocus). Tapping it again, or it falling, lets go. With nothing locked a faint white outline shows who
+-- your sword would hit (the nearest in front, SwordRules.aimTarget). SwordController starts and stops it with the fight.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -14,7 +14,6 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local SoftLockConfig = require(Config:WaitForChild("SoftLock"))
 local Swords = require(Config:WaitForChild("Swords"))
-local SwordFx = require(Config:WaitForChild("SwordFx"))
 local SoftLockRules = require(Shared:WaitForChild("Util"):WaitForChild("SoftLockRules"))
 local SwordRules = require(Shared:WaitForChild("Util"):WaitForChild("SwordRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -22,7 +21,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local SoftLock = {}
 
 type Target = SoftLockRules.Target
-type Look = { color: { number }, glow: { number }, outline: number, glowTransparency: number, pulse: number }
+type Look = { outline: { number }, outlineTransparency: number, fill: { number }, fillTransparency: number, pulse: number }
 
 local player = Players.LocalPlayer
 local getTargets: (() -> { Target })? = nil
@@ -32,11 +31,9 @@ local lastSent = 0
 local pendingSend = false
 local connections: { RBXScriptConnection } = {}
 local folder: Folder? = nil
-local ringPart: Part? = nil
-local glowPart: Part? = nil
+local targetOutline: Highlight? = nil
 local arrowAnchor: Part? = nil
 local arrowGui: BillboardGui? = nil
-local segments: { BasePart } = {}
 local press: { at: Vector2, clock: number }? = nil
 
 local function rgb(values: { number }): Color3
@@ -71,25 +68,17 @@ local function setLock(id: string?)
 	end
 end
 
-local function flat(name: string, image: string): Part
-	local part = Instance.new("Part")
-	part.Name = name
-	part.Anchored = true
-	part.CanCollide = false
-	part.CanQuery = false
-	part.CanTouch = false
-	part.CastShadow = false
-	part.Transparency = 1
-	part.Size = Vector3.new(1, 0.05, 1)
-	local decal = Instance.new("Decal")
-	decal.Face = Enum.NormalId.Top
-	decal.Texture = image
-	decal.Parent = part
-	part.Parent = folder
-	return part
+-- The outline on the target: one Highlight, moved onto whoever's shown, drawn over everything
+local function buildOutline()
+	local glow = Instance.new("Highlight")
+	glow.Name = "TargetOutline"
+	glow.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+	glow.Enabled = false
+	glow.Parent = folder
+	targetOutline = glow
 end
 
--- The arrow over a locked target: the owner's pick, three glossy gold chevrons (Config/SoftLock ARROW.image)
+-- The arrow over a locked target: the owner's pick, three glossy chevrons, cyan (Config/SoftLock ARROW.image)
 local function buildArrow()
 	local anchor = Instance.new("Part")
 	anchor.Name = "TargetArrow"
@@ -118,44 +107,6 @@ local function buildArrow()
 	arrowGui = gui
 end
 
--- The neon pieces of the solid ring (SEGMENTS.count, each a short curved-looking block round the circle)
-local function buildSegments()
-	segments = {}
-	for index = 1, SoftLockConfig.SEGMENTS.count do
-		local piece = Instance.new("Part")
-		piece.Name = `Ring{index}`
-		piece.Anchored = true
-		piece.CanCollide = false
-		piece.CanQuery = false
-		piece.CanTouch = false
-		piece.CastShadow = false
-		piece.Material = Enum.Material.Neon
-		piece.Parent = folder
-		table.insert(segments, piece)
-	end
-end
-
--- The pieces round (x, z) at height y, `across` studs wide, in `color`
-local function placeSegments(x: number, y: number, z: number, across: number, color: Color3, transparency: number, shown: boolean)
-	local look = SoftLockConfig.SEGMENTS
-	local radius = across / 2
-	local length = 2 * math.pi * radius / look.count * 1.08 -- a little overlap: no gaps
-	local frames: { CFrame } = {}
-	for index, piece in segments do
-		if not shown then
-			piece.Transparency = 1
-			continue
-		end
-		local angle = (index - 1) / look.count * math.pi * 2
-		piece.Size = Vector3.new(length, look.tall, look.thick)
-		piece.Color = color
-		piece.Transparency = transparency
-		frames[index] = CFrame.new(x + math.cos(angle) * radius, y, z + math.sin(angle) * radius) * CFrame.Angles(0, -angle - math.pi / 2, 0)
-	end
-	if shown then
-		workspace:BulkMoveTo(segments, frames, Enum.BulkMoveMode.FireCFrameChanged)
-	end
-end
 
 local function rootOf(): BasePart?
 	local character = player.Character
@@ -163,12 +114,12 @@ local function rootOf(): BasePart?
 	return if root and root:IsA("BasePart") then root else nil
 end
 
--- Your feet's height: the arenas are flat, so the ring lies there under any enemy
+-- Your feet's height: the arenas are flat, so any enemy stands there (where a tap looks for it, the arrow's floor)
 local function groundY(root: BasePart): number
 	local character = player.Character
 	local humanoid = if character then character:FindFirstChildOfClass("Humanoid") else nil
 	local hip = if humanoid then humanoid.HipHeight else 2
-	return root.Position.Y - root.Size.Y / 2 - hip + SoftLockConfig.RING_LIFT
+	return root.Position.Y - root.Size.Y / 2 - hip
 end
 
 local function find(targets: { Target }, id: string?): Target?
@@ -180,20 +131,12 @@ local function find(targets: { Target }, id: string?): Target?
 	return nil
 end
 
-local function paint(part: Part, color: Color3, transparency: number)
-	local decal = part:FindFirstChildOfClass("Decal")
-	if decal then
-		decal.Color3 = color
-		decal.Transparency = transparency
-	end
-end
-
--- Each frame: the lock lets go once its enemy is gone; the ring and arrow sit on the locked enemy, or (white, no
--- arrow) on the one your sword would hit
+-- Each frame: the lock lets go once its enemy is gone; the outline and arrow sit on the locked enemy, or (a faint white
+-- outline, no arrow) on the one your sword would hit
 local function step()
 	local root = rootOf()
-	local ring, halo, anchor, gui = ringPart, glowPart, arrowAnchor, arrowGui
-	if not getTargets or not root or not ring or not halo or not anchor or not gui then
+	local glow, anchor, gui = targetOutline, arrowAnchor, arrowGui
+	if not getTargets or not root or not glow or not anchor or not gui then
 		return
 	end
 	local targets = getTargets()
@@ -204,24 +147,21 @@ local function step()
 	local autoId = SwordRules.aimTarget(root.Position.X, root.Position.Z, look.X, look.Z, targets, Swords.SOFT_AIM_RANGE, Swords.SOFT_AIM_ANGLE)
 	local shown = find(targets, lockedId or autoId)
 	if not shown then
-		ring.Parent, halo.Parent, anchor.Parent = nil, nil, nil
-		placeSegments(0, 0, 0, 1, Color3.new(), 1, false)
+		glow.Adornee = nil
+		glow.Enabled = false
+		anchor.Parent = nil
 		return
 	end
-	ring.Parent, halo.Parent = folder, folder
 	local style: Look = if lockedId then SoftLockConfig.LOCKED else SoftLockConfig.AUTO
-	local pulse = 1 + style.pulse * math.sin(os.clock() * 5)
-	local across = math.max(shown.radius * 2 + SoftLockConfig.RING_MARGIN * 2, SoftLockConfig.RING_MIN) * pulse
+	-- the enemy's model (BattleController's sword targets carry it; a Dungeon pylon is its part)
+	local model = (shown :: any).model
+	glow.Adornee = if typeof(model) == "Instance" and model.Parent then model else nil
+	glow.Enabled = glow.Adornee ~= nil
+	glow.OutlineColor = rgb(style.outline)
+	glow.OutlineTransparency = style.outlineTransparency
+	glow.FillColor = rgb(style.fill)
+	glow.FillTransparency = math.clamp(style.fillTransparency + style.pulse * math.sin(os.clock() * 5), 0, 1)
 	local y = groundY(root)
-	local spot = CFrame.new(shown.x, y, shown.z)
-	ring.Size = Vector3.new(across * SwordFx.RING_FIT.outline, 0.05, across * SwordFx.RING_FIT.outline)
-	ring.CFrame = spot
-	halo.Size = Vector3.new(across * SwordFx.RING_FIT.glow * 1.08, 0.05, across * SwordFx.RING_FIT.glow * 1.08)
-	halo.CFrame = spot + Vector3.new(0, 0.02, 0)
-	paint(ring, rgb(style.color), style.outline)
-	paint(halo, rgb(style.glow), style.glowTransparency)
-	local pieces = SoftLockConfig.SEGMENTS
-	placeSegments(shown.x, y, shown.z, across * 0.96, rgb(style.color), if lockedId then pieces.lockedTransparency else pieces.autoTransparency, true)
 	if lockedId then
 		local arrow = SoftLockConfig.ARROW
 		local top = (shown :: any).top or (y + math.max(shown.radius * 2, 5)) -- its model's top when known
@@ -295,10 +235,8 @@ function SoftLock.start(targets: () -> { Target })
 	made.Name = "SoftLock"
 	made.Parent = workspace
 	folder = made
-	ringPart = flat("LockRing", SwordFx.RING_OUTLINE)
-	glowPart = flat("LockGlow", SwordFx.RING_GLOW)
+	buildOutline()
 	buildArrow()
-	buildSegments()
 	table.insert(connections, RunService.RenderStepped:Connect(step))
 	table.insert(connections, UserInputService.InputBegan:Connect(function(input, processed)
 		if processed then
@@ -324,7 +262,7 @@ function SoftLock.start(targets: () -> { Target })
 	end))
 end
 
--- The fight ends: nothing locked, the ring and arrow gone
+-- The fight ends: nothing locked, the outline and arrow gone
 function SoftLock.stop()
 	for _, connection in connections do
 		connection:Disconnect()
@@ -335,8 +273,7 @@ function SoftLock.stop()
 	if folder then
 		folder:Destroy()
 	end
-	folder, ringPart, glowPart, arrowAnchor, arrowGui = nil, nil, nil, nil, nil
-	segments = {}
+	folder, targetOutline, arrowAnchor, arrowGui = nil, nil, nil, nil
 end
 
 return SoftLock

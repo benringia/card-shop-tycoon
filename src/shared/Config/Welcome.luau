@@ -22,13 +22,10 @@ return {
 	BAR_SHARE = 0.09, -- the black cinema bars, share of the screen's height each
 	TITLE = "Welcome to One More Pack!",
 	TITLE_SECONDS = { 0.6, 3.6 }, -- when the title shows
-	-- A card at the bottom as the camera passes each place (seconds into the flight; the camera reaches Frostpeak at
-	-- about 3.7 s, the plaza 5.6, Ember Canyon 7.4, your shop at the end): its icon, name and what you do there
+	-- A card at the bottom (seconds into the flight): its icon, name and what you do there. The places' cards (Forest
+	-- Falls, Frostpeak, the Plaza, Ember Canyon) went (owner 2026-11-16: "on welcome cinematic, remove the world
+	-- labels"): only your shop's, at the end
 	CARDS = {
-		{ from = 0.5, to = 2.8, icon = "🌲", title = "Forest Falls", sub = "Battle wild creatures", color = { 120, 200, 96 } },
-		{ from = 3.2, to = 5.0, icon = "❄️", title = "Frostpeak", sub = "The Frontier: tougher monsters", color = { 150, 210, 255 } },
-		{ from = 5.2, to = 6.9, icon = "⛲", title = "The Plaza", sub = "Meet other shop owners", color = { 255, 200, 90 } },
-		{ from = 7.1, to = 9.1, icon = "🔥", title = "Ember Canyon", sub = "Battle other players", color = { 255, 120, 60 } },
 		{ from = 10.6, to = 12, icon = "🏪", title = "Your shop!", sub = "Open packs, sell cards, get rich", color = { 255, 150, 210 }, finale = true },
 	},
 	CARD_POP = 0.45, -- seconds a card bounces in over (Util/WelcomePath.cardAt)

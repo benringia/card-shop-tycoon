@@ -122,7 +122,13 @@ local function onDisplayCard(
 			notify(player, "That card is in your party. Remove it from the party first.", true)
 			return
 		end
+		-- Taken out of the binder or nothing shown (security review 2026-11-16: a card that can be looked up but not
+		-- taken, like the prologue's lent ones, must never become a copy in the case)
 		beast = CardService.TakeBeast(player, beastId)
+		if not beast then
+			notify(player, "You can't put that card in a case.", true)
+			return
+		end
 		copyGrade = owned.grade
 	else
 		-- The client only picks which copy; the server takes that exact grade or nothing

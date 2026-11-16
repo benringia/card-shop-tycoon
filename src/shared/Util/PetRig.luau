@@ -28,7 +28,9 @@ export type State = {
 	sway: number?, -- a heavy gait (Party.CREATURE_STYLE): how much more the hips roll and twist walking, else 1
 	legSwing: number?, -- and how much of PET_ANIM.LEG_SWING its legs use, else 1
 	legHang: { hip: number, knee: number, foot: number, sway: number }?, -- in the air its legs hang (Party.CREATURE_STYLE), else they tuck
-	gait: string?, -- "gallop" (Party.CREATURE_STYLE gait): four legs going in pairs, the body rocking; else a trot
+	gait: string?, -- "gallop" (Party.CREATURE_STYLE gait): four legs going in pairs, the body rocking; "canine": a trot
+	-- walking that becomes a gallop running (`run`); else a trot
+	run: number?, -- a canine's share of a gallop, 0 (walking: a trot) to 1 (running), from its speed (PetAnimator)
 	jawAmount: number?, -- how far its jaw opens of a full gape (Party.CREATURE_STYLE jaw: mouths cut open later), else 1
 	undulate: string?, -- "swim" (fish: always) or "slither" (snakes: mostly moving): the body waves side to side
 	swimPhase: number?, -- that wave, radians, built up frame by frame (PetRig.swimSpeed)
@@ -122,13 +124,18 @@ end
 -- (the Wild's crab and beetle) alternate pair by pair: odd pairs step opposite the even ones (six legs: two tripods).
 -- A gallop (four legs): the front pair reaches together, the hind pair half a stride later, each right leg a little
 -- behind its left (cfg.GALLOP.lead of a stride)
-local function legOffset(cfg: any, role: Role, biped: boolean, gait: string?): number
+-- A canine (gait "canine") blends from the trot's timing to its own gallop's (cfg.CANINE.lead) as it speeds up (`run`)
+local function legOffset(cfg: any, role: Role, biped: boolean, gait: string?, run: number?): number
 	if gait == "gallop" and not biped then
 		return (if role.pair % 2 == 1 then math.pi else 0) + (if role.side == "Left" then 0 else cfg.GALLOP.lead * TAU)
 	end
 	local offset = if role.side == "Left" then 0 else math.pi
 	if not biped and role.pair % 2 == 1 then
 		offset += math.pi
+	end
+	if gait == "canine" and not biped then
+		local galloping = (if role.pair % 2 == 1 then math.pi else 0) + (if role.side == "Left" then 0 else cfg.CANINE.lead * TAU)
+		return offset + (galloping - offset) * math.clamp(run or 0, 0, 1)
 	end
 	return offset
 end
@@ -139,15 +146,20 @@ function PetRig.footLift(cfg: any, role: Role, biped: boolean, state: State): nu
 	if state.flying then
 		return 0
 	end
-	return cfg.FOOT_LIFT * math.max(0, math.cos(state.phase + legOffset(cfg, role, biped, state.gait))) * math.clamp(state.moving, 0, 1)
+	return cfg.FOOT_LIFT * math.max(0, math.cos(state.phase + legOffset(cfg, role, biped, state.gait, state.run))) * math.clamp(state.moving, 0, 1)
 end
 
--- How far a gallop lifts the whole body (studs at size 1): one bound a stride; 0 for any other gait
+-- How far a gallop lifts the whole body (studs at size 1): one bound a stride (a canine's lighter, as it runs); 0 for
+-- any other gait
 function PetRig.gaitLift(cfg: any, state: State): number
+	local moving = math.clamp(state.moving, 0, 1)
+	if state.gait == "canine" then
+		return cfg.CANINE.lift * (0.5 + 0.5 * math.sin(state.phase)) * moving * math.clamp(state.run or 0, 0, 1)
+	end
 	if state.gait ~= "gallop" then
 		return 0
 	end
-	return cfg.GALLOP.lift * (0.5 + 0.5 * math.sin(state.phase)) * math.clamp(state.moving, 0, 1)
+	return cfg.GALLOP.lift * (0.5 + 0.5 * math.sin(state.phase)) * moving
 end
 
 -- Where a middle bone sits along a waving body (larger is further back) and how much it sways; nil: not part of it
@@ -706,9 +718,17 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 	-- A gallop: longer swings, deeper knee folds, the body rocking front to back once a stride (front up as the front
 	-- legs reach), the neck holding the head steadier against it
 	local galloping = state.gait == "gallop" and not biped and not flying
-	local gallopSwing = if galloping then cfg.GALLOP.swing else 1
-	local gallopKnee = if galloping then cfg.GALLOP.knee else 1
-	local rock = if galloping then rad(cfg.GALLOP.rock) * math.sin(state.phase) * moving else 0
+	-- A canine running (owner 2026-11-16: how foxes run): the gallop's reach grows with its speed, its back flexes as
+	-- the legs gather and extends as they stretch, the head held level, the tail streaming back, the ears laid back
+	local canine = state.gait == "canine" and not biped and not flying
+	local run = if canine then math.clamp(state.run or 0, 0, 1) * moving else 0
+	local gallopSwing = if galloping then cfg.GALLOP.swing elseif canine then 1 + (cfg.CANINE.swing - 1) * run else 1
+	local gallopKnee = if galloping then cfg.GALLOP.knee elseif canine then 1 + (cfg.CANINE.knee - 1) * run else 1
+	local rock = if galloping then rad(cfg.GALLOP.rock) * math.sin(state.phase) * moving
+		elseif canine then rad(cfg.CANINE.rock) * math.sin(state.phase) * run
+		else 0
+	local flex = if canine then rad(cfg.CANINE.flex) * math.cos(state.phase) * run else 0
+	local steady = if canine then cfg.CANINE.steady else cfg.GALLOP.steady
 
 	local undulating = state.undulate ~= nil
 	local swim = state.swimPhase or 0
@@ -731,7 +751,7 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 			x = if role.segment == 0 then rad(cfg.LEG_SWING) * 0.5 * math.sin(swim + legOffset(cfg, role, biped)) else 0
 		elseif role.kind == "leg" then
 			-- Trot: front-left with hind-right; two legs: left, right; a gallop: in pairs, reaching further
-			local offset = legOffset(cfg, role, biped, state.gait)
+			local offset = legOffset(cfg, role, biped, state.gait, state.run)
 			local swing = math.sin(state.phase + offset) * moving
 			local hind = not biped and role.pair == 1
 			if role.segment == 0 then
@@ -772,7 +792,7 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 			z = walkRoll + weight
 			x = rad(cfg.SIT) * sitting + rad(cfg.SIT_UP) * sitUp
 		elseif role.kind == "spine" then
-			x = (if flying then rad(cfg.FLAP_PITCH) * flap else breath * idle + bob * 0.5) + (if role.segment == 0 then rock else 0)
+			x = (if flying then rad(cfg.FLAP_PITCH) * flap else breath * idle + bob * 0.5) + (if role.segment == 0 then rock + flex else 0)
 			if role.segment == 0 then
 				y = -hips - walkTwist * 0.5
 				z = -(walkRoll + weight) * 0.7
@@ -800,7 +820,7 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 				y -= shoulderTwist
 			end
 			x = if flying then -rad(cfg.FLAP_PITCH) * flap * share else -bob * share
-			x -= rock * cfg.GALLOP.steady * share
+			x -= (rock + flex) * steady * share
 			z = shake * share
 			if fidget == "sniff" then
 				x += rad(cfg.SNIFF) * share * amount
@@ -883,10 +903,16 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 			y = amplitude * math.sin(wag - role.segment * cfg.TAIL_LAG + role.pair * cfg.TAILS_SPREAD)
 			x = -breath * 0.5 + rad(cfg.TAILS_RISE) * math.sin(wag * 0.5 + role.pair * 1.3) * (1 - 0.5 * moving)
 				- rad(cfg.ATTACK_TAIL) * coil -- raised for the charge
+			-- a running canine's tails stream straight back
+			y *= 1 - cfg.CANINE.tailCalm * run
+			x -= rad(cfg.CANINE.tailRaise) * run
 		elseif role.kind == "tail" then
 			local amplitude = rad(cfg.TAIL_WAG) * (1 + cfg.TAIL_GROW * role.segment) * wagScale
 			y = amplitude * math.sin(wag - role.segment * cfg.TAIL_LAG)
 			x = -breath * 0.5 - rad(cfg.ATTACK_TAIL) * coil -- raised for the charge
+			-- a running canine's tail streams straight back, barely swishing
+			y *= 1 - cfg.CANINE.tailCalm * run
+			x -= rad(cfg.CANINE.tailRaise) * run
 			if fidget == "thunderroar" then
 				x -= rad(14) * hold(progress) * idle -- the tail lifts stiff
 			end
@@ -975,8 +1001,8 @@ function PetRig.pose(cfg: any, roles: { Role }, biped: boolean, state: State): {
 			z = if role.side == "Left" then -beat else beat
 		elseif role.kind == "ear" then
 			local flop = rad(cfg.EAR_FLOP) * (math.sin(state.phase * 2 + role.segment) * moving + 0.3 * math.sin(state.time * 1.7 + role.segment) * idle)
-			-- Perked up for the butterfly, laid back flat for a roar
-			flop += rad(15) * lifted - (if roaring then rad(25) * hold(progress) * idle else 0)
+			-- Perked up for the butterfly, laid back flat for a roar or a canine's run
+			flop += rad(15) * lifted - (if roaring then rad(25) * hold(progress) * idle else 0) - rad(cfg.CANINE.ears) * run
 			z = if role.side == "Left" then flop else -flop
 		end
 		if undulating then

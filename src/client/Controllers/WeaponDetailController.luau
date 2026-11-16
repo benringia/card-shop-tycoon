@@ -418,7 +418,7 @@ local function renderBar(weapon: Weapons.Weapon, mine: boolean, equipped: boolea
 	bar.Visible = mine
 	rows.Size = if mine then UDim2.new(1, 0, 1, -BAR_HEIGHT) else UDim2.fromScale(1, 1)
 	local level = Players.LocalPlayer:GetAttribute("Level")
-	local blocked = WeaponRules.equipBlock(if typeof(level) == "number" then level else 0, Swords.UNLOCK_SHOP_LEVEL)
+	local blocked = WeaponRules.equipBlock(if typeof(level) == "number" then level else 0, Swords.UNLOCK_SHOP_LEVEL, Players.LocalPlayer:GetAttribute("SwordGiven") == true)
 	equip.Visible = mine and weapon.ready and blocked == nil
 	equip.Text = if equipped then "Equipped" else "Equip"
 	equip.Active = not equipped

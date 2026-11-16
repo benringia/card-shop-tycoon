@@ -14,7 +14,7 @@ local NAMES = {
 	"SellShelf", -- client → server: (uid: string)
 	"StockShelf", -- client → server: (uid: string) put the carried box's units on this shelf
 	"SetPrices", -- client → server: ({ [productId: string]: number })
-	"CheckoutUpdate", -- server → client: (total: number?, remaining: number) nil total = checkout over
+	"CheckoutUpdate", -- server → client: (total: number?, remaining: number, lines: { { name, price, done, product?, card? } }?) nil total = checkout over
 	"RegisterBell", -- server → client: (ring: number) a customer waits at your register with nobody there (Config/RegisterBell)
 	"UpgradeJobs", -- server → client: { [station] = { kind, left, total, name, detail } } the stations' jobs (UpgradeJobService)
 	"SkipUpgrade", -- client → server: (station: string) the job "Finish now" is about to buy for (UpgradeJobService)
@@ -47,6 +47,12 @@ local NAMES = {
 	"TeamState", -- server → client: (team: { leader: number, members: { number } }?) your team now (nil: none); client → server: () leave your team
 	"TeamFight", -- server → client: (bossId: string, fromUserId: number, joined: { number }, seconds: number) a teammate's boss fight is forming; client → server: (bossId: string) join it
 	"Charge", -- client → server: take payment for the fully scanned checkout
+	-- server → owner: the payment step after Charge (Config/Payment), nil = closed: { method: "card" | "cash", total: cents,
+	-- given: cents (cash: what they handed over), items: string }
+	"PaymentStart",
+	"PayAnswer", -- client → server: (answer: number | { number }) card: the typed total in cents; cash: the bills and coins given, in cents
+	"PaymentResult", -- server → owner: (result: "wrong" | "short" | "over") a wrong answer: the screen says why
+	"ManRegister", -- client → server: (on: boolean) step onto your register in first person, or off it (RegisterStationController)
 	-- server → owner: the open kid offer or haggle at the register, nil = closed. { id, kind: "kid"|"haggle",
 	-- card: { cardId, foil, grade }?, asking?, worth?, offer?, total?, range: { low, high }, step, edges: { sure, maybe },
 	-- triesLeft }
@@ -197,6 +203,10 @@ return {
 	StockShelf = remotes.StockShelf,
 	SetPrices = remotes.SetPrices,
 	CheckoutUpdate = remotes.CheckoutUpdate,
+	PaymentStart = remotes.PaymentStart,
+	PayAnswer = remotes.PayAnswer,
+	PaymentResult = remotes.PaymentResult,
+	ManRegister = remotes.ManRegister,
 	RegisterBell = remotes.RegisterBell,
 	UpgradeJobs = remotes.UpgradeJobs,
 	SkipUpgrade = remotes.SkipUpgrade,

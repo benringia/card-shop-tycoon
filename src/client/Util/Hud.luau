@@ -977,16 +977,53 @@ local function hides(name: string?): boolean
 	return false
 end
 
+-- Everything but these named pieces hidden (manning the register keeps only the party dock: Hud.keepOnly)
+local keepOnlyBy: { [string]: { [string]: boolean } } = {}
+
+local function keptOnly(name: string?): boolean
+	if next(keepOnlyBy) == nil then
+		return true
+	end
+	for _, kept in keepOnlyBy do
+		if not name or not kept[name] then
+			return false
+		end
+	end
+	return true
+end
+
 local function apply(show: boolean)
-	side.Visible = show
-	bottom.Visible = show
+	local showTiles = show and next(keepOnlyBy) == nil
+	side.Visible = showTiles
+	bottom.Visible = showTiles
 	for _, object in hideWithHud do
-		object.Visible = show and not hides(calmPieces[object])
+		object.Visible = show and not hides(calmPieces[object]) and keptOnly(calmPieces[object])
 	end
 	for object, name in calmPieces do
 		if not table.find(hideWithHud, object) then
-			object.Visible = not hides(name)
+			object.Visible = not hides(name) and keptOnly(name)
 		end
+	end
+end
+
+-- `source` hides every HUD piece but the named ones in `keep` (the tiles, the side column and the status corner too);
+-- nil lets go
+function Hud.keepOnly(source: string, keep: { string }?)
+	if keep then
+		local kept = {}
+		for _, name in keep do
+			kept[name] = true
+		end
+		keepOnlyBy[source] = kept
+	else
+		keepOnlyBy[source] = nil
+	end
+	if fanOpen and keep then
+		setFan(false)
+	end
+	apply(next(hiddenBy) == nil)
+	for _, callback in calmListeners do
+		callback()
 	end
 end
 

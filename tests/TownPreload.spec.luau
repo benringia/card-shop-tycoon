@@ -11,10 +11,13 @@ local ProductPictures = require("../src/shared/Config/ProductPictures")
 local PackFx = require("../src/shared/Config/PackFx")
 local Town = require("../src/shared/Config/Town")
 local WeaponLooks = require("../src/shared/Config/WeaponLooks")
+local RegisterStation = require("../src/shared/Config/RegisterStation")
 local expect = require("./lib/expect")
 
 -- Config/Packs needs `script` (Roblox only): two packs in its shape stand in
 local PACKS = { ById = { basic = { art = "rbxassetid://111" }, plain = {} } }
+-- Config/Register holds a Vector3 (Roblox only): its sounds in its shape stand in
+local Register = { SCAN_SOUND_ID = "rbxassetid://201", SALE_SOUNDS = { { id = "rbxassetid://202", volume = 0.5 }, { id = "rbxassetid://203", volume = 0.3 } } }
 
 local CONFIGS = {
 	uiIcons = UIIcons,
@@ -26,6 +29,8 @@ local CONFIGS = {
 	packFx = PackFx,
 	town = Town,
 	weaponLooks = WeaponLooks,
+	registerStation = RegisterStation,
+	register = Register,
 }
 
 local function has(list: { string }, id: string): boolean
@@ -75,6 +80,35 @@ return {
 			expect.equal(table.find(LoadingScreen.TOWN_FOLDERS, name) ~= nil, true, name)
 		end
 		expect.equal(LoadingScreen.STREAM_TIMEOUT > 0 and LoadingScreen.STREAM_TIMEOUT < LoadingScreen.MAX_SECONDS, true, "streaming in never holds it past its cap")
+	end,
+
+	-- Owner 2026-11-16: "make sure loading screen load necessary items before letting players play": the register's
+	-- notes and coins (its drawer opens on your first cash sale)
+	["the register's money pictures"] = function()
+		local ids = TownPreload.images(CONFIGS)
+		for cents, id in RegisterStation.MONEY_IMAGES do
+			expect.equal(has(ids, id), true, `money {cents}`)
+		end
+	end,
+
+	["the sounds the shop plays first: every level-up set's sound, sting and layers, the register's beep and sale"] = function()
+		local ids = TownPreload.sounds(CONFIGS)
+		for index, set in LevelUpFx.SOUNDS.sets do
+			expect.equal(has(ids, set.sound.id), true, `set {index} sound`)
+			expect.equal(has(ids, set.sting.id), true, `set {index} sting`)
+			for layerIndex, layer in set.layers or {} do
+				expect.equal(has(ids, layer.id), true, `set {index} layer {layerIndex}`)
+			end
+		end
+		expect.equal(has(ids, Register.SCAN_SOUND_ID), true, "the scan beep")
+		for _, sound in Register.SALE_SOUNDS do
+			expect.equal(has(ids, sound.id), true, "a sale sound")
+		end
+		local seen = {}
+		for _, id in ids do
+			expect.equal(seen[id], nil, `{id} twice`)
+			seen[id] = true
+		end
 	end,
 
 	["only image ids, each once"] = function()

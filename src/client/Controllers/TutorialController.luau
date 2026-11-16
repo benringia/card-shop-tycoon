@@ -24,6 +24,7 @@ local ChikinTalk = require(Config:WaitForChild("ChikinTalk"))
 local Chikin = require(Config:WaitForChild("Chikin"))
 local Products = require(Config:WaitForChild("Products"))
 local Shelves = require(Config:WaitForChild("Shelves"))
+local LessonRules = require(Shared:WaitForChild("Util"):WaitForChild("LessonRules"))
 local Town = require(Config:WaitForChild("Town"))
 local Wild = require(Config:WaitForChild("Wild"))
 local MusicRules = require(Shared:WaitForChild("Util"):WaitForChild("MusicRules"))
@@ -41,6 +42,7 @@ local TutorialCues = require(ClientUtil:WaitForChild("TutorialCues"))
 local TutorialTalk = require(ClientUtil:WaitForChild("TutorialTalk"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local BattleController = require(Controllers:WaitForChild("BattleController"))
+local RegisterStationController = require(Controllers:WaitForChild("RegisterStationController"))
 local BuildController = require(Controllers:WaitForChild("BuildController"))
 local PlacementController = require(Controllers:WaitForChild("PlacementController"))
 local TownPishController = require(Controllers:WaitForChild("TownPishController"))
@@ -84,6 +86,7 @@ end
 local POINT_AT: { [string]: Target } = {
 	sword = { spot = Vector3.new(PORTAL.x, PORTAL.y + SPOT_HEIGHT, PORTAL.z) },
 	jobs = { hud = "Jobs", tray = true },
+	prices = { hud = "Prices", tray = true },
 }
 -- The stuck helper's two nudges (Util/LessonRules.nudge)
 local NUDGES: { [string]: { target: Target, icon: string } } = {
@@ -198,6 +201,20 @@ local function inside(window: GuiObject, name: string): GuiObject?
 	return if found and found:IsA("GuiObject") and shown(found) then found else nil
 end
 
+-- The scrolling list a window item sits in, when the item is out of its view (owner 2026-11-16: the paw pointed at
+-- nothing below the list's bottom): the player scrolls first
+local function scrolledAway(item: GuiObject): ScrollingFrame?
+	local list = item:FindFirstAncestorWhichIsA("ScrollingFrame")
+	if not list then
+		return nil
+	end
+	local top, bottom = list.AbsolutePosition.Y, list.AbsolutePosition.Y + list.AbsoluteSize.Y
+	local itemTop, itemBottom = item.AbsolutePosition.Y, item.AbsolutePosition.Y + item.AbsoluteSize.Y
+	-- out of view: less than half of it showing
+	local showing = math.max(0, math.min(bottom, itemBottom) - math.max(top, itemTop))
+	return if showing < item.AbsoluteSize.Y * 0.5 then list else nil
+end
+
 -- Pish's present or gift in the Bag: the Bag button, then its slot, then Open once it's the one showing
 local function bagSituation(item: string): (string, Target)
 	local bag = inMainGui("Bag")
@@ -222,7 +239,15 @@ local STEP_WINDOWS: { [string]: { [string]: boolean } } = {
 	orderStock = { OrderMenu = true },
 	["lesson:build"] = { BuildMenu = true },
 	["lesson:order"] = { OrderMenu = true },
+	-- on the register (RegisterStationController: its Leave pill counts as open) while a customer comes and pays
+	customer = { LeaveRegister = true },
+	ringUp = { LeaveRegister = true },
 }
+
+-- What Pish says about what's in the way: off the register (its Leave pill), or close the window
+local function inTheWaySituation(inTheWay: GuiObject): string
+	return if inTheWay.Name == "LeaveRegister" then "leaveRegister" else "closeWindow"
+end
 
 -- A window open that this step doesn't use, and its X
 local function windowInTheWay(stepId: string): GuiObject?
@@ -241,7 +266,7 @@ end
 local function stepSituation(stepId: string): (string, Target)
 	local inTheWay = windowInTheWay(stepId)
 	if inTheWay then
-		return "closeWindow", { gui = inTheWay }
+		return inTheWaySituation(inTheWay), { gui = inTheWay }
 	end
 	if stepId == "giftPack" then
 		return bagSituation(Pish.FIRST_ITEM)
@@ -268,15 +293,25 @@ local function stepSituation(stepId: string): (string, Target)
 		return "default", { part = "OrderComputer" }
 	elseif stepId == "stockRack" then
 		local carrying = (player:GetAttribute("CarryCount") or 0) > 0
-		return if carrying then "carrying" else "default", { part = "DeliverySpot", carryRack = true }
+		-- ordered but not here yet: deliveries take a few seconds (owner 2026-11-16: he said "Your box is here!" before it was)
+		local coming = (player:GetAttribute("BoxesComing") or 0) > 0 and (player:GetAttribute("BoxesWaiting") or 0) == 0
+		return if carrying then "carrying" elseif coming then "coming" else "default", { part = "DeliverySpot", carryRack = true }
 	elseif stepId == "customer" then
 		return "default", { part = "Register" }
 	elseif stepId == "ringUp" then
-		local charge = inMainGui("Charge")
-		if charge then
-			return "charge", { gui = charge }
+		-- On the register in first person (owner 2026-11-16, RegisterStationController): the items to tap, Charge on its
+		-- screen, the card machine or the drawer; off it, the register to man
+		local station = RegisterStationController.Situation()
+		if station == "scan" then
+			return "scan", { part = "CounterItem" }
+		elseif station == "charge" then
+			return "charge", {} -- its CHARGE button fills the screen and pulses: no paw (it would float off the top)
+		elseif station == "card" then
+			return "payCard", { part = "CardMachine" }
+		elseif station == "cash" then
+			return "payCash", {} -- the gold glow on the next note or coin to give does the pointing
 		end
-		return "default", { part = "Register" }
+		return "default", { part = "RegisterHousing" }
 	end
 	return "default", {}
 end
@@ -301,7 +336,7 @@ local function lessonSituation(lesson: Lesson): (string, Target, string)
 	if lesson.product then
 		local inTheWay = windowInTheWay("lesson:order")
 		if inTheWay then
-			return "closeWindow", { gui = inTheWay }, ""
+			return inTheWaySituation(inTheWay), { gui = inTheWay }, ""
 		end
 		local product = Products.ById[lesson.product]
 		local name = if product then product.name else lesson.product
@@ -314,7 +349,7 @@ local function lessonSituation(lesson: Lesson): (string, Target, string)
 	end
 	local inTheWay = windowInTheWay("lesson:build")
 	if inTheWay then
-		return "closeWindow", { gui = inTheWay }, ""
+		return inTheWaySituation(inTheWay), { gui = inTheWay }, ""
 	end
 	if PlacementController.IsActive() then
 		return "placing", {}, ""
@@ -325,6 +360,10 @@ local function lessonSituation(lesson: Lesson): (string, Target, string)
 	if shop then
 		local tile = if shelfId then inside(shop, shelfId) else nil
 		if tile and def then
+			local list = scrolledAway(tile)
+			if list then
+				return "scroll", { gui = list }, def.name
+			end
 			return "tile", { gui = tile }, def.name
 		end
 		local category = if def then def.category else "Trophies"
@@ -384,6 +423,10 @@ local function refreshFocus()
 			local situation, target, name = lessonSituation(lesson)
 			focusKey, focusTarget, focusIcon = "lesson:" .. now.id .. ":" .. situation, target, lesson.icon
 			focusSituation, focusName = situation, name
+		elseif now.after then
+			-- its window is open (the Prices one): he says what it's for, pointing at nothing
+			focusKey, focusTarget, focusSituation = "lesson:" .. now.id .. ":after", nil, "after"
+			focusIcon = if lesson then lesson.icon else nil
 		else
 			focusKey, focusTarget = "lesson:" .. now.id, POINT_AT[now.id]
 			if now.id == "titles" then
@@ -469,8 +512,11 @@ end
 -- A thing in the shop or town to point at; none while a window is open (the paw and the trail are drawn over the
 -- screen, so they'd sit on top of the window)
 local function targetPart(): BasePart?
-	if UIKit.anyPanelOpen() then
-		return nil
+	-- a window over the world hides the paw; the register's Leave pill isn't one (RegisterStationController)
+	for _, panel in UIKit.openPanelList() do
+		if panel.Name ~= "LeaveRegister" then
+			return nil
+		end
 	end
 	local _, spec = focus()
 	return partFor(spec)
@@ -566,7 +612,9 @@ local function pointPaw()
 		remove()
 	end
 	cues = {}
-	if button then
+	if button and focusSituation == "scroll" then
+		table.insert(cues, TutorialCues.scrollPaw(button))
+	elseif button then
 		table.insert(cues, TutorialCues.pawOn(button))
 	elseif part then
 		table.insert(cues, TutorialCues.pawOn(part))
@@ -585,9 +633,18 @@ local function updateTalk()
 		TutorialTalk.hide()
 		return
 	end
+	-- On the register for his first sale its screen says each step (Util/RegisterScreen) and his card would cover it:
+	-- it steps aside, his paw keeps pointing (the cards, Charge, the drawer)
+	if step == "ringUp" and RegisterStationController.IsManned() and introIndex > #talk.intro then
+		TutorialTalk.hide()
+		return
+	end
 	local line = TalkRules.show(talk, introIndex, focusSituation)
 	local label = if not line.next then nil elseif line.finish then PishTalk.BYE else PishTalk.NEXT
-	local text = if not line.next and focusSituation == "closeWindow" then PishTalk.LABELS.close else line.text
+	local text = if line.next then line.text
+		elseif focusSituation == "closeWindow" then PishTalk.LABELS.close
+		elseif focusSituation == "leaveRegister" then PishTalk.LABELS.leaveRegister
+		else line.text
 	say(TalkRules.fill(text, Game.NAME), focusIcon, label, function()
 		if line.finish then
 			if step == "bye" and not byeSent then
@@ -773,7 +830,7 @@ end
 -- where they are (Config/PishTalk TEACH)
 local function updateLessonTalk()
 	local now = visit
-	if not now or not teaching(now) then
+	if not now or not (teaching(now) or now.after) then
 		return
 	end
 	local afterIndex = now.after
@@ -865,8 +922,27 @@ local function updateVisit()
 			end
 			return
 		end
+		-- Saying what it's for (the Prices window): over after his last line, or left alone a while
+		local afterIndex = now.after
+		if afterIndex then
+			local lines = PishTalk.AFTER[now.id] or {}
+			if afterIndex > #lines or os.clock() - now.started >= Pish.TEACH_QUIET_SECONDS then
+				endVisit(true)
+			end
+			return
+		end
 		local _, spec = focus()
-		if visitUsed(spec) then
+		if visitUsed(spec) and now.kind == "lesson" and PishTalk.AFTER[now.id] then
+			-- a lesson with words for once its window is open says them before he goes (owner 2026-11-16: "let pish
+			-- teach players how to set prices")
+			if marker then
+				TutorialCues.sparkle(marker.Position + Vector3.new(0, Pish.HEIGHT, 0))
+				play("happyHop")
+			end
+			now.after = 1
+			now.started = os.clock()
+			updateLessonTalk()
+		elseif visitUsed(spec) then
 			endVisit(true)
 		elseif os.clock() - now.started >= Pish.LESSON_SECONDS then
 			endVisit(false)
@@ -890,7 +966,16 @@ local function updateVisit()
 		return
 	end
 	if #lessonQueue > 0 and freeSince and os.clock() - freeSince >= FREE_SECONDS then
-		startVisit("lesson", lessonQueue[1])
+		-- one that has you buy something waits until you can pay for it (owner 2026-11-16: the glass case)
+		local cash = tonumber(player:GetAttribute("Cash")) or 0
+		local ready = LessonRules.firstReady(lessonQueue, Pish.LESSONS, cash, function(lesson): number
+			local shelf = if lesson.shelf then Shelves.ById[lesson.shelf] else nil
+			local product = if lesson.product then Products.ById[lesson.product] else nil
+			return if shelf then shelf.cost elseif product then product.boxCost else 0
+		end)
+		if ready then
+			startVisit("lesson", ready)
+		end
 	end
 end
 

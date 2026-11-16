@@ -22,6 +22,7 @@ local DecorRules = require(Shared:WaitForChild("Util"):WaitForChild("DecorRules"
 local Windows = require(Config:WaitForChild("Windows"))
 local WindowRules = require(Shared:WaitForChild("Util"):WaitForChild("WindowRules"))
 local WindowLooks = require(Shared:WaitForChild("Util"):WaitForChild("WindowLooks"))
+local RegisterBuild = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("RegisterBuild"))
 
 local COMPUTER_FIXTURE_ID = "OrderComputer"
 
@@ -501,11 +502,10 @@ local function buildRegister(id: number, plotCFrame: CFrame, parent: Instance): 
 	local counter = Town.COUNTER
 	register:SetAttribute("Info", PlotConfig.REGISTER_TEXT) -- the owner's hover tooltip (ShelfInfoController)
 	buildCheckout(register, Props.color(getTheme(id).accent), parent)
-	-- The terminal takes the left end; the decor sits in the back strip, clear of the scan items on the
-	-- front edge (RegisterService)
+	-- The register unit takes the left end (screen, cash drawer, card machine: Util/RegisterBuild); the decor sits in
+	-- the back strip, clear of the scan items on the front edge (RegisterService)
 	local counterTop = register.CFrame * CFrame.new(0, size.Y / 2, 0)
-	local registerBox = Vector3.new(counter.REGISTER.width, counter.REGISTER.height, counter.REGISTER.depth)
-	Props.fit("Terminal", registerBox, counterTop * CFrame.new(counter.REGISTER.x, 0, 0), parent)
+	RegisterBuild.build(counterTop, parent)
 	local _, propZ = PropFit.counterZ(size.Z, RegisterConfig.ITEM_SIZE.Z, counter.PROP_DEPTH)
 	local decorBox = Vector3.new(counter.DECOR.width, counter.DECOR.height, counter.PROP_DEPTH)
 	Props.fit("CounterDecor", decorBox, counterTop * CFrame.new(counter.DECOR.x, 0, propZ), parent, id)

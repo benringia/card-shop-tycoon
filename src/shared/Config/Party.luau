@@ -172,7 +172,7 @@ return {
 		["Cave Bat"] = { fidgets = { "look", "tilt", "spin" } }, -- flies, wings beating
 		["Spark Beetle"] = { fidgets = { "look", "shake" }, bounce = 0.2 }, -- six legs, two tripods
 		["Magma Golem"] = { fidgets = { "look", "shake", "stomp" }, bounce = 0.15, stride = 1.3, legSwing = 0.6, sway = 1.4 }, -- lumbers on two legs
-		["Ash Wolf"] = { fidgets = { "look", "sniff", "stretch", "shake", "yawn" }, tailSpeed = 0.5, tailAmount = 0.8, bounce = 0.4 }, -- a fast prowl
+		["Ash Wolf"] = { fidgets = { "look", "sniff", "stretch", "shake", "yawn" }, tailSpeed = 0.5, tailAmount = 0.8, bounce = 0.4, gait = "canine" }, -- a fast prowl, galloping when it chases
 		-- The Frontier's monsters (spec 2026-11-10-frontier-valley-design), moving like their Wild counterparts
 		["Frost Wisp"] = { fidgets = { "look", "shake" }, bounce = 0.7 }, -- a slime: it bounces
 		["Shade Lynx"] = { fidgets = { "look", "sniff", "stretch", "shake", "yawn" }, tailSpeed = 0.5, tailAmount = 0.8, bounce = 0.4 },
@@ -212,7 +212,7 @@ return {
 		Nightowl = { fidgets = { "look", "tilt", "tilt", "shake" }, tailSpeed = 0.6 }, -- a watchful owl, head tilting
 		Hushmoth = { fidgets = { "look", "tilt", "spin", "shake" } }, -- a fluttering flyer
 		GaleSprite = { fidgets = { "look", "tilt", "spin", "shake" }, tailSpeed = 0.9 }, -- a darting flyer
-		Frostfang = { fidgets = { "look", "tilt", "sniff", "stretch", "shake", "wag", "yawn" }, tailSpeed = 0.8, tailAmount = 1.1, bounce = 0.9 }, -- a light-footed fox
+		Frostfang = { fidgets = { "look", "tilt", "sniff", "stretch", "shake", "wag", "yawn" }, tailSpeed = 0.8, tailAmount = 1.1, bounce = 0.9, gait = "canine" }, -- a light-footed fox
 		Vinewyrm = { fidgets = { "look", "tilt", "sniff", "shake" }, tailSpeed = 0.6 }, -- a slithering serpent
 		Mistfin = { fidgets = { "look", "tilt", "sniff", "yawn", "shake", "wag" }, tailSpeed = 0.7, tailAmount = 1.2, bounce = 1 }, -- a proud waddling seal, its tail fin swishing
 		Magmaw = { fidgets = { "look", "sniff", "yawn", "shake", "stomp" }, tailSpeed = 0.6, tailAmount = 1.1, bounce = 0.5 }, -- a heavy crawling salamander, its long tail swaying
@@ -224,7 +224,9 @@ return {
 		Blazehound = { tailSpeed = 1.2 }, -- an excited little dog: every dog fidget, a quick wag
 		Thornback = { fidgets = { "look", "sniff", "sniff", "shake", "stomp", "yawn" }, tailSpeed = 1.1, tailAmount = 0.7, bounce = 0.7 }, -- a snuffling boar, its curly tail flicking
 		EclipseFox = { fidgets = { "look", "tilt", "sniff", "stretch", "sit", "scratch", "yawn", "shake" }, tailSpeed = 0.5, tailAmount = 1.1, bounce = 0.7, jaw = 0.6 },
-		Duskstalker = { fidgets = { "look", "tilt", "sniff", "stretch", "shake", "yawn" }, tailSpeed = 0.7, tailAmount = 0.9, stride = 1.1 }, -- a prowling wolf
+		Duskstalker = { fidgets = { "look", "tilt", "sniff", "stretch", "shake", "yawn" }, tailSpeed = 0.7, tailAmount = 0.9, stride = 1.1, gait = "canine" }, -- a prowling wolf
+		-- the shadow kitsune: its own fidgets by default, a canine's trot and gallop (owner 2026-11-16: how foxes run)
+		["Eclipse Fox"] = { gait = "canine" },
 		-- its legs hang relaxed in flight (owner 2026-11-14 "relaxed and natural. right now it looks stiff"; tucked, its
 		-- forward-reaching talons pointed up): the hip a little forward, the shin back, the foot drooping talons-down
 		Solarion = { fidgets = { "look", "tilt", "shake", "look" }, tailSpeed = 0.45, tailAmount = 0.7, legHang = { hip = 20, knee = -25, foot = -43, sway = 6 } }, -- the sun phoenix (owner 2026-11-14): a god's calm hover, no hops or spins, its flame tail drifting
@@ -258,6 +260,26 @@ return {
 		-- leg `lead` of a stride behind its left, LEG_SWING and KNEE_LIFT times `swing` and `knee`, the spine rocking
 		-- `rock` degrees each way, the head kept `steady` (a share of the rock undone), the body bounding `lift` studs
 		GALLOP = { lead = 0.08, swing = 1.5, knee = 1.4, rock = 6, steady = 0.6, lift = 0.35 },
+		-- A canine (CREATURE_STYLE gait "canine"; owner 2026-11-16: "search the web on how foxes run" for every fox-like
+		-- creature): a trot walking, a gallop running, blended by its speed from `runFrom` to `runFull` studs a second
+		-- (PetAnimator `run`; pets follow you at your speed, so not scaled by their size). Running: each right leg `lead` of a stride behind its left, swings `swing` and knee folds
+		-- `knee` times the trot's, the back flexing `flex` degrees as the legs gather and extending as they stretch over a
+		-- `rock` degree rock (running mammals' spines: J Exp Biol 2006), the head kept `steady`, a `lift` stud bound, the
+		-- tail swishing `tailCalm` less and raised `tailRaise` degrees (streaming back), the ears laid back `ears` degrees
+		CANINE = {
+			lead = 0.12,
+			swing = 1.6,
+			knee = 1.5,
+			rock = 3,
+			flex = 8,
+			steady = 0.85,
+			lift = 0.22,
+			tailCalm = 0.75,
+			tailRaise = 10,
+			ears = 22,
+			runFrom = 6,
+			runFull = 11,
+		},
 		LEG_SWING = 28, -- upper leg, forward and back
 		KNEE_LIFT = 32, -- lower leg bends as it swings forward
 		BREATH = math.rad(2.5), -- spine pitch, radians
@@ -764,5 +786,25 @@ return {
 			popSeconds = 1.2,
 			levelRoll = 0.4, -- seconds the level chip counts up from the old level once the sparks land
 		},
+		-- Shop XP gained (a sale, a pack ripped; owner 2026-11-16: "when something is sold add a visual effects on the
+		-- shop exp so players know their exp is increasing"): gold sparks from you into the shop bar, then "+xp XP" over
+		-- it, the bar flashing white (`flash` of its transparency, over `flashSeconds`) and its badge bumping
+		SHOP_SPARKS = {
+			min = 2,
+			max = 6,
+			seconds = 0.75,
+			stagger = 0.06,
+			lift = 90,
+			size = 22,
+			color = { 255, 214, 90 },
+			popText = 18,
+			popRise = 30,
+			popSeconds = 1.3,
+			flash = 0.35,
+			flashSeconds = 0.5,
+		},
+		-- The shop bar's own label and what its tooltip says (owner 2026-11-16: confused shop XP with creature XP)
+		SHOP_LABEL = "SHOP",
+		SHOP_TIP = "Your shop level. Sell and rip packs to grow it. Fights level up your creatures.",
 	},
 }

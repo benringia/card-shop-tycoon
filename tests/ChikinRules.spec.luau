@@ -49,14 +49,16 @@ end
 return {
 	["town: Chikin's Courage and his portal-side walk"] = townChecks,
 
-	["his steps: the first fight, a hidden wait for level 4, then the sword"] = function()
+	-- owner 2026-11-16: "in the wilds. chikin will make you fight a monster with your summoned pet. after the monster is
+	-- dead, he will give you a sword and fight another monster. then will leave"; his level 4 visit shows the boss
+	["his steps: a fight with your creature, the sword, a fight with it, then at level 4 the boss"] = function()
 		local order = table.concat(STEPS, ",")
-		expect.equal(order, "hello,party,summon,wild,fight,firstWin,level4,sword,wild2,fight2,boss")
+		expect.equal(order, "hello,party,summon,wild,fight,firstWin,fight2,swordWin,level4,sword,wild2,boss")
 		expect.equal(Chikin.WAIT_STEP, "level4")
 		expect.equal(Chikin.SWORD_LEVEL, 4)
 		expect.equal(#Chikin.VISITS, 2)
-		expect.equal(table.concat(Chikin.VISITS[1], ","), "hello,party,summon,wild,fight,firstWin")
-		expect.equal(table.concat(Chikin.VISITS[2], ","), "sword,wild2,fight2,boss")
+		expect.equal(table.concat(Chikin.VISITS[1], ","), "hello,party,summon,wild,fight,firstWin,fight2,swordWin")
+		expect.equal(table.concat(Chikin.VISITS[2], ","), "sword,wild2,boss")
 	end,
 
 	["every step but the wait has its talk; the ends are intro lines only (their last Next moves on)"] = function()
@@ -75,12 +77,13 @@ return {
 			expect.equal(next(ChikinTalk.STEPS[step].now), nil, `{step} ends on its last Next`)
 			assert(#ChikinTalk.STEPS[step].intro > 0, `{step} has lines`)
 		end
-		for _, step in { "hello", "firstWin", "sword", "boss" } do
+		for _, step in { "hello", "firstWin", "swordWin", "sword", "boss" } do
 			assert(Chikin.FINISH_STEPS[step], `{step} ends on its last Next`)
 		end
 		expect.equal(#ChikinTalk.STEPS.party.intro, 0, "the party step starts on what to do (hello said hi)")
 		-- A hello's last button starts the lesson; only his goodbyes say Bye
-		expect.equal(Chikin.BYE_STEPS.firstWin, true)
+		expect.equal(Chikin.BYE_STEPS.firstWin, nil, "he stays: the sword fight comes next")
+		expect.equal(Chikin.BYE_STEPS.swordWin, true)
 		expect.equal(Chikin.BYE_STEPS.boss, true)
 		expect.equal(Chikin.BYE_STEPS.hello, nil)
 		expect.equal(Chikin.BYE_STEPS.sword, nil)
@@ -117,10 +120,13 @@ return {
 		assert(Chikin.FIGHT_TIP_SECONDS > Chikin.FIRST_TIP_SECONDS, "time to try the button")
 	end,
 
-	["a player already at shop level 4 hears 'let's try your sword' instead of 'come back at level 4'"] = function()
+	["the first win hands over the sword; a player already at shop level 4 goes straight on to the boss"] = function()
+		local handOver = table.concat(ChikinTalk.STEPS.firstWin.intro, " ")
+		assert(string.find(handOver, "sword", 1, true), "the first win gives the sword")
+		assert(string.find(table.concat(ChikinTalk.LOST, " "), "sword", 1, true), "a lost first fight too")
 		assert(ChikinTalk.SWORD_NOW, "the line")
 		assert((utf8.len(ChikinTalk.SWORD_NOW) :: number) <= 60, "short")
-		assert(string.find(ChikinTalk.STEPS.firstWin.intro[#ChikinTalk.STEPS.firstWin.intro], "level 4", 1, true), "the usual last line names level 4")
+		assert(string.find(ChikinTalk.STEPS.swordWin.intro[#ChikinTalk.STEPS.swordWin.intro], "level 4", 1, true), "the usual goodbye names level 4")
 	end,
 
 	["a sword fight not won stays on the fight step (the second visit needs a win to finish); the first moves on"] = function()

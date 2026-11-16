@@ -14,7 +14,6 @@ shows its stand-in.
 | `Bench` | around the healing spring | 3 | yes |
 | `Hedge` | one section, repeated every 6.5 studs round the island's edge | 3 | yes |
 | `Portal` | frame around each plaza portal ring; its Neon parts take the portal's colour (`Town.PORTAL_EFFECTS`), particles come from code | 14 | no |
-| `Terminal` | the POS terminal at the left end of each shop's checkout counter, full depth; screen toward the cashier (+Z) | fits 2.4 x 2.2 x 2 | no |
 | `CounterDecor` | back of the counter, right end | fits 0.8 x 1.2 x 0.6 | no |
 | `Computer` | the order computer: a code-built modern workstation (`built`: white desk on black legs, a widescreen showing ORDER STOCK, keyboard, plant, drawers, office chair); a model file would replace it; moves with it | fits 10 x 5.5 x 6 | (its own hitbox) |
 | `Condenser` | the Card Condenser: code-built (`built`, `CONDENSER_LOOK`), in the scan pod's style; its Rotors (the crystal with three cards, two rings of small cards) spin on each client | fills 6 x 7 x 6 | (its own hitbox) |
@@ -32,7 +31,7 @@ stops Rojo from building (group them into one Model first, or save each one on i
 
 Fixtures and shelves with a `prop` keep their old block until the model file exists; then the block becomes an
 invisible hitbox under the model. A slot marked `built = true` (Computer, Condenser, the four product shelves) uses its
-code-built look the same way, with no file. The checkout counter, POS terminal (Terminal slot) and delivery spot are built in code.
+code-built look the same way, with no file. The checkout counter, its register unit (`Util/RegisterBuild`, no prop slot) and delivery spot are built in code.
 
 Numbers live in `Config/Town.luau` (`SLOTS`).
 
@@ -229,6 +228,30 @@ props): the beanbag is mattmatveev's "Bean Bag Chair / Blue Beanbag" (1439543917
 mesh tinted pink 245, 140, 180), the plant ATOMICRAVI0LI's "low poly potted plant" (9253654788). Both had no
 scripts. To put one back: Toolbox insert by id into `PlaceProps`, rename it to the slot, redo the clean-up, save the
 place. The store's rugs and play tables looked no better than ours, so those stay ours.
+
+## The register's body (RegisterBody)
+
+The register unit on each checkout counter (`Util/RegisterBuild`, DESIGN 4.6 "Manning the register") uses
+`PropModels.RegisterBody` for its body: one MeshPart, a white base with the drawer face and a lilac strip, a charcoal
+pole and the screen's bezel. The game scales it to `RegisterStation.BODY.width` (2.79 studs: its widest part, the
+screen; the base comes to 2.6), turns its front (-Z as
+imported) to the cashier and builds the working parts on top (the screen glass it draws on, the sliding cash drawer and
+its money, the card machine). Without it, a code-built body of the same shape stands in.
+
+Made 2026-11-16 (owner: "you can use meshy to draw the cash register. make sure the final model doesnt have holes,
+smooth"): concept `assets/blender/Register/concept_B_shop.png` (Figma, the shop's colours), one Meshy image-to-3D
+generation (raw kept as `RegisterBody_raw.glb`, gitignored), cleaned by `tools/blender/build_register.py`: the pole
+lengthened 9 cm so the screen stands clear above the card machine, the screen stretched to the game's screen layout
+and grown 25% (owner: "make the screen bigger so the display fits"),
+rebuilt as one closed surface (voxel remesh, 8,000 triangles, colours baked), smooth by angle, its map flattened to the
+shop's white, charcoal and lilac. It writes `Register.blend` (the body only), `RegisterBody.fbx` and
+`RegisterBody_measure.json` (the base's and the screen's places; `Config/RegisterStation` UNIT holds them in studs).
+If you rebuild with different proportions, update UNIT from the json.
+
+1. Studio (stopped) -> Import 3D -> `assets/blender/Register/RegisterBody.fbx` (default settings).
+2. Name the MeshPart `RegisterBody` (if it comes inside a Model, keep the Model named `RegisterBody`), reset the
+   MeshPart's `PivotOffset` rotation, right-click -> **Save to File...** -> `assets/props/RegisterBody.rbxm`.
+3. Delete the Workspace copy. Stop and Play: each shop's register uses it.
 
 ## Turts' rug (TurtsRug)
 

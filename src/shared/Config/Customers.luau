@@ -1,8 +1,19 @@
 --!strict
 -- NPC customer behaviour. See DESIGN.md section 4.5. Plain data (colours as { r, g, b }) so Lune tests can load it.
+
+-- Roblox's free hair (creator Roblox, price 0), for grown-ups and kids alike (ADULT_LOOK, KID_LOOK)
+-- Side Part, Short and Sleek, Top Knot, Sideswept Dreads, Surfer, Curly Afro, Brown Charmer, Cool Side Shave (not Brown
+-- Hair 62234425: its texture is gone, tests/CustomerLook)
+local SHORT_HAIR = { 9244021842, 7193386173, 9243992729, 9243987340, 9174354743, 9174355709, 9174353649, 9244038785, 7193450455, 376548738, 3814474927 }
+-- Pony Tails, Wavy and Medium Middle Parts, Straight Bangs, Chestnut Bun, Lavender Updo, Long Red Hair, Colorful Braids
+local LONG_HAIR = { 9244095135, 7193442167, 9244097555, 7193444640, 7193448258, 9244111257, 9244089488, 6993754725, 7193448988, 7193449810, 62724852, 451220849, 2956239660, 3814476174 }
+
 return {
 	MAX_PER_PLOT = 4,
 	FIRST_SPAWN_DELAY = 5, -- seconds after a shop is claimed
+	-- A new player's shop: none come until Pish sends his own customer (TutorialRules.holdsCustomers), then the shop's
+	-- own wait this long, so his first sale has the counter to itself (owner 2026-11-16)
+	AFTER_PISH_CUSTOMER = 40,
 	SPAWN_INTERVAL_MIN = 8, -- seconds between customers; shop rating will shorten this later
 	SPAWN_INTERVAL_MAX = 15,
 	SPAWN_CHECK_INTERVAL = 1,
@@ -63,6 +74,51 @@ return {
 		{ 198, 134, 94 },
 		{ 141, 85, 54 },
 		{ 95, 60, 40 },
+	},
+	-- Grown-up customers (owner 2026-11-16: "improve customer's look. add some adult"; picked look B from Studio renders):
+	-- Roblox's own "Man" (bundle 238) and "Woman" (239) bodies with their animated faces, dressed from Roblox's free
+	-- catalog (creator Roblox, price 0; the Classic v2 bundles' outfits too). Kids: KID_LOOK.
+	-- Each type keeps its colours through its shirts; plain shoppers wear everything. Util/CustomerLook picks
+	ADULT_LOOK = {
+		bodies = {
+			man = { Torso = 86500008, RightArm = 86500036, LeftArm = 86500054, LeftLeg = 86500064, RightLeg = 86500078, Head = 10725826963, MoodAnimation = 10725833199 },
+			woman = { Torso = 86499666, RightArm = 86499698, LeftArm = 86499716, LeftLeg = 86499753, RightLeg = 86499793, Head = 10725626210, MoodAnimation = 10725638029 },
+		},
+		hair = { man = SHORT_HAIR, woman = LONG_HAIR },
+		outfits = {
+			plain = {
+				shirts = { 607785314, 398633584, 3670737444, 398635081, 398634295, 144076358, 382538059, 4047884939, 4047884046, 4047886060, 144076436, 382537085, 382537702, 4637596615, 4637603462, 4637617396, 4637611578 },
+				pants = { 398633812, 398634487, 398635338, 144076760, 382537950, 382538503, 382537569, 382537806, 4637601297, 4637605284, 4637618900, 4637612548 },
+			},
+			-- purples (Purple and Teal Top, Cindy's purple jacket, Pastel Starburst with Gray Jacket)
+			collector = { shirts = { 4047886060, 4637611578, 398634295 }, pants = { 4637612548, 398634487, 4637605284 } },
+			-- casual and warm (the Pizza shirts, Blue Plaid, Green Jersey), shorts
+			bargain = { shirts = { 4047884939, 382537085, 398635081, 382538059 }, pants = { 382537950, 382537806, 398635338 } },
+			-- dark jackets (ROBLOX Jacket, Motorcycle, Guitar Tee with Black Jacket), black jeans
+			bigSpender = { shirts = { 607785314, 144076358, 4047884046 }, pants = { 382537569, 398633812, 382538503 } },
+		},
+	},
+	-- Kids in the same style (owner 2026-11-16: "update the kids to be the same style as the adults"): Roblox's "ROBLOX
+	-- Boy" (bundle 109) and "ROBLOX Girl" (108) bodies at the kid's scale with one of Roblox's free animated heads
+	-- (Dylan, Devon, Check It, Silly Fun, Stevie), casual clothes and the same hair
+	KID_LOOK = {
+		bodies = {
+			boy = { Torso = 376532000, LeftArm = 376530220, RightArm = 376531012, LeftLeg = 376531300, RightLeg = 376531703 },
+			girl = { Torso = 376547767, LeftArm = 376547633, RightArm = 376547341, LeftLeg = 376546668, RightLeg = 376547092 },
+		},
+		heads = {
+			{ Head = 10687288296, MoodAnimation = 10687293613 },
+			{ Head = 10723855306, MoodAnimation = 10723858600 },
+			{ Head = 11308945948, MoodAnimation = 11308935548 },
+			{ Head = 15938951781, MoodAnimation = 15938951885 },
+			{ Head = 10638267973, MoodAnimation = 10647852134 },
+		},
+		hair = { boy = SHORT_HAIR, girl = LONG_HAIR },
+		-- the Pizza shirts, Green Jersey, Teal Shirt, Purple and Teal Top, Pastel Starburst, Denim Jacket with Hoodie
+		outfits = {
+			shirts = { 4047884939, 382537085, 382538059, 382537702, 4047886060, 398634295, 398633584 },
+			pants = { 382537950, 382537806, 398635338, 398634487, 382537569 },
+		},
 	},
 	CLOTHES_COLORS = {
 		{ 200, 60, 60 },
@@ -225,6 +281,10 @@ return {
 				{ part = "Head", size = { 0.9, 0.12, 0.6 }, offset = { 0, 0.52, -0.8 }, color = { 255, 95, 143 }, shape = "Block" }, -- its peak
 				{ part = "RightHand", size = { 0.5, 0.7, 0.1 }, offset = { 0, -0.35, -0.25 }, color = { 255, 122, 182 }, shape = "Block" }, -- a pack
 			},
+			-- dressed, their hair would poke through the cap: the pack alone
+			dressedProps = {
+				{ part = "RightHand", size = { 0.5, 0.7, 0.1 }, offset = { 0, -0.35, -0.25 }, color = { 255, 122, 182 }, shape = "Block" },
+			},
 		},
 		collector = {
 			weight = 0.10,
@@ -243,6 +303,10 @@ return {
 			props = {
 				{ part = "Head", size = { 1.55, 0.45, 1.55 }, offset = { 0, 0.68, 0 }, color = { 124, 196, 107 }, shape = "Block" }, -- bucket hat
 				{ part = "RightHand", size = { 0.6, 0.35, 0.05 }, offset = { 0, -0.35, -0.25 }, color = { 255, 243, 168 }, shape = "Block" }, -- a coupon
+			},
+			-- dressed, their hair would poke through the bucket hat: the coupon alone
+			dressedProps = {
+				{ part = "RightHand", size = { 0.6, 0.35, 0.05 }, offset = { 0, -0.35, -0.25 }, color = { 255, 243, 168 }, shape = "Block" },
 			},
 		},
 		bigSpender = {

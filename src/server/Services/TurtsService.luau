@@ -9,11 +9,13 @@
 -- the marker workspace.TurtsNpc.Turts (attributes Spot, SpotName, RestockIndex, Excited, MovedAt) and Remotes.TurtsStock.
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
+local PolicyService = game:GetService("PolicyService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Turts = require(Shared:WaitForChild("Config"):WaitForChild("Turts"))
 local TurtsRules = require(Shared:WaitForChild("Util"):WaitForChild("TurtsRules"))
+local PaidRandomRules = require(Shared:WaitForChild("Util"):WaitForChild("PaidRandomRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
@@ -139,6 +141,10 @@ local function onBuy(player: Player, offerId: unknown, seen: unknown)
 	local state = states[player]
 	local offer = Turts.OFFERS[offerId]
 	if not state or not offer then
+		return
+	end
+	if player:GetAttribute("TutorialDone") ~= true then
+		Blocked.tell(player, Turts.AFTER_TOUR, { title = "Turts' shop" })
 		return
 	end
 	if not nearHim(player) then
@@ -268,10 +274,15 @@ function TurtsService.Start()
 
 	Remotes.TurtsBuy.OnServerEvent:Connect(onBuy)
 	Remotes.TurtsStock.OnServerEvent:Connect(function(player)
-		-- a client asking again (its window opened before the stock came)
-		if stockLimit(player) then
-			send(player)
+		-- a client asking again (its window opened before the stock came); before Pish's tour is over, why it's shut
+		if not stockLimit(player) then
+			return
 		end
+		if player:GetAttribute("TutorialDone") ~= true then
+			Blocked.tell(player, Turts.AFTER_TOUR, { title = "Turts' shop" })
+			return
+		end
+		send(player)
 	end)
 	Remotes.TurtsRestockNow.OnServerEvent:Connect(function(player)
 		if not restockLimit(player) then
@@ -280,6 +291,14 @@ function TurtsService.Start()
 		local productId = PurchaseService.ProductId(Turts.PRODUCT)
 		if productId == 0 then
 			return -- not created yet: the button says "Coming soon"
+		end
+		-- a paid re-roll is a chance-based purchase: not sold where Roblox restricts those (Util/PaidRandomRules)
+		local ok, info = pcall(function()
+			return PolicyService:GetPolicyInfoForPlayerAsync(player)
+		end)
+		if PaidRandomRules.restricted(ok, info) then
+			Blocked.tell(player, Turts.RESTOCK_RESTRICTED, { title = "Turts' shop" })
+			return
 		end
 		MarketplaceService:PromptProductPurchase(player, productId)
 	end)

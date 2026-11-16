@@ -34,11 +34,22 @@ return {
 			now = { default = "Walk up to a monster and tap Fight!" },
 		},
 		firstWin = {
-			intro = { "You won! Your creature got XP.", "Win more fights to level it up!", "Come back at shop level 4. Bye!" },
+			-- he hands over the first sword here (owner 2026-11-16: "chikin should give the player a sword before leaving
+			-- the player on wild"): it appears on your back with its popup (SwordGiven, WeaponService)
+			intro = { "You won! Your creature got XP.", "Here's a sword! Now you can fight too.", "Let's try it on another monster!" },
+			now = {},
+		},
+		swordWin = {
+			-- owner 2026-11-16: fights don't grow the shop; say so (he was confused watching shop XP while fighting)
+			intro = {
+				"Great fighting!",
+				"Fights level up your creature, not your shop.",
+				"Sell and rip packs to reach shop level 4. Bye!",
+			},
 			now = {},
 		},
 		sword = {
-			intro = { "Woof! You got a sword!", "Now you fight too. Let's try it!" },
+			intro = { "Woof! Shop level 4!", "A boss is waiting for you!" },
 			now = {},
 		},
 		wild2 = {
@@ -47,19 +58,20 @@ return {
 		},
 		fight2 = {
 			intro = {},
-			now = { default = "Walk up to a monster and tap Fight!" },
+			now = { default = "Find another monster and tap Fight!" },
 		},
 		boss = {
-			intro = { "Great fighting!", "The Meadow Warden lives through that portal.", "Beat it for a trophy! Bye!" },
+			intro = { "The Meadow Warden lives through that portal.", "Beat it for a trophy! Bye!" },
 			now = {},
 		},
 	} :: { [string]: { intro: { string }, now: { [string]: string } } },
-	-- The last line of the first fight's end for a player already at shop level 4 (the sword's visit comes straight on)
-	SWORD_NOW = "You have a sword too! Let's try it!",
+	-- The last line of his goodbye after the sword fight for a player already at shop level 4 (the boss visit comes
+	-- straight on)
+	SWORD_NOW = "You're shop level 4 already! Let's find a boss!",
 	-- A sword fight lost or run from: the step stays, he cheers them on to try again
 	RETRY = "Oops! Rest up, then try another one!",
 	-- His first fight lost (in place of firstWin's intro)
-	LOST = { "Oh no! Your creature got tired.", "Rest it, or bring another card.", "Come back at shop level 4. Bye!" },
+	LOST = { "Oh no! Your creature got tired.", "Here's a sword! Now you can fight too.", "Rest up, then try another monster!" },
 	-- In a fight: what to try, one tip at a time (ChikinController), the paw on the button
 	FIGHT = {
 		creature = "Your creature fights by itself!",

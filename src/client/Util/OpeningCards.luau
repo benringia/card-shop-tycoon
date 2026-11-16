@@ -135,6 +135,10 @@ local function newTagFor(part: BasePart): BillboardGui
 	gui.Name = "NewTag"
 	gui.Size = UDim2.fromScale(0.9, 0.36)
 	gui.StudsOffset = Vector3.new(-CARD_W / 2 + 0.25, SIZE.HEIGHT / 2, 0)
+	-- drawn over its own card (it sits on the card's top edge, and the card's face hid its lower half: owner 2026-11-16
+	-- "NEW was blocked"), and not clipped where the tilted tag and its outline poke out
+	gui.AlwaysOnTop = true
+	gui.ClipsDescendants = false
 	gui.LightInfluence = 0
 	gui.Enabled = false
 	gui.Adornee = part

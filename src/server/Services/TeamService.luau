@@ -34,8 +34,11 @@ local function teamOf(userId: number): TeamRules.Team?
 	return if id then teamsById[id] else nil
 end
 
+-- A function replacement: a "%" in a display name is never read as a gsub capture
 local function words(text: string, name: string): string
-	local filled = string.gsub(text, "{name}", name)
+	local filled = string.gsub(text, "{name}", function()
+		return name
+	end)
 	return filled
 end
 

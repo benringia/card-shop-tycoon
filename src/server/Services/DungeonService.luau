@@ -341,8 +341,14 @@ local function tryStart(waited: number)
 	end
 end
 
--- Arrivals: the group starts together (or after ARRIVAL_WAIT); someone arriving after the first fight goes back
+-- Arrivals: the group starts together (or after ARRIVAL_WAIT); someone arriving after the first fight goes back, and
+-- anyone not in the portal's reserved server (a teleport of their own, skipping its checks) goes back to the Frontier
 local function onArrive(player: Player)
+	if not DungeonRules.arrivalAllowed(RunService:IsStudio(), game.PrivateServerId, game.PrivateServerOwnerId) then
+		Blocked.tell(player, Dungeon.ENTER_THROUGH_PORTAL, { title = "The Dungeon" })
+		FrontierService.ReturnToFrontier(player)
+		return
+	end
 	if run.fought then
 		table.insert(run.members, player)
 		markOut(player, "This run has already started.")

@@ -514,16 +514,6 @@ local function buildFallback(slot: string, height: number, size: Vector3?, varia
 		addPart(model, cylinder, Vector3.new(1.1, 0.2, 0.2), CFrame.new(0, 0.65, chairZ) * UPRIGHT, STEEL_BLACK, Enum.Material.Metal)
 		addPart(model, block, Vector3.new(1.6, 0.3, 1.5), CFrame.new(0, 1.35, chairZ), CHARCOAL, Enum.Material.Fabric)
 		addPart(model, block, Vector3.new(1.5, 1.8, 0.2), CFrame.new(0, 2.4, chairZ - 0.75) * CFrame.Angles(math.rad(-8), 0, 0), CHARCOAL, Enum.Material.Fabric)
-	elseif slot == "Terminal" then
-		-- A POS tablet on a stand, its screen tilted toward the cashier (+Z), and a card reader on the customers' side
-		addPart(model, block, Vector3.new(1.1, 0.12, 0.9), CFrame.new(-0.3, 0.06, 0.15), STEEL_BLACK, Enum.Material.Metal)
-		addPart(model, cylinder, Vector3.new(0.7, 0.3, 0.3), CFrame.new(-0.3, 0.47, 0.25) * UPRIGHT, STEEL_BLACK, Enum.Material.Metal)
-		local tilt = CFrame.new(-0.3, 1.25, 0.25) * CFrame.Angles(math.rad(-18), math.pi, 0)
-		addPart(model, block, Vector3.new(1.7, 1.1, 0.1), tilt, STEEL_BLACK, Enum.Material.SmoothPlastic)
-		local screen = addPart(model, block, Vector3.new(1.55, 0.95, 0.02), tilt * CFrame.new(0, 0, -0.06), Color3.fromRGB(40, 95, 170), Enum.Material.Neon)
-		screen.Name = "Screen"
-		addPart(model, block, Vector3.new(0.45, 0.1, 0.7), CFrame.new(0.75, 0.05, -0.45) * CFrame.Angles(math.rad(8), 0, 0), STEEL_BLACK, Enum.Material.SmoothPlastic)
-		addPart(model, block, Vector3.new(0.12, 0.02, 0.12), CFrame.new(0.75, 0.11, -0.65), Color3.fromRGB(90, 230, 140), Enum.Material.Neon)
 	elseif slot == "Portal" then
 		local width = height * 0.85
 		for _, x in { -width / 2, width / 2 } do

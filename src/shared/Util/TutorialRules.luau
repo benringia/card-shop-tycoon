@@ -131,6 +131,14 @@ function TutorialRules.replay(saved: Saved): Saved
 	return after
 end
 
+-- The shop's own customers wait until Pish introduces them (owner 2026-11-16: "Customers should only start coming when
+-- Pish introduces them"): a new player's first visit is quiet until he sends his own customer (once ever, step
+-- "customer"). A skip, a finished tour or a replay never waits (a replay gets no customer from him, so the shop's own
+-- complete his step)
+function TutorialRules.holdsCustomers(saved: Saved): boolean
+	return saved.firstVisit == "todo" and not saved.customerSent
+end
+
 -- Pish sends his own customer (step "customer") once ever: a skip and a replay, however often, wait for a customer
 -- who comes by themselves, so replaying never brings anything for free (final review I1)
 function TutorialRules.sendsCustomer(saved: Saved): boolean

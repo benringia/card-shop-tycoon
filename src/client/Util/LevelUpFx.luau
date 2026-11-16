@@ -81,10 +81,10 @@ end
 -- A level-up sound (round 5: one per level-up, a sting on a 10th shop level): the "sound" or "sting" of the set picked in
 -- Studio (/levelsound sets LevelSoundSet, and LevelSoundVolume for the sound) or the default set; flat for your own, at
 -- `at` for others (quieter, fading with distance)
-local function play(part: "sound" | "sting", at: Vector3?, quiet: boolean, creature: boolean)
+local function play(part: "sound" | "sting", at: Vector3?, quiet: boolean, creature: boolean, layer: any?)
 	local player = Players.LocalPlayer
 	local set = SOUNDS.sets[LevelUpRules.soundSet(SOUNDS, if player then player:GetAttribute("LevelSoundSet") else nil)]
-	local spec = set[part]
+	local spec = layer or set[part]
 	local id, volume, pitch = spec.id, spec.volume, spec.pitch
 	local picked = if player then player:GetAttribute("LevelSoundVolume") else nil
 	if part == "sound" and typeof(picked) == "number" then
@@ -357,6 +357,12 @@ local function run(root: BasePart, model: Instance, sizes: Sizes, colors: Look, 
 			play("sting", soundAt, quiet, false)
 		end
 	end)
+	-- the set's layers round the pop (a rise winding up before it, a shimmer after: Config/LevelUpFx SOUNDS)
+	local player = Players.LocalPlayer
+	local set = SOUNDS.sets[LevelUpRules.soundSet(SOUNDS, if player then player:GetAttribute("LevelSoundSet") else nil)]
+	for _, layer in set.layers or {} do
+		task.delay(math.max(0, T.badge + layer.at), play, "sound", soundAt, quiet, creature, layer)
+	end
 
 	local started = os.clock()
 	local connection: RBXScriptConnection
@@ -414,6 +420,29 @@ function LevelUpFx.playCreature(root: BasePart, height: number, element: string,
 	end
 	local model = root:FindFirstAncestorOfClass("Model") or root
 	run(root, model, LevelUpConfig.SIZES.creature, look(false, element), { from = from, to = to, creature = true, milestone = false, height = height + 1.2 }, quiet, not quiet)
+	-- it glows for a while (owner 2026-11-16: "it should be noticeable. pets should glow for some time")
+	local glowLook = LevelUpConfig.CREATURE_GLOW
+	local glow = Instance.new("Highlight")
+	glow.Name = "LevelUpGlow"
+	glow.Adornee = model
+	glow.DepthMode = Enum.HighlightDepthMode.Occluded
+	glow.FillColor = Color3.fromRGB(glowLook.fill[1], glowLook.fill[2], glowLook.fill[3])
+	glow.OutlineColor = Color3.fromRGB(glowLook.outline[1], glowLook.outline[2], glowLook.outline[3])
+	glow.Parent = model
+	local started = os.clock()
+	local glowing: RBXScriptConnection
+	glowing = RunService.RenderStepped:Connect(function()
+		local t = os.clock() - started
+		if t >= glowLook.seconds or not model.Parent then
+			glowing:Disconnect()
+			glow:Destroy()
+			return
+		end
+		local wave = 0.5 + 0.5 * math.cos(t * glowLook.pulseSpeed * math.pi * 2)
+		local fade = math.clamp((glowLook.seconds - t) / glowLook.fade, 0, 1)
+		glow.FillTransparency = 1 - (1 - (glowLook.low + (glowLook.high - glowLook.low) * (1 - wave))) * fade
+		glow.OutlineTransparency = 1 - fade
+	end)
 end
 
 return LevelUpFx

@@ -78,7 +78,7 @@ local rollTween: Tween? = nil
 
 local function unlocked(): boolean
 	local level = player:GetAttribute("Level")
-	return typeof(level) == "number" and level >= Swords.UNLOCK_SHOP_LEVEL
+	return (typeof(level) == "number" and level >= Swords.UNLOCK_SHOP_LEVEL) or player:GetAttribute("SwordGiven") == true
 end
 
 -- A weapon's picture and its rarity's colour

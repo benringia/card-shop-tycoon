@@ -20,6 +20,7 @@ local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
 local CollectorRules = require(Shared:WaitForChild("Util"):WaitForChild("CollectorRules"))
 local CustomerTypes = require(Shared:WaitForChild("Util"):WaitForChild("CustomerTypes"))
+local CustomerLook = require(Shared:WaitForChild("Util"):WaitForChild("CustomerLook"))
 local ReactionRules = require(Shared:WaitForChild("Util"):WaitForChild("ReactionRules"))
 local PriceRules = require(Shared:WaitForChild("Util"):WaitForChild("PriceRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -96,6 +97,8 @@ end
 -- walking to the shop's door from somewhere random (false: it can't, so the customer appears at the door), and
 -- `departures` walks a leaving customer's model off down the street (false: it vanishes at the door)
 local arrivals: ((plot: Plot, owner: Player, kind: string, wanted: string?) -> boolean)? = nil
+-- TutorialService: whether this owner's shop waits for Pish to introduce customers (TutorialRules.holdsCustomers)
+local arrivalHold: ((owner: Player) -> boolean)? = nil
 local departures: ((model: Model) -> boolean)? = nil
 
 local function fireOutcome(owner: Player, outcome: string)
@@ -186,9 +189,59 @@ local function addProps(model: Model, props: { any }, scale: number)
 	end
 end
 
--- Today's blocky customer in its type's clothes, size and props (spec 2026-11-06-customers-design, option B)
+-- A customer dressed from Roblox's catalog (owner 2026-11-16, look B; Config/Customers ADULT_LOOK and KID_LOOK,
+-- Util/CustomerLook): a grown-up's Man or Woman body with its animated face, or a kid's Boy or Girl body with one of the
+-- animated heads, at the kid's `scale`; catalog hair, shirt and pants. Nil when a catalog asset fails to load: the
+-- blocky look then
+local function createDressed(spawnCFrame: CFrame, look: CustomerLook.Look, scale: number): Model?
+	local description = Instance.new("HumanoidDescription")
+	local set = if look.kid then CustomerConfig.KID_LOOK else CustomerConfig.ADULT_LOOK
+	for part, id in set.bodies[look.body] do
+		(description :: any)[part] = id
+	end
+	local head = if look.head then CustomerConfig.KID_LOOK.heads[look.head] else nil
+	if head then
+		description.Head = head.Head
+		description.MoodAnimation = head.MoodAnimation
+	end
+	if scale ~= 1 then
+		description.HeightScale = scale
+		description.WidthScale = scale
+		description.DepthScale = scale
+		description.HeadScale = scale
+	end
+	local rgb = CustomerConfig.SKIN_COLORS[look.skin]
+	local skin = Color3.fromRGB(rgb[1], rgb[2], rgb[3])
+	description.HeadColor = skin
+	description.TorsoColor = skin
+	description.LeftArmColor = skin
+	description.RightArmColor = skin
+	description.LeftLegColor = skin
+	description.RightLegColor = skin
+	description.Shirt = look.shirt
+	description.Pants = look.pants
+	description.HairAccessory = tostring(look.hair) -- (SetAccessories dropped the rigid hair in Studio)
+	local ok, model = pcall(NpcMotion.createRig, description, "Customer", spawnCFrame)
+	if not ok then
+		warn(`[CustomerService] catalog look failed, blocky instead: {model}`)
+		return nil
+	end
+	return model
+end
+
+-- A customer in its type's look, size and props: dressed from the catalog, or (when that fails to load) the blocky look
+-- in its type's colours (spec 2026-11-06-customers-design, option B)
 local function createModel(spawnCFrame: CFrame, kind: string): Model
 	local spec = CustomerConfig.TYPES[kind] or CustomerConfig.TYPES.plain
+	local look = CustomerLook.pick(CustomerConfig, kind, function(): number
+		return rng:NextNumber()
+	end)
+	local dressed = if look then createDressed(spawnCFrame, look, spec.scale or 1) else nil
+	if dressed then
+		dressed:SetAttribute("CustomerType", kind)
+		addProps(dressed, spec.dressedProps or spec.props, spec.scale or 1)
+		return dressed
+	end
 	local colors = spec.colors
 	local description = Instance.new("HumanoidDescription")
 	local skin = pickColor(CustomerConfig.SKIN_COLORS)
@@ -924,6 +977,11 @@ local function spawnTick()
 			continue
 		end
 		local state = getPlotState(plot)
+		if arrivalHold and arrivalHold(owner) then
+			-- Pish hasn't introduced customers yet: none come, and the first comes AFTER_PISH_CUSTOMER after his own
+			state.nextSpawnAt = now + CustomerConfig.AFTER_PISH_CUSTOMER
+			continue
+		end
 		if state.nextSpawnAt == 0 then
 			state.nextSpawnAt = now + CustomerConfig.FIRST_SPAWN_DELAY
 		elseif now >= state.nextSpawnAt and #state.customers < CustomerConfig.MAX_PER_PLOT then
@@ -939,6 +997,11 @@ local function spawnTick()
 			end
 		end
 	end
+end
+
+-- TutorialService: shops whose customers wait for Pish's first visit (SpawnForTest still sends his own customer)
+function CustomerService.SetArrivalHold(hold: (owner: Player) -> boolean)
+	arrivalHold = hold
 end
 
 -- Fires repeatedly while the front customer stands at the counter, ready to be checked out

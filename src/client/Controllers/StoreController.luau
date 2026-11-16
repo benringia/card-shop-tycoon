@@ -22,6 +22,7 @@ local Packs = require(Config:WaitForChild("Packs"))
 local HudMascot = require(Config:WaitForChild("HudMascot"))
 local LuckRules = require(Shared:WaitForChild("Util"):WaitForChild("LuckRules"))
 local BoughtLuck = require(Shared:WaitForChild("Util"):WaitForChild("BoughtLuck"))
+local PaidRandomRules = require(Shared:WaitForChild("Util"):WaitForChild("PaidRandomRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -468,7 +469,7 @@ function StoreController.Start()
 		local ok, info = pcall(function()
 			return PolicyService:GetPolicyInfoForPlayerAsync(player)
 		end)
-		luckAllowed = ok and typeof(info) == "table" and info.ArePaidRandomItemsRestricted ~= true
+		luckAllowed = not PaidRandomRules.restricted(ok, info)
 		if isOpen() then
 			draw()
 		end

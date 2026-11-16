@@ -9,6 +9,15 @@ local function required(level: number): number
 end
 
 return {
+	-- Shop XP: a sale's total rounded, at least `minXp`; ripping a pack from your stock gives what selling it would (its
+	-- market price; owner 2026-11-16: "pish should encourage players to rip packs for faster exp")
+	["a sale or a rip gives its price in shop XP, at least the minimum"] = function()
+		expect.equal(LevelMath.saleXp(12.6, 1), 13)
+		expect.equal(LevelMath.saleXp(2.4, 1), 2)
+		expect.equal(LevelMath.saleXp(0.2, 1), 1, "a tiny sale still counts")
+		expect.equal(LevelMath.saleXp(0 / 0, 1), 1, "junk: the minimum")
+	end,
+
 	["Lv 1 is free and Lv 2 is 40"] = function()
 		expect.equal(required(1), 0, "Lv 1")
 		expect.equal(required(2), 40, "Lv 2")

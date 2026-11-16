@@ -59,6 +59,7 @@ local TurtsService = require(Services:WaitForChild("TurtsService"))
 local BinderReadService = require(Services:WaitForChild("BinderReadService"))
 local GiftService = require(Services:WaitForChild("GiftService"))
 local TeamService = require(Services:WaitForChild("TeamService"))
+local SaveSlotService = require(Services:WaitForChild("SaveSlotService"))
 
 local Place = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("Place"))
 
@@ -88,6 +89,7 @@ if Place.isDungeon() then
 	LeaderboardService.StartWrites() -- packs opened here count on the plaza leaderboard
 	BinderReadService.Start() -- your binder open shows you reading it (after BattleService)
 	DevService.Start() -- Studio only
+	SaveSlotService.Start() -- the owner's "/slot" test save (before DataService.Start: it registers a load step)
 	DataService.Start() -- last: starts loading players
 elseif Place.isFrontier() then
 	-- The Frontier place: no plots or shop systems, only what the shared high-level map needs.
@@ -119,6 +121,7 @@ elseif Place.isFrontier() then
 	LeaderboardService.StartWrites() -- packs opened here count on the plaza leaderboard
 	BinderReadService.Start() -- your binder open shows you reading it (after BattleService)
 	DevService.Start() -- Studio only
+	SaveSlotService.Start() -- the owner's "/slot" test save (before DataService.Start: it registers a load step)
 	DataService.Start() -- last: starts loading players
 else
 	PlotService.Start() -- builds the plots everything else uses
@@ -175,6 +178,7 @@ else
 	TeamService.Start() -- teams in this world: invites, the team strip, the hunting bonus (bosses call teammates)
 	BinderReadService.Start() -- your binder open shows you reading it (after BattleService)
 	DevService.Start() -- Studio only
+	SaveSlotService.Start() -- the owner's "/slot" test save (before DataService.Start: it registers a load step)
 	DataService.Start() -- last: starts loading players
 end
 

@@ -20,6 +20,15 @@ You run a trading card shop. Order stock, fill your shelves, set prices, ring up
 3. **Show it off.** Your shop and your cards are visible to everyone on the server. Status drives spending.
 4. **Short sessions work.** A 5-minute session on mobile should still feel like progress.
 
+**The game page** (owner 2026-11-16, Creator Hub): name "One More Pack", genre Simulation / Tycoon (where Grow a Garden
+and Steal a Brainrot sit; it can only change every 3 months). Icon: the core loop in one moment (owner's pick F, replacing
+the dogs-and-cards C on 2026-11-16 because the icon shows first in every list): the shopkeeper in an apron in his shop's
+doorway, sword in hand, throws a card and a phoenix bursts out of it, Pish and Chikin peeking from behind the counter. Five thumbnails after the top Roblox games' pattern (one huge subject, an avatar reacting, one giant
+outlined hook line, a polished 3D render, readable at phone size): "1 in 250,000 / Grade S foil Legendary" (the true
+odds: 1% Legendary x 1% Grade S x 4% foil), "Run your card shop!", "Beat the Hydra! / 60,000 HP final boss", "One More
+Pack" over the real card paintings, "Summon your cards! / Every card is a creature" (Voidmaw bursting out of a card). Scenes from Figma's image generator with no text, titles by
+`tools/ui-art/make_thumbnail.py`; files in `assets/ui/game-page` (not synced). Every number on them must stay true.
+
 ---
 
 ## 2. Core loop
@@ -215,20 +224,29 @@ against the Prism Hydra with the boss HUD, its intro card, cuts, the skill, supe
 phases, with a lent loadout: the Rift Reaper in hand and Solarion, Voidmaw and Stormking (max level, max stars, Grade S,
 foil) as your party, Solarion coming out as the fight starts, lent by `PrologueService` (`CardService` / `PartyService` /
 `WeaponService` `.Lend`: in memory only, never saved, levelled, traded or switched; your own party is what's saved
-meanwhile; the first-sword popup never shows for it). The Hydra hits at `FIGHT.atk` 30 (the real one's 46) and its HP is
+meanwhile; the first-sword popup never shows for it). Security review 2026-11-16: no other fight starts while it's lent
+(`Prologue.BUSY`, a BattleService start blocker), a lent card can't go into a display case or on a shop job
+(`CardService.IsLent`; a case only shows a card actually taken from the binder), and `MAX_SESSION` (300 s) after
+"begin" the server takes it all back and counts the prologue as seen, whatever the client does. The Hydra hits at `FIGHT.atk` 30 (the real one's 46) and its HP is
 held between two curves: never at 25% before 35 s, always there by 60 s (`PrologueRules.hpShare`), then the fight ends
 with no rewards, records, rest, knockout or end screen (`BattleService` RunOptions `prologue`; tested idle in Studio: 60
 s, Solarion never fainted). Run ends it early. Act 3 (a cinematic, owner 2026-11-15): Solarion goes back into its card
-under a flash and the Hydra looms close (`KNOCK.near`); its strike shatters your weapon, your aura goes out and you're
+under a flash and the Hydra looms close (`KNOCK.near`); its massive attack (owner 2026-11-16, `Prologue.BLAST`): it
+rears up roaring as its crystals blaze, rainbow light gathers into an orb at its mouth with a charge-up hum, then a
+prism beam with a white-hot core hits you, a shockwave ring spreading from your feet, and its blow shatters your weapon, your aura goes out and you're
 thrown back tumbling onto your face (`PrologueRules.knock`, never off the floor: `knockRoom`); you crawl toward it,
 reaching, arms sweeping along the floor (`PrologueRules.crawl`; your joints posed after the animations, `Util/PrologueBody`),
 while every card you have flies out of you into its mouth (your three Legendaries first, then 17 others:
 `PrologueRules.stolenCards`), its runes flaring; your head sinks; a flash and it has five heads (the Dungeon's Hydra,
 grown from your power); you black out (blur, dark; the server gives your own loadout back in the dark: steps "vanish",
-"take"); "...until the Hydra took everything." You wake in town on your back on the street in front of your shop
+"take"); the story told in short lines (owner 2026-11-16, `Prologue.CAPTIONS`): act 1's legend as the camera
+circles ("Long ago, you were the greatest card master of all." / "Your legendary cards had never lost a battle." /
+"Then a young Hydra came, hungry for their power..."), "It swallowed every card you owned..." as they fly, "...and
+grew stronger with each one." as it grows, "Everything was gone." in the dark. You wake in town on your back on the street in front of your shop
 (`Util/PrologueWake`): the camera is your eyes, your eyelids open with a blink between (`PrologueRules.lids`) while the
-blur clears, Pish and Chikin lean in over you (the town's own two hidden meanwhile), Pish barks, "Hey! Wake up!", "Are
-you okay?", Chikin: "The Hydra took it all? Let's get it all back!"; you get up, they hop for joy, then the welcome
+blur clears, Pish and Chikin lean in over you (the town's own two hidden meanwhile), Pish barks, "Hey! Wake up!", "You
+were out cold! Are you okay?", Chikin: "Your cards... the Hydra took them ALL?!", Pish: "Then we start again. A tiny
+shop, one pack at a time!", Chikin: "And one day, we'll take them all back!"; you get up, they hop for joy, then the welcome
 flight and Pish's tutorial as before (they wait for it). Only `seenPrologue` is saved (v29: saves from before it count it
 as seen). The opening and the fight can't be skipped (owner 2026-11-15: "the first fight should not be skippable. only
 after the fight when hydra is taking your cards"): the Skip button shows 1 s into act 3, and the fight has no Run
@@ -244,9 +262,8 @@ as a time-lapse from morning to sunset that holds sunset for the last half; cine
 and the player standing still, a Skip button (top right) from the first frame. Livelier since the owner 2026-11-11 ("a
 bit plain. can you make it more epic/jolly/welcoming, like a whoosh sound on the camera"): its own music ("Magical
 Journey", `Music.WELCOME` at 0.1, while the local WelcomePlaying attribute is set; `/music welcome <n>` tries others),
-the title bouncing in with a sparkle, a card at the bottom for each place as the camera passes it (its icon and name in
-its colour, what you do there under it, both centred: "Battle wild creatures", "The Frontier: tougher monsters", "Meet
-other shop owners", "Battle other players", then "Your shop! Open packs, sell cards, get rich"), each popping in with a
+the title bouncing in with a sparkle, one card at the bottom at the end, "Your shop! Open packs, sell cards, get rich"
+(the places' cards went, owner 2026-11-16: "on welcome cinematic, remove the world labels"), popping in with a
 chime, magic whooshes on the fast swoops between places, a camera that widens as it speeds up and banks into turns
 (`WelcomePath.lens`), and at your shop a finale in the world (`Util/WelcomeFx`; the owner: "dont add drawn confetti.
 search for a free/safe particle/VFX on creator store"): confetti shooting up from cannons either side of the door
@@ -293,8 +310,8 @@ rent), a warm greige back feature wall (the same in every shop) and 3 x 3 LED ce
 accent for the glowing strip under its sign (Mint, Coral, Violet, Gold, Azure, Rose). The checkout counter (6 x 2.5 x 2, low so small cashier pets show) is built in code to match the
 shell (`Town.COUNTER`): a white body on a charcoal plinth, a dark quartz top overhanging the customers' side, a thin
 LED strip in the shop's accent colour under it, and two black pendant lights with warm bulbs hanging from the
-ceiling over it (shade bottoms 7.5 up, clear of the cashier). A POS terminal (Terminal slot: a tablet on a stand,
-its screen toward the cashier, a card reader on the customers' side) stands at its left end and a
+ceiling over it (shade bottoms 7.5 up, clear of the cashier). The register unit (`Util/RegisterBuild`: screen, cash drawer,
+card machine; section 4.6 "Manning the register") stands at its left end and a
 counter decor prop on its back edge (scan items lie along the front edge to the right of the register); Shelves with a `prop` in Config/Shelves draw it on an invisible hitbox part. The four product shelves are
 code-built modern shelving in one style (`Util/ShelfLayout` places the parts so every plate sits under a stock level,
 `Util/ShelfLooks` draws them, `Town.SHELF_LOOK`; no lights of their own): charcoal posts and base, light grey plates with
@@ -421,8 +438,18 @@ is over UI (`UIKit.pointerBlocked`).
   `docs/superpowers/specs/2026-11-06-customers-design.md`): plain 55%, kid 20%, collector 10% (only with a Glass
   Showcase), bargain hunter 10%, big spender 5% (from shop level 11). Types a shop can't have share their weight out.
   Each wears simple welded props (kid: cap and a pack, smaller at 0.82 scale; collector: glasses and a binder;
-  bargain hunter: bucket hat and coupon; big spender: shades and a gold chain) and shows its icon in a bubble on
-  arrival. Kids buy 1-2 of the cheapest pack the shop sells. Bargain hunters and big spenders buy one price band
+  bargain hunter: bucket hat and coupon, the coupon alone when dressed, as hair would poke through the hat
+  (`dressedProps`); big spender: shades and a gold chain) and shows its icon in a bubble on arrival. **Grown-ups**
+  (owner 2026-11-16: "improve customer's look. add some adult"; picked look B of three rendered in Studio): every type
+  but kids is Roblox's own "Man" or "Woman" body (bundles 238 / 239) with its animated face, a skin colour, hair made
+  for that body and a shirt and pants from Roblox's free catalog (creator Roblox, price 0, plus the Classic v2 bundles'
+  outfits; `Customers.ADULT_LOOK`, picked by `Util/CustomerLook`, Lune-tested). Each type keeps its colours through its
+  shirts: collectors purples, bargain hunters casual and shorts, big spenders dark jackets and black jeans; plain
+  shoppers wear any. Kids the same way (owner 2026-11-16: "update the kids to be the same style as the adults"):
+  Roblox's "ROBLOX Boy" / "ROBLOX Girl" bodies (bundles 109 / 108) at their 0.82 scale with one of Roblox's free
+  animated heads (Dylan, Devon, Check It, Silly Fun, Stevie), casual catalog clothes and the same hair; dressed, they
+  hold their pack without the cap (`dressedProps`). A catalog asset that fails to load falls back to the blocky look in
+  the type's colours. Town walkers use the same models. Kids buy 1-2 of the cheapest pack the shop sells. Bargain hunters and big spenders buy one price band
   higher than plain customers (`Pricing.BUY_BANDS`, past the last band more bands as wide as the last); past that
   they won't buy and get annoyed. Big spenders buy a display box (`BIG_SPENDER.box`) or a stack of 6-12 packs and
   tip 10% at the register.
@@ -475,10 +502,70 @@ is over UI (`UIKit.pointerBlocked`).
 
 ### 4.6 Register / checkout
 - Player stands at register, customer puts items on counter, player clicks/taps each item to scan, then confirms payment.
+  Sounds at the register (heard nearby, the owner's and a cashier's alike; licensed PSE, owner 2026-11-16): a checkout
+  beep on every scan (`Register.SCAN_SOUND_ID`), the drawer opening under a bright ding on every sale (`SALE_SOUNDS`).
+- A new player's shop stays quiet until Pish sends his own customer (owner 2026-11-16: "Customers should only start
+  coming when Pish introduces them"; `TutorialRules.holdsCustomers`, CustomerService's spawn hold), then the shop's own
+  wait `Customers.AFTER_PISH_CUSTOMER` (40 s) so his first sale has the counter to itself. A skipped, finished or
+  replayed tour never waits.
   Packs and deck boxes lie face up on the counter as their 3D models (`Util/PackModels`, inside an invisible scan
   target); other products are a box in the product's colour.
-- Payment: cash (make change, later feature) or card (instant). MVP = one tap to confirm total.
-- Later: hire a cashier to automate.
+- **Manning the register** (owner 2026-11-16: "when I go to a cash register, I want the option like 'Man the
+  cashier'. I will then switch to first person with the UI of an actual cash register ... when I get off the cash
+  register, I will then switch back to third person"; like TCG Card Shop Simulator; modern, to match the shop; round 2
+  (mockup approved): "improve the registers UI ... it must be immersive. it is also currently confusing for the kids";
+  `Config/RegisterStation`, `Util/RegisterStationRules` Lune-tested, `RegisterStationController`, client
+  `Util/RegisterScreen`, server `Util/RegisterBuild`). The register unit at the counter's left end: its body the Meshy
+  model `PropModels.RegisterBody` (one generation from `assets/blender/Register/concept_B_shop.png`, cleaned by
+  `tools/blender/build_register.py`: closed, smooth, 8,000 triangles, the shop's white, charcoal and lilac; docs/props.md
+  "The register's body"; a code-built body of the same shape until it's imported), its base 2.6 studs wide: a white base
+  with a lilac strip, a big screen (owner: "the display doesnt fit the screen. make the screen bigger so the display
+  fits": grown 25% in the model; the game's display 2.68 x 1.635, just inside the bezel's rim with rounded corners, the
+  screen part itself clear; leaning back 28.6 degrees) high on a charcoal pole, clear above the card machine
+  standing at 45 degrees on the base's front right (owner: "give change and card machine overlapping"), and a cash
+  drawer that slides out of the base toward the cashier (a dark opening behind it), split by dividers: a little stack
+  of notes lying lengthwise in each back compartment ($20 $10 $5 $1, portrait pictures with the value huge: owner "the
+  numbers on the bills are hard to see") and coins stacked in round cups in front (25c 10c 5c 1c), each piece
+  `Money_<cents>`. The money is our own play money
+  (`tools/ui-art/make_money.py`, `assets/ui/money`, ids in `RegisterStation.MONEY_IMAGES`): each note its own colour
+  (orange $20, purple $10, blue $5, green $1) with ONE MORE PACK on top and a paw medallion; gold, silver and copper
+  coins. "Man the register" (a prompt only the owner sees) puts you on the cashier's step in first person (your body
+  hidden, movement held, the HUD down to the party dock with the SHOP bar: `Hud.keepOnly`); Leave is a pill at the top
+  left (clear of the drawer and the card machine), and walking away or a knockout leaves too. **The screen is the
+  guide**: a lilac bar with "Register" and the town's clock and one big line of what to do (the step pills under the
+  bar went: owner 2026-11-16 "remove these"). Idle: a cart, "Waiting for a customer...", "Today: 4
+  sales · $14.51" (this visit, `RegisterSales` / `RegisterTaken`). 1 Scan: "Tap each card on the counter", the items
+  still to scan first, each with its picture (owner 2026-11-16: "add icons beside the items": a pack's or deck box's real
+  picture, Config/ProductPictures; other products' icons; a single card's painting) (the server sends every item's name, price and whether it's scanned with `CheckoutUpdate`), the
+  total so far. 2 Charge: "All scanned!", the total and a big pulsing CHARGE button. A deal: "They want to make a
+  deal!" while the offer window is open. 3 Pay (`Config/Payment`, `Util/PaymentRules` Lune-tested): after Charge (and
+  after a bargain hunter's deal, at the agreed price) the customer pays. The server picks how: by card about half the
+  time (kids 25%, big spenders 85%), else cash, handing over the smallest of $5 / $10 / $20 / $50 / $100 above the total
+  (past $100 the next $50 above). **Card**: the camera leans in close; the screen says "They pay by card! Type this on
+  the card machine" with the total huge in a gold box; the card machine (its label "TYPE $6.00" while it waits, its
+  display, keys 4 across and 3 down: 1-9, 0, ., Del; OK) takes it. **Cash**: the drawer slides open and the camera looks over it; the screen shows "They gave $10.00", "Total
+  $6.00", "Give back $4.00" in gold, "Giving $3.00 of $4.00" and a bar filling as you tap money, GIVE CHANGE lighting
+  up and pulsing only when exact (it reads "EXACT!" and gives itself 0.7 s later: `AUTO_GIVE_SECONDS`, no small button
+  to find on a phone); tapped money lands on the counter (a tap there takes one back). After 5 s without a
+  tap (and always on Pish's first sale) the next note or coin to give glows gold (`HELPER_SECONDS`,
+  `RegisterStationRules.nextPiece`: the biggest that still fits). A wrong answer flashes a red banner over the steps
+  ("That's not the total. Check the register!", "Not enough change yet.", "That's too much! Tap some to take it
+  back."); no penalty. The server checks every answer against its own total (`PayAnswer`: the typed cents, or the list
+  of bills and coins, each a drawer value, at most 40; rate-limited, owner on the register only); `PaymentStart` /
+  `PaymentResult` reach the owner. Scanning, Charge and paying need you on the register (server `ManRegister`,
+  `ManningRegister` attribute; "Man the register to scan!" otherwise). While the owner is on the register paying, the
+  customer's patience holds (topped up every second); a free sale skips it; manning again reopens a payment in
+  progress. Cashier workers still sell by themselves while you're off it. **Pish's first sale teaches it** (owner 2026-11-16:
+  "include the use of cash register on pish's tutorial"): "Your first customer! Let's use the register." (Next), "Walk
+  to your register and tap Man the register!" with the paw and trail on it; once you're on it his card steps aside so
+  the register's screen guides you and his paw points at the cards to scan; his customer always pays cash, and the gold
+  glow shows the next note or coin to give from the start. After the sale (his gift) he says "Tap Leave to step off the
+  register." with the paw on Leave (the register counts as the step's own window, not one to close), then the Bag. Each step has its camera pose (`RegisterStation.CAMERA`): the overview while scanning, face to face with the screen for
+  Charge, close on the card machine, over the open drawer; a phone (`UIKit.isPhone`) gets closer poses (`phonePoses`;
+  owner: "optimize it for phone, buttons are too small for phone": checked on the iPhone 17 Pro simulator, keys about
+  84 x 45 points, CHARGE about 55 tall), and the thumbstick, the jump button and the shelf tooltips hide while you're on
+  the register. Pet cashiers (later) stand on the step behind the counter (`Town.COUNTER.STEP`), which sets
+  their height; the register stays the same.
 - **Kid offers** (`OfferService`, `Util/OfferRules`, `Config/Customers` OFFER): after paying, a kid rips one of their
   packs at the counter (same odds, no pity: `PackService.RollForCustomer`; model attribute `Pulled` for everyone's
   reveal) and stays there `KID.revealSeconds`. A Very Rare or better pull may be offered to the owner (chance Very Rare
@@ -504,7 +591,16 @@ is over UI (`UIKit.pointerBlocked`).
   pack opening's hit sound, a Legendary a fading column of light.
 
 ### 4.7 Shop level & rating
-- **Shop XP** from every sale. Levels unlock new products, shelves, expansions.
+- **Shop XP** from every sale, and from every pack ripped from your own stock (its market price, what selling it
+  would give: owner 2026-11-16 "pish should encourage players to rip packs for faster exp"; `LevelMath.saleXp`,
+  PackService; a First Spark pack costs $2 and gives 3 XP, so selling stays the money path). Fights give creature XP,
+  never shop XP. Levels unlock new products, shelves, expansions.
+- **Shop XP feedback** (owner 2026-11-16: "when something is sold add a visual effects on the shop exp ... right now it's
+  too flat"; and "while im killing monsters im looking at my shop exp not moving"): the dock's XP bar carries a "SHOP"
+  label and a tooltip ("Your shop level. Sell and rip packs to grow it. Fights level up your creatures.",
+  `Party.BAR.SHOP_LABEL` / `SHOP_TIP`); each gain flies 2-6 gold sparks from you into the bar, then "+N XP" rises over
+  it, the bar flashes white and the level badge bumps (`Party.BAR.SHOP_SPARKS`, PartyBarController; only the badge
+  bump while a window is open).
 - **Shop rating** (1-5 stars, `RatingService`, `Util/RatingRules`, `Config/Customers` RATING): every 5 s each open
   shop is scored on weighted 0-1 parts: product shelves stocked 35%, fair prices 25% (each stocked product's buy chance
   at its price against the best band's; neutral with nothing stocked), cards on display 15% (Epic 1, Legendary 3, foil
@@ -702,7 +798,11 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
   shockwave ring and sparks) or stomp (a dust ring). The pets' bones are animated in code on
   each client (`Util/PetRig`, `Util/PetAnimator`, `Party.PET_ANIM`): trotting or stepping (Thunderhorn gallops, owner
   2026-11-05 "make it like its running": `CREATURE_STYLE` `gait = "gallop"`, `PET_ANIM.GALLOP`: the front legs reach
-  together and the hind legs half a stride later, longer swings, the body rocking and bounding), breathing, tail wags,
+  together and the hind legs half a stride later, longer swings, the body rocking and bounding; canines trot walking
+  and gallop running, owner 2026-11-16 "search the web on how foxes run": `gait = "canine"`, `PET_ANIM.CANINE`, for
+  Eclipse Fox, Frostfang, Duskstalker and the Ash Wolf: blended by speed (6-11 studs a second), the back flexing and
+  extending once a stride, a light bound, the head level, the tail streaming back instead of wagging, the ears laid
+  back), breathing, tail wags,
   ear flops, hip sways for tails without bones, and idle fidgets (look around, tilt, sniff, stretch, happy wag,
   hop, spin, shake, sit, scratch, yawn); the Ultra pack's bones have generic names, so `Util/RigGuess` works out
   pelvis, spine, neck, head, tail, legs (front and hind) with their IK feet, arms and ears from where they sit
@@ -1545,8 +1645,10 @@ group, checked before its fragments and every time (not only the first). Below i
   skipped; see "Defeat screen" below), then home (`BossRules.lossHome`, `WildService.SendToSpring`): the main game's plaza
   spring, the Frontier's entrance spring; the Dungeon's run handles its own. In a group a player who is out stays,
   kneeling, until the fight ends, and a win counts for them too.
-- **Sword, controls and feel** (same spec): everyone gets the Steel Sword at shop level 4 (`Swords.UNLOCK_SHOP_LEVEL`,
-  when boss 1 opens; worked out from the level, so no save change) with a one-time "You got your first sword!" popup
+- **Sword, controls and feel** (same spec): everyone gets the Steel Sword from Chikin as his first fight ends (owner
+  2026-11-16: "chikin should give the player a sword before leaving the player on wild"; the server's `SwordGiven`, set
+  by CombatTutorialService from the saved tour, also once the tour is skipped or done; `WeaponRules.swordReady`), or at
+  shop level 4 (`Swords.UNLOCK_SHOP_LEVEL`, when boss 1 opens) for anyone else, with a one-time "You got your first sword!" popup
   (`seenSword`). It rests on the back everywhere (hilt over the right shoulder, the blade down to the left hip, every
   sword's tip clear of the ground, near life-size: `Swords.BACK_SCALE` 1.05), is drawn on the first attack (gleam, unsheathe sound) and goes back after 4 s without one
   (`SHEATH_SECONDS`). The model is `assets/weapons/StarterSword.rbxm` (built in Blender, docs/animations.md). The
@@ -2138,7 +2240,10 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   group" (2-4, 15 s, the leader starts early, like boss gates). Every member needs shop level 57, the Hydra open or 10
   Hydra Key Fragments (the Rift Devourer drops them: 50% per full loot, 3 in its first clear), and a creature ready to
   fight. Then one teleport takes them into a new reserved Dungeon server (`TeleportData.runSize`). The fragments are
-  taken only when the Hydra fight first starts, so a lost run costs none.
+  taken only when the Hydra fight first starts, so a lost run costs none. Only that way in counts (security review
+  2026-11-16): a client can start a teleport of its own to any place in the game, so a player who lands in any Dungeon
+  server but a reserved one (`DungeonRules.arrivalAllowed`: a private server id and no owner; Studio always) gets
+  `Dungeon.ENTER_THROUGH_PORTAL` and goes back to the Frontier.
 - **The run (`DungeonService`, `Util/DungeonRules`):** a player joins the run once their save has loaded; the rooms
   stay shut ("Waiting for n more players to load...") until everyone the teleport brought has loaded
   (`DungeonRules.readyToStart`; after `ARRIVAL_WAIT` 60 s a player who never came, e.g. a failed teleport, is left
@@ -2513,9 +2618,11 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
 - **What it does**: your sword turns to the locked enemy when you attack (SwordController's soft aim, wherever it is),
   and the server points your creature at it (remote `SoftLock`, `BattleSim.setFocus`: its auto-attacks go there
   instead of a boss's adds first / the lowest share of HP); an id that isn't a standing enemy changes nothing.
-- **The look** (`Config/SoftLock`, client `Util/SoftLock`): a solid gold ring of neon pieces over the fight rings'
-  glow, lifted 1 stud over the ground (the arenas' tall grass hid a flat one), gently pulsing; three bobbing glossy gold
-  chevrons over the enemy's model (owner's pick 2 of a Figma sheet, `assets/ui/target/TargetChevrons.png`) (always on top; slid down a big boss's body to stay under the boss bar,
+- **The look** (`Config/SoftLock`, client `Util/SoftLock`; owner 2026-11-16 pick A, "lock target color could easily
+  be mistaken for a boss attack ring"): nothing on the ground, which is for danger only (a boss's orange closing
+  rings): a cyan outline and a soft breathing cyan glow on the enemy's model (a Highlight drawn over everything, so
+  grass can't hide it; the colour far round the wheel from the warning's orange, tests/SoftLockRules); three bobbing
+  glossy cyan chevrons over it (owner's pick 2 of a Figma sheet, recoloured: `assets/ui/target/TargetChevronsCyan.png`) (always on top; slid down a big boss's body to stay under the boss bar,
   nudged toward the camera). With nothing locked a soft white ring (no arrow) shows who your sword would hit (the
   nearest in front, `SwordRules.aimTarget`). Boss fights, Dungeon rooms (its pylons too) and wild fights with the
   sword; the ring, arrow and taps last as long as the fight.
@@ -2952,7 +3059,7 @@ Packs and deck boxes are 3D models everywhere (`Util/PackModels`, `Config/Packs`
 - Starting cash: **$200**
 - Starting shop: small room, register, order computer. No shelves: the first Small Pack Rack is bought from the Build menu.
 
-### 7.2 Shop levels (XP per sale = sale price rounded, min 1)
+### 7.2 Shop levels (XP per sale = sale price rounded, min 1; a pack ripped from stock = its market price)
 
 Levels 1 to 100 (spec `2026-11-04-round4-design` section 8): the total XP to reach level n is
 `BASE_XP × (n − 1) ^ POWER` rounded to 10 (`Config/Levels`: 40, 2.31; maths in `Util/LevelMath.luau`, Lune-tested).
@@ -2998,12 +3105,17 @@ the portrait. The server sends `LevelUpFx` to everyone; others within 60 studs o
 quieter. A shop level-up never plays mid-fight (a glowing circle underfoot reads as "dodge"): `LevelUpService` holds it
 until the fight (or PvP) ends, and after a boss fight its end screen too (the victory screen 6 s, the defeat countdown and the trip home 8 s, `LevelUpFx.AFTER_BOSS`), and merges several into one; the cash, the pack and the toast come at once. Bag packs don't open in a fight or PvP, nor while a pack is on the stage or a rip is on its way. Sounds
 (round 5, owner: round 4's four stacked sounds were "too loud, too much"; Pro Sound Effects, APM Music): **one soft
-sound** as the badge pops, and on a 10th shop level a short sting with it, from one of three sets (`LevelUpFx.SOUNDS.sets`,
-`LevelUpRules.soundSet`): 1 soft sparkle ping (the default) with the "All It Takes" sting, 2 bright bell ding with the
-same sting, 3 twirling chime with the "Spinning Around" link; about half round 4's volume (sound 0.06-0.07, sting
-0.1-0.12, never over 0.15). A creature plays its set's sound, quieter and higher. They're preloaded on the loading
-screen. Studio: `/levelfx [level]`, `/beastlevelfx`, `/levelsound <1-3> [volume]` (picks a set and plays it once; 0
-for the default) and the admin panel's "Level sound" buttons. Measured: about 59 fps during the effect against 60 without it.
+sound** as the badge pops, and on a 10th shop level a short sting with it, from one of four sets (`LevelUpFx.SOUNDS.sets`,
+`LevelUpRules.soundSet`): 1 soft sparkle ping with the "All It Takes" sting, 2 bright bell ding with the
+same sting, 3 twirling chime with the "Spinning Around" link, 4 **Power-up fanfare** (the default since 2026-11-16,
+owner: "add a satisfying immersive sound effect" on a shop level-up): a synth rise winding up 1.1 s before the badge
+pops, a bright game melody on it and a soft chiming shimmer after (a set's `layers`, each `at` seconds from the pop);
+never over 0.35 (`SOUNDS.maxVolume`; round 5's soft sets stay at 0.06-0.12). A creature plays its set's sound and
+layers a little quieter (0.85) and higher, and **glows** for 3.5 s (owner 2026-11-16: "if pets leveled up. it should be
+noticeable. pets should glow for some time"): a gold Highlight pulsing 1.6 times a second, white outline, fading over
+its last second (`LevelUpFx.CREATURE_GLOW`). They're preloaded on the loading screen. Studio: `/levelfx [level]`,
+`/beastlevelfx`, `/levelsound <1-4> [volume]` (picks a set and plays it once; 0 for the default) and the admin panel's
+"Level sound" buttons. Measured: about 59 fps during the effect against 60 without it.
 
 ### 7.3 Upgrades (one-off purchases)
 
@@ -3085,7 +3197,8 @@ All numbers in `Config/Pish`.
   twinkling), then a pop of stars, streaks and light (the Euphoric pack's) and he barks and hops out of it as his name
   card pops up big at the top ("Pish! Your shop buddy", "Chikin! Your battle coach", `PishTalk` / `ChikinTalk` LABELS)
   with a cheerful APM sting, the camera pushing in on him; then he runs in trailing gold sparkles, the camera riding
-  low beside him on his paws as he runs in (30 studs, about 4.6 s; from in front of the player if that's clear,
+  low beside him on his paws as he runs in (30 studs, about 4.6 s, each step on the ground under it: owner 2026-11-16 "while
+  pish is running, he's phasing to the floor"; from in front of the player if that's clear,
   else the first clear way fanning out left and right, so he never runs through a shelf or a wall), slowly pans up to
   his face, and zooms out to a wide shot of the two of you as he stops in front of the player and barks (the first of
   four angles with a clear view) in hearts and stars; about 9 s in all, then the camera goes back behind the player and
@@ -3093,8 +3206,9 @@ All numbers in `Config/Pish`.
   (`Util/ArrivalShot`, `Pish.ARRIVAL`, `tests/ArrivalShot`; the camera never goes through a wall; once per first
   visit, after the loading screen and its fade for a player back mid-tour; a tap skips it). Eight steps completed by what the
   game sees: open his present (`pishPresent`, "Pish's Present": a First Spark pack with his picture, in the Bag),
-  build a Small Pack Rack, order First Spark packs, stock the rack, a customer he sends reaches the counter, ring them
-  up, open his gift (`pishGift`: the hit card is Very Rare or better), his goodbye. **Pish talks** (`Util/TutorialTalk`, lines in
+  build a Small Pack Rack, order First Spark packs, stock the rack (while the box is still on its way he says "Your packs
+  are on the way! Deliveries take a bit.", owner 2026-11-16; the server's BoxesComing / BoxesWaiting), a customer he sends reaches the counter, ring them
+  up ("Tap each card they put on the counter!" once behind it, the paw on one, owner 2026-11-16), open his gift (`pishGift`: the hit card is Very Rare or better), his goodbye. **Pish talks** (`Util/TutorialTalk`, lines in
   `Config/PishTalk`, `Util/TalkRules`; the game's name from `Config/Game.NAME`): a talk card at the top centre (the owner
   2026-11-11: "so that pish model can be seen"; it was above the HUD tiles) with
   his face (his model in a little window), one short line, the step's picture and a big Next; his intro lines first
@@ -3103,7 +3217,9 @@ All numbers in `Config/Pish`.
   First Spark's Order; the box, then the rack; behind the counter, then Charge. A window the step doesn't use makes
   the line "Tap the X to close this window." with the paw on its X. The card moves down above the HUD tiles only when
   at the top it would cover what he points at, his paw included (`TalkRules.cardAtTop`); down there it rises above a
-  HUD tile he points at so his paw shows, and keeps clear of the HUD's side columns on phones. Cues: gold paw prints to the place and a bouncing gold paw over a thing in the shop, drawn on the screen
+  HUD tile he points at so his paw shows, and keeps clear of the HUD's side columns on phones. Cues: gold paw prints to the place along the walking route (Roblox's pathfinding round walls and shops, about one
+  every 3 studs up to 48, `Util/TrailRules`; owner 2026-11-16: "chikin paws are passes through things"; a straight line
+  only when no route is found) and a bouncing gold paw over a thing in the shop, drawn on the screen
   so walls and closed doors don't hide them (none while a window is open, so they never sit on it); a bouncing gold
   paw and a pulsing gold ring on a button (it follows a window that rebuilds its buttons). The small Skip hides while
   a window is open (on phones it sat on the window's X); while the talk card shows it hangs off the card's bottom right
@@ -3160,6 +3276,15 @@ All numbers in `Config/Pish`.
   at level 2 (`LessonRules.used`). He leaves after 30 s with no step taken (`TEACH_QUIET_SECONDS`, Next counts); his card stays
   above the Rotate / Place / Cancel bar while placing. The
   first sword (the Wild portal) and Jobs (its tile) he points at and leaves after 20 s or once it's used.
+  Owner 2026-11-16 round: a lesson that has you buy something waits until you can pay for it (the Glass Showcase's
+  $250: "pish should only tell players when the player have enough money"; `LessonRules.firstReady`, the next
+  affordable one goes first); a tile further down a scrolling list gets "Scroll down to find the Potted Plant!" with a
+  paw sliding down at the list's bottom (`PishTalk.TEACH.scroll`, `TutorialCues.scrollPaw`), and a tile half scrolled
+  out keeps its ring and paw inside the list. Right after his first visit he comes back for **prices** (trigger
+  `tourDone`, owner: "let pish teach players how to set prices"): "Set your own prices! Tap Prices on your Phone.", the
+  paw on the Prices tile, then inside the window "Tap + or - to change a price.", "At market price, customers almost
+  always buy!", "Higher earns more, but fewer will buy." and Bye (a pointing lesson with `PishTalk.AFTER` lines says
+  them once its window opens). His goodbye now says "Sell and rip packs to grow your shop level!".
 - [ ] **Stuck helper**: a new player's first hour (first visit not done when they joined), a quiet minute (no order,
   restock, sale or pack) with a box waiting brings Pish to point at it, with empty shelves at the order computer; at
   most every 2 minutes (`LessonRules.nudge`).
@@ -3181,13 +3306,22 @@ his card for a face.
 - [ ] **Two visits** (`CombatTutorialService`, `ChikinController`, `Config/Chikin`, `Config/ChikinTalk`; steps on Pish's
   `Util/TutorialRules`, saved as `data.combat`, schema v18: done for every shop past Pish's tour). Pish's goodbye hands
   over ("My buddy Chikin will teach you to fight!"); once Pish has gone Chikin runs in with the same arrival shot
-  (`Util/DogArrival`, now shared). Visit 1: hello, Add to party (Cards, then the card's Add to party), summon (party
+  (`Util/DogArrival`, now shared; his can't be skipped by a tap, owner 2026-11-16, `Intro.unskippable`). Visit 1: hello, Add to party (Cards, then the card's Add to party), summon (party
   slot 1), the Wild (paw trail to the portal), a fight ("Walk up to a monster and tap Fight!", paw over the nearest
-  monster), its end ("You won! Your creature got XP." or the lost lines "Rest it, or bring another card."; "Come back at
-  shop level 4", or "You have a sword too!" for a player already there). A hidden wait for shop level 4; visit 2:
-  "You got a sword!", the Wild, a fight that must be won ("Oops! Rest up, then try another one!" after a loss or a run),
-  then "The Meadow Warden lives through that portal. Beat it for a trophy!" with the paw trail to its portal. Steps
-  the game already shows done pass at once (a party, a summoned creature, being in the Wild).
+  monster), its end ("You won! Your creature got XP." or "Oh no! Your creature got tired.", then "Here's a sword! Now
+  you can fight too." as it appears on your back with its popup), a second fight with the sword that must be won ("Find
+  another monster and tap Fight!"; "Oops! Rest up, then try another one!" after a loss or a run), then his goodbye
+  ("Great fighting!", "Fights level up your creature, not your shop.", "Sell and rip packs to reach shop level 4.
+  Bye!": owner 2026-11-16, shop XP and creature XP were confused; or "You're shop level 4
+  already! Let's find a boss!" for a player already there). Owner 2026-11-16: "chikin will make you fight a monster with
+  your summoned pet. after the monster is dead, he will give you a sword and fight another monster. then will leave".
+  A hidden wait for shop level 4 (reached mid-fight, say by a cashier's sale while you hunt, it waits until the fight
+  ends, and he doesn't arrive during one: owner 2026-11-16); visit 2: "Woof! Shop level 4! A boss is waiting for you!", the Wild, then "The Meadow
+  Warden lives through that portal. Beat it for a trophy!" with the paw trail to its portal. Steps the game already
+  shows done pass at once (a party, a summoned creature, being in the Wild). Saves from before the reorder keep their
+  place by step name (schema v31).
+  His head came from the model turned about 20 degrees to his left (he looked like he walked sideways): it's turned
+  back on top of every clip (`Chikin.HEAD_STRAIGHTEN`, `Util/PishVisual`; owner 2026-11-16).
 - [ ] **Focus mode** (the owner 2026-11-11: "the screen is really crowded", pick A): while he leads in town the calm
   HUD hides all but what his step uses (`Config/Chikin` FOCUS: the party bar on his summon step, the weapon switch on
   the sword's; `TutorialRules.chikinFocus`); the peeking Pish waits till the tour is over; the Wild keeps the whole HUD.
@@ -3203,8 +3337,8 @@ his card for a face.
   opening Pish's present waits for one); his step is hidden while Pish's tour is replayed and comes back after it; he
   runs in only once Pish has gone, no window, weapon reveal or pack opening has the screen (the first-sword popup
   first), and after the loading screen. Pish's lessons and the stuck helper go on during Chikin's wait for shop level 4
-  and stop only while he leads; Pish's tour replay isn't offered while Chikin leads; his sword visit marks Pish's sword
-  lesson seen on the server; Pish's goodbye names Chikin only while his tour is still to come. A fight tip counts as
+  and stop only while he leads; Pish's tour replay isn't offered while Chikin leads; handing over the sword (his first fight's
+  end onward) marks Pish's sword lesson seen on the server; Pish's goodbye names Chikin only while his tour is still to come. A fight tip counts as
   used when its button is tapped (phones) or its key pressed; a click on a window isn't a swing. After a rejoin the
   first fight's end says the cheerful lines, and its last button says "Let's go!" when the sword visit is next.
 - Analytics: funnel `CombatTutorial` (`LogFunnelStepEvent`, one step per step), custom event `CombatTutorialSkipped`.
@@ -3275,6 +3409,10 @@ Spec `docs/superpowers/specs/2026-11-13-turts-shop-design.md`, plan `docs/superp
 anywhere. highlevel/rarer items have lower chances to be restocked. after the timer ends, the shop restocks 3 random
 items"; "make sure the prices are higher than usual. otherwise players will just wait for restocks. make sure its abuse
 proof and balance. restock also stocks only 1qty per item").
+
+- His rug opens only once Pish's first visit is over (owner 2026-11-16: a new player's $200 is for Pish's rack and
+  stock): the prompt says "After Pish's tour" until then, and the server refuses a look or a buy with a Blocked card
+  (`Turts.AFTER_TOUR`, the TutorialDone attribute).
 
 - Turts, the owner's dog (a shaggy black Shih Tzu: cross-eyed with big pupils, an underbite with two little teeth, his
   tongue always out), sits on his rug with his things (a woven medallion rug, a cushion, two crates, a lantern, a stack
@@ -3426,7 +3564,10 @@ grades are untouched, so a Grade S is earned, never bought. The owner made three
   Extra Job Slot as a gold "Forever" tile ("Owned" once yours). A boost tap asks the server (remote BuyLuck;
   validated, rate-limited, LuckService prompts the purchase). Where Roblox restricts paid random items
   (PolicyService ArePaidRandomItemsRestricted) the luck tiles say "Not sold where you live" and the server won't
-  prompt. No fake timers, scarcity or "most popular" without sales behind it.
+  prompt; Turts' "Restock now" (a paid re-roll, so chance-based too) says "Not available here" and the server refuses it
+  (`Turts.RESTOCK_RESTRICTED`). One rule for both, `Util/PaidRandomRules.restricted`: a policy that can't be read counts
+  as restricted. The content questionnaire (2026-11-16) answers that purchases include chance-based ones for these two
+  (luck raises the odds of random pulls). No fake timers, scarcity or "most popular" without sales behind it.
 - **The win card** (StoreWinController, remote StoreWin, `Luck.WIN`): the moment a boost or the slot is granted, once
   the purchase dialog has closed, a card pops in the middle of the screen: light rays turning behind a big clover (a
   briefcase for the slot) swinging in, "2x LUCK!" (green) / "SUPER LUCK!" (rainbow) / "+1 WORKER!" (gold), its line
@@ -3990,7 +4131,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v30)
+### 10.4 Player data schema (v31)
 ```lua
 {
     version = 21,
@@ -4058,7 +4199,17 @@ place loads it at once; before, the session only closed after they'd left, and t
 `TeleportInitFailed`), `Reclaim` opens the session again and the next save writes it. Changes in the moment before
 they leave aren't saved. A session this server ended (leaving, a hand-off) never kicks the player.
 
-Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; v17 added `tutorial` (the first visit with Pish; existing saves "done" with their first pack given and his gift still to come, so only new players go through it); each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity); `tutorial` gained `customerSent` (read as false when missing, true for v17's existing shops; no bump: an older server dropping it allows one more of Pish's customers). v18 added `combat` (Chikin's combat tutorial, the same shape; done for every shop past Pish's tour, still to do for a player mid-way through it). v19 added `dungeon` (`secretFound` and `seenIntro` false for everyone; a junk value is replaced). v20 added `title` ("" for everyone: automatic, the same title as before; a saved string kept, junk replaced). v21 added `upgrades`, `skipTokens` and `purchases` (empty for everyone; a good skip count kept, junk replaced). v22 added `support` (no gifts for everyone; good counts kept). v23 added `titles` (`known`, `fresh` empty, `seeded` false: the first load counts the titles a player already has without telling). v24 added `turts` (nothing bought for everyone; good ids kept, a broken "restock now" roll dropped). v25 added `decor` (Cozy Wood in use and no looks bought for everyone; good ids kept, cleaned against Config/Decor on load). v26 added `windows` (none for everyone; a saved list kept and cleaned on load by `WindowRules.clean`, which pays back any window that no longer fits). v27 added `luck` (no bought luck for everyone). v28 added `unlocks` (none for everyone). v29 added `seenPrologue` (true for every save from before it, so the prologue only greets new players). v30 added `gifts` (the round at day 1, nothing played or earned, for everyone; a saved table kept and cleaned on load by `GiftRules.clean`). A service that didn't load for a player (e.g. no free plot) never overwrites
+**The owner's test save** (owner 2026-11-16: "is there anyway I can experience what new player experience without
+wiping?"; their second account couldn't pass Roblox's age check): the game's owner alone (a user-owned game's
+`game.CreatorId`, checked on the server) can type `/slot test` to play a separate save from the start, `/slot main` to
+go back to the real one (never touched), `/slot reset` for another fresh test save, `/slot` for which is loaded. The
+choice lives in the DataStore `OwnerSaveSlot` and applies on the next join in every place (DataService reads it before
+loading: key `Player_<id>_test<n>`); a reminder shows on joining the test save, and the plaza leaderboard skips it.
+Studio on the test slot plays its own save, `Player_<id>_studio` (2026-11-16: Studio checks were landing on the owner's
+live playthrough), so Studio and the live game never share one.
+Anyone else's `/slot` does nothing. (`SaveSlotService`, pure `Server/Util/SaveSlots`, Lune-tested.)
+
+Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; v17 added `tutorial` (the first visit with Pish; existing saves "done" with their first pack given and his gift still to come, so only new players go through it); each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity); `tutorial` gained `customerSent` (read as false when missing, true for v17's existing shops; no bump: an older server dropping it allows one more of Pish's customers). v18 added `combat` (Chikin's combat tutorial, the same shape; done for every shop past Pish's tour, still to do for a player mid-way through it). v19 added `dungeon` (`secretFound` and `seenIntro` false for everyone; a junk value is replaced). v20 added `title` ("" for everyone: automatic, the same title as before; a saved string kept, junk replaced). v21 added `upgrades`, `skipTokens` and `purchases` (empty for everyone; a good skip count kept, junk replaced). v22 added `support` (no gifts for everyone; good counts kept). v23 added `titles` (`known`, `fresh` empty, `seeded` false: the first load counts the titles a player already has without telling). v24 added `turts` (nothing bought for everyone; good ids kept, a broken "restock now" roll dropped). v25 added `decor` (Cozy Wood in use and no looks bought for everyone; good ids kept, cleaned against Config/Decor on load). v26 added `windows` (none for everyone; a saved list kept and cleaned on load by `WindowRules.clean`, which pays back any window that no longer fits). v27 added `luck` (no bought luck for everyone). v28 added `unlocks` (none for everyone). v29 added `seenPrologue` (true for every save from before it, so the prologue only greets new players). v30 added `gifts` (the round at day 1, nothing played or earned, for everyone; a saved table kept and cleaned on load by `GiftRules.clean`). v31 kept `combat`'s shape but reordered Chikin's steps (the sword and a fight with it in his first visit): a tour in progress keeps its place by step name. A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
 
 ### 10.6 UI style and HUD

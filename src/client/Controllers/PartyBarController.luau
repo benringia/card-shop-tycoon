@@ -43,6 +43,7 @@ local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Motion = require(ClientUtil:WaitForChild("Motion"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
 local CardTips = require(ClientUtil:WaitForChild("CardTips"))
+local Tooltip = require(ClientUtil:WaitForChild("Tooltip"))
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local CreatureVisuals = require(ClientUtil:WaitForChild("CreatureVisuals"))
 local UIController = require(Controllers:WaitForChild("UIController"))
@@ -934,6 +935,15 @@ function PartyBarController.Start()
 	-- your XP bar alone (the health bar went, owner 2026-11-13: a fight shows your health), centred on the row
 	local xpTop = (DOCK.badge + 4 - DOCK.xpHeight) / 2
 	xpFill, xpWords = makeBar("Xp", xpTop, DOCK.xpHeight, DOCK.xpFill)
+	-- it's the SHOP's level (owner 2026-11-16: fights grow your creatures, sales and rips your shop): its label and tip
+	local xpTrack = xpFill.Parent :: Frame
+	local shopTag = UIKit.label(xpTrack, BAR.SHOP_LABEL, Enum.Font.FredokaOne, DOCK.barText - 2, WHITE)
+	shopTag.Size = UDim2.new(1, -8, 1, 0)
+	shopTag.Position = UDim2.fromOffset(8, 0)
+	shopTag.TextXAlignment = Enum.TextXAlignment.Left
+	shopTag.ZIndex = 3
+	UIKit.outlined(shopTag, 1.5)
+	Tooltip.attach(xpTrack, BAR.SHOP_TIP)
 	levelBadge = Instance.new("Frame")
 	levelBadge.Name = "Level"
 	levelBadge.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -980,6 +990,90 @@ function PartyBarController.Start()
 		placeCarousel() -- the phone's look: no key numbers, veiled sides, the name pill, the element badge
 	end)
 
+	-- Shop XP gained (a sale, a pack ripped): gold sparks fly from you into the bar, then "+xp XP" over it, a white
+	-- flash on the bar and a bump on the badge (owner 2026-11-16: "right now it's too flat")
+	local flashCover = Instance.new("Frame")
+	flashCover.Name = "Flash"
+	flashCover.Size = UDim2.fromScale(1, 1)
+	flashCover.BackgroundColor3 = WHITE
+	flashCover.BackgroundTransparency = 1
+	flashCover.ZIndex = 2
+	flashCover.Parent = xpTrack
+	UIKit.corner(flashCover, DOCK.xpHeight / 2)
+	local function shopXpGained(gained: number)
+		local look = BAR.SHOP_SPARKS
+		local screen = UIController.GetScreenGui()
+		local camera = workspace.CurrentCamera
+		local character = player.Character
+		local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
+		if not dock or not dock.Visible or UIKit.anyPanelOpen() or not camera or not root or not root:IsA("BasePart") then
+			Motion.bump(levelBadge)
+			return
+		end
+		local origin = screen.AbsolutePosition
+		local seen, onScreen = camera:WorldToViewportPoint(root.Position)
+		local from = if onScreen then Vector2.new(seen.X, seen.Y) - origin else screen.AbsoluteSize / 2
+		local target = xpTrack.AbsolutePosition + xpTrack.AbsoluteSize / 2 - origin
+		local count = SparkPath.count(gained, look.min, look.max)
+		local color = rgb(look.color)
+		for index = 1, count do
+			task.delay((index - 1) * look.stagger, function()
+				local spark = Instance.new("ImageLabel")
+				spark.Name = "ShopXpSpark"
+				spark.BackgroundTransparency = 1
+				spark.Image = CardDesign.IMAGES.GLOW
+				spark.ImageColor3 = color
+				spark.AnchorPoint = Vector2.new(0.5, 0.5)
+				spark.Size = UDim2.fromOffset(look.size, look.size)
+				spark.ZIndex = 20
+				spark.Parent = screen
+				local jitter = (index - (count + 1) / 2) * 16
+				local started = os.clock()
+				local connection: RBXScriptConnection
+				connection = RunService.RenderStepped:Connect(function()
+					local t = math.min((os.clock() - started) / look.seconds, 1)
+					local eased = t * t * (3 - 2 * t)
+					local x, y = SparkPath.point(from.X + jitter, from.Y, target.X, target.Y, look.lift + jitter, eased)
+					spark.Position = UDim2.fromOffset(x, y)
+					spark.ImageTransparency = if t > 0.85 then (t - 0.85) / 0.15 else 0
+					if t >= 1 then
+						connection:Disconnect()
+						spark:Destroy()
+					end
+				end)
+			end)
+		end
+		task.delay((count - 1) * look.stagger + look.seconds, function()
+			if not xpTrack.Parent then
+				return
+			end
+			Motion.bump(levelBadge)
+			flashCover.BackgroundTransparency = look.flash
+			TweenService:Create(flashCover, TweenInfo.new(look.flashSeconds), { BackgroundTransparency = 1 }):Play()
+			local pop = UIKit.label(screen, `+{gained} XP`, Enum.Font.FredokaOne, look.popText, rgb(look.color))
+			pop.AnchorPoint = Vector2.new(0.5, 1)
+			pop.Position = UDim2.fromOffset(target.X, target.Y - xpTrack.AbsoluteSize.Y / 2)
+			pop.Size = UDim2.fromOffset(120, look.popText + 4)
+			pop.TextXAlignment = Enum.TextXAlignment.Center
+			pop.TextWrapped = false
+			pop.ZIndex = 21
+			local edge = Instance.new("UIStroke")
+			edge.Color = Color3.fromRGB(120, 70, 0)
+			edge.Thickness = 2
+			edge.Parent = pop
+			local info = TweenInfo.new(look.popSeconds, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+			TweenService:Create(pop, info, {
+				Position = UDim2.fromOffset(target.X, target.Y - xpTrack.AbsoluteSize.Y / 2 - look.popRise),
+				TextTransparency = 1,
+			}):Play()
+			TweenService:Create(edge, info, { Transparency = 1 }):Play()
+			task.delay(look.popSeconds, function()
+				pop:Destroy()
+			end)
+		end)
+	end
+	local lastXp: number? = nil
+
 	-- your level and XP (the XP pill's job before, owner 2026-11-13: "the exp/level looks broken")
 	local function updateXp()
 		local xp = player:GetAttribute("XP")
@@ -994,6 +1088,11 @@ function PartyBarController.Start()
 			Motion.bump(levelBadge)
 		end
 		levelNumber.Text = level
+		-- more than before (not the first reading as it loads): the gain shows
+		if lastXp and xp > lastXp then
+			shopXpGained(math.floor(xp - lastXp + 0.5))
+		end
+		lastXp = xp
 		local into, span = LevelRules.getProgress(xp)
 		xpFill.Size = UDim2.fromScale(if span > 0 then math.clamp(into / span, 0, 1) else 1, 1)
 		xpWords.Text = PartyDock.xpText(into, span)

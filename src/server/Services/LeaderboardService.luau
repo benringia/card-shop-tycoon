@@ -41,9 +41,9 @@ local function getStore(): OrderedDataStore?
 	return store
 end
 
--- Sends a player's total if it changed (Studio's test packs never count)
+-- Sends a player's total if it changed (Studio's test packs never count, nor the owner's test save: SaveSlotService)
 local function write(player: Player)
-	if RunService:IsStudio() then
+	if RunService:IsStudio() or DataService.IsTestSlot(player) then
 		return
 	end
 	local count = DataService.GetStat(player, STAT)

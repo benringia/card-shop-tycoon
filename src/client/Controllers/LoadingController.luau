@@ -32,6 +32,8 @@ local ProductPictures = require(Config:WaitForChild("ProductPictures"))
 local PackFx = require(Config:WaitForChild("PackFx"))
 local Town = require(Config:WaitForChild("Town"))
 local WeaponLooks = require(Config:WaitForChild("WeaponLooks"))
+local RegisterStation = require(Config:WaitForChild("RegisterStation"))
+local RegisterConfig = require(Config:WaitForChild("Register"))
 local TownPreload = require(Shared:WaitForChild("Util"):WaitForChild("TownPreload"))
 local LoadingRules = require(Shared:WaitForChild("Util"):WaitForChild("LoadingRules"))
 local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
@@ -145,18 +147,31 @@ local function preloadShop()
 		packFx = PackFx,
 		town = Town,
 		weaponLooks = WeaponLooks,
+		registerStation = RegisterStation,
+		register = RegisterConfig,
 	})
 	for _, image in images do
 		table.insert(items, keepDrawn(image))
 	end
-	-- The level-up sounds (round 5), so the first level-up isn't silent while they fetch: as Sound instances (an asset id
+	-- The sounds the shop plays first (Util/TownPreload.sounds: every level-up set with its layers, the register's beep
+	-- and sale), so the first level-up and the first sale aren't silent while they fetch: as Sound instances (an asset id
 	-- given as a string reports Failure and fetches nothing)
-	for _, set in LevelUpFx.SOUNDS.sets do
-		for _, part in { set.sound, set.sting } do
-			local sound = Instance.new("Sound")
-			sound.SoundId = part.id
-			table.insert(items, sound)
-		end
+	for _, id in TownPreload.sounds({
+		uiIcons = UIIcons,
+		packs = Packs,
+		hudMascot = HudMascot,
+		binderCovers = BinderCovers,
+		levelUpFx = LevelUpFx,
+		productPictures = ProductPictures,
+		packFx = PackFx,
+		town = Town,
+		weaponLooks = WeaponLooks,
+		registerStation = RegisterStation,
+		register = RegisterConfig,
+	}) do
+		local sound = Instance.new("Sound")
+		sound.SoundId = id
+		table.insert(items, sound)
 	end
 	local statuses: { [string]: string } = {}
 	ContentProvider:PreloadAsync(items, function(content: string, status: Enum.AssetFetchStatus)

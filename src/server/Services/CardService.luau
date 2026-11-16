@@ -182,6 +182,12 @@ function CardService.Lend(player: Player, beasts: { Beast })
 	sync(player)
 end
 
+-- A prologue card lent for its fight (never one of the player's own)
+function CardService.IsLent(player: Player, beastId: string): boolean
+	local borrowed = lent[player]
+	return borrowed ~= nil and borrowed[beastId] ~= nil
+end
+
 function CardService.EndLend(player: Player)
 	local borrowed = lent[player]
 	local inventory = inventories[player]

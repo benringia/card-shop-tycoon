@@ -3,7 +3,9 @@
 -- 2026-11-09: "same with in town. make sure models and weapon effects are ready"): every UI icon, the pack fronts, the
 -- mascot stickers, the binder covers, the level-up textures, the menus' product pictures, the pack opening's effects
 -- (Config/PackFx), the portals' swirl and glow and the town's beam textures (Config/Town) and every weapon's portrait
--- (Config/WeaponLooks: the weapon chip, the Armory, the Forge). Pure (callers pass the configs in), Lune-tested.
+-- (Config/WeaponLooks: the weapon chip, the Armory, the Forge), the register drawer's notes and coins
+-- (Config/RegisterStation); and the sounds the shop plays first (TownPreload.sounds). Pure (callers pass the configs
+-- in), Lune-tested.
 local TownPreload = {}
 
 export type Configs = {
@@ -16,6 +18,8 @@ export type Configs = {
 	packFx: any,
 	town: any,
 	weaponLooks: any,
+	registerStation: any,
+	register: any,
 }
 
 local PREFIX = "rbxassetid://"
@@ -73,6 +77,35 @@ function TownPreload.images(c: Configs): { string }
 	textures(c.town)
 	for _, look in c.weaponLooks.WEAPONS do
 		add(look.portrait)
+	end
+	for _, id in c.registerStation.MONEY_IMAGES do
+		add(id)
+	end
+	return list
+end
+
+-- The sounds the shop plays first, each once (owner 2026-11-16: "make sure loading screen load necessary items"):
+-- every level-up set's sound, sting and layers (the Power-up fanfare's rise plays before its badge), the register's
+-- scan beep and its sale sounds
+function TownPreload.sounds(c: Configs): { string }
+	local list: { string } = {}
+	local seen: { [string]: boolean } = {}
+	local function add(id: any)
+		if typeof(id) == "string" and string.sub(id, 1, #PREFIX) == PREFIX and not seen[id] then
+			seen[id] = true
+			table.insert(list, id)
+		end
+	end
+	for _, set in c.levelUpFx.SOUNDS.sets do
+		add(set.sound.id)
+		add(set.sting.id)
+		for _, layer in set.layers or {} do
+			add(layer.id)
+		end
+	end
+	add(c.register.SCAN_SOUND_ID)
+	for _, sound in c.register.SALE_SOUNDS do
+		add(sound.id)
 	end
 	return list
 end

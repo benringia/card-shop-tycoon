@@ -53,10 +53,26 @@ return {
 				sound = { id = "rbxassetid://9125644676", volume = 0.06, pitch = 1 }, -- PSE "Magic Twirling Small High Pitch Spinning Chime 1"
 				sting = { id = "rbxassetid://1839881844", volume = 0.1, pitch = 1 }, -- APM "Spinning Around (b)", a 2 s lively link
 			},
+			-- Owner 2026-11-16: "in addition to the visual effect on shop level up. add a satisfying immersive sound
+			-- effect": a rise winding up before the badge pops (`at`: seconds from the pop), a bright game chime on it, a
+			-- shimmer trailing off
+			{
+				name = "Power-up fanfare",
+				sound = { id = "rbxassetid://9125446706", volume = 0.3, pitch = 1 }, -- PSE "Computer Melody Melodic Blitz Electronic Game" (bright, dazzling)
+				sting = { id = "rbxassetid://9047103106", volume = 0.2, pitch = 1 }, -- APM "All It Takes Sting 2"
+				layers = {
+					{ id = "rbxassetid://9119816546", volume = 0.2, pitch = 1, at = -1.1 }, -- PSE "Synth Power Up Multi Tone Wind Ups Rise 2"
+					{ id = "rbxassetid://9116394876", volume = 0.22, pitch = 1, at = 0.05 }, -- PSE "Magic Glows Soft Clusters Of Chiming Hits 2"
+				},
+			},
 		},
-		default = 1,
-		maxVolume = 0.15,
-		creature = { volumeScale = 0.6, pitch = 1.25 }, -- a creature plays its set's sound, quieter and higher
+		default = 4,
+		maxVolume = 0.35,
+		creature = { volumeScale = 0.85, pitch = 1.2 }, -- a creature plays its set's sound, a little quieter and higher
 	} :: any,
+	-- A creature's level-up glows on it for a while (owner 2026-11-16: "it should be noticeable. pets should glow for some
+	-- time"): a golden fill pulsing between `low` and `high` transparency `pulseSpeed` times a second, a white outline,
+	-- fading out over its last `fade` seconds
+	CREATURE_GLOW = { seconds = 3.5, fill = { 255, 220, 110 }, outline = { 255, 255, 255 }, low = 0.35, high = 0.75, pulseSpeed = 1.6, fade = 1 },
 	SPARK_WAIT = 4, -- seconds your own creature's level-up from a fight waits for its XP sparks to land, at most
 }

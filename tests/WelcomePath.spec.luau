@@ -13,9 +13,15 @@ return {
 	-- The owner 2026-11-11: "the tutorial cinematic is a bit plain. can you make it more epic/jolly/welcoming, like a
 	-- whoosh sound on the camera and stuff like that": a card for each place as the camera passes it, whooshes on the
 	-- fast stretches, a wider and banking camera, music, and confetti at your shop
-	["a card pops up for each place in turn, inside the flight, never two at once, the last your shop"] = function()
+	-- then (owner 2026-11-16): "on welcome cinematic, remove the world labels": only your shop's card is left
+	["no world labels in the flight: only your shop's card, at the end"] = function()
 		local cards = welcome.CARDS
-		assert(#cards >= 5, "the four places and your shop")
+		expect.equal(#cards, 1, "your shop only")
+		expect.equal(cards[1].finale, true)
+		expect.equal(cards[1].title, "Your shop!")
+	end,
+	["the cards come in turn, inside the flight, never two at once, the last your shop"] = function()
+		local cards = welcome.CARDS
 		for index, card in cards do
 			assert(card.from < card.to and card.from >= 0 and card.to <= welcome.SECONDS, `card {index} inside the flight`)
 			assert(#card.title > 0 and #card.title <= 14 and #card.sub <= 32, `card {index}: short words`)

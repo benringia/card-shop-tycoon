@@ -45,9 +45,11 @@ export type Rig = {
 	sway: number?, -- Party.CREATURE_STYLE: a heavy gait's hip roll and leg swing
 	legSwing: number?,
 	legHang: { hip: number, knee: number, foot: number, sway: number }?, -- Party.CREATURE_STYLE: a flyer's hanging legs
-	gait: string?, -- Party.CREATURE_STYLE: "gallop", else a trot
+	gait: string?, -- Party.CREATURE_STYLE: "gallop" or "canine", else a trot
 	jawAmount: number?, -- Party.CREATURE_STYLE jaw: its share of a full gape
 	phase: number, -- the walk cycle this frame, radians
+	run: number, -- a canine's share of a gallop (Party.PET_ANIM.CANINE), eased in and out with its speed
+	lastWalked: number, -- the distance walked as of last frame (its speed)
 	cued: boolean, -- the playing fidget's effect has gone off
 }
 
@@ -203,6 +205,8 @@ function PetAnimator.attach(model: Model, root: BasePart, sourceName: string, si
 		gait = style and style.gait,
 		jawAmount = style and style.jaw,
 		phase = 0,
+		run = 0,
+		lastWalked = 0,
 	}
 end
 
@@ -278,6 +282,15 @@ function PetAnimator.step(rig: Rig, dt: number, now: number, walking: boolean, w
 		rig.side = if rig.random:NextNumber() < 0.5 then 1 else -1
 	end
 	rig.phase = walked / math.max(rig.stride, 0.1) * math.pi * 2
+	-- A canine trots walking and gallops running: how much, from how fast it's going now (studs a second)
+	local moved = math.abs(walked - rig.lastWalked)
+	rig.lastWalked = walked
+	if rig.gait == "canine" then
+		local canine = cfg.CANINE
+		local speed = if dt > 0 then moved / dt else 0
+		local target = if walking then math.clamp((speed - canine.runFrom) / (canine.runFull - canine.runFrom), 0, 1) else 0
+		rig.run += (target - rig.run) * math.min(1, dt / cfg.BLEND_SECONDS)
+	end
 	local state: PetRig.State = {
 		time = now,
 		phase = rig.phase,
@@ -299,6 +312,7 @@ function PetAnimator.step(rig: Rig, dt: number, now: number, walking: boolean, w
 		legSwing = rig.legSwing,
 		legHang = rig.legHang,
 		gait = rig.gait,
+		run = rig.run,
 		jawAmount = rig.jawAmount,
 		undulate = rig.undulate,
 		swimPhase = rig.swimPhase,

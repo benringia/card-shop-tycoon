@@ -36,6 +36,7 @@ return {
 			intro = {},
 			now = {
 				default = "Your box is here! Pick it up.",
+				coming = "Your packs are on the way! Deliveries take a bit.",
 				carrying = "Now put the packs on your rack!",
 			},
 		},
@@ -43,11 +44,18 @@ return {
 			intro = {},
 			now = { default = "Look, a customer! Let them shop." },
 		},
+		-- his first sale walks through the register (owner 2026-11-16: "include the use of cash register on pish's
+		-- tutorial"): man it, scan, Charge, then the change from the drawer (his customer always pays cash)
 		ringUp = {
-			intro = {},
+			intro = { "Your first customer! Let's use the register." },
 			now = {
-				default = "They're at the counter! Stand behind it.",
-				charge = "Tap Charge to sell!",
+				default = "Walk to your register and tap Man the register!",
+				-- on it with cards still to scan (owner 2026-11-16: tell them to click the cards)
+				scan = "Tap each card on the counter to scan it!",
+				charge = "All scanned! Tap the green Charge button.",
+				-- the payment step (Config/Payment); exact change gives itself
+				payCard = "They pay by card! Type the total, then OK.",
+				payCash = "They paid cash! Tap money to give back the change.",
 			},
 		},
 		gift = {
@@ -59,7 +67,13 @@ return {
 			},
 		},
 		bye = {
-			intro = { "You're a real shop owner now!", "My buddy Chikin will teach you to fight!", "Need me later? Tap me on your party bar. Bye!" },
+			-- owner 2026-11-16: encourage ripping packs for shop XP (a rip gives what selling the pack would)
+			intro = {
+				"You're a real shop owner now!",
+				"Sell and rip packs to grow your shop level!",
+				"My buddy Chikin will teach you to fight!",
+				"Need me later? Tap me on your party bar. Bye!",
+			},
 			now = {},
 		},
 	} :: { [string]: StepTalk },
@@ -83,6 +97,7 @@ return {
 		jobs = "Your cards can work now! Tap Jobs.",
 		trophy = "You won a trophy! Show it off in your shop.",
 		titles = "You earned a title! Tap your face to equip it.",
+		prices = "Set your own prices! Tap Prices on your Phone.",
 	} :: { [string]: string },
 
 	-- Once it's placed or ordered, Pish runs to it and says what it's for, one line at a time with Next (the last one
@@ -126,6 +141,12 @@ return {
 			"Everyone who visits your shop sees it!",
 			"Beat more bosses for more trophies.",
 		},
+		-- in the Prices window (owner 2026-11-16: "let pish teach players how to set prices"; Config/Pricing BUY_BANDS)
+		prices = {
+			"Tap + or - to change a price.",
+			"At market price, customers almost always buy!",
+			"Higher earns more, but fewer will buy.",
+		},
 		decor = {
 			"Decor makes your shop look like yours!",
 			"A cosy shop brings customers more often.",
@@ -151,10 +172,13 @@ return {
 		trayOpen = "Tap Shop.",
 		tab = "Tap %s.",
 		tile = "Tap the %s!",
+		-- the tile is further down the list (owner 2026-11-16: the paw pointed at nothing at the bottom)
+		scroll = "Scroll down to find the %s!",
 		placing = "Put it on the floor and tap to place!",
 		computer = "Walk to the computer.",
 		orderOpen = "Tap Order on %s!",
 		closeWindow = "Tap the X to close this window.",
+		leaveRegister = "Tap Leave to step off the register.",
 	} :: { [string]: string },
 
 	-- The stuck helper's nudges (Util/LessonRules.nudge)
@@ -189,6 +213,8 @@ return {
 		keepGoing = "Keep going",
 		skipYes = "Skip tour",
 		close = "Tap the X to close this window.", -- a window the step doesn't use is open (TutorialController)
+		-- on the register while the step needs the HUD (the gift in the Bag after his first sale; the register hides it)
+		leaveRegister = "Tap Leave to step off the register.",
 		petMe = "pet me for luck!",
 		arrivalName = "Pish!", -- his name card as he pops out of the stars (Util/DogMagic.banner)
 		arrivalRole = "Your shop buddy",

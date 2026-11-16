@@ -27,10 +27,18 @@ return {
 	-- The quick switch (spec 2026-11-07-weapons-round2-design 6): switching in a fight is allowed (the server's swap lock
 	-- makes it cost 1 s), only the first sword's shop level blocks
 	["equipping: refused before your first sword, with the reason to show; allowed in a fight"] = function()
-		expect.equal(WeaponRules.equipBlock(3, 4), "Your first sword comes at shop level 4.")
-		expect.equal(WeaponRules.equipBlock(4, 4), nil)
-		expect.equal(WeaponRules.equipBlock(10, 4), nil)
-		expect.equal((WeaponRules.equipBlock :: any)(10, 4, true), nil, "a fight no longer blocks (the old third argument)")
+		expect.equal(WeaponRules.equipBlock(3, 4, false), "Chikin gives you your first sword after your first fight.")
+		expect.equal(WeaponRules.equipBlock(4, 4, false), nil)
+		expect.equal(WeaponRules.equipBlock(10, 4, false), nil)
+		expect.equal(WeaponRules.equipBlock(1, 4, true), nil, "Chikin gave it")
+	end,
+
+	-- Owner 2026-11-16: "chikin should give the player a sword before leaving the player on wild": the sword comes when
+	-- Chikin's first fight is over (or at shop level 4 for anyone who never had his tour)
+	["the first sword: from Chikin after the first fight, or at shop level 4"] = function()
+		expect.equal(WeaponRules.swordReady(1, 4, false), false)
+		expect.equal(WeaponRules.swordReady(1, 4, true), true)
+		expect.equal(WeaponRules.swordReady(4, 4, false), true)
 	end,
 
 	["a Grade S weapon can't be reforged (the roll can never beat it); any lower grade can"] = function()

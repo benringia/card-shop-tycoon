@@ -6,6 +6,14 @@
 local DungeonRules = {}
 
 -- Whether this creature may still fight in this run
+-- Whether a player arriving in this server may stay (security review 2026-11-16): a real Dungeon server is always a
+-- reserved one, made only by the Frontier's portal after its checks (DungeonGateService); a client can start a teleport
+-- of its own to any place in the game, which lands in a public server (no private server id) and skips those checks. A
+-- player's own private server (an owner id) isn't the portal's either. Studio has no reserved servers.
+function DungeonRules.arrivalAllowed(isStudio: boolean, privateServerId: string, privateServerOwnerId: number): boolean
+	return isStudio or (privateServerId ~= "" and privateServerOwnerId == 0)
+end
+
 function DungeonRules.canFight(hpLeft: { [string]: number }, beastId: string): boolean
 	local hp = hpLeft[beastId]
 	return hp == nil or hp > 0

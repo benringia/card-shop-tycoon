@@ -335,6 +335,19 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 			}
 		end
 	end,
+	-- 30 -> 31: Chikin's tour reordered (owner 2026-11-16: the sword and a fight with it in his first visit; Config/Chikin
+	-- STEPS): a tour in progress keeps its place by step name (old level4, sword, wild2, fight2, boss: 7-11). The old
+	-- sword fight goes back to the Wild step (done at once there), then the boss
+	[30] = function(data)
+		local combat = data.combat
+		if typeof(combat) ~= "table" or (combat.firstVisit ~= nil and combat.firstVisit ~= "todo") then
+			return
+		end
+		local moved = ({ [7] = 9, [8] = 10, [9] = 11, [10] = 11, [11] = 12 } :: { [number]: number })[combat.step]
+		if moved then
+			combat.step = moved
+		end
+	end,
 }
 
 local function lowestGrade(): string

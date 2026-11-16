@@ -32,6 +32,7 @@ local WindowController = require(Controllers:WaitForChild("WindowController"))
 local WorkerVisualController = require(Controllers:WaitForChild("WorkerVisualController"))
 local LevelUpController = require(Controllers:WaitForChild("LevelUpController"))
 local RegisterController = require(Controllers:WaitForChild("RegisterController"))
+local RegisterStationController = require(Controllers:WaitForChild("RegisterStationController"))
 local CarryController = require(Controllers:WaitForChild("CarryController"))
 local PackOpeningController = require(Controllers:WaitForChild("PackOpeningController"))
 local BinderController = require(Controllers:WaitForChild("BinderController"))
@@ -183,6 +184,7 @@ else
 	WindowController.Start() -- placing shop windows on the walls, and their Edit prompts
 	task.spawn(WorkerVisualController.Start) -- waits for the Workers folder
 	RegisterController.Start()
+	RegisterStationController.Start() -- manning the register in first person: scan, Charge, the card machine, the drawer
 	CarryController.Start()
 	PackOpeningController.Start()
 	BinderController.Start()

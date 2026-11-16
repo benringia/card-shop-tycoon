@@ -1305,6 +1305,70 @@ return {
 		assertBounded(p, "gallop")
 	end,
 
+	-- The owner (2026-11-16): "search the web on how foxes run animation and apply it to all fox like creatures". A
+	-- canine (Party.CREATURE_STYLE gait "canine": Eclipse Fox, Frostfang, Duskstalker, the Ash Wolf) trots walking and
+	-- gallops running (`run`, from its speed): the back flexing and extending once a stride (running mammals' spines
+	-- do: J Exp Biol 2006), a light bound, the head held level, the tail streaming straight back instead of wagging,
+	-- the ears laid back
+	["a canine trots walking and gallops running, its back flexing, tail streaming back, ears laid back"] = function()
+		local CANINE = { "Root", "Pelvis", "Spine_0", "Neck", "Head_0", "Head_1",
+			"0_Left_Limb_0", "0_Left_Limb_1", "0_Right_Limb_0", "0_Right_Limb_1",
+			"1_Left_Limb_0", "1_Left_Limb_1", "1_Right_Limb_0", "1_Right_Limb_1",
+			"Tail_0", "Tail_1", "Tail_2", "Tail_3", "Ear_Left_0", "Ear_Right_0" }
+		local function canine(phase: number, run: number): (PetRig.State, { [string]: PetRig.Angles })
+			local state = walking(phase)
+			state.gait = "canine"
+			state.run = run
+			return state, poseAt(CANINE, state)
+		end
+		-- walking (run 0): exactly a trot
+		local trotState = walking(math.pi / 3)
+		local _, walk = canine(math.pi / 3, 0)
+		local trot = poseAt(CANINE, trotState)
+		for key, angles in trot do
+			expect.near(walk[key].x, angles.x, 1e-9, `a walk is a trot: {key}`)
+		end
+		expect.near(PetRig.gaitLift(CFG, (canine(math.pi / 2, 0))), 0, 1e-9, "a trot doesn't bound")
+		-- running (run 1): legs in pairs, a longer reach than the trot
+		local _, p = canine(math.pi / 2, 1)
+		expect.equal(p["leg:0:Left:0"].x * p["leg:0:Right:0"].x > 0, true, "the front legs reach together")
+		expect.equal(p["leg:0:Left:0"].x * p["leg:1:Left:0"].x < 0, true, "front and hind half a stride apart")
+		local trotReach, runReach = 0, 0
+		for step = 0, 15 do
+			local phase = step / 16 * math.pi * 2
+			trotReach = math.max(trotReach, math.abs(poseAt(CANINE, walking(phase))["leg:0:Left:0"].x))
+			local _, r = canine(phase, 1)
+			runReach = math.max(runReach, math.abs(r["leg:0:Left:0"].x))
+		end
+		expect.equal(runReach > trotReach * 1.3, true, "a longer reach than a trot")
+		-- the back flexes and extends once a stride, more than a trot's bob
+		local spineLow, spineHigh = math.huge, -math.huge
+		for step = 0, 15 do
+			local _, r = canine(step / 16 * math.pi * 2, 1)
+			spineLow = math.min(spineLow, r["spine:0"].x)
+			spineHigh = math.max(spineHigh, r["spine:0"].x)
+		end
+		expect.equal(spineHigh - spineLow > math.rad(10), true, "the back flexes and extends")
+		-- a light bound
+		expect.equal(PetRig.gaitLift(CFG, (canine(math.pi / 2, 1))) > PetRig.gaitLift(CFG, (canine(math.pi * 1.5, 1))) + 0.05, true, "it bounds")
+		-- the tail streams back: its swish a fraction of the trot's
+		local trotWag, runWag = 0, 0
+		for step = 0, 15 do
+			local phase = step / 16 * math.pi * 2
+			local trotPose = poseAt(CANINE, { time = phase, phase = phase, moving = 1, fidget = nil, fidgetProgress = 0, tailPhase = phase })
+			local runState = { time = phase, phase = phase, moving = 1, fidget = nil, fidgetProgress = 0, tailPhase = phase, gait = "canine", run = 1 }
+			local runPose = poseAt(CANINE, runState :: any)
+			trotWag = math.max(trotWag, math.abs(trotPose["tail:3"].y))
+			runWag = math.max(runWag, math.abs(runPose["tail:3"].y))
+		end
+		expect.equal(runWag < trotWag * 0.5, true, "the tail stops wagging")
+		-- the ears laid back while it runs
+		local _, earsRun = canine(math.pi / 2, 1)
+		local _, earsWalk = canine(math.pi / 2, 0)
+		expect.equal(earsRun["ear:Left:0"].z < earsWalk["ear:Left:0"].z - math.rad(10), true, "the ears lie back")
+		assertBounded(p, "canine run")
+	end,
+
 	-- The owner (2026-11-06): jaws for Eclipse Fox, Thunderhorn and Stormking; a mouth modelled shut (cut open by
 	-- rig_kit.mouth_cut) creases if it gapes as wide as a modelled-open one, so each creature's jaw opens its own share
 	["a creature's jaw opens only its own share of a full gape"] = function()

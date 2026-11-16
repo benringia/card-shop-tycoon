@@ -234,7 +234,10 @@ local function showInvites()
 		local frame, body, seconds = card("TeamInvite", "Team invite", LILAC, "Party")
 		local top = row(body, 1, 70)
 		face(top, invite.fromId, 64, true)
-		line(body, 2, (string.gsub(TEXT.invite, "{name}", nameOf(invite.fromId))), 19, true)
+		local inviter = nameOf(invite.fromId)
+		line(body, 2, (string.gsub(TEXT.invite, "{name}", function()
+			return inviter -- a function: a "%" in a name is never read as a gsub capture
+		end)), 19, true)
 		line(body, 3, TEXT.inviteLine, 13, false)
 		local members = row(body, 4, 36)
 		for _, userId in invite.members do
@@ -284,7 +287,10 @@ local function showCall(call: Call)
 	end
 	local art = Icon.make(body, picture, UDim2.fromOffset(84, 84))
 	art.LayoutOrder = 1
-	local fight = (string.gsub(TEXT.fight, "{name}", nameOf(call.fromId)))
+	local caller = nameOf(call.fromId)
+	local fight = (string.gsub(TEXT.fight, "{name}", function()
+		return caller -- a function: a "%" in a name is never read as a gsub capture
+	end))
 	line(body, 2, (string.gsub(fight, "{boss}", if boss then boss.name else "boss")), 19, true)
 	local joined = row(body, 3, 36)
 	for _, userId in call.joined do

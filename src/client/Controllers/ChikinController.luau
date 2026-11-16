@@ -392,14 +392,17 @@ local function updateTalk(situationName: string)
 	if not talk then
 		return
 	end
+	local levelFour = (player:GetAttribute("Level") or 1) >= Chikin.SWORD_LEVEL
 	if step == "firstWin" then
 		local result = player:GetAttribute("ChikinFightResult")
 		local lost = result == "lose" or result == "run" or result == "timeout" -- unknown after a rejoin: the cheerful lines
-		local lines = table.clone(if lost then ChikinTalk.LOST else talk.intro)
-		-- Already at shop level 4: the sword's visit comes straight on, so no "come back at level 4"
-		if (player:GetAttribute("Level") or 1) >= Chikin.SWORD_LEVEL then
-			lines[#lines] = ChikinTalk.SWORD_NOW
+		if lost then
+			talk = { intro = ChikinTalk.LOST, now = {} }
 		end
+	elseif step == "swordWin" and levelFour then
+		-- Already at shop level 4: the boss visit comes straight on, so no "come back at level 4"
+		local lines = table.clone(talk.intro)
+		lines[#lines] = ChikinTalk.SWORD_NOW
 		talk = { intro = lines, now = {} }
 	end
 	TutorialTalk.atTop(false)
@@ -417,8 +420,7 @@ local function updateTalk(situationName: string)
 	local line = TalkRules.show(talk, introIndex, situationName)
 	local label = if not line.next then nil
 		elseif not line.finish then ChikinTalk.NEXT
-		elseif Chikin.BYE_STEPS[step] and not (step == "firstWin" and (player:GetAttribute("Level") or 1) >= Chikin.SWORD_LEVEL)
-			then ChikinTalk.BYE
+		elseif Chikin.BYE_STEPS[step] and not (step == "swordWin" and levelFour) then ChikinTalk.BYE
 		else ChikinTalk.GO
 	TutorialTalk.speaker(NAME)
 	TutorialTalk.say(line.text, Chikin.STEP_ICONS[step], label, function()
@@ -497,6 +499,7 @@ local function arrive()
 			or UIKit.anyPanelOpen()
 			or WeaponRevealController.IsPlaying()
 			or OpeningStage.isShown()
+			or BattleController.IsFighting() -- a fight on: he comes once it's over (owner 2026-11-16)
 	end
 	repeat
 		while blocked() and leading() do
@@ -519,7 +522,7 @@ local function arrive()
 			return
 		end
 		TutorialCues.skipButton(true, openTourCard)
-	end, { name = ChikinTalk.LABELS.arrivalName, role = ChikinTalk.LABELS.arrivalRole, color = Color3.fromRGB(255, 110, 80) })
+	end, { name = ChikinTalk.LABELS.arrivalName, role = ChikinTalk.LABELS.arrivalRole, color = Color3.fromRGB(255, 110, 80), unskippable = true })
 end
 
 local function onStep()

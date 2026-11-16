@@ -1,8 +1,7 @@
 --!strict
--- Checkout panel: shows the running total and how many items are left to scan,
--- and the Charge button once everything is scanned. Scanning itself is tapping items on the counter.
--- It only shows while you're at your register: elsewhere (or while a cashier card serves) it stays hidden.
--- The offer panel takes its place while a kid offers you their pull or a bargain hunter haggles (OfferService, spec
+-- The register's offer panel and its bell (checking out happens on the register itself in first person:
+-- RegisterStationController). The offer panel shows while you're at your register and a kid offers you their pull or
+-- a bargain hunter haggles (OfferService, spec
 -- 2026-11-06-customers-design, mockup option A): Buy / Deal, Counter, No, and the counter's view: - / + steps, quick
 -- chips, your price and their face (from the server's edges, so the exact price they'd take never reaches here).
 local Players = game:GetService("Players")
@@ -13,7 +12,6 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local CustomerConfig = require(Config:WaitForChild("Customers"))
-local RegisterConfig = require(Config:WaitForChild("Register"))
 local BellConfig = require(Config:WaitForChild("RegisterBell"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local RegisterBell = require(Shared:WaitForChild("Util"):WaitForChild("RegisterBell"))
@@ -22,6 +20,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
+local RegisterSpot = require(ClientUtil:WaitForChild("RegisterSpot"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 
@@ -45,11 +44,6 @@ local player = Players.LocalPlayer
 
 local RegisterController = {}
 
-local panel: Frame
-local statusLabel: TextLabel
-local chargeButton: TextButton
-local checkoutOpen = false -- the server says a customer is being checked out
-
 local offerPanel: Frame
 local mainView: Frame
 local counterView: Frame
@@ -69,22 +63,6 @@ local chipButtons: { TextButton } = {}
 local current: Offer? = nil -- the open offer, nil when there's none
 local counterPrice = 0
 
--- Your own plot's register, if you have a plot
-local function getRegister(): BasePart?
-	local plotId = player:GetAttribute("PlotId")
-	local plots = workspace:FindFirstChild("Plots")
-	local plot = if typeof(plotId) == "number" and plots then plots:FindFirstChild("Plot" .. plotId) else nil
-	local register = if plot then plot:FindFirstChild("Register", true) else nil
-	return if register and register:IsA("BasePart") then register else nil
-end
-
-local function isAtRegister(): boolean
-	local register = getRegister()
-	local character = player.Character
-	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-	return register ~= nil and root ~= nil and (root.Position - register.Position).Magnitude <= RegisterConfig.REACH
-end
-
 -- Middle-right on bigger screens; on phones below the cash row and left of the jump button
 local function placeOfferPanel()
 	local look = CustomerConfig.PANEL
@@ -98,54 +76,8 @@ local function placeOfferPanel()
 end
 
 local function updateVisible()
-	local here = isAtRegister()
+	local here = RegisterSpot.at(player)
 	offerPanel.Visible = current ~= nil and here
-	panel.Visible = checkoutOpen and here and current == nil
-end
-
-local function onUpdate(total: number?, remaining: number)
-	checkoutOpen = total ~= nil
-	updateVisible()
-	if total == nil then
-		return
-	end
-	if remaining > 0 then
-		statusLabel.Text = string.format("Tap items on the counter\n%d left · $%.2f", remaining, total)
-		chargeButton.Visible = false
-	else
-		statusLabel.Text = "All scanned!"
-		chargeButton.Text = string.format("Charge $%.2f", total)
-		chargeButton.Visible = true
-	end
-end
-
-local function buildPanel(parent: Instance)
-	panel = Instance.new("Frame")
-	panel.Name = "Checkout"
-	-- Middle-right, clear of the Build/Prices buttons and the mobile jump button
-	panel.AnchorPoint = Vector2.new(1, 0.5)
-	panel.Position = UDim2.new(1, -12, 0.5, 0)
-	panel.Size = UDim2.fromOffset(200, 140)
-	panel.BackgroundColor3 = UIKit.Colors.Panel
-	panel.BackgroundTransparency = 0.1
-	panel.Visible = false
-	panel.Parent = parent
-	UIKit.corner(panel, 12)
-
-	statusLabel = UIKit.label(panel, "", Enum.Font.GothamBold, 16, UIKit.Colors.Text)
-	statusLabel.TextXAlignment = Enum.TextXAlignment.Center
-	statusLabel.Position = UDim2.fromOffset(10, 8)
-	statusLabel.Size = UDim2.new(1, -20, 0, 52)
-
-	chargeButton = UIKit.button(panel, "", UIKit.Colors.Accent)
-	chargeButton.Name = "Charge"
-	chargeButton.AnchorPoint = Vector2.new(0.5, 1)
-	chargeButton.Position = UDim2.new(0.5, 0, 1, -10)
-	chargeButton.Size = UDim2.new(1, -20, 0, 56)
-	chargeButton.Visible = false
-	chargeButton.Activated:Connect(function()
-		Remotes.Charge:FireServer()
-	end)
 end
 
 -- Offer panel ---------------------------------------------------------------------------------------------------
@@ -444,7 +376,7 @@ end
 
 -- The checkout or an offer is up at the right of the screen (the weapon switch steps aside meanwhile)
 function RegisterController.IsShowing(): boolean
-	return (panel ~= nil and panel.Visible) or (offerPanel ~= nil and offerPanel.Visible)
+	return offerPanel ~= nil and offerPanel.Visible
 end
 
 -- A customer waits at your register with nobody there (owner 2026-11-12): the desk bell, then the note
@@ -466,14 +398,12 @@ end
 function RegisterController.Start()
 	Remotes.RegisterBell.OnClientEvent:Connect(onBell)
 	local screen = UIController.GetScreenGui()
-	buildPanel(screen)
 	buildOfferPanel(screen)
-	Remotes.CheckoutUpdate.OnClientEvent:Connect(onUpdate)
 	Remotes.OfferUpdate.OnClientEvent:Connect(onOffer)
 	task.spawn(function()
 		while true do
 			task.wait(NEAR_CHECK_SECONDS)
-			if checkoutOpen or current then
+			if current then
 				updateVisible()
 			end
 		end

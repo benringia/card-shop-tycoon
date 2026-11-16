@@ -24,6 +24,19 @@ local function facts(over: { [string]: boolean }): any
 end
 
 return {
+	-- Owner 2026-11-16 (playthrough): "Customers should only start coming when Pish introduces them": a new player's
+	-- shop stays quiet until Pish sends his own customer (once ever); a skipped, finished or replayed tour never waits
+	-- (a replay gets no customer from him, so the shop's own complete his step)
+	["customers wait for Pish until he sends his own"] = function()
+		local fresh = TutorialRules.read({}, STEPS)
+		expect.equal(TutorialRules.holdsCustomers(fresh), true, "a new player")
+		expect.equal(TutorialRules.holdsCustomers(TutorialRules.customerSent(fresh)), false, "he sent his customer")
+		expect.equal(TutorialRules.holdsCustomers(TutorialRules.skip(fresh)), false, "skipped")
+		expect.equal(TutorialRules.holdsCustomers(TutorialRules.read({ firstVisit = "done" }, STEPS)), false, "done")
+		local replay = TutorialRules.replay(TutorialRules.customerSent(TutorialRules.read({ firstVisit = "done" }, STEPS)))
+		expect.equal(TutorialRules.holdsCustomers(replay), false, "a replay: his customer was sent long ago")
+	end,
+
 	["doneAlready: a replay passes the gift steps whose gift was given and opened (final review C1)"] = function()
 		local migrated = TutorialRules.read({ firstVisit = "done", firstGiven = true, giftClaimed = false }, STEPS)
 		expect.equal(TutorialRules.doneAlready(migrated, "giftPack", facts({})), true, "an old save: his pack long opened")

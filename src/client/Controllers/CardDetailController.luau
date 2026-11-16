@@ -61,6 +61,8 @@ export type Source = {
 
 local HOW_TO_SELL = "To sell: put it in a Glass Showcase or Collector Case (walk up, F, then Cards)."
 local PANEL_TOP = 84 -- below the binder's close button
+-- a gap under the panel (owner 2026-11-16: "binders should also have a gap below"); phones keep their height
+local PANEL_BOTTOM, PHONE_PANEL_BOTTOM = 40, 8
 local PHONE_RIGHT = 76 -- phones: the binder's close button keeps the top right corner
 local GAP = 8
 local ROW_HEIGHT = 52
@@ -71,6 +73,7 @@ local CARD_GAP = 16 -- between the 3D card and the panel
 local LIST_PAD = 4 -- room inside the copies list for the chosen row's outline
 local CHOOSER_BUTTON = 130 -- the chooser's Cancel / Back: compact, on the right
 local SLOT_ART_MIN, SLOT_ART_MAX = 52, 150 -- the chooser's slot card heights
+local CHOOSER_CHROME = 44 + 66 -- the chooser's title above the slot cards and its buttons below
 local ART_ASPECT = 1.4
 
 local player = Players.LocalPlayer
@@ -177,7 +180,7 @@ local function layout()
 	local left = UiLayout.detailPanelLeft(view.X, CardInspectorController.GetCardWidth(), CARD_GAP, width, right)
 	local parentX = (panel.Parent :: GuiObject).AbsolutePosition.X - (if screen then screen.AbsolutePosition.X else 0)
 	panel.Position = UDim2.new(0, left + width - parentX, 0, top)
-	panel.Size = UDim2.new(0, width, 1, -(top + 12))
+	panel.Size = UDim2.new(0, width, 1, -(top + (if phone then PHONE_PANEL_BOTTOM else PANEL_BOTTOM)))
 	local band = if phone then PHONE_HEADER else UIKit.HEADER_HEIGHT
 	header.Size = UDim2.new(1, 0, 0, band)
 	body.Position = UDim2.fromOffset(12, band + GAP)
@@ -661,16 +664,20 @@ local function showSlots()
 		else "Tap a spot"
 	clear(slotsHolder)
 	local phone = UIKit.isPhone()
-	-- The card as big as the room under the details allows (phones skip the stat bars)
+	-- The card as big as the room under the details allows (phones skip the stat bars); the room is the whole panel's,
+	-- then the chooser shrinks to fit the slot cards (owner 2026-11-16: on a tall screen they were stretched columns)
 	local details = if phone then 120 else 210
-	local artHeight = math.clamp(slotsHolder.AbsoluteSize.Y - details, SLOT_ART_MIN, SLOT_ART_MAX)
+	local room = (partyChooser.Parent :: GuiObject).AbsoluteSize.Y - 12 - CHOOSER_CHROME
+	local artHeight = math.clamp(room - details, SLOT_ART_MIN, SLOT_ART_MAX)
 	local art = Vector2.new(math.floor(artHeight / ART_ASPECT), artHeight)
+	local cardHeight = math.min(room, art.Y + details + 16)
+	partyChooser.Size = UDim2.new(1, -12, 0, cardHeight + CHOOSER_CHROME)
 	local reference = CardTips.reference()
 	for slot = 1, Party.PARTY_SIZE do
 		local outgoing = slotSide(slot)
 		local button = Instance.new("TextButton")
 		button.LayoutOrder = slot
-		button.Size = UDim2.new(1 / Party.PARTY_SIZE, -4, 1, 0)
+		button.Size = UDim2.new(1 / Party.PARTY_SIZE, -4, 0, cardHeight)
 		button.BackgroundColor3 = palette.row
 		button.Text = ""
 		button.AutoButtonColor = true
@@ -769,6 +776,7 @@ function CardDetailController.ShowCompare(slot: number)
 		return
 	end
 	compareSlot = slot
+	partyChooser.Size = UDim2.new(1, -12, 1, -12) -- the comparison takes the whole panel
 	slotsHolder.Visible = false
 	compareHolder.Visible = true
 	chooserHint.Visible = false
@@ -1131,7 +1139,7 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	slotsHolder.Name = "Slots"
 	slotsHolder.BackgroundTransparency = 1
 	slotsHolder.Position = UDim2.fromOffset(10, 44)
-	slotsHolder.Size = UDim2.new(1, -20, 1, -(44 + 66))
+	slotsHolder.Size = UDim2.new(1, -20, 1, -CHOOSER_CHROME)
 	slotsHolder.ZIndex = partyChooser.ZIndex + 1
 	slotsHolder.Parent = partyChooser
 	-- The three slot cards side by side, sharing the width
@@ -1144,7 +1152,7 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	compareHolder.Name = "Compare"
 	compareHolder.BackgroundTransparency = 1
 	compareHolder.Position = UDim2.fromOffset(10, 44)
-	compareHolder.Size = UDim2.new(1, -20, 1, -(44 + 66))
+	compareHolder.Size = UDim2.new(1, -20, 1, -CHOOSER_CHROME)
 	compareHolder.ZIndex = partyChooser.ZIndex + 1
 	compareHolder.Visible = false
 	compareHolder.Parent = partyChooser

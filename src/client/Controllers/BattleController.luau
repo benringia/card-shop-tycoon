@@ -1565,7 +1565,7 @@ local function swordTargets(): { any }
 	-- the module table: this file is at the 200-local limit.
 	for _, pylon in BattleController.pylonTargets do
 		if pylon.part.Parent and pylon.part:GetAttribute("Broken") ~= true then
-			table.insert(list, { id = pylon.id, x = pylon.part.Position.X, z = pylon.part.Position.Z, radius = pylon.radius, fx = 1 })
+			table.insert(list, { id = pylon.id, x = pylon.part.Position.X, z = pylon.part.Position.Z, radius = pylon.radius, fx = 1, model = pylon.part })
 		end
 	end
 	if #list > 0 then
@@ -1581,7 +1581,8 @@ local function swordTargets(): { any }
 			local fx = HitFx.scaleFor(model)
 			-- its model's top: the soft lock's arrow goes just over it (Util/SoftLock)
 			local box, size = if model then model:GetBoundingBox() else marker.CFrame, Vector3.new(0, 6, 0)
-			table.insert(list, { id = id, x = marker.Position.X, z = marker.Position.Z, radius = radius, fx = fx, top = box.Position.Y + size.Y / 2 })
+			-- `model`: the soft lock's outline goes on it (Util/SoftLock)
+			table.insert(list, { id = id, x = marker.Position.X, z = marker.Position.Z, radius = radius, fx = fx, top = box.Position.Y + size.Y / 2, model = model })
 		end
 	end
 	return list
@@ -1734,7 +1735,9 @@ local function onStarted(payload: any)
 	addAllies(payload.allies)
 	-- a new fight's adds row is built fresh: two Dungeon rooms' packs share ids (b:p1...), and the last room's names
 	-- stayed on the bars (owner 2026-11-12: "my enemies are Lava Brute and Storm Hawk, and the bar's name is Lynx")
-	addsKey = ""
+	-- never "" here: a fight with no adds would match it and keep the last fight's bars (the prologue's two Hydra
+	-- "Spawn" bars stayed under every wild fight after it, owner 2026-11-16)
+	addsKey = "new fight" -- no fight's adds ids ever read like this
 	statusBar.reset() -- the boss's states too
 	groupFight = payload.group == true
 	allyBars = {}

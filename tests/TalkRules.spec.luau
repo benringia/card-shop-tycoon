@@ -159,6 +159,21 @@ return {
 		expect.equal(PishTalk.AFTER.showcase[1], "Customers buy single cards from this case!")
 	end,
 
+	-- Owner 2026-11-16: "let pish teach players how to set prices through shelves or the prices tile"
+	["right after his tour Pish points at Prices, then says how pricing works inside it"] = function()
+		local prices
+		for _, lesson in Pish.LESSONS do
+			if lesson.id == "prices" then
+				prices = lesson
+			end
+		end
+		assert(prices and (prices :: any).trigger == "tourDone", "queued when the tour ends")
+		assert(PishTalk.LESSONS.prices, "his line pointing at the tile")
+		local lines = PishTalk.AFTER.prices
+		assert(lines and #lines >= 2, "what to do inside the window")
+		assert(string.find(lines[1], "+", 1, true) and string.find(lines[1], "-", 1, true), "the + and - buttons")
+	end,
+
 	-- The owner 2026-11-11: "move the dialogue at the center top so that pish model can be seen"
 	["the talk card sits at the top, unless it would cover what Pish points at there"] = function()
 		local TOP, HEIGHT, PAW = 66, 112, 82

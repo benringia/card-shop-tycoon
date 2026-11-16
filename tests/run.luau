@@ -18,6 +18,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	HoverRules = require("./HoverRules.spec"),
 	ProductPictureRules = require("./ProductPictureRules.spec"),
 	PartyRules = require("./PartyRules.spec"),
+	PaidRandomRules = require("./PaidRandomRules.spec"),
 	PartyDock = require("./PartyDock.spec"),
 	LeaderboardRules = require("./LeaderboardRules.spec"),
 	CreatureMotion = require("./CreatureMotion.spec"),
@@ -100,6 +101,9 @@ local specs: { [string]: { [string]: () -> () } } = {
 	SkillText = require("./SkillText.spec"),
 	SuperFx = require("./SuperFx.spec"),
 	CustomerTypes = require("./CustomerTypes.spec"),
+	CustomerLook = require("./CustomerLook.spec"),
+	PaymentRules = require("./PaymentRules.spec"),
+	RegisterStationRules = require("./RegisterStationRules.spec"),
 	CollectorRules = require("./CollectorRules.spec"),
 	OfferRules = require("./OfferRules.spec"),
 	HaggleRules = require("./HaggleRules.spec"),
@@ -188,6 +192,8 @@ local specs: { [string]: { [string]: () -> () } } = {
 	GiftRules = require("./GiftRules.spec"),
 	TeamRules = require("./TeamRules.spec"),
 	SoftLockRules = require("./SoftLockRules.spec"),
+	SaveSlots = require("./SaveSlots.spec"),
+	TrailRules = require("./TrailRules.spec"),
 }
 
 -- `lune run tests/run <SpecName>` runs only that spec

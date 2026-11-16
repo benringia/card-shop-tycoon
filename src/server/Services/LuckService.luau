@@ -13,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Luck = require(Shared:WaitForChild("Config"):WaitForChild("Luck"))
 local BoughtLuck = require(Shared:WaitForChild("Util"):WaitForChild("BoughtLuck"))
+local PaidRandomRules = require(Shared:WaitForChild("Util"):WaitForChild("PaidRandomRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
@@ -169,7 +170,7 @@ local function restricted(player: Player): boolean
 	local ok, info = pcall(function()
 		return PolicyService:GetPolicyInfoForPlayerAsync(player)
 	end)
-	return not ok or typeof(info) ~= "table" or info.ArePaidRandomItemsRestricted == true
+	return PaidRandomRules.restricted(ok, info)
 end
 
 local function onBuy(player: Player, key: unknown)

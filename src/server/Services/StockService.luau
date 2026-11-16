@@ -132,8 +132,15 @@ local function setPromptEnabled(box: Part, enabled: boolean)
 	end
 end
 
+-- Boxes on their way and boxes on the pad (Pish's stock line: "on the way" while a delivery hasn't come yet)
+local function syncPad(shop: Shop)
+	shop.owner:SetAttribute("BoxesComing", #shop.incoming)
+	shop.owner:SetAttribute("BoxesWaiting", #shop.waiting)
+end
+
 -- Lets the client show the right prompts and buttons (Stock vs Edit, Drop, Rip a pack + units left)
 local function syncCarry(shop: Shop)
+	syncPad(shop)
 	local top = shop.carried[#shop.carried]
 	shop.owner:SetAttribute("CarryCount", #shop.carried)
 	shop.owner:SetAttribute("CarryProductId", if top then top:GetAttribute("ProductId") else nil)
@@ -242,6 +249,7 @@ local function onOrder(player: Player, productId: unknown)
 	end
 
 	table.insert(shop.incoming, product.id)
+	syncPad(shop)
 	fire(orderedHandlers, player, product.id)
 	-- Express (Bloom creature summoned): deliveries arrive faster
 	local deliverySeconds = math.max(1, math.round(StockConfig.DELIVERY_SECONDS * (1 - PartyService.GetPerk(player, "Express"))))
@@ -254,6 +262,7 @@ local function onOrder(player: Player, productId: unknown)
 		end
 		table.remove(shop.incoming, index)
 		createBox(shop, product.id, product.unitsPerBox)
+		syncPad(shop)
 		notify(player, `Your {product.name} box arrived!`, false)
 	end)
 end

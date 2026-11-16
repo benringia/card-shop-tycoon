@@ -59,6 +59,23 @@ function LessonRules.pending(lessons: { Lesson }, seen: { [string]: boolean }): 
 	end)
 end
 
+-- The first waiting lesson to show now (owner 2026-11-16: the glass case lesson only once you can pay for it): one
+-- that has you buy something (`cost` of it: a shelf's price, a product's box) waits, keeping its place, until `cash`
+-- covers it; one that buys nothing never waits. nil: none ready
+function LessonRules.firstReady(queue: { string }, lessons: { Lesson }, cash: number, cost: (Lesson) -> number): string?
+	for _, id in queue do
+		for _, lesson in lessons do
+			if lesson.id == id then
+				if cash >= cost(lesson) then
+					return id
+				end
+				break
+			end
+		end
+	end
+	return nil
+end
+
 -- A lesson's thing was placed or ordered: it's seen (true), also when it isn't waiting yet, so a case bought at
 -- level 1 is never taught at level 2 (final review I3). Returns a copy
 function LessonRules.used(seen: { [string]: boolean }, lessonId: string): { [string]: boolean }

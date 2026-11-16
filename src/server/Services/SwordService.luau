@@ -156,13 +156,15 @@ local function onPlayer(player: Player)
 		applyStandardBody(player.Character)
 		setSwordAttribute(player)
 	end
-	-- Reaching the sword's shop level gives it (and its popup) at once
-	player:GetAttributeChangedSignal("Level"):Connect(function()
-		setSwordAttribute(player)
-		if seen[player] == false and SwordService.GetSword(player) then
-			sendState(player)
-		end
-	end)
+	-- Reaching the sword's shop level, or Chikin handing it over (SwordGiven), gives it (and its popup) at once
+	for _, name in { "Level", "SwordGiven" } do
+		player:GetAttributeChangedSignal(name):Connect(function()
+			setSwordAttribute(player)
+			if seen[player] == false and SwordService.GetSword(player) then
+				sendState(player)
+			end
+		end)
+	end
 end
 
 local function load(player: Player, data: PlayerData)

@@ -60,15 +60,46 @@ return {
 	ARENA = { height = 1500, spacing = 2000, radius = 60, rim = 15, hydra = { 0, 0, -12 }, player = { 0, 3, 24 } },
 	-- How far from your lair's middle the server lets the fight start (your character must be up there)
 	START_REACH = 80,
+	-- Seconds after "begin" when the server takes the lent loadout back and counts the prologue as seen, whatever the
+	-- client does (security review 2026-11-16: a tampered client could otherwise keep maxed cards and a maxed weapon);
+	-- a real prologue gives it back in about two minutes. No other fight can start while it's lent.
+	MAX_SESSION = 300,
+	BUSY = "Finish the story first!",
+	-- Act 3 opens with its massive attack (owner 2026-11-16: "start with hydra doing a massive attack that makes the
+	-- player knocked out, then hydra starts taking the cards"): it rears up roaring as its crystals blaze (`rear` s),
+	-- rainbow light gathers into an orb at its mouth (`charge` s, growing from `orb[1]` to `orb[2]` studs), then a prism
+	-- beam `width` studs wide hits you for `beam` s with a shockwave ring spreading to `ring` studs. Licensed sounds:
+	-- Spaceship Blast High Pitch Energy Charge Up (2.5 s), Sci-Fi Weapon 11 semi-tonal blast (1.9 s)
+	BLAST = {
+		rear = 1.1,
+		charge = 1.6,
+		beam = 0.5,
+		orb = { 0.6, 4.5 },
+		width = 3,
+		ring = 26,
+		chargeSound = "rbxassetid://9125975053",
+		blastSound = "rbxassetid://9118792577",
+	},
+	-- The story (owner 2026-11-16: "improve prologue dialogue for better story telling"): act 1's three lines as the
+	-- camera circles you and the Hydra rises, act 3's as it swallows your cards, grows and you black out, then the
+	-- wake-up in town
 	CAPTIONS = {
-		open = "Long ago, you were the greatest card master...",
+		open = {
+			"Long ago, you were the greatest card master of all.",
+			"Your legendary cards had never lost a battle.",
+			"Then a young Hydra came, hungry for their power...",
+		},
 		fight = "FIGHT!",
-		took = "...until the Hydra took everything.",
+		swallow = "It swallowed every card you owned...",
+		grow = "...and grew stronger with each one.",
+		took = "Everything was gone.",
 		-- in town, as your eyes open
 		wake = {
 			{ dog = "Pish", text = "Hey! Wake up!" },
-			{ dog = "Pish", text = "Are you okay?" },
-			{ dog = "Chikin", text = "The Hydra took it all? Let's get it all back!" },
+			{ dog = "Pish", text = "You were out cold! Are you okay?" },
+			{ dog = "Chikin", text = "Your cards... the Hydra took them ALL?!" },
+			{ dog = "Pish", text = "Then we start again. A tiny shop, one pack at a time!" },
+			{ dog = "Chikin", text = "And one day, we'll take them all back!" },
 		},
 	},
 }

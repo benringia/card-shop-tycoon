@@ -51,6 +51,26 @@ local function facts(over: { [string]: any }): any
 end
 
 return {
+	-- Owner 2026-11-16: "where pish is telling players to buy glass case, pish should only tell players when the player
+	-- have enough money to buy it": a lesson that has you buy something waits (keeping its place) until you can afford
+	-- it; the next affordable one comes first; a lesson that buys nothing never waits
+	["a lesson that has you buy something waits until you can afford it"] = function()
+		local lessons = {
+			{ id = "case", level = 2, icon = "Cases", shelf = "Case" },
+			{ id = "jobs", level = 3, icon = "Jobs" },
+			{ id = "sleeves", level = 3, icon = "Sleeves", product = "Sleeves" },
+		}
+		local prices = { Case = 120, Sleeves = 30 }
+		local function cost(lesson: any): number
+			return prices[lesson.shelf or lesson.product or ""] or 0
+		end
+		expect.equal(LessonRules.firstReady({ "case", "jobs" }, lessons, 50, cost), "jobs", "the case waits")
+		expect.equal(LessonRules.firstReady({ "case", "jobs" }, lessons, 120, cost), "case", "affordable: in order")
+		expect.equal(LessonRules.firstReady({ "case", "sleeves" }, lessons, 40, cost), "sleeves")
+		expect.isNil(LessonRules.firstReady({ "case" }, lessons, 10, cost), "nothing ready")
+		expect.isNil(LessonRules.firstReady({}, lessons, 999, cost))
+	end,
+
 	["the spec's lessons and levels"] = function()
 		local levels = {}
 		for _, lesson in Pish.LESSONS do

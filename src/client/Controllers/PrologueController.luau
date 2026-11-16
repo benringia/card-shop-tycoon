@@ -54,6 +54,7 @@ local KNOCK = Prologue.KNOCK
 local CRAWL = Prologue.CRAWL
 local CARDS = Prologue.CARDS
 local BLACKOUT = Prologue.BLACKOUT
+local BLAST = Prologue.BLAST
 local WAKE = Prologue.WAKE
 local ROAR = "rbxassetid://9116290951" -- Lion Growls 7 (AttackFx BOSS_SKILLS enrage)
 local SHATTER = "rbxassetid://9116418035" -- Magic Tone Falling Shimmer
@@ -173,6 +174,107 @@ local function dust(at: Vector3)
 	puff.Parent = holder
 	puff:Emit(24)
 	task.delay(2, holder.Destroy, holder)
+end
+
+local function glowPart(name: string, shape: Enum.PartType, at: CFrame, size: Vector3): Part
+	local made = Instance.new("Part")
+	made.Name = name
+	made.Shape = shape
+	made.Anchored = true
+	made.CanCollide = false
+	made.CanQuery = false
+	made.CanTouch = false
+	made.CastShadow = false
+	made.Material = Enum.Material.Neon
+	made.Size = size
+	made.CFrame = at
+	made.Parent = workspace
+	return made
+end
+
+-- The Hydra's prism blast, part 1 (owner 2026-11-16: "a massive attack that makes the player knocked out"): rainbow
+-- light gathering into an orb at its mouth over `seconds`, shimmering through every colour, sparks streaming off it.
+-- Returns its removal (it goes by itself a little after its time too)
+local function prismOrb(at: Vector3, seconds: number): () -> ()
+	local orb = glowPart("PrologueOrb", Enum.PartType.Ball, CFrame.new(at), Vector3.one * BLAST.orb[1])
+	local light = Instance.new("PointLight")
+	light.Range = 24
+	light.Brightness = 3
+	light.Parent = orb
+	local sparks = Instance.new("ParticleEmitter")
+	sparks.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	sparks.LightEmission = 1
+	sparks.LightInfluence = 0
+	sparks.Size = NumberSequence.new(0.8, 0.1)
+	sparks.Lifetime = NumberRange.new(0.3, 0.6)
+	sparks.Rate = 90
+	sparks.Speed = NumberRange.new(6, 12)
+	sparks.SpreadAngle = Vector2.new(180, 180)
+	sparks.Parent = orb
+	local started = os.clock()
+	local growing = RunService.RenderStepped:Connect(function()
+		local t = math.min(1, (os.clock() - started) / seconds)
+		orb.Size = Vector3.one * (BLAST.orb[1] + (BLAST.orb[2] - BLAST.orb[1]) * t * t)
+		local hue = Color3.fromHSV((os.clock() * 1.6) % 1, 0.55, 1)
+		orb.Color = hue
+		light.Color = hue
+		sparks.Color = ColorSequence.new(hue)
+	end)
+	local removed = false
+	local function remove()
+		if removed then
+			return
+		end
+		removed = true
+		growing:Disconnect()
+		orb:Destroy()
+	end
+	task.delay(seconds + 3, remove)
+	return remove
+end
+
+-- Part 2: a thick rainbow beam with a white-hot core from its mouth to you for `seconds`, and a shockwave ring spreading
+-- across the floor from your feet
+local function prismBeam(from: Vector3, to: Vector3, feet: Vector3, seconds: number)
+	local ends = glowPart("PrologueBeam", Enum.PartType.Block, CFrame.new(from), Vector3.one * 0.2)
+	ends.Transparency = 1
+	local startAt = Instance.new("Attachment")
+	startAt.Parent = ends
+	local endAt = Instance.new("Attachment")
+	endAt.Parent = ends
+	endAt.WorldPosition = to
+	local rainbow = Instance.new("Beam")
+	rainbow.Attachment0 = startAt
+	rainbow.Attachment1 = endAt
+	rainbow.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 90, 110)),
+		ColorSequenceKeypoint.new(0.2, Color3.fromRGB(255, 180, 70)),
+		ColorSequenceKeypoint.new(0.4, Color3.fromRGB(255, 240, 110)),
+		ColorSequenceKeypoint.new(0.6, Color3.fromRGB(110, 240, 140)),
+		ColorSequenceKeypoint.new(0.8, Color3.fromRGB(100, 190, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 130, 255)),
+	})
+	rainbow.Width0 = BLAST.width
+	rainbow.Width1 = BLAST.width * 1.4
+	rainbow.LightEmission = 1
+	rainbow.LightInfluence = 0
+	rainbow.FaceCamera = true
+	rainbow.Transparency = NumberSequence.new(0.05)
+	rainbow.Parent = ends
+	local core = rainbow:Clone()
+	core.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255))
+	core.Width0 = BLAST.width * 0.35
+	core.Width1 = BLAST.width * 0.5
+	core.Parent = ends
+	-- the shockwave: a thin glowing disc spreading out from your feet and fading
+	local ring = glowPart("PrologueShockwave", Enum.PartType.Cylinder, CFrame.new(feet) * CFrame.Angles(0, 0, math.rad(90)), Vector3.new(0.2, 2, 2))
+	ring.Color = Color3.fromRGB(255, 240, 255)
+	TweenService:Create(ring, TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = Vector3.new(0.2, BLAST.ring, BLAST.ring),
+		Transparency = 1,
+	}):Play()
+	task.delay(0.7, ring.Destroy, ring)
+	task.delay(seconds, ends.Destroy, ends)
 end
 
 -- Every card in the game but your three Legendaries, shuffled: what the Hydra takes after them
@@ -334,12 +436,18 @@ local function play()
 		local at = root.Position + Vector3.new(math.sin(angle) * 16, 5 + t * 0.2, math.cos(angle) * 16)
 		return CFrame.lookAt(at, root.Position + Vector3.new(0, 2, 0))
 	end)
-	stage.caption(CAPTIONS.open, 5)
+	-- the legend, a line at a time as the camera circles you (owner 2026-11-16: better storytelling)
+	stage.caption(CAPTIONS.open[1], 3)
 	local hydraSpot = stage.spot("hydra")
 	hydra = PrologueHydra.spawn(hydraSpot - Vector3.new(0, 45, 0))
-	if not wait(4.4) then
+	if not wait(3.1) then
 		return
 	end
+	stage.caption(CAPTIONS.open[2], 3)
+	if not wait(3.1) then
+		return
+	end
+	stage.caption(CAPTIONS.open[3], 4.6)
 	-- the Hydra rises out of the dark
 	holdCamera("PrologueRise", function(t: number): CFrame
 		local from = root.Position + Vector3.new(6, 6, 14)
@@ -445,14 +553,33 @@ local function play()
 	holdCamera("PrologueBlow", function(t: number): CFrame
 		return CFrame.lookAt(from + right * (17 - t) - toFoe * 3 + Vector3.new(0, 4, 0), from + toFoe * 7 + Vector3.new(0, 7, 0))
 	end)
-	foe.play("strike")
-	local strike = foe.length("strike")
-	if not wait(if strike > 0 then strike * KNOCK.hit else 0.6) then
+	-- its massive attack (owner 2026-11-16): it rears up roaring as its crystals blaze, rainbow light gathers into an
+	-- orb at its mouth, then a prism blast knocks you out
+	local mouth = foeAt + Vector3.new(0, foe.height * CARDS.mouth[1], 0) - toFoe * foe.height * CARDS.mouth[2]
+	foe.play("enrage")
+	sound(ROAR, 0.8, stage.gui)
+	ScreenFx.shake(0.8)
+	local blazing = RunService.Heartbeat:Connect(function()
+		foe.glow(Color3.fromHSV((os.clock() * 0.8) % 1, 0.7, 1))
+	end)
+	table.insert(connections, blazing)
+	if not wait(BLAST.rear) then
 		return
 	end
+	local removeOrb = prismOrb(mouth, BLAST.charge)
+	sound(BLAST.chargeSound, 0.7, stage.gui)
+	ScreenFx.shake(0.5)
+	if not wait(BLAST.charge) then
+		removeOrb()
+		return
+	end
+	removeOrb()
+	blazing:Disconnect()
+	foe.play("strike")
+	prismBeam(mouth, from + Vector3.new(0, 1.5, 0), Vector3.new(from.X, floorY + 0.15, from.Z), BLAST.beam)
+	sound(BLAST.blastSound, 0.9, stage.gui)
 	-- the blow: your weapon shatters, your aura goes out, you're thrown back, tumbling, onto your face
-	sound(ROAR, 0.8, stage.gui)
-	ScreenFx.shake(1.4)
+	ScreenFx.shake(1.8)
 	flash()
 	local hand = character:FindFirstChild("RightHand")
 	shatter(if hand and hand:IsA("BasePart") then hand.Position else from)
@@ -499,8 +626,8 @@ local function play()
 		local eye = me - toFoe * 8 * near + right * 4 * near + Vector3.new(0, 3.5, 0)
 		return CFrame.lookAt(eye, me + toFoe * 6 + Vector3.new(0, 3.5, 0))
 	end)
-	-- its mouth: the young Hydra's one head, high at the front of it (Config/Prologue CARDS.mouth: shares of its height)
-	local mouth = foeAt + Vector3.new(0, foe.height * CARDS.mouth[1], 0) - toFoe * foe.height * CARDS.mouth[2]
+	-- the cards fly into its mouth (the young Hydra's one head, high at its front: Config/Prologue CARDS.mouth)
+	stage.caption(CAPTIONS.swallow, 3.4)
 	local taken = PrologueRules.stolenCards(Prologue, otherCards(), CARDS.count)
 	for index, cardName in taken do
 		task.delay((index - 1) * CARDS.every, function()
@@ -528,6 +655,7 @@ local function play()
 	grown.play("enrage")
 	sound(ROAR, 0.9, stage.gui)
 	ScreenFx.shake(1.2)
+	stage.caption(CAPTIONS.grow, 2.4)
 	if not wait(1.8) then
 		return
 	end
@@ -581,7 +709,9 @@ local function play()
 		{ at = 1.8, run = function() scene.say(lines[1].dog, lines[1].text, 2.2) end },
 		{ at = 2.6, run = function() scene.play("Chikin", "headTilt") end },
 		{ at = 4.2, run = function() scene.say(lines[2].dog, lines[2].text, 2.2) scene.play("Pish", "headTilt") end },
-		{ at = 6.6, run = function() scene.say(lines[3].dog, lines[3].text, 3) scene.play("Chikin", "bark") end },
+		{ at = 6.6, run = function() scene.say(lines[3].dog, lines[3].text, 2.6) scene.play("Chikin", "bark") end },
+		{ at = 9.4, run = function() scene.say(lines[4].dog, lines[4].text, 2.8) scene.play("Pish", "headTilt") end },
+		{ at = 12.4, run = function() scene.say(lines[5].dog, lines[5].text, 2.6) scene.play("Chikin", "bark") end },
 	}
 	for _, beat in beats do
 		task.delay(beat.at, function()
@@ -590,7 +720,7 @@ local function play()
 			end
 		end)
 	end
-	if not wait(9.8) then
+	if not wait(15.2) then
 		return
 	end
 	-- you get up; they hop for joy

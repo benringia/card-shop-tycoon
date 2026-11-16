@@ -259,6 +259,34 @@ return {
 
 	-- Turts' rug shop (spec 2026-11-13-turts-shop-design): the restock a player last saw, what they bought in it, and a
 	-- "restock now" roll if they bought one
+	-- Chikin's tour reordered (owner 2026-11-16: the sword and its fight come in his first visit): a tour in progress
+	-- keeps its place by step name; steps before the sword and finished or skipped tours are untouched
+	["v31: a Chikin tour in progress keeps its place in the new order"] = function()
+		-- old: hello party summon wild fight firstWin level4 sword wild2 fight2 boss
+		-- new: hello party summon wild fight firstWin fight2 swordWin level4 sword wild2 boss
+		local function after(step: number, firstVisit: string?): number
+			local data: any = { version = 30, combat = { firstVisit = firstVisit or "todo", step = step } }
+			Migrations.run(data, 31)
+			expect.equal(data.version, 31)
+			return data.combat.step
+		end
+		expect.equal(after(5), 5, "the first fight: the same")
+		expect.equal(after(6), 6, "the first fight's end: the same")
+		expect.equal(after(7), 9, "waiting for shop level 4")
+		expect.equal(after(8), 10, "the level 4 hello")
+		expect.equal(after(9), 11, "on the way to the Wild")
+		expect.equal(after(10), 11, "the old sword fight: back to the Wild, then the boss")
+		expect.equal(after(11), 12, "the boss goodbye")
+		expect.equal(after(12), 12, "all done stays all done")
+		expect.equal(after(8, "done"), 8, "a finished tour untouched")
+		local none: any = { version = 30, cash = 5 }
+		Migrations.run(none, 31)
+		expect.isNil(none.combat, "no tour saved: nothing made up")
+		local junk: any = { version = 30, combat = { firstVisit = "todo", step = "x" } }
+		Migrations.run(junk, 31)
+		expect.equal(junk.combat.step, "x", "junk left for TutorialRules.read")
+	end,
+
 	-- Daily, weekly and monthly gifts (spec 2026-11-15-daily-gifts-design): every save starts the round at day 1 with
 	-- nothing played or earned; a saved table stays for GiftService to clean (Util/GiftRules.clean)
 	["v30: every save starts the gifts fresh; a saved table kept"] = function()

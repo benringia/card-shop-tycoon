@@ -6,7 +6,7 @@
 -- name card pops up, the camera pushing in on him; then he runs in trailing sparkles, the camera riding low beside him
 -- on his paws, slowly panning up to his face and zooming out to the two of you as he stops in front of the player in
 -- hearts and stars and barks (Util/ArrivalShot, Config/Pish ARRIVAL). He runs in from the first clear way (never
--- through a shelf or a wall), the camera rides on the clearer side and never goes through a wall. A tap skips it.
+-- through a shelf or a wall), the camera rides on the clearer side and never goes through a wall. A tap skips it (not Chikin's: Intro.unskippable).
 -- `done` runs once the camera is back behind the player.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -26,7 +26,8 @@ local ARRIVAL = Pish.ARRIVAL
 local MAGIC = ARRIVAL.MAGIC
 
 -- His name card as he pops out (DogMagic.banner): his name, what he is to you, its colour
-export type Intro = { name: string, role: string, color: Color3 }
+-- `unskippable`: a tap doesn't cut it short (Chikin's, owner 2026-11-16)
+export type Intro = { name: string, role: string, color: Color3, unskippable: boolean? }
 
 -- `at`: the player's root; `dog`: his marker (placed at the start here); `playBark`: his bark clip; `intro`: his card
 local function runNow(at: BasePart, dog: BasePart, visual: PishVisual.Visual?, character: Model?, playBark: () -> (), done: () -> (), intro: Intro?)
@@ -48,11 +49,17 @@ local function runNow(at: BasePart, dog: BasePart, visual: PishVisual.Visual?, c
 		table.insert(ways, way)
 		table.insert(clearance, freeFor(feet + up * 1.2, way, ARRIVAL.from + ARRIVAL.wallGap))
 	end
+	-- The ground under a spot (owner 2026-11-16: "while pish is running, he's phasing to the floor": he ran at your
+	-- feet's height in a straight line, so a higher step or sidewalk swallowed his paws): his marker sits on it
+	local function onGround(spot: Vector3): Vector3
+		local hit = workspace:Raycast(Vector3.new(spot.X, feet.Y + 6, spot.Z), Vector3.new(0, -14, 0), blockers)
+		return if hit then Vector3.new(spot.X, hit.Position.Y, spot.Z) else spot
+	end
 	local index, runFrom = ArrivalShot.pickRun(clearance, ARRIVAL)
 	local outward = ways[index]
 	local across = Vector3.new(-outward.Z, 0, outward.X) -- to the side of his way in
-	local stop = feet + outward * ARRIVAL.stop + across * ARRIVAL.stopSide
-	local start = feet + outward * runFrom + across * math.min(ARRIVAL.startSide, runFrom * 0.15)
+	local stop = onGround(feet + outward * ARRIVAL.stop + across * ARRIVAL.stopSide)
+	local start = onGround(feet + outward * runFrom + across * math.min(ARRIVAL.startSide, runFrom * 0.15))
 	local run = Vector3.new(stop.X - start.X, 0, stop.Z - start.Z)
 	local runLength = run.Magnitude
 	local runWay = run.Unit
@@ -121,6 +128,9 @@ local function runNow(at: BasePart, dog: BasePart, visual: PishVisual.Visual?, c
 	end
 	local skipped = false
 	local tap = UserInputService.InputBegan:Connect(function(input)
+		if intro and intro.unskippable then
+			return
+		end
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			skipped = true
 		end
@@ -166,7 +176,7 @@ local function runNow(at: BasePart, dog: BasePart, visual: PishVisual.Visual?, c
 				break
 			end
 			local dt = task.wait()
-			local nextAt = now + flat.Unit * math.min(flat.Magnitude, ARRIVAL.speed * dt)
+			local nextAt = onGround(now + flat.Unit * math.min(flat.Magnitude, ARRIVAL.speed * dt))
 			dog.CFrame = CFrame.lookAt(nextAt, nextAt + flat.Unit)
 		end
 		stopTrail()

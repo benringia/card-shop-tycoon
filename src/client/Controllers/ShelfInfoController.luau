@@ -241,11 +241,12 @@ function ShelfInfoController.Start()
 			return
 		end
 		local mouse = UserInputService:GetMouseLocation()
-		showTip(shelfAt(mouse), mouse)
+		-- none while you're on the register (RegisterStationController): its counter under the pointer isn't news
+		showTip(if player:GetAttribute("ManningRegister") then nil else shelfAt(mouse), mouse)
 	end)
 	-- Touch: tap a shelf to see its tooltip for a moment
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
-		if gameProcessed or input.UserInputType ~= Enum.UserInputType.Touch then
+		if gameProcessed or input.UserInputType ~= Enum.UserInputType.Touch or player:GetAttribute("ManningRegister") then
 			return
 		end
 		-- Touch positions start below the top bar; rays and showTip use the whole viewport, like the mouse

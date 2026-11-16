@@ -6,23 +6,30 @@
 -- shot is Pish's (Config/Pish ARRIVAL).
 
 return {
-	-- Visit 1 right after Pish's goodbye (the first fight with a creature), a hidden wait for shop level 4, visit 2
-	-- with the free sword (Attack, Dodge, Skill), ending at the Meadow Warden's portal
-	STEPS = { "hello", "party", "summon", "wild", "fight", "firstWin", "level4", "sword", "wild2", "fight2", "boss" },
+	-- His head as the model came looks about 20 degrees to his left (owner 2026-11-16: "chikin's head is slightly
+	-- looking towards the side. straigten it so that he does not look like he's walking sideways"): turned back this
+	-- many degrees about his up axis on top of every clip (Util/PishVisual; measured in Blender renders, 2026-11-16)
+	HEAD_STRAIGHTEN = -20,
+	-- Visit 1 right after Pish's goodbye, in the Wild (owner 2026-11-16: "chikin will make you fight a monster with your
+	-- summoned pet. after the monster is dead, he will give you a sword and fight another monster. then will leave"): a
+	-- fight with your creature, the free sword, a fight with it (Attack, Dodge, Skill), his goodbye; a hidden wait for
+	-- shop level 4; visit 2 leads you to the Meadow Warden's portal. Saved progress is an index into this list.
+	STEPS = { "hello", "party", "summon", "wild", "fight", "firstWin", "fight2", "swordWin", "level4", "sword", "wild2", "boss" },
 	VISITS = {
-		{ "hello", "party", "summon", "wild", "fight", "firstWin" },
-		{ "sword", "wild2", "fight2", "boss" },
+		{ "hello", "party", "summon", "wild", "fight", "firstWin", "fight2", "swordWin" },
+		{ "sword", "wild2", "boss" },
 	},
 	WAIT_STEP = "level4", -- no visit: done once the shop reaches SWORD_LEVEL
 	SWORD_LEVEL = 4, -- Config/Swords UNLOCK_SHOP_LEVEL: everyone gets the starter sword here
 	-- Steps whose last Next moves on (the server records them when the client says so): his hello, the first fight's
-	-- end, the sword's hello and his goodbye. A fight step ends when the fight does (won, lost or run from)
-	FINISH_STEPS = { hello = true, firstWin = true, sword = true, boss = true } :: { [string]: boolean },
+	-- end (the sword handed over), the sword fight's end (his goodbye), the level 4 hello and the boss goodbye. A fight
+	-- step ends when the fight does (won, lost or run from)
+	FINISH_STEPS = { hello = true, firstWin = true, swordWin = true, sword = true, boss = true } :: { [string]: boolean },
 	-- Fights that must be won to move on (the sword's: "Great fighting!" after a loss would be wrong); a loss or a run
 	-- keeps the step and he says ChikinTalk.RETRY. The first fight ends either way, with its own lost lines
 	WIN_TO_PASS = { fight2 = true } :: { [string]: boolean },
 	-- His goodbyes: their last button says "Bye!" (a hello's says "Let's go!", Config/ChikinTalk GO)
-	BYE_STEPS = { firstWin = true, boss = true } :: { [string]: boolean },
+	BYE_STEPS = { swordWin = true, boss = true } :: { [string]: boolean },
 	-- Each step's picture on his talk card (Config/UIIcons)
 	STEP_ICONS = {
 		hello = "Paw",
@@ -34,6 +41,7 @@ return {
 		sword = "Sword",
 		wild2 = "Travel",
 		fight2 = "Sword",
+		swordWin = "Star",
 		boss = "Trophy",
 	} :: { [string]: string },
 	-- Focus mode (the owner 2026-11-11: "the screen is really crowded", pick A): while he leads in town the calm HUD's

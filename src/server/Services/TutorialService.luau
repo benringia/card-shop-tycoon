@@ -223,6 +223,7 @@ record = function(player: Player, stepId: string)
 	end
 	if after.firstVisit == "todo" and after.step > #STEPS then
 		states[player] = TutorialRules.finish(after)
+		queueEvent(player, "tourDone", false) -- his next visit: setting your own prices
 	end
 	publish(player)
 	local current = if begun[player] then TutorialRules.current(states[player], STEPS) else nil
@@ -410,6 +411,11 @@ end
 function TutorialService.Start()
 	inTown = true
 	DataService.Register({ name = "TutorialService", load = load, save = save, unload = unload })
+	-- The shop stays quiet until Pish introduces customers (owner 2026-11-16); a save not loaded yet waits too
+	CustomerService.SetArrivalHold(function(owner: Player): boolean
+		local state = states[owner]
+		return state == nil or TutorialRules.holdsCustomers(state)
+	end)
 	Remotes.TutorialAction.OnServerEvent:Connect(onAction)
 	EconomyService.OnLevelUp(function(player, fromLevel, toLevel)
 		queueLessons(player, fromLevel, toLevel, true)

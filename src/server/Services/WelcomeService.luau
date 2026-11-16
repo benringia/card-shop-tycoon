@@ -36,6 +36,13 @@ local function setPrologueSeen(player: Player, value: boolean)
 end
 
 -- Whether the prologue may play for this player now (not seen yet, or Studio's /prologue): PrologueService's check
+-- The prologue counted as seen by the server (PrologueService: its lent loadout's time ran out)
+function WelcomeService.FinishPrologue(player: Player)
+	if prologueSeen[player] ~= nil then
+		setPrologueSeen(player, true)
+	end
+end
+
 function WelcomeService.PrologueOpen(player: Player): boolean
 	return prologueSeen[player] == false and player:GetAttribute("SeenPrologue") == false
 end

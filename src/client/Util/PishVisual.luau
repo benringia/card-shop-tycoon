@@ -31,6 +31,9 @@ export type Visual = {
 	dirt: ParticleEmitter,
 	shown: boolean,
 	dog: string, -- "Pish", "Chikin" or "Turts"
+	head: Bone?, -- turned straight on top of the clips (a dog whose config has HEAD_STRAIGHTEN: Chikin)
+	headOn: CFrame, -- the turn last put on it
+	headLeft: CFrame?, -- the transform that left, so next frame's turn replaces it rather than piling up
 }
 
 -- Each dog's size and sounds (Config/Pish, Config/Chikin)
@@ -134,6 +137,9 @@ function PishVisual.new(marker: BasePart, dog: string?): Visual?
 		onDone = nil,
 		dirt = makeDirt(body.root, config.HEIGHT),
 		shown = true,
+		head = if (config :: any).HEAD_STRAIGHTEN then model:FindFirstChild("Head_0", true) :: Bone? else nil,
+		headOn = CFrame.identity,
+		headLeft = nil,
 	}
 end
 
@@ -269,6 +275,16 @@ function PishVisual.step(visual: Visual, dt: number)
 	CreatureVisuals.step(visual.body, dt, os.clock(), origin, Party.MOTION)
 	if visual.clipPlayer then
 		ClipPlayer.step(visual.clipPlayer, dt, visual.body.model:GetScale())
+	end
+	-- his head straightened on top of the clip (the last frame's turn taken off first, unless a clip has set it since)
+	local head = visual.head
+	local straighten = (DOGS[visual.dog] :: any).HEAD_STRAIGHTEN
+	if head and head:IsA("Bone") and typeof(straighten) == "number" then
+		local base = if visual.headLeft and head.Transform == visual.headLeft then visual.headLeft * visual.headOn:Inverse() else head.Transform
+		local up = head.WorldCFrame:VectorToObjectSpace(visual.body.model:GetPivot().UpVector)
+		visual.headOn = CFrame.fromAxisAngle(up, math.rad(straighten))
+		head.Transform = base * visual.headOn
+		visual.headLeft = head.Transform
 	end
 	if visual.onDone and os.clock() >= visual.doneAt then
 		local done = visual.onDone

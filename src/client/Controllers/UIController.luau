@@ -675,6 +675,7 @@ function UIController.Start()
 	dockHolder.Parent = screenGui
 	Hud.scaleWith(dockHolder)
 	Hud.hideWith(dockHolder) -- full-screen views (the binder) cover it
+	Hud.calmPiece(dockHolder, "party") -- its name: manning the register keeps it (Hud.keepOnly), the shop bar in view
 	local function place()
 		placeStatusRow(rowLayout)
 		placeDock()

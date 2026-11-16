@@ -10,13 +10,17 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local RegisterConfig = require(Shared:WaitForChild("Config"):WaitForChild("Register"))
+local LevelMath = require(Shared:WaitForChild("Util"):WaitForChild("LevelMath"))
 local CustomerConfig = require(Shared:WaitForChild("Config"):WaitForChild("Customers"))
 local HaggleRules = require(Shared:WaitForChild("Util"):WaitForChild("HaggleRules"))
+local PaymentRules = require(Shared:WaitForChild("Util"):WaitForChild("PaymentRules"))
+local PaymentConfig = require(Shared:WaitForChild("Config"):WaitForChild("Payment"))
 local RegisterBell = require(Shared:WaitForChild("Util"):WaitForChild("RegisterBell"))
 local BellConfig = require(Shared:WaitForChild("Config"):WaitForChild("RegisterBell"))
 local Town = require(Shared:WaitForChild("Config"):WaitForChild("Town"))
 local Packs = require(Shared:WaitForChild("Config"):WaitForChild("Packs"))
 local Products = require(Shared:WaitForChild("Config"):WaitForChild("Products"))
+local Cards = require(Shared:WaitForChild("Config"):WaitForChild("Cards"))
 local PropFit = require(Shared:WaitForChild("Util"):WaitForChild("PropFit"))
 local PackModels = require(Shared:WaitForChild("Util"):WaitForChild("PackModels"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -42,6 +46,18 @@ type Checkout = {
 	haggleOffer: number?, -- a bargain hunter's offer once everything is scanned
 	haggling: boolean, -- the owner is answering that offer (OfferService)
 	lastProgressAt: number, -- its start, or its last scan (the bell rings when nobody scans: Util/RegisterBell)
+	payment: Payment?, -- after Charge: how the customer pays, until the owner gets it right (Config/Payment)
+	lines: { Line }, -- each counter item, for the register's scan list (RegisterStationController)
+}
+
+-- `product` its product id, or `card` a single card's id: the register's scan list shows its picture
+type Line = { name: string, price: number, part: BasePart, product: string?, card: string? }
+
+type Payment = {
+	method: PaymentRules.Method,
+	totalCents: number,
+	givenCents: number, -- cash: what they handed over (card: the total)
+	price: number, -- the sale's price in dollars (the total, or a haggled price)
 }
 
 type HaggleCallback = (plot: Plot, customer: Customer, offer: number, total: number) -> ()
@@ -55,6 +71,11 @@ local FACE_UP = CFrame.fromMatrix(Vector3.zero, Vector3.new(-1, 0, 0), Vector3.n
 local checkouts: { [Plot]: Checkout } = {}
 local allowScan = RateLimiter.new(RegisterConfig.SCAN_COOLDOWN)
 local allowCharge = RateLimiter.new(RegisterConfig.CHARGE_COOLDOWN)
+local allowAnswer = RateLimiter.new(PaymentConfig.ANSWER_COOLDOWN)
+local allowMan = RateLimiter.new(0.5)
+-- The owners manning their register in first person (owner 2026-11-16: "Man the cashier"; RegisterStationController):
+-- scanning, Charge and paying happen only there
+local manning: { [Player]: boolean } = {}
 local rng = Random.new()
 local haggleCallbacks: { HaggleCallback } = {}
 local saleCallbacks: { SaleCallback } = {}
@@ -63,8 +84,13 @@ local function notify(player: Player, message: string, isError: boolean)
 	Remotes.Notify:FireClient(player, message, isError)
 end
 
+-- The running total, items left, and every item's name, price and whether it's scanned (the register's scan list)
 local function sendUpdate(checkout: Checkout)
-	Remotes.CheckoutUpdate:FireClient(checkout.customer.owner, checkout.total, checkout.remaining)
+	local lines = {}
+	for _, line in checkout.lines do
+		table.insert(lines, { name = line.name, price = line.price, done = checkout.pending[line.part] == nil, product = line.product, card = line.card })
+	end
+	Remotes.CheckoutUpdate:FireClient(checkout.customer.owner, checkout.total, checkout.remaining, lines)
 end
 
 -- Owner must be close to the register and on the staff side (behind the counter)
@@ -79,17 +105,29 @@ local function isBehindCounter(player: Player, plot: Plot): boolean
 	return localPos.Z > 0 and (root.Position - register.Position).Magnitude <= RegisterConfig.REACH
 end
 
-local function playScanSound(plot: Plot)
-	if RegisterConfig.SCAN_SOUND_ID == "" then
+-- A one-shot at the register (heard round the counter, not across town)
+local function playAtRegister(plot: Plot, id: string, volume: number)
+	if id == "" then
 		return
 	end
 	local sound = Instance.new("Sound")
-	sound.SoundId = RegisterConfig.SCAN_SOUND_ID
+	sound.SoundId = id
+	sound.Volume = volume
 	sound.Parent = plot.register
 	sound.Ended:Once(function()
 		sound:Destroy()
 	end)
 	sound:Play()
+end
+
+local function playScanSound(plot: Plot)
+	playAtRegister(plot, RegisterConfig.SCAN_SOUND_ID, RegisterConfig.SCAN_VOLUME)
+end
+
+local function playSaleSound(plot: Plot)
+	for _, layer in RegisterConfig.SALE_SOUNDS do
+		playAtRegister(plot, layer.id, layer.volume)
+	end
 end
 
 local function endCheckout(plot: Plot)
@@ -103,6 +141,9 @@ local function endCheckout(plot: Plot)
 	end
 	if checkout.customer.owner.Parent then
 		Remotes.CheckoutUpdate:FireClient(checkout.customer.owner, nil, 0)
+		if checkout.payment then
+			Remotes.PaymentStart:FireClient(checkout.customer.owner, nil)
+		end
 	end
 end
 
@@ -154,17 +195,86 @@ local function completeSale(checkout: Checkout, total: number, byWorker: boolean
 		end
 	end
 	endCheckout(customer.plot)
+	playSaleSound(customer.plot)
 	CustomerService.CompletePurchase(customer)
 	if total > 0 then
 		EconomyService.AddCash(owner, total)
 	end
-	EconomyService.AddXP(owner, math.max(RegisterConfig.MIN_XP_PER_SALE, math.round(total)))
+	EconomyService.AddXP(owner, LevelMath.saleXp(total, RegisterConfig.MIN_XP_PER_SALE))
 	DataService.AddStat(owner, "customersServed", 1)
+	-- this visit's sales, for the register's idle screen ("Today: 4 sales · $14.51")
+	owner:SetAttribute("RegisterSales", (tonumber(owner:GetAttribute("RegisterSales")) or 0) + 1)
+	owner:SetAttribute("RegisterTaken", (tonumber(owner:GetAttribute("RegisterTaken")) or 0) + total)
 	DataService.AddStat(owner, "totalEarned", total)
 	Remotes.Notify:FireClient(owner, string.format("Sale! +$%.2f", total), false, "side")
 	for _, callback in saleCallbacks do
 		task.spawn(callback, customer, bought, byWorker)
 	end
+end
+
+-- What the customer is buying, for the card machine's screen ("2 First Spark Booster Pack, 1 card")
+local function itemsText(customer: Customer): string
+	local counts: { [string]: number } = {}
+	local order: { string } = {}
+	for _, item in customer.items do
+		local product = if item.productId then Products.ById[item.productId] else nil
+		local name = if product then product.name else "card"
+		if not counts[name] then
+			table.insert(order, name)
+		end
+		counts[name] = (counts[name] or 0) + item.units
+	end
+	local parts = {}
+	for _, name in order do
+		local count = counts[name]
+		table.insert(parts, `{count} x {name}`)
+	end
+	return table.concat(parts, ", ")
+end
+
+local function sendPayment(checkout: Checkout)
+	local payment = checkout.payment
+	local owner = checkout.customer.owner
+	if not payment or not owner.Parent then
+		return
+	end
+	Remotes.PaymentStart:FireClient(owner, {
+		method = payment.method,
+		total = payment.totalCents,
+		given = payment.givenCents,
+		items = itemsText(checkout.customer),
+	})
+end
+
+-- After Charge the customer pays (owner 2026-11-16, mockup approved): by card (you type the total) or cash (you count
+-- the change); a free sale needs nothing. While you stand at the register paying, their patience holds
+local function startPayment(checkout: Checkout, price: number)
+	local totalCents = math.round(price * 100)
+	if totalCents <= 0 then
+		completeSale(checkout, price, false)
+		return
+	end
+	local customer = checkout.customer
+	-- Pish's first sale always pays cash: it teaches the drawer, the gold glow on the next note to give from the start
+	-- (owner 2026-11-16: "include the use of cash register on pish's tutorial")
+	local firstSale = customer.owner:GetAttribute("TutorialStep") == "ringUp"
+	local method = if firstSale then "cash" else PaymentRules.method(PaymentConfig, customer.kind, rng:NextNumber())
+	checkout.payment = {
+		method = method,
+		totalCents = totalCents,
+		givenCents = if method == "cash" then PaymentRules.given(PaymentConfig, totalCents) else totalCents,
+		price = price,
+	}
+	checkout.lastProgressAt = os.clock()
+	sendPayment(checkout)
+	task.spawn(function()
+		while checkouts[customer.plot] == checkout and customer.alive do
+			if isBehindCounter(customer.owner, customer.plot) then
+				customer.lastScanAt = os.clock()
+			end
+			task.wait(PaymentConfig.HOLD_SECONDS)
+		end
+	end)
 end
 
 local function onScan(player: Player, plot: Plot, part: BasePart)
@@ -179,11 +289,41 @@ local function onScan(player: Player, plot: Plot, part: BasePart)
 	if not unitPrice then
 		return
 	end
+	if not manning[player] then
+		notify(player, "Man the register to scan!", true)
+		return
+	end
 	if not isBehindCounter(player, plot) then
 		notify(player, "Stand behind the register to scan.", true)
 		return
 	end
 	scanItem(plot, checkout, part, false)
+end
+
+-- The owner steps onto their register (first person) or off it. Only their own, from behind its counter
+local function onMan(player: Player, on: unknown)
+	if not allowMan(player) or typeof(on) ~= "boolean" then
+		return
+	end
+	if not on then
+		manning[player] = nil
+		player:SetAttribute("ManningRegister", nil)
+		return
+	end
+	local plot = PlotService.GetPlot(player)
+	if not plot or not isBehindCounter(player, plot) then
+		notify(player, "Stand behind your register to man it.", true)
+		return
+	end
+	manning[player] = true
+	player:SetAttribute("ManningRegister", true)
+	local checkout = checkouts[plot]
+	if checkout then
+		sendUpdate(checkout) -- what's on the counter right now, for its screen
+		if checkout.payment then
+			sendPayment(checkout)
+		end
+	end
 end
 
 -- What a counter item looks like: a pack or deck box shows its 3D model (Util/PackModels) lying face up inside the
@@ -234,14 +374,21 @@ local function startCheckout(customer: Customer)
 
 	local prices: { number } = {}
 	local products: { string | false } = {} -- each unit's product, false for a single card (keeps the array gapless)
+	local names: { string } = {}
+	local cardIds: { string | false } = {}
 	for _, item in customer.items do
+		local product = if item.productId then Products.ById[item.productId] else nil
+		local card = if item.card then Cards.ById[item.card.cardId] else nil
+		local name = if product then product.name elseif card then card.name else "Card"
 		for _ = 1, item.units do
 			table.insert(prices, item.unitPrice)
 			table.insert(products, item.productId or false)
+			table.insert(names, name)
+			table.insert(cardIds, if item.card then item.card.cardId else false)
 		end
 	end
 
-	local checkout: Checkout = { customer = customer, pending = {}, remaining = #prices, count = #prices, total = 0, haggling = false, lastProgressAt = os.clock() }
+	local checkout: Checkout = { customer = customer, pending = {}, remaining = #prices, count = #prices, total = 0, haggling = false, lastProgressAt = os.clock(), lines = {} }
 	checkouts[plot] = checkout
 	-- The bell (owner 2026-11-12: "when a customer is at the cashier and there's no one there. play a 'Ding' sound then
 	-- notification"): while this checkout lasts, nobody scanning and the owner away from the counter, it rings on their
@@ -290,6 +437,8 @@ local function startCheckout(customer: Customer)
 
 		part.Parent = register
 		checkout.pending[part] = unitPrice
+		local cardId = cardIds[index]
+		table.insert(checkout.lines, { name = names[index], price = unitPrice, part = part, product = if productId then productId else nil, card = if cardId then cardId else nil })
 	end
 
 	sendUpdate(checkout)
@@ -304,6 +453,11 @@ local function chargeAsOwner(player: Player, checkout: Checkout)
 		notify(player, "Stand behind the register to charge.", true)
 		return
 	end
+	-- Already paying: the window again (closed by mistake)
+	if checkout.payment then
+		sendPayment(checkout)
+		return
+	end
 	-- A bargain hunter answers Charge with their offer (a cashier scanned the last item before the owner stepped in)
 	if checkout.haggling then
 		notify(player, "Answer their offer first.", true)
@@ -312,11 +466,52 @@ local function chargeAsOwner(player: Player, checkout: Checkout)
 		openHaggle(checkout.customer.plot, checkout)
 		return
 	end
-	completeSale(checkout, checkout.total, false)
+	startPayment(checkout, checkout.total)
+end
+
+-- The owner's answer on the card machine (the typed total in cents) or from the drawer (the bills and coins given):
+-- right, the sale; wrong, the window says why. Checked here against the server's own total, never the client's
+local function onPayAnswer(player: Player, answer: unknown)
+	if not allowAnswer(player) then
+		return
+	end
+	local checkout: Checkout? = nil
+	for _, open in checkouts do
+		if open.customer.owner == player then
+			checkout = open
+		end
+	end
+	local payment = if checkout then checkout.payment else nil
+	if not checkout or not payment then
+		return
+	end
+	if not manning[player] or not isBehindCounter(player, checkout.customer.plot) then
+		notify(player, "Man the register to take payment!", true)
+		return
+	end
+	local result: string
+	if payment.method == "card" then
+		result = if typeof(answer) == "number" and PaymentRules.cardRight(answer, payment.totalCents) then "ok" else "wrong"
+	else
+		result = PaymentRules.checkChange(PaymentConfig, answer, payment.givenCents - payment.totalCents)
+		if result == "bad" then
+			return -- not money from the drawer: only a tampered client sends that
+		end
+	end
+	checkout.lastProgressAt = os.clock()
+	if result == "ok" then
+		completeSale(checkout, payment.price, false)
+	else
+		Remotes.PaymentResult:FireClient(player, result)
+	end
 end
 
 local function onCharge(player: Player)
 	if not allowCharge(player) then
+		return
+	end
+	if not manning[player] then
+		notify(player, "Man the register to charge!", true)
 		return
 	end
 	for _, checkout in checkouts do
@@ -378,7 +573,8 @@ function RegisterService.SettleHaggle(plot: Plot, price: number?): boolean
 		return false
 	end
 	if price then
-		completeSale(checkout, price, false)
+		checkout.haggling = false
+		startPayment(checkout, price) -- they pay the price agreed
 	else
 		endCheckout(plot)
 		CustomerService.Refuse(checkout.customer)
@@ -396,6 +592,8 @@ function RegisterService.ServeForTest(player: Player): boolean
 	for part in table.clone(checkout.pending) do
 		scanItem(plot, checkout, part, false)
 	end
+	manning[player] = true
+	player:SetAttribute("ManningRegister", true)
 	chargeAsOwner(player, checkout)
 	return true
 end
@@ -418,7 +616,10 @@ function RegisterService.Start()
 	CustomerService.OnReachedCounter(startCheckout)
 	CustomerService.OnLeftQueue(onCustomerLeftQueue)
 	Remotes.Charge.OnServerEvent:Connect(onCharge)
+	Remotes.PayAnswer.OnServerEvent:Connect(onPayAnswer)
+	Remotes.ManRegister.OnServerEvent:Connect(onMan)
 	Players.PlayerRemoving:Connect(function(player)
+		manning[player] = nil
 		for plot, checkout in checkouts do
 			if checkout.customer.owner == player then
 				endCheckout(plot)

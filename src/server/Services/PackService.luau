@@ -15,9 +15,12 @@ local Announcements = require(Config:WaitForChild("Announcements"))
 local Cards = require(Config:WaitForChild("Cards"))
 local Packs = require(Config:WaitForChild("Packs"))
 local Pish = require(Config:WaitForChild("Pish"))
+local Products = require(Config:WaitForChild("Products"))
+local RegisterConfig = require(Config:WaitForChild("Register"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
+local LevelMath = require(Shared:WaitForChild("Util"):WaitForChild("LevelMath"))
 local LuckRules = require(Shared:WaitForChild("Util"):WaitForChild("LuckRules"))
 local NewPulls = require(Shared:WaitForChild("Util"):WaitForChild("NewPulls"))
 local PityRules = require(Shared:WaitForChild("Util"):WaitForChild("PityRules"))
@@ -27,6 +30,7 @@ local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
 local CardService = require(Services:WaitForChild("CardService"))
 local DataService = require(Services:WaitForChild("DataService"))
+local EconomyService = require(Services:WaitForChild("EconomyService"))
 local PlacementService = require(Services:WaitForChild("PlacementService"))
 local StockService = require(Services:WaitForChild("StockService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
@@ -227,6 +231,11 @@ local function onRip(player: Player)
 	local results = rollPack(pack, player)
 	applyPity(player, results)
 	deliverPack(player, productId, results)
+	-- a pack ripped from your stock grows your shop as selling it would (owner 2026-11-16): its market price in XP
+	local product = Products.ById[productId]
+	if product then
+		EconomyService.AddXP(player, LevelMath.saleXp(product.marketPrice, RegisterConfig.MIN_XP_PER_SALE))
+	end
 end
 
 -- A pack from the Bag (LevelUpService, after it took the item): the same roll, pity and stat as ripping one from a

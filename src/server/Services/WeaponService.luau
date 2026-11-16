@@ -57,7 +57,8 @@ function WeaponService.GetEquipped(player: Player): string?
 	if borrowed then
 		return borrowed.id
 	end
-	if EconomyService.GetLevel(player) < Swords.UNLOCK_SHOP_LEVEL then
+	-- the first sword: from Chikin after his first fight (CombatTutorialService sets SwordGiven), or at its shop level
+	if not WeaponRules.swordReady(EconomyService.GetLevel(player), Swords.UNLOCK_SHOP_LEVEL, player:GetAttribute("SwordGiven") == true) then
 		return nil
 	end
 	return equipped[player] or Weapons.STARTER
@@ -199,7 +200,7 @@ local function onEquip(player: Player, weaponId: unknown)
 	if not weapon or not weapon.ready or not WeaponService.GetEquipped(player) then
 		return
 	end
-	local blocked = WeaponRules.equipBlock(EconomyService.GetLevel(player), Swords.UNLOCK_SHOP_LEVEL)
+	local blocked = WeaponRules.equipBlock(EconomyService.GetLevel(player), Swords.UNLOCK_SHOP_LEVEL, player:GetAttribute("SwordGiven") == true)
 	if blocked then
 		Remotes.Notify:FireClient(player, blocked, true)
 		return

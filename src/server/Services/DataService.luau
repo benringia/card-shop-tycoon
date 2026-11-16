@@ -4,7 +4,9 @@
 --   Leave: every service saves its part → end the session → services unload → release the plot.
 -- Services keep their own runtime state and register load/save/unload handlers here, so nothing
 -- is torn down before it has been saved. ProfileStore also autosaves; OnSave collects first.
+local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local TeleportService = game:GetService("TeleportService")
@@ -19,6 +21,7 @@ local Services = script.Parent :: Instance
 local PlotService = require(Services:WaitForChild("PlotService"))
 local Place = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("Place"))
 local Migrations = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("Migrations"))
+local SaveSlots = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("SaveSlots"))
 
 -- Shape of what's saved. Tables only hold plain data: no Instances, Vector3s or Color3s.
 export type SavedCard = {
@@ -173,6 +176,7 @@ local handlers: { Handler } = {}
 local beforeLeaveCallbacks: { (player: Player) -> () } = {}
 local profiles: { [Player]: any } = {}
 local handedOff: { [Player]: boolean } = {} -- saved and closed for a teleport that hasn't left yet (DataService.HandOff)
+local slotKeys: { [Player]: string } = {} -- the profile key each player loaded (the owner's test save: SaveSlots)
 
 -- Runs one handler step; a bug in one service must not stop the others saving
 local function runHandler(handler: Handler, step: string, fn: () -> ())
@@ -226,8 +230,31 @@ local function attach(player: Player, profile: any)
 	profiles[player] = profile
 end
 
+-- The game's owner's chosen save (SaveSlotService writes it, "/slot"): their real one unless they picked the test one;
+-- everyone else always has their real one. A failed read loads the real save.
+function DataService.SlotOf(player: Player): SaveSlots.State
+	if not SaveSlots.isOwner(player.UserId, game.CreatorId, game.CreatorType.Name) then
+		return SaveSlots.clean(nil)
+	end
+	local ok, raw = pcall(function()
+		return DataStoreService:GetDataStore(DataConfig.SLOT_STORE):GetAsync(tostring(player.UserId))
+	end)
+	return SaveSlots.clean(if ok then raw else nil)
+end
+
+-- Whether this player is on the owner's test save (the leaderboard skips it: its small counts would overwrite theirs)
+function DataService.IsTestSlot(player: Player): boolean
+	local key = slotKeys[player]
+	return key ~= nil and key ~= DataConfig.KEY_PREFIX .. player.UserId
+end
+
 local function startSession(player: Player): any
-	return store:StartSessionAsync(DataConfig.KEY_PREFIX .. player.UserId, {
+	local key = slotKeys[player]
+	if not key then
+		key = SaveSlots.key(DataConfig.KEY_PREFIX, player.UserId, DataService.SlotOf(player), RunService:IsStudio())
+		slotKeys[player] = key
+	end
+	return store:StartSessionAsync(key, {
 		Cancel = function()
 			return not isInGame(player)
 		end,
@@ -285,6 +312,7 @@ local function onPlayerRemoving(player: Player)
 		profile:EndSession()
 	end
 	unloadAll(player)
+	slotKeys[player] = nil
 	if not Place.isFrontier() and not Place.isDungeon() then
 		PlotService.Release(player)
 	end

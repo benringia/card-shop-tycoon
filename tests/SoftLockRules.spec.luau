@@ -3,7 +3,26 @@
 -- enemy Tab or the Target button picks next, which one a tap lands on, and when a lock lets go
 local SoftLockRules = require("../src/shared/Util/SoftLockRules")
 local SoftLock = require("../src/shared/Config/SoftLock")
+local SwordFx = require("../src/shared/Config/SwordFx")
 local expect = require("./lib/expect")
+
+-- degrees round the colour wheel
+local function hue(color: { number }): number
+	local r, g, b = color[1] / 255, color[2] / 255, color[3] / 255
+	local high, low = math.max(r, g, b), math.min(r, g, b)
+	if high == low then
+		return 0
+	end
+	local h
+	if high == r then
+		h = ((g - b) / (high - low)) % 6
+	elseif high == g then
+		h = (b - r) / (high - low) + 2
+	else
+		h = (r - g) / (high - low) + 4
+	end
+	return h * 60
+end
 
 -- the player at (0, 0); the boss far, two adds nearer
 local TARGETS = {
@@ -13,6 +32,17 @@ local TARGETS = {
 }
 
 return {
+	-- Owner 2026-11-16 (pick A): "lock target color could easily be mistaken for a boss attack ring": nothing of the
+	-- marker lies on the ground (the ground is for danger only) and its colour is far round the wheel from the boss
+	-- warning's orange
+	["the target marker can never pass for a boss's warning ring"] = function()
+		expect.isNil((SoftLock :: any).RING_MIN, "no ring on the ground")
+		expect.isNil((SoftLock :: any).SEGMENTS, "no ring pieces")
+		local gap = math.abs(hue(SoftLock.LOCKED.outline) - hue(SwordFx.RING_COLOR))
+		gap = math.min(gap, 360 - gap)
+		assert(gap >= 120, `its colour sits far from the warning's orange ({math.floor(gap)} degrees)`)
+	end,
+
 	["Tab picks the nearest first, then on outward, then round again"] = function()
 		expect.equal(SoftLockRules.cycle(TARGETS, nil, 0, 0), "b:x")
 		expect.equal(SoftLockRules.cycle(TARGETS, "b:x", 0, 0), "b:y")

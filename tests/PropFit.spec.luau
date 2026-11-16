@@ -127,10 +127,8 @@ return {
 		expect.equal(town.SLOTS.DeliveryPad, nil, "the pallet slot is gone (the spot is code-built)")
 	end,
 
-	["the checkout is code-built: a POS terminal, no market stall or cash register model"] = function()
-		local slot = town.SLOTS.Terminal
-		assert(slot ~= nil, "Terminal slot")
-		expect.equal(slot.collide, false, "Terminal collide")
+	["the checkout is code-built: the register unit (Util/RegisterBuild), no market stall or prop slots"] = function()
+		expect.equal(town.SLOTS.Terminal, nil, "the tablet terminal gave way to the register unit (owner 2026-11-16)")
 		expect.equal(town.SLOTS.Counter, nil, "the market stall slot is gone")
 		expect.equal(town.SLOTS.Register, nil, "the cash register slot is gone")
 		expect.equal(town.COUNTER.STALL, nil, "no stall box")

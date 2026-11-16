@@ -75,9 +75,16 @@ function WeaponRules.shownPower(cfg: any, combat: any, weaponId: string, grade: 
 end
 
 -- Why changing weapons isn't allowed now (nil: it is): in a fight, or before the shop level that gives the first sword
-function WeaponRules.equipBlock(shopLevel: number, unlockLevel: number): string?
-	if shopLevel < unlockLevel then
-		return `Your first sword comes at shop level {unlockLevel}.`
+-- The first sword (owner 2026-11-16: "chikin should give the player a sword before leaving the player on wild"):
+-- Chikin hands it over when his first fight is over (`given`: the server's SwordGiven), or it comes at the sword's
+-- shop level for anyone who never had his tour
+function WeaponRules.swordReady(shopLevel: number, unlockLevel: number, given: boolean): boolean
+	return given or shopLevel >= unlockLevel
+end
+
+function WeaponRules.equipBlock(shopLevel: number, unlockLevel: number, given: boolean): string?
+	if not WeaponRules.swordReady(shopLevel, unlockLevel, given) then
+		return "Chikin gives you your first sword after your first fight."
 	end
 	return nil
 end

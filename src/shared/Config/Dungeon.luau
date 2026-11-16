@@ -4,6 +4,9 @@
 -- elite packs, then the Prism Hydra's chamber (its arena, built by WildService.BuildBossArenas at CHAMBER). Creatures
 -- keep their HP from room to room. Monsters come from the Frontier's species. Plain data so Lune tests can load it.
 return {
+	-- Said to a player who reached a Dungeon server some other way than the Frontier's portal (DungeonService sends
+	-- them back to the Frontier; Util/DungeonRules.arrivalAllowed)
+	ENTER_THROUGH_PORTAL = "The Dungeon opens through the portal in the Frontier. Taking you back there!",
 	BOSS = "prismHydra", -- the chamber's boss (Config/Bosses)
 	-- Each room: a pack of `count` elites at `level`, names cycled through `species` (mixed elements)
 	ROOMS = {

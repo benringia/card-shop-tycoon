@@ -24,7 +24,6 @@ return {
 		PortalFrontier = { height = 28, collide = false },
 		PortalArena = { height = 28, collide = false },
 		PortalDungeon = { height = 26, collide = false }, -- the Frontier's way into the Dungeon (FrontierValley DUNGEON_GATE)
-		Terminal = { height = 0, collide = false }, -- the POS terminal on the checkout (fits COUNTER.REGISTER)
 		CounterDecor = { height = 1.2, collide = false },
 		-- fixtures: drawn on their part (which becomes an invisible hitbox) only when the model file exists
 		-- built = the code-built look is the real one: model files are ignored, placement ghosts use it too
@@ -305,7 +304,7 @@ return {
 	-- these boxes; x = offset from the counter centre. Studs; colours as { r, g, b }.
 	COUNTER = {
 		PROP_DEPTH = 0.6, -- the back strip (decor)
-		REGISTER = { x = -1.8, width = 2.4, height = 2.2, depth = 2 }, -- the POS terminal's box
+		REGISTER = { x = -1.7, width = 2.6, height = 3.4, depth = 2 }, -- the register unit's box (Config/RegisterStation UNIT, BODY)
 		DECOR = { x = 2.4, width = 0.8, height = 1.2 },
 		ITEM_GAP = 0.15, -- between the terminal and the first scan item
 		STAFF_BEHIND = 1.6, -- the cashier (owner or pet) stands this far behind the counter

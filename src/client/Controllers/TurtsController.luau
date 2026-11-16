@@ -6,6 +6,8 @@
 -- cushion, lantern, crates, sign) with this player's own 3 offers on stands (SOLD ones dimmed); a timer over him; a
 -- light beacon for BEACON_SECONDS after he moves; his "Shop" prompt opening the window (the offers with Buy, the
 -- countdown, Robux "Restock now").
+local Players = game:GetService("Players")
+local PolicyService = game:GetService("PolicyService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -17,6 +19,7 @@ local Items = require(Config:WaitForChild("Items"))
 local Monetization = require(Config:WaitForChild("Monetization"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local TurtsRules = require(Shared:WaitForChild("Util"):WaitForChild("TurtsRules"))
+local PaidRandomRules = require(Shared:WaitForChild("Util"):WaitForChild("PaidRandomRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -354,8 +357,16 @@ local function buildWindow()
 	restockRow.Parent = list
 	local restock = UIKit.button(restockRow, if soon then "Restock now · Coming soon" else "Restock now", UIKit.Colors.Secondary)
 	if not soon then
-		-- its Robux price on the button, from Roblox (the price is set on Creator Hub)
+		-- its Robux price on the button, from Roblox (the price is set on Creator Hub), or "Not available here" where
+		-- chance-based purchases are restricted (a paid re-roll is one: Util/PaidRandomRules; the server refuses it too)
 		task.spawn(function()
+			local okPolicy, policy = pcall(function()
+				return PolicyService:GetPolicyInfoForPlayerAsync(Players.LocalPlayer)
+			end)
+			if PaidRandomRules.restricted(okPolicy, policy) then
+				restock.Text = Turts.RESTOCK_RESTRICTED_BUTTON
+				return
+			end
 			local ok, info = pcall(function()
 				return game:GetService("MarketplaceService"):GetProductInfo(productId, Enum.InfoType.Product)
 			end)
@@ -375,6 +386,10 @@ local function buildWindow()
 end
 
 local function openWindow()
+	if Players.LocalPlayer:GetAttribute("TutorialDone") ~= true then
+		Remotes.TurtsStock:FireServer() -- shut till Pish's tour is over: the server says so (a Blocked card)
+		return
+	end
 	if not panel then
 		buildWindow()
 	end
@@ -431,10 +446,15 @@ end
 local function addPrompt()
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Shop"
-	prompt.ObjectText = "Turts"
 	prompt.HoldDuration = 0
 	prompt.MaxActivationDistance = Turts.PROMPT_RANGE
 	prompt.RequiresLineOfSight = false
+	-- shut till Pish's tour is over, and the prompt says so before you press
+	local function label()
+		prompt.ObjectText = if Players.LocalPlayer:GetAttribute("TutorialDone") == true then "Turts" else Turts.AFTER_TOUR_PROMPT
+	end
+	label()
+	Players.LocalPlayer:GetAttributeChangedSignal("TutorialDone"):Connect(label)
 	prompt.Parent = marker
 	prompt.Triggered:Connect(openWindow)
 end

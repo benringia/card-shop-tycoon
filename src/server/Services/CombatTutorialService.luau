@@ -59,6 +59,10 @@ local function publish(player: Player)
 	local step = if begun[player] and not pishLeading(player) then TutorialRules.current(state, STEPS) else nil
 	player:SetAttribute("CombatStep", step or "")
 	player:SetAttribute("CombatDone", state.firstVisit ~= "todo")
+	-- the first sword: Chikin hands it over as his first fight ends (owner 2026-11-16: "chikin should give the player a
+	-- sword before leaving the player on wild"); his tour skipped or done counts too. Read by WeaponService (server only:
+	-- a client can't set it for the server)
+	player:SetAttribute("SwordGiven", state.firstVisit ~= "todo" or state.step >= (table.find(STEPS, "firstWin") :: number))
 end
 
 local function inWild(player: Player): boolean
@@ -84,7 +88,8 @@ local function seenDone(player: Player, stepId: string): boolean
 	elseif stepId == "wild" or stepId == "wild2" then
 		return inWild(player)
 	elseif stepId == Chikin.WAIT_STEP then
-		return EconomyService.GetLevel(player) >= Chikin.SWORD_LEVEL
+		-- reached mid-fight (a cashier's sale while you hunt): his "Shop level 4!" visit waits until it ends (owner 2026-11-16)
+		return EconomyService.GetLevel(player) >= Chikin.SWORD_LEVEL and not BattleService.IsFighting(player)
 	end
 	return false
 end
@@ -141,8 +146,8 @@ local function check(player: Player)
 	if (current == "fight" or current == "fight2") and BattleService.IsFighting(player) and player:GetAttribute("ChikinFightResult") ~= nil then
 		player:SetAttribute("ChikinFightResult", nil)
 	end
-	-- His sword visit teaches what Pish's sword lesson would (one dog, not two)
-	if current == "sword" then
+	-- He hands over the sword and teaches it (firstWin, fight2), so Pish's sword lesson never comes too (one dog, not two)
+	if current and (table.find(STEPS, current) :: number) >= (table.find(STEPS, "firstWin") :: number) then
 		TutorialService.MarkLessonSeen(player, "sword")
 	end
 	if current and seenDone(player, current) then

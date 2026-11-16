@@ -30,6 +30,41 @@ return {
 		assert(PrologueRules.done(PrologueRules.hpShare(cfg.FIGHT.min, 1, cfg), cfg), "but over at FIGHT.min")
 	end,
 
+	-- Security review 2026-11-16: the lent maxed loadout is taken back after MAX_SESSION seconds whatever the client
+	-- does (a tampered client could otherwise keep it), long after any real prologue has given it back
+	["the lent loadout expires, well after a real prologue's end"] = function()
+		assert(typeof(cfg.MAX_SESSION) == "number", "MAX_SESSION is set")
+		local act3 = cfg.CARDS.count * cfg.CARDS.every + cfg.CARDS.seconds + cfg.BLACKOUT.seconds + cfg.KNOCK.seconds
+		local longest = cfg.ACT1 + cfg.FIGHT.max + act3
+		assert(cfg.MAX_SESSION >= 2 * longest, `room for slow loading ({cfg.MAX_SESSION} vs {longest})`)
+		assert(cfg.MAX_SESSION <= 600, "but not long enough to farm with")
+	end,
+
+	-- Owner 2026-11-16: act 3 opens with the Hydra's massive attack (rear up, a rainbow charge, a prism blast) before it
+	-- takes the cards; the story told in short lines (Config/Prologue CAPTIONS)
+	["the massive attack builds up, then hits fast"] = function()
+		local blast = cfg.BLAST
+		assert(blast.rear > 0 and blast.charge >= 1 and blast.beam > 0, "every part has time")
+		assert(blast.beam < blast.charge, "the blast is quicker than its charge")
+		assert(blast.orb[2] > blast.orb[1], "the orb grows")
+		assert(string.find(blast.chargeSound, "^rbxassetid://%d+$") and string.find(blast.blastSound, "^rbxassetid://%d+$"), "its sounds")
+	end,
+
+	["the story's lines are short enough to read"] = function()
+		local c = cfg.CAPTIONS
+		local all = { c.fight, c.swallow, c.grow, c.took }
+		for _, line in c.open do
+			table.insert(all, line)
+		end
+		for _, line in c.wake do
+			table.insert(all, line.text)
+		end
+		assert(#c.open >= 3 and #c.wake >= 5, "a beginning and a wake-up worth telling")
+		for _, line in all do
+			assert(typeof(line) == "string" and #line > 0 and #line <= 60, `short: {line}`)
+		end
+	end,
+
 	["idling still ends it by FIGHT.max"] = function()
 		expect.equal(PrologueRules.done(PrologueRules.hpShare(cfg.FIGHT.max, 0, cfg), cfg), true)
 		assert(PrologueRules.hpShare(cfg.FIGHT.max / 2, 0, cfg) < 1, "it drains on its own")

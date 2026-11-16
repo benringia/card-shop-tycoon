@@ -578,7 +578,8 @@ local function onAssign(player: Player, target: unknown, job: unknown)
 			notify(player, "That card is in your party. Remove it from the party first.", true)
 			return
 		end
-		if CardService.GetBeast(player, target) and not CardService.IsWorking(player, target) then
+		-- never a prologue card lent for its fight (security review 2026-11-16)
+		if CardService.GetBeast(player, target) and not CardService.IsWorking(player, target) and not CardService.IsLent(player, target) then
 			beastId = target
 		end
 	elseif typeof(target) == "table" then
