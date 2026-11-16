@@ -3,7 +3,7 @@
 -- Pure (no requires, no Roblox APIs): callers pass Config/Levels in, so tests/ can run it in Lune.
 local LevelMath = {}
 
-type Config = { BASE_XP: number, POWER: number, ROUND_TO: number, MAX_LEVEL: number }
+type Config = { BASE_XP: number, POWER: number, ROUND_TO: number, MAX_LEVEL: number, FIGHT_XP_PER_CASH: number? }
 
 -- Shop XP for a sale (its total) or a pack ripped from your stock (its market price: what selling it would give; owner
 -- 2026-11-16): the amount rounded, at least `minXp`
@@ -12,6 +12,12 @@ function LevelMath.saleXp(amount: number, minXp: number): number
 		return minXp
 	end
 	return math.max(minXp, math.round(amount))
+end
+
+-- Shop XP for a won fight (a monster, a Dungeon room, a boss; owner 2026-11-17): FIGHT_XP_PER_CASH of the cash it
+-- paid, rounded, at least 1
+function LevelMath.fightXp(cash: number, config: Config): number
+	return LevelMath.saleXp(cash * (config.FIGHT_XP_PER_CASH or 0), 1)
 end
 
 -- Total XP needed to reach this level (levels past the cap cost what the cap does)

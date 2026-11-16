@@ -288,6 +288,10 @@ improve in the worlds town/wilds/frontier, make it more immersive"; `SoundscapeC
 studs off, quiet and pitched a little differently each time: birds and wings in town by day and owls at night, birds
 and wings in the Meadow, drips and bats in the Caves, lava bloops and pebbles on Ember Ridge, ice cracking and far-off
 wolves in Frostwood, pebbles on Stormpeak, faint whispers and rocks in the Rift (never in a boss arena or the Dungeon).
+The Frontier's are quieter since the owner's 2026-11-17 "lower howling sound effects and other sound effects. turn up
+music volume and turn up snow ambient sound": the wolves' howls at a third (0.04), its ice cracks, pebbles and
+whispers about half, Stormpeak's thunder 0.15 and the Rift's tremor 0.25; its three areas' music twice as loud
+(0.012) and Frostwood's snowy wind twice as loud (0.06).
 The Cockatiel whistle (owner 2026-11-13: "a really loud whistling bird in town. lower its volume"; it measured 55,
 the other birds 17-29) has its own spot in town and the Meadow: volume 0.06 against the birds' 0.18, every 20-40 s.
 In town the birds' loop fades out and a crickets loop in as night falls (`SoundscapeRules.nightShare` on the day
@@ -622,8 +626,12 @@ is over UI (`UIKit.pointerBlocked`).
 ### 4.7 Shop level & rating
 - **Shop XP** from every sale, and from every pack ripped from your own stock (its market price, what selling it
   would give: owner 2026-11-16 "pish should encourage players to rip packs for faster exp"; `LevelMath.saleXp`,
-  PackService; a First Spark pack costs $2 and gives 3 XP, so selling stays the money path). Fights give creature XP,
-  never shop XP. Levels unlock new products, shelves, expansions.
+  PackService; a First Spark pack costs $2 and gives 3 XP, so selling stays the money path). A won fight gives a
+  little shop XP too (owner 2026-11-17: "can we add a small exp to the shop from killing monsters. combat exp for pets
+  stays the same"): half the cash it paid, at least 1 (`Levels.FIGHT_XP_PER_CASH`, `LevelMath.fightXp`; a Meadow
+  monster 1, a Rift one 7-10, elites 3x, the Meadow Warden 18, the Prism Hydra 200; teammates' hunting bonus counts
+  through the cash), shown as "+2 shop XP" on the win toast and a "shop XP" tile on the boss screen
+  (`Util/VictoryRules`). The creatures' XP is unchanged. Levels unlock new products, shelves, expansions.
 - **Shop XP feedback** (owner 2026-11-16: "when something is sold add a visual effects on the shop exp ... right now it's
   too flat"; and "while im killing monsters im looking at my shop exp not moving"): the dock's XP bar carries a "SHOP"
   label and a tooltip ("Your shop level. Sell and rip packs to grow it. Fights level up your creatures.",
@@ -1198,8 +1206,8 @@ from the bottom with its percent and pulses gold when full (`CombatHud.METER`); 
 Element wheel: Ember > Bloom >
 Tide > Ember, Volt and Shade strong against each other (strong ×1.5, weak ×0.75). Run is a chance
 (`clamp(0.5 + 0.03 × (leader SPD − monster SPD), 0.2, 0.9)`, −0.15 vs elites; failing costs a free hit and 3 s).
-Win: XP `12 × level^1.3` (×3 elite) split evenly across all 3 party cards, $0.40 × level, 5% (elite 20%) chance of a
-card of the zone's elements. Lose: nothing is lost, but fainted cards rest 5 minutes (`Combat.REST_SECONDS`, 3 before the player joined boss fights) (3x faster standing at the
+Win: XP `12 × level^1.3` (×3 elite) split evenly across all 3 party cards, $0.40 × level, shop XP worth half that cash
+(at least 1; 4.7), 5% (elite 20%) chance of a card of the zone's elements. Lose: nothing is lost, but fainted cards rest 5 minutes (`Combat.REST_SECONDS`, 3 before the player joined boss fights) (3x faster standing at the
 healing spring in the plaza centre). A fight still going after 2 minutes ends as a run. Numbers:
 `Config/Combat.luau`, `Config/Wild.luau`; maths in `Util/CombatMath`, fights in `server/Util/BattleSim` (both
 Lune-tested).
@@ -2656,8 +2664,10 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   (green into cyan into violet) rise off its back (`auroraFlame`, `AURORA_FLAME`: a few see-through flames per back
   bone, started on top of the back, never from inside the body). Boss models with PetRig bones now animate
   like creatures (`Party.CREATURE_STYLE`/`SIGNATURE` keyed by the boss id).
-- **Time to reach it:** shop level 57 is 436,890 total shop XP (`Util/LevelMath`): about 9 h to level 20, then roughly
-  12k XP an hour from a grown shop, about 42 h in all, inside the 30-45 h target.
+- **Time to reach it:** shop level 57 was 436,890 total shop XP at first (about 42 h, inside the 30-45 h target).
+  Since levels came 6x faster (owner 2026-11-17: shop levels are the retention, cards and weapons the grind) it is
+  72,820 (`Util/LevelMath`): about 2 h to level 20, then roughly 12k XP an hour from a grown shop, about 8 h in all.
+  The Hydra's real gate is now the Power its fight needs (the recommended Power on the Boss Ladder).
 - Studio: the Dungeon window (`rojo serve dungeon.project.json`) starts the run for whoever is there; `/room <2-4>`
   opens the doors up to that room and puts you at its gate (4: the chamber), also in the admin panel's Dungeon section. Teleports only work in
   the published game.
@@ -2897,7 +2907,13 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
   bright ground they add less light (LightEmission down to a fifth: additive light on white adds up to white) and a
   little less brightness, so their colours blend in, and glowing white cores fade 60%; on dark ground they're as made.
   It's checked every half second and the ones still out are toned again when it changes; the world's weather and
-  scenery are left alone, and a stage high above you (nothing under the camera) is as made.
+  scenery are left alone (the plaza's spring and portals and the fountain's rune, light column and orbs too), and a
+  stage high above you (nothing under the camera) is as made. **Textures drawn on black** (owner 2026-11-17 in the
+  Frontier: "the glows in this part of the map is not right. mistfins glow is black and also the fountain"): a texture
+  with no transparency only looks right fully additive; blended in, its black square shows. Every effect texture was
+  checked (the source PNGs, the store packs' downloads, a white test floor): the Yona pack's ember specks (the creature
+  auras), the fountains' water streaks and the rune circle are the ones, listed in `Config/FxTone` additive. On snow
+  they keep their LightEmission and fade 45% instead (`FxToneRules.tone`, Lune-tested); their black never shows.
   Studio preview: `/skillfx <sword> [cut1|cut2|cut3|skill]
   [level]` and the admin panel's "Sword skills". Balance: `lune run tools/balance/bosses 300` gives identical rows before
   and after (2026-11-07). Measured in a Warden fight: about 60 fps through each skill (Thornline was building ~200 vine
@@ -3118,14 +3134,18 @@ Packs and deck boxes are 3D models everywhere (`Util/PackModels`, `Config/Packs`
 ### 7.2 Shop levels (XP per sale = sale price rounded, min 1; a pack ripped from stock = its market price)
 
 Levels 1 to 100 (spec `2026-11-04-round4-design` section 8): the total XP to reach level n is
-`BASE_XP × (n − 1) ^ POWER` rounded to 10 (`Config/Levels`: 10, 2.31; maths in `Util/LevelMath.luau`, Lune-tested).
+`BASE_XP × (n − 1) ^ POWER` rounded to 10 (`Config/Levels`: 40 / 6, 2.31; maths in `Util/LevelMath.luau`, Lune-tested).
 Round 4 put every unlock at the level whose XP was nearest what it needed before (Lv 20 ≈ 36,000 XP then). Since the
 owner 2026-11-16 ("maybe adjust the shop leveling. I think it takes too long to level up"; 2.7x faster) and
 2026-11-17 ("I just want the fast level to be the retention mechanism make the players feel progress always ... make it
-like 4": shop levels are the steady feeling of progress, upgrading and maxing cards and weapons the real grind) every
-level needs 10 / 40 of that XP and the unlocks stay at their levels, so they come sooner: Lv 5 ≈ 250 XP, Lv 10 ≈ 1,600,
-Lv 20 ≈ 9,000 (shop jobs, about 3 hours in), the Prism Hydra's Lv 57 ≈ 109,000 (`tests/LevelMath`, `LevelRemap`).
-Saves keep their XP, so a save from before goes up levels on its next join (no rewards for those). Lv 100 (about 407,000 XP) is
+like 4": shop levels are the steady feeling of progress, upgrading and maxing cards and weapons the real grind; then
+the same day "is it not game breaking upping it to 6x?") every level needs 1/6 of that XP and the unlocks stay at their
+levels, so they come sooner: Lv 5 ≈ 160 XP, Lv 10 ≈ 1,070, Lv 20 ≈ 6,000 (shop jobs, about 2 hours in), the Prism
+Hydra's Lv 57 ≈ 72,800 (`tests/LevelMath`, `LevelRemap`). Mid-game a level is a few hundred XP (Lv 10 to 11: 290) and
+late a few thousand (50 to 51: 2,550), so a shop going well still levels about every half hour. Why 6x doesn't break
+the game: what a level opens is still paid for in cash, the bosses still need the Power, the gifts are the same 100
+levels' worth (they only come sooner), and the level cash dropped to $2 × level so its cash per hour stays about what
+it was. Saves keep their XP, so a save from before goes up levels on its next join (no rewards for those). Lv 100 (about 271,500 XP) is
 the cap: XP keeps counting, the level doesn't, and the HUD's XP pill shows MAX. A packs-only shop earns about 30 XP
 a minute, so Lv 2 comes within a minute of the first sale (it unlocks nothing; a level-up and its reward).
 Old saves keep their XP and load on the new level for it (a Lv 10 shop is Lv 20), with no back-pay of rewards.
@@ -3134,20 +3154,20 @@ Old saves keep their XP and load on the new level for it (a Lv 10 shop is Lv 20)
 |---|---|---|
 | 1 | 0 | Base |
 | 2 | 10 | - |
-| 3 | 50 | Card Sleeves |
-| 4 | 130 | Wall Shelf, starter sword, boss 1 (Meadow Warden) |
-| 5 | 250 | Card Condenser |
-| 7 | 630 | Accessory Hook, Deck Box, Expansion 1, boss 2 |
-| 9 | 1,220 | Big Display Rack |
-| 11 | 2,040 | Sealed Booster Box |
-| 14 | 3,740 | Grading Station, boss 3 |
-| 17 | 6,050 | Expansion 2 |
-| 20 | 8,990 | Shop jobs (first slot), Set 2 |
-| 26 / 34 / 43 / 57 | 16,950 / 32,190 / 56,200 / 109,220 | bosses 4 / 5 / 6 / 7 |
-| 100 | 407,300 | the cap |
+| 3 | 30 | Card Sleeves |
+| 4 | 80 | Wall Shelf, starter sword, boss 1 (Meadow Warden) |
+| 5 | 160 | Card Condenser |
+| 7 | 420 | Accessory Hook, Deck Box, Expansion 1, boss 2 |
+| 9 | 810 | Big Display Rack |
+| 11 | 1,360 | Sealed Booster Box |
+| 14 | 2,500 | Grading Station, boss 3 |
+| 17 | 4,030 | Expansion 2 |
+| 20 | 6,000 | Shop jobs (first slot), Set 2 |
+| 26 / 34 / 43 / 57 | 11,300 / 21,460 / 37,460 / 72,820 | bosses 4 / 5 / 6 / 7 |
+| 100 | 271,540 | the cap |
 
-**Level-up rewards** (`Config/Levels`, `Util/LevelUpRules`, Lune-tested): every level pays $3 × the new level
-(EconomyService, in `AddXP`; $6 at Lv 2, $300 at Lv 100; $10 × before levels came 4x faster, so the level cash per
+**Level-up rewards** (`Config/Levels`, `Util/LevelUpRules`, Lune-tested): every level pays $2 × the new level
+(EconomyService, in `AddXP`; $4 at Lv 2, $200 at Lv 100; $10 × before levels came 6x faster, so the level cash per
 hour stays about the same), and a gift comes every 5th level only (owner 2026-11-16:
 "small cash every level. only give gift every 5 levels (wild ores and etc) make sure its not economy breaking"):
 levels ending in 5 give Wild Ore x3 and an XP Tonic, every 10th a First Spark Pack (a Bag item, `Items.sparkPack`,
@@ -5013,8 +5033,8 @@ boss models; the ranch and Heroic tiers come after those.
   `2026-11-09-weapons-round3-scythes-design.md`): models, moveset, Reaping Cyclone, perks, portraits, balance (5.11
   "Scythes"), the Rift Reaper's Thousand Cuts with the Grim Reaper (5.11 "Thousand Cuts"), the forward-facing hold;
   owner approved and merged 2026-11-09. The Forge machine's own model: later (owner 2026-11-09).
-- [x] Shop round 2026-11-17 (owner approved): the Glass Showcase list's border, shop levels 4x faster (Lv 20 at about
-  9,000 XP, $3 x level), Roblox's Robux glyph on every price (`Util/RobuxPrice`), a new case card waits for its price
+- [x] Shop round 2026-11-17 (owner approved): the Glass Showcase list's border, shop levels 4x faster (then 6x: Lv 20
+  at about 6,000 XP, $2 x level), Roblox's Robux glyph on every price (`Util/RobuxPrice`), a new case card waits for its price
   (`Util/ListingHold`), To Bag with its own icon (pick B) and Pish's tip bubble (`Util/TileTip`, schema v32 `tips`),
   and Open another on the pack results.
 - [ ] Weapons round 3 part 2: the Widow's Reaper's Eight Legs and the Storm Reaper's Storm Cyclone (spec 5.3); the

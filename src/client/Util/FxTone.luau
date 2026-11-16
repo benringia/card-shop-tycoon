@@ -59,8 +59,14 @@ local function skipped(item: Instance): boolean
 end
 
 local function apply(item: Instance, entry: Entry)
-	local toned = FxToneRules.tone(entry, level, Cfg)
 	local effect = item :: any
+	-- a texture drawn on black (Config/FxTone additive) keeps its additive light; read now: code may set it after parenting
+	local toned = FxToneRules.tone({
+		lightEmission = entry.lightEmission,
+		brightness = entry.brightness,
+		color = entry.color,
+		additive = table.find(Cfg.additive, effect.Texture) ~= nil,
+	}, level, Cfg)
 	effect.LightEmission = toned.lightEmission
 	effect.Brightness = toned.brightness
 	effect.Transparency = faded(entry.transparency, toned.fade)

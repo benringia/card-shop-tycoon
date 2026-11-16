@@ -56,4 +56,29 @@ return {
 		local dim = FxToneRules.lightBrightness(6, 1, FxTone)
 		assert(dim < 6 and dim >= 2, `{dim}`)
 	end,
+
+	-- Owner 2026-11-17 (the Frontier): "the glows in this part of the map is not right. mistfins glow is black and also
+	-- the fountain". A texture drawn on black (no transparency: the store pack's ember specks, the fountain's water and
+	-- rune) only looks right fully additive: blended in, its black square shows. On snow it keeps its additive light
+	-- and fades instead
+	["a texture drawn on black keeps its additive light on snow, fading instead"] = function()
+		local made = { lightEmission = 1, brightness = 3, color = { 150, 225, 255 }, additive = true }
+		local snow = FxToneRules.tone(made, 1, FxTone)
+		expect.equal(snow.lightEmission, 1, "still fully additive: no black square")
+		expect.equal(snow.brightness, 3 * (1 - FxTone.brightness), "dimmer")
+		expect.equal(snow.fade, FxTone.additiveFade, "and fainter")
+		local dark = FxToneRules.tone(made, 0, FxTone)
+		expect.equal(dark.lightEmission, 1)
+		expect.equal(dark.fade, 0, "as made on dark ground")
+		local half = FxToneRules.tone({ lightEmission = 0.6, brightness = 1, color = { 255, 255, 255 }, additive = true }, 1, FxTone)
+		expect.equal(half.lightEmission, 0.6, "its made emission, never lowered")
+	end,
+
+	["the textures drawn on black are listed; the fountains and portals stay as made"] = function()
+		for _, id in { "rbxassetid://1084996976", "rbxassetid://139671283074387", "rbxassetid://131308578602059" } do
+			assert(table.find(FxTone.additive, id), `{id} is listed as drawn on black`)
+		end
+		assert(table.find(FxTone.skip, "Plaza"), "the plaza (its spring, portals) is scenery")
+		assert(table.find(FxTone.skip, "FountainFx"), "the fountain's rune, light and orbs are scenery")
+	end,
 }

@@ -26,6 +26,7 @@ local Combat = require(Config:WaitForChild("Combat"))
 local Chikin = require(Config:WaitForChild("Chikin"))
 local Dungeon = require(Config:WaitForChild("Dungeon"))
 local Defeat = require(Config:WaitForChild("Defeat"))
+local Levels = require(Config:WaitForChild("Levels"))
 local Party = require(Config:WaitForChild("Party"))
 local Prologue = require(Config:WaitForChild("Prologue"))
 local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
@@ -34,6 +35,7 @@ local Wild = Place.getWorld()
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 local CombatMath = require(Shared:WaitForChild("Util"):WaitForChild("CombatMath"))
+local LevelMath = require(Shared:WaitForChild("Util"):WaitForChild("LevelMath"))
 local TeamRules = require(Shared:WaitForChild("Util"):WaitForChild("TeamRules"))
 local DebuffRules = require(Shared:WaitForChild("Util"):WaitForChild("DebuffRules"))
 local DefenseRules = require(Shared:WaitForChild("Util"):WaitForChild("DefenseRules"))
@@ -906,6 +908,8 @@ local function payOut(fight: Fight, member: Member): any
 		local xpEach = CombatMath.splitXp(boss.xp, #member.partyIds)
 		local party = giveXp(player, member.partyIds, xpEach)
 		EconomyService.AddCash(player, boss.cash)
+		local shopXp = LevelMath.fightXp(boss.cash, Levels)
+		EconomyService.AddXP(player, shopXp)
 		-- The cards that really fought (resting ones in the party never did): the over-power check weighs these
 		local fighterIds = {}
 		for beastId in member.fought do
@@ -914,7 +918,7 @@ local function payOut(fight: Fight, member: Member): any
 		local share = BattleSim.contribution(fight.sim, member.owner)
 		local contributed = BossRules.contributed(Bosses, share.dealt, share.taken, share.totalDealt, share.totalTaken)
 		local loot = if bossRewards then bossRewards(player, monster, { seconds = fight.sim.time, fighterIds = fighterIds, contributed = contributed }) else nil
-		return { xpEach = xpEach, cash = boss.cash, shards = 0, boss = loot, party = party }
+		return { xpEach = xpEach, cash = boss.cash, shopXp = shopXp, shards = 0, boss = loot, party = party }
 	end
 	if fight.run then
 		-- A Dungeon room: the elite XP and cash of every monster in the pack, no cards or items
@@ -927,7 +931,9 @@ local function payOut(fight: Fight, member: Member): any
 		local xpEach = CombatMath.splitXp(xp, #member.partyIds)
 		local party = giveXp(player, member.partyIds, xpEach)
 		EconomyService.AddCash(player, cash)
-		return { xpEach = xpEach, cash = cash, shards = 0, party = party }
+		local shopXp = LevelMath.fightXp(cash, Levels)
+		EconomyService.AddXP(player, shopXp)
+		return { xpEach = xpEach, cash = cash, shopXp = shopXp, shards = 0, party = party }
 	end
 	local rewards = CombatMath.getRewards(Wild, monster.level, monster.elite)
 	-- your own win only, plus the hunting bonus for teammates near you (spec 2026-11-15-teams-design)
@@ -936,6 +942,9 @@ local function payOut(fight: Fight, member: Member): any
 	local each = CombatMath.splitXp(TeamRules.boostXp(rewards.xp, team), #member.partyIds)
 	local party = giveXp(player, member.partyIds, each)
 	EconomyService.AddCash(player, cash)
+	-- a small shop XP from the win (owner 2026-11-17: "combat exp for pets stays the same"): half its cash
+	local shopXp = LevelMath.fightXp(cash, Levels)
+	EconomyService.AddXP(player, shopXp)
 	local dropped = nil
 	if rng:NextNumber() < rewards.dropChance then
 		local cardId = rollDrop(monster)
@@ -973,7 +982,7 @@ local function payOut(fight: Fight, member: Member): any
 			end
 		end
 	end
-	return { xpEach = each, cash = cash, card = frontierCard or dropped, shards = shards, ore = ore, party = party, team = if team > 0 then team else nil }
+	return { xpEach = each, cash = cash, shopXp = shopXp, card = frontierCard or dropped, shards = shards, ore = ore, party = party, team = if team > 0 then team else nil }
 end
 
 -- Ending --------------------------------------------------------------------------------------------------
@@ -1110,6 +1119,7 @@ local function endFight(fight: Fight, result: string)
 		if result == "win" and player.Parent then
 			local paid = payOut(fight, member)
 			summary.xpEach, summary.cash, summary.card, summary.shards, summary.boss = paid.xpEach, paid.cash, paid.card, paid.shards, paid.boss
+			summary.shopXp = paid.shopXp -- the shop's XP from the win (the toast's pill, the boss screen's tile)
 			summary.ore = paid.ore
 			summary.team = paid.team -- the hunting bonus from teammates near you, if any (the toast's pill)
 			summary.partyIds = member.partyIds

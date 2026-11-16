@@ -247,13 +247,14 @@ return {
 				key = "frostwood", -- snowy ruins, red eyes in the fog: cold and wondering
 				tracks = { "rbxassetid://9043599529" }, -- Frozen Forest (c)
 				compressor = LEVELER,
-				ambient = { id = "rbxassetid://9114057104", volume = 0.03 }, -- Pro Sound Effects: Desert Wind Whistley Light Gusts 1
+				-- the snowy wind, twice as loud (owner 2026-11-17: "lower howling sound effects and other sound effects. turn up music volume and turn up snow ambient sound"; 0.03 before)
+				ambient = { id = "rbxassetid://9114057104", volume = 0.06 }, -- Pro Sound Effects: Desert Wind Whistley Light Gusts 1
 				options = {
 					option("Frozen Forest (c) (magical gothic orchestral)", "9043599529"),
 					option("Icy Peaks (film score)", "1840709150"),
 					option("The Icy North, orchestra only (panoramic)", "9048800521"),
 				},
-				volume = 0.006,
+				volume = 0.012, -- twice as loud (owner 2026-11-17: "turn up music volume"; 0.006 before)
 			},
 			{
 				key = "stormpeak", -- the plateau under the storm: big and brooding
@@ -265,7 +266,7 @@ return {
 					option("Roof Of The World (ambient)", "1836285546"),
 					option("Curious Shadows (dark fantasy)", "1843503016"),
 				},
-				volume = 0.006,
+				volume = 0.012, -- twice as loud (owner 2026-11-17: "turn up music volume"; 0.006 before)
 			},
 			{
 				key = "rift", -- the violet crater: eerie, a haunting choir
@@ -277,7 +278,7 @@ return {
 					option("Dark Minds (haunting choir)", "9041780692"),
 					option("Ghastly Unknown (dark fantasy underscore)", "1843501883"),
 				},
-				volume = 0.006,
+				volume = 0.012, -- twice as loud (owner 2026-11-17: "turn up music volume"; 0.006 before)
 			},
 		},
 		arenas = {

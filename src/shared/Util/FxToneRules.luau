@@ -15,12 +15,21 @@ function FxToneRules.level(ground: { number }, fog: { number }, cfg: any): numbe
 	return math.clamp((scene - cfg.from) / (cfg.to - cfg.from), 0, 1)
 end
 
-export type Base = { lightEmission: number, brightness: number, color: { number } }
+-- additive: its texture is drawn on black (Config/FxTone additive): it keeps its LightEmission
+export type Base = { lightEmission: number, brightness: number, color: { number }, additive: boolean? }
 export type Toned = { lightEmission: number, brightness: number, fade: number }
 
 -- An effect at `level`: its additive light and brightness lowered; `fade` (0-1): how far a glowing white core goes
--- toward clear (0 for anything coloured, or soft and not glowing: smoke, mist)
+-- toward clear (0 for anything coloured, or soft and not glowing: smoke, mist). A texture drawn on black keeps its
+-- additive light (blended in, its black square would show) and fades `additiveFade` instead
 function FxToneRules.tone(base: Base, level: number, cfg: any): Toned
+	if base.additive then
+		return {
+			lightEmission = base.lightEmission,
+			brightness = base.brightness * (1 - cfg.brightness * level),
+			fade = cfg.additiveFade * level,
+		}
+	end
 	local white = base.color[1] >= cfg.white and base.color[2] >= cfg.white and base.color[3] >= cfg.white
 	local core = white and base.lightEmission >= cfg.coreLight
 	return {

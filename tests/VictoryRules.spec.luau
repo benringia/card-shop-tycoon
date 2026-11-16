@@ -75,6 +75,21 @@ return {
 		local alone = VictoryRules.toast({ result = "win", foe = "Mossling", cash = 12.4, xpEach = 38 }, {})
 		expect.equal(#alone.pills, 2, "no team, no pill")
 	end,
+	-- Owner 2026-11-17: a small shop XP from killing monsters; the toast says how much (after the creatures' XP)
+	["a win's shop XP shows on the toast and the boss screen"] = function()
+		local toast = VictoryRules.toast({ result = "win", foe = "Mossling", cash = 4, xpEach = 38, shopXp = 2 }, {})
+		expect.equal(#toast.pills, 3)
+		expect.equal(toast.pills[3].icon, "Level")
+		expect.equal(toast.pills[3].text, "+2 shop XP")
+		local team = VictoryRules.toast({ result = "win", foe = "Mossling", cash = 4, xpEach = 38, shopXp = 2, team = 0.15 }, {})
+		expect.equal(team.pills[4].icon, "Party", "the team bonus stays last")
+		local tiles = VictoryRules.tiles({ cash = 36, xpEach = 40, shopXp = 18 }, Items, {})
+		expect.equal(#tiles, 3)
+		expect.equal(tiles[3].icon, "Level")
+		expect.equal(tiles[3].amount, "+18")
+		expect.equal(tiles[3].label, "shop XP")
+	end,
+
 	["a normal monster's win is a toast: who fell, cash and XP"] = function()
 		local toast = VictoryRules.toast({ result = "win", foe = "Mossling", cash = 12.4, xpEach = 38 }, {})
 		expect.equal(toast.kind, "win")

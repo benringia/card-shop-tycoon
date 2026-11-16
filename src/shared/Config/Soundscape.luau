@@ -77,17 +77,18 @@ return {
 		spot(WHISPERS, { 35, 60 }, { 16, 30 }, { 2, 8 }, 0.07, { 0.85, 1 }),
 		spot({ "rbxassetid://9116223893" }, { 20, 40 }, { 12, 28 }, { 2, 10 }, 0.06, { 1.4, 1.9 }), -- Large Metal Triangle hit, pitched up: a crystal ringing
 	},
+	-- quieter (owner 2026-11-17: "lower howling sound effects and other sound effects. turn up music volume and turn up snow ambient sound"): the wolves' howls a third (0.12), the rest about half (0.18, 0.16, 0.08, 0.14)
 	FRONTIER = {
 		{
-			spot(ICE, { 9, 18 }, { 12, 30 }, { 0, 6 }, 0.18, { 0.9, 1.1 }),
-			spot(WOLVES, { 26, 46 }, { 70, 110 }, { 10, 20 }, 0.12, { 0.95, 1.05 }, 160),
+			spot(ICE, { 9, 18 }, { 12, 30 }, { 0, 6 }, 0.09, { 0.9, 1.1 }),
+			spot(WOLVES, { 26, 46 }, { 70, 110 }, { 10, 20 }, 0.04, { 0.95, 1.05 }, 160),
 		},
 		{
-			spot(PEBBLES, { 8, 16 }, { 14, 32 }, { 2, 12 }, 0.16, { 0.8, 1 }),
+			spot(PEBBLES, { 8, 16 }, { 14, 32 }, { 2, 12 }, 0.08, { 0.8, 1 }),
 		},
 		{
-			spot(WHISPERS, { 22, 40 }, { 14, 30 }, { 2, 8 }, 0.08, { 0.85, 1 }),
-			spot(PEBBLES, { 12, 22 }, { 14, 30 }, { 0, 8 }, 0.14, { 0.7, 0.9 }),
+			spot(WHISPERS, { 22, 40 }, { 14, 30 }, { 2, 8 }, 0.05, { 0.85, 1 }),
+			spot(PEBBLES, { 12, 22 }, { 14, 30 }, { 0, 8 }, 0.07, { 0.7, 0.9 }),
 		},
 	},
 	-- Gusts through the town (and the Meadow): now and then the wind picks up for `seconds` (in over `rise`, out over

@@ -19,6 +19,11 @@ function VictoryRules.tiles(summary: any, items: any, cardsById: { [string]: any
 	local tiles: { Tile } = {}
 	table.insert(tiles, { icon = "Cash", amount = string.format("$%.2f", tonumber(summary.cash) or 0), label = "cash", rare = false })
 	table.insert(tiles, { icon = "Xp", amount = `+{tonumber(summary.xpEach) or 0}`, label = "XP each", rare = false })
+	-- the shop's own XP from the win (owner 2026-11-17)
+	local shopXp = tonumber(summary.shopXp) or 0
+	if shopXp > 0 then
+		table.insert(tiles, { icon = "Level", amount = `+{shopXp}`, label = "shop XP", rare = false })
+	end
 	local shards = tonumber(summary.shards) or 0
 	if shards > 0 then
 		table.insert(tiles, { icon = "Shard", amount = `x{shards}`, label = "Star Shards", rare = false })
@@ -98,6 +103,11 @@ function VictoryRules.toast(summary: any, cardsById: { [string]: any }, restLine
 		{ icon = "Cash", text = string.format("+$%.2f", tonumber(summary.cash) or 0) },
 		{ icon = "Xp", text = `+{tonumber(summary.xpEach) or 0} XP` },
 	}
+	-- the shop's own XP from the win (owner 2026-11-17: "a small exp to the shop from killing monsters")
+	local shopXp = tonumber(summary.shopXp) or 0
+	if shopXp > 0 then
+		table.insert(pills, { icon = "Level", text = `+{shopXp} shop XP` })
+	end
 	-- teammates near you added to it (spec 2026-11-15-teams-design)
 	local team = tonumber(summary.team) or 0
 	if team > 0 then

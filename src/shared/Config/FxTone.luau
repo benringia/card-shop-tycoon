@@ -22,6 +22,15 @@ return {
 	-- Seconds between checks of the ground under you; a change of more than `retone` re-tones the effects already out
 	check = 0.5,
 	retone = 0.1,
-	-- Kept as made: the world's own weather and scenery (snow, rain, crystals' lights...), by top-level Workspace name
-	skip = { "Scenery", "FrontierFx", "Wild", "TownDecor", "Terrain" },
+	-- Kept as made: the world's own weather and scenery (snow, rain, crystals' lights...), by top-level Workspace name;
+	-- the plaza's spring and portals and the fountain's rune, light column and orbs too (owner 2026-11-17: the Frontier
+	-- fountain's glow turned black on its snow)
+	skip = { "Scenery", "FrontierFx", "Wild", "TownDecor", "Terrain", "Plaza", "FountainFx" },
+	-- Textures drawn on black with no transparency: they only look right fully additive (blended in, their black square
+	-- shows: owner 2026-11-17, "mistfins glow is black and also the fountain"). Found by checking every effect texture
+	-- (the source PNGs, the store packs' downloads and on a white test floor): the Yona pack's ember specks (creature
+	-- auras), assets/ui/fx/waterfall-streaks.png (the fountains' water, the town's trickles) and rune-circle.png. On
+	-- bright ground they keep their LightEmission and fade `additiveFade` (at full tone) instead
+	additive = { "rbxassetid://1084996976", "rbxassetid://139671283074387", "rbxassetid://131308578602059" },
+	additiveFade = 0.45,
 }

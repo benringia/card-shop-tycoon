@@ -116,7 +116,7 @@ return {
 		eyeColor = { 255, 40, 30 },
 		eyeBlink = { 3, 8 },
 		lightning = {
-			zone = 2, arena = 2, every = { 8, 16 }, flash = 0.18, volume = 0.25, -- quieter (the owner 2026-11-10); also in the Storm Sovereign's arena
+			zone = 2, arena = 2, every = { 8, 16 }, flash = 0.18, volume = 0.15, -- quieter (the owner 2026-11-10, 0.4 to 0.25; 2026-11-17 "lower ... other sound effects", 0.15); also in the Storm Sovereign's arena
 			sounds = { "rbxassetid://9120016021", "rbxassetid://9120016256", "rbxassetid://9120018172" }, -- Pro Sound Effects: Thunder Cracks Big Rumbling Blasts Booming 2, 3; Thunder Distant Boom 20
 		},
 		tornado = { x = 700, z = 160, height = 180, radius = 26, turn = 40, color = { 70, 74, 86 } },
@@ -129,7 +129,7 @@ return {
 		stormEye = { arena = 2, y = 150, size = 380, turn = 5, color = { 150, 170, 210 }, transparency = 0.4, image = "rbxassetid://82162011115712" },
 		vortex = { zone = 3, x = 212, z = 582, y = 220, size = 520, turn = 3, color = { 150, 80, 255 }, transparency = 0.35, image = "rbxassetid://82162011115712" }, -- Config/WildLoading SWIRL
 		floating = { bob = 0.8, speed = 0.5 },
-		tremor = { zone = 3, every = { 20, 40 }, length = 1.6, shake = 0.35, sound = "rbxassetid://9113221477", volume = 0.4 }, -- Pro Sound Effects: Avalanche Rumble 3
+		tremor = { zone = 3, every = { 20, 40 }, length = 1.6, shake = 0.35, sound = "rbxassetid://9113221477", volume = 0.25 }, -- Pro Sound Effects: Avalanche Rumble 3 (0.4 before the owner's 2026-11-17 "lower ... other sound effects")
 	},
 	-- Roblox's clouds over the Frontier (SceneryService.StartValley): heavy and grey
 	CLOUDS = { cover = 0.78, density = 0.6, color = { 118, 122, 138 } },
