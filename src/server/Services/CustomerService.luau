@@ -22,11 +22,13 @@ local CollectorRules = require(Shared:WaitForChild("Util"):WaitForChild("Collect
 local CustomerTypes = require(Shared:WaitForChild("Util"):WaitForChild("CustomerTypes"))
 local CustomerLook = require(Shared:WaitForChild("Util"):WaitForChild("CustomerLook"))
 local ReactionRules = require(Shared:WaitForChild("Util"):WaitForChild("ReactionRules"))
+local ShelfSearch = require(Shared:WaitForChild("Util"):WaitForChild("ShelfSearch"))
 local PriceRules = require(Shared:WaitForChild("Util"):WaitForChild("PriceRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
 local NpcMotion = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("NpcMotion"))
+local ShopBag = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("ShopBag"))
 local CardService = require(Services:WaitForChild("CardService"))
 local DataService = require(Services:WaitForChild("DataService"))
 local PartyService = require(Services:WaitForChild("PartyService"))
@@ -540,15 +542,9 @@ end
 
 -- Shelves a customer may buy from and that have something on them: stocked product shelves and Glass
 -- Showcases with cards. Collector Cases (players only) and the Card Condenser are never browsed.
-local function getBrowsableShelves(owner: Player): { PlacedShelf }
-	local result: { PlacedShelf } = {}
-	for _, shelf in PlacementService.GetShelves(owner) do
-		local kind = shelf.def.kind
-		if (kind == "Products" and shelf.units > 0) or (kind == "CustomerCards" and next(shelf.cards) ~= nil) then
-			table.insert(result, shelf)
-		end
-	end
-	return result
+local function isStocked(shelf: PlacedShelf): boolean
+	local kind = shelf.def.kind
+	return (kind == "Products" and shelf.units > 0) or (kind == "CustomerCards" and next(shelf.cards) ~= nil)
 end
 
 -- Walks to a shelf with the product and decides whether to take it at the owner's price
@@ -703,16 +699,20 @@ local function huntCard(customer: Customer, visited: { [string]: boolean })
 	task.wait(CustomerConfig.BUBBLE_SECONDS)
 end
 
--- Something they wanted wasn't on the shelves: look at a few more shelves they haven't checked yet,
--- then show the "no stock" bubble so the owner sees the lost sale. In an empty shop, walk to the middle.
+-- Something they wanted wasn't on the shelves: look at a few more shelves they haven't checked yet (in an empty shop,
+-- its empty racks; Util/ShelfSearch), then show the "no stock" bubble so the owner sees the lost sale. Only a shop with
+-- no shelves sends them to the middle of the floor.
 local function searchShelves(customer: Customer, visited: { [string]: boolean })
-	local candidates: { PlacedShelf } = {}
-	for _, shelf in getBrowsableShelves(customer.owner) do
-		if not visited[shelf.uid] then
-			table.insert(candidates, shelf)
-		end
+	local byUid: { [string]: PlacedShelf } = {}
+	local shelves: { ShelfSearch.Shelf } = {}
+	for _, shelf in PlacementService.GetShelves(customer.owner) do
+		byUid[shelf.uid] = shelf
+		table.insert(shelves, { uid = shelf.uid, kind = shelf.def.kind, stocked = isStocked(shelf) })
 	end
-	if #candidates == 0 and next(visited) == nil then
+	local picked, toMiddle = ShelfSearch.pick(shelves, visited, CustomerConfig.SEARCH_SHELVES, function(count: number): number
+		return rng:NextInteger(1, count)
+	end)
+	if toMiddle then
 		local floor = customer.plot.floor.Position
 		walkTo(customer, Vector3.new(floor.X, floorTop(customer.plot), floor.Z))
 		if not customer.alive then
@@ -720,9 +720,9 @@ local function searchShelves(customer: Customer, visited: { [string]: boolean })
 		end
 		task.wait(CustomerConfig.BROWSE_SECONDS)
 	end
-	for _ = 1, math.min(CustomerConfig.SEARCH_SHELVES, #candidates) do
-		local shelf = table.remove(candidates, rng:NextInteger(1, #candidates)) :: PlacedShelf
-		visited[shelf.uid] = true
+	for _, uid in picked do
+		local shelf = byUid[uid]
+		visited[uid] = true
 		walkTo(customer, getShelfStandPoint(customer.plot, shelf))
 		faceShelf(customer, shelf)
 		if not customer.alive then
@@ -935,6 +935,7 @@ startCustomer = function(plot: Plot, owner: Player, state: PlotState, model: Mod
 
 	local adopted = model.Parent == customersFolder -- a town walker already walks and animates
 	model.Parent = customersFolder
+	ShopBag.remove(model) -- a walker still carrying the bag from another shop
 	-- Server-owned physics so clients can't fling or teleport customers
 	root:SetNetworkOwner(nil)
 	if not adopted then
@@ -1041,6 +1042,8 @@ function CustomerService.CompletePurchase(customer: Customer)
 		Remotes.Notify:FireClient(customer.owner, string.format("Tip! +$%.2f", tip), false, "side")
 	end
 	table.clear(customer.items)
+	-- They carry their shopping out in the shop's bag (Config/Customers BAG)
+	ShopBag.give(customer.model, (CustomerConfig.TYPES[customer.kind] or {}).scale or 1)
 	-- A kid stays at the counter to rip a pack (OfferService); everyone else heads out
 	if customer.kind == "kid" then
 		customer.heldUntil = os.clock() + CustomerConfig.KID.revealSeconds

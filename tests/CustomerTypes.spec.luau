@@ -65,4 +65,21 @@ return {
 		expect.equal(Customers.TYPES.collector.needsShowcase, true)
 		expect.equal(Customers.TYPES.bigSpender.minLevel, 11)
 	end,
+
+	-- Owner 2026-11-16: "customers that bought something should carry a shopping bag on their way out. shopping bag
+	-- should have pish and chikin design on them"
+	["the shop bag: an uploaded face picture, in the free left hand, a sensible size"] = function()
+		local bag = Customers.BAG
+		expect.equal(typeof(bag), "table")
+		expect.equal(string.match(bag.image, "^rbxassetid://[1-9]%d*$") ~= nil, true, "an uploaded picture")
+		expect.equal(bag.hand, "LeftHand", "the right hand holds a kid's pack or a coupon")
+		for _, kind in { "kid", "bargain" } do
+			for _, prop in Customers.TYPES[kind].dressedProps do
+				expect.equal(prop.part ~= bag.hand, true, `{kind}'s prop is in the other hand`)
+			end
+		end
+		local width, height, depth = bag.size[1], bag.size[2], bag.size[3]
+		expect.equal(width > depth and height >= width and height <= 1.5, true, "a paper bag about knee high")
+		expect.equal(bag.handle.width < width, true, "handles inside the bag's width")
+	end,
 }

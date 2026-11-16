@@ -3,6 +3,7 @@
 -- Ember Canyon to the player's own shop, as a time-lapse from morning to sunset that holds sunset for the last half.
 local welcome = require("../src/shared/Config/Welcome")
 local AttackFx = require("../src/shared/Config/AttackFx")
+local Game = require("../src/shared/Config/Game")
 local WelcomePath = require("../src/shared/Util/WelcomePath")
 local expect = require("./lib/expect")
 
@@ -161,5 +162,24 @@ return {
 			assert(jump < 8, `a {jump}-stud jump at frame {step}`)
 			last = pos
 		end
+	end,
+
+	-- Owner 2026-11-16: "the intro "Welcome to One More Pack" the texts immersive, welcoming, add designs to it"; picked
+	-- mockup A (the ribbon banner) "but remove "pish and chikin saved you a spot""
+	["the title: Welcome to over the game's name on a ribbon, the dogs' sticker, no line under it"] = function()
+		local title = welcome.TITLE
+		expect.equal(typeof(title), "table")
+		expect.equal(title.top, "Welcome to")
+		expect.equal(title.name, Game.NAME, "the game's name, as Config/Game has it")
+		expect.equal(title.sub, nil, "no line under the ribbon")
+		for _, key in { "dogs", "ribbonTail", "star" } do
+			expect.equal(string.match(title[key], "^rbxassetid://[1-9]%d*$") ~= nil, true, `{key}: an uploaded picture`)
+		end
+		local seconds = title.seconds
+		expect.equal(seconds[1] < seconds[2] and seconds[2] <= welcome.SECONDS, true)
+		-- each piece pops in after the one before, all before the title starts to go
+		local delays = title.delays
+		expect.equal(delays.top < delays.ribbon and delays.ribbon < delays.dogs, true)
+		expect.equal(seconds[1] + delays.dogs + welcome.CARD_POP < seconds[2], true)
 	end,
 }

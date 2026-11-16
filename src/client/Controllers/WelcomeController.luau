@@ -35,6 +35,21 @@ local player = Players.LocalPlayer
 local playing = false
 
 type Card = { frame: Frame, title: TextLabel, sub: TextLabel, stroke: UIStroke, scale: UIScale }
+-- The ribbon title's pieces, each popping in on its own beat (Config/Welcome TITLE)
+type Title = {
+	root: Frame,
+	top: TextLabel,
+	topStroke: UIStroke,
+	topScale: UIScale,
+	ribbon: CanvasGroup,
+	ribbonScale: UIScale,
+	dogs: ImageLabel,
+	dogsScale: UIScale,
+	stars: { { image: ImageLabel, scale: UIScale, phase: number } },
+}
+
+local TITLE = Welcome.TITLE
+local TITLE_COLORS = TITLE.colors
 
 local function rgb(values: { number }): Color3
 	return Color3.fromRGB(values[1], values[2], values[3])
@@ -111,7 +126,200 @@ local function buildCard(screen: ScreenGui): Card
 	return { frame = frame, title = title, sub = sub, stroke = stroke, scale = scale }
 end
 
-local function buildOverlay(): (ScreenGui, TextButton, TextLabel)
+local function scaler(parent: Instance): UIScale
+	local scale = Instance.new("UIScale")
+	scale.Parent = parent
+	return scale
+end
+
+local function rounded(parent: GuiObject, share: number)
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(share, 0)
+	corner.Parent = parent
+end
+
+local function titleText(parent: GuiObject, text: string, color: Color3): (TextLabel, UIStroke)
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.FredokaOne
+	label.Text = text
+	label.TextColor3 = color
+	label.TextScaled = true
+	label.AnchorPoint = Vector2.new(0.5, 0.5)
+	label.Parent = parent
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = rgb(TITLE_COLORS.outline)
+	stroke.LineJoinMode = Enum.LineJoinMode.Round
+	stroke.Parent = label
+	return label, stroke
+end
+
+-- The title (owner 2026-11-16, mockup A): "WELCOME TO" in white over a lilac ribbon (a darker underside, notched tails)
+-- holding the game's name in gold with a plum outline and drop, the dogs' sticker on the ribbon's top right corner,
+-- stars twinkling round it. Sized as a share of the screen's width; outlines follow its height.
+local function buildTitle(screen: ScreenGui): Title
+	local box = TITLE.box
+	local root = Instance.new("Frame")
+	root.Name = "Title"
+	root.BackgroundTransparency = 1
+	root.AnchorPoint = Vector2.new(0.5, 0)
+	root.Position = UDim2.fromScale(0.5, Welcome.BAR_SHARE + box.top)
+	root.Size = UDim2.fromScale(box.width, 1)
+	root.Visible = false
+	root.Parent = screen
+	local aspect = Instance.new("UIAspectRatioConstraint")
+	aspect.AspectRatio = box.aspect
+	aspect.DominantAxis = Enum.DominantAxis.Width
+	aspect.Parent = root
+
+	local top, topStroke = titleText(root, string.upper(TITLE.top), Color3.new(1, 1, 1))
+	top.Position = UDim2.fromScale(0.5, 0.12)
+	top.Size = UDim2.fromScale(0.5, 0.18)
+	top.ZIndex = 3
+
+	local ribbon = Instance.new("CanvasGroup")
+	ribbon.Name = "Ribbon"
+	ribbon.BackgroundTransparency = 1
+	ribbon.AnchorPoint = Vector2.new(0.5, 0)
+	ribbon.Position = UDim2.fromScale(0.5, 0.24)
+	ribbon.Size = UDim2.fromScale(1, 0.56)
+	ribbon.ZIndex = 2
+	ribbon.Parent = root
+	for _, left in { true, false } do
+		local tail = Instance.new("ImageLabel")
+		tail.BackgroundTransparency = 1
+		tail.Image = TITLE.ribbonTail
+		tail.ImageColor3 = rgb(TITLE_COLORS.tail)
+		tail.AnchorPoint = Vector2.new(0.5, 0)
+		tail.Position = UDim2.fromScale(if left then 0.09 else 0.91, 0.3)
+		tail.Size = UDim2.fromScale(0.11, 0.62)
+		tail.Rotation = if left then 0 else 180
+		tail.ZIndex = 1
+		tail.Parent = ribbon
+	end
+	local under = Instance.new("Frame")
+	under.BackgroundColor3 = rgb(TITLE_COLORS.ribbonUnder)
+	under.BorderSizePixel = 0
+	under.AnchorPoint = Vector2.new(0.5, 0)
+	under.Position = UDim2.fromScale(0.5, 0.13)
+	under.Size = UDim2.fromScale(0.78, 0.74)
+	under.ZIndex = 2
+	under.Parent = ribbon
+	rounded(under, 0.22)
+	local band = Instance.new("Frame")
+	band.BackgroundColor3 = Color3.new(1, 1, 1)
+	band.BorderSizePixel = 0
+	band.AnchorPoint = Vector2.new(0.5, 0)
+	band.Position = UDim2.fromScale(0.5, 0.05)
+	band.Size = UDim2.fromScale(0.78, 0.74)
+	band.ZIndex = 3
+	band.Parent = ribbon
+	rounded(band, 0.22)
+	local bandGradient = Instance.new("UIGradient")
+	bandGradient.Rotation = 90
+	bandGradient.Color = ColorSequence.new(rgb(TITLE_COLORS.ribbonTop), rgb(TITLE_COLORS.ribbonBottom))
+	bandGradient.Parent = band
+	local drop, dropStroke = titleText(band, TITLE.name, rgb(TITLE_COLORS.outline))
+	drop.Position = UDim2.fromScale(0.5, 0.56)
+	drop.Size = UDim2.fromScale(0.9, 0.78)
+	drop.ZIndex = 4
+	local name, nameStroke = titleText(band, TITLE.name, Color3.new(1, 1, 1))
+	name.Position = UDim2.fromScale(0.5, 0.5)
+	name.Size = UDim2.fromScale(0.9, 0.78)
+	name.ZIndex = 5
+	local gold = Instance.new("UIGradient")
+	gold.Rotation = 90
+	gold.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, rgb(TITLE_COLORS.goldTop)),
+		ColorSequenceKeypoint.new(0.55, rgb(TITLE_COLORS.goldMid)),
+		ColorSequenceKeypoint.new(1, rgb(TITLE_COLORS.goldBottom)),
+	})
+	gold.Parent = name
+
+	local dogs = Instance.new("ImageLabel")
+	dogs.Name = "Dogs"
+	dogs.BackgroundTransparency = 1
+	dogs.Image = TITLE.dogs
+	dogs.ScaleType = Enum.ScaleType.Fit
+	dogs.AnchorPoint = Vector2.new(0.5, 0.78)
+	dogs.Position = UDim2.fromScale(0.86, 0.33)
+	dogs.Size = UDim2.fromScale(0.26, 1)
+	dogs.Rotation = 8
+	dogs.ImageTransparency = 1
+	dogs.ZIndex = 6
+	dogs.Parent = root
+	local dogsAspect = Instance.new("UIAspectRatioConstraint")
+	dogsAspect.AspectRatio = TITLE.dogsAspect
+	dogsAspect.DominantAxis = Enum.DominantAxis.Width
+	dogsAspect.Parent = dogs
+
+	local stars = {}
+	for _, spot in TITLE.stars do
+		local star = Instance.new("ImageLabel")
+		star.BackgroundTransparency = 1
+		star.Image = TITLE.star
+		star.ImageColor3 = rgb(TITLE_COLORS.star)
+		star.ImageTransparency = 1
+		star.AnchorPoint = Vector2.new(0.5, 0.5)
+		star.Position = UDim2.fromScale(spot.x, spot.y)
+		star.Size = UDim2.fromScale(spot.size, 1)
+		star.ZIndex = 7
+		star.Parent = root
+		local square = Instance.new("UIAspectRatioConstraint")
+		square.DominantAxis = Enum.DominantAxis.Width
+		square.Parent = star
+		table.insert(stars, { image = star, scale = scaler(star), phase = spot.phase })
+	end
+
+	-- Outlines in pixels follow the title's height (a phone's is about half a monitor's)
+	local function outlines()
+		local height = root.AbsoluteSize.Y
+		topStroke.Thickness = math.max(1.5, height * 0.016)
+		nameStroke.Thickness = math.max(2, height * 0.024)
+		dropStroke.Thickness = nameStroke.Thickness
+	end
+	root:GetPropertyChangedSignal("AbsoluteSize"):Connect(outlines)
+	outlines()
+
+	return {
+		root = root,
+		top = top,
+		topStroke = topStroke,
+		topScale = scaler(top),
+		ribbon = ribbon,
+		ribbonScale = scaler(ribbon),
+		dogs = dogs,
+		dogsScale = scaler(dogs),
+		stars = stars,
+	}
+end
+
+-- Each piece of the title pops in `delay` after it starts and they all fade out together
+local function showTitle(title: Title, seconds: number)
+	local function piece(delay: number): (boolean, number, number)
+		local shown, size, alpha = WelcomePath.cardAt({ { from = TITLE.seconds[1] + delay, to = TITLE.seconds[2] } }, seconds, Welcome.CARD_POP)
+		return shown ~= nil, if shown then size else 1, alpha
+	end
+	local topShown, topSize, topAlpha = piece(TITLE.delays.top)
+	local ribbonShown, ribbonSize, ribbonAlpha = piece(TITLE.delays.ribbon)
+	local dogsShown, dogsSize, dogsAlpha = piece(TITLE.delays.dogs)
+	title.root.Visible = topShown or ribbonShown or dogsShown
+	title.top.TextTransparency = 1 - topAlpha
+	title.topStroke.Transparency = 1 - topAlpha
+	title.topScale.Scale = topSize
+	title.ribbon.GroupTransparency = 1 - ribbonAlpha
+	title.ribbonScale.Scale = ribbonSize
+	title.dogs.ImageTransparency = 1 - dogsAlpha
+	title.dogsScale.Scale = dogsSize
+	for _, star in title.stars do
+		local twinkle = 0.5 + 0.5 * math.sin((seconds + star.phase) * 4)
+		star.image.ImageTransparency = 1 - ribbonAlpha * (0.3 + 0.7 * twinkle)
+		star.image.Rotation = (seconds + star.phase) * 60
+		star.scale.Scale = 0.5 + 0.6 * twinkle
+	end
+end
+
+local function buildOverlay(): (ScreenGui, TextButton, Title)
 	local screen = Instance.new("ScreenGui")
 	screen.Name = "Welcome"
 	screen.ResetOnSpawn = false
@@ -127,16 +335,7 @@ local function buildOverlay(): (ScreenGui, TextButton, TextLabel)
 		bar.Size = UDim2.fromScale(1, Welcome.BAR_SHARE)
 		bar.Parent = screen
 	end
-	local title = UIKit.label(screen, Welcome.TITLE, Enum.Font.FredokaOne, 40, Color3.new(1, 1, 1))
-	title.AnchorPoint = Vector2.new(0.5, 0)
-	title.Position = UDim2.fromScale(0.5, Welcome.BAR_SHARE + 0.06)
-	title.Size = UDim2.new(0.9, 0, 0, 56)
-	title.TextScaled = true
-	title.TextXAlignment = Enum.TextXAlignment.Center
-	title.TextTransparency = 1
-	UIKit.outlined(title, 2)
-	local titleScale = Instance.new("UIScale")
-	titleScale.Parent = title
+	local title = buildTitle(screen)
 	-- Top right, under the cinema bar: clear of the phone's jump button (bottom right)
 	local skip = UIKit.button(screen, "Skip", Color3.fromRGB(40, 44, 58))
 	skip.Name = "Skip"
@@ -282,18 +481,8 @@ local function play(plot: Model)
 		camera.FieldOfView = fov
 		camera.CFrame = CFrame.lookAt(at, target) * CFrame.Angles(0, 0, math.rad(roll))
 		SkyLook.apply(DayCycle.timelapse(Cycle, WelcomePath.dayProgress(Welcome, eased)))
-		-- The title bounces in with its sparkle and fades out
-		local window = Welcome.TITLE_SECONDS
-		local titleShown, titleSize, titleAlpha = WelcomePath.cardAt({ { from = window[1], to = window[2] } }, seconds, Welcome.CARD_POP)
-		title.TextTransparency = 1 - titleAlpha
-		local titleScale = title:FindFirstChildOfClass("UIScale")
-		if titleScale then
-			titleScale.Scale = if titleShown then titleSize else 1
-		end
-		local stroke = title:FindFirstChildOfClass("UIStroke")
-		if stroke then
-			stroke.Transparency = 1 - titleAlpha
-		end
+		-- The title's pieces bounce in with its sparkle and fade out together
+		showTitle(title, seconds)
 		-- The place card under the flight, a chime as each pops in; confetti with your shop's
 		local index, size, alpha = WelcomePath.cardAt(Welcome.CARDS, seconds, Welcome.CARD_POP)
 		if index ~= shownCard then

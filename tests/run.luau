@@ -101,6 +101,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	SkillText = require("./SkillText.spec"),
 	SuperFx = require("./SuperFx.spec"),
 	CustomerTypes = require("./CustomerTypes.spec"),
+	ShelfSearch = require("./ShelfSearch.spec"),
 	CustomerLook = require("./CustomerLook.spec"),
 	PaymentRules = require("./PaymentRules.spec"),
 	RegisterStationRules = require("./RegisterStationRules.spec"),

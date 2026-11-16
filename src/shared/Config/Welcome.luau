@@ -20,8 +20,41 @@ return {
 	SKIP_SIZE = { 140, 56 }, -- pixels
 	STREAM_TIMEOUT = 3, -- seconds at most to wait for the scenery along the flight to stream in (all keys at once)
 	BAR_SHARE = 0.09, -- the black cinema bars, share of the screen's height each
-	TITLE = "Welcome to One More Pack!",
-	TITLE_SECONDS = { 0.6, 3.6 }, -- when the title shows
+	-- The title (owner 2026-11-16: "the intro "Welcome to One More Pack" the texts immersive, welcoming, add designs to
+	-- it"; picked mockup A, the ribbon banner, without the line under it): "Welcome to" in white over a lilac ribbon
+	-- holding the name in gold, the dogs' sticker (Config/Support CARD.picture) popping onto the ribbon's top right
+	-- corner, stars twinkling round it. Shown `seconds` into the flight; each piece pops in `delays` after the start.
+	-- `name` is Config/Game NAME (tests/WelcomePath). Pictures: the ribbon's tails (tools/ui-art/make_ribbon_tail.py,
+	-- white, tinted), the stars (Config/SwordFx's star, white, tinted). Sizes are shares of the title's box (`box`:
+	-- its width a share of the screen's, at `aspect` width to height); `stars` x, y in that box, size a share of its width
+	TITLE = {
+		top = "Welcome to",
+		name = "One More Pack",
+		seconds = { 0.6, 4.4 },
+		delays = { top = 0, ribbon = 0.25, dogs = 0.6 },
+		box = { width = 0.62, aspect = 2.6, top = 0.05 },
+		dogs = "rbxassetid://131467700155398",
+		dogsAspect = 345 / 241,
+		ribbonTail = "rbxassetid://112745783583133",
+		star = "rbxassetid://117269166059195",
+		stars = {
+			{ x = 0.04, y = 0.42, size = 0.05, phase = 0 },
+			{ x = 0.95, y = 0.82, size = 0.04, phase = 0.5 },
+			{ x = 0.18, y = 0.92, size = 0.035, phase = 1 },
+			{ x = 0.72, y = 0.12, size = 0.03, phase = 1.4 },
+		},
+		colors = {
+			outline = { 58, 29, 92 },
+			ribbonTop = { 190, 160, 244 },
+			ribbonBottom = { 139, 102, 217 },
+			ribbonUnder = { 91, 62, 166 },
+			tail = { 115, 81, 196 },
+			goldTop = { 255, 232, 140 },
+			goldMid = { 245, 185, 58 },
+			goldBottom = { 198, 125, 18 },
+			star = { 255, 244, 200 },
+		},
+	},
 	-- A card at the bottom (seconds into the flight): its icon, name and what you do there. The places' cards (Forest
 	-- Falls, Frostpeak, the Plaza, Ember Canyon) went (owner 2026-11-16: "on welcome cinematic, remove the world
 	-- labels"): only your shop's, at the end

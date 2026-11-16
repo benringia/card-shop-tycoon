@@ -262,7 +262,11 @@ as a time-lapse from morning to sunset that holds sunset for the last half; cine
 and the player standing still, a Skip button (top right) from the first frame. Livelier since the owner 2026-11-11 ("a
 bit plain. can you make it more epic/jolly/welcoming, like a whoosh sound on the camera"): its own music ("Magical
 Journey", `Music.WELCOME` at 0.1, while the local WelcomePlaying attribute is set; `/music welcome <n>` tries others),
-the title bouncing in with a sparkle, one card at the bottom at the end, "Your shop! Open packs, sell cards, get rich"
+the title bouncing in with a sparkle (since the owner 2026-11-16, "the intro "Welcome to One More Pack" the texts
+immersive, welcoming, add designs to it", mockup A without its line underneath: "WELCOME TO" in white, then a lilac
+ribbon with notched tails holding "One More Pack" in gold with a plum outline, then the dogs' heart sticker popping onto
+its top right corner, stars twinkling round it; `Config/Welcome` TITLE, the tail from `tools/ui-art/make_ribbon_tail.py`),
+one card at the bottom at the end, "Your shop! Open packs, sell cards, get rich"
 (the places' cards went, owner 2026-11-16: "on welcome cinematic, remove the world labels"), popping in with a
 chime, magic whooshes on the fast swoops between places, a camera that widens as it speeds up and banks into turns
 (`WelcomePath.lens`), and at your shop a finale in the world (`Util/WelcomeFx`; the owner: "dont add drawn confetti.
@@ -432,7 +436,16 @@ is over UI (`UIKit.pointerBlocked`).
 - Each customer has a small shopping list (1–3 items), browses shelves, picks items, joins the register queue.
 - They only browse what they can buy: stocked product shelves and Glass Showcases with cards (never Collector
   Cases or the Card Condenser). If something on their list isn't stocked, they check up to 2 more shelves
-  (`SEARCH_SHELVES`) before showing the "no stock" bubble. In the queue they face the register.
+  (`SEARCH_SHELVES`) before showing the "no stock" bubble. In an empty shop they walk straight to its empty racks and
+  look there (owner 2026-11-16: "customers walk in and stand to the center of the store, make them walk in go
+  directly to where the cards are"; `Util/ShelfSearch`, Lune-tested); only a shop with no shelves sends them to the
+  middle of the floor. In the queue they face the register.
+- **The shop bag** (owner 2026-11-16: "customers that bought something should carry a shopping bag on their way out.
+  shopping bag should have pish and chikin design on them"): once they've paid, a customer carries a paper bag out in
+  the left hand (the right holds a kid's pack or a coupon), down the street as a town walker; a walker who shops again
+  puts it away first. One part with the bag's face picture on both wide sides (look A: kraft paper, the dogs' gold seal
+  from the card back, the name; `tools/ui-art/make_shop_bag.py`, `assets/ui/bag`) and three cord parts, welded to the
+  hand, turned 25 degrees so the picture also shows from behind (`Config/Customers` BAG, server `Util/ShopBag`).
 - If they wait too long in the queue they leave (no sale).
 - **Types** (`Config/Customers` TYPES, picked by `Util/CustomerTypes`, Lune-tested; spec
   `docs/superpowers/specs/2026-11-06-customers-design.md`): plain 55%, kid 20%, collector 10% (only with a Glass

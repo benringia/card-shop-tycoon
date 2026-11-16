@@ -143,6 +143,23 @@ return {
 	-- they leave or offer the card (OfferService)
 	KID = { units = { 1, 2 }, revealSeconds = 3 },
 	BIG_SPENDER = { box = "FirstSparkBox", packs = { 6, 12 }, tip = 0.1 },
+	-- The shop bag a customer carries out after paying (owner 2026-11-16: "customers that bought something should carry
+	-- a shopping bag on their way out. shopping bag should have pish and chikin design on them"; server Util/ShopBag).
+	-- One part: `image` (tools/ui-art/make_shop_bag.py, assets/ui/bag; look A: kraft paper, the dogs' gold seal from the
+	-- card back, the name) on both wide sides, `color` the paper on the rest; rope handles; held in `hand` (the right
+	-- holds a kid's pack or a bargain hunter's coupon), turned so its pictures face sideways like a bag at your side.
+	-- Studs at a grown-up's size (kids' scaled with them): size width, height, depth; handle above the bag's top;
+	-- the bag's top `drop` below the hand
+	BAG = {
+		image = "rbxassetid://104259813346579",
+		color = { 201, 154, 99 },
+		handleColor = { 122, 85, 49 },
+		hand = "LeftHand",
+		turn = 25, -- degrees off sideways, so the picture also shows from behind
+		size = { 0.9, 1.0, 0.42 },
+		handle = { width = 0.42, height = 0.34, thick = 0.06 },
+		drop = 0.3,
+	},
 	-- Collectors want one card: ownedShare of the time one you own, else any card weighted by rarity (per card);
 	-- they pay up to premium x its worth
 	COLLECTOR = {
