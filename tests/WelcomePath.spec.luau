@@ -3,7 +3,6 @@
 -- Ember Canyon to the player's own shop, as a time-lapse from morning to sunset that holds sunset for the last half.
 local welcome = require("../src/shared/Config/Welcome")
 local AttackFx = require("../src/shared/Config/AttackFx")
-local Game = require("../src/shared/Config/Game")
 local WelcomePath = require("../src/shared/Util/WelcomePath")
 local expect = require("./lib/expect")
 
@@ -12,50 +11,28 @@ local OUT = { x = 0, z = 1 }
 
 return {
 	-- The owner 2026-11-11: "the tutorial cinematic is a bit plain. can you make it more epic/jolly/welcoming, like a
-	-- whoosh sound on the camera and stuff like that": a card for each place as the camera passes it, whooshes on the
-	-- fast stretches, a wider and banking camera, music, and confetti at your shop
-	-- then (owner 2026-11-16): "on welcome cinematic, remove the world labels": only your shop's card is left
-	["no world labels in the flight: only your shop's card, at the end"] = function()
-		local cards = welcome.CARDS
-		expect.equal(#cards, 1, "your shop only")
-		expect.equal(cards[1].finale, true)
-		expect.equal(cards[1].title, "Your shop!")
-	end,
-	["the cards come in turn, inside the flight, never two at once, the last your shop"] = function()
-		local cards = welcome.CARDS
-		for index, card in cards do
-			assert(card.from < card.to and card.from >= 0 and card.to <= welcome.SECONDS, `card {index} inside the flight`)
-			assert(#card.title > 0 and #card.title <= 14 and #card.sub <= 32, `card {index}: short words`)
-			local next = cards[index + 1]
-			if next then
-				assert(card.to <= next.from, `card {index} gone before the next`)
-			end
+	-- whoosh sound on the camera and stuff like that": whooshes on the fast stretches, a wider and banking camera, music,
+	-- and confetti at your shop. Then 2026-11-16: "remove the world labels", and later the same day "on the intro.
+	-- remove all texts and pish chikin. just the scenery is enough": no title, no cards, no dogs on screen
+	["the flight is just the scenery: no title, no place cards, no dogs"] = function()
+		local config = welcome :: any
+		expect.equal(config.TITLE, nil, "no title")
+		expect.equal(config.CARDS, nil, "no place cards")
+		expect.equal(config.CARD_POP, nil)
+		expect.equal(WelcomePath.cardAt, nil, "nothing left that pops a card in")
+		for name in welcome.SOUNDS do
+			assert(name ~= "chime" and name ~= "sparkle", `{name}: the title's and cards' sounds went with them`)
 		end
-		local last = cards[#cards]
-		expect.equal(last.finale, true, "the last one is your shop's, with the confetti")
-		expect.equal(last.to, welcome.SECONDS, "held to the end")
 	end,
 
-	["cardAt: a card bounces in, holds, then fades; nothing between cards"] = function()
-		local cards = { { from = 1, to = 3 }, { from = 4, to = 6 } }
-		local none = WelcomePath.cardAt(cards, 0.5, 0.4)
-		expect.equal(none, nil, "before the first")
-		local index, scale, alpha = WelcomePath.cardAt(cards, 1, 0.4)
-		expect.equal(index, 1)
-		assert(scale < 1 and alpha < 1, "starts small and faint")
-		local overshoot = 0
-		for step = 1, 20 do
-			local _, s = WelcomePath.cardAt(cards, 1 + step * 0.02, 0.4)
-			overshoot = math.max(overshoot, s)
+	["the confetti goes off as the flight reaches your shop"] = function()
+		local at = welcome.FINALE.at
+		assert(at > welcome.SECONDS * 0.8 and at < welcome.SECONDS, `{at} s: near the end, before it`)
+		local cued = false
+		for _, cue in welcome.CUES do
+			cued = cued or (cue.sound == "finale" and math.abs(cue.at - at) < 0.2)
 		end
-		assert(overshoot > 1.02, `a bounce past full size ({overshoot})`)
-		local _, held, shown = WelcomePath.cardAt(cards, 2, 0.4)
-		expect.equal(held, 1)
-		expect.equal(shown, 1)
-		local _, _, fading = WelcomePath.cardAt(cards, 2.9, 0.4)
-		assert(fading < 1 and fading > 0, "fading near its end")
-		expect.equal(WelcomePath.cardAt(cards, 3.5, 0.4), nil, "between cards: none")
-		expect.equal(WelcomePath.cardAt(cards, 4.5, 0.4), 2)
+		expect.equal(cued, true, "its sound with it")
 	end,
 
 	["cues fire once, as the flight passes their moment"] = function()
@@ -162,24 +139,5 @@ return {
 			assert(jump < 8, `a {jump}-stud jump at frame {step}`)
 			last = pos
 		end
-	end,
-
-	-- Owner 2026-11-16: "the intro "Welcome to One More Pack" the texts immersive, welcoming, add designs to it"; picked
-	-- mockup A (the ribbon banner) "but remove "pish and chikin saved you a spot""
-	["the title: Welcome to over the game's name on a ribbon, the dogs' sticker, no line under it"] = function()
-		local title = welcome.TITLE
-		expect.equal(typeof(title), "table")
-		expect.equal(title.top, "Welcome to")
-		expect.equal(title.name, Game.NAME, "the game's name, as Config/Game has it")
-		expect.equal(title.sub, nil, "no line under the ribbon")
-		for _, key in { "dogs", "ribbonTail", "star" } do
-			expect.equal(string.match(title[key], "^rbxassetid://[1-9]%d*$") ~= nil, true, `{key}: an uploaded picture`)
-		end
-		local seconds = title.seconds
-		expect.equal(seconds[1] < seconds[2] and seconds[2] <= welcome.SECONDS, true)
-		-- each piece pops in after the one before, all before the title starts to go
-		local delays = title.delays
-		expect.equal(delays.top < delays.ribbon and delays.ribbon < delays.dogs, true)
-		expect.equal(seconds[1] + delays.dogs + welcome.CARD_POP < seconds[2], true)
 	end,
 }

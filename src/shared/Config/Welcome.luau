@@ -4,9 +4,10 @@
 -- sunset, holding sunset for the last SUNSET_SHARE. Plain data, read by Lune tests (Util/WelcomePath).
 -- KEYS: t (0..1 of the flight), the camera's position and where it looks; the shop's key is added at t = 1.
 -- Livelier since the owner 2026-11-11 ("a bit plain. can you make it more epic/jolly/welcoming, like a whoosh sound on
--- the camera and stuff like that"): its own music (Config/Music WELCOME), a card for each place as the camera passes it
--- (CARDS: seconds into the flight, popping in with a chime), whooshes on the fast stretches (CUES), a camera that widens
--- as it speeds up and banks into turns (LENS, Util/WelcomePath.lens) and confetti at your shop (CONFETTI).
+-- the camera and stuff like that"): its own music (Config/Music WELCOME), whooshes on the fast stretches (CUES), a
+-- camera that widens as it speeds up and banks into turns (LENS, Util/WelcomePath.lens) and confetti at your shop
+-- (FINALE). Nothing written and no dogs on screen (owner 2026-11-16: "on the intro. remove all texts and pish chikin.
+-- just the scenery is enough"): no title, no place cards; the Skip button only.
 return {
 	SECONDS = 12,
 	SUNSET_SHARE = 0.5,
@@ -20,52 +21,9 @@ return {
 	SKIP_SIZE = { 140, 56 }, -- pixels
 	STREAM_TIMEOUT = 3, -- seconds at most to wait for the scenery along the flight to stream in (all keys at once)
 	BAR_SHARE = 0.09, -- the black cinema bars, share of the screen's height each
-	-- The title (owner 2026-11-16: "the intro "Welcome to One More Pack" the texts immersive, welcoming, add designs to
-	-- it"; picked mockup A, the ribbon banner, without the line under it): "Welcome to" in white over a lilac ribbon
-	-- holding the name in gold, the dogs' sticker (Config/Support CARD.picture) popping onto the ribbon's top right
-	-- corner, stars twinkling round it. Shown `seconds` into the flight; each piece pops in `delays` after the start.
-	-- `name` is Config/Game NAME (tests/WelcomePath). Pictures: the ribbon's tails (tools/ui-art/make_ribbon_tail.py,
-	-- white, tinted), the stars (Config/SwordFx's star, white, tinted). Sizes are shares of the title's box (`box`:
-	-- its width a share of the screen's, at `aspect` width to height); `stars` x, y in that box, size a share of its width
-	TITLE = {
-		top = "Welcome to",
-		name = "One More Pack",
-		seconds = { 0.6, 4.4 },
-		delays = { top = 0, ribbon = 0.25, dogs = 0.6 },
-		box = { width = 0.62, aspect = 2.6, top = 0.05 },
-		dogs = "rbxassetid://131467700155398",
-		dogsAspect = 345 / 241,
-		ribbonTail = "rbxassetid://112745783583133",
-		star = "rbxassetid://117269166059195",
-		stars = {
-			{ x = 0.04, y = 0.42, size = 0.05, phase = 0 },
-			{ x = 0.95, y = 0.82, size = 0.04, phase = 0.5 },
-			{ x = 0.18, y = 0.92, size = 0.035, phase = 1 },
-			{ x = 0.72, y = 0.12, size = 0.03, phase = 1.4 },
-		},
-		colors = {
-			outline = { 58, 29, 92 },
-			ribbonTop = { 190, 160, 244 },
-			ribbonBottom = { 139, 102, 217 },
-			ribbonUnder = { 91, 62, 166 },
-			tail = { 115, 81, 196 },
-			goldTop = { 255, 232, 140 },
-			goldMid = { 245, 185, 58 },
-			goldBottom = { 198, 125, 18 },
-			star = { 255, 244, 200 },
-		},
-	},
-	-- A card at the bottom (seconds into the flight): its icon, name and what you do there. The places' cards (Forest
-	-- Falls, Frostpeak, the Plaza, Ember Canyon) went (owner 2026-11-16: "on welcome cinematic, remove the world
-	-- labels"): only your shop's, at the end
-	CARDS = {
-		{ from = 10.6, to = 12, icon = "🏪", title = "Your shop!", sub = "Open packs, sell cards, get rich", color = { 255, 150, 210 }, finale = true },
-	},
-	CARD_POP = 0.45, -- seconds a card bounces in over (Util/WelcomePath.cardAt)
-	-- Sounds at moments of the flight (seconds; each card also chimes as it pops): whooshes as the camera swoops
-	-- between places, a sparkle with the title, the finale at your shop. Pro Sound Effects.
+	-- Sounds at moments of the flight (seconds): whooshes as the camera swoops between places, the finale at your shop.
+	-- Pro Sound Effects.
 	CUES = {
-		{ at = 0.6, sound = "sparkle", volume = 0.6 },
 		{ at = 2.5, sound = "whoosh1", volume = 0.7 },
 		{ at = 4.5, sound = "whoosh2", volume = 0.7 },
 		{ at = 6.4, sound = "whoosh3", volume = 0.7 },
@@ -78,12 +36,9 @@ return {
 		whoosh2 = "rbxassetid://9116416708", -- Magic Swoosh Fast Zooming Pass Bys Airy 16
 		whoosh3 = "rbxassetid://9116412767", -- Magic Swoosh Fast Zooming Pass Bys 4
 		whoosh4 = "rbxassetid://9116417467", -- Magic Swoosh Fast Zooming Pass Bys Airy 23
-		chime = "rbxassetid://9125644310", -- Magic Twirling Small High Pitch Spinning Chime (each card)
-		sparkle = "rbxassetid://9116394876", -- Magic Glows Soft Clusters Of Chiming Hits 2 (the title)
 		finale = "rbxassetid://9125635430", -- Magical Exit Sparkling Pass Bys Clinking Chimes (your shop)
 		pop = "rbxassetid://9117841338", -- Pop Airy 1 (the confetti)
 	},
-	CHIME_VOLUME = 0.45,
 	-- The camera: its field of view widens with its speed (studs a second) up to `maxExtra` degrees, and it banks into
 	-- turns (its look's turn in degrees a second) up to `maxRoll`, both eased by `smoothing` a second
 	LENS = { fov = 70, maxExtra = 12, fovPerSpeed = 0.15, maxRoll = 8, rollPerTurn = 0.12, smoothing = 3 },
@@ -94,6 +49,7 @@ return {
 	-- Games VFX Pack's star burst, gold stars twinkling and a soft glow (`up` studs over the door). Emitters as
 	-- Util/PackEmitter reads them (`colorKeys`: a flickering colour).
 	FINALE = {
+		at = 10.6, -- seconds into the flight, as it reaches your shop
 		seconds = 4, -- the pieces are cleared after this
 		confetti = {
 			count = 12,

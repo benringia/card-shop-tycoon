@@ -258,17 +258,13 @@ wake (volumes 0.05, 0.05, 0.06, 0.04: owner "lower volume"); then the town's. It
 loading screen. Studio: `/prologue` plays it now, `/prologue reset` plays it on your next join (the admin panel too).
 **Welcome cinematic** (`WelcomeController`, `WelcomeService`, `Config/Welcome`, `Util/WelcomePath`): on a
 player's first visit, a 12 s flight past Forest Falls, Frostpeak, over the plaza and past Ember Canyon to their own shop,
-as a time-lapse from morning to sunset that holds sunset for the last half; cinema bars, a title, the rest of the UI off
-and the player standing still, a Skip button (top right) from the first frame. Livelier since the owner 2026-11-11 ("a
+as a time-lapse from morning to sunset that holds sunset for the last half; cinema bars, the rest of the UI off and the
+player standing still, a Skip button (top right) from the first frame. Nothing written and no dogs on screen (owner
+2026-11-16: "on the intro. remove all texts and pish chikin. just the scenery is enough": the title and the "Your shop!"
+card went, and the ribbon title built earlier that day with them). Livelier since the owner 2026-11-11 ("a
 bit plain. can you make it more epic/jolly/welcoming, like a whoosh sound on the camera"): its own music ("Magical
 Journey", `Music.WELCOME` at 0.1, while the local WelcomePlaying attribute is set; `/music welcome <n>` tries others),
-the title bouncing in with a sparkle (since the owner 2026-11-16, "the intro "Welcome to One More Pack" the texts
-immersive, welcoming, add designs to it", mockup A without its line underneath: "WELCOME TO" in white, then a lilac
-ribbon with notched tails holding "One More Pack" in gold with a plum outline, then the dogs' heart sticker popping onto
-its top right corner, stars twinkling round it; `Config/Welcome` TITLE, the tail from `tools/ui-art/make_ribbon_tail.py`),
-one card at the bottom at the end, "Your shop! Open packs, sell cards, get rich"
-(the places' cards went, owner 2026-11-16: "on welcome cinematic, remove the world labels"), popping in with a
-chime, magic whooshes on the fast swoops between places, a camera that widens as it speeds up and banks into turns
+magic whooshes on the fast swoops between places, a camera that widens as it speeds up and banks into turns
 (`WelcomePath.lens`), and at your shop a finale in the world (`Util/WelcomeFx`; the owner: "dont add drawn confetti.
 search for a free/safe particle/VFX on creator store"): confetti shooting up from cannons either side of the door
 (Onogork's Confetti Particle Emitter, 8250441745: its own textures, its colour script left out, each piece's size and

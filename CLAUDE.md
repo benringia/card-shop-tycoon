@@ -96,8 +96,6 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - `assets/ui/bag`: the shop bag's face (customers carry it out after paying; id in `Config/Customers` BAG), drawn by
   `tools/ui-art/make_shop_bag.py <A|B|C>` from the card back's seal or the Support sticker, uploaded as an image. Not
   synced by Rojo.
-- `assets/ui/welcome`: the welcome title's ribbon tail (white, tinted; id in `Config/Welcome` TITLE), drawn by
-  `tools/ui-art/make_ribbon_tail.py`, uploaded as an image. Not synced by Rojo.
 - `assets/ui/support`: the Support card's picture (Pish and Chikin holding a golden heart; id in `Config/Support`
   CARD.picture), Figma-generated on flat green and cut out by `tools/ui-art/cutout.py`. Not synced by Rojo.
 - `assets/ui/mascot`: the HUD mascot's stickers (Pish, the Pish button) (peek and tail; ids in `Config/HudMascot`), Figma-generated on flat green
