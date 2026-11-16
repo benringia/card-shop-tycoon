@@ -3277,6 +3277,24 @@ return {
 		expect.equal(BattleSim.snapshot(state).sides.a.fighters[1].statuses, nil, "a creature's aren't sent")
 	end,
 
+	-- Owner 2026-11-16: "debuff from you or your pets should appear below the enemy healthbar with tooltip": a wild
+	-- monster's bar carries them too
+	["a wild monster's debuffs are in the snapshot for its bar; a creature's still aren't"] = function()
+		local state = wild(fighter("a", "Tide", 500, 10, 10), {}, fighter("m", "Bloom", 5000, 5, 10), 41)
+		local foe = (state.sides.b :: any).fighters[1]
+		expect.equal(not foe.boss, true, "a plain wild monster")
+		foe.slowUntil, foe.slow = state.time + 3, 0.4
+		foe.curseUntil, foe.curse = state.time + 4, 0.3
+		local view = BattleSim.snapshot(state).sides.b.fighters[1]
+		local found = {}
+		for _, status in view.statuses or {} do
+			found[status.kind] = status
+		end
+		expect.equal(found.snared and found.snared.value, 40, "snared, 40% slower")
+		expect.equal(found.cursed and found.cursed.value, 30, "cursed, 30% weaker")
+		expect.equal(BattleSim.snapshot(state).sides.a.fighters[1].statuses, nil, "a creature's aren't sent")
+	end,
+
 	["a boss's guard while its adds stand shows as a state"] = function()
 		local state = bossFightWithPlayer(32, 1, { adds = { at = { 0.9 }, count = 1, hpShare = 0.05, atkShare = 0.1, guard = 0.5 } })
 		local boss = (state.sides.b :: any).fighters[1]

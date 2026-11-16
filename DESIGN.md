@@ -230,7 +230,10 @@ meanwhile; the first-sword popup never shows for it). Security review 2026-11-16
 "begin" the server takes it all back and counts the prologue as seen, whatever the client does. The Hydra hits at `FIGHT.atk` 30 (the real one's 46) and its HP is
 held between two curves: never at 25% before 35 s, always there by 60 s (`PrologueRules.hpShare`), then the fight ends
 with no rewards, records, rest, knockout or end screen (`BattleService` RunOptions `prologue`; tested idle in Studio: 60
-s, Solarion never fainted). Run ends it early. Act 3 (a cinematic, owner 2026-11-15): Solarion goes back into its card
+s, Solarion never fainted). Run ends it early. Under 60% it summons two Rift Horrors like the real one: a Frontier
+species, so the main game finds it through `Place.worldOf` (`MonsterLooks.worldOf`: this place's world first, then the
+other's) on the server and the client (owner 2026-11-16: "there are spawn health bars but I couldnt see any spawned
+creatures": the main game's `Config/Wild` doesn't list them, so none were made). Act 3 (a cinematic, owner 2026-11-15): Solarion goes back into its card
 under a flash and the Hydra looms close (`KNOCK.near`); its massive attack (owner 2026-11-16, `Prologue.BLAST`): it
 rears up roaring as its crystals blaze, rainbow light gathers into an orb at its mouth with a charge-up hum, then a
 prism beam with a white-hot core hits you, a shockwave ring spreading from your feet, and its blow shatters your weapon, your aura goes out and you're
@@ -404,6 +407,11 @@ is over UI (`UIKit.pointerBlocked`).
 - How stock shows (section 3): packs in open display boxes that empty as they sell (a Small Pack Rack's 24 packs
   over its slots' boxes, 6 packs showing per box), deck boxes as 3D deck boxes, cards in cases upright and turning.
 - Customers can only buy what's on shelves. Empty shelves = lost sales.
+- **Against a wall** (owner 2026-11-16: "items from the shop can be placed through a wall. fix it"): a shelf touching
+  the side or back wall stands `Decor.SHELL.WALL_GAP` (0.2 studs) off it (`DecorRules.offWalls`, used by
+  `PlacementGrid.getLocalCFrame` for the server, the ghost and the order computer); the shop look's band, trim and
+  crystals lie flat on the wall (`LINER`, `BAND_DEEP`, `TRIM_DEEP`, `CRYSTAL`), so nothing on a wall reaches a shelf
+  (tests/DecorRules). They used to stand 0.3 to 0.8 studs out and cut through a back-row shelf.
 - **Remove stock** (shelf Edit menu): boxes a product shelf's stock back onto the delivery pad, as many boxes as
   the pad has room for.
 
@@ -539,7 +547,9 @@ is over UI (`UIKit.pointerBlocked`).
   (`tools/ui-art/make_money.py`, `assets/ui/money`, ids in `RegisterStation.MONEY_IMAGES`): each note its own colour
   (orange $20, purple $10, blue $5, green $1) with ONE MORE PACK on top and a paw medallion; gold, silver and copper
   coins. "Man the register" (a prompt only the owner sees) puts you on the cashier's step in first person (your body
-  hidden, movement held, the HUD down to the party dock with the SHOP bar: `Hud.keepOnly`); Leave is a pill at the top
+  hidden, movement held, the HUD down to the party dock with the SHOP bar and your cash: `Hud.keepOnly`, the status
+  corner kept by its `Hud.keepName` "cash"; owner 2026-11-16: "money should be visible while I'm using cash register");
+  Leave is a pill at the top
   left (clear of the drawer and the card machine), and walking away or a knockout leaves too. **The screen is the
   guide**: a lilac bar with "Register" and the town's clock and one big line of what to do (the step pills under the
   bar went: owner 2026-11-16 "remove these"). Idle: a cart, "Waiting for a customer...", "Today: 4
@@ -562,7 +572,17 @@ is over UI (`UIKit.pointerBlocked`).
   back."); no penalty. The server checks every answer against its own total (`PayAnswer`: the typed cents, or the list
   of bills and coins, each a drawer value, at most 40; rate-limited, owner on the register only); `PaymentStart` /
   `PaymentResult` reach the owner. Scanning, Charge and paying need you on the register (server `ManRegister`,
-  `ManningRegister` attribute; "Man the register to scan!" otherwise). While the owner is on the register paying, the
+  `ManningRegister` attribute; "Man the register to scan!" otherwise). A card bought from a Glass Showcase lies on the
+  counter as a real card (owner 2026-11-16: "cards from the glasscase should have a model in cashiers too with all the
+  effects"): the case card's part and attributes (card, foil, grade, level, stars, price), face up and its top away from
+  you, scaled into the counter slot (`RegisterService` dressCard), so every client draws its face, halo, sparkles and a
+  Legendary's aura and plays a listing burst as it lands (CardEffectsController). **A sale while you're on it** (owner
+  2026-11-16: "with immersive animation/effects when someone buys something. the same with exp", mockup approved;
+  `Config/RegisterStation` SALE_FX): the screen flashes "SOLD! +$12.50" in green (`RegisterScreen.sold`), gold coins
+  (more for a bigger sale: `RegisterStationRules.saleCoins`, 4 to 12) burst out of the register and arc into your cash
+  pill (`Util/CoinBurst`), which holds the old amount until they land and then counts up (`UIController.HoldCash`), and
+  the shop XP sparks fly from the register into the SHOP bar (`Util/SaleOrigin`: the register's screen, or the middle of
+  the view while the camera looks down at the drawer or card machine). While the owner is on the register paying, the
   customer's patience holds (topped up every second); a free sale skips it; manning again reopens a payment in
   progress. Cashier workers still sell by themselves while you're off it. **Pish's first sale teaches it** (owner 2026-11-16:
   "include the use of cash register on pish's tutorial"): "Your first customer! Let's use the register." (Next), "Walk
@@ -2447,7 +2467,9 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   tips the biggest and the middle crack's the biggest of all (`fissure.rainbow`, `only`, `spikes`). Under any boss's
   HP bar, what's on it now (`BattleSim.statusesOf` in each snapshot, `Config/BossStatus`, `Util/BossStatusRules`,
   client `Util/BossStatusBar`): shield (its size), guarded (its summons standing), enraged, stunned, snared, cursed,
-  burning, a chip each with its number, its tooltip on hover or tap (3 s).
+  burning, a chip each with its number, its tooltip on hover or tap (3 s). A wild monster's bar shows them the same way
+  (owner 2026-11-16: "debuff from you or your pets should appear below the enemy healthbar with tooltip"): the snapshot
+  carries every monster-side fighter's states, not only a boss's.
 - **Wild danger, Defense, the character window, plain element names, titles** (owner 2026-11-12; spec
   `docs/superpowers/specs/2026-11-12-wild-danger-character-window-design.md`):
   - **Element names**: players read Fire, Water, Nature, Electric, Dark (Config/ElementNames over the internal keys Ember,
@@ -3071,33 +3093,46 @@ Packs and deck boxes are 3D models everywhere (`Util/PackModels`, `Config/Packs`
 ### 7.2 Shop levels (XP per sale = sale price rounded, min 1; a pack ripped from stock = its market price)
 
 Levels 1 to 100 (spec `2026-11-04-round4-design` section 8): the total XP to reach level n is
-`BASE_XP × (n − 1) ^ POWER` rounded to 10 (`Config/Levels`: 40, 2.31; maths in `Util/LevelMath.luau`, Lune-tested).
-Every unlock sits at the new level whose XP is nearest what it needed before (Lv 20 ≈ 36,000 XP, where shop jobs
-open; `tests/LevelRemap.spec`), so the pace is the same with about twice as many level-ups. Lv 100 (1,629,210 XP) is
+`BASE_XP × (n − 1) ^ POWER` rounded to 10 (`Config/Levels`: 15, 2.31; maths in `Util/LevelMath.luau`, Lune-tested).
+Round 4 put every unlock at the level whose XP was nearest what it needed before (Lv 20 ≈ 36,000 XP then). Since the
+owner 2026-11-16 ("maybe adjust the shop leveling. I think it takes too long to level up"; picked 2.7x faster) every
+level needs 15 / 40 of that XP and the unlocks stay at their levels, so they come sooner: Lv 5 ≈ 370 XP, Lv 10 ≈ 2,400,
+Lv 20 ≈ 13,500 (shop jobs, about 5 hours in), the Prism Hydra's Lv 57 ≈ 164,000 (`tests/LevelMath`, `LevelRemap`).
+Saves keep their XP, so a save from before goes up levels on its next join (no rewards for those). Lv 100 (about 611,000 XP) is
 the cap: XP keeps counting, the level doesn't, and the HUD's XP pill shows MAX. A packs-only shop earns about 30 XP
-a minute, so Lv 2 comes about 1.5 minutes after the first sale (it unlocks nothing; a level-up and its reward).
+a minute, so Lv 2 comes within a minute of the first sale (it unlocks nothing; a level-up and its reward).
 Old saves keep their XP and load on the new level for it (a Lv 10 shop is Lv 20), with no back-pay of rewards.
 
 | Lv | XP needed | Unlocks |
 |---|---|---|
 | 1 | 0 | Base |
-| 2 | 40 | - |
-| 3 | 200 | Card Sleeves |
-| 4 | 510 | Wall Shelf, starter sword, boss 1 (Meadow Warden) |
-| 5 | 980 | Card Condenser |
-| 7 | 2,510 | Accessory Hook, Deck Box, Expansion 1, boss 2 |
-| 9 | 4,880 | Big Display Rack |
-| 11 | 8,170 | Sealed Booster Box |
-| 14 | 14,970 | Grading Station, boss 3 |
-| 17 | 24,190 | Expansion 2 |
-| 20 | 35,970 | Shop jobs (first slot), Set 2 |
-| 26 / 34 / 43 / 57 | 67,810 / 128,770 / 224,780 / 436,890 | bosses 4 / 5 / 6 / 7 |
-| 100 | 1,629,210 | the cap |
+| 2 | 20 | - |
+| 3 | 70 | Card Sleeves |
+| 4 | 190 | Wall Shelf, starter sword, boss 1 (Meadow Warden) |
+| 5 | 370 | Card Condenser |
+| 7 | 940 | Accessory Hook, Deck Box, Expansion 1, boss 2 |
+| 9 | 1,830 | Big Display Rack |
+| 11 | 3,060 | Sealed Booster Box |
+| 14 | 5,610 | Grading Station, boss 3 |
+| 17 | 9,070 | Expansion 2 |
+| 20 | 13,490 | Shop jobs (first slot), Set 2 |
+| 26 / 34 / 43 / 57 | 25,430 / 48,290 / 84,290 / 163,830 | bosses 4 / 5 / 6 / 7 |
+| 100 | 610,950 | the cap |
 
-**Level-up rewards** (`Config/Levels`, `Util/LevelUpRules`, Lune-tested): every level pays $10 × the new level
-(EconomyService, in `AddXP`; $20 at Lv 2, $1,000 at Lv 100), and every 10th level gives a First Spark Pack, a Bag item
-(`Items.sparkPack`, `open = "FirstSparkPack"`) given by `LevelUpService`. A sale that crosses several levels pays every
-one. The toast reads "Level 7! +$70 · Unlocked: Deck Box". In the Bag a pack item has an Open button (main game only):
+**Level-up rewards** (`Config/Levels`, `Util/LevelUpRules`, Lune-tested): every level pays $4 × the new level
+(EconomyService, in `AddXP`; $8 at Lv 2, $400 at Lv 100; $10 × before levels came 2.7x faster, so the level cash per
+hour stays about the same), and a gift comes every 5th level only (owner 2026-11-16:
+"small cash every level. only give gift every 5 levels (wild ores and etc) make sure its not economy breaking"):
+levels ending in 5 give Wild Ore x3 and an XP Tonic, every 10th a First Spark Pack (a Bag item, `Items.sparkPack`,
+`open = "FirstSparkPack"`), every 25th a Gold Seal too, all given by `LevelUpService` as Bag items. All 100 levels give
+30 Wild Ore (the Forge Sword alone needs 20, monsters drop it), 10 XP Tonics, 10 packs and 4 Gold Seals (tests/LevelUpRules).
+A sale that crosses several levels pays every one. **The middle card** (owner: "an immersive notification at the
+center of the screen"; mockup picked; `Util/LevelUpCard`, `Config/LevelUpFx` CARD): 2.2 s into your own pillar the
+screen dims and a card pops up: "LEVEL UP!" on a lilac ribbon, the level in a gold badge, "Your shop is now Level N",
+then a chip for each gift popping in one after another (the cash, the items, a title the level earned:
+`LevelUpRules.titlesReached`), and what it unlocked ("New in your shop: Deck Box") or "Open your pack from the Bag!";
+"Yay!" (or a tap anywhere) closes it, else after 7 s. It replaced the old "Level 7! +$70" toast and its `LevelUp`
+remote. In the Bag a pack item has an Open button (main game only):
 the remote `OpenBagPack` (rate-limited, refused mid-fight) takes one and rolls a normal pack with pity
 (`PackService.OpenItemPack`), and the usual pack opening plays ("From your Bag" in its corner). Studio: `/setxp <n>`
 sets the XP total, down as well as up (no rewards), to test level-ups on a grown save.
@@ -4119,7 +4154,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── AmbienceRules.luau # the Dungeon's danger: when the next roar or glimpse comes, how loud (pure, Lune-tested)
             ├── AbyssLayout.luau   # the Crystal Abyss: its islands, bridges, what's stone, a fall (pure, Lune-tested)
             ├── NewPulls.luau      # which pulls are NEW to the collection, for the pack results (pure, Lune-tested)
-            ├── LevelUpRules.luau  # level-up rewards (cash every level, a pack every 10th), held effects merged (pure, Lune-tested)
+            ├── LevelUpRules.luau  # level-up rewards (cash every level, a gift every 5th), titles reached, held effects merged (pure, Lune-tested)
             ├── LeaderboardRules.luau  # the plaza leaderboard's lists, store writes and counts (pure, Lune-tested)
             ├── TurtsRules.luau  # Turts' restock clock, roll, buy check, saved state, spots, price rule, head shake (pure, Lune-tested)
             ├── UpgradeRules.luau  # station jobs: waits, Finish now tiers, the clock, saved jobs read back (pure, Lune-tested)

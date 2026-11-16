@@ -106,4 +106,32 @@ return {
 		expect.equal(DecorRules.fitsCap(19, 20), true)
 		expect.equal(DecorRules.fitsCap(20, 20), false)
 	end,
+
+	-- Owner 2026-11-16: "items from the shop can be placed through a wall. fix it": a shelf in the back row stood right
+	-- on the wall line, and the look's band and glowing trim (0.3 and 0.35 studs out from the wall) cut through its back
+	["nothing on the walls reaches a placed shelf: the look's pieces lie flat, shelves stand WALL_GAP off"] = function()
+		local shell = Decor.SHELL
+		local deepest = shell.LINER + math.max(shell.BAND_DEEP, shell.TRIM_DEEP, shell.CRYSTAL.deep)
+		assert(deepest <= shell.WALL_GAP, `the walls' pieces reach {deepest} studs in, shelves stand {shell.WALL_GAP} off`)
+		assert(shell.WALL_GAP <= 0.25, "close enough to read as against the wall (a shelf in the row in front barely overlaps)")
+	end,
+
+	["a shelf touching the side or back wall is moved WALL_GAP off it; the street side and the middle stay"] = function()
+		local gap = 0.15
+		-- a 4 x 2 shelf (half 2 x 1) in a 40 x 40 shop: the back wall at z = +20, the sides at x = -20 and +20
+		local x, z = DecorRules.offWalls(5, 19, 2, 1, 20, 20, gap)
+		near(x, 5, "away from the sides")
+		near(z, 19 - gap, "off the back wall")
+		x, z = DecorRules.offWalls(-18, 0, 2, 1, 20, 20, gap)
+		near(x, -18 + gap, "off the left wall")
+		near(z, 0)
+		x, z = DecorRules.offWalls(18, 19, 2, 1, 20, 20, gap)
+		near(x, 18 - gap, "in the back right corner: off the right wall")
+		near(z, 19 - gap, "and off the back")
+		x, z = DecorRules.offWalls(0, -19, 2, 1, 20, 20, gap)
+		near(z, -19, "the street side has no wall pieces: as placed")
+		x, z = DecorRules.offWalls(0, 10, 2, 1, 20, 20, gap)
+		near(x, 0)
+		near(z, 10, "in the middle: as placed")
+	end,
 }

@@ -37,18 +37,17 @@ local function shelfUnlock(id: string): number?
 end
 
 return {
-	["every unlock sits at the level nearest its XP today"] = function()
-		for id, old in OLD_PRODUCTS do
-			expect.equal(Products.ById[id].unlockLevel, nearest(old), `product {id}`)
+	-- Round 4 moved every unlock to the level nearest the XP it needed before. Since 2026-11-16 levels come 2.7x faster
+	-- (owner: "it takes too long to level up"; tests/LevelMath) and every unlock stays at its level, so it comes sooner
+	["the unlocks stay at their levels"] = function()
+		for id, level in { CardSleeves = 3, DeckBox = 7, FirstSparkBox = 11 } do
+			expect.equal(Products.ById[id].unlockLevel, level, `product {id}`)
 		end
-		for id, old in OLD_SHELVES do
-			expect.equal(shelfUnlock(id), nearest(old), `shelf {id}`)
+		for id in OLD_SHELVES do
+			assert(shelfUnlock(id), `shelf {id} still unlocks at a level`)
 		end
-		expect.equal(Jobs.UNLOCK_LEVEL, nearest(OLD_JOBS), "shop jobs")
-		expect.equal(Swords.UNLOCK_SHOP_LEVEL, nearest(OLD_SWORD), "starter sword")
-		for index, bossId in Bosses.LADDER do
-			expect.equal(Bosses.BOSSES[bossId].shopLevel, nearest(OLD_BOSSES[index]), `boss {index} {bossId}`)
-		end
+		expect.equal(Swords.UNLOCK_SHOP_LEVEL, 4, "starter sword")
+		assert(LevelMath.getRequiredXp(Levels, Jobs.UNLOCK_LEVEL) < OLD_JOBS / 2, "shop jobs come well before their old 36,000 XP")
 	end,
 
 	["the new levels are the spec's table"] = function()

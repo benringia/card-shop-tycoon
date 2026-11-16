@@ -1,6 +1,6 @@
 --!strict
--- Level-ups beyond the cash (spec 2026-11-04-round4-design sections 8-9): the pack every PACK_EVERY levels
--- (Config/Levels PACK_ITEM, a Bag item), opening those packs from the Bag (remote OpenBagPack), and telling every client
+-- Level-ups beyond the cash (spec 2026-11-04-round4-design sections 8-9): the gift every GIFT_EVERY levels (Config/Levels
+-- GIFTS, Bag items; owner 2026-11-16), opening its packs from the Bag (remote OpenBagPack), and telling every client
 -- about a level-up so the light pillar plays (remote LevelUpFx): a shop's waits while its player fights (several merge
 -- into one), a creature's goes out at once. EconomyService pays the cash and calls OnLevelUp; CardService.AddXP calls
 -- OnBeastLevelUp; this service never changes cash or XP.
@@ -42,9 +42,8 @@ local function sendShop(player: Player, levels: LevelUpRules.Pending)
 end
 
 local function onLevelUp(player: Player, from: number, to: number)
-	local packs = LevelUpRules.rewards(Levels, from, to).packs
-	if packs > 0 then
-		ItemService.GiveItem(player, Levels.PACK_ITEM, packs)
+	for item, count in LevelUpRules.rewards(Levels, from, to).items do
+		ItemService.GiveItem(player, item, count)
 	end
 	-- The pillar never plays mid-fight (a glowing circle underfoot reads as "dodge"): it waits for the fight to end
 	held[player] = LevelUpRules.merge(held[player], from, to)

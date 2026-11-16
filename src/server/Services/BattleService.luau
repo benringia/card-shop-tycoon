@@ -499,7 +499,7 @@ local function runTo(fight: Fight, id: string, add: WildService.Monster, petId: 
 	end
 	local from = add.marker.Position
 	local size = tonumber(add.marker:GetAttribute("Size")) or 1
-	local gap = Bosses.SUMMON.meleeGap + MonsterLooks.height(Wild, add.species, false, nil, nil, size) / 2
+	local gap = Bosses.SUMMON.meleeGap + MonsterLooks.height(Place.worldOf(add.species) or Wild, add.species, false, nil, nil, size) / 2
 	local stop = SummonRules.meleeSpot({ x = pet.X, z = pet.Z }, { x = from.X, z = from.Z }, gap)
 	local to = Vector3.new(stop.x, from.Y, stop.z)
 	local cfg = Bosses.SUMMON
@@ -572,7 +572,7 @@ local function spawnSummon(fight: Fight, id: string, event: BattleSim.Event, bos
 	view.x, view.y, view.z = ground.X, ground.Y, ground.Z
 	view.size = adds.size
 	view.emerge = adds.emerge
-	view.height = MonsterLooks.height(Wild, adds.species, false, nil, nil, adds.size)
+	view.height = MonsterLooks.height(Place.worldOf(adds.species) or Wild, adds.species, false, nil, nil, adds.size)
 	return monster
 end
 

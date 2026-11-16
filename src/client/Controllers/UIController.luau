@@ -4,14 +4,12 @@
 -- Other controllers add their panels to UIController.GetScreenGui(), and status items to GetStatusFrame().
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Remotes = require(Shared:WaitForChild("Remotes"))
-local LevelRules = require(Shared:WaitForChild("Util"):WaitForChild("LevelRules"))
-local LevelUpRules = require(Shared:WaitForChild("Util"):WaitForChild("LevelUpRules"))
-local Levels = require(Shared:WaitForChild("Config"):WaitForChild("Levels"))
 local ClientUtil = ((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util")
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
@@ -27,7 +25,6 @@ local Toasts = require(Shared:WaitForChild("Config"):WaitForChild("Toasts"))
 local ToastRules = require(Shared:WaitForChild("Util"):WaitForChild("ToastRules"))
 local HudMascotView = require(ClientUtil:WaitForChild("HudMascotView"))
 
-local LEVEL_UP_TOAST_SECONDS = 5
 local PILL_COLOR = Color3.fromRGB(22, 26, 38)
 local PILL_HEIGHT = 42
 local PILL_GAP = 8
@@ -66,19 +63,73 @@ local function isCompact(): boolean
 	return UserInputService.TouchEnabled
 end
 
+local cashHeldUntil = 0 -- a sale's coins are flying in: the pill keeps its number until they land (HoldCash)
+local shownCash: number? = nil
+
+local function moneyText(cash: number): string
+	return if isCompact() then CompactHud.money(cash) else string.format("$%.2f", cash)
+end
+
 local function updateCash()
 	local cash = player:GetAttribute("Cash")
 	-- No Cash yet = the save is still loading (can take a while in Studio): say so, so it never looks like a reset
 	local loaded = typeof(cash) == "number"
-	local text = if not loaded then "Loading..." elseif isCompact() then CompactHud.money(cash) else string.format("$%.2f", cash)
+	if loaded and os.clock() < cashHeldUntil then
+		return
+	end
+	local text = if not loaded then "Loading..." else moneyText(cash)
 	if cashLabel.Text ~= text and cashLabel.Text ~= "" then
 		Motion.bump(cashPill)
 	end
 	cashLabel.Text = text
+	shownCash = if loaded then cash else nil
 end
 
 function UIController.GetScreenGui(): ScreenGui
 	return screenGui
+end
+
+-- The cash pill (a sale's coins fly into it: Util/CoinBurst)
+function UIController.GetCashPill(): Frame
+	return cashPill
+end
+
+-- Shows the cash pill `amount` lower (a sale's money still flying in) for `seconds`, then counts it up to your cash
+-- over `rollSeconds` with a bump (owner 2026-11-16: "immersive animation/effects when someone buys something")
+function UIController.HoldCash(seconds: number, rollSeconds: number, amount: number)
+	local releaseAt = os.clock() + seconds
+	local now = player:GetAttribute("Cash")
+	if os.clock() >= cashHeldUntil and typeof(now) == "number" then
+		shownCash = now - amount
+		cashLabel.Text = moneyText(now - amount)
+	end
+	cashHeldUntil = math.max(cashHeldUntil, releaseAt)
+	task.delay(seconds, function()
+		if os.clock() + 1e-3 < cashHeldUntil then
+			return -- a later sale holds it longer
+		end
+		local target = player:GetAttribute("Cash")
+		local from = shownCash
+		if typeof(target) ~= "number" or not from or target <= from then
+			updateCash()
+			return
+		end
+		Motion.bump(cashPill)
+		local started = os.clock()
+		local connection: RBXScriptConnection
+		connection = RunService.RenderStepped:Connect(function()
+			local t = math.min((os.clock() - started) / rollSeconds, 1)
+			if os.clock() < cashHeldUntil then
+				connection:Disconnect() -- another sale's coins: it holds again
+				return
+			end
+			cashLabel.Text = moneyText(from + (target - from) * (1 - (1 - t) * (1 - t)))
+			if t >= 1 then
+				connection:Disconnect()
+				updateCash()
+			end
+		end)
+	end)
 end
 
 -- Bottom-right column: items stack upwards, right-aligned. Buff 1, cash 2 (bottom).
@@ -379,33 +430,6 @@ function UIController.Dismiss(token: number)
 		if bubble.id == token then
 			closeBubble(bubble)
 		end
-	end
-end
-
--- Several level-ups can arrive at once; show them one after another instead of overwriting
-local levelUpQueue: { number } = {}
-local showingLevelUps = false
-
-local function showLevelUps()
-	showingLevelUps = true
-	while #levelUpQueue > 0 do
-		local level = table.remove(levelUpQueue, 1) :: number
-		local unlocks = LevelRules.getUnlocks(level)
-		-- "Level 7! +$70 · Unlocked: Deck Box" (the reward is paid on the server, Util/LevelUpRules)
-		local message = `Level {level}! {LevelUpRules.rewardText(Levels, level)}`
-		if #unlocks > 0 then
-			message ..= ` · Unlocked: {table.concat(unlocks, ", ")}`
-		end
-		UIController.Notify(message, false, LEVEL_UP_TOAST_SECONDS)
-		task.wait(LEVEL_UP_TOAST_SECONDS)
-	end
-	showingLevelUps = false
-end
-
-local function queueLevelUp(level: number)
-	table.insert(levelUpQueue, level)
-	if not showingLevelUps then
-		task.spawn(showLevelUps)
 	end
 end
 
@@ -733,6 +757,7 @@ function UIController.Start()
 	HudMascotView.setHidden(isCompact() or Hud.hides("mascot"))
 	-- Full-screen views (the binder) cover this corner with their own panels
 	Hud.hideWith(statusRow)
+	Hud.keepName(statusRow, "cash") -- manning the register keeps your money in view (owner 2026-11-16)
 
 
 	updateCash()
@@ -747,7 +772,6 @@ function UIController.Start()
 			UIController.Notify(message, isError == true)
 		end
 	end)
-	Remotes.LevelUp.OnClientEvent:Connect(queueLevelUp)
 end
 
 return UIController

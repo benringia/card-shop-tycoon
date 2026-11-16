@@ -309,7 +309,7 @@ local function buildShell(id: number, plotCFrame: CFrame, parent: Instance): Par
 		buildWall(parent, plotCFrame, Vector3.new(thickness, 0, PlotConfig.DEPTH), Vector3.new(side * (halfWidth + thickness / 2), 0, 0), Vector3.new(side, 0, 0))
 	end
 	-- Feature wall: the back wall's inside face in a warm greige (the same in every shop)
-	trimPart(parent, "FeatureWall", Vector3.new(PlotConfig.WIDTH, Town.WALL_HEIGHT - 1, 0.1), plotCFrame * CFrame.new(0, floorTop + (Town.WALL_HEIGHT - 1) / 2, halfDepth - 0.05), Props.color(look.FEATURE_WALL))
+	trimPart(parent, "FeatureWall", Vector3.new(PlotConfig.WIDTH, Town.WALL_HEIGHT - 1, Decor.SHELL.LINER), plotCFrame * CFrame.new(0, floorTop + (Town.WALL_HEIGHT - 1) / 2, halfDepth - Decor.SHELL.LINER / 2), Props.color(look.FEATURE_WALL))
 
 	buildStorefront(parent, plotCFrame, outerWidth)
 	-- Sign band: charcoal from the top of the glass to the roof edge, with a glowing accent strip under it
@@ -734,11 +734,11 @@ local function drawWalls(plot: Plot)
 		local height = Decor.SHELL.HEIGHT
 		for _, sign in { -1, 1 } do
 			local side = if sign < 0 then "left" else "right"
-			local x = sign * (halfWidth - 0.05)
+			local x = sign * (halfWidth - Decor.SHELL.LINER / 2)
 			for _, made in wallPieces(folder, "Liner", PlotConfig.DEPTH, height, holes[side], function(along, up)
 				return base * CFrame.new(x, floorTop + up, along)
 			end, function(along, up)
-				return Vector3.new(0.1, up, along)
+				return Vector3.new(Decor.SHELL.LINER, up, along)
 			end, Props.color(look.wall), Enum.Material.SmoothPlastic) do
 				made.part.CastShadow = false
 				-- the left liner's room side faces +X: its left edge is the back (+Z) end; the right liner's the front
@@ -838,12 +838,12 @@ function PlotService.SetLook(plot: Plot, look: DecorRules.Look?)
 		texture.StudsPerTileV = look.tile
 		texture.Parent = target
 	end
-	-- A strip along the three walls at `height` above the floor (`thick` tall, `deep` out from the wall)
+	-- A strip along the three walls at `height` above the floor (`thick` tall, `deep` out from the liner)
 	local function alongWalls(name: string, height: number, thick: number, deep: number, color: { number }, material: Enum.Material)
 		for _, side in { -1, 1 } do
-			part(name, Vector3.new(deep, thick, PlotConfig.DEPTH), CFrame.new(side * (halfWidth - 0.1 - deep / 2), floorTop + height, 0), color, material)
+			part(name, Vector3.new(deep, thick, PlotConfig.DEPTH), CFrame.new(side * (halfWidth - shell.LINER - deep / 2), floorTop + height, 0), color, material)
 		end
-		part(name, Vector3.new(PlotConfig.WIDTH, thick, deep), CFrame.new(0, floorTop + height, halfDepth - 0.1 - deep / 2), color, material)
+		part(name, Vector3.new(PlotConfig.WIDTH, thick, deep), CFrame.new(0, floorTop + height, halfDepth - shell.LINER - deep / 2), color, material)
 	end
 
 	plot.floor.Color = Props.color(look.floor)
@@ -853,21 +853,23 @@ function PlotService.SetLook(plot: Plot, look: DecorRules.Look?)
 		paper(back, Enum.NormalId.Front) -- its room side faces -Z, toward the street
 	end
 	local bandMaterial = (Enum.Material :: any)[look.bandMaterial] or Enum.Material.SmoothPlastic
-	alongWalls("Band", shell.BAND / 2, shell.BAND, 0.2, look.band, bandMaterial)
-	alongWalls("Trim", shell.BAND + shell.TRIM / 2, shell.TRIM, 0.25, look.trim, Enum.Material.Neon)
+	alongWalls("Band", shell.BAND / 2, shell.BAND, shell.BAND_DEEP, look.band, bandMaterial)
+	alongWalls("Trim", shell.BAND + shell.TRIM / 2, shell.TRIM, shell.TRIM_DEEP, look.trim, Enum.Material.Neon)
 	local extraColor = look.extraColor or look.trim
 	if look.extra == "topStrip" then
-		alongWalls("TopStrip", shell.TOP_STRIP, shell.TRIM, 0.25, extraColor, Enum.Material.Neon)
+		alongWalls("TopStrip", shell.TOP_STRIP, shell.TRIM, shell.TRIM_DEEP, extraColor, Enum.Material.Neon)
 	elseif look.extra == "crystals" then
 		local rng = Random.new(7)
 		for _ = 1, shell.CRYSTALS do
 			local wall = rng:NextInteger(1, 3)
 			local along = rng:NextNumber(-halfWidth + 1, halfWidth - 1)
 			local height = rng:NextNumber(1.5, 3.5)
-			local at = if wall == 3
-				then CFrame.new(along, floorTop + height / 2, halfDepth - 0.45)
-				else CFrame.new((if wall == 1 then -1 else 1) * (halfWidth - 0.45), floorTop + height / 2, along)
-			local crystal = part("Crystal", Vector3.new(0.5, height, 0.5), at * CFrame.Angles(0, math.rad(45), math.rad(rng:NextNumber(-12, 12))), extraColor, Enum.Material.Neon)
+			-- flat on the liner (a shelf against the wall hides it), leaning a little within the wall
+			local crystalSize, out = shell.CRYSTAL, shell.LINER + shell.CRYSTAL.deep / 2
+			local lean = math.rad(rng:NextNumber(-12, 12))
+			local crystal = if wall == 3
+				then part("Crystal", Vector3.new(crystalSize.width, height, crystalSize.deep), CFrame.new(along, floorTop + height / 2, halfDepth - out) * CFrame.Angles(0, 0, lean), extraColor, Enum.Material.Neon)
+				else part("Crystal", Vector3.new(crystalSize.deep, height, crystalSize.width), CFrame.new((if wall == 1 then -1 else 1) * (halfWidth - out), floorTop + height / 2, along) * CFrame.Angles(lean, 0, 0), extraColor, Enum.Material.Neon)
 			crystal.Transparency = 0.25
 		end
 	end

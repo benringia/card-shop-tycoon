@@ -2199,7 +2199,8 @@ function BattleSim.statusesOf(state: State, fighter: Fighter): { Status }
 end
 
 function BattleSim.snapshot(state: State): any
-	local function sideView(side: Side): any
+	-- `foes`: the monster side, whose states show under their bar (a boss's or a wild monster's: owner 2026-11-16)
+	local function sideView(side: Side, foes: boolean): any
 		local fighters = {}
 		for _, fighter in side.fighters do
 			table.insert(fighters, {
@@ -2220,7 +2221,7 @@ function BattleSim.snapshot(state: State): any
 				down = fighter.down,
 				downIn = if fighter.down and not fighter.out then math.max(0, fighter.downUntil - state.time) else 0,
 				out = fighter.out,
-				statuses = if fighter.boss then BattleSim.statusesOf(state, fighter) else nil, -- its bar's states
+				statuses = if foes then BattleSim.statusesOf(state, fighter) else nil, -- its bar's states
 			})
 		end
 		local reserves = {}
@@ -2239,7 +2240,7 @@ function BattleSim.snapshot(state: State): any
 			swapIn = swapWaits(state, side), -- seconds until each owner may swap again
 		}
 	end
-	return { time = state.time, result = state.result, sides = { a = sideView(state.sides.a), b = sideView(state.sides.b) } }
+	return { time = state.time, result = state.result, sides = { a = sideView(state.sides.a, false), b = sideView(state.sides.b, true) } }
 end
 
 return BattleSim

@@ -161,10 +161,17 @@ each other. One solid closed shape.
 ```
 
 - Flat creatures (rays): ask for "lying flat, back facing up, belly down"; Reefray came out standing on end, belly up.
-- Neutral rest pose, always: four-legged creatures "standing still in a neutral pose, all four feet planted square,
-  head and body facing straight forward, head level, not turned"; two-legged / humanlike ones in a T-pose (generate_3d
-  `pose_mode="t-pose"`). Never "side view", walking, prancing or turned poses: Briarhorn (turned 19 degrees), the
-  Kirin (a raised leg) and Thunderhorn (body turned 16 degrees, head turned 38) all needed fixing by hand.
+- **Neutral everything, always (the owner's rule, 2026-11-16: "when generating 3D on meshy or any other platforms.
+  models should not have poses. neutral everything")**, for every generation on any platform and every concept picture
+  made for one: body straight and still; four-legged creatures "standing still in a neutral pose, all four legs straight
+  down, feet planted square, head and body facing straight forward, head level, not turned, not tilted"; two-legged /
+  humanlike ones in a T-pose (generate_3d `pose_mode="t-pose"`); the head in line with the body (in a three-quarter
+  concept it points the same way as the body, never at the viewer), mouth closed, tail relaxed straight back, wings,
+  ears and antlers even on both sides, perfectly symmetrical. Never "side view", walking, prancing or turned poses:
+  Briarhorn (turned 19 degrees), the Kirin (a raised leg) and Thunderhorn (body turned 16 degrees, head turned 38) all
+  needed fixing, and Thunderhorn still looked sideways after a hand fix and a code fix and was remade. Before rigging,
+  render the front and top views: the head lines up with the body and both sides mirror. A turned model is generated
+  again (ask about credits), not patched in code.
 - Never skinny: ask for a massive, heavy, bulky body with thick legs, a broad chest and a low wide stance (chunky and
   stocky for cute ones), and match the card art's build. Briarhorn's first cow came out too slim and was remade as a bison.
 - Character plus its mythical parts only; never scenery. Grass or ground under it fuses with the feet and can't be
@@ -359,10 +366,15 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   replacing the first armoured koi). Meshy gave only cyan fin tips, so 19 ice crystals were added by hand with
   `rig_kit.crystal` (dorsal crown, back ridge, ice horns over the eyes, fin and tail shards; two colours from
   `paint_patch`). Swims (`Party.UNDULATE` "swim"). 10 bones, about 8,400 triangles. Replaced the tinted IceShark.
-- **Thunderhorn** (`rig_thunderhorn.py`, Meshy, Epic): a majestic cream thunder stag with huge branching golden
-  antlers (as `Ear_` bones, each antler wholly on its bone via `rig_kit.reweight`) and slim deer legs. Remade 27 Oct
-  (the first, heavy-set one read as a bull). Generated turned and with its head turned: body turned straight, head
-  straightened by hand (steps in the script). Size 1.8. 22 bones, 9,000 triangles. Replaced the tinted Lumistag.
+- **Thunderhorn** (`rig_thunderhorn.py`, Meshy, Epic): remade 2026-11-16 (owner: "its still sideways. remodel
+  thunderhorn"; concept B of two): a fierce, heavy-set cream thunder stag with a storm-grey cloud mane marked with
+  yellow lightning on its neck and chest, gold shoulder armour, a gold crown, gold hooves and enormous golden antlers
+  with lightning tips. Image-to-3D from `Thunderhorn_concept.png` (drawn strictly neutral, the head in line with the
+  body): Meshy built it square and facing -Y; only the head came 7.5 degrees to its left and leaning 3 (measured by the
+  face's mirror symmetry), turned back in the mesh with the neck blended and the antlers and crown turning whole. The
+  antlers and crown are locked to `Head_0`; the mouth is cut along its painted line onto `Jaw_0`. Size 1.8. 22 bones,
+  14,000 triangles. The first remake (27 Oct, a text prompt) came out turned 16 degrees with its head 38 off and still
+  looked sideways after a hand fix. Replaced the tinted Lumistag.
 - **Riftwalker** (`rig_riftwalker.py`, Meshy, Epic): a massive black void dragon with glowing violet rift cracks, a
   fanged roaring maw, swept-back horns, back spikes, folded wings (`Wing_` bones) and a long spiked tail; prowls on four
   legs; its lower jaw is on `Jaw_0` (cut out of the head with `rig_kit.reweight`) and opens for roars and yawns.

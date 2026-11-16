@@ -790,7 +790,7 @@ local function applySnapshot(snapshot: Snapshot)
 		if idsOf(snapshot.adds) ~= addsKey then
 			buildAdds(snapshot)
 		end
-		statusBar.update(if bossId then snapshot.monster.statuses else nil)
+		statusBar.update(snapshot.monster.statuses) -- a boss's or a wild monster's (owner 2026-11-16: "debuff from you or your pets should appear below the enemy healthbar")
 		for _, add in snapshot.adds do
 			local view = addBars[add.id]
 			if view then

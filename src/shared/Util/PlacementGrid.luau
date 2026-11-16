@@ -7,6 +7,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config")
 local PlotConfig = require(Config:WaitForChild("Plots"))
 local PlacementConfig = require(Config:WaitForChild("Placement"))
+local Decor = require(Config:WaitForChild("Decor"))
+local DecorRules = require(script.Parent:WaitForChild("DecorRules"))
 
 export type Rect = { x: number, z: number, w: number, d: number }
 
@@ -27,11 +29,20 @@ function PlacementGrid.getFootprint(size: Vector3, rotation: number): (number, n
 	return w, d
 end
 
--- Shelf CFrame relative to the plot CFrame (floor centre). Rotation 0 faces the street.
+-- Shelf CFrame relative to the plot CFrame (floor centre). Rotation 0 faces the street. Against the side or back wall
+-- it stands Decor.SHELL.WALL_GAP off it, clear of the look's band and trim (DecorRules.offWalls)
 function PlacementGrid.getLocalCFrame(size: Vector3, gridX: number, gridZ: number, rotation: number): CFrame
 	local w, d = PlacementGrid.getFootprint(size, rotation)
-	local x = -PlotConfig.WIDTH / 2 + (gridX + w / 2) * GRID
-	local z = -PlotConfig.DEPTH / 2 + (gridZ + d / 2) * GRID
+	local turned = rotation % 2 == 1
+	local x, z = DecorRules.offWalls(
+		-PlotConfig.WIDTH / 2 + (gridX + w / 2) * GRID,
+		-PlotConfig.DEPTH / 2 + (gridZ + d / 2) * GRID,
+		(if turned then size.Z else size.X) / 2,
+		(if turned then size.X else size.Z) / 2,
+		PlotConfig.WIDTH / 2,
+		PlotConfig.DEPTH / 2,
+		Decor.SHELL.WALL_GAP
+	)
 	local y = (PlotConfig.FLOOR_THICKNESS + size.Y) / 2
 	return CFrame.new(x, y, z) * CFrame.Angles(0, rotation * math.pi / 2, 0)
 end

@@ -349,8 +349,8 @@ local function emitters(model: Model, bones: { string }, look: any): { ParticleE
 end
 
 -- A species' small effect on its model's Fx_ bones, off until the camera comes near
-local function makeFx(model: Model, fx: any): { ParticleEmitter }
-	local look = Wild.FX[fx.kind]
+local function makeFx(model: Model, fx: any, world: any): { ParticleEmitter }
+	local look = world.FX[fx.kind]
 	return if look then emitters(model, fx.bones, look) else {}
 end
 
@@ -549,8 +549,10 @@ local function add(marker: BasePart)
 	end
 	local bossId = marker:GetAttribute("Boss")
 	local boss = if typeof(bossId) == "string" then Bosses.BOSSES[bossId] else nil
-	local info: { element: string, shape: string }? = boss or Wild.SPECIES[species]
-	if not info then
+	-- a boss's summons may be another world's species (Place.worldOf: the prologue's Hydra calls Rift Horrors here)
+	local world = if boss then Wild else Place.worldOf(species)
+	local info: { element: string, shape: string }? = boss or (if world then world.SPECIES[species] else nil)
+	if not info or not world then
 		return
 	end
 	local elite = marker:GetAttribute("Elite") == true
@@ -563,9 +565,9 @@ local function add(marker: BasePart)
 	CreatureVisuals.strip(model)
 	model.Name = `{species}_{marker:GetAttribute("MonsterId")}`
 
-	local flying = boss == nil and table.find(Wild.FLYING, species) ~= nil
+	local flying = boss == nil and table.find(world.FLYING, species) ~= nil
 	local size = tonumber(marker:GetAttribute("Size"))
-	local height = MonsterLooks.height(Wild, species, elite, if boss then boss.scale else nil, if boss then boss.height else nil, size)
+	local height = MonsterLooks.height(world, species, elite, if boss then boss.scale else nil, if boss then boss.height else nil, size)
 	-- A model's bones move like a creature's (its PetRig names; Party style keyed by species, a boss by its id)
 	local styleKey = MonsterLooks.styleKey(species, if boss then bossId :: string else nil, template ~= nil)
 	local body = CreatureVisuals.build(model, marker, height, flying, styleKey)
@@ -573,7 +575,7 @@ local function add(marker: BasePart)
 	if Place.isDungeon() and not boss then
 		CrystalLook.apply(model, body.root, height) -- the fight rooms' monsters, crystal-touched (spec 2026-11-11-dungeon-puzzles)
 	end
-	local glow = if boss then boss.glow else (Wild.SPECIES[species] :: any).glow
+	local glow = if boss then boss.glow else (world.SPECIES[species] :: any).glow
 	if glow and template then
 		lightGlow(model, glow.strength)
 	end
@@ -585,7 +587,7 @@ local function add(marker: BasePart)
 		light.Shadows = false
 		light.Parent = body.root
 	end
-	local fxSpec = if boss or not template then nil else (Wild.SPECIES[species] :: any).fx
+	local fxSpec = if boss or not template then nil else (world.SPECIES[species] :: any).fx
 	local key = if boss then bossId :: string else species
 	local clips, clipPlayer = ClipPlayer.loadSet(key, model)
 	local lengths = {}
@@ -602,7 +604,7 @@ local function add(marker: BasePart)
 		runePhase = nil,
 		fallenAt = nil,
 		aura = if boss and boss.rainbowAura then makeAura(body) else nil,
-		fx = if fxSpec then makeFx(model, fxSpec) else {},
+		fx = if fxSpec then makeFx(model, fxSpec, world) else {},
 		lasting = {},
 		enraged = false,
 		key = key,

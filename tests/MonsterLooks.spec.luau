@@ -5,6 +5,8 @@
 local wild = require("../src/shared/Config/Wild")
 local frontier = require("../src/shared/Config/Frontier")
 local party = require("../src/shared/Config/Party")
+local bosses = require("../src/shared/Config/Bosses")
+local prologue = require("../src/shared/Config/Prologue")
 local MonsterLooks = require("../src/shared/Util/MonsterLooks")
 local expect = require("./lib/expect")
 
@@ -205,5 +207,26 @@ return {
 			local look = (wild :: any).FX[kind]
 			assert(look and look.rate > 0 and look.lifetime[1] > 0, kind .. " has no emitter numbers")
 		end
+	end,
+
+	-- Owner 2026-11-16 (the prologue, in the main game): "there are spawn health bars but I couldnt see any spawned
+	-- creatures": the young Hydra's phase 2 summons the Frontier's Rift Horrors, which the main game's Config/Wild
+	-- doesn't list, so the server made none and the client couldn't have drawn one
+	["a species is found in whichever world lists it, this place's first"] = function()
+		local hydra = bosses.BOSSES[prologue.HYDRA.boss]
+		local summoned: { string } = {}
+		for _, phase in hydra.phases or {} do
+			local adds = phase.mechanics.adds
+			if adds then
+				table.insert(summoned, adds.species)
+			end
+		end
+		assert(#summoned > 0, "the prologue's Hydra summons something")
+		for _, species in summoned do
+			expect.equal(MonsterLooks.worldOf({ wild, frontier }, species), frontier, `{species} from the main game`)
+			expect.equal(MonsterLooks.worldOf({ frontier, wild }, species), frontier, `{species} in the Frontier or the Dungeon`)
+		end
+		expect.equal(MonsterLooks.worldOf({ wild, frontier }, "Mossling"), wild, "the main game's own first")
+		expect.equal(MonsterLooks.worldOf({ wild, frontier }, "Nobody"), nil, "an unknown species: none")
 	end,
 }

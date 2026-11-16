@@ -103,6 +103,14 @@ function DecorRules.score(cfg: any, lookId: string, piecePoints: { number }): nu
 end
 
 -- Whether one more piece fits when `placed` are already in the shop
+-- A placed shelf's spot moved off the side and back walls it would touch, so it stands `gap` clear of everything on them
+-- (Config/Decor SHELL WALL_GAP; the street side has nothing on it). In the shop's own frame: x across it, z toward the
+-- back (the back wall at +halfDepth); hx, hz the shelf's half size along them. It moves only as far as it must.
+function DecorRules.offWalls(x: number, z: number, hx: number, hz: number, halfWidth: number, halfDepth: number, gap: number): (number, number)
+	local clearX = math.clamp(x, -halfWidth + gap + hx, halfWidth - gap - hx)
+	return if 2 * (hx + gap) <= 2 * halfWidth then clearX else x, math.min(z, halfDepth - gap - hz)
+end
+
 function DecorRules.fitsCap(placed: number, cap: number): boolean
 	return placed < cap
 end

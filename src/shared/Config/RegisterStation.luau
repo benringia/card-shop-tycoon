@@ -147,5 +147,22 @@ return {
 	-- The helper glow (owner 2026-11-16: "after 5 s stuck"): the next note or coin to give glows gold after this long
 	-- without a tap, and always on Pish's first sale (Util/RegisterStationRules nextPiece)
 	HELPER_SECONDS = 5,
+	-- A sale while you man the register (owner 2026-11-16: "money should be visible while I'm using cash register. with
+	-- immersive animation/effects when someone buys something. the same with exp"; mockup approved): the screen flashes
+	-- "SOLD! +$12.50" for `soldSeconds`, coins (`coins` fewest and most: more for a bigger sale, RegisterStationRules
+	-- .saleCoins) burst out of the register and fly `flySeconds` each, `stagger` apart, arcing `lift` px up, into your
+	-- cash pill, which counts up as they land; the XP sparks start from the register too (Util/SaleOrigin). Pixels.
+	SALE_FX = {
+		soldSeconds = 1.6,
+		soldWords = "SOLD! +%s",
+		coins = { 4, 12 },
+		flySeconds = 0.75,
+		stagger = 0.06,
+		lift = 140,
+		coinSize = 44,
+		spread = 70, -- px the coins burst out to before they fly
+		rollSeconds = 0.45, -- the cash pill's count-up
+		soldColor = { 87, 211, 154 },
+	},
 	HELPER_COLOR = { 255, 201, 63 },
 }

@@ -61,7 +61,6 @@ local NAMES = {
 	-- server → owner: { rating: number, parts: { { name, score, weight, known } } } (RatingService, heaviest part first;
 	-- known false: scored neutral for want of anything to score, so no tip)
 	"RatingUpdate",
-	"LevelUp", -- server → client: (level: number)
 	"DropBox", -- client → server: put carried boxes back on the delivery pad
 	"RemoveStock", -- client → server: (shelfUid: string) box up a product shelf's stock onto the delivery pad
 	"RipPack", -- client → server: open one pack from the carried box
@@ -221,7 +220,6 @@ return {
 	OfferUpdate = remotes.OfferUpdate,
 	OfferAction = remotes.OfferAction,
 	RatingUpdate = remotes.RatingUpdate,
-	LevelUp = remotes.LevelUp,
 	DropBox = remotes.DropBox,
 	RemoveStock = remotes.RemoveStock,
 	RipPack = remotes.RipPack,

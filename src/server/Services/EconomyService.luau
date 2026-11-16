@@ -9,7 +9,6 @@ local EconomyConfig = require(Shared:WaitForChild("Config"):WaitForChild("Econom
 local Levels = require(Shared:WaitForChild("Config"):WaitForChild("Levels"))
 local LevelRules = require(Shared:WaitForChild("Util"):WaitForChild("LevelRules"))
 local LevelUpRules = require(Shared:WaitForChild("Util"):WaitForChild("LevelUpRules"))
-local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local DataService = require((script.Parent :: Instance):WaitForChild("DataService"))
 
@@ -109,10 +108,7 @@ function EconomyService.AddXP(player: Player, amount: number): boolean
 		wallet.cash = roundCents(wallet.cash + LevelUpRules.rewards(Levels, oldLevel, newLevel).cash)
 	end
 	sync(player, wallet)
-	-- One message per level gained, so skipped levels still announce their unlocks
-	for level = oldLevel + 1, newLevel do
-		Remotes.LevelUp:FireClient(player, level)
-	end
+	-- What a level-up gave and unlocked shows on the middle card after its pillar (LevelUpService, Util/LevelUpCard)
 	if newLevel > oldLevel then
 		for _, handler in levelUpHandlers do
 			task.spawn(handler, player, oldLevel, newLevel)

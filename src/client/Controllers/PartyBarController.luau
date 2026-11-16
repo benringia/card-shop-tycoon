@@ -41,6 +41,7 @@ local RestTimers = require(ClientUtil:WaitForChild("RestTimers"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Motion = require(ClientUtil:WaitForChild("Motion"))
+local SaleOrigin = require(ClientUtil:WaitForChild("SaleOrigin"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
 local CardTips = require(ClientUtil:WaitForChild("CardTips"))
 local Tooltip = require(ClientUtil:WaitForChild("Tooltip"))
@@ -1006,13 +1007,21 @@ function PartyBarController.Start()
 		local camera = workspace.CurrentCamera
 		local character = player.Character
 		local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
-		if not dock or not dock.Visible or UIKit.anyPanelOpen() or not camera or not root or not root:IsA("BasePart") then
+		-- from the register's screen while you man it (you're hidden in first person), else from you
+		local sale = SaleOrigin.get()
+		-- (on the register its Leave pill counts as an open window: the sparks still fly)
+		if not dock or not dock.Visible or (UIKit.anyPanelOpen() and not sale) or not camera or (not sale and (not root or not root:IsA("BasePart"))) then
 			Motion.bump(levelBadge)
 			return
 		end
 		local origin = screen.AbsolutePosition
-		local seen, onScreen = camera:WorldToViewportPoint(root.Position)
-		local from = if onScreen then Vector2.new(seen.X, seen.Y) - origin else screen.AbsoluteSize / 2
+		local from = screen.AbsoluteSize / 2
+		if sale then
+			from = sale - origin
+		elseif root and root:IsA("BasePart") then
+			local seen, onScreen = camera:WorldToViewportPoint(root.Position)
+			from = if onScreen then Vector2.new(seen.X, seen.Y) - origin else from
+		end
 		local target = xpTrack.AbsolutePosition + xpTrack.AbsoluteSize / 2 - origin
 		local count = SparkPath.count(gained, look.min, look.max)
 		local color = rgb(look.color)

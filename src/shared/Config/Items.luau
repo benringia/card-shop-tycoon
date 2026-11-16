@@ -113,15 +113,15 @@ return {
 			name = "Wild Ore",
 			icon = "WildOre",
 			description = "Makes and powers up the Forge Sword, Forge Spear and Forge Scythe.",
-			source = "Wild and Frontier monsters · 15% (elites 60%)",
+			source = "Wild and Frontier monsters · 15% (elites 60%) · shop level gifts",
 			use = "Bring it to the Forge in your shop",
 		},
-		-- Shop level rewards (Config/Levels PACK_ITEM): opened from the Bag (remote OpenBagPack, LevelUpService)
+		-- Shop level gifts (Config/Levels GIFTS): opened from the Bag (remote OpenBagPack, LevelUpService)
 		sparkPack = {
 			name = "First Spark Pack",
 			icon = "BoosterPack",
 			description = "A pack of First Spark cards. Open it to see what you get!",
-			source = "Shop level rewards (every 10th level)",
+			source = "Shop level gifts (every 10th level)",
 			use = "Open your Bag and tap Open",
 			open = "FirstSparkPack", -- the Config/Packs product it opens
 		},
@@ -180,7 +180,7 @@ return {
 			name = "Gold Seal",
 			icon = "GoldSeal",
 			description = "Pays the cash to grade a card up once, like C to B. Not for a Legendary from A to S.",
-			source = "Storm Sovereign, Rift Devourer, Prism Hydra (bosses)",
+			source = "Storm Sovereign, Rift Devourer, Prism Hydra (bosses) · shop level gifts",
 			use = "At the Grading Station, tap Use a Gold Seal",
 		},
 		trophy_frostTyrant = {
@@ -219,7 +219,7 @@ return {
 			name = "XP Tonic",
 			icon = "XpTonic",
 			description = "Gives one of your creatures 400 XP to help it level up.",
-			source = "Meadow Warden, Cave Brood Queen, Ember Colossus (bosses)",
+			source = "Meadow Warden, Cave Brood Queen, Ember Colossus (bosses) · shop level gifts",
 			use = "In your Party, tap XP Tonic on a creature's card",
 			xp = 400,
 		},

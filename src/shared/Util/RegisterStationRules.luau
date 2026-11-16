@@ -86,4 +86,11 @@ function RegisterStationRules.givenSpot(given: { x: number, z: number, step: num
 	return { x = given.x + column * given.step, z = given.z - row * given.step * 1.4 }
 end
 
+-- How many coins fly into the cash pill for a sale of `amount` dollars (Config/RegisterStation SALE_FX coins): the
+-- fewest, one more each time the sale doubles, never past the most
+function RegisterStationRules.saleCoins(amount: number, fx: { coins: { number } }): number
+	local fewest, most = fx.coins[1], fx.coins[2]
+	return math.clamp(fewest + math.floor(math.log(math.max(amount, 0) + 1, 2)), fewest, most)
+end
+
 return RegisterStationRules

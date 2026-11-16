@@ -4,6 +4,19 @@
 -- and when its small effects run. Pure, Lune-tested; MonsterController draws with it.
 local MonsterLooks = {}
 
+-- The world config (Config/Wild or Config/Frontier) that lists `species`, trying `worlds` in order (this place's own
+-- first); nil when none does. A boss can summon another world's monster: the prologue's young Hydra, fought in the
+-- main game, calls the Frontier's Rift Horrors (owner 2026-11-16: "spawn health bars but I couldnt see any spawned
+-- creatures"), so making and drawing a monster looks its species up here, not in the place's world alone.
+function MonsterLooks.worldOf(worlds: { any }, species: string): any?
+	for _, world in worlds do
+		if world.SPECIES[species] then
+			return world
+		end
+	end
+	return nil
+end
+
 -- Studs tall. world: Config/Wild or Config/Frontier (its SPECIES, MONSTER_HEIGHT, ELITE_SIZE). A boss: its own height
 -- when it has one (Config/Bosses height), else MONSTER_HEIGHT times its scale. size: a boss's summoned add (Config/Bosses
 -- adds.size, the Rift Devourer's): its species' height times that

@@ -496,8 +496,11 @@ end
 export type Summon = { size: number?, emerge: number } -- size: a boss's summon's (nil: its own, a Dungeon room's pack)
 
 local function createMonster(species: string, level: number, elite: boolean, zone: number, home: Vector3, spawnPoint: BasePart?, boss: string?, summon: Summon?): Monster?
-	local info: { element: string }? = if boss then Bosses.BOSSES[boss] else Wild.SPECIES[species]
+	-- a boss's summons may be another world's species (Place.worldOf)
+	local world = if boss then nil else Place.worldOf(species)
+	local info: { element: string }? = if boss then Bosses.BOSSES[boss] elseif world then world.SPECIES[species] else nil
 	if not info then
+		warn(`[WildService] no species {species} in either world`)
 		return nil
 	end
 	local marker = Instance.new("Part")

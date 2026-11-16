@@ -75,4 +75,41 @@ return {
 	-- fading out over its last `fade` seconds
 	CREATURE_GLOW = { seconds = 3.5, fill = { 255, 220, 110 }, outline = { 255, 255, 255 }, low = 0.35, high = 0.75, pulseSpeed = 1.6, fade = 1 },
 	SPARK_WAIT = 4, -- seconds your own creature's level-up from a fight waits for its XP sparks to land, at most
+	-- The middle card after your own shop's pillar (owner 2026-11-16: "there should be some sort of reward every level
+	-- up ... and an immersive notification at the center of the screen"; mockup picked): "LEVEL UP!" on a lilac ribbon,
+	-- the level in a gold badge, what it gave (the cash every level, the gift every 5th: Config/Levels), what it
+	-- unlocked and any title it earned (Util/LevelUpCard). It pops in `delay` seconds into the pillar, its gifts one
+	-- after another `stagger` apart with `sound`, over soft turning rays; it closes on its button or after `seconds`.
+	-- Pixels at a REFERENCE-sized screen, scaled to the real one between `minScale` and `maxScale`.
+	CARD = {
+		delay = 2.2,
+		seconds = 7,
+		stagger = 0.16,
+		reference = { 900, 560 },
+		minScale = 0.62,
+		maxScale = 1.25,
+		width = 460,
+		chip = { 94, 96 }, -- a gift's chip: width, height (four to a row)
+		dim = 0.55, -- the screen behind it
+		rays = "rbxassetid://139701534930046", -- Config/PackFx IMAGES.rays
+		raysSize = 720,
+		raysTurnSeconds = 18,
+		sound = { id = "rbxassetid://9117841338", volume = 0.3 }, -- PSE "Pop Airy 1", once as the gifts land
+		colors = {
+			cardTop = { 255, 246, 255 },
+			cardBottom = { 241, 230, 255 },
+			shadow = { 139, 102, 217 },
+			ribbonTop = { 190, 160, 244 },
+			ribbonBottom = { 139, 102, 217 },
+			outline = { 58, 29, 92 },
+			badgeTop = { 255, 236, 160 },
+			badgeBottom = { 214, 140, 24 },
+			badgeOutline = { 138, 90, 0 },
+			chipEdge = { 201, 179, 242 },
+			chipNew = { 255, 211, 107 },
+			words = { 58, 29, 92 },
+			soft = { 109, 90, 150 },
+			button = { 87, 211, 154 },
+		},
+	},
 }

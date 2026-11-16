@@ -21,6 +21,8 @@ local Town = require(Shared:WaitForChild("Config"):WaitForChild("Town"))
 local Packs = require(Shared:WaitForChild("Config"):WaitForChild("Packs"))
 local Products = require(Shared:WaitForChild("Config"):WaitForChild("Products"))
 local Cards = require(Shared:WaitForChild("Config"):WaitForChild("Cards"))
+local ShowcaseConfig = require(Shared:WaitForChild("Config"):WaitForChild("Showcase"))
+local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local PropFit = require(Shared:WaitForChild("Util"):WaitForChild("PropFit"))
 local PackModels = require(Shared:WaitForChild("Util"):WaitForChild("PackModels"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -356,6 +358,27 @@ local function dressItem(part: BasePart, productId: string?)
 	part.Transparency = 1
 end
 
+-- A card from the Glass Showcase on the counter (owner 2026-11-16: "cards from the glasscase should have a model in
+-- cashiers too with all the effects"): a card part like the case's, its face up and its top away from the cashier, with
+-- the case card's attributes, so every client draws its face, halo, sparkles and a Legendary's aura on it and plays a
+-- listing burst as it lands (CardEffectsController), scaled to fit the counter slot (`slot`: Config/Register ITEM_SIZE)
+local FACE_UP_AWAY = CFrame.fromMatrix(Vector3.zero, Vector3.new(-1, 0, 0), Vector3.new(0, 0, -1), Vector3.new(0, -1, 0))
+local function dressCard(part: BasePart, card: any, unitPrice: number, slot: Vector3, at: CFrame)
+	local cardSize = ShowcaseConfig.CARD_SIZE
+	local fit = math.min(slot.X / cardSize.X, slot.Z / cardSize.Y)
+	part.Size = cardSize * Vector3.new(fit, fit, 1)
+	part.CFrame = at * CFrame.new(0, (part.Size.Z - slot.Y) / 2, 0) * FACE_UP_AWAY
+	part.Color = Color3.fromRGB(30, 26, 40)
+	part.Material = Enum.Material.SmoothPlastic
+	local beast = card.beast
+	part:SetAttribute("CardId", card.cardId)
+	part:SetAttribute("Foil", card.foil == true)
+	part:SetAttribute("Grade", card.grade)
+	part:SetAttribute("Level", if beast then beast.level else 1)
+	part:SetAttribute("Stars", if beast then beast.stars else BeastRules.START_STARS)
+	part:SetAttribute("Price", unitPrice)
+end
+
 -- Lays one counter item per unit along the counter top, each clickable/tappable to scan.
 -- Called repeatedly while the front customer waits, so it must be safe to repeat.
 local function startCheckout(customer: Customer)
@@ -376,6 +399,7 @@ local function startCheckout(customer: Customer)
 	local products: { string | false } = {} -- each unit's product, false for a single card (keeps the array gapless)
 	local names: { string } = {}
 	local cardIds: { string | false } = {}
+	local cardInfos: { any } = {} -- each unit's displayed card (false for a product), for its look on the counter
 	for _, item in customer.items do
 		local product = if item.productId then Products.ById[item.productId] else nil
 		local card = if item.card then Cards.ById[item.card.cardId] else nil
@@ -385,6 +409,7 @@ local function startCheckout(customer: Customer)
 			table.insert(products, item.productId or false)
 			table.insert(names, name)
 			table.insert(cardIds, if item.card then item.card.cardId else false)
+			table.insert(cardInfos, item.card or false)
 		end
 	end
 
@@ -426,7 +451,12 @@ local function startCheckout(customer: Customer)
 		part.Size = size
 		part.CFrame = register.CFrame * CFrame.new(x, (register.Size.Y + size.Y) / 2, itemZ)
 		local productId = products[index]
-		dressItem(part, if productId then productId else nil)
+		local cardInfo = cardInfos[index]
+		if cardInfo then
+			dressCard(part, cardInfo, unitPrice, size, part.CFrame)
+		else
+			dressItem(part, if productId then productId else nil)
+		end
 
 		local click = Instance.new("ClickDetector")
 		click.MaxActivationDistance = RegisterConfig.REACH

@@ -10,6 +10,7 @@ local Frontier = require(Config:WaitForChild("Frontier"))
 local Places = require(Config:WaitForChild("Places"))
 local WildValley = require(Config:WaitForChild("WildValley"))
 local FrontierValley = require(Config:WaitForChild("FrontierValley"))
+local MonsterLooks = require(script.Parent:WaitForChild("MonsterLooks"))
 
 local Place = {}
 
@@ -25,6 +26,13 @@ end
 -- the server wild map's in the main game
 function Place.getWorld(): typeof(Wild)
 	return if Place.isFrontier() or Place.isDungeon() then Frontier :: any else Wild
+end
+
+-- The world config that lists a monster species: this place's own first, then the other's (a boss can summon another
+-- world's monster: the prologue's Hydra calls the Frontier's Rift Horrors in the main game); nil for an unknown one
+function Place.worldOf(species: string): typeof(Wild)?
+	local own = Place.getWorld()
+	return MonsterLooks.worldOf({ own, if own == Wild then Frontier else Wild }, species)
 end
 
 -- The place's valley config (spec 2026-11-10-frontier-valley-design: one valley engine, two valleys): the Wild valley's

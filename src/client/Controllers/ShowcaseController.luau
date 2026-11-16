@@ -332,7 +332,7 @@ local function buildListingRow(listing: Listing, kind: string)
 	thumbnail.Size = UDim2.fromOffset(THUMBNAIL_SIZE.X, THUMBNAIL_SIZE.Y)
 	thumbnail.BackgroundTransparency = 1
 	thumbnail.Parent = row
-	makeCardFace(thumbnail, listing.card, listing.foil, false)
+	makeCardFace(thumbnail, listing.card, listing.foil, false, listing.growth) -- its own grade on the face
 
 	local textX = THUMBNAIL_SIZE.X + 14
 	local name = `{listing.slot}. {listing.card.name}{if listing.foil then " FOIL" else ""}`
@@ -626,7 +626,8 @@ local function buildPickerTile(entry: PickerEntry, order: number, selected: Pick
 	faceHolder.Size = UDim2.new(1, -8, 0, PICKER_FACE_HEIGHT)
 	faceHolder.BackgroundTransparency = 1
 	faceHolder.Parent = tile
-	makeCardFace(faceHolder, entry.card, entry.foil, false)
+	-- the copy's own grade on its face (owner 2026-11-16: the tiles said Grade A under a face showing C)
+	makeCardFace(faceHolder, entry.card, entry.foil, false, entry.growth)
 
 	local growth = entry.growth
 	local detail = if entry.beastId then `{growth.grade} · Lv {growth.level}` else `Grade {growth.grade} · x{entry.count}`
@@ -750,8 +751,8 @@ local function buildPicker(parent: Instance)
 
 	-- Rarity filter chips; the row scrolls sideways when it's wider than the panel (phones)
 	local chips = Instance.new("ScrollingFrame")
-	chips.Position = UDim2.fromOffset(12, 62)
-	chips.Size = UDim2.new(1, -24, 0, 44)
+	chips.Position = UDim2.fromOffset(12, 60)
+	chips.Size = UDim2.new(1, -24, 0, 52)
 	chips.BackgroundTransparency = 1
 	chips.BorderSizePixel = 0
 	chips.ScrollBarThickness = 3
@@ -764,6 +765,8 @@ local function buildPicker(parent: Instance)
 	chipLayout.Padding = UDim.new(0, 8)
 	chipLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	chipLayout.Parent = chips
+	-- room for the chips' rings and lips, which the row would clip (owner 2026-11-16: "some borders are cutoff")
+	UIKit.padList(chips, { side = 4, right = 4, top = 4, bottom = 6 })
 	for index, filter in getPickerFilters() do
 		local chip = UIKit.button(chips, filter, palette.row)
 		chip.LayoutOrder = index
@@ -785,8 +788,9 @@ local function buildPicker(parent: Instance)
 	end
 
 	-- Grid of card tiles on the left
-	pickerList.Position = UDim2.fromOffset(12, 112)
-	pickerList.Size = UDim2.new(LIST_WIDTH_SCALE, -18, 1, -124)
+	pickerList.Position = UDim2.fromOffset(12, 116)
+	pickerList.Size = UDim2.new(LIST_WIDTH_SCALE, -18, 1, -128)
+	UIKit.padList(pickerList, { side = 6, right = 10, top = 6, bottom = 8 }) -- the chosen tile's gold ring, unclipped
 	local listLayout = pickerList:FindFirstChildOfClass("UIListLayout")
 	if listLayout then
 		listLayout:Destroy()
@@ -801,8 +805,8 @@ local function buildPicker(parent: Instance)
 	-- Details of the chosen card on the right
 	pickerPane = Instance.new("ScrollingFrame")
 	pickerPane.Name = "Details"
-	pickerPane.Position = UDim2.new(LIST_WIDTH_SCALE, 6, 0, 112)
-	pickerPane.Size = UDim2.new(1 - LIST_WIDTH_SCALE, -18, 1, -124)
+	pickerPane.Position = UDim2.new(LIST_WIDTH_SCALE, 6, 0, 116)
+	pickerPane.Size = UDim2.new(1 - LIST_WIDTH_SCALE, -18, 1, -128)
 	pickerPane.BackgroundColor3 = palette.slotEmpty -- a deeper cream
 	pickerPane.BackgroundTransparency = 0
 	pickerPane.BorderSizePixel = 0

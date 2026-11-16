@@ -26,9 +26,11 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
+local CoinBurst = require(ClientUtil:WaitForChild("CoinBurst"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
 local RegisterScreen = require(ClientUtil:WaitForChild("RegisterScreen"))
 local RegisterSpot = require(ClientUtil:WaitForChild("RegisterSpot"))
+local SaleOrigin = require(ClientUtil:WaitForChild("SaleOrigin"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 
@@ -467,8 +469,9 @@ function RegisterStationController.Man()
 	human.JumpPower = 0
 	human.JumpHeight = 0
 	human.AutoRotate = false
-	-- the register's own screen instead of the HUD; the party dock stays, so a sale's XP still flies to the shop bar
-	Hud.keepOnly("register", { "party" })
+	-- the register's own screen instead of the HUD; the party dock (the shop bar) and your cash stay, a sale's coins and
+	-- XP flying into them (owner 2026-11-16: "money should be visible while I'm using cash register")
+	Hud.keepOnly("register", { "party", "cash" })
 	-- First person: your own body hidden from you
 	hideConnection = RunService.RenderStepped:Connect(function()
 		for _, part in character:GetDescendants() do
@@ -483,6 +486,22 @@ function RegisterStationController.Man()
 		prompt.Enabled = false
 	end
 	Remotes.ManRegister:FireServer(true)
+	-- a sale's coins and XP sparks start from the register's screen while you man it; while the camera looks down at the
+	-- drawer or the card machine (paying), from the middle of the view, where it looks
+	SaleOrigin.set(function(): Vector2?
+		local camera = workspace.CurrentCamera
+		if not camera then
+			return nil
+		end
+		local glass = piece("RegisterScreen")
+		if glass then
+			local seen, onScreen = camera:WorldToViewportPoint(glass.Position)
+			if onScreen then
+				return Vector2.new(seen.X, seen.Y)
+			end
+		end
+		return camera.ViewportSize / 2
+	end)
 	refresh()
 end
 
@@ -492,6 +511,7 @@ function RegisterStationController.Leave()
 	end
 	manned = false
 	Remotes.ManRegister:FireServer(false)
+	SaleOrigin.set(nil)
 	Hud.keepOnly("register", nil)
 	if hideConnection then
 		hideConnection:Disconnect()
@@ -624,12 +644,38 @@ local function readLines(raw: unknown): { RegisterScreen.Line }
 	return read
 end
 
+-- A sale while you man the register (owner 2026-11-16, mockup approved; Config/RegisterStation SALE_FX): the screen
+-- flashes "SOLD! +$12.50", coins burst out of it into your cash pill, which counts up as they land (the shop XP sparks
+-- start from the register too: Util/SaleOrigin)
+local function saleMoment(amount: number)
+	local fx = RegisterStation.SALE_FX
+	screen.sold(string.format(fx.soldWords, PaymentRules.money(math.round(amount * 100))))
+	local from = SaleOrigin.get()
+	local pill = UIController.GetCashPill()
+	if not from or not pill or amount <= 0 then
+		return
+	end
+	local count = RegisterStationRules.saleCoins(amount, fx)
+	UIController.HoldCash(CoinBurst.duration(count), fx.rollSeconds, amount)
+	CoinBurst.fly(UIController.GetScreenGui(), from, pill, count)
+end
+
 function RegisterStationController.Start()
 	screen = RegisterScreen.build(player:WaitForChild("PlayerGui"), function()
 		Remotes.Charge:FireServer()
 	end, giveChange)
 	buildKeypad()
 	buildLeave()
+	-- each sale raises this visit's takings (RegisterService); the change is the sale's amount
+	local lastTaken = tonumber(player:GetAttribute("RegisterTaken")) or 0
+	player:GetAttributeChangedSignal("RegisterTaken"):Connect(function()
+		local taken = tonumber(player:GetAttribute("RegisterTaken")) or 0
+		local amount = taken - lastTaken
+		lastTaken = taken
+		if manned and amount > 0 then
+			saleMoment(amount)
+		end
+	end)
 	helper = Instance.new("Highlight")
 	helper.Name = "RegisterHelper"
 	helper.FillColor = rgb(RegisterStation.HELPER_COLOR)

@@ -39,7 +39,8 @@ export type State = {
 	giving: number, -- cents you're giving back
 	error: string, -- what was wrong, or ""
 }
-export type Screen = { gui: SurfaceGui, set: (State) -> () }
+-- `sold(words)`: a sale's flash over the whole screen ("SOLD! +$12.50", Config/RegisterStation SALE_FX)
+export type Screen = { gui: SurfaceGui, set: (State) -> (), sold: (words: string) -> () }
 
 local SAY = RegisterStation.SAY
 local WORDS = RegisterStation.SCREEN
@@ -333,7 +334,47 @@ function RegisterScreen.build(parent: Instance, onCharge: () -> (), onGive: () -
 		errorLabel.BackgroundTransparency = if state.error ~= "" then 0 else 1
 	end
 
-	return { gui = gui, set = set }
+	-- a sale: "SOLD! +$12.50" in green over everything, popping in and fading (owner 2026-11-16)
+	local soldBox = box(gui, "Sold", 10, 10, WIDTH - 20, HEIGHT - 20, RegisterStation.SALE_FX.soldColor)
+	soldBox.ZIndex = 8
+	soldBox.Visible = false
+	corner(soldBox, 26)
+	local soldWords = text(soldBox, "", 0, 0, WIDTH - 20, HEIGHT - 20, 64, { 255, 255, 255 }, Enum.TextXAlignment.Center)
+	soldWords.ZIndex = 9
+	local soldEdge = Instance.new("UIStroke")
+	soldEdge.Color = Color3.fromRGB(27, 107, 58)
+	soldEdge.Thickness = 4
+	soldEdge.Parent = soldWords
+	local soldScale = Instance.new("UIScale")
+	soldScale.Parent = soldBox
+	local soldAt = 0
+	local function sold(words: string)
+		soldAt = os.clock()
+		local mine = soldAt
+		soldWords.Text = words
+		soldBox.BackgroundTransparency = 0.05
+		soldWords.TextTransparency = 0
+		soldEdge.Transparency = 0
+		soldScale.Scale = 0.6
+		soldBox.Visible = true
+		TweenService:Create(soldScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+		task.delay(RegisterStation.SALE_FX.soldSeconds, function()
+			if soldAt ~= mine then
+				return
+			end
+			local fade = TweenInfo.new(0.3)
+			TweenService:Create(soldBox, fade, { BackgroundTransparency = 1 }):Play()
+			TweenService:Create(soldWords, fade, { TextTransparency = 1 }):Play()
+			TweenService:Create(soldEdge, fade, { Transparency = 1 }):Play()
+			task.delay(0.3, function()
+				if soldAt == mine then
+					soldBox.Visible = false
+				end
+			end)
+		end)
+	end
+
+	return { gui = gui, set = set, sold = sold }
 end
 
 return RegisterScreen

@@ -17,6 +17,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local LevelUpFx = require(ClientUtil:WaitForChild("LevelUpFx"))
+local LevelUpCard = require(ClientUtil:WaitForChild("LevelUpCard"))
 local CreatureController = require(Controllers:WaitForChild("CreatureController"))
 local WorkerVisualController = require(Controllers:WaitForChild("WorkerVisualController"))
 local PartyBarController = require(Controllers:WaitForChild("PartyBarController"))
@@ -45,6 +46,10 @@ local function onShop(player: Player, from: number, to: number)
 		return
 	end
 	LevelUpFx.playShop(character, from, to, LevelUpRules.isMilestone(Levels, to), not own)
+	-- Your own: then what it gave, on the middle card (owner 2026-11-16)
+	if own then
+		task.delay(LevelUpConfig.CARD.delay, LevelUpCard.show, from, to)
+	end
 end
 
 local function playCreature(beastId: string, element: string, from: number, to: number, quiet: boolean)

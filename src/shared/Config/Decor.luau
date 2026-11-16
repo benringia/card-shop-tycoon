@@ -129,5 +129,14 @@ return {
 		TRIM = 0.3, -- the glowing trim on top of the band
 		TOP_STRIP = 15.5, -- the "topStrip" extra's height
 		CRYSTALS = 16, -- the "crystals" extra's clusters
+		-- How far each piece comes out from the wall (studs): the liner (the wall's finish), then the band, the trim and
+		-- the crystals on it, all flat so a shelf against the wall hides them (owner 2026-11-16: "items from the shop can
+		-- be placed through a wall. fix it": the band and trim stood 0.3 and 0.35 studs out and cut through a shelf's
+		-- back). A placed shelf touching the side or back wall stands WALL_GAP off it (DecorRules.offWalls), past them all
+		LINER = 0.1,
+		BAND_DEEP = 0.05,
+		TRIM_DEEP = 0.05,
+		CRYSTAL = { width = 0.5, deep = 0.1 },
+		WALL_GAP = 0.2,
 	},
 }

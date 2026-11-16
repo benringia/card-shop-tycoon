@@ -977,8 +977,11 @@ local function hides(name: string?): boolean
 	return false
 end
 
--- Everything but these named pieces hidden (manning the register keeps only the party dock: Hud.keepOnly)
+-- Everything but these named pieces hidden (manning the register keeps the party dock and the cash: Hud.keepOnly)
 local keepOnlyBy: { [string]: { [string]: boolean } } = {}
+-- Names a keepOnly can keep beyond the calm pieces (the status corner "cash"), apart from them so the guides' calm HUD
+-- never hides what it didn't before
+local keepNames: { [GuiObject]: string } = {}
 
 local function keptOnly(name: string?): boolean
 	if next(keepOnlyBy) == nil then
@@ -997,7 +1000,7 @@ local function apply(show: boolean)
 	side.Visible = showTiles
 	bottom.Visible = showTiles
 	for _, object in hideWithHud do
-		object.Visible = show and not hides(calmPieces[object]) and keptOnly(calmPieces[object])
+		object.Visible = show and not hides(calmPieces[object]) and keptOnly(keepNames[object] or calmPieces[object])
 	end
 	for object, name in calmPieces do
 		if not table.find(hideWithHud, object) then
@@ -1025,6 +1028,11 @@ function Hud.keepOnly(source: string, keep: { string }?)
 	for _, callback in calmListeners do
 		callback()
 	end
+end
+
+-- A name Hud.keepOnly can keep a hideWith piece by (the status corner: "cash"), not a calm piece
+function Hud.keepName(object: GuiObject, name: string)
+	keepNames[object] = name
 end
 
 -- A piece of the HUD a tour may not use (the party bar, the weapon switch, the Bosses tile), by name

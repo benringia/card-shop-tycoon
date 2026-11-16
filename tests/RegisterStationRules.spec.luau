@@ -100,4 +100,18 @@ return {
 		local ninth = RegisterStationRules.givenSpot(given, 9, 8)
 		assert(ninth.z ~= first.z and ninth.x == first.x, "a second row")
 	end,
+
+	-- Owner 2026-11-16: "money should be visible while I'm using cash register. with immersive animation/effects when
+	-- someone buys something": coins fly from the register into the cash pill, more for a bigger sale
+	["a sale's coins: a few for a small sale, more for a big one, never past the cap"] = function()
+		local fx = RegisterStation.SALE_FX
+		local small = RegisterStationRules.saleCoins(2, fx)
+		local mid = RegisterStationRules.saleCoins(12.5, fx)
+		local big = RegisterStationRules.saleCoins(90, fx)
+		local huge = RegisterStationRules.saleCoins(100000, fx)
+		expect.equal(small >= fx.coins[1], true, "at least the fewest")
+		expect.equal(small < mid and mid < big, true, `more for more ({small}, {mid}, {big})`)
+		expect.equal(huge, fx.coins[2], "never past the most")
+		expect.equal(RegisterStationRules.saleCoins(0, fx), fx.coins[1], "a free sale still shows the fewest")
+	end,
 }
