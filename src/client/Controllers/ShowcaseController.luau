@@ -75,6 +75,7 @@ local caseConnections: { RBXScriptConnection } = {}
 local pending: { [number]: number } = {} -- slot → price not sent yet
 local sendToken = 0
 local pickerSlot: number? = nil
+local justListed: number? = nil -- the slot a card was just put in: its price editor opens as it arrives
 
 local function clearChildren(container: Instance)
 	for _, child in container:GetChildren() do
@@ -173,6 +174,19 @@ local function queuePrice(slot: number, price: number)
 	task.delay(SEND_DELAY, flush, token)
 end
 
+-- Sends the price taps not sent yet, then puts the case's new cards that wait for their price on sale: one (`slot`,
+-- Done) or all of them (the window closed). Server Util/ListingHold (owner 2026-11-17: a new card was bought at
+-- 100% market before its price was set)
+local function releaseListings(slot: number?)
+	local part = casePart
+	if not part then
+		return
+	end
+	sendToken += 1
+	flush(sendToken)
+	Remotes.ReleaseListings:FireServer(part:GetAttribute("ShelfUid"), slot)
+end
+
 -- One copy's growth, so price maths use its real value
 type CopyGrowth = { level: number, stars: number, grade: string }
 
@@ -213,6 +227,7 @@ type Listing = {
 	market: number,
 	stats: { hp: number, atk: number, spd: number },
 	power: number,
+	held: boolean, -- new, waiting for its price: nobody buys it yet (server Util/ListingHold)
 }
 
 local function readListing(slot: number, cardPart: BasePart): Listing?
@@ -232,6 +247,7 @@ local function readListing(slot: number, cardPart: BasePart): Listing?
 		market = CardRules.getMarketValue(card, foil, level, stars, grade),
 		stats = BeastRules.getStats(card, foil, level, stars, grade),
 		power = BeastRules.getPower(card, foil, level, stars, grade),
+		held = cardPart:GetAttribute("PricingHold") == true,
 	}
 end
 
@@ -436,8 +452,17 @@ local function buildPriceEditor(listing: Listing, kind: string, y: number): numb
 		hint.Size = UDim2.new(1, -20, 0, 16)
 		y += 20
 	end
+	if listing.held then
+		local who = if kind == "PlayerCards" then "Players" else "Customers"
+		local wait = UIKit.label(detailPane, `{who} can't buy it until you press Done.`, Enum.Font.GothamBold, 12, palette.good)
+		wait.Name = "PricingHold"
+		wait.Position = UDim2.fromOffset(10, y)
+		wait.Size = UDim2.new(1, -20, 0, 16)
+		y += 20
+	end
 	addPaneButton("Done", UIKit.Colors.Accent, y, function()
 		editingSlot = nil
+		releaseListings(listing.slot)
 		render()
 	end)
 	return y + 54
@@ -510,6 +535,11 @@ render = function()
 			firstFilled = firstFilled or slot
 		end
 	end
+	-- A card just put out opens its price editor: it waits for its price until Done
+	if justListed and listings[justListed] then
+		selectedSlot, editingSlot = justListed, justListed
+		justListed = nil
+	end
 	-- Keep the selection on a listed card; a sold or removed one falls back to the first listing
 	if not (selectedSlot and listings[selectedSlot]) then
 		selectedSlot = firstFilled
@@ -565,6 +595,7 @@ local function listEntry(entry: PickerEntry)
 	if not part or not slot then
 		return
 	end
+	justListed = slot
 	if entry.beastId then
 		Remotes.DisplayCard:FireServer(part:GetAttribute("ShelfUid"), slot, entry.card.id, entry.foil, entry.beastId)
 	else
@@ -830,11 +861,15 @@ function ShowcaseController.Open(part: BasePart)
 	if not def or (def.kind ~= "CustomerCards" and def.kind ~= "PlayerCards") then
 		return
 	end
+	if casePart and casePart ~= part then
+		releaseListings(nil) -- another case: the last one's new cards go on sale
+	end
 	disconnectCase()
 	casePart = part
 	pending = {}
 	selectedSlot = nil
 	editingSlot = nil
+	justListed = nil
 	titleLabel.Text = def.name
 	subtitle.Text = KIND_DESCRIPTIONS[def.kind] or ""
 
@@ -842,6 +877,7 @@ function ShowcaseController.Open(part: BasePart)
 	local function watchCard(child: Instance)
 		if child:IsA("BasePart") then
 			table.insert(caseConnections, child:GetAttributeChangedSignal("Price"):Connect(render))
+			table.insert(caseConnections, child:GetAttributeChangedSignal("PricingHold"):Connect(render))
 		end
 	end
 	for _, child in part:GetChildren() do
@@ -880,6 +916,8 @@ function ShowcaseController.Start()
 	end
 	list.Position = UDim2.fromOffset(12, 84)
 	list.Size = UDim2.new(LIST_WIDTH_SCALE, -18, 1, -96)
+	-- room for the selected listing's gold ring, which the list clipped (owner 2026-11-17: "some cut off border here")
+	UIKit.padList(list, { side = 4, right = 8, top = 4, bottom = 6 })
 
 	detailPane = Instance.new("ScrollingFrame")
 	detailPane.Name = "Details"
@@ -927,10 +965,12 @@ function ShowcaseController.Start()
 	end)
 	panel:GetPropertyChangedSignal("Visible"):Connect(function()
 		if not panel.Visible then
+			releaseListings(nil) -- the window closed: its new cards go on sale with the prices set
 			picker.Visible = false
 			hideTooltip()
 			disconnectCase()
 			casePart = nil
+			justListed = nil
 		end
 	end)
 end

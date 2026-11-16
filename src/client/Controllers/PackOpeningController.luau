@@ -57,6 +57,9 @@ local generation = 0 -- bumps on every open and close, so a step still running f
 local waitingForServer = false
 local soundsLoaded = false
 local pressStart: Vector2? = nil -- a press on the pack that may become a swipe
+local source: string? = nil -- where the pack on the stage came from: OpeningFlow.BOX or its Bag item's id
+local resultsShown = false -- the results and their buttons are up
+local bagItems: { [string]: number } = {} -- the Bag's counts (ItemsChanged), for Open another from the Bag
 
 -- Tells the Bag whether a pack may open now (OpeningFlow.isBusy): a pack on the stage or a rip on its way
 local function publishBusy()
@@ -111,17 +114,30 @@ local function refreshRipButton()
 	OpeningResults.box(if not pack then "Box empty" elseif deck then `{left} deck boxes left in box` else `{left} packs left in box`)
 end
 
-local function onRip()
-	if waitingForServer or flow ~= nil then
-		return
-	end
+-- Waits for the server's roll a while (a rip or a Bag pack asked for here): busy meanwhile
+local function awaitServer()
 	waitingForServer = true
 	publishBusy()
-	Remotes.RipPack:FireServer()
 	task.delay(RIP_WAIT_SECONDS, function()
 		waitingForServer = false
 		publishBusy()
 	end)
+end
+
+local function onRip()
+	if waitingForServer or flow ~= nil then
+		return
+	end
+	awaitServer()
+	Remotes.RipPack:FireServer()
+end
+
+-- How many more can open from where the pack on the stage came from (its box, or its Bag item)
+local function anotherLeft(): number
+	local productId = player:GetAttribute("CarryProductId")
+	local boxHoldsPacks = typeof(productId) == "string" and Packs.ById[productId] ~= nil
+	local bagCount = if source and source ~= OpeningFlow.BOX then bagItems[source] or 0 else 0
+	return OpeningFlow.anotherLeft(source, boxHoldsPacks, getPacksLeft(), bagCount)
 end
 
 -- Big pulls go to chat once they're revealed: ours locally, everyone else via the server
@@ -135,6 +151,7 @@ end
 local function close()
 	generation += 1
 	flow = nil
+	resultsShown = false
 	publishBusy()
 	opened = nil
 	pressStart = nil
@@ -188,7 +205,26 @@ local function showResults(gen: number)
 		newCount += if pull.isNew then 1 else 0
 		value += CardRules.getMarketValue(pull.card, pull.foil, 1, BeastRules.START_STARS, pull.grade)
 	end
-	OpeningResults.results(newCount, value)
+	local left = anotherLeft()
+	OpeningResults.results(newCount, value, if left > 0 then `Open another · {left}` else nil)
+	resultsShown = true
+end
+
+-- Open another (owner 2026-11-17: "add 'open another' button after ripping card. that should open another card from
+-- where the first card source is"): this one closes and the next comes from the same carried box or Bag item. T does
+-- it too once the results are up.
+local function openAnother()
+	local from = source
+	if not resultsShown or not from or anotherLeft() <= 0 then
+		return
+	end
+	close()
+	if from == OpeningFlow.BOX then
+		onRip()
+		return
+	end
+	awaitServer()
+	Remotes.OpenBagPack:FireServer(from)
 end
 
 local function tearOpen(gen: number)
@@ -305,8 +341,8 @@ local function openRarityGuide()
 	end)
 end
 
-local function onPackOpened(productId: string, results: { PullResult }, newFlags: { boolean }?)
-	local fromRip = waitingForServer -- otherwise a Bag pack (Config/Items `open`; LevelUpService)
+local function onPackOpened(productId: string, results: { PullResult }, newFlags: { boolean }?, itemId: string?)
+	local fromRip = waitingForServer and itemId == nil -- a Bag pack names its item (Config/Items `open`; LevelUpService)
 	waitingForServer = false
 	publishBusy()
 	local pack = Packs.ById[productId]
@@ -332,12 +368,14 @@ local function onPackOpened(productId: string, results: { PullResult }, newFlags
 	generation += 1
 	local gen = generation
 	opened = pack
+	source = if typeof(itemId) == "string" then itemId elseif fromRip then OpeningFlow.BOX else nil
+	resultsShown = false
 	flow = OpeningFlow.new(#pulls)
 	publishBusy()
 	built = false
 	refreshRipButton()
-	if not fromRip and player:GetAttribute("CarryProductId") == nil then
-		OpeningResults.box("From your Bag") -- not "Box empty": no box was carried
+	if source and source ~= OpeningFlow.BOX then
+		OpeningResults.box("From your Bag") -- not the carried box's count: this one came from the Bag
 	end
 	OpeningStage.show()
 	if not soundsLoaded then
@@ -356,9 +394,13 @@ local function onPackOpened(productId: string, results: { PullResult }, newFlags
 	OpeningResults.show(buildOddsText(pack))
 	refreshPity()
 	OpeningResults.hint(if pack.kind == "Deck" then "Tap the lid to open" else "Swipe across the top to open")
-	ContextActionService:BindActionAtPriority(ADVANCE_ACTION, function(_, state)
+	ContextActionService:BindActionAtPriority(ADVANCE_ACTION, function(_, state, input)
 		if state == Enum.UserInputState.Begin then
-			tap()
+			if input.KeyCode == RIP_KEY and resultsShown then
+				openAnother()
+			else
+				tap()
+			end
 		end
 		return Enum.ContextActionResult.Sink
 	end, false, Enum.ContextActionPriority.High.Value, Enum.KeyCode.Space, RIP_KEY)
@@ -397,7 +439,7 @@ end
 function PackOpeningController.Start()
 	-- An orange tile in the bottom row while carrying a box of packs
 	ripButton = Hud.tile({ id = "Rip", icon = "Pack", label = "Rip", key = "T", group = "Context", order = 21, onClick = onRip })
-	OpeningResults.build({ press = onPress, continue = close, rarityGuide = openRarityGuide })
+	OpeningResults.build({ press = onPress, continue = close, another = openAnother, rarityGuide = openRarityGuide })
 	OpeningStage.build()
 	refreshRipButton()
 
@@ -410,6 +452,11 @@ function PackOpeningController.Start()
 	UserInputService.InputChanged:Connect(onInputChanged)
 	UserInputService.InputEnded:Connect(onInputEnded)
 	Remotes.PackOpened.OnClientEvent:Connect(onPackOpened)
+	Remotes.ItemsChanged.OnClientEvent:Connect(function(items: unknown)
+		if typeof(items) == "table" then
+			bagItems = items :: { [string]: number }
+		end
+	end)
 	Remotes.BattleStarted.OnClientEvent:Connect(function()
 		if flow then
 			close()

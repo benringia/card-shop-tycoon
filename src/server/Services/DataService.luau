@@ -95,6 +95,7 @@ export type PlayerData = {
 	-- Turts' rug shop: the restock last seen, the offers bought in it, a "restock now" roll (TurtsService)
 	turts: { index: number, bought: { string }, personal: { index: number, offers: { string } }? },
 	decor: { look: string, owned: { string } }, -- shop decor: the look in use and the looks bought (DecorService)
+	tips: { [string]: number }, -- how many times each tip has shown (TipService, Config/Tips; TipRules.MAX_COUNT)
 	windows: { { style: string, side: string, at: number } }, -- the shop's windows (WindowService)
 	-- daily, weekly and monthly gifts: the round, today's play time, the week's and month's bars (GiftService; GiftRules.State)
 	gifts: {
@@ -157,6 +158,7 @@ local TEMPLATE: PlayerData = {
 	titles = { known = {}, fresh = {}, seeded = false },
 	turts = { index = 0, bought = {} },
 	decor = { look = "CozyWood", owned = {} },
+	tips = {},
 	windows = {},
 	luck = { x2 = 0, x3 = 0 },
 	unlocks = {},

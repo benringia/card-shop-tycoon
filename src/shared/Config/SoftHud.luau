@@ -18,7 +18,7 @@ return {
 		openShade = 0.18, -- the Manage tile deepens this much while its tray is open
 	},
 	-- Each tile's baby colour; the Manage tray's tiles by their order, round and round
-	COLORS = { Manage = "butter", Cards = "sky", Bag = "pink", Bosses = "lilac", Admin = "greyLilac", Rip = "peach", Drop = "peach", Gift = "pink" },
+	COLORS = { Manage = "butter", Cards = "sky", Bag = "pink", Bosses = "lilac", Admin = "greyLilac", Rip = "peach", Drop = "peach", ToBag = "peach", Gift = "pink" },
 	FAN = { "mint", "peach", "sky", "lilac" },
 	-- The hover, mouse only: each step tweens the tile's body to x wide, y tall (shares of its size, from its bottom
 	-- centre) and lift px up, in order; a gentle squash, a small stretch as it hops, a little rebound, the settle (the

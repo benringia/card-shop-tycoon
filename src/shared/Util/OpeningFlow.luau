@@ -53,6 +53,21 @@ function OpeningFlow.done(state: State, now: number, lock: number?): State
 	return state
 end
 
+-- Where a pack came from, for Open another: the carried box, or a Bag item's id
+OpeningFlow.BOX = "box"
+
+-- How many more can open from where this pack came from (owner 2026-11-17: "add 'open another' button after ripping
+-- card. that should open another card from where the first card source is"): the packs left in the carried box while
+-- it holds packs, or how many of that Bag item you have; 0 hides Open another. `source` nil: nothing to repeat.
+function OpeningFlow.anotherLeft(source: string?, boxHoldsPacks: boolean, boxUnits: number, bagCount: number): number
+	if source == OpeningFlow.BOX then
+		return if boxHoldsPacks then math.max(boxUnits, 0) else 0
+	elseif source then
+		return math.max(bagCount, 0)
+	end
+	return 0
+end
+
 -- Straight to the results (for a later Fast Open pass)
 function OpeningFlow.skip(state: State): State
 	return with(state, "Results", state.count)

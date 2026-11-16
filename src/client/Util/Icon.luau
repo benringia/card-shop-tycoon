@@ -1,11 +1,14 @@
 --!strict
--- Draws an icon by name (Config/UIIcons) into a holder frame: the picture if the name has one, else the text
--- itself (an emoji such as "❌"). Swapping keeps the holder, so layouts and sizes stay put.
+-- Draws an icon by name (Config/UIIcons) into a holder frame: the picture if the name has one, a stack of pictures
+-- for a Config/IconStacks name (To Bag), else the text itself (an emoji such as "❌"). Swapping keeps the holder, so
+-- layouts and sizes stay put.
 local ContentProvider = game:GetService("ContentProvider")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local UIIcons = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("UIIcons"))
+local Config = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config")
+local UIIcons = require(Config:WaitForChild("UIIcons"))
+local IconStacks = require(Config:WaitForChild("IconStacks"))
 
 local Icon = {}
 
@@ -38,8 +41,26 @@ function Icon.set(holder: GuiObject, name: string)
 		end
 	end
 	local image = UIIcons[name]
+	local stack = IconStacks[name]
 	local glyph: GuiObject
-	if image then
+	if stack then
+		-- its pictures in a frame, the first layer at the back
+		local frame = Instance.new("Frame")
+		for index, layer in stack do
+			local picture = Instance.new("ImageLabel")
+			picture.Name = `Layer{index}`
+			picture.BackgroundTransparency = 1
+			picture.Image = UIIcons[layer.icon] or ""
+			picture.ScaleType = Enum.ScaleType.Fit
+			picture.AnchorPoint = Vector2.new(0.5, 0.5)
+			picture.Position = UDim2.fromScale(layer.x, layer.y)
+			picture.Size = UDim2.fromScale(layer.size, layer.size)
+			picture.Rotation = layer.rotation
+			picture:SetAttribute("Layer", index - 1)
+			picture.Parent = frame
+		end
+		glyph = frame
+	elseif image then
 		local picture = Instance.new("ImageLabel")
 		picture.Image = image
 		picture.ScaleType = Enum.ScaleType.Fit
@@ -54,8 +75,24 @@ function Icon.set(holder: GuiObject, name: string)
 	glyph.Name = "Glyph"
 	glyph.BackgroundTransparency = 1
 	glyph.Size = UDim2.fromScale(1, 1)
-	glyph.ZIndex = holder.ZIndex
 	glyph.Parent = holder
+	Icon.layer(holder, holder.ZIndex)
+end
+
+-- Puts a holder's icon at `z` (a stack's layers just above it, in their order); call it after changing the holder's
+-- ZIndex
+function Icon.layer(holder: GuiObject, z: number)
+	local glyph = holder:FindFirstChild("Glyph")
+	if not glyph or not glyph:IsA("GuiObject") then
+		return
+	end
+	glyph.ZIndex = z
+	for _, picture in glyph:GetChildren() do
+		local offset = picture:GetAttribute("Layer")
+		if picture:IsA("GuiObject") and typeof(offset) == "number" then
+			picture.ZIndex = z + offset
+		end
+	end
 end
 
 -- A transparent holder with the icon in it

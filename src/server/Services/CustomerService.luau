@@ -605,9 +605,10 @@ local function shopForCard(customer: Customer, visited: { [string]: boolean }): 
 	end
 	task.wait(CustomerConfig.BROWSE_SECONDS)
 
-	-- The case may have been sold or the card taken while this customer walked over
+	-- The case may have been sold or the card taken while this customer walked over, or a new card put there that
+	-- still waits for its price (ShowcaseService.IsHeld)
 	local displayed = shelf.cards[slot]
-	if PlacementService.GetShelf(customer.owner, shelf.uid) ~= shelf or not displayed then
+	if PlacementService.GetShelf(customer.owner, shelf.uid) ~= shelf or not displayed or ShowcaseService.IsHeld(shelf, slot) then
 		return true
 	end
 	local band = PriceRules.getBand(displayed.price, displayedWorth(displayed))
@@ -649,7 +650,7 @@ local function tryWantedCard(customer: Customer, shelf: PlacedShelf, slot: numbe
 	task.wait(CustomerConfig.BROWSE_SECONDS)
 	-- The owner may have moved, swapped or repriced it while the collector walked over
 	local displayed = if PlacementService.GetShelf(customer.owner, shelf.uid) == shelf then shelf.cards[slot] else nil
-	if not displayed or not CollectorRules.stillThere(displayed, wanted, displayedWorth(displayed), CustomerConfig) then
+	if not displayed or ShowcaseService.IsHeld(shelf, slot) or not CollectorRules.stillThere(displayed, wanted, displayedWorth(displayed), CustomerConfig) then
 		return false
 	end
 	local taken = ShowcaseService.TakeForCustomer(shelf, slot)

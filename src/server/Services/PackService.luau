@@ -163,7 +163,8 @@ local function deliverPack(player: Player, productId: string, results: { PullRes
 	local newFlags = NewPulls.flag(results, getOwnedCardIds(player))
 	CardService.AddFresh(player, results)
 	queueAnnouncements(player, results)
-	Remotes.PackOpened:FireClient(player, productId, results, newFlags)
+	-- the Bag item it came from (nil: a carried box or a test pack), so Open another opens the next one from there
+	Remotes.PackOpened:FireClient(player, productId, results, newFlags, itemId)
 	for _, handler in openedHandlers do
 		task.spawn(handler, player, productId, itemId)
 	end

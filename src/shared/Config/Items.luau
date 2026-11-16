@@ -116,14 +116,28 @@ return {
 			source = "Wild and Frontier monsters · 15% (elites 60%) · shop level gifts",
 			use = "Bring it to the Forge in your shop",
 		},
-		-- Shop level gifts (Config/Levels GIFTS): opened from the Bag (remote OpenBagPack, LevelUpService)
+		-- Shop level gifts (Config/Levels GIFTS) and your own stock: opened from the Bag (remote OpenBagPack,
+		-- LevelUpService). `stock`: the shop product it is. A carried box of it goes in the Bag (the To Bag tile, remote
+		-- BagBox, StockService; owner 2026-11-17: "put all the cardpacks inside the box to their inventory ... they will
+		-- never have to go back to the delivery to pickup packs to rip"), and opening one gives its market price in shop
+		-- XP, like ripping it from the box
 		sparkPack = {
 			name = "First Spark Pack",
 			icon = "BoosterPack",
 			description = "A pack of First Spark cards. Open it to see what you get!",
-			source = "Shop level gifts (every 10th level)",
+			source = "Your shop's stock (carry a box, tap To Bag) · shop level gifts",
 			use = "Open your Bag and tap Open",
 			open = "FirstSparkPack", -- the Config/Packs product it opens
+			stock = "FirstSparkPack",
+		},
+		deckBox = {
+			name = "First Spark Deck Box",
+			icon = "DeckBox",
+			description = "A box of 5 First Spark cards. Two of them are Rare or better!",
+			source = "Your shop's stock (carry a box, tap To Bag)",
+			use = "Open your Bag and tap Open",
+			open = "DeckBox",
+			stock = "DeckBox",
 		},
 		-- Pish's present at the start of the first visit (spec 2026-11-09-tutorial-pish-design 15): a First Spark pack with
 		-- his picture (owner: "we need an icon for pish's gift. that will make players excited")

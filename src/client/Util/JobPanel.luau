@@ -21,6 +21,7 @@ local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local StationJobs = require(ClientUtil:WaitForChild("StationJobs"))
 local ScreenClear = require(ClientUtil:WaitForChild("ScreenClear"))
 local ProductPrice = require(ClientUtil:WaitForChild("ProductPrice"))
+local RobuxPrice = require(ClientUtil:WaitForChild("RobuxPrice"))
 
 local JobPanel = {}
 
@@ -118,7 +119,7 @@ function JobPanel.attach(window: Frame, station: string)
 		fill.Size = UDim2.fromScale(math.clamp(1 - job.left / job.total, 0, 1), 1)
 		productId = productFor(job.left)
 		local price = ProductPrice.of(productId)
-		finish.Text = if productId == 0 then "Finish now · Coming soon" elseif price then `Finish now · R$ {price}` else "Finish now"
+		RobuxPrice.set(finish, if productId == 0 then "Finish now · Coming soon" else "Finish now", if productId ~= 0 then price else nil)
 		finish.AutoButtonColor = productId ~= 0
 		finish.BackgroundTransparency = if productId == 0 then 0.45 else 0
 	end

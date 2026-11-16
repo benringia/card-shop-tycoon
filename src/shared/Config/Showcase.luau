@@ -11,6 +11,11 @@ return {
 	CUSTOMER_CARD_CHANCE = 0.3, -- chance a customer also looks at the Glass Showcase
 
 	ACTION_COOLDOWN = 0.15, -- display / remove / price changes per player
+	-- A new card waits for its price (owner 2026-11-17: "it automatically list at 100% market. which sometimes would
+	-- instantly be bought by a customer before you can set a higher price"): nobody buys it until the owner presses
+	-- Done or closes the case's window, or this many seconds pass with no price tap (Util/ListingHold)
+	LISTING_HOLD = 120,
+	RELEASE_COOLDOWN = 0.1, -- Done / window closed, per player
 	BUY_COOLDOWN = 0.5, -- player-to-player purchases per buyer
 	BUY_DISTANCE = 14, -- studs; buyer must be this close to the card
 	BUY_PROMPT_DISTANCE = 8,

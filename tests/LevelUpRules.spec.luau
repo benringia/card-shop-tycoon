@@ -14,11 +14,11 @@ local function anyItems(items: { [string]: number }): boolean
 end
 
 return {
-	-- Small cash every level: $4 x the new level since levels came 2.7x faster (owner 2026-11-16; it was $10 x)
+	-- Small cash every level: $3 x the new level since levels came 4x faster (owner 2026-11-17; $10 x before, $4 x at 2.7x)
 	["small cash every level"] = function()
-		expect.equal(LevelUpRules.rewards(cfg, 1, 2).cash, 8, "Lv 2")
-		expect.equal(LevelUpRules.rewards(cfg, 6, 7).cash, 28, "Lv 7")
-		expect.equal(LevelUpRules.rewards(cfg, 8, 11).cash, 36 + 40 + 44, "8 -> 11: each level pays")
+		expect.equal(LevelUpRules.rewards(cfg, 1, 2).cash, 6, "Lv 2")
+		expect.equal(LevelUpRules.rewards(cfg, 6, 7).cash, 21, "Lv 7")
+		expect.equal(LevelUpRules.rewards(cfg, 8, 11).cash, 27 + 30 + 33, "8 -> 11: each level pays")
 	end,
 
 	-- Owner 2026-11-16: "small cash every level. only give gift every 5 levels (wild ores and etc) make sure its not
@@ -52,7 +52,7 @@ return {
 			kinds += 1
 		end
 		expect.equal(kinds, 4, "nothing else")
-		expect.equal(all.cash, 4 * (100 * 101 / 2 - 1), "$4 x each level: $20,196 in all")
+		expect.equal(all.cash, 3 * (100 * 101 / 2 - 1), "$3 x each level: $15,147 in all")
 	end,
 
 	["skipped levels each give theirs"] = function()
@@ -65,7 +65,7 @@ return {
 
 	["nothing past the cap or backwards"] = function()
 		local top = LevelUpRules.rewards(cfg, 99, 150)
-		expect.equal(top.cash, 400, "only Lv 100 pays")
+		expect.equal(top.cash, 300, "only Lv 100 pays")
 		expect.equal(count(top.items, "sparkPack"), 1, "Lv 100's pack")
 		expect.equal(count(top.items, "goldSeal"), 1, "and seal")
 		for _, case in { { 100, 101 }, { 5, 5 }, { 7, 3 } } do

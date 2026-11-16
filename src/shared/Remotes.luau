@@ -62,14 +62,16 @@ local NAMES = {
 	-- known false: scored neutral for want of anything to score, so no tip)
 	"RatingUpdate",
 	"DropBox", -- client → server: put carried boxes back on the delivery pad
+	"BagBox", -- client → server: the packs in your carried boxes go in your Bag (To Bag)
 	"RemoveStock", -- client → server: (shelfUid: string) box up a product shelf's stock onto the delivery pad
 	"RipPack", -- client → server: open one pack from the carried box
-	"PackOpened", -- server → client: (productId: string, results: { { cardId, foil, grade } }, newFlags: { boolean })
+	"PackOpened", -- server → client: (productId: string, results: { { cardId, foil, grade } }, newFlags: { boolean }, itemId: string?) itemId: the Bag item it came from (Open another)
 	"CollectionChanged", -- server → client: ({ [cardId: string]: { normal: number, foil: number } })
 	"RequestCollection", -- client → server: ask for a CollectionChanged (sent on client start)
 	"DisplayCard", -- client → server: (shelfUid: string, slot: number, cardId: string, foil: boolean, beastId: string?, grade: string?) binder → case; plain copies picked by grade
 	"RemoveDisplayedCard", -- client → server: (shelfUid: string, slot: number) case → binder
 	"SetCardPrice", -- client → server: (shelfUid: string, changes: { { slot: number, price: number } })
+	"ReleaseListings", -- client → server: (shelfUid: string, slot: number?) Done on a new card, or its case's window closed: on sale now
 	"BuyDisplayedCard", -- client → server: (ownerUserId, shelfUid, slot, cardId, foil, expectedPrice, expectedBeastId?, expectedGrade?) from a Collector Case
 	"PullAnnouncement", -- server → clients: (displayName: string, cardId: string, foil: boolean, kind: "frontier"?, finderUserId?) big pulls and Frontier finds
 	"PullRevealed", -- client → server: (cardId: string, foil: boolean) puller flipped a big pull; announce it
@@ -221,6 +223,7 @@ return {
 	OfferAction = remotes.OfferAction,
 	RatingUpdate = remotes.RatingUpdate,
 	DropBox = remotes.DropBox,
+	BagBox = remotes.BagBox,
 	RemoveStock = remotes.RemoveStock,
 	RipPack = remotes.RipPack,
 	PackOpened = remotes.PackOpened,
@@ -229,6 +232,7 @@ return {
 	DisplayCard = remotes.DisplayCard,
 	RemoveDisplayedCard = remotes.RemoveDisplayedCard,
 	SetCardPrice = remotes.SetCardPrice,
+	ReleaseListings = remotes.ReleaseListings,
 	BuyDisplayedCard = remotes.BuyDisplayedCard,
 	PullAnnouncement = remotes.PullAnnouncement,
 	PullRevealed = remotes.PullRevealed,

@@ -1,7 +1,8 @@
 --!strict
 -- The pack opening's screen layer over the 3D stage (UI project 3 spec 4.1 / 4.6): a full-screen tap layer (taps,
 -- swipes), the hint capsule, the packs-left and pity pills, the Odds button and panel, and the results pills
--- (Your cards · NEW xN · the pack's value · Rarity guide) with a green Continue, popping in after the lineup lands.
+-- (Your cards · NEW xN · the pack's value · Rarity guide) with a green Continue, popping in after the lineup lands, and
+-- beside it Open another while there's another pack where this one came from (owner 2026-11-17).
 -- UIKit look; numbers: Config/PackOpening (TOP, EDGE, PILL_HEIGHT, RESULTS).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -17,6 +18,7 @@ local Icon = require(ClientUtil:WaitForChild("Icon"))
 export type Handlers = {
 	press: (position: Vector2) -> (), -- a finger or the mouse went down on the stage
 	continue: () -> (),
+	another: () -> (), -- Open another: the next pack from the same box or Bag item
 	rarityGuide: () -> (),
 }
 
@@ -38,6 +40,11 @@ local newLabel: TextLabel
 local valueLabel: TextLabel
 local continueButton: TextButton
 local continueScale: UIScale
+local anotherButton: TextButton
+local anotherScale: UIScale
+
+local BUTTON_WIDTH = 240
+local BUTTON_GAP = 16
 
 local function pillLabel(name: string, color: Color3, y: number, height: number): TextLabel
 	local label = UIKit.label(gui, "", Enum.Font.FredokaOne, 18, color)
@@ -209,7 +216,7 @@ function OpeningResults.build(handlers: Handlers)
 	continueButton.Name = "Continue"
 	continueButton.AnchorPoint = Vector2.new(0.5, 1)
 	continueButton.Position = UDim2.new(0.5, 0, 1, -PackOpening.EDGE - 8)
-	continueButton.Size = UDim2.fromOffset(240, 54)
+	continueButton.Size = UDim2.fromOffset(BUTTON_WIDTH, 54)
 	continueButton.TextSize = 24
 	continueButton.Font = Enum.Font.FredokaOne
 	continueButton.ZIndex = 10
@@ -217,6 +224,18 @@ function OpeningResults.build(handlers: Handlers)
 	continueScale = Instance.new("UIScale")
 	continueScale.Parent = continueButton
 	continueButton.Activated:Connect(handlers.continue)
+
+	anotherButton = UIKit.button(gui, "Open another", UIKit.Colors.Accent)
+	anotherButton.Name = "OpenAnother"
+	anotherButton.AnchorPoint = Vector2.new(0.5, 1)
+	anotherButton.Size = UDim2.fromOffset(BUTTON_WIDTH, 54)
+	anotherButton.TextSize = 22
+	anotherButton.Font = Enum.Font.FredokaOne
+	anotherButton.ZIndex = 10
+	anotherButton.Visible = false
+	anotherScale = Instance.new("UIScale")
+	anotherScale.Parent = anotherButton
+	anotherButton.Activated:Connect(handlers.another)
 end
 
 -- The screen over a fresh opening: the hint, the box count, pity and odds
@@ -228,6 +247,7 @@ function OpeningResults.show(oddsText: string)
 	pityLabel.Visible = pityLabel.Text ~= ""
 	resultsBar.Visible = false
 	continueButton.Visible = false
+	anotherButton.Visible = false
 	gui.Enabled = true
 end
 
@@ -253,8 +273,9 @@ function OpeningResults.pity(text: string)
 	pityLabel.Visible = gui.Enabled and text ~= "" and boxLabel.Visible
 end
 
--- After the lineup lands: the corner pills go, the results pills pop in one after another, then Continue
-function OpeningResults.results(newCount: number, value: number)
+-- After the lineup lands: the corner pills go, the results pills pop in one after another, then Continue, with Open
+-- another to its right when `another` (its words, "Open another · 23") is given
+function OpeningResults.results(newCount: number, value: number, another: string?)
 	boxLabel.Visible = false
 	pityLabel.Visible = false
 	oddsButton.Visible = false
@@ -272,10 +293,18 @@ function OpeningResults.results(newCount: number, value: number)
 			TweenService:Create(pop, info, { Scale = 1 }):Play()
 		end
 	end
+	local bottom = -PackOpening.EDGE - 8
+	local shift = if another then (BUTTON_WIDTH + BUTTON_GAP) / 2 else 0
+	continueButton.Position = UDim2.new(0.5, -shift, 1, bottom)
+	anotherButton.Position = UDim2.new(0.5, shift, 1, bottom)
+	anotherButton.Text = another or ""
 	continueButton.Visible = true
-	continueScale.Scale = 0
+	anotherButton.Visible = another ~= nil
 	local info = TweenInfo.new(seconds, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 0, false, PackOpening.RESULTS.CONTINUE_DELAY)
-	TweenService:Create(continueScale, info, { Scale = 1 }):Play()
+	for _, scale in { continueScale, anotherScale } do
+		scale.Scale = 0
+		TweenService:Create(scale, info, { Scale = 1 }):Play()
+	end
 end
 
 function OpeningResults.gui(): ScreenGui

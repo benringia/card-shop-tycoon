@@ -19,6 +19,7 @@ local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local ProductPrice = require(ClientUtil:WaitForChild("ProductPrice"))
+local RobuxPrice = require(ClientUtil:WaitForChild("RobuxPrice"))
 local ScreenClear = require(ClientUtil:WaitForChild("ScreenClear"))
 
 local KnockoutController = {}
@@ -114,9 +115,7 @@ function KnockoutController.Start()
 	local function drawRevive()
 		local id = reviveId()
 		local price = ProductPrice.of(id)
-		reviveButton.Text = if id == 0 then `{LOOK.revive} · {LOOK.comingSoon}`
-			elseif price then `{LOOK.revive} · R$ {price}`
-			else LOOK.revive
+		RobuxPrice.set(reviveButton, if id == 0 then `{LOOK.revive} · {LOOK.comingSoon}` else LOOK.revive, if id ~= 0 then price else nil)
 		reviveButton.AutoButtonColor = id ~= 0
 		reviveButton.BackgroundTransparency = if id == 0 then 0.45 else 0
 	end

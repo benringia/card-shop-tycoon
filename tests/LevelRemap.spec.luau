@@ -37,7 +37,7 @@ local function shelfUnlock(id: string): number?
 end
 
 return {
-	-- Round 4 moved every unlock to the level nearest the XP it needed before. Since 2026-11-16 levels come 2.7x faster
+	-- Round 4 moved every unlock to the level nearest the XP it needed before. Since 2026-11-17 levels come 4x faster
 	-- (owner: "it takes too long to level up"; tests/LevelMath) and every unlock stays at its level, so it comes sooner
 	["the unlocks stay at their levels"] = function()
 		for id, level in { CardSleeves = 3, DeckBox = 7, FirstSparkBox = 11 } do

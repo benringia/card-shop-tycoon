@@ -348,6 +348,13 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 			combat.step = moved
 		end
 	end,
+	-- 31 -> 32: tips shown the first few times (owner 2026-11-17: "make sure players know you can put packs in the bag";
+	-- Config/Tips): none seen yet; a saved table stays for TipService to clean (TipRules.clean)
+	[31] = function(data)
+		if typeof(data.tips) ~= "table" then
+			data.tips = {}
+		end
+	end,
 }
 
 local function lowestGrade(): string

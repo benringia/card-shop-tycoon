@@ -20,17 +20,18 @@ return {
 
 	["Lv 1 is free and the first levels come quickly"] = function()
 		expect.equal(required(1), 0, "Lv 1")
-		expect.equal(required(2), 20, "Lv 2")
-		expect.equal(required(3), 70, "Lv 3")
+		expect.equal(required(2), 10, "Lv 2")
+		expect.equal(required(3), 50, "Lv 3")
 		local five = required(5)
-		assert(five >= 340 and five <= 400, `Lv 5 needs {five}, want about 370`)
+		assert(five >= 230 and five <= 270, `Lv 5 needs {five}, want about 250`)
 	end,
 
-	-- Owner 2026-11-16: "maybe adjust the shop leveling. I think it takes too long to level up"; picked 2.7x faster:
-	-- every level needs 15 / 40 of the XP it did (Lv 20, where shop jobs open, was about 36,000)
-	["Lv 20 (shop jobs) about 2.7x sooner than before"] = function()
+	-- Owner 2026-11-16: "maybe adjust the shop leveling. I think it takes too long to level up" (2.7x faster), then
+	-- 2026-11-17: "I just want the fast level to be the retention mechanism make the players feel progress always ...
+	-- make it like 4": every level needs 10 / 40 of round 4's XP (Lv 20, where shop jobs open, was about 36,000)
+	["Lv 20 (shop jobs) about 4x sooner than round 4"] = function()
 		local xp = required(20)
-		assert(math.abs(xp - 13490) <= 140, `Lv 20 needs {xp}, want about 13,500`)
+		assert(math.abs(xp - 9000) <= 90, `Lv 20 needs {xp}, want about 9,000`)
 	end,
 
 	["every step is bigger than the last"] = function()
@@ -46,7 +47,7 @@ return {
 		expect.equal(LevelMath.getLevelForXp(config, required(100)), 100, "exactly Lv 100")
 		expect.equal(LevelMath.getLevelForXp(config, 1e12), 100, "huge xp stops at 100")
 		local top = required(100)
-		assert(top >= 600000 and top <= 620000, `Lv 100 needs {top}, want about 611,000`)
+		assert(top >= 400000 and top <= 415000, `Lv 100 needs {top}, want about 407,000`)
 	end,
 
 	["level for xp"] = function()

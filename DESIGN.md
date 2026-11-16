@@ -862,6 +862,13 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
   cash goes to the owner, the card to the buyer's binder. The server rejects the buy if the price changed after
   the buyer saw it.
 - Card prices default to market value; +/- steps are 10% of market value, capped at 3× market.
+- **A new card waits for its price** (owner 2026-11-17: "it automatically list at 100% market. which sometimes would
+  instantly be bought by a customer before you can set a higher price"; server `Util/ListingHold`, Lune-tested): a card
+  just put in a case opens its price editor ("Customers can't buy it until you press Done.") and no customer or player
+  buys it until you press Done (remote `ReleaseListings` with its slot), close the case's window or switch cases (the
+  case's waiting cards at once, after the last price taps are sent), or 120 s pass with no price tap
+  (`Showcase.LISTING_HOLD`). Customers skip it when they pick, and one who walked over before it changed leaves it; a
+  player gets "The owner is still pricing that card." The card part carries `PricingHold` while it waits.
 - Both cases show their cards upright in two rows of three, turning slowly over a pad and a beam in the card's
   rarity colour (section 3), so a Legendary on display reads from across the shop.
 - Cards on display leave the binder while shown and come back when removed. A case can't be sold while it holds cards.
@@ -893,6 +900,20 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
   camera eases back.
 - **The cards stack up** (`PackOpening.STACK`): the pack drops, the cards rise out one at a time and land face down
   on a pile with a snap and a slight tilt, and the empty pack goes away. "Tap to flip the first card".
+- **To Bag** (owner 2026-11-17: "add an option that player can put all the cardpacks inside the box to their
+  inventory or drop to the delivery box. that way. they will never have to go back to the delivery to pickup packs to
+  rip"): while the box in your hands holds packs or deck boxes, a peach To Bag tile (Y) sits by Drop (G) and Rip (T),
+  its icon a gold pack and a blue arrow pointing down by the backpack (owner's pick B of three: "a pack dropping in";
+  `Config/IconStacks` ToBag, drawn by `Util/Icon` like any icon), so it never reads as the pink Bag button. **Teaching
+  it** (owner: "make sure players know you can put packs in the bag"; mockup approved): the first 3 times you pick up a
+  box of packs, a bubble with Pish's face points at the tile, "Tap To Bag to keep these packs! Open them anywhere.",
+  with a gold ring pulsing round the tile (`Util/TileTip`, `Config/Tips` TO_BAG and BUBBLE); it never shows again once
+  you've used To Bag. The server counts it (TipService, `Util/TipRules`, saved `tips`) and sets the player's
+  `ToBagTip` while the box in your hands holds packs. It
+  puts every pack in your carried boxes in your Bag (remote `BagBox`, StockService; `Items.sparkPack` and
+  `Items.deckBox`, their `stock` product: `ItemRules.stockItem`), to open from the Bag anywhere in the main game.
+  Other boxes stay in your hands, and what the Bag can't hold (9,999 a stack) stays in its box. Opening a stock pack
+  from the Bag gives its market price in shop XP, as ripping it from the box does (`ItemRules.stockOf`, LevelUpService).
 - **Deck boxes** (`Config/Packs` entries with `kind = "Deck"`, opened the same way: carry a box of them, Open T):
   the First Spark Deck Box holds 5 cards, two of them Rare or better (Common, Common, Common/Rare 50/50, Rare 75 /
   Very Rare 25, and a hit slot of Rare 45 / Very Rare 25 / Epic 22 / Legendary 8, against a pack's 68/15/14/3), for
@@ -927,7 +948,11 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
   to a lineup in the middle (a quick arc and spin each, 0.085s apart), each landing with a shine and a ring of glints,
   then float and twinkle. A yellow NEW ribbon marks cards the player didn't own before (binder, beasts or on display;
   the server checks before adding them, `Util/NewPulls`, only the first copy in a pack); pills pop in on top (Your
-  cards · NEW x2 · pack value · Rarity guide) and a green Continue gives the camera back. The "N left in box" and pity
+  cards · NEW x2 · pack value · Rarity guide) and a green Continue gives the camera back. Beside it a gold **Open
+  another · 23** (owner 2026-11-17: "add 'open another' button after ripping card. that should open another card from
+  where the first card source is"; T too) opens the next pack from the same place: the carried box while it holds
+  packs, or the same Bag item while you have one (`OpeningFlow.anotherLeft`, Lune-tested; `PackOpened` names the Bag
+  item it came from). With none left there, Continue stands alone. The "N left in box" and pity
   pills and the Odds button sit in the top corners during the opening. Laid out for a 667x375 landscape phone below
   Roblox's top bar (`Util/OpeningLayout` sizes the 3D cards from pixels, Lune-tested).
 - **Effects** are our own, rendered in Blender (`tools/blender/build_pack_fx.py`, sheets cut by
@@ -3093,12 +3118,14 @@ Packs and deck boxes are 3D models everywhere (`Util/PackModels`, `Config/Packs`
 ### 7.2 Shop levels (XP per sale = sale price rounded, min 1; a pack ripped from stock = its market price)
 
 Levels 1 to 100 (spec `2026-11-04-round4-design` section 8): the total XP to reach level n is
-`BASE_XP × (n − 1) ^ POWER` rounded to 10 (`Config/Levels`: 15, 2.31; maths in `Util/LevelMath.luau`, Lune-tested).
+`BASE_XP × (n − 1) ^ POWER` rounded to 10 (`Config/Levels`: 10, 2.31; maths in `Util/LevelMath.luau`, Lune-tested).
 Round 4 put every unlock at the level whose XP was nearest what it needed before (Lv 20 ≈ 36,000 XP then). Since the
-owner 2026-11-16 ("maybe adjust the shop leveling. I think it takes too long to level up"; picked 2.7x faster) every
-level needs 15 / 40 of that XP and the unlocks stay at their levels, so they come sooner: Lv 5 ≈ 370 XP, Lv 10 ≈ 2,400,
-Lv 20 ≈ 13,500 (shop jobs, about 5 hours in), the Prism Hydra's Lv 57 ≈ 164,000 (`tests/LevelMath`, `LevelRemap`).
-Saves keep their XP, so a save from before goes up levels on its next join (no rewards for those). Lv 100 (about 611,000 XP) is
+owner 2026-11-16 ("maybe adjust the shop leveling. I think it takes too long to level up"; 2.7x faster) and
+2026-11-17 ("I just want the fast level to be the retention mechanism make the players feel progress always ... make it
+like 4": shop levels are the steady feeling of progress, upgrading and maxing cards and weapons the real grind) every
+level needs 10 / 40 of that XP and the unlocks stay at their levels, so they come sooner: Lv 5 ≈ 250 XP, Lv 10 ≈ 1,600,
+Lv 20 ≈ 9,000 (shop jobs, about 3 hours in), the Prism Hydra's Lv 57 ≈ 109,000 (`tests/LevelMath`, `LevelRemap`).
+Saves keep their XP, so a save from before goes up levels on its next join (no rewards for those). Lv 100 (about 407,000 XP) is
 the cap: XP keeps counting, the level doesn't, and the HUD's XP pill shows MAX. A packs-only shop earns about 30 XP
 a minute, so Lv 2 comes within a minute of the first sale (it unlocks nothing; a level-up and its reward).
 Old saves keep their XP and load on the new level for it (a Lv 10 shop is Lv 20), with no back-pay of rewards.
@@ -3106,21 +3133,21 @@ Old saves keep their XP and load on the new level for it (a Lv 10 shop is Lv 20)
 | Lv | XP needed | Unlocks |
 |---|---|---|
 | 1 | 0 | Base |
-| 2 | 20 | - |
-| 3 | 70 | Card Sleeves |
-| 4 | 190 | Wall Shelf, starter sword, boss 1 (Meadow Warden) |
-| 5 | 370 | Card Condenser |
-| 7 | 940 | Accessory Hook, Deck Box, Expansion 1, boss 2 |
-| 9 | 1,830 | Big Display Rack |
-| 11 | 3,060 | Sealed Booster Box |
-| 14 | 5,610 | Grading Station, boss 3 |
-| 17 | 9,070 | Expansion 2 |
-| 20 | 13,490 | Shop jobs (first slot), Set 2 |
-| 26 / 34 / 43 / 57 | 25,430 / 48,290 / 84,290 / 163,830 | bosses 4 / 5 / 6 / 7 |
-| 100 | 610,950 | the cap |
+| 2 | 10 | - |
+| 3 | 50 | Card Sleeves |
+| 4 | 130 | Wall Shelf, starter sword, boss 1 (Meadow Warden) |
+| 5 | 250 | Card Condenser |
+| 7 | 630 | Accessory Hook, Deck Box, Expansion 1, boss 2 |
+| 9 | 1,220 | Big Display Rack |
+| 11 | 2,040 | Sealed Booster Box |
+| 14 | 3,740 | Grading Station, boss 3 |
+| 17 | 6,050 | Expansion 2 |
+| 20 | 8,990 | Shop jobs (first slot), Set 2 |
+| 26 / 34 / 43 / 57 | 16,950 / 32,190 / 56,200 / 109,220 | bosses 4 / 5 / 6 / 7 |
+| 100 | 407,300 | the cap |
 
-**Level-up rewards** (`Config/Levels`, `Util/LevelUpRules`, Lune-tested): every level pays $4 × the new level
-(EconomyService, in `AddXP`; $8 at Lv 2, $400 at Lv 100; $10 × before levels came 2.7x faster, so the level cash per
+**Level-up rewards** (`Config/Levels`, `Util/LevelUpRules`, Lune-tested): every level pays $3 × the new level
+(EconomyService, in `AddXP`; $6 at Lv 2, $300 at Lv 100; $10 × before levels came 4x faster, so the level cash per
 hour stays about the same), and a gift comes every 5th level only (owner 2026-11-16:
 "small cash every level. only give gift every 5 levels (wild ores and etc) make sure its not economy breaking"):
 levels ending in 5 give Wild Ore x3 and an XP Tonic, every 10th a First Spark Pack (a Bag item, `Items.sparkPack`,
@@ -3604,7 +3631,9 @@ grades are untouched, so a Grade S is earned, never bought. The owner made three
   ("🌈 3x Super Luck on · 12:31 (+20 min)", else "Pick a boost below!"); the three boosts as colourful tiles (the 30
   min outlined with a true BEST VALUE tag, Super Luck in a moving rainbow with BEST LUCK), each with its win in a chip
   ("Legendary 1% to 2%", from the real odds: `BoughtLuck.oddsText`), a shine sweeping the tagged ones, and chunky gold
-  price buttons with their live price (managed pricing gives each player theirs: the owner's account saw ~40%); the
+  price buttons with their live price (managed pricing gives each player theirs: the owner's account saw ~40%; every
+  Robux price in the game shows Roblox's own Robux glyph before the number, tinted like the button's text, never "R$":
+  client `Util/RobuxPrice`, owner 2026-11-17, `tests/RobuxIcon`); the
   Extra Job Slot as a gold "Forever" tile ("Owned" once yours). A boost tap asks the server (remote BuyLuck;
   validated, rate-limited, LuckService prompts the purchase). Where Roblox restricts paid random items
   (PolicyService ArePaidRandomItemsRestricted) the luck tiles say "Not sold where you live" and the server won't
@@ -3774,6 +3803,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── ForgeService.luau     # the Forge machine: forge, upgrade, reforge (costs from WeaponRules, all or nothing, grade rolled here)
     │   │   ├── ArenaService.luau     # PvP: challenges, bet escrow, arena pad + queue, fights, saved record
     │   │   ├── ItemService.luau      # item inventory (Star Shards, boss items): give, take, save; OnGiven (Pish's trophy lesson)
+    │   │   ├── TipService.luau       # tips shown the first few times: counts saved as tips (Next, Done; Util/TipRules)
     │   │   ├── BossService.luau      # boss ladder: saved progress, arena gates and copies, keys, boss wins' items (farm protection)
     │   │   ├── BossChestService.luau # a boss win's three chests: the material roll, the pick, the timeout (spec 2026-11-11)
     │   │   ├── FrontierService.luau  # teleports: plaza Frontier portal, Explore / Join friend, back home (Dungeon: back to the Frontier)
@@ -3794,6 +3824,8 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │       ├── Migrations.luau       # save migrations (pure, Lune-tested)
     │       ├── NpcMotion.luau        # NPC rigs, animations and path walking (customers and workers)
     │       ├── SaleRules.luau        # player-to-player buy check (pure, Lune-tested)
+    │       ├── ListingHold.luau      # a new card in a case waits for its price (pure, Lune-tested)
+    │       ├── TipRules.luau         # tips shown the first few times: counts, done, saved map cleaned (pure, Lune-tested)
     │       ├── BattleSim.luau        # seeded fight simulation: packs, boss mechanics and phases, carried HP (pure, Lune-tested)
     │       ├── DungeonBuilder.luau   # the Dungeon's cavern: its steps' rooms and puzzle pieces, doors, the ruins props, lighting
     │       ├── PlazaBuild.luau       # the Card Festival Square: gazebo, the leaderboard's giant cards, stalls, cafe sets and townsfolk, lights, planters
@@ -3825,7 +3857,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── ReviewsController.luau # the phone's Reviews app: rating, tips, customers' posts
     │   │   ├── CustomerController.luau # collectors' thought bubbles, kids' rip reveals
     │   │   ├── RatingController.luau   # the rating chip and its tips window
-    │   │   ├── CarryController.luau    # drop carried box
+    │   │   ├── CarryController.luau    # drop carried box, To Bag (its packs into the Bag)
     │   │   ├── PackOpeningController.luau # the 3D pack opening: OpeningFlow, taps and swipes, server results, closes on fights
     │   │   ├── AnnouncementController.luau # big-pull chat messages
     │   │   ├── BinderController.luau   # the binder screen: collection data, the 3D binder's pages (cover, 2x2 pockets with chips), set tabs, Q/E page keys, page counter, Filters window (F), set progress card, tooltips, the Bag window
@@ -3890,6 +3922,8 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │       ├── StationJobs.luau        # the stations' jobs on this client, counted down (remote UpgradeJobs)
     │       ├── JobPanel.luau           # a station window's job card: countdown, bar, Finish now
     │       ├── ProductPrice.luau       # developer products' Robux prices, asked once each
+    │       ├── RobuxPrice.luau         # a Robux price on a button: Roblox's Robux glyph, never "R$" (tests/RobuxIcon)
+    │       ├── TileTip.luau            # a tip bubble with Pish's face pointing at a HUD tile, a gold ring round it (Config/Tips)
     │       ├── StageAura.luau          # the supporter aura on the character window's stage, drawn in 2D
     │       ├── Motion.luau             # pop in/out, press squash, bumps
     │       ├── FontStyle.luau          # switches Gotham text to the game fonts (FredokaOne, Montserrat)
@@ -3914,7 +3948,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │       ├── OpeningPack.luau        # the pack (or deck box) on the stage: idle sway, drag, the cinematic tear, the lid
     │       ├── OpeningCards.luau       # the pulled cards: stacking, flips with teases and hits, alive, the row, the lineup
     │       ├── OpeningFx.luau          # the opening's effects: rip burst, foil shards, glints, light leak, rays, aura, motes
-    │       ├── OpeningResults.luau     # the opening's screen: tap layer, hint, box and pity pills, odds, results pills, Continue
+    │       ├── OpeningResults.luau     # the opening's screen: tap layer, hint, box and pity pills, odds, results pills, Continue, Open another
     │       ├── ProductPicture.luau     # a product's picture in menu rows: the pack / deck box picture, or its icon
     │       ├── CreatureVisuals.luau    # shared model pipeline + motion for creatures and monsters
     │       ├── RestTimers.luau         # resting countdowns for the party bar and Party panel
@@ -3981,6 +4015,8 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
         │   ├── UIFonts.luau    # the game fonts (client)
         │   ├── UIIcons.luau    # UI icon image ids by name (HUD, top bar, customer bubbles)
         │   ├── IconTips.luau   # the words each label-less icon's tooltip shows
+        │   ├── IconStacks.luau # icons made of other icons (To Bag: pack + arrow + backpack), drawn by Util/Icon
+        │   ├── Tips.luau       # tips shown the first few times (To Bag's bubble) and the bubble's look
         │   ├── HudLayout.luau  # HUD tile sizes, fan arc, colours (client)
         │   ├── CreamTheme.luau # the windows' colours (cotton candy now), outlines, corners, header bands (plain data)
         │   ├── BabyColors.luau # the cotton candy baby colours, roles, element rims, the soft glow, soft buttons (plain data)
@@ -4175,7 +4211,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v31)
+### 10.4 Player data schema (v32)
 ```lua
 {
     version = 21,
@@ -4225,11 +4261,12 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     unlocks = { ExtraJobSlot = true }, -- one-time unlocks bought as developer products (MonetizationService; v28)
     seenPrologue = false, -- the prologue played (WelcomeService; new saves false, saves from before true: v29)
     gifts = { streak = 0, lastDay = -1, playDay = -1, played = 0, week = -1, weekDays = 0, weekEarned = false, month = -1, monthDays = 0, monthEarned = false, claims = 0 }, -- daily, weekly and monthly gifts: the 7-day round, today's play time, the week's and month's bars and earned chests (GiftService, Util/GiftRules; v30)
+    tips = { toBag = 2 }, -- how many times each tip has shown, by Config/Tips id (TipService, Util/TipRules; v32)
 }
 ```
 Bump `version` and write a migration whenever the shape changes.
-Template and types live in `DataService.luau`. Packs are opened straight from carried boxes, so there is no
-separate unopened-packs inventory; unsold stock is saved as `boxes` rather than a backroom count.
+Template and types live in `DataService.luau`. Packs are opened from carried boxes or from the Bag (To Bag moves a
+box's packs into `items` as `sparkPack` / `deckBox`); unsold stock is saved as `boxes` rather than a backroom count.
 
 Loading is defensive: unknown IDs are dropped, prices re-clamped, level recomputed from XP, and saved shelves
 that no longer fit are skipped (cards from a skipped case go back to the binder).
@@ -4253,7 +4290,7 @@ Studio on the test slot plays its own save, `Player_<id>_studio` (2026-11-16: St
 live playthrough), so Studio and the live game never share one.
 Anyone else's `/slot` does nothing. (`SaveSlotService`, pure `Server/Util/SaveSlots`, Lune-tested.)
 
-Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; v17 added `tutorial` (the first visit with Pish; existing saves "done" with their first pack given and his gift still to come, so only new players go through it); each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity); `tutorial` gained `customerSent` (read as false when missing, true for v17's existing shops; no bump: an older server dropping it allows one more of Pish's customers). v18 added `combat` (Chikin's combat tutorial, the same shape; done for every shop past Pish's tour, still to do for a player mid-way through it). v19 added `dungeon` (`secretFound` and `seenIntro` false for everyone; a junk value is replaced). v20 added `title` ("" for everyone: automatic, the same title as before; a saved string kept, junk replaced). v21 added `upgrades`, `skipTokens` and `purchases` (empty for everyone; a good skip count kept, junk replaced). v22 added `support` (no gifts for everyone; good counts kept). v23 added `titles` (`known`, `fresh` empty, `seeded` false: the first load counts the titles a player already has without telling). v24 added `turts` (nothing bought for everyone; good ids kept, a broken "restock now" roll dropped). v25 added `decor` (Cozy Wood in use and no looks bought for everyone; good ids kept, cleaned against Config/Decor on load). v26 added `windows` (none for everyone; a saved list kept and cleaned on load by `WindowRules.clean`, which pays back any window that no longer fits). v27 added `luck` (no bought luck for everyone). v28 added `unlocks` (none for everyone). v29 added `seenPrologue` (true for every save from before it, so the prologue only greets new players). v30 added `gifts` (the round at day 1, nothing played or earned, for everyone; a saved table kept and cleaned on load by `GiftRules.clean`). v31 kept `combat`'s shape but reordered Chikin's steps (the sword and a fight with it in his first visit): a tour in progress keeps its place by step name. A service that didn't load for a player (e.g. no free plot) never overwrites
+Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; v17 added `tutorial` (the first visit with Pish; existing saves "done" with their first pack given and his gift still to come, so only new players go through it); each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity); `tutorial` gained `customerSent` (read as false when missing, true for v17's existing shops; no bump: an older server dropping it allows one more of Pish's customers). v18 added `combat` (Chikin's combat tutorial, the same shape; done for every shop past Pish's tour, still to do for a player mid-way through it). v19 added `dungeon` (`secretFound` and `seenIntro` false for everyone; a junk value is replaced). v20 added `title` ("" for everyone: automatic, the same title as before; a saved string kept, junk replaced). v21 added `upgrades`, `skipTokens` and `purchases` (empty for everyone; a good skip count kept, junk replaced). v22 added `support` (no gifts for everyone; good counts kept). v23 added `titles` (`known`, `fresh` empty, `seeded` false: the first load counts the titles a player already has without telling). v24 added `turts` (nothing bought for everyone; good ids kept, a broken "restock now" roll dropped). v25 added `decor` (Cozy Wood in use and no looks bought for everyone; good ids kept, cleaned against Config/Decor on load). v26 added `windows` (none for everyone; a saved list kept and cleaned on load by `WindowRules.clean`, which pays back any window that no longer fits). v27 added `luck` (no bought luck for everyone). v28 added `unlocks` (none for everyone). v29 added `seenPrologue` (true for every save from before it, so the prologue only greets new players). v30 added `gifts` (the round at day 1, nothing played or earned, for everyone; a saved table kept and cleaned on load by `GiftRules.clean`). v31 kept `combat`'s shape but reordered Chikin's steps (the sword and a fight with it in his first visit): a tour in progress keeps its place by step name. v32 added `tips` (none seen for everyone; a saved table kept and cleaned on load by `TipRules.clean`). A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
 
 ### 10.6 UI style and HUD
@@ -4976,6 +5013,10 @@ boss models; the ranch and Heroic tiers come after those.
   `2026-11-09-weapons-round3-scythes-design.md`): models, moveset, Reaping Cyclone, perks, portraits, balance (5.11
   "Scythes"), the Rift Reaper's Thousand Cuts with the Grim Reaper (5.11 "Thousand Cuts"), the forward-facing hold;
   owner approved and merged 2026-11-09. The Forge machine's own model: later (owner 2026-11-09).
+- [x] Shop round 2026-11-17 (owner approved): the Glass Showcase list's border, shop levels 4x faster (Lv 20 at about
+  9,000 XP, $3 x level), Roblox's Robux glyph on every price (`Util/RobuxPrice`), a new case card waits for its price
+  (`Util/ListingHold`), To Bag with its own icon (pick B) and Pish's tip bubble (`Util/TileTip`, schema v32 `tips`),
+  and Open another on the pack results.
 - [ ] Weapons round 3 part 2: the Widow's Reaper's Eight Legs and the Storm Reaper's Storm Cyclone (spec 5.3); the
   final review's deferred minors (Chain Lightning per foe, the capped harvest shake, the light version's cracks).
 - Not reproduced (2026-11-06): pack models on a freshly stocked shelf "slow to render" after joining (the server

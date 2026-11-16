@@ -30,6 +30,7 @@ local Hud = require(ClientUtil:WaitForChild("Hud"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
 local GiftMotion = require(ClientUtil:WaitForChild("GiftMotion")) -- the gift window's shine and stars, on the slot offer
 local ProductPrice = require(ClientUtil:WaitForChild("ProductPrice"))
+local RobuxPrice = require(ClientUtil:WaitForChild("RobuxPrice"))
 local CardTips = require(ClientUtil:WaitForChild("CardTips"))
 local Tooltip = require(ClientUtil:WaitForChild("Tooltip"))
 local UIController = require(Controllers:WaitForChild("UIController"))
@@ -530,7 +531,7 @@ local function buildOfferRow(slot: number, current: JobsState)
 				local price = if product ~= 0 then ProductPrice.of(product) else ProductPrice.ofPass(current.passId)
 				if price then
 					if buy.Parent then
-						buy.Text = `Unlock · R$ {price}`
+						RobuxPrice.set(buy, "Unlock", price)
 					end
 					return
 				end

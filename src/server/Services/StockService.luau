@@ -12,7 +12,10 @@ local BrandBox = require(Shared:WaitForChild("Util"):WaitForChild("BrandBox"))
 local DeliveryLooks = require(Shared:WaitForChild("Util"):WaitForChild("DeliveryLooks"))
 local Config = Shared:WaitForChild("Config")
 local Products = require(Config:WaitForChild("Products"))
+local Items = require(Config:WaitForChild("Items"))
+local ItemRules = require(Shared:WaitForChild("Util"):WaitForChild("ItemRules"))
 local StockConfig = require(Config:WaitForChild("Stock"))
+local Tips = require(Config:WaitForChild("Tips"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Blocked = require((script.Parent :: Instance).Parent:WaitForChild("Util"):WaitForChild("Blocked"))
 
@@ -20,10 +23,12 @@ local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
 local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
+local ItemService = require(Services:WaitForChild("ItemService"))
 local PlotService = require(Services:WaitForChild("PlotService"))
 local PlacementService = require(Services:WaitForChild("PlacementService"))
 local PartyService = require(Services:WaitForChild("PartyService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
+local TipService = require(Services:WaitForChild("TipService"))
 
 type Plot = typeof(PlotService.GetPlots()[1])
 type PlayerData = DataService.PlayerData
@@ -138,13 +143,22 @@ local function syncPad(shop: Shop)
 	shop.owner:SetAttribute("BoxesWaiting", #shop.waiting)
 end
 
--- Lets the client show the right prompts and buttons (Stock vs Edit, Drop, Rip a pack + units left)
+-- Whether this box holds packs or deck boxes (To Bag puts them in the Bag: ItemRules.stockItem)
+local function holdsPacks(box: Part?): boolean
+	return box ~= nil and ItemRules.stockItem(Items, box:GetAttribute("ProductId")) ~= nil
+end
+
+-- Lets the client show the right prompts and buttons (Stock vs Edit, Drop, Rip a pack + units left); the To Bag tip
+-- bubble ("ToBagTip") goes once the box in your hands holds no packs
 local function syncCarry(shop: Shop)
 	syncPad(shop)
 	local top = shop.carried[#shop.carried]
 	shop.owner:SetAttribute("CarryCount", #shop.carried)
 	shop.owner:SetAttribute("CarryProductId", if top then top:GetAttribute("ProductId") else nil)
 	shop.owner:SetAttribute("CarryUnits", if top then top:GetAttribute("Units") else nil)
+	if not holdsPacks(top) then
+		shop.owner:SetAttribute("ToBagTip", nil)
+	end
 end
 
 -- Carried boxes go back to the pad when the character dies or respawns
@@ -182,6 +196,11 @@ local function onPickup(player: Player, shop: Shop, box: Part)
 	setPromptEnabled(box, false)
 	attachToCharacter(box, root, #shop.carried)
 	layoutWaiting(shop)
+	-- the first few boxes of packs: a bubble over To Bag teaches it (Config/Tips TO_BAG; owner 2026-11-17: "make sure
+	-- players know you can put packs in the bag")
+	if holdsPacks(box) and TipService.Next(player, Tips.TO_BAG.id, Tips.TO_BAG.shows) then
+		player:SetAttribute("ToBagTip", true)
+	end
 	syncCarry(shop)
 end
 
@@ -370,6 +389,53 @@ local function onDropBox(player: Player)
 	end
 	returnCarried(shop)
 	notify(player, "Box put back on the delivery pad.", false)
+end
+
+-- The packs in your carried boxes go in your Bag, to open anywhere (owner 2026-11-17: "on pack boxes. add an option
+-- that player can put all the cardpacks inside the box to their inventory or drop to the delivery box. that way. they
+-- will never have to go back to the delivery to pickup packs to rip"). A pack or deck box becomes its Bag item
+-- (ItemRules.stockItem); other boxes stay in your hands, and what the Bag can't hold stays in its box.
+local function onBagBox(player: Player)
+	if not allowDrop(player) then
+		return
+	end
+	local shop = shops[player]
+	if not shop or #shop.carried == 0 then
+		return
+	end
+	local moved = 0
+	for index = #shop.carried, 1, -1 do
+		local box = shop.carried[index]
+		local units = box:GetAttribute("Units")
+		local itemId = ItemRules.stockItem(Items, box:GetAttribute("ProductId"))
+		if itemId and typeof(units) == "number" and units > 0 then
+			local added = ItemService.GiveItem(player, itemId, units)
+			moved += added
+			if added >= units then
+				table.remove(shop.carried, index)
+				box:Destroy()
+			elseif added > 0 then
+				box:SetAttribute("Units", units - added)
+			end
+		end
+	end
+	-- the boxes still in your hands close up the stack
+	local root = getRoot(player)
+	if root then
+		for stackIndex, box in shop.carried do
+			detachFromCharacter(box)
+			attachToCharacter(box, root, stackIndex)
+		end
+	end
+	syncCarry(shop)
+	if moved == 0 then
+		Blocked.tell(player, "Only boxes of packs or deck boxes go in your Bag, and it has to have room.")
+		return
+	end
+	-- they know To Bag now: its tip never shows again
+	TipService.Done(player, Tips.TO_BAG.id, Tips.TO_BAG.shows)
+	player:SetAttribute("ToBagTip", nil)
+	notify(player, `{moved} {if moved == 1 then "pack" else "packs"} put in your Bag. Open them from the Bag anywhere!`, false)
 end
 
 local function onComputerUsed(player: Player, plot: Plot)
@@ -584,6 +650,7 @@ function StockService.Start()
 	Remotes.OrderProduct.OnServerEvent:Connect(onOrder)
 	Remotes.StockShelf.OnServerEvent:Connect(onStockShelf)
 	Remotes.DropBox.OnServerEvent:Connect(onDropBox)
+	Remotes.BagBox.OnServerEvent:Connect(onBagBox)
 	Remotes.RemoveStock.OnServerEvent:Connect(onRemoveStock)
 	DataService.Register({ name = "StockService", load = load, save = save, unload = unload })
 	Players.PlayerAdded:Connect(onPlayerAdded)

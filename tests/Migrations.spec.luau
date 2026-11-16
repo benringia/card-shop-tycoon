@@ -257,6 +257,19 @@ return {
 		expect.equal(junk.combat.firstVisit, "done", "unknown counts as done")
 	end,
 
+	-- Tips shown a few times (owner 2026-11-17: "make sure players know you can put packs in the bag"; Config/Tips):
+	-- every save starts with none seen; a saved table stays for TipService to clean (TipRules.clean)
+	["v32: every save starts with no tips seen; a saved table kept"] = function()
+		local data: any = { version = 31, cash = 7 }
+		Migrations.run(data, 32)
+		expect.equal(data.version, 32)
+		expect.equal(next(data.tips), nil, "an empty tips map")
+		expect.equal(data.cash, 7, "the rest untouched")
+		local kept: any = { version = 31, tips = { toBag = 2 } }
+		Migrations.run(kept, 32)
+		expect.equal(kept.tips.toBag, 2, "a saved table kept")
+	end,
+
 	-- Turts' rug shop (spec 2026-11-13-turts-shop-design): the restock a player last saw, what they bought in it, and a
 	-- "restock now" roll if they bought one
 	-- Chikin's tour reordered (owner 2026-11-16: the sword and its fight come in his first visit): a tour in progress

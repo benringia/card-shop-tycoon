@@ -124,16 +124,24 @@ local function piece(parent: Instance, name: string, z: number): Frame
 	return frame
 end
 
--- The icon's shadow is a dark, faded copy of its picture (an emoji icon gets none)
+-- The icon's shadow is a dark, faded copy of its picture or of each picture in a stack (an emoji icon gets none)
 local function shadeIcon(holder: GuiObject)
 	local glyph = holder:FindFirstChild("Glyph")
+	local pictures: { ImageLabel } = {}
 	if glyph and glyph:IsA("ImageLabel") then
-		glyph.ImageColor3 = Color3.new(0, 0, 0)
-		glyph.ImageTransparency = TILE.iconShadow.transparency
-		holder.Visible = true
-	else
-		holder.Visible = false
+		table.insert(pictures, glyph)
+	elseif glyph and glyph:IsA("Frame") then
+		for _, picture in glyph:GetChildren() do
+			if picture:IsA("ImageLabel") then
+				table.insert(pictures, picture)
+			end
+		end
 	end
+	for _, picture in pictures do
+		picture.ImageColor3 = Color3.new(0, 0, 0)
+		picture.ImageTransparency = TILE.iconShadow.transparency
+	end
+	holder.Visible = #pictures > 0
 end
 
 -- Switches a tile's icon (and its shadow) to another picture: Manage turns into Close
@@ -146,10 +154,7 @@ local function setTileIcon(tile: GuiObject, icon: string)
 	local shadow = body:FindFirstChild("IconShadow")
 	if picture and picture:IsA("GuiObject") then
 		Icon.set(picture, icon)
-		local glyph = picture:FindFirstChild("Glyph")
-		if glyph and glyph:IsA("GuiObject") then
-			glyph.ZIndex = picture.ZIndex
-		end
+		Icon.layer(picture, picture.ZIndex)
 	end
 	if shadow and shadow:IsA("GuiObject") then
 		Icon.set(shadow, icon)
@@ -204,10 +209,7 @@ local function makeTile(parent: Instance, spec: TileSpec, candy: Candy): TextBut
 	picture.AnchorPoint = Vector2.new(0.5, 0)
 	picture.Position = UDim2.fromScale(0.5, -TILE.iconRise)
 	picture.ZIndex = 5
-	local glyph = picture:FindFirstChild("Glyph")
-	if glyph and glyph:IsA("GuiObject") then
-		glyph.ZIndex = picture.ZIndex
-	end
+	Icon.layer(picture, picture.ZIndex)
 
 	local label = Instance.new("TextLabel")
 	label.Name = "Label"

@@ -22,6 +22,7 @@ local CardService = require(Services:WaitForChild("CardService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local PlacementService = require(Services:WaitForChild("PlacementService"))
 local PlotService = require(Services:WaitForChild("PlotService"))
+local ListingHold = require(Util:WaitForChild("ListingHold"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 local SaleRules = require(Util:WaitForChild("SaleRules"))
 
@@ -32,7 +33,31 @@ local ShowcaseService = {}
 
 local allowAction = RateLimiter.new(ShowcaseConfig.ACTION_COOLDOWN)
 local allowBuy = RateLimiter.new(ShowcaseConfig.BUY_COOLDOWN)
+local allowRelease = RateLimiter.new(ShowcaseConfig.RELEASE_COOLDOWN)
 local rng = Random.new()
+local holds: ListingHold.Holds = {} -- new cards waiting for their price (Util/ListingHold)
+
+-- The card part shows a waiting card to its owner's case window ("PricingHold"); cleared once it's on sale
+local function markHeld(shelf: PlacedShelf, slot: number, held: boolean)
+	local part = shelf.cardParts[slot]
+	if part then
+		part:SetAttribute("PricingHold", if held then true else nil)
+	end
+end
+
+-- Clears the mark once the hold has run out on its own (no Done, no window closed: the owner left, say)
+local function watchHold(shelf: PlacedShelf, slot: number)
+	task.delay(ShowcaseConfig.LISTING_HOLD + 0.1, function()
+		if not ListingHold.isHeld(holds, shelf.uid, slot, os.clock()) then
+			markHeld(shelf, slot, false)
+		end
+	end)
+end
+
+-- Whether that slot's card still waits for its owner's price: customers and players leave it alone
+local function isHeld(shelf: PlacedShelf, slot: number): boolean
+	return ListingHold.isHeld(holds, shelf.uid, slot, os.clock())
+end
 
 local function notify(player: Player, message: string, isError: boolean)
 	Remotes.Notify:FireClient(player, message, isError)
@@ -149,6 +174,9 @@ local function onDisplayCard(
 		price = CardRules.clampPrice(market, card, foil, level, stars, copyGrade),
 		beast = beast,
 	})
+	ListingHold.hold(holds, shelf.uid, slotNumber, os.clock(), ShowcaseConfig.LISTING_HOLD)
+	markHeld(shelf, slotNumber, true)
+	watchHold(shelf, slotNumber)
 end
 
 local function onRemoveCard(player: Player, shelfUid: unknown, slot: unknown)
@@ -160,8 +188,23 @@ local function onRemoveCard(player: Player, shelfUid: unknown, slot: unknown)
 	if not shelf or not displayed then
 		return
 	end
+	ListingHold.release(holds, shelf.uid, slot :: number)
 	PlacementService.SetDisplayedCard(shelf, slot :: number, nil)
 	CardService.GiveCard(player, displayed.cardId, displayed.foil, displayed.grade, displayed.beast)
+end
+
+-- Done on a new card (`slot`), or its case's window closed (no slot): the waiting cards go on sale
+local function onReleaseListings(player: Player, shelfUid: unknown, slot: unknown)
+	if not allowRelease(player) or (slot ~= nil and not isSlot(slot)) then
+		return
+	end
+	local shelf = getOwnCase(player, shelfUid)
+	if not shelf then
+		return
+	end
+	for _, released in ListingHold.release(holds, shelf.uid, slot :: number?) do
+		markHeld(shelf, released, false)
+	end
 end
 
 -- Batched so several quick +/- taps across slots arrive as one request
@@ -193,6 +236,9 @@ local function onSetPrices(player: Player, shelfUid: unknown, changes: unknown)
 				price = CardRules.clampPrice(price, card, displayed.foil, level, stars, copyGrade),
 				beast = displayed.beast,
 			})
+			if ListingHold.refresh(holds, shelf.uid, slot :: number, os.clock(), ShowcaseConfig.LISTING_HOLD) then
+				watchHold(shelf, slot :: number)
+			end
 		end
 	end
 end
@@ -232,6 +278,10 @@ local function onBuyCard(
 	local cardPart = shelf.cardParts[slotNumber]
 	if not displayed or not cardPart then
 		notify(buyer, "That card is no longer for sale.", true)
+		return
+	end
+	if isHeld(shelf, slotNumber) then
+		notify(buyer, "The owner is still pricing that card. Try again in a moment.", true)
 		return
 	end
 	-- The owner may have swapped in another copy (grade, foil, levelled card) or changed the price
@@ -275,7 +325,9 @@ function ShowcaseService.PickCardForCustomer(owner: Player): (PlacedShelf?, numb
 	for _, shelf in PlacementService.GetShelves(owner) do
 		if shelf.def.kind == "CustomerCards" then
 			for slot in shelf.cards do
-				table.insert(options, { shelf = shelf, slot = slot })
+				if not isHeld(shelf, slot) then
+					table.insert(options, { shelf = shelf, slot = slot })
+				end
 			end
 		end
 	end
@@ -296,7 +348,7 @@ function ShowcaseService.FindCardForCollector(owner: Player, cardId: string): (P
 			continue
 		end
 		for slot, displayed in shelf.cards do
-			if displayed.cardId == cardId and displayed.price < bestPrice then
+			if displayed.cardId == cardId and displayed.price < bestPrice and not isHeld(shelf, slot) then
 				bestShelf, bestSlot, bestPrice = shelf, slot, displayed.price
 			end
 		end
@@ -304,10 +356,15 @@ function ShowcaseService.FindCardForCollector(owner: Player, cardId: string): (P
 	return bestShelf, bestSlot
 end
 
--- Customer picks the card up to pay for it. Returns nil if it's gone (someone else took it).
+-- Whether that slot's card still waits for its price (a customer who walked over to it before it changed leaves it)
+function ShowcaseService.IsHeld(shelf: PlacedShelf, slot: number): boolean
+	return isHeld(shelf, slot)
+end
+
+-- Customer picks the card up to pay for it. Returns nil if it's gone (someone else took it) or waits for its price.
 function ShowcaseService.TakeForCustomer(shelf: PlacedShelf, slot: number): DisplayedCard?
 	local displayed = shelf.cards[slot]
-	if displayed then
+	if displayed and not isHeld(shelf, slot) then
 		PlacementService.SetDisplayedCard(shelf, slot, nil)
 	end
 	return displayed
@@ -330,6 +387,7 @@ function ShowcaseService.Start()
 	Remotes.DisplayCard.OnServerEvent:Connect(onDisplayCard)
 	Remotes.RemoveDisplayedCard.OnServerEvent:Connect(onRemoveCard)
 	Remotes.SetCardPrice.OnServerEvent:Connect(onSetPrices)
+	Remotes.ReleaseListings.OnServerEvent:Connect(onReleaseListings)
 	Remotes.BuyDisplayedCard.OnServerEvent:Connect(onBuyCard)
 end
 

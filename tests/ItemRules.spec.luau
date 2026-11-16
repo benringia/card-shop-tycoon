@@ -33,6 +33,26 @@ return {
 		expect.isNil(ItemRules.openablePack(config, nil), "nil")
 	end,
 
+	-- Owner 2026-11-17: "on pack boxes. add an option that player can put all the cardpacks inside the box to their
+	-- inventory ... they will never have to go back to the delivery to pickup packs to rip". A carried box of packs or
+	-- deck boxes goes in the Bag as its item; opening one gives its market price in shop XP, like ripping it from the box
+	["a carried box of packs goes in the Bag as its pack item"] = function()
+		expect.equal(ItemRules.stockItem(config, "FirstSparkPack"), "sparkPack", "packs")
+		expect.equal(ItemRules.stockItem(config, "DeckBox"), "deckBox", "deck boxes")
+		for _, bad in { "FirstSparkBox", "CardSleeves", "nope", 42, nil } do
+			expect.isNil(ItemRules.stockItem(config, bad), `no Bag item for {tostring(bad)}`)
+		end
+		expect.equal(ItemRules.openablePack(config, "deckBox"), "DeckBox", "a deck box opens as one")
+	end,
+
+	["a Bag pack from stock gives shop XP when opened; gifts don't"] = function()
+		expect.equal(ItemRules.stockOf(config, "sparkPack"), "FirstSparkPack")
+		expect.equal(ItemRules.stockOf(config, "deckBox"), "DeckBox")
+		for _, gift in { "pishPresent", "pishGift", "vrPack", "legendaryPack", "xpTonic", "nope", 7 } do
+			expect.isNil(ItemRules.stockOf(config, gift), `{tostring(gift)}: no shop XP`)
+		end
+	end,
+
 	-- Turts' rug shop (spec 2026-11-13-turts-shop-design): his packs open from the Bag with their floors; the Legendary
 	-- Pack's Legendary rolls the stingy pity grades, so it can't skip the long Grade S chase
 	["Turts' packs open from the Bag with their floors; the Legendary Pack's grade is the stingy one"] = function()

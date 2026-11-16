@@ -60,4 +60,15 @@ return {
 		equal(OpeningFlow.isBusy(false, true), true, "a rip waiting for the server")
 		equal(OpeningFlow.isBusy(false, false), false, "free: a Bag pack may open")
 	end,
+
+	-- Owner 2026-11-17: "add 'open another' button after ripping card. that should open another card from where the
+	-- first card source is"
+	["Open another comes from the same place: the carried box while it has packs, else that Bag item"] = function()
+		equal(OpeningFlow.anotherLeft(OpeningFlow.BOX, true, 23, 0), 23, "ripped from the box: its packs left")
+		equal(OpeningFlow.anotherLeft(OpeningFlow.BOX, true, 0, 9), 0, "the box is empty (the Bag doesn't count)")
+		equal(OpeningFlow.anotherLeft(OpeningFlow.BOX, false, 12, 0), 0, "the box in your hands holds no packs now")
+		equal(OpeningFlow.anotherLeft("sparkPack", true, 23, 46), 46, "from the Bag: that item's count, not the box")
+		equal(OpeningFlow.anotherLeft("pishGift", false, 0, 0), 0, "the last one of that item")
+		equal(OpeningFlow.anotherLeft(nil, true, 23, 46), 0, "a pack from nowhere to repeat (a Studio test pack)")
+	end,
 }

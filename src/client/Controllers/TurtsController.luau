@@ -27,6 +27,7 @@ local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local PishVisual = require(ClientUtil:WaitForChild("PishVisual"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
+local RobuxPrice = require(ClientUtil:WaitForChild("RobuxPrice"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 
 local TurtsController = {}
@@ -371,7 +372,7 @@ local function buildWindow()
 				return game:GetService("MarketplaceService"):GetProductInfo(productId, Enum.InfoType.Product)
 			end)
 			if ok and typeof(info) == "table" and typeof(info.PriceInRobux) == "number" then
-				restock.Text = `Restock now · R$ {info.PriceInRobux}`
+				RobuxPrice.set(restock, "Restock now", info.PriceInRobux)
 			end
 		end)
 	end

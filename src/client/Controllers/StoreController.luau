@@ -30,6 +30,7 @@ local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
 local ProductPrice = require(ClientUtil:WaitForChild("ProductPrice"))
+local RobuxPrice = require(ClientUtil:WaitForChild("RobuxPrice"))
 local ScreenClear = require(ClientUtil:WaitForChild("ScreenClear"))
 
 local StoreController = {}
@@ -142,7 +143,7 @@ local function chip(parent: Instance, text: string, back: Color3, ink: Color3, s
 end
 
 -- A chunky gold price button (a darker lip under it), or a quiet one when it can't be bought now
-local function buyButton(parent: Instance, text: string, enabled: boolean, onTap: (() -> ())?): TextButton
+local function buyButton(parent: Instance, text: string, enabled: boolean, onTap: (() -> ())?, robux: number?): TextButton
 	local lip = Instance.new("Frame")
 	lip.Name = "Lip"
 	lip.AnchorPoint = Vector2.new(1, 0)
@@ -174,6 +175,9 @@ local function buyButton(parent: Instance, text: string, enabled: boolean, onTap
 	padding.PaddingRight = UDim.new(0, 6)
 	padding.Parent = button
 	gradient(button, if enabled then ColorSequence.new(GOLD_TOP, GOLD_BOTTOM) else ColorSequence.new(rgb(236, 232, 242), rgb(212, 206, 222)), 90)
+	if robux then
+		RobuxPrice.set(button, "", robux)
+	end
 	button.Activated:Connect(function()
 		if enabled and onTap then
 			onTap()
@@ -185,7 +189,7 @@ end
 type TileLook = { back: ColorSequence?, outline: Color3?, iconBack: ColorSequence, light: boolean, rainbow: boolean?, chipBack: Color3, chipInk: Color3 }
 
 -- One thing to buy: a coloured icon, its name and length, its win in a chip, a tag, a price button
-local function tile(order: number, look: TileLook, icon: string, name: string, sub: string, win: string, badge: string?, button: string?, enabled: boolean, onTap: (() -> ())?)
+local function tile(order: number, look: TileLook, icon: string, name: string, sub: string, win: string, badge: string?, button: string?, enabled: boolean, onTap: (() -> ())?, robux: number?)
 	local frame = Instance.new("Frame")
 	frame.LayoutOrder = order
 	frame.Size = UDim2.new(1, -8, 0, TILE_HEIGHT)
@@ -243,24 +247,24 @@ local function tile(order: number, look: TileLook, icon: string, name: string, s
 		tag.ZIndex = Z + 4
 	end
 	if button then
-		buyButton(frame, button, enabled, onTap)
+		buyButton(frame, button, enabled, onTap, robux)
 	end
 	if badge or look.rainbow then
 		shine(frame, 1.6 + order * 0.3)
 	end
 end
 
--- "R$ 29" once the price is in, "..." meanwhile (the page draws again when it comes), "Coming soon" for a product not
--- made yet
-local function priceText(id: number, price: number?): string
+-- The buy button's words and its Robux price: the Robux glyph and 29 once the price is in (Util/RobuxPrice), "..."
+-- meanwhile (the page draws again when it comes), "Coming soon" for a product not made yet
+local function priceText(id: number, price: number?): (string, number?)
 	if id == 0 then
-		return "Coming soon"
+		return "Coming soon", nil
 	end
 	if not price then
 		pricesPending = true
-		return "..."
+		return "...", nil
 	end
-	return `R$ {price}`
+	return "", price
 end
 
 -- The luck running now and its time (LuckService's attributes), or a nudge when none runs
@@ -374,10 +378,11 @@ local function draw()
 		else
 			local id = Monetization.PRODUCTS[key] or 0
 			local price = ProductPrice.of(id)
-			tile(2 + index, look, strength.icon, strength.name, minutes, win, product.badge, priceText(id, price), id ~= 0 and price ~= nil and luckAllowed == true, function()
+			local words, robux = priceText(id, price)
+			tile(2 + index, look, strength.icon, strength.name, minutes, win, product.badge, words, id ~= 0 and price ~= nil and luckAllowed == true, function()
 				ScreenClear.prompt()
 				Remotes.BuyLuck:FireServer(key)
-			end)
+			end, robux)
 		end
 	end
 	local note = label(list, "The time only runs while you play. All the odds are in the Rarity guide.", Enum.Font.GothamBold, 10, SOFT)
@@ -395,16 +400,18 @@ local function draw()
 		tile(21, SLOT_LOOK, "💼", "Extra Job Slot", sub, "+1 worker, yours forever", nil, "Owned", false, nil)
 	elseif productId ~= 0 then
 		local price = ProductPrice.of(productId)
-		tile(21, SLOT_LOOK, "💼", "Extra Job Slot", sub, "+1 worker, forever", "FOREVER", priceText(productId, price), price ~= nil, function()
+		local words, robux = priceText(productId, price)
+		tile(21, SLOT_LOOK, "💼", "Extra Job Slot", sub, "+1 worker, forever", "FOREVER", words, price ~= nil, function()
 			ScreenClear.prompt()
 			Remotes.BuyUnlock:FireServer(PASS_KEY)
-		end)
+		end, robux)
 	else
 		local price = ProductPrice.ofPass(passId)
-		tile(21, SLOT_LOOK, "💼", "Extra Job Slot", sub, "+1 worker, forever", "FOREVER", priceText(passId, price), passId ~= 0 and price ~= nil, function()
+		local words, robux = priceText(passId, price)
+		tile(21, SLOT_LOOK, "💼", "Extra Job Slot", sub, "+1 worker, forever", "FOREVER", words, passId ~= 0 and price ~= nil, function()
 			ScreenClear.prompt()
 			MarketplaceService:PromptGamePassPurchase(player, passId)
-		end)
+		end, robux)
 	end
 end
 

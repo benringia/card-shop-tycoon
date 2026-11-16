@@ -82,4 +82,27 @@ function ItemRules.openablePack(config: Config, itemId: any): (string?, string?,
 	return info.open, if typeof(info.floor) == "string" then info.floor else nil, info.stingyGrade == true
 end
 
+-- The Bag item a carried box of `productId` becomes (To Bag), or nil for a product with none
+function ItemRules.stockItem(config: Config, productId: any): string?
+	if typeof(productId) ~= "string" then
+		return nil
+	end
+	for id, info in config.ITEMS do
+		if typeof(info) == "table" and info.stock == productId then
+			return id
+		end
+	end
+	return nil
+end
+
+-- The shop product a Bag item is (its `stock`): opening one gives that product's market price in shop XP, like ripping
+-- it from a carried box. Nil for gifts and every other item.
+function ItemRules.stockOf(config: Config, itemId: any): string?
+	if typeof(itemId) ~= "string" then
+		return nil
+	end
+	local info = config.ITEMS[itemId]
+	return if typeof(info) == "table" and typeof(info.stock) == "string" then info.stock else nil
+end
+
 return ItemRules

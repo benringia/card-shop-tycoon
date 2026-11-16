@@ -11,6 +11,9 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Util = Shared:WaitForChild("Util")
 local Levels = require(Config:WaitForChild("Levels"))
+local Products = require(Config:WaitForChild("Products"))
+local RegisterConfig = require(Config:WaitForChild("Register"))
+local LevelMath = require(Util:WaitForChild("LevelMath"))
 local LevelUpFx = require(Config:WaitForChild("LevelUpFx"))
 local Cards = require(Config:WaitForChild("Cards"))
 local Items = require(Config:WaitForChild("Items"))
@@ -125,6 +128,13 @@ local function onOpenBagPack(player: Player, itemId: unknown)
 	end
 	if not PackService or not PackService.OpenItemPack(player, productId, floor, itemId :: string, stingy) then
 		ItemService.GiveItem(player, itemId :: string, 1) -- not a pack after all: give it back
+		return
+	end
+	-- A pack from your stock (To Bag) grows your shop as ripping it from the box does: its market price in XP
+	local stock = ItemRules.stockOf(Items, itemId)
+	local product = if stock then Products.ById[stock] else nil
+	if product then
+		EconomyService.AddXP(player, LevelMath.saleXp(product.marketPrice, RegisterConfig.MIN_XP_PER_SALE))
 	end
 end
 

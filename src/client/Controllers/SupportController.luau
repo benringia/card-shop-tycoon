@@ -24,6 +24,7 @@ local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local HudMascotView = require(ClientUtil:WaitForChild("HudMascotView"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
 local ProductPrice = require(ClientUtil:WaitForChild("ProductPrice"))
+local RobuxPrice = require(ClientUtil:WaitForChild("RobuxPrice"))
 local ScreenClear = require(ClientUtil:WaitForChild("ScreenClear"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local TutorialController = require(Controllers:WaitForChild("TutorialController"))
@@ -61,7 +62,7 @@ end
 local function render()
 	for index, row in tierRows do
 		local price = ProductPrice.of(row.id)
-		row.button.Text = if row.id == 0 then "Soon" elseif price then `R$ {price}` else "Give"
+		RobuxPrice.set(row.button, if row.id == 0 then "Soon" elseif price then "" else "Give", if row.id ~= 0 then price else nil)
 		row.tag.Visible = best() >= index
 	end
 	giftsLabel.Text = if gifts > 0 then string.format(Support.CARD.gifts, gifts, if gifts == 1 then "" else "s") else ""
