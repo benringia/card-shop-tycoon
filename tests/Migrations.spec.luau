@@ -270,6 +270,23 @@ return {
 		expect.equal(kept.tips.toBag, 2, "a saved table kept")
 	end,
 
+	-- Daily quests and welcome-back earnings (owner 2026-11-17: "yes do the three now"): every save starts with no quests
+	-- rolled yet (QuestService rolls today's) and no last-seen time (the first visit after the update earns nothing away)
+	["v33: every save starts with fresh quests and no last-seen time; saved values kept"] = function()
+		local data: any = { version = 32, cash = 7 }
+		Migrations.run(data, 33)
+		expect.equal(data.version, 33)
+		expect.equal(data.quests.day, -1, "no quests rolled yet")
+		expect.equal(#data.quests.list, 0)
+		expect.equal(data.quests.bonus, false)
+		expect.equal(data.lastSeen, 0, "never seen: nothing earned away")
+		expect.equal(data.cash, 7, "the rest untouched")
+		local kept: any = { version = 32, quests = { day = 5, list = {}, bonus = true }, lastSeen = 123 }
+		Migrations.run(kept, 33)
+		expect.equal(kept.quests.day, 5, "saved quests kept")
+		expect.equal(kept.lastSeen, 123, "a saved time kept")
+	end,
+
 	-- Turts' rug shop (spec 2026-11-13-turts-shop-design): the restock a player last saw, what they bought in it, and a
 	-- "restock now" roll if they bought one
 	-- Chikin's tour reordered (owner 2026-11-16: the sword and its fight come in his first visit): a tour in progress

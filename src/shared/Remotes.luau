@@ -42,6 +42,9 @@ local NAMES = {
 	"StoreWin", -- server → client: (kind: "x2" | "x3" | "jobslot", seconds: number) a Store purchase went through: its win card (StoreWinController)
 	"GiftState", -- server → client: (view: GiftRules.View, counting: boolean) the daily, weekly and monthly gifts; client → server: () send it again (GiftService)
 	"GiftClaim", -- client → server: (kind: "daily" | "weekly" | "monthly") claim it; server → client: (kind, day: number, lines: { GiftRules.Line }) its win moment (GiftController)
+	"QuestState", -- server → client: (view: QuestRules.View?, done: number?) today's quests (nil before Pish's tour ends), a quest just finished; client → server: () send it again (QuestService)
+	"QuestClaim", -- client → server: (which: number | "bonus") claim a done quest or the bonus chest; server → client: (which, cash: number, xp: number, items: { { item, count } }) its reward moment (QuestController)
+	"WelcomeBack", -- server → client: (summary: { minutes, units, cash, xp, sold: { [productId]: number }, empty: boolean }) what the shop sold while you were away; client → server: () ready to show it (OfflineService)
 	"TeamInvite", -- client → server: (userId: number) invite that player to your team; server → client: (fromUserId: number, members: { number }, seconds: number) an invite card (TeamService)
 	"TeamAnswer", -- client → server: (fromUserId: number, join: boolean) answer an invite
 	"TeamState", -- server → client: (team: { leader: number, members: { number } }?) your team now (nil: none); client → server: () leave your team
@@ -189,6 +192,9 @@ return {
 	StoreWin = remotes.StoreWin,
 	GiftState = remotes.GiftState,
 	GiftClaim = remotes.GiftClaim,
+	QuestState = remotes.QuestState,
+	QuestClaim = remotes.QuestClaim,
+	WelcomeBack = remotes.WelcomeBack,
 	TeamInvite = remotes.TeamInvite,
 	TeamAnswer = remotes.TeamAnswer,
 	TeamState = remotes.TeamState,

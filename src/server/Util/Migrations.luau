@@ -355,6 +355,17 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 			data.tips = {}
 		end
 	end,
+	-- 32 -> 33: daily quests and welcome-back earnings (owner 2026-11-17: "yes do the three now"): no quests rolled yet
+	-- (QuestService rolls today's; QuestRules.clean keeps a saved table safe) and no last-seen time (OfflineService: the
+	-- first visit after the update earns nothing away)
+	[32] = function(data)
+		if typeof(data.quests) ~= "table" then
+			data.quests = { day = -1, list = {}, bonus = false }
+		end
+		if typeof(data.lastSeen) ~= "number" then
+			data.lastSeen = 0
+		end
+	end,
 }
 
 local function lowestGrade(): string

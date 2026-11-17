@@ -94,6 +94,8 @@ local ReviewsController = require(Controllers:WaitForChild("ReviewsController"))
 local StoreController = require(Controllers:WaitForChild("StoreController"))
 local StoreWinController = require(Controllers:WaitForChild("StoreWinController"))
 local GiftController = require(Controllers:WaitForChild("GiftController"))
+local QuestController = require(Controllers:WaitForChild("QuestController"))
+local WelcomeBackController = require(Controllers:WaitForChild("WelcomeBackController"))
 local TeamController = require(Controllers:WaitForChild("TeamController"))
 local SwordController = require(Controllers:WaitForChild("SwordController"))
 local WeaponSwitchController = require(Controllers:WaitForChild("WeaponSwitchController"))
@@ -165,6 +167,7 @@ if Place.isFrontier() or Place.isDungeon() then
 		PortalFxController.Start() -- its portals' swirls turning (the owner 2026-11-10: "some are no animations")
 		FrontierFxController.Start() -- its snow, red eyes, lightning, tornado, vortex, floating rocks and tremors
 		TeamController.Start() -- teams in the Frontier: Team up prompts, invites, the team strip, boss calls
+		QuestController.Start() -- daily quests: the tracker (not in the Dungeon: its objective holds the top right)
 	end
 else
 	UIController.Start()
@@ -216,6 +219,8 @@ else
 	StoreWinController.Start() -- the win card when a Store purchase goes through
 	GiftController.Start() -- daily, weekly and monthly gifts: the Gift tile, the window, the win moments
 	TeamController.Start() -- teams in this world: Team up prompts, invites, the team strip, boss calls
+	QuestController.Start() -- daily quests: the tracker under the team strip, the window, claims (after TeamController)
+	WelcomeBackController.Start() -- what the shop sold while you were away, once the screen is free
 	BuffController.Start()
 	PartyBarController.Start()
 	CardEffectsController.Start()

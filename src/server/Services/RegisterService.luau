@@ -65,7 +65,7 @@ type Payment = {
 }
 
 type HaggleCallback = (plot: Plot, customer: Customer, offer: number, total: number) -> ()
-type SaleCallback = (customer: Customer, bought: { [string]: number }, byWorker: boolean) -> ()
+type SaleCallback = (customer: Customer, bought: { [string]: number }, byWorker: boolean, total: number) -> ()
 
 local RegisterService = {}
 
@@ -213,7 +213,7 @@ local function completeSale(checkout: Checkout, total: number, byWorker: boolean
 	DataService.AddStat(owner, "totalEarned", total)
 	Remotes.Notify:FireClient(owner, string.format("Sale! +$%.2f", total), false, "side")
 	for _, callback in saleCallbacks do
-		task.spawn(callback, customer, bought, byWorker)
+		task.spawn(callback, customer, bought, byWorker, total)
 	end
 end
 
@@ -665,7 +665,7 @@ function RegisterService.OnHaggle(callback: HaggleCallback)
 	table.insert(haggleCallbacks, callback)
 end
 
--- After every sale, with what the customer bought (product id -> units) and whether a cashier rang it up
+-- After every sale, with what the customer bought (product id -> units), whether a cashier rang it up and what it paid
 function RegisterService.OnSaleCompleted(callback: SaleCallback)
 	table.insert(saleCallbacks, callback)
 end

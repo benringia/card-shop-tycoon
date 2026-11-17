@@ -68,6 +68,7 @@ local SwordService = require(Services:WaitForChild("SwordService"))
 local WeaponService = require(Services:WaitForChild("WeaponService"))
 local WildService = require(Services:WaitForChild("WildService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
+local Funnel = require(Util:WaitForChild("Funnel"))
 local Blocked = require(Util:WaitForChild("Blocked"))
 
 type PlayerData = DataService.PlayerData
@@ -936,6 +937,7 @@ local function payOut(fight: Fight, member: Member): any
 		return { xpEach = xpEach, cash = cash, shopXp = shopXp, shards = 0, party = party }
 	end
 	local rewards = CombatMath.getRewards(Wild, monster.level, monster.elite)
+	Funnel.step(player, "FirstWildWin")
 	-- your own win only, plus the hunting bonus for teammates near you (spec 2026-11-15-teams-design)
 	local team = TeamService.HuntBonus(player)
 	local cash = TeamRules.boostCash(rewards.cash, team)
@@ -1470,9 +1472,13 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 		if marker then
 			markers[partyId(member.leaderId)] = marker
 		end
-		local playerRoot = if boss then getRoot(member.player) else nil
+		-- Wherever the player fights beside their creature (wild, boss, Dungeon: their sword fighter), their root is their
+		-- marker: damage numbers over them and a Grade S Healing Rain's look on them (owner 2026-11-17: only boss fights
+		-- had it, "make the VFX visible on all battles")
+		local playerId = `a:@{member.owner}`
+		local playerRoot = if BattleSim.getFighter(sim, playerId) then getRoot(member.player) else nil
 		if playerRoot then
-			markers[`a:@{member.owner}`] = playerRoot -- damage numbers over the player
+			markers[playerId] = playerRoot
 		end
 	end
 	for _, member in members do

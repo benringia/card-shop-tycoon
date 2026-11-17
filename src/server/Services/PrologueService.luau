@@ -32,6 +32,7 @@ local WeaponService = require(Services:WaitForChild("WeaponService"))
 local WelcomeService = require(Services:WaitForChild("WelcomeService"))
 local WildService = require(Services:WaitForChild("WildService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
+local Funnel = require(Util:WaitForChild("Funnel"))
 
 local PrologueService = {}
 
@@ -104,6 +105,7 @@ local function begin(player: Player)
 	slots[slot] = player
 	local session: Session = { slot = slot, centre = Vector3.new(at.x, at.y, at.z), step = "begun", monster = nil }
 	sessions[player] = session
+	Funnel.step(player, "PrologueStarted")
 	Remotes.PrologueArena:FireClient(player, session.centre)
 	-- Whatever the client does, the lent loadout goes back in time (a real prologue gives it back long before)
 	task.delay(Prologue.MAX_SESSION, function()
@@ -133,6 +135,7 @@ local function startFight(player: Player, session: Session)
 	end
 	monster.marker:SetAttribute("Prologue", true) -- clients draw it two-headed (MonsterController)
 	session.monster = monster
+	Funnel.step(player, "PrologueFight")
 	PartyService.SummonSlot(player, 1)
 	if not BattleService.StartPrologue(player, monster) then
 		WildService.Defeat(monster)
@@ -160,6 +163,7 @@ local function onStep(player: Player, step: unknown)
 		PartyService.Recall(player)
 	elseif step == "take" and session.step == "fought" then
 		session.step = "returned"
+		Funnel.step(player, "PrologueTaken")
 		giveBack(player)
 	end
 end

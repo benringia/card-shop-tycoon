@@ -50,7 +50,7 @@ return {
 		{ id = "bigRack", level = 9, icon = "Shelves", shelf = "BigDisplayRack" },
 		{ id = "boosterBox", level = 11, icon = "BoosterBox", product = "FirstSparkBox" },
 		{ id = "grading", level = 14, icon = "GradingSeal", shelf = "GradingStation" },
-		{ id = "jobs", level = 20, icon = "Jobs" },
+		{ id = "jobs", level = 8, icon = "Jobs" },
 		{ id = "trophy", icon = "Trophy", trigger = "trophy" },
 		{ id = "titles", icon = "Trophy", trigger = "title" }, -- the first title earned: how to equip it (owner 2026-11-13)
 		-- right after his first visit: setting your own prices (owner 2026-11-16: "let pish teach players how to set prices

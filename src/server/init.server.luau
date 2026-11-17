@@ -61,6 +61,8 @@ local BinderReadService = require(Services:WaitForChild("BinderReadService"))
 local GiftService = require(Services:WaitForChild("GiftService"))
 local TeamService = require(Services:WaitForChild("TeamService"))
 local SaveSlotService = require(Services:WaitForChild("SaveSlotService"))
+local QuestService = require(Services:WaitForChild("QuestService"))
+local OfflineService = require(Services:WaitForChild("OfflineService"))
 
 local Place = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("Place"))
 
@@ -82,6 +84,7 @@ if Place.isDungeon() then
 	SupportService.Start() -- "Support the dev" gifts: aura, best tier (before TitleService: its titles)
 	LuckService.Start() -- luck bought with Robux: its time running down while you play (after PurchaseService)
 	GiftService.Start() -- daily, weekly and monthly gifts: play time counts here too (claimed in the main game)
+	QuestService.Start() -- daily quests: fights here count (after EconomyService, ItemService, CardService, BattleService)
 	TitleService.Start() -- the title over the name (after BossService and SupportService: their progress)
 	DungeonService.Start() -- the run: arrivals, rooms, carried HP (after BattleService and WildService's cavern)
 	FrontierService.Start() -- back to the Frontier
@@ -113,6 +116,7 @@ elseif Place.isFrontier() then
 	SupportService.Start() -- "Support the dev" gifts: aura, best tier (before TitleService: its titles)
 	LuckService.Start() -- luck bought with Robux: its time running down while you play (after PurchaseService)
 	GiftService.Start() -- daily, weekly and monthly gifts: play time counts here too (claimed in the main game)
+	QuestService.Start() -- daily quests: fights here count (after EconomyService, ItemService, CardService, BattleService)
 	TeamService.Start() -- teams in this world: invites, the team strip, the hunting bonus (bosses call teammates)
 	TitleService.Start() -- the title over the name (after BossService and SupportService: their progress)
 	FrontierService.Start() -- the Return portal and home button: back to the main game
@@ -177,6 +181,8 @@ else
 	LeaderboardService.Start() -- the plaza leaderboard: most packs opened (after PlotService and the plaza)
 	TurtsService.Start() -- Turts' rug shop: restocks, his spot, buys, "restock now" (after PurchaseService and WildService)
 	GiftService.Start() -- daily, weekly and monthly gifts: play time, claims (after EconomyService, ItemService, LuckService, BattleService)
+	QuestService.Start() -- daily quests (after EconomyService, ItemService, CardService, BattleService, RegisterService, PackService, StockService)
+	OfflineService.Start() -- welcome-back earnings: shelves sell while you're away (after PlacementService and PricingService load)
 	TeamService.Start() -- teams in this world: invites, the team strip, the hunting bonus (bosses call teammates)
 	BinderReadService.Start() -- your binder open shows you reading it (after BattleService)
 	DevService.Start() -- Studio only

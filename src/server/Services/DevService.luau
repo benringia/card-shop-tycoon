@@ -873,6 +873,20 @@ function DevService.Start()
 			Remotes.Notify:FireClient(player, "Usage: /gift ready | day <1-7> | week <n> | month <n> | reset | tutorial | win <daily|big|weekly|monthly>", true)
 		end
 	end)
+	-- Daily quests (Config/Quests): /quests done (every quest of today done, ready to claim), /quests new (a new day's)
+	addCommand(folder, "quests", function(player, text)
+		local word = string.match(text, "^/%w+%s+(%w+)")
+		local QuestService = require(script.Parent:WaitForChild("QuestService")) :: any
+		local said = if word then QuestService.Dev(player, string.lower(word)) else nil
+		Remotes.Notify:FireClient(player, said or "Usage: /quests done | new", said == nil)
+	end)
+	-- Welcome-back earnings (Config/Offline): /away <minutes> sells as if you'd been away that long (the stock really goes)
+	addCommand(folder, "away", function(player, text)
+		local minutes = tonumber(string.match(text, "^/%w+%s+(%d+)"))
+		local OfflineService = require(script.Parent:WaitForChild("OfflineService")) :: any
+		local said = if minutes then OfflineService.Dev(player, minutes) else nil
+		Remotes.Notify:FireClient(player, said or "Usage: /away <minutes>", said == nil)
+	end)
 	addCommand(folder, "frontierdrop", function(player)
 		ItemService.GiveItem(player, "starShard", 1)
 		local pool = Cards.BySet.Frontier

@@ -8,7 +8,9 @@ return {
 		Restocker = { icon = "Shelves", text = "Carries boxes from the delivery pad to empty shelves" },
 		Cashier = { icon = "Register", text = "Scans customers' cards at the register" },
 	},
-	UNLOCK_LEVEL = 20, -- shop level for the first job slot
+	-- shop level for the first job slot (owner 2026-11-17: "unlock the cashier earlier": was 20, the manual register
+	-- grew into a chore before then; level 8 is about half an hour into a first session)
+	UNLOCK_LEVEL = 8,
 	FREE_SLOTS = 1,
 	PASS_SLOTS = 1, -- extra slots from the Extra Job Slot game pass
 	-- The Extra Job Slot on offer in the Shop Jobs window (owner 2026-11-15: "slot 2 should already say Unlock and make

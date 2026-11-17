@@ -28,6 +28,7 @@ local ItemService = require(Services:WaitForChild("ItemService"))
 local BattleService = require(Services:WaitForChild("BattleService"))
 local CardService = require(Services:WaitForChild("CardService"))
 local RateLimiter = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("RateLimiter"))
+local Funnel = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("Funnel"))
 
 local LevelUpService = {}
 
@@ -45,6 +46,7 @@ local function sendShop(player: Player, levels: LevelUpRules.Pending)
 end
 
 local function onLevelUp(player: Player, from: number, to: number)
+	Funnel.levels(player, from, to) -- the onboarding funnel's levels (Config/Funnel LEVELS)
 	for item, count in LevelUpRules.rewards(Levels, from, to).items do
 		ItemService.GiveItem(player, item, count)
 	end

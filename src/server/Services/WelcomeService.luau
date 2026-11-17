@@ -13,6 +13,7 @@ local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
 local DataService = require(Services:WaitForChild("DataService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
+local Funnel = require(Util:WaitForChild("Funnel"))
 
 type PlayerData = DataService.PlayerData
 
@@ -26,11 +27,17 @@ local allowSeen = RateLimiter.new(SEEN_COOLDOWN)
 local allowPrologueSeen = RateLimiter.new(SEEN_COOLDOWN)
 
 local function setSeen(player: Player, value: boolean)
+	if value and seen[player] == false then
+		Funnel.step(player, "WelcomeFlightDone")
+	end
 	seen[player] = value
 	player:SetAttribute("SeenWelcome", value)
 end
 
 local function setPrologueSeen(player: Player, value: boolean)
+	if value and prologueSeen[player] == false then
+		Funnel.step(player, "PrologueDone")
+	end
 	prologueSeen[player] = value
 	player:SetAttribute("SeenPrologue", value)
 end
@@ -70,6 +77,9 @@ function WelcomeService.Replay(player: Player)
 end
 
 local function load(player: Player, data: PlayerData)
+	if data.seenPrologue ~= true then
+		Funnel.step(player, "Joined") -- a new player (the onboarding funnel's first step)
+	end
 	setPrologueSeen(player, data.seenPrologue == true)
 	setSeen(player, data.seenWelcome == true)
 end

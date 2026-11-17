@@ -52,7 +52,9 @@ return {
 
 	["the new levels are the spec's table"] = function()
 		expect.equal(Products.ById.CardSleeves.unlockLevel, 3, "Card Sleeves")
-		expect.equal(Jobs.UNLOCK_LEVEL, 20, "shop jobs")
+		-- owner 2026-11-17: "unlock the cashier earlier" (the manual register grows into a chore before level 20): the first
+		-- job slot at level 8, about half an hour into a first session
+		expect.equal(Jobs.UNLOCK_LEVEL, 8, "shop jobs")
 		local want = { 4, 7, 14, 26, 34, 43, 57 }
 		for index, bossId in Bosses.LADDER do
 			expect.equal(Bosses.BOSSES[bossId].shopLevel, want[index], `boss {index}`)

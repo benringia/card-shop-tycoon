@@ -1908,7 +1908,10 @@ group, checked before its fragments and every time (not only the first). Below i
   player a Grade S rain heals too (owner 2026-11-17: "add a healing effect on the player too") gets no cloud (it would
   hide the fight from their camera) but the rain's drizzle falling round them from over their head, a soft green glow
   and light, the grade's motes and water rings at their feet, and on each tick a green flash on their body and a burst
-  of motes (`MoveFx.healPlayer` / `healPlayerTick`, `Config/MoveFx PLAYER_HEAL`; it stops if they go down). Vine
+  of motes (`MoveFx.healPlayer` / `healPlayerTick`, `Config/MoveFx PLAYER_HEAL`; it stops if they go down). It shows in
+  every fight they fight in with their sword, wild, boss and Dungeon (and PvP once it has the player fighter): the
+  fight sends their root as their marker whenever they're a fighter, not only in boss fights (owner 2026-11-17: "make
+  the VFX visible on all battles"; their heal and damage numbers show there too). Vine
   Snare: vines (C, B) or thorny roots (A, S) climbing round the target on helices for its 4 s, then withering; leaves,
   thorns, dirt, a glowing crack and flowers by grade. Overcharge: three orbs circling the caster, one spent with each
   fast attack (the sim's `orb` field; a missed one fizzles on an `orbs` event), arcs between them (A), a bolt with
@@ -3189,7 +3192,7 @@ owner 2026-11-16 ("maybe adjust the shop leveling. I think it takes too long to 
 2026-11-17 ("I just want the fast level to be the retention mechanism make the players feel progress always ... make it
 like 4": shop levels are the steady feeling of progress, upgrading and maxing cards and weapons the real grind; then
 the same day "is it not game breaking upping it to 6x?") every level needs 1/6 of that XP and the unlocks stay at their
-levels, so they come sooner: Lv 5 ≈ 160 XP, Lv 10 ≈ 1,070, Lv 20 ≈ 6,000 (shop jobs, about 2 hours in), the Prism
+levels, so they come sooner: Lv 5 ≈ 160 XP, Lv 10 ≈ 1,070, Lv 8 ≈ 600 (shop jobs since 2026-11-17, about half an hour in), Lv 20 ≈ 6,000, the Prism
 Hydra's Lv 57 ≈ 72,800 (`tests/LevelMath`, `LevelRemap`). Mid-game a level is a few hundred XP (Lv 10 to 11: 290) and
 late a few thousand (50 to 51: 2,550), so a shop going well still levels about every half hour. Why 6x doesn't break
 the game: what a level opens is still paid for in cash, the bosses still need the Power, the gifts are the same 100
@@ -3275,7 +3278,8 @@ its last second (`LevelUpFx.CREATURE_GLOW`). They're preloaded on the loading sc
 
 ### 7.4 Staff: shop jobs (cards that work)
 Hired staff became **shop jobs**: your levelled cards do the work (spec `2026-10-21-shop-jobs-design.md`).
-- **Slots:** 1 at shop Lv 20; the "Extra Job Slot" game pass adds 1 more (max 2). Once you can buy it, its row is an
+- **Slots:** 1 at shop Lv 8 (owner 2026-11-17: "unlock the cashier earlier"; it was 20, the manual register grew into a
+  chore before then); the "Extra Job Slot" game pass adds 1 more (max 2). Once you can buy it, its row is an
   offer (owner 2026-11-15: "slot 2 should already say Unlock and make the window more enticing to buy"; `Jobs.OFFER`):
   golden, a light sweeping across it, the worker icon with a green "+1" and stars twinkling round it, "Unlock a 2nd
   worker!" and what it does, and a big breathing green "Unlock · R$ <live price>". Assign from the binder card
@@ -3404,7 +3408,7 @@ All numbers in `Config/Pish`.
   something for the first time, pish will visit and teach them"): every town and shop unlock has one (`Pish.LESSONS`;
   `tests/LessonRules` fails for a Products or Shelves unlock without one): Glass Showcase 2, Card Sleeves 3, Collector
   Case 3, first sword 4, Wall Shelf 4, Condenser 5, Forge 6, Deck Boxes 7, Accessory Hook 7, Big Display Rack 9,
-  Booster Boxes 11, Grading Station 14, Jobs 20, and the first trophy (an event: a trophy item given,
+  Booster Boxes 11, Grading Station 14, Jobs 8, and the first trophy (an event: a trophy item given,
   `ItemService.OnGiven`). The two cases unlock at 1 and are taught once his first visit has given you cards; combat
   (bosses, the Wild, weapons) is left for Chikin's tutorial. A level-up (or the trophy) marks them waiting (saved
   `false` in `tutorial.lessons` until shown, so ones gained in the Frontier or the Dungeon wait for the town); players
@@ -3664,6 +3668,41 @@ bonus"; the strip "at the right side"). Teams across worlds (going to the Fronti
   (remote `TeamFight`), BattleService pays the bonus. Remotes `TeamInvite`, `TeamAnswer`, `TeamState`, `TeamFight`.
   Test with two players: Studio's Test tab, Local Server, 2 players.
 
+### 7.12 Daily quests, welcome-back earnings and the playtest funnel (built 2026-11-17)
+Owner 2026-11-17, before Friday's playtest ("yes do the three now"; mockups artifact 4YYqbzd8Cn5eHfW5XSHZay, my picks:
+the always-on tracker B, the money card A).
+- **Daily quests** (`Config/Quests`, pure `Util/QuestRules`, `QuestService`, `QuestController`; tests/QuestRules): each
+  UTC day three quests, one per kind (shop: serve customers, earn from sales, put boxes on shelves; cards: rip packs,
+  level up creatures from shop Lv 3; adventure: win wild fights, beat a boss from Lv 4), picked among those unlocked at
+  the shop's level, their goals from level bands (Lv 1: serve 3, rip 3, win 2). They start once Pish's first visit is
+  over, like the gifts, and count in every place (fights in the Frontier and the Dungeon too: `BattleService.OnFightEnded`
+  wins, `CardService.OnBeastLevelUp`, `RegisterService.OnSaleCompleted` now passes the sale's total, `PackService.OnOpened`,
+  `StockService.OnStocked`). Each claimed quest pays $15 + $3 x the shop level and the same in shop XP; all three
+  claimed open the **Quest Chest** (a First Spark Pack and an XP Tonic). On screen: a cream card at the top right
+  (under the team strip on a computer, under the cash row on a phone, one line there: "Quests 1/3") with each quest's
+  words, count and bar, a mint "Claim!" chip when something can be claimed and, once all is done, "Quests done! New
+  quests in 16h 46m"; a toast as one finishes; tapping it opens the **Daily Quests** window (the butter-gold band,
+  CreamTheme `Quests`): each row's icon, words, bar, "2/3 · +$57 · +57 shop XP" and Claim / Keep going! / Claimed, the
+  chest row, the countdown to the next UTC midnight. A claim sends coins from the button into the cash pill
+  (`Util/CoinBurst`). The card hides with the HUD (fights, the binder, Pish's and Chikin's calm HUD, manning the
+  register) and on a phone while a window is open; not in the Dungeon (its objective holds the top right). Saved as
+  `quests` (schema v33). Studio: `/quests done | new`.
+- **Welcome-back earnings** (`Config/Offline`, pure `Util/OfflineRules`, `OfflineService`, `WelcomeBackController`;
+  tests/OfflineRules): when a save loads in the main game after 10 minutes or more away, the shelves sell their stock as
+  if customers had come meanwhile: 2 customers' worth a minute (about a fifth of a busy shop), shared between the
+  stocked shelves by what they hold, each buying at its shelf's price band chance (Config/Pricing BUY_BANDS), for up to
+  2 hours. Real stock only (`PlacementService.TakeStock`): empty shelves earn nothing, which is the reason to restock
+  before leaving and to come back. Cash and shop XP ($1 = 1 XP, like a sale) go through EconomyService at load, so
+  nothing is lost if the window never shows; once the loading screen, the prologue and the welcome flight are done and
+  no window is up, the client asks and a gold "Welcome back!" window shows how long, what sold ("23 packs"), the cash and
+  XP, and "Your shelves are empty. Restock them!" (or a tip to stock up); Collect sends coins into the cash pill. Time in
+  the Frontier or the Dungeon counts as away. `lastSeen` (schema v33) is written at every main-game save. Studio:
+  `/away <minutes>`.
+- **The playtest funnel** (`Config/Funnel`, server `Util/Funnel`; tests/Funnel): one Roblox onboarding funnel
+  (Creator Hub, Analytics, Funnels), each step once per player: Joined, the prologue's start, fight, taking and end,
+  the welcome flight, Pish's eight tour steps in order, the first wild win, Lv 3, the first quest claimed, Lv 5, Lv 8
+  (the cashier's level) and Lv 10. Chikin's tour keeps its own funnel; Pish's lesson events stay custom events.
+
 ## 8. Monetization
 
 Principle: sell **convenience, speed and looks**, not "win". Never sell anything that makes another player's experience worse.
@@ -3889,6 +3928,8 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── LevelUpService.luau   # shop level-up packs, opening Bag packs (OpenBagPack), the LevelUpFx broadcast (held mid-fight)
     │   │   ├── LeaderboardService.luau # the plaza leaderboard: packs-opened totals to an OrderedDataStore (every place), the cards' lists (main game)
     │   │   ├── TurtsService.luau     # Turts' rug shop: the restock clock, his spot, each player's offers and buys, Robux restock now (DESIGN 7.9)
+    │   │   ├── QuestService.luau     # daily quests: rolled per UTC day, counted from the game, claims and the Quest Chest (DESIGN 7.12)
+    │   │   ├── OfflineService.luau   # welcome-back earnings: shelves sell their stock while you're away (DESIGN 7.12)
     │   │   ├── PurchaseService.luau  # the one ProcessReceipt: developer products granted once, ever (receipt ids saved first)
     │   │   ├── SupportService.luau   # "Support the dev": gifts, the best tier, the supporter aura (SupporterTier)
     │   │   ├── ReviewService.luau    # the phone's Reviews: customers' posts from their visits (runtime)
@@ -3910,6 +3951,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │       ├── PortalBuild.luau      # dresses a town portal model: vortex, glow, effects, light (and the old frame's emitters)
     │       ├── ScenePieces.luau      # anchored parts and scaled prop copies for the code-built scenery
     │       ├── TownDog.luau          # a town dog's marker, walk round the fountain, clips and petting hold (Town Pish, Town Chikin)
+    │       ├── Funnel.luau           # the new player's onboarding funnel steps to Roblox Analytics (Config/Funnel)
     │       └── RateLimiter.luau      # per-player remote cooldowns
     ├── first/                  # → ReplicatedFirst.LoadingScreen (runs before anything else loads)
     │   ├── Show.client.luau    # the loading screen from the first frame (or the one a teleport brought), fades when done
@@ -3959,6 +4001,8 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── TownPishController.luau # Town Pish drawn on the server's marker, his clips and hearts
     │   │   ├── TownChikinController.luau # Town Chikin drawn the same way, his pet prompt once the combat tour is done
     │   │   ├── TurtsController.luau  # Turts on his rug (head shake, sit, spin), your offers on it, his timer and beacon, the shop window
+    │   │   ├── QuestController.luau  # the daily quests' tracker at the top right, the Daily Quests window, claims with coins
+    │   │   ├── WelcomeBackController.luau # the "Welcome back!" window: what the shop sold while you were away, Collect
     │   │   ├── PriceTagController.luau  # point at / tap your shelf price tags to set the price
     │   │   ├── PartyBarController.luau  # bottom-right party cushion: Party pill + 3 round portraits (and the mascot), tap or 1/2/3 to summon
     │   │   ├── MonsterController.luau   # draws wild monsters on their markers (model or placeholder) at their species' height, glow masks, Fx_ bone effects; boss rigs, head glow, death
@@ -4086,6 +4130,9 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
         │   ├── LevelUpFx.luau  # the level-up pillar's textures, timing, sizes, colours, sound options (plain data)
         │   ├── Leaderboard.luau  # the plaza leaderboard: store name, timings, the list cards' face (plain data)
         │   ├── Turts.luau  # Turts' rug shop: timer, offers (price, usual value, weight), his spots, shake, size and barks (plain data)
+        │   ├── Quests.luau  # daily quests: kinds, the pool with goals by level, pay, the Quest Chest (plain data)
+        │   ├── Offline.luau # welcome-back earnings: the time away that counts, the pace, XP, product words (plain data)
+        │   ├── Funnel.luau  # the onboarding funnel's steps in order and its levels (plain data)
         │   ├── PackFx.luau     # the opening's effect sheets and images (plain data)
         │   ├── UIMotion.luau   # UI motion timings and scales (client)
         │   ├── UIFonts.luau    # the game fonts (client)
@@ -4270,6 +4317,8 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── LevelUpRules.luau  # level-up rewards (cash every level, a gift every 5th), titles reached, held effects merged (pure, Lune-tested)
             ├── LeaderboardRules.luau  # the plaza leaderboard's lists, store writes and counts (pure, Lune-tested)
             ├── TurtsRules.luau  # Turts' restock clock, roll, buy check, saved state, spots, price rule, head shake (pure, Lune-tested)
+            ├── QuestRules.luau  # daily quests: roll, refresh, progress, claims, the chest, clean, view (pure, Lune-tested)
+            ├── OfflineRules.luau # welcome-back earnings: minutes away, what the shelves sell (pure, Lune-tested)
             ├── UpgradeRules.luau  # station jobs: waits, Finish now tiers, the clock, saved jobs read back (pure, Lune-tested)
             ├── ReceiptRules.luau  # receipts already granted, the newest 100 kept (pure, Lune-tested)
             ├── ReviewRules.luau   # the Reviews app: a visit's post, the feed, unseen posts (pure, Lune-tested)
@@ -4288,7 +4337,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v32)
+### 10.4 Player data schema (v33)
 ```lua
 {
     version = 21,
@@ -4339,6 +4388,8 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     seenPrologue = false, -- the prologue played (WelcomeService; new saves false, saves from before true: v29)
     gifts = { streak = 0, lastDay = -1, playDay = -1, played = 0, week = -1, weekDays = 0, weekEarned = false, month = -1, monthDays = 0, monthEarned = false, claims = 0 }, -- daily, weekly and monthly gifts: the 7-day round, today's play time, the week's and month's bars and earned chests (GiftService, Util/GiftRules; v30)
     tips = { toBag = 2 }, -- how many times each tip has shown, by Config/Tips id (TipService, Util/TipRules; v32)
+    quests = { day = 20410, list = { { id = "serve", goal = 3, progress = 1, claimed = false } }, bonus = false }, -- today's daily quests (QuestService, Util/QuestRules; v33)
+    lastSeen = 1795000000, -- os.time of the last main-game save: welcome-back earnings (OfflineService; v33, 0 = never)
 }
 ```
 Bump `version` and write a migration whenever the shape changes.

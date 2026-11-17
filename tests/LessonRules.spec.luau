@@ -88,7 +88,7 @@ return {
 		expect.equal(levels.expand, 7)
 		expect.equal(levels.boosterBox, 11)
 		expect.equal(levels.grading, 14)
-		expect.equal(levels.jobs, 20)
+		expect.equal(levels.jobs, 8) -- owner 2026-11-17: the cashier earlier (was 20)
 	end,
 
 	-- Shop decor (spec 2026-11-14-shop-decor-design): one lesson for the Decor tab, at level 2 (a level-1 lesson

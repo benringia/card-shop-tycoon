@@ -49,7 +49,7 @@ return {
 	end,
 
 	["every header band has a top and a bottom colour"] = function()
-		for _, name in { "Bag", "Cards", "Bosses", "Party", "Shop", "Prices", "Jobs", "Default" } do
+		for _, name in { "Bag", "Cards", "Bosses", "Party", "Shop", "Prices", "Jobs", "Quests", "Default" } do
 			local band = CreamTheme.headers[name]
 			expect.equal(#band.top == 3 and #band.bottom == 3, true, name)
 		end

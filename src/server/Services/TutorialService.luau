@@ -23,6 +23,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
 local RateLimiter = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("RateLimiter"))
+local Funnel = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("Funnel"))
 local CustomerService = require(Services:WaitForChild("CustomerService"))
 local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
@@ -216,10 +217,7 @@ record = function(player: Player, stepId: string)
 		return -- nothing completed (a step for later, one already passed, or not in the tutorial): nothing to send
 	end
 	for _, id in done do
-		local index = table.find(STEPS, id) :: number
-		log(function()
-			AnalyticsService:LogOnboardingFunnelStepEvent(player, index, id)
-		end)
+		Funnel.step(player, id) -- the onboarding funnel (Config/Funnel: after the prologue and the welcome flight)
 	end
 	if after.firstVisit == "todo" and after.step > #STEPS then
 		states[player] = TutorialRules.finish(after)
