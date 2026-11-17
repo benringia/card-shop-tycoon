@@ -3,8 +3,10 @@
 -- circle is enough"): a spinning rune circle opens on the ground, a pillar of light (a white core in a coloured glow,
 -- motes rising in it) shoots up and the one levelling up lights for a moment, then a star badge pops with the number
 -- rolling up and "LEVEL UP!" under it; the beam thins and the circle fades. Every 10th level the pillar is the five
--- baby colours and a pack flies out ("+1 pack"). A creature gets a smaller pillar in its element's colour and a
--- "Lv 19 -> 20" chip. Numbers, textures and sounds: Config/LevelUpFx. Played by LevelUpController.
+-- baby colours and a pack flies out ("+1 pack"). A creature gets a smaller pillar in its element's colour and its level
+-- chip (owner 2026-11-17, mockup B: a LEVEL UP! tab on a pill in its element's colour, "Lv 19" then three arrows
+-- lighting and "Lv 20" popping in gold, a shine, "+1"). Numbers, textures and sounds: Config/LevelUpFx. Played by
+-- LevelUpController.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -184,21 +186,224 @@ local function stroke(label: TextLabel, color: Color3, thickness: number): UIStr
 	return edge
 end
 
--- The words over the one levelling up: the star badge with the rolling number and "LEVEL UP!" (a shop), or a white
--- chip "Lv 19 -> 20" (a creature). Returns the gui, its pop scale and a setter for its fade (0 shown, 1 gone).
-local function badge(adornee: BasePart, height: number, from: number, to: number, creature: boolean, milestone: boolean, folder: Instance): (BillboardGui, (t: number) -> (), (fade: number) -> ())
+-- 0 before `at` seconds, rising to 1 over `length` seconds
+local function window(since: number, at: number, length: number): number
+	return math.clamp((since - at) / length, 0, 1)
+end
+
+-- A pop's ease: a little past 1, then settles
+local function backOut(x: number): number
+	local p = x - 1
+	return 1 + 2.70158 * p * p * p + 1.70158 * p * p
+end
+
+-- See-through `own`, faded further by `fade` (0 shown, 1 gone)
+local function faded(own: number, fade: number): number
+	return 1 - (1 - own) * (1 - fade)
+end
+
+-- The words' billboard over the one levelling up, `size` in studs, `height` studs over `adornee`: drawn in the world
+-- (not on top), sure to show, and high enough to clear hats
+local function billboard(adornee: BasePart, size: UDim2, height: number, folder: Instance): BillboardGui
 	local gui = Instance.new("BillboardGui")
 	gui.Adornee = adornee
-	-- Drawn in the world (not on top): sure to show, and placed high enough to clear hats
 	gui.AlwaysOnTop = false
 	gui.LightInfluence = 0
-	gui.Size = if creature then UDim2.new(4.2, 0, 1.2, 0) else UDim2.new(6, 0, 4.6, 0)
+	gui.Size = size
 	gui.StudsOffset = Vector3.new(0, height, 0)
 	gui.MaxDistance = LevelUpConfig.RANGE * 1.5
 	gui.ResetOnSpawn = false
 	-- A BillboardGui is only drawn under a part, an attachment or PlayerGui (not in a workspace folder)
 	local player = Players.LocalPlayer
 	gui.Parent = if player then player:FindFirstChildOfClass("PlayerGui") or folder else folder
+	return gui
+end
+
+-- A frame of the chip: `round` makes it a pill (or a circle)
+local function chipFrame(parent: Instance, color: Color3, position: UDim2, size: UDim2, z: number, round: boolean): Frame
+	local made = Instance.new("Frame")
+	made.BackgroundColor3 = color
+	made.BorderSizePixel = 0
+	made.Position = position
+	made.Size = size
+	made.ZIndex = z
+	made.Parent = parent
+	if round then
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0.5, 0)
+		corner.Parent = made
+	end
+	return made
+end
+
+-- A creature's level chip (Config/LevelUpFx CHIP; owner 2026-11-17, mockup B): a gold LEVEL UP! tab on a white pill
+-- edged in its element's colour, its element's icon, the old level muted, three arrows lighting one after another,
+-- then the new level popping in big and gold, a shine across it, "+1" floating up and two sparkles. Returns the gui and
+-- its animation: `since` seconds since it popped, `fade` 0 shown to 1 gone (it rises as it fades)
+local function levelChip(adornee: BasePart, height: number, from: number, to: number, element: string, folder: Instance): (BillboardGui, (since: number, fade: number) -> ())
+	local CHIP = LevelUpConfig.CHIP
+	local shades = UIStyle.BABY[BabyColors.ELEMENTS[element] or "butter"]
+	local gui = billboard(adornee, UDim2.new(CHIP.size[1], 0, CHIP.size[2], 0), height, folder)
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Global -- its pieces layer by ZIndex (the tab's foot behind the pill)
+	local holder = Instance.new("Frame")
+	holder.BackgroundTransparency = 1
+	holder.Size = UDim2.fromScale(1, 1)
+	holder.Parent = gui
+	local scale = Instance.new("UIScale")
+	scale.Scale = 0
+	scale.Parent = holder
+
+	-- The gold tab on top, its foot tucked behind the pill
+	local tab = chipFrame(holder, WHITE, UDim2.fromScale(0.5, 0), UDim2.fromScale(0.44, 0.36), 1, false)
+	tab.AnchorPoint = Vector2.new(0.5, 0)
+	local tabCorner = Instance.new("UICorner")
+	tabCorner.CornerRadius = UDim.new(0.3, 0)
+	tabCorner.Parent = tab
+	local tabGold = Instance.new("UIGradient")
+	tabGold.Rotation = 90
+	tabGold.Color = ColorSequence.new(Color3.fromRGB(255, 214, 90), Color3.fromRGB(255, 138, 60))
+	tabGold.Parent = tab
+	local tabText = scaledLabel(tab, "LEVEL UP!", WHITE)
+	tabText.Position = UDim2.fromScale(0.08, 0.1)
+	tabText.Size = UDim2.fromScale(0.84, 0.52)
+	tabText.ZIndex = 2
+	local tabEdge = stroke(tabText, DROP, 1.5)
+
+	-- The pill: a shadow in the element's deep shade under its colour, a white middle `edge` studs in
+	local pillTop, pillHeight = 0.28, 0.68
+	local shadow = chipFrame(holder, shades.deep, UDim2.fromScale(0, pillTop + 0.06), UDim2.fromScale(1, pillHeight), 3, true)
+	local edge = chipFrame(holder, shades.fill, UDim2.fromScale(0, pillTop), UDim2.fromScale(1, pillHeight), 4, true)
+	local edgeX = CHIP.edge / CHIP.size[1]
+	local edgeY = CHIP.edge / (CHIP.size[2] * pillHeight)
+	local inner = chipFrame(edge, WHITE, UDim2.fromScale(edgeX, edgeY), UDim2.fromScale(1 - 2 * edgeX, 1 - 2 * edgeY), 5, true)
+	-- the element's icon on a soft circle of its colour
+	local circle = chipFrame(inner, shades.light, UDim2.fromScale(0.018, 0.5), UDim2.fromScale(0.82, 0.82), 6, true)
+	circle.AnchorPoint = Vector2.new(0, 0.5)
+	circle.SizeConstraint = Enum.SizeConstraint.RelativeYY
+	local icon = Instance.new("ImageLabel")
+	icon.BackgroundTransparency = 1
+	icon.Image = (UIIcons :: any)[element] or ""
+	icon.ScaleType = Enum.ScaleType.Fit
+	icon.AnchorPoint = Vector2.new(0.5, 0.5)
+	icon.Position = UDim2.fromScale(0.5, 0.5)
+	icon.Size = UDim2.fromScale(0.74, 0.74)
+	icon.ZIndex = 7
+	icon.Parent = circle
+	local fromText = scaledLabel(inner, `Lv {from}`, UIStyle.BABY.greyLilac.deep)
+	fromText.Position = UDim2.fromScale(0.205, 0.2)
+	fromText.Size = UDim2.fromScale(0.18, 0.6)
+	fromText.ZIndex = 7
+	local arrows: { TextLabel } = {}
+	for index = 1, 3 do
+		local arrow = scaledLabel(inner, ">", shades.deep)
+		arrow.Position = UDim2.fromScale(0.39 + (index - 1) * 0.05, 0.16)
+		arrow.Size = UDim2.fromScale(0.05, 0.68)
+		arrow.ZIndex = 7
+		table.insert(arrows, arrow)
+	end
+	local toText = scaledLabel(inner, `Lv {to}`, WHITE)
+	toText.Position = UDim2.fromScale(0.545, 0.04)
+	toText.Size = UDim2.fromScale(0.42, 0.92)
+	toText.ZIndex = 7
+	local toGold = Instance.new("UIGradient")
+	toGold.Rotation = 90
+	toGold.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 243, 160)),
+		ColorSequenceKeypoint.new(0.55, Color3.fromRGB(255, 201, 63)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 138, 60)),
+	})
+	toGold.Parent = toText
+	local toEdge = stroke(toText, DROP, 2)
+	local toScale = Instance.new("UIScale")
+	toScale.Scale = 0
+	toScale.Parent = toText
+	-- the shine: a white band on a copy of the middle's shape, swept across once
+	local shine = chipFrame(inner, WHITE, UDim2.fromScale(0, 0), UDim2.fromScale(1, 1), 8, true)
+	shine.BackgroundTransparency = 1
+	local band = Instance.new("UIGradient")
+	band.Rotation = 20
+	band.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.42, 1),
+		NumberSequenceKeypoint.new(0.5, 0.2),
+		NumberSequenceKeypoint.new(0.58, 1),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	band.Parent = shine
+
+	-- "+1" floating up by the new level, and two sparkles at its ends
+	local plus = scaledLabel(holder, "+1", WHITE)
+	plus.AnchorPoint = Vector2.new(0.5, 1)
+	plus.Size = UDim2.fromScale(0.16, 0.34)
+	plus.ZIndex = 9
+	local plusEdge = stroke(plus, shades.deep, 2)
+	local sparkles: { { image: ImageLabel, scale: UIScale } } = {}
+	for index, spot in { { 0.03, 0.42 }, { 0.98, 0.3 } } do
+		local image = Instance.new("ImageLabel")
+		image.BackgroundTransparency = 1
+		image.Image = IMAGES.mote
+		image.ImageColor3 = if index == 1 then Color3.fromRGB(255, 220, 110) else WHITE
+		image.AnchorPoint = Vector2.new(0.5, 0.5)
+		image.Position = UDim2.fromScale(spot[1], spot[2])
+		image.Size = UDim2.fromScale(0.42, 0.42)
+		image.SizeConstraint = Enum.SizeConstraint.RelativeYY
+		image.ZIndex = 9
+		image.Parent = holder
+		local twinkle = Instance.new("UIScale")
+		twinkle.Scale = 0
+		twinkle.Parent = image
+		table.insert(sparkles, { image = image, scale = twinkle })
+	end
+
+	return gui, function(since: number, fade: number)
+		scale.Scale = backOut(window(since, 0, 0.45))
+		for _, piece in { shadow, edge, inner, circle } do
+			piece.BackgroundTransparency = fade
+		end
+		icon.ImageTransparency = fade
+		fromText.TextTransparency = fade
+		-- the tab drops into place
+		local tabIn = window(since, 0.08, 0.3)
+		tab.Position = UDim2.fromScale(0.5, 0.14 * (1 - backOut(tabIn)))
+		tab.BackgroundTransparency = faded(1 - tabIn, fade)
+		tabText.TextTransparency = tab.BackgroundTransparency
+		tabEdge.Transparency = tab.BackgroundTransparency
+		-- the arrows light one after another, then breathe
+		for index, arrow in arrows do
+			local lit = window(since, CHIP.arrows[index], 0.15)
+			local breathe = if since > CHIP.newLevel + 0.5 then 0.3 * (0.5 + 0.5 * math.sin((since - CHIP.newLevel) * 5 - index)) else 0
+			arrow.TextTransparency = faded(0.82 * (1 - lit) + breathe * lit, fade)
+		end
+		-- the new level pops in
+		toScale.Scale = backOut(window(since, CHIP.newLevel, 0.45))
+		toText.TextTransparency = faded(1 - window(since, CHIP.newLevel, 0.1), fade)
+		toEdge.Transparency = toText.TextTransparency
+		-- "+1" floats up and away
+		local up = window(since, CHIP.plus, 1.1)
+		plus.Position = UDim2.fromScale(0.86, 0.36 - 0.36 * up)
+		local plusSee = if up <= 0 or up >= 1 then 1 elseif up < 0.2 then 1 - up / 0.2 else (up - 0.2) / 0.8
+		plus.TextTransparency = faded(plusSee, fade)
+		plusEdge.Transparency = plus.TextTransparency
+		-- the shine sweeps across once
+		local sweep = window(since, CHIP.shine, CHIP.shineSeconds)
+		band.Offset = Vector2.new(-1.1 + 2.2 * sweep, 0)
+		shine.BackgroundTransparency = if sweep <= 0 or sweep >= 1 then 1 else fade
+		-- the sparkles twinkle
+		for index, sparkle in sparkles do
+			local twinkle = window(since, CHIP.sparkles[index], 0.7)
+			sparkle.scale.Scale = math.sin(twinkle * math.pi) * 1.15
+			sparkle.image.Rotation = twinkle * 90
+			sparkle.image.ImageTransparency = fade
+		end
+		gui.StudsOffset = Vector3.new(0, height + CHIP.rise * fade, 0)
+	end
+end
+
+-- A shop level-up's words: the star badge with the number rolling up and "LEVEL UP!" under it, and on a 10th level a
+-- pack flying out with "+1 pack". Returns the gui and its animation: `since` seconds since it popped, `fade` 0 shown
+-- to 1 gone
+local function starBadge(adornee: BasePart, height: number, from: number, to: number, milestone: boolean, folder: Instance): (BillboardGui, (since: number, fade: number) -> ())
+	local gui = billboard(adornee, UDim2.new(6, 0, 4.6, 0), height, folder)
 	local holder = Instance.new("Frame")
 	holder.BackgroundTransparency = 1
 	holder.Size = UDim2.fromScale(1, 1)
@@ -207,110 +412,87 @@ local function badge(adornee: BasePart, height: number, from: number, to: number
 	scale.Scale = 0
 	scale.Parent = holder
 	local fades: { (number) -> () } = {}
-	local roll: (number) -> () = function() end
-	if creature then
-		local chip = Instance.new("Frame")
-		chip.Size = UDim2.fromScale(1, 1)
-		chip.BackgroundColor3 = WHITE
-		chip.Parent = holder
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0.5, 0)
-		corner.Parent = chip
-		local text = scaledLabel(chip, `Lv {from} -> {to}`, INK)
-		text.Position = UDim2.fromScale(0.08, 0.15)
-		text.Size = UDim2.fromScale(0.84, 0.7)
-		table.insert(fades, function(f)
-			chip.BackgroundTransparency = f
-			text.TextTransparency = f
+	local star = Instance.new("ImageLabel")
+	star.BackgroundTransparency = 1
+	star.Image = UIIcons.Star
+	star.ScaleType = Enum.ScaleType.Fit
+	star.AnchorPoint = Vector2.new(0.5, 0)
+	star.Position = UDim2.fromScale(0.5, 0)
+	star.Size = UDim2.fromScale(0.5, 0.62)
+	star.Parent = holder
+	local number = scaledLabel(star, tostring(from), WHITE)
+	number.Position = UDim2.fromScale(0.2, 0.3)
+	number.Size = UDim2.fromScale(0.6, 0.42)
+	local numberEdge = stroke(number, DROP, 2.5)
+	local words = scaledLabel(holder, "LEVEL UP!", WHITE)
+	words.AnchorPoint = Vector2.new(0.5, 0)
+	words.Position = UDim2.fromScale(0.5, 0.64)
+	words.Size = UDim2.fromScale(0.96, 0.3)
+	local fill = Instance.new("UIGradient")
+	fill.Rotation = 90
+	fill.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 243, 160)),
+		ColorSequenceKeypoint.new(0.55, Color3.fromRGB(255, 201, 63)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 138, 60)),
+	})
+	fill.Parent = words
+	local wordsEdge = stroke(words, WHITE, 3)
+	table.insert(fades, function(f)
+		star.ImageTransparency = f
+		number.TextTransparency = f
+		numberEdge.Transparency = f
+		words.TextTransparency = f
+		wordsEdge.Transparency = f
+	end)
+	if milestone then
+		-- Every 10th level: a pack flies out to the side with "+1 pack"
+		local pack = Instance.new("ImageLabel")
+		pack.BackgroundTransparency = 1
+		pack.Image = UIIcons.BoosterPack
+		pack.ScaleType = Enum.ScaleType.Fit
+		pack.AnchorPoint = Vector2.new(0.5, 0.5)
+		pack.Position = UDim2.fromScale(0.5, 0.4)
+		pack.Size = UDim2.fromScale(0.22, 0.3)
+		pack.ImageTransparency = 1
+		pack.Parent = holder
+		local plus = scaledLabel(pack, "+1 pack", WHITE)
+		plus.AnchorPoint = Vector2.new(0.5, 0)
+		plus.Position = UDim2.fromScale(0.5, 1)
+		plus.Size = UDim2.fromScale(1.6, 0.4)
+		plus.TextTransparency = 1
+		local plusEdge = stroke(plus, INK, 2)
+		plusEdge.Transparency = 1
+		task.delay(T.badge - T.beam + 0.35, function()
+			if not pack.Parent then
+				return
+			end
+			local info = TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+			TweenService:Create(pack, info, { Position = UDim2.fromScale(0.9, 0.35), ImageTransparency = 0 }):Play()
+			TweenService:Create(plus, info, { TextTransparency = 0 }):Play()
+			TweenService:Create(plusEdge, info, { Transparency = 0 }):Play()
 		end)
-	else
-		local star = Instance.new("ImageLabel")
-		star.BackgroundTransparency = 1
-		star.Image = UIIcons.Star
-		star.ScaleType = Enum.ScaleType.Fit
-		star.AnchorPoint = Vector2.new(0.5, 0)
-		star.Position = UDim2.fromScale(0.5, 0)
-		star.Size = UDim2.fromScale(0.5, 0.62)
-		star.Parent = holder
-		local number = scaledLabel(star, tostring(from), WHITE)
-		number.Position = UDim2.fromScale(0.2, 0.3)
-		number.Size = UDim2.fromScale(0.6, 0.42)
-		local numberEdge = stroke(number, DROP, 2.5)
-		local words = scaledLabel(holder, "LEVEL UP!", WHITE)
-		words.AnchorPoint = Vector2.new(0.5, 0)
-		words.Position = UDim2.fromScale(0.5, 0.64)
-		words.Size = UDim2.fromScale(0.96, 0.3)
-		local fill = Instance.new("UIGradient")
-		fill.Rotation = 90
-		fill.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 243, 160)),
-			ColorSequenceKeypoint.new(0.55, Color3.fromRGB(255, 201, 63)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 138, 60)),
-		})
-		fill.Parent = words
-		local wordsEdge = stroke(words, WHITE, 3)
-		roll = function(t: number)
-			number.Text = tostring(XpPill.countUp(from, to, t))
-		end
 		table.insert(fades, function(f)
-			star.ImageTransparency = f
-			number.TextTransparency = f
-			numberEdge.Transparency = f
-			words.TextTransparency = f
-			wordsEdge.Transparency = f
+			if f > 0 then
+				pack.ImageTransparency = f
+				plus.TextTransparency = f
+				plusEdge.Transparency = f
+			end
 		end)
-		if milestone then
-			-- Every 10th level: a pack flies out to the side with "+1 pack"
-			local pack = Instance.new("ImageLabel")
-			pack.BackgroundTransparency = 1
-			pack.Image = UIIcons.BoosterPack
-			pack.ScaleType = Enum.ScaleType.Fit
-			pack.AnchorPoint = Vector2.new(0.5, 0.5)
-			pack.Position = UDim2.fromScale(0.5, 0.4)
-			pack.Size = UDim2.fromScale(0.22, 0.3)
-			pack.ImageTransparency = 1
-			pack.Parent = holder
-			local plus = scaledLabel(pack, "+1 pack", WHITE)
-			plus.AnchorPoint = Vector2.new(0.5, 0)
-			plus.Position = UDim2.fromScale(0.5, 1)
-			plus.Size = UDim2.fromScale(1.6, 0.4)
-			plus.TextTransparency = 1
-			local plusEdge = stroke(plus, INK, 2)
-			plusEdge.Transparency = 1
-			task.delay(T.badge - T.beam + 0.35, function()
-				if not pack.Parent then
-					return
-				end
-				local info = TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-				TweenService:Create(pack, info, { Position = UDim2.fromScale(0.9, 0.35), ImageTransparency = 0 }):Play()
-				TweenService:Create(plus, info, { TextTransparency = 0 }):Play()
-				TweenService:Create(plusEdge, info, { Transparency = 0 }):Play()
-			end)
-			table.insert(fades, function(f)
-				if f > 0 then
-					pack.ImageTransparency = f
-					plus.TextTransparency = f
-					plusEdge.Transparency = f
-				end
-			end)
-		end
 	end
-	local function setFade(f: number)
-		for _, fade in fades do
-			fade(f)
-		end
-	end
-	-- Pops in (a little over, then settles) and rolls the number
-	local function pop(t: number)
+	return gui, function(since: number, fade: number)
+		-- Pops in (a little over, then settles) and rolls the number
+		local t = math.min(1, since / 0.35)
 		scale.Scale = if t < 0.6 then 1.2 * (t / 0.6) else 1.2 - 0.2 * ((t - 0.6) / 0.4)
-		roll(math.clamp((t - 0.3) / 0.7, 0, 1))
+		number.Text = tostring(XpPill.countUp(from, to, math.clamp((t - 0.3) / 0.7, 0, 1)))
+		for _, each in fades do
+			each(fade)
+		end
 	end
-	return gui, pop, setFade
 end
 
 -- The whole effect at `root` (the one levelling up) on `model`: one timeline drives the circle, the beams, the light and
 -- the words, then everything is cleaned up
-local function run(root: BasePart, model: Instance, sizes: Sizes, colors: Look, words: { from: number, to: number, creature: boolean, milestone: boolean, height: number }, quiet: boolean, own: boolean)
+local function run(root: BasePart, model: Instance, sizes: Sizes, colors: Look, words: { from: number, to: number, creature: boolean, milestone: boolean, height: number, element: string? }, quiet: boolean, own: boolean)
 	local folder = Instance.new("Folder")
 	folder.Name = "LevelUpFx"
 	folder.Parent = workspace
@@ -347,8 +529,17 @@ local function run(root: BasePart, model: Instance, sizes: Sizes, colors: Look, 
 	light.Range = sizes.rune
 	light.Brightness = 0
 	light.Parent = root
-	local gui, pop, setFade = badge(root, words.height, words.from, words.to, words.creature, words.milestone, folder)
 	local creature = words.creature
+	local CHIP = LevelUpConfig.CHIP
+	local gui: BillboardGui
+	local animate: (since: number, fade: number) -> ()
+	if creature and words.element then
+		gui, animate = levelChip(root, words.height, words.from, words.to, words.element, folder)
+	else
+		gui, animate = starBadge(root, words.height, words.from, words.to, words.milestone, folder)
+	end
+	-- a creature's chip stays up after the pillar has gone (Config/LevelUpFx CHIP)
+	local ends = if creature then math.max(T.done, T.badge + CHIP.hold + CHIP.fade) else T.done
 	local soundAt = if own then nil else root.Position
 
 	task.delay(T.badge, function()
@@ -368,7 +559,7 @@ local function run(root: BasePart, model: Instance, sizes: Sizes, colors: Look, 
 	local connection: RBXScriptConnection
 	connection = RunService.RenderStepped:Connect(function()
 		local t = os.clock() - started
-		if t >= T.done or not root.Parent then
+		if t >= ends or not root.Parent then
 			connection:Disconnect()
 			folder:Destroy()
 			gui:Destroy()
@@ -376,7 +567,7 @@ local function run(root: BasePart, model: Instance, sizes: Sizes, colors: Look, 
 			return
 		end
 		-- The circle: fades in over 0.3 s, spins all the time, fades out from `fade`
-		local shown = if t < 0.3 then t / 0.3 elseif t > T.fade then 1 - (t - T.fade) / (T.done - T.fade) else 1
+		local shown = if t < 0.3 then t / 0.3 elseif t > T.fade then math.max(0, 1 - (t - T.fade) / (T.done - T.fade)) else 1
 		outer.Transparency = 1 - 0.95 * shown
 		inner.Transparency = 1 - 0.8 * shown
 		outerPart.CFrame = base * CFrame.Angles(0, t * SPIN_SPEED, 0)
@@ -395,8 +586,10 @@ local function run(root: BasePart, model: Instance, sizes: Sizes, colors: Look, 
 		light.Brightness = 5 * flash
 		-- The words pop at `badge` and fade with the rest
 		if t >= T.badge then
-			pop(math.min(1, (t - T.badge) / 0.35))
-			setFade(if t > T.fade + 0.6 then math.min(1, (t - T.fade - 0.6) / (T.done - T.fade - 0.6)) else 0)
+			local fade = if creature then window(t, T.badge + CHIP.hold, CHIP.fade)
+				elseif t > T.fade + 0.6 then math.min(1, (t - T.fade - 0.6) / (T.done - T.fade - 0.6))
+				else 0
+			animate(t - T.badge, fade)
 		end
 		gui.Enabled = t >= T.badge
 	end)
@@ -419,7 +612,9 @@ function LevelUpFx.playCreature(root: BasePart, height: number, element: string,
 		return
 	end
 	local model = root:FindFirstAncestorOfClass("Model") or root
-	run(root, model, LevelUpConfig.SIZES.creature, look(false, element), { from = from, to = to, creature = true, milestone = false, height = height + 1.2 }, quiet, not quiet)
+	-- its chip's middle over its head, clear of its top (its name tag hides meanwhile: LevelUpController)
+	local chipHeight = height + LevelUpConfig.CHIP.size[2] / 2 + 0.4
+	run(root, model, LevelUpConfig.SIZES.creature, look(false, element), { from = from, to = to, creature = true, milestone = false, height = chipHeight, element = element }, quiet, not quiet)
 	-- it glows for a while (owner 2026-11-16: "it should be noticeable. pets should glow for some time")
 	local glowLook = LevelUpConfig.CREATURE_GLOW
 	local glow = Instance.new("Highlight")

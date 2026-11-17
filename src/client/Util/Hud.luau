@@ -47,6 +47,7 @@ export type TileSpec = {
 	phoneApp: number?, -- on a phone screen: a Phone app at this order (Bag, Bosses, Admin)
 	phoneAlways: boolean?, -- with phoneApp: a Phone app on a computer too (Bosses, Admin)
 	phoneSide: number?, -- on a phone screen: in the side column under the Phone at this order (Cards)
+	phoneBottom: boolean?, -- on a phone screen: in the bottom-centre row, clear of the thumbstick (Gift)
 }
 -- An app on the phone; `stay`: tapping it keeps the phone open (it shows a page inside it); `everywhere`: shown away
 -- from town too (Party), where the other apps (the shop's) hide
@@ -73,7 +74,7 @@ local tiles: { [string]: TextButton } = {}
 -- Every tile and app with where it may go (CompactHud.spot): its home frame, its order there, in the Phone, at the side
 type Entry = {
 	button: TextButton,
-	rule: { app: boolean?, everywhere: boolean?, phone: boolean?, side: boolean?, always: boolean? },
+	rule: { app: boolean?, everywhere: boolean?, phone: boolean?, side: boolean?, always: boolean?, bottom: boolean? },
 	home: Frame,
 	order: number,
 	appOrder: number,
@@ -397,6 +398,7 @@ local function setFan(open: boolean)
 		return
 	end
 	fanOpen = open
+	Hud.refreshTiles() -- a phone's bottom row hides under the open Phone
 	local tile = manageTile
 	if tile then
 		local label = tile:FindFirstChild("Label", true) :: TextLabel?
@@ -475,7 +477,7 @@ local function layout()
 			end
 			continue
 		end
-		local parent = if spot == "phone" then apps elseif spot == "side" then side else entry.home
+		local parent = if spot == "phone" then apps elseif spot == "side" then side elseif spot == "bottom" then bottom else entry.home
 		button.LayoutOrder = if spot == "phone" then entry.appOrder elseif spot == "side" then entry.sideOrder else entry.order
 		if button.Parent ~= parent then
 			local wasInPhone = button.Parent == apps
@@ -733,9 +735,17 @@ function Hud.mount(screenGui: ScreenGui)
 end
 
 -- Lifts the side column (the Phone, Cards) `px` up from the screen's middle: the party dock under it on a short PC
--- window (UIController)
+-- window (UIController). On a phone it hangs from the top instead (HudLayout.SIDE_TOP), clear of the thumbstick's
+-- resting spot low on the left (owner 2026-11-17: "make sure nothing is cutoff/overlapping on all devices")
 function Hud.liftSide(px: number)
-	if side then
+	if not side then
+		return
+	end
+	if compact then
+		side.AnchorPoint = Vector2.new(0, 0)
+		side.Position = UDim2.new(0, HudLayout.SIDE_X, 0, HudLayout.SIDE_TOP)
+	else
+		side.AnchorPoint = Vector2.new(0, 0.5)
 		side.Position = UDim2.new(0, HudLayout.SIDE_X, 0.5, -px)
 	end
 end
@@ -759,7 +769,7 @@ function Hud.tile(spec: TileSpec): TextButton
 	end
 	table.insert(entries, {
 		button = tile,
-		rule = { phone = spec.phoneApp ~= nil, side = spec.phoneSide ~= nil, always = spec.phoneAlways },
+		rule = { phone = spec.phoneApp ~= nil, side = spec.phoneSide ~= nil, always = spec.phoneAlways, bottom = spec.phoneBottom },
 		home = parent,
 		order = spec.order,
 		appOrder = spec.phoneApp or spec.order,
@@ -821,7 +831,9 @@ function Hud.setCompact(on: boolean)
 		return
 	end
 	compact = on
+	Hud.liftSide(0)
 	layout()
+	Hud.refreshTiles()
 end
 
 -- Whether you're in town now (the main place's town; never in the Frontier or the Dungeon), and told when it changes
@@ -861,7 +873,14 @@ function Hud.phonePage(id: string, title: string): Frame
 		back.Name = "Back"
 		back.BackgroundTransparency = 1
 		back.Position = UDim2.fromOffset(8, 0)
-		back.Size = UDim2.fromOffset(48, 48)
+		-- a wide tap area over the header's left side: the phone draws at under half size on a short phone, where a
+		-- 48 px button came out 20 px (owner 2026-11-17: "make sure ... on all devices"); the arrow stays put
+		back.Size = UDim2.fromOffset(110, 56)
+		back.TextXAlignment = Enum.TextXAlignment.Left
+		local arrowPad = Instance.new("UIPadding")
+		arrowPad.PaddingLeft = UDim.new(0, 16)
+		arrowPad.PaddingBottom = UDim.new(0, 8)
+		arrowPad.Parent = back
 		back.Font = Enum.Font.FredokaOne
 		back.Text = "<"
 		back.TextSize = 30
@@ -997,10 +1016,15 @@ local function keptOnly(name: string?): boolean
 	return true
 end
 
+-- A window is open (UIKit.onPanelsChanged) or the Phone is: on a phone the bottom-centre row (the Gift tile, Drop / Rip
+-- / To Bag) hides under it; a short screen's window or Phone reached down over it (owner 2026-11-17: "make sure nothing
+-- is cutoff/overlapping")
+local panelOpen = false
+
 local function apply(show: boolean)
 	local showTiles = show and next(keepOnlyBy) == nil
 	side.Visible = showTiles
-	bottom.Visible = showTiles
+	bottom.Visible = showTiles and not (compact and (panelOpen or fanOpen))
 	for _, object in hideWithHud do
 		object.Visible = show and not hides(calmPieces[object]) and keptOnly(keepNames[object] or calmPieces[object])
 	end
@@ -1092,6 +1116,18 @@ end
 function Hud.onCalm(callback: () -> ())
 	table.insert(calmListeners, callback)
 end
+
+-- The tile rows' visibility again (a window opened or closed, the layout changed)
+function Hud.refreshTiles()
+	if side and bottom then
+		apply(next(hiddenBy) == nil)
+	end
+end
+
+UIKit.onPanelsChanged(function(open: boolean)
+	panelOpen = open
+	Hud.refreshTiles()
+end)
 
 function Hud.setHidden(reason: string, hidden: boolean)
 	hiddenBy[reason] = if hidden then true else nil

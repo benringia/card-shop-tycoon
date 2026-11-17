@@ -36,6 +36,14 @@ return {
 			cloudColor = rgb(240, 249, 255), tickColor = rgb(253, 224, 71) },
 	},
 
+	-- A Grade S Healing Rain also heals its player (Combat ABILITIES Tide playerHeal; owner 2026-11-17: "add a healing
+	-- effect on the player too"): no cloud over them (it would hide the fight from their camera) but the rain's drizzle,
+	-- `drizzle` drops a second from a `drizzleWidth`-stud square `drizzleHeight` studs over their root, a soft glow and
+	-- light, rising motes and water rings by the grade's RAIN look; each tick their body flashes green from `flash`
+	-- see-through
+	PLAYER_HEAL = { drizzle = 50, drizzleWidth = 4, drizzleHeight = 4.2, halo = { 5, 6.2 }, flash = 0.45,
+		glow = rgb(110, 231, 183), water = rgb(125, 211, 252) },
+
 	-- Vine Snare: vines or roots burst up round the target, wrap it, hold, wither. `reach`: share of its height they climb
 	VINES = {
 		C = { count = 2, thickness = 0.55, reach = 0.6, turns = 0.8, leaves = 0, thorns = 0, blossoms = 0, dirt = false, crack = false,

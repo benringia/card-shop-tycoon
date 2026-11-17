@@ -81,5 +81,7 @@ return {
 		tileWiggle = 2.4, -- the HUD tile's rattle once something's ready
 	},
 	-- The HUD tile (Util/Hud side, under the Phone; on a phone screen in the column under it)
-	TILE = { icon = "PishPresent", label = "Gift", order = 5, phoneSide = 2, ready = "Open!" },
+	-- phoneBottom: on a phone the tile sits in the bottom-centre row (third in the side column it covered the
+	-- thumbstick's resting spot; owner 2026-11-17 "make sure nothing is cutoff/overlapping on all devices")
+	TILE = { icon = "PishPresent", label = "Gift", order = 5, phoneBottom = true, ready = "Open!" },
 }

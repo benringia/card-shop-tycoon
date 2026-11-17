@@ -536,22 +536,42 @@ function FightFx.new(resolve: Resolve): Dispatcher
 	end
 
 	-- A Healing Rain tick: its rising number on the healed creature (always shown: it's what the heal is), and a cloud
-	-- over a creature the caster healed that has none yet (the caster's own starts as the move lands)
+	-- over a creature the caster healed that has none yet (the caster's own starts as the move lands). A player a Grade
+	-- S rain heals too (their marker is their root) gets its drizzle and glow instead (owner 2026-11-17: "add a healing
+	-- effect on the player too"); their number is the fight's own.
 	local function onRegen(event: any)
 		local to = event.to
 		local marker = if typeof(to) == "string" then resolve.marker(to) else nil
-		local view = if marker then resolve.creature(marker) else nil
-		if not view then
+		if not marker then
 			return
 		end
+		local view = resolve.creature(marker)
 		local casterMarker = if typeof(event.from) == "string" then resolve.marker(event.from) else nil
 		local casterView = if casterMarker then resolve.creature(casterMarker) else nil
-		local grade = MoveFxRules.grade((casterView or view).grade, Extras.enabled(), MoveFxConfig)
-		local rain = rains[to]
-		if (not rain or os.clock() > rain.ends) and FightFxRules.budget(active, Extras.enabled(), AttackFx) then
-			startRain(to, view, grade, RAIN_SECONDS - RAIN.every, false)
+		local source = view or casterView
+		if not source then
+			return
 		end
-		MoveFx.rainTick(view, grade, tonumber(event.heal) or 0)
+		local grade = MoveFxRules.grade(source.grade, Extras.enabled(), MoveFxConfig)
+		local rain = rains[to]
+		local fresh = (not rain or os.clock() > rain.ends) and FightFxRules.budget(active, Extras.enabled(), AttackFx)
+		if view then
+			if fresh then
+				startRain(to, view, grade, RAIN_SECONDS - RAIN.every, false)
+			end
+			MoveFx.rainTick(view, grade, tonumber(event.heal) or 0)
+			return
+		end
+		local character = marker.Parent
+		if string.sub(to, 1, 3) ~= "a:@" or not character or not character:IsA("Model") then
+			return
+		end
+		if fresh then
+			stopRain(to)
+			local seconds = RAIN_SECONDS - RAIN.every
+			rains[to] = { stop = MoveFx.healPlayer(character, grade, seconds), ends = os.clock() + seconds }
+		end
+		MoveFx.healPlayerTick(character, grade)
 	end
 
 	-- A super landing: its impact and linger (Util/SuperFx), a shake for everyone near it (the caster's own, bigger, is
@@ -923,8 +943,8 @@ function FightFx.new(resolve: Resolve): Dispatcher
 				if event.type == "regen" then
 					onRegen(event)
 					continue
-				elseif (event.type == "faint" or event.type == "swap") and typeof(event.to) == "string" then
-					stopRain(event.to) -- the heal stops with it (BattleSim)
+				elseif (event.type == "faint" or event.type == "swap" or event.type == "down") and typeof(event.to) == "string" then
+					stopRain(event.to) -- the heal stops with it (BattleSim; a player going down loses its glow)
 					clearOrbs(event.to)
 					if event.type == "faint" then
 						stopSnare(event.to)

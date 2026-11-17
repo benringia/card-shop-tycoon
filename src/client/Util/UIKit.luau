@@ -201,9 +201,23 @@ local ICON_SIZE = 24 -- an icon button's picture
 -- Roblox's on-screen thumbstick and jump button sit over panel buttons on phones (the binder's
 -- page arrows, Back buttons), so they are hidden while any panel is open
 local openPanels: { [Frame]: boolean } = {}
+local panelListeners: { (open: boolean) -> () } = {} -- UIKit.onPanelsChanged
+local panelsWereOpen = false
 
 local function updateTouchControls()
-	GuiService.TouchControlsEnabled = next(openPanels) == nil
+	local open = next(openPanels) ~= nil
+	GuiService.TouchControlsEnabled = not open
+	if open ~= panelsWereOpen then
+		panelsWereOpen = open
+		for _, listener in panelListeners do
+			task.spawn(listener, open)
+		end
+	end
+end
+
+-- Told when the first window opens (true) or the last one closes (false): the phone's bottom row hides under windows
+function UIKit.onPanelsChanged(listener: (open: boolean) -> ())
+	table.insert(panelListeners, listener)
 end
 
 -- Main windows (UIKit.panel) open one at a time: showing one closes the others, so they never pile up.

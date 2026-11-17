@@ -4,6 +4,12 @@ return {
 	REACH = 12, -- studs; how far the owner can be from the register to scan and charge
 	SCAN_COOLDOWN = 0.15, -- seconds between scans per player
 	CHARGE_COOLDOWN = 0.5,
+	-- Manning it: the client steps you behind the counter as it asks, and your move can reach the server a moment after
+	-- the ask (pressed from the shop floor, the server saw you out front, said no, and nothing scanned; QA 2026-11-17).
+	-- The server waits this long for you to be behind it; the client leaves the register's view when, a little after
+	-- that, the server still hasn't said yes (Controllers/RegisterStationController)
+	MAN_GRACE = 1.5,
+	MAN_CONFIRM = 3,
 
 	ITEM_SIZE = Vector3.new(1, 0.3, 1.4), -- a pack lying on the counter
 	ITEM_SPACING = 1.3,

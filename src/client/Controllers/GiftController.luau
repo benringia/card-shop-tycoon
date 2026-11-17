@@ -430,7 +430,7 @@ local function makeTile()
 		label = Gifts.TILE.label,
 		group = "Side",
 		order = Gifts.TILE.order,
-		phoneSide = Gifts.TILE.phoneSide,
+		phoneBottom = Gifts.TILE.phoneBottom,
 		onClick = toggle,
 	})
 	made.Visible = false

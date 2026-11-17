@@ -74,6 +74,25 @@ return {
 	-- time"): a golden fill pulsing between `low` and `high` transparency `pulseSpeed` times a second, a white outline,
 	-- fading out over its last `fade` seconds
 	CREATURE_GLOW = { seconds = 3.5, fill = { 255, 220, 110 }, outline = { 255, 255, 255 }, low = 0.35, high = 0.75, pulseSpeed = 1.6, fade = 1 },
+	-- A creature's level chip over it (owner 2026-11-17: "make that bubble more immersive. add designs/animations", mockup
+	-- B "Level chip"): a white pill edged `edge` studs in the creature's element colour with its element's icon, the old
+	-- level muted, three arrows lighting one after another (`arrows`: seconds after it pops at TIMING.badge), the new
+	-- level popping in big and gold (`newLevel`), a "+1" floating up (`plus`), a shine sweeping across (`shine`, over
+	-- `shineSeconds`), sparkles twinkling (`sparkles`) and a gold LEVEL UP! tab on top. `size` in studs (width,
+	-- height). It stays `hold` seconds after it pops, then rises `rise` studs as it fades over `fade`.
+	CHIP = {
+		size = { 6.4, 2.4 },
+		edge = 0.13,
+		arrows = { 0.3, 0.4, 0.5 },
+		newLevel = 0.62,
+		plus = 0.72,
+		shine = 1.0,
+		shineSeconds = 0.6,
+		sparkles = { 0.6, 0.78 },
+		hold = 2.8,
+		fade = 0.5,
+		rise = 0.8,
+	},
 	SPARK_WAIT = 4, -- seconds your own creature's level-up from a fight waits for its XP sparks to land, at most
 	-- The middle card after your own shop's pillar (owner 2026-11-16: "there should be some sort of reward every level
 	-- up ... and an immersive notification at the center of the screen"; mockup picked): "LEVEL UP!" on a lilac ribbon,

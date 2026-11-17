@@ -65,6 +65,21 @@ function PropFit.itemXs(count: number, spanMin: number, spanMax: number, itemWid
 	return xs
 end
 
+-- How a product lies on the register's counter (owner 2026-11-17: "card sleeves doesnt have a model on the counter"):
+-- "pack" or "deck" (its 3D model, Util/PackModels), "sleeves" (a sleeve packet, Util/SleevePacket), "booster" (a sealed
+-- booster box, Util/BrandBox), by its Products `stockLook` and whether it's a pack (Config/Packs); "block": the plain
+-- part, for nothing the shop sells
+function PropFit.counterLook(stockLook: string?, isPack: boolean): string
+	if stockLook == "Deck" then
+		return "deck"
+	elseif stockLook == "Sleeves" then
+		return "sleeves"
+	elseif stockLook == "Booster" then
+		return "booster"
+	end
+	return if isPack then "pack" else "block"
+end
+
 -- Register counter, front (customer side) at -Z: scan items lie along the front edge, props along the back.
 -- Returns the z offsets of the item row and the prop row from the counter centre.
 function PropFit.counterZ(counterDepth: number, itemDepth: number, propDepth: number): (number, number)

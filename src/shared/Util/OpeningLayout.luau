@@ -14,6 +14,8 @@ export type Layout = {
 	side: number, -- px kept clear at each side
 	lineupCentre: number, -- the lineup's middle, share of the height below the top bar
 	lineupHeight: number, -- the tallest a lineup card gets, share of the height below the top bar
+	topReserve: number?, -- px from the screen's top kept for the results pills
+	bottomReserve: number?, -- px from the screen's bottom kept for Continue / Open another
 }
 
 local ASPECT = 1.4 -- a card's height over its width
@@ -56,11 +58,19 @@ function OpeningLayout.tiltToward(pointer: Point, centre: Point, view: View, max
 	return dx * maxYaw, dy * maxPitch
 end
 
--- The results lineup: as big as fits (up to maxCard wide), centred under the top bar
+-- The results lineup: as big as fits (up to maxCard wide), centred under the top bar; on a short screen it moves up
+-- (shrinking if it must) to stay between the results pills and the buttons under it (topReserve, bottomReserve)
 function OpeningLayout.lineup(count: number, view: View, inset: number, look: Layout): { Rect }
 	local below = view.h - inset
 	local w = math.min(look.maxCard, fitWidth(count, view, look.gap, look.side), look.lineupHeight * below / ASPECT)
 	local y = inset + look.lineupCentre * below - w * ASPECT / 2
+	local floor = view.h - (look.bottomReserve or 0)
+	if y + w * ASPECT > floor then
+		local ceiling = math.max(inset, look.topReserve or 0)
+		local room = math.max(floor - ceiling, 0)
+		w = math.min(w, room / ASPECT)
+		y = ceiling + (room - w * ASPECT) / 2
+	end
 	return line(count, view, w, look.gap, y)
 end
 

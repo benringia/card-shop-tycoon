@@ -341,9 +341,9 @@ return {
 		-- emptying as the shelf sells (ShelfStock.boxFill). The box sizes above let it stand at MIN_SCALE or more of its
 		-- full size (TRAY: the model's width, height with the lid back, depth) on every pack rack (the user's "Bigger").
 		DISPLAY = { PACKS_SHOWN = 6, TRAY = { 0.79, 1.31, 1.38 }, MIN_SCALE = 0.95 },
-		-- Card sleeves (Products stockLook "Sleeves"): retail packets in each box's place, leaning back: a white
-		-- backing card with a header tab and hang hole, a clear window showing the sleeves, a strip in the product's
-		-- colour. Each stock slot gets the next sleeve colour, so a shelf reads as an assortment.
+		-- Card sleeves (Products stockLook "Sleeves"; Util/SleevePacket): retail packets in each box's place, leaning back: a
+		-- white backing card with a header tab and hang hole, a clear window printed with the sleeves fanned out (UIIcons
+		-- Sleeves), a strip in the product's colour. Each stock slot gets the next sleeve colour, so a shelf reads as an assortment.
 		-- Deck boxes (Products stockLook "Deck"): the 3D deck box (Util/PackModels) fitted to WIDTH x HEIGHT x DEPTH,
 		-- PER_STACK front to back, leaning back a little
 		DECKS = { PER_STACK = 2, WIDTH = 0.55, HEIGHT = 0.8, DEPTH = 0.4, LEAN = 4 },

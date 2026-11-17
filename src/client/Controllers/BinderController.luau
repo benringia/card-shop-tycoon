@@ -1050,6 +1050,19 @@ local function renderBagDetail()
 		end
 	end
 	bagDetail:SetAttribute("ItemId", selectedItem) -- which item shows (Pish's tutorial points at its Open)
+	-- The XP Tonic's Use opens its party picker in this panel (Util/TonicPicker; required here: this file is at the
+	-- 200-local limit)
+	local TonicPicker = require(ClientUtil:WaitForChild("TonicPicker"))
+	local tonics = bagItems.xpTonic or 0
+	if selectedItem ~= "xpTonic" or tonics <= 0 then
+		TonicPicker.setOpen(false)
+	elseif TonicPicker.isOpen() then
+		TonicPicker.render(bagDetail, bagPalette, beasts, tonics, function()
+			TonicPicker.setOpen(false)
+			renderBagDetail()
+		end)
+		return
+	end
 	local info = if selectedItem then Items.ITEMS[selectedItem] else nil
 	if not info or not selectedItem then
 		local hint = bagLabel(bagDetail, "Your items show here. Tap one to see what it does.", Enum.Font.FredokaOne, 16, bagPalette.inkSoft, 24, 60)
@@ -1098,25 +1111,96 @@ local function renderBagDetail()
 		end)
 		y += 58
 	end
-	-- With the Open button there, "How to use it" (tap Open) would only repeat it, and there's no room for it
+	-- The XP Tonic: Use, then pick the party card it goes on (owner 2026-11-17)
+	if selectedItem == "xpTonic" and tonics > 0 then
+		local use = UIKit.button(bagDetail, "Use", UIKit.Colors.Accent)
+		use.Name = "Use"
+		use.AnchorPoint = Vector2.new(0.5, 0)
+		use.Position = UDim2.new(0.5, 0, 0, y)
+		use.Size = UDim2.fromOffset(160, 48)
+		use.ZIndex = 34
+		use.Activated:Connect(function()
+			TonicPicker.setOpen(true)
+			renderBagDetail()
+		end)
+		y += 58
+	end
+	-- A trophy: Place puts it straight in your shop (owner 2026-11-17: "trophies should have a PLACE button"; the Shop no
+	-- longer lists them). Your shop is in town: anywhere else the button shows the lock, and a tap says why
+	if ItemRules.placesInShop(Items, selectedItem) then
+		local trophyId = selectedItem
+		local inTown = Hud.inTown()
+		local place = UIKit.button(bagDetail, if inTown then "Place" else "🔒 Place in town", if inTown then UIKit.Colors.Success else UIKit.Colors.Locked)
+		place.Name = "Place"
+		place.AnchorPoint = Vector2.new(0.5, 0)
+		place.Position = UDim2.new(0.5, 0, 0, y)
+		place.Size = UDim2.fromOffset(if inTown then 160 else 210, 48)
+		place.ZIndex = 34
+		place.Activated:Connect(function()
+			if not Hud.inTown() then
+				require(Controllers:WaitForChild("BlockedController")).Show("Go back to town to put your trophy in your shop.")
+				return
+			end
+			bagOverlay.Visible = false -- out of the way while you place it
+			require(Controllers:WaitForChild("BuildController")).PlaceTrophy(trophyId)
+		end)
+		y += 58
+	end
+	-- With a button there, "How to use it" would only repeat it
 	local howTo = if y > 154 then nil else info.use
-	for _, section in { { title = "What it does", text = info.description }, { title = "Where to get it", text = info.source }, { title = "How to use it", text = howTo } } do
+	-- What it does / where to get it / how to use it, as cream boxes as tall as their words (owner 2026-11-17: a long
+	-- line was cut off); on a short screen the rest scrolls
+	local sections = Instance.new("ScrollingFrame")
+	sections.Name = "Sections"
+	sections.Position = UDim2.fromOffset(0, y)
+	sections.Size = UDim2.new(1, 0, 1, -y)
+	sections.BackgroundTransparency = 1
+	sections.BorderSizePixel = 0
+	sections.ScrollBarThickness = 4
+	sections.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	sections.CanvasSize = UDim2.new()
+	sections.ZIndex = 33
+	sections.Parent = bagDetail
+	local stack = Instance.new("UIListLayout")
+	stack.Padding = UDim.new(0, 6)
+	stack.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	stack.SortOrder = Enum.SortOrder.LayoutOrder
+	stack.Parent = sections
+	local room = Instance.new("UIPadding") -- the boxes' outlines inside the scroll's clip
+	room.PaddingTop = UDim.new(0, 2)
+	room.PaddingBottom = UDim.new(0, 10)
+	room.Parent = sections
+	for order, section in { { title = "What it does", text = info.description }, { title = "Where to get it", text = info.source }, { title = "How to use it", text = howTo } } do
 		if section.text then
 			local box = Instance.new("Frame")
-			box.Position = UDim2.fromOffset(12, y)
-			box.Size = UDim2.new(1, -24, 0, 62)
+			box.LayoutOrder = order
+			box.Size = UDim2.new(1, -24, 0, 0)
+			box.AutomaticSize = Enum.AutomaticSize.Y
 			box.BackgroundColor3 = bagPalette.slotEmpty
 			box.ZIndex = 33
-			box.Parent = bagDetail
+			box.Parent = sections
 			UIKit.corner(box, 10)
 			UIKit.outline(box, bagPalette.rowEdge, 2)
-			local heading = bagLabel(box, section.title, Enum.Font.FredokaOne, 14, bagPalette.hint, 6, 18)
-			heading.Position = UDim2.fromOffset(10, 6)
-			heading.Size = UDim2.new(1, -20, 0, 18)
-			local body = bagLabel(box, section.text, Enum.Font.Gotham, 13, bagPalette.ink, 26, 32)
-			body.Position = UDim2.fromOffset(10, 26)
-			body.Size = UDim2.new(1, -20, 0, 32)
-			y += 68
+			local inset = Instance.new("UIPadding")
+			inset.PaddingTop = UDim.new(0, 6)
+			inset.PaddingBottom = UDim.new(0, 8)
+			inset.PaddingLeft = UDim.new(0, 10)
+			inset.PaddingRight = UDim.new(0, 10)
+			inset.Parent = box
+			local lines = Instance.new("UIListLayout")
+			lines.Padding = UDim.new(0, 2)
+			lines.SortOrder = Enum.SortOrder.LayoutOrder
+			lines.Parent = box
+			local heading = UIKit.label(box, section.title, Enum.Font.FredokaOne, 14, bagPalette.hint)
+			heading.LayoutOrder = 1
+			heading.Size = UDim2.new(1, 0, 0, 18)
+			heading.ZIndex = 34
+			local body = UIKit.label(box, section.text, Enum.Font.Gotham, 13, bagPalette.ink)
+			body.LayoutOrder = 2
+			body.Size = UDim2.new(1, 0, 0, 0)
+			body.AutomaticSize = Enum.AutomaticSize.Y
+			body.TextYAlignment = Enum.TextYAlignment.Top
+			body.ZIndex = 34
 		end
 	end
 end
@@ -1240,6 +1324,7 @@ local function buildBag(screen: Instance)
 	bagOverlay:GetPropertyChangedSignal("Visible"):Connect(function()
 		if bagOverlay.Visible then
 			hideTooltip()
+			require(ClientUtil:WaitForChild("TonicPicker")).setOpen(false) -- the Bag opens on the item's details
 			renderBag()
 		end
 	end)
@@ -1997,6 +2082,9 @@ local function onCollectionChanged(payload: { stacks: Stacks, beasts: { [string]
 	working = if typeof((payload :: any).working) == "table" then (payload :: any).working else {}
 	partied = if typeof((payload :: any).partied) == "table" then (payload :: any).partied else {}
 	refresh()
+	if bagOverlay and bagOverlay.Visible then
+		renderBag() -- the XP Tonic picker's levels after a tonic
+	end
 end
 
 -- Typing in a text box or the chat bar (the chat bar isn't a TextBox the game can see)
@@ -2393,7 +2481,7 @@ function BinderController.Start()
 			toggle()
 		end
 	end)
-	-- Party slot names in the "Which party slot?" chooser
+	-- Party slot names in the "Which party slot?" chooser, and the cards the Bag's XP Tonic picker lists
 	Remotes.PartyChanged.OnClientEvent:Connect(function(payload)
 		if typeof(payload) ~= "table" or typeof(payload.slots) ~= "table" then
 			return
@@ -2405,6 +2493,10 @@ function BinderController.Start()
 			end
 		end
 		CardDetailController.SetPartySlots(slots)
+		require(ClientUtil:WaitForChild("TonicPicker")).setParty(slots)
+		if bagOverlay and bagOverlay.Visible then
+			renderBag()
+		end
 	end)
 	Remotes.ItemsChanged.OnClientEvent:Connect(function(items)
 		bagItems = if typeof(items) == "table" then items else {}

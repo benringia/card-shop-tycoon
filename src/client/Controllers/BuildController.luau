@@ -35,12 +35,12 @@ local CASE_BUYERS = {
 	PlayerCards = "players buy",
 }
 
--- Build menu tabs (Config/Shelves `category`); Decor also lists the shop looks first (Util/LookTiles)
+-- Build menu tabs (Config/Shelves `category`); Decor also lists the shop looks first (Util/LookTiles). Trophies aren't
+-- here: each is placed from the Bag (its Place button, BuildController.PlaceTrophy; owner 2026-11-17)
 local BUILD_TABS = {
 	{ name = "Shelves", icon = "Shelves" },
 	{ name = "Cases", icon = "Cases" },
 	{ name = "Fixtures", icon = "Fixtures" },
-	{ name = "Trophies", icon = "🏆" },
 	{ name = "Decor", icon = "Decor" },
 }
 local BUILD_TILE = { WIDTH = 160, HEIGHT = 224, PICTURE = 110 }
@@ -77,7 +77,7 @@ local editingPart: BasePart? = nil
 local shelvesConnection: RBXScriptConnection? = nil
 local computerPrompt: ProximityPrompt? = nil
 local promptsByShelf: { [BasePart]: ShelfPrompts } = {}
-local items: { [string]: number } = {} -- the bag (ItemsChanged): trophies are placed from it
+local items: { [string]: number } = {} -- the bag (ItemsChanged): trophies are placed from it (PlaceTrophy)
 
 local function getNumberAttribute(instance: Instance, name: string, default: number): number
 	local value = instance:GetAttribute(name)
@@ -105,13 +105,6 @@ end
 local function refreshShopRows()
 	local cash = getNumberAttribute(player, "Cash", 0)
 	for _, row in shopRows do
-		local item = row.def.requiresItem
-		if item then
-			local owned = items[item] or 0
-			row.button.Text = if owned > 0 then `Place ({owned})` else "🔒 Beat it"
-			row.button.BackgroundColor3 = if owned > 0 then UIKit.Colors.Success else UIKit.Colors.Locked -- mint or grey-lilac
-			continue
-		end
 		local locked = isLocked(row.def)
 		local short = not locked and cash < row.def.cost
 		local achievement = needsAchievement(row.def)
@@ -216,7 +209,6 @@ local function buildTile(parent: Instance, order: number, def: ShelfDef)
 		elseif def.kind == "Condenser" then "Duplicates to stars"
 		elseif def.kind == "Grading" then "Duplicates to grades"
 		elseif def.kind == "Forge" then "Make and upgrade weapons"
-		elseif def.kind == "Trophy" then `Beat the {trophyBoss(def)}`
 		elseif def.kind == "Decor" then `Decor +{def.decor or 0}`
 		else `{def.capacity} cards, {CASE_BUYERS[def.kind]}`
 	local info = UIKit.label(tile, detail, Enum.Font.GothamBold, 13, UIKit.Colors.Subtext)
@@ -336,7 +328,9 @@ local function buildShopPanel(parent: Instance)
 		shopPanel.Visible = false
 	end)
 	for index, def in Shelves.List do
-		buildTile(list, 100 + index, def) -- after the six shop looks
+		if not def.requiresItem then -- trophies come from the Bag, not here
+			buildTile(list, 100 + index, def) -- after the six shop looks
+		end
 	end
 	showCategory(BUILD_TABS[1].name)
 	player:GetAttributeChangedSignal("Cash"):Connect(refreshShopRows)
@@ -503,6 +497,11 @@ local function addShelfPrompts(child: Instance)
 	if not child:IsA("BasePart") then
 		return
 	end
+	-- once per shelf: the folder's first scan and its ChildAdded (deferred) can both bring the same shelf, which drew
+	-- every shelf's prompts twice, one on the other, each press firing both (found 2026-11-17)
+	if promptsByShelf[child] then
+		return
+	end
 	local def = Shelves.ById[child.Name]
 	if not def then
 		return
@@ -621,6 +620,15 @@ function BuildController.ItemCount(itemId: string): number
 	return items[itemId] or 0
 end
 
+-- A trophy from the Bag's Place button (owner 2026-11-17): placed like a new shelf, its trophy item the price (the
+-- server takes it, PlacementService). `itemId` is its Config/Shelves id too
+function BuildController.PlaceTrophy(itemId: string)
+	local def = Shelves.ById[itemId]
+	if def and def.requiresItem == itemId then
+		onBuy(def)
+	end
+end
+
 function BuildController.Start()
 	local screenGui = UIController.GetScreenGui()
 	buildShopPanel(screenGui)
@@ -630,10 +638,9 @@ function BuildController.Start()
 	player:GetAttributeChangedSignal("Level"):Connect(refreshShopRows)
 	player:GetAttributeChangedSignal("PlotId"):Connect(watchOwnPlot)
 	player:GetAttributeChangedSignal("CarryCount"):Connect(refreshAllPrompts)
-	-- Trophy tiles follow the bag
+	-- The bag: trophies are placed from it
 	Remotes.ItemsChanged.OnClientEvent:Connect(function(payload)
 		items = if typeof(payload) == "table" then payload else {}
-		refreshShopRows()
 	end)
 	Remotes.RequestItems:FireServer() -- our own copy of the bag, whatever order the controllers start in
 	task.spawn(watchOwnPlot)

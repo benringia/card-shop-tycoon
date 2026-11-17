@@ -425,9 +425,13 @@ local function addBrowsePrompt(instance: Instance)
 		return
 	end
 	local casePart = instance :: BasePart
+	if casePart:FindFirstChild("BrowseCards") then
+		return -- once per case: the first scan and DescendantAdded (deferred) can both bring it
+	end
 	local def = Shelves.ById[casePart.Name]
 	local owner = getOwner(casePart)
 	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "BrowseCards"
 	prompt.ActionText = "Browse cards"
 	prompt.ObjectText = `{if owner then owner.DisplayName else "Someone"}'s {def.name}`
 	prompt.MaxActivationDistance = ShowcaseConfig.BUY_PROMPT_DISTANCE

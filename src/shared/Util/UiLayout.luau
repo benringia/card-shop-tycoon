@@ -111,6 +111,42 @@ function UiLayout.wildButtons(view: Size): WildButtons
 	return { pet = pet, signature = signature, swap = swap, run = run }
 end
 
+-- A fight's party strip on a touch screen (owner 2026-11-17: "make sure nothing is cutoff/overlapping on all devices"):
+-- it stays under the status (`under`, its rect there) unless it would end within `clear` of Roblox's thumbstick ring
+-- (`ring`: its right edge from the screen's left, its top from the bottom). Then it goes to the bottom row, right-aligned
+-- beside the fight buttons (`buttons`, their rects) and on their bottom line, shrunk (`scale`) if the room between the
+-- ring and the buttons needs it. Nil: it stays under the status (nothing to move, or no room with tiles of `minTile` px;
+-- `tile` is their width now).
+export type StripSpot = { x: number, y: number, scale: number }
+
+function UiLayout.partyStripSpot(view: Size, under: Rect, buttons: { Rect }, ring: { right: number, top: number }, clear: number, tile: number, minTile: number): StripSpot?
+	local ringTop = view.h - ring.top
+	if under.y + under.h <= ringTop - clear or under.x >= ring.right + clear or #buttons == 0 then
+		return nil
+	end
+	-- the bottom row's line: the leftmost button's foot (Swap / Call in, or Run)
+	local first = buttons[1]
+	for _, b in buttons do
+		if b.x < first.x then
+			first = b
+		end
+	end
+	local floor = first.y + first.h
+	local right = view.w
+	for _, b in buttons do
+		if b.y < floor and b.y + b.h > floor - under.h then
+			right = math.min(right, b.x)
+		end
+	end
+	local left = ring.right + clear
+	local room = right - clear - left
+	local scale = math.min(1, room / under.w)
+	if scale * tile < minTile then
+		return nil
+	end
+	return { x = right - clear - under.w * scale, y = floor - under.h * scale, scale = scale }
+end
+
 -- The Forge window's pane on a phone (Config/ForgeLayout): its height on a screen `viewH` px tall, and the height of
 -- what it shows first: the card beside the Now / After boxes (the Forge tab: beside the element buttons), the cost
 -- chips under them

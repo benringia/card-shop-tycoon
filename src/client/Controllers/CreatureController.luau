@@ -56,6 +56,7 @@ type Creature = {
 	highlight: Highlight?,
 	light: PointLight?,
 	tag: BillboardGui, -- its name tag (Util/CreatureTagGui)
+	tagHeldUntil: number?, -- os.clock: its tag hidden until then while its level-up chip shows in its place (HoldTag)
 	hurt: HurtBadge.Badge, -- "Hurt 4:41" and dizzy stars while its card rests after fainting
 	hpBar: BillboardGui?, -- in an arena fight: a bar everyone can see
 	hpFill: Frame?,
@@ -169,7 +170,7 @@ end
 -- element, level and grade under it, the owner's name only on other players' creatures
 local function updateTag(creature: Creature)
 	local marker = creature.marker
-	creature.tag.Enabled = tagShown(marker)
+	creature.tag.Enabled = tagShown(marker) and os.clock() >= (creature.tagHeldUntil or 0)
 	local card = Cards.ById[marker:GetAttribute("CardId") :: string]
 	local ownerId = marker:GetAttribute("OwnerUserId")
 	local owner = if typeof(ownerId) == "number" then Players:GetPlayerByUserId(ownerId) else nil
@@ -557,6 +558,22 @@ function CreatureController.GetRootForBeast(beastId: string): (BasePart?, number
 		end
 	end
 	return nil, nil
+end
+
+-- Hides a creature's name tag for `seconds` (its level-up chip shows in its place: LevelUpController), then puts it
+-- back showing whatever changed meanwhile (its new level)
+function CreatureController.HoldTag(beastId: string, seconds: number)
+	for marker, creature in creatures do
+		if marker:GetAttribute("BeastId") == beastId then
+			creature.tagHeldUntil = os.clock() + seconds
+			creature.tag.Enabled = false
+			task.delay(seconds, function()
+				if creatures[marker] == creature then
+					updateTag(creature)
+				end
+			end)
+		end
+	end
 end
 
 -- A fight pose on the creature drawn on this marker (charge, strike, combo, cast, a Pet button move's pose); amount:

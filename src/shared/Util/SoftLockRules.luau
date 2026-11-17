@@ -1,7 +1,8 @@
 --!strict
 -- The soft lock's rules (owner 2026-11-15, look A; Config/SoftLock): which enemy Tab or the Target button picks next
--- (nearest edge first, on outward, round again), which one a tap lands on (on screen), what a tap does to the lock, and
--- whether a lock still holds. Client Util/SoftLock decides with these. Pure (no requires, no Roblox APIs).
+-- (nearest edge first, on outward, round again), which one a tap lands on (on screen), what a tap does to the lock,
+-- whether a lock still holds and the fight's own lock on the nearest. Client Util/SoftLock decides with these. Pure (no
+-- requires, no Roblox APIs).
 local SoftLockRules = {}
 
 export type Target = { id: string, x: number, z: number, radius: number }
@@ -39,6 +40,16 @@ function SoftLockRules.cycle(targets: { Target }, current: string?, px: number, 
 		end
 	end
 	return order[1].id
+end
+
+-- The lock this frame (owner 2026-11-17: "Target should be automatically locked when fight starts"): `current` while
+-- it stands; with `auto` on (the fight's start, until you let go yourself) the nearest enemy when nothing is locked or
+-- the locked one fell; else nothing
+function SoftLockRules.keep(targets: { Target }, current: string?, auto: boolean, px: number, pz: number): string?
+	if SoftLockRules.has(targets, current) then
+		return current
+	end
+	return if auto then SoftLockRules.cycle(targets, nil, px, pz) else nil
 end
 
 -- The enemy a tap at (tapX, tapY) lands on: inside its circle on screen (plus `slack` px), the nearest middle

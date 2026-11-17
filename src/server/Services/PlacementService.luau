@@ -27,6 +27,7 @@ local PlotConfig = require(Config:WaitForChild("Plots"))
 local ShelfStock = require(Shared:WaitForChild("Util"):WaitForChild("ShelfStock"))
 local PackModels = require(Shared:WaitForChild("Util"):WaitForChild("PackModels"))
 local BrandBox = require(Shared:WaitForChild("Util"):WaitForChild("BrandBox"))
+local SleevePacket = require(Shared:WaitForChild("Util"):WaitForChild("SleevePacket"))
 local ShowcaseLayout = require(Shared:WaitForChild("Util"):WaitForChild("ShowcaseLayout"))
 local DecorRules = require(Shared:WaitForChild("Util"):WaitForChild("DecorRules"))
 local DecorLooks = require(Shared:WaitForChild("Util"):WaitForChild("DecorLooks"))
@@ -280,32 +281,16 @@ local function fillWithBoosters(box: Part, product: typeof(Products.List[1]))
 	end
 end
 
--- A box's place filled with card sleeve packets (Town.SHELF_STOCK.SLEEVES), leaning back a little, front first:
--- a backing card with a header tab and hang hole, the sleeves behind a clear window, a strip in the product's colour
+-- A box's place filled with card sleeve packets (Util/SleevePacket), leaning back a little, front first
 local function fillWithSleeves(box: Part, sleeveColor: Color3, brandColor: Color3)
 	local look = Town.SHELF_STOCK.SLEEVES
-	local card = rgb(look.CARD)
-	local width, height, thickness = look.WIDTH, look.HEIGHT, look.THICKNESS
 	box:ClearAllChildren()
 	local offsets = ShelfStock.stackOffsets(look.PER_STACK, box.Size.Z)
 	for index = 1, look.PER_STACK do
 		-- Standing on the box's bottom, tipped back about its foot
-		local base = box.CFrame * CFrame.new(0, -box.Size.Y / 2, offsets[index] or 0) * CFrame.Angles(math.rad(look.LEAN), 0, 0)
-		local function piece(name: string, size: Vector3, offset: CFrame, color: Color3): Part
-			local part = newDecorPart(name, box)
-			part.Size = size
-			part.CFrame = base * offset
-			part.Color = color
-			return part
-		end
-		piece("Backing", Vector3.new(width, height, thickness * 0.4), CFrame.new(0, height / 2, thickness * 0.3), card)
-		piece("Sleeves", Vector3.new(width - 0.1, height * 0.6, thickness * 0.4), CFrame.new(0, height * 0.52, -thickness * 0.05), sleeveColor)
-		local window = piece("Window", Vector3.new(width - 0.06, height * 0.66, thickness * 0.2), CFrame.new(0, height * 0.52, -thickness * 0.35), Color3.new(1, 1, 1))
-		window.Material = Enum.Material.Glass
-		window.Transparency = look.WINDOW_TRANSPARENCY
-		piece("Brand", Vector3.new(width, height * 0.14, thickness * 0.5), CFrame.new(0, height * 0.07, -thickness * 0.05), brandColor)
-		piece("Tab", Vector3.new(width * 0.5, look.TAB, thickness * 0.4), CFrame.new(0, height + look.TAB / 2, thickness * 0.3), card)
-		piece("Hole", Vector3.new(0.12, 0.05, thickness * 0.45), CFrame.new(0, height + look.TAB * 0.55, thickness * 0.3), Color3.fromRGB(30, 32, 38))
+		local packet = SleevePacket.build(sleeveColor, brandColor)
+		packet:PivotTo(box.CFrame * CFrame.new(0, -box.Size.Y / 2, offsets[index] or 0) * CFrame.Angles(math.rad(look.LEAN), 0, 0))
+		packet.Parent = box
 	end
 end
 
@@ -419,7 +404,6 @@ local function updateStockBoxes(shelf: PlacedShelf, price: number)
 	local pack = Packs.ById[product.id]
 	local slotCount = ShelfStock.slotCount(config)
 	local shown = Town.SHELF_STOCK.DISPLAY.PACKS_SHOWN
-	local sleeveColors = Town.SHELF_STOCK.SLEEVES.COLORS
 	local size = ShelfStock.boxSize(toVec(shelf.def.size), config)
 	local slots = ShelfStock.slots(toVec(shelf.def.size), config)
 	local color = rgb(product.color)
@@ -443,7 +427,7 @@ local function updateStockBoxes(shelf: PlacedShelf, price: number)
 			fillWithDisplayBox(box, product.id, ShelfStock.boxFill(shelf.units, shelf.def.capacity, slotCount, index, shown))
 		elseif product.stockLook == "Sleeves" then
 			box.Transparency = 1
-			fillWithSleeves(box, rgb(sleeveColors[(index - 1) % #sleeveColors + 1]), color)
+			fillWithSleeves(box, SleevePacket.color(index), color)
 		elseif product.stockLook == "Booster" then
 			box.Transparency = 1
 			fillWithBoosters(box, product)

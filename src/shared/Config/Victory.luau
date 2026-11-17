@@ -45,6 +45,8 @@ return {
 		levelUp = "rbxassetid://9116418035", -- Magic Tone Falling Shimmer (Pro Sound Effects)
 	},
 	VOLUME = 0.5,
+	-- A boss win's sting (the music), quieter than the tile pops (owner 2026-11-17: "lower victory music after bossfights")
+	WIN_VOLUME = 0.22,
 	-- Seconds of silence at the start of a sound's file, skipped so it lands with the moment (measured in Studio)
 	START_AT = { win = WIN_OPTIONS[1].startAt, levelUp = 0.38 },
 	-- Normal monsters get a toast instead (Util/FightToast): slides down at the top, edge colour by kind, gone after

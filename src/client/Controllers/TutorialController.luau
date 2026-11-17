@@ -215,17 +215,18 @@ local function scrolledAway(item: GuiObject): ScrollingFrame?
 	return if showing < item.AbsoluteSize.Y * 0.5 then list else nil
 end
 
--- Pish's present or gift in the Bag: the Bag button, then its slot, then Open once it's the one showing
-local function bagSituation(item: string): (string, Target)
+-- An item in the Bag (Pish's present or gift, a trophy): the Bag button, then its slot, then its `button` (Open, Place)
+-- once it's the one showing
+local function bagSituation(item: string, button: string): (string, Target)
 	local bag = inMainGui("Bag")
 	if not bag then
 		return "default", { hud = "Bag" }
 	end
 	local details = bag:FindFirstChild("Details", true)
 	if details and details:GetAttribute("ItemId") == item then
-		local open = inside(bag, "Open")
-		if open then
-			return "picked", { gui = open }
+		local press = inside(bag, button)
+		if press then
+			return "picked", { gui = press }
 		end
 	end
 	return "bagOpen", { gui = inside(bag, item) }
@@ -238,6 +239,7 @@ local STEP_WINDOWS: { [string]: { [string]: boolean } } = {
 	buildRack = { BuildMenu = true },
 	orderStock = { OrderMenu = true },
 	["lesson:build"] = { BuildMenu = true },
+	["lesson:bag"] = { Bag = true }, -- the trophy lesson: placed from the Bag
 	["lesson:order"] = { OrderMenu = true },
 	-- on the register (RegisterStationController: its Leave pill counts as open) while a customer comes and pays
 	customer = { LeaveRegister = true },
@@ -269,9 +271,9 @@ local function stepSituation(stepId: string): (string, Target)
 		return inTheWaySituation(inTheWay), { gui = inTheWay }
 	end
 	if stepId == "giftPack" then
-		return bagSituation(Pish.FIRST_ITEM)
+		return bagSituation(Pish.FIRST_ITEM, "Open")
 	elseif stepId == "gift" then
-		return bagSituation(Pish.GIFT_ITEM)
+		return bagSituation(Pish.GIFT_ITEM, "Open")
 	elseif stepId == "buildRack" then
 		if PlacementController.IsActive() then
 			return "placing", {}
@@ -320,7 +322,7 @@ local function teaches(lesson: Lesson): boolean
 	return lesson.shelf ~= nil or lesson.product ~= nil or lesson.trigger == "trophy"
 end
 
--- The trophy the player holds, to place (the trophy lesson's tile)
+-- The trophy the player holds, to place (the trophy lesson's Bag slot)
 local function heldTrophy(): string?
 	for _, def in Shelves.List do
 		if def.kind == "Trophy" and def.requiresItem and BuildController.ItemCount(def.requiresItem) > 0 then
@@ -347,6 +349,24 @@ local function lessonSituation(lesson: Lesson): (string, Target, string)
 		end
 		return "computer", { part = "OrderComputer" }, name
 	end
+	-- A trophy is placed from the Bag (owner 2026-11-17): the Bag, its slot, Place, then the floor
+	if lesson.trigger == "trophy" then
+		local inTheWay = windowInTheWay("lesson:bag")
+		if inTheWay then
+			return inTheWaySituation(inTheWay), { gui = inTheWay }, ""
+		end
+		if PlacementController.IsActive() then
+			return "placing", {}, ""
+		end
+		local trophy = heldTrophy()
+		local def = if trophy then Shelves.ById[trophy] else nil
+		if not trophy or not def then
+			return "bag", { hud = "Bag" }, "" -- none in the Bag (a replayed lesson): nothing to point at past the Bag
+		end
+		local situation, target = bagSituation(trophy, "Place")
+		local teach = if situation == "default" then "bag" elseif situation == "picked" then "bagPlace" else "tile"
+		return teach, target, def.name
+	end
 	local inTheWay = windowInTheWay("lesson:build")
 	if inTheWay then
 		return inTheWaySituation(inTheWay), { gui = inTheWay }, ""
@@ -354,7 +374,7 @@ local function lessonSituation(lesson: Lesson): (string, Target, string)
 	if PlacementController.IsActive() then
 		return "placing", {}, ""
 	end
-	local shelfId = lesson.shelf or heldTrophy()
+	local shelfId = lesson.shelf
 	local def = if shelfId then Shelves.ById[shelfId] else nil
 	local shop = inMainGui("BuildMenu")
 	if shop then
@@ -366,7 +386,7 @@ local function lessonSituation(lesson: Lesson): (string, Target, string)
 			end
 			return "tile", { gui = tile }, def.name
 		end
-		local category = if def then def.category else "Trophies"
+		local category = if def then def.category else "Shelves"
 		return "tab", { gui = inside(shop, "Tab" .. category) }, category
 	end
 	if Hud.isTrayOpen() then

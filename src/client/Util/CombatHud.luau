@@ -7,10 +7,10 @@
 -- one) and Run. Each button drains top-down while it cools down, with the seconds left. BattleController builds one
 -- per boss fight and feeds it the fight's snapshots; SwordController reports the sword's own cooldowns. When you're
 -- hit the portrait shakes with a red ring and the screen's edges flash red (pulsing below 30% HP: Util/HpBarRules).
--- Wild monster fights use the same HUD (owner 2026-11-03, `wild`): with a sword (`sword`) it's the boss layout, the
--- Swap button being Call in (while the call-in window is open, showing the card it brings), Run showing its chance and
--- a called-in creature's HP under yours; before the sword, your creature takes the ring and the top bar, and the Pet
--- button is big where Attack would be (UiLayout.wildButtons).
+-- Wild monster fights use the same HUD (owner 2026-11-03, `wild`): with a sword (`sword`) it's the boss layout, Run
+-- showing its chance and a called-in creature's HP under yours (the party strip calls one in; the Call in button is
+-- gone, owner 2026-11-17); before the sword, your creature takes the ring and the top bar, and the Pet button is big
+-- where Attack would be (UiLayout.wildButtons).
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -82,11 +82,10 @@ export type View = {
 	hasSignature: boolean,
 	reserves: { Reserve },
 	party: { PartyTile }?, -- boss fights: the party strip (owner 2026-11-05, option A)
-	-- Wild fights: a called-in creature on the field too, the call-in window's seconds left, the run chance
+	-- Wild fights: a called-in creature on the field too, the run chance
 	secondName: string?,
 	secondHp: number?,
 	secondMax: number?,
-	callInFor: number?,
 	runChance: number?,
 }
 export type Callbacks = {
@@ -622,6 +621,9 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 	chip.LayoutOrder = 3
 	chip.Size = UDim2.fromOffset(0, chipSize)
 	chip.AutomaticSize = Enum.AutomaticSize.X
+	-- one line, as wide as its words: wrapped, its end ("19% faster") went to a hidden second line on a small phone
+	-- (owner 2026-11-17: "make sure nothing is cutoff")
+	chip.TextWrapped = false
 	chip.BackgroundColor3 = color(CombatHudConfig.PANEL_COLOR)
 	chip.BackgroundTransparency = 0.15
 	chip.Visible = false
@@ -723,6 +725,7 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 	-- 2026-11-12 "replace summoned pets with another"); built again when the party changes
 	local stripSpec = CombatHudConfig.PARTY_STRIP
 	local strip: Frame? = nil
+	local stripScale = Instance.new("UIScale") -- shrinks it to fit the bottom row on a short phone (placeStrip)
 	do
 		local holder = Instance.new("Frame")
 		holder.Name = "PartyStrip"
@@ -735,6 +738,7 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		list.SortOrder = Enum.SortOrder.LayoutOrder
 		list.Padding = UDim.new(0, stripSpec.GAP)
 		list.Parent = holder
+		stripScale.Parent = holder
 		strip = holder
 	end
 	local tiles: { Tile } = {}
@@ -848,8 +852,6 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 			return view.petMove
 		elseif name == "signature" and view and view.signatureMove then
 			return view.signatureMove
-		elseif wild and name == "swap" then
-			return if view and view.callInFor then `Call in {math.max(0, math.ceil(view.callInFor))}s` else "Call in"
 		elseif wild and name == "run" and view and view.runChance then
 			return `Run {math.round(view.runChance * 100)}%`
 		end
@@ -949,6 +951,45 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		tile.overlay.Text = if wait > 0.05 then tostring(math.ceil(wait)) else ""
 	end
 
+	-- Where the strip goes (UiLayout.partyStripSpot): under the status, or on a short phone the bottom row beside the
+	-- fight buttons, clear of the thumbstick's ring (owner 2026-11-17: "make sure nothing is cutoff/overlapping")
+	local stripRects: { [string]: UiLayout.Rect }? = nil -- the buttons' rects (relayout)
+	local function placeStrip()
+		local holder = strip
+		local rects = stripRects
+		if not holder or not rects then
+			return
+		end
+		local width, height = 0, 0
+		for index, tile in tiles do
+			width += tile.frame.Size.X.Offset + (if index > 1 then stripSpec.GAP else 0)
+			height = math.max(height, tile.frame.Size.Y.Offset)
+		end
+		local spot: UiLayout.StripSpot? = nil
+		if UserInputService.TouchEnabled and width > 0 then
+			local size = root.AbsoluteSize
+			local statusHeight = math.min(status.Size.Y.Offset, limit.MaxSize.Y)
+			local under = { x = status.Position.X.Offset, y = status.Position.Y.Offset + statusHeight + stripSpec.TOP, w = width, h = height }
+			local list = {}
+			for name, rect in rects do
+				if buttons[name] and name ~= "swap" then -- Swap never shows: the strip is the swap
+					table.insert(list, rect)
+				end
+			end
+			local view = { w = size.X, h = size.Y }
+			spot = UiLayout.partyStripSpot(view, under, list, stripSpec.THUMB_RING, stripSpec.CLEAR, tiles[1].frame.Size.X.Offset, stripSpec.MIN_TILE)
+		end
+		if spot then
+			holder.Parent = root
+			holder.Position = UDim2.fromOffset(spot.x, spot.y)
+			stripScale.Scale = spot.scale
+		else
+			holder.Parent = status
+			holder.Position = UDim2.new(0, 0, 1, stripSpec.TOP)
+			stripScale.Scale = 1
+		end
+	end
+
 	-- The strip's tiles: rebuilt when the party's cards change, repainted every update
 	local function updateParty(party: { PartyTile }?)
 		if not strip then
@@ -969,6 +1010,7 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 			for _, info in list do
 				table.insert(tiles, makeTile(strip, info, onTile))
 			end
+			placeStrip()
 		end
 		for index, tile in tiles do
 			local info = list[index]
@@ -997,6 +1039,8 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 			button.label.Size = UDim2.fromOffset(0, nameSize + 2)
 			button.label.TextSize = nameSize
 		end
+		stripRects = rects
+		placeStrip()
 	end
 	relayout()
 	local resized: RBXScriptConnection? = root:GetPropertyChangedSignal("AbsoluteSize"):Connect(relayout)
@@ -1151,33 +1195,6 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		end
 	end)
 
-	-- Wild fights: Call in (the Swap button) only while the window is open, showing the card it brings
-	local function updateCallIn(view: View)
-		buttons.swap.frame.Visible = (view.callInFor or 0) > 0 and #view.reserves > 0
-		-- Call in shows the card it brings (the first one; more open the picker)
-		local icon = buttons.swap.frame:FindFirstChild("Icon")
-		local art = if view.reserves[1] then view.reserves[1].art else nil
-		if icon and icon:IsA("ImageLabel") and art then
-			icon.Image = art
-			icon.ImageColor3 = Color3.new(1, 1, 1)
-			icon.ScaleType = Enum.ScaleType.Crop
-			-- a round portrait in a white ring (owner 2026-11-13: the square art on the slanted button "looks broken")
-			icon.Size = UDim2.fromScale(0.62, 0.62)
-			icon.SizeConstraint = Enum.SizeConstraint.RelativeYY
-			if not icon:FindFirstChild("Round") then
-				local round = Instance.new("UICorner")
-				round.Name = "Round"
-				round.CornerRadius = UDim.new(0.5, 0)
-				round.Parent = icon
-				local ring = Instance.new("UIStroke")
-				ring.Color = Color3.new(1, 1, 1)
-				ring.Thickness = 2
-				ring.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-				ring.Parent = icon
-			end
-		end
-	end
-
 	-- A wild fight before the sword: your creature takes the top row (and the ring), a called-in one the second
 	local function updateCreatureOnly(view: View)
 		playerLabel.Text = `{view.creatureName} · {math.round(view.creatureHp)} / {math.round(view.creatureMax)}`
@@ -1198,9 +1215,6 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 	local function update(view: View)
 		latest = view
 		local beaten = view.down or view.out
-		if wild then
-			updateCallIn(view)
-		end
 		updateParty(view.party)
 		if creatureOnly then
 			updateCreatureOnly(view)

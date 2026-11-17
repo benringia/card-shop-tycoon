@@ -264,4 +264,63 @@ return {
 		expect.equal(UiLayout.fitScale(0, 300, 0.65), 1, "nothing laid out yet")
 		expect.equal(UiLayout.fitScale(300, 0, 0.65), 1, "no space measured yet")
 	end,
+
+	-- Owner 2026-11-17 ("make sure nothing is cutoff/overlapping on all devices"): on a short phone a fight's party strip,
+	-- under the status, sat on Roblox's thumbstick ring (on a Galaxy A06 the ring's middle was on the first tile, so a
+	-- thumb meant to walk unsummoned the creature). It moves to the bottom row, beside the fight buttons, clear of the ring
+	["party strip: on a short phone it leaves the thumbstick's ring for the bottom row beside the buttons"] = function()
+		local ring, clear = { right = 104, top = 94 }, 8
+		for _, case in {
+			{ view = { w = 706, h = 281 }, statusBottom = 150, what = "Galaxy A06, a wild fight with a sword" },
+			{ view = { w = 706, h = 281 }, statusBottom = 137, what = "Galaxy A06, a boss fight" },
+			{ view = { w = 667, h = 317 }, statusBottom = 150, what = "iPhone SE, a wild fight with a sword" },
+		} do
+			for _, count in { 1, 2, 3 } do
+				local w = count * 58 + (count - 1) * 10
+				local under = { x = 12, y = case.statusBottom + 14, w = w, h = 64 }
+				for _, layout in { UiLayout.combatButtons(case.view), UiLayout.wildButtons(case.view) } do
+					local buttons = {}
+					for _, r in layout :: any do
+						table.insert(buttons, r)
+					end
+					local where = `{case.what}, {count} cards`
+					local spot = UiLayout.partyStripSpot(case.view, under, buttons, ring, clear, 58, 48)
+					expect.equal(spot ~= nil, true, `{where}: moves`)
+					local s = spot :: UiLayout.StripSpot
+					local r = { x = s.x, y = s.y, w = w * s.scale, h = 64 * s.scale }
+					expect.equal(58 * s.scale >= 48, true, `{where}: its tiles still tap targets`)
+					expect.equal(r.x >= ring.right + clear, true, `{where}: right of the ring`)
+					expect.equal(r.y >= 0 and r.y + r.h <= case.view.h, true, `{where}: on screen`)
+					for _, b in buttons do
+						local near = r.x < b.x + b.w + clear and b.x < r.x + r.w + clear and r.y < b.y + b.h and b.y < r.y + r.h
+						expect.equal(near, false, `{where}: clear of the button at {math.round(b.x)},{math.round(b.y)}`)
+					end
+				end
+			end
+		end
+	end,
+	["party strip: where it ends clear of the thumbstick's ring it stays under the status"] = function()
+		local ring = { right = 104, top = 94 }
+		local function buttonsFor(view: UiLayout.Size): { UiLayout.Rect }
+			local list = {}
+			for _, r in UiLayout.combatButtons(view) :: any do
+				table.insert(list, r)
+			end
+			return list
+		end
+		-- an iPhone 14 (844 x 332 under the top bar): the strip ends at 228, the ring starts at 238
+		local phone = { w = 844, h = 332 }
+		expect.equal(UiLayout.partyStripSpot(phone, { x = 12, y = 164, w = 194, h = 64 }, buttonsFor(phone), ring, 8, 58, 48), nil, "a taller phone")
+		local tablet = { w = 1180, h = 762 }
+		expect.equal(UiLayout.partyStripSpot(tablet, { x = 12, y = 180, w = 236, h = 80 }, buttonsFor(tablet), ring, 8, 72, 48), nil, "a tablet")
+	end,
+	["party strip: with no room in the bottom row either it stays under the status"] = function()
+		-- a made-up narrow, short screen: between the ring and the buttons not even 48 px tiles fit
+		local view = { w = 420, h = 281 }
+		local buttons = {}
+		for _, r in UiLayout.combatButtons(view) :: any do
+			table.insert(buttons, r)
+		end
+		expect.equal(UiLayout.partyStripSpot(view, { x = 12, y = 164, w = 194, h = 64 }, buttons, { right = 104, top = 94 }, 8, 58, 48), nil, "stays")
+	end,
 }

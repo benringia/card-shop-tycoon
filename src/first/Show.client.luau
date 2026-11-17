@@ -15,6 +15,8 @@ local LoadingGui = require(script.Parent:WaitForChild("LoadingGui"))
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local started = os.clock()
+-- Phones in landscape from the first frame, as the game is laid out (the client's start keeps it so)
+playerGui.ScreenOrientation = Enum.ScreenOrientation.LandscapeSensor
 
 -- A teleport's screen, shown at once while this place's configs arrive
 local arriving = TeleportService:GetArrivingTeleportGui()

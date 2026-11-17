@@ -178,6 +178,20 @@ return {
 		end
 	end,
 
+	-- Owner 2026-11-17 (the register): "card sleeves doesnt have a model on the counter": every product a customer buys
+	-- lies on the counter as itself (a pack, a deck box, a sleeve packet, a booster box), never a plain block
+	["every shop product lies on the counter as itself, never a plain block"] = function()
+		local Products = require("../src/shared/Config/Products")
+		local PackOdds = require("../src/shared/Config/PackOdds")
+		local expected = { FirstSparkPack = "pack", DeckBox = "deck", CardSleeves = "sleeves", FirstSparkBox = "booster" }
+		for _, product in Products.List do
+			local look = PropFit.counterLook(product.stockLook, PackOdds.SLOTS[product.id] ~= nil)
+			assert(look ~= "block", `{product.id} is a plain block on the counter`)
+			expect.equal(look, expected[product.id], product.id)
+		end
+		expect.equal(PropFit.counterLook(nil, false), "block", "something unknown: the part itself")
+	end,
+
 	["portal signs clear the portal frame"] = function()
 		assert(
 			wild.PORTAL_SIGN_HEIGHT - WILD_SIGN_HALF_HEIGHT >= town.SLOTS.Portal.height,

@@ -34,6 +34,22 @@ return {
 		end
 	end,
 
+	-- Owner 2026-11-17: "rank S pet's healing rain also heals me, so add a healing effect on the player too". The player
+	-- gets the rain's drizzle from over their head, not a cloud (a cloud there would hide the fight from their camera):
+	-- narrow and above head height, the heal's green glow, a flash on each tick that never hides them
+	["Healing Rain's look on its player: a drizzle over their head, never a cloud in the way"] = function()
+		local heal = MoveFx.PLAYER_HEAL
+		expect.equal(type(heal), "table", "PLAYER_HEAL")
+		assert(heal.drizzleHeight >= 3.5, `the drizzle starts over a player's head ({heal.drizzleHeight} studs over the root)`)
+		assert(heal.drizzleWidth > 0 and heal.drizzleWidth <= 5, `the drizzle stays round the player ({heal.drizzleWidth} studs)`)
+		assert(heal.drizzle > 0, "drops fall")
+		assert(heal.flash > 0.3 and heal.flash < 1, `the tick's green flash shows without hiding them ({heal.flash})`)
+		for _, key in { "glow", "water" } do
+			expect.equal(#heal[key], 3, `{key} is an RGB colour`)
+		end
+		expect.equal(Combat.ABILITIES.Tide.playerGrade, "S", "only a Grade S rain heals its player")
+	end,
+
 	-- The owner's rule: the higher the grade, the better the move looks and feels
 	["each grade is a step up"] = function()
 		for _, move in MOVES do

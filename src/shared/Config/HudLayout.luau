@@ -28,6 +28,7 @@ return {
 	TOWN_CHECK = 0.5, -- seconds between checks of whether you're in town (the Manage tray shows only there: Util/Hud)
 	TILE_SIZE = Vector2.new(TILE.size, TILE.size),
 	SIDE_X = 12, -- left edge of the side column
+	SIDE_TOP = 22, -- a phone's side column hangs from here (px under the top bar: room for the first icon over its tile)
 	BOTTOM_MARGIN = 16, -- the bottom row sits this far above the screen's bottom
 	GAP = TILE.gap,
 	SIDE_GAP = TILE.gap + math.ceil(TILE.size * TILE.iconRise), -- the left column: room for each icon over its tile's top

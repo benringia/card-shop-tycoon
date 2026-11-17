@@ -179,6 +179,9 @@ return {
 		orderOpen = "Tap Order on %s!",
 		closeWindow = "Tap the X to close this window.",
 		leaveRegister = "Tap Leave to step off the register.",
+		-- the trophy lesson (trophies are placed from the Bag, owner 2026-11-17): the Bag, the trophy's slot (`tile`), Place
+		bag = "Tap your Bag.",
+		bagPlace = "Tap Place!",
 	} :: { [string]: string },
 
 	-- The stuck helper's nudges (Util/LessonRules.nudge)

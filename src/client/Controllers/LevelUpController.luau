@@ -64,6 +64,9 @@ local function playCreature(beastId: string, element: string, from: number, to: 
 		return
 	end
 	LevelUpFx.playCreature(root, height, element, from, to, quiet)
+	-- its level chip takes its name tag's place while it shows (the tag comes back with the new level)
+	local chip = LevelUpConfig.CHIP
+	task.delay(LevelUpConfig.TIMING.badge, CreatureController.HoldTag, beastId, chip.hold + chip.fade)
 end
 
 local function onCreature(player: Player, beastId: string, element: string, from: number, to: number, fromFight: boolean)

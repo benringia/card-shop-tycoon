@@ -76,6 +76,19 @@ return {
 		expect.equal(SoftLockRules.isTap(2, 2, 0.8, SoftLock), false, "held")
 	end,
 
+	-- Owner 2026-11-17: "Target should be automatically locked when fight starts": the nearest enemy is locked as soon as
+	-- one stands, and when the locked one falls the lock moves to the nearest left; letting go yourself (tapping your
+	-- target again) leaves nothing locked until you lock one again
+	["the fight locks the nearest enemy itself and moves on when it falls"] = function()
+		expect.equal(SoftLockRules.keep(TARGETS, nil, true, 0, 0), "b:x", "the fight starts: the nearest")
+		expect.equal(SoftLockRules.keep(TARGETS, "b:m", true, 0, 0), "b:m", "a lock you picked holds")
+		expect.equal(SoftLockRules.keep({ TARGETS[1], TARGETS[3] }, "b:x", true, 0, 0), "b:y", "it fell: the nearest left")
+		expect.isNil(SoftLockRules.keep({}, "b:x", true, 0, 0), "nobody left")
+		expect.isNil(SoftLockRules.keep(TARGETS, nil, false, 0, 0), "you let go: nothing until you lock again")
+		expect.equal(SoftLockRules.keep(TARGETS, "b:m", false, 0, 0), "b:m", "a lock still holds")
+		expect.isNil(SoftLockRules.keep({ TARGETS[1] }, "b:x", false, 0, 0), "a fallen lock lets go")
+	end,
+
 	["tapping your target again lets go; another one moves the lock"] = function()
 		expect.isNil(SoftLockRules.afterTap("b:x", "b:x"))
 		expect.equal(SoftLockRules.afterTap("b:x", "b:y"), "b:y")

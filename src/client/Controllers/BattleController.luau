@@ -744,7 +744,6 @@ local function updateHud(hud: CombatHud.Hud, snapshot: Snapshot)
 		secondName = if second then fightNames[second.id] or "Creature" else nil,
 		secondHp = if second then second.hp else nil,
 		secondMax = if second then second.maxHp else nil,
-		callInFor = if combatWild then snapshot.callInFor else nil,
 		runChance = if combatWild then snapshot.runChance else nil,
 	})
 	if combatWild then

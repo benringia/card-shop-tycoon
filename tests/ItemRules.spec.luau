@@ -131,7 +131,62 @@ return {
 			end
 		end
 		expect.equal(checked, 6 + 7 + 3, "six keys, seven trophies, three packs")
-		expect.equal(config.ITEMS.sparkPack.icon, "BoosterPack", "the First Spark Pack keeps the orange pack")
+	end,
+
+	-- Owner 2026-11-17: "first spark pack in the inventory should use the actual card icon/model": the Bag's First Spark
+	-- Pack and Deck Box show the real models' pictures, the same ones the Order Stock and Prices menus show
+	["the First Spark Pack and Deck Box show their real models' pictures"] = function()
+		local UIIcons = require("../src/shared/Config/UIIcons")
+		local ProductPictures = require("../src/shared/Config/ProductPictures")
+		expect.equal(UIIcons[config.ITEMS.sparkPack.icon], ProductPictures.LOOKS.FirstSpark.Pack, "the pack")
+		expect.equal(UIIcons[config.ITEMS.deckBox.icon], ProductPictures.LOOKS.FirstSpark.Deck, "the deck box")
+	end,
+
+	-- Owner 2026-11-17: "trophies should have "PLACE" button on them that you can place directly to the shop. remove them
+	-- from the shop": every trophy is placed from the Bag (its id is its Config/Shelves entry's), nothing else is, and its
+	-- words say so, never the Shop's Build menu
+	["trophies are placed from the Bag with Place, never from the Shop"] = function()
+		local trophies = 0
+		for id, info in config.ITEMS do
+			local trophy = string.match(id, "^trophy_") ~= nil
+			expect.equal(ItemRules.placesInShop(config, id), trophy, `{id} placed from the Bag`)
+			if trophy then
+				trophies += 1
+				assert(string.find(info.use, "Place", 1, true), `{id} says to tap Place: {info.use}`)
+				assert(not string.find(info.use, "Build", 1, true), `{id} no longer goes through Build: {info.use}`)
+			end
+		end
+		expect.equal(trophies, #Bosses.LADDER, "one trophy per boss")
+		for _, bad in { "nope", 42, nil } do
+			expect.equal(ItemRules.placesInShop(config, bad), false, `not placeable: {tostring(bad)}`)
+		end
+	end,
+
+	-- Owner 2026-11-17: "make the description for the upgrade materials easier to understand. like Used to upgrade
+	-- whatever item": each weapon material says "Used to make and upgrade" and names every weapon it makes or upgrades
+	["weapon materials say plainly which weapons they make and upgrade"] = function()
+		local Weapons = require("../src/shared/Config/Weapons")
+		local WeaponRules = require("../src/shared/Util/WeaponRules")
+		local PREFIX = "Used to make and upgrade the "
+		for id, info in config.ITEMS do
+			if string.match(id, "^material_") then
+				expect.equal(string.sub(info.description, 1, #PREFIX), PREFIX, `{id} starts plainly`)
+				for _, weapon in Weapons.WEAPONS do
+					local cost = WeaponRules.makeCost(Weapons, weapon.id)
+					local uses = WeaponRules.material(Weapons, weapon.id) == id or (cost ~= nil and (cost.items[id] or 0) > 0)
+					if uses and weapon.ready ~= false then
+						assert(string.find(info.description, weapon.name, 1, true), `{id} names the {weapon.name}: {info.description}`)
+					end
+				end
+			end
+		end
+		expect.equal(config.ITEMS.wildOre.description, "Used to make and upgrade the Forge Sword, Forge Spear and Forge Scythe.")
+	end,
+
+	-- Owner 2026-11-17: "nerf exp tonic from 400exp to 300"
+	["the XP Tonic gives 300 XP and says so"] = function()
+		expect.equal(config.ITEMS.xpTonic.xp, 300)
+		assert(string.find(config.ITEMS.xpTonic.description, "300 XP", 1, true), config.ITEMS.xpTonic.description)
 	end,
 
 	["sanitize: unknown ids, bad counts dropped; whole numbers; capped"] = function()
@@ -183,6 +238,25 @@ return {
 			end
 		end
 		assert(typeof(config.ITEMS.xpTonic and config.ITEMS.xpTonic.xp) == "number", "the XP Tonic says how much XP it gives")
+	end,
+	-- Owner 2026-11-17: "xp tonics should have a "Use button" then lets the player choose which pet in the party". The
+	-- Bag's picker lists the party in slot order (gaps and cards the binder doesn't hold left out); a card at max level
+	-- shows but can't take one (the server never wastes a tonic on it)
+	["the XP Tonic's picker lists the party in slot order and marks max-level cards"] = function()
+		local beasts = {
+			low = { cardId = "c1", level = 4, xp = 10 },
+			top = { cardId = "c2", level = 50, xp = 0 },
+		}
+		local targets = ItemRules.tonicTargets({ [3] = "low", [1] = "top", [2] = "gone" }, beasts, 3, 50)
+		expect.equal(#targets, 2, "the two cards the binder holds")
+		expect.equal(targets[1].slot, 1, "slot order")
+		expect.equal(targets[1].beastId, "top", "slot 1's card")
+		expect.equal(targets[1].maxed, true, "at max level")
+		expect.equal(targets[2].slot, 3, "the unknown card in slot 2 left out")
+		expect.equal(targets[2].cardId, "c1", "its card")
+		expect.equal(targets[2].level, 4, "its level")
+		expect.equal(targets[2].maxed, false, "can still level")
+		expect.equal(#ItemRules.tonicTargets({}, beasts, 3, 50), 0, "an empty party")
 	end,
 	["bossOf: fragments and trophies name their ladder step"] = function()
 		local ladder = { "meadowWarden", "caveBroodQueen", "emberColossus" }

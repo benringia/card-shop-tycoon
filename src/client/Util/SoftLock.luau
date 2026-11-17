@@ -3,8 +3,10 @@
 -- enemy, press Tab or the fight's Target button to lock it: a cyan outline on it and bobbing cyan chevrons over it,
 -- nothing on the ground (owner 2026-11-16, pick A: a ring there passed for a boss's warning); your sword turns to it as
 -- you attack (SwordController's soft aim asks `locked`) and the server points your creature at it (Remotes.SoftLock,
--- BattleSim.setFocus). Tapping it again, or it falling, lets go. With nothing locked a faint white outline shows who
--- your sword would hit (the nearest in front, SwordRules.aimTarget). SwordController starts and stops it with the fight.
+-- BattleSim.setFocus). The fight locks the nearest enemy itself as it starts, and the next nearest when the locked one
+-- falls (owner 2026-11-17: "Target should be automatically locked when fight starts"); tapping your target again lets
+-- go until you lock one again. With nothing locked a faint white outline shows who your sword would hit (the nearest in
+-- front, SwordRules.aimTarget). SwordController starts and stops it with the fight.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -26,6 +28,7 @@ type Look = { outline: { number }, outlineTransparency: number, fill: { number }
 local player = Players.LocalPlayer
 local getTargets: (() -> { Target })? = nil
 local lockedId: string? = nil
+local autoLock = false -- the fight keeps the nearest locked (off once you let go yourself, on when you lock again)
 local sentId: string? = nil
 local lastSent = 0
 local pendingSend = false
@@ -131,8 +134,8 @@ local function find(targets: { Target }, id: string?): Target?
 	return nil
 end
 
--- Each frame: the lock lets go once its enemy is gone; the outline and arrow sit on the locked enemy, or (a faint white
--- outline, no arrow) on the one your sword would hit
+-- Each frame: the lock moves on (or lets go) once its enemy is gone; the outline and arrow sit on the locked enemy, or
+-- (a faint white outline, no arrow) on the one your sword would hit
 local function step()
 	local root = rootOf()
 	local glow, anchor, gui = targetOutline, arrowAnchor, arrowGui
@@ -140,9 +143,7 @@ local function step()
 		return
 	end
 	local targets = getTargets()
-	if lockedId and not SoftLockRules.has(targets, lockedId) then
-		setLock(nil)
-	end
+	setLock(SoftLockRules.keep(targets, lockedId, autoLock, root.Position.X, root.Position.Z))
 	local look = root.CFrame.LookVector
 	local autoId = SwordRules.aimTarget(root.Position.X, root.Position.Z, look.X, look.Z, targets, Swords.SOFT_AIM_RANGE, Swords.SOFT_AIM_ANGLE)
 	local shown = find(targets, lockedId or autoId)
@@ -211,13 +212,16 @@ local function tapAt(point: Vector2)
 			table.insert(onScreen, { id = target.id, x = middle.X, y = middle.Y, r = math.max(r, 20) })
 		end
 	end
-	setLock(SoftLockRules.afterTap(lockedId, SoftLockRules.pick(onScreen, point.X, point.Y, SoftLockConfig.PICK_SLACK)))
+	local after = SoftLockRules.afterTap(lockedId, SoftLockRules.pick(onScreen, point.X, point.Y, SoftLockConfig.PICK_SLACK))
+	autoLock = after ~= nil -- letting go of your target yourself: nothing locks again until you lock one
+	setLock(after)
 end
 
 -- The next enemy (Tab, the Target button): nearest first, on outward, round again
 function SoftLock.cycle()
 	local root = rootOf()
 	if getTargets and root then
+		autoLock = true
 		setLock(SoftLockRules.cycle(getTargets(), lockedId, root.Position.X, root.Position.Z))
 	end
 end
@@ -231,6 +235,7 @@ end
 function SoftLock.start(targets: () -> { Target })
 	SoftLock.stop()
 	getTargets = targets
+	autoLock = true -- the nearest enemy locks as soon as one stands (step)
 	local made = Instance.new("Folder")
 	made.Name = "SoftLock"
 	made.Parent = workspace
@@ -269,7 +274,7 @@ function SoftLock.stop()
 	end
 	connections = {}
 	getTargets = nil
-	lockedId, sentId, press = nil, nil, nil
+	lockedId, sentId, press, autoLock = nil, nil, nil, false
 	if folder then
 		folder:Destroy()
 	end

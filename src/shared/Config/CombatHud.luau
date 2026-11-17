@@ -146,6 +146,14 @@ return {
 		NAME = 12, -- text size (phones one less)
 		GAP = 10, -- pixels between tiles
 		TOP = 14, -- pixels below the status (the keys stick out above the tiles)
+		-- A touch screen's Roblox thumbstick at rest (a phone's ring: 74 px, 29 in from the left and 19 up from the bottom;
+		-- the classic stick 70 px, 25 in, 20 up): px from the screen's left to its right edge and from the bottom to its top.
+		-- On a short phone the strip under the status would sit on it (owner 2026-11-17, a Galaxy A06: the ring's middle on
+		-- the first tile), so it goes to the bottom row beside the fight buttons, CLEAR px from the ring and the buttons,
+		-- its tiles never under MIN_TILE px (UiLayout.partyStripSpot)
+		THUMB_RING = { right = 104, top = 94 },
+		CLEAR = 8,
+		MIN_TILE = 48,
 		EDGE = rgb(74, 64, 96),
 		KEY = rgb(244, 195, 58),
 		KEY_INK = rgb(43, 37, 64),

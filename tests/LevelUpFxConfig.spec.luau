@@ -11,6 +11,26 @@ local function isAsset(id: any): boolean
 end
 
 return {
+	-- Owner 2026-11-17: "make that bubble more immersive. add designs/animations to that bubble to be more satisfying"
+	-- (mockup B, "Level chip"): it pops, its three arrows light one after another, then the new level pops in; it holds
+	-- long enough to read after its show and fades quickly
+	["the creature's level chip: arrows light in order, then the new level; it holds, then fades"] = function()
+		local chip = LevelUpFx.CHIP
+		expect.equal(#chip.arrows, 3, "three arrows")
+		for index = 2, 3 do
+			assert(chip.arrows[index] > chip.arrows[index - 1], "the arrows light one after another")
+		end
+		assert(chip.newLevel > chip.arrows[3], "the new level pops after the last arrow")
+		assert(chip.plus >= chip.newLevel and chip.shine >= chip.newLevel, "the +1 and the shine follow it")
+		for _, at in chip.sparkles do
+			assert(at >= chip.arrows[1] and at < chip.hold, "sparkles twinkle during its show")
+		end
+		assert(chip.hold >= chip.shine + chip.shineSeconds and chip.hold >= 2.5, "it holds past its show, long enough to read")
+		assert(chip.fade > 0 and chip.fade <= 1, "then fades quickly")
+		assert(chip.size[1] > chip.size[2], "wider than tall")
+		assert(chip.edge > 0 and chip.edge < chip.size[2] / 4, "a thin edge of the element's colour")
+	end,
+
 	["images are uploaded ids"] = function()
 		for _, name in { "rune", "beam", "mote" } do
 			assert(isAsset(LevelUpFx.IMAGES[name]), `{name} is an uploaded image`)

@@ -44,7 +44,7 @@ for key, id in Victory.SOUNDS do
 		local sound = Instance.new("Sound")
 		sound.Name = `Victory_{key}`
 		sound.SoundId = id
-		sound.Volume = Victory.VOLUME
+		sound.Volume = if key == "win" then Victory.WIN_VOLUME else Victory.VOLUME
 		sound:SetAttribute("StartAt", Victory.START_AT[key] or 0)
 		sound.Parent = SoundService
 		templates[id] = sound
@@ -63,7 +63,7 @@ local function play(id: string)
 	if id == Victory.SOUNDS.win and option then
 		local sound = Instance.new("Sound")
 		sound.SoundId = option.id
-		sound.Volume = Victory.VOLUME
+		sound.Volume = Victory.WIN_VOLUME
 		sound.Parent = SoundService
 		sound.TimePosition = option.startAt
 		sound:Play()

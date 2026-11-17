@@ -105,4 +105,30 @@ function ItemRules.stockOf(config: Config, itemId: any): string?
 	return if typeof(info) == "table" and typeof(info.stock) == "string" then info.stock else nil
 end
 
+-- Whether a Bag item is placed in your shop from the Bag (its Place button; owner 2026-11-17): the boss trophies, each
+-- its own Config/Shelves entry by the same id
+function ItemRules.placesInShop(config: Config, itemId: any): boolean
+	if typeof(itemId) ~= "string" then
+		return false
+	end
+	local info = config.ITEMS[itemId]
+	return typeof(info) == "table" and info.trophy == true
+end
+
+export type TonicTarget = { slot: number, beastId: string, cardId: string, level: number, xp: number, maxed: boolean }
+
+-- The party cards an XP Tonic can go on (the Bag's picker), in slot order: empty slots and cards the binder doesn't
+-- hold are left out; a card at `maxLevel` is listed as maxed (the server never wastes a tonic on it)
+function ItemRules.tonicTargets(slots: { [number]: string }, beasts: { [string]: any }, partySize: number, maxLevel: number): { TonicTarget }
+	local targets: { TonicTarget } = {}
+	for slot = 1, partySize do
+		local beastId = slots[slot]
+		local beast = if beastId then beasts[beastId] else nil
+		if beastId and beast then
+			table.insert(targets, { slot = slot, beastId = beastId, cardId = beast.cardId, level = beast.level, xp = beast.xp, maxed = beast.level >= maxLevel })
+		end
+	end
+	return targets
+end
+
 return ItemRules

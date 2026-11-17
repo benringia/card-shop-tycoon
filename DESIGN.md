@@ -529,8 +529,12 @@ is over UI (`UIKit.pointerBlocked`).
   coming when Pish introduces them"; `TutorialRules.holdsCustomers`, CustomerService's spawn hold), then the shop's own
   wait `Customers.AFTER_PISH_CUSTOMER` (40 s) so his first sale has the counter to itself. A skipped, finished or
   replayed tour never waits.
-  Packs and deck boxes lie face up on the counter as their 3D models (`Util/PackModels`, inside an invisible scan
-  target); other products are a box in the product's colour.
+  Every product lies on the counter as itself (`PropFit.counterLook`, tests/PropFit; owner 2026-11-17: "card sleeves
+  doesnt have a model on the counter"): packs and deck boxes face up as their 3D models (`Util/PackModels`), Card
+  Sleeves as a face-up retail packet (`Util/SleevePacket`, the shelves' packet, each in the next sleeve colour, its
+  window printed with the menus' fanned-out sleeves picture so it never reads as a block), all
+  inside an invisible scan target; a booster box stands as the scan target itself, sized like one to the slot and
+  printed like its delivery case (`Util/BrandBox`). Only something the shop doesn't sell would be a plain box.
 - **Manning the register** (owner 2026-11-16: "when I go to a cash register, I want the option like 'Man the
   cashier'. I will then switch to first person with the UI of an actual cash register ... when I get off the cash
   register, I will then switch back to third person"; like TCG Card Shop Simulator; modern, to match the shop; round 2
@@ -576,7 +580,11 @@ is over UI (`UIKit.pointerBlocked`).
   back."); no penalty. The server checks every answer against its own total (`PayAnswer`: the typed cents, or the list
   of bills and coins, each a drawer value, at most 40; rate-limited, owner on the register only); `PaymentStart` /
   `PaymentResult` reach the owner. Scanning, Charge and paying need you on the register (server `ManRegister`,
-  `ManningRegister` attribute; "Man the register to scan!" otherwise). A card bought from a Glass Showcase lies on the
+  `ManningRegister` attribute; "Man the register to scan!" otherwise). The client steps you behind the counter as it
+  asks, so the server waits up to `Register.MAN_GRACE` (1.5 s) for that move to reach it before it says no (QA
+  2026-11-17: pressed from the shop floor, the server saw you out front and refused while the register's view stayed up,
+  every scan refused); with no yes in `MAN_CONFIRM` (3 s) the client steps off again. Leaving is never rate-limited. Your
+  own title tag hides while you're on it (it hung across the top of the first-person view; others still see it). A card bought from a Glass Showcase lies on the
   counter as a real card (owner 2026-11-16: "cards from the glasscase should have a model in cashiers too with all the
   effects"): the case card's part and attributes (card, foil, grade, level, stars, price), face up and its top away from
   you, scaled into the counter slot (`RegisterService` dressCard), so every client draws its face, halo, sparkles and a
@@ -962,7 +970,9 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
   packs, or the same Bag item while you have one (`OpeningFlow.anotherLeft`, Lune-tested; `PackOpened` names the Bag
   item it came from). With none left there, Continue stands alone. The "N left in box" and pity
   pills and the Odds button sit in the top corners during the opening. Laid out for a 667x375 landscape phone below
-  Roblox's top bar (`Util/OpeningLayout` sizes the 3D cards from pixels, Lune-tested).
+  Roblox's top bar (`Util/OpeningLayout` sizes the 3D cards from pixels, Lune-tested). On a short screen the results
+  lineup moves up, or shrinks, to stay between the results pills and Continue / Open another (`PackOpeningLayout`
+  `topReserve` 96 px, `bottomReserve` 90 px; QA 2026-11-17: the buttons covered the cards' prices).
 - **Effects** are our own, rendered in Blender (`tools/blender/build_pack_fx.py`, sheets cut by
   `tools/textures/make_flipbooks.py`, PNGs in `assets/ui/fx`, ids in `Config/PackFx`): the rip burst (an 8x8
   flipbook), holo and gold foil shards and four-point glints (4x4 flipbooks), plus a mote, rays, the light leak and
@@ -1058,9 +1068,14 @@ trophies) each have their own picture (owner 2026-11-14: "all card pack in my in
 the trophies and keys"; UIIcons sheet 10: a spider key, lava, snowflake, lightning, void and crystal keys, and a trophy
 per boss: leafy antlers, spider, flames, frost, lightning, void, crystal hydra) with the boss's ladder number in a
 corner chip in its colour (`ItemRules.bossOf`, `Util/BossTints`); Turts' Very Rare, Epic and Legendary Packs are teal,
-purple and gold packs (the First Spark Pack keeps the orange one); the chosen item's details on the
+purple and gold packs; the First Spark Pack and Deck Box show the real models' pictures, the ones the Order Stock and
+Prices menus show (UIIcons `FirstSparkPack`, `FirstSparkDeck` = `Config/ProductPictures`; owner 2026-11-17: "first
+spark pack in the inventory should use the actual card icon/model"); the chosen item's details on the
 right in a dark panel (big icon ringed in the boss's colour, name, "You have 2", What it does / Where to get it / How to use it
-boxes). Counts and boss numbers stay at least 14 px tall on screen when the window shrinks for a phone. It scales down to
+boxes, each as tall as its words and scrolling on a short screen; owner 2026-11-17: a long line was cut off). Weapon
+materials say plainly what they're for: "Used to make and upgrade the Verdant Blade, Sunforged Blade and Titan's
+Lance." (owner 2026-11-17: "like Used to upgrade whatever item"; tests/ItemRules checks every weapon each one makes
+or upgrades is named). Counts and boss numbers stay at least 14 px tall on screen when the window shrinks for a phone. It scales down to
 fit small screens; the book and its corner buttons hide behind it. The Cards tab (and the case card picker) has a Frontier filter and a progress bar per set (First Spark, Frontier). Star Shards in the Condenser ("Use Star Shards"): real duplicates first, shards cover the rest
 up to half of a star's cost. One codebase, two places: `frontier.project.json` sets the Workspace attribute
 `PlaceKind = "Frontier"` and both entry scripts start only that place's parts (`Util/Place`). Numbers:
@@ -1106,6 +1121,17 @@ everywhere on a phone: away from town its shop apps (Shop, Prices, Jobs, Reviews
 stay (Party is an app in the Frontier and the Dungeon too). The weapon chip stays in town too (owner 2026-11-13:
 "weapons are missing in town"). Pish's lessons point at the Phone while what they show is inside it
 (`Hud.inPhone`). Checked on Studio's iPhone 16 Pro simulator: town, the Phone's apps, the Wild and back.
+Device QA (owner 2026-11-17: "make sure nothing is cutoff/overlapping on all devices"; Studio's Galaxy A06, iPhone 7,
+iPhone 16 Pro, iPad, laptop and Xbox): on a phone the left column hangs from the top (`HudLayout.SIDE_TOP`, 22 px) and
+the **Gift tile** sits in the bottom-centre row (`Gifts.TILE.phoneBottom`, `Hud.tile` `phoneBottom`, CompactHud spot
+"bottom"; third in the column it sat on the thumbstick's resting ring on every phone); that row hides while a window or
+the Phone is open (`UIKit.onPanelsChanged`, `Hud.refreshTiles`: a short screen's window reached down over it); a Phone
+page's Back is a 110x56 tap area; the game stays in landscape (`PlayerGui.ScreenOrientation` LandscapeSensor from the
+loading screen on, set again when a respawn copies StarterGui's setting back); the Jobs window takes its height from
+its ScreenGui (not the camera, which counts Roblox's top bar); the Party window's empty-slot words sit above the slot's
+middle; every shelf's Stock and Edit prompts are made once (the folder's first scan and its deferred ChildAdded both
+brought each shelf, so every shelf had two of each, drawn one on the other), and so are other players' Browse cards
+prompts.
 **The party dock** (owner 2026-11-13: "lets make the party UI like this in palworld. pets carousel, then under it is the
 character menu model then beside it is health. Both mobile and Desktop", then "no box", Pish pick A; PartyBarController,
 Util/PartyDock, `Party.BAR.DOCK`): it replaces the party bar (and the round 2 "+2" bubble) on PC and phones, with no
@@ -1159,13 +1185,15 @@ name and level), and four progress tiles over the stats: Level with its XP, Card
 The town fountain's sound is quieter up close (Scenery SOUNDS Fountain volume 0.08, 0.22 before).
 Owner 2026-11-13 (more): the dock's XP bar is longer (`DOCK.barWidth` 150) and stands alone and the buff icons sit right
 after them on PC; the Wild fight's Call in button shows the creature it brings as a round portrait in a white ring
-(the square art looked broken on the slanted button); and no weapon wears our old effects any more ("make sure no old
+(the square art looked broken on the slanted button; the button is gone since 2026-11-17, the party strip calls one in);
+and no weapon wears our old effects any more ("make sure no old
 effects on weapons"): Volt and Shade weapons (the Storm, Widow's and Rift Reapers, the Volt and Shade Forge weapons) wear
 the Yona pack aura in their colours, Volt with its crackling bolts (`WeaponLooks.ELEMENT_AURA`), and the perk hits
 (Eruption, Chain Lightning, Reap) burst with the packs' slash (`HitFx.impact`) instead of our drawn star.
 Owner 2026-11-15: an 8 px gap between the XP bar's end and the buff icons (`DOCK.buffGap`); a round lilac **quick Party
 button** with the Party icon just past the right portrait (`DOCK.quick`, 48 px) opens the Party window ("add a quick
-access party button somewhere here"); and a summoned creature **hurt after fainting** shows it on the creature itself,
+access party button somewhere here"; on a phone, where the dock is flush with the screen's right edge, it sits past the
+left portrait instead: owner 2026-11-17, "the party section is cutoff"); and a summoned creature **hurt after fainting** shows it on the creature itself,
 for everyone ("add noticeable indicator ON the pet that it's injured"; `Party.HURT`, client `Util/HurtBadge`): while
 its card rests (the marker's `RestUntil`, os.time, set by PartyService from BattleService's resting) a red "Hurt 4:41"
 pill with a beating heart sits over its name tag (the "+ Healing" pill takes the spot at the spring) and three gold
@@ -1739,7 +1767,13 @@ group, checked before its fragments and every time (not only the first). Below i
   or animation or icons for who's out/dead"): the one fighting has a green light running round its edge and a
   heartbeat pulse in place of its name; a card that fainted in this fight lies face down (the card back's violet and gold) with
   dizzy stars, one resting since an earlier fight face down with "Zzz"; while swaps cool down the others dim with the
-  seconds left; a tap swaps (looks in `Config/CombatHud` PARTY_STRIP). A key while swaps cool
+  seconds left; a tap swaps (looks in `Config/CombatHud` PARTY_STRIP). On a short phone, where the strip under the
+  status would end within `CLEAR` (8 px) of Roblox's thumbstick ring (`THUMB_RING`: 104 px from the left, its top 94 px
+  up from the bottom), it moves to the bottom row, right-aligned beside the fight buttons on their foot, shrunk if needed
+  but its tiles never under `MIN_TILE` (48 px) (`UiLayout.partyStripSpot`, Lune-tested; QA 2026-11-17: on a Galaxy A06
+  the ring's middle was on the first tile, so a thumb meant to walk unsummoned the creature; the iPhone 7 moves it too,
+  the iPhone 16 Pro, tablets and computers keep it under the status). The perk chip is one line as wide as its words
+  (its end used to wrap out of sight). A key while swaps cool
   down still says "Swap ready in 4s", a resting card says so (2026-11-04). The dodge is a 12-stud dash pushed by a velocity constraint in the ground plane (setting the velocity each frame
   lost half of it to the character's braking), and one that would end inside a boss or monster carries on through it
   to 1.5 studs past its edge, up to 26 studs (`SwordRules.dashLength`, owner 2026-11-04). With a mouse a click attacks and there's no Attack
@@ -1870,7 +1904,11 @@ group, checked before its fragments and every time (not only the first). Below i
   `Util/MoveFxRules` plays C for a creature with no grade and caps at B with the low-graphics switch off), its own
   Roblox-licensed sounds, and the creature's wind-up and cast pose growing with grade (`PetRig.body` amount). Healing
   Rain: a cartoon cloud over each creature it heals with rain falling on it (beams with a scrolling drop texture), a
-  glow, a rising "+N" each tick (gold at S); ripples (B), healing motes (A), rising water rings and a rainbow (S). Vine
+  glow, a rising "+N" each tick (gold at S); ripples (B), healing motes (A), rising water rings and a rainbow (S). The
+  player a Grade S rain heals too (owner 2026-11-17: "add a healing effect on the player too") gets no cloud (it would
+  hide the fight from their camera) but the rain's drizzle falling round them from over their head, a soft green glow
+  and light, the grade's motes and water rings at their feet, and on each tick a green flash on their body and a burst
+  of motes (`MoveFx.healPlayer` / `healPlayerTick`, `Config/MoveFx PLAYER_HEAL`; it stops if they go down). Vine
   Snare: vines (C, B) or thorny roots (A, S) climbing round the target on helices for its 4 s, then withering; leaves,
   thorns, dirt, a glowing crack and flowers by grade. Overcharge: three orbs circling the caster, one spent with each
   fast attack (the sim's `orb` field; a missed one fizzles on an `orbs` event), arcs between them (A), a bolt with
@@ -2107,7 +2145,8 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   one with their icons (cash, XP each, Star Shards, a dropped card, the boss chest and ground loot, the daily bonus; a
   new card, a first-clear chest item and the bonus glow gold, with a chime; a boss win opens with a rewarding sting,
   `Config/Victory WIN_OPTIONS`: the Victory Fanfare Sting, or by ear in Studio `/victorysound <1-3>`: Arc Of Triumph,
-  Light Fun Orchestral; the owner 2026-11-10); the notes (loot on the ground, carried,
+  Light Fun Orchestral; the owner 2026-11-10), quieter than the tile pops (`WIN_VOLUME` 0.22 to their 0.5; owner
+  2026-11-17: "lower victory music after bossfights"); the notes (loot on the ground, carried,
   reduced, full loot again in); the party with XP bars filling (round to empty again and a LEVEL UP! badge on a level
   up; the server sends each card's progress before and after, `BeastRules.levelProgress`). A loss has its own screen
   (below), a run "Got away safely" in grey, PvP "You win!" / "You lose" / "Draw" with its "Going home in" countdown. It closes by
@@ -2185,8 +2224,8 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   the skill, the Pet button) and your HP bar on top with your creature's and a called-in one's under it; without one
   yet, the Pet button big where Attack is in boss fights (the first of your creatures on the field that's ready acts;
   R on PC) and the Super move above it when one has it. Both add Run with its chance ("RUN 90%", a cooldown after a
-  failed try) and Call in showing the card it brings ("CALL IN 3S", only while the window is open; 1-3 on PC). PvP
-  keeps the bar below.
+  failed try). No Call in button (owner 2026-11-17: "remove this CALL IN button"): the party strip brings a card in (a
+  tap, or 1-3 on PC), as the call-in in the window's first seconds and as a swap after. PvP keeps the bar below.
 - **Fight bar** (PvP): kept short for landscape phones: each creature is one 56 px row (name and HP beside its ability
   buttons), Bring in / Run below (`layoutBar` in BattleController).
 - **Farm protection:** unlimited fights; XP and cash on every win. Items need a win of at least `minFightSeconds`
@@ -2196,10 +2235,18 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   Power makes them x0.35. Fragments for a boss you've already opened
   never drop. The first clear's chest (and the server-wide chat message) comes even on a too-fast win, so a strong
   player can still climb.
-- **Items:** XP Tonic (400 card XP, used from the Party panel, never on a Lv 30 card), Grading Seal (one missing
+- **Items:** XP Tonic (300 card XP, owner 2026-11-17: "nerf exp tonic from 400exp to 300"; never on a Lv 30 card; used from the Party panel, or from the Bag: its Use button
+  turns the item's panel into your party cards, portrait, level and XP bar, a Lv 30 one greyed with MAX; a tap sends one
+  and the list stays open for more, quick taps queued past the server's rate limit; owner 2026-11-17: "xp tonics should
+  have a "Use button" then lets the player choose which pet in the party"; `Util/TonicPicker`,
+  `ItemRules.tonicTargets`), Grading Seal (one missing
   duplicate at the Grading Station, at most half a step, so never on a 1-duplicate step; the toggle says when they
   can't help), Star Shards, fragments, trophies, First Spark Packs (shop level rewards, opened from the Bag).
-- **Trophies:** Build menu -> Trophies: placing one takes its trophy item (no cash), selling gives it back; they don't
+- **Trophies:** placed straight from the Bag (owner 2026-11-17: "trophies should have "PLACE" button on them that you
+  can place directly to the shop. remove them from the shop"): a trophy's Bag panel has a mint **Place** button
+  (`ItemRules.placesInShop`, `BuildController.PlaceTrophy`) that closes the Bag and starts placing it; away from town
+  it reads "Place in town" with a lock and a tap shows the locked card (`BlockedController.Show`). The Shop's Build
+  menu has no Trophies tab any more. Placing one takes its trophy item (no cash), selling gives it back; they don't
   count toward the shop's shelf limit; a stone
   plinth with a gold cup and a gem in the boss's colour (`Town.TROPHY_LOOK`). Visitors see them.
 - **UI:** the Bosses HUD tile (K, trophy icon) opens the Boss Ladder (style kit, lilac band; round 5, owner pick A
@@ -2679,8 +2726,10 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
 
 - **Locking**: tap or click an enemy (`SoftLockRules.pick`, a short still press; a drag turns the camera), press
   **Tab**, or press the fight's gold **Target** button (above the skill, `UiLayout.combatButtons` `target`): Tab and
-  the button go nearest first, then on outward, round again (`SoftLockRules.cycle`). Tapping your target again, or it
-  falling, lets go (`SoftLockRules.afterTap`, `has`).
+  the button go nearest first, then on outward, round again (`SoftLockRules.cycle`). The fight locks the nearest enemy
+  itself as soon as one stands, and moves to the nearest left when the locked one falls (owner 2026-11-17: "Target
+  should be automatically locked when fight starts"; `SoftLockRules.keep`); tapping your target again lets go, and
+  nothing locks again until you lock one (`SoftLockRules.afterTap`).
 - **What it does**: your sword turns to the locked enemy when you attack (SwordController's soft aim, wherever it is),
   and the server points your creature at it (remote `SoftLock`, `BattleSim.setFocus`: its auto-attacks go there
   instead of a boss's adds first / the lowest share of HP); an id that isn't a standing enemy changes nothing.
@@ -3190,8 +3239,13 @@ spins open on the ground, at 0.4 s a pillar of light (a white core in a gold glo
 levelling up lights for a moment, at 1.0 s a star badge pops with the number rolling up and a candy "LEVEL UP!" under it,
 and from 1.5 s the beam thins and the circle fades (3 s in all). Every 10th level the pillar runs pink, butter, mint,
 sky and lilac, the circle is two-toned and a pack flies out with "+1 pack". A creature that levels up (`CardService.
-OnBeastLevelUp`) gets a smaller pillar in its element's colour and a "Lv 19 -> 20" chip on its drawn model (summoned or
-a shop worker; markers and worker rigs carry `BeastId`); your own after a won fight starts when its XP sparks land on
+OnBeastLevelUp`) gets a smaller pillar in its element's colour and its level chip on its drawn model (summoned or
+a shop worker; markers and worker rigs carry `BeastId`). The chip (owner 2026-11-17: "make that bubble more immersive.
+add designs/animations to that bubble", mockup B "Level chip"; `LevelUpFx.CHIP`): a gold LEVEL UP! tab dropping onto a
+white pill edged in the element's colour, its element's icon, "Lv 19" muted, three arrows lighting one by one, then
+"Lv 20" popping in big and gold, a shine sweeping across, "+1" floating up and two sparkles twinkling; it holds 2.8 s
+after it pops, then rises and fades over 0.5 s, and the creature's name tag hides meanwhile
+(`CreatureController.HoldTag`, back with the new level after). Your own after a won fight starts when its XP sparks land on
 the portrait. The server sends `LevelUpFx` to everyone; others within 60 studs of their camera see it and hear it
 quieter. A shop level-up never plays mid-fight (a glowing circle underfoot reads as "dodge"): `LevelUpService` holds it
 until the fight (or PvP) ends, and after a boss fight its end screen too (the victory screen 6 s, the defeat countdown and the trip home 8 s, `LevelUpFx.AFTER_BOSS`), and merges several into one; the cash, the pack and the toast come at once. Bag packs don't open in a fight or PvP, nor while a pack is on the stage or a rip is on its way. Sounds
@@ -3357,7 +3411,8 @@ All numbers in `Config/Pish`.
   already past a level don't get its visit. Once the player has been free in town for 3 s (no window, fight, opening or
   weapon reveal; the first-sword popup comes first), Pish runs in, barks and says what's new with Next; a shelf,
   machine or trophy he then teaches like the first visit's rack ("Tap Manage.", "Tap Shop.", "Tap Cases.", "Tap the
-  Glass Showcase!", "Put it on the floor and tap to place!"; the trophy you hold), new stock through the computer
+  Glass Showcase!", "Put it on the floor and tap to place!"; a trophy through the Bag since 2026-11-17: "Tap your Bag.",
+  "Tap the Meadow Warden Trophy!", "Tap Place!", then the floor), new stock through the computer
   ("Walk to the computer.", "Tap Order on Card Sleeves!"; lines `PishTalk.TEACH`), a window in the way first ("Tap the
   X..."). It's done when the server sees it placed or ordered (`LessonRules.forShelf` / `forProduct`; also when the
   player finds it before he comes): a happy hop, then he runs to it (new stock: the delivery pad) and says what it's
@@ -3557,8 +3612,8 @@ start playing"; layout A, the calendar strip, picked from the mockups; their 202
 - Play time counts only once the first visit is done (the prologue and Pish's tutorial: TutorialDone, or the saved
   tutorial in the Frontier and the Dungeon), in every place; gifts are claimed in the main game (not mid-fight).
   Idle time still counts.
-- **Look**: the **Gift** tile on the HUD's side under the Phone (Pish's present, pink; on a phone in the column under
-  it): the play time left counting down, then "Open!" with a pulsing red "!", the present rattling now and then, and a
+- **Look**: the **Gift** tile on the HUD's side under the Phone (Pish's present, pink; on a phone in the bottom-centre
+  row, clear of the thumbstick: 2026-11-17 device QA): the play time left counting down, then "Open!" with a pulsing red "!", the present rattling now and then, and a
   toast "Your gift is ready!"; once claimed, the time until the next gift ("18h 10m"; owner: "Tomorrow" looked
   cramped); hidden until the first visit is done. The **Daily Gifts** window: the 7 day tiles in a row (done ones
   faded under a green check icon, today's glowing gold and breathing with CLAIM! or its time, day 7 wide and golden
@@ -3953,6 +4008,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │       ├── CopyCompare.luau        # the kid swap comparison: verdict badge and sentence, IN -> OUT cards, paired stat bars, perk line
     │       ├── Tooltip.luau            # word tooltips for icons without a label (hover, or hold a finger on it); rich item tips
     │       ├── BossTints.luau          # a boss's UI icon and its colour (the Bag's number chips and detail ring)
+    │       ├── TonicPicker.luau        # the Bag's XP Tonic picker: its Use turns the item's panel into your party cards to tap
     │       ├── BinderDesk.luau         # the 3D binder's scene: desk, painted lamp light, case, rings, page canvases, set tabs, camera framing, picking by raycast
     │       ├── StageSpot.luau          # puts the binder, card view and pack opening stages right above the player (clear box, claims) and moves their parts
     │       ├── PageTurner.luau         # the binder's turning page: bending strips with light cards on both sides, shade, shadow, page sound, drag
@@ -4138,7 +4194,8 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── WildPopulation.luau # how many monsters a valley biome keeps for its players, respawn times (pure, Lune-tested)
             ├── MonsterLooks.luau  # a wild monster's height, which style moves its bones, when its effects run, which monster and boss models a place preloads (pure, Lune-tested)
             ├── Props.luau         # place swappable prop models (assets/props) or part stand-ins; server town, client ghosts
-            ├── PropFit.luau       # prop fit sizes with YawOffset, register counter rows (pure, Lune-tested)
+            ├── PropFit.luau       # prop fit sizes with YawOffset, register counter rows and looks (pure, Lune-tested)
+            ├── SleevePacket.luau  # one retail packet of card sleeves (shelf stock, the register counter)
             ├── ShelfStock.luau    # stock boxes, display box fill and price tags on shelves (pure, Lune-tested)
             ├── PackModels.luau    # the 3D pack, deck box and display box (assets/packs, or stand-ins), dressed in a pack's look
             ├── ProductPictureRules.luau # a menu row's pack / deck box picture, else its icon (pure, Lune-tested)
@@ -4494,7 +4551,8 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   GoldSeal, Travel, Best and Pvp; sheet 7 (weapons round 1) the boss materials and Wild Ore (WardenHeartwood ...
   WildOre) and spare Forge icons (Anvil, Hammer, Upgrade, Reforge, Spear, Scythe, Elements, Awakened); sheet 10 each
   boss's key fragment and trophy (KeyBrood ... KeyHydra, TrophyWarden ... TrophyHydra) and Turts' packs (PackVeryRare,
-  PackEpic, PackLegendary); Bag items use icon names (`Config/Items` `icon`), not emoji. Every icon is kept drawn, tiny and nearly invisible,
+  PackEpic, PackLegendary), and the Bag's First Spark Pack and Deck Box the product pictures (FirstSparkPack,
+  FirstSparkDeck); Bag items use icon names (`Config/Items` `icon`), not emoji. Every icon is kept drawn, tiny and nearly invisible,
   from the moment you join (Roblox only finishes loading an image once it's drawn), so hidden tiles open with
   their icons ready. Names without a picture show as text (⌛ in a bubble). **Toasts** (owner's pick A, 2026-11-06;
   `Config/Toasts`, `Util/ToastRules`, `UIController.Notify(message, isError, duration, icon)` and `NotifySide` for

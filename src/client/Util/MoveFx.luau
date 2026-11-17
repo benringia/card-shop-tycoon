@@ -306,6 +306,101 @@ function MoveFx.rainTick(view: View, grade: string, amount: number)
 	sound(pulse, MoveFxConfig.SOUNDS.Rain.tick, 0.5)
 end
 
+-- A Grade S Healing Rain on its player (Config/MoveFx PLAYER_HEAL): the rain's drizzle falling round them from over
+-- their head (no cloud: it would hide the fight from their camera), a soft green glow and light on them, and by the
+-- grade's RAIN look rising motes (gold at S) and water rings at their feet, for `seconds`. Returns a stop.
+function MoveFx.healPlayer(character: Model, grade: string, seconds: number): () -> ()
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if not root or not root:IsA("BasePart") then
+		return function() end
+	end
+	local look = MoveFxConfig.RAIN[grade]
+	local spec = MoveFxConfig.PLAYER_HEAL
+	local heal, water = rgb(spec.glow), rgb(spec.water)
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local down = root.Size.Y / 2 + (if humanoid then humanoid.HipHeight else 2) -- the root to the feet
+	local items: { Instance } = {}
+
+	-- On the body and at the feet: attachments on the root, so they move with the player
+	local body = Instance.new("Attachment")
+	body.Position = Vector3.new(0, 0.4, 0)
+	body.Parent = root
+	local feet = Instance.new("Attachment")
+	feet.Position = Vector3.new(0, 0.15 - down, 0)
+	feet.Parent = root
+	table.insert(items, body)
+	table.insert(items, feet)
+	local halo = ElementFx.emitter(body, "glow", heal, { size = spec.halo, life = 0.7, locked = true, brightness = look.glow, fade = 0.4, start = 0.5 })
+	halo.Rate = 2.5
+	local light = Instance.new("PointLight")
+	light.Color = heal
+	light.Range = 10
+	light.Brightness = look.glow
+	light.Shadows = false
+	light.Parent = body
+	if look.motes then
+		local motes = ElementFx.emitter(feet, "spark", rgb(look.tickColor), { size = { 0.4, 0.1 }, life = { 1, 1.4 }, speed = { 3, 5 }, spread = 30,
+			rotation = 0, brightness = 2, fade = 0.5 })
+		motes.Rate = 12
+	end
+	if look.rings then
+		local rings = ElementFx.emitter(feet, "ring", water, { size = { 4, 2.5 }, life = 1.1, speed = { 4, 4 }, rotation = 0,
+			orientation = Enum.ParticleOrientation.VelocityPerpendicular, fade = 0.3, brightness = 1.8 })
+		rings.Rate = 2.8
+	end
+
+	-- The drizzle: short drops falling from a square over their head (a part, so drops start across it)
+	local sky = part(Vector3.new(spec.drizzleWidth, 0.2, spec.drizzleWidth), WHITE, CFrame.new(root.Position + Vector3.new(0, spec.drizzleHeight, 0)), 1)
+	table.insert(items, sky)
+	local drops = ElementFx.emitter(sky, "raindrop", water:Lerp(WHITE, 0.35), { size = { 0.5, 0.42 }, life = { 0.3, 0.4 }, speed = { 16, 20 },
+		direction = Enum.NormalId.Bottom, orientation = Enum.ParticleOrientation.VelocityParallel, rotation = 0, light = 0.8, brightness = 2.5, fade = 0.7 })
+	drops.Rate = spec.drizzle
+	local unfollow = follow(root, function(at)
+		sky.CFrame = CFrame.new(at.Position + Vector3.new(0, spec.drizzleHeight, 0))
+	end)
+
+	local stopped = false
+	local function stop()
+		if stopped then
+			return
+		end
+		stopped = true
+		unfollow()
+		fadeOut(items, 0.6)
+	end
+	task.delay(seconds, stop)
+	return stop
+end
+
+-- One Healing Rain tick on a player: their body flashes the heal's green, a glow pulses on them and motes burst out
+-- (their "+N" is the fight's own number; the creature's tick already chimes)
+function MoveFx.healPlayerTick(character: Model, grade: string)
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if not root or not root:IsA("BasePart") then
+		return
+	end
+	local look = MoveFxConfig.RAIN[grade]
+	local spec = MoveFxConfig.PLAYER_HEAL
+	local heal = rgb(spec.glow)
+	local pulse = Instance.new("Attachment")
+	pulse.Position = Vector3.new(0, 0.4, 0)
+	pulse.Parent = root
+	ElementFx.emitter(pulse, "glow", heal, { size = { 3, 7 * look.tick }, life = 0.45, locked = true, brightness = look.glow * 1.4, fade = 0.3 }):Emit(1)
+	ElementFx.emitter(pulse, "spark", rgb(look.tickColor), { size = { 0.45, 0.1 }, life = { 0.5, 0.8 }, speed = { 6, 10 }, spread = 180,
+		rotation = 0, brightness = 2, fade = 0.5 }):Emit(10)
+	Debris:AddItem(pulse, 1.2)
+	local flash = Instance.new("Highlight")
+	flash.Adornee = character
+	flash.FillColor = heal
+	flash.OutlineColor = rgb(look.tickColor)
+	flash.FillTransparency = spec.flash
+	flash.OutlineTransparency = 0.2
+	flash.DepthMode = Enum.HighlightDepthMode.Occluded
+	flash.Parent = folder()
+	TweenService:Create(flash, TweenInfo.new(0.55, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { FillTransparency = 1, OutlineTransparency = 1 }):Play()
+	Debris:AddItem(flash, 0.7)
+end
+
 -- ===================================================================================================================
 -- Vine Snare (Bloom)
 

@@ -158,4 +158,8 @@ return {
 	PackVeryRare = "rbxassetid://71917662803913",
 	PackEpic = "rbxassetid://134699935687986",
 	PackLegendary = "rbxassetid://125325445890293",
+	-- The Bag's First Spark Pack and Deck Box (owner 2026-11-17: "should use the actual card icon/model"): the real
+	-- models' pictures the Order Stock and Prices menus show (Config/ProductPictures, assets/ui/product-pictures)
+	FirstSparkPack = "rbxassetid://95761911403820",
+	FirstSparkDeck = "rbxassetid://87594315794918",
 } :: { [string]: string }

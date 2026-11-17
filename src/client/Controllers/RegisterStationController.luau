@@ -18,6 +18,7 @@ local UserInputService = game:GetService("UserInputService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Payment = require(Config:WaitForChild("Payment"))
+local RegisterConfig = require(Config:WaitForChild("Register"))
 local RegisterStation = require(Config:WaitForChild("RegisterStation"))
 local Town = require(Config:WaitForChild("Town"))
 local PaymentRules = require(Shared:WaitForChild("Util"):WaitForChild("PaymentRules"))
@@ -55,6 +56,7 @@ local player = Players.LocalPlayer
 local RegisterStationController = {}
 
 local manned = false
+local manAsk = 0 -- each step onto the register, so an old ask's wait for the server's yes gives way to a new one
 local checkoutOpen = false
 local remaining = 0
 local scannedTotal = 0 -- the checkout's running total in dollars (CheckoutUpdate)
@@ -486,6 +488,18 @@ function RegisterStationController.Man()
 		prompt.Enabled = false
 	end
 	Remotes.ManRegister:FireServer(true)
+	-- The server's yes is ManningRegister; without it in time (it said no: its toast says why) you step off again, not
+	-- left on a register whose scans it refuses (Config/Register MAN_CONFIRM)
+	manAsk += 1
+	local mine, asked = manAsk, os.clock()
+	task.spawn(function()
+		while manned and manAsk == mine and player:GetAttribute("ManningRegister") ~= true and os.clock() - asked < RegisterConfig.MAN_CONFIRM do
+			task.wait(0.1)
+		end
+		if manned and manAsk == mine and player:GetAttribute("ManningRegister") ~= true then
+			RegisterStationController.Leave()
+		end
+	end)
 	-- a sale's coins and XP sparks start from the register's screen while you man it; while the camera looks down at the
 	-- drawer or the card machine (paying), from the middle of the view, where it looks
 	SaleOrigin.set(function(): Vector2?

@@ -42,6 +42,10 @@ local function shownHere(player: Player): boolean
 	if player ~= Players.LocalPlayer then
 		return true
 	end
+	-- on your register in first person your own tag hung across the top of the view (QA 2026-11-17); others still see it
+	if player:GetAttribute("ManningRegister") == true then
+		return false
+	end
 	local pish, combat = player:GetAttribute("TutorialStep"), player:GetAttribute("CombatStep")
 	return not TutorialRules.tourLeading(if typeof(pish) == "string" then pish else "", if typeof(combat) == "string" then combat else "", Chikin.WAIT_STEP)
 end
@@ -145,8 +149,8 @@ local function watch(player: Player)
 end
 
 function TitleController.Start()
-	-- A tour starting or ending: your own title hides or comes back
-	for _, name in { "TutorialStep", "CombatStep" } do
+	-- A tour starting or ending, or stepping onto your register or off it: your own title hides or comes back
+	for _, name in { "TutorialStep", "CombatStep", "ManningRegister" } do
 		Players.LocalPlayer:GetAttributeChangedSignal(name):Connect(function()
 			show(Players.LocalPlayer)
 		end)

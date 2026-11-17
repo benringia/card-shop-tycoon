@@ -2,6 +2,20 @@
 -- Client entry point. Starts each controller; UIController first since others build on its ScreenGui.
 local Controllers = script:WaitForChild("Controllers")
 
+-- Phones stay in landscape (either way up): every window, the binder and the pack opening are laid out for it; in
+-- portrait they shrank to a strip (owner 2026-11-17: "make sure nothing is cutoff/overlapping on all devices"). Set
+-- again whenever it changes: a respawn copies the place's StarterGui setting (Sensor) back
+do
+	local playerGui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui") :: PlayerGui
+	local function landscape()
+		if playerGui.ScreenOrientation ~= Enum.ScreenOrientation.LandscapeSensor then
+			playerGui.ScreenOrientation = Enum.ScreenOrientation.LandscapeSensor
+		end
+	end
+	landscape()
+	playerGui:GetPropertyChangedSignal("ScreenOrientation"):Connect(landscape)
+end
+
 local LoadingController = require(Controllers:WaitForChild("LoadingController"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local OrderController = require(Controllers:WaitForChild("OrderController"))

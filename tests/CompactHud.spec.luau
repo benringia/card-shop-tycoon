@@ -86,4 +86,15 @@ return {
 			expect.equal(r.y >= 0 and r.y + r.h <= view.h, true, "on screen")
 		end
 	end,
+
+	-- Owner 2026-11-17 ("make sure nothing is cutoff/overlapping on all devices"): on a phone the left column held the
+	-- Phone, Cards and the Gift tile, and on every landscape phone the Gift tile sat on the thumbstick's resting spot.
+	-- A `bottom` tile (Gift) joins the bottom-centre row on a phone, clear of the thumbstick and the jump button; on a
+	-- computer it stays in its own place
+	["the Gift tile sits in the bottom row on a phone, clear of the thumbstick"] = function()
+		local gift = { bottom = true }
+		expect.equal(CompactHud.spot(gift, true, true), "bottom", "a phone: the bottom-centre row")
+		expect.equal(CompactHud.spot(gift, true, false), "bottom", "in the Wild too")
+		expect.equal(CompactHud.spot(gift, false, true), "tile", "a computer: its own place (the side column)")
+	end,
 }

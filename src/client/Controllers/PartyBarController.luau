@@ -988,6 +988,13 @@ function PartyBarController.Start()
 		if buffs then
 			buffs.LayoutOrder = if on then -3 else 10
 		end
+		-- The quick Party button sits past the right portrait on a computer; on a phone the dock is flush with the
+		-- screen's right edge, so it goes past the left one (owner 2026-11-17: "the party section is cutoff")
+		local quick = carousel:FindFirstChild("PartyQuick")
+		if quick and quick:IsA("GuiObject") then
+			quick.AnchorPoint = Vector2.new(if on then 1 else 0, 0.5)
+			quick.Position = UDim2.new(if on then 0 else 1, if on then -DOCK.quick.gap else DOCK.quick.gap, 0.5, DOCK.quick.lift)
+		end
 		placeCarousel() -- the phone's look: no key numbers, veiled sides, the name pill, the element badge
 	end)
 

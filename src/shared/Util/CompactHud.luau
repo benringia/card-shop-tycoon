@@ -25,14 +25,19 @@ end
 -- with `phone` becomes a Phone app on a phone screen (Bag, Bosses, Admin), one with `side` moves to the side column
 -- under the Phone (Cards); with `always` too (Bosses, Admin: owner 2026-11-13 "only cards and bag should be left at
 -- the center") a tile is a Phone app on a computer as well. "hidden": a town app away from town.
-export type Spot = "tile" | "side" | "phone" | "hidden"
+-- `bottom` (owner 2026-11-17, "make sure nothing is cutoff/overlapping on all devices"): on a phone the tile joins the
+-- bottom-centre row (the Gift tile: third in the side column it sat on the thumbstick's resting spot on every phone)
+export type Spot = "tile" | "side" | "phone" | "hidden" | "bottom"
 
-function CompactHud.spot(button: { app: boolean?, everywhere: boolean?, phone: boolean?, side: boolean?, always: boolean? }, compact: boolean, inTown: boolean): Spot
+function CompactHud.spot(button: { app: boolean?, everywhere: boolean?, phone: boolean?, side: boolean?, always: boolean?, bottom: boolean? }, compact: boolean, inTown: boolean): Spot
 	if button.app then
 		return if inTown or button.everywhere then "phone" else "hidden"
 	end
 	if button.phone and (compact or button.always) then
 		return "phone"
+	end
+	if compact and button.bottom then
+		return "bottom"
 	end
 	if compact and button.side then
 		return "side"

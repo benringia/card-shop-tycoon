@@ -645,7 +645,10 @@ local function layout()
 	local phone = UIKit.isPhone()
 	local rows = list:FindFirstChildOfClass("UIListLayout") :: UIListLayout
 	local camera = workspace.CurrentCamera
-	local screenHeight = if camera then camera.ViewportSize.Y else MAX_SIZE.Y
+	-- the room its ScreenGui has (under Roblox's top bar), not the whole view: on a short phone the camera's height
+	-- let the window run 11 px past the screen's bottom (owner 2026-11-17: "make sure nothing is cutoff")
+	local gui = panel:FindFirstAncestorOfClass("ScreenGui")
+	local screenHeight = if gui then gui.AbsoluteSize.Y elseif camera then camera.ViewportSize.Y else MAX_SIZE.Y
 	local needed = UIKit.HEADER_HEIGHT + 24 + rows.AbsoluteContentSize.Y + 2 * LIST_PAD + UIStyle.LIP
 	local height = math.min(needed, screenHeight * (if phone then 0.96 else 0.85))
 	panel.Size = UDim2.new(if phone then 0.97 else 0.9, 0, 0, height)

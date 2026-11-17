@@ -148,6 +148,11 @@ local function dressPrompt(prompt: ProximityPrompt)
 	end
 end
 
+-- A requirement this client knows before asking the server (the Bag's Place away from town): the same locked card
+function BlockedController.Show(reason: string)
+	showCard(reason)
+end
+
 function BlockedController.Start()
 	Remotes.Blocked.OnClientEvent:Connect(function(payload)
 		if typeof(payload) == "table" and typeof(payload.reason) == "string" then

@@ -57,4 +57,21 @@ return {
 		equal(yaw, -14, "left edge: full yaw the other way")
 		equal(pitch, -8, "bottom edge: tipping down")
 	end,
+
+	-- Owner 2026-11-17 ("make sure nothing is cutoff/overlapping on all devices"): on a 800 x 360 phone (706 x 339 under
+	-- Roblox's 58 px top bar) Continue and Open another covered the lineup cards' prices. The lineup stays between the
+	-- results pills (topReserve) and the buttons (bottomReserve), on every phone
+	["the results lineup keeps clear of the pills and the Continue / Open another buttons"] = function()
+		local look = PackOpeningLayout.LAYOUT
+		for _, phone in { { w = 706, h = 339 }, { w = 666, h = 374 }, { w = 750, h = 381 }, { w = 568, h = 320 } } do
+			local cards = OpeningLayout.lineup(5, phone, 58, look)
+			for i, r in cards do
+				equal(r.y + r.h <= phone.h - look.bottomReserve + 1e-6, true, `{phone.w}x{phone.h}: card {i} above the buttons`)
+				equal(r.y >= look.topReserve - 1e-6, true, `{phone.w}x{phone.h}: card {i} under the pills`)
+			end
+		end
+		-- a roomy screen keeps the lineup where it was
+		local wide = OpeningLayout.lineup(5, { w = 1600, h = 900 }, 58, look)
+		near(wide[1].y + wide[1].h / 2, 58 + look.lineupCentre * (900 - 58), 1e-6, "centred as before")
+	end,
 }

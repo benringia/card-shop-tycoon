@@ -148,6 +148,14 @@ return {
 		expect.equal(string.format(PishTalk.TEACH.orderOpen, "Card Sleeves"), "Tap Order on Card Sleeves!")
 		expect.equal(PishTalk.TEACH.closeWindow, PishTalk.LABELS.close)
 	end,
+	-- Owner 2026-11-17: trophies are placed from the Bag (its Place button), so the trophy lesson walks there: the Bag,
+	-- the trophy's slot, Place, then the floor
+	["the trophy lesson walks through the Bag: the Bag, the trophy, Place"] = function()
+		expect.equal(PishTalk.TEACH.bag, "Tap your Bag.")
+		expect.equal(string.format(PishTalk.TEACH.tile, "Meadow Warden Trophy"), "Tap the Meadow Warden Trophy!")
+		expect.equal(PishTalk.TEACH.bagPlace, "Tap Place!")
+		assert(PishTalk.TEACH.placing, "then the floor")
+	end,
 	["once it's placed or ordered, Pish says what it's for (owner: explain what this is for)"] = function()
 		for _, lesson in Pish.LESSONS do
 			local lessonAny = lesson :: any

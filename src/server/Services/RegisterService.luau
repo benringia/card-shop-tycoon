@@ -25,6 +25,8 @@ local ShowcaseConfig = require(Shared:WaitForChild("Config"):WaitForChild("Showc
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local PropFit = require(Shared:WaitForChild("Util"):WaitForChild("PropFit"))
 local PackModels = require(Shared:WaitForChild("Util"):WaitForChild("PackModels"))
+local SleevePacket = require(Shared:WaitForChild("Util"):WaitForChild("SleevePacket"))
+local BrandBox = require(Shared:WaitForChild("Util"):WaitForChild("BrandBox"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
@@ -78,6 +80,7 @@ local allowMan = RateLimiter.new(0.5)
 -- The owners manning their register in first person (owner 2026-11-16: "Man the cashier"; RegisterStationController):
 -- scanning, Charge and paying happen only there
 local manning: { [Player]: boolean } = {}
+local manTries: { [Player]: number } = {} -- each ask to man or leave, so a wait for the first gives way to a later one
 local rng = Random.new()
 local haggleCallbacks: { HaggleCallback } = {}
 local saleCallbacks: { SaleCallback } = {}
@@ -304,16 +307,30 @@ end
 
 -- The owner steps onto their register (first person) or off it. Only their own, from behind its counter
 local function onMan(player: Player, on: unknown)
-	if not allowMan(player) or typeof(on) ~= "boolean" then
+	-- leaving is never held back (only stepping on is rate limited): a Leave dropped here kept you "on" it
+	if typeof(on) ~= "boolean" or (on and not allowMan(player)) then
 		return
 	end
+	local try = (manTries[player] or 0) + 1
+	manTries[player] = try
 	if not on then
 		manning[player] = nil
 		player:SetAttribute("ManningRegister", nil)
 		return
 	end
 	local plot = PlotService.GetPlot(player)
-	if not plot or not isBehindCounter(player, plot) then
+	if not plot then
+		return
+	end
+	-- the client steps you behind the counter as it asks: give that move a moment to get here (Config/Register MAN_GRACE)
+	local deadline = os.clock() + RegisterConfig.MAN_GRACE
+	while not isBehindCounter(player, plot) and os.clock() < deadline and manTries[player] == try and player.Parent do
+		task.wait(0.1)
+	end
+	if manTries[player] ~= try or not player.Parent then
+		return -- left (or asked again) meanwhile
+	end
+	if not isBehindCounter(player, plot) then
 		notify(player, "Stand behind your register to man it.", true)
 		return
 	end
@@ -328,16 +345,31 @@ local function onMan(player: Player, on: unknown)
 	end
 end
 
--- What a counter item looks like: a pack or deck box shows its 3D model (Util/PackModels) lying face up inside the
--- part, which turns invisible but stays the scan target; anything else is the part in its product's colour
-local function dressItem(part: BasePart, productId: string?)
-	local pack = if productId then Packs.ById[productId] else nil
-	if not pack or not productId then
-		local product = if productId then Products.ById[productId] else nil
+-- What a counter item looks like (PropFit.counterLook): a pack, deck box or sleeve packet lies face up inside the part
+-- (its 3D model, Util/PackModels; a packet, Util/SleevePacket), which turns invisible but stays the scan target; a
+-- booster box is the part itself, sized like one and printed like its delivery case (Util/BrandBox); anything else is
+-- the part in its product's colour. `index`: the item's place in the row (each packet the next sleeve colour)
+local function dressItem(part: BasePart, productId: string?, index: number)
+	local product = if productId then Products.ById[productId] else nil
+	local look = if product then PropFit.counterLook(product.stockLook, Packs.ById[product.id] ~= nil) else "block"
+	if not product or look == "block" then
 		part.Color = if product then Color3.fromRGB(product.color[1], product.color[2], product.color[3]) else RegisterConfig.ITEM_COLOR
 		return
 	end
-	local model = if pack.kind == "Deck" then PackModels.deckBox(productId) else PackModels.pack(productId, "Low")
+	if look == "booster" then
+		-- standing on the counter, as big as the slot's footprint allows
+		local box = Town.SHELF_STOCK.BOOSTERS
+		local slot = part.Size
+		local scale = math.min(slot.X / box.WIDTH, slot.Z / box.DEPTH)
+		part.Size = Vector3.new(box.WIDTH, box.HEIGHT, box.DEPTH) * scale
+		part.CFrame = part.CFrame * CFrame.new(0, (part.Size.Y - slot.Y) / 2, 0)
+		BrandBox.draw(part, product, nil, box.PIXELS_PER_STUD)
+		return
+	end
+	local model = if look == "sleeves"
+		then SleevePacket.build(SleevePacket.color(index), Color3.fromRGB(product.color[1], product.color[2], product.color[3]))
+		elseif look == "deck" then PackModels.deckBox(product.id)
+		else PackModels.pack(product.id, "Low")
 	for _, descendant in model:GetDescendants() do
 		if descendant:IsA("BasePart") then
 			descendant.Anchored = true
@@ -455,7 +487,7 @@ local function startCheckout(customer: Customer)
 		if cardInfo then
 			dressCard(part, cardInfo, unitPrice, size, part.CFrame)
 		else
-			dressItem(part, if productId then productId else nil)
+			dressItem(part, if productId then productId else nil, index)
 		end
 
 		local click = Instance.new("ClickDetector")
@@ -650,6 +682,7 @@ function RegisterService.Start()
 	Remotes.ManRegister.OnServerEvent:Connect(onMan)
 	Players.PlayerRemoving:Connect(function(player)
 		manning[player] = nil
+		manTries[player] = nil
 		for plot, checkout in checkouts do
 			if checkout.customer.owner == player then
 				endCheckout(plot)
