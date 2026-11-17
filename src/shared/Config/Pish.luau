@@ -5,10 +5,17 @@
 -- His model: ReplicatedStorage.NpcModels.Pish; his clips: ReplicatedStorage.MonsterAnimations.Pish.
 return {
 	-- The first visit, in order: each completes when the game sees the player do it (TutorialService)
-	STEPS = { "giftPack", "buildRack", "orderStock", "stockRack", "customer", "ringUp", "gift", "bye" },
+	-- (owner 2026-11-17: "When the player opens their first card. Pish will then ask the player to summon them. then the
+	-- party UI and everything else should be displayed": summonPal right after his present, the calm HUD only up to it)
+	STEPS = { "giftPack", "summonPal", "buildRack", "orderStock", "stockRack", "customer", "ringUp", "gift", "bye" },
+	-- The calm HUD (every piece hidden) runs up to this step and stops after it; KEEP: pieces a calm step still shows
+	-- (TutorialRules.pishFocus)
+	CALM_UNTIL = "summonPal",
+	KEEP = { summonPal = { "party" } } :: { [string]: { string } },
 	-- The picture over Pish's head for each step (Config/UIIcons names)
 	STEP_ICONS = {
 		giftPack = "PishPresent",
+		summonPal = "Party",
 		buildRack = "Build",
 		orderStock = "Order",
 		stockRack = "Box",

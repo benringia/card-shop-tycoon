@@ -36,6 +36,34 @@ function SwordRules.nextCut(combo: { Cut }, last: LastCut?, now: number, comboRe
 	return 1, now
 end
 
+-- The combo swung `speed` times as fast (the prologue's scythe, owner 2026-11-17: "make the scythe attack speed a bit
+-- faster"): every time in each cut (its strike, follow-through, end, lunge and hang) divided by `speed`, its power and
+-- reach as they were; a new table (the combo itself is left alone), or the same combo at speed 1
+function SwordRules.quicken<C>(combo: { C }, speed: number): { C }
+	if speed == 1 or speed <= 0 then
+		return combo
+	end
+	local function window(times: any): any
+		if not times then
+			return nil
+		end
+		local copy = table.clone(times)
+		copy.from, copy.to = times.from / speed, times.to / speed
+		return copy
+	end
+	local quick = {}
+	for index, cut in combo do
+		local copy = table.clone(cut :: any)
+		copy.hitAt = copy.hitAt / speed
+		copy.length = copy.length / speed
+		copy.cancelAt = if copy.cancelAt then copy.cancelAt / speed else nil
+		copy.lunge = window(copy.lunge)
+		copy.hang = window(copy.hang)
+		quick[index] = copy
+	end
+	return quick
+end
+
 -- Is a target (centre tx, tz, `targetRadius` studs round) hit by a cut from (px, pz) facing (lookX, lookZ)? Its edge
 -- must be within `reach` and its centre within `arcDegrees` / 2 of the facing; standing inside its edge always hits.
 function SwordRules.inReach(px: number, pz: number, lookX: number, lookZ: number, tx: number, tz: number, targetRadius: number, reach: number, arcDegrees: number): boolean

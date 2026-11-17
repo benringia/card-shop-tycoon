@@ -47,6 +47,7 @@ local states: { [Player]: PartyState } = {}
 -- the prologue (PrologueService): the player's own party, kept here while lent cards fill the slots; it's what's saved
 local ownParty: { [Player]: { slots: { [number]: string }, summoned: number? } } = {}
 local changeBlocker: ((player: Player) -> string?)? = nil -- DungeonService: the run's party is set
+local summonListeners: { (player: Player) -> () } = {} -- PartyService.OnSummoned
 local restUntil: ((player: Player, beastId: string) -> number?)? = nil -- BattleService: when a fainted card is rested
 local allowAction = RateLimiter.new(Party.ACTION_COOLDOWN)
 local creaturesFolder: Folder
@@ -417,10 +418,24 @@ local function onSummon(player: Player, slot: unknown)
 		state.summoned = slot :: number
 		spawnMarker(player)
 		applyHustle(player)
+		for _, listener in summonListeners do
+			task.spawn(listener, player)
+		end
 	else
 		return
 	end
 	sendParty(player)
+end
+
+-- The player called a creature out themselves (their own Summon, not the server's: Pish's "summonPal" step)
+function PartyService.OnSummoned(listener: (player: Player) -> ())
+	table.insert(summonListeners, listener)
+end
+
+-- Whether one of the player's creatures is out
+function PartyService.IsSummoned(player: Player): boolean
+	local state = states[player]
+	return state ~= nil and state.summoned ~= nil
 end
 
 -- The Dungeon: no party changes once its run has started fighting (the reason shown), nil to allow them
@@ -454,8 +469,9 @@ function PartyService.SummonSlot(player: Player, slot: number): boolean
 end
 
 -- Pish's present opened (owner 2026-11-17, the first 15 minutes): a new player's party is still empty, so the best card
--- in their binder (PartyRules.firstPal) joins slot 1 and comes out, a pal following them from the tour's first minute.
--- Nothing when the party already has a card, a fight is on or the binder holds none. True when it summoned one
+-- in their binder (PartyRules.firstPal) joins slot 1, waiting for the player to call it out (owner 2026-11-17: "Pish
+-- will then ask the player to summon them": his "summonPal" step). Nothing when the party already has a card, a fight
+-- is on or the binder holds none. True when it joined
 function PartyService.GiveFirstPal(player: Player): boolean
 	local state = states[player]
 	if not state or state.locked or ownParty[player] or next(state.slots) ~= nil then
@@ -474,9 +490,6 @@ function PartyService.GiveFirstPal(player: Player): boolean
 	end
 	state.slots[1] = beast.id
 	CardService.SetPartied(player, beast.id, true)
-	state.summoned = 1
-	spawnMarker(player)
-	applyHustle(player)
 	sendParty(player)
 	return true
 end

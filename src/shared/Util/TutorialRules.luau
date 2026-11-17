@@ -159,7 +159,7 @@ function TutorialRules.finish(saved: Saved): Saved
 end
 
 -- What the server sees of the player's shop and Bag when a step becomes the one to do
-export type ShopFacts = { firstPackHeld: boolean, giftHeld: boolean, ownsRack: boolean, shelvesStocked: boolean }
+export type ShopFacts = { firstPackHeld: boolean, giftHeld: boolean, ownsRack: boolean, shelvesStocked: boolean, summoned: boolean? }
 
 -- A step done before it came up (a replay, an old save) completes at once: Pish's pack or gift given before and no
 -- longer in the Bag (they're never given twice), a rack already built, shelves already stocked
@@ -168,12 +168,28 @@ function TutorialRules.doneAlready(saved: Saved, stepId: string, facts: ShopFact
 		return saved.firstGiven and not facts.firstPackHeld
 	elseif stepId == "gift" then
 		return saved.giftClaimed and not facts.giftHeld
+	elseif stepId == "summonPal" then
+		return facts.summoned == true -- a creature already out (a replay)
 	elseif stepId == "buildRack" then
 		return facts.ownsRack
 	elseif stepId == "stockRack" then
 		return facts.shelvesStocked
 	end
 	return false
+end
+
+-- The HUD pieces kept while Pish's first visit is at `step` (Hud.setFocus): the calm HUD (nothing kept, or the step's
+-- own pieces: the party for "summonPal") up to and including `cfg.CALM_UNTIL`, nothing hidden after it (owner
+-- 2026-11-17: "then the party UI and everything else should be displayed"), his goodbye or out of town; nil: no calm HUD
+function TutorialRules.pishFocus(step: string, inTown: boolean, cfg: { STEPS: { string }, CALM_UNTIL: string, KEEP: { [string]: { string } } }): { string }?
+	if step == "" or step == "bye" or not inTown then
+		return nil
+	end
+	local index, last = table.find(cfg.STEPS, step), table.find(cfg.STEPS, cfg.CALM_UNTIL)
+	if not index or not last or index > last then
+		return nil
+	end
+	return cfg.KEEP[step] or {}
 end
 
 -- Whether a guide's tour leads now: Pish's step (his goodbye too) or Chikin's (`combatStep`, not his hidden wait,

@@ -195,11 +195,13 @@ local function enter(player: Player, stepId: string)
 			AnalyticsService:LogCustomEvent(player, "PishGiftClaimed")
 		end)
 	end
+	local PartyService = require(Services:WaitForChild("PartyService")) :: any
 	local facts: TutorialRules.ShopFacts = {
 		firstPackHeld = ItemService.GetCount(player, Pish.FIRST_ITEM) > 0,
 		giftHeld = ItemService.GetCount(player, Pish.GIFT_ITEM) > 0,
 		ownsRack = ownsRack(player),
 		shelvesStocked = StockService.ShelvesStocked(player),
+		summoned = PartyService.IsSummoned(player),
 	}
 	if TutorialRules.doneAlready(state, stepId, facts) then
 		task.defer(record, player, stepId)
@@ -439,13 +441,22 @@ function TutorialService.Start()
 		end)
 	end
 
+	-- Calling the pal out themselves (owner 2026-11-17: "Pish will then ask the player to summon them"): only on his
+	-- summon step, so the prologue's or a fight's own summons never count for it early
+	local PartyService = require(Services:WaitForChild("PartyService")) :: any
+	PartyService.OnSummoned(function(player: Player)
+		local state = states[player]
+		if state and TutorialRules.current(state, STEPS) == "summonPal" then
+			markActive(player)
+			record(player, "summonPal")
+		end
+	end)
 	PackService.OnOpened(function(player, _, itemId)
 		markActive(player)
 		if itemId == Pish.FIRST_ITEM then
 			record(player, "giftPack")
-			-- the present's best card comes out as their pal (owner 2026-11-17: the first 15 minutes; Chikin's party and
-			-- summon steps then pass by themselves)
-			local PartyService = require(Services:WaitForChild("PartyService")) :: any
+			-- the present's best card joins the party as their pal, for his next step to call out (owner 2026-11-17;
+			-- Chikin's party and summon steps then pass by themselves)
 			task.defer(PartyService.GiveFirstPal, player)
 		elseif itemId == Pish.GIFT_ITEM then
 			record(player, "gift")

@@ -16,6 +16,32 @@ return {
 		weapon = "riftReaper",
 		creatures = { "Solarion", "Voidmaw", "Stormking" },
 	},
+	-- The young Hydra's entrance (owner 2026-11-17: "make young hydra entrance more epic"; client Util/HydraEntrance):
+	-- `cracks` rainbow cracks in `crackPieces` bent pieces reaching about `crackLength` studs (`crackWidth` wide,
+	-- `crackLift` over what lies on the floor: the lair's sigil) spread over `crackSeconds` while the lair shakes harder (`rumble`: each shake, `rumbleGap`
+	-- seconds apart); the floor bursts: a light `pillar`, `shards` crystal shards flung up at up to `shardSpeed`, `dust`
+	-- puffs; it erupts in `rise` seconds (overshooting a little); its roar's `shockwave` ring; the cracks fade over
+	-- `fadeSeconds`
+	ENTRANCE = {
+		cracks = 9,
+		crackPieces = 3,
+		crackLength = 30,
+		crackWidth = 0.55,
+		crackLift = 0.06,
+		crackSeconds = 1.5,
+		rumble = { 0.25, 0.45, 0.7 },
+		rumbleGap = 0.5,
+		pillar = { width = 8, height = 80, seconds = 1.2 },
+		shards = 70,
+		shardSpeed = 60,
+		dust = 36,
+		rise = 1.2,
+		shockwave = { size = 110, seconds = 0.9 },
+		fadeSeconds = 1.2,
+	},
+	-- The lent scythe swings this many times as fast in this fight only (owner 2026-11-17: "ONLY ON THE PROLOGUE FIGHT:
+	-- make the scythe attack speed a bit faster"; the server's SwingSpeed attribute, SwordRules.quicken both sides)
+	SWING_SPEED = 1.3,
 	-- The Hydra: `boss` is the Config/Bosses id the fight uses (its stats, clips, phases); `model` the MonsterModels model it
 	-- is drawn with: the young Hydra, one head and two crystal buds on its chest where the others will grow, in the
 	-- Dungeon's Prism Hydra's look (owner's pick A 2026-11-15; Meshy, tools/blender/rig_prismHydraYoung.py with the boss's
@@ -90,6 +116,7 @@ return {
 			"Then a young Hydra came, hungry for their power...",
 		},
 		fight = "FIGHT!",
+		hydra = "The Young Prism Hydra", -- its name, big, as it finishes roaring (before FIGHT!)
 		swallow = "It swallowed every card you owned...",
 		grow = "...and grew stronger with each one.",
 		took = "Everything was gone.",

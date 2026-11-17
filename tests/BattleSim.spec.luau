@@ -247,6 +247,27 @@ local function stepUntil(state: any, predicate: (any) -> boolean, limit: number)
 end
 
 return {
+	-- owner 2026-11-17: "When chikin is introducing players their first fight with pets and then the pet dies the player
+	-- will now have to wait 5 mins. make sure pets doesnt die in the first tutorial"
+	["a guarded creature never faints: it stops at 1 HP and its side never loses for it"] = function()
+		local pal = fighter("pal", "Ember", 40, 5, 10)
+		pal.guarded = true
+		local state = wild(pal, {}, monster("Tide", 500, 400, 20), 7)
+		for _ = 1, 300 do
+			BattleSim.step(state, 0.1)
+		end
+		local hurt = BattleSim.getFighter(state, "a:pal")
+		assert(hurt, "the pal is in the fight")
+		expect.equal(hurt.fainted, false, "never fainted")
+		expect.equal(hurt.hp, 1, "held at 1 HP")
+		expect.equal(state.result, nil, "the fight goes on")
+		local plain = wild(fighter("pal", "Ember", 40, 5, 10), {}, monster("Tide", 500, 400, 20), 7)
+		for _ = 1, 300 do
+			BattleSim.step(plain, 0.1)
+		end
+		expect.equal((BattleSim.getFighter(plain, "a:pal") :: any).fainted, true, "an unguarded one faints")
+	end,
+
 	["hpNow: a fighter starts hurt but keeps its max HP"] = function()
 		local state = BattleSim.new(combat, { fighters = { { id = "x", element = "Ember", hp = 100, atk = 5, spd = 10, hpNow = 40 } }, abilities = false, canRun = false },
 			{ fighters = { monster("Tide", 50, 1, 1) }, abilities = false, canRun = false }, 1)

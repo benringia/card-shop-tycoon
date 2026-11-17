@@ -10,6 +10,30 @@ local COMBO = {
 }
 
 return {
+	-- owner 2026-11-17: "ONLY ON THE PROLOGUE FIGHT: make the scythe attack speed a bit faster"
+	["a quickened combo: every time in a cut shorter by the speed, nothing else changed, the original left alone"] = function()
+		local scythe = Swords.SWORDS.riftReaper.combo
+		local quick = SwordRules.quicken(scythe, 1.25)
+		expect.equal(#quick, #scythe, "the same cuts")
+		for index, cut in quick do
+			local was = scythe[index]
+			expect.near(cut.hitAt, was.hitAt / 1.25, 1e-9, `cut {index} strikes sooner`)
+			expect.near(cut.length, was.length / 1.25, 1e-9, `cut {index} ends sooner`)
+			if was.cancelAt then
+				expect.near(cut.cancelAt :: number, was.cancelAt / 1.25, 1e-9, `cut {index} chains sooner`)
+			end
+			local lunge = (was :: any).lunge
+			if lunge then
+				expect.near((cut :: any).lunge.to, lunge.to / 1.25, 1e-9, `cut {index} lunges sooner`)
+				expect.equal((cut :: any).lunge.studs, lunge.studs, "as far")
+			end
+			expect.equal(cut.power, was.power, "as strong")
+			expect.equal(cut.reach, was.reach, "as long")
+		end
+		expect.equal(scythe[1].hitAt, 0.34, "the scythe's own timing unchanged")
+		expect.equal(SwordRules.quicken(scythe, 1), scythe, "at speed 1 the same combo")
+	end,
+
 	-- Weapons round 2 (spec 2026-11-07-weapons-round2-design 5.2): the spear's Sky Pierce hits a line to its plunge point
 	-- and a burst there; every other cut is a cone (reach from the target's edge, arc)
 	["a line cut hits along its length and in the burst at its end, not beside it"] = function()

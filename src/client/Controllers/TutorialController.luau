@@ -25,6 +25,7 @@ local Chikin = require(Config:WaitForChild("Chikin"))
 local Products = require(Config:WaitForChild("Products"))
 local Shelves = require(Config:WaitForChild("Shelves"))
 local LessonRules = require(Shared:WaitForChild("Util"):WaitForChild("LessonRules"))
+local TutorialRules = require(Shared:WaitForChild("Util"):WaitForChild("TutorialRules"))
 local Town = require(Config:WaitForChild("Town"))
 local Wild = require(Config:WaitForChild("Wild"))
 local MusicRules = require(Shared:WaitForChild("Util"):WaitForChild("MusicRules"))
@@ -42,6 +43,7 @@ local TutorialCues = require(ClientUtil:WaitForChild("TutorialCues"))
 local TutorialTalk = require(ClientUtil:WaitForChild("TutorialTalk"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local BattleController = require(Controllers:WaitForChild("BattleController"))
+local PartyBarController = require(Controllers:WaitForChild("PartyBarController"))
 local RegisterStationController = require(Controllers:WaitForChild("RegisterStationController"))
 local BuildController = require(Controllers:WaitForChild("BuildController"))
 local PlacementController = require(Controllers:WaitForChild("PlacementController"))
@@ -272,6 +274,10 @@ local function stepSituation(stepId: string): (string, Target)
 	end
 	if stepId == "giftPack" then
 		return bagSituation(Pish.FIRST_ITEM, "Open")
+	elseif stepId == "summonPal" then
+		-- the pal his present gave you, on the party's creature button (owner 2026-11-17: "Pish will then ask the player to
+		-- summon them")
+		return "default", { gui = PartyBarController.GetSummonButton() }
 	elseif stepId == "gift" then
 		return bagSituation(Pish.GIFT_ITEM, "Open")
 	elseif stepId == "buildRack" then
@@ -1096,8 +1102,9 @@ local function onStep()
 	shownKey = ""
 	introIndex = 1
 	byeSent = false
-	-- The calm HUD through the first visit (round 3, pick A); back for the goodbye, which points at the peeking Pish
-	Hud.setCalm(step ~= "" and step ~= "bye")
+	-- The calm HUD up to his summon step (round 3, pick A; the party shows for the summon, then everything: owner
+	-- 2026-11-17, TutorialRules.pishFocus); back for the goodbye, which points at the peeking Pish
+	Hud.setFocus("pish", TutorialRules.pishFocus(step, inTown(), Pish))
 	clearCues()
 	if step ~= "" then
 		visit = nil -- a replay takes over a visit; its lesson stays waiting
@@ -1226,7 +1233,7 @@ function TutorialController.Start()
 			updateTrail()
 		end
 		-- The calm HUD only in town: in the Wild a player mid-tour needs the party bar and the weapon switch
-		Hud.setCalm(step ~= "" and step ~= "bye" and inTown())
+		Hud.setFocus("pish", TutorialRules.pishFocus(step, inTown(), Pish))
 		-- The first visit's spotlight on the button Pish points at (nothing dims for a thing in the shop)
 		TutorialCues.spotlight(if step ~= "" and focusTarget then targetButton() else nil)
 		if step == "" then

@@ -72,7 +72,7 @@ export type SwordWeapon = {
 	meter: number,
 	perk: { kind: string, every: number?, share: number?, seconds: number? }?,
 }
-export type FighterInput = { id: string, element: string, hp: number, atk: number, spd: number, signature: string?, grade: string?, elite: boolean?, mechanics: Mechanics?, boss: boolean?, owner: string?, swings: number?, phases: { Phase }?, hpNow: number?, player: boolean?, playerAttacks: PlayerAttacks?, perk: Perk?, defenseScale: number? }
+export type FighterInput = { id: string, element: string, hp: number, atk: number, spd: number, signature: string?, grade: string?, elite: boolean?, mechanics: Mechanics?, boss: boolean?, owner: string?, swings: number?, phases: { Phase }?, hpNow: number?, player: boolean?, playerAttacks: PlayerAttacks?, perk: Perk?, defenseScale: number?, guarded: boolean? }
 -- callIn: false closes the call-in window (boss fights: only swaps); creaturesDecide: the side loses once its creatures
 -- have fainted, its players up or not (wild fights: the sword helps, the creature has to last)
 -- pylons (the Dungeon's room 3, spec 2026-11-11-dungeon-puzzles): while one stands, nothing hurts this side's fighters;
@@ -162,6 +162,7 @@ type Fighter = {
 	wardUntil: number, -- fight time it runs out
 	revived: boolean, -- Tidal Blessing: this caster has stood its owner's fainted creatures up (once a fight)
 	fainted: boolean,
+	guarded: boolean, -- never faints: its HP stops at 1 (Chikin's tutorial fights, owner 2026-11-17)
 	mechanics: Mechanics?,
 	boss: boolean,
 	healReady: number,
@@ -293,6 +294,7 @@ local function makeFighter(combat: any, input: FighterInput, side: string, time:
 		wardUntil = 0,
 		revived = false,
 		fainted = false,
+		guarded = input.guarded == true,
 		mechanics = mechanics,
 		boss = input.boss == true,
 		healReady = time,
@@ -697,8 +699,9 @@ local function takeDamage(state: State, target: Fighter, amount: number, events:
 		return -- its pylons' shield takes every hit (burns and abilities too)
 	end
 	fillMeter(state, target, state.combat.SUPER_METER.hurt * amount / target.maxHp)
-	target.taken += math.min(amount, target.hp)
-	target.hp = math.max(0, target.hp - amount)
+	local floor = if target.guarded then 1 else 0 -- a guarded creature stops at 1 HP and never faints
+	target.taken += math.max(0, math.min(amount, target.hp - floor))
+	target.hp = math.max(floor, target.hp - amount)
 	if target.hp <= 0 and not target.fainted then
 		target.fainted = true
 		target.regenLeft = 0

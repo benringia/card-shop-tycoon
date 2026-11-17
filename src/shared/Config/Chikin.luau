@@ -28,6 +28,9 @@ return {
 	-- Fights that must be won to move on (the sword's: "Great fighting!" after a loss would be wrong); a loss or a run
 	-- keeps the step and he says ChikinTalk.RETRY. The first fight ends either way, with its own lost lines
 	WIN_TO_PASS = { fight2 = true } :: { [string]: boolean },
+	-- His fights where your creatures can't faint (owner 2026-11-17: "make sure pets doesnt die in the first tutorial";
+	-- BattleSim `guarded`: they stop at 1 HP, so none rests 5 minutes after a new player's first fights)
+	GUARDED_STEPS = { fight = true, fight2 = true } :: { [string]: boolean },
 	-- His goodbyes: their last button says "Bye!" (a hello's says "Let's go!", Config/ChikinTalk GO)
 	BYE_STEPS = { swordWin = true, boss = true } :: { [string]: boolean },
 	-- Each step's picture on his talk card (Config/UIIcons)

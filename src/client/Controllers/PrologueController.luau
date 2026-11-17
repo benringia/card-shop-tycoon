@@ -42,6 +42,7 @@ local PrologueStage = require(ClientUtil:WaitForChild("PrologueStage"))
 local PrologueHydra = require(ClientUtil:WaitForChild("PrologueHydra"))
 local PrologueBody = require(ClientUtil:WaitForChild("PrologueBody"))
 local PrologueWake = require(ClientUtil:WaitForChild("PrologueWake"))
+local HydraEntrance = require(ClientUtil:WaitForChild("HydraEntrance"))
 local TownPishController = require(Controllers:WaitForChild("TownPishController"))
 local TownChikinController = require(Controllers:WaitForChild("TownChikinController"))
 local CreatureVisuals = require(ClientUtil:WaitForChild("CreatureVisuals"))
@@ -57,6 +58,9 @@ local BLACKOUT = Prologue.BLACKOUT
 local BLAST = Prologue.BLAST
 local WAKE = Prologue.WAKE
 local ROAR = "rbxassetid://9116290951" -- Lion Growls 7 (AttackFx BOSS_SKILLS enrage)
+local RUMBLE = "rbxassetid://9114344093" -- Energy Presence 8 (the Rift Reaper's wrath rumble): the lair trembling
+local BREAK = "rbxassetid://9113216700" -- Avalanche Crashing 3 (the Rift Reaper's ground break): the floor bursting
+local ENTRANCE = Prologue.ENTRANCE
 local SHATTER = "rbxassetid://9116418035" -- Magic Tone Falling Shimmer
 local playing = false
 
@@ -347,6 +351,7 @@ local function play()
 	music("lair")
 	local camera = workspace.CurrentCamera
 	local hydra: PrologueHydra.Hydra? = nil
+	local entrance: HydraEntrance.Entrance? = nil
 	local glow: Attachment? = aura(root)
 	local body: PrologueBody.Body? = nil
 	local wake: PrologueWake.Wake? = nil
@@ -389,6 +394,9 @@ local function play()
 		releaseCamera()
 		if hydra then
 			hydra.destroy()
+		end
+		if entrance then
+			entrance.finish()
 		end
 		if glow then
 			glow:Destroy()
@@ -448,13 +456,30 @@ local function play()
 		return
 	end
 	stage.caption(CAPTIONS.open[3], 4.6)
-	-- the Hydra rises out of the dark
+	-- Its entrance (owner 2026-11-17: "make young hydra entrance more epic"; Util/HydraEntrance): the lair shakes harder
+	-- and harder as rainbow cracks race over the floor from its spot, the floor bursts in a pillar of light and crystal
+	-- shards, it erupts out of the light, and its roar, close up, sends a shockwave and a white flash through the lair
 	holdCamera("PrologueRise", function(t: number): CFrame
-		local from = root.Position + Vector3.new(6, 6, 14)
-		return CFrame.lookAt(from, hydraSpot.Position + Vector3.new(0, 10 + math.min(t, 3) * 4, 0))
+		local from = root.Position + Vector3.new(6, 5, 14)
+		local lift = math.clamp(t - ENTRANCE.crackSeconds, 0, ENTRANCE.rise) / ENTRANCE.rise
+		return CFrame.lookAt(from, hydraSpot.Position + Vector3.new(0, 4 + lift * 18, 0))
 	end)
+	local fx = HydraEntrance.begin(hydraSpot, stage.ground)
+	entrance = fx
+	sound(RUMBLE, 0.55, stage.gui)
+	fx.cracks(ENTRANCE.crackSeconds)
+	for _, strength in ENTRANCE.rumble do
+		ScreenFx.shake(strength)
+		if not wait(ENTRANCE.rumbleGap) then
+			return
+		end
+	end
+	fx.burst()
+	sound(BREAK, 0.6, stage.gui)
+	flash()
+	ScreenFx.shake(1)
 	local rise = Instance.new("NumberValue")
-	TweenService:Create(rise, TweenInfo.new(2.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Value = 1 }):Play()
+	TweenService:Create(rise, TweenInfo.new(ENTRANCE.rise, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Value = 1 }):Play()
 	local rising = RunService.Heartbeat:Connect(function()
 		local h = hydra
 		if h and h.model.Parent then
@@ -462,15 +487,28 @@ local function play()
 		end
 	end)
 	table.insert(connections, rising)
-	ScreenFx.shake(0.6)
-	if not wait(2.8) then
+	if not wait(ENTRANCE.rise + 0.15) then
 		return
 	end
 	rising:Disconnect()
+	-- its roar, the camera close and low, looking up at it
+	holdCamera("PrologueRoar", function(t: number): CFrame
+		local toward = (hydraSpot.Position - root.Position) * 0.32
+		local from = root.Position + toward + Vector3.new(0, 2.5 + math.min(t, 1.6) * 0.6, 0)
+		return CFrame.lookAt(from, hydraSpot.Position + Vector3.new(0, 15, 0))
+	end)
 	;(hydra :: PrologueHydra.Hydra).play("enrage") -- its roar
-	sound(ROAR, 0.6, stage.gui)
-	ScreenFx.shake(1)
-	if not wait(2) then
+	sound(ROAR, 0.75, stage.gui)
+	fx.shockwave()
+	flash()
+	ScreenFx.shake(1.3)
+	if not wait(1.8) then
+		return
+	end
+	fx.finish()
+	entrance = nil
+	stage.caption(CAPTIONS.hydra, 1.5, true)
+	if not wait(1.6) then
 		return
 	end
 	stage.caption(CAPTIONS.fight, 1.4, true)

@@ -9,6 +9,12 @@ local PairRules = {}
 export type Rect = { x: number, y: number, w: number, h: number }
 export type Row = { offset: number, index: number }
 
+-- Whether the pair shows: on a phone, never in a fight (owner 2026-11-17 playthrough: buttons overlapping in the jump
+-- button's corner; the fight's own buttons hold that corner and its portraits swap creatures)
+function PairRules.shown(compact: boolean, fighting: boolean): boolean
+	return compact and not fighting
+end
+
 -- A swipe's step: up (the finger's y falling) the next one, down the one before; 0 when it's shorter than `threshold`
 -- or more sideways than up and down (a tap, or the camera)
 function PairRules.swipeStep(dx: number, dy: number, threshold: number): number

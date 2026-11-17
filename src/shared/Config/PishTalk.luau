@@ -16,9 +16,14 @@ return {
 				picked = "Now tap Open!",
 			},
 		},
+		-- the present's best card just joined the party (PartyService.GiveFirstPal); owner 2026-11-17: "When the player
+		-- opens their first card. Pish will then ask the player to summon them"
+		summonPal = {
+			intro = { "Wow! Your best card joined your party!" },
+			now = { default = "Tap your new pal to call it out!" },
+		},
 		buildRack = {
-			-- the present's best card just came out as their pal (PartyService.GiveFirstPal; owner 2026-11-17)
-			intro = { "Look! Your best card is your pal now. It follows you!" },
+			intro = { "Your pal follows you everywhere now!" },
 			now = {
 				default = "Shops need shelves! Tap the Phone.",
 				trayOpen = "Tap Shop.",

@@ -47,6 +47,16 @@ local function readable(text: string): boolean
 end
 
 return {
+	["his tutorial fights keep a new player's creatures from fainting: both his first visit's fights, nothing else"] = function()
+		local guarded = {}
+		for step in Chikin.GUARDED_STEPS do
+			assert(table.find(STEPS, step), `{step} is one of his steps`)
+			table.insert(guarded, step)
+		end
+		table.sort(guarded)
+		expect.equal(table.concat(guarded, ","), "fight,fight2", "the creature's first fight and the sword fight")
+	end,
+
 	["town: Chikin's Courage and his portal-side walk"] = townChecks,
 
 	-- owner 2026-11-16: "in the wilds. chikin will make you fight a monster with your summoned pet. after the monster is

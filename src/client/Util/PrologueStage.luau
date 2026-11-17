@@ -27,6 +27,7 @@ export type Stage = {
 	arena: Model,
 	gui: ScreenGui,
 	centre: Vector3, -- the middle of the floor, on its top
+	ground: number, -- the height of the top of what lies on the floor (its sigil): marks drawn on the floor go here
 	spot: (name: string) -> CFrame,
 	screens: (on: boolean) -> (),
 	caption: (text: string, seconds: number, big: boolean?) -> (),
@@ -84,7 +85,7 @@ local function prop(parent: Instance, name: string, at: CFrame, scale: number): 
 end
 
 -- The lair: floor, rune circle, a ring of pillars and crystals, a cold light
-local function buildArena(centre: Vector3): Model
+local function buildArena(centre: Vector3): (Model, number)
 	local arena = Instance.new("Model")
 	arena.Name = "PrologueLair"
 	local radius = ARENA.radius
@@ -94,7 +95,12 @@ local function buildArena(centre: Vector3): Model
 	glow.Shape = Enum.PartType.Cylinder
 	glow.CanCollide = false
 	glow.Transparency = 0.82
-	prop(arena, "DungeonSigil", CFrame.new(centre + Vector3.new(0, 0.12, 0)), radius * 1.2 / 16.8)
+	local sigil = prop(arena, "DungeonSigil", CFrame.new(centre + Vector3.new(0, 0.12, 0)), radius * 1.2 / 16.8)
+	local ground = centre.Y + 0.15 -- the rune ring's top
+	if sigil then
+		local box, size = sigil:GetBoundingBox()
+		ground = math.max(ground, box.Position.Y + size.Y / 2)
+	end
 	local pieces = { "DungeonPillar", "DungeonCrystals", "DungeonPillarBroken", "CrystalPylon", "DungeonPillar", "ElementCrystal", "DungeonPillar", "DungeonCrystals" }
 	for index = 1, 16 do
 		local angle = (index - 0.5) / 16 * math.pi * 2
@@ -117,7 +123,7 @@ local function buildArena(centre: Vector3): Model
 	light.Shadows = false
 	light.Parent = holder
 	arena.Parent = workspace
-	return arena
+	return arena, ground
 end
 
 -- Night in the lair; returns how to put the lighting back
@@ -181,7 +187,7 @@ end
 
 -- `centre`: this player's lair (Remotes.PrologueArena)
 function PrologueStage.enter(centre: Vector3): Stage
-	local arena = buildArena(centre)
+	local arena, ground = buildArena(centre)
 	local restoreLighting = nightLighting()
 
 	local gui = Instance.new("ScreenGui")
@@ -273,6 +279,7 @@ function PrologueStage.enter(centre: Vector3): Stage
 		arena = arena,
 		gui = gui,
 		centre = centre,
+		ground = ground,
 		spot = function(name: string): CFrame
 			return spots[name] or CFrame.new(centre)
 		end,

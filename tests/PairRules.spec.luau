@@ -15,6 +15,13 @@ return {
 		assert(PAIR.visible % 2 == 1, "the column is the same height above and below")
 	end,
 
+	["in a fight the pair steps aside: the fight's buttons hold that corner and its portraits swap creatures"] = function()
+		expect.equal(PairRules.shown(true, false), true, "a phone out of a fight: the pair")
+		expect.equal(PairRules.shown(true, true), false, "a phone in a fight: none (it sat on the Skill and Target buttons)")
+		expect.equal(PairRules.shown(false, false), false, "a computer: the dock holds the party")
+		expect.equal(PairRules.shown(false, true), false, "a computer in a fight: none")
+	end,
+
 	["a swipe: up for the next one, down for the one before, nothing when short or sideways"] = function()
 		expect.equal(PairRules.swipeStep(0, -40, 24), 1, "up: the next")
 		expect.equal(PairRules.swipeStep(3, 30, 24), -1, "down: the one before")

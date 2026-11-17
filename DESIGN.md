@@ -215,14 +215,19 @@ in Ember Canyon's caldera in its colours (the Cute Pets Shadow and Golden varian
 `PrologueService`, `Util/PrologueRules`, `Config/Prologue`): before the welcome flight, on a new player's very first join,
 you at your strongest lose everything to the Hydra (~2 min). Act 1 (a cinematic on your screen): the Hydra's crystal lair
 at night high above the world (each player's its own spot, `PrologueRules.arenaCentre`; the Dungeon's sigil, pillars and
-crystals), "Long ago, you were the greatest card master...", the young Hydra rises and roars, "FIGHT!" (no creature
-out yet: owner 2026-11-15, it blocked the view). The Hydra here is the young one, its own model `prismHydraYoung`: one horned head and two crystal buds on its chest
+crystals), "Long ago, you were the greatest card master...", the young Hydra's entrance (owner 2026-11-17: "make young
+hydra entrance more epic"; `Util/HydraEntrance`, `Prologue.ENTRANCE`): the lair rumbles harder and harder while rainbow
+cracks race over the floor from its spot (drawn on the sigil's top, `PrologueStage` `ground`), the floor bursts in a
+pillar of light, crystal shards and rolling dust with a white flash, it erupts out of the light (eased past its spot
+and back), then roars, the camera close and low, a shockwave ring and a flash going through the lair, and its name
+shows big ("The Young Prism Hydra") before "FIGHT!" (no creature out yet: owner 2026-11-15, it blocked the view). The Hydra here is the young one, its own model `prismHydraYoung`: one horned head and two crystal buds on its chest
 where the other heads will grow, in the Dungeon's Prism Hydra's look (owner's pick A 2026-11-15, after the cut two-headed
 model showed a hole; Meshy, `tools/blender/rig_prismHydraYoung.py`; the five-headed one stands in until it's in the
 game). Act 2 is the real boss fight (owner 2026-11-14: "just use the combat we already built"): BattleService
 against the Prism Hydra with the boss HUD, its intro card, cuts, the skill, supers, swaps and dodges, its rings and
-phases, with a lent loadout: the Rift Reaper in hand and Solarion, Voidmaw and Stormking (max level, max stars, Grade S,
-foil) as your party, Solarion coming out as the fight starts, lent by `PrologueService` (`CardService` / `PartyService` /
+phases, with a lent loadout: the Rift Reaper in hand (swinging `Prologue.SWING_SPEED` 1.3 times as fast in this fight only,
+owner 2026-11-17: the server's `SwingSpeed` attribute, `SwordRules.quicken` on both sides) and Solarion, Voidmaw and
+Stormking (max level, max stars, Grade S, foil) as your party, Solarion coming out as the fight starts, lent by `PrologueService` (`CardService` / `PartyService` /
 `WeaponService` `.Lend`: in memory only, never saved, levelled, traded or switched; your own party is what's saved
 meanwhile; the first-sword popup never shows for it). Security review 2026-11-16: no other fight starts while it's lent
 (`Prologue.BUSY`, a BattleService start blocker), a lent card can't go into a display case or on a shop job
@@ -1194,7 +1199,8 @@ the one you have now in the middle (gold ring), the ones before above and after 
 out", "· resting"; a weapon's line), wrapping round, five rows at most (`PairRules.wheel`); slide onto one and let go to
 pick it (a picked creature comes out), or let go and tap one; a tap anywhere else closes it; held past an end, or swiped
 once let go, it rolls on to the rest. Any movement before the hold counts as a swipe, so a slow swipe up is still the
-next one. A hold on a creature no longer shows its card info on a phone (the Party window has it). A computer keeps the
+next one. In a fight the pair steps aside (`PairRules.shown`; owner 2026-11-17 playthrough: it sat on the Skill and
+Target buttons): the fight's buttons hold that corner and its portraits swap creatures. A hold on a creature no longer shows its card info on a phone (the Party window has it). A computer keeps the
 dock in the bottom-left corner and the dial at the bottom right. Checked on Studio's iPhone 17 Pro: swipes both ways,
 the party column picked by a tap, the weapon column by a slide, taps, and a computer unchanged.
 **The party dock** (owner 2026-11-13: "lets make the party UI like this in palworld. pets carousel, then under it is the
@@ -1844,7 +1850,15 @@ group, checked before its fragments and every time (not only the first). Below i
   to 1.5 studs past its edge, up to 26 studs (`SwordRules.dashLength`, owner 2026-11-04). With a mouse a click attacks and there's no Attack
   button (owner 2026-11-03: phones, tablets and devices without a mouse keep it); the Pet button takes its corner and
   Dodge and Skill move up beside it (`UiLayout.combatButtons(view, noAttack)`), and the first-sword popup says "click
-  to swing, Shift to dodge" instead of "tap Attack". Top-left your headshot in a bevelled ring with
+  to swing, Shift to dodge" instead of "tap Attack". **On a phone** (owner 2026-11-17 playthrough, `FightTouchController`,
+  `CameraLimits.FIGHT_ZOOM`, touch screens only): Roblox's jump button steps aside for the fight (jumping off while it
+  lasts; "Some of the combat buttons overlapps the jump button"; Dodge is the fight's move), and as the fight begins
+  (after a boss's intro hands the camera back) the camera pulls out (owner: "zoom out to the max ... so that players pet
+  and boss/monster is visible on screen"): a wild fight to 25 studs looking down 35 degrees, a boss fight to 45 keeping
+  the intro's angle (looking down pushed the boss off the top); only into open space, stopping 1.5 studs short of a
+  wall behind you, and a camera already past one comes in to it, never nearer than 12 (a boss arena starts you with
+  your back to its fence: past it the trees and the exit portal's swirl hid the fight; in the Meadow Warden's arena
+  that's 12 studs). Not in the prologue's fight (`prologue` in BattleStarted: its lair's pillars). Top-left your headshot in a bevelled ring with
   your creature's card on a badge, beside your HP and your creature's in slanted neon bars (`Util/HpBar`, ticks every
   20%); the boss's HP is a plate across the top (owner 2026-11-04, design A: gold-edged, the boss's element in a
   gold ring, its name big with its title and level under it, the bar with the HP number on the right; `TOP_BAR` in
@@ -3422,11 +3436,14 @@ All numbers in `Config/Pish`.
   four angles with a clear view) in hearts and stars; about 9 s in all, then the camera goes back behind the player and
   he talks
   (`Util/ArrivalShot`, `Pish.ARRIVAL`, `tests/ArrivalShot`; the camera never goes through a wall; once per first
-  visit, after the loading screen and its fade for a player back mid-tour; a tap skips it). Eight steps completed by what the
+  visit, after the loading screen and its fade for a player back mid-tour; a tap skips it). Nine steps completed by what the
   game sees: open his present (`pishPresent`, "Pish's Present": a First Spark pack with his picture, in the Bag; its
-  best card joins the empty party and comes out as your pal, `PartyService.GiveFirstPal`, `PartyRules.firstPal`, and
-  he says "Look! Your best card is your pal now. It follows you!", owner 2026-11-17; 7.13),
-  build a Small Pack Rack, order First Spark packs, stock the rack (the tour's box arrives in 1 s, `Stock.TOUR_DELIVERY_SECONDS`,
+  best card joins the empty party, `PartyService.GiveFirstPal`, `PartyRules.firstPal`; 7.13), summon it (owner
+  2026-11-17 playthrough: "When the player opens their first card. Pish will then ask the player to summon them. then
+  the party UI and everything else should be displayed": step `summonPal`, "Wow! Your best card joined your party!",
+  "Tap your new pal to call it out!" with the paw and spotlight on the party bar's creature, the only HUD piece shown
+  then (`Pish.KEEP`); your own summon completes it, `PartyService.OnSummoned`; already out: done at once),
+  build a Small Pack Rack ("Your pal follows you everywhere now!" first), order First Spark packs, stock the rack (the tour's box arrives in 1 s, `Stock.TOUR_DELIVERY_SECONDS`,
   owner 2026-11-17; while it's on its way he says "Your packs are on the way!"; the server's BoxesComing / BoxesWaiting), a customer he sends reaches the counter, ring them
   up ("Tap each card they put on the counter!" once behind it, the paw on one, owner 2026-11-16), open his gift (`pishGift`: the hit card is Very Rare or better), his goodbye. **Pish talks** (`Util/TutorialTalk`, lines in
   `Config/PishTalk`, `Util/TalkRules`; the game's name from `Config/Game.NAME`): a talk card at the top centre (the owner
@@ -3451,14 +3468,16 @@ All numbers in `Config/Pish`.
   quietly (card and cues hidden) while a pack opening, a fight or a weapon reveal has the screen. The goodbye ("Need
   me later? Tap me on your party bar. Bye!", the HUD back and the paw on the peeking Pish there) ends on its "Bye!"
   button, a tap on the peeking Pish, or by itself 20 s after. A step the shop has already done (a replay) completes at once. Old saves skip it (v17 migration).
-- [ ] **Calm screen** (round 3, owner: "overwhelming for new players"): through the first visit, in town (in the Wild they show), the party bar, weapon
-  switch, Bosses tile and buff chips are hidden (`Hud.calmPiece` by name: party, weapons, bosses, buffs, mascot;
-  `Hud.setCalm` / `Hud.setFocus` per guide; the peeking Pish waits till the tour is over), and a **spotlight** dims everything
+- [ ] **Calm screen** (round 3, owner: "overwhelming for new players"): until your pal is out (`Pish.CALM_UNTIL`
+  "summonPal", owner 2026-11-17: the party first, then everything else), in town (in the Wild they show), the party bar,
+  weapon switch, Bosses tile and buff chips are hidden (`Hud.calmPiece` by name: party, weapons, bosses, buffs, mascot;
+  `Hud.setFocus("pish", TutorialRules.pishFocus(...))`, keeping `Pish.KEEP`'s pieces for a step: the party for
+  "summonPal"; the peeking Pish waits till the tour is over), and a **spotlight** dims everything
   but the button Pish points at (four dim frames, his card, paw and Skip above them; nothing dims for a thing in the
   shop).
 - [ ] **Skipping** (round 3, owner: "just put a skip icon on the top right"): a small "Skip" at the top right (left of
   the cash column when that reaches the top). Tapping it brings a sad Pish (whimper, head tilt) and the tour card in
-  the middle (Pish's card waits under it): "Pish's Tour · 3 of 8", the paw row, his gift's picture, "Finish the tour
+  the middle (Pish's card waits under it): "Pish's Tour · 3 of 9", the paw row, his gift's picture, "Finish the tour
   for Pish's gift!", a big green "Keep going" and a small grey "Skip tour". The peeking Pish over the party bar is the
   Pish button (round 5, owner: "make it the Pish button"; the Manage tray's Pish tile is gone): a tap after the first
   visit bounces and yips and asks "Want my shop tour again?" with a big green "Yes!" and a grey "Not now"
@@ -3536,6 +3555,10 @@ his card for a face.
   Bye!": owner 2026-11-16, shop XP and creature XP were confused; or "You're shop level 4
   already! Let's find a boss!" for a player already there). Owner 2026-11-16: "chikin will make you fight a monster with
   your summoned pet. after the monster is dead, he will give you a sword and fight another monster. then will leave".
+  Your creatures can't faint in his two fights (owner 2026-11-17 playthrough: "the pet dies the player will now have to
+  wait 5 mins. make sure pets doesnt die in the first tutorial"): while `CombatStep` is one of `Chikin.GUARDED_STEPS`
+  (fight, fight2) BattleService marks your side's creatures `guarded` and `BattleSim` never takes one below 1 HP, so
+  no rest timer; you can still lose by running.
   A hidden wait for shop level 4 (reached mid-fight, say by a cashier's sale while you hunt, it waits until the fight
   ends, and he doesn't arrive during one: owner 2026-11-16); visit 2: "Woof! Shop level 4! A boss is waiting for you!", the Wild, then "The Meadow
   Warden lives through that portal. Beat it for a trophy!" with the paw trail to its portal. Steps the game already
@@ -4164,6 +4187,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── DungeonFallController.luau # Dungeon: a fall into the chasm (a yell, the screen black)
     │   │   ├── TitleController.luau     # titles over players' names, each with its icon and colour (Config/Titles)
     │   │   ├── BattleController.luau    # Fight prompts, the Return to town pill in the wild, XP sparks after a win, fight bar (wild + PvP), boss HP bar and banners, damage numbers, end screen
+    │   │   ├── FightTouchController.luau # a phone in a fight: the camera out into open space (CameraLimits FIGHT_ZOOM), the jump button aside
     │   │   ├── LevelUpController.luau   # plays the level-up pillar on you, your creatures and players nearby (LevelUpFx)
     │   │   ├── SwordController.luau     # draws the equipped weapon (its glow ladder, WeaponLook) on backs and in hands, the first-sword popup, boss-fight actions (buttons, keys, dodge dash), trail, sounds, kneeling
     │   │   ├── WeaponSwitchController.luau # the quick weapon switch: the medallion dial on the right edge, a swipe, Q / Z (EquipWeapon)
@@ -4239,6 +4263,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │       ├── RiftFx.luau             # the Rift Devourer's summoning: its call, a rift tearing open at each summon's corner
     │       ├── ItemPopup.luau          # a picked-up item's card at the top right (stacking, merging)
     │       ├── CombatHud.luau          # the boss and wild fight HUD (wild: no sword buttons): slanted buttons with icons, cooldowns and key chips, your portrait and HP bars, the boss fights' party strip, the red hit flash
+    │       ├── HydraEntrance.luau      # the prologue's young Hydra entrance: rainbow cracks, the light pillar, shards, dust, the roar's shockwave
     │       ├── HpBar.luau              # one slanted neon HP bar: ghost of lost HP, heal lead, ticks, hit flash (HUD and boss bar)
     │       ├── CombatAssets.luau       # downloads the fight's art, sounds, moves and sword models behind the loading screen
     │       ├── SoundBank.luau          # keeps one silent loaded copy of each fight sound all session; one-shots are made from it
@@ -4492,7 +4517,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v34)
+### 10.4 Player data schema (v35)
 ```lua
 {
     version = 21,
@@ -4574,7 +4599,7 @@ Studio on the test slot plays its own save, `Player_<id>_studio` (2026-11-16: St
 live playthrough), so Studio and the live game never share one.
 Anyone else's `/slot` does nothing. (`SaveSlotService`, pure `Server/Util/SaveSlots`, Lune-tested.)
 
-Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; v17 added `tutorial` (the first visit with Pish; existing saves "done" with their first pack given and his gift still to come, so only new players go through it); each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity); `tutorial` gained `customerSent` (read as false when missing, true for v17's existing shops; no bump: an older server dropping it allows one more of Pish's customers). v18 added `combat` (Chikin's combat tutorial, the same shape; done for every shop past Pish's tour, still to do for a player mid-way through it). v19 added `dungeon` (`secretFound` and `seenIntro` false for everyone; a junk value is replaced). v20 added `title` ("" for everyone: automatic, the same title as before; a saved string kept, junk replaced). v21 added `upgrades`, `skipTokens` and `purchases` (empty for everyone; a good skip count kept, junk replaced). v22 added `support` (no gifts for everyone; good counts kept). v23 added `titles` (`known`, `fresh` empty, `seeded` false: the first load counts the titles a player already has without telling). v24 added `turts` (nothing bought for everyone; good ids kept, a broken "restock now" roll dropped). v25 added `decor` (Cozy Wood in use and no looks bought for everyone; good ids kept, cleaned against Config/Decor on load). v26 added `windows` (none for everyone; a saved list kept and cleaned on load by `WindowRules.clean`, which pays back any window that no longer fits). v27 added `luck` (no bought luck for everyone). v28 added `unlocks` (none for everyone). v29 added `seenPrologue` (true for every save from before it, so the prologue only greets new players). v30 added `gifts` (the round at day 1, nothing played or earned, for everyone; a saved table kept and cleaned on load by `GiftRules.clean`). v31 kept `combat`'s shape but reordered Chikin's steps (the sword and a fight with it in his first visit): a tour in progress keeps its place by step name. v32 added `tips` (none seen for everyone; a saved table kept and cleaned on load by `TipRules.clean`). A service that didn't load for a player (e.g. no free plot) never overwrites
+Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; v17 added `tutorial` (the first visit with Pish; existing saves "done" with their first pack given and his gift still to come, so only new players go through it); each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity); `tutorial` gained `customerSent` (read as false when missing, true for v17's existing shops; no bump: an older server dropping it allows one more of Pish's customers). v18 added `combat` (Chikin's combat tutorial, the same shape; done for every shop past Pish's tour, still to do for a player mid-way through it). v19 added `dungeon` (`secretFound` and `seenIntro` false for everyone; a junk value is replaced). v20 added `title` ("" for everyone: automatic, the same title as before; a saved string kept, junk replaced). v21 added `upgrades`, `skipTokens` and `purchases` (empty for everyone; a good skip count kept, junk replaced). v22 added `support` (no gifts for everyone; good counts kept). v23 added `titles` (`known`, `fresh` empty, `seeded` false: the first load counts the titles a player already has without telling). v24 added `turts` (nothing bought for everyone; good ids kept, a broken "restock now" roll dropped). v25 added `decor` (Cozy Wood in use and no looks bought for everyone; good ids kept, cleaned against Config/Decor on load). v26 added `windows` (none for everyone; a saved list kept and cleaned on load by `WindowRules.clean`, which pays back any window that no longer fits). v27 added `luck` (no bought luck for everyone). v28 added `unlocks` (none for everyone). v29 added `seenPrologue` (true for every save from before it, so the prologue only greets new players). v30 added `gifts` (the round at day 1, nothing played or earned, for everyone; a saved table kept and cleaned on load by `GiftRules.clean`). v31 kept `combat`'s shape but reordered Chikin's steps (the sword and a fight with it in his first visit): a tour in progress keeps its place by step name. v32 added `tips` (none seen for everyone; a saved table kept and cleaned on load by `TipRules.clean`). v33 added `quests` and `lastSeen`; v34 added `weekly`. v35 kept `tutorial`'s shape but put Pish's "summonPal" step second (owner 2026-11-17): a saved step from 2 on moves one along, so a tour in progress keeps its place. A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
 
 ### 10.6 UI style and HUD

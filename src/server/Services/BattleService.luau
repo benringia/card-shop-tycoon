@@ -1315,6 +1315,10 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 		local leaderInput = fighterInput(CardService.GetBeast(player, leaderId) :: Beast, true)
 		leaderInput.owner = owner
 		leaderInput.hpNow = left[leaderId]
+		-- Chikin's tutorial fights (owner 2026-11-17: "make sure pets doesnt die in the first tutorial"): a new player's
+		-- creatures stop at 1 HP and never faint there, so nothing has to rest 5 minutes after its first fight
+		local guarded = not boss and Chikin.GUARDED_STEPS[player:GetAttribute("CombatStep") or ""] == true
+		leaderInput.guarded = guarded
 		if not swordOnly then
 			table.insert(leaders, leaderInput)
 		end
@@ -1329,6 +1333,7 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 				local input = fighterInput(beast, true)
 				input.owner = owner
 				input.hpNow = left[beastId]
+				input.guarded = guarded
 				table.insert(reserves, input)
 			end
 		end
@@ -1512,6 +1517,7 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 			allies = allies,
 			group = #members > 1,
 			noRun = prologue or nil, -- the prologue's fight: no Run button (onRun refuses it too)
+			prologue = prologue or nil, -- its camera is the prologue's (FightTouchController leaves it)
 			foes = foes,
 			side = "a",
 			markers = markers,
@@ -1868,13 +1874,16 @@ local function onSwordAttack(player: Player)
 	if swapping(member, now) then
 		return
 	end
-	local index, startAt = SwordRules.nextCut(sword.combo, member.lastCut, now, Swords.COMBO_RESET)
+	-- the prologue's scythe swings faster (owner 2026-11-17; set by PrologueService on the server, never by the client)
+	local speed = player:GetAttribute("SwingSpeed")
+	local combo = SwordRules.quicken(sword.combo, if typeof(speed) == "number" then math.clamp(speed, 1, 2) else 1)
+	local index, startAt = SwordRules.nextCut(combo, member.lastCut, now, Swords.COMBO_RESET)
 	if not index or not startAt then
 		return
 	end
 	member.lastCut = { index = index, startedAt = startAt }
 	SwordService.Touch(player)
-	local cut = sword.combo[index]
+	local cut = combo[index]
 	task.delay(startAt - now, swordCast, player, sword, `cut{index}`)
 	local power = cut.power * WeaponService.Power(player)
 	local weaponId = WeaponService.GetEquipped(player)

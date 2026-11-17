@@ -176,17 +176,19 @@ end
 
 -- A cut's effects on a character: its slash as the blade comes round, and on the finisher the slam's burst
 -- (`finisher` false: the slash only, another player's light version)
-local function cutEffects(character: Model, sword: Swords.Sword, effects: Effects, index: number, finisher: boolean, live: () -> boolean)
+local function cutEffects(character: Model, sword: Swords.Sword, effects: Effects, index: number, finisher: boolean, live: () -> boolean, speed: number?)
+	local scale = speed or 1 -- the prologue's faster scythe: its moments come sooner
 	local arc = (SwordFx.ARCS :: any)[`cut{index}`]
-	local from = if arc then arc.from else 0
+	local from = (if arc then arc.from else 0) / scale
 	local cut = sword.combo[index]
+	local hitAt = cut.hitAt / scale
 	task.delay(from, function()
 		if live() then
-			SwordSkillFx.slash(character, effects.fx.slash, index, effects.colors, effects.scale, bladeOf(character), cut.hitAt - from, not finisher)
+			SwordSkillFx.slash(character, effects.fx.slash, index, effects.colors, effects.scale, bladeOf(character), hitAt - from, not finisher)
 		end
 	end)
 	if finisher and index == #sword.combo then
-		task.delay(cut.hitAt, function()
+		task.delay(hitAt, function()
 			local at = SwordSkillFx.finisherPoint(character, effects.fx.finisher, if cut.line then cut.line.length else nil)
 			if at and live() then
 				SwordSkillFx.finisher(at, effects.fx.finisher, effects.colors, effects.scale)
@@ -1022,10 +1024,10 @@ end
 -- dash slash's draw, dash and cut lines; a dodge or anything that ends the swing (`live()` false) stops the ones to come
 -- `stopUntil`: a move cancelled before then (a dodge or switch during a skill's charge) also stops its sounds already
 -- playing (final review 2026-11-08: Titan's Wrath's charge-up and rumble played on after a dodge); later ones finish
-local function playCues(sword: Swords.Sword, move: string, live: () -> boolean, stopUntil: number?)
+local function playCues(sword: Swords.Sword, move: string, live: () -> boolean, stopUntil: number?, speed: number?)
 	local started = os.clock()
 	for _, cue in sword.cues[move] or {} do
-		task.delay(cue.at, function()
+		task.delay(cue.at / (speed or 1), function()
 			if not live() then
 				return
 			end
@@ -1140,7 +1142,11 @@ function SwordController.Attack()
 	if not SwingGate.canAttack(gate, now) or now < swapUntil then
 		return -- the dash slash is playing, or a weapon switch
 	end
-	local index, startAt = SwordRules.nextCut(sword.combo, lastCut, now, Swords.COMBO_RESET)
+	-- the prologue's scythe swings faster (owner 2026-11-17: SwingSpeed, set by the server for that fight only)
+	local speedSet = player:GetAttribute("SwingSpeed")
+	local speed = if typeof(speedSet) == "number" then math.clamp(speedSet, 1, 2) else 1
+	local combo = SwordRules.quicken(sword.combo, speed)
+	local index, startAt = SwordRules.nextCut(combo, lastCut, now, Swords.COMBO_RESET)
 	if not index or not startAt then
 		return
 	end
@@ -1149,7 +1155,7 @@ function SwordController.Attack()
 		SkillCinematic.stop() -- a cut after a skill's free point: its camera moment ends (its effects play on)
 	end
 	local token = SwingGate.begin(gate)
-	local cut = sword.combo[index]
+	local cut = combo[index]
 	SwordController.DrawNow()
 	Remotes.SwordAttack:FireServer()
 	-- The server strikes this cut then whatever happens here: what landed is this cut (IsBigHit)
@@ -1162,22 +1168,22 @@ function SwordController.Attack()
 		softAim(at)
 		holdControls(humanoid, cut.cancelAt or cut.length)
 		if mine then
-			mine.play(`cut{index}`)
+			mine.play(`cut{index}`, speed)
 		end
 		swingTrail()
 		playCues(sword, `cut{index}`, function(): boolean
 			return stillSwinging(token)
-		end)
+		end, nil, speed)
 		local effects = effectsOf(character)
 		if effects then
 			cutEffects(character, sword, effects, index, true, function(): boolean
 				return stillSwinging(token)
-			end)
+			end, speed)
 		end
 		-- The candy sparkle arc as the blade comes round, and the finisher's dust where it lands
 		local arc = (SwordFx.ARCS :: any)[`cut{index}`] :: HitFx.ArcLook?
 		if arc then
-			task.delay(arc.from, function()
+			task.delay(arc.from / speed, function()
 				local _, arcRoot = ownParts()
 				if arcRoot and stillSwinging(token) then
 					HitFx.swingArc(arcRoot.CFrame, arc, slashOf(character, sword))

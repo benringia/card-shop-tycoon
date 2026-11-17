@@ -1099,11 +1099,6 @@ function Hud.setFocus(source: string, keep: { string }?)
 	end
 end
 
--- Calm on while Pish's first visit runs (TutorialController): every piece hidden
-function Hud.setCalm(on: boolean)
-	Hud.setFocus("pish", if on then {} else nil)
-end
-
 -- Whether the calm HUD hides the piece `name` now
 function Hud.hides(name: string): boolean
 	return hides(name)

@@ -254,7 +254,7 @@ AdminPanel.SECTIONS = {
 		title = "Pish (tutorial)",
 		buttons = {
 			{ label = "First visit again (a new player's)", command = "/tutorial reset" },
-			{ label = "Jump to a step", command = "/tutorial step %s", placeholder = "step 1-8" },
+			{ label = "Jump to a step", command = "/tutorial step %s", placeholder = "step 1-9" },
 			{ label = "Lesson: Glass Showcase (Lv 2)", command = "/tutorial lesson showcase" },
 			{ label = "Lesson: Decor (Lv 2)", command = "/tutorial lesson decor" },
 			{ label = "Lesson: Card Sleeves (Lv 3)", command = "/tutorial lesson sleeves" },

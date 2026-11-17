@@ -24,6 +24,29 @@ local function facts(over: { [string]: boolean }): any
 end
 
 return {
+	-- Owner 2026-11-17 (playthrough): "When the player opens their first card. Pish will then ask the player to summon
+	-- them. then the party UI and everything else should be displayed."
+	["after his present Pish asks you to summon your pal: the party shows for it, then the whole HUD"] = function()
+		expect.equal(STEPS[1], "giftPack", "his present first")
+		expect.equal(STEPS[2], "summonPal", "then summon the pal it gave you")
+		expect.equal(STEPS[3], "buildRack", "then the shop")
+		assert(UIIcons[Pish.STEP_ICONS.summonPal] or Pish.STEP_ICONS.summonPal, "an icon over his head")
+		local function focus(step: string, inTown: boolean): string
+			local keep = TutorialRules.pishFocus(step, inTown, Pish)
+			return if keep then table.concat(keep, ",") else "none"
+		end
+		expect.equal(focus("giftPack", true), "", "his present: the calm HUD")
+		expect.equal(focus("summonPal", true), "party", "the summon: the party shows")
+		expect.equal(focus("buildRack", true), "none", "after it: everything shows")
+		expect.equal(focus("ringUp", true), "none", "for the rest of the tour")
+		expect.equal(focus("bye", true), "none", "his goodbye")
+		expect.equal(focus("giftPack", false), "none", "out of town the whole HUD")
+		expect.equal(focus("", true), "none", "no tour")
+		local fresh = TutorialRules.read({ firstVisit = "todo", step = 2 }, STEPS)
+		expect.equal(TutorialRules.doneAlready(fresh, "summonPal", facts({ summoned = true })), true, "already out: done")
+		expect.equal(TutorialRules.doneAlready(fresh, "summonPal", facts({})), false, "not out yet: summon it")
+	end,
+
 	-- Owner 2026-11-16 (playthrough): "Customers should only start coming when Pish introduces them": a new player's
 	-- shop stays quiet until Pish sends his own customer (once ever); a skipped, finished or replayed tour never waits
 	-- (a replay gets no customer from him, so the shop's own complete his step)
@@ -72,8 +95,8 @@ return {
 		end
 	end,
 
-	["the steps are the spec's eight, in order"] = function()
-		same(STEPS, { "giftPack", "buildRack", "orderStock", "stockRack", "customer", "ringUp", "gift", "bye" }, "steps")
+	["the steps are the spec's eight and the summon after his present (owner 2026-11-17), in order"] = function()
+		same(STEPS, { "giftPack", "summonPal", "buildRack", "orderStock", "stockRack", "customer", "ringUp", "gift", "bye" }, "steps")
 	end,
 
 	["every step's and lesson's picture is an uploaded icon (no words on screen)"] = function()
@@ -100,21 +123,21 @@ return {
 		local saved, done = TutorialRules.record(TutorialRules.read({}, STEPS), STEPS, "giftPack")
 		expect.equal(saved.step, 2)
 		same(done, { "giftPack" }, "completed")
-		expect.equal(TutorialRules.current(saved, STEPS), "buildRack")
+		expect.equal(TutorialRules.current(saved, STEPS), "summonPal")
 	end,
 
 	["early events wait their turn"] = function()
-		local saved = TutorialRules.read({ firstVisit = "todo", step = 2 }, STEPS)
+		local saved = TutorialRules.read({ firstVisit = "todo", step = 3 }, STEPS)
 		local done
 		saved, done = TutorialRules.record(saved, STEPS, "orderStock")
-		expect.equal(saved.step, 2, "ordering before building doesn't skip building")
+		expect.equal(saved.step, 3, "ordering before building doesn't skip building")
 		expect.equal(saved.early.orderStock, true)
 		same(done, {}, "nothing completed yet")
 		saved, done = TutorialRules.record(saved, STEPS, "buildRack")
-		expect.equal(saved.step, 4, "building completes, then the order counts")
+		expect.equal(saved.step, 5, "building completes, then the order counts")
 		same(done, { "buildRack", "orderStock" }, "both completed, in order")
 		saved, done = TutorialRules.record(saved, STEPS, "ringUp")
-		expect.equal(saved.step, 4, "a sale before stocking waits too")
+		expect.equal(saved.step, 5, "a sale before stocking waits too")
 		same(done, {}, "nothing completed")
 		expect.equal(saved.early.ringUp, true)
 	end,

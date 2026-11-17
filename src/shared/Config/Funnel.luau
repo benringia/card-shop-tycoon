@@ -13,6 +13,7 @@ return {
 		"WelcomeFlightDone",
 		-- Pish's tour (Config/Pish STEPS, in order)
 		"giftPack",
+		"summonPal",
 		"buildRack",
 		"orderStock",
 		"stockRack",

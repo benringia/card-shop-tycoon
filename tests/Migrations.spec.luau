@@ -270,6 +270,27 @@ return {
 		expect.equal(kept.tips.toBag, 2, "a saved table kept")
 	end,
 
+	-- Pish's tour gained a step after his present (owner 2026-11-17: "When the player opens their first card. Pish will
+	-- then ask the player to summon them"): a saved tour step past the present moves one on, so it stays the same step
+	["v35: a saved tour step past Pish's present moves one on; the present itself and junk left alone"] = function()
+		local mid: any = { version = 34, tutorial = { firstVisit = "todo", step = 3 } }
+		Migrations.run(mid, 35)
+		expect.equal(mid.version, 35)
+		expect.equal(mid.tutorial.step, 4, "orderStock stays orderStock")
+		local first: any = { version = 34, tutorial = { firstVisit = "todo", step = 1 } }
+		Migrations.run(first, 35)
+		expect.equal(first.tutorial.step, 1, "still on the present: the new step comes next")
+		local skipped: any = { version = 34, tutorial = { firstVisit = "skipped", step = 5 } }
+		Migrations.run(skipped, 35)
+		expect.equal(skipped.tutorial.step, 6, "a skipped tour keeps where it ended (the funnel)")
+		local none: any = { version = 34, cash = 3 }
+		Migrations.run(none, 35)
+		expect.equal(none.tutorial, nil, "no tour saved: nothing made")
+		local junk: any = { version = 34, tutorial = { step = "x" } }
+		Migrations.run(junk, 35)
+		expect.equal(junk.tutorial.step, "x", "junk left for TutorialRules.read")
+	end,
+
 	-- Weekly quests (owner 2026-11-17: "what players do after daily quests?"): every save starts with no week rolled
 	-- (QuestService rolls this week's); a saved week is kept for QuestRules.cleanWeek
 	["v34: every save starts with no weekly quests rolled; a saved week kept"] = function()

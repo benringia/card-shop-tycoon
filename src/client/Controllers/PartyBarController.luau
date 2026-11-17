@@ -905,6 +905,12 @@ function PartyBarController.ShowXpGains(from: Vector2, gains: { XpGain }, xp: nu
 end
 
 -- Your row under the carousel (CharacterController puts your face first in it)
+-- The creature button Pish points at on his summon step (owner 2026-11-17): the middle portrait's tap area
+function PartyBarController.GetSummonButton(): GuiObject?
+	local view = slotViews[centerSlot]
+	return if view then view.hit else nil
+end
+
 function PartyBarController.GetMeRow(): Frame
 	return meRow
 end
@@ -1181,6 +1187,19 @@ function PartyBarController.Start()
 	pairHolder:GetPropertyChangedSignal("AbsoluteSize"):Connect(placePair)
 	UIController.GetScreenGui():GetPropertyChangedSignal("AbsoluteSize"):Connect(placePair)
 	placePair()
+	-- out of the way in a fight (PairRules.shown): the fight's HUD is there while it lasts (as WeaponSwitchController reads)
+	local pairFighting = false
+	local function showPair()
+		pairRow.Visible = PairRules.shown(compact, pairFighting)
+	end
+	local function combatHudChanged(child: Instance)
+		if child.Name == "CombatHud" then
+			pairFighting = UIController.GetScreenGui():FindFirstChild("CombatHud") ~= nil
+			showPair()
+		end
+	end
+	UIController.GetScreenGui().ChildAdded:Connect(combatHudChanged)
+	UIController.GetScreenGui().ChildRemoved:Connect(combatHudChanged)
 
 	-- Phones (owner 2026-11-13: "align them all right"; "I want the character info to be at the very top. leveled with
 	-- the roblox icons on the other side. below the exp is the coins"): every row flush right, and your row leaves the
@@ -1205,7 +1224,7 @@ function PartyBarController.Start()
 		end
 		NextUnlock.setHidden(not CompactHud.phonePieces(on, true, false, false).nextUnlock)
 		-- the pair above the jump button: the carousel's middle creature and the weapon spot (back in the dock on a PC)
-		pairRow.Visible = on
+		showPair()
 		carousel.Parent = if on then pairRow else bar
 		carousel.LayoutOrder = 1
 		weaponSpot.Parent = if on then pairRow else bar

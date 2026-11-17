@@ -102,6 +102,7 @@ local SwordController = require(Controllers:WaitForChild("SwordController"))
 local WeaponSwitchController = require(Controllers:WaitForChild("WeaponSwitchController"))
 local CharacterController = require(Controllers:WaitForChild("CharacterController"))
 local CameraLimitController = require(Controllers:WaitForChild("CameraLimitController"))
+local FightTouchController = require(Controllers:WaitForChild("FightTouchController"))
 local StationTimerController = require(Controllers:WaitForChild("StationTimerController"))
 local MusicController = require(Controllers:WaitForChild("MusicController"))
 local FootstepController = require(Controllers:WaitForChild("FootstepController"))
@@ -148,6 +149,7 @@ if Place.isFrontier() or Place.isDungeon() then
 	WeaponSwitchController.Start() -- the quick weapon switch chip on the right edge (Q)
 	CharacterController.Start() -- the character window: your character, Stats / Elements / Titles, your weapon (P)
 	CameraLimitController.Start() -- how far the camera zooms out (Config/CameraLimits)
+	FightTouchController.Start() -- a phone's fight: the camera pulled out, the jump button aside
 	LevelUpController.Start() -- the level-up light pillar on you, your creatures and players nearby
 	FootstepController.Start() -- footsteps on whatever you walk on
 	if Place.isDungeon() then
@@ -250,5 +252,6 @@ else
 	WeaponSwitchController.Start() -- the quick weapon switch chip on the right edge (Q)
 	CharacterController.Start() -- the character window: your character, Stats / Elements / Titles, your weapon (P)
 	CameraLimitController.Start() -- how far the camera zooms out (Config/CameraLimits)
+	FightTouchController.Start() -- a phone's fight: the camera pulled out, the jump button aside
 	LevelUpController.Start() -- the level-up light pillar on you, your creatures and players nearby
 end

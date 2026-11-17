@@ -373,6 +373,14 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 			data.weekly = { week = -1, list = {}, chest = false }
 		end
 	end,
+	-- Pish's tour gained "summonPal" after his present (owner 2026-11-17): a saved step past it moves one on, so it names
+	-- the same step (junk is left for TutorialRules.read)
+	[34] = function(data)
+		local tutorial = data.tutorial
+		if typeof(tutorial) == "table" and typeof(tutorial.step) == "number" and tutorial.step >= 2 then
+			tutorial.step += 1
+		end
+	end,
 }
 
 local function lowestGrade(): string

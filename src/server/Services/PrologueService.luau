@@ -69,6 +69,7 @@ local function close(player: Player)
 	if not session then
 		return
 	end
+	player:SetAttribute("SwingSpeed", nil)
 	sessions[player] = nil
 	if slots[session.slot] == player then
 		slots[session.slot] = nil
@@ -143,6 +144,8 @@ local function startFight(player: Player, session: Session)
 		return
 	end
 	session.step = "fighting"
+	-- the lent scythe swings faster in this fight only (owner 2026-11-17; BattleService and SwordController read it)
+	player:SetAttribute("SwingSpeed", Prologue.SWING_SPEED)
 end
 
 local function onStep(player: Player, step: unknown)
@@ -176,6 +179,7 @@ function PrologueService.Start()
 		return if session and session.step ~= "returned" then Prologue.BUSY else nil
 	end)
 	BattleService.OnPrologueEnded(function(player: Player)
+		player:SetAttribute("SwingSpeed", nil)
 		local session = sessions[player]
 		if session and session.step == "fighting" then
 			session.step = "fought"

@@ -816,7 +816,7 @@ function DevService.Start()
 		end
 	end)
 	-- The tutorial with Pish (spec 2026-11-09-tutorial-pish-design): /tutorial reset (a new player's first visit, gifts
-	-- not given), /tutorial step <1-8>, /tutorial lesson <id> (that lesson visit again: sleeves, sword, condenser, forge,
+	-- not given), /tutorial step <1-9>, /tutorial lesson <id> (that lesson visit again: sleeves, sword, condenser, forge,
 	-- expand, boosterBox, grading, jobs), /pish (Town Pish comes to you), /pishluck (petting him gives luck again now)
 	addCommand(folder, "tutorial", function(player, text)
 		local word, value = string.match(text, "^/%w+%s+(%w+)%s*(%w*)")
@@ -834,7 +834,7 @@ function DevService.Start()
 		elseif word == "lesson" and lessonId then
 			TutorialService.QueueLesson(player, lessonId)
 		else
-			Remotes.Notify:FireClient(player, "Usage: /tutorial reset | /tutorial step <1-8> | /tutorial lesson <id>", true)
+			Remotes.Notify:FireClient(player, "Usage: /tutorial reset | /tutorial step <1-9> | /tutorial lesson <id>", true)
 		end
 	end)
 	-- Chikin's combat tutorial (spec 2026-11-10-chikin-combat-tutorial-design): /chikin reset (a new player's tour, after
