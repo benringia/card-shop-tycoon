@@ -14,6 +14,24 @@ local function anyItems(items: { [string]: number }): boolean
 end
 
 return {
+	-- Owner 2026-11-17 (the first 15 minutes): the shop's next unlock under its level bar ("Lv 3: Card Sleeves"), so a
+	-- new player always has a goal; several at once say how many more ("+1")
+	["the next unlock: the lowest level above the shop's, the first listed there, and how many more"] = function()
+		local unlocks = {
+			{ level = 2, name = "Glass Showcase" },
+			{ level = 3, name = "Card Sleeves" },
+			{ level = 3, name = "Collector Case" },
+			{ level = 4, name = "Your first sword" },
+		}
+		expect.equal(LevelUpRules.nextUnlockText(1, unlocks), "Lv 2: Glass Showcase")
+		expect.equal(LevelUpRules.nextUnlockText(2, unlocks), "Lv 3: Card Sleeves +1", "two at level 3")
+		expect.equal(LevelUpRules.nextUnlockText(3, unlocks), "Lv 4: Your first sword")
+		expect.isNil(LevelUpRules.nextUnlockText(4, unlocks), "nothing left")
+		expect.isNil(LevelUpRules.nextUnlockText(1, {}), "nothing to unlock")
+		local unordered = { { level = 9, name = "Big Display Rack" }, { level = 5, name = "Card Condenser" } }
+		expect.equal(LevelUpRules.nextUnlockText(4, unordered), "Lv 5: Card Condenser", "the list's order doesn't matter")
+	end,
+
 	-- Small cash every level: $2 x the new level since levels came 6x faster (owner 2026-11-17), so the level cash per
 	-- hour stays about what $10 x paid at round 4's pace ($4 x at 2.7x, $3 x at 4x)
 	["small cash every level"] = function()

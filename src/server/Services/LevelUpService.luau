@@ -29,6 +29,7 @@ local BattleService = require(Services:WaitForChild("BattleService"))
 local CardService = require(Services:WaitForChild("CardService"))
 local RateLimiter = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("RateLimiter"))
 local Funnel = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("Funnel"))
+local Blocked = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("Blocked"))
 
 local LevelUpService = {}
 
@@ -122,7 +123,7 @@ local function onOpenBagPack(player: Player, itemId: unknown)
 	end
 	local blocked = LevelUpRules.openBlocked(BattleService.IsFighting(player), ArenaService ~= nil and ArenaService.IsBusy(player))
 	if blocked then
-		Remotes.Notify:FireClient(player, blocked, true)
+		Blocked.tell(player, blocked) -- the big locked card, never only a toast (owner 2026-11-12)
 		return
 	end
 	if not ItemService.TakeItem(player, itemId :: string, 1) then
@@ -140,6 +141,36 @@ local function onOpenBagPack(player: Player, itemId: unknown)
 	end
 end
 
+-- Open 10 (owner 2026-11-17): up to Levels.OPEN_MANY packs of a Bag stack at once, the same checks as one
+local function onOpenBagPacks(player: Player, itemId: unknown, asked: unknown)
+	if not allowOpen(player) or typeof(asked) ~= "number" then
+		return
+	end
+	local productId, floor, stingy = ItemRules.openablePack(Items, itemId)
+	if not productId then
+		return
+	end
+	local blocked = LevelUpRules.openBlocked(BattleService.IsFighting(player), ArenaService ~= nil and ArenaService.IsBusy(player))
+	if blocked then
+		Blocked.tell(player, blocked) -- the big locked card, never only a toast (owner 2026-11-12)
+		return
+	end
+	local id = itemId :: string
+	local count = ItemRules.openMany(math.min(ItemService.GetCount(player, id), asked :: number), Levels.OPEN_MANY)
+	if count < 1 or not ItemService.TakeItem(player, id, count) then
+		return
+	end
+	if not PackService or not (PackService :: any).OpenItemPacks(player, productId, count, floor, id, stingy) then
+		ItemService.GiveItem(player, id, count) -- not a pack after all: give them back
+		return
+	end
+	local stock = ItemRules.stockOf(Items, id)
+	local product = if stock then Products.ById[stock] else nil
+	if product then
+		EconomyService.AddXP(player, LevelMath.saleXp(product.marketPrice, RegisterConfig.MIN_XP_PER_SALE) * count)
+	end
+end
+
 function LevelUpService.Start()
 	EconomyService.OnLevelUp(onLevelUp)
 	CardService.OnBeastLevelUp(onBeastLevelUp)
@@ -154,6 +185,7 @@ function LevelUpService.Start()
 		PackService = require(Services:WaitForChild("PackService")) :: any
 		ArenaService = require(Services:WaitForChild("ArenaService")) :: any
 		Remotes.OpenBagPack.OnServerEvent:Connect(onOpenBagPack)
+		Remotes.OpenBagPacks.OnServerEvent:Connect(onOpenBagPacks)
 	end
 end
 

@@ -105,6 +105,13 @@ function ItemRules.stockOf(config: Config, itemId: any): string?
 	return if typeof(info) == "table" and typeof(info.stock) == "string" then info.stock else nil
 end
 
+-- How many packs Open 10 opens from a stack of `have` (owner 2026-11-17): up to `max`, and only from two up (one pack
+-- has just Open)
+function ItemRules.openMany(have: number, max: number): number
+	local whole = if typeof(have) == "number" and have == have then math.floor(have) else 0
+	return if whole >= 2 then math.min(whole, max) else 0
+end
+
 -- Whether a Bag item is placed in your shop from the Bag (its Place button; owner 2026-11-17): the boss trophies, each
 -- its own Config/Shelves entry by the same id
 function ItemRules.placesInShop(config: Config, itemId: any): boolean

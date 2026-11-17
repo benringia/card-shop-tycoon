@@ -207,6 +207,16 @@ local function showResults(gen: number)
 	end
 	local left = anotherLeft()
 	OpeningResults.results(newCount, value, if left > 0 then `Open another · {left}` else nil)
+	-- the set's bar: what's collected now (the binder has this pack already) and the NEW ones it added
+	local first = pulls[1]
+	local set = if first then first.card.set else nil
+	if set then
+		local Binder = require(Controllers:WaitForChild("BinderController")) :: any
+		local owned, total = Binder.SetCollected(set)
+		OpeningResults.setProgress(set, owned, total, newCount)
+	else
+		OpeningResults.setProgress(nil, 0, 0, 0)
+	end
 	resultsShown = true
 end
 
@@ -390,10 +400,16 @@ local function onPackOpened(productId: string, results: { PullResult }, newFlags
 			pcall(ContentProvider.PreloadAsync, ContentProvider, sounds)
 		end)
 	end
-	OpeningPack.show(pack)
+	-- a pack holding something big trembles and glows first (sometimes a fake-out on a Very Rare)
+	local rarities = {}
+	for _, pull in pulls do
+		table.insert(rarities, pull.card.rarity)
+	end
+	local heavy = RevealRules.packTell(CardReveal.PACK_TELL, rarities, math.random())
+	OpeningPack.show(pack, heavy)
 	OpeningResults.show(buildOddsText(pack))
 	refreshPity()
-	OpeningResults.hint(if pack.kind == "Deck" then "Tap the lid to open" else "Swipe across the top to open")
+	OpeningResults.hint(if pack.kind == "Deck" then "Tap the lid to open" elseif heavy then CardReveal.PACK_TELL.hint else "Swipe across the top to open")
 	ContextActionService:BindActionAtPriority(ADVANCE_ACTION, function(_, state, input)
 		if state == Enum.UserInputState.Begin then
 			if input.KeyCode == RIP_KEY and resultsShown then

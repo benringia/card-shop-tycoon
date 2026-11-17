@@ -204,4 +204,10 @@ return {
 		dropRise = 0.12, dropBurst = 0.15, dropRing = 0.08, dropSting = 0.11, dropBoom = 0.12, dropFlip = 0.2,
 		chestCreak = 0.35, chestThud = 0.35, chestCoins = 0.3, chestPoof = 0.25,
 	},
+	-- Open 10 (BulkOpenController, owner 2026-11-17): seconds each rarity holds the turning over, and the grid's cards (the
+	-- biggest from max down to min px wide that fit every row on screen, OpeningLayout.gridCell; gaps in px)
+	BULK = {
+		pause = { Common = 0.05, Rare = 0.2, ["Very Rare"] = 0.35, Epic = 0.8, Legendary = 1.3 },
+		grid = { min = 44, max = 84, gap = 8, rowGap = 16, ratio = 1.4 },
+	},
 }

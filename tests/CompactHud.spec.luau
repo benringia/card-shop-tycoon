@@ -6,6 +6,27 @@ local UiLayout = require("../src/shared/Util/UiLayout")
 local expect = require("./lib/expect")
 
 return {
+	-- Owner 2026-11-17 ("move quest done strip a little higher on mobile. it overlaps with the jump button"): the strip
+	-- went under the top-right column's frame (a fixed height with room to spare), onto Roblox's jump button
+	["the phone's quest strip: under the column's last piece, never on the jump button"] = function()
+		local screen = { w = 750, h = 323 } -- an iPhone 17 Pro's HUD space (381 under the 58 px top bar)
+		local jump = CompactHud.jumpRect(screen.w, screen.h)
+		expect.equal(jump.x, 655, "the jump button 95 px from the right")
+		expect.equal(jump.y, 233, "and 90 from the bottom")
+		expect.equal(jump.w, 70, "a phone's small jump button")
+		local top, right = CompactHud.questSpot(150, { w = 150, h = 38 }, screen, jump, 16, 8)
+		expect.equal(top, 158, "just under the party dock")
+		expect.equal(right, 16, "at the right edge")
+		-- a longer column (a team strip under it) would reach the jump button: beside it instead
+		top, right = CompactHud.questSpot(210, { w = 150, h = 38 }, screen, jump, 16, 8)
+		expect.equal(top, 218, "still under the column")
+		assert(screen.w - right <= jump.x - 8, "left of the jump button")
+		local tablet = CompactHud.jumpRect(1024, 710)
+		expect.equal(tablet.w, 120, "a tablet's big jump button")
+		expect.equal(tablet.x, 1024 - 170, "170 from the right")
+		expect.equal(tablet.y, 710 - 210, "210 from the bottom")
+	end,
+
 	-- owner 2026-11-13 round 2 (pick A, "move the admin tile inside phone and move binder tile under phone"): on a
 	-- phone Bag, Bosses and Admin are Phone apps, Cards sits under the Phone, the shop apps stay in town
 	["a HUD button's spot: Bag / Bosses / Admin in the Phone on a phone, Cards under it, shop apps only in town"] = function()

@@ -14,6 +14,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local PackOpening = require(Config:WaitForChild("PackOpening"))
 local Packs = require(Config:WaitForChild("Packs"))
+local CardReveal = require(Config:WaitForChild("CardReveal"))
 local PackModels = require(Shared:WaitForChild("Util"):WaitForChild("PackModels"))
 local OpeningLayout = require(Shared:WaitForChild("Util"):WaitForChild("OpeningLayout"))
 
@@ -46,6 +47,9 @@ local dot: BasePart? = nil
 local pointer: Vector2? = nil -- where the mouse or finger last was (screen pixels)
 local pointerWatch: RBXScriptConnection? = nil
 local yaw, pitch = 0, 0 -- the pack's turn toward the pointer now (degrees)
+local heavy = false -- it holds something big: it shivers in bursts and glows gold (Config/CardReveal PACK_TELL)
+local glow: Highlight? = nil
+local TELL = CardReveal.PACK_TELL
 
 -- Tweens a model's pivot (TweenService can't), resolving when it's done
 local function tweenPivot(target: Model, to: CFrame, seconds: number, style: Enum.EasingStyle, direction: Enum.EasingDirection): Tween
@@ -170,6 +174,14 @@ local function startIdle()
 		local t = os.clock() - start
 		local bob = math.sin(t * math.pi * 2 / LOOK.BOB_SECONDS) * LOOK.BOB
 		local rock = math.rad(math.sin(t * math.pi * 2 / (LOOK.BOB_SECONDS * 1.3)) * LOOK.SWAY)
+		-- a heavy pack shivers in short bursts, as if something inside wants out
+		if heavy then
+			local burst = t % TELL.every
+			if burst < TELL.seconds then
+				local fade = math.sin(burst / TELL.seconds * math.pi)
+				rock += math.rad(math.sin(t * 70) * TELL.degrees * fade)
+			end
+		end
 		local targetYaw, targetPitch = tiltTarget()
 		local follow = 1 - math.exp(-dt * LOOK.TILT_SPEED)
 		yaw += (targetYaw - yaw) * follow
@@ -211,12 +223,18 @@ function OpeningPack.clear()
 		sheen:Destroy()
 		sheen = nil
 	end
+	if glow then
+		glow:Destroy()
+		glow = nil
+	end
+	heavy = false
 	lid = nil
 end
 
--- The pack (or deck box) floating in the middle of the stage
-function OpeningPack.show(pack: Packs.Pack)
+-- The pack (or deck box) floating in the middle of the stage; `tell`: it holds something big (it shivers and glows)
+function OpeningPack.show(pack: Packs.Pack, tell: boolean?)
 	OpeningPack.clear()
+	heavy = tell == true
 	deck = pack.kind == "Deck"
 	packColor = pack.color
 	local made = if deck then PackModels.deckBox(pack.productId) else PackModels.pack(pack.productId, "High")
@@ -253,6 +271,20 @@ function OpeningPack.show(pack: Packs.Pack)
 	sheen = light
 	if not deck then
 		showGuide(made)
+	end
+	if heavy then
+		local gold = Color3.fromRGB(TELL.glow[1], TELL.glow[2], TELL.glow[3])
+		local halo = Instance.new("Highlight")
+		halo.Name = "HeavyGlow"
+		halo.FillColor = gold
+		halo.FillTransparency = 0.92
+		halo.OutlineColor = gold
+		halo.OutlineTransparency = 0.1
+		halo.DepthMode = Enum.HighlightDepthMode.Occluded
+		halo.Adornee = made
+		halo.Parent = OpeningStage.folder()
+		glow = halo
+		TweenService:Create(halo, TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { FillTransparency = 0.8 }):Play()
 	end
 	local _, packSize = made:GetBoundingBox()
 	OpeningFx.charge(true, rest * CFrame.new(0, height / 2, 0), packSize)

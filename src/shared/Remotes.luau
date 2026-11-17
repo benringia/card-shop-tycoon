@@ -13,6 +13,7 @@ local NAMES = {
 	"MoveFixture", -- client → server: (fixtureId: string, gridX: number, gridZ: number, rotation: number)
 	"SellShelf", -- client → server: (uid: string)
 	"StockShelf", -- client → server: (uid: string) put the carried box's units on this shelf
+	"FillBulkBin", -- client → server: (uid: string) put the binder's extra Commons in this Bulk Bin (BulkService)
 	"SetPrices", -- client → server: ({ [productId: string]: number })
 	"CheckoutUpdate", -- server → client: (total: number?, remaining: number, lines: { { name, price, done, product?, card? } }?) nil total = checkout over
 	"RegisterBell", -- server → client: (ring: number) a customer waits at your register with nobody there (Config/RegisterBell)
@@ -122,6 +123,8 @@ local NAMES = {
 	"DungeonChest", -- server → client: { key, kind = "puzzle" | "secret", cash?, xp?, item?, count?, title? } you opened that Dungeon chest
 	"UseXpTonic", -- client → server: (beastId: string) one XP Tonic on a party card
 	"OpenBagPack", -- client → server: (itemId: string) open one pack item from the Bag (LevelUpService; main game)
+	"OpenBagPacks", -- client → server: (itemId: string, count: number) Open 10: up to Levels.OPEN_MANY packs of a Bag stack at once (LevelUpService)
+	"PacksOpened", -- server → client: (productId, results: { { cardId, foil, grade } }, newFlags: { boolean }, itemId: string, packs: number) Open 10's cards, pack by pack (BulkOpenController)
 	"LevelUpFx", -- server → clients: { kind = "shop", userId, from, to } or { kind = "creature", userId, beastId, element, from, to, fromFight }
 	"MovePreview", -- server → one client, Studio only: { move = "rain" | "vine" | "orbs" | "curse", grade = "C" | "B" | "A" | "S", big } (DevService /movefx), or { super = <Config/SuperFx look id>, grade } (/superfx)
 	"FrontierTravel", -- client → server: (where: "explore" | "friend" | "home", friendUserId?); server → client: { open = true } (portal menu) or { message }
@@ -208,6 +211,7 @@ return {
 	MoveFixture = remotes.MoveFixture,
 	SellShelf = remotes.SellShelf,
 	StockShelf = remotes.StockShelf,
+	FillBulkBin = remotes.FillBulkBin,
 	SetPrices = remotes.SetPrices,
 	CheckoutUpdate = remotes.CheckoutUpdate,
 	PaymentStart = remotes.PaymentStart,
@@ -286,6 +290,8 @@ return {
 	DungeonChest = remotes.DungeonChest,
 	UseXpTonic = remotes.UseXpTonic,
 	OpenBagPack = remotes.OpenBagPack,
+	OpenBagPacks = remotes.OpenBagPacks,
+	PacksOpened = remotes.PacksOpened,
 	LevelUpFx = remotes.LevelUpFx,
 	MovePreview = remotes.MovePreview,
 	FrontierTravel = remotes.FrontierTravel,

@@ -788,20 +788,25 @@ function UIKit.closeButton(parent: GuiObject): TextButton
 end
 
 -- The coloured band across the top of a panel (Config/UIStyle HEADERS: Party, Cards, Bosses, Bag, Default), with
--- the outlined title in it and a dark line under it
+-- the outlined title in it and a dark line under it. In a cream window the band runs over the window's white outline to
+-- its outer edge (owner 2026-11-17: "theres a small space between the window and the pink glow": the outline showed as
+-- a pale strip round the band); UIKit.sizeHeader changes its height keeping that.
 function UIKit.header(parent: GuiObject, title: string, band: string?): (Frame, TextLabel)
 	local cream = UIKit.themeOf(parent) == "cream"
 	local bands = if cream then CREAM.HEADERS else UIStyle.HEADERS
 	local colors = bands[band or "Default"] or bands.Default
 	local corner = if cream then CREAM.CORNER else PANEL_CORNER
+	local over = if cream then CREAM.OUTLINE_THICKNESS else 0
 	local header = Instance.new("Frame")
 	header.Name = "Header"
-	header.Size = UDim2.new(1, 0, 0, UIKit.HEADER_HEIGHT)
+	header:SetAttribute("Over", over)
+	header.Position = UDim2.fromOffset(-over, -over)
+	header.Size = UDim2.new(1, over * 2, 0, UIKit.HEADER_HEIGHT + over)
 	header.BackgroundColor3 = Color3.new(1, 1, 1)
 	header.BorderSizePixel = 0
 	header.ZIndex = parent.ZIndex
 	header.Parent = parent
-	UIKit.corner(header, corner - 2)
+	UIKit.corner(header, if cream then corner + over else corner - 2) -- a cream band follows the outline's outer curve
 	local gradient = Instance.new("UIGradient")
 	gradient.Rotation = 90
 	gradient.Color = ColorSequence.new(colors.top, colors.bottom)
@@ -811,7 +816,7 @@ function UIKit.header(parent: GuiObject, title: string, band: string?): (Frame, 
 	squareBottom.Name = "SquareBottom"
 	squareBottom.AnchorPoint = Vector2.new(0, 1)
 	squareBottom.Position = UDim2.fromScale(0, 1)
-	squareBottom.Size = UDim2.new(1, 0, 0, corner)
+	squareBottom.Size = UDim2.new(1, 0, 0, corner + over)
 	squareBottom.BackgroundColor3 = Color3.new(1, 1, 1)
 	squareBottom.BorderSizePixel = 0
 	squareBottom.ZIndex = header.ZIndex
@@ -832,12 +837,19 @@ function UIKit.header(parent: GuiObject, title: string, band: string?): (Frame, 
 
 	local titleLabel = UIKit.label(header, title, Enum.Font.FredokaOne, UIKit.textSize("title"), UIKit.Colors.Text)
 	titleLabel.Name = "Title"
-	titleLabel.Position = UDim2.fromOffset(18, 0)
-	titleLabel.Size = UDim2.new(1, -90, 1, 0)
+	titleLabel.Position = UDim2.fromOffset(18 + over, over)
+	titleLabel.Size = UDim2.new(1, -90, 1, -over)
 	titleLabel.TextColor3 = Color3.new(1, 1, 1)
 	UIKit.outlined(titleLabel, 2.5)
 	titleLabel.ZIndex = header.ZIndex + 1
 	return header, titleLabel
+end
+
+-- A header's band `height` px tall (a phone's slimmer band), still over a cream window's outline
+function UIKit.sizeHeader(header: Frame, height: number)
+	local over = header:GetAttribute("Over")
+	local edge = if typeof(over) == "number" then over else 0
+	header.Size = UDim2.new(1, edge * 2, 0, height + edge)
 end
 
 -- Room inside a list for what draws past its rows (their outlines, their buttons' glow), which the list would clip

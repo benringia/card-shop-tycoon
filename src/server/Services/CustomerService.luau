@@ -15,8 +15,10 @@ local Pricing = require(Config:WaitForChild("Pricing"))
 local UIIcons = require(Config:WaitForChild("UIIcons"))
 local PlotConfig = require(Config:WaitForChild("Plots"))
 local Products = require(Config:WaitForChild("Products"))
+local Bulk = require(Config:WaitForChild("Bulk"))
 local ShowcaseConfig = require(Config:WaitForChild("Showcase"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
+local BulkRules = require(Shared:WaitForChild("Util"):WaitForChild("BulkRules"))
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
 local CollectorRules = require(Shared:WaitForChild("Util"):WaitForChild("CollectorRules"))
 local CustomerTypes = require(Shared:WaitForChild("Util"):WaitForChild("CustomerTypes"))
@@ -398,8 +400,15 @@ end
 
 local findStockedShelf: (owner: Player, productId: string) -> PlacedShelf?
 
+-- Some customers grab a handful from a Bulk Bin, only while one of the shop's bins has some (Config/Bulk CHANCE)
+local function maybeBulk(owner: Player, kind: string, list: { [string]: number })
+	if BulkRules.wants(kind, findStockedShelf(owner, Bulk.PRODUCT) ~= nil, rng:NextNumber(), Bulk.CHANCE) then
+		list[Bulk.PRODUCT] = 1
+	end
+end
+
 -- Products this shop has unlocked, so customers only ask for things the owner could stock. A kid wants a pack or two,
--- a big spender a booster box when one is stocked (else a stack of packs)
+-- a big spender a booster box when one is stocked (else a stack of packs); bulk cards only as maybeBulk adds them
 local function pickShoppingList(owner: Player, kind: string): { [string]: number }
 	local level = EconomyService.GetLevel(owner)
 	if kind == "kid" or kind == "bigSpender" then
@@ -415,11 +424,12 @@ local function pickShoppingList(owner: Player, kind: string): { [string]: number
 			local units = if kind == "kid" then CustomerConfig.KID.units else CustomerConfig.BIG_SPENDER.packs
 			list[pack] = rng:NextInteger(units[1], units[2])
 		end
+		maybeBulk(owner, kind, list)
 		return list
 	end
 	local unlocked = {}
 	for _, product in Products.List do
-		if product.unlockLevel <= level then
+		if product.unlockLevel <= level and not product.bulk then
 			table.insert(unlocked, product.id)
 		end
 	end
@@ -432,6 +442,7 @@ local function pickShoppingList(owner: Player, kind: string): { [string]: number
 		local productId = unlocked[rng:NextInteger(1, #unlocked)]
 		list[productId] = (list[productId] or 0) + 1
 	end
+	maybeBulk(owner, kind, list)
 	return list
 end
 

@@ -242,8 +242,8 @@ local function onOrder(player: Player, productId: unknown)
 		return
 	end
 	local product = Products.ById[productId]
-	if not product then
-		return
+	if not product or product.bulk then
+		return -- bulk is never ordered: a Bulk Bin is filled from the binder (BulkService)
 	end
 	local shop = getShop(player)
 	if not shop then
@@ -270,8 +270,11 @@ local function onOrder(player: Player, productId: unknown)
 	table.insert(shop.incoming, product.id)
 	syncPad(shop)
 	fire(orderedHandlers, player, product.id)
-	-- Express (Bloom creature summoned): deliveries arrive faster
-	local deliverySeconds = math.max(1, math.round(StockConfig.DELIVERY_SECONDS * (1 - PartyService.GetPerk(player, "Express"))))
+	-- Express (Bloom creature summoned): deliveries arrive faster; Pish's tour's at once (no dead wait in the first minutes)
+	local tourStep = player:GetAttribute("TutorialStep")
+	local deliverySeconds = if tourStep == "orderStock" or tourStep == "stockRack"
+		then StockConfig.TOUR_DELIVERY_SECONDS
+		else math.max(1, math.round(StockConfig.DELIVERY_SECONDS * (1 - PartyService.GetPerk(player, "Express"))))
 	notify(player, `Ordered {product.name}. Arrives in {deliverySeconds}s.`, false)
 
 	task.delay(deliverySeconds, function()

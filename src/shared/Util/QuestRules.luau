@@ -6,7 +6,7 @@ local QuestRules = {}
 
 export type Quest = { id: string, goal: number, progress: number, claimed: boolean }
 export type State = { day: number, list: { Quest }, bonus: boolean }
-export type QuestView = { id: string, text: string, icon: string, goal: number, progress: number, done: boolean, claimed: boolean, cash: number, xp: number }
+export type QuestView = { id: string, kind: string, text: string, icon: string, goal: number, progress: number, done: boolean, claimed: boolean, cash: number, xp: number }
 export type View = { quests: { QuestView }, bonusReady: boolean, bonusClaimed: boolean, claimable: number }
 
 type Entry = { id: string, kind: string, event: string, icon: string, text: string, minLevel: number?, maxLevel: number?, goals: { { level: number, goal: number } } }
@@ -183,6 +183,7 @@ function QuestRules.view(state: State, cfg: Config, level: number): View
 			local goal = tostring(quest.goal)
 			table.insert(quests, {
 				id = quest.id,
+				kind = entry.kind,
 				text = (string.gsub(entry.text, "{n}", function()
 					return goal
 				end)),
@@ -201,6 +202,38 @@ function QuestRules.view(state: State, cfg: Config, level: number): View
 		claimable += 1
 	end
 	return { quests = quests, bonusReady = bonusReady, bonusClaimed = state.bonus, claimable = claimable }
+end
+
+export type StripChanges = { progressed: { number }, finished: { number }, doneChanged: boolean, claimAppeared: boolean, allDone: boolean }
+
+-- What the quest strip animates going from `before` to `after` (owner 2026-11-17, "immersive animations on the quest
+-- strip"): the quests that moved on (a +1 and the bar filling), those that just finished (their check stamps in), whether
+-- the done count changed (its chip bumps), Claim appearing, and all done (the chest opened). Nothing on the first state
+-- or a new day's quests (different ids): those are shown as they are.
+function QuestRules.stripChanges(before: View?, after: View): StripChanges
+	local changes: StripChanges = { progressed = {}, finished = {}, doneChanged = false, claimAppeared = false, allDone = false }
+	if not before or #before.quests ~= #after.quests then
+		return changes
+	end
+	local doneBefore, doneAfter = 0, 0
+	for index, quest in after.quests do
+		local old = before.quests[index]
+		if old.id ~= quest.id then
+			return { progressed = {}, finished = {}, doneChanged = false, claimAppeared = false, allDone = false }
+		end
+		if quest.progress > old.progress then
+			table.insert(changes.progressed, index)
+		end
+		if quest.done and not old.done then
+			table.insert(changes.finished, index)
+		end
+		doneBefore += if old.done then 1 else 0
+		doneAfter += if quest.done then 1 else 0
+	end
+	changes.doneChanged = doneBefore ~= doneAfter
+	changes.claimAppeared = before.claimable == 0 and after.claimable > 0
+	changes.allDone = after.bonusClaimed and not before.bonusClaimed
+	return changes
 end
 
 return QuestRules

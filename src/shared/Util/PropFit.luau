@@ -76,6 +76,8 @@ function PropFit.counterLook(stockLook: string?, isPack: boolean): string
 		return "sleeves"
 	elseif stockLook == "Booster" then
 		return "booster"
+	elseif stockLook == "Bulk" then
+		return "bulk" -- a handful of cards (Util/BulkHandful)
 	end
 	return if isPack then "pack" else "block"
 end

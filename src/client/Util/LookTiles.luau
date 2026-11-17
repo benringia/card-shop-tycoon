@@ -14,6 +14,8 @@ local DecorRules = require(Shared:WaitForChild("Util"):WaitForChild("DecorRules"
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local UIKit = require((script.Parent :: Instance):WaitForChild("UIKit"))
+local Tooltip = require((script.Parent :: Instance):WaitForChild("Tooltip"))
+local ShopTips = require(Shared:WaitForChild("Util"):WaitForChild("ShopTips"))
 
 local LookTiles = {}
 
@@ -118,6 +120,7 @@ function LookTiles.build(list: ScrollingFrame, palette: any): { GuiObject }
 		frame.Parent = list
 		UIKit.corner(frame, 14)
 		UIKit.outline(frame)
+		Tooltip.rich(frame, look.name, ShopTips.look()) -- what a look is (owner 2026-11-17: tooltips in the shop)
 		swatch(frame, look, palette.slotEmpty)
 		local name = UIKit.label(frame, look.name, Enum.Font.FredokaOne, 17, UIKit.Colors.Text)
 		name.Position = UDim2.fromOffset(10, PICTURE + 12)

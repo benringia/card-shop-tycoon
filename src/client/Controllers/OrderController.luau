@@ -149,7 +149,9 @@ function OrderController.Start()
 	palette = UIKit.colorsFor(panel)
 	Icon.header(panel, "Order", UIKit.HEADER_HEIGHT)
 	for index, product in Products.List do
-		table.insert(rows, buildRow(product, list, index))
+		if not product.bulk then -- bulk cards come from your binder, never the supplier (Config/Bulk)
+			table.insert(rows, buildRow(product, list, index))
+		end
 	end
 
 	Remotes.OpenOrderMenu.OnClientEvent:Connect(open)

@@ -164,6 +164,7 @@ return {
 		expect.equal(view.quests[1].cash, QuestRules.reward(Quests, 10).cash)
 		expect.equal(view.bonusReady, false)
 		expect.equal(view.claimable, 1, "one to claim (the tile's count)")
+		expect.equal(view.quests[2].kind, "cards", "its kind (the strip's bubble colour)")
 	end,
 
 	["the quest pool's words are short and plain, every kind has a quest from level 1, every event is known"] = function()
@@ -185,5 +186,43 @@ return {
 			local UIIcons = require("../src/shared/Config/UIIcons")
 			assert(UIIcons[quest.icon], `{quest.id}'s icon {quest.icon} is a picture`)
 		end
+	end,
+
+	-- Owner 2026-11-17 ("add design/immersive animations on the quest strip"): the strip animates what changed since the
+	-- last state: a quest moving on (+1), one finishing (its check stamps in), the done count, Claim appearing, all done
+	["what the strip animates between two states"] = function()
+		local function view(progress: { number }, claimed: { boolean }, bonusClaimed: boolean): any
+			local quests = {}
+			local claimable = 0
+			for index, value in progress do
+				local done = value >= 3
+				if done and not claimed[index] then
+					claimable += 1
+				end
+				table.insert(quests, { id = `q{index}`, goal = 3, progress = value, done = done, claimed = claimed[index] == true })
+			end
+			return { quests = quests, bonusReady = false, bonusClaimed = bonusClaimed, claimable = claimable }
+		end
+		local before = view({ 3, 1, 0 }, {}, false)
+		local after = view({ 3, 3, 1 }, {}, false)
+		local changes = QuestRules.stripChanges(before, after)
+		expect.equal(#changes.progressed, 2, "two quests moved on")
+		expect.equal(changes.progressed[1], 2, "the second")
+		expect.equal(changes.progressed[2], 3, "and the third")
+		expect.equal(#changes.finished, 1, "one finished")
+		expect.equal(changes.finished[1], 2, "the second")
+		expect.equal(changes.doneChanged, true, "the done count went 1 -> 2")
+		expect.equal(changes.claimAppeared, false, "Claim was already there (the first quest)")
+		local quiet = QuestRules.stripChanges(view({ 1, 0, 0 }, {}, false), view({ 3, 0, 0 }, {}, false))
+		expect.equal(quiet.claimAppeared, true, "the first claimable quest brings Claim in")
+		local claimedOne = QuestRules.stripChanges(view({ 3, 0, 0 }, {}, false), view({ 3, 0, 0 }, { true }, false))
+		expect.equal(#claimedOne.progressed + #claimedOne.finished, 0, "a claim moves no bar")
+		local all = QuestRules.stripChanges(view({ 3, 3, 3 }, { true, true, true }, false), view({ 3, 3, 3 }, { true, true, true }, true))
+		expect.equal(all.allDone, true, "the chest opened: all done")
+		local fresh = QuestRules.stripChanges(nil, after)
+		expect.equal(#fresh.progressed + #fresh.finished, 0, "nothing to animate on the first state")
+		local newDay = view({ 0, 0, 0 }, {}, false)
+		newDay.quests[1].id = "other"
+		expect.equal(#QuestRules.stripChanges(after, newDay).progressed, 0, "a new day's quests aren't progress")
 	end,
 }

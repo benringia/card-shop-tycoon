@@ -74,4 +74,19 @@ return {
 		local wide = OpeningLayout.lineup(5, { w = 1600, h = 900 }, 58, look)
 		near(wide[1].y + wide[1].h / 2, 58 + look.lineupCentre * (900 - 58), 1e-6, "centred as before")
 	end,
+
+	-- Found 2026-11-17 in Studio: Open 10's 50 cards ran a row under Continue on a computer, cutting the best pulls' tags.
+	-- The cells shrink (down to `min`) until every row fits; a phone too small for that keeps `min` and scrolls.
+	["Open 10's grid: the biggest cards that fit every row on screen"] = function()
+		local look = { min = 44, max = 84, gap = 8, rowGap = 16, ratio = 1.4 }
+		local width = OpeningLayout.gridCell(50, 934, 421, look)
+		local columns = math.floor((934 + look.gap) / (width + look.gap))
+		local rows = math.ceil(50 / columns)
+		assert(rows * (width * look.ratio + look.rowGap) <= 421, `all {rows} rows fit at {width} px`)
+		assert(width > look.min, "still big on a computer")
+		local wider = OpeningLayout.gridCell(50, 934, 421 + 300, look)
+		expect.equal(wider, look.max, "a tall screen: full size")
+		expect.equal(OpeningLayout.gridCell(50, 560, 190, look), look.min, "a small phone: the smallest, then it scrolls")
+		expect.equal(OpeningLayout.gridCell(0, 934, 421, look), look.max, "no cards: full size")
+	end,
 }

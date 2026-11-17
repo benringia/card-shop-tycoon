@@ -39,4 +39,21 @@ return {
 
 	-- Foil on top of any rarity: at least this much tease, extra sparks, and "FOIL" in front of the banner
 	FOIL = { MIN_TEASE = 0.6, EXTRA_BURST = 12, PREFIX = "FOIL " },
+	-- A heavy pack before the tear (owner 2026-11-17, "do all": the pack trembles; EA FC's walkout flare): one holding a
+	-- `rarity` or better shivers in bursts (`degrees`, `seconds` long, every `every` s) and glows gold, and the hint
+	-- says `hint`; a pack whose best is a Very Rare does it `fakeOut` of the time, so it stays a guess
+	PACK_TELL = { rarity = "Epic", fakeOut = 0.25, degrees = 4, seconds = 0.35, every = 1.3, glow = { 255, 200, 60 },
+		hint = "This one feels heavy... Swipe across the top!" },
+	-- The creature comes alive on the stage (owner 2026-11-17, "do all"; client Util/OpeningCreature): an Epic, a Legendary,
+	-- a Frontier card or a card you never had (RevealRules.comesAlive) bursts out of its card `height` studs tall, rising
+	-- `rise` and coming `toward` the camera in `popSeconds`, turned `facing` degrees (a three-quarter view), roars (a
+	-- `roar` size pulse) and turns `turn` degrees either way for `holdSeconds`, then dives back in over `backSeconds`.
+	-- A tap moves on at any time
+	-- Open 10's best pulls (owner 2026-11-17: "highlight any veryrare and above cards on the after opening 10cards"; look A
+	-- of artifact XyGHP2ku71fRaYeuEkGZ6D; BulkOpenController, RevealRules.standsOut): a card `from` or better lights up as
+	-- it turns (a halo `halo` times its size, breathing between the `glow` transparencies, its rim `rim` px turning once
+	-- every `spinSeconds`, a shine every
+	-- `shineEvery` s, its rarity's tag), and once all are turned the rest dims (black at `dim` over them)
+	BEST = { from = "Very Rare", halo = 2.3, glow = { 0.05, 0.4 }, rim = 3, spinSeconds = 2.4, shineEvery = 2.6, dim = 0.55 },
+	CREATURE = { height = 1.3, rise = 0.2, toward = 0.8, popSeconds = 0.45, roar = 1.12, turn = 18, facing = 25, holdSeconds = 1.6, backSeconds = 0.35 },
 }

@@ -39,6 +39,11 @@ local resultsBar: Frame
 local newLabel: TextLabel
 local valueLabel: TextLabel
 local continueButton: TextButton
+local setBar: Frame -- the set's bar on the results (setProgress)
+local setName: TextLabel
+local setNew: TextLabel
+local setGained: Frame
+local setFill: Frame
 local continueScale: UIScale
 local anotherButton: TextButton
 local anotherScale: UIScale
@@ -212,6 +217,60 @@ function OpeningResults.build(handlers: Handlers)
 	guide.AutoButtonColor = true
 	guide.Activated:Connect(handlers.rarityGuide)
 
+	-- The set's bar under the pills (owner 2026-11-17, "do all": every pack moves the set along): "First Spark set ·
+	-- 34 / 60", "+2 NEW", the bar filling from before this pack to now, this pack's part in gold
+	setBar = Instance.new("Frame")
+	setBar.Name = "SetBar"
+	setBar.AnchorPoint = Vector2.new(0.5, 0)
+	setBar.Position = UDim2.new(0.5, 0, 0, PackOpening.TOP + PackOpening.PILL_HEIGHT + 10)
+	setBar.Size = UDim2.new(0.9, 0, 0, 50)
+	setBar.BackgroundColor3 = UIKit.Colors.Panel
+	setBar.BackgroundTransparency = 0.2
+	setBar.Visible = false
+	setBar.ZIndex = 8
+	setBar.Parent = gui
+	UIKit.corner(setBar, 12)
+	local setLimit = Instance.new("UISizeConstraint")
+	setLimit.MaxSize = Vector2.new(460, 50)
+	setLimit.Parent = setBar
+	setName = UIKit.label(setBar, "", Enum.Font.FredokaOne, 16, WHITE)
+	setName.Position = UDim2.fromOffset(14, 5)
+	setName.Size = UDim2.new(1, -110, 0, 20)
+	setName.ZIndex = 9
+	setNew = UIKit.label(setBar, "", Enum.Font.FredokaOne, 16, NEW_COLOR)
+	setNew.AnchorPoint = Vector2.new(1, 0)
+	setNew.Position = UDim2.new(1, -14, 0, 5)
+	setNew.Size = UDim2.fromOffset(96, 20)
+	setNew.TextXAlignment = Enum.TextXAlignment.Right
+	setNew.ZIndex = 9
+	local track = Instance.new("Frame")
+	track.Name = "Track"
+	track.Position = UDim2.new(0, 14, 0, 30)
+	track.Size = UDim2.new(1, -28, 0, 10)
+	track.BackgroundColor3 = Color3.new(1, 1, 1)
+	track.BackgroundTransparency = 0.8
+	track.ClipsDescendants = true
+	track.ZIndex = 9
+	track.Parent = setBar
+	UIKit.corner(track, 5)
+	setGained = Instance.new("Frame")
+	setGained.Name = "Gained"
+	setGained.BackgroundColor3 = NEW_COLOR
+	setGained.BorderSizePixel = 0
+	setGained.ZIndex = 10
+	setGained.Parent = track
+	UIKit.corner(setGained, 5)
+	setFill = Instance.new("Frame")
+	setFill.Name = "Fill"
+	setFill.BackgroundColor3 = Color3.new(1, 1, 1)
+	setFill.BorderSizePixel = 0
+	setFill.ZIndex = 11
+	setFill.Parent = track
+	UIKit.corner(setFill, 5)
+	local fillShade = Instance.new("UIGradient")
+	fillShade.Color = ColorSequence.new(Color3.fromRGB(124, 198, 255), Color3.fromRGB(139, 92, 246))
+	fillShade.Parent = setFill
+
 	continueButton = UIKit.button(gui, "Continue", UIKit.Colors.Success)
 	continueButton.Name = "Continue"
 	continueButton.AnchorPoint = Vector2.new(0.5, 1)
@@ -246,6 +305,7 @@ function OpeningResults.show(oddsText: string)
 	boxLabel.Visible = true
 	pityLabel.Visible = pityLabel.Text ~= ""
 	resultsBar.Visible = false
+	setBar.Visible = false
 	continueButton.Visible = false
 	anotherButton.Visible = false
 	gui.Enabled = true
@@ -305,6 +365,24 @@ function OpeningResults.results(newCount: number, value: number, another: string
 		scale.Scale = 0
 		TweenService:Create(scale, info, { Scale = 1 }):Play()
 	end
+end
+
+-- The set's bar on the results: `owned` of `total` collected now, `added` of them new from this pack (nil: no bar)
+function OpeningResults.setProgress(name: string?, owned: number, total: number, added: number)
+	if not name or total <= 0 then
+		setBar.Visible = false
+		return
+	end
+	setName.Text = `{name} set · {owned} / {total}`
+	setNew.Text = if added > 0 then `+{added} NEW` else ""
+	local before = math.clamp((owned - added) / total, 0, 1)
+	local after = math.clamp(owned / total, 0, 1)
+	setFill.Size = UDim2.fromScale(before, 1)
+	setGained.Size = UDim2.fromScale(before, 1)
+	setBar.Visible = true
+	-- what you had stays; this pack's part grows past it in gold once the pills are in
+	local info = TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0, false, PackOpening.RESULTS.CONTINUE_DELAY + 0.4)
+	TweenService:Create(setGained, info, { Size = UDim2.fromScale(after, 1) }):Play()
 end
 
 function OpeningResults.gui(): ScreenGui

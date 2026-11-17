@@ -26,6 +26,7 @@ local Shelves = require(Config:WaitForChild("Shelves"))
 local Bosses = require(Config:WaitForChild("Bosses"))
 local Beasts = require(Config:WaitForChild("Beasts"))
 local Cards = require(Config:WaitForChild("Cards"))
+local Bulk = require(Config:WaitForChild("Bulk"))
 local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 local DayCycle = require(Shared:WaitForChild("Util"):WaitForChild("DayCycle"))
 local Cycle = require(Shared:WaitForChild("Config"):WaitForChild("DayCycle"))
@@ -389,6 +390,19 @@ function DevService.Start()
 	end)
 	addCommand(folder, "beastxp", withAmount(grantBeastXp))
 	addCommand(folder, "givecard", giveCards)
+	-- "/bulk 120": a free Bulk Bin in your shop (when there's room) and that many plain Grade C Commons in your binder
+	-- (100 by default), extras for its Add extras prompt (Config/Bulk)
+	addCommand(folder, "bulk", function(player, text)
+		local amount = math.clamp(tonumber(string.match(text, "%s+(%d+)") or "") or 100, 0, MAX_GIVE_CARDS)
+		local placed = PlacementService.DevPlace(player, Bulk.SHELF)
+		local commons = Cards.ByRarity.Common or {}
+		local results = {}
+		for index = 1, if #commons > 0 then amount else 0 do
+			table.insert(results, { cardId = commons[(index - 1) % #commons + 1].id, foil = false, grade = "C" })
+		end
+		CardService.AddFresh(player, results)
+		Remotes.Notify:FireClient(player, `{if placed then "A Bulk Bin is in your shop" else "No room for another bin"}; {#results} plain Commons in your binder.`, false)
+	end)
 	addCommand(folder, "item", giveItems)
 	addCommand(folder, "weapon", giveWeapon)
 	addCommand(folder, "material", giveMaterial)
@@ -930,7 +944,7 @@ function DevService.Start()
 			run(player, text)
 		end
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /item <id> <amount>, /weapon <id> [grade] [level], /material <boss id> <amount>, /weapondrop <boss id>, /chests <boss id> [drop|miss|strong|tired], /boss <n> [fight|group], /jobslot, /luck <x2|x3> [minutes] | clear, /prologue [reset], /jobtired, /wild, /rest, /tire, /bosshp <1-100>, /townchikin, /turts <restock|move|offer <id>>, /gift <ready|day n|week n|month n|reset|tutorial|win kind>, /elite, /knockout, /support <0-3>, /titles forget, /review <outcome>, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /decor <look id|pieces>, /window <style> <side> <at>, /loading <main|wild|frontier|dungeon>, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-4> [volume], /victorysound <1-3>, /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S], /skillfx <sword> [cut1|cut2|cut3|skill] [level], /room <2-4>, /winroom, /puzzle <solve|beams|plates|lock>, /tap <piece>, /dungeonfx <intro|introshort|roar|glimpse>")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /bulk [cards], /item <id> <amount>, /weapon <id> [grade] [level], /material <boss id> <amount>, /weapondrop <boss id>, /chests <boss id> [drop|miss|strong|tired], /boss <n> [fight|group], /jobslot, /luck <x2|x3> [minutes] | clear, /prologue [reset], /jobtired, /wild, /rest, /tire, /bosshp <1-100>, /townchikin, /turts <restock|move|offer <id>>, /gift <ready|day n|week n|month n|reset|tutorial|win kind>, /elite, /knockout, /support <0-3>, /titles forget, /review <outcome>, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /decor <look id|pieces>, /window <style> <side> <at>, /loading <main|wild|frontier|dungeon>, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-4> [volume], /victorysound <1-3>, /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S], /skillfx <sword> [cut1|cut2|cut3|skill] [level], /room <2-4>, /winroom, /puzzle <solve|beams|plates|lock>, /tap <piece>, /dungeonfx <intro|introshort|roar|glimpse>")
 end
 
 return DevService

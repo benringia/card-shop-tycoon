@@ -28,6 +28,8 @@ local ShelfStock = require(Shared:WaitForChild("Util"):WaitForChild("ShelfStock"
 local PackModels = require(Shared:WaitForChild("Util"):WaitForChild("PackModels"))
 local BrandBox = require(Shared:WaitForChild("Util"):WaitForChild("BrandBox"))
 local SleevePacket = require(Shared:WaitForChild("Util"):WaitForChild("SleevePacket"))
+local BulkHandful = require(Shared:WaitForChild("Util"):WaitForChild("BulkHandful"))
+local Bulk = require(Config:WaitForChild("Bulk"))
 local ShowcaseLayout = require(Shared:WaitForChild("Util"):WaitForChild("ShowcaseLayout"))
 local DecorRules = require(Shared:WaitForChild("Util"):WaitForChild("DecorRules"))
 local DecorLooks = require(Shared:WaitForChild("Util"):WaitForChild("DecorLooks"))
@@ -294,6 +296,22 @@ local function fillWithSleeves(box: Part, sleeveColor: Color3, brandColor: Color
 	end
 end
 
+-- A heap of bulk cards in a Bulk Bin's place (Config/Bulk): a few card backs lying loose on the place's bottom, each
+-- heap turned its own way. Built once (a heap doesn't change as the bin sells; the heaps themselves come and go), and
+-- moved to its place on every update: its cards are anchored, so they don't follow the bin by themselves (owner
+-- 2026-11-17: "moving the bin leave the card models behind")
+local function fillWithBulk(box: Part, index: number)
+	local at = box.CFrame * CFrame.new(0, -box.Size.Y / 2, 0) * CFrame.Angles(0, index * 1.3, 0)
+	local heap = box:FindFirstChild("BulkHandful")
+	if heap and heap:IsA("Model") then
+		heap:PivotTo(at)
+		return
+	end
+	local made = BulkHandful.build(3, index)
+	made:PivotTo(at)
+	made.Parent = box
+end
+
 -- An orange tag with the price on the front of a level, like a shop's shelf label
 local function newPriceTag(parent: Instance): Part
 	local look = Town.SHELF_STOCK.TAG
@@ -346,6 +364,25 @@ end
 local function updatePriceTags(shelf: PlacedShelf, boxes: number, price: number)
 	local config = stockConfig(shelf)
 	local tagLook = Town.SHELF_STOCK.TAG
+	if shelf.def.id == Bulk.SHELF then
+		-- a Bulk Bin: one tag on its front wall, under the rim (tags by its rows would sit inside the crate)
+		local tags = shelf.priceTags
+		trim(tags, if boxes > 0 then 1 else 0)
+		if boxes <= 0 then
+			return
+		end
+		local tag = tags[1] or newPriceTag(shelf.part)
+		tags[1] = tag
+		local size = shelf.def.size
+		local rim = -size.Y / 2 + Bulk.LOOK.WALL * size.Y
+		tag.CFrame = shelf.part.CFrame * CFrame.new(0, rim - tag.Size.Y / 2 - 0.15, -size.Z / 2 - tag.Size.Z / 2 - tagLook.GAP)
+		local gui = tag:FindFirstChildOfClass("SurfaceGui")
+		local label = if gui then gui:FindFirstChild("Price") :: TextLabel? else nil
+		if label then
+			label.Text = string.format("$%.2f", price)
+		end
+		return
+	end
 	local sides = config.SIDES or { 0 }
 	local rows = ShelfStock.stockedLevels(boxes, config.PER_LEVEL)
 	local tags = shelf.priceTags
@@ -431,6 +468,9 @@ local function updateStockBoxes(shelf: PlacedShelf, price: number)
 		elseif product.stockLook == "Booster" then
 			box.Transparency = 1
 			fillWithBoosters(box, product)
+		elseif product.stockLook == "Bulk" then
+			box.Transparency = 1
+			fillWithBulk(box, index)
 		end
 	end
 end

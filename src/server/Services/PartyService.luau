@@ -453,6 +453,34 @@ function PartyService.SummonSlot(player: Player, slot: number): boolean
 	return true
 end
 
+-- Pish's present opened (owner 2026-11-17, the first 15 minutes): a new player's party is still empty, so the best card
+-- in their binder (PartyRules.firstPal) joins slot 1 and comes out, a pal following them from the tour's first minute.
+-- Nothing when the party already has a card, a fight is on or the binder holds none. True when it summoned one
+function PartyService.GiveFirstPal(player: Player): boolean
+	local state = states[player]
+	if not state or state.locked or ownParty[player] or next(state.slots) ~= nil then
+		return false
+	end
+	local cardId, foil, grade = PartyRules.firstPal(CardService.GetStacks(player), function(id: string): string?
+		local card = Cards.ById[id]
+		return if card then card.rarity else nil
+	end)
+	if not cardId or not grade then
+		return false
+	end
+	local beast = CardService.MakeIndividual(player, cardId, foil, grade)
+	if not beast then
+		return false
+	end
+	state.slots[1] = beast.id
+	CardService.SetPartied(player, beast.id, true)
+	state.summoned = 1
+	spawnMarker(player)
+	applyHustle(player)
+	sendParty(player)
+	return true
+end
+
 -- The prologue: lent cards (CardService.Lend) fill the slots in order, none summoned yet (SummonSlot brings the first
 -- out); the player's own party is kept and saved. False if there's no state, a fight is on or it's already lent.
 function PartyService.Lend(player: Player, beastIds: { string }): boolean

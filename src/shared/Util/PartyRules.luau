@@ -19,6 +19,31 @@ local TEXT = {
 	Haggle = "customers %d%% more likely to buy",
 }
 
+local PAL_RARITY = { Common = 1, Rare = 2, ["Very Rare"] = 3, Epic = 4, Legendary = 5 }
+local PAL_GRADE = { C = 1, B = 2, A = 3, S = 4 }
+
+-- The first pal from Pish's present (owner 2026-11-17, the first 15 minutes): the binder's best plain copy by rarity,
+-- then grade, then foil (`stacks`: cardId -> grade -> counts; `rarityOf` a card's rarity). Nil when there's none
+function PartyRules.firstPal(stacks: { [string]: { [string]: { normal: number, foil: number } } }, rarityOf: (cardId: string) -> string?): (string?, boolean, string?)
+	local best: { cardId: string, foil: boolean, grade: string, score: number }? = nil
+	for cardId, grades in stacks do
+		local rank = PAL_RARITY[rarityOf(cardId) or ""] or 0
+		for grade, counts in grades do
+			for _, foil in { true, false } do
+				local have = if foil then counts.foil else counts.normal
+				local score = rank * 100 + (PAL_GRADE[grade] or 0) * 10 + (if foil then 1 else 0)
+				if have > 0 and (not best or score > best.score or (score == best.score and cardId < best.cardId)) then
+					best = { cardId = cardId, foil = foil, grade = grade, score = score }
+				end
+			end
+		end
+	end
+	if not best then
+		return nil, false, nil
+	end
+	return best.cardId, best.foil, best.grade
+end
+
 function PartyRules.getPerk(config: Config, element: string, rarity: string, stars: number): Perk?
 	local perk = config.PERKS[element]
 	if not perk then

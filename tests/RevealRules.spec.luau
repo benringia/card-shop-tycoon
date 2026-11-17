@@ -4,6 +4,33 @@ local RevealRules = require("../src/shared/Util/RevealRules")
 local expect = require("./lib/expect")
 
 return {
+	-- Owner 2026-11-17 ("do all": the creature comes alive; Pokemon TCG Pocket's immersive cards): an Epic, a Legendary,
+	-- a Frontier card or a card you never had bursts out of its card on the stage
+	["the creature comes alive for big and new cards"] = function()
+		expect.equal(RevealRules.comesAlive("Epic", false, false), true)
+		expect.equal(RevealRules.comesAlive("Legendary", false, false), true)
+		expect.equal(RevealRules.comesAlive("Common", false, true), true, "a Frontier card")
+		expect.equal(RevealRules.comesAlive("Common", true, false), true, "a card you never had")
+		expect.equal(RevealRules.comesAlive("Very Rare", false, false), false, "a Very Rare you have")
+		expect.equal(RevealRules.comesAlive("Common", false, false), false, "a Common you have")
+		local alive = CardReveal.CREATURE
+		assert(alive.holdSeconds >= 1 and alive.holdSeconds <= 3, "a moment, not a wait")
+		assert(alive.height > 0 and alive.popSeconds > 0 and alive.backSeconds > 0, "its size and timings")
+	end,
+
+	-- Owner 2026-11-17 ("do all": the pack trembles): a pack holding an Epic or better shivers and glows before it's torn;
+	-- sometimes one with a Very Rare does too (a fake-out keeps it a guess); nothing less ever does
+	["a heavy pack: Epic or better inside, sometimes a Very Rare as a fake-out"] = function()
+		local tell = CardReveal.PACK_TELL
+		expect.equal(RevealRules.packTell(tell, { "Common", "Rare", "Epic" }, 0.99), true, "an Epic")
+		expect.equal(RevealRules.packTell(tell, { "Legendary" }, 0.99), true, "a Legendary")
+		expect.equal(RevealRules.packTell(tell, { "Common", "Very Rare" }, tell.fakeOut - 0.01), true, "a fake-out")
+		expect.equal(RevealRules.packTell(tell, { "Common", "Very Rare" }, tell.fakeOut + 0.01), false, "most Very Rares don't")
+		expect.equal(RevealRules.packTell(tell, { "Common", "Rare", "Rare" }, 0), false, "never for less")
+		expect.equal(RevealRules.packTell(tell, {}, 0), false, "an empty pack")
+		assert(tell.fakeOut > 0 and tell.fakeOut < 0.5, "a fake-out now and then")
+	end,
+
 	["a plain common flips at once with no show"] = function()
 		local plan = RevealRules.plan(CardReveal, "Common", false, false)
 		expect.equal(plan.tease, 0, "tease")
@@ -74,5 +101,19 @@ return {
 		local plan = RevealRules.plan(CardReveal, "Epic", false, false)
 		plan.burst = 999
 		expect.equal(CardReveal.BY_RARITY.Epic.burst, 24, "config untouched")
+	end,
+
+	-- Owner 2026-11-17 ("highlight any veryrare and above cards on the after opening 10cards")
+	["Open 10's best pulls: Very Rare and up stand out"] = function()
+		expect.equal(RevealRules.standsOut("Very Rare", "Very Rare"), true, "a Very Rare")
+		expect.equal(RevealRules.standsOut("Epic", "Very Rare"), true, "an Epic")
+		expect.equal(RevealRules.standsOut("Legendary", "Very Rare"), true, "a Legendary")
+		expect.equal(RevealRules.standsOut("Rare", "Very Rare"), false, "not a Rare")
+		expect.equal(RevealRules.standsOut("Common", "Very Rare"), false, "not a Common")
+		expect.equal(RevealRules.standsOut("Unknown", "Very Rare"), false, "nothing unknown")
+		local best = CardReveal.BEST
+		expect.equal(best.from, "Very Rare", "the owner's line: Very Rare and up")
+		assert(best.dim > 0.3 and best.dim < 0.8, "the rest dims, still readable")
+		assert(best.halo > 1 and best.spinSeconds > 0 and best.shineEvery > 1, "a halo bigger than the card, a turning rim, a shine now and then")
 	end,
 }

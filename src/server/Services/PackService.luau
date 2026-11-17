@@ -259,6 +259,40 @@ function PackService.OpenItemPack(player: Player, productId: string, floor: stri
 	return true
 end
 
+-- Open 10 (owner 2026-11-17, "do all"): `count` packs from the Bag at once (LevelUpService took the items), each rolled,
+-- counted for pity and the stat as one opened alone, the cards given together; the client shows them in one grid
+-- (Remotes.PacksOpened, every pack's cards in order). False (nothing rolled) for a product that isn't a pack
+function PackService.OpenItemPacks(player: Player, productId: string, count: number, floor: string?, itemId: string, stingy: boolean?): boolean
+	local pack = Packs.ById[productId]
+	if not pack or count < 1 then
+		return false
+	end
+	local all: { PullResult } = {}
+	for _ = 1, count do
+		DataService.AddStat(player, "packsOpened", 1)
+		local results = rollPack(pack, player, floor)
+		applyPity(player, results)
+		if stingy then
+			local hit = results[#results]
+			hit.grade = BeastRules.rollGradeFrom(rng:NextNumber(), Packs.PITY.LEGENDARY_GRADES)
+		end
+		for _, result in results do
+			table.insert(all, result)
+		end
+	end
+	-- checked before the cards are added: a card new to the binder is NEW once, wherever it is in the batch
+	local newFlags = NewPulls.flag(all, getOwnedCardIds(player))
+	CardService.AddFresh(player, all)
+	queueAnnouncements(player, all)
+	Remotes.PacksOpened:FireClient(player, productId, all, newFlags, itemId, count)
+	for _ = 1, count do
+		for _, handler in openedHandlers do
+			task.spawn(handler, player, productId, itemId)
+		end
+	end
+	return true
+end
+
 -- Luck bought with Robux running now (LuckService): its boost on the last card (0: none), added to Pish's
 function PackService.SetBoughtLuck(player: Player, boost: number)
 	boughtLuck[player] = if boost > 0 then boost else nil

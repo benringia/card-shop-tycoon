@@ -17,7 +17,8 @@ return {
 			},
 		},
 		buildRack = {
-			intro = {},
+			-- the present's best card just came out as their pal (PartyService.GiveFirstPal; owner 2026-11-17)
+			intro = { "Look! Your best card is your pal now. It follows you!" },
 			now = {
 				default = "Shops need shelves! Tap the Phone.",
 				trayOpen = "Tap Shop.",
@@ -36,7 +37,7 @@ return {
 			intro = {},
 			now = {
 				default = "Your box is here! Pick it up.",
-				coming = "Your packs are on the way! Deliveries take a bit.",
+				coming = "Your packs are on the way!",
 				carrying = "Now put the packs on your rack!",
 			},
 		},
@@ -92,6 +93,7 @@ return {
 		expand = "Deck Boxes are here! Customers love them.",
 		accessoryHook = "Accessory Hooks are here! For sleeves and decks.",
 		bigRack = "The Big Display Rack is here! Lots of stock.",
+		bulkBin = "The Bulk Bin is here! Sell your extra Commons.",
 		boosterBox = "Booster Boxes are in! They sell for a lot.",
 		grading = "The Grading Station is here! Grade your cards.",
 		jobs = "Your cards can work now! Tap Jobs.",
@@ -120,6 +122,11 @@ return {
 		accessoryHook = {
 			"It holds Card Sleeves and Deck Boxes.",
 			"Carry their boxes to it to stock it!",
+		},
+		bulkBin = {
+			"Walk up and press Add extras.",
+			"Your extra Commons go in, 5 to a handful.",
+			"Customers buy them! You keep 2 of each card.",
 		},
 		bigRack = {
 			"It holds lots of stock at once.",

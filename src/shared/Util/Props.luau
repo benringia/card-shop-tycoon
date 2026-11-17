@@ -9,6 +9,7 @@ local RunService = game:GetService("RunService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Town = require(Shared:WaitForChild("Config"):WaitForChild("Town"))
 local ShopDetail = require(Shared:WaitForChild("Config"):WaitForChild("ShopDetail"))
+local Bulk = require(Shared:WaitForChild("Config"):WaitForChild("Bulk"))
 local PropFit = require(Shared:WaitForChild("Util"):WaitForChild("PropFit"))
 local TownLayout = require(Shared:WaitForChild("Util"):WaitForChild("TownLayout"))
 local ShelfLooks = require(Shared:WaitForChild("Util"):WaitForChild("ShelfLooks"))
@@ -174,6 +175,53 @@ local function frontStrip(model: Model, radius: number, y: number, width: number
 	label.TextColor3 = color
 	label.Text = text
 	label.Parent = gui
+end
+
+-- The Bulk Bin (Config/Bulk LOOK; owner 2026-11-17, "lets do C"), bottom centre at the origin, front -Z, filling
+-- `size`: a wooden crate (a floor, four walls of planks, dark corner posts) open at the top, the heaps of cards rising
+-- inside it as it fills (PlacementService), and a "BULK CARDS" sign on a post at the back
+local function buildBulkBin(model: Model, size: Vector3)
+	local look = Bulk.LOOK
+	local block = Enum.PartType.Block
+	local wood, dark = Props.color(look.WOOD), Props.color(look.DARK)
+	local wall, thick = size.Y * look.WALL, look.THICK
+	local w, d = size.X, size.Z
+	addPart(model, block, Vector3.new(w, 0.2, d), CFrame.new(0, 0.1, 0), dark, Enum.Material.Wood)
+	for _, side in { -1, 1 } do
+		-- front and back walls, then left and right, each with a dark seam between two planks
+		addPart(model, block, Vector3.new(w, wall, thick), CFrame.new(0, wall / 2, side * (d / 2 - thick / 2)), wood, Enum.Material.Wood)
+		addPart(model, block, Vector3.new(w + 0.02, 0.07, thick + 0.02), CFrame.new(0, wall * 0.5, side * (d / 2 - thick / 2)), dark, Enum.Material.Wood)
+		addPart(model, block, Vector3.new(thick, wall, d - thick * 2), CFrame.new(side * (w / 2 - thick / 2), wall / 2, 0), wood, Enum.Material.Wood)
+		addPart(model, block, Vector3.new(thick + 0.02, 0.07, d - thick * 2), CFrame.new(side * (w / 2 - thick / 2), wall * 0.5, 0), dark, Enum.Material.Wood)
+	end
+	for _, x in { -1, 1 } do
+		for _, z in { -1, 1 } do
+			addPart(model, block, Vector3.new(0.3, wall + 0.12, 0.3), CFrame.new(x * (w / 2 - 0.15), (wall + 0.12) / 2, z * (d / 2 - 0.15)), dark, Enum.Material.Wood)
+		end
+	end
+	-- the sign on its post behind the crate's back wall, facing the front
+	local postHeight = size.Y + 0.9
+	addPart(model, block, Vector3.new(0.18, postHeight, 0.18), CFrame.new(0, postHeight / 2, d / 2 - 0.15), dark, Enum.Material.Wood)
+	local sign = addPart(model, block, Vector3.new(w * 0.62, 0.62, 0.1), CFrame.new(0, postHeight - 0.2, d / 2 - 0.3), Props.color(look.SIGN), Enum.Material.SmoothPlastic)
+	sign.Name = "Sign"
+	-- printed on both faces: the bin can stand either way round in a shop
+	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
+		local gui = Instance.new("SurfaceGui")
+		gui.Face = face
+		gui.CanvasSize = Vector2.new(sign.Size.X * 120, sign.Size.Y * 120)
+		gui.LightInfluence = 0.3
+		gui.MaxDistance = ShopDetail.SCREEN_DISTANCE
+		gui.Parent = sign
+		local label = Instance.new("TextLabel")
+		label.BackgroundTransparency = 1
+		label.Position = UDim2.fromScale(0.05, 0.12)
+		label.Size = UDim2.fromScale(0.9, 0.76)
+		label.Font = Enum.Font.FredokaOne
+		label.TextScaled = true
+		label.TextColor3 = Props.color(look.SIGN_TEXT)
+		label.Text = look.SIGN_TEXT_LINE
+		label.Parent = gui
+	end
 end
 
 -- The Forge stand-in (Town.FORGE_LOOK), bottom centre at the origin, front -Z, the Condenser's pod in ember orange:
@@ -458,6 +506,8 @@ local function buildFallback(slot: string, height: number, size: Vector3?, varia
 		buildGradingStation(model)
 	elseif slot == "Forge" then
 		buildForge(model)
+	elseif slot == "BulkBin" then
+		buildBulkBin(model, size or Vector3.new(4, 3, 4))
 	elseif slot == "Trophy" then
 		buildTrophy(model)
 	elseif DecorLooks.isDecor(slot) then

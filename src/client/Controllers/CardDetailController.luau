@@ -182,7 +182,7 @@ local function layout()
 	panel.Position = UDim2.new(0, left + width - parentX, 0, top)
 	panel.Size = UDim2.new(0, width, 1, -(top + (if phone then PHONE_PANEL_BOTTOM else PANEL_BOTTOM)))
 	local band = if phone then PHONE_HEADER else UIKit.HEADER_HEIGHT
-	header.Size = UDim2.new(1, 0, 0, band)
+	UIKit.sizeHeader(header, band)
 	body.Position = UDim2.fromOffset(12, band + GAP)
 	body.Size = UDim2.new(1, -24, 1, -(band + GAP + 66))
 	pillRow.Visible = not phone

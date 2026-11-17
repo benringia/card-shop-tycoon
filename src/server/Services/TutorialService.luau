@@ -443,6 +443,10 @@ function TutorialService.Start()
 		markActive(player)
 		if itemId == Pish.FIRST_ITEM then
 			record(player, "giftPack")
+			-- the present's best card comes out as their pal (owner 2026-11-17: the first 15 minutes; Chikin's party and
+			-- summon steps then pass by themselves)
+			local PartyService = require(Services:WaitForChild("PartyService")) :: any
+			task.defer(PartyService.GiveFirstPal, player)
 		elseif itemId == Pish.GIFT_ITEM then
 			record(player, "gift")
 		end

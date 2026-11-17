@@ -20,6 +20,26 @@ export type Rewards = { cash: number, items: { [string]: number } }
 export type Pending = { from: number, to: number }
 
 -- Every 10th level: the rainbow pillar
+-- The shop's next unlock under its level bar (owner 2026-11-17, the first 15 minutes: always a next goal): the lowest
+-- level above `level` in `unlocks`, the first one listed there, "+N" for the others at it; nil when nothing's left
+function LevelUpRules.nextUnlockText(level: number, unlocks: { { level: number, name: string } }): string?
+	local best: { level: number, name: string }? = nil
+	local more = 0
+	for _, unlock in unlocks do
+		if unlock.level > level then
+			if not best or unlock.level < best.level then
+				best, more = unlock, 0
+			elseif unlock.level == best.level then
+				more += 1
+			end
+		end
+	end
+	if not best then
+		return nil
+	end
+	return if more > 0 then `Lv {best.level}: {best.name} +{more}` else `Lv {best.level}: {best.name}`
+end
+
 function LevelUpRules.isMilestone(cfg: Config, level: number): boolean
 	return level > 0 and level % cfg.MILESTONE_EVERY == 0
 end

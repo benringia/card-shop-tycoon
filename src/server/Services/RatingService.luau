@@ -14,6 +14,7 @@ local CustomerConfig = require(Config:WaitForChild("Customers"))
 local Decor = require(Config:WaitForChild("Decor"))
 local Pricing = require(Config:WaitForChild("Pricing"))
 local Products = require(Config:WaitForChild("Products"))
+local Bulk = require(Config:WaitForChild("Bulk"))
 local PriceRules = require(Shared:WaitForChild("Util"):WaitForChild("PriceRules"))
 local RatingRules = require(Shared:WaitForChild("Util"):WaitForChild("RatingRules"))
 local DecorRules = require(Shared:WaitForChild("Util"):WaitForChild("DecorRules"))
@@ -62,7 +63,8 @@ local function partsFor(owner: Player, state: State): { [string]: number }
 	for _, shelf in PlacementService.GetShelves(owner) do
 		if shelf.def.kind == "Decor" then
 			table.insert(decorPoints, shelf.def.decor or 0)
-		elseif shelf.def.kind == "Products" then
+		elseif shelf.def.kind == "Products" and shelf.def.id ~= Bulk.SHELF then
+			-- (a Bulk Bin is an outlet for extras: empty, it isn't an empty shelf)
 			productShelves += 1
 			local productId = shelf.productId
 			if shelf.units > 0 and productId then

@@ -26,6 +26,7 @@ local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"
 local PropFit = require(Shared:WaitForChild("Util"):WaitForChild("PropFit"))
 local PackModels = require(Shared:WaitForChild("Util"):WaitForChild("PackModels"))
 local SleevePacket = require(Shared:WaitForChild("Util"):WaitForChild("SleevePacket"))
+local BulkHandful = require(Shared:WaitForChild("Util"):WaitForChild("BulkHandful"))
 local BrandBox = require(Shared:WaitForChild("Util"):WaitForChild("BrandBox"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
@@ -364,6 +365,16 @@ local function dressItem(part: BasePart, productId: string?, index: number)
 		part.Size = Vector3.new(box.WIDTH, box.HEIGHT, box.DEPTH) * scale
 		part.CFrame = part.CFrame * CFrame.new(0, (part.Size.Y - slot.Y) / 2, 0)
 		BrandBox.draw(part, product, nil, box.PIXELS_PER_STUD)
+		return
+	end
+	if look == "bulk" then
+		-- a handful of card backs, already lying flat: fitted to the slot, on the counter (Util/BulkHandful)
+		local handful = BulkHandful.build(nil, index)
+		local _, size = handful:GetBoundingBox()
+		handful:ScaleTo(math.min(part.Size.X / size.X, part.Size.Z / size.Z) * 0.9)
+		handful:PivotTo(part.CFrame * CFrame.new(0, -part.Size.Y / 2, 0))
+		handful.Parent = part
+		part.Transparency = 1
 		return
 	end
 	local model = if look == "sleeves"

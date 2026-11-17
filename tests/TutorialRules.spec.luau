@@ -27,6 +27,19 @@ return {
 	-- Owner 2026-11-16 (playthrough): "Customers should only start coming when Pish introduces them": a new player's
 	-- shop stays quiet until Pish sends his own customer (once ever); a skipped, finished or replayed tour never waits
 	-- (a replay gets no customer from him, so the shop's own complete his step)
+	-- Owner 2026-11-17 ("what can we do to make the first 10-15mins really fun"): no dead wait in Pish's tour, his first
+	-- order arrives at once instead of the usual delivery time
+	["the tour's first order arrives at once"] = function()
+		-- Config/Stock holds a Vector3, so Lune reads its text
+		local source = require("@lune/fs").readFile("src/shared/Config/Stock.luau")
+		local tour = tonumber(string.match(source, "TOUR_DELIVERY_SECONDS = ([%d%.]+)"))
+		local usual = tonumber(string.match(source, "%sDELIVERY_SECONDS = ([%d%.]+)"))
+		assert(tour and tour <= 1, "the tour's delivery is instant")
+		assert(usual and tour < usual, "faster than a normal one")
+		local PishTalk = require("../src/shared/Config/PishTalk")
+		assert(not string.find(PishTalk.STEPS.stockRack.now.coming, "take a bit", 1, true), "Pish doesn't say it takes a while")
+	end,
+
 	["customers wait for Pish until he sends his own"] = function()
 		local fresh = TutorialRules.read({}, STEPS)
 		expect.equal(TutorialRules.holdsCustomers(fresh), true, "a new player")

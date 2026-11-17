@@ -9,6 +9,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Shelves = require(Config:WaitForChild("Shelves"))
+local Bulk = require(Config:WaitForChild("Bulk"))
+local Products = require(Config:WaitForChild("Products"))
+local Offline = require(Config:WaitForChild("Offline"))
+local ShopTips = require(Shared:WaitForChild("Util"):WaitForChild("ShopTips"))
 local StockConfig = require(Config:WaitForChild("Stock"))
 local UIStyle = require(Config:WaitForChild("UIStyle"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -17,6 +21,7 @@ local Props = require(Shared:WaitForChild("Util"):WaitForChild("Props"))
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local Tooltip = require(ClientUtil:WaitForChild("Tooltip"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
 local LookTiles = require(ClientUtil:WaitForChild("LookTiles"))
@@ -190,6 +195,35 @@ local function addPreview(parent: GuiObject, def: ShelfDef)
 	view.CurrentCamera = camera
 end
 
+-- The words for the stock a shelf takes (Config/Offline PLURALS: "packs", "sleeves"), nil for any; and every stock's
+local function stockWords(ids: { string }?): { string }?
+	if not ids then
+		return nil
+	end
+	local words = {}
+	for _, id in ids do
+		local product = Products.ById[id]
+		if product and not product.bulk then
+			table.insert(words, Offline.PLURALS[id] or product.name)
+		end
+	end
+	return words
+end
+
+local function allStockIds(): { string }
+	local ids = {}
+	for _, product in Products.List do
+		table.insert(ids, product.id)
+	end
+	return ids
+end
+
+-- What it holds and what it does, on hover or a held finger (owner 2026-11-17: "add tooltips to the items in shop")
+local function addTip(tile: GuiObject, def: ShelfDef)
+	local item = { kind = def.kind, capacity = def.capacity, accepts = stockWords(def.accepts), bulk = def.id == Bulk.SHELF, decor = def.decor }
+	Tooltip.rich(tile, def.name, ShopTips.lines(item, stockWords(allStockIds()) or {}))
+end
+
 local function buildTile(parent: Instance, order: number, def: ShelfDef)
 	local tile = Instance.new("Frame")
 	tile.Name = def.id
@@ -198,6 +232,7 @@ local function buildTile(parent: Instance, order: number, def: ShelfDef)
 	tile.Parent = parent
 	UIKit.corner(tile, 14)
 	UIKit.outline(tile)
+	addTip(tile, def)
 	addPreview(tile, def)
 	local name = UIKit.label(tile, def.name, Enum.Font.FredokaOne, 17, UIKit.Colors.Text)
 	name.Position = UDim2.fromOffset(10, BUILD_TILE.PICTURE + 12)
@@ -475,8 +510,8 @@ end
 -- Card cases never take stock, so they always show Edit.
 local function applyPromptMode(part: BasePart, prompts: ShelfPrompts)
 	local def = Shelves.ById[part.Name]
-	if def and (def.kind == "Condenser" or def.kind == "Grading" or def.kind == "Forge") then
-		-- A machine's use prompt (E) and Edit (F) both show; Edit is offset so they don't overlap
+	if def and (def.kind == "Condenser" or def.kind == "Grading" or def.kind == "Forge" or def.id == Bulk.SHELF) then
+		-- A machine's (or a Bulk Bin's) use prompt (E) and Edit (F) both show; Edit is offset so they don't overlap
 		prompts.stock.Enabled = true
 		prompts.edit.Enabled = true
 		return
@@ -510,10 +545,18 @@ local function addShelfPrompts(child: Instance)
 	local isCondenser = def.kind == "Condenser"
 	local isGrading = def.kind == "Grading"
 	local isForge = def.kind == "Forge"
-	-- E: stock a product shelf, or open the Condenser or the Grading Station
-	local action = if isCondenser then "Condense" elseif isGrading then "Grade" elseif isForge then "Forge" else "Stock shelf"
+	local isBin = def.id == Bulk.SHELF
+	-- E: stock a product shelf, open the Condenser or the Grading Station, or put your extra Commons in a Bulk Bin
+	local action = if isCondenser then "Condense" elseif isGrading then "Grade" elseif isForge then "Forge" elseif isBin then "Add extras" else "Stock shelf"
 	local stock = makePrompt(child, action, def.name, Enum.KeyCode.E)
 	stock.Triggered:Connect(function()
+		if isBin then
+			local binUid = child:GetAttribute("ShelfUid")
+			if typeof(binUid) == "string" and not PlacementController.IsActive() then
+				Remotes.FillBulkBin:FireServer(binUid) -- BulkService: the extras go in, or the locked card says why not
+			end
+			return
+		end
 		if isCondenser or isGrading or isForge then
 			if not PlacementController.IsActive() then
 				if isCondenser then
@@ -534,7 +577,7 @@ local function addShelfPrompts(child: Instance)
 
 	local edit = makePrompt(child, "Edit", def.name, Enum.KeyCode.F)
 	edit.GamepadKeyCode = Enum.KeyCode.ButtonY
-	if isCondenser or isGrading or isForge then
+	if isCondenser or isGrading or isForge or isBin then
 		edit.UIOffset = Vector2.new(0, CONDENSER_EDIT_OFFSET)
 	end
 	edit.Triggered:Connect(function()

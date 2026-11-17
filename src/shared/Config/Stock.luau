@@ -2,6 +2,8 @@
 -- Ordering, delivery and carrying. See DESIGN.md section 4.2.
 return {
 	DELIVERY_SECONDS = 10,
+	-- Pish's tour (TutorialStep orderStock / stockRack): no dead wait in a new player's first minutes (owner 2026-11-17)
+	TOUR_DELIVERY_SECONDS = 1,
 	MAX_CARRY = 1, -- Carry Cart upgrade raises this later
 	MAX_BOXES_PER_PLOT = 12, -- incoming + waiting + carried, stops order spam filling the shop
 

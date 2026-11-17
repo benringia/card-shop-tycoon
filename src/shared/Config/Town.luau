@@ -32,6 +32,7 @@ return {
 		GradingStation = { height = 0, collide = false, built = true }, -- the Grading Station (GRADING_LOOK)
 		Forge = { height = 0, collide = false, built = true }, -- the Forge (FORGE_LOOK), until its model is made
 		Trophy = { height = 0, collide = false, built = true }, -- a boss trophy (TROPHY_LOOK; its Gem in the boss's colour)
+		BulkBin = { height = 0, collide = false, built = true }, -- the Bulk Bin: a wooden crate with a sign (Config/Bulk LOOK)
 		-- shop decor pieces (Config/Shelves kind "Decor"): their model once the Blender pack is imported (docs/props.md
 		-- "Decor props"), a code-built stand-in until then (standIn = drawn by Util/DecorLooks when no model exists)
 		PottedPlant = { height = 0, collide = false, standIn = true },

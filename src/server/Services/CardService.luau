@@ -120,6 +120,38 @@ function CardService.AddFresh(player: Player, results: { PullResult })
 	sync(player)
 end
 
+-- Takes many plain (not foil) copies at once, all or none (the Bulk Bin: hundreds of Commons, one sync); false when
+-- the binder doesn't hold every one of them
+function CardService.TakeFreshMany(player: Player, takes: { { cardId: string, grade: string, count: number } }): boolean
+	local inventory = inventories[player]
+	if not inventory then
+		return false
+	end
+	local need: { [string]: { [string]: number } } = {}
+	for _, take in takes do
+		if take.count < 0 or take.count ~= math.floor(take.count) then
+			return false
+		end
+		need[take.cardId] = need[take.cardId] or {}
+		need[take.cardId][take.grade] = (need[take.cardId][take.grade] or 0) + take.count
+	end
+	for cardId, byGrade in need do
+		for grade, count in byGrade do
+			local owned = inventory.stacks[cardId] and inventory.stacks[cardId][grade]
+			if not owned or owned.normal < count then
+				return false
+			end
+		end
+	end
+	for cardId, byGrade in need do
+		for grade, count in byGrade do
+			inventory.stacks[cardId][grade].normal -= count
+		end
+	end
+	sync(player)
+	return true
+end
+
 -- Takes one plain copy of exactly this card, foil and grade
 function CardService.TakeFresh(player: Player, cardId: string, foil: boolean, grade: string): boolean
 	local inventory = inventories[player]

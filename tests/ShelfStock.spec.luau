@@ -96,8 +96,11 @@ return {
 			local slot = (product :: any).boxProp
 			assert(typeof(slot) == "string", `{product.id} has no boxProp`)
 			assert(town.SLOTS[slot] ~= nil, `{product.id}: no Town slot {slot}`)
-			assert(not seen[slot], `{slot} used twice`)
-			seen[slot] = true
+			-- a bulk product (Config/Bulk) is never delivered: its box is never drawn
+			if not (product :: any).bulk then
+				assert(not seen[slot], `{slot} used twice`)
+				seen[slot] = true
+			end
 		end
 	end,
 

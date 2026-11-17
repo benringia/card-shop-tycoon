@@ -74,4 +74,23 @@ function OpeningLayout.lineup(count: number, view: View, inset: number, look: La
 	return line(count, view, w, look.gap, y)
 end
 
+export type GridLook = { min: number, max: number, gap: number, rowGap: number, ratio: number }
+
+-- Open 10's card width (BulkOpenController): the biggest from `look.max` down to `look.min` at which `count` cards in
+-- rows across `width` px fit `height` px with their gaps (cards `ratio` times as tall as wide); `look.min` when even that
+-- doesn't fit (the grid scrolls)
+function OpeningLayout.gridCell(count: number, width: number, height: number, look: GridLook): number
+	if count <= 0 then
+		return look.max
+	end
+	for cell = look.max, look.min, -1 do
+		local columns = math.max(1, math.floor((width + look.gap) / (cell + look.gap)))
+		local rows = math.ceil(count / columns)
+		if rows * (cell * look.ratio + look.rowGap) <= height then
+			return cell
+		end
+	end
+	return look.min
+end
+
 return OpeningLayout

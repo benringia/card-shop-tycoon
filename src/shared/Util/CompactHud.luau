@@ -67,4 +67,31 @@ function CompactHud.weaponCount(list: { string }, id: string?): string
 	return `{if id then table.find(list, id) or 1 else 1}/{#list}`
 end
 
+-- Roblox's own jump button on a touch screen (its TouchJump): 70 px, 95 from the right and 90 from the bottom when the
+-- screen's short side is 500 px or less, else 120 px, 170 and 210. Not ours to tune: it's where Roblox draws it.
+local JUMP = { smallScreen = 500, small = { size = 70, right = 95, bottom = 90 }, big = { size = 120, right = 170, bottom = 210 } }
+
+export type Rect = { x: number, y: number, w: number, h: number }
+
+-- The jump button's box in the HUD's space (`w` x `h`, under Roblox's top bar; anchored to the bottom, so the same
+-- whether a gui counts the top bar or not)
+function CompactHud.jumpRect(w: number, h: number): Rect
+	local spec = if math.min(w, h) <= JUMP.smallScreen then JUMP.small else JUMP.big
+	return { x = w - spec.right, y = h - spec.bottom, w = spec.size, h = spec.size }
+end
+
+-- Where the phone's quest strip goes (owner 2026-11-17: it sat on the jump button): `gap` under the top-right
+-- column's last piece (`below`: its real bottom, not the column frame's), `margin` from the right edge; one that would
+-- still reach the jump button moves left of the button's column. Returns its top and its offset from the right edge.
+function CompactHud.questSpot(below: number, size: { w: number, h: number }, screen: { w: number, h: number }, jump: Rect, margin: number, gap: number): (number, number)
+	local top = below + gap
+	local left = screen.w - margin - size.w
+	local overX = left < jump.x + jump.w and screen.w - margin > jump.x
+	local overY = top + size.h + gap > jump.y
+	if overX and overY then
+		return top, screen.w - jump.x + gap
+	end
+	return top, margin
+end
+
 return CompactHud

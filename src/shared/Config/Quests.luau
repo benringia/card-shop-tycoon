@@ -31,4 +31,17 @@ return {
 	-- all three claimed: the Quest Chest (Config/Items ids)
 	BONUS = { { item = "sparkPack", count = 1 }, { item = "xpTonic", count = 1 } },
 	TICK = 30, -- seconds between the server's checks for a new UTC day
+	-- The strip at the top right (client Util/QuestStrip, owner 2026-11-17: "add design/immersive animations on the quest
+	-- strip", look A of artifact XyGHP2ku71fRaYeuEkGZ6D): pixels and seconds. `bubbles`: each quest's icon bubble in
+	-- its kind's baby colour; the band's shine passes every `shineEvery` s, the scroll wiggles every `wiggleEvery` s, each
+	-- bar's shine every `barShineEvery` s; the bubbles float `float` px up and down over `floatSeconds`. Its chevron
+	-- (owner 2026-11-17: "can we make the quest window minimizable/hideable?") folds it to the band, and on a phone to
+	-- `phoneFolded` px (the scroll and the chip), for the session (a new day's quests show it open again).
+	STRIP = {
+		width = 250, phoneWidth = 176, phoneFolded = 112, band = 28, phoneBand = 34, rowHeight = 32, rowGap = 5, pad = 8,
+		bubbles = { shop = "mint", cards = "sky", adventure = "peach" },
+		shineEvery = 5, wiggleEvery = 4, barShineEvery = 3.5,
+		float = 2, floatSeconds = 1.5,
+		fillSeconds = 0.6, confetti = 7,
+	},
 }

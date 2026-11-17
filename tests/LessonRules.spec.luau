@@ -137,7 +137,8 @@ return {
 	end,
 	["every town and shop unlock has a lesson that teaches it (owner: when a player unlocks something, pish visits)"] = function()
 		for _, product in Products.List do
-			if product.unlockLevel > 1 then
+			-- a bulk product is never ordered: its bin's shelf lesson teaches it (Config/Bulk)
+			if product.unlockLevel > 1 and not product.bulk then
 				local lesson = lessonWhere("product", product.id)
 				assert(lesson, `{product.id} (Lv {product.unlockLevel}) has a lesson`)
 				expect.equal(lesson.level, product.unlockLevel, `{product.id}'s lesson comes at its unlock`)

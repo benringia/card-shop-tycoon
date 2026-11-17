@@ -30,4 +30,5 @@ return {
 	EXTRA_EVERY = 25, -- and this on every 25th
 	EXTRA = { item = "goldSeal", count = 1 },
 	PACK_OPEN_COOLDOWN = 1, -- seconds between opening Bag packs (the server's rate limit)
+	OPEN_MANY = 10, -- Open 10 (owner 2026-11-17): the most Bag packs opened at once (ItemRules.openMany)
 }

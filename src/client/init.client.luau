@@ -96,6 +96,7 @@ local StoreWinController = require(Controllers:WaitForChild("StoreWinController"
 local GiftController = require(Controllers:WaitForChild("GiftController"))
 local QuestController = require(Controllers:WaitForChild("QuestController"))
 local WelcomeBackController = require(Controllers:WaitForChild("WelcomeBackController"))
+local BulkOpenController = require(Controllers:WaitForChild("BulkOpenController"))
 local TeamController = require(Controllers:WaitForChild("TeamController"))
 local SwordController = require(Controllers:WaitForChild("SwordController"))
 local WeaponSwitchController = require(Controllers:WaitForChild("WeaponSwitchController"))
@@ -221,6 +222,7 @@ else
 	TeamController.Start() -- teams in this world: Team up prompts, invites, the team strip, boss calls
 	QuestController.Start() -- daily quests: the tracker under the team strip, the window, claims (after TeamController)
 	WelcomeBackController.Start() -- what the shop sold while you were away, once the screen is free
+	BulkOpenController.Start() -- Open 10: a stack of Bag packs opened at once, the cards in a grid
 	BuffController.Start()
 	PartyBarController.Start()
 	CardEffectsController.Start()

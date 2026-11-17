@@ -15,12 +15,17 @@ export type Product = {
 	-- like its delivery case, stacked, Town.SHELF_STOCK.BOOSTERS);
 	-- packs show their pack art (Config/Packs); anything else plain boxes in its colour
 	art: string?, -- art printed on its cases when it has no Config/Packs entry (else its UI icon)
+	-- Bulk Cards (Config/Bulk): never ordered or delivered; a Bulk Bin is filled from the binder's extra Commons, so it
+	-- stays out of Order Stock, the unlock lines (the bin is the unlock) and customers' lists until a bin has some
+	bulk: boolean?,
 }
 
 local List: { Product } = {
 	{ id = "FirstSparkPack", name = "First Spark Booster Pack", boxCost = 48, unitsPerBox = 24, marketPrice = 3, unlockLevel = 1, color = { 245, 150, 50 }, boxProp = "BoxPacks", icon = "BoosterPack" },
 	{ id = "CardSleeves", name = "Card Sleeves", boxCost = 30, unitsPerBox = 20, marketPrice = 2.5, unlockLevel = 3, color = { 80, 150, 235 }, boxProp = "BoxSleeves", icon = "Sleeves", stockLook = "Sleeves" },
 	{ id = "DeckBox", name = "Deck Box", boxCost = 60, unitsPerBox = 10, marketPrice = 9, unlockLevel = 7, color = { 150, 95, 210 }, boxProp = "BoxDecks", icon = "DeckBox", stockLook = "Deck" },
+	-- a handful of 5 extra Commons from a Bulk Bin (Config/Bulk); its box fields are never used (never delivered)
+	{ id = "BulkCards", name = "Bulk Cards", boxCost = 0, unitsPerBox = 1, marketPrice = 1, unlockLevel = 10, color = { 196, 140, 86 }, boxProp = "BoxPacks", icon = "Copies", stockLook = "Bulk", bulk = true },
 	{ id = "FirstSparkBox", name = "First Spark Booster Box", boxCost = 90, unitsPerBox = 1, marketPrice = 120, unlockLevel = 11, color = { 240, 200, 60 }, boxProp = "BoxBooster", icon = "BoosterBox", stockLook = "Booster", art = "rbxassetid://81309929146607" },
 }
 

@@ -48,6 +48,7 @@ return {
 		{ id = "expand", level = 7, icon = "DeckBox", product = "DeckBox" },
 		{ id = "accessoryHook", level = 7, icon = "Shelves", shelf = "AccessoryHook" },
 		{ id = "bigRack", level = 9, icon = "Shelves", shelf = "BigDisplayRack" },
+		{ id = "bulkBin", level = 10, icon = "Copies", shelf = "BulkBin" },
 		{ id = "boosterBox", level = 11, icon = "BoosterBox", product = "FirstSparkBox" },
 		{ id = "grading", level = 14, icon = "GradingSeal", shelf = "GradingStation" },
 		{ id = "jobs", level = 8, icon = "Jobs" },

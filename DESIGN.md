@@ -418,6 +418,11 @@ is over UI (`UIKit.pointerBlocked`).
   (tests/DecorRules). They used to stand 0.3 to 0.8 studs out and cut through a back-row shelf.
 - **Remove stock** (shelf Edit menu): boxes a product shelf's stock back onto the delivery pad, as many boxes as
   the pad has room for.
+- **Tooltips in the Shop window** (owner 2026-11-17: "add tooltips to the items in shop to explain what Items they hold
+  and what they do"): hover a tile (hold a finger on a phone) for its name and two lines, what it holds and what it does
+  (`Util/ShopTips`, tests/ShopTips; `Tooltip.rich`): a rack "Holds 24 of your stock: packs, sleeves, deck boxes or booster
+  boxes. Carry a box to it to fill it. Customers buy from it.", cases, machines, decor (its points), the Bulk Bin, the
+  shop looks and windows. The stock words are the welcome-back card's (`Offline.PLURALS`).
 
 | Shelf | Capacity | Cost | Unlock |
 |---|---|---|---|
@@ -429,6 +434,7 @@ is over UI (`UIKit.pointerBlocked`).
 | Wall Shelf | 48 packs | $350 | Shop Lv 4 |
 | Accessory Hook | 20 accessories | $250 | Shop Lv 7 |
 | Big Display Rack | 96 packs | $1,200 | Shop Lv 9 |
+| Bulk Bin | 100 handfuls of 5 extra Commons, filled from your binder (7.14) | $300 | Shop Lv 10 |
 
 ### 4.4 Pricing
 - Each product has a **market price** (shown in UI). Player sets their sell price per product type.
@@ -646,6 +652,10 @@ is over UI (`UIKit.pointerBlocked`).
   `Party.BAR.SHOP_LABEL` / `SHOP_TIP`); each gain flies 2-6 gold sparks from you into the bar, then "+N XP" rises over
   it, the bar flashes white and the level badge bumps (`Party.BAR.SHOP_SPARKS`, PartyBarController; only the badge
   bump while a window is open).
+- **The next unlock** (owner 2026-11-17, the first 15 minutes; 7.13): under the shop bar a small outlined line names
+  what the next level opens, "🔓 Lv 3: Card Sleeves" ("+1" when a level opens more than one thing), from Products,
+  the Build menu's shelves, cases and fixtures (not trophies or decor), the first sword, shop jobs and the bosses
+  (client `Util/NextUnlock`, `LevelUpRules.nextUnlockText`, tests/LevelUpRules); empty past the last one.
 - **Shop rating** (1-5 stars, `RatingService`, `Util/RatingRules`, `Config/Customers` RATING): every 5 s each open
   shop is scored on weighted 0-1 parts: product shelves stocked 35%, fair prices 25% (each stocked product's buy chance
   at its price against the best band's; neutral with nothing stocked), cards on display 15% (Epic 1, Legendary 3, foil
@@ -973,6 +983,33 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
   Roblox's top bar (`Util/OpeningLayout` sizes the 3D cards from pixels, Lune-tested). On a short screen the results
   lineup moves up, or shrinks, to stay between the results pills and Continue / Open another (`PackOpeningLayout`
   `topReserve` 96 px, `bottomReserve` 90 px; QA 2026-11-17: the buttons covered the cards' prices).
+- **The big moments** (owner 2026-11-17, "do all" of five ideas from pack-opening games: Pokemon TCG Pocket's living
+  cards, gacha 10-pulls, a shaking pack, set progress, server-wide hype; `Config/CardReveal`, `Util/RevealRules`,
+  tests/RevealRules, ItemRules; the fifth, a gold beam over the town for a Legendary, was built and then removed by the
+  owner the same day, "remove the beam"):
+  - **A heavy pack trembles**: a pack holding an Epic or better (and a quarter of those whose best is a Very Rare, so it
+    stays a guess) shivers every 1.3 s and glows a soft gold before the tear, and the hint says "This one feels
+    heavy... Swipe across the top!" (`PACK_TELL`, `RevealRules.packTell`, `Util/OpeningPack`).
+  - **The creature comes alive**: an Epic, a Legendary, a Frontier card or a card you never had bursts out of its
+    flipped card as its 3D creature (the party model, `CreatureVisuals.cardTemplate`), rises a little toward the
+    camera turned three-quarters, roars (a size pulse, its voice, a burst, a small shake), looks either way for 1.6 s and
+    dives back in; a tap moves on at any time (`CREATURE`, `RevealRules.comesAlive`, `Util/OpeningCreature`).
+  - **The set bar** on the results: "First Spark set · 31 / 35", a blue-purple fill with the pack's new cards in gold
+    growing on top, and "+4 NEW" (`OpeningResults.setProgress`, the binder's count, `BinderController.SetCollected`).
+  - **Open 10** (`Levels.OPEN_MANY`): a Bag stack of two or more packs has "Open 10" beside Open (fewer when fewer are
+    left, `ItemRules.openMany`). The server opens them all at once with pity, luck and NEW checks per pack
+    (`PackService.OpenItemPacks`, remote `OpenBagPacks`, LevelUpService: the stock XP each) and sends every card
+    (`PacksOpened`); a grid over a dim screen turns them over in order, quick for Commons and pausing on Rare and better,
+    with a NEW ribbon, a flash, the chat shout-out and the drop sting for Epic and Legendary; a tap turns the rest over
+    at once. Then "10 packs opened!", "50 cards · 3 NEW · worth $48.99", Continue and "Open 10 more"
+    (`BulkOpenController`, numbers in `PackOpening.BULK`). **Best pulls** (owner 2026-11-17: "highlight any veryrare and
+    above cards on the after opening 10cards"; look A of artifact XyGHP2ku71fRaYeuEkGZ6D, `CardReveal.BEST`,
+    `RevealRules.standsOut`): a Very Rare or better lights up as it turns (a halo of its colour breathing behind it,
+    its rim's colours turning round it, a shine passing over it every 2.6 s, its rarity's tag under it: "VERY RARE",
+    "EPIC", "LEGENDARY"), and once all are turned everything else dims (nothing dims in a batch with none). The cards
+    are the biggest that fit every row on screen (`OpeningLayout.gridCell`, 44-84 px; found in Studio: the fourth row
+    ran under Continue on a computer), so all 50 show at once there; a small phone scrolls. The HUD hides under the
+    grid like the pack opening's stage (`Hud.setHidden`), so the quest strip plays its news once you're back.
 - **Effects** are our own, rendered in Blender (`tools/blender/build_pack_fx.py`, sheets cut by
   `tools/textures/make_flipbooks.py`, PNGs in `assets/ui/fx`, ids in `Config/PackFx`): the rip burst (an 8x8
   flipbook), holo and gold foil shards and four-point glints (4x4 flipbooks), plus a mote, rays, the light leak and
@@ -3166,6 +3203,7 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
 | Card Sleeves | $30 / box | 20 | $2.50 | Lv 3 |
 | Deck Box | $60 / box | 10 | $9.00 | Lv 7 |
 | First Spark Booster Box (sealed) | $90 each | 1 | $120 | Lv 11 |
+| Bulk Cards (a handful of 5 Commons) | never ordered: a Bulk Bin is filled from your binder (7.14) | 1 | $1.00 | Lv 10 |
 | Set 2 Booster Pack | TBD | 24 | TBD | Lv 20 |
 
 Player can also open their own stock instead of selling it: packs and deck boxes (5 cards each, flipped one at a
@@ -3354,9 +3392,11 @@ All numbers in `Config/Pish`.
   he talks
   (`Util/ArrivalShot`, `Pish.ARRIVAL`, `tests/ArrivalShot`; the camera never goes through a wall; once per first
   visit, after the loading screen and its fade for a player back mid-tour; a tap skips it). Eight steps completed by what the
-  game sees: open his present (`pishPresent`, "Pish's Present": a First Spark pack with his picture, in the Bag),
-  build a Small Pack Rack, order First Spark packs, stock the rack (while the box is still on its way he says "Your packs
-  are on the way! Deliveries take a bit.", owner 2026-11-16; the server's BoxesComing / BoxesWaiting), a customer he sends reaches the counter, ring them
+  game sees: open his present (`pishPresent`, "Pish's Present": a First Spark pack with his picture, in the Bag; its
+  best card joins the empty party and comes out as your pal, `PartyService.GiveFirstPal`, `PartyRules.firstPal`, and
+  he says "Look! Your best card is your pal now. It follows you!", owner 2026-11-17; 7.13),
+  build a Small Pack Rack, order First Spark packs, stock the rack (the tour's box arrives in 1 s, `Stock.TOUR_DELIVERY_SECONDS`,
+  owner 2026-11-17; while it's on its way he says "Your packs are on the way!"; the server's BoxesComing / BoxesWaiting), a customer he sends reaches the counter, ring them
   up ("Tap each card they put on the counter!" once behind it, the paw on one, owner 2026-11-16), open his gift (`pishGift`: the hit card is Very Rare or better), his goodbye. **Pish talks** (`Util/TutorialTalk`, lines in
   `Config/PishTalk`, `Util/TalkRules`; the game's name from `Config/Game.NAME`): a talk card at the top centre (the owner
   2026-11-11: "so that pish model can be seen"; it was above the HUD tiles) with
@@ -3678,10 +3718,23 @@ the always-on tracker B, the money card A).
   over, like the gifts, and count in every place (fights in the Frontier and the Dungeon too: `BattleService.OnFightEnded`
   wins, `CardService.OnBeastLevelUp`, `RegisterService.OnSaleCompleted` now passes the sale's total, `PackService.OnOpened`,
   `StockService.OnStocked`). Each claimed quest pays $15 + $3 x the shop level and the same in shop XP; all three
-  claimed open the **Quest Chest** (a First Spark Pack and an XP Tonic). On screen: a cream card at the top right
-  (under the team strip on a computer, under the cash row on a phone, one line there: "Quests 1/3") with each quest's
-  words, count and bar, a mint "Claim!" chip when something can be claimed and, once all is done, "Quests done! New
-  quests in 16h 46m"; a toast as one finishes; tapping it opens the **Daily Quests** window (the butter-gold band,
+  claimed open the **Quest Chest** (a First Spark Pack and an XP Tonic). On screen: the **quest strip** at the top
+  right (client `Util/QuestStrip`, numbers in `Quests.STRIP`; owner 2026-11-17: "add design/immersive animations on the
+  quest strip", look A "Candy tracker" of artifact XyGHP2ku71fRaYeuEkGZ6D): a cotton candy card under a gold "Daily
+  Quests" band (a shine passes over it every 5 s, the scroll wiggles every 4 s) with a mint "Claim!" chip and the done
+  count; each quest's icon in a floating bubble of its kind's colour (shop mint, cards sky, adventure peach), its
+  words, count and a glossy bar with its own shine. What changed animates (`QuestRules.stripChanges`): the bar fills,
+  "+1" rises over it and its end twinkles; a finished quest flashes mint and its check stamps in with confetti; the
+  count bumps; Claim! pops in and pulses with a ring while the card's outline glows mint. Changes while the strip is
+  hidden (a fight, the pack opening, Open 10) play when it shows again. All done: a gold card with a hopping trophy,
+  twinkles, "Quests done!" and "New quests in 16h 46m". On a phone only the band shows: "Quests" and one chip (the
+  count, a pulsing Claim! or "15h"), placed under the top-right column's last piece (not its frame, which keeps room
+  for a taller dock: owner 2026-11-17, "it overlaps with the jump button"), and beside the jump button if it would still
+  reach it (`CompactHud.questSpot`, Roblox's jump button at `CompactHud.jumpRect`). A round chevron on the band folds
+  the strip (owner 2026-11-17: "can we make the quest window minimizable/hideable?"): to the band on a computer, to the
+  scroll and its chip on a phone (a 30 px button there); a tap opens it again, and a new day's quests show it open. The
+  fold lasts the session. A toast as one finishes; tapping it
+  opens the **Daily Quests** window (the butter-gold band,
   CreamTheme `Quests`): each row's icon, words, bar, "2/3 · +$57 · +57 shop XP" and Claim / Keep going! / Claimed, the
   chest row, the countdown to the next UTC midnight. A claim sends coins from the button into the cash pill
   (`Util/CoinBurst`). The card hides with the HUD (fights, the binder, Pish's and Chikin's calm HUD, manning the
@@ -3702,6 +3755,45 @@ the always-on tracker B, the money card A).
   (Creator Hub, Analytics, Funnels), each step once per player: Joined, the prologue's start, fight, taking and end,
   the welcome flight, Pish's eight tour steps in order, the first wild win, Lv 3, the first quest claimed, Lv 5, Lv 8
   (the cashier's level) and Lv 10. Chikin's tour keeps its own funnel; Pish's lesson events stay custom events.
+
+### 7.13 The first 15 minutes (built 2026-11-17)
+Owner 2026-11-17 ("what can we do to make the first 10-15mins really fun to retain players?", then "OK. just do all."):
+- **No wait on the tour's first box**: while Pish's tour is on its order and stock steps, a delivery takes 1 s
+  (`Stock.TOUR_DELIVERY_SECONDS`, StockService; 30 s, less with the Express perk, otherwise). Waiting with nothing to do
+  was the tour's dead spot. Tested: tests/TutorialRules.
+- **A pal right away**: opening Pish's present puts its best card (rarity, then grade, then foil:
+  `PartyRules.firstPal`) in the empty party and summons it (`PartyService.GiveFirstPal`, from TutorialService), so a
+  creature follows the player from the tour's first minute. Nothing when the party already has a card, a fight is on or
+  the binder is empty. Chikin's "party" and "summon" steps then pass by themselves (they read what the game sees).
+- **A next goal on screen**: the shop bar's "🔓 Lv 3: Card Sleeves" line (4.7).
+- **Cashier at shop Lv 8** (7.4) and the daily quests, welcome-back earnings and funnel (7.12) came in the same push.
+- **The pack opening's big moments** (5.7): the heavy pack, the creature coming alive, the set bar, and Open 10 with
+  its best pulls lit up.
+
+### 7.14 The Bulk Bin (built 2026-11-17)
+Owner 2026-11-17: "what happens when a really active player plays non stop and end up like 1000 common cards. we need a
+way to get rid those right?", then option C of three mockups (artifact XyGHP2ku71fRaYeuEkGZ6D: sell extras, trade in
+for packs, a Bulk Bin), "lets do C". Before it, the Condenser took 64 copies of a card to 5 stars (about 960 Commons for
+all 15) and glass cases sold singles one at a time; past that, Commons piled up.
+- **The bin** (`Config/Bulk`, Config/Shelves `BulkBin`): a $300 shop fixture from shop Lv 10 (Build menu, Shelves tab),
+  a wooden crate with corner posts and a two-sided "BULK CARDS" sign (code-built, `Util/Props`); a Products shelf that
+  only takes **Bulk Cards** (Config/Products `BulkCards`, `bulk = true`), 100 handfuls (500 cards). Heaps of card backs
+  printed with Pish and Chikin's medallion (`Util/BulkHandful`) rise inside it in three layers as it fills; one price
+  tag on its front wall. Moving the bin moves its heaps (owner 2026-11-17: "moving the bin leave the card models
+  behind": each heap is moved to its place on every update; its anchored cards don't follow the bin by themselves).
+- **Add extras** (the bin's E prompt, client BuildController; remote `FillBulkBin`, `BulkService`): your extra Commons go
+  in, whole handfuls of 5 that fit (`BulkRules.extras`, `fill`, `trim`; `CardService.TakeFreshMany`, one save). Extras:
+  copies past the **2 best** you keep of each card, never foils, Grade C and B only (an A or S stays in your binder),
+  the plainest first. Nothing to add or a full bin shows the big locked card with the rule.
+- **Selling**: customers buy handfuls like any product: at your price (the Prices window, market $1.00), through the
+  register (a handful of card backs on the counter, `PropFit.counterLook` "bulk"), offline too (welcome-back earnings,
+  "bulk handfuls"). Bulk only appears on a list while one of your bins has some (`BulkRules.wants`): a kid adds a
+  handful 35% of the time, a plain shopper 20%, a bargain hunter 40% (`Bulk.CHANCE`); never on the random product pick.
+- **Kept out of**: Order Stock (never ordered; the server refuses it too), the unlock lines (the bin is the unlock:
+  `NextUnlock`, `LevelRules.getUnlocks`), the rating's "stocked shelves" share (an empty bin is an outlet, not an empty
+  shelf). Pish's `bulkBin` lesson at Lv 10 teaches it ("Walk up and press Add extras."). A bin with handfuls left can't
+  be sold (like any stocked shelf). Studio: `/bulk [cards]` (a free bin and that many plain Commons; the admin panel's
+  Decor section).
 
 ## 8. Monetization
 
@@ -3903,13 +3995,14 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── RatingService.luau    # shop rating: parts, smoothing, the sign's stars, RatingUpdate, the spawn gap
     │   │   ├── DecorService.luau     # shop looks: the look in use and bought (saved `decor`), ShopLook buy/use, PlotService.SetLook
     │   │   ├── WindowService.luau    # shop windows: saved `windows`, PlaceWindow / MoveWindow / SellWindow, DecorAchieved
-    │   │   ├── PackService.luau      # server-side pack rolls
+    │   │   ├── PackService.luau      # server-side pack rolls (one, or a stack at once for Open 10)
+    │   │   ├── BulkService.luau      # the Bulk Bin's Add extras: the binder's extra Commons in, 5 to a handful
     │   │   ├── CardService.luau      # binder contents (not named CollectionService to avoid clashing with Roblox's)
     │   │   ├── ShowcaseService.luau  # display cards, price them, player buys, customer card buys
     │   │   ├── CondenserService.luau # Card Condenser remote: validate, then CardService.Condense
     │   │   ├── GradingService.luau # Grading Station remote: validate, then CardService.GradeUp (cash via EconomyService)
     │   │   ├── JobService.luau       # shop jobs: slots, worker creatures, restocker/cashier loops, work XP
-    │   │   ├── PartyService.luau     # party slots, summon, creature marker, perks
+    │   │   ├── PartyService.luau     # party slots, summon, creature marker, perks, the first pal from Pish's present
     │   │   ├── WildService.luau      # wild map (the valley's spawn spots, wooden signs, edges, return portal, boss portals and arena copies), plaza portal, healing spring, monsters (spawn, wander, chase, the valley's crowd-sized population)
     │   │   ├── BattleService.luau    # wild fights: start checks, BattleSim loop, rewards, resting, spring
     │   │   ├── SwordService.luau     # the sword: unlock, drawn/sheathed, standard body, back accessories hidden in boss fights (BattleService handles the attack/skill/dodge remotes)
@@ -3925,7 +4018,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── DungeonService.luau   # Dungeon: the run (arrivals, its steps, rooms, carried HP, out, the chamber, the way back)
     │   │   ├── DungeonPuzzleService.luau # Dungeon: prism beams, weight plates, the secret wall, the element lock, their chests
     │   │   ├── DevService.luau       # Studio-only test chat commands (/crowd: extra players counted in the Wild's biomes)
-    │   │   ├── LevelUpService.luau   # shop level-up packs, opening Bag packs (OpenBagPack), the LevelUpFx broadcast (held mid-fight)
+    │   │   ├── LevelUpService.luau   # shop level-up packs, opening Bag packs (OpenBagPack, Open 10: OpenBagPacks), the LevelUpFx broadcast (held mid-fight)
     │   │   ├── LeaderboardService.luau # the plaza leaderboard: packs-opened totals to an OrderedDataStore (every place), the cards' lists (main game)
     │   │   ├── TurtsService.luau     # Turts' rug shop: the restock clock, his spot, each player's offers and buys, Robux restock now (DESIGN 7.9)
     │   │   ├── QuestService.luau     # daily quests: rolled per UTC day, counted from the game, claims and the Quest Chest (DESIGN 7.12)
@@ -4003,6 +4096,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── TurtsController.luau  # Turts on his rug (head shake, sit, spin), your offers on it, his timer and beacon, the shop window
     │   │   ├── QuestController.luau  # the daily quests' tracker at the top right, the Daily Quests window, claims with coins
     │   │   ├── WelcomeBackController.luau # the "Welcome back!" window: what the shop sold while you were away, Collect
+    │   │   ├── BulkOpenController.luau # Open 10: the grid of cards turning over, the totals, Continue and Open 10 more
     │   │   ├── PriceTagController.luau  # point at / tap your shelf price tags to set the price
     │   │   ├── PartyBarController.luau  # bottom-right party cushion: Party pill + 3 round portraits (and the mascot), tap or 1/2/3 to summon
     │   │   ├── MonsterController.luau   # draws wild monsters on their markers (model or placeholder) at their species' height, glow masks, Fx_ bone effects; boss rigs, head glow, death
@@ -4068,7 +4162,10 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │       ├── OpeningPack.luau        # the pack (or deck box) on the stage: idle sway, drag, the cinematic tear, the lid
     │       ├── OpeningCards.luau       # the pulled cards: stacking, flips with teases and hits, alive, the row, the lineup
     │       ├── OpeningFx.luau          # the opening's effects: rip burst, foil shards, glints, light leak, rays, aura, motes
-    │       ├── OpeningResults.luau     # the opening's screen: tap layer, hint, box and pity pills, odds, results pills, Continue, Open another
+    │       ├── OpeningResults.luau     # the opening's screen: tap layer, hint, box and pity pills, odds, results pills, the set bar, Continue, Open another
+    │       ├── OpeningCreature.luau    # a pulled card's creature bursting out, roaring and diving back in
+    │       ├── QuestStrip.luau         # the daily quests' strip: candy card, bubbles, glossy bars and their animations
+    │       ├── NextUnlock.luau         # the shop bar's next unlock line ("🔓 Lv 3: Card Sleeves")
     │       ├── ProductPicture.luau     # a product's picture in menu rows: the pack / deck box picture, or its icon
     │       ├── CreatureVisuals.luau    # shared model pipeline + motion for creatures and monsters
     │       ├── RestTimers.luau         # resting countdowns for the party bar and Party panel
@@ -4117,6 +4214,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
         │   ├── Plots.luau      # plot layout and fixtures
         │   ├── Economy.luau    # starting cash/level
         │   ├── Stock.luau      # delivery, carrying
+        │   ├── Bulk.luau       # the Bulk Bin: handful size, cards kept, who asks for bulk, the crate's look (plain data)
         │   ├── Placement.luau  # grid, placement rules
         │   ├── Pricing.luau    # price limits, customer buy bands
         │   ├── ProductPictures.luau # the menus' pack / deck box pictures by look, their fit, the fallback icons
@@ -4243,6 +4341,9 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── Props.luau         # place swappable prop models (assets/props) or part stand-ins; server town, client ghosts
             ├── PropFit.luau       # prop fit sizes with YawOffset, register counter rows and looks (pure, Lune-tested)
             ├── SleevePacket.luau  # one retail packet of card sleeves (shelf stock, the register counter)
+            ├── BulkHandful.luau   # a handful of card backs (the Bulk Bin's heaps, the register counter)
+            ├── BulkRules.luau     # the Bulk Bin's extras, whole handfuls, the cards going in, who asks (pure)
+            ├── ShopTips.luau      # what each Shop window item holds and does, for its tooltip (pure)
             ├── ShelfStock.luau    # stock boxes, display box fill and price tags on shelves (pure, Lune-tested)
             ├── PackModels.luau    # the 3D pack, deck box and display box (assets/packs, or stand-ins), dressed in a pack's look
             ├── ProductPictureRules.luau # a menu row's pack / deck box picture, else its icon (pure, Lune-tested)
@@ -4492,7 +4593,9 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   each with a light and a deep shade (`UIStyle.BABY`); plum ink. `UIKit.panel(parent, name, title, band, theme?,
   softButtons?)` builds a themed window by default (the code still calls the theme "cream"; `Config/CreamTheme`): a
   milky pink-lavender body with a thick white outline, round corners and a soft lilac glow under it, a header band in
-  the baby colour of the window's HUD button (Bag pink, Cards and the card windows sky, Bosses and Party lilac, Shop
+  the baby colour of the window's HUD button running over the outline to the window's outer edge (owner 2026-11-17:
+  "theres a small space between the window and the pink glow": the outline showed as a pale strip round the band;
+  `UIKit.header`, `UIKit.sizeHeader`) (Bag pink, Cards and the card windows sky, Bosses and Party lilac, Shop
   and Shelf mint, Prices and Set Price peach, Jobs sky, every other window sky), and a round pink close button with a
   white outline. Inside: white rows, slots and stat cards with a soft lilac edge; empty slots and detail panes a pale
   lilac (no big white slabs); plum text, a lighter plum for secondary text, a dark amber for hints and small headings,

@@ -23,6 +23,8 @@ local WindowLooks = require(Shared:WaitForChild("Util"):WaitForChild("WindowLook
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local Tooltip = require(ClientUtil:WaitForChild("Tooltip"))
+local ShopTips = require(Shared:WaitForChild("Util"):WaitForChild("ShopTips"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 
 local WindowController = {}
@@ -247,6 +249,7 @@ function WindowController.Tiles(list: ScrollingFrame, palette: any, firstOrder: 
 		tile.Parent = list
 		UIKit.corner(tile, 14)
 		UIKit.outline(tile)
+		Tooltip.rich(tile, info.name, ShopTips.window(info.points)) -- (owner 2026-11-17: tooltips in the shop)
 		-- the window itself, front on, against a sky
 		local view = Instance.new("ViewportFrame")
 		view.Name = "Preview"

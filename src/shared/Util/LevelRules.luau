@@ -28,7 +28,7 @@ end
 function LevelRules.getUnlocks(level: number): { string }
 	local names: { string } = {}
 	for _, product in Products.List do
-		if product.unlockLevel == level then
+		if product.unlockLevel == level and not product.bulk then -- bulk cards come with the Bulk Bin, named below
 			table.insert(names, product.name)
 		end
 	end

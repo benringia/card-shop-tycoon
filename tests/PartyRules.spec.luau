@@ -4,6 +4,28 @@ local config = require("../src/shared/Config/Party")
 local expect = require("./lib/expect")
 
 return {
+	-- Owner 2026-11-17 ("do all", the first 15 minutes): a pal from Pish's present right away: the best card in the binder
+	-- (rarity, then grade, then foil) becomes the first party creature
+	["the first pal: the binder's best card by rarity, then grade, then foil"] = function()
+		local rarities = { c1 = "Common", r1 = "Rare", r2 = "Rare", v1 = "Very Rare" }
+		local function rarityOf(cardId: string): string?
+			return rarities[cardId]
+		end
+		local stacks = {
+			c1 = { S = { normal = 1, foil = 0 } },
+			r1 = { C = { normal = 1, foil = 0 } },
+			r2 = { A = { normal = 0, foil = 1 }, B = { normal = 2, foil = 0 } },
+		}
+		local cardId, foil, grade = PartyRules.firstPal(stacks, rarityOf)
+		expect.equal(cardId, "r2", "a Rare beats a Grade S Common; the better graded Rare")
+		expect.equal(grade, "A")
+		expect.equal(foil, true)
+		stacks.v1 = { C = { normal = 1, foil = 0 } }
+		expect.equal((PartyRules.firstPal(stacks, rarityOf)), "v1", "a Very Rare beats them all")
+		expect.isNil((PartyRules.firstPal({}, rarityOf)), "an empty binder")
+		expect.isNil((PartyRules.firstPal({ x = { C = { normal = 0, foil = 0 } } }, rarityOf)), "no copies left")
+	end,
+
 	["perk by element and rarity"] = function()
 		local hype = PartyRules.getPerk(config, "Ember", "Common", 0)
 		assert(hype, "expected a perk")

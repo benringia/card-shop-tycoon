@@ -1,10 +1,11 @@
 --!strict
--- Daily quests on screen (owner 2026-11-17; the always-on tracker, mockup pick B): a small card at the top right with
--- today's three quests and their bars (one line on a phone: "Quests 1/3"), a toast as one is done, and tapping it opens
--- the Quests window: each quest's words, bar and pay with Claim, the Quest Chest once all three are claimed, and the
--- time until new ones. Coins fly from a claimed quest into the cash pill. QuestService decides everything; this shows
--- it and asks (Remotes.QuestState, Remotes.QuestClaim). The tracker hides with the HUD (fights, full-screen views,
--- Pish's and Chikin's calm HUD) and, on a phone, while a window is open.
+-- Daily quests on screen (owner 2026-11-17; the always-on tracker, mockup pick B): the strip at the top right with
+-- today's three quests and their bars (Util/QuestStrip: its look and animations; one line on a phone), a toast as one is
+-- done, and tapping it opens the Quests window: each quest's words, bar and pay with Claim, the Quest Chest once all
+-- three are claimed, and the time until new ones. Coins fly from a claimed quest into the cash pill. QuestService
+-- decides everything; this shows it and asks (Remotes.QuestState, Remotes.QuestClaim). The strip hides with the HUD
+-- (fights, full-screen views, Pish's and Chikin's calm HUD) and, on a phone, while a window is open; there it sits
+-- under the top-right column, clear of the jump button (CompactHud.questSpot).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -14,6 +15,7 @@ local Quests = require(Config:WaitForChild("Quests"))
 local Teams = require(Config:WaitForChild("Teams"))
 local UIStyle = require(Config:WaitForChild("UIStyle"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local CompactHud = require(Shared:WaitForChild("Util"):WaitForChild("CompactHud"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
@@ -21,23 +23,21 @@ local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
 local CoinBurst = require(ClientUtil:WaitForChild("CoinBurst"))
+local QuestStrip = require(ClientUtil:WaitForChild("QuestStrip"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 
 local QuestController = {}
 
-type QuestView = { id: string, text: string, icon: string, goal: number, progress: number, done: boolean, claimed: boolean, cash: number, xp: number }
+type QuestView = { id: string, kind: string, text: string, icon: string, goal: number, progress: number, done: boolean, claimed: boolean, cash: number, xp: number }
 type View = { quests: { QuestView }, bonusReady: boolean, bonusClaimed: boolean, claimable: number }
 
-local TRACKER = { width = 230, phoneWidth = 150, pad = 8, gap = 4, margin = 16, desktopTop = Teams.STRIP.top }
+local TRACKER = { margin = 16, phoneGap = 8, desktopTop = Teams.STRIP.top }
 local ROW_HEIGHT = 76
 
 local view: View? = nil
 local screen: ScreenGui
 local holder: Frame
 local tracker: TextButton
-local trackerTitle: TextLabel
-local trackerClaim: TextLabel
-local trackerRows: Frame
 local panel: Frame
 local list: ScrollingFrame
 local resetLabel: TextLabel
@@ -69,64 +69,44 @@ local function clearChildren(parent: Instance)
 	end
 end
 
--- The tracker's place: under the team strip on a computer (or where it would be), under the cash row (and the strip) on a
--- phone
+-- The bottom of the top-right column's last piece on a phone (its frame keeps room for a taller dock: going by the frame
+-- put the strip on the jump button, owner 2026-11-17)
+local function columnBottom(column: GuiObject): number
+	local bottom = column.AbsolutePosition.Y
+	for _, child in column:GetChildren() do
+		if child:IsA("GuiObject") and child.Visible and child.AbsoluteSize.Y > 0 then
+			bottom = math.max(bottom, child.AbsolutePosition.Y + child.AbsoluteSize.Y)
+		end
+	end
+	return bottom
+end
+
+-- The tracker's place: under the team strip on a computer (or where it would be); on a phone under the top-right column
+-- (and the team strip), beside the jump button if it would reach it
 local function place()
 	local top = TRACKER.desktopTop
+	local right = TRACKER.margin
 	local compact = UIController.IsCompact()
-	if compact then
-		local status = UIController.GetStatusRow()
-		top = status.AbsolutePosition.Y + status.AbsoluteSize.Y + 8
-	end
+	local below = if compact then columnBottom(UIController.GetStatusRow()) - screen.AbsolutePosition.Y else 0
 	local column = screen:FindFirstChild("TeamColumn", true)
 	if column and column:IsA("GuiObject") and column.Visible and column.AbsoluteSize.Y > 4 then
-		top = math.max(top, column.AbsolutePosition.Y + column.AbsoluteSize.Y + 10)
+		local teamBottom = column.AbsolutePosition.Y + column.AbsoluteSize.Y - screen.AbsolutePosition.Y
+		top = math.max(top, teamBottom + 10)
+		below = math.max(below, teamBottom + 2)
 	end
-	tracker.Position = UDim2.new(1, -TRACKER.margin, 0, top - screen.AbsolutePosition.Y)
-	tracker.Size = UDim2.fromOffset(if compact then TRACKER.phoneWidth else TRACKER.width, 0)
-	trackerRows.Visible = not compact
+	if compact then
+		local size = screen.AbsoluteSize
+		local jump = CompactHud.jumpRect(size.X, size.Y)
+		local own = tracker.AbsoluteSize
+		top, right = CompactHud.questSpot(below, { w = own.X, h = own.Y }, { w = size.X, h = size.Y }, jump, TRACKER.margin, TRACKER.phoneGap)
+	end
+	tracker.Position = UDim2.new(1, -right, 0, top)
 end
 
 local function renderTracker()
 	local current = view
 	tracker.Visible = current ~= nil and #current.quests > 0 and not (UIController.IsCompact() and windowOpen)
-	if not current then
-		return
-	end
-	trackerTitle.Text = `📜 Quests {doneCount(current)}/{#current.quests}`
-	trackerClaim.Visible = current.claimable > 0
-	clearChildren(trackerRows)
-	if current.bonusClaimed then
-		-- all claimed and the chest opened: one line until tomorrow's (the loop below keeps its countdown)
-		trackerTitle.Text = "📜 Quests done!"
-		local soon = UIKit.label(trackerRows, resetText(), Enum.Font.GothamBold, 12, UIStyle.CREAM.HINT)
-		soon.Name = "Reset"
-		soon.Size = UDim2.new(1, 0, 0, 16)
-		place()
-		return
-	end
-	for index, quest in current.quests do
-		local row = Instance.new("Frame")
-		row.Name = `Quest{index}`
-		row.LayoutOrder = index
-		row.BackgroundTransparency = 1
-		row.Size = UDim2.new(1, 0, 0, 30)
-		row.Parent = trackerRows
-		local color = if quest.claimed then UIStyle.CREAM.HINT elseif quest.done then UIStyle.CREAM.GOOD else UIStyle.CREAM.INK
-		local words = UIKit.label(row, if quest.done then `✅ {quest.text}` else quest.text, Enum.Font.GothamBold, 12, color)
-		words.Size = UDim2.new(1, -36, 0, 16)
-		words.TextTruncate = Enum.TextTruncate.AtEnd
-		words.TextWrapped = false
-		local count = UIKit.label(row, `{quest.progress}/{quest.goal}`, Enum.Font.FredokaOne, 12, color)
-		count.AnchorPoint = Vector2.new(1, 0)
-		count.Position = UDim2.new(1, 0, 0, 0)
-		count.Size = UDim2.fromOffset(34, 16)
-		count.TextXAlignment = Enum.TextXAlignment.Right
-		local track = UIKit.bar(row, quest.progress / math.max(1, quest.goal), if quest.done then UIStyle.BABY.mint.fill else UIStyle.BABY.sky.fill)
-		track.Position = UDim2.fromOffset(0, 19)
-		track.Size = UDim2.new(1, 0, 0, 7)
-		track.BackgroundColor3 = UIStyle.CREAM.TRACK -- the cream track (the card isn't a window, so the kit would pick the dark one)
-	end
+	QuestStrip.render(current, UIController.IsCompact(), resetText())
 	place()
 end
 
@@ -249,53 +229,7 @@ local function buildTracker()
 	holder.Parent = screen
 	Hud.hideWith(holder) -- fights and full-screen views
 	Hud.calmPiece(holder, "quests") -- Pish's and Chikin's calm HUD
-	tracker = Instance.new("TextButton")
-	tracker.Name = "QuestTracker"
-	tracker.Text = ""
-	tracker.AutoButtonColor = false
-	tracker.AnchorPoint = Vector2.new(1, 0)
-	tracker.AutomaticSize = Enum.AutomaticSize.Y
-	tracker.BackgroundColor3 = UIStyle.CREAM.ROW
-	tracker.BackgroundTransparency = 0.06
-	tracker.Visible = false
-	tracker.Parent = holder
-	UIKit.corner(tracker, 12)
-	UIKit.outline(tracker, UIStyle.CREAM.ROW_EDGE, 2)
-	local pad = Instance.new("UIPadding")
-	for _, side in { "PaddingLeft", "PaddingRight", "PaddingTop", "PaddingBottom" } do
-		(pad :: any)[side] = UDim.new(0, TRACKER.pad)
-	end
-	pad.Parent = tracker
-	local stack = Instance.new("UIListLayout")
-	stack.Padding = UDim.new(0, TRACKER.gap)
-	stack.SortOrder = Enum.SortOrder.LayoutOrder
-	stack.Parent = tracker
-	local top = Instance.new("Frame")
-	top.Name = "Top"
-	top.BackgroundTransparency = 1
-	top.LayoutOrder = 0
-	top.Size = UDim2.new(1, 0, 0, 22)
-	top.Parent = tracker
-	trackerTitle = UIKit.label(top, "📜 Quests", Enum.Font.FredokaOne, 16, UIStyle.CREAM.INK)
-	trackerTitle.Size = UDim2.fromScale(1, 1)
-	trackerTitle.TextWrapped = false
-	trackerClaim = UIKit.pill(top, "Claim!", UIStyle.BABY.mint.fill)
-	trackerClaim.AnchorPoint = Vector2.new(1, 0.5)
-	trackerClaim.Position = UDim2.new(1, 0, 0.5, 0)
-	trackerClaim.Size = UDim2.fromOffset(0, 20)
-	trackerClaim.TextSize = 13
-	trackerClaim.Visible = false
-	trackerRows = Instance.new("Frame")
-	trackerRows.Name = "Rows"
-	trackerRows.BackgroundTransparency = 1
-	trackerRows.LayoutOrder = 1
-	trackerRows.AutomaticSize = Enum.AutomaticSize.Y
-	trackerRows.Size = UDim2.new(1, 0, 0, 0)
-	trackerRows.Parent = tracker
-	local rowsLayout = Instance.new("UIListLayout")
-	rowsLayout.Padding = UDim.new(0, 2)
-	rowsLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	rowsLayout.Parent = trackerRows
+	tracker = QuestStrip.build(holder)
 	tracker.Activated:Connect(function()
 		panel.Visible = true
 	end)
@@ -376,10 +310,7 @@ function QuestController.Start()
 			task.wait(0.5)
 			if tracker.Visible then
 				place()
-				local reset = trackerRows:FindFirstChild("Reset")
-				if reset and reset:IsA("TextLabel") then
-					reset.Text = resetText()
-				end
+				QuestStrip.tick(resetText())
 			end
 			if panel.Visible then
 				resetLabel.Text = resetText()

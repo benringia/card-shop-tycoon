@@ -5,6 +5,16 @@ local Bosses = require("../src/shared/Config/Bosses")
 local expect = require("./lib/expect")
 
 return {
+	-- Owner 2026-11-17 ("do all": Open 10): a stack of Bag packs opens up to 10 at once; one pack has just Open
+	["Open 10: up to ten packs from a stack of two or more"] = function()
+		expect.equal(ItemRules.openMany(85, 10), 10, "a big stack: ten")
+		expect.equal(ItemRules.openMany(4, 10), 4, "a small stack: all of it")
+		expect.equal(ItemRules.openMany(1, 10), 0, "one pack: just Open")
+		expect.equal(ItemRules.openMany(0, 10), 0, "none")
+		expect.equal(ItemRules.openMany(-3, 10), 0, "nonsense")
+		expect.equal(ItemRules.openMany(7.6, 10), 7, "whole packs")
+	end,
+
 	-- Owner 2026-11-14: "item description should be rewritten, it should easily be understandable by a child". The
 	-- Bag shows each item's three lines (what it does, where to get it, how to use it): plain words our fonts draw
 	-- (ASCII plus "·"; the "→" arrows were drawn as boxes), short, no trading-card jargon

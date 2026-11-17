@@ -1095,11 +1095,14 @@ local function renderBagDetail()
 	-- game has the pack opening, so elsewhere the button isn't offered.
 	local openId = selectedItem
 	if info.open and (bagItems[openId] or 0) > 0 and not Place.isFrontier() and not Place.isDungeon() then
+		-- Open 10 beside Open for a stack of two or more (owner 2026-11-17, "do all"; BulkOpenController)
+		local Levels = require(Config:WaitForChild("Levels")) :: any
+		local many = ItemRules.openMany(bagItems[openId] or 0, Levels.OPEN_MANY)
 		local open = UIKit.button(bagDetail, "Open", UIKit.Colors.Accent)
 		open.Name = "Open"
 		open.AnchorPoint = Vector2.new(0.5, 0)
-		open.Position = UDim2.new(0.5, 0, 0, y)
-		open.Size = UDim2.fromOffset(160, 48)
+		open.Position = UDim2.new(0.5, if many > 0 then -62 else 0, 0, y)
+		open.Size = UDim2.fromOffset(if many > 0 then 116 else 160, 48)
 		open.ZIndex = 34
 		open.Activated:Connect(function()
 			if player:GetAttribute("PackOpeningBusy") == true then
@@ -1109,6 +1112,22 @@ local function renderBagDetail()
 			Remotes.OpenBagPack:FireServer(openId)
 			bagOverlay.Visible = false -- out of the way of the pack opening
 		end)
+		if many > 0 then
+			local bulk = UIKit.button(bagDetail, `Open {many}`, UIKit.Colors.Success)
+			bulk.Name = "OpenMany"
+			bulk.AnchorPoint = Vector2.new(0.5, 0)
+			bulk.Position = UDim2.new(0.5, 62, 0, y)
+			bulk.Size = UDim2.fromOffset(116, 48)
+			bulk.ZIndex = 34
+			bulk.Activated:Connect(function()
+				if player:GetAttribute("PackOpeningBusy") == true then
+					UIController.Notify("Finish this pack first.", true)
+					return
+				end
+				Remotes.OpenBagPacks:FireServer(openId, Levels.OPEN_MANY)
+				bagOverlay.Visible = false
+			end)
+		end
 		y += 58
 	end
 	-- The XP Tonic: Use, then pick the party card it goes on (owner 2026-11-17)
@@ -2158,6 +2177,18 @@ function BinderController.CollectedCount(): (number, number)
 		end
 	end
 	return have, #Cards.List
+end
+
+-- How many of a set's cards the player has collected, and how many it holds (the pack results' set bar)
+function BinderController.SetCollected(set: string): (number, number)
+	local cards = Cards.BySet[set] or {}
+	local have = 0
+	for _, card in cards do
+		if isCollected(card.id) then
+			have += 1
+		end
+	end
+	return have, #cards
 end
 
 -- The cards in the player's binder (not counting ones on display), summed over grades

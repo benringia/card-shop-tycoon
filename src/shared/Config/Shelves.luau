@@ -255,6 +255,22 @@ local List: { Shelf } = {
 		-- Double-sided: shelf tops at 1.04 / 2.54 / 3.85 of 7 studs, a row each side of the middle divider
 		stock = { SIDES = { -0.19, 0.19 }, DEPTH_FILL = 0.33 }, -- the same levels as the other racks, so plates line up
 	},
+	{
+		-- The Bulk Bin (Config/Bulk; owner 2026-11-17: "lets do C"): extra Commons from your binder, 5 to a handful,
+		-- that customers buy like any product; heaps of cards rise in it as it fills (three layers, two rows)
+		id = "BulkBin",
+		prop = "BulkBin",
+		name = "Bulk Bin",
+		kind = "Products",
+		category = "Shelves", -- Build menu tab
+		accepts = { "BulkCards" },
+		capacity = 100, -- handfuls: 500 cards
+		cost = 300,
+		unlockLevel = 10,
+		size = Vector3.new(4, 3, 4),
+		color = Color3.fromRGB(196, 140, 86),
+		stock = { LEVELS = { 0.12, 0.33, 0.54 }, SIDES = { -0.27, 0, 0.27 }, DEPTH_FILL = 0.3 },
+	},
 	-- Shop decor (spec 2026-11-14-shop-decor-design): placed like shelves, drawn by their prop (Util/DecorLooks
 	-- stand-ins until the Blender pack is imported), in unlock order
 	{

@@ -27,6 +27,33 @@ export type RevealConfig = {
 
 local RevealRules = {}
 
+local RANK = { Common = 1, Rare = 2, ["Very Rare"] = 3, Epic = 4, Legendary = 5 }
+
+-- Whether a pulled card stands out among many (Open 10's best pulls, owner 2026-11-17): `from` or better
+function RevealRules.standsOut(rarity: string, from: string): boolean
+	local rank = RANK[rarity]
+	return rank ~= nil and rank >= (RANK[from] or math.huge)
+end
+
+-- Whether a card's creature bursts out of it on the stage (Config/CardReveal CREATURE): an Epic, a Legendary, a Frontier
+-- card or a card the player never had
+function RevealRules.comesAlive(rarity: string, isNew: boolean, frontier: boolean): boolean
+	return isNew or frontier or (RANK[rarity] or 0) >= RANK.Epic
+end
+
+-- Whether a pack trembles before the tear (Config/CardReveal PACK_TELL): its best card is `rarity` or better, or a Very
+-- Rare when `roll` (0-1) falls under `fakeOut`
+function RevealRules.packTell(tell: { rarity: string, fakeOut: number }, rarities: { string }, roll: number): boolean
+	local best = 0
+	for _, rarity in rarities do
+		best = math.max(best, RANK[rarity] or 0)
+	end
+	if best >= (RANK[tell.rarity] or math.huge) then
+		return true
+	end
+	return best == RANK["Very Rare"] and roll < tell.fakeOut
+end
+
 function RevealRules.plan(config: RevealConfig, rarity: string, foil: boolean, frontier: boolean): Plan
 	local tier = if frontier then config.FRONTIER else (config.BY_RARITY[rarity] or config.BY_RARITY.Common)
 	local plan = table.clone(tier) :: Plan

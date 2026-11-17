@@ -945,6 +945,8 @@ function PartyBarController.Start()
 	shopTag.ZIndex = 3
 	UIKit.outlined(shopTag, 1.5)
 	Tooltip.attach(xpTrack, BAR.SHOP_TIP)
+	-- the shop's next unlock under the bar (owner 2026-11-17: the first 15 minutes, always a next goal)
+	require(ClientUtil:WaitForChild("NextUnlock")).attach(bars, UDim2.fromOffset(DOCK.badge + 6, xpTop + DOCK.xpHeight + 1), DOCK.barWidth)
 	levelBadge = Instance.new("Frame")
 	levelBadge.Name = "Level"
 	levelBadge.AnchorPoint = Vector2.new(0.5, 0.5)

@@ -27,6 +27,7 @@ local ClientUtil = script.Parent :: Instance
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local OpeningStage = require(ClientUtil:WaitForChild("OpeningStage"))
 local OpeningFx = require(ClientUtil:WaitForChild("OpeningFx"))
+local OpeningCreature = require(ClientUtil:WaitForChild("OpeningCreature"))
 
 type Card = typeof(Cards.List[1])
 export type Pull = { card: Card, foil: boolean, grade: string, isNew: boolean, plan: RevealRules.Plan }
@@ -520,10 +521,16 @@ function OpeningCards.flip(index: number)
 	if plan.alive or plan.holo then
 		startAlive(shown)
 	end
+	-- an Epic, a Legendary, a Frontier card or one you never had: its creature bursts out of it (Util/OpeningCreature)
+	local card = shown.pull.card
+	if RevealRules.comesAlive(card.rarity, shown.pull.isNew == true, CardFace.isFrontier(card)) then
+		OpeningCreature.play(card.name, card.rarity, landing, color)
+	end
 end
 
 -- The shown card zips into its place in the row along the bottom (small, far away), its show stopping
 function OpeningCards.stow(index: number)
+	OpeningCreature.clear() -- moving on: its creature goes at once
 	local shown = cards[index]
 	if not shown then
 		return
@@ -633,6 +640,7 @@ end
 
 function OpeningCards.clear()
 	session += 1
+	OpeningCreature.clear()
 	if results then
 		results:Disconnect()
 		results = nil
