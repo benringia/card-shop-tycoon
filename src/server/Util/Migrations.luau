@@ -366,6 +366,13 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 			data.lastSeen = 0
 		end
 	end,
+	-- 33 -> 34: weekly quests (owner 2026-11-17: "what players do after daily quests?"): no week rolled yet (QuestService
+	-- rolls this week's; QuestRules.cleanWeek keeps a saved table safe)
+	[33] = function(data)
+		if typeof(data.weekly) ~= "table" then
+			data.weekly = { week = -1, list = {}, chest = false }
+		end
+	end,
 }
 
 local function lowestGrade(): string

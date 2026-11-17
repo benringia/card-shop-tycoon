@@ -108,4 +108,11 @@ return {
 		expect.equal(ArrivalShot.pickWide({ 0.3, 0.5, 0.4 }, CFG), 2, "none clear: the clearest")
 		assert(CFG.wideClear > 0.7 and CFG.wideClear < 1, "nearly the whole way")
 	end,
+
+	-- Found 2026-11-17 in Studio: his run looked for the ground from 6 studs over the player's feet, so he ran over the
+	-- top of whatever stood there (the player's summoned creature, 5 studs up). It looks no higher than a step or a curb
+	-- (the shop floor is a 1-stud step up from the street) and only at things you can't walk through.
+	["his run stays on the ground: up a step or a curb at most"] = function()
+		assert(CFG.stepUp >= 1 and CFG.stepUp <= 3, `stepUp {CFG.stepUp}: a step, never the top of a creature or a shelf`)
+	end,
 }

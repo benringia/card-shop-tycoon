@@ -14,6 +14,7 @@ local Gifts = require(Config:WaitForChild("Gifts"))
 local Items = require(Config:WaitForChild("Items"))
 local Luck = require(Config:WaitForChild("Luck"))
 local GiftRules = require(Shared:WaitForChild("Util"):WaitForChild("GiftRules"))
+local CompactHud = require(Shared:WaitForChild("Util"):WaitForChild("CompactHud"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -87,7 +88,9 @@ local function refreshTile()
 	if not button or not view then
 		return
 	end
-	button.Visible = counting or anythingReady()
+	-- a phone shows it only once something's ready (owner 2026-11-17, "go A": no countdown there)
+	local allowed = CompactHud.phonePieces(UIController.IsCompact(), Hud.inTown(), anythingReady(), false).giftTile
+	button.Visible = allowed and (counting or anythingReady())
 	local text = if anythingReady() then Gifts.TILE.ready elseif view.claimedToday then nextGiftIn() else clock(secondsLeft())
 	Hud.setLabel("Gift", text)
 	if badge then

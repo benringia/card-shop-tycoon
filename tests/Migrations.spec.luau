@@ -270,6 +270,22 @@ return {
 		expect.equal(kept.tips.toBag, 2, "a saved table kept")
 	end,
 
+	-- Weekly quests (owner 2026-11-17: "what players do after daily quests?"): every save starts with no week rolled
+	-- (QuestService rolls this week's); a saved week is kept for QuestRules.cleanWeek
+	["v34: every save starts with no weekly quests rolled; a saved week kept"] = function()
+		local data: any = { version = 33, cash = 7 }
+		Migrations.run(data, 34)
+		expect.equal(data.version, 34)
+		expect.equal(data.weekly.week, -1, "no week rolled yet")
+		expect.equal(#data.weekly.list, 0)
+		expect.equal(data.weekly.chest, false)
+		expect.equal(data.cash, 7, "the rest untouched")
+		local kept: any = { version = 33, weekly = { week = 9, list = {}, chest = true } }
+		Migrations.run(kept, 34)
+		expect.equal(kept.weekly.week, 9, "a saved week kept")
+		expect.equal(kept.weekly.chest, true)
+	end,
+
 	-- Daily quests and welcome-back earnings (owner 2026-11-17: "yes do the three now"): every save starts with no quests
 	-- rolled yet (QuestService rolls today's) and no last-seen time (the first visit after the update earns nothing away)
 	["v33: every save starts with fresh quests and no last-seen time; saved values kept"] = function()

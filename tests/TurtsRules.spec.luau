@@ -60,7 +60,7 @@ return {
 		local function share(id: string): number
 			return (seen[id] or 0) / rolls
 		end
-		assert(share("wildOre10") > share("vrPack"), "Wild Ore more often than a Very Rare Pack")
+		assert(share("wildOre") > share("vrPack"), "Wild Ore more often than a Very Rare Pack")
 		assert(share("vrPack") > share("epicPack"), "a Very Rare Pack more often than an Epic Pack")
 		assert(share("epicPack") > share("legendaryPack"), "an Epic Pack more often than a Legendary Pack")
 		-- owner 2026-11-13: "lower the chances of getting a rare items like legendary card pack and other high level boss
@@ -92,6 +92,14 @@ return {
 		expect.equal(TurtsRules.canBuy(fresh, 6, stock, "xpTonic", 6), true)
 	end,
 
+	-- owner 2026-11-13 "only 1qty per item", 2026-11-17 "turts should only sell 1 quantity" (Wild Ore came 10 at a time)
+	["Turts sells one of each thing, and no name says more"] = function()
+		for id, offer in Turts.OFFERS do
+			expect.equal(offer.count, 1, `{id} sells one`)
+			assert(not string.find(offer.name, "x%d"), `{id}'s name says a quantity: {offer.name}`)
+		end
+	end,
+
 	["every price is at least 1.5x its usual value; the Gold Seal above the most it can pay"] = function()
 		expect.equal(Turts.PREMIUM, 1.5)
 		for id, offer in Turts.OFFERS do
@@ -120,11 +128,11 @@ return {
 	["a rejoin keeps what you bought; a new restock (or an old Robux roll) resets it"] = function()
 		local state = { index = 5, bought = { "vrPack" }, personal = { index = 5, offers = { "goldSeal", "xpTonic", "starShard" } } }
 		expect.equal(#TurtsRules.refresh(state, 5).bought, 1, "same restock: still bought")
-		expect.equal(TurtsRules.stockFor(state, 5, { "vrPack", "wildOre10", "epicPack" })[1], "goldSeal", "your Robux roll")
+		expect.equal(TurtsRules.stockFor(state, 5, { "vrPack", "wildOre", "epicPack" })[1], "goldSeal", "your Robux roll")
 		local next = TurtsRules.refresh(state, 6)
 		expect.equal(#next.bought, 0, "a new restock: nothing bought")
 		expect.equal(next.personal, nil, "the Robux roll ends with its restock")
-		expect.equal(TurtsRules.stockFor(next, 6, { "vrPack", "wildOre10", "epicPack" })[1], "vrPack", "back to everyone's stock")
+		expect.equal(TurtsRules.stockFor(next, 6, { "vrPack", "wildOre", "epicPack" })[1], "vrPack", "back to everyone's stock")
 		expect.equal(next.index, 6)
 	end,
 
@@ -185,5 +193,29 @@ return {
 			end
 		end
 		assert(signs[1] and signs[-1], "it shakes both ways within one period")
+	end,
+
+	-- His chip under the quest strip (owner 2026-11-17: "can a turts store restock timer be put somewhere on the
+	-- screen?", look A): gold "Turts restocked!" a short while after a restock you haven't looked at, else the countdown
+	["his chip: gold a short while after a restock you haven't seen, else the countdown"] = function()
+		local seconds, glow = Turts.RESTOCK_SECONDS, Turts.CHIP.glowSeconds
+		local start = 1000 * seconds -- restock 1000 just happened
+		local fresh, left = TurtsRules.chip(start + 5, seconds, 999, glow)
+		expect.equal(fresh, true, "a new restock since your last look")
+		expect.equal(left, seconds - 5, "and the time to the next")
+		expect.equal((TurtsRules.chip(start + glow, seconds, 999, glow)), false, "back to the countdown after the glow")
+		expect.equal((TurtsRules.chip(start + 5, seconds, 1000, glow)), false, "seen already: no glow")
+		expect.equal((TurtsRules.chip(start + 2 * seconds + 5, seconds, 999, glow)), true, "a later restock glows too")
+		expect.equal(glow, Turts.BEACON_SECONDS, "as long as his light shines over the rug")
+		assert(Turts.CHIP.trailSeconds > 0, "a tap shows the way for a while")
+	end,
+
+	-- (a phone shows his chip only while he's just restocked: owner 2026-11-17, "go A"; CompactHud.phonePieces)
+	["his chip's words: the countdown, or that he just restocked"] = function()
+		expect.equal(TurtsRules.chipText(false, 272), "Turts \u{B7} new stock in 4:32")
+		expect.equal(TurtsRules.chipText(false, 5), "Turts \u{B7} new stock in 0:05")
+		expect.equal(TurtsRules.chipText(true, 300), "Turts restocked!")
+		expect.equal(TurtsRules.clock(480), "8:00")
+		expect.equal(TurtsRules.clock(-3), "0:00")
 	end,
 }

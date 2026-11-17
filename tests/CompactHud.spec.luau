@@ -27,6 +27,34 @@ return {
 		expect.equal(tablet.y, 710 - 210, "210 from the bottom")
 	end,
 
+	-- Owner 2026-11-17 ("mobile version screen now too crowded ... lets just display the important stuffs on mobile", "go
+	-- A" of artifact GtT4bM87otu1aayFVANr7z): a phone keeps the essentials; the rest shows only where and when it matters
+	["what a phone shows: the essentials, the rest only where and when it matters"] = function()
+		local pc = CompactHud.phonePieces(false, true, false, false)
+		for name, shown in pc :: any do
+			if name ~= "questChip" then
+				expect.equal(shown, true, `{name}: as today on a computer`)
+			end
+		end
+		expect.equal(pc.questChip, false, "a computer keeps the quest strip")
+		local town = CompactHud.phonePieces(true, true, false, false)
+		expect.equal(town.nextUnlock, false, "no next-unlock line")
+		expect.equal(town.quickParty, false, "no quick Party button (Party is in the Phone)")
+		expect.equal(town.partyName, false, "no name under the creature")
+		expect.equal(town.emptySlots, false, "no empty + slots")
+		expect.equal(town.sideSlots, false, "one creature at a time: the rest a swipe or a hold away")
+		expect.equal(town.weaponChip, true, "the weapon beside it in town too (the pair never moves)")
+		expect.equal(town.giftTile, false, "the gift tile only once a gift is ready")
+		expect.equal(town.turtsChip, false, "Turts' chip only just after he restocks")
+		expect.equal(town.questChip, true, "the quests as a chip by the cash")
+		local wild = CompactHud.phonePieces(true, false, true, true)
+		expect.equal(wild.sideSlots, false, "one creature in the Wild too (owner 2026-11-17: swipe or hold for the rest)")
+		expect.equal(wild.weaponChip, true, "the weapon chip in the Wild")
+		expect.equal(wild.emptySlots, false, "still no empty slots")
+		expect.equal(wild.giftTile, true, "a ready gift shows")
+		expect.equal(wild.turtsChip, true, "a fresh restock shows")
+	end,
+
 	-- owner 2026-11-13 round 2 (pick A, "move the admin tile inside phone and move binder tile under phone"): on a
 	-- phone Bag, Bosses and Admin are Phone apps, Cards sits under the Phone, the shop apps stay in town
 	["a HUD button's spot: Bag / Bosses / Admin in the Phone on a phone, Cards under it, shop apps only in town"] = function()

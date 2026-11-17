@@ -63,4 +63,13 @@ function KeyframeTiming.oneShotEnd(length: number, blend: number, hold: number?)
 	return length + held + math.max(math.min(blend, length / 2), 1e-6)
 end
 
+-- A clip let go (ClipPlayer.fadeOut) shows its `weight` times the share of its fade still `left` of `total` seconds,
+-- from its current pose to nothing (owner 2026-11-17: Pish and Chikin slid while their hop clip held their legs)
+function KeyframeTiming.fadeWeight(weight: number, left: number, total: number): number
+	if total <= 0 or left <= 0 then
+		return 0
+	end
+	return weight * math.min(1, left / total)
+end
+
 return KeyframeTiming

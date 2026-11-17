@@ -50,9 +50,15 @@ local function runNow(at: BasePart, dog: BasePart, visual: PishVisual.Visual?, c
 		table.insert(clearance, freeFor(feet + up * 1.2, way, ARRIVAL.from + ARRIVAL.wallGap))
 	end
 	-- The ground under a spot (owner 2026-11-16: "while pish is running, he's phasing to the floor": he ran at your
-	-- feet's height in a straight line, so a higher step or sidewalk swallowed his paws): his marker sits on it
+	-- feet's height in a straight line, so a higher step or sidewalk swallowed his paws): his marker sits on it. Looked
+	-- for from a step over your feet (ARRIVAL.stepUp), on things you can't walk through: from 6 studs up he ran over
+	-- the top of your summoned creature (found 2026-11-17)
+	local ground = RaycastParams.new()
+	ground.FilterType = Enum.RaycastFilterType.Exclude
+	ground.FilterDescendantsInstances = blockers.FilterDescendantsInstances
+	ground.RespectCanCollide = true
 	local function onGround(spot: Vector3): Vector3
-		local hit = workspace:Raycast(Vector3.new(spot.X, feet.Y + 6, spot.Z), Vector3.new(0, -14, 0), blockers)
+		local hit = workspace:Raycast(Vector3.new(spot.X, feet.Y + ARRIVAL.stepUp, spot.Z), Vector3.new(0, -(ARRIVAL.stepUp + 8), 0), ground)
 		return if hit then Vector3.new(spot.X, hit.Position.Y, spot.Z) else spot
 	end
 	local index, runFrom = ArrivalShot.pickRun(clearance, ARRIVAL)
@@ -166,7 +172,10 @@ local function runNow(at: BasePart, dog: BasePart, visual: PishVisual.Visual?, c
 			end
 			hold(MAGIC.hop)
 		end
-		-- then he runs in, sparkles trailing him
+		-- then he runs in, sparkles trailing him: his hop let go first, so his legs run instead of holding its pose
+		if visual then
+			PishVisual.letGo(visual)
+		end
 		running = true
 		local stopTrail = DogMagic.trail(dog)
 		while not skipped and dog.Parent do

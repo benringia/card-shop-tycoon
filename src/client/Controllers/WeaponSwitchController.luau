@@ -36,6 +36,7 @@ local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
+local PickWheel = require(ClientUtil:WaitForChild("PickWheel"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local PlacementController = require(Controllers:WaitForChild("PlacementController"))
 local RegisterController = require(Controllers:WaitForChild("RegisterController"))
@@ -75,6 +76,14 @@ local tip: Frame
 local compact = false -- the phone's medallion alone (UIController.OnCompact)
 local countLabel: TextLabel -- the phone's "1/6" on the medallion's corner
 local rollTween: Tween? = nil
+-- A phone shows the weapon chip out of town only, where you fight (owner 2026-11-17, "go A"; CompactHud.phonePieces);
+-- a fight anywhere still shows it
+local weaponHere = true
+local weaponHints: Frame? = nil -- a phone's chevrons over and under the medallion (it swipes up and down)
+
+local function refreshHere()
+	weaponHere = CompactHud.phonePieces(compact, Hud.inTown(), false, false).weaponChip
+end
 
 local function unlocked(): boolean
 	local level = player:GetAttribute("Level")
@@ -257,6 +266,40 @@ local function step(delta: number)
 		showTip()
 	end
 	send(nextId)
+end
+
+-- The column of your weapons on the medallion held (a phone's pair, owner 2026-11-17 placement 2; PickWheel): each
+-- one's picture, name and line; one picked goes in hand
+local function openWheel(held: InputObject?)
+	if not WeaponSwitch.visible(list) then
+		return
+	end
+	local items: { PickWheel.Item } = {}
+	for _, id in list do
+		local weapon = Weapons.ById[id]
+		local entry = owned[id]
+		table.insert(items, {
+			image = (looksOf(id)),
+			tint = Color3.fromRGB(232, 235, 244),
+			fit = true,
+			title = if weapon then weapon.name else id,
+			line = WeaponText.switchLine(Weapons, id, if typeof(entry) == "table" then entry else nil),
+		})
+	end
+	PickWheel.open({
+		anchor = chipButton,
+		items = items,
+		current = table.find(list, current() or "") or 1,
+		held = held,
+		onPick = function(index: number)
+			local from = table.find(list, equipped or "")
+			if not from then
+				equipped = list[1]
+				from = 1
+			end
+			step(index - from)
+		end,
+	})
 end
 
 -- On the right edge, and in a fight above the fight buttons (UiLayout.weaponSwitch); redone when the screen's size
@@ -519,9 +562,17 @@ local function build()
 	lineLabel.TextXAlignment = Enum.TextXAlignment.Right
 	UIKit.outlined(lineLabel)
 
-	-- A horizontal swipe on the medallion steps too: left for the next weapon, right for the one before
+	-- A swipe on the medallion steps too: on a phone up for the next weapon and down for the one before, and a hold opens
+	-- the column of them all (owner 2026-11-17, placement 2: "add a swipe up/down o both. when a player long presses. it
+	-- should display her pets/weapons at the top and bottom"); on a computer left for the next, right for the one before
+	local consumed = PickWheel.gestures(chip, function()
+		return compact
+	end, function(delta: number)
+		step(delta)
+	end, function(input: InputObject)
+		openWheel(input)
+	end)
 	local pressedAt: Vector3? = nil
-	local swipedAt = 0
 	chip.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
 			pressedAt = input.Position
@@ -530,18 +581,18 @@ local function build()
 	chip.InputEnded:Connect(function(input)
 		local from = pressedAt
 		pressedAt = nil
-		if from and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1) then
-			local dx = input.Position.X - from.X
-			if math.abs(dx) >= LOOK.swipe then
-				swipedAt = os.clock()
-				step(if dx < 0 then 1 else -1)
-			end
+		if compact or not from or (input.UserInputType ~= Enum.UserInputType.Touch and input.UserInputType ~= Enum.UserInputType.MouseButton1) then
+			return
+		end
+		local dx = input.Position.X - from.X
+		if math.abs(dx) >= LOOK.swipe then
+			step(if dx < 0 then 1 else -1)
 		end
 	end)
-	-- the phone's medallion: a tap (not a swipe) is the next weapon; deferred so a swipe's InputEnded is seen first
+	-- the phone's medallion: a tap (not a swipe or a hold) is the next weapon; deferred so a swipe's end is seen first
 	chip.Activated:Connect(function()
 		task.defer(function()
-			if compact and os.clock() - swipedAt > 0.25 then
+			if compact and not consumed() and not PickWheel.isOpen() then
 				step(1)
 			end
 		end)
@@ -557,6 +608,7 @@ end
 -- The phone's medallion alone, or the dial: the track hides, the medallion grows and sits alone, the name goes beside it
 local function setCompact(on: boolean)
 	compact = on
+	refreshHere()
 	local size = if on then LOOK.compactChip else LOOK.chip
 	chipButton.Size = UDim2.fromOffset(size, size)
 	local corner = chipButton:FindFirstChildOfClass("UICorner")
@@ -566,9 +618,23 @@ local function setCompact(on: boolean)
 	local middle = if on then Vector2.new(size / 2, size / 2) else CENTER
 	chipButton.Position = UDim2.fromOffset(middle.X, middle.Y)
 	holder.Size = if on then UDim2.fromOffset(size, size) else UDim2.fromOffset(DIAL, DIAL)
-	-- the name left of the track (left of the medallion on a phone), level with the medallion's middle
-	local nameRight = if on then -8 else CENTER.X - LOOK.arc - LOOK.side / 2 - LOOK.gap
-	nameFrame.Position = UDim2.fromOffset(nameRight, middle.Y)
+	-- the name left of the track, level with the medallion's middle; on a phone over the medallion (the creature sits
+	-- left of it in the pair), with chevrons over and under it (it swipes)
+	if on then
+		nameFrame.AnchorPoint = Vector2.new(1, 1)
+		nameFrame.Position = UDim2.fromOffset(size, -26)
+	else
+		nameFrame.AnchorPoint = Vector2.new(1, 0.5)
+		nameFrame.Position = UDim2.fromOffset(CENTER.X - LOOK.arc - LOOK.side / 2 - LOOK.gap, middle.Y)
+	end
+	local hints = weaponHints
+	if hints then
+		hints:Destroy()
+		weaponHints = nil
+	end
+	if on then
+		weaponHints = PickWheel.hints(chipButton, size / 2 + 12)
+	end
 	laidOutSize = Vector2.zero -- lay it out again
 	render()
 end
@@ -577,6 +643,10 @@ function WeaponSwitchController.Start()
 	build()
 	render()
 	UIController.OnCompact(setCompact)
+	refreshHere()
+	Hud.onTown(function()
+		refreshHere()
+	end)
 	Remotes.WeaponsChanged.OnClientEvent:Connect(function(state: unknown)
 		if typeof(state) ~= "table" then
 			return
@@ -611,9 +681,9 @@ function WeaponSwitchController.Start()
 	RunService.Heartbeat:Connect(function()
 		local view = (holder.Parent :: GuiObject).AbsoluteSize
 		local fight = screenGui:FindFirstChild("CombatHud") ~= nil
-		-- the phone's spot in the party dock: kept while there's a weapon to switch to
+		-- the phone's spot in the party dock: kept while there's a weapon to switch to, out of town
 		local spot = PartyBarController.GetWeaponSpot()
-		local wantSpot = compact and WeaponSwitch.visible(list)
+		local wantSpot = compact and WeaponSwitch.visible(list) and weaponHere
 		if spot and spot.Visible ~= wantSpot then
 			spot.Visible = wantSpot
 		end
@@ -622,6 +692,7 @@ function WeaponSwitchController.Start()
 			relayout(view, fight)
 		end
 		holder.Visible = WeaponSwitch.visible(list)
+			and (weaponHere or fight)
 			and not UIKit.anyPanelOpen()
 			and not PlacementController.IsActive()
 			and not RegisterController.IsShowing() -- the checkout sits in the same spot (owner 2026-11-10)

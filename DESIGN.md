@@ -1169,6 +1169,34 @@ its ScreenGui (not the camera, which counts Roblox's top bar); the Party window'
 middle; every shelf's Stock and Edit prompts are made once (the folder's first scan and its deferred ChildAdded both
 brought each shelf, so every shelf had two of each, drawn one on the other), and so are other players' Browse cards
 prompts.
+Round 3, only the important stuff (owner 2026-11-17: "mobile version screen now too crowded. any idea on what we should
+display what we can hide? lets just display the important stuffs on mobile", "go A" of artifact
+GtT4bM87otu1aayFVANr7z; `CompactHud.phonePieces`, tests/CompactHud; PC unchanged): a phone always shows the Phone,
+Cards, your avatar with the shop level and its bar, the cash, and your creature and weapon (below). The quests are a
+chip beside the cash (`QuestRules.bandParts`: its scroll and one chip, "0/3", "Claim!", a trophy and "10h" once all is
+done; no title, no arrow; tapping it opens the Quests window). Its Claim! keeps still on a phone (owner 2026-11-17: "on
+mobile. remove this claim pulsating animation"): it pops in once with a plain mint outline, no pulse, ring, glow or
+passing shine. The gift tile shows once a gift is ready (no countdown), and Turts' chip only for the 30 s after he
+restocks, under the column's last piece. Gone from phones: the next-unlock line, the quick Party button (Party is in the
+Phone), the creature's name under the dock, empty party slots and the party's other creatures (a swipe or a hold away).
+**The creature and weapon pair** (owner 2026-11-17: "how will the player summon the other pet in his party? maybe make
+the party swipeable. move the party down beside the weapon and add a swipe up/down o both. when a player long presses.
+it should display her pets/weapons at the top and bottom so that player can choose", placement 2 of artifact
+GtT4bM87otu1aayFVANr7z; `Util/PairRules` (tests/PairRules), client `Util/PickWheel`, `Party.BAR.PAIR`; phones only): your
+creature (the carousel's middle) and your weapon medallion side by side on the right margin, 12 px above Roblox's jump
+button where the right thumb rests, the same in town and out of it; the creature carries "2/3" on its corner and
+chevrons over and under it when the party has more than one, the medallion its "1/6" and chevrons. Tap the creature to
+summon it or send it back, the medallion for the next weapon. Swipe up for the next, down for the one before (the end of
+the touch is heard anywhere, `PickWheel.gestures`): a creature that's out swaps at once (the new one shows in the middle
+straight away and its summon goes 0.25 s after the last swipe), one that isn't only changes which is chosen; the name
+shows over the button for 1.4 s. Hold still (within 8 px) for 0.35 s: the screen dims and a column opens on the button,
+the one you have now in the middle (gold ring), the ones before above and after below with their names and levels ("·
+out", "· resting"; a weapon's line), wrapping round, five rows at most (`PairRules.wheel`); slide onto one and let go to
+pick it (a picked creature comes out), or let go and tap one; a tap anywhere else closes it; held past an end, or swiped
+once let go, it rolls on to the rest. Any movement before the hold counts as a swipe, so a slow swipe up is still the
+next one. A hold on a creature no longer shows its card info on a phone (the Party window has it). A computer keeps the
+dock in the bottom-left corner and the dial at the bottom right. Checked on Studio's iPhone 17 Pro: swipes both ways,
+the party column picked by a tap, the weapon column by a slide, taps, and a computer unchanged.
 **The party dock** (owner 2026-11-13: "lets make the party UI like this in palworld. pets carousel, then under it is the
 character menu model then beside it is health. Both mobile and Desktop", then "no box", Pish pick A; PartyBarController,
 Util/PartyDock, `Party.BAR.DOCK`): it replaces the party bar (and the round 2 "+2" bubble) on PC and phones, with no
@@ -3385,7 +3413,10 @@ All numbers in `Config/Pish`.
   card pops up big at the top ("Pish! Your shop buddy", "Chikin! Your battle coach", `PishTalk` / `ChikinTalk` LABELS)
   with a cheerful APM sting, the camera pushing in on him; then he runs in trailing gold sparkles, the camera riding
   low beside him on his paws as he runs in (30 studs, about 4.6 s, each step on the ground under it: owner 2026-11-16 "while
-  pish is running, he's phasing to the floor"; from in front of the player if that's clear,
+  pish is running, he's phasing to the floor"; the ground is looked for from `ARRIVAL.stepUp` (2 studs) above his feet,
+  solid parts only, so a curb lifts him but the player's creature never does; his hop lets go of his legs over 0.2 s as
+  he starts running (`PishVisual.letGo`, `KeyframeTiming.fadeWeight`), owner 2026-11-17: "they are sliding not
+  walking/running"; from in front of the player if that's clear,
   else the first clear way fanning out left and right, so he never runs through a shelf or a wall), slowly pans up to
   his face, and zooms out to a wide shot of the two of you as he stops in front of the player and barks (the first of
   four angles with a clear view) in hearts and stars; about 9 s in all, then the camera goes back behind the player and
@@ -3624,8 +3655,8 @@ proof and balance. restock also stocks only 1qty per item").
   cash.
 - What he sells (`Config/Turts OFFERS`; each price at least 1.5 times its usual value, the cash it takes to earn it the
   normal way, Lune-tested): Very Rare Pack $25 (weight 16), Epic Pack $75 (6), Legendary Pack $600 (0.8; its Legendary's
-  grade rolls the pity Legendary's stingy odds, so it can't skip the long Grade S chase), Wild Ore x10 $400 (20), XP
-  Tonic $120 (16), Star Shard $300 (10), Grading Seal $400 (8), each boss's weapon material $350 (owner: "boss materials
+  grade rolls the pity Legendary's stingy odds, so it can't skip the long Grade S chase), Wild Ore $40 (20; one, like
+  everything he sells: owner 2026-11-17, "turts should only sell 1 quantity", it was 10 for $400), XP Tonic $120 (16), Star Shard $300 (10), Grading Seal $400 (8), each boss's weapon material $350 (owner: "boss materials
   but at a low odds"; then "lower the chances of getting a rare items like legendary card pack and other high level boss
   items": the first three bosses' 0.6, the Frost Tyrant's, Storm Sovereign's and Rift Devourer's 0.35, the Prism
   Hydra's 0.2), Gold Seal $15,000 (0.4; it pays up to $10,000 of grading). Never: key fragments, trophies. At 7.5
@@ -3634,6 +3665,17 @@ proof and balance. restock also stocks only 1qty per item").
   its top-left corner, small, paws on the header, the title beside him (`Turts.PEEK`, `assets/ui/mascot/Turts_peek.png`,
   cut like Pish's sticker; owner: "put it near the left corner of the window and make it smaller"). His packs open from
   the Bag (`vrPack`, `epicPack`, `legendaryPack`: First Spark packs, the hit card floored) and count as packs opened.
+- **His chip** (owner 2026-11-17: "can a turts store restock timer be put somewhere on the screen? or is it too
+  crowded now", look A of artifact XyGHP2ku71fRaYeuEkGZ6D; `Turts.CHIP`, `TurtsRules.chip` / `chipText`, tests/TurtsRules):
+  a small cotton candy pill with his face riding right under the quest strip (`QuestController.Below`: under its bottom
+  edge with a small gap, 12 px with the strokes drawn outside, about 6 seen (owner: "add small gap between them"),
+  folding up with it; on a phone (the quests are a chip by the cash there, owner 2026-11-17 "go A") only while he's
+  just restocked, under the top-right column's last piece, off the jump button, hidden while a window is open):
+  "Turts · new stock in 4:32", the time in sky blue. After a restock you haven't opened his
+  window since it turns gold and breathes "Turts restocked!" for 30 s, as long as his light shines (my call: "until you
+  visit" would keep it gold for good for anyone who skips him, since he restocks every 8 minutes); the restock at join
+  counts as seen. A tap lights his beacon again and lays the tutorial's gold paws from you to his rug for 8 s
+  (`TutorialCues.trail`); hovering says "He brings new offers every 8 minutes." Town only, once his rug is open.
 - Server authoritative (`TurtsService`): the buy checks it's the same restock, in that player's stock, not bought, the
   player is near him (prompt range + 4) and has the cash; refusals through `Util/Blocked`. Studio: `/turts restock |
   move | offer <id>` and the admin panel's "Turts' rug shop" buttons.
@@ -3727,19 +3769,31 @@ the always-on tracker B, the money card A).
   "+1" rises over it and its end twinkles; a finished quest flashes mint and its check stamps in with confetti; the
   count bumps; Claim! pops in and pulses with a ring while the card's outline glows mint. Changes while the strip is
   hidden (a fight, the pack opening, Open 10) play when it shows again. All done: a gold card with a hopping trophy,
-  twinkles, "Quests done!" and "New quests in 16h 46m". On a phone only the band shows: "Quests" and one chip (the
-  count, a pulsing Claim! or "15h"), placed under the top-right column's last piece (not its frame, which keeps room
-  for a taller dock: owner 2026-11-17, "it overlaps with the jump button"), and beside the jump button if it would still
-  reach it (`CompactHud.questSpot`, Roblox's jump button at `CompactHud.jumpRect`). A round chevron on the band folds
-  the strip (owner 2026-11-17: "can we make the quest window minimizable/hideable?"): to the band on a computer, to the
-  scroll and its chip on a phone (a 30 px button there); a tap opens it again, and a new day's quests show it open. The
-  fold lasts the session. A toast as one finishes; tapping it
+  twinkles, "Quests done!" and "New quests in 16h 46m". On a phone it's a small chip beside the cash pill (owner
+  2026-11-17: "mobile version screen now too crowded", "go A"; `QuestRules.bandParts`, `Quests.STRIP` phoneBand /
+  phoneChip): its scroll (a star for the week's, a trophy once all is done) and one chip, the count, a pulsing Claim! or
+  "15h", as wide as they are; no title, no chevron (its chevron only ever hid the title there: "clicking on the quest
+  arrow in mobile doesnt do anything"). A round chevron on a computer's band folds the strip to the band (owner
+  2026-11-17: "can we make the quest window minimizable/hideable?"); a tap opens it again, and a new day's quests show it
+  open. The fold lasts the session. A toast as one finishes; tapping it
   opens the **Daily Quests** window (the butter-gold band,
   CreamTheme `Quests`): each row's icon, words, bar, "2/3 · +$57 · +57 shop XP" and Claim / Keep going! / Claimed, the
   chest row, the countdown to the next UTC midnight. A claim sends coins from the button into the cash pill
   (`Util/CoinBurst`). The card hides with the HUD (fights, the binder, Pish's and Chikin's calm HUD, manning the
   register) and on a phone while a window is open; not in the Dungeon (its objective holds the top right). Saved as
   `quests` (schema v33). Studio: `/quests done | new`.
+- **Weekly quests** (owner 2026-11-17: "what players do after daily quests?", look A of artifact
+  XyGHP2ku71fRaYeuEkGZ6D; `Quests.WEEKLY`, `QuestRules` week functions, tests/QuestRules): three more for each
+  Monday-to-Monday UTC week (the gifts' weeks, `GiftRules.weekOf`), one per kind, rolled from the same pool at the shop's
+  level with each goal 7 times the day's (Lv 16: put 28 boxes on shelves, rip 56 packs, beat a boss 7 times). They count
+  the same play from Monday, pay nothing one by one, and all three done open the **Weekly Chest** (an Epic Pack and two
+  XP Tonics) with the gifts' win moment ("WEEKLY QUESTS!", a sky-blue chest, `Gifts.WIN.questWeek`; OPEN IT NOW! rips
+  the pack). In the window they sit under the day's: "Weekly Quests" and "5 days left", rows "28/28 · for the Weekly
+  Chest" with Done, the Weekly Chest row with Open. The strip shows them once today's Quest Chest is opened
+  (`QuestRules.stripMode`: daily, then weekly, then done): a "Weekly" line with the time left, the three rows with the
+  same animations, "All 3: Weekly Chest (Epic Pack!)" or "Weekly Chest ready! Tap to open" (its gift wiggles); the
+  week's rows and the gold done box pop in as they arrive. A phone's band says "Weekly" and the week's count. Saved as
+  `weekly` (schema v34). Studio: `/quests week | newweek`. Later, next to it: set rewards (option C).
 - **Welcome-back earnings** (`Config/Offline`, pure `Util/OfflineRules`, `OfflineService`, `WelcomeBackController`;
   tests/OfflineRules): when a save loads in the main game after 10 minutes or more away, the shelves sell their stock as
   if customers had come meanwhile: 2 customers' worth a minute (about a fifth of a busy shop), shared between the
@@ -4438,7 +4492,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v33)
+### 10.4 Player data schema (v34)
 ```lua
 {
     version = 21,
@@ -4491,6 +4545,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     tips = { toBag = 2 }, -- how many times each tip has shown, by Config/Tips id (TipService, Util/TipRules; v32)
     quests = { day = 20410, list = { { id = "serve", goal = 3, progress = 1, claimed = false } }, bonus = false }, -- today's daily quests (QuestService, Util/QuestRules; v33)
     lastSeen = 1795000000, -- os.time of the last main-game save: welcome-back earnings (OfflineService; v33, 0 = never)
+    weekly = { week = 2914, list = { { id = "rip", goal = 56, progress = 12, claimed = false } }, chest = false }, -- this week's quests (Monday weeks, GiftRules.weekOf) and the Weekly Chest opened (QuestService, Util/QuestRules; v34)
 }
 ```
 Bump `version` and write a migration whenever the shape changes.

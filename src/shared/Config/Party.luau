@@ -770,6 +770,26 @@ return {
 			elementBadge = 20,
 			elementAt = 21,
 		},
+		-- The phone's creature and weapon pair (owner 2026-11-17: "make the party swipeable. move the party down beside the
+		-- weapon ... when a player long presses. it should display her pets/weapons at the top and bottom", placement 2;
+		-- Util/PairRules, Util/PickWheel): `gap` px above the jump button, `margin` from the right edge, `between` the two;
+		-- the creature portrait `center` scale (the weapon chip is HudLayout.WEAPON_SWITCH compactChip); a swipe is
+		-- `swipe` px up or down; a hold is `hold` s with the finger within `still` px (moving any more is a swipe on its way,
+		-- so a slow swipe up still means the next one) and opens the column of `visible` rows `step` px apart, which rolls
+		-- a row every `roll` s while a finger is held past an end; a swipe's or pick's name shows `nameSeconds`
+		PAIR = {
+			gap = 12,
+			margin = 16,
+			between = 8,
+			center = 0.95,
+			swipe = 24,
+			still = 8,
+			hold = 0.35,
+			visible = 5,
+			step = 62,
+			roll = 0.3,
+			nameSeconds = 1.4,
+		},
 		-- The XP sparks after a monster win (spec 2026-11-03-windows-round3-design, Util/SparkPath): min to max sparks per
 		-- portrait (more for more XP), each `seconds` on a curve bowed `lift` px up, `stagger` s apart, `size` px, lilac;
 		-- then "+N XP" pops over the portrait (`popText` px), rising `popRise` px over `popSeconds`

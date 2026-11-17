@@ -94,4 +94,50 @@ function CompactHud.questSpot(below: number, size: { w: number, h: number }, scr
 	return top, margin
 end
 
+-- What a phone shows (owner 2026-11-17: "mobile version screen now too crowded ... lets just display the important
+-- stuffs on mobile", "go A" of artifact GtT4bM87otu1aayFVANr7z): the essentials always (the Phone, Cards, your avatar
+-- and shop level, the cash, your creature and your weapon side by side above the jump button: Util/PairRules, its round
+-- 2); the next-unlock line, the quick Party button, the creature's name, empty party slots and the rest of the party
+-- never (they're a swipe or a hold away); the gift tile once a gift is ready; Turts' chip just after he restocks; the
+-- quests as a chip by the cash instead of the strip. A computer shows everything as before. Each piece still follows
+-- its own rules too (the gift tile counting or ready, Turts' chip in town after the tour...).
+export type PhonePieces = {
+	nextUnlock: boolean,
+	quickParty: boolean,
+	partyName: boolean,
+	emptySlots: boolean,
+	sideSlots: boolean,
+	weaponChip: boolean,
+	giftTile: boolean,
+	turtsChip: boolean,
+	questChip: boolean,
+}
+
+function CompactHud.phonePieces(compact: boolean, inTown: boolean, giftReady: boolean, turtsFresh: boolean): PhonePieces
+	if not compact then
+		return {
+			nextUnlock = true,
+			quickParty = true,
+			partyName = true,
+			emptySlots = true,
+			sideSlots = true,
+			weaponChip = true,
+			giftTile = true,
+			turtsChip = true,
+			questChip = false,
+		}
+	end
+	return {
+		nextUnlock = false,
+		quickParty = false,
+		partyName = false,
+		emptySlots = false,
+		sideSlots = false,
+		weaponChip = true,
+		giftTile = giftReady,
+		turtsChip = turtsFresh,
+		questChip = true,
+	}
+end
+
 return CompactHud

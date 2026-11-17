@@ -16,6 +16,29 @@ function TurtsRules.secondsLeft(now: number, seconds: number): number
 	return seconds - (math.floor(now) % seconds)
 end
 
+-- "4:32"
+function TurtsRules.clock(seconds: number): string
+	local left = math.max(0, math.floor(seconds))
+	return string.format("%d:%02d", left // 60, left % 60)
+end
+
+-- His chip under the quest strip (owner 2026-11-17, look A): whether it glows gold ("Turts restocked!": a restock newer
+-- than `seen`, the restock the player last opened his window in, began less than `glow` seconds ago) and the seconds
+-- to the next restock
+function TurtsRules.chip(now: number, seconds: number, seen: number, glow: number): (boolean, number)
+	local index = TurtsRules.restockIndex(now, seconds)
+	local into = math.floor(now) - index * seconds
+	return index > seen and into < glow, TurtsRules.secondsLeft(now, seconds)
+end
+
+-- The chip's words: the countdown, or that he just restocked (all a phone ever shows of it)
+function TurtsRules.chipText(fresh: boolean, left: number): string
+	if fresh then
+		return "Turts restocked!"
+	end
+	return `Turts · new stock in {TurtsRules.clock(left)}`
+end
+
 -- `picks` different offer ids, each picked by weight among those not yet picked; offers are walked in id order so one
 -- seed always gives the same roll
 function TurtsRules.roll(offers: { [string]: any }, picks: number, random: () -> number): { string }

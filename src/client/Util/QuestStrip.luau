@@ -6,9 +6,15 @@
 -- changed since the last state animates (QuestRules.stripChanges): the bar fills and "+1" rises over it with a twinkle at
 -- its end, a finished quest flashes mint and its check stamps in with confetti, the done count bumps, Claim! pops in and
 -- pulses with a ring while the card's outline glows mint. Quests done turns it gold: a hopping trophy, twinkles, the time
--- to new quests. On a phone only the band shows: "Quests" and one chip (the count, a pulsing Claim! or the hours left).
--- A chevron on the band folds it (owner 2026-11-17: "minimizable/hideable"): to the band on a computer, to the scroll
--- and the chip on a phone; it opens again on a tap, or by itself on a new day's quests.
+-- to new quests. On a phone it's a small chip beside the cash pill (owner 2026-11-17: "mobile version screen now too
+-- crowded", "go A" of artifact GtT4bM87otu1aayFVANr7z; QuestRules.bandParts): its scroll and one chip (the count, a
+-- pulsing Claim! or the hours left), as wide as they are, no title and no chevron. On a computer a chevron on the band
+-- folds it to the band (owner 2026-11-17: "minimizable/hideable"); it opens again on a tap, or by itself on a new day's
+-- quests.
+-- Once today's Quest Chest is opened the week's quests take the rows (owner 2026-11-17: "what players do after daily
+-- quests?", look A; QuestRules.stripMode): a "Weekly" line with the time left, the three rows animating the same way and
+-- the Weekly Chest line under them (ready: it says so and wiggles); a phone's chip shows a star and their count. Both
+-- chests opened: the gold done box (a phone's chip: a trophy and the hours left). Each part pops in as it arrives.
 -- QuestController places it, shows or hides it and opens the window on a tap.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -16,6 +22,7 @@ local TweenService = game:GetService("TweenService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Quests = require(Config:WaitForChild("Quests"))
+local Items = require(Config:WaitForChild("Items"))
 local UIStyle = require(Config:WaitForChild("UIStyle"))
 local PackFx = require(Config:WaitForChild("PackFx"))
 local QuestRules = require(Shared:WaitForChild("Util"):WaitForChild("QuestRules"))
@@ -41,6 +48,8 @@ local GLINT_SHEET_PX = 1024 -- the glint sheet's size (assets/ui/fx/Glint.png)
 local GLINT_FRAME = 4 -- its brightest frame of the 16
 local CORNER = 14
 local TICK = 0.25 -- seconds between the idle loop's checks
+local WEEK_INK = BABY.lilac.deep
+local CHEST_PRIZE = (Items.ITEMS[Quests.WEEKLY.CHEST[1].item] or { name = "a prize" }).name
 
 local root: TextButton
 local outline: UIStroke
@@ -59,14 +68,25 @@ local trophy: Frame
 local doneTime: TextLabel
 local doneGlints: { ImageLabel } = {}
 local rows: { Row } = {}
+local weekHead: Frame
+local weekLeft: TextLabel
+local chestLine: Frame
+local chestIcon: Frame
+local chestWords: TextLabel
+local chestReady = false
 local last: View? = nil -- the newest state
-local seen: View? = nil -- the state the player last saw (what changed since plays when they can see it)
+local lastShown: View? = nil -- the part of it the rows show: the day's or the week's
+local lastMode: QuestRules.StripMode? = nil
+local popPending: QuestRules.StripMode? = nil -- the week's rows or the done box arrived: they pop in once seen
+local seen: View? = nil -- the part the player last saw (what changed since plays when they can see it)
 local lastCompact: boolean? = nil
 local lastReset = ""
+local lastWeekText = ""
 local folded = false
 local fold: TextButton
 local foldArrow: Frame
 local claimTweens: { Tween } = {}
+local claimLook: string? = nil -- "computer" (pulsing), "phone" (still) or nil: what Claim! shows now
 local trophyTween: Tween? = nil
 
 local function tween(object: Instance, seconds: number, goal: { [string]: any }, style: Enum.EasingStyle?, direction: Enum.EasingDirection?): Tween
@@ -369,19 +389,38 @@ local function buildRow(index: number, quest: QuestView): Row
 	check.TextXAlignment = Enum.TextXAlignment.Center
 	check.ZIndex = 6
 	check.Visible = false
-	local words = UIKit.label(frame, quest.text, Enum.Font.GothamBold, 12, CREAM.INK)
+	-- the words and the count on one line: the count as wide as its numbers (a week's "1750/1750" ran out of a fixed
+	-- 40 px), the words filling the rest
+	local line = Instance.new("Frame")
+	line.Name = "Line"
+	line.BackgroundTransparency = 1
+	line.Position = UDim2.fromOffset(34, 1)
+	line.Size = UDim2.new(1, -36, 0, 15)
+	line.ZIndex = 3
+	line.Parent = frame
+	local lineLayout = Instance.new("UIListLayout")
+	lineLayout.FillDirection = Enum.FillDirection.Horizontal
+	lineLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	lineLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	lineLayout.Padding = UDim.new(0, 4)
+	lineLayout.Parent = line
+	local words = UIKit.label(line, quest.text, Enum.Font.GothamBold, 12, CREAM.INK)
 	words.Name = "Words"
-	words.Position = UDim2.fromOffset(34, 1)
-	words.Size = UDim2.new(1, -34 - 40, 0, 15)
+	words.LayoutOrder = 1
+	words.Size = UDim2.new(0, 0, 1, 0)
 	words.TextTruncate = Enum.TextTruncate.AtEnd
 	words.TextWrapped = false
 	words.ZIndex = 3
-	local count = UIKit.label(frame, "", Enum.Font.FredokaOne, 12, CREAM.INK_SOFT)
+	local grow = Instance.new("UIFlexItem")
+	grow.FlexMode = Enum.UIFlexMode.Fill
+	grow.Parent = words
+	local count = UIKit.label(line, "", Enum.Font.FredokaOne, 12, CREAM.INK_SOFT)
 	count.Name = "Count"
-	count.AnchorPoint = Vector2.new(1, 0)
-	count.Position = UDim2.new(1, -2, 0, 1)
-	count.Size = UDim2.fromOffset(40, 15)
+	count.LayoutOrder = 2
+	count.AutomaticSize = Enum.AutomaticSize.X
+	count.Size = UDim2.new(0, 0, 1, 0)
 	count.TextXAlignment = Enum.TextXAlignment.Right
+	count.TextWrapped = false
 	count.ZIndex = 3
 	local track = Instance.new("Frame")
 	track.Name = "Track"
@@ -513,13 +552,20 @@ local function stopClaim()
 	outline.Thickness = 3
 end
 
--- Claim! pulses with a ring pinging out of it, and the card's outline glows mint
+-- Claim! pulses with a ring pinging out of it, and the card's outline glows mint. A phone's chip keeps still (owner
+-- 2026-11-17: "on mobile. remove this claim pulsating animation"): Claim! pops in once and the outline turns mint
 local function startClaim(popIn: boolean)
 	stopClaim()
 	local scale = scaleOf(claimChip)
 	if popIn then
 		scale.Scale = 0
 		tween(scale, 0.4, { Scale = 1 }, Enum.EasingStyle.Back)
+	end
+	if lastCompact then
+		local rim = claimPing:FindFirstChild("Rim") :: UIStroke
+		rim.Transparency = 1
+		outline.Color = BABY.mint.fill
+		return
 	end
 	task.delay(if popIn then 0.4 else 0, function()
 		if not claimChip.Visible then
@@ -574,6 +620,65 @@ local function buildDone()
 	end
 end
 
+-- The week's "Weekly" line over its rows (the time left on its right) and the Weekly Chest line under them
+local function buildWeekly()
+	weekHead = Instance.new("Frame")
+	weekHead.Name = "WeekHead"
+	weekHead.LayoutOrder = 0
+	weekHead.BackgroundTransparency = 1
+	weekHead.Size = UDim2.new(1, 0, 0, 18)
+	weekHead.Visible = false
+	weekHead.ZIndex = 2
+	weekHead.Parent = rowsFrame
+	local star = Icon.make(weekHead, "⭐", UDim2.fromOffset(16, 16))
+	star.AnchorPoint = Vector2.new(0, 0.5)
+	star.Position = UDim2.new(0, 4, 0.5, 0)
+	star.ZIndex = 3
+	Icon.layer(star, 3)
+	local words = UIKit.label(weekHead, "Weekly", Enum.Font.FredokaOne, 14, WEEK_INK)
+	words.Name = "Words"
+	words.Position = UDim2.fromOffset(24, 0)
+	words.Size = UDim2.new(0.5, -24, 1, 0)
+	words.TextWrapped = false
+	words.ZIndex = 3
+	weekLeft = UIKit.label(weekHead, "", Enum.Font.GothamBold, 11, CREAM.INK_SOFT)
+	weekLeft.Name = "Left"
+	weekLeft.AnchorPoint = Vector2.new(1, 0)
+	weekLeft.Position = UDim2.new(1, -2, 0, 0)
+	weekLeft.Size = UDim2.new(0.5, 0, 1, 0)
+	weekLeft.TextXAlignment = Enum.TextXAlignment.Right
+	weekLeft.TextWrapped = false
+	weekLeft.ZIndex = 3
+	chestLine = Instance.new("Frame")
+	chestLine.Name = "WeekChest"
+	chestLine.LayoutOrder = 10
+	chestLine.BackgroundTransparency = 1
+	chestLine.Size = UDim2.new(1, 0, 0, 24)
+	chestLine.Visible = false
+	chestLine.ZIndex = 2
+	chestLine.Parent = rowsFrame
+	chestIcon = Icon.make(chestLine, "Gift", UDim2.fromOffset(22, 22))
+	chestIcon.AnchorPoint = Vector2.new(0, 0.5)
+	chestIcon.Position = UDim2.new(0, 3, 0.5, 0)
+	chestIcon.ZIndex = 3
+	Icon.layer(chestIcon, 3)
+	chestWords = UIKit.label(chestLine, "", Enum.Font.GothamBold, 11, CREAM.INK_SOFT)
+	chestWords.Name = "Words"
+	chestWords.AnchorPoint = Vector2.new(0, 0.5)
+	chestWords.Position = UDim2.new(0, 31, 0.5, 0)
+	chestWords.Size = UDim2.new(1, -33, 1, 0)
+	chestWords.TextTruncate = Enum.TextTruncate.AtEnd
+	chestWords.TextWrapped = false
+	chestWords.ZIndex = 3
+end
+
+-- The Weekly Chest line: what all three open, or that it's ready (it wiggles then)
+local function showChest(ready: boolean)
+	chestReady = ready
+	chestWords.Text = if ready then "Weekly Chest ready! Tap to open" else `All 3: Weekly Chest ({CHEST_PRIZE}!)`
+	chestWords.TextColor3 = if ready then BABY.mint.deep else CREAM.INK_SOFT
+end
+
 local function rebuildRows(current: View)
 	for _, row in rows do
 		row.frame:Destroy()
@@ -608,9 +713,25 @@ local function shown(): boolean
 	return root.Visible and (holder == nil or not holder:IsA("GuiObject") or holder.Visible)
 end
 
+-- The week's rows or the gold done box popping in once the player can see the strip
+local function playPop()
+	local mode = popPending
+	if not mode or not shown() then
+		return
+	end
+	popPending = nil
+	local target: GuiObject = if mode == "done" then doneBox else rowsFrame
+	if not target.Visible then
+		return
+	end
+	local scale = scaleOf(target)
+	scale.Scale = 0.6
+	tween(scale, 0.45, { Scale = 1 }, Enum.EasingStyle.Back)
+end
+
 -- What changed since the player last saw the strip, played now: bars filling with +N, checks stamping in, the count
--- bumping, Claim! popping in, the gold done box. Held while the strip is hidden: back from a fight, the quest finished
--- there stamps in as you watch.
+-- bumping, Claim! popping in. Held while the strip is hidden: back from a fight, the quest finished there stamps in as
+-- you watch. `current`: the part the rows show (the day's or the week's).
 local function animate(current: View)
 	local from = seen
 	seen = current
@@ -630,15 +751,23 @@ local function animate(current: View)
 	for _, index in changes.finished do
 		finished(rows[index])
 	end
-	if changes.allDone and doneBox.Visible then
-		local scale = scaleOf(doneBox)
-		scale.Scale = 0.6
-		tween(scale, 0.45, { Scale = 1 }, Enum.EasingStyle.Back)
+end
+
+-- A phone's chip as wide as what it shows: its scroll, then the count, Claim! or the hours left (their own scale taken
+-- out: Claim! pulses, the count bumps)
+local function fitPhone()
+	if not lastCompact then
+		return
 	end
+	local shownChip = if claimChip.Visible then claimChip else countChip
+	local scale = shownChip:FindFirstChildOfClass("UIScale")
+	local width = shownChip.AbsoluteSize.X / (if scale and scale.Scale > 0 then scale.Scale else 1)
+	root.Size = UDim2.fromOffset(math.ceil(STRIP.phoneChip.left + width + STRIP.phoneChip.right), 0)
 end
 
 local function onShown()
-	local current = last
+	playPop()
+	local current = lastShown
 	if current and current ~= seen and #current.quests > 0 and shown() then
 		animate(current)
 	end
@@ -668,6 +797,8 @@ function QuestStrip.build(parent: Instance): TextButton
 	stack.SortOrder = Enum.SortOrder.LayoutOrder
 	stack.Parent = root
 	buildBand()
+	countChip:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitPhone)
+	claimChip:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitPhone)
 	rowsFrame = Instance.new("Frame")
 	rowsFrame.Name = "Rows"
 	rowsFrame.LayoutOrder = 1
@@ -687,13 +818,14 @@ function QuestStrip.build(parent: Instance): TextButton
 	rowsLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	rowsLayout.Parent = rowsFrame
 	buildDone()
+	buildWeekly()
 	task.spawn(function()
 		local clock = 0
 		local glintIndex = 0
 		while root.Parent do
 			task.wait(TICK)
 			clock += TICK
-			if root.Visible then
+			if root.Visible and not lastCompact then -- a phone's chip keeps still (no shine or wiggle passing over it)
 				if clock % STRIP.shineEvery < TICK then
 					shine(bandSweep, 0.12, 0.54, 1)
 				end
@@ -704,6 +836,9 @@ function QuestStrip.build(parent: Instance): TextButton
 					if row.frame.Parent and row.fill.Size.X.Scale > 0.15 and (clock + index * 0.9) % STRIP.barShineEvery < TICK then
 						shine(row.sweep, 0.05, 0.6, 0.9)
 					end
+				end
+				if chestReady and chestLine.Visible and clock % STRIP.wiggleEvery < TICK then
+					wiggle(chestIcon)
 				end
 				if doneBox.Visible and clock % 0.75 < TICK and #doneGlints > 0 then
 					glintIndex = glintIndex % #doneGlints + 1
@@ -716,7 +851,7 @@ function QuestStrip.build(parent: Instance): TextButton
 		folded = not folded
 		tween(foldArrow, 0.25, { Rotation = if folded then 180 else 0 }, Enum.EasingStyle.Back)
 		bump(root, 1.04)
-		QuestStrip.render(last, lastCompact == true, lastReset)
+		QuestStrip.render(last, lastCompact == true, lastReset, lastWeekText)
 	end)
 	root:GetPropertyChangedSignal("Visible"):Connect(onShown)
 	if parent:IsA("GuiObject") then
@@ -726,70 +861,97 @@ function QuestStrip.build(parent: Instance): TextButton
 end
 
 -- Shows `current` as it is (nil or no quests: nothing), and plays what changed when the player can see it; `compact`:
--- the phone's one-line band; `resetText`: "New quests in 9h 12m"
-function QuestStrip.render(current: View?, compact: boolean, resetText: string)
+-- the phone's one-line band; `resetText`: "New quests in 9h 12m"; `weekText`: "4 days left"
+function QuestStrip.render(current: View?, compact: boolean, resetText: string, weekText: string)
 	last = current
 	if not current or #current.quests == 0 then
 		return
 	end
+	local mode = QuestRules.stripMode(current)
+	local week = current.week
+	local showing: View = if mode == "weekly" and week then week else current
 	local fresh = lastCompact ~= compact
 	lastCompact = compact
 	lastReset = resetText
-	local width = if compact then (if folded then STRIP.phoneFolded else STRIP.phoneWidth) else STRIP.width
-	root.Size = UDim2.fromOffset(width, 0)
+	lastWeekText = weekText
 	band.Size = UDim2.new(1, 0, 0, if compact then STRIP.phoneBand else STRIP.band)
 	bandFiller.Visible = not compact and not folded
-	title.Visible = not (compact and folded)
 	foldArrow.Rotation = if folded then 180 else 0
-	local foldSize = if compact then 30 else 22 -- a finger's target on a phone (the band is 34 tall there)
-	fold.Size = UDim2.fromOffset(foldSize, foldSize)
-	local sameQuests = #rows == #current.quests
-	for index, quest in current.quests do
+	local sameQuests = #rows == #showing.quests and mode == lastMode
+	for index, quest in showing.quests do
 		if not rows[index] or rows[index].id ~= quest.id then
 			sameQuests = false
 		end
 	end
 	if not sameQuests and #rows > 0 then
-		folded = false -- a new day's quests: shown open again
+		folded = false -- a new day's quests, or the week's coming in: shown open again
 	end
+	if lastMode and mode ~= lastMode and mode ~= "daily" then
+		popPending = mode
+	end
+	lastMode = mode
+	lastShown = showing
 	if fresh or not sameQuests then
-		rebuildRows(current) -- a new day's quests, or the phone's band: shown as they are
-		seen = current
+		rebuildRows(showing) -- a new day's quests, the week's, or the phone's band: shown as they are
+		seen = showing
 	end
 	local done = 0
-	for _, quest in current.quests do
+	for _, quest in showing.quests do
 		done += if quest.done then 1 else 0
 	end
-	-- the band: on a phone the chip says it all (the count, Claim! or the hours left)
-	local allDone = current.bonusClaimed
-	Icon.set(bandIcon, if allDone and compact then "Trophy" else "📜")
+	-- the band: on a phone a chip by the cash that says it all (its scroll, then the count, Claim! or the hours left)
+	local allDone = mode == "done"
+	local weekly = mode == "weekly"
+	Icon.set(bandIcon, if allDone and compact then "Trophy" elseif weekly and compact then "⭐" else "📜")
 	Icon.layer(bandIcon, 4)
-	title.Text = if compact then (if allDone then "Quests done!" else "Quests") else "Daily Quests"
-	local claimable = current.claimable > 0 and not allDone
-	claimChip.Visible = claimable
-	countChip.Visible = not (compact and claimable)
-	countChip.Text = if allDone then (if compact then string.match(resetText, "%d+h") or "Soon" else "Done") else `{done}/{#current.quests}`
-	if claimable and #claimTweens == 0 then
-		startClaim(false)
-	elseif not claimable then
-		stopClaim()
+	local claimable = showing.claimable > 0 and not allDone
+	local parts = QuestRules.bandParts(compact, claimable, weekly)
+	title.Visible = parts.title
+	claimChip.Visible = parts.claim
+	countChip.Visible = parts.count
+	fold.Visible = parts.fold
+	countChip.Text = if allDone then (if compact then string.match(resetText, "%d+h") or "Soon" else "Done")
+		elseif weekly and not compact then "Done"
+		else `{done}/{#showing.quests}`
+	-- Claim!'s look: a computer's pulse, a phone's still mint outline, or none; set again when either changes
+	local look = if claimable then (if compact then "phone" else "computer") else nil
+	if look ~= claimLook then
+		claimLook = look
+		if look then
+			startClaim(false)
+		else
+			stopClaim()
+		end
 	end
-	for index, quest in current.quests do
+	for index, quest in showing.quests do
 		showRow(rows[index], quest)
 	end
+	weekHead.Visible = weekly
+	chestLine.Visible = weekly
+	weekLeft.Text = weekText
+	showChest(weekly and showing.bonusReady)
 	rowsFrame.Visible = not compact and not allDone and not folded
 	setDone(allDone and not compact and not folded)
 	doneTime.Text = resetText
+	if compact then
+		fitPhone()
+		task.defer(fitPhone) -- the chip's new words are measured on the next frame
+	else
+		root.Size = UDim2.fromOffset(STRIP.width, 0)
+	end
+	playPop()
 	if shown() then
-		animate(current)
+		animate(showing)
 	end
 end
 
--- The countdown to new quests, once a while
-function QuestStrip.tick(resetText: string)
+-- The countdowns (to new quests, to the week's end), once a while
+function QuestStrip.tick(resetText: string, weekText: string)
+	lastWeekText = weekText
+	weekLeft.Text = weekText
 	doneTime.Text = resetText
 	local current = last
-	if current and current.bonusClaimed and lastCompact then
+	if current and lastCompact and QuestRules.stripMode(current) == "done" then
 		countChip.Text = string.match(resetText, "%d+h") or "Soon"
 	end
 end

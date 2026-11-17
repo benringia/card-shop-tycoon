@@ -1,16 +1,25 @@
 --!strict
--- Daily quests' rules (Config/Quests; QuestService keeps the state, QuestController shows it): rolling a day's quests
--- for the shop's level, counting play toward them, claiming each and the bonus once all three are claimed, cleaning a
--- saved state and what the client shows. Pure (no requires, no Roblox APIs): callers pass Config/Quests in.
+-- Daily and weekly quests' rules (Config/Quests; QuestService keeps the state, QuestController shows it): rolling a
+-- day's (or a week's) quests for the shop's level, counting play toward them, claiming each and the bonus once all
+-- three are claimed (a week's chest once all three are done), cleaning a saved state and what the client shows. Pure
+-- (no requires, no Roblox APIs): callers pass Config/Quests in.
 local QuestRules = {}
 
 export type Quest = { id: string, goal: number, progress: number, claimed: boolean }
 export type State = { day: number, list: { Quest }, bonus: boolean }
 export type QuestView = { id: string, kind: string, text: string, icon: string, goal: number, progress: number, done: boolean, claimed: boolean, cash: number, xp: number }
-export type View = { quests: { QuestView }, bonusReady: boolean, bonusClaimed: boolean, claimable: number }
+-- `week`: the week's quests in the same shape (their chest as the bonus), sent along with the day's
+export type View = { quests: { QuestView }, bonusReady: boolean, bonusClaimed: boolean, claimable: number, week: View? }
+-- A week's quests (owner 2026-11-17: "what players do after daily quests?"): `week` its number (GiftRules.weekOf),
+-- `chest` the Weekly Chest opened; its quests are never claimed one by one
+export type Week = { week: number, list: { Quest }, chest: boolean }
+export type StripMode = "daily" | "weekly" | "done"
+export type BandParts = { title: boolean, claim: boolean, count: boolean, fold: boolean }
 
 type Entry = { id: string, kind: string, event: string, icon: string, text: string, minLevel: number?, maxLevel: number?, goals: { { level: number, goal: number } } }
-type Config = { KINDS: { string }, EVENTS: { string }, POOL: { Entry }, REWARD: { cash: number, cashPerLevel: number, xp: number, xpPerLevel: number } }
+type Config = { KINDS: { string }, EVENTS: { string }, POOL: { Entry }, REWARD: { cash: number, cashPerLevel: number, xp: number, xpPerLevel: number }, WEEKLY: { TIMES: number } }
+
+local DAY = 86400
 
 local function whole(value: any, low: number): number?
 	if typeof(value) ~= "number" or value ~= value or value == math.huge or value == -math.huge then
@@ -43,8 +52,9 @@ function QuestRules.goalFor(entry: Entry, level: number): number
 	return goal
 end
 
--- A day's quests: one per KIND (in order), each picked by its roll in [0, 1) among that kind's quests unlocked at `level`
-function QuestRules.roll(cfg: Config, level: number, rolls: { number }): { Quest }
+-- One per KIND (in order), each picked by its roll in [0, 1) among that kind's quests unlocked at `level`, each goal
+-- `times` its day's goal
+local function rollWith(cfg: Config, level: number, rolls: { number }, times: number): { Quest }
 	local list: { Quest } = {}
 	for index, kind in cfg.KINDS do
 		local open: { Entry } = {}
@@ -56,10 +66,20 @@ function QuestRules.roll(cfg: Config, level: number, rolls: { number }): { Quest
 		if #open > 0 then
 			local roll = math.clamp(rolls[index] or 0, 0, 0.999999)
 			local entry = open[math.floor(roll * #open) + 1]
-			table.insert(list, { id = entry.id, goal = QuestRules.goalFor(entry, level), progress = 0, claimed = false })
+			table.insert(list, { id = entry.id, goal = QuestRules.goalFor(entry, level) * times, progress = 0, claimed = false })
 		end
 	end
 	return list
+end
+
+-- A day's quests: one per KIND (in order), each picked by its roll in [0, 1) among that kind's quests unlocked at `level`
+function QuestRules.roll(cfg: Config, level: number, rolls: { number }): { Quest }
+	return rollWith(cfg, level, rolls, 1)
+end
+
+-- A week's quests: picked like a day's, each goal WEEKLY.TIMES the day's
+function QuestRules.rollWeek(cfg: Config, level: number, rolls: { number }): { Quest }
+	return rollWith(cfg, level, rolls, cfg.WEEKLY.TIMES)
 end
 
 -- The state on `day`: unchanged on the same day, new quests and a fresh bonus on a new one
@@ -70,17 +90,16 @@ function QuestRules.refresh(state: State, day: number, cfg: Config, level: numbe
 	return { day = day, list = QuestRules.roll(cfg, level, rolls), bonus = false }
 end
 
--- Play counted toward every unclaimed, unfinished quest whose event is `event`, up to its goal: the new state (the same
--- one when nothing moved, so callers can skip telling the client) and the quests (indexes) it just finished
-function QuestRules.add(state: State, cfg: Config, event: string, amount: number): (State, { number })
+-- `list` with `amount` counted toward its unclaimed, unfinished quests of `event`, up to their goals: the new list (nil
+-- when nothing moved) and the quests (indexes) it just finished
+local function addTo(list: { Quest }, cfg: Config, event: string, amount: number): ({ Quest }?, { number })
 	local done: { number } = {}
 	if typeof(amount) ~= "number" or amount ~= amount or amount <= 0 then
-		return state, done
+		return nil, done
 	end
-	local after = table.clone(state)
-	after.list = {}
+	local after: { Quest } = {}
 	local moved = false
-	for index, quest in state.list do
+	for index, quest in list do
 		local entry = entryOf(cfg, quest.id)
 		local copy = table.clone(quest)
 		if entry and entry.event == event and not quest.claimed and quest.progress < quest.goal then
@@ -90,9 +109,21 @@ function QuestRules.add(state: State, cfg: Config, event: string, amount: number
 				table.insert(done, index)
 			end
 		end
-		after.list[index] = copy
+		after[index] = copy
 	end
-	return if moved then after else state, done
+	return if moved then after else nil, done
+end
+
+-- Play counted toward every unclaimed, unfinished quest whose event is `event`, up to its goal: the new state (the same
+-- one when nothing moved, so callers can skip telling the client) and the quests (indexes) it just finished
+function QuestRules.add(state: State, cfg: Config, event: string, amount: number): (State, { number })
+	local list, done = addTo(state.list, cfg, event, amount)
+	if not list then
+		return state, done
+	end
+	local after = table.clone(state)
+	after.list = list
+	return after, done
 end
 
 -- Claims quest `index` when it's done and not claimed yet: the new state, or nil and why ("unknown" | "notDone" |
@@ -146,26 +177,52 @@ function QuestRules.reward(cfg: Config, level: number): { cash: number, xp: numb
 	return { cash = pay.cash + pay.cashPerLevel * level, xp = pay.xp + pay.xpPerLevel * level }
 end
 
+-- A saved quest list made safe: unknown quests dropped, numbers whole and in range; `claims`: keep what was claimed (a
+-- week's quests are never claimed one by one)
+local function cleanList(saved: any, cfg: Config, claims: boolean): { Quest }
+	local list: { Quest } = {}
+	if typeof(saved) ~= "table" then
+		return list
+	end
+	for _, quest in saved do
+		if typeof(quest) == "table" and typeof(quest.id) == "string" and entryOf(cfg, quest.id) then
+			local goal = whole(quest.goal, 1) or 1
+			table.insert(list, {
+				id = quest.id,
+				goal = goal,
+				progress = math.min(goal, whole(quest.progress, 0) or 0),
+				claimed = claims and quest.claimed == true,
+			})
+		end
+	end
+	return list
+end
+
 -- A saved state made safe: anything but a table starts fresh, unknown quests are dropped, numbers whole and in range
 function QuestRules.clean(saved: any, cfg: Config): State
 	if typeof(saved) ~= "table" then
 		return QuestRules.fresh()
 	end
-	local state: State = { day = whole(saved.day, -1) or -1, list = {}, bonus = saved.bonus == true }
-	if typeof(saved.list) == "table" then
-		for _, quest in saved.list do
-			if typeof(quest) == "table" and typeof(quest.id) == "string" and entryOf(cfg, quest.id) then
-				local goal = whole(quest.goal, 1) or 1
-				table.insert(state.list, {
-					id = quest.id,
-					goal = goal,
-					progress = math.min(goal, whole(quest.progress, 0) or 0),
-					claimed = quest.claimed == true,
-				})
-			end
-		end
-	end
-	return state
+	return { day = whole(saved.day, -1) or -1, list = cleanList(saved.list, cfg, true), bonus = saved.bonus == true }
+end
+
+-- One quest as the client shows it: its words (its goal in them), progress and pay
+local function rowOf(entry: Entry, quest: Quest, cash: number, xp: number): QuestView
+	local goal = tostring(quest.goal)
+	return {
+		id = quest.id,
+		kind = entry.kind,
+		text = (string.gsub(entry.text, "{n}", function()
+			return goal
+		end)),
+		icon = entry.icon,
+		goal = quest.goal,
+		progress = quest.progress,
+		done = quest.progress >= quest.goal,
+		claimed = quest.claimed,
+		cash = cash,
+		xp = xp,
+	}
 end
 
 -- What the client shows: each quest's words (its goal in them), progress, pay; the bonus; how many can be claimed now
@@ -176,25 +233,11 @@ function QuestRules.view(state: State, cfg: Config, level: number): View
 	for _, quest in state.list do
 		local entry = entryOf(cfg, quest.id)
 		if entry then
-			local done = quest.progress >= quest.goal
-			if done and not quest.claimed then
+			local row = rowOf(entry, quest, pay.cash, pay.xp)
+			if row.done and not row.claimed then
 				claimable += 1
 			end
-			local goal = tostring(quest.goal)
-			table.insert(quests, {
-				id = quest.id,
-				kind = entry.kind,
-				text = (string.gsub(entry.text, "{n}", function()
-					return goal
-				end)),
-				icon = entry.icon,
-				goal = quest.goal,
-				progress = quest.progress,
-				done = done,
-				claimed = quest.claimed,
-				cash = pay.cash,
-				xp = pay.xp,
-			})
+			table.insert(quests, row)
 		end
 	end
 	local bonusReady = QuestRules.bonusReady(state)
@@ -234,6 +277,124 @@ function QuestRules.stripChanges(before: View?, after: View): StripChanges
 	changes.claimAppeared = before.claimable == 0 and after.claimable > 0
 	changes.allDone = after.bonusClaimed and not before.bonusClaimed
 	return changes
+end
+
+-- The weekly quests (owner 2026-11-17: "what players do after daily quests?", look A) -----------------------------
+
+function QuestRules.freshWeek(): Week
+	return { week = -1, list = {}, chest = false }
+end
+
+-- The state in `week`: unchanged in the same week, new quests and a shut chest in a new one
+function QuestRules.refreshWeek(state: Week, week: number, cfg: Config, level: number, rolls: { number }): Week
+	if state.week == week and #state.list > 0 then
+		return state
+	end
+	return { week = week, list = QuestRules.rollWeek(cfg, level, rolls), chest = false }
+end
+
+-- Play counted toward the week's quests, like a day's: the new state (the same one when nothing moved) and the quests
+-- (indexes) it just finished
+function QuestRules.addWeek(state: Week, cfg: Config, event: string, amount: number): (Week, { number })
+	local list, done = addTo(state.list, cfg, event, amount)
+	if not list then
+		return state, done
+	end
+	local after = table.clone(state)
+	after.list = list
+	return after, done
+end
+
+-- The Weekly Chest waits for all of the week's quests to be done (no claims), once
+function QuestRules.chestReady(state: Week): boolean
+	if state.chest or #state.list == 0 then
+		return false
+	end
+	for _, quest in state.list do
+		if quest.progress < quest.goal then
+			return false
+		end
+	end
+	return true
+end
+
+function QuestRules.claimChest(state: Week): (Week?, string?)
+	if state.chest then
+		return nil, "claimed"
+	end
+	if not QuestRules.chestReady(state) then
+		return nil, "notDone"
+	end
+	local after = table.clone(state)
+	after.chest = true
+	return after, nil
+end
+
+-- A saved week made safe, like a day's
+function QuestRules.cleanWeek(saved: any, cfg: Config): Week
+	if typeof(saved) ~= "table" then
+		return QuestRules.freshWeek()
+	end
+	return { week = whole(saved.week, -1) or -1, list = cleanList(saved.list, cfg, false), chest = saved.chest == true }
+end
+
+-- The week as the client shows it: rows like a day's (no pay: the chest is the prize), the chest as the bonus
+function QuestRules.weekView(state: Week, cfg: Config): View
+	local quests: { QuestView } = {}
+	for _, quest in state.list do
+		local entry = entryOf(cfg, quest.id)
+		if entry then
+			table.insert(quests, rowOf(entry, quest, 0, 0))
+		end
+	end
+	local ready = QuestRules.chestReady(state)
+	return { quests = quests, bonusReady = ready, bonusClaimed = state.chest, claimable = if ready then 1 else 0 }
+end
+
+-- Seconds until the next week: Monday 00:00 UTC (GiftRules.weekOf's weeks: day 0, 1970-01-01, was a Thursday)
+function QuestRules.weekLeft(now: number): number
+	local week = math.floor((math.floor(now / DAY) + 3) / 7)
+	return (week * 7 + 4) * DAY - now
+end
+
+-- "4 days left", "1 day left", "9h left", "12m left"
+function QuestRules.weekLeftText(now: number): string
+	local left = QuestRules.weekLeft(now)
+	local days = left // DAY
+	if days >= 2 then
+		return `{days} days left`
+	elseif days == 1 then
+		return "1 day left"
+	end
+	local hours = left // 3600
+	if hours >= 1 then
+		return `{hours}h left`
+	end
+	return `{math.max(1, left // 60)}m left`
+end
+
+-- What the strip shows (look A): today's quests until today's chest is opened, then the week's until its chest is
+-- opened too, then all done
+function QuestRules.stripMode(view: View): StripMode
+	if not view.bonusClaimed then
+		return "daily"
+	end
+	local week = view.week
+	if week and #week.quests > 0 and not week.bonusClaimed then
+		return "weekly"
+	end
+	return "done"
+end
+
+-- The band's pieces: on a computer the title, Claim! while something waits, the count (not beside the week's Claim!)
+-- and the arrow that folds the rows; a phone's chip by the cash only its scroll and one chip, the count or Claim! (owner
+-- 2026-11-17, "go A" of artifact GtT4bM87otu1aayFVANr7z; its arrow only ever hid the title: "clicking on the quest
+-- arrow in mobile doesnt do anything")
+function QuestRules.bandParts(compact: boolean, claimable: boolean, weekly: boolean): BandParts
+	if compact then
+		return { title = false, claim = claimable, count = not claimable, fold = false }
+	end
+	return { title = true, claim = claimable, count = not (claimable and weekly), fold = true }
 end
 
 return QuestRules

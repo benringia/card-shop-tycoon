@@ -18,6 +18,8 @@ export type Spot = { name: string, group: string, x: number, z: number, face: { 
 
 -- `weight`: the later bosses' materials rarer (owner 2026-11-13: "lower the chances of getting ... other high level
 -- boss items")
+local BEACON_SECONDS = 30
+
 local function material(boss: string, name: string, weight: number): Offer
 	return { name = name, item = `material_{boss}`, count = 1, price = 350, value = 150, weight = weight, excited = true }
 end
@@ -28,7 +30,9 @@ local OFFERS: { [string]: Offer } = {
 	-- 1.3 hours of play; now about every 3.5
 	epicPack = { name = "Epic Pack", item = "epicPack", count = 1, price = 75, value = 25, weight = 6, excited = true, glow = "Epic" },
 	legendaryPack = { name = "Legendary Pack", item = "legendaryPack", count = 1, price = 600, value = 300, weight = 0.8, excited = true, glow = "Legendary" },
-	wildOre10 = { name = "Wild Ore x10", item = "wildOre", count = 10, price = 400, value = 165, weight = 20 },
+	-- one, like everything he sells (owner 2026-11-17: "turts should only sell 1 quantity"; it was 10 for $400): the
+	-- same price and value per ore
+	wildOre = { name = "Wild Ore", item = "wildOre", count = 1, price = 40, value = 16.5, weight = 20 },
 	xpTonic = { name = "XP Tonic", item = "xpTonic", count = 1, price = 120, value = 35, weight = 16 },
 	starShard = { name = "Star Shard", item = "starShard", count = 1, price = 300, value = 90, weight = 10 },
 	gradingSeal = { name = "Grading Seal", item = "gradingSeal", count = 1, price = 400, value = 150, weight = 8 },
@@ -69,7 +73,24 @@ return {
 	AFTER_TOUR = "Turts opens his rug once Pish's tour is done!",
 	AFTER_TOUR_PROMPT = "After Pish's tour",
 	RESTOCK_RESTRICTED_BUTTON = "Restock now · Not available here",
-	BEACON_SECONDS = 30, -- a light over his rug after he moves
+	BEACON_SECONDS = BEACON_SECONDS, -- a light over his rug after he moves
+	-- His chip under the quest strip (owner 2026-11-17: "can a turts store restock timer be put somewhere on the
+	-- screen?", look A of artifact XyGHP2ku71fRaYeuEkGZ6D; client TurtsController, TurtsRules.chip): his face and the
+	-- countdown to new stock, gold "Turts restocked!" for `glowSeconds` after a restock you haven't opened his window
+	-- since (his light's time: he restocks every 8 minutes, so "until you visit" would keep it gold for anyone who skips
+	-- him); a tap lights his beacon again and shows paws to his rug for `trailSeconds`. Pixels: `height`, `faceSize`,
+	-- `gap` (between his face and the words);
+	-- `face`: the square of his peek sticker (512x395) drawn in its circle; `pulse`: how much the gold chip breathes
+	CHIP = {
+		glowSeconds = BEACON_SECONDS,
+		trailSeconds = 8,
+		height = 30,
+		faceSize = 24,
+		face = { x = 116, y = 60, size = 280 },
+		gap = 6,
+		pulse = 1.06,
+		pulseSeconds = 0.55,
+	},
 	RUG_RADIUS = 4, -- studs
 	-- How high he stands: on his cushion's top (TurtsRug's cushion is 0.3-0.38 under his paws; on the street they went
 	-- through it, owner 2026-11-13: "turts feet are through the rug")

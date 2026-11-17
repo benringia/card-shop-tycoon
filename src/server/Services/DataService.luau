@@ -99,6 +99,9 @@ export type PlayerData = {
 	windows: { { style: string, side: string, at: number } }, -- the shop's windows (WindowService)
 	-- today's quests: their UTC day, the three and their progress, the bonus chest opened (QuestService; QuestRules.State)
 	quests: { day: number, list: { { id: string, goal: number, progress: number, claimed: boolean } }, bonus: boolean },
+	-- this week's quests: their week (GiftRules.weekOf), the three and their progress, the Weekly Chest opened
+	-- (QuestService; QuestRules.Week)
+	weekly: { week: number, list: { { id: string, goal: number, progress: number, claimed: boolean } }, chest: boolean },
 	lastSeen: number, -- os.time this save was last written in the main game (OfflineService: welcome-back earnings)
 	-- daily, weekly and monthly gifts: the round, today's play time, the week's and month's bars (GiftService; GiftRules.State)
 	gifts: {
@@ -167,6 +170,7 @@ local TEMPLATE: PlayerData = {
 	unlocks = {},
 	gifts = { streak = 0, lastDay = -1, playDay = -1, played = 0, week = -1, weekDays = 0, weekEarned = false, month = -1, monthDays = 0, monthEarned = false, claims = 0 },
 	quests = { day = -1, list = {}, bonus = false },
+	weekly = { week = -1, list = {}, chest = false },
 	lastSeen = 0,
 }
 

@@ -30,6 +30,8 @@ local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"
 local PartyRules = require(Shared:WaitForChild("Util"):WaitForChild("PartyRules"))
 local UiLayout = require(Shared:WaitForChild("Util"):WaitForChild("UiLayout"))
 local PartyDock = require(Shared:WaitForChild("Util"):WaitForChild("PartyDock"))
+local CompactHud = require(Shared:WaitForChild("Util"):WaitForChild("CompactHud"))
+local PairRules = require(Shared:WaitForChild("Util"):WaitForChild("PairRules"))
 local LevelRules = require(Shared:WaitForChild("Util"):WaitForChild("LevelRules"))
 local SparkPath = require(Shared:WaitForChild("Util"):WaitForChild("SparkPath"))
 local XpPill = require(Shared:WaitForChild("Util"):WaitForChild("XpPill"))
@@ -47,6 +49,7 @@ local CardTips = require(ClientUtil:WaitForChild("CardTips"))
 local Tooltip = require(ClientUtil:WaitForChild("Tooltip"))
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local CreatureVisuals = require(ClientUtil:WaitForChild("CreatureVisuals"))
+local PickWheel = require(ClientUtil:WaitForChild("PickWheel"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local BinderController = require(Controllers:WaitForChild("BinderController"))
 local PartyController = require(Controllers:WaitForChild("PartyController"))
@@ -190,6 +193,20 @@ local nameEdge: UIStroke
 local namePad: UIPadding
 local elementBadge: Frame
 local elementIcon: Frame
+local quickParty: GuiObject? = nil -- the paw button to the Party window
+local nameRow: Frame? = nil -- the name line's row under the carousel
+-- The phone's creature and weapon pair above the jump button (owner 2026-11-17, placement 2; Util/PairRules): the
+-- carousel's middle creature and the weapon spot side by side; a swipe up or down the next or previous creature, a hold
+-- the column of them all (Util/PickWheel)
+local PAIR = BAR.PAIR
+local pairCount: TextLabel? = nil -- "2/3" on the creature's corner
+local pairHints: Frame? = nil -- the chevrons above and below it
+local pairName: TextLabel? = nil -- the name for a moment after a swipe or a pick
+local previewSlot: number? = nil -- swiped to: shown in the middle until the server's summon arrives
+local summonToken = 0
+-- defined with the carousel below; the slots' gestures call them
+local stepCreature: (delta: number) -> () = function() end
+local openPartyWheel: (held: InputObject?) -> () = function() end
 
 -- The name line: the middle creature's name (its level sits on top of its portrait, owner 2026-11-13), on a computer
 -- its element after it, on a phone a soft pill with the element on the portrait's corner
@@ -427,15 +444,30 @@ local function makeSlot(parent: Instance, slot: number): SlotView
 	UIKit.corner(veil, BAR.PORTRAIT / 2)
 
 	local chipEdge = keyChip(button, tostring(slot))
+	-- A phone's pair (owner 2026-11-17, placement 2): a swipe up or down is the next or previous creature, a hold opens
+	-- the column of them all (PickWheel)
+	local consumed = PickWheel.gestures(hit, function()
+		return compact and slots[slot] ~= nil
+	end, function(step: number)
+		stepCreature(step)
+	end, function(input: InputObject)
+		openPartyWheel(input)
+	end)
 	hit.Activated:Connect(function()
-		if swallowTap[slot] then
-			swallowTap[slot] = nil
-			return
-		end
-		if slots[slot] then
-			focus = slot -- it slides to the middle (and stays there when sent back in)
-		end
-		useSlot(slot)
+		-- deferred: a swipe's end (which eats the tap) can come in after Activated
+		task.defer(function()
+			if swallowTap[slot] then
+				swallowTap[slot] = nil
+				return
+			end
+			if consumed() or PickWheel.isOpen() then
+				return
+			end
+			if slots[slot] then
+				focus = slot -- it slides to the middle (and stays there when sent back in)
+			end
+			useSlot(slot)
+		end)
 	end)
 	-- Mouse: hover for the tooltip. Touch: hold a finger on the card (the tap then doesn't summon)
 	hit.MouseEnter:Connect(function()
@@ -448,9 +480,10 @@ local function makeSlot(parent: Instance, slot: number): SlotView
 			hideTip()
 		end
 	end)
+	-- Touch on a computer-sized HUD: hold for the tooltip (a phone's hold is the column, above)
 	local pressed = 0
 	hit.InputBegan:Connect(function(input)
-		if input.UserInputType ~= Enum.UserInputType.Touch then
+		if compact or input.UserInputType ~= Enum.UserInputType.Touch then
 			return
 		end
 		swallowTap[slot] = nil -- a hold released off the card never fired Activated: don't eat this new tap
@@ -518,19 +551,41 @@ end
 -- The carousel (Util/PartyDock.carousel): each slot slides to its spot, the middle one big and in front, and the name
 -- line under it tells who it is
 local function placeCarousel()
-	local spots = PartyDock.carousel(slots, summoned, focus, Party.PARTY_SIZE)
+	local spots = PartyDock.carousel(slots, previewSlot or summoned, focus, Party.PARTY_SIZE)
 	focus, centerSlot = spots.center, spots.center
+	-- a phone (owner 2026-11-17, "go A" and placement 2; CompactHud.phonePieces): the middle creature alone in the pair,
+	-- its count and swipe chevrons; never the quick Party button or the name line
+	local pieces = CompactHud.phonePieces(compact, Hud.inTown(), false, false)
+	local count = PairRules.count(slots, spots.center, Party.PARTY_SIZE)
+	if pairCount then
+		pairCount.Text = count
+		pairCount.Visible = compact and count ~= ""
+	end
+	if pairHints then
+		pairHints.Visible = compact and count ~= ""
+	end
+	local width = if pieces.sideSlots then DOCK.width else DOCK.height
+	carousel.Size = UDim2.fromOffset(width, DOCK.height)
+	elementBadge.Position = UDim2.fromOffset(width / 2 + DOCK.elementAt, DOCK.height / 2 + DOCK.elementAt)
+	if quickParty then
+		quickParty.Visible = pieces.quickParty
+	end
+	if nameRow then
+		nameRow.Visible = pieces.partyName
+	end
 	local slide = TweenInfo.new(DOCK.slide, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-	local middle = DOCK.width / 2
+	local middle = width / 2
 	for slot, view in slotViews do
 		local inMiddle = slot == spots.center
-		local x = if inMiddle then middle elseif slot == spots.left then DOCK.sideX else DOCK.width - DOCK.sideX
+		view.hit.Visible = inMiddle or (pieces.sideSlots and (pieces.emptySlots or slots[slot] ~= nil))
+		local x = if inMiddle then middle elseif slot == spots.left then DOCK.sideX else width - DOCK.sideX
 		local y = DOCK.height / 2 + (if inMiddle then 0 else DOCK.sideY)
 		view.hit.ZIndex = if inMiddle then 3 else 2
 		view.veil.Visible = compact and not inMiddle
 		;(view.chipEdge.Parent :: GuiObject).Visible = not compact -- no key numbers on a phone
 		TweenService:Create(view.hit, slide, { Position = UDim2.fromOffset(x, y) }):Play()
-		TweenService:Create(view.lift, slide, { Scale = if inMiddle then DOCK.center else DOCK.side }):Play()
+		local middleScale = if compact then PAIR.center else DOCK.center
+		TweenService:Create(view.lift, slide, { Scale = if inMiddle then middleScale else DOCK.side }):Play()
 	end
 	writeName()
 end
@@ -578,6 +633,89 @@ local function nameOf(beastId: string?): string?
 	local beast = if beastId then BinderController.GetBeasts()[beastId] else nil
 	local card = if beast then Cards.ById[beast.cardId] else nil
 	return if card then card.name else nil
+end
+
+-- A phone's pair: the creature's name over it for a moment after a swipe or a pick
+local function flashName(slot: number)
+	local label = pairName
+	local beast = BinderController.GetBeasts()[slots[slot] or ""]
+	local card = if beast then Cards.ById[beast.cardId] else nil
+	if not label or not beast or not card then
+		return
+	end
+	label.Text = `{card.name}  Lv {beast.level}`
+	label.Visible = true
+	local shownAt = os.clock()
+	label:SetAttribute("ShownAt", shownAt)
+	task.delay(PAIR.nameSeconds, function()
+		if label:GetAttribute("ShownAt") == shownAt then
+			label.Visible = false
+		end
+	end)
+end
+
+-- A phone's pair chose `slot`: it shows in the middle at once, and comes out when `summon` (one was out, or it was
+-- picked from the column), sent once the swipes settle; the server's PartyChanged confirms it (or, refused, the middle
+-- goes back to what's out)
+local function choose(slot: number, summon: boolean)
+	focus = slot
+	if summon then
+		previewSlot = slot
+		summonToken += 1
+		local token = summonToken
+		task.delay(0.25, function()
+			if token == summonToken then
+				Remotes.Summon:FireServer(slot)
+			end
+		end)
+		task.delay(2.5, function()
+			if token == summonToken and previewSlot == slot then
+				previewSlot = nil
+				placeCarousel()
+			end
+		end)
+	end
+	placeCarousel()
+	flashName(slot)
+end
+
+stepCreature = function(delta: number)
+	local from = previewSlot or centerSlot
+	local nextSlot = PairRules.cycle(slots, from, delta, Party.PARTY_SIZE)
+	if not nextSlot or nextSlot == from then
+		return
+	end
+	choose(nextSlot, summoned ~= nil)
+end
+
+-- The column of your party on the creature held: its picture, name and level (out, or resting); one picked comes out
+openPartyWheel = function(held: InputObject?)
+	local beasts = BinderController.GetBeasts()
+	local order: { number } = {}
+	local items: { PickWheel.Item } = {}
+	for slot = 1, Party.PARTY_SIZE do
+		local beast = beasts[slots[slot] or ""]
+		local card = if beast then Cards.ById[beast.cardId] else nil
+		if beast and card then
+			table.insert(order, slot)
+			local rest = RestTimers.GetSeconds(beast.id)
+			local note = if summoned == slot then " · out" elseif rest and rest > 0 then " · resting" else ""
+			table.insert(items, { image = CardFace.artImage(card), tint = Cards.ELEMENTS[card.element], title = card.name, line = `Lv {beast.level}{note}` })
+		end
+	end
+	local view = slotViews[centerSlot]
+	if #items < 2 or not view then
+		return
+	end
+	PickWheel.open({
+		anchor = view.button,
+		items = items,
+		current = table.find(order, previewSlot or centerSlot) or 1,
+		held = held,
+		onPick = function(index: number)
+			choose(order[index], true)
+		end,
+	})
 end
 
 -- A card joining the party: its slot pops up and settles, the rim flashing white
@@ -811,6 +949,7 @@ function PartyBarController.Start()
 		quick.BackgroundTransparency = 1
 		quick:SetAttribute("SoftButtons", true) -- the cotton candy button look
 		quick.Parent = carousel
+		quickParty = quick
 		local open = UIKit.button(quick, "", rgb(DOCK.quick.fill))
 		open.Name = "OpenParty"
 		UIKit.makeRound(open, DOCK.quick.size)
@@ -823,12 +962,13 @@ function PartyBarController.Start()
 
 	-- The middle one's name, its level in a gold chip, its element; a row as wide as the carousel with the line centred
 	-- under the middle creature (on a phone the line is a soft pill)
-	local nameRow = Instance.new("Frame")
-	nameRow.Name = "NameRow"
-	nameRow.LayoutOrder = 2
-	nameRow.BackgroundTransparency = 1
-	nameRow.Size = UDim2.fromOffset(DOCK.width, DOCK.nameText + 6)
-	nameRow.Parent = bar
+	local row = Instance.new("Frame")
+	row.Name = "NameRow"
+	row.LayoutOrder = 2
+	row.BackgroundTransparency = 1
+	row.Size = UDim2.fromOffset(DOCK.width, DOCK.nameText + 6)
+	row.Parent = bar
+	nameRow = row
 	local line = Instance.new("Frame")
 	line.Name = "NameLine"
 	line.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -837,7 +977,7 @@ function PartyBarController.Start()
 	line.BackgroundTransparency = 1
 	line.Size = UDim2.fromOffset(0, DOCK.nameText + 6)
 	line.AutomaticSize = Enum.AutomaticSize.X
-	line.Parent = nameRow
+	line.Parent = row
 	UIKit.corner(line, (DOCK.nameText + 6) / 2)
 	nameEdge = UIKit.outline(line, WHITE, 1.5)
 	nameEdge.Transparency = 0.3
@@ -945,8 +1085,9 @@ function PartyBarController.Start()
 	shopTag.ZIndex = 3
 	UIKit.outlined(shopTag, 1.5)
 	Tooltip.attach(xpTrack, BAR.SHOP_TIP)
-	-- the shop's next unlock under the bar (owner 2026-11-17: the first 15 minutes, always a next goal)
-	require(ClientUtil:WaitForChild("NextUnlock")).attach(bars, UDim2.fromOffset(DOCK.badge + 6, xpTop + DOCK.xpHeight + 1), DOCK.barWidth)
+	-- the shop's next unlock under the bar (owner 2026-11-17: the first 15 minutes, always a next goal; not on a phone)
+	local NextUnlock = require(ClientUtil:WaitForChild("NextUnlock"))
+	NextUnlock.attach(bars, UDim2.fromOffset(DOCK.badge + 6, xpTop + DOCK.xpHeight + 1), DOCK.barWidth)
 	levelBadge = Instance.new("Frame")
 	levelBadge.Name = "Level"
 	levelBadge.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -976,6 +1117,71 @@ function PartyBarController.Start()
 	weaponSpot.Visible = false
 	weaponSpot.Parent = bar
 
+	-- The phone's pair above the jump button (owner 2026-11-17, placement 2): Hud shows and hides its holder with the HUD
+	-- and the calm HUD; the row inside shows on a phone only, the carousel (its middle creature) and the weapon spot
+	-- moved in (OnCompact below)
+	local pairHolder = Instance.new("Frame")
+	pairHolder.Name = "Pair"
+	pairHolder.AnchorPoint = Vector2.new(1, 0)
+	pairHolder.AutomaticSize = Enum.AutomaticSize.XY
+	pairHolder.Size = UDim2.new()
+	pairHolder.BackgroundTransparency = 1
+	pairHolder.Parent = UIController.GetScreenGui()
+	Hud.hideWith(pairHolder)
+	Hud.calmPiece(pairHolder, "party")
+	Hud.scaleWith(pairHolder, HudLayout.SCALE.TOUCH_MIN)
+	local pairRow = Instance.new("Frame")
+	pairRow.Name = "Row"
+	pairRow.AutomaticSize = Enum.AutomaticSize.XY
+	pairRow.Size = UDim2.new()
+	pairRow.BackgroundTransparency = 1
+	pairRow.Visible = false
+	pairRow.Parent = pairHolder
+	local pairList = Instance.new("UIListLayout")
+	pairList.FillDirection = Enum.FillDirection.Horizontal
+	pairList.HorizontalAlignment = Enum.HorizontalAlignment.Right
+	pairList.VerticalAlignment = Enum.VerticalAlignment.Center
+	pairList.Padding = UDim.new(0, PAIR.between)
+	pairList.SortOrder = Enum.SortOrder.LayoutOrder
+	pairList.Parent = pairRow
+	-- on the creature: its count on the corner, the chevrons over and under it, its name for a moment above it
+	local portrait = BAR.PORTRAIT * PAIR.center
+	local countLabel = UIKit.label(carousel, "", Enum.Font.FredokaOne, 11, INK)
+	countLabel.Name = "PairCount"
+	countLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+	countLabel.Position = UDim2.new(0.5, portrait / 2 - 4, 0.5, portrait / 2 - 4)
+	countLabel.Size = UDim2.fromOffset(28, 16)
+	countLabel.BackgroundColor3 = WHITE
+	countLabel.BackgroundTransparency = 0
+	countLabel.TextXAlignment = Enum.TextXAlignment.Center
+	countLabel.ZIndex = 9
+	countLabel.Visible = false
+	UIKit.corner(countLabel, 8)
+	pairCount = countLabel
+	local hints = PickWheel.hints(carousel, portrait / 2 + 16)
+	hints.Visible = false
+	pairHints = hints
+	local nameFlash = UIKit.label(carousel, "", Enum.Font.FredokaOne, 16, WHITE)
+	nameFlash.Name = "PairName"
+	nameFlash.AnchorPoint = Vector2.new(0.5, 1)
+	nameFlash.Position = UDim2.new(0.5, 0, 0.5, -(portrait / 2 + 26))
+	nameFlash.Size = UDim2.fromOffset(0, 20)
+	nameFlash.AutomaticSize = Enum.AutomaticSize.X
+	nameFlash.TextWrapped = false
+	nameFlash.ZIndex = 9
+	nameFlash.Visible = false
+	UIKit.outlined(nameFlash)
+	pairName = nameFlash
+	-- on the right margin, just above Roblox's jump button (PairRules.spot)
+	local function placePair()
+		local screen = UIController.GetScreenGui().AbsoluteSize
+		local top, right = PairRules.spot(CompactHud.jumpRect(screen.X, screen.Y), pairHolder.AbsoluteSize.Y, PAIR.margin, PAIR.gap)
+		pairHolder.Position = UDim2.new(1, -right, 0, top)
+	end
+	pairHolder:GetPropertyChangedSignal("AbsoluteSize"):Connect(placePair)
+	UIController.GetScreenGui():GetPropertyChangedSignal("AbsoluteSize"):Connect(placePair)
+	placePair()
+
 	-- Phones (owner 2026-11-13: "align them all right"; "I want the character info to be at the very top. leveled with
 	-- the roblox icons on the other side. below the exp is the coins"): every row flush right, and your row leaves the
 	-- dock for the top of the corner's column, over the cash pill (UIController places the column)
@@ -997,7 +1203,14 @@ function PartyBarController.Start()
 			quick.AnchorPoint = Vector2.new(if on then 1 else 0, 0.5)
 			quick.Position = UDim2.new(if on then 0 else 1, if on then -DOCK.quick.gap else DOCK.quick.gap, 0.5, DOCK.quick.lift)
 		end
-		placeCarousel() -- the phone's look: no key numbers, veiled sides, the name pill, the element badge
+		NextUnlock.setHidden(not CompactHud.phonePieces(on, true, false, false).nextUnlock)
+		-- the pair above the jump button: the carousel's middle creature and the weapon spot (back in the dock on a PC)
+		pairRow.Visible = on
+		carousel.Parent = if on then pairRow else bar
+		carousel.LayoutOrder = 1
+		weaponSpot.Parent = if on then pairRow else bar
+		weaponSpot.LayoutOrder = if on then 2 else 4
+		placeCarousel() -- the phone's look: no key numbers, the element badge, its count and chevrons
 	end)
 
 	-- Shop XP gained (a sale, a pack ripped): gold sparks fly from you into the bar, then "+xp XP" over it, a white
@@ -1170,6 +1383,9 @@ function PartyBarController.Start()
 		end
 		local wasSummoned = summoned
 		summoned = if typeof(payload.summoned) == "number" then payload.summoned else nil
+		if previewSlot and summoned == previewSlot then
+			previewSlot = nil -- a phone's swipe came out
+		end
 		render()
 		if partyKnown and summoned ~= wasSummoned then
 			summonedChanged:Fire()

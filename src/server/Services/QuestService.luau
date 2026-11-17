@@ -5,6 +5,9 @@
 -- cash and shop XP through EconomyService, the bonus chest's items through ItemService. Tells the client the day's
 -- quests (Remotes.QuestState) and plays each claim's moment (Remotes.QuestClaim). Saved as data.quests. In every place:
 -- fights in the Frontier and the Dungeon count too.
+-- Weekly quests (owner 2026-11-17: "what players do after daily quests?", look A): three more for each Monday-to-Monday
+-- UTC week, rolled the same way with goals a week long, counting the same play; all three done opens the Weekly Chest
+-- (Config/Quests WEEKLY). Saved as data.weekly; sent with the day's (the view's `week`).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -33,6 +36,7 @@ type PlayerData = DataService.PlayerData
 local QuestService = {}
 
 local states: { [Player]: QuestRules.State } = {}
+local weeks: { [Player]: QuestRules.Week } = {}
 local playing: { [Player]: boolean } = {} -- their first visit is done: quests count
 local watchers: { [Player]: RBXScriptConnection } = {}
 local claimLimit = RateLimiter.new(0.4)
@@ -44,9 +48,18 @@ local REFUSALS = {
 	claimed = "You already claimed that one. New quests come tomorrow!",
 	unknown = "That quest is gone. Here are today's.",
 }
+local WEEK_REFUSALS = {
+	notDone = "Finish all three weekly quests to open the Weekly Chest.",
+	claimed = "You opened this week's chest! New weekly quests come on Monday.",
+}
 
 local function today(): number
 	return GiftRules.dayOf(os.time())
+end
+
+-- Monday-to-Monday UTC weeks, the gifts' weeks
+local function thisWeek(): number
+	return GiftRules.weekOf(today())
 end
 
 local function rolls(): { number }
@@ -64,40 +77,52 @@ local function firstVisitDone(data: PlayerData): boolean
 	return data.seenPrologue == true and typeof(tutorial) == "table" and tutorial.firstVisit ~= "todo"
 end
 
-local function send(player: Player, finished: number?)
-	local state = states[player]
-	if not state then
+-- The day's quests and the week's to the client; `finished` / `weekFinished`: a quest that was just done (a toast)
+local function send(player: Player, finished: number?, weekFinished: number?)
+	local state, week = states[player], weeks[player]
+	if not state or not week then
 		return
 	end
-	local view = if playing[player] then QuestRules.view(state, Quests, EconomyService.GetLevel(player)) else nil
-	Remotes.QuestState:FireClient(player, view, finished)
+	local view: QuestRules.View? = nil
+	if playing[player] then
+		local made = QuestRules.view(state, Quests, EconomyService.GetLevel(player))
+		made.week = QuestRules.weekView(week, Quests)
+		view = made
+	end
+	Remotes.QuestState:FireClient(player, view, finished, weekFinished)
 end
 
--- Today's quests: rolled for the shop's level on a new UTC day
+-- Today's quests and this week's: rolled for the shop's level on a new UTC day or week
 local function refresh(player: Player)
-	local state = states[player]
-	if not state then
+	local state, week = states[player], weeks[player]
+	if not state or not week then
 		return
 	end
-	local after = QuestRules.refresh(state, today(), Quests, EconomyService.GetLevel(player), rolls())
-	if after ~= state then
+	local level = EconomyService.GetLevel(player)
+	local after = QuestRules.refresh(state, today(), Quests, level, rolls())
+	local afterWeek = QuestRules.refreshWeek(week, thisWeek(), Quests, level, rolls())
+	if after ~= state or afterWeek ~= week then
 		states[player] = after
+		weeks[player] = afterWeek
 		send(player)
 	end
 end
 
--- Play counted toward today's quests (`event`: a Config/Quests EVENTS name); a quest it finishes is told (a toast)
+-- Play counted toward today's quests and this week's (`event`: a Config/Quests EVENTS name); a quest it finishes is
+-- told (a toast)
 function QuestService.Add(player: Player, event: string, amount: number)
-	local state = states[player]
-	if not state or not playing[player] then
+	local state, week = states[player], weeks[player]
+	if not state or not week or not playing[player] then
 		return
 	end
 	local after, done = QuestRules.add(state, Quests, event, amount)
-	if after == state then
+	local afterWeek, weekDone = QuestRules.addWeek(week, Quests, event, amount)
+	if after == state and afterWeek == week then
 		return
 	end
 	states[player] = after
-	send(player, done[1])
+	weeks[player] = afterWeek
+	send(player, done[1], weekDone[1])
 end
 
 local function grant(player: Player, cash: number, xp: number, items: { { item: string, count: number } })
@@ -126,6 +151,22 @@ local function onClaim(player: Player, which: unknown)
 	end
 	if not playing[player] then
 		Blocked.tell(player, "Finish your first visit with Pish to start daily quests.", { title = "Quests" })
+		return
+	end
+	if which == "week" then
+		local week = weeks[player]
+		if not week then
+			return
+		end
+		local after, why = QuestRules.claimChest(week)
+		if not after then
+			Blocked.tell(player, WEEK_REFUSALS[why or "notDone"] or WEEK_REFUSALS.notDone, { title = "Weekly Quests" })
+			return
+		end
+		weeks[player] = after
+		grant(player, 0, 0, Quests.WEEKLY.CHEST)
+		Remotes.QuestClaim:FireClient(player, "week", 0, 0, Quests.WEEKLY.CHEST)
+		send(player)
 		return
 	end
 	if which == "bonus" then
@@ -159,6 +200,7 @@ end
 
 local function load(player: Player, data: PlayerData)
 	states[player] = QuestRules.clean(data.quests, Quests)
+	weeks[player] = QuestRules.cleanWeek(data.weekly, Quests)
 	playing[player] = firstVisitDone(data)
 	-- Pish's tour ends while they play (main game): today's quests start now
 	watchers[player] = player:GetAttributeChangedSignal("TutorialDone"):Connect(function()
@@ -183,6 +225,14 @@ local function save(player: Player, data: PlayerData)
 		list[index] = table.clone(quest)
 	end
 	data.quests = { day = state.day, list = list, bonus = state.bonus }
+	local week = weeks[player]
+	if week then
+		local weekList = {}
+		for index, quest in week.list do
+			weekList[index] = table.clone(quest)
+		end
+		data.weekly = { week = week.week, list = weekList, chest = week.chest }
+	end
 end
 
 local function unload(player: Player)
@@ -192,14 +242,15 @@ local function unload(player: Player)
 		watchers[player] = nil
 	end
 	states[player] = nil
+	weeks[player] = nil
 	playing[player] = nil
 end
 
 -- Studio (/quests): `action` on `player`'s quests; the line to tell them, or nil for usage. done: every quest done;
--- new: a new day's quests now
+-- new: a new day's quests now; week: every weekly quest done (the Weekly Chest ready); newweek: a new week's quests
 function QuestService.Dev(player: Player, action: string): string?
-	local state = states[player]
-	if not state then
+	local state, week = states[player], weeks[player]
+	if not state or not week then
 		return nil
 	end
 	if action == "done" then
@@ -212,6 +263,16 @@ function QuestService.Dev(player: Player, action: string): string?
 		states[player] = after
 	elseif action == "new" then
 		states[player] = QuestRules.refresh(QuestRules.fresh(), today(), Quests, EconomyService.GetLevel(player), rolls())
+	elseif action == "week" then
+		local after = table.clone(week)
+		after.list = {}
+		for index, quest in week.list do
+			after.list[index] = table.clone(quest)
+			after.list[index].progress = quest.goal
+		end
+		weeks[player] = after
+	elseif action == "newweek" then
+		weeks[player] = QuestRules.refreshWeek(QuestRules.freshWeek(), thisWeek(), Quests, EconomyService.GetLevel(player), rolls())
 	else
 		return nil
 	end
@@ -256,7 +317,7 @@ function QuestService.Start()
 			QuestService.Add(player, "stock", 1)
 		end)
 	end
-	-- A new UTC day while they play: today's quests
+	-- A new UTC day (or week) while they play: today's quests (and this week's)
 	task.spawn(function()
 		while true do
 			task.wait(Quests.TICK)

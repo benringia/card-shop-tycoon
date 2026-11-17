@@ -93,6 +93,9 @@ return {
 		stop = 4, -- studs in front of the player he stops, `stopSide` to their left
 		stopSide = 2,
 		speed = 6.5, -- studs a second (about 4.6 s of running)
+		-- the ground under his run is looked for no higher than this over the player's feet (a step or a curb), on
+		-- things you can't walk through: from 6 studs up he ran over the player's creature (found 2026-11-17)
+		stepUp = 2,
 		feet = { up = 0.55, side = 2.6, ahead = 1.6, lookUp = 0.35 },
 		face = { up = 1.75, side = 3, ahead = 2.2, lookUp = 1.8 },
 		panFrom = 0.25,

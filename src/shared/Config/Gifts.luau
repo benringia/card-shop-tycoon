@@ -41,6 +41,8 @@ return {
 		big = { title = "BIG GIFT!", picture = "PishGift", colors = { { 255, 214, 90 }, { 255, 150, 30 } }, rainbow = true },
 		weekly = { title = "WEEKLY CHEST!", chest = { 150, 100, 255 }, colors = { { 191, 160, 255 }, { 130, 80, 245 } } },
 		monthly = { title = "MONTHLY CHEST!", chest = { 255, 196, 60 }, colors = { { 255, 220, 110 }, { 255, 150, 30 } }, rainbow = true },
+		-- the weekly quests' chest (Config/Quests WEEKLY; QuestController plays it): sky blue, apart from the gifts' purple
+		questWeek = { title = "WEEKLY QUESTS!", chest = { 90, 190, 255 }, colors = { { 150, 220, 255 }, { 60, 150, 240 } } },
 		RAYS = "rbxassetid://139701534930046", -- Config/PackFx rays (the Store's win card)
 		DIM = 0.55, -- the screen behind
 		DROP = 0.45, -- seconds the gift drops in

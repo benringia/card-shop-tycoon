@@ -30,15 +30,25 @@ return {
 	REWARD = { cash = 15, cashPerLevel = 3, xp = 15, xpPerLevel = 3 },
 	-- all three claimed: the Quest Chest (Config/Items ids)
 	BONUS = { { item = "sparkPack", count = 1 }, { item = "xpTonic", count = 1 } },
-	TICK = 30, -- seconds between the server's checks for a new UTC day
+	-- Weekly quests (owner 2026-11-17: "what players do after daily quests?", look A of artifact XyGHP2ku71fRaYeuEkGZ6D):
+	-- one of each KIND for each Monday-to-Monday UTC week (the gifts' weeks, GiftRules.weekOf), picked from POOL at the
+	-- shop's level like a day's, each goal TIMES the day's. They pay nothing each: all three done opens the Weekly Chest
+	-- (CHEST, Config/Items ids) with the gifts' win moment (Config/Gifts WIN.questWeek). The strip shows them once
+	-- today's Quest Chest is opened (QuestRules.stripMode).
+	WEEKLY = {
+		TIMES = 7,
+		CHEST = { { item = "epicPack", count = 1 }, { item = "xpTonic", count = 2 } },
+	},
+	TICK = 30, -- seconds between the server's checks for a new UTC day (and week)
 	-- The strip at the top right (client Util/QuestStrip, owner 2026-11-17: "add design/immersive animations on the quest
 	-- strip", look A of artifact XyGHP2ku71fRaYeuEkGZ6D): pixels and seconds. `bubbles`: each quest's icon bubble in
 	-- its kind's baby colour; the band's shine passes every `shineEvery` s, the scroll wiggles every `wiggleEvery` s, each
 	-- bar's shine every `barShineEvery` s; the bubbles float `float` px up and down over `floatSeconds`. Its chevron
-	-- (owner 2026-11-17: "can we make the quest window minimizable/hideable?") folds it to the band, and on a phone to
-	-- `phoneFolded` px (the scroll and the chip), for the session (a new day's quests show it open again).
+	-- (owner 2026-11-17: "can we make the quest window minimizable/hideable?") folds a computer's strip to the band, for
+	-- the session (a new day's quests show it open again). A phone shows a chip beside the cash instead (owner 2026-11-17,
+	-- "go A"): `phoneBand` tall, its chip `phoneChip.left` px in (the scroll before it) and `phoneChip.right` from its end.
 	STRIP = {
-		width = 250, phoneWidth = 176, phoneFolded = 112, band = 28, phoneBand = 34, rowHeight = 32, rowGap = 5, pad = 8,
+		width = 250, band = 28, phoneBand = 30, phoneChip = { left = 31, right = 7 }, rowHeight = 32, rowGap = 5, pad = 8,
 		bubbles = { shop = "mint", cards = "sky", adventure = "peach" },
 		shineEvery = 5, wiggleEvery = 4, barShineEvery = 3.5,
 		float = 2, floatSeconds = 1.5,

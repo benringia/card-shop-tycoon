@@ -18,6 +18,8 @@ local UIKit = require((script.Parent :: Instance):WaitForChild("UIKit"))
 local NextUnlock = {}
 
 local player = Players.LocalPlayer
+local hidden = false -- a phone shows no next-unlock line (owner 2026-11-17, "go A"; CompactHud.phonePieces)
+local refreshers: { () -> () } = {}
 
 -- Everything a shop level opens, products first (they're what a level-up usually means to a new shop)
 local function unlocks(): { { level: number, name: string } }
@@ -58,11 +60,20 @@ function NextUnlock.attach(parent: GuiObject, position: UDim2, width: number): T
 		local level = tonumber(player:GetAttribute("Level")) or 1
 		local text = LevelUpRules.nextUnlockText(level, list)
 		label.Text = if text then `🔓 {text}` else ""
-		label.Visible = text ~= nil
+		label.Visible = text ~= nil and not hidden
 	end
 	player:GetAttributeChangedSignal("Level"):Connect(refresh)
+	table.insert(refreshers, refresh)
 	refresh()
 	return label
+end
+
+-- Hides every next-unlock line (a phone's slim HUD) or shows them again
+function NextUnlock.setHidden(on: boolean)
+	hidden = on
+	for _, refresh in refreshers do
+		refresh()
+	end
 end
 
 return NextUnlock

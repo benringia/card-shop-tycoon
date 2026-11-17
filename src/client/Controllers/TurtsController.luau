@@ -5,7 +5,11 @@
 -- spin ("celebrate") whenever the marker's Excited goes up; his rug (PropModels.TurtsRug, else a code-built one: rug,
 -- cushion, lantern, crates, sign) with this player's own 3 offers on stands (SOLD ones dimmed); a timer over him; a
 -- light beacon for BEACON_SECONDS after he moves; his "Shop" prompt opening the window (the offers with Buy, the
--- countdown, Robux "Restock now").
+-- countdown, Robux "Restock now"). His chip rides under the quest strip (owner 2026-11-17: "can a turts store restock
+-- timer be put somewhere on the screen?", look A; Config/Turts CHIP, TurtsRules.chip, QuestController.Below): his face
+-- and the countdown to new stock, gold and breathing "Turts restocked!" for a short while after a restock you haven't
+-- opened his window since; a tap lights his beacon again and shows paws to his rug. Town only, once his rug is open; a
+-- phone shows it only while he's just restocked (owner 2026-11-17: "mobile version screen now too crowded", "go A").
 local Players = game:GetService("Players")
 local PolicyService = game:GetService("PolicyService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -18,7 +22,9 @@ local Turts = require(Config:WaitForChild("Turts"))
 local Items = require(Config:WaitForChild("Items"))
 local Monetization = require(Config:WaitForChild("Monetization"))
 local Rarities = require(Config:WaitForChild("Rarities"))
+local UIStyle = require(Config:WaitForChild("UIStyle"))
 local TurtsRules = require(Shared:WaitForChild("Util"):WaitForChild("TurtsRules"))
+local CompactHud = require(Shared:WaitForChild("Util"):WaitForChild("CompactHud"))
 local PaidRandomRules = require(Shared:WaitForChild("Util"):WaitForChild("PaidRandomRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
@@ -28,7 +34,11 @@ local PishVisual = require(ClientUtil:WaitForChild("PishVisual"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
 local RobuxPrice = require(ClientUtil:WaitForChild("RobuxPrice"))
+local Hud = require(ClientUtil:WaitForChild("Hud"))
+local Tooltip = require(ClientUtil:WaitForChild("Tooltip"))
+local TutorialCues = require(ClientUtil:WaitForChild("TutorialCues"))
 local UIController = require(Controllers:WaitForChild("UIController"))
+local QuestController = require(Controllers:WaitForChild("QuestController"))
 
 local TurtsController = {}
 
@@ -61,6 +71,16 @@ local shakeLeft: CFrame? = nil
 local panel: Frame? = nil
 local cards: Frame? = nil
 local countdown: TextLabel? = nil
+-- his chip under the quest strip
+local chip: TextButton? = nil
+local chipWords: TextLabel? = nil
+local chipShade: UIGradient? = nil
+local chipScale: UIScale? = nil
+local chipPulse: Tween? = nil
+local chipFresh = false
+local seenRestock = TurtsRules.restockIndex(os.time(), Turts.RESTOCK_SECONDS) -- the restock at join counts as seen
+local trailOff: (() -> ())? = nil
+local lastPoint = 0
 
 local function part(name: string, size: Vector3, color: Color3, material: Enum.Material?): Part
 	local made = Instance.new("Part")
@@ -243,11 +263,6 @@ local function layOut()
 	end
 end
 
-local function clock(seconds: number): string
-	local left = math.max(0, math.floor(seconds))
-	return string.format("%d:%02d", left // 60, left % 60)
-end
-
 -- The window's offer cards (rebuilt when the stock changes)
 local function fillWindow()
 	if not cards or not panel then
@@ -386,6 +401,47 @@ local function buildWindow()
 	fillWindow()
 end
 
+-- Town only, and only once his rug is open (after Pish's tour); a phone shows it only while he's just restocked (owner
+-- 2026-11-17, "go A"; CompactHud.phonePieces)
+local function showChip()
+	local made = chip
+	if made then
+		local allowed = CompactHud.phonePieces(UIController.IsCompact(), true, false, chipFresh).turtsChip
+		made.Visible = allowed and Hud.inTown() and Players.LocalPlayer:GetAttribute("TutorialDone") == true
+	end
+end
+
+-- His chip as it is now: the countdown (the time in the strip's sky blue), or gold and breathing while he's just
+-- restocked
+local function renderChip()
+	local words, shade, scale = chipWords, chipShade, chipScale
+	if not words or not shade or not scale then
+		return
+	end
+	local look = Turts.CHIP
+	local fresh, left = TurtsRules.chip(os.time(), Turts.RESTOCK_SECONDS, seenRestock, look.glowSeconds)
+	local text = TurtsRules.chipText(fresh, left)
+	words.Text = if fresh then text else (string.gsub(text, "(%d+:%d%d)$", `<font color="#{UIStyle.BABY.sky.deep:ToHex()}">%1</font>`))
+	if fresh == chipFresh then
+		return
+	end
+	chipFresh = fresh
+	showChip()
+	local colors = if fresh then { UIStyle.BABY.butter.light, UIStyle.BABY.butter.fill } else { UIStyle.CREAM.BODY_TOP, UIStyle.CREAM.BODY_BOTTOM }
+	shade.Color = ColorSequence.new(colors[1], colors[2])
+	local pulse = chipPulse
+	if pulse then
+		pulse:Cancel()
+		chipPulse = nil
+	end
+	scale.Scale = 1
+	if fresh then
+		local breathe = TweenService:Create(scale, TweenInfo.new(look.pulseSeconds, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Scale = look.pulse })
+		breathe:Play()
+		chipPulse = breathe
+	end
+end
+
 local function openWindow()
 	if Players.LocalPlayer:GetAttribute("TutorialDone") ~= true then
 		Remotes.TurtsStock:FireServer() -- shut till Pish's tour is over: the server says so (a Blocked card)
@@ -399,6 +455,8 @@ local function openWindow()
 	if panel then
 		panel.Visible = true
 	end
+	seenRestock = TurtsRules.restockIndex(os.time(), Turts.RESTOCK_SECONDS) -- his chip stops glowing
+	renderChip()
 end
 
 -- A soft column of light over his rug after he moves, fading out
@@ -413,6 +471,106 @@ local function beacon()
 		column:Destroy()
 	end)
 	fade:Play()
+end
+
+-- A tap on his chip: his light over the rug again and paws from you to him for a few seconds
+local function pointOut()
+	if os.clock() - lastPoint < 1 then
+		return
+	end
+	lastPoint = os.clock()
+	beacon()
+	local character = Players.LocalPlayer.Character
+	local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
+	if not root or not root:IsA("BasePart") then
+		return
+	end
+	local from, to = root.Position, marker.Position
+	task.spawn(function()
+		local off = trailOff
+		if off then
+			off()
+		end
+		local remove = TutorialCues.trail(from, to) -- yields (the walking route)
+		trailOff = remove
+		task.delay(Turts.CHIP.trailSeconds, function()
+			if trailOff == remove then
+				remove()
+				trailOff = nil
+			end
+		end)
+	end)
+end
+
+-- His chip: a pill (his face, the words) at the top of a taller see-through button, so a finger finds it (48 px)
+local function buildChip(): TextButton
+	local look = Turts.CHIP
+	local button = Instance.new("TextButton")
+	button.Name = "TurtsChip"
+	button.Text = ""
+	button.AutoButtonColor = false
+	button.BackgroundTransparency = 1
+	button.AutomaticSize = Enum.AutomaticSize.X
+	button.Size = UDim2.fromOffset(0, 48)
+	button.Visible = false
+	local pill = Instance.new("Frame")
+	pill.Name = "Pill"
+	pill.BackgroundColor3 = Color3.new(1, 1, 1)
+	pill.AutomaticSize = Enum.AutomaticSize.X
+	pill.Size = UDim2.fromOffset(0, look.height)
+	pill.Parent = button
+	local round = Instance.new("UICorner")
+	round.CornerRadius = UDim.new(0.5, 0)
+	round.Parent = pill
+	local shade = Instance.new("UIGradient")
+	shade.Rotation = 90
+	shade.Color = ColorSequence.new(UIStyle.CREAM.BODY_TOP, UIStyle.CREAM.BODY_BOTTOM)
+	shade.Parent = pill
+	local rim = Instance.new("UIStroke")
+	rim.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	rim.Color = Color3.new(1, 1, 1)
+	rim.Thickness = 3
+	rim.Parent = pill
+	local pad = Instance.new("UIPadding")
+	pad.PaddingLeft = UDim.new(0, 3)
+	pad.PaddingRight = UDim.new(0, 10)
+	pad.Parent = pill
+	local line = Instance.new("UIListLayout")
+	line.FillDirection = Enum.FillDirection.Horizontal
+	line.VerticalAlignment = Enum.VerticalAlignment.Center
+	line.SortOrder = Enum.SortOrder.LayoutOrder
+	line.Padding = UDim.new(0, look.gap)
+	line.Parent = pill
+	local scale = Instance.new("UIScale")
+	scale.Parent = pill
+	local face = Instance.new("ImageLabel")
+	face.Name = "Face"
+	face.LayoutOrder = 1
+	face.BackgroundColor3 = UIStyle.BABY.butter.light
+	face.Image = Turts.PEEK.image
+	face.ImageRectOffset = Vector2.new(look.face.x, look.face.y)
+	face.ImageRectSize = Vector2.new(look.face.size, look.face.size)
+	face.Size = UDim2.fromOffset(look.faceSize, look.faceSize)
+	face.Parent = pill
+	local faceRound = Instance.new("UICorner")
+	faceRound.CornerRadius = UDim.new(0.5, 0)
+	faceRound.Parent = face
+	local faceRim = Instance.new("UIStroke")
+	faceRim.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	faceRim.Color = Color3.new(1, 1, 1)
+	faceRim.Thickness = 2
+	faceRim.Parent = face
+	local words = UIKit.label(pill, "", Enum.Font.FredokaOne, 15, UIStyle.CREAM.INK)
+	words.Name = "Words"
+	words.LayoutOrder = 2
+	words.AutomaticSize = Enum.AutomaticSize.X
+	words.Size = UDim2.fromOffset(0, look.height)
+	words.TextWrapped = false
+	words.RichText = true
+	Tooltip.rich(button, "Turts' rug shop", { "He brings new offers every 8 minutes.", "Tap to see where he is!" })
+	button.Activated:Connect(pointOut)
+	chipWords, chipShade, chipScale = words, shade, scale
+	return button
 end
 
 local function makeVisual()
@@ -481,6 +639,18 @@ function TurtsController.Start()
 		addPrompt()
 		makeVisual()
 		layOut()
+		local made = buildChip()
+		chip = made
+		QuestController.Below(made)
+		renderChip()
+		showChip()
+		Hud.onTown(function()
+			showChip()
+		end)
+		UIController.OnCompact(function()
+			showChip()
+		end)
+		Players.LocalPlayer:GetAttributeChangedSignal("TutorialDone"):Connect(showChip)
 
 		Remotes.TurtsStock.OnClientEvent:Connect(function(index: number, offers: { string }, boughtIds: { string }, endsAt: number)
 			stock = { index = index, offers = offers, bought = boughtIds, endsAt = endsAt }
@@ -510,10 +680,11 @@ function TurtsController.Start()
 		task.spawn(function()
 			while true do
 				local left = TurtsRules.secondsLeft(os.time(), Turts.RESTOCK_SECONDS)
-				timerLabel.Text = `Restock in {clock(left)}`
+				timerLabel.Text = `Restock in {TurtsRules.clock(left)}`
 				if countdown then
-					countdown.Text = `New offers in {clock(left)}`
+					countdown.Text = `New offers in {TurtsRules.clock(left)}`
 				end
+				renderChip()
 				task.wait(1)
 			end
 		end)

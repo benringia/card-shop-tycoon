@@ -81,4 +81,16 @@ return {
 		expect.near(KeyframeTiming.oneShotEnd(1, 0.2, 0.5), 1.7, 1e-9)
 		expect.equal(KeyframeTiming.oneShotEnd(1, 0.2, 0), 1, "no hold: over at its length")
 	end,
+
+	-- Owner 2026-11-17 ("at the start of chikin and pish cinematics ... they are sliding not walking/running"): their
+	-- 2 s happyHop clip still held their legs for the first second of the run; a clip let go fades out from its current
+	-- pose over a few tenths of a second, so the walk under it takes over
+	["fadeWeight: a clip let go fades from its weight to nothing"] = function()
+		expect.equal(KeyframeTiming.fadeWeight(1, 0.2, 0.2), 1, "just let go: all of it")
+		expect.equal(KeyframeTiming.fadeWeight(1, 0.1, 0.2), 0.5, "halfway")
+		expect.equal(KeyframeTiming.fadeWeight(0.6, 0.1, 0.2), 0.3, "of the weight it had")
+		expect.equal(KeyframeTiming.fadeWeight(1, 0, 0.2), 0, "gone")
+		expect.equal(KeyframeTiming.fadeWeight(1, -0.05, 0.2), 0, "past the end: nothing")
+		expect.equal(KeyframeTiming.fadeWeight(1, 0.3, 0), 0, "no fade time: let go at once")
+	end,
 }

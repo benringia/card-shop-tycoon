@@ -888,11 +888,12 @@ function DevService.Start()
 		end
 	end)
 	-- Daily quests (Config/Quests): /quests done (every quest of today done, ready to claim), /quests new (a new day's)
+	-- /quests week (every weekly quest done, the Weekly Chest ready), /quests newweek (a new week's)
 	addCommand(folder, "quests", function(player, text)
 		local word = string.match(text, "^/%w+%s+(%w+)")
 		local QuestService = require(script.Parent:WaitForChild("QuestService")) :: any
 		local said = if word then QuestService.Dev(player, string.lower(word)) else nil
-		Remotes.Notify:FireClient(player, said or "Usage: /quests done | new", said == nil)
+		Remotes.Notify:FireClient(player, said or "Usage: /quests done | new | week | newweek", said == nil)
 	end)
 	-- Welcome-back earnings (Config/Offline): /away <minutes> sells as if you'd been away that long (the stock really goes)
 	addCommand(folder, "away", function(player, text)

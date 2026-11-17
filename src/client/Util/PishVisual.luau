@@ -160,6 +160,14 @@ function PishVisual.play(visual: Visual, clip: string, onDone: (() -> ())?)
 	visual.onDone = onDone
 end
 
+-- Lets the clip he's playing go over `seconds` (0.2 by default), so his walk takes over his legs (his arrival's run:
+-- the 2 s hop still held them for the run's first second, owner 2026-11-17 "they are sliding")
+function PishVisual.letGo(visual: Visual, seconds: number?)
+	if visual.clipPlayer then
+		ClipPlayer.fadeOut(visual.clipPlayer, seconds or 0.2)
+	end
+end
+
 -- A clip's length in seconds (0 for one he doesn't have)
 function PishVisual.length(visual: Visual, clip: string): number
 	local found = visual.clips[clip]

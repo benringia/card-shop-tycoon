@@ -31,6 +31,7 @@ type Playing = {
 	hold: number, -- seconds it keeps its last pose after its end
 	fired: { [number]: boolean },
 	onMarker: ((name: string) -> ())?,
+	fade: { left: number, total: number }?, -- let go (ClipPlayer.fadeOut): seconds left of its fade
 }
 export type Player = {
 	bones: { [string]: Bone },
@@ -128,6 +129,15 @@ function ClipPlayer.play(player: Player, clip: Clip, speed: number?, onMarker: (
 	player.playing = { clip = clip, t = 0, speed = speed or 1, from = from, hold = hold or 0, fired = {}, onMarker = onMarker }
 end
 
+-- Lets the clip playing go over `seconds`: from its current pose it fades to whatever moves the bones under it (a
+-- walk), then ends (a guide dog's hop let go as he starts running)
+function ClipPlayer.fadeOut(player: Player, seconds: number)
+	local playing = player.playing
+	if playing and not playing.fade then
+		playing.fade = { left = seconds, total = seconds }
+	end
+end
+
 function ClipPlayer.isPlaying(player: Player): boolean
 	return player.playing ~= nil
 end
@@ -165,6 +175,16 @@ function ClipPlayer.step(player: Player, dt: number, scale: number)
 		return
 	end
 	local weight = KeyframeTiming.oneShotWeight(playing.t, clip.length, blend, playing.from, playing.hold)
+	local fade = playing.fade
+	if fade then
+		fade.left -= dt
+		weight = KeyframeTiming.fadeWeight(weight, fade.left, fade.total)
+		if weight <= 0 then
+			player.playing = nil
+			player.weight = 0
+			return
+		end
+	end
 	player.weight = weight
 	local t = math.min(playing.t, clip.length)
 	for name, bone in player.bones do

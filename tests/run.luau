@@ -11,6 +11,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	TipRules = require("./TipRules.spec"),
 	Funnel = require("./Funnel.spec"),
 	QuestRules = require("./QuestRules.spec"),
+	PairRules = require("./PairRules.spec"),
 	OfflineRules = require("./OfflineRules.spec"),
 	IconStacks = require("./IconStacks.spec"),
 	CondenseRules = require("./CondenseRules.spec"),
