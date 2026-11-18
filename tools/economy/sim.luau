@@ -26,6 +26,7 @@ local BeastMath = require("../../src/shared/Util/BeastMath")
 local PityRules = require("../../src/shared/Util/PityRules")
 local CondenseRules = require("../../src/shared/Util/CondenseRules")
 local Customers = require("../../src/shared/Config/Customers")
+local CustomerTypes = require("../../src/shared/Util/CustomerTypes")
 local OfferRules = require("../../src/shared/Util/OfferRules")
 local RatingRules = require("../../src/shared/Util/RatingRules")
 local Weapons = require("../../src/shared/Config/Weapons")
@@ -39,6 +40,10 @@ local MAX_HOURS = 400 -- a player who hasn't reached a goal by then counts as th
 local PLAYERS = tonumber((process.args[1])) or 2000
 local KIDS = process.env.NO_KIDS ~= "1"
 local RATING = tonumber(process.env.RATING or "") or 4
+-- The shop level modelled for the customers (Config/Customers NEW_SHOP: a new shop's boost in full up to fullUntil,
+-- gone from goneAt): LEVEL=<n>; the default is past the boost (the long goals take hours), and a line under the
+-- shop's profit shows a new shop's
+local LEVEL = tonumber(process.env.LEVEL or "") or 40
 
 -- The weapons' cash by the goal (WEAPONS=1): a Forge Sword, a boss weapon made from its material and upgraded to +5
 local function weaponSink(): number
@@ -51,10 +56,15 @@ end
 local WEAPON_SINK = if process.env.WEAPONS == "1" then weaponSink() else 0
 
 -- Customer timing from Config/Customers, the gap scaled by the shop rating (RatingRules)
-local customersPerMinute = 60 / ((Customers.SPAWN_INTERVAL_MIN + Customers.SPAWN_INTERVAL_MAX) / 2) / RatingRules.spawnScale(Customers, RATING)
+local function customersAt(level: number): number
+	return 60 / ((Customers.SPAWN_INTERVAL_MIN + Customers.SPAWN_INTERVAL_MAX) / 2) / RatingRules.spawnScale(Customers, RATING) / CustomerTypes.newShopGap(Customers, level)
+end
 local kidShare = if KIDS then Customers.TYPES.kid.weight else 0
-local kidUnits = (Customers.KID.units[1] + Customers.KID.units[2]) / 2
-local itemsPerCustomer = (1 - kidShare) * (Customers.ITEMS_MIN + Customers.ITEMS_MAX) / 2 + kidShare * kidUnits
+local function itemsAt(level: number): number
+	return (1 - kidShare) * CustomerTypes.meanListSize(Customers, level) + kidShare * CustomerTypes.meanKidUnits(Customers, level) -- at market price: all they want
+end
+local customersPerMinute = customersAt(LEVEL)
+local itemsPerCustomer = itemsAt(LEVEL)
 local kidsPerHour = customersPerMinute * 60 * kidShare * Pricing.BUY_BANDS[1].chance -- kids who bought (and rip)
 
 local product = nil
@@ -298,6 +308,8 @@ if WEAPON_SINK > 0 then
 	print(string.format("Weapons' cash first: $%d (%.1f h of shop profit)", WEAPON_SINK, WEAPON_SINK / (profitPerMinute * 60)))
 end
 print(string.format("Shop profit: %.1f customers/min x %.1f items x %.0f%% buy x $%.2f = $%.0f an hour", customersPerMinute, itemsPerCustomer, buyChance * 100, product.marketPrice - packCost, profitPerMinute * 60))
+local newCustomers, newItems = customersAt(1), itemsAt(1)
+print(string.format("  a new shop (shop level 1-%d, Config/Customers NEW_SHOP): %.1f customers/min x %.1f items = $%.0f an hour", Customers.NEW_SHOP.fullUntil, newCustomers, newItems, newCustomers * newItems * buyChance * (product.marketPrice - packCost) * 60))
 print(string.format("Packs opened: %.0f an hour (cash-limited at $%.2f each)", math.min(3600 / OPEN_SECONDS, profitPerMinute * 60 / packCost), packCost))
 print("")
 print(string.format("%-40s %10s %10s %10s", "Goal", "median", "90% by", "99% by"))

@@ -25,6 +25,7 @@ local CardService = require(Services:WaitForChild("CardService"))
 local DataService = require(Services:WaitForChild("DataService"))
 local ItemService = require(Services:WaitForChild("ItemService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
+local Blocked = require(Util:WaitForChild("Blocked"))
 
 type PlayerData = DataService.PlayerData
 
@@ -402,6 +403,11 @@ end
 local function onSummon(player: Player, slot: unknown)
 	local state = states[player]
 	if not allowAction(player) or not state then
+		return
+	end
+	-- Manning the register (owner 2026-11-19): a creature called out there broke its first-person view
+	if player:GetAttribute("ManningRegister") == true then
+		Blocked.tell(player, "Leave the register first, then call your creature.", { title = "Register" })
 		return
 	end
 	if state.locked then

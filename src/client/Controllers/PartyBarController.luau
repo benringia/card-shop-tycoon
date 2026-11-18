@@ -231,6 +231,11 @@ end
 
 -- Tap or key: an empty slot asks for a card, a party card summons, the summoned one goes back
 local function useSlot(slot: number)
+	-- Manning the register (owner 2026-11-19): no creatures or binder over its first-person view; the server says so too
+	if player:GetAttribute("ManningRegister") == true then
+		require(Controllers:WaitForChild("BlockedController")).Show(if slots[slot] then "Leave the register first, then call your creature." else "Leave the register first, then pick a card.")
+		return
+	end
 	if not slots[slot] then
 		BinderController.Open("Tap a card, then Add to party.")
 	elseif summoned == slot then

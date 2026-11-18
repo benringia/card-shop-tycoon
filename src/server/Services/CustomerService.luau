@@ -421,8 +421,8 @@ local function pickShoppingList(owner: Player, kind: string): { [string]: number
 		end
 		local pack = cheapestPack(level)
 		if pack then
-			local units = if kind == "kid" then CustomerConfig.KID.units else CustomerConfig.BIG_SPENDER.packs
-			list[pack] = rng:NextInteger(units[1], units[2])
+			local packs = CustomerConfig.BIG_SPENDER.packs
+			list[pack] = if kind == "kid" then CustomerTypes.kidUnits(CustomerConfig, rng:NextNumber(), level) else rng:NextInteger(packs[1], packs[2])
 		end
 		maybeBulk(owner, kind, list)
 		return list
@@ -438,7 +438,7 @@ local function pickShoppingList(owner: Player, kind: string): { [string]: number
 	if #unlocked == 0 then
 		return list
 	end
-	for _ = 1, rng:NextInteger(CustomerConfig.ITEMS_MIN, CustomerConfig.ITEMS_MAX) do
+	for _ = 1, CustomerTypes.listSize(CustomerConfig, rng:NextNumber(), level) do
 		local productId = unlocked[rng:NextInteger(1, #unlocked)]
 		list[productId] = (list[productId] or 0) + 1
 	end
@@ -586,8 +586,9 @@ local function shopFor(customer: Customer, productId: string, wanted: number, vi
 		return true
 	end
 
-	-- Someone else may have emptied it while this customer walked over
-	local taken = PlacementService.TakeStock(shelf, wanted)
+	-- Someone else may have emptied it while this customer walked over; over market they take fewer (CustomerTypes.unitsAt)
+	local units = CustomerTypes.unitsAt(CustomerConfig, customer.kind, wanted, price, product.marketPrice, Pricing.BUY_BANDS, EconomyService.GetLevel(customer.owner))
+	local taken = PlacementService.TakeStock(shelf, units)
 	if taken > 0 then
 		table.insert(customer.items, { shelfUid = shelf.uid, productId = productId, units = taken, unitPrice = price })
 	end
@@ -1000,7 +1001,9 @@ local function spawnTick()
 		elseif now >= state.nextSpawnAt and #state.customers < CustomerConfig.MAX_PER_PLOT then
 			-- Hype (Ember creature summoned): customers arrive more often
 			-- The shop rating (RatingService) shortens or stretches it
-			local interval = rng:NextNumber(CustomerConfig.SPAWN_INTERVAL_MIN, CustomerConfig.SPAWN_INTERVAL_MAX) * spawnScale(owner)
+			-- a new shop's customers come closer together (Config/Customers NEW_SHOP, owner 2026-11-19)
+			local newShop = CustomerTypes.newShopGap(CustomerConfig, EconomyService.GetLevel(owner))
+			local interval = rng:NextNumber(CustomerConfig.SPAWN_INTERVAL_MIN, CustomerConfig.SPAWN_INTERVAL_MAX) * spawnScale(owner) * newShop
 			state.nextSpawnAt = now + interval / (1 + PartyService.GetPerk(owner, "Hype"))
 			-- Walking in from somewhere on the street (it counts once it's at the door: Adopt), else at the door now
 			local kind = CustomerTypes.pick(CustomerConfig, { hasShowcase = showsCards(owner), shopLevel = EconomyService.GetLevel(owner) }, rng:NextNumber())

@@ -80,4 +80,102 @@ function CustomerTypes.buys(cfg: any, kind: string, price: number, market: numbe
 	return band.chance * (1 + perkBonus) > roll
 end
 
+type Sizes = { { count: number, new: number, late: number } }
+
+-- How much of a new shop's boost a shop at `level` still has (Config/Customers NEW_SHOP): 1 up to fullUntil, 0 from
+-- goneAt, straight down in between
+function CustomerTypes.newShopShare(cfg: any, level: number): number
+	local boost = cfg.NEW_SHOP
+	if level <= boost.fullUntil then
+		return 1
+	elseif level >= boost.goneAt then
+		return 0
+	end
+	return (boost.goneAt - level) / (boost.goneAt - boost.fullUntil)
+end
+
+-- The gap between customers times this at `level`: a new shop's NEW_SHOP.gap (about 1.4x as many customers), back to 1
+function CustomerTypes.newShopGap(cfg: any, level: number): number
+	return 1 + (cfg.NEW_SHOP.gap - 1) * CustomerTypes.newShopShare(cfg, level)
+end
+
+-- Each size's share at `level`: the new shop's shares blended into the late ones
+local function shares(cfg: any, sizes: Sizes, level: number): { number }
+	local share = CustomerTypes.newShopShare(cfg, level)
+	local newTotal, lateTotal = 0, 0
+	for _, entry in sizes do
+		newTotal += entry.new
+		lateTotal += entry.late
+	end
+	local out = {}
+	for index, entry in sizes do
+		local early = if newTotal > 0 then entry.new / newTotal else 0
+		local late = if lateTotal > 0 then entry.late / lateTotal else 0
+		out[index] = late + (early - late) * share
+	end
+	return out
+end
+
+-- A size picked by `roll` (0-1): each size's share of the rolls is its share at `level`
+local function pickCount(cfg: any, sizes: Sizes, roll: number, level: number): number
+	local weights = shares(cfg, sizes, level)
+	local at = math.clamp(roll, 0, 0.999999)
+	for index, entry in sizes do
+		at -= weights[index]
+		if at < 0 then
+			return entry.count
+		end
+	end
+	for index = #sizes, 1, -1 do
+		if weights[index] > 0 then
+			return sizes[index].count
+		end
+	end
+	return sizes[#sizes].count
+end
+
+local function meanCount(cfg: any, sizes: Sizes, level: number): number
+	local weights = shares(cfg, sizes, level)
+	local sum = 0
+	for index, entry in sizes do
+		sum += entry.count * weights[index]
+	end
+	return sum
+end
+
+-- How many things a customer wants at shop `level` (Config/Customers LIST_SIZE): a new shop's usually 3 or 4, rarely
+-- 1; 1 to 3 from NEW_SHOP.goneAt
+function CustomerTypes.listSize(cfg: any, roll: number, level: number): number
+	return pickCount(cfg, cfg.LIST_SIZE, roll, level)
+end
+
+function CustomerTypes.meanListSize(cfg: any, level: number): number
+	return meanCount(cfg, cfg.LIST_SIZE, level)
+end
+
+-- How many packs a kid buys at shop `level` (Config/Customers KID.units): a new shop's mostly 2 or 3, later 1 or 2
+function CustomerTypes.kidUnits(cfg: any, roll: number, level: number): number
+	return pickCount(cfg, cfg.KID.units, roll, level)
+end
+
+function CustomerTypes.meanKidUnits(cfg: any, level: number): number
+	return meanCount(cfg, cfg.KID.units, level)
+end
+
+-- How many of the `wanted` a customer of this type takes at `price` in a shop at `level` (owner 2026-11-19:
+-- "specially if its market price"): while the new shop's boost lasts, all of them in their cheapest band (at or under
+-- market for most), one fewer a band over, just one past that; once it's gone, all of them as before
+function CustomerTypes.unitsAt(cfg: any, kind: string, wanted: number, price: number, market: number, bands: { Band }, level: number): number
+	if CustomerTypes.newShopShare(cfg, level) <= 0 then
+		return math.max(1, wanted)
+	end
+	local band = shiftedBand(cfg, kind, price, market, bands)
+	if band <= 1 then
+		return math.max(1, wanted)
+	elseif band == 2 then
+		return math.max(1, wanted - 1)
+	end
+	return 1
+end
+
 return CustomerTypes

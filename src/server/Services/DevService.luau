@@ -929,6 +929,20 @@ function DevService.Start()
 		local said = if word then QuestService.Dev(player, string.lower(word)) else nil
 		Remotes.Notify:FireClient(player, said or "Usage: /quests done | new | week | newweek", said == nil)
 	end)
+	-- The coin sound whenever cash goes up (Config/CoinSound OPTIONS, owner 2026-11-19): /coinsound <n> picks one by ear
+	-- (heard once now and on every earning), 0 for the default
+	addCommand(folder, "coinsound", function(player, text)
+		local options = require(Config:WaitForChild("CoinSound")).OPTIONS
+		local pick = tonumber(string.match(text, "^/%w+%s+(%d+)"))
+		if not pick or pick > #options then
+			Remotes.Notify:FireClient(player, `Usage: /coinsound <1-{#options}>, 0 for the default`, true)
+			return
+		end
+		player:SetAttribute("CoinSoundPick", if pick > 0 then pick else nil)
+		local heard = player:GetAttribute("CoinSoundPreview")
+		player:SetAttribute("CoinSoundPreview", (if typeof(heard) == "number" then heard else 0) + 1)
+		Remotes.Notify:FireClient(player, if pick > 0 then `Coin sound {pick}: {options[pick].name}` else "Coin sound: back to the default", false)
+	end)
 	-- Main quests (Config/MainQuests): /mainquest reset (every first build pays its shop XP again: sell one, place it)
 	addCommand(folder, "mainquest", function(player, text)
 		local word = string.match(text, "^/%w+%s+(%w+)")

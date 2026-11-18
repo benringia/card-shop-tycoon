@@ -82,4 +82,70 @@ return {
 		expect.equal(width > depth and height >= width and height <= 1.5, true, "a paper bag about knee high")
 		expect.equal(bag.handle.width < width, true, "handles inside the bag's width")
 	end,
+	-- How much they buy (owner 2026-11-19: "make them buy like 3 or 4 minimum. rarely just 1. specially if its market
+	-- price. to speed up gold in early game", then "add your suggestions": a new shop boost that fades by shop level 15)
+	["a new shop's shopping lists are usually 3 or 4 things, rarely just 1"] = function()
+		expect.equal(CustomerTypes.listSize(Customers, 0, 1), 1, "the rare single")
+		local counts = { 0, 0, 0, 0 }
+		local steps = 1000
+		for i = 0, steps - 1 do
+			local size = CustomerTypes.listSize(Customers, (i + 0.5) / steps, 1)
+			counts[size] += 1
+		end
+		expect.equal(counts[1] / steps <= 0.06, true, "1 thing at most 6% of the time")
+		expect.equal((counts[3] + counts[4]) / steps >= 0.75, true, "3 or 4 things at least 3 in 4 times")
+		expect.equal(CustomerTypes.listSize(Customers, 0.9999, 1), 4, "the most")
+		expect.equal(CustomerTypes.meanListSize(Customers, 1) >= 3, true, "about 3 on average")
+		expect.equal(CustomerTypes.meanListSize(Customers, Customers.NEW_SHOP.fullUntil), CustomerTypes.meanListSize(Customers, 1), "the same up to its last full level")
+	end,
+
+	["from shop level 15 the lists are as before: 1 to 3 things, fading in between"] = function()
+		local late = Customers.NEW_SHOP.goneAt
+		local counts = { 0, 0, 0, 0 }
+		for i = 0, 999 do
+			local size = CustomerTypes.listSize(Customers, (i + 0.5) / 1000, late)
+			counts[size] += 1
+		end
+		expect.equal(counts[4], 0, "never 4")
+		for size = 1, 3 do
+			expect.near(counts[size] / 1000, 1 / 3, 0.01, `{size} things a third of the time`)
+		end
+		expect.near(CustomerTypes.meanListSize(Customers, 40), 2, 1e-6, "2 on average, like before")
+		local middle = CustomerTypes.meanListSize(Customers, 12)
+		expect.equal(middle > 2 and middle < CustomerTypes.meanListSize(Customers, 1), true, "fading in between")
+	end,
+
+	["a new shop's kids buy 2 or 3 packs, later 1 or 2 like before"] = function()
+		local ones = 0
+		for i = 0, 999 do
+			local units = CustomerTypes.kidUnits(Customers, (i + 0.5) / 1000, 1)
+			expect.equal(units >= 1 and units <= 3, true, "1 to 3")
+			ones += if units == 1 then 1 else 0
+		end
+		expect.equal(ones / 1000 <= 0.2, true, "1 pack at most a fifth of the time")
+		expect.equal(CustomerTypes.meanKidUnits(Customers, 1) >= 2, true, "2 or more on average")
+		expect.near(CustomerTypes.meanKidUnits(Customers, 30), 1.5, 1e-6, "1 or 2 from shop level 15")
+		expect.equal(CustomerTypes.kidUnits(Customers, 0.9999, 30), 2, "never 3 then")
+	end,
+
+	["a new shop's customers take all they wanted at market price, one fewer a bit above, one well above"] = function()
+		expect.equal(CustomerTypes.unitsAt(Customers, "plain", 4, 3, 3, BANDS, 1), 4, "at market price: all 4")
+		expect.equal(CustomerTypes.unitsAt(Customers, "plain", 4, 2.5, 3, BANDS, 1), 4, "below it: all 4")
+		expect.equal(CustomerTypes.unitsAt(Customers, "plain", 4, 3.5, 3, BANDS, 1), 3, "a bit above: one fewer")
+		expect.equal(CustomerTypes.unitsAt(Customers, "plain", 1, 3.5, 3, BANDS, 1), 1, "never fewer than one")
+		expect.equal(CustomerTypes.unitsAt(Customers, "plain", 4, 4.4, 3, BANDS, 1), 1, "well above: just one")
+		expect.equal(CustomerTypes.unitsAt(Customers, "bargain", 4, 3.5, 3, BANDS, 1), 4, "a bargain hunter's band is a step higher")
+		expect.equal(CustomerTypes.unitsAt(Customers, "plain", 3, 4.4, 3, BANDS, 30), 3, "from shop level 15: all they wanted, like before")
+	end,
+
+	["a new shop's customers come about 1.4x as often, fading back by shop level 15"] = function()
+		local cfg = Customers.NEW_SHOP
+		expect.near(CustomerTypes.newShopGap(Customers, 1), cfg.gap, 1e-6, "level 1")
+		expect.near(CustomerTypes.newShopGap(Customers, cfg.fullUntil), cfg.gap, 1e-6, "its last full level")
+		expect.equal(CustomerTypes.newShopGap(Customers, cfg.goneAt), 1, "back to normal")
+		expect.equal(CustomerTypes.newShopGap(Customers, 60), 1)
+		local middle = CustomerTypes.newShopGap(Customers, 12)
+		expect.equal(middle > cfg.gap and middle < 1, true, "fading in between")
+		expect.equal(1 / cfg.gap >= 1.35 and 1 / cfg.gap <= 1.5, true, "about 1.4x the customers")
+	end,
 }

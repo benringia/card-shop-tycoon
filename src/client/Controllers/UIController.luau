@@ -762,6 +762,7 @@ function UIController.Start()
 
 	updateCash()
 	player:GetAttributeChangedSignal("Cash"):Connect(updateCash)
+	require(ClientUtil:WaitForChild("CoinSound")).start() -- a coin sound whenever the cash goes up (owner 2026-11-19)
 	Remotes.Notify.OnClientEvent:Connect(function(message: string, isError: boolean?, style: string?)
 		if typeof(message) ~= "string" then
 			return

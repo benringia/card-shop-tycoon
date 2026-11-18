@@ -985,6 +985,10 @@ local function showJobPicker()
 	tiles.Size = UDim2.new(1, -24, 1, -(54 + 48 + 22))
 	tiles.ZIndex = jobChooser.ZIndex + 1
 	tiles.Parent = jobChooser
+	-- At most this tall, under the title: on a tall window they stretched into long empty columns (owner 2026-11-19)
+	local tallest = Instance.new("UISizeConstraint")
+	tallest.MaxSize = Vector2.new(math.huge, 200)
+	tallest.Parent = tiles
 	local row = Instance.new("UIListLayout")
 	row.FillDirection = Enum.FillDirection.Horizontal
 	row.Padding = UDim.new(0, 10)

@@ -467,7 +467,16 @@ is over UI (`UIKit.pointerBlocked`).
 
 ### 4.5 Customers (NPCs)
 - Spawn from the street, walk in using PathfindingService.
-- Each customer has a small shopping list (1–3 items), browses shelves, picks items, joins the register queue.
+- Each customer has a shopping list (1-3 things), browses shelves, picks items, joins the register queue. A new
+  shop's boost (owner 2026-11-19: "make them buy like 3 or 4 minimum. rarely just 1. specially if its market price. to
+  speed up gold in early game", then "add your suggestions"; `Customers.NEW_SHOP`, `CustomerTypes.newShopShare`):
+  in full up to shop level 8, fading to nothing by 15. While it's on, lists are usually 3 or 4 things and rarely 1
+  (`LIST_SIZE` new: 1 5%, 2 15%, 3 45%, 4 35%), kids buy mostly 2 or 3 packs, customers come 0.7x as far apart (about
+  1.4x as many), and at a shelf priced a band over market they take one fewer, past that just one
+  (`CustomerTypes.unitsAt`; a bargain hunter's band is a step higher). From level 15 everything is as before (lists 1-3,
+  kids 1-2, every gap as it was, all they wanted at any price they buy at). Economy sim (`tools/economy/sim`): a new
+  shop makes $1,551 an hour at 4 stars ($1,241 at 3), 2.2x the $706 ($565) from level 15; the long goals are unchanged
+  (a Grade S Legendary with 1 star in 19.6 h median). A new shop's 24-pack rack lasts about a minute.
 - They only browse what they can buy: stocked product shelves and Glass Showcases with cards (never Collector
   Cases or the Card Condenser). If something on their list isn't stocked, they check up to 2 more shelves
   (`SEARCH_SHELVES`) before showing the "no stock" bubble. In an empty shop they walk straight to its empty racks and
@@ -496,7 +505,7 @@ is over UI (`UIKit.pointerBlocked`).
   Roblox's "ROBLOX Boy" / "ROBLOX Girl" bodies (bundles 109 / 108) at their 0.82 scale with one of Roblox's free
   animated heads (Dylan, Devon, Check It, Silly Fun, Stevie), casual catalog clothes and the same hair; dressed, they
   hold their pack without the cap (`dressedProps`). A catalog asset that fails to load falls back to the blocky look in
-  the type's colours. Town walkers use the same models. Kids buy 1-2 of the cheapest pack the shop sells. Bargain hunters and big spenders buy one price band
+  the type's colours. Town walkers use the same models. Kids buy 1-2 of the cheapest pack the shop sells (a new shop's mostly 2 or 3, owner 2026-11-19). Bargain hunters and big spenders buy one price band
   higher than plain customers (`Pricing.BUY_BANDS`, past the last band more bands as wide as the last); past that
   they won't buy and get annoyed. Big spenders buy a display box (`BIG_SPENDER.box`) or a stack of 6-12 packs and
   tip 10% at the register.
@@ -610,7 +619,10 @@ is over UI (`UIKit.pointerBlocked`).
   asks, so the server waits up to `Register.MAN_GRACE` (1.5 s) for that move to reach it before it says no (QA
   2026-11-17: pressed from the shop floor, the server saw you out front and refused while the register's view stayed up,
   every scan refused); with no yes in `MAN_CONFIRM` (3 s) the client steps off again. Leaving is never rate-limited. Your
-  own title tag hides while you're on it (it hung across the top of the first-person view; others still see it). A card bought from a Glass Showcase lies on the
+  own title tag hides while you're on it (it hung across the top of the first-person view; others still see it). No
+  summoning and no binder while you're on it (owner 2026-11-19: a party key there opened the binder over the
+  first-person view): the party keys and taps, the Cards tile and B show a locked card "Leave the register first, then
+  ..." (`PartyBarController`, `BinderController`), and the server refuses a summon too (`PartyService`, `Util/Blocked`). A card bought from a Glass Showcase lies on the
   counter as a real card (owner 2026-11-16: "cards from the glasscase should have a model in cashiers too with all the
   effects"): the case card's part and attributes (card, foil, grade, level, stars, price), face up and its top away from
   you, scaled into the counter slot (`RegisterService` dressCard), so every client draws its face, halo, sparkles and a
@@ -3936,6 +3948,13 @@ the always-on tracker B, the money card A).
   same animations, "All 3: Weekly Chest (Epic Pack!)" or "Weekly Chest ready! Tap to open" (its gift wiggles); the
   week's rows and the gold done box pop in as they arrive. A phone's band says "Weekly" and the week's count. Saved as
   `weekly` (schema v34). Studio: `/quests week | newweek`. Later, next to it: set rewards (option C).
+- **A coin sound for every earning** (owner 2026-11-19: "Add a coin sound effect everytime you earn coin for everything";
+  `Config/CoinSound`, pure `Util/CoinSoundRules`, client `Util/CoinSound`; tests/CoinSoundRules): whenever your cash goes up
+  (a sale, a quest, a level-up, a fight, money back...; not when it first arrives as your save loads) a licensed coin
+  sound plays, 0.12 s later, once for a burst (at most every 0.18 s), its pitch 0.96-1.08, at volume 0.4. A monster's
+  knockout holds it 3.4 s (its poof plays its own coins jingle; BattleController). Three Pro Sound Effects options to
+  pick by ear: Coin Throws 3 (the default), Cash Register 5, Coin Toss 5 (`/coinsound <1-3>`, the admin panel's buttons;
+  heard once when picked).
 - **Main quests** (owner 2026-11-18: "when items like forge is unlocked and the players couldnt afford it yet, add it to
   their main quests, so that when they finish all daily quest, there's always something to do"; look A of artifact
   Evh8Gx9pN61R5GkodcwR3C; `Config/MainQuests`, pure `Util/MainQuestRules`, `MainQuestService`, client `Util/MainQuest`

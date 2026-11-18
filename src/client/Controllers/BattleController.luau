@@ -1912,6 +1912,10 @@ local function onEnded(summary: any)
 				require(ClientUtil:WaitForChild("CardLoot")).drop(at, summary.card)
 			end
 		end)
+		if knocked then
+			-- the cash came now; its coins jingle at the poof instead (Util/CoinSound waits a beat before it plays)
+			require(ClientUtil:WaitForChild("CoinSound")).hold(require(Shared:WaitForChild("Config"):WaitForChild("CoinSound")).KO_HOLD)
+		end
 		if not knocked then
 			showEnd(summary, wasBoss, monsterAt)
 			if summary.result == "win" and not wasBoss and marker and typeof(summary.card) == "table" then

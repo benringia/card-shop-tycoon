@@ -2116,6 +2116,11 @@ local function isTyping(): boolean
 end
 
 local function toggle()
+	-- Manning the register (owner 2026-11-19): the binder's stage can't open over its first-person view
+	if not panel.Visible and player:GetAttribute("ManningRegister") == true then
+		require(Controllers:WaitForChild("BlockedController")).Show("Leave the register first, then open your cards.")
+		return
+	end
 	CardDetailController.Close()
 	panel.Visible = not panel.Visible
 	if panel.Visible then

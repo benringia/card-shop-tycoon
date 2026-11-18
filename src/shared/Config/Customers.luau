@@ -18,8 +18,20 @@ return {
 	SPAWN_INTERVAL_MAX = 15,
 	SPAWN_CHECK_INTERVAL = 1,
 
-	ITEMS_MIN = 1, -- shopping list size
-	ITEMS_MAX = 3,
+	-- A new shop's boost (owner 2026-11-19: "make them buy like 3 or 4 minimum. rarely just 1. specially if its market
+	-- price. to speed up gold in early game", then "add your suggestions"; CustomerTypes.newShopShare): in full up to
+	-- shop level `fullUntil`, fading to nothing by `goneAt` (the economy as before from there). While it's on, customers
+	-- come `gap` times as far apart (about 1.4x as many), want LIST_SIZE's `new` sizes and kids KID.units' `new`, and at a
+	-- shelf priced a band over market take one fewer, past that just one (CustomerTypes.unitsAt)
+	NEW_SHOP = { fullUntil = 8, goneAt = 15, gap = 0.7 },
+	-- How many things a customer wants (CustomerTypes.listSize): each size's share, a new shop's (`new`: usually 3 or 4,
+	-- rarely 1) and from shop level NEW_SHOP.goneAt (`late`: 1 to 3 evenly, as before), blended in between
+	LIST_SIZE = {
+		{ count = 1, new = 0.05, late = 1 },
+		{ count = 2, new = 0.15, late = 1 },
+		{ count = 3, new = 0.45, late = 1 },
+		{ count = 4, new = 0.35, late = 0 },
+	},
 
 	WALK_SPEED = 6, -- a normal walk, as the town walkers (owner 2026-11-06: 10 looked hurried)
 	BROWSE_SECONDS = 1.5, -- time spent looking at a shelf
@@ -139,9 +151,13 @@ return {
 	TYPE_ORDER = { "plain", "kid", "collector", "bargain", "bigSpender" },
 	-- A kid buys this many of the cheapest pack; a big spender the booster box when stocked (else this many packs) and
 	-- tips `tip` of the total when every price is at or under market
-	-- Kids buy 1-2 of the cheapest pack and rip one at the counter: everyone sees the reveal for revealSeconds before
-	-- they leave or offer the card (OfferService)
-	KID = { units = { 1, 2 }, revealSeconds = 3 },
+	-- Kids buy the cheapest pack, a new shop's mostly 2 or 3, later 1 or 2 as before (CustomerTypes.kidUnits; NEW_SHOP),
+	-- and rip one at the counter: everyone sees the reveal for revealSeconds before they leave or offer the card
+	-- (OfferService)
+	KID = {
+		units = { { count = 1, new = 0.15, late = 1 }, { count = 2, new = 0.5, late = 1 }, { count = 3, new = 0.35, late = 0 } },
+		revealSeconds = 3,
+	},
 	BIG_SPENDER = { box = "FirstSparkBox", packs = { 6, 12 }, tip = 0.1 },
 	-- The shop bag a customer carries out after paying (owner 2026-11-16: "customers that bought something should carry
 	-- a shopping bag on their way out. shopping bag should have pish and chikin design on them"; server Util/ShopBag).
