@@ -14,6 +14,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Victory = require(Shared:WaitForChild("Config"):WaitForChild("Victory"))
 local VictoryRules = require(Shared:WaitForChild("Util"):WaitForChild("VictoryRules"))
 local Icon = require((script.Parent :: Instance):WaitForChild("Icon"))
+local ScreenCover = require((script.Parent :: Instance):WaitForChild("ScreenCover"))
 
 local VictoryScreen = {}
 
@@ -26,6 +27,9 @@ export type Show = {
 	notes: { string }?,
 	party: { PartyEntry }?,
 	seconds: number?, -- how long it stays (Config/Victory SECONDS when nil)
+	-- no tap closes it: a boss win's whole moment plays (owner 2026-11-18: "Victory screen after bossfight should not be
+	-- skippable"); it still goes by itself after `seconds`
+	locked: boolean?,
 }
 
 local function rgb(c: { number }): Color3
@@ -153,20 +157,22 @@ function VictoryScreen.show(data: Show)
 	root.Size = UDim2.fromScale(1, 1)
 	root.Parent = screen
 
-	-- A warm flash, then a soft dark veil so the words read over any arena
+	-- A warm flash, then a soft dark veil so the words read over any arena; under the words, over the whole screen (past a
+	-- phone's safe area)
+	local covers = ScreenCover.layer(screen, 0)
 	local flash = Instance.new("Frame")
 	flash.Size = UDim2.fromScale(1, 1)
 	flash.BorderSizePixel = 0
 	flash.BackgroundColor3 = if data.kind == "lose" then Color3.fromRGB(120, 20, 20) else Color3.fromRGB(255, 240, 190)
 	flash.BackgroundTransparency = if data.kind == "run" then 1 else 0.35
-	flash.Parent = root
+	flash.Parent = covers
 	TweenService:Create(flash, TweenInfo.new(0.6), { BackgroundTransparency = 1 }):Play()
 	local veil = Instance.new("Frame")
 	veil.Size = UDim2.fromScale(1, 1)
 	veil.BorderSizePixel = 0
 	veil.BackgroundColor3 = Color3.new(0, 0, 0)
 	veil.BackgroundTransparency = 1
-	veil.Parent = root
+	veil.Parent = covers
 	TweenService:Create(veil, TweenInfo.new(0.4), { BackgroundTransparency = 0.6 }):Play()
 
 	local column = Instance.new("Frame")
@@ -345,9 +351,10 @@ function VictoryScreen.show(data: Show)
 	if data.kind == "win" or data.kind == "conquered" then
 		play(Victory.SOUNDS.win)
 	end
-	-- A tap or click closes it (after a moment, so the tap that won the fight doesn't); it goes by itself too
+	-- A tap or click closes it (after a moment, so the tap that won the fight doesn't), a boss win's never (`locked`);
+	-- it goes by itself too
 	task.delay(0.8, function()
-		if token ~= current then
+		if token ~= current or data.locked then
 			return
 		end
 		local connection: RBXScriptConnection

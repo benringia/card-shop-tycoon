@@ -14,6 +14,7 @@ local Config = Shared:WaitForChild("Config")
 local Products = require(Config:WaitForChild("Products"))
 local Items = require(Config:WaitForChild("Items"))
 local ItemRules = require(Shared:WaitForChild("Util"):WaitForChild("ItemRules"))
+local TutorialRules = require(Shared:WaitForChild("Util"):WaitForChild("TutorialRules"))
 local StockConfig = require(Config:WaitForChild("Stock"))
 local Tips = require(Config:WaitForChild("Tips"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -197,8 +198,10 @@ local function onPickup(player: Player, shop: Shop, box: Part)
 	attachToCharacter(box, root, #shop.carried)
 	layoutWaiting(shop)
 	-- the first few boxes of packs: a bubble over To Bag teaches it (Config/Tips TO_BAG; owner 2026-11-17: "make sure
-	-- players know you can put packs in the bag")
-	if holdsPacks(box) and TipService.Next(player, Tips.TO_BAG.id, Tips.TO_BAG.shows) then
+	-- players know you can put packs in the bag"); never during Pish's tour, which has them stock the rack (2026-11-18)
+	local step = player:GetAttribute("TutorialStep")
+	local touring = TutorialRules.tipWaits(if typeof(step) == "string" then step else "")
+	if holdsPacks(box) and not touring and TipService.Next(player, Tips.TO_BAG.id, Tips.TO_BAG.shows) then
 		player:SetAttribute("ToBagTip", true)
 	end
 	syncCarry(shop)
@@ -404,6 +407,12 @@ local function onBagBox(player: Player)
 	end
 	local shop = shops[player]
 	if not shop or #shop.carried == 0 then
+		return
+	end
+	-- the tour's packs go on the rack (its step stocks it); the tile is hidden then, this is the server saying so too
+	local step = player:GetAttribute("TutorialStep")
+	if not TutorialRules.offersToBag(if typeof(step) == "string" then step else "") then
+		Blocked.tell(player, "Put these packs on your rack first! Pish is showing you how.")
 		return
 	end
 	local moved = 0

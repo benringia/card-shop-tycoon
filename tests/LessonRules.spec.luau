@@ -43,7 +43,7 @@ local function same(a: { string }, b: { string }, what: string)
 end
 
 local function facts(over: { [string]: any }): any
-	local base = { played = 300, quiet = 70, sinceNudge = 200, boxWaiting = false, shelvesStocked = true }
+	local base = { played = 300, quiet = 70, sinceNudge = 200, boxWaiting = false, shelvesStocked = true, canOrder = true, muted = false }
 	for key, value in over do
 		base[key] = value
 	end
@@ -130,6 +130,21 @@ return {
 		expect.equal(LessonRules.nudge(Pish.STUCK, facts({})), nil, "stocked, nothing waiting: customers will come")
 	end,
 
+	-- the owner 2026-11-18: "Pish is forcing players to buy items that the player cant afford yet. maybe add close or 'ill
+	-- keep that in mind' that will make pish go away. or 'dont remind me again'"
+	["nudge: never to order packs you can't pay for, and never again once told Got it"] = function()
+		expect.equal(LessonRules.nudge(Pish.STUCK, facts({ shelvesStocked = false, canOrder = false })), nil, "empty shelves, no cash for a box: no nagging")
+		expect.equal(LessonRules.nudge(Pish.STUCK, facts({ boxWaiting = true, canOrder = false })), "stock", "a box already here costs nothing to stock")
+		expect.equal(LessonRules.nudge(Pish.STUCK, facts({ shelvesStocked = false, muted = true })), nil, "Got it: he stops coming")
+		expect.equal(LessonRules.nudge(Pish.STUCK, facts({ boxWaiting = true, muted = true })), nil, "for any nudge")
+	end,
+
+	["cheapestBox: the least a box to order costs at a shop level (never the Bulk Bin's handfuls)"] = function()
+		expect.equal(LessonRules.cheapestBox(Products.List, 1), Products.ById.FirstSparkPack.boxCost, "level 1: First Spark packs")
+		expect.equal(LessonRules.cheapestBox(Products.List, 12), Products.ById.CardSleeves.boxCost, "sleeves once unlocked")
+		expect.equal(LessonRules.cheapestBox({}, 1), nil, "nothing to order")
+	end,
+
 	["nudge: never too soon, too often or after the first hour"] = function()
 		expect.equal(LessonRules.nudge(Pish.STUCK, facts({ boxWaiting = true, quiet = 30 })), nil, "busy a moment ago")
 		expect.equal(LessonRules.nudge(Pish.STUCK, facts({ boxWaiting = true, sinceNudge = 60 })), nil, "nudged a minute ago")
@@ -186,6 +201,49 @@ return {
 		expect.equal(LessonRules.forProduct(Pish.LESSONS, "FirstSparkBox"), "boosterBox")
 		expect.equal(LessonRules.forProduct(Pish.LESSONS, "FirstSparkPack"), nil, "the first visit's packs")
 	end,
+	["busyWith: the register, boxes, placing, a window, a fight, a show or a popup keep him away (owner 2026-11-18)"] = function()
+		local free = { register = false, carrying = false, building = false, window = false, fight = false, show = false, popup = false }
+		expect.equal(LessonRules.busyWith(free), nil, "nothing on: free")
+		for reason in free do
+			local busy = table.clone(free)
+			busy[reason] = true
+			expect.equal(LessonRules.busyWith(busy), reason, `{reason} alone`)
+		end
+		local many = table.clone(free)
+		many.window, many.register, many.fight = true, true, true
+		expect.equal(LessonRules.busyWith(many), "fight", "the biggest thing first")
+		local teaching = table.clone(free)
+		teaching.window, teaching.building = true, true
+		expect.equal(LessonRules.busyWith(teaching, { window = true, building = true }), nil, "a lesson's own windows and placing")
+		teaching.register = true
+		expect.equal(LessonRules.busyWith(teaching, { window = true, building = true }), "register", "the register still counts")
+	end,
+
+	["mayStart: free Pish.PACE.free seconds, and Pish.PACE.gap seconds after his last visit ended"] = function()
+		local pace = Pish.PACE
+		local now = 1000
+		expect.equal(LessonRules.mayStart(now, nil, nil, pace), false, "busy now")
+		expect.equal(LessonRules.mayStart(now, now - pace.free + 0.5, nil, pace), false, "free a moment ago")
+		expect.equal(LessonRules.mayStart(now, now - pace.free, nil, pace), true, "free long enough, no visit yet")
+		expect.equal(LessonRules.mayStart(now, now - 100, now - pace.gap + 1, pace), false, "his last visit just ended")
+		expect.equal(LessonRules.mayStart(now, now - 100, now - pace.gap, pace), true, "a breather later")
+	end,
+
+	["whileBusy: a visit carries on, steps back while they're busy, and leaves past Pish.PACE.wait"] = function()
+		local pace = Pish.PACE
+		local now = 1000
+		expect.equal(LessonRules.whileBusy(now, nil, pace), "on", "not busy")
+		expect.equal(LessonRules.whileBusy(now, now - 1, pace), "pause", "busy a moment: he steps back")
+		expect.equal(LessonRules.whileBusy(now, now - pace.wait, pace), "leave", "busy a while: he goes, the lesson waits")
+	end,
+
+	["the pacing: a few seconds free, a breather between visits, a short wait before he leaves"] = function()
+		local pace = Pish.PACE
+		assert(pace.free >= 3 and pace.free <= 8, "a few seconds free first")
+		assert(pace.gap >= 30, "never back to back")
+		assert(pace.wait >= 5 and pace.wait < Pish.LESSON_SECONDS, "he doesn't hang about while they're busy")
+	end,
+
 	["used: placing or ordering a lesson's thing marks it seen, even before its level (final review I3)"] = function()
 		local seen = { showcase = false }
 		local after = LessonRules.used(seen, "showcase")

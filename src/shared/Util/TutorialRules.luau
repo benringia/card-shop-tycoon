@@ -199,6 +199,22 @@ function TutorialRules.tourLeading(pishStep: string, combatStep: string, waitSte
 	return pishStep ~= "" or (combatStep ~= "" and combatStep ~= waitStep)
 end
 
+-- The tour's step where its first box of packs goes on the rack (Config/Pish STEPS)
+TutorialRules.STOCK_STEP = "stockRack"
+
+-- Whether To Bag (the carried box's packs into the Bag) is offered on Pish's step `step` ("" once the tour is over): not
+-- while he says to put the tour's packs on the rack (owner 2026-11-18: "pish is saying put the box on the rack while
+-- highlighting the 'To bag' tile"; bagged, they'd leave the step nothing to stock)
+function TutorialRules.offersToBag(step: string): boolean
+	return step ~= TutorialRules.STOCK_STEP
+end
+
+-- Whether a tip with Pish's face (To Bag's) waits: all through his tour, so it never says the opposite of what he's
+-- saying; its shows are kept for after
+function TutorialRules.tipWaits(step: string): boolean
+	return step ~= ""
+end
+
 -- The calm HUD pieces kept while Chikin leads (`focus`: Config/Chikin FOCUS, by step; the owner 2026-11-11, focus
 -- mode): nil when he isn't leading (no step, his wait) or the player is out of town (the Wild keeps the whole HUD)
 function TutorialRules.chikinFocus(step: string, inTown: boolean, focus: { [string]: { string } }, waitStep: string): { string }?

@@ -47,8 +47,10 @@ function OpeningCreature.clear()
 	end
 end
 
--- Its creature out of the card that just landed at `card` (facing the camera), in `color`'s light
-function OpeningCreature.play(cardName: string, rarity: string, card: CFrame, color: Color3)
+-- Its creature out of the card that just landed at `card` (facing the camera), in `color`'s light; `from`: a Legendary's
+-- sky tear, the creature coming through the rift there instead, landing with a quake in front of where the card lands
+-- (Config/CardReveal SKY_TEAR), and in the end diving into the card all the same
+function OpeningCreature.play(cardName: string, rarity: string, card: CFrame, color: Color3, from: Vector3?)
 	OpeningCreature.clear()
 	local template = CreatureVisuals.cardTemplate(cardName)
 	if not template then
@@ -79,11 +81,12 @@ function OpeningCreature.play(cardName: string, rarity: string, card: CFrame, co
 
 	local toCamera = OpeningStage.home().Position - card.Position
 	local toward = if toCamera.Magnitude > 0.1 then toCamera.Unit else Vector3.new(0, 0, -1)
-	local start = card.Position
-	local out = start + Vector3.new(0, ALIVE.rise, 0) + toward * ALIVE.toward
+	local start = from or card.Position
+	local out = card.Position + Vector3.new(0, ALIVE.rise, 0) + toward * ALIVE.toward
 	local facing = card - card.Position -- the card's turn: its front toward the camera, as the creature's
 	local popAt = os.clock()
-	local holdEnd = ALIVE.popSeconds + ALIVE.holdSeconds
+	local popSeconds = if from then CardReveal.SKY_TEAR.creatureSeconds else ALIVE.popSeconds
+	local holdEnd = popSeconds + ALIVE.holdSeconds
 	local total = holdEnd + ALIVE.backSeconds
 	local roared = false
 
@@ -102,15 +105,15 @@ function OpeningCreature.play(cardName: string, rarity: string, card: CFrame, co
 			OpeningCreature.clear()
 			return
 		end
-		if t < ALIVE.popSeconds then
-			local p = backOut(t / ALIVE.popSeconds)
-			place(start:Lerp(out, smooth(t / ALIVE.popSeconds)), p, 0)
+		if t < popSeconds then
+			local p = backOut(t / popSeconds)
+			place(start:Lerp(out, smooth(t / popSeconds)), p, 0)
 		elseif t < holdEnd then
-			local h = t - ALIVE.popSeconds
+			local h = t - popSeconds
 			if not roared then
 				roared = true
-				OpeningFx.burst(out, color, 1.6)
-				OpeningStage.shake(0.06, 0.3)
+				OpeningFx.burst(out, color, if from then 2.4 else 1.6)
+				OpeningStage.shake(if from then 0.16 else 0.06, if from then 0.5 else 0.3) -- through the sky: it lands with a quake
 				local voice = PetVoice.voice(rarity, #cardName, Party.VOICE)
 				OpeningStage.playId("creature", voice, PetVoice.volume(rarity, Party.VOICE) * 1.6)
 			end
@@ -121,7 +124,7 @@ function OpeningCreature.play(cardName: string, rarity: string, card: CFrame, co
 			place(out + bob, roar, yaw)
 		else
 			local b = smooth((t - holdEnd) / ALIVE.backSeconds)
-			place(out:Lerp(start, b), 1 - b * (1 - MIN_SCALE), 0)
+			place(out:Lerp(card.Position, b), 1 - b * (1 - MIN_SCALE), 0)
 		end
 	end)
 end

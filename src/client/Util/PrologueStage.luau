@@ -3,7 +3,8 @@
 -- client only, high above the world where the server put this player's (PrologueService; a dark stone floor, the
 -- Dungeon's sigil, pillars and crystals in a ring, night lighting and fog), the character moved onto it and held still
 -- while the cinematics play, every other screen off (back on for the fight: `screens`), the prologue's own overlay
--- (cinema bars, captions, a fade, a Skip button). `home` takes the lair and its lighting away and brings the character
+-- (cinema bars, captions, a fade, a Skip button; the bars, the fade and the wake-up's eyelids in `covers`, over the
+-- whole screen past a phone's safe area: Util/ScreenCover). `home` takes the lair and its lighting away and brings the character
 -- back to its shop's door (in the dark, for the wake-up), `leave` puts everything else back and stands the character
 -- there (or where it got up).
 local GuiService = game:GetService("GuiService")
@@ -19,6 +20,7 @@ local PlotConfig = require(Config:WaitForChild("Plots"))
 local SkyLook = require(Shared:WaitForChild("Util"):WaitForChild("SkyLook"))
 
 local ClientUtil = script.Parent :: Instance
+local ScreenCover = require(ClientUtil:WaitForChild("ScreenCover"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 
 local PrologueStage = {}
@@ -26,6 +28,8 @@ local PrologueStage = {}
 export type Stage = {
 	arena: Model,
 	gui: ScreenGui,
+	covers: Frame, -- the whole screen (the bars, the fade, the eyelids), under the gui's words and buttons
+
 	centre: Vector3, -- the middle of the floor, on its top
 	ground: number, -- the height of the top of what lies on the floor (its sigil): marks drawn on the floor go here
 	spot: (name: string) -> CFrame,
@@ -200,7 +204,7 @@ function PrologueStage.enter(centre: Vector3): Stage
 	local hidden: { ScreenGui } = {}
 	local function hideScreens()
 		for _, other in player.PlayerGui:GetChildren() do
-			if other:IsA("ScreenGui") and other ~= gui and other.Enabled then
+			if other:IsA("ScreenGui") and other ~= gui and other.Enabled and not other:GetAttribute(ScreenCover.KEEP) then
 				other.Enabled = false
 				table.insert(hidden, other)
 			end
@@ -218,6 +222,8 @@ function PrologueStage.enter(centre: Vector3): Stage
 	local touch = GuiService.TouchControlsEnabled
 	GuiService.TouchControlsEnabled = false
 
+	-- the bars (20), the fade (40) and the eyelids (41), under the captions (45), the speech cards (46) and Skip (50)
+	local covers = ScreenCover.layer(gui, 20)
 	local barFrames: { Frame } = {}
 	for _, top in { true, false } do
 		local bar = Instance.new("Frame")
@@ -227,7 +233,7 @@ function PrologueStage.enter(centre: Vector3): Stage
 		bar.Position = UDim2.fromScale(0, if top then 0 else 1)
 		bar.Size = UDim2.fromScale(1, BAR_SHARE)
 		bar.ZIndex = 20
-		bar.Parent = gui
+		bar.Parent = covers
 		table.insert(barFrames, bar)
 	end
 	local cover = Instance.new("Frame")
@@ -237,7 +243,7 @@ function PrologueStage.enter(centre: Vector3): Stage
 	cover.Size = UDim2.fromScale(1, 1)
 	cover.BackgroundTransparency = 0
 	cover.ZIndex = 40
-	cover.Parent = gui
+	cover.Parent = covers
 	local captionLabel = UIKit.label(gui, "", Enum.Font.FredokaOne, 34, Color3.new(1, 1, 1))
 	captionLabel.AnchorPoint = Vector2.new(0.5, 1)
 	captionLabel.Position = UDim2.new(0.5, 0, 1 - BAR_SHARE, -16)
@@ -278,6 +284,7 @@ function PrologueStage.enter(centre: Vector3): Stage
 	stage = {
 		arena = arena,
 		gui = gui,
+		covers = covers,
 		centre = centre,
 		ground = ground,
 		spot = function(name: string): CFrame

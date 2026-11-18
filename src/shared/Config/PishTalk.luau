@@ -205,6 +205,9 @@ return {
 	NAME = "Pish", -- on the talk card
 	NEXT = "Next",
 	BYE = "Bye!", -- the goodbye's last button
+	-- a lesson's or nudge's button that sends him off (owner 2026-11-18: "add close or 'ill keep that in mind' that will
+	-- make pish go away. or 'dont remind me again'"): the lesson is done, the nudges stop for the session
+	GOT_IT = "Got it!",
 
 	-- The small Skip button and the tour card it opens (round 3, owner's pick A: "just put a skip icon on the top right
 	-- and if they click it. the progress and discouragement element shows up"); `tour` takes the step and the count

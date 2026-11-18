@@ -52,6 +52,10 @@ local tiles: GuiObject? = nil
 local shownText = ""
 local shownIcon: string? = nil
 local onNext: (() -> ())? = nil
+local tapAdvances = true -- a tap on the card does what the button does (not for "Got it!", which sends Pish away)
+local GOT_IT_GUARD = 0.5 -- seconds a fresh "Got it!" ignores presses: it takes Next's place, and a quick double tap on
+-- Next must not send Pish away
+local buttonSince = 0 -- when the button last changed what it does
 local speakerName = "Pish" -- whose card it is (TutorialTalk.speaker): his face and name
 local nameLabel: TextLabel? = nil
 local forceTop = false -- in a fight the card sits at the top, clear of the combat buttons (TutorialTalk.atTop)
@@ -149,6 +153,13 @@ local function build(): Frame
 	button.Font = Enum.Font.FredokaOne
 	button.TextSize = 18
 	button.Activated:Connect(function()
+		local callback = onNext
+		if not tapAdvances and callback then
+			if os.clock() - buttonSince >= GOT_IT_GUARD then
+				callback() -- "Got it!": at once, even mid-line (not a double tap's second half)
+			end
+			return
+		end
 		TutorialTalk.advance()
 	end)
 	nextButton = button
@@ -162,7 +173,9 @@ local function build(): Frame
 	tap.ZIndex = 0
 	tap.Parent = made
 	tap.Activated:Connect(function()
-		TutorialTalk.advance()
+		if tapAdvances then
+			TutorialTalk.advance()
+		end
 	end)
 
 	-- At the top centre, as wide as fits; just above the HUD's bottom tiles instead when it would cover what Pish points at
@@ -245,13 +258,18 @@ local function fit(): number
 end
 
 -- Show a line: `next` is the button's label (nil: no button, the line stays), `icon` the picture of the thing to use
--- (Config/UIIcons name), `advance` what Next does
-function TutorialTalk.say(text: string, icon: string?, next: string?, advance: (() -> ())?)
+-- (Config/UIIcons name), `advance` what Next does; `buttonOnly`: only the button does it, not a tap on the card (a
+-- "Got it!" that sends Pish away, owner 2026-11-18)
+function TutorialTalk.say(text: string, icon: string?, next: string?, advance: (() -> ())?, buttonOnly: boolean?)
 	local shown = card or build()
 	local isNew = text ~= shownText or not shown.Visible
 	shown.Visible = true
 	onNext = advance
+	tapAdvances = buttonOnly ~= true
 	if nextButton then
+		if nextButton.Text ~= (next or "") or not nextButton.Visible then
+			buttonSince = os.clock()
+		end
 		nextButton.Visible = next ~= nil
 		nextButton.Text = next or ""
 	end
@@ -334,6 +352,7 @@ function TutorialTalk.hide()
 	end
 	shownText = ""
 	onNext = nil
+	tapAdvances = true
 end
 
 return TutorialTalk

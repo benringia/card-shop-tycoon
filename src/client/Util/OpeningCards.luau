@@ -28,6 +28,8 @@ local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local OpeningStage = require(ClientUtil:WaitForChild("OpeningStage"))
 local OpeningFx = require(ClientUtil:WaitForChild("OpeningFx"))
 local OpeningCreature = require(ClientUtil:WaitForChild("OpeningCreature"))
+local OpeningRift = require(ClientUtil:WaitForChild("OpeningRift"))
+local CardReveal = require(Config:WaitForChild("CardReveal"))
 
 type Card = typeof(Cards.List[1])
 export type Pull = { card: Card, foil: boolean, grade: string, isNew: boolean, plan: RevealRules.Plan }
@@ -420,6 +422,23 @@ end
 
 -- Flips card `index` (reveal order): a tease first for a Rare-or-better (or foil) card, then the flip, then its
 -- celebration; yields until it has landed
+-- The card spinning down out of the rift into its place (a Legendary's sky tear, Config/CardReveal SKY_TEAR): from
+-- `from` to `landing`, turning `spins` times round its upright on the way and slowing to land face up
+local function spinDown(shown: Shown, from: Vector3, landing: CFrame, seconds: number, spins: number)
+	local mine = session
+	local start = os.clock()
+	while session == mine do
+		local t = math.clamp((os.clock() - start) / seconds, 0, 1)
+		local ease = 1 - (1 - t) ^ 3
+		local turn = (1 - ease) * spins * math.pi * 2
+		shown.model:PivotTo(CFrame.new(from:Lerp(landing.Position, ease)) * landing.Rotation * CFrame.Angles(0, turn, 0))
+		if t >= 1 then
+			break
+		end
+		RunService.RenderStepped:Wait()
+	end
+end
+
 function OpeningCards.flip(index: number)
 	local shown = cards[index]
 	if not shown then
@@ -427,9 +446,12 @@ function OpeningCards.flip(index: number)
 	end
 	local plan = shown.pull.plan
 	local color = shown.color
+	local card = shown.pull.card
 	local raised = shown.at * CFrame.new(0, FLIP.LIFT, 0)
 	local mine = session
-	local stack = RevealSoundRules.stack(RevealSounds, shown.pull.card.rarity, shown.pull.foil, CardFace.isFrontier(shown.pull.card))
+	local stack = RevealSoundRules.stack(RevealSounds, card.rarity, shown.pull.foil, CardFace.isFrontier(card))
+	-- a Legendary tears the sky: the rift cracks open through the tease (owner 2026-11-18, pick C)
+	local riftAt: Vector3? = nil
 	if plan.tease > 0 then
 		-- the riser swells under the tease and peaks as the card lands
 		local riser = if stack then stack.riser else nil
@@ -448,6 +470,9 @@ function OpeningCards.flip(index: number)
 			OpeningStage.bars(true, 0.28)
 			OpeningStage.dim(1, 0.5)
 			OpeningStage.push(1.15, shown.at.Position, plan.tease)
+		end
+		if RevealRules.tearsSky(card.rarity, CardReveal.SKY_TEAR) then
+			riftAt = OpeningRift.open(color, plan.tease, shown.at.Position)
 		end
 		local start = os.clock()
 		local shake = RunService.RenderStepped:Connect(function()
@@ -468,16 +493,34 @@ function OpeningCards.flip(index: number)
 	local home = OpeningStage.home()
 	local scale = if plan.tease > 0 then FLIP.TEASED_SCALE else FLIP.SHOWN_SCALE
 	local landing = CFrame.new(home.Position + home.LookVector * (PackOpening.CAMERA_DISTANCE / scale) + Vector3.new(0, FLIP.LANDING_UP, 0)) * FACE_UP
-	local seconds = if plan.tease > 0 then FLIP.TEASE_SECONDS else FLIP.COMMON_SECONDS
-	OpeningStage.play("flip")
-	local watch = RunService.RenderStepped:Connect(function()
-		-- the back is hidden outright once the card has turned past halfway (front toward the camera)
-		if shown.part.CFrame.LookVector.Z < 0 then
-			shown.back.Enabled = false
+	local creatureCame = false
+	if riftAt then
+		-- the rift tears wide and its creature comes through to where the card will land, the card hidden in the flash
+		-- up there; then the card spins down out of the rift and the rift closes behind it
+		local sky = CardReveal.SKY_TEAR
+		OpeningRift.burst(color)
+		OpeningCreature.play(card.name, card.rarity, landing, color, riftAt)
+		creatureCame = true
+		shown.model:PivotTo(CFrame.new(riftAt) * landing.Rotation)
+		task.wait(sky.cardDelay)
+		if session ~= mine then
+			return
 		end
-	end)
-	tweenPivot(shown.model, landing, seconds, Enum.EasingStyle.Back, Enum.EasingDirection.Out).Completed:Wait()
-	watch:Disconnect()
+		OpeningStage.play("flip")
+		spinDown(shown, riftAt, landing, sky.cardSeconds, sky.spins)
+		OpeningRift.close(sky.closeSeconds)
+	else
+		local seconds = if plan.tease > 0 then FLIP.TEASE_SECONDS else FLIP.COMMON_SECONDS
+		OpeningStage.play("flip")
+		local watch = RunService.RenderStepped:Connect(function()
+			-- the back is hidden outright once the card has turned past halfway (front toward the camera)
+			if shown.part.CFrame.LookVector.Z < 0 then
+				shown.back.Enabled = false
+			end
+		end)
+		tweenPivot(shown.model, landing, seconds, Enum.EasingStyle.Back, Enum.EasingDirection.Out).Completed:Wait()
+		watch:Disconnect()
+	end
 	if session ~= mine then
 		return
 	end
@@ -521,9 +564,9 @@ function OpeningCards.flip(index: number)
 	if plan.alive or plan.holo then
 		startAlive(shown)
 	end
-	-- an Epic, a Legendary, a Frontier card or one you never had: its creature bursts out of it (Util/OpeningCreature)
-	local card = shown.pull.card
-	if RevealRules.comesAlive(card.rarity, shown.pull.isNew == true, CardFace.isFrontier(card)) then
+	-- an Epic, a Legendary, a Frontier card or one you never had: its creature bursts out of it (Util/OpeningCreature),
+	-- unless it already came through the sky
+	if not creatureCame and RevealRules.comesAlive(card.rarity, shown.pull.isNew == true, CardFace.isFrontier(card)) then
 		OpeningCreature.play(card.name, card.rarity, landing, color)
 	end
 end
@@ -531,6 +574,7 @@ end
 -- The shown card zips into its place in the row along the bottom (small, far away), its show stopping
 function OpeningCards.stow(index: number)
 	OpeningCreature.clear() -- moving on: its creature goes at once
+	OpeningRift.clear()
 	local shown = cards[index]
 	if not shown then
 		return
@@ -641,6 +685,7 @@ end
 function OpeningCards.clear()
 	session += 1
 	OpeningCreature.clear()
+	OpeningRift.clear()
 	if results then
 		results:Disconnect()
 		results = nil

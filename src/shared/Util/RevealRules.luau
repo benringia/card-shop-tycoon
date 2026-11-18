@@ -41,6 +41,12 @@ function RevealRules.comesAlive(rarity: string, isNew: boolean, frontier: boolea
 	return isNew or frontier or (RANK[rarity] or 0) >= RANK.Epic
 end
 
+-- Whether a card tears the sky as it's revealed (Config/CardReveal SKY_TEAR; owner 2026-11-18, pick C): a Legendary,
+-- foil or not, in Open 1 and Open 10
+function RevealRules.tearsSky(rarity: string, sky: { rarity: string }): boolean
+	return rarity == sky.rarity
+end
+
 -- Whether a pack trembles before the tear (Config/CardReveal PACK_TELL): its best card is `rarity` or better, or a Very
 -- Rare when `roll` (0-1) falls under `fakeOut`
 function RevealRules.packTell(tell: { rarity: string, fakeOut: number }, rarities: { string }, roll: number): boolean

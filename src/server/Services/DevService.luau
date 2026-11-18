@@ -211,6 +211,7 @@ local function spawnElite(player: Player)
 end
 
 local MAX_GIVE_CARDS = 500 -- per /givecard, so a typo can't flood the save
+local KO_RANGE = 80 -- studs: /ko's reach
 
 -- "/givecard 30 70": 70 plain copies of card #30, each rolling its grade like a pack pull
 local MAX_GIVE_ITEMS = 999 -- per /item
@@ -767,6 +768,39 @@ function DevService.Start()
 		end
 	end)
 	addCommand(folder, "elite", spawnElite)
+	-- your next monster win drops a card: its loot beam (owner 2026-11-18, pick C; Config/CardLoot)
+	addCommand(folder, "carddrop", function(player)
+		BattleService.ForceDropForTest(player)
+		Remotes.Notify:FireClient(player, "Your next monster win drops a card", false)
+	end)
+	-- a beaten monster's knockout without the fight (owner 2026-11-18, pick A; Config/MonsterKO): the nearest monster not
+	-- in a fight flies off away from you; "/ko elite" the nearest elite
+	addCommand(folder, "ko", function(player, text)
+		local character = player.Character
+		local root = if character then character:FindFirstChild("HumanoidRootPart") :: BasePart? else nil
+		local markers = workspace:FindFirstChild("Monsters")
+		if not root or not markers then
+			return
+		end
+		local wantElite = string.match(text, "^/%w+%s+elite") ~= nil
+		local best: WildService.Monster? = nil
+		local bestDistance = KO_RANGE
+		for _, marker in markers:GetChildren() do
+			local monster = WildService.GetMonster(marker:GetAttribute("MonsterId") :: any)
+			if monster and marker:IsA("BasePart") and not monster.boss and not monster.fightingPlayer and (monster.elite or not wantElite) then
+				local distance = (marker.Position - root.Position).Magnitude
+				if distance < bestDistance then
+					best, bestDistance = monster, distance
+				end
+			end
+		end
+		if not best then
+			Remotes.Notify:FireClient(player, if wantElite then "No elite near you: /elite brings one" else "No monster near you: walk up to one", true)
+			return
+		end
+		WildService.Lock(best, player)
+		WildService.KnockOut(best, root.Position)
+	end)
 	-- knocked out on the spot as after a lost fight in a dangerous place: the countdown, Revive here (in the Wild; at
 	-- home the countdown ends at once)
 	-- "Support the dev" as if bought: that tier's gift (aura, titles, thanks), or 0 for none again

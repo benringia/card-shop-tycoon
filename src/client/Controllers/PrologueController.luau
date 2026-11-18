@@ -728,7 +728,7 @@ local function play()
 		finish()
 		return
 	end
-	local scene = PrologueWake.new(stage.gui, character, door)
+	local scene = PrologueWake.new(stage.gui, stage.covers, character, door)
 	wake = scene
 	music("wake")
 	grabbed.place(scene.lying)

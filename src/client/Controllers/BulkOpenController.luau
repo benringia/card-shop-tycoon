@@ -7,6 +7,7 @@
 -- at once. Then the totals (cards, NEW, worth), Continue and Open 10 more while the stack lasts.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
 
@@ -25,10 +26,14 @@ local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
 local ItemRules = require(Shared:WaitForChild("Util"):WaitForChild("ItemRules"))
 local RevealRules = require(Shared:WaitForChild("Util"):WaitForChild("RevealRules"))
 local OpeningLayout = require(Shared:WaitForChild("Util"):WaitForChild("OpeningLayout"))
+local CardArt = require(Shared:WaitForChild("Util"):WaitForChild("CardArt"))
+local CardArtConfig = require(Config:WaitForChild("CardArt"))
+local SuperFxConfig = require(Config:WaitForChild("SuperFx"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local ScreenCover = require(ClientUtil:WaitForChild("ScreenCover"))
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
 local AnnouncementController = require(Controllers:WaitForChild("AnnouncementController"))
@@ -241,6 +246,155 @@ local function celebrate(pull: Pull)
 	end
 end
 
+-- A Legendary in Open 10 tears the sky (owner 2026-11-18, pick C of three storyboards: "Pulling a Legendary should play
+-- an epic legendary cinematic"; Config/CardReveal SKY_TEAR.bulk): the grid dims, a rift cracks open at the top of the
+-- screen as it rumbles, the creature's painting bursts through it and lands with a flash and a quake, then the card
+-- spins down out of the rift into its place; about 3 s, and a tap (turning the rest over) cuts it short
+local SKY = CardReveal.SKY_TEAR
+local HOT = Color3.fromRGB(255, 244, 214)
+
+local function picture(parent: Instance, image: string, tint: Color3, size: number, z: number): ImageLabel
+	local made = Instance.new("ImageLabel")
+	made.BackgroundTransparency = 1
+	made.AnchorPoint = Vector2.new(0.5, 0.5)
+	made.Position = UDim2.fromScale(0.5, 0.5)
+	made.Size = UDim2.fromScale(size, size)
+	made.Image = image
+	made.ImageColor3 = tint
+	made.ZIndex = z
+	made.Parent = parent
+	return made
+end
+
+local function skyTear(cell: Frame, pull: Pull, mine: number)
+	local beats = SKY.bulk
+	local color = CardFace.getRarityColor(pull.card.rarity)
+	local function going(): boolean
+		return showing == mine and not skipping
+	end
+	local function hold(seconds: number): boolean
+		local ends = os.clock() + seconds
+		while os.clock() < ends do
+			if not going() then
+				return false
+			end
+			task.wait()
+		end
+		return going()
+	end
+	local layer = ScreenCover.layer(gui, 30)
+	local home = grid.Position
+	local shaking = 0 -- px the grid and the painting shake by now
+	local shaker = task.spawn(function()
+		while layer.Parent do
+			grid.Position = home + UDim2.fromOffset((math.random() - 0.5) * 2 * shaking, (math.random() - 0.5) * 2 * shaking)
+			task.wait(1 / 30)
+		end
+	end)
+	local function done()
+		task.cancel(shaker)
+		grid.Position = home
+		layer:Destroy()
+	end
+	local shade = Instance.new("Frame")
+	shade.BackgroundColor3 = Color3.new(0, 0, 0)
+	shade.BackgroundTransparency = 1
+	shade.BorderSizePixel = 0
+	shade.Size = UDim2.fromScale(1, 1)
+	shade.Parent = layer
+	TweenService:Create(shade, TweenInfo.new(0.3), { BackgroundTransparency = 0.3 }):Play()
+	-- the rift cracking open at the top of the screen
+	local rift = Instance.new("Frame")
+	rift.BackgroundTransparency = 1
+	rift.AnchorPoint = Vector2.new(0.5, 0.5)
+	rift.Position = UDim2.fromScale(0.5, 0.2)
+	rift.Size = UDim2.fromScale(0, 0)
+	rift.ZIndex = 2
+	rift.Parent = layer
+	local aspect = Instance.new("UIAspectRatioConstraint")
+	aspect.AspectRatio = 1.5
+	aspect.Parent = rift
+	local rays = picture(rift, PackFx.IMAGES.rays, color, 2.2, 2)
+	rays.ImageTransparency = 0.4
+	picture(rift, PackFx.IMAGES.aura, color:Lerp(HOT, 0.5), 1.4, 3)
+	picture(rift, SuperFxConfig.TEXTURES.crack, HOT, 1, 4)
+	local spin = TweenService:Create(rays, TweenInfo.new(6, Enum.EasingStyle.Linear, Enum.EasingDirection.In, -1), { Rotation = 360 })
+	spin:Play()
+	TweenService:Create(rift, TweenInfo.new(beats.open, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Size = UDim2.fromScale(0.36, 0.24) }):Play()
+	local opened = os.clock()
+	local rumble = RunService.RenderStepped:Connect(function()
+		shaking = 1 + 4 * math.clamp((os.clock() - opened) / beats.open, 0, 1)
+	end)
+	if not hold(beats.open) then
+		rumble:Disconnect()
+		done()
+		return
+	end
+	rumble:Disconnect()
+	-- torn wide: a flash and the creature's painting bursting through, landing with a quake
+	flash.BackgroundColor3 = HOT
+	flash.BackgroundTransparency = 0.15
+	TweenService:Create(flash, TweenInfo.new(0.5), { BackgroundTransparency = 1 }):Play()
+	playSound(PackOpening.SOUNDS.dropSting, 0.6)
+	TweenService:Create(rift, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = UDim2.fromScale(0.5, 0.33) }):Play()
+	local painting = Instance.new("ImageLabel")
+	painting.BackgroundTransparency = 1
+	painting.AnchorPoint = Vector2.new(0.5, 0.5)
+	painting.Position = UDim2.fromScale(0.5, 0.2)
+	painting.Size = UDim2.fromScale(0, 0)
+	painting.Image = CardArt.pick(pull.card.name, 600, CardArtConfig) or ""
+	painting.ZIndex = 5
+	painting.Parent = layer
+	local paintingShape = Instance.new("UIAspectRatioConstraint")
+	paintingShape.AspectRatio = 0.72
+	paintingShape.Parent = painting
+	UIKit.corner(painting, 14)
+	TweenService:Create(painting, TweenInfo.new(beats.burst, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Position = UDim2.fromScale(0.5, 0.52), Size = UDim2.fromScale(0.5, 0.6) }):Play()
+	if not hold(beats.burst) then
+		done()
+		return
+	end
+	shaking = 9 -- the landing's quake
+	task.delay(0.35, function()
+		shaking = 0
+	end)
+	if not hold(beats.hold) then
+		done()
+		return
+	end
+	-- the card spins down out of the rift into its place; the painting fades
+	TweenService:Create(painting, TweenInfo.new(beats.card), { ImageTransparency = 1 }):Play()
+	local flier = Instance.new("Frame")
+	flier.BackgroundTransparency = 1
+	flier.AnchorPoint = Vector2.new(0.5, 0.5)
+	flier.ZIndex = 6
+	flier.Parent = layer
+	local edge = Instance.new("UIStroke")
+	edge.Parent = flier
+	CardFace.render(flier, edge, pull.card, pull.foil)
+	local from = rift.AbsolutePosition + rift.AbsoluteSize / 2 - layer.AbsolutePosition
+	local to = cell.AbsolutePosition + cell.AbsoluteSize / 2 - layer.AbsolutePosition
+	flier.Position = UDim2.fromOffset(from.X, from.Y)
+	flier.Size = UDim2.fromOffset(cell.AbsoluteSize.X * 0.3, cell.AbsoluteSize.Y * 0.3)
+	local fly = TweenInfo.new(beats.card, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out)
+	TweenService:Create(flier, fly, { Position = UDim2.fromOffset(to.X, to.Y), Size = UDim2.fromOffset(cell.AbsoluteSize.X, cell.AbsoluteSize.Y), Rotation = 360 * SKY.spins }):Play()
+	if not hold(beats.card) then
+		done()
+		return
+	end
+	-- the rift closes and the screen clears, back to the grid
+	spin:Cancel()
+	for _, item in layer:GetDescendants() do
+		if item:IsA("ImageLabel") then
+			TweenService:Create(item, TweenInfo.new(beats.fade), { ImageTransparency = 1 }):Play()
+		end
+	end
+	TweenService:Create(shade, TweenInfo.new(beats.fade), { BackgroundTransparency = 1 }):Play()
+	flier.Visible = false -- the real card turns over where it landed
+	task.wait(beats.fade)
+	done()
+end
+
 local function finish(pulls: { Pull }, cells: { Frame }, packs: number)
 	dimRest(cells, pulls)
 	local newCount, value = 0, 0
@@ -311,6 +465,12 @@ local function show(_productId: unknown, results: unknown, flags: unknown, fromI
 			if showing ~= mine then
 				return
 			end
+			if not skipping and RevealRules.tearsSky(pull.card.rarity, SKY) then
+				skyTear(cells[index], pull, mine) -- a Legendary tears the sky first (owner 2026-11-18, pick C)
+				if showing ~= mine then
+					return
+				end
+			end
 			turn(cells[index], pull)
 			if RevealRules.standsOut(pull.card.rarity, BEST.from) then
 				lightUp(cells[index], pull)
@@ -348,7 +508,7 @@ local function build()
 	backdrop.BackgroundColor3 = Color3.fromRGB(20, 14, 34)
 	backdrop.BackgroundTransparency = 0.12
 	backdrop.Size = UDim2.fromScale(1, 1)
-	backdrop.Parent = gui
+	backdrop.Parent = ScreenCover.layer(gui) -- the backdrop and the flash: the whole screen, past a phone's safe area
 	backdrop.Activated:Connect(function()
 		skipping = true -- a tap turns the rest over at once
 	end)
@@ -358,7 +518,7 @@ local function build()
 	flash.BackgroundTransparency = 1
 	flash.Size = UDim2.fromScale(1, 1)
 	flash.ZIndex = 2
-	flash.Parent = gui
+	flash.Parent = ScreenCover.layer(gui, 2)
 	title = UIKit.label(gui, "", Enum.Font.FredokaOne, 30, Color3.new(1, 1, 1))
 	title.AnchorPoint = Vector2.new(0.5, 0)
 	title.Position = UDim2.new(0.5, 0, 0, PackOpening.TOP)

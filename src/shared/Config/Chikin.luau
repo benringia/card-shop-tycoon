@@ -33,6 +33,10 @@ return {
 	GUARDED_STEPS = { fight = true, fight2 = true } :: { [string]: boolean },
 	-- His goodbyes: their last button says "Bye!" (a hello's says "Let's go!", Config/ChikinTalk GO)
 	BYE_STEPS = { swordWin = true, boss = true } :: { [string]: boolean },
+	-- His goodbye after the sword fight points at the town button from this line (owner 2026-11-18: "let the player know
+	-- they can stay here and kill monsters to level 4 or go back to town (highlight the town icon) for faster shop
+	-- exp"): the round ReturnToTown icon in Roblox's top bar (BattleController)
+	TOWN_LINE = { step = "swordWin", from = 4 },
 	-- Each step's picture on his talk card (Config/UIIcons)
 	STEP_ICONS = {
 		hello = "Paw",

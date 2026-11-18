@@ -38,6 +38,7 @@ local Hud = require(ClientUtil:WaitForChild("Hud"))
 local HudMascotView = require(ClientUtil:WaitForChild("HudMascotView"))
 local OpeningStage = require(ClientUtil:WaitForChild("OpeningStage"))
 local PishVisual = require(ClientUtil:WaitForChild("PishVisual"))
+local PlayerBusy = require(ClientUtil:WaitForChild("PlayerBusy"))
 local DogArrival = require(ClientUtil:WaitForChild("DogArrival"))
 local TutorialCues = require(ClientUtil:WaitForChild("TutorialCues"))
 local TutorialTalk = require(ClientUtil:WaitForChild("TutorialTalk"))
@@ -57,8 +58,12 @@ local FOLLOW_RANGE = 40 -- studs: further from the step's place than this, Pish 
 local BESIDE = 3.5 -- studs he stands from the player or the place
 local RUN_IN = 16 -- studs away a visiting Pish appears, to run in
 local TRAIL_REFRESH = 8 -- studs the player moves before the trail is redrawn from where they are
-local FREE_SECONDS = 3 -- a visit starts once the player has been free this long (the first-sword popup comes first)
 local NUDGE_RANGE = 60 -- studs: a nudge shows only when the player is this near the thing to use
+local NUDGE_KEEP = 20 -- seconds a nudge from the server waits for a free moment before it's dropped
+-- What a visit uses itself, which doesn't keep him away (Util/LessonRules.busyWith): a lesson's windows and placing
+-- (Build, the order computer, the Bag, the Prices window); a nudge's too, and the box it's about
+local LESSON_USES = { window = true, building = true }
+local NUDGE_USES = { window = true, building = true, carrying = true }
 local PORTAL_REACH = 14 -- studs from the Wild portal that count as having gone to it
 local SPOT_HEIGHT = 9 -- studs above the ground the paw over a place in town (the portal) hangs
 local ARRIVAL = Pish.ARRIVAL -- his arrival's numbers and shot (Util/ArrivalShot)
@@ -121,7 +126,10 @@ local arrivedOnce = false
 local visit: Visit? = nil -- a lesson or nudge visit on now (never during the first visit)
 local lessonQueue: { string } = {} -- lessons waiting to be shown, from the server
 local pendingNudge: string? = nil
+local nudgeAt = 0 -- os.clock() the pending nudge came
 local freeSince: number? = nil
+local lastEnded: number? = nil -- os.clock() his last lesson or nudge visit ended (Config/Pish PACE.gap)
+local busySince: number? = nil -- a visit on while the player is busy: since when (Util/LessonRules.whileBusy)
 local spotAnchor: Part? = nil -- the paw's anchor at a spot in town
 local cues: { () -> () } = {}
 local trailRemover: (() -> ())? = nil
@@ -149,9 +157,9 @@ local function stepTalk(stepId: string): any
 end
 
 -- Pish's line on the talk card (Chikin shares the card: Util/TutorialTalk.speaker)
-local function say(text: string, icon: string?, nextLabel: string?, advance: (() -> ())?)
+local function say(text: string, icon: string?, nextLabel: string?, advance: (() -> ())?, buttonOnly: boolean?)
 	TutorialTalk.speaker(PishTalk.NAME)
-	TutorialTalk.say(text, icon, nextLabel, advance)
+	TutorialTalk.say(text, icon, nextLabel, advance, buttonOnly)
 end
 
 -- Chikin isn't leading: no combat step on, or only his hidden wait for shop level 4
@@ -816,14 +824,13 @@ local function inTown(): boolean
 	return at ~= nil and MusicRules.inTown(at.Position.X, at.Position.Z, Town.BOUNDS, Music.TOWN.margin)
 end
 
--- Free for a visit: in town, no window, fight, pack opening or weapon reveal on
+-- Free for a visit: in town and doing nothing (owner 2026-11-18: "do not popup when the player is currently doing
+-- something. like manning the cashier"): not on the register, carrying boxes, placing, in a window, a fight, a show
+-- or a popup (Util/PlayerBusy)
 local function isFree(): boolean
 	return inTown()
 		and chikinAway() -- Chikin isn't leading (waiting for shop level 4 counts as away: final review C1)
-		and not UIKit.anyPanelOpen()
-		and not OpeningStage.isShown()
-		and not BattleController.IsFighting()
-		and not WeaponRevealController.IsPlaying()
+		and PlayerBusy.reason() == nil
 end
 
 -- The visit's new thing was used: a window opened (the tile's, the order computer's), a box picked up for stocking,
@@ -852,8 +859,11 @@ local function teaching(now: Visit?): Lesson?
 	return if lesson and teaches(lesson) then lesson else nil
 end
 
+-- "Got it!" on a lesson or a nudge: Pish runs off now (defined with endVisit, below)
+local dismissVisit: () -> ()
+
 -- A lesson that teaches: his line about the new thing with Next (until they tap it or take a step), then the line for
--- where they are (Config/PishTalk TEACH)
+-- where they are (Config/PishTalk TEACH) with Got it! to send him off
 local function updateLessonTalk()
 	local now = visit
 	if not now or not (teaching(now) or now.after) then
@@ -882,7 +892,7 @@ local function updateLessonTalk()
 		return
 	end
 	local line = PishTalk.TEACH[focusSituation] or PishTalk.TEACH.default
-	say(string.format(line, focusName), focusIcon, nil, nil)
+	say(string.format(line, focusName), focusIcon, PishTalk.GOT_IT, dismissVisit, true)
 end
 
 local function startVisit(kind: "lesson" | "nudge", id: string)
@@ -899,7 +909,7 @@ local function startVisit(kind: "lesson" | "nudge", id: string)
 	else
 		local line = if kind == "lesson" then PishTalk.LESSONS[id] else PishTalk.NUDGES[id]
 		if line then
-			say(TalkRules.fill(line, Game.NAME), focusIcon, nil, nil)
+			say(TalkRules.fill(line, Game.NAME), focusIcon, PishTalk.GOT_IT, dismissVisit, true)
 		end
 	end
 	if kind == "lesson" then
@@ -914,6 +924,8 @@ local function endVisit(used: boolean)
 		return
 	end
 	visit = nil
+	busySince = nil
+	lastEnded = os.clock() -- a breather before the next (Config/Pish PACE.gap)
 	if ended.kind == "lesson" then
 		local index = table.find(lessonQueue, ended.id)
 		if index then
@@ -922,6 +934,52 @@ local function endVisit(used: boolean)
 		Remotes.TutorialAction:FireServer("lessonDone", ended.id, used)
 	end
 	task.spawn(finishVisit)
+end
+
+-- "Got it!" (owner 2026-11-18: "add close or 'ill keep that in mind' that will make pish go away. or 'dont remind me
+-- again'"): he runs off now; a lesson is done (never again), a nudge never comes again this session
+dismissVisit = function()
+	local now = visit
+	if not now then
+		return
+	end
+	if now.kind == "nudge" then
+		Remotes.TutorialAction:FireServer("nudgeOff")
+	end
+	endVisit(false)
+end
+
+-- The player got busy with something else during a visit (the register, a box, a fight, a popup...): he steps back,
+-- his card and paw hidden and his time stopped; busy past PACE.wait he goes, the lesson still waiting for a better
+-- moment (Util/LessonRules.whileBusy)
+local function visitUses(now: Visit): { [string]: boolean }
+	return if now.kind == "nudge" then NUDGE_USES else LESSON_USES
+end
+
+local function pauseVisit()
+	if not visit then
+		return
+	end
+	local clock = os.clock()
+	busySince = busySince or clock
+	if LessonRules.whileBusy(clock, busySince, Pish.PACE) == "leave" then
+		visit = nil -- not done: still waiting on the server and in lessonQueue
+		busySince = nil
+		lastEnded = clock
+		task.spawn(finishVisit)
+	end
+end
+
+local function resumeVisit()
+	local since = busySince
+	if not since then
+		return
+	end
+	busySince = nil
+	local now = visit
+	if now then
+		now.started += os.clock() - since -- the busy time doesn't count toward LESSON_SECONDS / TEACH_QUIET_SECONDS
+	end
 end
 
 -- Every few frames outside the first visit: end the visit on now, or start the next one once the player is free
@@ -979,19 +1037,29 @@ local function updateVisit()
 		return
 	end
 	local free = isFree()
-	freeSince = if free then (freeSince or os.clock()) else nil
+	local clock = os.clock()
+	freeSince = if free then (freeSince or clock) else nil
+	-- free a few seconds, and a breather after his last visit (owner 2026-11-18: "helpful but not annoying")
+	local mayStart = LessonRules.mayStart(clock, freeSince, lastEnded, Pish.PACE)
 	local nudge = pendingNudge
 	if nudge then
+		if clock - nudgeAt > NUDGE_KEEP then
+			pendingNudge = nil -- no free moment came: the stuck helper sends another later
+			return
+		end
+		if not mayStart then
+			return -- it waits a little for one
+		end
 		pendingNudge = nil
 		local spec = NUDGES[nudge]
 		local part = if spec then partFor(spec.target) else nil
 		local at = root()
-		if free and part and at and (part.Position - at.Position).Magnitude <= NUDGE_RANGE then
+		if part and at and (part.Position - at.Position).Magnitude <= NUDGE_RANGE then
 			startVisit("nudge", nudge)
 		end
 		return
 	end
-	if #lessonQueue > 0 and freeSince and os.clock() - freeSince >= FREE_SECONDS then
+	if #lessonQueue > 0 and mayStart then
 		-- one that has you buy something waits until you can pay for it (owner 2026-11-16: the glass case)
 		local cash = tonumber(player:GetAttribute("Cash")) or 0
 		local ready = LessonRules.firstReady(lessonQueue, Pish.LESSONS, cash, function(lesson): number
@@ -1045,6 +1113,7 @@ local function onState(payload: unknown)
 	local nudge = (payload :: any).nudge
 	if typeof(nudge) == "string" and NUDGES[nudge] and step == "" and not visit then
 		pendingNudge = nudge
+		nudgeAt = os.clock()
 	end
 end
 
@@ -1207,19 +1276,23 @@ function TutorialController.Start()
 			return
 		end
 		tick = 0
-		-- A pack opening, a fight or a weapon reveal has the screen: Pish waits quietly (his card, bar and paws hidden)
-		local busy = OpeningStage.isShown() or BattleController.IsFighting() or WeaponRevealController.IsPlaying()
-		TutorialCues.quiet("pish", busy and (step ~= "" or visit ~= nil)) -- Chikin keeps his cues up in a fight
+		-- His first visit: a pack opening, a fight or a weapon reveal has the screen and Pish waits quietly (his card, bar
+		-- and paws hidden). A lesson or a nudge steps back for anything else the player is doing too, and leaves if it
+		-- lasts (owner 2026-11-18: "do not popup when the player is currently doing something")
+		local now = visit
+		local busy = if step ~= "" then OpeningStage.isShown() or BattleController.IsFighting() or WeaponRevealController.IsPlaying()
+			elseif now then PlayerBusy.reason(visitUses(now)) ~= nil
+			else false
+		TutorialCues.quiet("pish", busy) -- Chikin keeps his cues up in a fight
 		if busy then
 			if shownKey ~= "" then
 				clearCues()
 				shownKey = ""
 			end
-			if step == "" then
-				updateVisit()
-			end
+			pauseVisit()
 			return
 		end
+		resumeVisit()
 		refreshFocus()
 		TutorialTalk.keepClear(if focusTarget then targetButton() else nil)
 		if step ~= "" then

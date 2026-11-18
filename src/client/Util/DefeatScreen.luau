@@ -15,6 +15,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local CombatHud = require(Shared:WaitForChild("Config"):WaitForChild("CombatHud"))
 local Defeat = require(Shared:WaitForChild("Config"):WaitForChild("Defeat"))
 local UIKit = require((script.Parent :: Instance):WaitForChild("UIKit"))
+local ScreenCover = require((script.Parent :: Instance):WaitForChild("ScreenCover"))
 
 local DefeatScreen = {}
 
@@ -130,7 +131,7 @@ function DefeatScreen.show(data: Show)
 	edge.ImageColor3 = color(Defeat.EDGE_COLOR)
 	edge.ImageTransparency = 1
 	edge.Size = UDim2.fromScale(1, 1)
-	edge.Parent = gui
+	edge.Parent = ScreenCover.layer(gui) -- the screen's very edges, past a phone's safe area
 	TweenService:Create(edge, TweenInfo.new(g.fade), { ImageTransparency = 1 - Defeat.EDGE_STRENGTH }):Play()
 
 	-- Swallows taps so nothing behind the screen (HUD tiles, prompts) can be pressed while it counts down

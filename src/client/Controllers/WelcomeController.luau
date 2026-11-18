@@ -28,6 +28,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local ClientUtil = ((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util")
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local ScreenClear = require(ClientUtil:WaitForChild("ScreenClear"))
+local ScreenCover = require(ClientUtil:WaitForChild("ScreenCover"))
 local WelcomeFx = require(ClientUtil:WaitForChild("WelcomeFx"))
 
 local WelcomeController = {}
@@ -81,6 +82,7 @@ local function buildOverlay(): (ScreenGui, TextButton)
 	screen.IgnoreGuiInset = true
 	screen.DisplayOrder = 50
 	screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	local covers = ScreenCover.layer(screen) -- the bars reach the screen's edges, past a phone's safe area
 	for _, top in { true, false } do
 		local bar = Instance.new("Frame")
 		bar.BackgroundColor3 = Color3.new(0, 0, 0)
@@ -88,7 +90,7 @@ local function buildOverlay(): (ScreenGui, TextButton)
 		bar.AnchorPoint = Vector2.new(0, if top then 0 else 1)
 		bar.Position = UDim2.fromScale(0, if top then 0 else 1)
 		bar.Size = UDim2.fromScale(1, Welcome.BAR_SHARE)
-		bar.Parent = screen
+		bar.Parent = covers
 	end
 	-- Top right, under the cinema bar: clear of the phone's jump button (bottom right)
 	local skip = UIKit.button(screen, "Skip", Color3.fromRGB(40, 44, 58))
@@ -155,7 +157,7 @@ local function play(plot: Model)
 	-- Everything else off while it plays
 	local hidden: { ScreenGui } = {}
 	for _, gui in player:WaitForChild("PlayerGui"):GetChildren() do
-		if gui:IsA("ScreenGui") and gui ~= screen and gui.Enabled then
+		if gui:IsA("ScreenGui") and gui ~= screen and gui.Enabled and not gui:GetAttribute(ScreenCover.KEEP) then
 			gui.Enabled = false
 			table.insert(hidden, gui)
 		end

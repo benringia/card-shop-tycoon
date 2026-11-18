@@ -23,6 +23,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Bosses = require(Config:WaitForChild("Bosses"))
 local Combat = require(Config:WaitForChild("Combat"))
 local Dungeon = require(Config:WaitForChild("Dungeon"))
+local MonsterKO = require(Config:WaitForChild("MonsterKO"))
 local Places = require(Config:WaitForChild("Places"))
 local Town = require(Config:WaitForChild("Town"))
 local PortalTrails = require(Shared:WaitForChild("Util"):WaitForChild("PortalTrails"))
@@ -740,6 +741,21 @@ function WildService.Defeat(monster: Monster)
 	if point and not VALLEY then -- the valley's come back through the population check
 		task.delay(rng:NextNumber(Wild.RESPAWN_MIN, Wild.RESPAWN_MAX), spawnAt, point)
 	end
+end
+
+-- A beaten monster is knocked out where everyone near sees it fly (owner 2026-11-18, pick A: "make it smooth"; client
+-- Util/MonsterKO): its marker says which way (KODir: away from `from`, the winner) and then Fainted, it stays locked to
+-- its fight so nobody starts another with it, and it goes after Config/MonsterKO SERVER_SECONDS
+function WildService.KnockOut(monster: Monster, from: Vector3?)
+	if not monster.alive then
+		return
+	end
+	local marker = monster.marker
+	local away = if from then marker.Position - from else Vector3.zero
+	local flat = Vector3.new(away.X, 0, away.Z)
+	marker:SetAttribute("KODir", if flat.Magnitude > 0.05 then flat.Unit else nil)
+	marker:SetAttribute("Fainted", true) -- last: clients start the knockout on it, reading KODir
+	task.delay(MonsterKO.SERVER_SECONDS, WildService.Defeat, monster)
 end
 
 -- Holds a monster at its spot in a fight ring (nil: free again)

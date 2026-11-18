@@ -16,6 +16,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Items = require(Shared:WaitForChild("Config"):WaitForChild("Items"))
 local Pish = require(Shared:WaitForChild("Config"):WaitForChild("Pish"))
+local Products = require(Shared:WaitForChild("Config"):WaitForChild("Products"))
 local Shelves = require(Shared:WaitForChild("Config"):WaitForChild("Shelves"))
 local LessonRules = require(Shared:WaitForChild("Util"):WaitForChild("LessonRules"))
 local TutorialRules = require(Shared:WaitForChild("Util"):WaitForChild("TutorialRules"))
@@ -40,7 +41,7 @@ type Saved = TutorialRules.Saved
 local TutorialService = {}
 
 local ACTION_COOLDOWN = 0.5 -- seconds between TutorialAction requests
-local ACTIONS = { skip = true, replay = true, bye = true, lessonShown = true, lessonDone = true }
+local ACTIONS = { skip = true, replay = true, bye = true, lessonShown = true, lessonDone = true, nudgeOff = true }
 local STUCK_CHECK = 10 -- seconds between stuck checks
 
 local STEPS = Pish.STEPS
@@ -55,6 +56,7 @@ local begun: { [Player]: boolean } = {} -- the first visit is running (the welco
 local newcomers: { [Player]: number } = {} -- os.clock() a new player (first visit not done at load) joined
 local lastActive: { [Player]: number } = {} -- os.clock() of their last order, restock, sale or opened pack
 local lastNudge: { [Player]: number } = {}
+local mutedNudges: { [Player]: boolean } = {} -- "Got it" on a nudge: no more this session (owner 2026-11-18)
 local allowAction = RateLimiter.new(ACTION_COOLDOWN)
 
 local function log(callback: () -> ())
@@ -145,12 +147,15 @@ local function checkStuck(player: Player)
 		return
 	end
 	local now = os.clock()
+	local cheapest = LessonRules.cheapestBox(Products.List, EconomyService.GetLevel(player))
 	local kind = LessonRules.nudge(Pish.STUCK, {
 		played = now - joined,
 		quiet = now - (lastActive[player] or joined),
 		sinceNudge = now - (lastNudge[player] or -math.huge),
 		boxWaiting = StockService.HasWaitingBox(player),
 		shelvesStocked = StockService.ShelvesStocked(player),
+		canOrder = cheapest ~= nil and EconomyService.GetCash(player) >= cheapest,
+		muted = mutedNudges[player] == true,
 	})
 	if kind then
 		lastNudge[player] = now
@@ -266,6 +271,8 @@ local function onAction(player: Player, action: unknown, lessonId: unknown, used
 		begin(player)
 	elseif action == "bye" then
 		record(player, "bye")
+	elseif action == "nudgeOff" then
+		mutedNudges[player] = true -- "Got it" on a nudge (owner 2026-11-18: "dont remind me again")
 	elseif typeof(lessonId) ~= "string" or not LESSON_IDS[lessonId] or state.lessons[lessonId] ~= false then
 		return -- the lesson actions below are only for a lesson waiting to be shown
 	elseif action == "lessonShown" then
@@ -392,6 +399,7 @@ local function unload(player: Player)
 	newcomers[player] = nil
 	lastActive[player] = nil
 	lastNudge[player] = nil
+	mutedNudges[player] = nil
 	-- Pish's luck lives in this lifecycle (saved above first): nothing kept for a player who's gone
 	PishService.ForgetLuck(player)
 	PackService.SetLuck(player, nil)

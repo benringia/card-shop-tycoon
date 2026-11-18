@@ -40,11 +40,13 @@ return {
 			now = {},
 		},
 		swordWin = {
-			-- owner 2026-11-16: fights don't grow the shop; say so (he was confused watching shop XP while fighting)
+			-- owner 2026-11-18: monsters give the shop a little XP now (Config/Levels FIGHT_XP_PER_CASH): stay and hunt to
+			-- shop level 4, or go sell in town, faster; the last line's paw is on the town button (Config/Chikin TOWN_LINE)
 			intro = {
 				"Great fighting!",
-				"Fights level up your creature, not your shop.",
-				"Sell and rip packs to reach shop level 4. Bye!",
+				"Monsters give your shop a little XP too.",
+				"Stay and hunt here to reach shop level 4...",
+				"...or tap here to sell in your shop: much faster!",
 			},
 			now = {},
 		},

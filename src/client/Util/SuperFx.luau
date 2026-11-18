@@ -1934,27 +1934,139 @@ end
 -- twice.
 local DEVOUR = SuperFxConfig.LOOKS.Devour
 local DEVOUR_SOUNDS = SuperFxConfig.SOUNDS.Devour
-local VOID = Color3.fromRGB(14, 6, 26)
+local VOID = Color3.fromRGB(8, 2, 16)
+local HOT = Color3.fromRGB(255, 205, 250) -- the black hole's white-hot inner swirl, ring and rim
 
--- The black hole behind `at` (away from `from`): a dark disc in a turning violet swirl, `size` studs
-local function blackHole(b: Bag, at: Vector3, from: Vector3, size: number, tint: Color3): Part
+-- A picture in the world that always faces the camera, unlit (a dimmed world can't dull it): `studs` across round
+-- `holder`, `toward` studs nearer the camera than it; the picture grows in from its middle
+local function sprite(holder: BasePart, image: string, tint: Color3, studs: number, brightness: number, toward: number?): ImageLabel
+	local board = Instance.new("BillboardGui")
+	board.Size = UDim2.fromScale(studs, studs)
+	board.LightInfluence = 0
+	board.Brightness = brightness
+	board.StudsOffset = Vector3.new(0, 0, toward or 0)
+	board.Adornee = holder
+	board.Parent = holder
+	local picture = Instance.new("ImageLabel")
+	picture.BackgroundTransparency = 1
+	picture.AnchorPoint = Vector2.new(0.5, 0.5)
+	picture.Position = UDim2.fromScale(0.5, 0.5)
+	picture.Size = UDim2.fromScale(0.1, 0.1)
+	picture.Image = image
+	picture.ImageColor3 = tint
+	picture.Parent = board
+	tween(picture, 0.5, { Size = UDim2.fromScale(1, 1) }, Enum.EasingStyle.Back)
+	return picture
+end
+
+-- Things torn off the ground round `around` and pulled spinning into the black hole at `into` (owner 2026-11-18: "add
+-- screenshake, things flying to the black hole"): rocks and violet shards, `rate` a second from up to `reach` studs
+-- out, each lifting, then spiralling in faster and shrinking to nothing at the core; a low rumble (`rumble`, a shake)
+-- every 0.35 s while it pulls
+local ROCKS = { Color3.fromRGB(70, 64, 80), Color3.fromRGB(96, 88, 104), Color3.fromRGB(52, 46, 62) }
+type Piece = { part: Part, from: Vector3, born: number, life: number, turn: number, size: Vector3, tumble: CFrame }
+
+local function pullDebris(b: Bag, into: Vector3, around: Vector3, reach: number, rate: number, tint: Color3, rumble: number)
+	local pieces: { Piece } = {}
+	local owed, shakeIn = 0, 0
+	local floor = groundAt(around).Y
+	everyFrame(b, function(_, dt)
+		owed += rate * dt
+		while owed >= 1 do
+			owed -= 1
+			local angle = math.random() * math.pi * 2
+			local out = reach * (0.45 + math.random() * 0.55)
+			local from = Vector3.new(around.X + math.cos(angle) * out, floor + 0.3, around.Z + math.sin(angle) * out)
+			local shard = math.random() < 0.3
+			local size = if shard
+				then Vector3.new(0.3, 1, 0.3) * (0.6 + math.random())
+				else Vector3.new(0.5 + math.random(), 0.4 + math.random() * 0.8, 0.5 + math.random()) -- uneven rubble
+			local made = part(b, size, if shard then tint else ROCKS[math.random(#ROCKS)], CFrame.new(from), 0)
+			if not shard then
+				made.Material = Enum.Material.Slate
+			end
+			table.insert(pieces, {
+				part = made,
+				from = from,
+				born = os.clock(),
+				life = 0.9 + math.random() * 0.7,
+				turn = (if math.random() < 0.5 then -1 else 1) * (1.5 + math.random() * 2),
+				size = size,
+				tumble = CFrame.Angles(math.random() * 6, math.random() * 6, math.random() * 6),
+			})
+		end
+		local now = os.clock()
+		for index = #pieces, 1, -1 do
+			local piece = pieces[index]
+			local t = (now - piece.born) / piece.life
+			if t >= 1 then
+				piece.part:Destroy()
+				table.remove(pieces, index)
+			else
+				local pull = t * t -- a slow lift off the ground, then faster and faster in
+				local spun = CFrame.Angles(0, piece.turn * t, 0) * (piece.from - into)
+				local lift = UP * math.sin(t * math.pi) * reach * 0.15
+				piece.part.Size = piece.size * math.max(0.05, 1 - pull)
+				piece.part.CFrame = CFrame.new(into + spun * (1 - pull) + lift) * piece.tumble * CFrame.Angles(now * 4, now * 3, 0)
+			end
+		end
+		shakeIn -= dt
+		if shakeIn <= 0 then
+			shakeIn = 0.35
+			ScreenFx.shakeAt(rumble, into)
+		end
+	end)
+end
+
+-- The black hole behind and over `at` (away from `from`), `size` studs: it frames the boss, never hides behind it (owner
+-- 2026-11-18: "tha black hole is hard to see in fights. make it stand out"). An unlit black core with a white-hot rim,
+-- glowing swirls facing the camera turning opposite ways round it, a bright ring hugging it, streaks falling in from
+-- all round and a violet light on the boss's back: it reads on any sky, the move's dimmed world too.
+local function blackHole(b: Bag, at: Vector3, from: Vector3, size: number, tint: Color3, g: any): Part
 	local away = Vector3.new(at.X - from.X, 0, at.Z - from.Z)
-	local spot = at + (if away.Magnitude > 0.5 then away.Unit else Vector3.new(0, 0, 1)) * size * 0.7 + UP * size * 0.4
-	local swirl = part(b, Vector3.new(size * 2.2, size * 2.2, 0.1), WHITE, CFrame.lookAt(spot, from + UP * size * 0.4), 1)
-	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
-		local decal = Instance.new("Decal")
-		decal.Texture = TEX.swirl
-		decal.Color3 = tint
-		decal.Face = face
-		decal.Parent = swirl
-	end
+	local spot = at + (if away.Magnitude > 0.5 then away.Unit else Vector3.new(0, 0, 1)) * size * 0.6 + UP * size * 0.6
 	local hole = part(b, Vector3.one * size * 0.75, VOID, CFrame.new(spot), 0, Enum.PartType.Ball)
 	hole.Material = Enum.Material.SmoothPlastic
-	everyFrame(b, function(_, dt)
-		swirl.CFrame = swirl.CFrame * CFrame.Angles(0, 0, math.rad(-120) * dt)
+	local rim = Instance.new("Highlight")
+	rim.FillColor = VOID
+	rim.FillTransparency = 0
+	rim.OutlineColor = HOT
+	rim.OutlineTransparency = 0
+	rim.DepthMode = Enum.HighlightDepthMode.Occluded
+	rim.Adornee = hole
+	rim.Parent = hole
+	local outer = sprite(hole, TEX.swirl, tint, size * 2.8, 4)
+	local inner = sprite(hole, TEX.swirl, HOT, size * 1.6, 3, 0.05)
+	local ring = sprite(hole, AttackFx.TEXTURES.ring, HOT, size * 1.05, 5, 0.1)
+	local light = Instance.new("PointLight")
+	light.Color = tint
+	light.Range = size * 2.5
+	light.Brightness = 4
+	light.Shadows = false
+	light.Parent = hole
+	local reach = size * 1.1
+	local pull = part(b, Vector3.one * reach * 2, WHITE, CFrame.new(spot), 1, Enum.PartType.Ball)
+	local life = 0.45
+	local streaks = ElementFx.emitter(pull, "streak", tint, {
+		size = { size * 0.14, size * 0.05 },
+		life = life,
+		speed = (reach - size * 0.35) / life, -- from the edge into the core in its life
+		rotation = 0,
+		orientation = Enum.ParticleOrientation.VelocityParallel,
+		brightness = 4,
+		fade = 0.7,
+	})
+	streaks.Color = ColorSequence.new(tint, HOT)
+	streaks.Shape = Enum.ParticleEmitterShape.Sphere
+	streaks.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface
+	streaks.ShapeInOut = Enum.ParticleEmitterShapeInOut.Inward
+	streaks.Rate = size * 4
+	everyFrame(b, function(elapsed, dt)
+		outer.Rotation -= 100 * dt
+		inner.Rotation += 170 * dt
+		ring.ImageTransparency = 0.15 + 0.15 * math.sin(elapsed * 6)
 	end)
-	swirl.Size = Vector3.new(0.5, 0.5, 0.1)
-	tween(swirl, 0.5, { Size = Vector3.new(size * 2.2, size * 2.2, 0.1) }, Enum.EasingStyle.Back)
+	pullDebris(b, spot, at, size * 1.3, g.debris, tint, AttackFx.SHAKE.super * g.shake * g.rumble)
 	return hole
 end
 
@@ -1995,7 +2107,7 @@ local function devourCharge(view: View, grade: string, seconds: number, target: 
 	local foe = target or (view.root.Position + view.root.CFrame.LookVector * 12)
 	play(b, anchor(b, CFrame.new(view.root.Position)), DEVOUR_SOUNDS.call, 0.9)
 	play(b, anchor(b, CFrame.new(foe)), DEVOUR_SOUNDS.charge, 1)
-	local hole = blackHole(b, foe, view.root.Position, g.hole, violet)
+	local hole = blackHole(b, foe, view.root.Position, g.hole, violet, g)
 	local stopGather = ElementFx.gather(hole.Position, violet, seconds, g.hole * 2)
 	-- Its eyes burn violet
 	local eyes = ElementFx.emitter(anchor(b, CFrame.new(view.root.Position + UP * view.height * 0.8 + view.root.CFrame.LookVector * view.height * 0.3)), "glow", violet, { size = { 1.2 * g.scale, 1.8 * g.scale }, life = 0.3, fade = 0.3, locked = true, brightness = 3 })
@@ -2013,7 +2125,7 @@ local function devourImpact(view: View, grade: string, target: Vector3, _targetB
 	local b = bag()
 	local violet = color(DEVOUR.color)
 	local width = math.max(5, targetHeight * 0.7)
-	blackHole(b, target, view.root.Position, g.hole, violet)
+	blackHole(b, target, view.root.Position, g.hole, violet, g)
 	play(b, anchor(b, CFrame.new(target)), DEVOUR_SOUNDS.impact, 1.3)
 	quake(g, target, 0.8)
 	if grade == "A" or grade == "S" then

@@ -19,6 +19,7 @@ local SuperFxConfig = require(Shared:WaitForChild("Config"):WaitForChild("SuperF
 local SuperFxRules = require(Shared:WaitForChild("Util"):WaitForChild("SuperFxRules"))
 local Extras = require((script.Parent :: Instance):WaitForChild("Extras"))
 local ScreenFx = require((script.Parent :: Instance):WaitForChild("ScreenFx"))
+local ScreenCover = require((script.Parent :: Instance):WaitForChild("ScreenCover"))
 local CinematicView = require((script.Parent :: Instance):WaitForChild("CinematicView"))
 
 local SuperCinematic = {}
@@ -185,9 +186,10 @@ local function buildGui(args: Args, tier: any): (ScreenGui, Frame, Frame, { Fram
 	wash.BackgroundColor3 = args.color
 	wash.BackgroundTransparency = 1
 	wash.Size = UDim2.fromScale(1, 1)
-	wash.Parent = gui
+	wash.Parent = ScreenCover.layer(gui, 1) -- the wash and the bars reach the screen's edges, past a phone's safe area
 	local bars: { Frame } = {}
 	if tier.bars then
+		local barLayer = ScreenCover.layer(gui, 3)
 		for index, anchor in { 0, 1 } do
 			local bar = Instance.new("Frame")
 			bar.Name = if index == 1 then "BarTop" else "BarBottom"
@@ -197,7 +199,7 @@ local function buildGui(args: Args, tier: any): (ScreenGui, Frame, Frame, { Fram
 			bar.Position = UDim2.fromScale(0, anchor)
 			bar.Size = UDim2.fromScale(1, 0)
 			bar.ZIndex = 3
-			bar.Parent = gui
+			bar.Parent = barLayer
 			table.insert(bars, bar)
 		end
 	end

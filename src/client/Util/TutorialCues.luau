@@ -10,9 +10,11 @@ local RunService = game:GetService("RunService")
 
 local PishTalk = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("PishTalk"))
 local TrailRules = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("TrailRules"))
+local ScreenEdges = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("ScreenEdges"))
 
 local ClientUtil = script.Parent :: Instance
 local Icon = require(ClientUtil:WaitForChild("Icon"))
+local ScreenCover = require(ClientUtil:WaitForChild("ScreenCover"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 
 local TutorialCues = {}
@@ -242,9 +244,17 @@ function TutorialCues.pawOn(target: GuiObject | BasePart): () -> ()
 			local pawSize = math.clamp(size.Y * 0.9, PAW_MIN, PAW_SIZE)
 			holder.Visible = shown
 			holder.Size = UDim2.fromOffset(pawSize, pawSize)
-			-- above it, or just inside its top when that is the list's edge (not over the window's tabs)
+			-- above it, or just inside its top when that is the list's edge (not over the window's tabs); under it, toes
+			-- up, when there's no room above (a button in Roblox's top bar: the town button, owner 2026-11-18)
 			local pawBottom = if clipped then at.Y + pawSize + 4 else at.Y - 4
-			holder.Position = UDim2.fromOffset(at.X + size.X / 2, pawBottom - beat * BOUNCE)
+			local under = not clipped and pawBottom - pawSize - BOUNCE < ScreenCover.rect(gui()).y
+			paw.Rotation = if under then 0 else 180
+			holder.AnchorPoint = Vector2.new(0.5, if under then 0 else 1)
+			if under then
+				holder.Position = UDim2.fromOffset(at.X + size.X / 2, at.Y + size.Y + 4 + beat * BOUNCE)
+			else
+				holder.Position = UDim2.fromOffset(at.X + size.X / 2, pawBottom - beat * BOUNCE)
+			end
 			ring.Visible = shown
 			ring.Position = UDim2.fromOffset(at.X - RING_PAD, at.Y - RING_PAD)
 			ring.Size = UDim2.fromOffset(size.X + RING_PAD * 2, size.Y + RING_PAD * 2)
@@ -565,16 +575,19 @@ function TutorialCues.spotlight(target: GuiObject?)
 		if not shown or not current then
 			return
 		end
-		local screenSize = gui().AbsoluteSize
-		-- Whole pixels, so the four frames meet without a bright seam between them
-		local left = math.floor(current.AbsolutePosition.X - SPOT_PAD)
-		local top = math.floor(current.AbsolutePosition.Y - SPOT_PAD)
-		local right = math.ceil(current.AbsolutePosition.X + current.AbsoluteSize.X + SPOT_PAD)
-		local bottom = math.ceil(current.AbsolutePosition.Y + current.AbsoluteSize.Y + SPOT_PAD)
-		frames[1].Position, frames[1].Size = UDim2.fromOffset(0, -60), UDim2.fromOffset(screenSize.X, math.max(0, top + 60))
-		frames[2].Position, frames[2].Size = UDim2.fromOffset(0, bottom), UDim2.fromOffset(screenSize.X, math.max(0, screenSize.Y - bottom))
-		frames[3].Position, frames[3].Size = UDim2.fromOffset(0, top), UDim2.fromOffset(math.max(0, left), bottom - top)
-		frames[4].Position, frames[4].Size = UDim2.fromOffset(right, top), UDim2.fromOffset(math.max(0, screenSize.X - right), bottom - top)
+		-- The whole screen, the top bar and a phone's notch bands too, but the button
+		local screen = gui()
+		local origin = screen.AbsolutePosition
+		local hole = {
+			x = current.AbsolutePosition.X - origin.X - SPOT_PAD,
+			y = current.AbsolutePosition.Y - origin.Y - SPOT_PAD,
+			w = current.AbsoluteSize.X + SPOT_PAD * 2,
+			h = current.AbsoluteSize.Y + SPOT_PAD * 2,
+		}
+		for index, rect in ScreenEdges.around(ScreenCover.rect(screen), hole) do
+			frames[index].Position = UDim2.fromOffset(rect.x, rect.y)
+			frames[index].Size = UDim2.fromOffset(rect.w, rect.h)
+		end
 	end)
 end
 

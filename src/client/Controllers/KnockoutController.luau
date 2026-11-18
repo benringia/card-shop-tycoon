@@ -18,6 +18,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local ScreenCover = require(ClientUtil:WaitForChild("ScreenCover"))
 local ProductPrice = require(ClientUtil:WaitForChild("ProductPrice"))
 local RobuxPrice = require(ClientUtil:WaitForChild("RobuxPrice"))
 local ScreenClear = require(ClientUtil:WaitForChild("ScreenClear"))
@@ -51,7 +52,7 @@ function KnockoutController.Start()
 	dim.Size = UDim2.fromScale(1, 1)
 	dim.BackgroundColor3 = Color3.new(0, 0, 0)
 	dim.BackgroundTransparency = 1
-	dim.Parent = gui
+	dim.Parent = ScreenCover.layer(gui) -- the whole screen, past a phone's safe area
 
 	local card = Instance.new("Frame")
 	card.Name = "Card"

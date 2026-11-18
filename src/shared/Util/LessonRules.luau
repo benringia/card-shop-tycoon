@@ -8,9 +8,55 @@ export type Facts = {
 	sinceNudge: number, -- seconds since Pish last came to point
 	boxWaiting: boolean, -- a delivered box is waiting to go on a shelf
 	shelvesStocked: boolean, -- some shelf has stock on it
+	canOrder: boolean, -- the player's cash covers the cheapest box of packs
+	muted: boolean, -- the player told him "Got it" on a nudge: no more this session
 }
+-- What the player is doing right now (owner 2026-11-18: "do not popup when the player is currently doing something.
+-- like manning the cashier"), read on the client by Util/PlayerBusy
+export type Busy = {
+	fight: boolean, -- a fight on
+	show: boolean, -- a pack opening, a weapon reveal or a cinematic
+	popup: boolean, -- a level-up card, a gift, a locked card, a purchase dialog or the Roblox menu
+	register: boolean, -- manning the register, or its checkout up
+	carrying: boolean, -- boxes in hand
+	building: boolean, -- placing a shelf, a window or a piece of decor
+	window: boolean, -- a window, the phone or the binder open
+}
+-- Config/Pish PACE
+export type Pace = { free: number, gap: number, wait: number }
+
+local BUSY_ORDER = { "fight", "show", "popup", "register", "carrying", "building", "window" }
 
 local LessonRules = {}
+
+-- The first thing keeping the player busy, biggest first; nil: free. `allowed`: what the visit on now uses itself (a
+-- lesson's windows and placing), which doesn't count
+function LessonRules.busyWith(busy: Busy, allowed: { [string]: boolean }?): string?
+	for _, reason in BUSY_ORDER do
+		if (busy :: any)[reason] == true and not (allowed and allowed[reason]) then
+			return reason
+		end
+	end
+	return nil
+end
+
+-- Whether a visit (a lesson or a nudge) may start now: the player free since `freeSince` for `pace.free` seconds, and
+-- `pace.gap` seconds past the end of his last visit (`lastEnded`, nil: none yet), so he never comes back to back
+function LessonRules.mayStart(now: number, freeSince: number?, lastEnded: number?, pace: Pace): boolean
+	if freeSince == nil or now - freeSince < pace.free then
+		return false
+	end
+	return lastEnded == nil or now - lastEnded >= pace.gap
+end
+
+-- A visit under way while the player is busy since `busySince` (nil: they aren't): "on" carries on, "pause" steps back
+-- (his card and paw hidden, his time stopped), "leave" past `pace.wait` (he goes; the lesson waits for a better moment)
+function LessonRules.whileBusy(now: number, busySince: number?, pace: Pace): "on" | "pause" | "leave"
+	if busySince == nil then
+		return "on"
+	end
+	return if now - busySince >= pace.wait then "leave" else "pause"
+end
 
 -- Level order; one level's lessons (and the event lessons, after every level) in the order the config lists them
 local function inLevelOrder(lessons: { Lesson }, keep: (Lesson) -> boolean): { string }
@@ -104,16 +150,29 @@ function LessonRules.forProduct(lessons: { Lesson }, productId: string): string?
 	return nil
 end
 
--- What Pish comes to point at for a stuck new player: "stock" (a box waiting for a shelf), "order" (empty shelves), or
--- nil (not stuck, too soon since the last nudge, or past their first hour)
+-- The least a box to order costs at shop level `level` (the Bulk Bin's free handfuls are never ordered), nil when
+-- nothing is: whether "Let's order packs!" is something the player can do
+function LessonRules.cheapestBox(products: { { boxCost: number, unlockLevel: number, bulk: boolean? } }, level: number): number?
+	local cheapest: number? = nil
+	for _, product in products do
+		if not product.bulk and product.boxCost > 0 and product.unlockLevel <= level then
+			cheapest = math.min(cheapest or math.huge, product.boxCost)
+		end
+	end
+	return cheapest
+end
+
+-- What Pish comes to point at for a stuck new player: "stock" (a box waiting for a shelf), "order" (empty shelves, and
+-- the cash for a box: owner 2026-11-18, "Pish is forcing players to buy items that the player cant afford yet"), or nil
+-- (not stuck, too soon since the last nudge, past their first hour, or told "Got it")
 function LessonRules.nudge(cfg: { firstSeconds: number, quiet: number, gap: number }, facts: Facts): ("order" | "stock")?
-	if facts.played > cfg.firstSeconds or facts.quiet < cfg.quiet or facts.sinceNudge < cfg.gap then
+	if facts.muted or facts.played > cfg.firstSeconds or facts.quiet < cfg.quiet or facts.sinceNudge < cfg.gap then
 		return nil
 	end
 	if facts.boxWaiting then
 		return "stock"
 	end
-	if not facts.shelvesStocked then
+	if not facts.shelvesStocked and facts.canOrder then
 		return "order"
 	end
 	return nil

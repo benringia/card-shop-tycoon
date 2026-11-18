@@ -145,6 +145,8 @@ local SNAPSHOT_SECONDS = 1 -- resend timers this often even when nothing happene
 local LUNGE_SECONDS = 0.15
 
 local fights: { [Player]: Fight } = {} -- every member points at their fight
+-- Studio's /carddrop: the player's next monster win drops a card (weak keys: a player who leaves is forgotten)
+local forcedDrops: { [Player]: boolean } = setmetatable({}, { __mode = "k" }) :: any
 local running: { [Fight]: boolean } = {} -- each fight once, for the loop
 local resting: { [Player]: { [string]: number } } = {} -- beastId -> Unix time it can fight again
 local nearSpring: { [Player]: boolean } = {}
@@ -194,6 +196,11 @@ end
 -- BossService: every fight's end, whatever the result (it unseals the arena)
 -- After a fight ends (deferred): its monster, the result ("win", "lose", "run", or "timeout" when it hit the time
 -- limit), every member's creatures' HP then (members who left earlier included) and the players still in it at the end
+-- Studio's /carddrop: the player's next monster win drops a card (its loot beam: client Util/CardLoot)
+function BattleService.ForceDropForTest(player: Player)
+	forcedDrops[player] = true
+end
+
 function BattleService.OnFightEnded(handler: (monster: Monster, result: string, hpLeft: { [Player]: { [string]: number } }, stillIn: { Player }) -> ())
 	table.insert(fightEndedHandlers, handler)
 end
@@ -948,7 +955,9 @@ local function payOut(fight: Fight, member: Member): any
 	local shopXp = LevelMath.fightXp(cash, Levels)
 	EconomyService.AddXP(player, shopXp)
 	local dropped = nil
-	if rng:NextNumber() < rewards.dropChance then
+	local forced = forcedDrops[player] -- Studio's /carddrop: this win drops a card
+	forcedDrops[player] = nil
+	if forced or rng:NextNumber() < rewards.dropChance then
 		local cardId = rollDrop(monster)
 		if cardId then
 			dropped = { cardId = cardId, foil = false, grade = BeastRules.rollGrade(rng:NextNumber(), Cards.ById[cardId].rarity) }
@@ -1107,7 +1116,23 @@ local function endFight(fight: Fight, result: string)
 		local fallen = fight.monster
 		fallen.marker:SetAttribute("Fainted", true)
 		task.delay(Bosses.DEATH_SECONDS, WildService.Defeat, fallen)
-	elseif result == "win" or fight.monster.boss or fight.run then
+	elseif result == "win" then
+		-- Any other beaten monster is knocked flying away from the nearest winner (owner 2026-11-18, pick A), then goes
+		local fallen = fight.monster
+		local from: Vector3? = nil
+		local nearest = math.huge
+		for player in fight.members do
+			local character = player.Character
+			local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
+			if root and root:IsA("BasePart") then
+				local distance = (root.Position - fallen.marker.Position).Magnitude
+				if distance < nearest then
+					from, nearest = root.Position, distance
+				end
+			end
+		end
+		WildService.KnockOut(fallen, from)
+	elseif fight.monster.boss or fight.run then
 		WildService.Defeat(fight.monster) -- a boss (or a Dungeon room's pack) always goes when its fight ends
 	else
 		WildService.Unlock(fight.monster)

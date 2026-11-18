@@ -217,4 +217,16 @@ return {
 		expect.equal(TutorialRules.tourLeading("", "party", "level4"), true, "Chikin's tour")
 		expect.equal(TutorialRules.tourLeading("", "level4", "level4"), false, "Chikin's wait for shop level 4")
 	end,
+
+	-- the owner 2026-11-18: "on the delivery tutorial. pish is saying put the box on the rack while highlighting the
+	-- 'To bag' tile. fix it"
+	["the tour's packs go on the rack: no To Bag on that step, and its tip waits until the tour is over"] = function()
+		assert(table.find(STEPS, TutorialRules.STOCK_STEP) ~= nil, "the stock step is one of Pish's steps")
+		expect.equal(TutorialRules.offersToBag(TutorialRules.STOCK_STEP), false, "Pish says the rack: To Bag hides (it lit up over his line)")
+		expect.equal(TutorialRules.offersToBag(""), true, "after the tour: To Bag")
+		expect.equal(TutorialRules.offersToBag("customer"), true, "a later step: To Bag")
+		expect.equal(TutorialRules.tipWaits(TutorialRules.STOCK_STEP), true, "no To Bag tip mid-tour (Pish's face saying the opposite of Pish)")
+		expect.equal(TutorialRules.tipWaits("ringUp"), true, "nor anywhere else in the tour")
+		expect.equal(TutorialRules.tipWaits(""), false, "after the tour: the tip's three shows, none spent")
+	end,
 }

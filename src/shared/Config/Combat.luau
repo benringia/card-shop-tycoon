@@ -100,8 +100,9 @@ return {
 
 	-- Fainted cards rest; the plaza spring speeds it up
 	REST_SECONDS = 300,
-	-- The Wild's "Return to town" pill, top centre (owner 2026-11-03, round 3): px
-	HOME_BUTTON = { width = 210, height = 48, textSize = 17 },
+	-- The Wild's "Return to town": a round icon in Roblox's top bar right of its buttons, the words in a tooltip (owner
+	-- 2026-11-18; a pill at the top centre before): px across, px past Roblox's buttons, see-through like theirs
+	HOME_BUTTON = { size = 48, gap = 8, transparency = 0.3 },
 	SPRING_RADIUS = 12,
 	SPRING_SPEED = 3,
 

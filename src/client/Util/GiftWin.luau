@@ -18,6 +18,7 @@ local Util = script.Parent :: Instance
 local ChestModel = require(Util:WaitForChild("ChestModel"))
 local Icon = require(Util:WaitForChild("Icon"))
 local ScreenClear = require(Util:WaitForChild("ScreenClear"))
+local ScreenCover = require(Util:WaitForChild("ScreenCover"))
 local SoundBank = require(Util:WaitForChild("SoundBank"))
 local UIKit = require(Util:WaitForChild("UIKit"))
 
@@ -194,7 +195,7 @@ function GiftWin.play(kind: string, index: number, lines: { Line }): string?
 	dim.Size = UDim2.fromScale(1, 1)
 	dim.BackgroundColor3 = Color3.fromRGB(30, 14, 50)
 	dim.BackgroundTransparency = 1
-	dim.Parent = gui
+	dim.Parent = ScreenCover.layer(gui) -- the dim, its confetti and the flash: the whole screen, past a phone's safe area
 	tween(dim, 0.35, { BackgroundTransparency = 1 - WIN.DIM })
 
 	local rays = Instance.new("ImageLabel")
@@ -258,7 +259,7 @@ function GiftWin.play(kind: string, index: number, lines: { Line }): string?
 	flash.BackgroundColor3 = Color3.new(1, 1, 1)
 	flash.BackgroundTransparency = 0.15
 	flash.ZIndex = 5
-	flash.Parent = gui
+	flash.Parent = ScreenCover.layer(gui, 5)
 	tween(flash, WIN.BURST, { BackgroundTransparency = 1 })
 	confetti(dim, WIN.CONFETTI)
 	if chestModel then

@@ -21,6 +21,7 @@ local UIIcons = require(Config:WaitForChild("UIIcons"))
 local LevelRules = require(Shared:WaitForChild("Util"):WaitForChild("LevelRules"))
 local LevelUpRules = require(Shared:WaitForChild("Util"):WaitForChild("LevelUpRules"))
 local UIKit = require((script.Parent :: Instance):WaitForChild("UIKit"))
+local ScreenCover = require((script.Parent :: Instance):WaitForChild("ScreenCover"))
 
 local LevelUpCard = {}
 
@@ -158,7 +159,7 @@ function LevelUpCard.show(from: number, to: number)
 	dim.BackgroundColor3 = Color3.new(0, 0, 0)
 	dim.BackgroundTransparency = 1
 	dim.Size = UDim2.fromScale(1, 1)
-	dim.Parent = gui
+	dim.Parent = ScreenCover.layer(gui) -- the whole screen, past a phone's safe area
 	TweenService:Create(dim, TweenInfo.new(0.3), { BackgroundTransparency = CARD.dim }):Play()
 	dim.Activated:Connect(close)
 

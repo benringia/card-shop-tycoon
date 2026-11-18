@@ -37,6 +37,8 @@ local HitFx = require(((script.Parent :: Instance).Parent :: Instance):WaitForCh
 local SoundBank = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("SoundBank"))
 local Combat = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Combat"))
 local ScreenFx = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("ScreenFx"))
+local MonsterKO = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("MonsterKO"))
+local MonsterKOConfig = require(Config:WaitForChild("MonsterKO"))
 
 local ELITE_TAG_COLOR = Color3.fromRGB(255, 205, 60)
 local TAG_COLOR = Color3.fromRGB(235, 235, 235)
@@ -542,10 +544,62 @@ local function spawnBurst(at: Vector3, seconds: number)
 	task.delay(seconds + 1.5, ring.Destroy, ring)
 end
 
+-- Beaten monsters flying off (Config/MonsterKO, owner 2026-11-18 pick A: "make it smooth"), by marker, while it plays
+local knockouts: { [BasePart]: MonsterKO.Handle } = {}
+
+-- A beaten monster (not a boss: its own death scene) is knocked out: its model leaves its marker and flies off away from
+-- the winner (the marker's KODir; else away from you), Util/MonsterKO's from now on. Further away than the knockout's
+-- range it simply goes with its marker
+local function knockOut(monster: Monster)
+	local marker = monster.marker
+	local camera = workspace.CurrentCamera
+	if knockouts[marker] or not camera then
+		return
+	end
+	if (monster.body.cframe.Position - camera.CFrame.Position).Magnitude > MonsterKOConfig.range then
+		return
+	end
+	monsters[marker] = nil
+	for _, connection in monster.connections do
+		connection:Disconnect()
+	end
+	local tagGui = monster.tag:FindFirstAncestorWhichIsA("BillboardGui")
+	if tagGui then
+		tagGui:Destroy()
+	end
+	for _, emitter in monster.fx do
+		emitter.Enabled = false
+	end
+	if monster.trail then
+		monster.trail.Enabled = false
+	end
+	for _, track in monster.body.tracks do
+		track:Stop(0.1)
+	end
+	local away = marker:GetAttribute("KODir")
+	local direction: Vector3
+	if typeof(away) == "Vector3" then
+		direction = away
+	else
+		local character = game:GetService("Players").LocalPlayer.Character
+		local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
+		local from = if root and root:IsA("BasePart") then root.Position else camera.CFrame.Position
+		direction = monster.body.cframe.Position - from
+	end
+	local handle = MonsterKO.play(monster.body.model, direction, marker:GetAttribute("Elite") == true)
+	knockouts[marker] = handle
+	handle.onDone(function()
+		knockouts[marker] = nil
+	end)
+end
+
 local function add(marker: BasePart)
 	local species = marker:GetAttribute("Species")
 	if monsters[marker] or typeof(species) ~= "string" then
 		return
+	end
+	if marker:GetAttribute("Fainted") == true and marker:GetAttribute("Boss") == nil then
+		return -- knocked out already, on its way out: nothing to draw
 	end
 	local bossId = marker:GetAttribute("Boss")
 	local boss = if typeof(bossId) == "string" then Bosses.BOSSES[bossId] else nil
@@ -727,6 +781,10 @@ local function add(marker: BasePart)
 		end
 	end))
 	table.insert(monster.connections, marker.AttributeChanged:Connect(function()
+		if marker:GetAttribute("Fainted") == true and marker:GetAttribute("Boss") == nil then
+			knockOut(monster) -- beaten: it flies off (its tag and this connection go with it)
+			return
+		end
 		updateTag(monster)
 		if #monster.heads > 0 or monster.aura then
 			if marker:GetAttribute("Fainted") == true and not monster.fallenAt then
@@ -767,6 +825,17 @@ end
 function MonsterController.GetModel(marker: BasePart): Model?
 	local monster = monsters[marker]
 	return if monster then monster.body.model else nil
+end
+
+-- A beaten monster's knockout playing (Config/MonsterKO): `callback` runs as it poofs, with where (the winner's coins,
+-- toast and XP sparks come then: BattleController). false: none playing (too far, or not knocked out)
+function MonsterController.OnKnockoutPoof(marker: BasePart, callback: (at: Vector3) -> ()): boolean
+	local handle = knockouts[marker]
+	if not handle then
+		return false
+	end
+	handle.onPoof(callback)
+	return true
 end
 
 -- A monster's or boss's body for fight effects (Util/FightFx): where it is, how tall, its boss id or species and the

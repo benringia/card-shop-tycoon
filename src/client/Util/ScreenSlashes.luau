@@ -33,7 +33,7 @@ local function layer(): ScreenGui
 	end
 	local fresh = Instance.new("ScreenGui")
 	fresh.Name = "ScreenSlashes"
-	fresh.IgnoreGuiInset = true
+	fresh.ScreenInsets = Enum.ScreenInsets.None -- slashes and flashes only: the whole screen, past a phone's safe area
 	fresh.ResetOnSpawn = false
 	fresh.DisplayOrder = 40
 	fresh.ZIndexBehavior = Enum.ZIndexBehavior.Sibling

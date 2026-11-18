@@ -247,7 +247,9 @@ end
 function LoadingGui.build(look: any, firstStep: string): ScreenGui
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "LoadingScreen"
-	gui.IgnoreGuiInset = true
+	-- the whole screen, past a phone's safe area (its notch, corners, home bar): the painting and dim reach every edge,
+	-- and everything else sits in the binder in the middle
+	gui.ScreenInsets = Enum.ScreenInsets.None
 	gui.ResetOnSpawn = false
 	gui.DisplayOrder = 1000
 	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling

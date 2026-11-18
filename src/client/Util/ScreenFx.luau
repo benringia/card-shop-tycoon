@@ -68,7 +68,7 @@ local function frame(): Frame
 	end
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "FightFlash"
-	gui.IgnoreGuiInset = true
+	gui.ScreenInsets = Enum.ScreenInsets.None -- a flash only: the whole screen, past a phone's safe area
 	gui.ResetOnSpawn = false
 	gui.DisplayOrder = 50
 	gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")

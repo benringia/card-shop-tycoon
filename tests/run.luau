@@ -205,6 +205,10 @@ local specs: { [string]: { [string]: () -> () } } = {
 	SoftLockRules = require("./SoftLockRules.spec"),
 	SaveSlots = require("./SaveSlots.spec"),
 	TrailRules = require("./TrailRules.spec"),
+	ScreenEdges = require("./ScreenEdges.spec"),
+	MonsterKOMotion = require("./MonsterKOMotion.spec"),
+	CardLootRules = require("./CardLootRules.spec"),
+	AvatarRules = require("./AvatarRules.spec"),
 }
 
 -- `lune run tests/run <SpecName>` runs only that spec

@@ -30,6 +30,7 @@ local DogArrival = require(ClientUtil:WaitForChild("DogArrival"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
 local OpeningStage = require(ClientUtil:WaitForChild("OpeningStage"))
 local PishVisual = require(ClientUtil:WaitForChild("PishVisual"))
+local PlayerBusy = require(ClientUtil:WaitForChild("PlayerBusy"))
 local TownChikinController = require((script.Parent :: Instance):WaitForChild("TownChikinController"))
 local TutorialCues = require(ClientUtil:WaitForChild("TutorialCues"))
 local TutorialTalk = require(ClientUtil:WaitForChild("TutorialTalk"))
@@ -172,6 +173,23 @@ local function spot(at: Vector3): Part
 	anchor.Parent = workspace
 	spotAnchor = anchor
 	return anchor
+end
+
+-- The round town button in Roblox's top bar while it shows (BattleController's ReturnToTown, in the Wild)
+local function townButton(): GuiObject?
+	local gui = mainGui()
+	local holder = gui and gui:FindFirstChild("ReturnToTown", true)
+	local button = holder and holder:FindFirstChild("ShopButton")
+	return if button and button:IsA("GuiObject") and shown(button) then button else nil
+end
+
+-- His goodbye's line that says "tap here to sell in your shop" points at the town button (Config/Chikin TOWN_LINE)
+local function pointsAtTown(): GuiObject?
+	local town = Chikin.TOWN_LINE
+	if step ~= town.step or introIndex < town.from then
+		return nil
+	end
+	return townButton()
 end
 
 -- What the player is at in this step (Config/ChikinTalk `now` lines) and where Chikin points
@@ -491,15 +509,14 @@ local function arrive()
 	TutorialTalk.hide()
 	TutorialCues.skipButton(false, openTourCard)
 	-- Pish says goodbye and runs off first, or finishes a lesson visit (the two dogs are never on screen together), and
-	-- nothing else has the screen: a window (the first-sword popup), a weapon reveal, a pack opening (final review C1, M4)
+	-- the player isn't doing something: a window (the first-sword popup), a weapon reveal, a pack opening, a fight (final
+	-- review C1, M4; owner 2026-11-16), the register, boxes in hand, placing or a popup (owner 2026-11-18: "do not popup
+	-- when the player is currently doing something"; his arrival takes the camera; Util/PlayerBusy)
 	local function blocked(): boolean
 		return (player:GetAttribute("TutorialStep") or "") ~= ""
 			or workspace:FindFirstChild("TutorialPish") ~= nil
 			or player:GetAttribute("LoadingDone") ~= true
-			or UIKit.anyPanelOpen()
-			or WeaponRevealController.IsPlaying()
-			or OpeningStage.isShown()
-			or BattleController.IsFighting() -- a fight on: he comes once it's over (owner 2026-11-16)
+			or PlayerBusy.reason() ~= nil
 	end
 	repeat
 		while blocked() and leading() do
@@ -623,7 +640,10 @@ function ChikinController.Start()
 		local situationName, target = situation(step)
 		local talk = ChikinTalk.STEPS[step]
 		local line = if talk then TalkRules.show(talk, introIndex, situationName) else nil
-		if line and line.next and step ~= "boss" then
+		local town = pointsAtTown()
+		if town then
+			showCue(step .. ":town", { gui = town }) -- "...or tap here": the town button (owner 2026-11-18)
+		elseif line and line.next and step ~= "boss" then
 			clearCue() -- no pointing while he's saying hello (his goodbye at the boss points at its portal all along)
 		else
 			showCue(step .. ":" .. situationName, target)

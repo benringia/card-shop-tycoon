@@ -26,8 +26,20 @@ the dogs-and-cards C on 2026-11-16 because the icon shows first in every list): 
 doorway, sword in hand, throws a card and a phoenix bursts out of it, Pish and Chikin peeking from behind the counter. Five thumbnails after the top Roblox games' pattern (one huge subject, an avatar reacting, one giant
 outlined hook line, a polished 3D render, readable at phone size): "1 in 250,000 / Grade S foil Legendary" (the true
 odds: 1% Legendary x 1% Grade S x 4% foil), "Run your card shop!", "Beat the Hydra! / 60,000 HP final boss", "One More
-Pack" over the real card paintings, "Summon your cards! / Every card is a creature" (Voidmaw bursting out of a card). Scenes from Figma's image generator with no text, titles by
-`tools/ui-art/make_thumbnail.py`; files in `assets/ui/game-page` (not synced). Every number on them must stay true.
+Pack" over the real card paintings, "Summon your cards! / Every card is a creature" (Voidmaw bursting out of a card).
+Two more (owner 2026-11-18: "add thumbnail photo that indicates we have a good weapon system and pet/weapon upgrading
+system", pick A of three; "add pet grades. I can add more than one thumbnail so dont camp everything into one image",
+"add the difference between high and low grade weapons/pets"): "Upgrade everything! / 13 weapons · forge to +10" (the
+avatar hammering a blazing sword on an anvil, five element weapons, green up-arrows, a pet powering up, Pish and Chikin
+cheering; `thumb_6_upgrade`: 13 weapons all live, upgrades +1 to +10) and "Grade C vs Grade S" (the same fox and sword,
+grey and bored on a stone pedestal vs blazing on a gold one, the avatar pointing; `thumb_7_grades`: Grade S pets +10%,
+weapons +15%, auras), and "Legendary drop! / Monsters drop Epic & Legendary cards" (owner 2026-11-18: "make also make a
+thumbnail about a monster dropping a epic/legendary card": a monster knocked flying in a smoke puff with dizzy stars, a
+golden loot beam with the real Solarion card in it, a purple Epic beam far off, the avatar shielding his eyes, Pish and
+Chikin; `thumb_8_drop`: true, Wild drops are 2.5% Epic and 0.5% Legendary, Solarion a First Spark Legendary that Ember
+zones drop). Scenes from Figma's image generator with no text, titles by `tools/ui-art/make_thumbnail.py`
+(`--x` puts a title over one side: run it again on its output for a split's second title); files in
+`assets/ui/game-page` (not synced). Every number on them must stay true.
 
 ---
 
@@ -191,9 +203,12 @@ old look (`Town.PORTAL_EFFECTS`: ring and frame glow tinted, a soft light, 2 emi
 arches and glowing paths. The travel rings keep their prompts, hidden behind the new models; each name label floats
 3 studs over whichever model stands and shows within 80 studs (`Town.PORTAL_LABEL_DISTANCE`), so it comes into view
 down the trail before it climbs off the top of the default camera's view. Area scenery keeps `Town.PORTAL_SCENERY_CLEAR` (13 studs) away. Travel needs the portal: the
-Wild goes through its prompt only (the WildTravel remote accepts just "home", sent by the Wild's sky "Return to town"
-pill top centre; owner 2026-11-03, round 3, `Combat.HOME_BUTTON`; it hides with the HUD while the binder or a pack
-opening fills the screen, owner 2026-11-05, `Hud.hideWith`), and the Frontier menu's choices only count
+Wild goes through its prompt only (the WildTravel remote accepts just "home", sent by the Wild's "Return to town"
+button: since 2026-11-18 a round icon in Roblox's top bar just right of its own buttons, `GuiService.TopbarInset`, the
+words in a tooltip on a hover or a held finger, owner: "remove 'return to town' on the center of the screen for both
+mobile and desktop version. put it somewhere in an icon with tooltip"; a pill at the top centre before, owner
+2026-11-03; `Combat.HOME_BUTTON`; it hides in fights and with the HUD while the binder or a pack opening fills the
+screen, owner 2026-11-05, `Hud.hideWith`), and the Frontier menu's choices only count
 within `Town.PORTAL_REACH` (16 studs) of the Frontier portal. Plots stand 24 studs apart. The island is x ±130,
 z ±110 (`Town.BOUNDS`): the Baseplate is cut to it and hidden under terrain grass (pavement-type terrain under the street
 and plain ground under and 5 studs round each shop, so no blades poke through; Roblox draws terrain 2 studs above its
@@ -653,7 +668,7 @@ is over UI (`UIKit.pointerBlocked`).
   (`Util/VictoryRules`). The creatures' XP is unchanged. Levels unlock new products, shelves, expansions.
 - **Shop XP feedback** (owner 2026-11-16: "when something is sold add a visual effects on the shop exp ... right now it's
   too flat"; and "while im killing monsters im looking at my shop exp not moving"): the dock's XP bar carries a "SHOP"
-  label and a tooltip ("Your shop level. Sell and rip packs to grow it. Fights level up your creatures.",
+  label and a tooltip ("Your shop level. Sell and rip packs to grow it fast; fights add a little.",
   `Party.BAR.SHOP_LABEL` / `SHOP_TIP`); each gain flies 2-6 gold sparks from you into the bar, then "+N XP" rises over
   it, the bar flashes white and the level badge bumps (`Party.BAR.SHOP_SPARKS`, PartyBarController; only the badge
   bump while a window is open).
@@ -892,7 +907,15 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
 - **Collector Case:** singles for other players only. Visitors press E on a card, confirm the price, and buy;
   cash goes to the owner, the card to the buyer's binder. The server rejects the buy if the price changed after
   the buyer saw it.
-- Card prices default to market value; +/- steps are 10% of market value, capped at 3× market.
+- Card prices default to market value; +/- steps are 10% of market value, capped at 3× market. A price tap (and the
+  server's echo of it) changes the price where it shows (its row's price and % of market, the details, the editor)
+  without rebuilding the window, and a rebuild keeps each pane where you scrolled it (owner 2026-11-18, a phone: "when
+  scrolling down and setting the price on a card. it scrolls back up on every tap"; `ShowcaseController.showPrice`).
+- The case's card picker ("Choose a card for slot N") shows the chosen card as a **stat sheet** (owner 2026-11-18,
+  option A of three mockups: "Design the card details. right now it's just a bunch of text. make it more detailed and
+  easier to understand"): the card large and beside it its name, chips for its rarity (its colour), element (its icon on
+  lilac) and grade (its colour), its stars as icons with its level and number, four stat tiles with their icons (Power,
+  HP, ATK, SPD), then its worth in a gold box with the cash icon, how many you have, and List.
 - **A new card waits for its price** (owner 2026-11-17: "it automatically list at 100% market. which sometimes would
   instantly be bought by a customer before you can set a higher price"; server `Util/ListingHold`, Lune-tested): a card
   just put in a case opens its price editor ("Customers can't buy it until you press Done.") and no customer or player
@@ -940,7 +963,10 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
   box of packs, a bubble with Pish's face points at the tile, "Tap To Bag to keep these packs! Open them anywhere.",
   with a gold ring pulsing round the tile (`Util/TileTip`, `Config/Tips` TO_BAG and BUBBLE); it never shows again once
   you've used To Bag. The server counts it (TipService, `Util/TipRules`, saved `tips`) and sets the player's
-  `ToBagTip` while the box in your hands holds packs. It
+  `ToBagTip` while the box in your hands holds packs. Not during Pish's tour (owner 2026-11-18: "pish is saying put
+  the box on the rack while highlighting the 'To bag' tile"): its tip waits until the tour is over (no show spent,
+  `TutorialRules.tipWaits`), and on the step that stocks the rack To Bag isn't offered at all (the tile and Y hidden, the
+  server refusing with a locked card; `TutorialRules.offersToBag`), so the tour's packs can only go on the rack. It
   puts every pack in your carried boxes in your Bag (remote `BagBox`, StockService; `Items.sparkPack` and
   `Items.deckBox`, their `stock` product: `ItemRules.stockItem`), to open from the Bag anywhere in the main game.
   Other boxes stay in your hands, and what the Bag can't hold (9,999 a stack) stays in its box. Opening a stock pack
@@ -999,6 +1025,16 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
     flipped card as its 3D creature (the party model, `CreatureVisuals.cardTemplate`), rises a little toward the
     camera turned three-quarters, roars (a size pulse, its voice, a burst, a small shake), looks either way for 1.6 s and
     dives back in; a tap moves on at any time (`CREATURE`, `RevealRules.comesAlive`, `Util/OpeningCreature`).
+  - **A Legendary tears the sky** (owner 2026-11-18, pick C of three storyboards: "On both Open one pack and Open 10
+    Packs. Pulling a Legendary should play an epic legendary cinematic"; `SKY_TEAR`, `RevealRules.tearsSky`): through its
+    2 s tease the night sky above the cards cracks open (a jagged crack of light growing, a glow and turning rays, light
+    pouring down onto the card, the stage rumbling harder; `Util/OpeningRift`), then the rift flashes wide, its creature
+    comes through and lands with a quake in front of where the card will land and roars (`OpeningCreature.play` from
+    the rift), the card spins down out of the rift (3 turns in 1 s) into its place, the rift closes, and the usual
+    LEGENDARY! landing follows; the creature dives into the card as always. Open 10 plays it on the screen in about 3 s
+    before the Legendary turns over: the grid dims, a rift cracks open at the top as the screen rumbles, the creature's
+    painting bursts through it and lands with a flash and a quake, then the card spins down into its place
+    (BulkOpenController); a tap (turning the rest over) cuts it short.
   - **The set bar** on the results: "First Spark set · 31 / 35", a blue-purple fill with the pack's new cards in gold
     growing on top, and "+4 NEW" (`OpeningResults.setProgress`, the binder's count, `BinderController.SetCollected`).
   - **Open 10** (`Levels.OPEN_MANY`): a Bag stack of two or more packs has "Open 10" beside Open (fewer when fewer are
@@ -1828,7 +1864,10 @@ group, checked before its fragments and every time (not only the first). Below i
   starts within 2 frames, for about 22 MB more sound memory (half of it four long loop beds: Healing Rain's rain, the
   Curse's drones). Players wear the standard body
   everywhere (their own head, face, hair and accessories kept), and in boss fights back accessories (capes, wings,
-  backpacks) hide.
+  backpacks) hide. A weapon worn on the back (a katana, a sword pack, a scythe...) is taken off for good, since the
+  game's sword sits there; wings, capes and backpacks stay (owner 2026-11-18, pick A: "Player models that has sword
+  cosmetics on their back should be removed? so that it will not overlap with our weapon?"; `AvatarRules.hidesOnBack`:
+  whole words of the accessory's name, CamelCase split, so "Swordfish" or "Rainbow Wings" never match; SwordService).
   Controls: the HUD's slanted neon buttons (style 3 "anime slash", `Config/CombatHud`, sheet 5 icons, placed by
   `UiLayout.combatButtons`): Attack, Dodge (Shift; Shift Lock moves to Ctrl), Skill (E), Pet skill (R),
   Signature (Epic and Legendary cards) and Run. Swaps are the **party strip** under the status (the owner 2026-11-05,
@@ -2047,7 +2086,14 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   and impact shots frame that point, `SuperFxRules.shot` sky): a big white-out and two rings in the sky, fire raining
   down, then a dome of fire, rings, rays and shimmer (S: light pillars); Stampede's thunder crack and roll on impact; Thunderstorm's storm clouds, colossal
   bolt and forks, rain and crawling sparks (S: three bolts, a chain round the arena); Devour's black hole, spectral
-  jaws and streams of life back to Voidmaw (S: two bites). Each look has its own licensed sounds (`SOUNDS.<look>`: call,
+  jaws and streams of life back to Voidmaw (S: two bites); the hole stands out since 2026-11-18 (owner: "tha black
+  hole is hard to see in fights. make it stand out"; it was a dark ball and a lit swirl decal facing the caster, dulled
+  by the move's dimmed world and edge-on from the side): behind and over the boss so it frames it (`hole` 10-19 studs),
+  an unlit black core with a white-hot rim (a Highlight), glowing swirls on billboards facing the camera turning
+  opposite ways (unlit, so the dimming can't dull them), a bright ring hugging the core, streaks falling in from all
+  round (a sphere emitter, inward) and a violet light on the boss's back; rubble and violet shards torn off the ground
+  round the boss lift, spiral in faster and shrink to nothing at the core (`debris` 10-26 a second) while a low rumble
+  shakes the screen every 0.35 s (`rumble`; owner 2026-11-18: "add screenshake, things flying to the black hole"). Each look has its own licensed sounds (`SOUNDS.<look>`: call,
   charge, impact, an A/S layer, a linger loop where it lasts), kept loaded (`CombatPreload`/`SoundBank`); every super
   and Pet button move sound is turned down by how loud it measured (owner 2026-11-05: "adjust skill volumes make sure
   its not too loud"; `Config/SoundLevels`, `Util/SoundLevel`: PlaybackLoudness measured in Studio, the 70 combat sounds
@@ -2218,6 +2264,38 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   - **The finisher's landing** puffs a small dust ring at your feet.
   - Your swing effects are yours (on your screen, under the camera); others see your moves and your hits' bursts. The
     effects clean themselves up (a stress test of 6 foes hit every 0.1 s held 58 fps with nothing left after).
+- [x] **Monster KO** (owner 2026-11-18: "after killing a normal monster, add some satisfying immersive elements like
+  seeing the monster die or physics or something"; pick A "Knockout tumble" of three storyboards, artifact
+  HdarJZko5WFxDzEZbM3JdQ, "do A make it smooth"; `Config/MonsterKO`, `Util/MonsterKOMotion`, client `Util/MonsterKO`):
+  a beaten monster that isn't a boss no longer just vanishes. The last hit holds it a beat (0.07 s: a white flash, a
+  swell, a camera kick), then it's launched away from the nearest winner, tumbling end over end on its own floaty
+  gravity, stepped in 1/120 s slices so the flight is the same at any frame rate (`MonsterKOMotion.step`: it bounces
+  twice on the ground found under it with a dust puff and a thud each time, bumps back off walls and rocks, settles
+  within 1.4 s); it plops onto its back (a tall body on its back or face, a long one feet up, `MonsterKOMotion.rest`,
+  with a little overshoot), dizzy gold stars circle over it for 0.55 s, and it poofs into a white cloud (Roblox's own
+  round puff) with gold sparkles and a pop as it shrinks away. Elites are hit 1.3x harder, kick 1.6x and give twice the
+  coins. Your coins pop out of the poof into your cash, and the fight toast and the XP sparks come then too, from
+  there (BattleController waits for `MonsterController.OnKnockoutPoof`; a knockout off screen or past 160 studs shows
+  them at once). The server marks it (`WildService.KnockOut`: marker `KODir`, then `Fainted`) and keeps it 2.6 s, locked
+  to its fight so nobody starts another with it, so everyone near sees it fly; bosses keep their own death scenes.
+  Licensed Pro Sound Effects in use elsewhere (a whoosh, a muted ground thud, Pop Airy 2, a coin jingle). Checked in
+  Studio: in a real fight the knockout starts with the fight's end and the toast and coins come at the poof (about
+  1.7 s on), and frozen captures of the flight, the stars and the cloud. Dev: `/ko` (the nearest monster not in a fight
+  flies off away from you), `/ko elite`; the admin panel's "Monster KO" buttons.
+- [x] **A dropped card's loot beam** (owner 2026-11-18: "If a monster drops a new card. make it more noticeable"; pick C
+  of three storyboards, artifact GrridUmWCzFRDtdLja2edS; `Config/CardLoot`, `Util/CardLootRules`, client
+  `Util/CardLoot`): a card a monster drops (1 in 20, an elite 1 in 5) used to be only the toast's gold line. Now it lands
+  where the monster poofed (or where it stood, when no knockout played), dropping onto its spot with a little bounce and
+  a chime (louder for rarer cards), and floats there turning slowly: its real face (CardFace) on a solid card outlined
+  in its rarity colour, under a 34-stud beam of light in that colour that starts just above it (clear round the card:
+  checked in Studio, a beam across it washed the face out), with sparkles rising, a glowing disc on the ground and a
+  light. Walk within 6 studs once it has shown 1.1 s (a monster beaten right beside you still shows its card first), or
+  leave it 4 s and it flies to just in front of you; either way it pops up facing the camera, a third bigger, then its
+  picture flies across the screen into your Cards button, which flashes a gold ring and a +1. Gone far away (90 studs)
+  or no character: it just fades (the card is in the binder already). Only the winner sees it; the toast still says
+  "New card!". Checked in Studio on a real win: the loot lands at the poof (about 1.7 s on), comes after 4 s, flies
+  into Cards with its +1. Dev: `/carddrop` (your next monster win drops a card), the admin panel's "Next monster win
+  drops a card".
 - **End screen** (owner 2026-11-03, design B "banner and loot strip"; `Util/VictoryScreen`, `Util/VictoryRules`,
   `Config/Victory`), boss fights only: normal monster fights (wild, elites, Dungeon rooms) end with a toast instead
   (`Util/FightToast`, `VictoryRules.toast`, `Victory.TOAST`): a dark pill slides down at the top, "Mossling defeated"
@@ -2232,7 +2310,9 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   reduced, full loot again in); the party with XP bars filling (round to empty again and a LEVEL UP! badge on a level
   up; the server sends each card's progress before and after, `BeastRules.levelProgress`). A loss has its own screen
   (below), a run "Got away safely" in grey, PvP "You win!" / "You lose" / "Draw" with its "Going home in" countdown. It closes by
-  itself (6 s, losses and runs `Combat.END_SCREEN_SECONDS`) or on a tap; landscape phones get it scaled down. Its
+  itself (6 s, losses and runs `Combat.END_SCREEN_SECONDS`) or on a tap, except a boss win, which always plays its
+  whole 6 s (owner 2026-11-18: "Victory screen after bossfight should not be skippable"; `VictoryScreen` `locked`);
+  landscape phones get it scaled down. Its
   sounds are fetched on the loading screen and kept loaded, and the silent start of the fanfare and the level-up
   shimmer is skipped (`Victory.START_AT`), so they land with the moment.
 - **Balance with the player in the fight** (spec 2026-11-02-you-in-the-fight-design): boss HP and ATK were retuned
@@ -3526,8 +3606,24 @@ All numbers in `Config/Pish`.
   always buy!", "Higher earns more, but fewer will buy." and Bye (a pointing lesson with `PishTalk.AFTER` lines says
   them once its window opens). His goodbye now says "Sell and rip packs to grow your shop level!".
 - [ ] **Stuck helper**: a new player's first hour (first visit not done when they joined), a quiet minute (no order,
-  restock, sale or pack) with a box waiting brings Pish to point at it, with empty shelves at the order computer; at
-  most every 2 minutes (`LessonRules.nudge`).
+  restock, sale or pack) with a box waiting brings Pish to point at it, with empty shelves at the order computer (only
+  when the cash covers the cheapest box, `LessonRules.cheapestBox`; owner 2026-11-18: "Pish is forcing players to buy
+  items that the player cant afford yet"); at most every 2 minutes (`LessonRules.nudge`).
+- **Got it!** (owner 2026-11-18: "add close or 'ill keep that in mind' that will make pish go away. or 'dont remind me
+  again'"): a lesson's or nudge's card shows "Got it!" (`PishTalk.GOT_IT`) wherever it has no Next; it sends Pish off
+  at once: the lesson is done (never shown again), a nudge stops them for the session (TutorialAction `nudgeOff`). Only
+  the button does it, not a tap on the card, and a fresh Got it! ignores presses for half a second (it takes Next's
+  place: a quick double tap on Next must not send him away; `TutorialTalk` `buttonOnly`).
+- **Never while you're busy** (owner 2026-11-18: "Improve tutorials. make it helpful but not annoying. do not popup
+  when the player is currently doing something. like manning the cashier"; `Pish.PACE`, `LessonRules.busyWith`,
+  `mayStart`, `whileBusy`, client `Util/PlayerBusy`): a lesson or a nudge starts only once the player has been free 4 s
+  (not on the register or its checkout, carrying boxes, placing a shelf, window or decor, in a window, the Phone or the
+  binder, a fight, a pack opening, a weapon reveal, a cinematic, a level-up card, a gift, a locked card, a purchase
+  dialog or the Roblox menu) and 45 s after his last visit, so lessons never come back to back. One under way steps back
+  while they get busy with something else (his card and paw hidden, his time stopped; a lesson's own windows and
+  placing don't count, nor a nudge's box) and after 12 s of it he runs off with the lesson still waiting, back after
+  the breather (it used to time out and count as seen during a pack opening). A nudge waits up to 20 s for a free
+  moment. Chikin's arrival (it takes the camera) waits for a free moment the same way.
 - [ ] **Sounds**: Pro Sound Effects has no house dogs: coyote barks pitched up small, a coyote cub's whimper, dirt
   from a shovel; the yawn is silent (`Pish.SOUNDS`, `SOUND_PITCH`, measured in `Config/SoundLevels`).
 - Analytics: the onboarding funnel (steps 1-8, `LogOnboardingFunnelStepEvent`) and custom events `TutorialSkipped`,
@@ -3551,8 +3647,12 @@ his card for a face.
   monster), its end ("You won! Your creature got XP." or "Oh no! Your creature got tired.", then "Here's a sword! Now
   you can fight too." as it appears on your back with its popup), a second fight with the sword that must be won ("Find
   another monster and tap Fight!"; "Oops! Rest up, then try another one!" after a loss or a run), then his goodbye
-  ("Great fighting!", "Fights level up your creature, not your shop.", "Sell and rip packs to reach shop level 4.
-  Bye!": owner 2026-11-16, shop XP and creature XP were confused; or "You're shop level 4
+  ("Great fighting!", "Monsters give your shop a little XP too.", "Stay and hunt here to reach shop level 4...",
+  "...or tap here to sell in your shop: much faster!" and Bye!, the last line's paw and gold ring on the round town
+  button in Roblox's top bar, the paw under it pointing up since there's no room above (`Chikin.TOWN_LINE`,
+  `TutorialCues.pawOn`); owner 2026-11-18: "killing monsters now give a little bit shop exp too ... let the player know
+  they can stay here and kill monsters to level 4 or go back to town (highlight the town icon) for faster shop exp";
+  it said fights don't grow the shop before fights paid shop XP, `Levels.FIGHT_XP_PER_CASH`; or "You're shop level 4
   already! Let's find a boss!" for a player already there). Owner 2026-11-16: "chikin will make you fight a monster with
   your summoned pet. after the monster is dead, he will give you a sword and fight another monster. then will leave".
   Your creatures can't faint in his two fights (owner 2026-11-17 playthrough: "the pet dies the player will now have to
@@ -4242,6 +4342,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │       ├── OpeningFx.luau          # the opening's effects: rip burst, foil shards, glints, light leak, rays, aura, motes
     │       ├── OpeningResults.luau     # the opening's screen: tap layer, hint, box and pity pills, odds, results pills, the set bar, Continue, Open another
     │       ├── OpeningCreature.luau    # a pulled card's creature bursting out, roaring and diving back in
+    │       ├── OpeningRift.luau        # a Legendary's sky tear: the rift cracking open over the stage, its flash and closing
     │       ├── QuestStrip.luau         # the daily quests' strip: candy card, bubbles, glossy bars and their animations
     │       ├── NextUnlock.luau         # the shop bar's next unlock line ("🔓 Lv 3: Card Sleeves")
     │       ├── ProductPicture.luau     # a product's picture in menu rows: the pack / deck box picture, or its icon
@@ -4275,9 +4376,13 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │       ├── PackHit.luau            # a hit in the packs' look, sized to the foe: sword cuts and creature attacks
     │       ├── VictoryScreen.luau      # the boss fight end screen: glowing title, reward tiles, notes, party XP bars
     │       ├── FightToast.luau         # a normal monster fight's end: a small toast with cash and XP
+    │       ├── MonsterKO.luau          # a beaten monster's knockout: the hit beat, the tumble and bounces, dizzy stars, the poof, your coins
+    │       ├── CardLoot.luau           # a dropped card under its loot beam: lands, floats, picked up or comes to you, flies into Cards
     │       ├── FightFx.luau            # fight events into attack pictures: charges, element attacks landing with the hit
     │       ├── ElementFx.luau          # the pieces of fight effects (textured light): charge glow, comet, burst, bolt, slash, eruption, pillar, sound
     │       ├── ScreenFx.luau           # fight screen shake (one decaying shake, falls off with distance) and screen flashes
+    │       ├── ScreenCover.luau        # covers (bars, fades, dims) over the whole screen, past a phone's safe area: layer, rect
+    │       ├── PlayerBusy.luau         # what the player is doing now (register, boxes, placing, a window, a fight, a show, a popup): guides wait
     │       ├── ClipPlayer.luau         # one-shot attack clips on monster and boss bones (model-space poses), over the procedural motion
     │       ├── PishVisual.luau         # Pish on a marker: his model, clips, marker sounds, dirt and hearts
     │       ├── TutorialCues.luau       # the tutorial's cues: paw trail, bouncing paw and gold ring, the small Skip and tour card, the spotlight
@@ -4333,6 +4438,8 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
         │   ├── Jobs.luau       # shop job slots, speeds, mistakes, work XP
         │   ├── Party.luau      # party size, perks, creature size, motion, glow
         │   ├── Combat.luau     # attack timing, charge lead, element wheel, abilities, run, rest, spring, the player in boss fights (HP, down, dodge)
+        │   ├── MonsterKO.luau  # a beaten monster's knockout: launch, gravity, bounces, stars, poof, sounds, the server's hold
+        │   ├── CardLoot.luau   # a dropped card's loot beam: size, beam, glow, pickup range, when it comes to you, sounds
         │   ├── AttackFx.luau   # attack effects: each element's attack kind and colour, flight, combo, orbit, budget, sounds
         │   ├── Victory.luau    # the fight end screen: timings, sizes, colours by result, sounds
         │   ├── Swords.luau     # swords: combo, skill, moves, sounds, model, grips, unlock level (plain data)
@@ -4406,7 +4513,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── GreetRules.luau    # Town Chikin's greeting: whom he greets next and which line (pure, Lune-tested)
             ├── TutorialRules.luau # the first visit's saved table: read, steps recorded, skip, replay (pure, Lune-tested)
             ├── LuckRules.luau     # Pish's Luck: the hit slot's boost, the gift's floor, cooldown, badge text (pure, Lune-tested)
-            ├── LessonRules.luau   # lessons due at a level-up or an event and waiting, what placing or ordering completes, the stuck helper's nudge (pure, Lune-tested)
+            ├── LessonRules.luau   # lessons due at a level-up or an event and waiting, what placing or ordering completes, the stuck helper's nudge, never while busy and the pacing (pure, Lune-tested)
             ├── PishPath.luau      # Town Pish's walk round the fountain, a town dog's next stop (pure, Lune-tested)
             ├── TalkRules.luau     # which of Pish's lines shows: intro with Next, then the line for now (pure, Lune-tested)
             ├── PlazaLayout.luau   # the Card Festival Square's placements, giant cards, string lights, lotus petals, chairs, planter plants (pure, Lune-tested)
@@ -4457,11 +4564,13 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── HudMascotRules.luau # the HUD mascot's blink timing, duck curve, tap bounce, headroom (pure, Lune-tested)
             ├── ContrastRules.luau # WCAG contrast and hue of colours, for the window theme's text (pure, Lune-tested)
             ├── SoftColors.luau    # a soft button's text colour and deep outline from its fill (pure, Lune-tested)
+            ├── ScreenEdges.luau   # the whole screen in a safe-area gui's space, the spotlight's four dims (pure, Lune-tested)
             ├── HoverRules.luau    # what a mouse over a window's button does: glow, lilac edge or nothing (pure, Lune-tested)
             ├── SquishRules.luau   # the HUD tiles' hover: length, widest, fits the gap (pure, Lune-tested)
             ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
             ├── RevealRules.luau   # a card's reveal plan from rarity, foil and set (pure, Lune-tested)
+            ├── AvatarRules.luau   # avatar cosmetics: a weapon worn on the back taken off (pure, Lune-tested)
             ├── RevealSoundRules.luau  # a card's reveal sounds and its riser's timing (pure, Lune-tested)
             ├── BinderSpreads.luau # binder spreads, card ranges, which page a card is on, the page counter (pure, Lune-tested)
             ├── PageCurl.luau      # a turning page's bend, its strips, drag-to-turn, fast-turn pacing, swipes and taps (pure, Lune-tested)
@@ -4504,6 +4613,8 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── ReviewRules.luau   # the Reviews app: a visit's post, the feed, unseen posts (pure, Lune-tested)
             ├── SupportRules.luau  # "Support the dev": saved gifts read back, the best tier, when Pish asks (pure, Lune-tested)
             ├── KnockoutRules.luau # the knockout countdown and its pause while the Revive prompt is open (pure, Lune-tested)
+            ├── MonsterKOMotion.luau # a beaten monster's flight: launch, fixed-slice gravity and bounces, wall bumps, where it rests (pure, Lune-tested)
+            ├── CardLootRules.luau  # a dropped card on the ground: picked up, comes to you or fades; its landing bounce (pure, Lune-tested)
             └── LevelRules.luau    # XP → level maths and unlock lists
 ```
 
@@ -4730,6 +4841,25 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
 - **Motion** (`Util/Motion`, `Config/UIMotion`): panels pop in (0.85 to full size, slight overshoot) and the close
   button shrinks them away; buttons squash while held (soft buttons dip to 0.96 and come straight back, no bounce);
   number pills bump when they change.
+- **Covers reach the screen's edges** (owner 2026-11-18, a phone's cinema bars stopping short of its sides: "fix this
+  black thing on the screen. check other cinematics for this problem too"): a ScreenGui with `IgnoreGuiInset` keeps a
+  phone's safe area (DeviceSafeInsets: clear of the notch, the rounded corners and the home bar) and clips what's in it
+  there, so letterbox bars, fades, dims and flashes left bands of the world showing (on an iPhone in landscape 62 px each
+  side and 20 px on top). Words and buttons stay in the safe area; covers reach every edge. A gui holding covers only
+  sets `ScreenInsets None` (the pack opening's bars and flash, the fight flash, the sword slashes, the Dungeon fall's
+  fade, every loading screen: its binder sits in the middle); in a gui with words and buttons the covers go in
+  `Util/ScreenCover.layer(gui, zIndex)`, a frame spanning the whole screen measured against hidden probe guis
+  (`ScreenEdges<Insets>`, one per ScreenInsets mode, always parented and kept on when a cinematic turns every other
+  screen off): the screen from the `None` probe, where the gui's own space starts from the probe with its mode, never
+  from the gui (one not parented yet reads (0, 0) and its signal never fires once it is: on desktop every cinematic's
+  bars sat one top bar, 58 px, too high, a gap under the bottom one, owner 2026-11-18; checked on desktop, iPhone 17
+  Pro, iPhone 7, Galaxy A06, iPad Pro 13in and Xbox, and a resize moves every layer along), made where the cover was so
+  it stacks the same:
+  the prologue's bars, fade and eyelids (PrologueStage `covers`), the welcome flight's bars, a super move's wash and
+  Legendary bars, the defeat screen's red edges, the victory flash and veil, the gift and level-up dims, the knockout
+  dim, Open 10's backdrop and flash. The tutorial's spotlight dims the whole screen but the button
+  (`ScreenEdges.around`); "DUNGEON CONQUERED" is its own full-screen gui. Left as they are: the fight HUD's red hit edges
+  and the Phone's dim (MainGui: un-clipping the whole HUD is a bigger change). Lune: `tests/ScreenEdges`.
 - **Creature pals HUD** (owner 2026-11-03, pick C of three mockups; spec
   `docs/superpowers/specs/2026-11-03-hud-creature-pals-design.md`): the always-on HUD grows out of the core loop.
   **Tiles** (owner 2026-11-03, cotton candy tile pick 1 "squircle, the icon pops out"; `Config/SoftHud`): one clean

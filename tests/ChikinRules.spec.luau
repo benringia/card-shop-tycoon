@@ -136,7 +136,18 @@ return {
 		assert(string.find(table.concat(ChikinTalk.LOST, " "), "sword", 1, true), "a lost first fight too")
 		assert(ChikinTalk.SWORD_NOW, "the line")
 		assert((utf8.len(ChikinTalk.SWORD_NOW) :: number) <= 60, "short")
-		assert(string.find(ChikinTalk.STEPS.swordWin.intro[#ChikinTalk.STEPS.swordWin.intro], "level 4", 1, true), "the usual goodbye names level 4")
+	end,
+
+	["his goodbye: monsters grow the shop a little, hunt to level 4 or go sell in town, the paw on the town button"] = function()
+		local goodbye = ChikinTalk.STEPS.swordWin.intro
+		local all = table.concat(goodbye, " ")
+		assert(not string.find(all, "not your shop", 1, true), "fights do grow the shop now (owner 2026-11-18)")
+		assert(string.find(all, "little", 1, true), "a little shop XP from monsters")
+		assert(string.find(all, "level 4", 1, true), "hunting to shop level 4")
+		local town = Chikin.TOWN_LINE
+		expect.equal(town.step, "swordWin", "his goodbye after the sword fight")
+		expect.equal(town.from, #goodbye, "the last line points at the town button")
+		assert(string.find(goodbye[town.from], "faster", 1, true), "selling in town is faster")
 	end,
 
 	["a sword fight not won stays on the fight step (the second visit needs a win to finish); the first moves on"] = function()

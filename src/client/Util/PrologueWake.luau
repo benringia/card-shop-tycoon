@@ -56,7 +56,7 @@ local function floorAt(at: Vector3, ignore: { Instance }, fallback: number): num
 	return if hit then hit.Position.Y else fallback
 end
 
-local function lid(gui: ScreenGui, top: boolean): Frame
+local function lid(covers: Frame, top: boolean): Frame
 	local frame = Instance.new("Frame")
 	frame.Name = if top then "LidTop" else "LidBottom"
 	frame.BackgroundColor3 = Color3.new(0, 0, 0)
@@ -64,7 +64,7 @@ local function lid(gui: ScreenGui, top: boolean): Frame
 	frame.AnchorPoint = Vector2.new(0, if top then 0 else 1)
 	frame.Size = UDim2.fromScale(1, 0.5 + SOFT)
 	frame.ZIndex = 41
-	frame.Parent = gui
+	frame.Parent = covers
 	-- black, fading out over its inner edge
 	local edge = Instance.new("UIGradient")
 	edge.Rotation = if top then 90 else -90
@@ -78,8 +78,9 @@ local function lid(gui: ScreenGui, top: boolean): Frame
 	return frame
 end
 
--- `door`: your shop's door (PrologueStage.home); `gui`: the prologue's screen; `character`: yours
-function PrologueWake.new(gui: ScreenGui, character: Model, door: CFrame): Wake
+-- `door`: your shop's door (PrologueStage.home); `gui`: the prologue's screen (the speech cards); `covers`: its whole
+-- screen (the eyelids, past a phone's safe area: PrologueStage `covers`); `character`: yours
+function PrologueWake.new(gui: ScreenGui, covers: Frame, character: Model, door: CFrame): Wake
 	local outward = Vector3.new(door.LookVector.X, 0, door.LookVector.Z)
 	outward = if outward.Magnitude > 0.01 then outward.Unit else Vector3.zAxis
 	local toShop = -outward
@@ -140,7 +141,7 @@ function PrologueWake.new(gui: ScreenGui, character: Model, door: CFrame): Wake
 	blur.Name = "PrologueWakeBlur"
 	blur.Size = WAKE.blur
 	blur.Parent = camera
-	local top, bottom = lid(gui, true), lid(gui, false)
+	local top, bottom = lid(covers, true), lid(covers, false)
 	local reach = 0.5 + SOFT
 	local function setLids(open: number)
 		top.Position = UDim2.fromScale(0, -reach * open)

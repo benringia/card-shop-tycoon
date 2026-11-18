@@ -144,7 +144,7 @@ local allyNames: { [string]: string } = {} -- sim id -> "<Player> · <Card>" (fr
 local groupFight = false
 local mode = "wild" -- "wild" | "pvp"
 local packFight = false -- a Dungeon room: several monsters, one small HP bar each (the PvP row)
-local conquered: Frame? = nil -- the full-screen "DUNGEON CONQUERED"
+local conquered: ScreenGui? = nil -- the full-screen "DUNGEON CONQUERED"
 local fighterRow: Frame
 local actionRow: Frame
 local runButton: TextButton
@@ -1350,13 +1350,21 @@ local function showConquered()
 	if conquered then
 		conquered:Destroy()
 	end
+	-- its own screen over the HUD (under the victory screen, 30), the whole of it: past the top bar and a phone's safe
+	-- area (the words stay in the middle)
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "DungeonConquered"
+	gui.ScreenInsets = Enum.ScreenInsets.None
+	gui.ResetOnSpawn = false
+	gui.DisplayOrder = 1
+	gui.Parent = player:WaitForChild("PlayerGui")
 	local overlay = Instance.new("Frame")
-	overlay.Name = "DungeonConquered"
+	overlay.Name = "Dim"
 	overlay.Size = UDim2.fromScale(1, 1)
 	overlay.BackgroundColor3 = Color3.new(0, 0, 0)
 	overlay.BackgroundTransparency = 1
 	overlay.ZIndex = 50
-	overlay.Parent = screenGui
+	overlay.Parent = gui
 	local title = UIKit.label(overlay, "DUNGEON CONQUERED", Enum.Font.FredokaOne, 60, CONQUERED_COLOR)
 	title.AnchorPoint = Vector2.new(0.5, 0.5)
 	title.Position = UDim2.fromScale(0.5, 0.42)
@@ -1374,21 +1382,21 @@ local function showConquered()
 	subtitle.TextXAlignment = Enum.TextXAlignment.Center
 	subtitle.TextTransparency = 1
 	subtitle.ZIndex = 51
-	conquered = overlay
+	conquered = gui
 	TweenService:Create(overlay, CONQUERED_FADE, { BackgroundTransparency = 0.35 }):Play()
 	TweenService:Create(title, CONQUERED_FADE, { TextTransparency = 0 }):Play()
 	TweenService:Create(subtitle, CONQUERED_FADE, { TextTransparency = 0 }):Play()
 	shake(Bosses.ROAR_SHAKE.seconds, Bosses.ROAR_SHAKE.studs)
 	task.delay(CONQUERED_SECONDS, function()
-		if conquered ~= overlay then
+		if conquered ~= gui then
 			return
 		end
 		for _, item in { overlay, title, subtitle } do
 			TweenService:Create(item, CONQUERED_FADE, if item == overlay then { BackgroundTransparency = 1 } else { TextTransparency = 1 }):Play()
 		end
 		task.delay(CONQUERED_FADE.Time, function()
-			overlay:Destroy()
-			if conquered == overlay then
+			gui:Destroy()
+			if conquered == gui then
 				conquered = nil
 			end
 		end)
@@ -1461,6 +1469,7 @@ local function showEnd(summary: any, wasBoss: boolean, monsterAt: Vector2?)
 			tiles = VictoryRules.tiles(summary, Items, Cards.ById),
 			notes = notes,
 			party = party,
+			locked = true, -- a boss win plays out in full (owner 2026-11-18)
 		})
 	elseif result == "lose" then
 		-- The defeat screen (owner 2026-11-04, design A): the fight's numbers, a tip, the whole countdown to town
@@ -1877,7 +1886,32 @@ local function onEnded(summary: any)
 		prompt.Enabled = marker:GetAttribute("Fighting") ~= true
 	end
 	if typeof(summary) == "table" and summary.result ~= "prologue" then -- the prologue's act 3 follows instead (PrologueController)
-		showEnd(summary, wasBoss, monsterAt)
+		-- A beaten monster flies off (Config/MonsterKO, owner 2026-11-18 pick A): your coins, the toast and the XP sparks
+		-- come as it poofs, from where it poofed; with no knockout on screen they come now
+		local knocked = summary.result == "win" and not wasBoss and marker ~= nil and MonsterController.OnKnockoutPoof(marker, function(at: Vector3)
+			local view = workspace.CurrentCamera
+			local point = monsterAt
+			if view then
+				local seen, visible = view:WorldToScreenPoint(at)
+				if visible then
+					point = Vector2.new(seen.X, seen.Y)
+				end
+			end
+			if point then
+				require(ClientUtil:WaitForChild("MonsterKO")).coins(point, marker ~= nil and marker:GetAttribute("Elite") == true)
+			end
+			showEnd(summary, wasBoss, point)
+			-- a dropped card lands where it poofed, under its loot beam (Config/CardLoot, owner 2026-11-18 pick C)
+			if typeof(summary.card) == "table" then
+				require(ClientUtil:WaitForChild("CardLoot")).drop(at, summary.card)
+			end
+		end)
+		if not knocked then
+			showEnd(summary, wasBoss, monsterAt)
+			if summary.result == "win" and not wasBoss and marker and typeof(summary.card) == "table" then
+				require(ClientUtil:WaitForChild("CardLoot")).drop(marker.Position, summary.card)
+			end
+		end
 	end
 end
 
@@ -2163,26 +2197,37 @@ local function build()
 	end
 
 
-	-- Back to your shop while in the wild: top centre (the left HUD stack has no room left on phones). A sky cotton
-	-- candy pill (owner 2026-11-03, round 3): its holder opts into the soft buttons, as the binder's screen does
+	-- Back to your shop while in the wild: a round icon in Roblox's top bar, just right of its own buttons (owner
+	-- 2026-11-18: "remove 'return to town' on the center of the screen for both mobile and desktop version. put it
+	-- somewhere in an icon with tooltip"; it was a pill at the top centre). GuiService.TopbarInset is the room the top
+	-- bar leaves us (MainGui starts under the bar); "Return to town" shows on a hover or a held finger
+	local Tooltip = require(ClientUtil:WaitForChild("Tooltip"))
+	local Icon = require(ClientUtil:WaitForChild("Icon"))
+	local homeSpec = Combat.HOME_BUTTON
 	local homeHolder = Instance.new("Frame")
 	homeHolder.Name = "ReturnToTown"
 	homeHolder.BackgroundTransparency = 1
-	homeHolder.AnchorPoint = Vector2.new(0.5, 0)
-	homeHolder.Position = UDim2.new(0.5, 0, 0, 8)
-	homeHolder.Size = UDim2.fromOffset(Combat.HOME_BUTTON.width, Combat.HOME_BUTTON.height)
-	homeHolder:SetAttribute("SoftButtons", true)
+	homeHolder.Size = UDim2.fromOffset(homeSpec.size, homeSpec.size)
 	homeHolder.Parent = screenGui
-	Hud.hideWith(homeHolder) -- out of the way while the binder (or a pack opening) fills the screen (owner 2026-11-05)
-	shopButton = UIKit.iconButton(homeHolder, "Return to town", "Travel", UIKit.Colors.Secondary)
-	shopButton.Name = "ShopButton"
-	shopButton.Size = UDim2.fromScale(1, 1)
-	shopButton.Font = Enum.Font.FredokaOne
-	shopButton.TextSize = Combat.HOME_BUTTON.textSize
-	local round = shopButton:FindFirstChildOfClass("UICorner")
-	if round then
-		round.CornerRadius = UDim.new(0.5, 0) -- a pill
+	local function placeHome()
+		local topBar = GuiService.TopbarInset
+		homeHolder.Position = UDim2.fromOffset(topBar.Min.X + homeSpec.gap, -(topBar.Height + homeSpec.size) / 2)
 	end
+	placeHome()
+	GuiService:GetPropertyChangedSignal("TopbarInset"):Connect(placeHome)
+	Hud.hideWith(homeHolder) -- out of the way while the binder (or a pack opening) fills the screen (owner 2026-11-05)
+	shopButton = Instance.new("TextButton")
+	shopButton.Name = "ShopButton"
+	shopButton.Text = ""
+	shopButton.Size = UDim2.fromScale(1, 1)
+	shopButton.BackgroundColor3 = Color3.new(0, 0, 0)
+	shopButton.BackgroundTransparency = homeSpec.transparency -- like Roblox's own top bar buttons beside it
+	shopButton.Parent = homeHolder
+	UIKit.corner(shopButton, homeSpec.size / 2)
+	local homeGlyph = Icon.make(shopButton, "Travel", UDim2.fromScale(0.74, 0.74))
+	homeGlyph.AnchorPoint = Vector2.new(0.5, 0.5)
+	homeGlyph.Position = UDim2.fromScale(0.5, 0.5)
+	Tooltip.attach(shopButton, "Return to town")
 	shopButton.Visible = false
 	shopButton.Activated:Connect(function()
 		Remotes.WildTravel:FireServer("home")

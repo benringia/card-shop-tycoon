@@ -37,6 +37,25 @@ return {
 	FRONTIER = { tease = 2, shake = 8, dim = 0.6, rays = true, flash = true, spotlight = true, burst = 36, banner = "FRONTIER!",
 		shards = 30, goldShards = true, cinematic = true, alive = true, glintRate = 7.5, moteRate = 18, tilt = 8 } :: Tier,
 
+	-- A Legendary tears the sky (owner 2026-11-18, pick C of three storyboards: "Pulling a Legendary should play an epic
+	-- legendary cinematic"): in the opening the night sky cracks open above the cards through the tease, light pouring
+	-- out and the stage rumbling (`rumble` studs, from the tease's start to its end), then the rift flashes, its creature
+	-- comes through (`creatureSeconds` to the card's landing spot), lands with a quake and roars, and the card spins down
+	-- out of the rift (`cardDelay` later, `spins` turns in `cardSeconds`) into its place (Util/OpeningRift,
+	-- OpeningCards). The rift sits at `x`, `y` of the screen, `behind` studs past the stage's middle, `width` studs
+	-- across. Open 10 plays it on the screen in about 3 s with the grid dimmed (`bulk`, BulkOpenController); a tap skips
+	SKY_TEAR = {
+		rarity = "Legendary",
+		rift = { x = 0.5, y = 0.24, behind = 3, width = 3.6 }, -- clear of the top cinema bar
+		rumble = { 0.02, 0.09 },
+		creatureSeconds = 0.8,
+		cardDelay = 0.75,
+		cardSeconds = 1.0,
+		spins = 3,
+		closeSeconds = 0.6,
+		bulk = { open = 0.8, burst = 0.35, hold = 0.8, card = 0.6, fade = 0.3 },
+	},
+
 	-- Foil on top of any rarity: at least this much tease, extra sparks, and "FOIL" in front of the banner
 	FOIL = { MIN_TEASE = 0.6, EXTRA_BURST = 12, PREFIX = "FOIL " },
 	-- A heavy pack before the tear (owner 2026-11-17, "do all": the pack trembles; EA FC's walkout flare): one holding a

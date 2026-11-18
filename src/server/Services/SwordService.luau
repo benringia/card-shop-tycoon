@@ -13,6 +13,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Swords = require(Shared:WaitForChild("Config"):WaitForChild("Swords"))
 local Weapons = require(Shared:WaitForChild("Config"):WaitForChild("Weapons"))
 local CombatHud = require(Shared:WaitForChild("Config"):WaitForChild("CombatHud"))
+local AvatarRules = require(Shared:WaitForChild("Util"):WaitForChild("AvatarRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
@@ -144,16 +145,49 @@ local function applyStandardBody(character: Model)
 	end
 end
 
+-- An accessory's kind: its AccessoryType, or "Back" for an old one tied on at the back
+local function accessoryKind(accessory: Accessory): string
+	if accessory.AccessoryType ~= Enum.AccessoryType.Unknown then
+		return accessory.AccessoryType.Name
+	end
+	local handle = accessory:FindFirstChild("Handle")
+	return if handle and handle:FindFirstChild("BodyBackAttachment") then "Back" else "Unknown"
+end
+
+-- A weapon worn on the back goes: the sword sits there (owner 2026-11-18, pick A: "sword cosmetics on the back ...
+-- will not overlap with our weapon"); wings, capes and backpacks stay (AvatarRules)
+local function dropBackWeapon(child: Instance)
+	if child:IsA("Accessory") and AvatarRules.hidesOnBack(accessoryKind(child), child.Name) then
+		child:Destroy()
+	end
+end
+
+local function dropBackWeapons(character: Model)
+	for _, child in character:GetChildren() do
+		dropBackWeapon(child)
+	end
+end
+
 local function onPlayer(player: Player)
 	player.CharacterAppearanceLoaded:Connect(function(character)
 		applyStandardBody(character)
+		dropBackWeapons(character) -- after the standard body, which puts every accessory back on
 		setSwordAttribute(player)
 	end)
-	player.CharacterAdded:Connect(function()
+	player.CharacterAdded:Connect(function(character)
+		-- any added later (a look applied again): its properties set a moment after it arrives
+		character.ChildAdded:Connect(function(child)
+			task.defer(function()
+				if child.Parent == character then
+					dropBackWeapon(child)
+				end
+			end)
+		end)
 		setSwordAttribute(player)
 	end)
 	if player.Character then
 		applyStandardBody(player.Character)
+		dropBackWeapons(player.Character)
 		setSwordAttribute(player)
 	end
 	-- Reaching the sword's shop level, or Chikin handing it over (SwordGiven), gives it (and its popup) at once

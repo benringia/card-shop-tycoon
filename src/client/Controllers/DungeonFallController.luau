@@ -62,7 +62,7 @@ end
 function DungeonFallController.Start()
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "DungeonFall"
-	gui.IgnoreGuiInset = true
+	gui.ScreenInsets = Enum.ScreenInsets.None -- a fade only: the whole screen, past a phone's safe area
 	gui.DisplayOrder = 60 -- over the HUD and the welcome's overlay
 	gui.ResetOnSpawn = false
 	cover = Instance.new("Frame")

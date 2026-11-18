@@ -6,9 +6,12 @@ black outline, a rainbow or gold fill with a shine, a soft drop shadow, and an o
 also fan real card paintings (assets/ui/card-art) in front of the scene, framed in their rarity colours.
 
     python tools/ui-art/make_thumbnail.py <scene.png> <out.png> --title "BEAT THE HYDRA!" [--sub "60,000 HP"]
-        [--fill rainbow|gold|ice|fire] [--sub-fill gold] [--size 200] [--y 150] [--sub-size 70]
+        [--fill rainbow|gold|ice|fire|silver] [--sub-fill gold] [--size 200] [--y 150] [--x 480] [--sub-size 70]
         [--cards "Eclipse_Fox:Epic,Solarion:Legendary:foil,..."] [--cards-top 470] [--cards-height 430] [--card-names]
         [--phone]  (also saves <out>_phone.png at 320x180, how it reads on a phone's home row)
+
+`--x` centres the title (and its sub line) on that x instead of the middle: run the script again on its own output to
+put a second title beside the first (a "GRADE C  VS  GRADE S" split).
 
 Keep every number on a thumbnail true (the odds, HP): Roblox removes misleading thumbnails and players notice.
 """
@@ -28,6 +31,7 @@ FILLS = {
     "gold": [(255, 248, 170), (255, 210, 60), (255, 150, 30)],
     "ice": [(235, 252, 255), (130, 220, 255), (90, 140, 255)],
     "fire": [(255, 240, 120), (255, 150, 40), (255, 70, 50)],
+    "silver": [(255, 255, 255), (206, 213, 226), (148, 158, 178)],
 }
 # Config/Rarities colours
 RARITY = {
@@ -59,12 +63,12 @@ def gradient(size, box, stops):
     return grad
 
 
-def title(img, text, size, center_y, stops, stroke, shadow):
+def title(img, text, size, center_y, stops, stroke, shadow, center_x=None):
     font = bold(size)
     measure = ImageDraw.Draw(img)
     left, top, right, bottom = measure.textbbox((0, 0), text, font=font, stroke_width=stroke)
     width, height = right - left, bottom - top
-    x = (img.width - width) // 2 - left
+    x = ((img.width - width) // 2 if center_x is None else center_x - width // 2) - left
     y = center_y - height // 2 - top
     shade = Image.new("RGBA", img.size, (0, 0, 0, 0))
     ImageDraw.Draw(shade).text((x + shadow, y + shadow), text, font=font, fill=(0, 0, 0, 170), stroke_width=stroke, stroke_fill=(0, 0, 0, 170))
@@ -162,6 +166,7 @@ def main():
     parser.add_argument("--sub-fill", default="gold", choices=FILLS)
     parser.add_argument("--size", type=int, default=200)
     parser.add_argument("--y", type=int, default=150)
+    parser.add_argument("--x", type=int, default=None)
     parser.add_argument("--sub-size", type=int, default=70)
     parser.add_argument("--cards")
     parser.add_argument("--cards-top", type=int, default=470)
@@ -173,10 +178,10 @@ def main():
     img = Image.open(args.scene).convert("RGBA").resize(SIZE, Image.LANCZOS)
     if args.cards:
         fan(img, parse_cards(args.cards), args.cards_top, args.cards_height, args.card_names)
-    title(img, args.title, args.size, args.y, FILLS[args.fill], stroke=max(10, args.size // 9), shadow=10)
+    title(img, args.title, args.size, args.y, FILLS[args.fill], stroke=max(10, args.size // 9), shadow=10, center_x=args.x)
     if args.sub:
         sub_y = args.y + int(args.size * 0.5) + int(args.sub_size * 0.95)
-        title(img, args.sub, args.sub_size, sub_y, FILLS[args.sub_fill], stroke=max(8, args.sub_size // 5), shadow=6)
+        title(img, args.sub, args.sub_size, sub_y, FILLS[args.sub_fill], stroke=max(8, args.sub_size // 5), shadow=6, center_x=args.x)
     img.convert("RGB").save(args.out)
     if args.phone:
         root, ext = os.path.splitext(args.out)

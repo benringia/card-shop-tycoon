@@ -157,9 +157,14 @@ return {
 			storm = { 24, 30, 38, 48 },
 			bolts = { 1, 1, 1, 3 },
 		}, "hornstorm"), rgb(140, 160, 200), -0.28, -0.35, 0.18), -- a storm sky
-		-- A black hole opens and spectral jaws clamp the boss, life flows back (S: the jaws bite twice)
+		-- A black hole opens and spectral jaws clamp the boss, life flows back (S: the jaws bite twice); the hole a little
+		-- bigger since 2026-11-18 (owner: "hard to see in fights"), framing the boss from behind and over it
 		Devour = withSky(look("Legendary", "Voidmaw", "Shade", rgb(139, 92, 246), {
-			hole = { 8, 10, 13, 17 },
+			hole = { 10, 12, 15, 19 },
+			-- rocks and shards torn off the ground into the hole a second, and its rumble (a share of the super's shake,
+			-- every 0.35 s while it pulls; owner 2026-11-18: "add screenshake, things flying to the black hole")
+			debris = { 10, 14, 18, 26 },
+			rumble = { 0.15, 0.18, 0.22, 0.28 },
 			streams = { 4, 6, 8, 12 },
 			bites = { 1, 1, 1, 2 },
 		}, "voidroar"), rgb(150, 110, 210), -0.32, -0.45, 0.22), -- the world dims

@@ -116,4 +116,24 @@ return {
 		assert(best.dim > 0.3 and best.dim < 0.8, "the rest dims, still readable")
 		assert(best.halo > 1 and best.spinSeconds > 0 and best.shineEvery > 1, "a halo bigger than the card, a turning rim, a shine now and then")
 	end,
+
+	-- Owner 2026-11-18, pick C: "Pulling a Legendary should play an epic legendary cinematic" (Open 1 and Open 10)
+	["only a Legendary tears the sky, foil or not, wherever it's revealed"] = function()
+		local sky = CardReveal.SKY_TEAR
+		expect.equal(RevealRules.tearsSky("Legendary", sky), true)
+		for _, rarity in { "Common", "Rare", "Very Rare", "Epic" } do
+			expect.equal(RevealRules.tearsSky(rarity, sky), false, rarity)
+		end
+	end,
+
+	["the sky tear's beats: the card lands before its creature dives back in; Open 10's is about 3 s"] = function()
+		local sky, alive = CardReveal.SKY_TEAR, CardReveal.CREATURE
+		assert(CardReveal.BY_RARITY.Legendary.tease >= 1.5, "a tease long enough for the sky to crack open")
+		assert(sky.cardDelay + sky.cardSeconds < sky.creatureSeconds + alive.holdSeconds, "the card in place while its creature is still out")
+		assert(sky.spins >= 2, "the card spins down, not just falls")
+		local bulk = sky.bulk
+		local total = bulk.open + bulk.burst + bulk.hold + bulk.card + bulk.fade
+		assert(total >= 2.5 and total <= 3.5, `Open 10's sky tear is about 3 s (was {total})`)
+		assert(sky.rumble[2] > sky.rumble[1], "the rumble grows as the sky cracks")
+	end,
 }

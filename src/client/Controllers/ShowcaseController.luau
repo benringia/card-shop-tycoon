@@ -4,6 +4,7 @@
 -- tooltip), a "Set price" editor that opens on demand, and a card picker (with rarity filters) for empty slots.
 -- Opened from the case's Edit menu. The server checks every change; this reads the case's card parts.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -23,6 +24,10 @@ local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local ElementBadge = require(ClientUtil:WaitForChild("ElementBadge"))
+local Icon = require(ClientUtil:WaitForChild("Icon"))
+local CardDesign = require(Config:WaitForChild("CardDesign"))
+local Beasts = require(Config:WaitForChild("Beasts"))
+local DefeatRules = require(Shared:WaitForChild("Util"):WaitForChild("DefeatRules"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local BinderController = require(Controllers:WaitForChild("BinderController"))
 
@@ -76,6 +81,10 @@ local pending: { [number]: number } = {} -- slot → price not sent yet
 local sendToken = 0
 local pickerSlot: number? = nil
 local justListed: number? = nil -- the slot a card was just put in: its price editor opens as it arrives
+-- Where each price shows, so a price tap changes the words in place (owner 2026-11-18, a phone: the window rebuilt on
+-- every tap scrolled back up): each row's price and % of market, and the selected card's details, price line and editor
+local rowPrices: { [number]: { price: TextLabel, tag: TextLabel } } = {}
+local detailPrice: { slot: number, info: TextLabel, line: TextLabel, editor: GuiObject? }? = nil
 
 local function clearChildren(container: Instance)
 	for _, child in container:GetChildren() do
@@ -165,10 +174,11 @@ local function flush(token: number)
 end
 
 local render: () -> ()
+local showPrice: (slot: number) -> ()
 
 local function queuePrice(slot: number, price: number)
 	pending[slot] = price
-	render()
+	showPrice(slot)
 	sendToken += 1
 	local token = sendToken
 	task.delay(SEND_DELAY, flush, token)
@@ -201,7 +211,7 @@ local function setTypedPrice(slot: number, card: Card, foil: boolean, growth: Co
 	local cleaned = string.gsub(box.Text, "[%$,%s]", "")
 	local typed = tonumber(cleaned)
 	if not typed or typed ~= typed then
-		render()
+		showPrice(slot)
 		return
 	end
 	queuePrice(slot, CardRules.clampPrice(typed, card, foil, growth.level, growth.stars, growth.grade))
@@ -360,6 +370,7 @@ local function buildListingRow(listing: Listing, kind: string)
 	local ratio = string.format("%d%% of market", math.round(getMarketRatio(listing) * 100))
 	local tag = addRowLabel(row, ratio, UDim2.new(1, -100, 0, 34), UDim2.fromOffset(90, 18), Enum.Font.GothamBold, 12, getMarketColor(listing))
 	tag.TextXAlignment = Enum.TextXAlignment.Right
+	rowPrices[listing.slot] = { price = price, tag = tag }
 
 	row.Activated:Connect(function()
 		selectedSlot = listing.slot
@@ -409,11 +420,19 @@ local function buildPriceEditor(listing: Listing, kind: string, y: number): numb
 	stepper.BackgroundTransparency = 1
 	stepper.Parent = detailPane
 
+	-- A tap changes the price where it shows (showPrice), so each one starts from the price as it is now
+	local function tapStep(direction: number)
+		local cardPart = getCardPart(listing.slot)
+		local now = if cardPart then readListing(listing.slot, cardPart) else nil
+		if now then
+			nudge(now.slot, now.card, now.foil, now.growth, now.price, direction)
+		end
+	end
 	local minus = UIKit.button(stepper, string.format("- $%.2f", step), STEP_BUTTON_COLOR)
 	minus.Size = UDim2.new(0, STEP_BUTTON_WIDTH, 1, 0)
 	minus.TextSize = 14
 	minus.Activated:Connect(function()
-		nudge(listing.slot, listing.card, listing.foil, listing.growth, listing.price, -1)
+		tapStep(-1)
 	end)
 
 	local priceText = string.format("$%.2f", listing.price)
@@ -430,10 +449,16 @@ local function buildPriceEditor(listing: Listing, kind: string, y: number): numb
 		end)
 		box.Parent = stepper
 		placePriceBox(box)
+		if detailPrice and detailPrice.slot == listing.slot then
+			detailPrice.editor = box
+		end
 	else
 		local label = UIKit.label(stepper, priceText, Enum.Font.FredokaOne, 22, palette.good)
 		label.TextXAlignment = Enum.TextXAlignment.Center
 		placePriceBox(label)
+		if detailPrice and detailPrice.slot == listing.slot then
+			detailPrice.editor = label
+		end
 	end
 
 	local plus = UIKit.button(stepper, string.format("+ $%.2f", step), STEP_BUTTON_COLOR)
@@ -442,7 +467,7 @@ local function buildPriceEditor(listing: Listing, kind: string, y: number): numb
 	plus.Size = UDim2.new(0, STEP_BUTTON_WIDTH, 1, 0)
 	plus.TextSize = 14
 	plus.Activated:Connect(function()
-		nudge(listing.slot, listing.card, listing.foil, listing.growth, listing.price, 1)
+		tapStep(1)
 	end)
 	y += 54
 
@@ -470,6 +495,7 @@ end
 
 local function renderDetailPane(listings: { [number]: Listing }, kind: string, isEmpty: boolean)
 	clearChildren(detailPane)
+	detailPrice = nil
 	local listing = if selectedSlot then listings[selectedSlot] else nil
 	if not listing then
 		local message = if isEmpty
@@ -498,6 +524,7 @@ local function renderDetailPane(listings: { [number]: Listing }, kind: string, i
 	priceLine.Position = UDim2.fromOffset(10, y)
 	priceLine.Size = UDim2.new(1, -20, 0, 28)
 	y += 34
+	detailPrice = { slot = listing.slot, info = info, line = priceLine, editor = nil }
 
 	if editingSlot == listing.slot then
 		buildPriceEditor(listing, kind, y)
@@ -514,6 +541,45 @@ local function renderDetailPane(listings: { [number]: Listing }, kind: string, i
 	end)
 end
 
+-- One card's price changed (a tap, a typed price, the server's echo): its row, and the details while it's the selected
+-- card, show it where they are; nothing is rebuilt, so a phone's scrolled window stays put (owner 2026-11-18)
+showPrice = function(slot: number)
+	local part = casePart
+	local cardPart = getCardPart(slot)
+	local listing = if cardPart then readListing(slot, cardPart) else nil
+	if not part or not listing then
+		render()
+		return
+	end
+	local row = rowPrices[slot]
+	if row and row.price.Parent then
+		row.price.Text = string.format("$%.2f", listing.price)
+		row.tag.Text = string.format("%d%% of market", math.round(getMarketRatio(listing) * 100))
+		row.tag.TextColor3 = getMarketColor(listing)
+	end
+	local detail = detailPrice
+	if detail and detail.slot == slot and detail.line.Parent then
+		local def = Shelves.ById[part.Name]
+		detail.info.Text = describeDetails(listing, if def then def.kind else "")
+		detail.line.Text = string.format("Your price  $%.2f", listing.price)
+		local editor = detail.editor
+		if editor and editor.Parent and not (editor:IsA("TextBox") and editor:IsFocused()) then
+			(editor :: any).Text = string.format("$%.2f", listing.price)
+		end
+	end
+end
+
+-- Each pane back where the player had scrolled it after a rebuild, and once more a moment later (a phone's scroll
+-- settling after the tapped button was rebuilt under the finger)
+local function keepScroll(pane: ScrollingFrame, at: Vector2)
+	pane.CanvasPosition = at
+	RunService.Heartbeat:Once(function()
+		if pane.Parent then
+			pane.CanvasPosition = at
+		end
+	end)
+end
+
 render = function()
 	local part = casePart
 	if not part then
@@ -524,7 +590,9 @@ render = function()
 		return
 	end
 	hideTooltip()
+	local listAt, detailAt = list.CanvasPosition, detailPane.CanvasPosition
 	clearChildren(list)
+	rowPrices = {}
 	local listings: { [number]: Listing } = {}
 	local firstFilled: number? = nil
 	for slot = 1, def.capacity do
@@ -556,6 +624,8 @@ render = function()
 		end
 	end
 	renderDetailPane(listings, def.kind, firstFilled == nil)
+	keepScroll(list, listAt)
+	keepScroll(detailPane, detailAt)
 end
 
 local function refreshFilterButtons()
@@ -574,21 +644,6 @@ type PickerEntry = {
 	count: number,
 }
 
-local function describeCopy(entry: PickerEntry): string
-	local card, growth = entry.card, entry.growth
-	local stats = BeastRules.getStats(card, entry.foil, growth.level, growth.stars, growth.grade)
-	local power = BeastRules.getPower(card, entry.foil, growth.level, growth.stars, growth.grade)
-	local market = CardRules.getMarketValue(card, entry.foil, growth.level, growth.stars, growth.grade)
-	return table.concat({
-		`{card.name}{if entry.foil then " (FOIL)" else ""}`,
-		`{card.rarity} · {ElementBadge.name(card.element)} · #{card.number}`,
-		`{BeastRules.describeGrade(growth.grade)} · {BeastRules.describeGrowth(growth.level, growth.stars)}`,
-		`Power {power} · HP {stats.hp}  ATK {stats.atk}  SPD {stats.spd}`,
-		string.format("Market $%.2f", market),
-		if entry.beastId then "Levelled card" else `You have x{entry.count} of this copy`,
-	}, "\n")
-end
-
 local function listEntry(entry: PickerEntry)
 	local part, slot = casePart, pickerSlot
 	picker.Visible = false
@@ -603,30 +658,211 @@ local function listEntry(entry: PickerEntry)
 	end
 end
 
--- Right side of the picker: the chosen card large, its details and the List button
+-- The picker's card sheet (owner 2026-11-18: "Choose a card for slot 2: Design the card details. right now it's just a
+-- bunch of text. make it more detailed and easier to understand"; option A of three mockups, the stat sheet): the card
+-- large, its name, chips for rarity, element and grade, its stars and level, four stat tiles with their icons, what it's
+-- worth in a gold box, how many you have, then List
+local SHEET_GOLD = Color3.fromRGB(255, 243, 201)
+local SHEET_GOLD_TEXT = Color3.fromRGB(138, 90, 0)
+local SHEET_WHITE = Color3.new(1, 1, 1)
+local SHEET_INK = Color3.fromRGB(74, 63, 92)
+
+local function sheetChip(parent: Instance, text: string, fill: Color3, ink: Color3, order: number): TextLabel
+	local chip = UIKit.label(parent, text, Enum.Font.FredokaOne, 13, ink)
+	chip.LayoutOrder = order
+	chip.TextWrapped = false
+	chip.TextXAlignment = Enum.TextXAlignment.Center
+	chip.AutomaticSize = Enum.AutomaticSize.X
+	chip.Size = UDim2.fromOffset(0, 22)
+	chip.BackgroundTransparency = 0
+	chip.BackgroundColor3 = fill
+	UIKit.corner(chip, 11)
+	local pad = Instance.new("UIPadding")
+	pad.PaddingLeft, pad.PaddingRight = UDim.new(0, 8), UDim.new(0, 8)
+	pad.Parent = chip
+	return chip
+end
+
+-- The element's chip: its icon, then its name, on a soft lilac pill
+local SHEET_LILAC = Color3.fromRGB(232, 222, 250)
+
+local function elementChip(parent: Instance, key: string, order: number)
+	local chip = Instance.new("Frame")
+	chip.LayoutOrder = order
+	chip.AutomaticSize = Enum.AutomaticSize.X
+	chip.Size = UDim2.fromOffset(0, 22)
+	chip.BackgroundColor3 = SHEET_LILAC
+	chip.Parent = parent
+	UIKit.corner(chip, 11)
+	local pad = Instance.new("UIPadding")
+	pad.PaddingLeft, pad.PaddingRight = UDim.new(0, 5), UDim.new(0, 8)
+	pad.Parent = chip
+	local row = Instance.new("UIListLayout")
+	row.FillDirection = Enum.FillDirection.Horizontal
+	row.VerticalAlignment = Enum.VerticalAlignment.Center
+	row.SortOrder = Enum.SortOrder.LayoutOrder
+	row.Padding = UDim.new(0, 3)
+	row.Parent = chip
+	local image = ElementBadge.image(key)
+	if image ~= "" then
+		local icon = Instance.new("ImageLabel")
+		icon.LayoutOrder = 1
+		icon.BackgroundTransparency = 1
+		icon.Size = UDim2.fromOffset(16, 16)
+		icon.Image = image
+		icon.Parent = chip
+	end
+	local text = UIKit.label(chip, ElementBadge.name(key), Enum.Font.FredokaOne, 13, SHEET_INK)
+	text.LayoutOrder = 2
+	text.TextWrapped = false
+	text.AutomaticSize = Enum.AutomaticSize.X
+	text.Size = UDim2.fromOffset(0, 22)
+end
+
+-- A stat as it reads: whole numbers with commas, attack speed with one decimal
+local function statText(value: number): string
+	return if value ~= math.floor(value) then string.format("%.1f", value) else DefeatRules.number(value)
+end
+
+local function listFrame(parent: Instance, order: number, height: number?): Frame
+	local frame = Instance.new("Frame")
+	frame.LayoutOrder = order
+	frame.BackgroundTransparency = 1
+	frame.Size = UDim2.new(1, 0, 0, height or 0)
+	frame.AutomaticSize = if height then Enum.AutomaticSize.None else Enum.AutomaticSize.Y
+	frame.Parent = parent
+	return frame
+end
+
+local function stack(parent: Instance, horizontal: boolean, gap: number): UIListLayout
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = if horizontal then Enum.FillDirection.Horizontal else Enum.FillDirection.Vertical
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Padding = UDim.new(0, gap)
+	layout.Parent = parent
+	return layout
+end
+
+-- Right side of the picker: the chosen card's sheet and the List button
 local function renderPickerPane(entry: PickerEntry?)
 	clearChildren(pickerPane)
+	if not pickerPane:FindFirstChild("SheetLayout") then
+		stack(pickerPane, false, 8).Name = "SheetLayout"
+		local pad = Instance.new("UIPadding")
+		pad.PaddingTop, pad.PaddingBottom = UDim.new(0, 8), UDim.new(0, 8)
+		pad.PaddingLeft, pad.PaddingRight = UDim.new(0, 8), UDim.new(0, 8)
+		pad.Parent = pickerPane
+	end
 	if not entry then
 		local hint = UIKit.label(pickerPane, "Tap a card to see its details.", Enum.Font.GothamBold, 15, UIKit.Colors.Subtext)
-		hint.Position = UDim2.fromOffset(10, 10)
-		hint.Size = UDim2.new(1, -20, 0, 40)
+		hint.Size = UDim2.new(1, 0, 0, 40)
 		return
 	end
+	local card, growth = entry.card, entry.growth
+	local stats = BeastRules.getStats(card, entry.foil, growth.level, growth.stars, growth.grade)
+	local power = BeastRules.getPower(card, entry.foil, growth.level, growth.stars, growth.grade)
+	local market = CardRules.getMarketValue(card, entry.foil, growth.level, growth.stars, growth.grade)
+
+	-- The card, and beside it its name, chips, stars and stats
+	local top = listFrame(pickerPane, 1)
 	local faceHolder = Instance.new("Frame")
-	faceHolder.Position = UDim2.fromOffset(8, 8)
 	faceHolder.Size = UDim2.fromOffset(DETAIL_FACE_SIZE.X, DETAIL_FACE_SIZE.Y)
 	faceHolder.BackgroundTransparency = 1
-	faceHolder.Parent = pickerPane
-	makeCardFace(faceHolder, entry.card, entry.foil, true, entry.growth)
+	faceHolder.Parent = top
+	makeCardFace(faceHolder, card, entry.foil, true, growth)
+	local column = Instance.new("Frame")
+	column.BackgroundTransparency = 1
+	column.Position = UDim2.fromOffset(DETAIL_FACE_SIZE.X + 10, 0)
+	column.Size = UDim2.new(1, -(DETAIL_FACE_SIZE.X + 10), 0, 0)
+	column.AutomaticSize = Enum.AutomaticSize.Y
+	column.Parent = top
+	stack(column, false, 6)
 
-	local info = UIKit.label(pickerPane, describeCopy(entry), Enum.Font.GothamBold, 12, UIKit.Colors.Text)
-	info.Position = UDim2.fromOffset(DETAIL_FACE_SIZE.X + 16, 8)
-	info.Size = UDim2.new(1, -(DETAIL_FACE_SIZE.X + 22), 0, DETAIL_FACE_SIZE.Y)
-	info.TextYAlignment = Enum.TextYAlignment.Top
+	local name = UIKit.label(column, `{card.name}{if entry.foil then " FOIL" else ""}`, Enum.Font.FredokaOne, 20, UIKit.Colors.Text)
+	name.LayoutOrder = 1
+	name.Size = UDim2.new(1, 0, 0, 24)
+	name.TextWrapped = false
+	name.TextTruncate = Enum.TextTruncate.AtEnd
+
+	local chips = listFrame(column, 2)
+	stack(chips, true, 4).Wraps = true
+	sheetChip(chips, card.rarity, CardFace.getRarityColor(card.rarity), SHEET_WHITE, 1)
+	elementChip(chips, card.element, 2)
+	sheetChip(chips, BeastRules.describeGrade(growth.grade), CardDesign.GRADE_COLORS[growth.grade] or CardDesign.GRADE_COLORS.C, SHEET_WHITE, 3)
+
+	local starsRow = listFrame(column, 3)
+	local starsFlow = stack(starsRow, true, 2)
+	starsFlow.VerticalAlignment = Enum.VerticalAlignment.Center
+	starsFlow.Wraps = true -- a narrow phone pane: the level goes under the stars
+	for star = 1, Beasts.MAX_STARS do
+		local icon = Icon.make(starsRow, "Star", UDim2.fromOffset(16, 16))
+		icon.LayoutOrder = star
+		if star > growth.stars then
+			for _, image in icon:GetDescendants() do
+				if image:IsA("ImageLabel") then
+					image.ImageTransparency = 0.75 -- a star not earned yet
+				end
+			end
+		end
+	end
+	local level = UIKit.label(starsRow, `  Lv {growth.level} · #{card.number}`, Enum.Font.GothamBold, 12, UIKit.Colors.Subtext)
+	level.LayoutOrder = Beasts.MAX_STARS + 1
+	level.TextWrapped = false
+	level.AutomaticSize = Enum.AutomaticSize.X
+	level.Size = UDim2.fromOffset(0, 18)
+
+	local grid = listFrame(column, 4, 82)
+	local cells = Instance.new("UIGridLayout")
+	cells.CellSize = UDim2.new(0.5, -3, 0, 38)
+	cells.CellPadding = UDim2.fromOffset(6, 6)
+	cells.SortOrder = Enum.SortOrder.LayoutOrder
+	cells.Parent = grid
+	for order, stat in { { "Power", "Power", power }, { "Hp", "HP", stats.hp }, { "Atk", "ATK", stats.atk }, { "Spd", "SPD", stats.spd } } do
+		local tile = Instance.new("Frame")
+		tile.LayoutOrder = order
+		tile.BackgroundColor3 = palette.row
+		tile.Parent = grid
+		UIKit.corner(tile, 8)
+		local icon = Icon.make(tile, stat[1], UDim2.fromOffset(20, 20))
+		icon.AnchorPoint = Vector2.new(0, 0.5)
+		icon.Position = UDim2.new(0, 6, 0.5, 0)
+		local value = UIKit.label(tile, statText(stat[3]), Enum.Font.FredokaOne, 17, UIKit.Colors.Text)
+		value.Position = UDim2.fromOffset(30, 2)
+		value.Size = UDim2.new(1, -34, 0, 20)
+		value.TextWrapped = false
+		local word = UIKit.label(tile, stat[2], Enum.Font.GothamBold, 10, UIKit.Colors.Subtext)
+		word.Position = UDim2.fromOffset(30, 21)
+		word.Size = UDim2.new(1, -34, 0, 14)
+	end
+
+	-- What it's worth, in gold
+	local worth = listFrame(pickerPane, 2, 44)
+	worth.BackgroundTransparency = 0
+	worth.BackgroundColor3 = SHEET_GOLD
+	UIKit.corner(worth, 10)
+	local cash = Icon.make(worth, "Cash", UDim2.fromOffset(22, 22))
+	cash.AnchorPoint = Vector2.new(0, 0.5)
+	cash.Position = UDim2.new(0, 10, 0.5, 0)
+	local worthWord = UIKit.label(worth, "Worth", Enum.Font.GothamBold, 14, SHEET_GOLD_TEXT)
+	worthWord.Position = UDim2.fromOffset(38, 0)
+	worthWord.Size = UDim2.new(0.5, -38, 1, 0)
+	local worthValue = UIKit.label(worth, string.format("$%.2f", market), Enum.Font.FredokaOne, 24, SHEET_GOLD_TEXT)
+	worthValue.AnchorPoint = Vector2.new(1, 0)
+	worthValue.Position = UDim2.new(1, -12, 0, 0)
+	worthValue.Size = UDim2.new(0.5, 0, 1, 0)
+	worthValue.TextXAlignment = Enum.TextXAlignment.Right
+	worthValue.TextWrapped = false
+
+	local owned = if entry.beastId
+		then "Your levelled card: its own level, stars and grade"
+		else `You have {entry.count} of this copy`
+	local hint = UIKit.label(pickerPane, owned, Enum.Font.GothamBold, 12, UIKit.Colors.Subtext)
+	hint.LayoutOrder = 3
+	hint.Size = UDim2.new(1, 0, 0, 16)
 
 	local listButton = UIKit.button(pickerPane, `List in slot {pickerSlot or 0}`, UIKit.Colors.Accent)
-	listButton.Position = UDim2.fromOffset(8, DETAIL_FACE_SIZE.Y + 16)
-	listButton.Size = UDim2.new(1, -16, 0, 48)
+	listButton.LayoutOrder = 4
+	listButton.Size = UDim2.new(1, 0, 0, 48)
 	listButton.TextSize = 17
 	listButton.Activated:Connect(function()
 		listEntry(entry)
@@ -873,10 +1109,17 @@ function ShowcaseController.Open(part: BasePart)
 	titleLabel.Text = def.name
 	subtitle.Text = KIND_DESCRIPTIONS[def.kind] or ""
 
-	-- Re-render whenever cards arrive, leave (sold or removed) or change price
+	-- Re-render whenever cards arrive, leave (sold or removed) or wait for their price; a new price only changes its words
 	local function watchCard(child: Instance)
 		if child:IsA("BasePart") then
-			table.insert(caseConnections, child:GetAttributeChangedSignal("Price"):Connect(render))
+			table.insert(caseConnections, child:GetAttributeChangedSignal("Price"):Connect(function()
+				local slot = child:GetAttribute("Slot")
+				if typeof(slot) == "number" then
+					showPrice(slot)
+				else
+					render()
+				end
+			end))
 			table.insert(caseConnections, child:GetAttributeChangedSignal("PricingHold"):Connect(render))
 		end
 	end

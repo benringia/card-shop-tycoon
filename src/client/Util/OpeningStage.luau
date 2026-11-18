@@ -141,7 +141,7 @@ end
 local function buildCinema(): ScreenGui
 	local screen = Instance.new("ScreenGui")
 	screen.Name = "PackOpeningCinema"
-	screen.IgnoreGuiInset = true
+	screen.ScreenInsets = Enum.ScreenInsets.None -- bars and a flash only: the whole screen, past a phone's safe area
 	screen.ResetOnSpawn = false
 	screen.DisplayOrder = 40
 	screen.Enabled = false

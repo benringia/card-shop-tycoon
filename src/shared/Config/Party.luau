@@ -823,8 +823,9 @@ return {
 			flash = 0.35,
 			flashSeconds = 0.5,
 		},
-		-- The shop bar's own label and what its tooltip says (owner 2026-11-16: confused shop XP with creature XP)
+		-- The shop bar's own label and what its tooltip says (owner 2026-11-16: confused shop XP with creature XP; 11-18:
+		-- fights give the shop a little XP too, Config/Levels FIGHT_XP_PER_CASH)
 		SHOP_LABEL = "SHOP",
-		SHOP_TIP = "Your shop level. Sell and rip packs to grow it. Fights level up your creatures.",
+		SHOP_TIP = "Your shop level. Sell and rip packs to grow it fast; fights add a little.",
 	},
 }

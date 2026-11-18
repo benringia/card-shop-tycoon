@@ -35,6 +35,12 @@ return {
 	LUCK = { seconds = 180, cooldown = 900, boost = 0.25, fromRarity = "Very Rare", petRange = 12 },
 
 	SKIP_HOLD = 2, -- seconds the skip button is held before the "really skip?" card
+	-- His pacing (owner 2026-11-18: "make it helpful but not annoying. do not popup when the player is currently doing
+	-- something. like manning the cashier"; Util/LessonRules.mayStart, whileBusy): a lesson or a nudge starts once the
+	-- player has been free `free` seconds (not on the register, carrying boxes, placing, in a window, a fight, a show or
+	-- a popup: client Util/PlayerBusy) and `gap` seconds after his last visit; one under way steps back while they're
+	-- busy (his time stopped) and leaves after `wait` seconds of it, its lesson kept for a better moment
+	PACE = { free = 4, gap = 45, wait = 12 },
 	LESSON_SECONDS = 20, -- a lesson visit that points leaves after this long (or when the new thing is used)
 	TEACH_QUIET_SECONDS = 30, -- a lesson that teaches leaves after this long with no step taken (each step starts it again)
 	-- One visit per town or shop unlock, once per player (owner 2026-11-10: "when a player unlocks something for the
