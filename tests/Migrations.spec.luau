@@ -291,6 +291,20 @@ return {
 		expect.equal(junk.tutorial.step, "x", "junk left for TutorialRules.read")
 	end,
 
+	-- Main quests (owner 2026-11-18, look A): every save starts with no first builds paid; a saved list is kept for
+	-- MainQuestRules.clean
+	["v36: every save starts with no main quests done; a saved list kept"] = function()
+		local data: any = { version = 35, cash = 7 }
+		Migrations.run(data, 36)
+		expect.equal(data.version, 36)
+		expect.equal(typeof(data.mainQuests), "table")
+		expect.equal(#data.mainQuests, 0, "nothing paid yet")
+		expect.equal(data.cash, 7, "the rest untouched")
+		local kept: any = { version = 35, mainQuests = { "Forge" } }
+		Migrations.run(kept, 36)
+		expect.equal(kept.mainQuests[1], "Forge", "a saved list kept")
+	end,
+
 	-- Weekly quests (owner 2026-11-17: "what players do after daily quests?"): every save starts with no week rolled
 	-- (QuestService rolls this week's); a saved week is kept for QuestRules.cleanWeek
 	["v34: every save starts with no weekly quests rolled; a saved week kept"] = function()

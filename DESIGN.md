@@ -2122,6 +2122,23 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   fireball is heaved off its back and arcs high to land with the slam, `AttackFx.BOSS` meteor, and the eruption is
   bigger: wider, a tall fire pillar, a burst and a shockwave ring). Sounds: Pro Sound Effects. The Prism Hydra keeps its roar until its
   remodel.
+- **Boss hits that travel and land hard** (owner 2026-11-18: "bosses normal attacks arent visible", pick A + C of
+  artifact G67X6HmoKnXNe9NRM9cm2q; `Config/AttackFx` BOSS_HIT, `FightFxRules.bossThrow` / `throwStyle`,
+  `ElementFx.bossThrow`, `Util/FightFx`; tests/FightFxRules, tests/DamagePop). A boss's normal hit on a creature now
+  travels from it to its target over the end of its wind-up and lands with the hit: 60% of the wind-up (0.18-0.45 s;
+  the usual half-second wind-up flies the last 0.3 s). By its strike: the Meadow Warden's roots lash up out of the
+  ground along the way, bigger as they near the creature (at least 5, even on low graphics), the Brood Queen spits a
+  venom glob, the Ember Colossus heaves a fireball, the Frost Tyrant throws an ice shard, the Storm Sovereign charges a
+  bolt in its jaws then strikes, the Rift Devourer reaches out a void tendril; the Prism Hydra throws its phase's. Then it
+  lands hard: the impact twice a wild monster's, a harder shake (0.55), the creature frozen 0.06 s (a hit-stop), a white
+  flash (0.12 s) and a knock-back 2.5 studs away from the boss and back (0.32 s), and the number big in the boss's colour
+  (`NUMBERS.bossHit`, BattleController). Wild monsters keep their normal strikes. Measured in Studio on the Meadow
+  Warden: the roots rise over the wind-up, the hit lands with the flash and a green "-7".
+  Your creatures' basic attacks are toned down in a boss fight so the boss and its hits read through them (owner
+  2026-11-18: "toning it a bit is a good idea"; a Grade S Lv 30 creature hitting every 0.6 s covered the Warden;
+  `AttackFx` BOSS_TONE, `FightFxRules.toned` / `foeCap`, `Extras.bossFight`): 0.75 of their size, 0.6 of the sparks, half
+  the shake, no grade S extras on every hit (sky strike, pillar, boom, screen flash), and on a big boss their hits grow
+  at most 2x (they were ~2.8x on the Warden, ~5.7x for a Grade S). Pet button moves and supers keep their full looks.
 - **Wild monster attacks** (same spec): each valley species has a keyed `windup` and `strike`
   (`tools/blender/anim_wild.py`, `MonsterAnimations/<species>`), played the same way as a boss's normal attack, with
   its impact (`Config/AttackFx` MONSTER, `ElementFx.monsterStrike`): Mossling a headbutt (green burst, dust), Puddle
@@ -3902,8 +3919,10 @@ the always-on tracker B, the money card A).
   opens the **Daily Quests** window (the butter-gold band,
   CreamTheme `Quests`): each row's icon, words, bar, "2/3 · +$57 · +57 shop XP" and Claim / Keep going! / Claimed, the
   chest row, the countdown to the next UTC midnight. A claim sends coins from the button into the cash pill
-  (`Util/CoinBurst`). The card hides with the HUD (fights, the binder, Pish's and Chikin's calm HUD, manning the
-  register) and on a phone while a window is open; not in the Dungeon (its objective holds the top right). Saved as
+  (`Util/CoinBurst`). The card hides with the HUD (the binder, Pish's and Chikin's calm HUD, manning the register),
+  in boss fights with what rides under it (owner 2026-11-18: it sat under the fight's sword chip and soft lock button;
+  `QuestController` hears `BattleStarted` with a boss) and on a phone while a window is open; not in the Dungeon (its
+  objective holds the top right). Saved as
   `quests` (schema v33). Studio: `/quests done | new`.
 - **Weekly quests** (owner 2026-11-17: "what players do after daily quests?", look A of artifact
   XyGHP2ku71fRaYeuEkGZ6D; `Quests.WEEKLY`, `QuestRules` week functions, tests/QuestRules): three more for each
@@ -3917,6 +3936,29 @@ the always-on tracker B, the money card A).
   same animations, "All 3: Weekly Chest (Epic Pack!)" or "Weekly Chest ready! Tap to open" (its gift wiggles); the
   week's rows and the gold done box pop in as they arrive. A phone's band says "Weekly" and the week's count. Saved as
   `weekly` (schema v34). Studio: `/quests week | newweek`. Later, next to it: set rewards (option C).
+- **Main quests** (owner 2026-11-18: "when items like forge is unlocked and the players couldnt afford it yet, add it to
+  their main quests, so that when they finish all daily quest, there's always something to do"; look A of artifact
+  Evh8Gx9pN61R5GkodcwR3C; `Config/MainQuests`, pure `Util/MainQuestRules`, `MainQuestService`, client `Util/MainQuest`
+  and `Util/MainQuestRow`; tests/MainQuestRules): the next thing to build for the shop. The Build menu's racks, cases
+  and machines that Pish teaches (Glass Showcase, Collector Case, Wall Shelf, Card Condenser, Forge, Accessory Hook, Big
+  Display Rack, Bulk Bin, Grading Station; decor and trophies stay out) are open once the shop's level unlocks them and
+  none stands in the shop. One shows at a time: the first the cash already covers (a quick win), else the oldest unlock
+  being saved for. With everything built the goal is the next unlock's level ("Reach shop Lv 10: Bulk Bin", its bar the
+  XP from the last unlock reached to it), so there's always one. On a computer a lilac "MAIN QUEST" row rides at the
+  bottom of the quest strip (under the day's quests, the week's and "Quests done!"): the item's icon in a floating
+  bubble, "Build the Forge", "$820 / $1,500" and a glossy gold bar (lilac for a level). Paid for, the bar turns mint and
+  Build! pulses: it starts that item's placement (away from the shop or in another place, a locked card says where to
+  build it). The row steps aside during any fight (the fight's soft lock button sits under the strip). The Quests
+  window opens with a Main Quest section: the goal with its bar, "+150 shop XP when built" and
+  Build (or "$680 to go"), then up to three "Then:" lines. A phone's quest chip shows it once both chests are opened:
+  the item's icon and "54%", "Build!" or "Lv 10" (`CompactHud.phonePieces` mainRow: no row on a phone). The first build
+  of each item pays a tenth of its price in shop XP (the Forge +150, the Grading Station +500), once per save: the row
+  flashes gold, "Forge built!", a check stamps in with confetti, "+150 shop XP" rises, a toast, and the next goal slides
+  in after 1.8 s. Items already standing in the shop at load count as paid, so selling one and placing it again never
+  pays twice. The server sets the player's `ShopBuilt` attribute (the items standing in the shop: from the saved layout
+  in every place, then placements and sales in the main game, `PlacementService.OnPlaced` / `OnSold`) and fires
+  `Remotes.MainQuestDone` before it changes. Saved as `mainQuests` (the items paid; schema v36). Studio:
+  `/mainquest reset` (every first build pays again).
 - **Welcome-back earnings** (`Config/Offline`, pure `Util/OfflineRules`, `OfflineService`, `WelcomeBackController`;
   tests/OfflineRules): when a save loads in the main game after 10 minutes or more away, the shelves sell their stock as
   if customers had come meanwhile: 2 customers' worth a minute (about a fifth of a busy shop), shared between the
@@ -4199,6 +4241,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── LeaderboardService.luau # the plaza leaderboard: packs-opened totals to an OrderedDataStore (every place), the cards' lists (main game)
     │   │   ├── TurtsService.luau     # Turts' rug shop: the restock clock, his spot, each player's offers and buys, Robux restock now (DESIGN 7.9)
     │   │   ├── QuestService.luau     # daily quests: rolled per UTC day, counted from the game, claims and the Quest Chest (DESIGN 7.12)
+    │   │   ├── MainQuestService.luau # main quests: the ShopBuilt attribute, a first build's shop XP once, its moment (DESIGN 7.12)
     │   │   ├── OfflineService.luau   # welcome-back earnings: shelves sell their stock while you're away (DESIGN 7.12)
     │   │   ├── PurchaseService.luau  # the one ProcessReceipt: developer products granted once, ever (receipt ids saved first)
     │   │   ├── SupportService.luau   # "Support the dev": gifts, the best tier, the supporter aura (SupporterTier)
@@ -4344,6 +4387,8 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │       ├── OpeningCreature.luau    # a pulled card's creature bursting out, roaring and diving back in
     │       ├── OpeningRift.luau        # a Legendary's sky tear: the rift cracking open over the stage, its flash and closing
     │       ├── QuestStrip.luau         # the daily quests' strip: candy card, bubbles, glossy bars and their animations
+    │       ├── MainQuest.luau          # the main quest's goal on this client: the shop's builds, cash, level (MainQuestRules)
+    │       ├── MainQuestRow.luau       # the main quest's lilac row under the strip: bar, Build!, a first build's moment
     │       ├── NextUnlock.luau         # the shop bar's next unlock line ("🔓 Lv 3: Card Sleeves")
     │       ├── ProductPicture.luau     # a product's picture in menu rows: the pack / deck box picture, or its icon
     │       ├── CreatureVisuals.luau    # shared model pipeline + motion for creatures and monsters
@@ -4413,6 +4458,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
         │   ├── Leaderboard.luau  # the plaza leaderboard: store name, timings, the list cards' face (plain data)
         │   ├── Turts.luau  # Turts' rug shop: timer, offers (price, usual value, weight), his spots, shake, size and barks (plain data)
         │   ├── Quests.luau  # daily quests: kinds, the pool with goals by level, pay, the Quest Chest (plain data)
+        │   ├── MainQuests.luau # main quests: the Build menu items in them with icons, the shop XP share (plain data)
         │   ├── Offline.luau # welcome-back earnings: the time away that counts, the pace, XP, product words (plain data)
         │   ├── Funnel.luau  # the onboarding funnel's steps in order and its levels (plain data)
         │   ├── PackFx.luau     # the opening's effect sheets and images (plain data)
@@ -4607,6 +4653,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── LeaderboardRules.luau  # the plaza leaderboard's lists, store writes and counts (pure, Lune-tested)
             ├── TurtsRules.luau  # Turts' restock clock, roll, buy check, saved state, spots, price rule, head shake (pure, Lune-tested)
             ├── QuestRules.luau  # daily quests: roll, refresh, progress, claims, the chest, clean, view (pure, Lune-tested)
+            ├── MainQuestRules.luau # main quests: open items, the pick, build and level goals, first-build XP, saved list (pure, Lune-tested)
             ├── OfflineRules.luau # welcome-back earnings: minutes away, what the shelves sell (pure, Lune-tested)
             ├── UpgradeRules.luau  # station jobs: waits, Finish now tiers, the clock, saved jobs read back (pure, Lune-tested)
             ├── ReceiptRules.luau  # receipts already granted, the newest 100 kept (pure, Lune-tested)
@@ -4628,7 +4675,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v35)
+### 10.4 Player data schema (v36)
 ```lua
 {
     version = 21,
@@ -4682,6 +4729,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     quests = { day = 20410, list = { { id = "serve", goal = 3, progress = 1, claimed = false } }, bonus = false }, -- today's daily quests (QuestService, Util/QuestRules; v33)
     lastSeen = 1795000000, -- os.time of the last main-game save: welcome-back earnings (OfflineService; v33, 0 = never)
     weekly = { week = 2914, list = { { id = "rip", goal = 56, progress = 12, claimed = false } }, chest = false }, -- this week's quests (Monday weeks, GiftRules.weekOf) and the Weekly Chest opened (QuestService, Util/QuestRules; v34)
+    mainQuests = { "Forge", "WallShelf" }, -- main quest items whose first build paid its shop XP (MainQuestService, Util/MainQuestRules; v36)
 }
 ```
 Bump `version` and write a migration whenever the shape changes.
@@ -4710,7 +4758,7 @@ Studio on the test slot plays its own save, `Player_<id>_studio` (2026-11-16: St
 live playthrough), so Studio and the live game never share one.
 Anyone else's `/slot` does nothing. (`SaveSlotService`, pure `Server/Util/SaveSlots`, Lune-tested.)
 
-Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; v17 added `tutorial` (the first visit with Pish; existing saves "done" with their first pack given and his gift still to come, so only new players go through it); each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity); `tutorial` gained `customerSent` (read as false when missing, true for v17's existing shops; no bump: an older server dropping it allows one more of Pish's customers). v18 added `combat` (Chikin's combat tutorial, the same shape; done for every shop past Pish's tour, still to do for a player mid-way through it). v19 added `dungeon` (`secretFound` and `seenIntro` false for everyone; a junk value is replaced). v20 added `title` ("" for everyone: automatic, the same title as before; a saved string kept, junk replaced). v21 added `upgrades`, `skipTokens` and `purchases` (empty for everyone; a good skip count kept, junk replaced). v22 added `support` (no gifts for everyone; good counts kept). v23 added `titles` (`known`, `fresh` empty, `seeded` false: the first load counts the titles a player already has without telling). v24 added `turts` (nothing bought for everyone; good ids kept, a broken "restock now" roll dropped). v25 added `decor` (Cozy Wood in use and no looks bought for everyone; good ids kept, cleaned against Config/Decor on load). v26 added `windows` (none for everyone; a saved list kept and cleaned on load by `WindowRules.clean`, which pays back any window that no longer fits). v27 added `luck` (no bought luck for everyone). v28 added `unlocks` (none for everyone). v29 added `seenPrologue` (true for every save from before it, so the prologue only greets new players). v30 added `gifts` (the round at day 1, nothing played or earned, for everyone; a saved table kept and cleaned on load by `GiftRules.clean`). v31 kept `combat`'s shape but reordered Chikin's steps (the sword and a fight with it in his first visit): a tour in progress keeps its place by step name. v32 added `tips` (none seen for everyone; a saved table kept and cleaned on load by `TipRules.clean`). v33 added `quests` and `lastSeen`; v34 added `weekly`. v35 kept `tutorial`'s shape but put Pish's "summonPal" step second (owner 2026-11-17): a saved step from 2 on moves one along, so a tour in progress keeps its place. A service that didn't load for a player (e.g. no free plot) never overwrites
+Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; v17 added `tutorial` (the first visit with Pish; existing saves "done" with their first pack given and his gift still to come, so only new players go through it); each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity); `tutorial` gained `customerSent` (read as false when missing, true for v17's existing shops; no bump: an older server dropping it allows one more of Pish's customers). v18 added `combat` (Chikin's combat tutorial, the same shape; done for every shop past Pish's tour, still to do for a player mid-way through it). v19 added `dungeon` (`secretFound` and `seenIntro` false for everyone; a junk value is replaced). v20 added `title` ("" for everyone: automatic, the same title as before; a saved string kept, junk replaced). v21 added `upgrades`, `skipTokens` and `purchases` (empty for everyone; a good skip count kept, junk replaced). v22 added `support` (no gifts for everyone; good counts kept). v23 added `titles` (`known`, `fresh` empty, `seeded` false: the first load counts the titles a player already has without telling). v24 added `turts` (nothing bought for everyone; good ids kept, a broken "restock now" roll dropped). v25 added `decor` (Cozy Wood in use and no looks bought for everyone; good ids kept, cleaned against Config/Decor on load). v26 added `windows` (none for everyone; a saved list kept and cleaned on load by `WindowRules.clean`, which pays back any window that no longer fits). v27 added `luck` (no bought luck for everyone). v28 added `unlocks` (none for everyone). v29 added `seenPrologue` (true for every save from before it, so the prologue only greets new players). v30 added `gifts` (the round at day 1, nothing played or earned, for everyone; a saved table kept and cleaned on load by `GiftRules.clean`). v31 kept `combat`'s shape but reordered Chikin's steps (the sword and a fight with it in his first visit): a tour in progress keeps its place by step name. v32 added `tips` (none seen for everyone; a saved table kept and cleaned on load by `TipRules.clean`). v33 added `quests` and `lastSeen`; v34 added `weekly`. v35 kept `tutorial`'s shape but put Pish's "summonPal" step second (owner 2026-11-17): a saved step from 2 on moves one along, so a tour in progress keeps its place. v36 added `mainQuests` (none paid for everyone; the items standing in the shop at load count as paid). A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
 
 ### 10.6 UI style and HUD

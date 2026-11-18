@@ -381,6 +381,13 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 			tutorial.step += 1
 		end
 	end,
+	-- 35 -> 36: main quests (owner 2026-11-18, look A): no first builds paid yet (MainQuestService; a saved list is kept
+	-- for MainQuestRules.clean)
+	[35] = function(data)
+		if typeof(data.mainQuests) ~= "table" then
+			data.mainQuests = {}
+		end
+	end,
 }
 
 local function lowestGrade(): string

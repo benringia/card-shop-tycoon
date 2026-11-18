@@ -285,4 +285,69 @@ return {
 			assert(spec.count > 0 and #spec.size >= 2 and #spec.transparency >= 2, `impact {index}`)
 		end
 	end,
+	-- Boss normal hits that travel and land hard (owner 2026-11-18, pick A + C of artifact G67X6HmoKnXNe9NRM9cm2q): what
+	-- each strike throws at its target, when it leaves and how long it flies so it lands with the hit
+	["a boss's normal hit flies over the end of its wind-up and lands with the hit"] = function()
+		local cfg = AttackFx.BOSS_HIT
+		local wait, travel = FightFxRules.bossThrow(0.5, cfg)
+		expect.near(travel, 0.3, 1e-6, "a usual half-second wind-up: it flies the last 0.3 s")
+		expect.near(wait + travel, 0.5, 1e-6, "it lands as the hit does")
+		local _, quick = FightFxRules.bossThrow(0.25, cfg)
+		expect.near(quick, cfg.minTravel, 1e-6, "a quick wind-up: still long enough to see")
+		local longWait, long = FightFxRules.bossThrow(2, cfg)
+		expect.near(long, cfg.maxTravel, 1e-6, "a long wind-up: it waits, then flies")
+		expect.near(longWait, 2 - cfg.maxTravel, 1e-6)
+		local noWait, short = FightFxRules.bossThrow(0.1, cfg)
+		expect.equal(noWait, 0, "shorter than the shortest flight: it leaves at once")
+		expect.near(short, 0.1, 1e-6, "and still lands with the hit")
+	end,
+
+	["every boss's strike throws something at its target, the Hydra's phases too"] = function()
+		local drawn = { roots = true, venom = true, fireball = true, iceShard = true, bolt = true, tendril = true }
+		for bossId, spec in AttackFx.BOSS do
+			local strikes = { spec.strike }
+			for _, variant in spec.byPhase or {} do
+				table.insert(strikes, variant.strike)
+			end
+			for _, strike in strikes do
+				local throw = FightFxRules.throwStyle(strike, AttackFx.BOSS_HIT)
+				assert(throw ~= nil and drawn[throw], `{bossId}'s {strike} throws something drawn ({tostring(throw)})`)
+			end
+		end
+		expect.isNil(FightFxRules.throwStyle("headbutt", AttackFx.BOSS_HIT), "a wild monster's strike throws nothing")
+	end,
+
+	["a boss's hit on a creature lands harder than a wild monster's"] = function()
+		local hit = AttackFx.BOSS_HIT
+		expect.equal(hit.strikeScale >= 1.5, true, "its impact is bigger")
+		expect.equal(hit.shake > AttackFx.SHAKE.bossStrike, true, "it shakes more than a wild monster's strike")
+		expect.equal(hit.stop > 0 and hit.stop <= 0.1, true, "a hit-stop you feel, not a stall")
+		expect.equal(hit.knock > 0 and hit.knockSeconds > hit.stop, true, "knocked back after the stop")
+		expect.equal(hit.flash > 0 and hit.flash < 0.3, true, "a quick white flash")
+	end,
+	-- Your creatures' basic attacks toned down in a boss fight (owner 2026-11-18: "toning it a bit is a good idea": a
+	-- Grade S Lv 30 creature hitting every 0.6 s covered the boss and its hits)
+	["in a boss fight creatures' basic attacks are toned down: smaller, fewer sparks, no grade S extras, less shake"] = function()
+		local tone = AttackFx.BOSS_TONE
+		local s = FightFxRules.tier("S", AttackFx)
+		local same = FightFxRules.toned(s, false, tone)
+		expect.equal(same.scale, s.scale, "outside a boss fight: as before")
+		expect.equal(same.extra, s.extra)
+		local boss = FightFxRules.toned(s, true, tone)
+		expect.near(boss.scale, s.scale * tone.scale, 1e-6, "smaller")
+		expect.near(boss.sparks, s.sparks * tone.sparks, 1e-6, "fewer sparks")
+		expect.near(boss.shake, s.shake * tone.shake, 1e-6, "less shake")
+		expect.equal(boss.extra < 2, true, "no grade S sky strike, pillar or screen flash on every hit")
+		expect.equal(FightFxRules.toned(FightFxRules.tier("C", AttackFx), true, tone).extra, 0, "a Grade C has no extras to cap")
+		expect.equal(tone.scale >= 0.5 and tone.scale < 1, true, "toned a bit, not hidden")
+		expect.equal(AttackFx.GRADE.S.scale, s.scale, "the grade table itself is untouched")
+	end,
+
+	["in a boss fight a creature's hits grow less with the boss's size"] = function()
+		local tone = AttackFx.BOSS_TONE
+		expect.equal(FightFxRules.foeCap(2.83, false, tone), 2.83, "outside a boss fight: as big as the foe makes them")
+		expect.equal(FightFxRules.foeCap(2.83, true, tone), tone.foeMax, "on a big boss: capped")
+		expect.equal(FightFxRules.foeCap(1, true, tone), 1, "on a small foe: as before")
+		expect.equal(tone.foeMax >= 1.5, true, "still bigger on a boss than on a creature")
+	end,
 }

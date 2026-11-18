@@ -672,6 +672,15 @@ function BuildController.PlaceTrophy(itemId: string)
 	end
 end
 
+-- The main quest's Build button (owner 2026-11-18): that shelf's placement at once, with the Build menu's own checks
+-- (locked, not enough cash)
+function BuildController.Buy(shelfId: string)
+	local def = Shelves.ById[shelfId]
+	if def and not def.requiresItem then
+		onBuy(def)
+	end
+end
+
 function BuildController.Start()
 	local screenGui = UIController.GetScreenGui()
 	buildShopPanel(screenGui)

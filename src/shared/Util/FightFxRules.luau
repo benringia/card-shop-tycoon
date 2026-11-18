@@ -87,4 +87,37 @@ function FightFxRules.spotlightUntil(now: number, current: number, seconds: numb
 	return math.max(current, now + seconds + tail)
 end
 
+-- A boss's normal hit that travels (Config/AttackFx BOSS_HIT): how long after its charge it leaves and how long it flies,
+-- so it lands as the hit does (`seconds`, the charge's wind-up): `travel` of the wind-up, within minTravel..maxTravel,
+-- never longer than the wind-up itself
+function FightFxRules.bossThrow(seconds: number, cfg: any): (number, number)
+	local wanted = math.clamp(seconds * cfg.travel, cfg.minTravel, cfg.maxTravel)
+	local travel = math.max(0, math.min(wanted, seconds))
+	return math.max(0, seconds - travel), travel
+end
+
+-- What a boss's strike style throws at its target (BOSS_HIT throws); nil for a wild monster's strikes
+function FightFxRules.throwStyle(strike: string?, cfg: any): string?
+	return if strike then cfg.throws[strike] else nil
+end
+
+-- A creature's grade look in a boss fight (Config/AttackFx BOSS_TONE): smaller, fewer sparks, less shake, its extras
+-- capped (no grade S sky strike, pillar or screen flash on every hit); as it is anywhere else
+function FightFxRules.toned(tier: { scale: number, sparks: number, extra: number, shake: number }, bossFight: boolean, tone: any): { scale: number, sparks: number, extra: number, shake: number }
+	if not bossFight then
+		return tier
+	end
+	return {
+		scale = tier.scale * tone.scale,
+		sparks = tier.sparks * tone.sparks,
+		extra = math.min(tier.extra, tone.extra),
+		shake = tier.shake * tone.shake,
+	}
+end
+
+-- How much bigger a creature's hits look on its foe (`foe`: PackHit.scaleFor its model), at most `foeMax` in a boss fight
+function FightFxRules.foeCap(foe: number, bossFight: boolean, tone: any): number
+	return if bossFight then math.min(foe, tone.foeMax) else foe
+end
+
 return FightFxRules

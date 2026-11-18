@@ -37,4 +37,13 @@ return {
 		end
 		expect.equal(DamagePop.life("nope", cfg), DamagePop.life("normal", cfg))
 	end,
+
+	-- A boss's normal hit on your creature (owner 2026-11-18, pick C "hits you feel"): big, in the boss's colour
+	["a boss's hit on your creature pops bigger than a strong hit and stays as long as a normal one"] = function()
+		local boss = cfg.bossHit
+		expect.equal(boss ~= nil, true, "the bossHit style exists")
+		expect.equal(boss.peak > cfg.strong.peak, true, "bigger than a strong hit's")
+		expect.equal(DamagePop.life("bossHit", cfg) >= DamagePop.life("normal", cfg), true, "stays as long")
+		expect.near(DamagePop.at(boss.pop, "bossHit", cfg).scale, boss.peak, 1e-6, "it bursts to its peak")
+	end,
 }

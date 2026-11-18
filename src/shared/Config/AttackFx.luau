@@ -340,6 +340,12 @@ return {
 	},
 	-- A creature's basic attack by its grade: size, spark count and shake multipliers, and extras on top (A: one,
 	-- S: the big ones; Util/FightFx)
+	-- Your creatures' basic attacks in a boss fight (owner 2026-11-18: "toning it a bit is a good idea": a Grade S Lv 30
+	-- creature hitting every 0.6 s covered the boss and its hits; FightFxRules.toned, foeCap): `scale`, `sparks` and
+	-- `shake` times its grade's, `extra` its grade's extras at most (1: no grade S sky strike, pillar, boom or screen flash
+	-- on every hit), and on a big boss its hits at most `foeMax` times their size on a creature (they grew to ~2.8x on
+	-- the Warden). Pet button moves and supers keep their full looks.
+	BOSS_TONE = { scale = 0.75, sparks = 0.6, extra = 1, shake = 0.5, foeMax = 2 },
 	GRADE = {
 		C = { scale = 1, sparks = 1, extra = 0, shake = 1 },
 		B = { scale = 1.25, sparks = 1.4, extra = 0, shake = 1.2 },
@@ -380,7 +386,29 @@ return {
 		weak = { start = 0.5, peak = 1.2, pop = 0.08, life = 0.75, rise = 2.4 },
 		heal = { start = 0.4, peak = 1.4, pop = 0.1, life = 1, rise = 3.2 },
 		tick = { start = 0.6, peak = 1.15, pop = 0.06, life = 0.7, rise = 2 },
+		bossHit = { start = 0.4, peak = 2.2, pop = 0.09, life = 1.1, rise = 3.6, wiggle = 10 }, -- a boss's hit on a creature (BOSS_HIT)
 		DRIFT = 1.2, -- studs a number drifts sideways (random each way), so numbers landing together don't overlap
+	},
+	-- A boss's normal hit on a creature (owner 2026-11-18: "bosses normal attacks arent visible", pick A + C of artifact
+	-- G67X6HmoKnXNe9NRM9cm2q; Util/FightFx, ElementFx.bossThrow, FightFxRules.bossThrow): A, it travels: over the end of
+	-- its wind-up its strike's `throws` style flies from the boss to the creature and lands with the hit (`travel` of the
+	-- wind-up, at least `minTravel` and at most `maxTravel` seconds; roots lash along the ground, venom and fireballs and
+	-- ice shards arc, a bolt charges then strikes, a void tendril reaches out). C, you feel it: the impact `strikeScale`
+	-- times a wild monster's, the creature frozen `stop` seconds (a hit-stop), then knocked `knock` studs away from the
+	-- boss and back over `knockSeconds` with a white flash for `flash` seconds, a `shake` (SHAKE's scale) and the damage
+	-- number big in the boss's colour (NUMBERS.bossHit). Wild monsters keep their normal strikes.
+	BOSS_HIT = {
+		throws = { leaves = "roots", fangs = "venom", embers = "fireball", frost = "iceShard", volt = "bolt", voidbite = "tendril", voidclaw = "tendril" },
+		travel = 0.6,
+		minTravel = 0.18,
+		maxTravel = 0.45,
+		strikeScale = 2,
+		stop = 0.06,
+		knock = 2.5,
+		knockSeconds = 0.32,
+		flash = 0.12,
+		shake = 0.55,
+		venom = rgb(150, 230, 90), -- the Brood Queen's glob (her colour trails it)
 	},
 	-- Wild monsters' normal attacks (keyed clips in ReplicatedStorage.MonsterAnimations/<species>, the same flow as a
 	-- boss's): `strike` the effect where it lands

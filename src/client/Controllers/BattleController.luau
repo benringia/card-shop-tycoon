@@ -1193,6 +1193,12 @@ local function onEvents(events: { any })
 			pylonUi.refresh()
 		elseif event.type == "shieldDown" then
 			banner("Shield down! Attack!", CRIT_COLOR)
+		elseif event.type == "attack" and bossId and event.from == "b:m" and typeof(event.to) == "string" and not event.dodged and not event.crit then
+			-- A boss's normal hit on a creature (owner 2026-11-18, pick C "hits you feel"): big, in the boss's colour
+			local look = AttackFx.BOSS[bossId]
+			local tint = if look then Color3.fromRGB(look.color[1], look.color[2], look.color[3]) else UIKit.Colors.Danger
+			local text = if event.strength == "strong" then "-" .. tostring(event.damage) .. " STRONG!" else "-" .. tostring(event.damage)
+			floatText(event.to, text, tint, false, "bossHit")
 		elseif event.type == "attack" and event.to then
 			if event.pylonShield then
 				floatText(event.to, "Shielded!", WEAK_COLOR, false, "weak") -- room 3: break the pylons first

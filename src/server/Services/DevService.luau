@@ -929,6 +929,13 @@ function DevService.Start()
 		local said = if word then QuestService.Dev(player, string.lower(word)) else nil
 		Remotes.Notify:FireClient(player, said or "Usage: /quests done | new | week | newweek", said == nil)
 	end)
+	-- Main quests (Config/MainQuests): /mainquest reset (every first build pays its shop XP again: sell one, place it)
+	addCommand(folder, "mainquest", function(player, text)
+		local word = string.match(text, "^/%w+%s+(%w+)")
+		local MainQuestService = require(script.Parent:WaitForChild("MainQuestService")) :: any
+		local said = if word then MainQuestService.Dev(player, string.lower(word)) else nil
+		Remotes.Notify:FireClient(player, said or "Usage: /mainquest reset", said == nil)
+	end)
 	-- Welcome-back earnings (Config/Offline): /away <minutes> sells as if you'd been away that long (the stock really goes)
 	addCommand(folder, "away", function(player, text)
 		local minutes = tonumber(string.match(text, "^/%w+%s+(%d+)"))

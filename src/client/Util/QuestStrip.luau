@@ -15,6 +15,9 @@
 -- quests?", look A; QuestRules.stripMode): a "Weekly" line with the time left, the three rows animating the same way and
 -- the Weekly Chest line under them (ready: it says so and wiggles); a phone's chip shows a star and their count. Both
 -- chests opened: the gold done box (a phone's chip: a trophy and the hours left). Each part pops in as it arrives.
+-- The main quest (owner 2026-11-18, look A; Util/MainQuestRow) rides at its bottom on a computer, under the day's quests,
+-- the week's and "Quests done!"; a phone's chip shows it once both chests are opened (its icon and "54%", "Build!" or
+-- "Lv 10" instead of the hours left).
 -- QuestController places it, shows or hides it and opens the window on a tap.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -26,10 +29,12 @@ local Items = require(Config:WaitForChild("Items"))
 local UIStyle = require(Config:WaitForChild("UIStyle"))
 local PackFx = require(Config:WaitForChild("PackFx"))
 local QuestRules = require(Shared:WaitForChild("Util"):WaitForChild("QuestRules"))
+local MainQuestRules = require(Shared:WaitForChild("Util"):WaitForChild("MainQuestRules"))
 
 local ClientUtil = script.Parent :: Instance
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
+local MainQuestRow = require(ClientUtil:WaitForChild("MainQuestRow"))
 
 local QuestStrip = {}
 
@@ -88,6 +93,8 @@ local foldArrow: Frame
 local claimTweens: { Tween } = {}
 local claimLook: string? = nil -- "computer" (pulsing), "phone" (still) or nil: what Claim! shows now
 local trophyTween: Tween? = nil
+local lastMain: MainQuestRules.Goal? = nil -- the main quest's goal (QuestStrip.setMain)
+local fighting = false -- a fight is on: the main row steps aside (the fight's buttons sit under the strip)
 
 local function tween(object: Instance, seconds: number, goal: { [string]: any }, style: Enum.EasingStyle?, direction: Enum.EasingDirection?): Tween
 	local playing = TweenService:Create(object, TweenInfo.new(seconds, style or Enum.EasingStyle.Quad, direction or Enum.EasingDirection.Out), goal)
@@ -765,6 +772,21 @@ local function fitPhone()
 	root.Size = UDim2.fromOffset(math.ceil(STRIP.phoneChip.left + width + STRIP.phoneChip.right), 0)
 end
 
+-- The main quest: its row under the strip on a computer (not folded); a phone's chip shows it once both chests are
+-- opened (its icon and "54%", "Build!" or "Lv 10" instead of the hours left)
+local function refreshMain()
+	MainQuestRow.setWanted(lastCompact == false and not folded and not fighting)
+	local current = last
+	local goal = lastMain
+	if not lastCompact or not current or #current.quests == 0 or QuestRules.stripMode(current) ~= "done" then
+		return
+	end
+	Icon.set(bandIcon, if goal then goal.icon else "Trophy")
+	Icon.layer(bandIcon, 4)
+	countChip.Text = if goal then MainQuestRules.chipText(goal) else string.match(lastReset, "%d+h") or "Soon"
+	fitPhone()
+end
+
 local function onShown()
 	playPop()
 	local current = lastShown
@@ -819,6 +841,7 @@ function QuestStrip.build(parent: Instance): TextButton
 	rowsLayout.Parent = rowsFrame
 	buildDone()
 	buildWeekly()
+	MainQuestRow.build(root, 3) -- under the rows (1) and the done box (2)
 	task.spawn(function()
 		local clock = 0
 		local glintIndex = 0
@@ -933,6 +956,7 @@ function QuestStrip.render(current: View?, compact: boolean, resetText: string, 
 	rowsFrame.Visible = not compact and not allDone and not folded
 	setDone(allDone and not compact and not folded)
 	doneTime.Text = resetText
+	refreshMain()
 	if compact then
 		fitPhone()
 		task.defer(fitPhone) -- the chip's new words are measured on the next frame
@@ -952,8 +976,32 @@ function QuestStrip.tick(resetText: string, weekText: string)
 	doneTime.Text = resetText
 	local current = last
 	if current and lastCompact and QuestRules.stripMode(current) == "done" then
-		countChip.Text = string.match(resetText, "%d+h") or "Soon"
+		local goal = lastMain
+		countChip.Text = if goal then MainQuestRules.chipText(goal) else string.match(resetText, "%d+h") or "Soon"
 	end
+end
+
+-- The main quest's goal now (Util/MainQuest; nil: none): its row, or a phone's chip once all is done
+function QuestStrip.setMain(goal: MainQuestRules.Goal?)
+	lastMain = goal
+	MainQuestRow.show(goal)
+	refreshMain()
+end
+
+-- A main quest item's first build: its moment on the row (the next goal slides in after it)
+function QuestStrip.mainDone(name: string, xp: number)
+	MainQuestRow.done(name, xp)
+end
+
+-- A fight started or ended: the main row steps aside while it's on (the fight's soft lock button sits under the strip)
+function QuestStrip.setFighting(on: boolean)
+	fighting = on
+	refreshMain()
+end
+
+-- What the main quest row's Build! button does
+function QuestStrip.onBuild(handler: (MainQuestRules.Goal) -> ())
+	MainQuestRow.onBuild(handler)
 end
 
 return QuestStrip

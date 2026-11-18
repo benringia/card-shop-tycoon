@@ -47,6 +47,7 @@ return {
 		expect.equal(town.giftTile, false, "the gift tile only once a gift is ready")
 		expect.equal(town.turtsChip, false, "Turts' chip only just after he restocks")
 		expect.equal(town.questChip, true, "the quests as a chip by the cash")
+		expect.equal(town.mainRow, false, "no main quest row: the chip shows it once the day's quests are done")
 		local wild = CompactHud.phonePieces(true, false, true, true)
 		expect.equal(wild.sideSlots, false, "one creature in the Wild too (owner 2026-11-17: swipe or hold for the rest)")
 		expect.equal(wild.weaponChip, true, "the weapon chip in the Wild")

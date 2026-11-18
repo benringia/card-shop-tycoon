@@ -9,18 +9,26 @@
 -- The week's quests (owner 2026-11-17: "what players do after daily quests?", look A) come with the day's (the view's
 -- `week`): in the window under the day's, with the Weekly Chest (its win moment: Util/GiftWin "questWeek"), and in the
 -- strip once today's chest is opened. A small piece can ride under the strip (QuestController.Below: Turts' chip).
+-- The main quest (owner 2026-11-18, look A; Util/MainQuest picks it): a row at the strip's bottom with Build! once paid
+-- for, the window's first section, and a first build's moment (Remotes.MainQuestDone).
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Items = require(Config:WaitForChild("Items"))
 local Quests = require(Config:WaitForChild("Quests"))
+local MainQuests = require(Config:WaitForChild("MainQuests"))
+local Placement = require(Config:WaitForChild("Placement"))
+local Shelves = require(Config:WaitForChild("Shelves"))
 local Teams = require(Config:WaitForChild("Teams"))
 local UIStyle = require(Config:WaitForChild("UIStyle"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local CompactHud = require(Shared:WaitForChild("Util"):WaitForChild("CompactHud"))
 local QuestRules = require(Shared:WaitForChild("Util"):WaitForChild("QuestRules"))
 local GiftRules = require(Shared:WaitForChild("Util"):WaitForChild("GiftRules"))
+local MainQuestRules = require(Shared:WaitForChild("Util"):WaitForChild("MainQuestRules"))
+local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
@@ -30,7 +38,9 @@ local Icon = require(ClientUtil:WaitForChild("Icon"))
 local CoinBurst = require(ClientUtil:WaitForChild("CoinBurst"))
 local QuestStrip = require(ClientUtil:WaitForChild("QuestStrip"))
 local GiftWin = require(ClientUtil:WaitForChild("GiftWin"))
+local MainQuest = require(ClientUtil:WaitForChild("MainQuest"))
 local UIController = require(Controllers:WaitForChild("UIController"))
+local BlockedController = require(Controllers:WaitForChild("BlockedController"))
 
 local QuestController = {}
 
@@ -43,6 +53,10 @@ type Chest = { name: string, order: number, title: string, items: { { item: stri
 local TRACKER = { margin = 16, phoneGap = 8, desktopTop = Teams.STRIP.top, belowGap = 12, cashGap = 8 }
 local ROW_HEIGHT = 76
 local WEEK_ORDER = 20 -- the week's rows come after the day's and their chest in the window
+local MAIN_ORDER = -10 -- the main quest comes first in the window
+local MAIN_THEN = 3 -- at most this many other items to build listed under it
+
+local player = Players.LocalPlayer
 
 local view: View? = nil
 local screen: ScreenGui
@@ -55,6 +69,9 @@ local weekLabel: TextLabel? = nil
 local belowSlot: Frame? = nil -- pieces riding under the strip (QuestController.Below)
 local belowPieces: { GuiObject } = {}
 local windowOpen = false -- any UIKit window (a phone's tracker steps aside)
+-- a boss fight is on: the strip and what rides under it step aside (owner 2026-11-18: they sat under the fight's sword
+-- chip and soft lock button)
+local bossFight = false
 local lastClaimAt: Vector2? = nil -- where the last Claim press was (the coins fly from there)
 
 -- "New quests in 9h 12m": to the next UTC midnight (QuestService's day, GiftRules.dayOf)
@@ -125,7 +142,7 @@ end
 
 local function renderTracker()
 	local current = view
-	local aside = UIController.IsCompact() and windowOpen
+	local aside = (UIController.IsCompact() and windowOpen) or bossFight
 	tracker.Visible = current ~= nil and #current.quests > 0 and not aside
 	if belowSlot then
 		belowSlot.Visible = not aside
@@ -266,6 +283,132 @@ local function weekHeading(palette: UIKit.Palette)
 	weekLabel = left
 end
 
+-- Standing by your shop (the server refuses placements from further: PlacementService)
+local function nearShop(): boolean
+	local plotId = player:GetAttribute("PlotId")
+	local plots = workspace:FindFirstChild("Plots")
+	local plot = if typeof(plotId) == "number" and plots then plots:FindFirstChild("Plot" .. plotId) else nil
+	local floor = if plot then plot:FindFirstChild("Floor") else nil
+	local character = player.Character
+	local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
+	if not floor or not floor:IsA("BasePart") or not root or not root:IsA("BasePart") then
+		return false
+	end
+	return (root.Position - floor.Position).Magnitude <= Placement.MAX_EDIT_DISTANCE
+end
+
+-- The main quest's Build: that item's placement (the Build menu's own checks), or why it can't be built here
+local function buildMain(goal: MainQuestRules.Goal)
+	if goal.kind ~= "build" then
+		return
+	end
+	if Place.isFrontier() or Place.isDungeon() then
+		BlockedController.Show(`Build the {goal.name} in your shop, back in town.`)
+		return
+	end
+	if not nearShop() then
+		BlockedController.Show(`Go back to your shop to build the {goal.name}.`)
+		return
+	end
+	if panel.Visible then
+		UIKit.closePanel(panel)
+	end
+	local BuildController = require(Controllers:WaitForChild("BuildController")) :: any
+	BuildController.Buy(goal.id)
+end
+
+-- The window's first section (owner 2026-11-18, look A): "Main Quest", what to build (or the level to reach) with its
+-- bar and Build once paid for, then the other items still to build
+local function mainSection(palette: UIKit.Palette)
+	local goal = MainQuest.current()
+	if not goal then
+		return
+	end
+	local baby = UIStyle.BABY
+	local head = Instance.new("Frame")
+	head.Name = "MainHead"
+	head.LayoutOrder = MAIN_ORDER
+	head.BackgroundTransparency = 1
+	head.Size = UDim2.new(1, -8, 0, 34)
+	head.Parent = list
+	local crown = Icon.make(head, "👑", UDim2.fromOffset(26, 26))
+	crown.AnchorPoint = Vector2.new(0, 0.5)
+	crown.Position = UDim2.new(0, 10, 0.5, 0)
+	local title = UIKit.label(head, "Main Quest", Enum.Font.FredokaOne, 20, baby.lilac.deep)
+	title.Position = UDim2.fromOffset(44, 0)
+	title.Size = UDim2.new(0.6, -44, 1, 0)
+	title.TextWrapped = false
+	local row = Instance.new("Frame")
+	row.Name = "MainQuest"
+	row.LayoutOrder = MAIN_ORDER + 1
+	row.Size = UDim2.new(1, -8, 0, ROW_HEIGHT)
+	row.BackgroundColor3 = baby.lilac.light
+	row.Parent = list
+	UIKit.corner(row, 12)
+	UIKit.outline(row, if goal.ready then baby.mint.deep else baby.lilac.deep, 2)
+	local icon = Icon.make(row, goal.icon, UDim2.fromOffset(44, 44))
+	icon.AnchorPoint = Vector2.new(0, 0.5)
+	icon.Position = UDim2.new(0, 12, 0.5, 0)
+	local words = UIKit.label(row, goal.text, Enum.Font.FredokaOne, 17, palette.ink)
+	words.Position = UDim2.fromOffset(66, 8)
+	words.Size = UDim2.new(1, -66 - 130, 0, 22)
+	words.TextTruncate = Enum.TextTruncate.AtEnd
+	words.TextWrapped = false
+	local barColor = if goal.ready then baby.mint.fill elseif goal.kind == "level" then baby.lilac.fill else baby.butter.fill
+	local track = UIKit.bar(row, goal.progress, barColor)
+	track.Position = UDim2.fromOffset(66, 34)
+	track.Size = UDim2.new(1, -66 - 130, 0, 10)
+	local detail = if goal.kind == "build"
+		then `{goal.amount} · +{MainQuestRules.reward(MainQuests, goal.cost)} shop XP when built`
+		else `{goal.amount} of the way there`
+	local pay = UIKit.label(row, detail, Enum.Font.GothamBold, 13, palette.inkSoft)
+	pay.Position = UDim2.fromOffset(66, 50)
+	pay.Size = UDim2.new(1, -66 - 130, 0, 18)
+	pay.TextTruncate = Enum.TextTruncate.AtEnd
+	pay.TextWrapped = false
+	local action: GuiObject
+	if goal.ready then
+		local button = UIKit.button(row, "Build", UIKit.Colors.Success)
+		button.Name = "Build"
+		button.Activated:Connect(function()
+			buildMain(goal)
+		end)
+		action = button
+	elseif goal.kind == "build" then
+		local cash = player:GetAttribute("Cash")
+		local short = goal.cost - (if typeof(cash) == "number" then cash else 0)
+		action = UIKit.label(row, `{MainQuestRules.money(short)} to go`, Enum.Font.FredokaOne, 15, palette.hint)
+	else
+		action = UIKit.label(row, "Keep going!", Enum.Font.FredokaOne, 15, palette.hint)
+	end
+	action.Size = UDim2.fromOffset(116, 48)
+	action.AnchorPoint = Vector2.new(1, 0.5)
+	action.Position = UDim2.new(1, -10, 0.5, 0)
+	if action:IsA("TextLabel") then
+		action.TextXAlignment = Enum.TextXAlignment.Center
+	end
+	for index, item in MainQuest.others() do
+		if index > MAIN_THEN then
+			break
+		end
+		local line = Instance.new("Frame")
+		line.Name = `MainThen{index}`
+		line.LayoutOrder = MAIN_ORDER + 1 + index
+		line.Size = UDim2.new(1, -24, 0, 30)
+		line.BackgroundColor3 = palette.row
+		line.Parent = list
+		UIKit.corner(line, 10)
+		local small = Icon.make(line, item.icon, UDim2.fromOffset(22, 22))
+		small.AnchorPoint = Vector2.new(0, 0.5)
+		small.Position = UDim2.new(0, 8, 0.5, 0)
+		local text = UIKit.label(line, `Then: {item.name} · {MainQuestRules.money(item.cost)}`, Enum.Font.GothamBold, 13, palette.inkSoft)
+		text.Position = UDim2.fromOffset(38, 0)
+		text.Size = UDim2.new(1, -46, 1, 0)
+		text.TextTruncate = Enum.TextTruncate.AtEnd
+		text.TextWrapped = false
+	end
+end
+
 local function renderPanel()
 	local current = view
 	if not panel.Visible or not current then
@@ -274,6 +417,7 @@ local function renderPanel()
 	clearChildren(list)
 	weekLabel = nil
 	local palette = UIKit.colorsFor(panel)
+	mainSection(palette)
 	for index, quest in current.quests do
 		questRow(index, quest, palette, false)
 	end
@@ -440,6 +584,32 @@ function QuestController.Start()
 	end)
 	Remotes.QuestState.OnClientEvent:Connect(onState)
 	Remotes.QuestClaim.OnClientEvent:Connect(onClaimed)
+	-- The main quest: its row and the window follow the goal; a first build plays its moment and a toast
+	QuestStrip.onBuild(buildMain)
+	MainQuest.onChanged(function(goal)
+		QuestStrip.setMain(goal)
+		renderPanel()
+	end)
+	QuestStrip.setMain(MainQuest.current())
+	Remotes.BattleStarted.OnClientEvent:Connect(function(payload: unknown)
+		QuestStrip.setFighting(true)
+		bossFight = typeof(payload) == "table" and typeof((payload :: any).boss) == "string"
+		renderTracker()
+	end)
+	Remotes.BattleEnded.OnClientEvent:Connect(function()
+		QuestStrip.setFighting(false)
+		bossFight = false
+		renderTracker()
+	end)
+	Remotes.MainQuestDone.OnClientEvent:Connect(function(shelfId: unknown, xp: unknown)
+		if typeof(shelfId) ~= "string" or typeof(xp) ~= "number" then
+			return
+		end
+		local def = Shelves.ById[shelfId]
+		local name = if def then def.name else shelfId
+		QuestStrip.mainDone(name, xp)
+		UIController.Notify(`Main quest done: {name} built! +{xp} shop XP`, false, nil, "Level")
+	end)
 	Remotes.QuestState:FireServer() -- today's quests, whatever order the controllers started in
 	tracker:GetPropertyChangedSignal("AbsoluteSize"):Connect(place) -- a fold moves what rides under it at once
 	UIController.GetCashPill():GetPropertyChangedSignal("AbsoluteSize"):Connect(place) -- a phone's chip beside the cash

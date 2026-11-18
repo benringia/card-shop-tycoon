@@ -45,6 +45,7 @@ local NAMES = {
 	"GiftClaim", -- client → server: (kind: "daily" | "weekly" | "monthly") claim it; server → client: (kind, day: number, lines: { GiftRules.Line }) its win moment (GiftController)
 	"QuestState", -- server → client: (view: QuestRules.View?, done: number?) today's quests (nil before Pish's tour ends), a quest just finished; client → server: () send it again (QuestService)
 	"QuestClaim", -- client → server: (which: number | "bonus") claim a done quest or the bonus chest; server → client: (which, cash: number, xp: number, items: { { item, count } }) its reward moment (QuestController)
+	"MainQuestDone", -- server → client: (shelfId: string, xp: number) a main quest item's first build paid its shop XP: its moment on the strip (MainQuestService, QuestController)
 	"WelcomeBack", -- server → client: (summary: { minutes, units, cash, xp, sold: { [productId]: number }, empty: boolean }) what the shop sold while you were away; client → server: () ready to show it (OfflineService)
 	"TeamInvite", -- client → server: (userId: number) invite that player to your team; server → client: (fromUserId: number, members: { number }, seconds: number) an invite card (TeamService)
 	"TeamAnswer", -- client → server: (fromUserId: number, join: boolean) answer an invite
@@ -197,6 +198,7 @@ return {
 	GiftClaim = remotes.GiftClaim,
 	QuestState = remotes.QuestState,
 	QuestClaim = remotes.QuestClaim,
+	MainQuestDone = remotes.MainQuestDone,
 	WelcomeBack = remotes.WelcomeBack,
 	TeamInvite = remotes.TeamInvite,
 	TeamAnswer = remotes.TeamAnswer,

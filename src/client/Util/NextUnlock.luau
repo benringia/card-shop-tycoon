@@ -68,6 +68,11 @@ function NextUnlock.attach(parent: GuiObject, position: UDim2, width: number): T
 	return label
 end
 
+-- Everything a shop level opens (the main quest's level goal once everything is built: Util/MainQuest)
+function NextUnlock.list(): { { level: number, name: string } }
+	return unlocks()
+end
+
 -- Hides every next-unlock line (a phone's slim HUD) or shows them again
 function NextUnlock.setHidden(on: boolean)
 	hidden = on

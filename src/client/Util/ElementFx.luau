@@ -696,20 +696,22 @@ function ElementFx.gather(at: Vector3, color: Color3, seconds: number, radius: n
 	return stop
 end
 
--- A boss's or wild monster's normal attack landing at `at`, from `from` (Config/AttackFx BOSS and MONSTER strike)
-function ElementFx.monsterStrike(style: string, at: Vector3, from: Vector3, color: Color3)
+-- A boss's or wild monster's normal attack landing at `at`, from `from` (Config/AttackFx BOSS and MONSTER strike);
+-- `scale` sizes it (a boss's hit on a creature: AttackFx BOSS_HIT strikeScale; 1 when nil)
+function ElementFx.monsterStrike(style: string, at: Vector3, from: Vector3, color: Color3, scale: number?)
+	local s = scale or 1
 	if style == "leaves" then
-		ElementFx.slash(at, from, color, "vine", 2, 1.4)
-		ElementFx.burst(at, color, 1.3)
-		sparks(at - Vector3.new(0, 1.5, 0), DUST, 12, 16, 1, 20)
+		ElementFx.slash(at, from, color, "vine", 2, 1.4 * s)
+		ElementFx.burst(at, color, 1.3 * s)
+		sparks(at - Vector3.new(0, 1.5, 0), DUST, 12 * s, 16, 1 * s, 20)
 	elseif style == "fangs" then
-		ElementFx.slash(at, from, color, "claw", 1, 1.3)
-		ElementFx.slash(at, from, color, "claw", 2, 1.3)
-		ElementFx.burst(at, Color3.fromRGB(150, 230, 90), 1.1) -- poison
+		ElementFx.slash(at, from, color, "claw", 1, 1.3 * s)
+		ElementFx.slash(at, from, color, "claw", 2, 1.3 * s)
+		ElementFx.burst(at, Color3.fromRGB(150, 230, 90), 1.1 * s) -- poison
 	elseif style == "embers" then
-		ElementFx.burst(at, color, 1.6)
-		shockwave(at - Vector3.new(0, 2.5, 0), color, 6, 0.35)
-		sparks(at - Vector3.new(0, 1.5, 0), DUST, 14, 18, 1.2, 25)
+		ElementFx.burst(at, color, 1.6 * s)
+		shockwave(at - Vector3.new(0, 2.5, 0), color, 6 * s, 0.35)
+		sparks(at - Vector3.new(0, 1.5, 0), DUST, 14 * s, 18, 1.2 * s, 25)
 	elseif style == "bite" then
 		ElementFx.slash(at + Vector3.new(0, 0.6, 0), from, WEB, "claw", 1, 0.9, -15)
 		ElementFx.slash(at - Vector3.new(0, 0.6, 0), from, WEB, "claw", 2, 0.9, 165)
@@ -729,26 +731,26 @@ function ElementFx.monsterStrike(style: string, at: Vector3, from: Vector3, colo
 		ElementFx.burst(at, color, 1.0) -- the splash
 	elseif style == "volt" then
 		-- the Storm Sovereign's crackling bite (2026-11-11): two claw marks, a bolt off its jaws, a burst
-		ElementFx.slash(at, from, color, "claw", 1, 1.3)
-		ElementFx.bolt(from + Vector3.new(0, 2, 0), at, color, 0.18, 1.1)
-		ElementFx.burst(at, color, 1.2)
+		ElementFx.slash(at, from, color, "claw", 1, 1.3 * s)
+		ElementFx.bolt(from + Vector3.new(0, 2, 0), at, color, 0.18, 1.1 * s)
+		ElementFx.burst(at, color, 1.2 * s)
 	elseif style == "spark" then
 		ElementFx.bolt(from + Vector3.new(0, 1, 0), at, color, 0.2, 0.8)
 		ElementFx.burst(at, color, 0.9)
 	elseif style == "voidbite" then
 		-- the Rift Devourer's mandibles snapping shut (2026-11-11): two big crossing slashes, a dark burst, violet shards
-		ElementFx.slash(at, from, color, "claw", 1, 1.7, 35)
-		ElementFx.slash(at, from, color, "claw", 2, 1.7, -145)
-		ElementFx.burst(at, VOID, 1.5)
-		ElementFx.burst(at, color, 1.1)
-		sparks(at, color, detail(14), 20, 1, 12)
+		ElementFx.slash(at, from, color, "claw", 1, 1.7 * s, 35)
+		ElementFx.slash(at, from, color, "claw", 2, 1.7 * s, -145)
+		ElementFx.burst(at, VOID, 1.5 * s)
+		ElementFx.burst(at, color, 1.1 * s)
+		sparks(at, color, detail(14) * s, 20, 1 * s, 12)
 	elseif style == "voidclaw" then
 		-- its summons' claws (2026-11-11): three slashes, a dark burst, violet shards
 		for index = 1, 3 do
-			ElementFx.slash(at, from, color, "claw", index, 1.25)
+			ElementFx.slash(at, from, color, "claw", index, 1.25 * s)
 		end
-		ElementFx.burst(at, VOID, 1.1)
-		sparks(at, color, detail(10), 16, 0.8, 12)
+		ElementFx.burst(at, VOID, 1.1 * s)
+		sparks(at, color, detail(10) * s, 16, 0.8 * s, 12)
 	end
 end
 
@@ -886,46 +888,152 @@ end
 
 -- A boss's ring attack landing (Config/AttackFx BOSS release): a slam on the ground at `ground` (its centre) over
 -- `radius`; a swipe from `ground` (the boss's spot) along `direction` for `length`, `halfAngle` degrees either side
+-- A root bursting up through the ground at `spot` and curling `outward` (`size` x the Warden's slam roots): four
+-- segments, thinner and bending further as they go, with a mossy tip, pulled back down after `hold` seconds
+local function curlRoot(spot: Vector3, outward: Vector3, size: number, hold: number)
+	local flat = Vector3.new(outward.X, 0, outward.Z)
+	local away = if flat.Magnitude > 0.01 then flat.Unit else Vector3.new(math.random() - 0.5, 0, math.random() - 0.5).Unit
+	local frame = CFrame.lookAt(spot, spot - away) -- facing the centre, so bending "back" curls it outward
+	local bend = math.rad(math.random(10, 18))
+	local segments: { Part } = {}
+	local rise = 0
+	for index, thickness in { 2.4, 1.8, 1.25, 0.75 } do
+		local span = (4.4 - index * 0.6) * size
+		frame = frame * CFrame.Angles(-bend * (if index == 1 then 0.3 else 1), 0, 0)
+		local tip = index == 4
+		local piece = part(Vector3.new(thickness * size, span, thickness * size), if tip then MOSS else ROOT, spot)
+		piece.Material = if tip then Enum.Material.Grass else Enum.Material.Wood
+		piece.CFrame = frame * CFrame.new(0, span / 2, 0)
+		frame = frame * CFrame.new(0, span, 0)
+		rise += span
+		table.insert(segments, piece)
+	end
+	for _, piece in segments do
+		local up = piece.CFrame
+		piece.CFrame = up - Vector3.new(0, rise, 0)
+		TweenService:Create(piece, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { CFrame = up }):Play()
+		task.delay(hold, function()
+			TweenService:Create(piece, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { CFrame = up - Vector3.new(0, rise, 0) }):Play()
+		end)
+		Debris:AddItem(piece, hold + 0.5)
+	end
+	sparks(spot + Vector3.new(0, 1, 0), DUST, 10 * size, 22, 1.4 * size, 30)
+end
+
+-- A void tendril reaching from `from` to wherever `target()` is over `seconds`, holding a beat, then fading (the Rift
+-- Devourer's normal hit, AttackFx BOSS_HIT): a dark core inside a glow of `color`, curling a little as it goes
+local function tendril(from: Vector3, target: () -> Vector3, color: Color3, seconds: number)
+	local base = holder(from, seconds + 0.9)
+	local tip = holder(from, seconds + 0.9)
+	local a0, a1 = Instance.new("Attachment"), Instance.new("Attachment")
+	a0.Parent, a1.Parent = base, tip
+	local function beam(texture: string, width: number, tint: Color3, emission: number, brightness: number): Beam
+		local b = Instance.new("Beam")
+		b.Attachment0, b.Attachment1 = a0, a1
+		b.Texture = texture
+		b.TextureMode = Enum.TextureMode.Stretch
+		b.Width0, b.Width1 = width, width * 0.5
+		b.Color = ColorSequence.new(tint)
+		b.LightEmission = emission
+		b.LightInfluence = 0
+		b.Brightness = brightness
+		b.FaceCamera = true
+		b.Segments = 16
+		b.CurveSize0, b.CurveSize1 = 2.5, -2
+		b.Transparency = NumberSequence.new(0.05)
+		b.Parent = base
+		return b
+	end
+	local beams = { beam(TEX.glow, 3, color, 1, 2), beam(TEX.streak, 1.1, VOID, 0, 1) }
+	light(tip, color, 12, 2.5, seconds + 0.6)
+	sparks(from, color, 10, 16, 0.9, 10)
+	local started = os.clock()
+	local connection: RBXScriptConnection
+	connection = RunService.RenderStepped:Connect(function()
+		local t = math.clamp((os.clock() - started) / seconds, 0, 1)
+		tip.CFrame = CFrame.new(from:Lerp(target(), 1 - (1 - t) ^ 3))
+		if t >= 1 then
+			connection:Disconnect()
+			task.delay(0.15, function()
+				for _, b in beams do
+					TweenService:Create(b, TweenInfo.new(0.3), { Width0 = 0, Width1 = 0 }):Play()
+				end
+			end)
+		end
+	end)
+end
+
+-- The way a boss's normal hit travels (Util/FightFx): its mouth (or raised arm), the ground in front of it and under
+-- its target, and the target's middle wherever it is now
+export type ThrowPath = { mouth: Vector3, feet: Vector3, floor: Vector3, target: () -> Vector3 }
+
+-- A boss's normal hit flying to its target over `travel` seconds (Config/AttackFx BOSS_HIT throws, the owner's pick A):
+-- it lands as the hit does, whose impact is the hit's own. Roots lashing up out of the ground along the way, bigger as
+-- they near it (the Warden); a venom glob (the Brood Queen), a fireball (the Ember Colossus) or an ice shard (the Frost
+-- Tyrant) arcing over; a bolt charging in its jaws then striking (the Storm Sovereign); a void tendril reaching out
+-- (the Rift Devourer). The Prism Hydra throws its phase's.
+function ElementFx.bossThrow(style: string, path: ThrowPath, color: Color3, travel: number)
+	local seconds = math.max(travel, 0.05)
+	if style == "roots" then
+		local along = path.floor - path.feet
+		local count = math.max(5, detail(8)) -- a line you can follow even on low graphics (4 parts each)
+		shockwave(path.feet, color, 5, 0.35)
+		for index = 1, count do
+			local share = index / count
+			task.delay(seconds * share * 0.9, function()
+				curlRoot(path.feet:Lerp(path.floor, share), along, 0.42 + 0.33 * share, 0.45) -- about 7 studs at the creature
+			end)
+		end
+	elseif style == "venom" then
+		local glob = AttackFx.BOSS_HIT.venom
+		local tint = Color3.fromRGB(glob[1], glob[2], glob[3])
+		ElementFx.projectile(path.mouth, path.target, tint, seconds, 5, function() end, { scale = 1.8 })
+		sparks(path.mouth, tint, 10, 12, 0.8, 30)
+	elseif style == "fireball" then
+		ElementFx.projectile(path.mouth, path.target, color, seconds, 6, function() end, { scale = 2.2, flames = true })
+	elseif style == "iceShard" then
+		flashSprite(path.mouth, "shard", color, 2, 4.5, 0.25, { core = false })
+		ElementFx.projectile(path.mouth, path.target, color, seconds, 3, function() end, { scale = 1.8, rings = 1 })
+	elseif style == "bolt" then
+		ElementFx.gather(path.mouth, color, seconds, 3)
+		task.delay(seconds, function()
+			ElementFx.bolt(path.mouth, path.target(), color, 0.22, 1.6, true) -- its impact is the hit's
+		end)
+	elseif style == "tendril" then
+		tendril(path.mouth, path.target, color, seconds)
+	end
+end
+
+-- A body flashing white for `seconds` (a boss's hit landing on a creature, the owner's pick C): a Highlight over its
+-- model filled white, fading out
+function ElementFx.flashWhite(root: BasePart, seconds: number)
+	local model = root:FindFirstAncestorOfClass("Model")
+	if not model then
+		return
+	end
+	local glow = Instance.new("Highlight")
+	glow.Name = "HitFlash"
+	glow.FillColor = WHITE
+	glow.FillTransparency = 0.1
+	glow.OutlineTransparency = 1
+	glow.DepthMode = Enum.HighlightDepthMode.Occluded
+	glow.Adornee = model
+	glow.Parent = model
+	TweenService:Create(glow, TweenInfo.new(seconds, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { FillTransparency = 1 }):Play()
+	Debris:AddItem(glow, seconds + 0.05)
+end
+
 function ElementFx.bossRelease(style: string, ground: Vector3, radius: number, direction: Vector3, length: number, halfAngle: number, color: Color3, height: number?)
 	if style == "roots" then
 		ElementFx.eruption(ground, color, radius, 10)
 		-- Big roots burst up through the ground and curl outward: one thick one in the middle, a ring of them round it,
-		-- each four segments, thinner and bending further as they go, with a mossy tip, pulled back down after a moment
-		local function root(spot: Vector3, outward: Vector3, size: number)
-			local flat = Vector3.new(outward.X, 0, outward.Z)
-			local away = if flat.Magnitude > 0.01 then flat.Unit else Vector3.new(math.random() - 0.5, 0, math.random() - 0.5).Unit
-			local frame = CFrame.lookAt(spot, spot - away) -- facing the centre, so bending "back" curls it outward
-			local bend = math.rad(math.random(10, 18))
-			local segments: { Part } = {}
-			local rise = 0
-			for index, thickness in { 2.4, 1.8, 1.25, 0.75 } do
-				local span = (4.4 - index * 0.6) * size
-				frame = frame * CFrame.Angles(-bend * (if index == 1 then 0.3 else 1), 0, 0)
-				local tip = index == 4
-				local piece = part(Vector3.new(thickness * size, span, thickness * size), if tip then MOSS else ROOT, spot)
-				piece.Material = if tip then Enum.Material.Grass else Enum.Material.Wood
-				piece.CFrame = frame * CFrame.new(0, span / 2, 0)
-				frame = frame * CFrame.new(0, span, 0)
-				rise += span
-				table.insert(segments, piece)
-			end
-			for _, piece in segments do
-				local up = piece.CFrame
-				piece.CFrame = up - Vector3.new(0, rise, 0)
-				TweenService:Create(piece, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { CFrame = up }):Play()
-				task.delay(1.1, function()
-					TweenService:Create(piece, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { CFrame = up - Vector3.new(0, rise, 0) }):Play()
-				end)
-				Debris:AddItem(piece, 1.6)
-			end
-			sparks(spot + Vector3.new(0, 1, 0), DUST, 10 * size, 22, 1.4 * size, 30)
-		end
-		root(ground, Vector3.zero, 1.35)
+		-- pulled back down after a moment
+		curlRoot(ground, Vector3.zero, 1.35, 1.1)
 		local count = detail(8)
 		for index = 1, count do
 			local angle = index / count * math.pi * 2 + math.random() * 0.4
 			local away = Vector3.new(math.cos(angle), 0, math.sin(angle))
-			root(ground + away * radius * (0.45 + math.random() * 0.4), away, 0.85 + math.random() * 0.3)
+			curlRoot(ground + away * radius * (0.45 + math.random() * 0.4), away, 0.85 + math.random() * 0.3, 1.1)
 		end
 	elseif style == "web" then
 		-- The web spit, big (owner 2026-11-03): from her fangs (half her height up) a thick spray of strands lands across

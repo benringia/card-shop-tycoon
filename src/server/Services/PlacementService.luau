@@ -86,6 +86,7 @@ local PlacementService = {}
 
 local layouts: { [Player]: { [string]: PlacedShelf } } = {}
 local placedHandlers: { (player: Player, shelfId: string) -> () } = {} -- PlacementService.OnPlaced
+local soldHandlers: { (player: Player, shelfId: string) -> () } = {} -- PlacementService.OnSold
 local allowAction = RateLimiter.new(PlacementConfig.ACTION_COOLDOWN)
 
 local function notify(player: Player, message: string, isError: boolean)
@@ -835,6 +836,9 @@ local function onSell(player: Player, uid: unknown)
 	if refund > 0 then
 		EconomyService.AddCash(player, refund)
 	end
+	for _, handler in soldHandlers do
+		task.spawn(handler, player, shelf.def.id)
+	end
 	local item = shelf.def.requiresItem
 	if item then
 		ItemService.GiveItem(player, item, 1)
@@ -1073,6 +1077,11 @@ end
 
 function PlacementService.OnPlaced(callback: (player: Player, shelfId: string) -> ())
 	table.insert(placedHandlers, callback)
+end
+
+-- A shelf sold back (main quests: the shop may have none of it left)
+function PlacementService.OnSold(callback: (player: Player, shelfId: string) -> ())
+	table.insert(soldHandlers, callback)
 end
 
 function PlacementService.GetShelves(player: Player): { PlacedShelf }

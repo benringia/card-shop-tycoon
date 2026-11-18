@@ -8,7 +8,9 @@
 -- Bosses and wild monsters (Config/AttackFx BOSS, MONSTER) play their keyed clips (Util/MonsterMoves picks which): a
 -- wind-up before each hit, the strike with an impact where it lands; a boss also the special wind-up with sparks
 -- pulling in over a ring's warning, then the release with its effect over the ring. Their effects always play: one
--- monster per fight, and they show where it hit.
+-- monster per fight, and they show where it hit. A boss's normal hit (AttackFx BOSS_HIT, owner 2026-11-18, pick A + C)
+-- travels from it to its target over the end of its wind-up and lands hard: a bigger impact, a harder shake, and the
+-- creature it hits frozen for a beat, flashing white and knocked away from the boss and back.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -129,7 +131,14 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		if not body then
 			body = resolve.creature(marker)
 		end
-		return PackHit.scaleFor(if body then body.root:FindFirstAncestorOfClass("Model") else nil)
+		local foe = PackHit.scaleFor(if body then body.root:FindFirstAncestorOfClass("Model") else nil)
+		return FightFxRules.foeCap(foe, Extras.bossFight(), AttackFx.BOSS_TONE) -- toned on a big boss
+	end
+
+	-- A creature's basic attack look at its grade (AttackFx GRADE), toned down in a boss fight so the boss and its hits
+	-- read through it (AttackFx BOSS_TONE, owner 2026-11-18)
+	local function tierOf(grade: string?): Tier
+		return FightFxRules.toned(FightFxRules.tier(grade, AttackFx), Extras.bossFight(), AttackFx.BOSS_TONE)
 	end
 
 	local function hitSound(element: string, at: Vector3)
@@ -178,7 +187,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		if not marker or not view or not kind or not FightFxRules.budget(active, Extras.enabled(), AttackFx) or Spotlight.active() then
 			return
 		end
-		local tier = FightFxRules.tier(view.grade, AttackFx)
+		local tier = tierOf(view.grade)
 		local s = tier.scale
 		local lead = math.max(0, tonumber(event.seconds) or 0)
 		local tint = color(AttackFx.ELEMENT[view.element].color)
@@ -372,7 +381,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		local tint = color(AttackFx.ELEMENT[view.element].color)
 		local spot = targetPosition(event.to, view.root.Position)
 		resolve.pose(marker, "strike")
-		local tier = FightFxRules.tier(view.grade, AttackFx)
+		local tier = tierOf(view.grade)
 		hitPicture(view.element, spot, 0.7 * tier.scale * foeScale(event.to), tint, 1)
 		hitSound(view.element, spot)
 	end
@@ -776,6 +785,60 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		return move
 	end
 
+	-- A boss's normal hit flying from it to the creature it winds up at (AttackFx BOSS_HIT, the owner's pick A): it
+	-- leaves so it lands with the hit, the charge's `seconds` from now
+	local function throwAt(event: any, view: MonsterView, spec: any, tint: Color3)
+		local style = FightFxRules.throwStyle(spec.strike, AttackFx.BOSS_HIT)
+		local wait, travel = FightFxRules.bossThrow(tonumber(event.seconds) or 0, AttackFx.BOSS_HIT)
+		if not style or travel < 0.05 then
+			return
+		end
+		local to = event.to
+		local function target(): Vector3
+			return targetPosition(to, view.root.Position)
+		end
+		task.delay(wait, function()
+			if not alive or not view.root.Parent then
+				return
+			end
+			local root = view.root.Position
+			local aim = target()
+			local flat = Vector3.new(aim.X - root.X, 0, aim.Z - root.Z)
+			local forward = if flat.Magnitude > 0.05 then flat.Unit else Vector3.new(0, 0, -1)
+			local front = root + forward * view.height * 0.3
+			ElementFx.bossThrow(style, {
+				mouth = root + Vector3.new(0, view.height * 0.55, 0) + forward * view.height * 0.25,
+				feet = Vector3.new(front.X, RingFx.groundY(front.X, front.Y, front.Z), front.Z),
+				floor = Vector3.new(aim.X, RingFx.groundY(aim.X, aim.Y, aim.Z), aim.Z),
+				target = target,
+			}, tint, travel)
+		end)
+	end
+
+	-- A boss's hit landing on a creature (the owner's pick C): it freezes for a beat (a hit-stop), flashes white, then is
+	-- knocked away from the boss and back. Nothing for the player or a monster
+	local function knockBack(id: string, from: Vector3)
+		local marker = resolve.marker(id)
+		local creature = if marker then resolve.creature(marker) else nil
+		if not marker or not creature then
+			return
+		end
+		local hit = AttackFx.BOSS_HIT
+		if resolve.freeze then
+			resolve.freeze(marker, hit.stop)
+		end
+		ElementFx.flashWhite(creature.root, hit.flash)
+		task.delay(hit.stop, function()
+			if not alive or not marker.Parent then
+				return
+			end
+			local flat = Vector3.new(marker.Position.X - from.X, 0, marker.Position.Z - from.Z)
+			if flat.Magnitude > 0.05 then
+				resolve.dash(marker, marker.Position + flat.Unit * hit.knock, 1, hit.knockSeconds)
+			end
+		end)
+	end
+
 	-- A boss's or wild monster's move: its clip and, with looks (AttackFx BOSS or MONSTER), the effect
 	local function onMonster(event: any, marker: BasePart, view: MonsterView)
 		local move = playMove(event, marker, view)
@@ -805,6 +868,14 @@ function FightFx.new(resolve: Resolve): Dispatcher
 			spec = merged
 		end
 		local tint = color(spec.color)
+		local isBoss = AttackFx.BOSS[view.key] ~= nil
+		if event.type == "charge" then
+			-- its normal hit travels to its target over the end of the wind-up (BOSS_HIT, pick A); wild monsters' don't
+			if isBoss and typeof(event.to) == "string" then
+				throwAt(event, view, spec, tint)
+			end
+			return
+		end
 		if event.type == "spawn" then
 			-- its summons come through rifts (the Rift Devourer, 2026-11-11): one call a wave, a rift at each one's
 			-- corner (BattleService puts where it came out, its height and its emerge time in the event)
@@ -904,12 +975,19 @@ function FightFx.new(resolve: Resolve): Dispatcher
 			end
 		elseif event.type == "attack" and not event.dodged then
 			local spot = targetPosition(event.to, view.root.Position)
+			local hit = AttackFx.BOSS_HIT
 			if spec.strike == "frost" then
 				IceFx.strike(spot, view.root.Position)
+				if isBoss then
+					ElementFx.burst(spot, tint, hit.strikeScale * 0.7) -- the ice strike has no size of its own
+				end
 			else
-				ElementFx.monsterStrike(spec.strike, spot, view.root.Position, tint)
+				ElementFx.monsterStrike(spec.strike, spot, view.root.Position, tint, if isBoss then hit.strikeScale else 1)
 			end
-			ScreenFx.shakeAt(AttackFx.SHAKE.bossStrike, spot)
+			ScreenFx.shakeAt(if isBoss then hit.shake else AttackFx.SHAKE.bossStrike, spot)
+			if isBoss and typeof(event.to) == "string" then
+				knockBack(event.to, view.root.Position)
+			end
 			local now = os.clock()
 			if now - strikeSoundAt > 0.2 then -- a group hit in one moment sounds once
 				strikeSoundAt = now

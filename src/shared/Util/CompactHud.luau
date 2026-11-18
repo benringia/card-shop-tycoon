@@ -99,7 +99,8 @@ end
 -- and shop level, the cash, your creature and your weapon side by side above the jump button: Util/PairRules, its round
 -- 2); the next-unlock line, the quick Party button, the creature's name, empty party slots and the rest of the party
 -- never (they're a swipe or a hold away); the gift tile once a gift is ready; Turts' chip just after he restocks; the
--- quests as a chip by the cash instead of the strip. A computer shows everything as before. Each piece still follows
+-- quests as a chip by the cash instead of the strip (the main quest's row folded into it: the chip shows the main quest
+-- once the day's quests are done, owner 2026-11-18). A computer shows everything as before. Each piece still follows
 -- its own rules too (the gift tile counting or ready, Turts' chip in town after the tour...).
 export type PhonePieces = {
 	nextUnlock: boolean,
@@ -111,6 +112,7 @@ export type PhonePieces = {
 	giftTile: boolean,
 	turtsChip: boolean,
 	questChip: boolean,
+	mainRow: boolean, -- the main quest's row under the quest strip (Util/QuestStrip)
 }
 
 function CompactHud.phonePieces(compact: boolean, inTown: boolean, giftReady: boolean, turtsFresh: boolean): PhonePieces
@@ -125,6 +127,7 @@ function CompactHud.phonePieces(compact: boolean, inTown: boolean, giftReady: bo
 			giftTile = true,
 			turtsChip = true,
 			questChip = false,
+			mainRow = true,
 		}
 	end
 	return {
@@ -137,6 +140,7 @@ function CompactHud.phonePieces(compact: boolean, inTown: boolean, giftReady: bo
 		giftTile = giftReady,
 		turtsChip = turtsFresh,
 		questChip = true,
+		mainRow = false,
 	}
 end
 
