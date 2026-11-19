@@ -113,6 +113,54 @@ return {
 		expect.equal(MusicRules.inTown(900, 400, BOUNDS, 40), false, "the Wild valley")
 	end,
 
+	-- Owner 2026-11-19 ("should we have a playlist for music for town? instead of just one?", then "add the two extra
+	-- music with volume 0.21"): White Owl, Wistful Wonderings and Soft Tranquility take turns, each at its own volume
+	["the town plays three pieces in turn, the two new ones at 0.21"] = function()
+		local town = Music.TOWN
+		expect.equal(#town.tracks, 3)
+		local names = {}
+		for index, id in town.tracks do
+			for _, option in town.options do
+				if option.id == id then
+					names[index] = option.name
+				end
+			end
+			assert(names[index], `track {index} is one of the vetted options`)
+		end
+		assert(string.find(names[1], "White Owl", 1, true), "White Owl first")
+		assert(string.find(names[2], "Wistful Wonderings", 1, true), "then Wistful Wonderings")
+		assert(string.find(names[3], "Soft Tranquility", 1, true), "then Soft Tranquility")
+		expect.equal(MusicRules.trackVolume(town, 1), 0.18, "White Owl keeps the owner's number")
+		expect.equal(MusicRules.trackVolume(town, 2), 0.21)
+		expect.equal(MusicRules.trackVolume(town, 3), 0.21)
+		expect.equal(MusicRules.trackVolume({ volume = 0.05 }, 2), 0.05, "a place without its own numbers: its volume")
+		expect.equal(MusicRules.trackVolume({ volume = 0.05, volumes = { [2] = 0.1 } }, 1), 0.05, "a track without one")
+	end,
+
+	-- Owner 2026-11-19: "randomize the town music between those 3 music every time player came back to town or
+	-- starting the game"
+	["the town starts on a random piece each time you arrive, never the one just heard"] = function()
+		expect.equal(Music.TOWN.rotate, "random")
+		expect.equal(MusicRules.randomTrack(nil, 3, 0), 1, "starting the game: any of the three")
+		expect.equal(MusicRules.randomTrack(nil, 3, 0.5), 2)
+		expect.equal(MusicRules.randomTrack(nil, 3, 0.999), 3)
+		for previous = 1, 3 do
+			local seen = {}
+			for step = 0, 9 do
+				local pick = MusicRules.randomTrack(previous, 3, step / 10)
+				assert(pick >= 1 and pick <= 3 and pick ~= previous, `after {previous}: another piece ({pick})`)
+				seen[pick] = true
+			end
+			local others = 0
+			for _ in seen do
+				others += 1
+			end
+			expect.equal(others, 2, "either of the other two")
+		end
+		expect.equal(MusicRules.randomTrack(1, 1, 0.7), 1, "one piece: it repeats")
+		expect.equal(MusicRules.randomTrack(nil, 3, 1), 3, "a roll of exactly 1 stays in range")
+	end,
+
 	["the tracks take turns and wrap round"] = function()
 		expect.equal(MusicRules.nextTrack(0, 2), 1, "nothing played yet: the first")
 		expect.equal(MusicRules.nextTrack(1, 2), 2)

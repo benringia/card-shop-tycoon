@@ -78,6 +78,7 @@ local FrontierFxController = require(Controllers:WaitForChild("FrontierFxControl
 local WeaponRevealController = require(Controllers:WaitForChild("WeaponRevealController"))
 local SoundscapeController = require(Controllers:WaitForChild("SoundscapeController"))
 local TownNightController = require(Controllers:WaitForChild("TownNightController"))
+local TownDressController = require(Controllers:WaitForChild("TownDressController"))
 local BossChestController = require(Controllers:WaitForChild("BossChestController"))
 local DungeonController = require(Controllers:WaitForChild("DungeonController"))
 local DungeonPuzzleController = require(Controllers:WaitForChild("DungeonPuzzleController"))
@@ -95,6 +96,7 @@ local StoreController = require(Controllers:WaitForChild("StoreController"))
 local StoreWinController = require(Controllers:WaitForChild("StoreWinController"))
 local GiftController = require(Controllers:WaitForChild("GiftController"))
 local QuestController = require(Controllers:WaitForChild("QuestController"))
+local EventController = require(Controllers:WaitForChild("EventController"))
 local WelcomeBackController = require(Controllers:WaitForChild("WelcomeBackController"))
 local BulkOpenController = require(Controllers:WaitForChild("BulkOpenController"))
 local TeamController = require(Controllers:WaitForChild("TeamController"))
@@ -171,6 +173,7 @@ if Place.isFrontier() or Place.isDungeon() then
 		FrontierFxController.Start() -- its snow, red eyes, lightning, tornado, vortex, floating rocks and tremors
 		TeamController.Start() -- teams in the Frontier: Team up prompts, invites, the team strip, boss calls
 		QuestController.Start() -- daily quests: the tracker (not in the Dungeon: its objective holds the top right)
+		EventController.Start() -- the weekly event's chip under the quest strip (after QuestController)
 	end
 else
 	UIController.Start()
@@ -187,6 +190,7 @@ else
 	WildLoadingController.Start() -- the Wild's loading screen: holds you still until the valley round you is in
 	TreeSwayController.Start()
 	TownNightController.Start() -- the street lights brighter and fireflies at night
+	TownDressController.Start() -- string lights, falling leaves, shooting stars, an event day's colours and pennants
 	TownCritterController.Start()
 	TownPishController.Start() -- Town Pish, drawn on the server's marker (main game)
 	TownChikinController.Start() -- Town Chikin on the portal side, the same way (main game)
@@ -223,6 +227,7 @@ else
 	GiftController.Start() -- daily, weekly and monthly gifts: the Gift tile, the window, the win moments
 	TeamController.Start() -- teams in this world: Team up prompts, invites, the team strip, boss calls
 	QuestController.Start() -- daily quests: the tracker under the team strip, the window, claims (after TeamController)
+	EventController.Start() -- the weekly event's chip under the quest strip (after QuestController, before Turts' chip)
 	WelcomeBackController.Start() -- what the shop sold while you were away, once the screen is free
 	BulkOpenController.Start() -- Open 10: a stack of Bag packs opened at once, the cards in a grid
 	BuffController.Start()

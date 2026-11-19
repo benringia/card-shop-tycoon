@@ -13,6 +13,11 @@ return {
 		expect.equal(RevealRules.comesAlive("Common", true, false), true, "a card you never had")
 		expect.equal(RevealRules.comesAlive("Very Rare", false, false), false, "a Very Rare you have")
 		expect.equal(RevealRules.comesAlive("Common", false, false), false, "a Common you have")
+		-- Owner 2026-11-19 ("on early game, the creature models shown when opening a pack is rough and not loaded
+		-- fully"): a creature whose model isn't downloaded yet stays in its card (the card still reveals)
+		expect.equal(RevealRules.comesAlive("Legendary", true, false, false), false, "its model isn't in yet")
+		expect.equal(RevealRules.comesAlive("Common", true, false, false), false, "a new card, model not in yet")
+		expect.equal(RevealRules.comesAlive("Epic", false, false, true), true, "its model is in")
 		local alive = CardReveal.CREATURE
 		assert(alive.holdSeconds >= 1 and alive.holdSeconds <= 3, "a moment, not a wait")
 		assert(alive.height > 0 and alive.popSeconds > 0 and alive.backSeconds > 0, "its size and timings")

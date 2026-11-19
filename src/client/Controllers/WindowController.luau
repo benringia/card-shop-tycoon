@@ -120,14 +120,14 @@ local function wallUnderPointer(plot: Model): (string?, number?)
 	end
 	local side = hit.Instance:GetAttribute("WallSide") :: string
 	local here = floor.CFrame:PointToObjectSpace(hit.Position)
-	return side, WindowRules.snap(Windows, if side == "back" then here.X else here.Z)
+	return side, WindowRules.snapOn(Windows, side, if side == "back" or side == "front" then here.X else here.Z)
 end
 
 local function setTint(current: Session)
 	local color = if current.valid then PlacementConfig.GHOST_VALID_COLOR else PlacementConfig.GHOST_INVALID_COLOR
 	current.highlight.FillColor = color
 	current.highlight.OutlineColor = color
-	current.status.Text = if current.valid then "" elseif current.window then current.reason or "" else "Point at a side or back wall"
+	current.status.Text = if current.valid then "" elseif current.window then current.reason or "" elseif WindowRules.isPoster(Windows, current.style) then "Point at a wall or the front glass" else "Point at a side or back wall"
 	placeButton.BackgroundColor3 = if current.valid then UIKit.Colors.Accent else UIKit.Colors.Row
 	placeButton.TextTransparency = if current.valid then 0 else 0.5
 end
@@ -193,7 +193,7 @@ function WindowController.Begin(style: string, moving: number?)
 		return
 	end
 	WindowController.Cancel()
-	local ghost = WindowLooks.build(style, info.width, info.height)
+	local ghost = WindowLooks.make(Windows, style)
 	ghost.Name = "WindowGhost"
 	for _, part in ghost:GetDescendants() do
 		if part:IsA("BasePart") and part.Name ~= "Root" then
@@ -260,7 +260,7 @@ function WindowController.Tiles(list: ScrollingFrame, palette: any, firstOrder: 
 		view.LightDirection = Vector3.new(-1, -1, 1)
 		view.Parent = tile
 		UIKit.corner(view, 10)
-		local model = WindowLooks.build(id, info.width, info.height)
+		local model = WindowLooks.make(Windows, id)
 		model.Parent = view
 		local camera = Instance.new("Camera")
 		camera.FieldOfView = 30
@@ -273,7 +273,7 @@ function WindowController.Tiles(list: ScrollingFrame, palette: any, firstOrder: 
 		name.Size = UDim2.new(1, -20, 0, 22)
 		name.TextTruncate = Enum.TextTruncate.AtEnd
 		name.TextWrapped = false
-		local detail = UIKit.label(tile, `Window · Decor +{info.points}`, Enum.Font.GothamBold, 13, UIKit.Colors.Subtext)
+		local detail = UIKit.label(tile, if info.poster then "Poster · Walls or front glass" else `Window · Decor +{info.points}`, Enum.Font.GothamBold, 13, UIKit.Colors.Subtext)
 		detail.Position = UDim2.fromOffset(10, PICTURE + 34)
 		detail.Size = UDim2.new(1, -20, 0, 18)
 		local button = UIKit.button(tile, "", UIKit.Colors.Success)
@@ -285,7 +285,7 @@ function WindowController.Tiles(list: ScrollingFrame, palette: any, firstOrder: 
 		button.TextWrapped = true
 		button.Activated:Connect(function()
 			local plot = ownPlot()
-			local count = if plot then #placedWindows(plot) else 0
+			local count = if plot then WindowRules.count(Windows, placedWindows(plot), id) else 0
 			local ok, why = WindowRules.canBuy(Windows, id, number("Level", 1), number("Cash", 0), info.needs == nil or achieved(id), count)
 			if not ok then
 				UIController.Notify(why or "You can't buy that window yet.", true)
@@ -303,7 +303,7 @@ function WindowController.Tiles(list: ScrollingFrame, palette: any, firstOrder: 
 			local info = Windows.STYLES[id]
 			local needs = info.needs ~= nil and not achieved(id)
 			local low = not needs and level < info.level
-			button.Text = if needs then `🔒 {info.how}` elseif low then `🔒 Lv {info.level}` else money(info.price)
+			button.Text = if needs then `🔒 {info.how}` elseif low then `🔒 Lv {info.level}` elseif info.price == 0 then "Free" else money(info.price)
 			button.TextSize = if needs then 14 else 20
 			-- Soft buttons (UIKit): mint when you can buy it, pink when you're short, grey-lilac while locked
 			button.BackgroundColor3 = if needs or low then UIKit.Colors.Locked elseif cash < info.price then UIKit.Colors.Danger else UIKit.Colors.Success
@@ -392,7 +392,8 @@ local function openEdit(index: number, style: string)
 	if editTitle then
 		editTitle.Text = info.name
 	end
-	sellButton.Text = `💰 Sell · +{money(math.floor(info.price * Windows.SELL_REFUND))}`
+	-- a poster is free: it's taken down, not sold
+	sellButton.Text = if info.poster then "Take down" else `💰 Sell · +{money(math.floor(info.price * Windows.SELL_REFUND))}`
 	editPanel.Visible = true
 end
 

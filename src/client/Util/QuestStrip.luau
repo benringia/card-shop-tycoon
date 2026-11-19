@@ -385,9 +385,11 @@ local function buildRow(index: number, quest: QuestView): Row
 	picture.Position = UDim2.fromScale(0.5, 0.5)
 	picture.ZIndex = 4
 	Icon.layer(picture, 4)
-	-- the bubbles float, each a little after the one above
-	local float = TweenService:Create(bubble, TweenInfo.new(STRIP.floatSeconds, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true, (index - 1) * 0.4), { Position = UDim2.new(0, 2, 0.5, -STRIP.float) })
-	float:Play()
+	-- the icons sway in their bubbles, each a little after the one above (a turn is smooth; a 2 px float moved in
+	-- whole pixels and looked jerky)
+	picture.Rotation = -STRIP.sway
+	local sway = TweenService:Create(picture, TweenInfo.new(STRIP.swaySeconds, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true, (index - 1) * 0.4), { Rotation = STRIP.sway })
+	sway:Play()
 	local check = UIKit.label(bubble, "✅", Enum.Font.GothamBold, 12, Color3.new(1, 1, 1))
 	check.Name = "Check"
 	check.AnchorPoint = Vector2.new(0.5, 0.5)

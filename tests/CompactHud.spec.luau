@@ -87,6 +87,8 @@ return {
 		expect.equal(town.turtsChip, false, "Turts' chip only just after he restocks")
 		expect.equal(town.questChip, true, "the quests as a chip by the cash")
 		expect.equal(town.mainRow, false, "no main quest row: the chip shows it once the day's quests are done")
+		expect.equal(town.eventChip, false, "no weekly event chip: a phone gets its toast and the Boss Ladder's line")
+		expect.equal(pc.eventChip, true, "a computer shows the event chip under the quests")
 		local wild = CompactHud.phonePieces(true, false, true, true)
 		expect.equal(wild.sideSlots, false, "one creature in the Wild too (owner 2026-11-17: swipe or hold for the rest)")
 		expect.equal(wild.weaponChip, true, "the weapon chip in the Wild")

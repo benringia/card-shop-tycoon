@@ -10,6 +10,12 @@ type Config = {
 }
 
 -- The list's height in a window on a screen `guiHeight` px tall (under Roblox's top bar)
+-- Whether a tile wears the NEW tag (client Util/NewTag): its thing unlocked at this shop level or the one before.
+-- What a new shop starts with (level 1) is never news, and a locked tile shows its lock instead
+function ShopTileRules.isNew(level: number, unlockLevel: number): boolean
+	return unlockLevel > 1 and level >= unlockLevel and level - unlockLevel <= 1
+end
+
 function ShopTileRules.listHeight(cfg: Config, guiHeight: number, phone: boolean): number
 	local window = cfg.WINDOW
 	local share = if phone then window.phoneHeight else window.height

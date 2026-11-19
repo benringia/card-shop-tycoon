@@ -4,7 +4,7 @@
 -- Evh8Gx9pN61R5GkodcwR3C): the next thing to build for the shop, pinned at the bottom of the quest strip with the cash
 -- filling its bar (Util/MainQuestRules, MainQuestService, client Util/MainQuest). Plain data (tests/MainQuestRules).
 return {
-	-- The Build menu's racks, cases and machines that Pish teaches (Config/Shelves ids; decor and trophies stay out),
+	-- The Build menu's racks, cases and machines (Config/Shelves ids; decor and trophies stay out; Pish explains the cases and machines once placed),
 	-- with their Config/UIIcons icons. One is open once the shop's level unlocks it and none stands in the shop.
 	ITEMS = {
 		{ id = "GlassShowcase", icon = "Cases" },

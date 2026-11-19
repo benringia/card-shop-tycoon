@@ -71,56 +71,66 @@ return {
 		expect.isNil(LessonRules.firstReady({}, lessons, 999, cost))
 	end,
 
-	["the spec's lessons and levels"] = function()
-		local levels = {}
+	-- Owner 2026-11-19 ("so we should adjust the tutorial to not based on levels? whats the best move here", then "A and
+	-- B now"): Pish no longer runs in at a level-up for every unlock. Plain things (shelves, racks, decor, new stock) get
+	-- no visit: the main quest strip and a NEW tag on their tile carry them. A machine or a card case is explained the
+	-- first time it's placed. Only what you can't place still comes at its level: the sword and jobs
+	["what Pish still teaches: systems only, each at its first use"] = function()
+		local by = {}
 		for _, lesson in Pish.LESSONS do
-			levels[lesson.id] = lesson.level
+			by[lesson.id] = lesson
 		end
-		expect.equal(levels.showcase, 2)
-		expect.equal(levels.sleeves, 3)
-		expect.equal(levels.collectorCase, 3)
-		expect.equal(levels.sword, 4)
-		expect.equal(levels.wallShelf, 4)
-		expect.equal(levels.accessoryHook, 7)
-		expect.equal(levels.bigRack, 9)
-		expect.equal(levels.condenser, 5)
-		expect.equal(levels.forge, 6)
-		expect.equal(levels.expand, 7)
-		expect.equal(levels.boosterBox, 11)
-		expect.equal(levels.grading, 14)
-		expect.equal(levels.jobs, 8) -- owner 2026-11-17: the cashier earlier (was 20)
+		for _, gone in { "decor", "sleeves", "wallShelf", "expand", "accessoryHook", "bigRack", "boosterBox" } do
+			expect.isNil(by[gone], `{gone}: no visit for a plain shelf or new stock`)
+			expect.isNil(PishTalk.LESSONS[gone], `{gone}: no line kept for it`)
+		end
+		for _, id in { "showcase", "collectorCase", "condenser", "forge", "bulkBin", "grading" } do
+			assert(by[id], `{id} is still taught`)
+			expect.equal(by[id].on, "placed", `{id}: explained the first time it's placed`)
+			assert(by[id].shelf, `{id}: its shelf`)
+			assert(PishTalk.AFTER[id] and #PishTalk.AFTER[id] >= 2, `{id}: what it's for, said beside it`)
+		end
+		expect.equal(by.sword.level, 4)
+		expect.isNil(by.sword.on, "the sword is handed over at its level: taught then")
+		expect.equal(by.jobs.level, Jobs.UNLOCK_LEVEL, "jobs at their unlock (nothing to place)")
+		assert(by.trophy.trigger == "trophy" and by.titles.trigger == "title" and by.prices.trigger == "tourDone", "the event lessons as before")
+		expect.equal(#Pish.LESSONS, 11, "eleven lessons, not eighteen")
 	end,
 
-	-- Shop decor (spec 2026-11-14-shop-decor-design): one lesson for the Decor tab, at level 2 (a level-1 lesson
-	-- never comes: lessons arrive with a level-up)
-	["the decor lesson comes at level 2 and points at the Potted Plant"] = function()
-		local due = LessonRules.due(Pish.LESSONS, 1, 2, {})
-		assert(table.find(due, "decor"), "the level 1 to 2 level-up brings the decor lesson")
-		expect.equal(LessonRules.forShelf(Pish.LESSONS, "PottedPlant", "Decor"), "decor")
-		assert(PishTalk.LESSONS.decor, "Pish says what decor is")
-		assert(PishTalk.AFTER.decor, "and what it's for once placed")
-	end,
-
-	["due: only levels crossed now, in level order, not seen"] = function()
-		same(
-			LessonRules.due(Pish.LESSONS, 2, 6, {}),
-			{ "sleeves", "collectorCase", "sword", "wallShelf", "condenser", "forge" },
-			"2 to 6 (one level's lessons in the order Config/Pish lists them)"
-		)
-		same(LessonRules.due(Pish.LESSONS, 6, 7, { expand = true, accessoryHook = true }), {}, "seen")
+	["due: a level-up only brings what's taught at its level, never a first-use lesson"] = function()
+		same(LessonRules.due(Pish.LESSONS, 1, 3, {}), {}, "levels 2 and 3: nobody runs in")
+		same(LessonRules.due(Pish.LESSONS, 3, 4, {}), { "sword" }, "the sword, with the sword")
+		same(LessonRules.due(Pish.LESSONS, 4, 7, {}), {}, "the condenser and the forge wait to be placed")
+		same(LessonRules.due(Pish.LESSONS, 7, 8, {}), { "jobs" })
+		same(LessonRules.due(Pish.LESSONS, 1, 20, {}), { "sword", "jobs" }, "the whole way up: two visits by level")
+		same(LessonRules.due(Pish.LESSONS, 1, 20, { sword = true, jobs = false }), {}, "seen or waiting already")
 		same(LessonRules.due(Pish.LESSONS, 20, 20, {}), {}, "an old save loading at 20 gets none")
-		same(LessonRules.due(Pish.LESSONS, 3, 4, {}), { "sword", "wallShelf" }, "the level gained, not the one left")
-		same(LessonRules.due(Pish.LESSONS, 1, 2, {}), { "showcase", "decor" }, "the Glass Showcase right after his first visit, then decor")
 	end,
 
-	["due: leaves out lessons already waiting (false) as well as seen"] = function()
-		same(LessonRules.due(Pish.LESSONS, 6, 7, { expand = false }), { "accessoryHook" }, "queued in the Frontier")
-		same(LessonRules.due(Pish.LESSONS, 4, 6, { condenser = false }), { "forge" }, "the other one still due")
+	["onPlaced: a machine or a case is explained the first time it's placed, once"] = function()
+		expect.equal(LessonRules.onPlaced(Pish.LESSONS, "Forge", "Forge", {}), "forge")
+		expect.equal(LessonRules.onPlaced(Pish.LESSONS, "GlassShowcase", "CustomerCards", {}), "showcase")
+		expect.isNil(LessonRules.onPlaced(Pish.LESSONS, "Forge", "Forge", { forge = true }), "explained before")
+		expect.isNil(LessonRules.onPlaced(Pish.LESSONS, "Forge", "Forge", { forge = false }), "waiting already: a second one changes nothing")
+		expect.isNil(LessonRules.onPlaced(Pish.LESSONS, "WallShelf", "Products", {}), "a plain shelf: no visit")
+		expect.isNil(LessonRules.onPlaced(Pish.LESSONS, "trophy_meadowWarden", "Trophy", {}), "the trophy keeps its own lesson")
+	end,
+
+	["a first-use lesson never waits for cash (it's bought already); the others as before"] = function()
+		local by = {}
+		for _, lesson in Pish.LESSONS do
+			by[lesson.id] = lesson
+		end
+		expect.equal(LessonRules.buys(by.forge), false, "placed: nothing left to pay")
+		expect.equal(LessonRules.buys(by.showcase), false)
+		expect.equal(LessonRules.buys(by.jobs), false, "nothing to buy")
+		expect.equal(LessonRules.buys({ id = "x", icon = "x", shelf = "Case" }), true, "a lesson that walks you to buy a shelf")
+		expect.equal(LessonRules.buys({ id = "x", icon = "x", product = "Sleeves" }), true)
 	end,
 
 	["pending: the lessons waiting to be shown, known ones in level order"] = function()
-		local saved = { jobs = false, trophy = false, sleeves = false, forge = true, nope = false }
-		same(LessonRules.pending(Pish.LESSONS, saved), { "sleeves", "jobs", "trophy" }, "waiting (an event lesson last)")
+		local saved = { jobs = false, trophy = false, showcase = false, forge = true, nope = false, sleeves = false }
+		same(LessonRules.pending(Pish.LESSONS, saved), { "showcase", "jobs", "trophy" }, "waiting (an event lesson last; a lesson we dropped is left out)")
 		same(LessonRules.pending(Pish.LESSONS, {}), {}, "none")
 	end,
 
@@ -150,36 +160,32 @@ return {
 		expect.equal(LessonRules.nudge(Pish.STUCK, facts({ boxWaiting = true, sinceNudge = 60 })), nil, "nudged a minute ago")
 		expect.equal(LessonRules.nudge(Pish.STUCK, facts({ boxWaiting = true, played = 4000 })), nil, "past the first hour")
 	end,
-	["every town and shop unlock has a lesson that teaches it (owner: when a player unlocks something, pish visits)"] = function()
+	["every machine and card case is explained on its first placement; plain shelves and stock have no lesson"] = function()
 		for _, product in Products.List do
-			-- a bulk product is never ordered: its bin's shelf lesson teaches it (Config/Bulk)
-			if product.unlockLevel > 1 and not product.bulk then
-				local lesson = lessonWhere("product", product.id)
-				assert(lesson, `{product.id} (Lv {product.unlockLevel}) has a lesson`)
-				expect.equal(lesson.level, product.unlockLevel, `{product.id}'s lesson comes at its unlock`)
-			end
+			expect.isNil(lessonWhere("product", product.id), `{product.id}: new stock shows on the order computer, no visit`)
 		end
-		local trophies, decor = 0, 0
+		local trophies, plain = 0, 0
 		for _, shelf in shelves() do
+			local lesson = lessonWhere("shelf", shelf.id)
 			if shelf.kind == "Trophy" then
 				trophies += 1
-			elseif shelf.kind == "Decor" then
-				decor += 1 -- one lesson for the whole Decor tab (the decor lesson test), not one per piece
-			elseif shelf.unlockLevel > 1 then
-				local lesson = lessonWhere("shelf", shelf.id)
-				assert(lesson, `{shelf.id} (Lv {shelf.unlockLevel}) has a lesson`)
-				expect.equal(lesson.level, shelf.unlockLevel, `{shelf.id}'s lesson comes at its unlock`)
+			elseif shelf.kind == "Decor" or (shelf.kind == "Products" and shelf.id ~= "BulkBin") then
+				plain += 1
+				expect.isNil(lesson, `{shelf.id}: a plain shelf or decor piece, no visit`)
 			elseif shelf.kind == "CustomerCards" or shelf.kind == "PlayerCards" then
-				local lesson = lessonWhere("shelf", shelf.id)
-				assert(lesson and lesson.level and lesson.level > 1, `{shelf.id} is taught after the first visit`)
+				assert(lesson and lesson.on == "placed", `{shelf.id}: a card case is explained once placed`)
+			elseif lesson then
+				expect.equal(lesson.on, "placed", `{shelf.id}: a machine is explained once placed`)
+				expect.equal(lesson.level, shelf.unlockLevel, `{shelf.id}: its level orders the waiting lessons`)
 			end
 		end
 		assert(trophies > 0, "the trophies were read")
-		assert(decor > 0, "the decor pieces were read")
+		assert(plain > 0, "the plain shelves were read")
+		for _, machine in { "Condenser", "Forge", "GradingStation", "BulkBin" } do
+			assert(lessonWhere("shelf", machine), `{machine} has its lesson`)
+		end
 		local trophy = lessonWhere("trigger", "trophy")
 		assert(trophy and trophy.level == nil, "the first trophy has an event lesson")
-		local jobs = lessonWhere("id", "jobs")
-		expect.equal(jobs.level, Jobs.UNLOCK_LEVEL, "jobs at their unlock")
 	end,
 
 	["byEvent: the trophy lesson until it's been seen or is waiting; never due by level"] = function()
@@ -192,15 +198,15 @@ return {
 		end
 	end,
 
-	["forShelf / forProduct: the lesson placing or ordering a thing completes"] = function()
-		expect.equal(LessonRules.forShelf(Pish.LESSONS, "WallShelf", "Products"), "wallShelf")
+	["forShelf / forProduct: the lesson a placed or ordered thing belongs to"] = function()
 		expect.equal(LessonRules.forShelf(Pish.LESSONS, "GlassShowcase", "CustomerCards"), "showcase")
 		expect.equal(LessonRules.forShelf(Pish.LESSONS, "trophy_meadowWarden", "Trophy"), "trophy", "any trophy")
+		expect.equal(LessonRules.forShelf(Pish.LESSONS, "WallShelf", "Products"), nil, "a plain shelf has none now")
 		expect.equal(LessonRules.forShelf(Pish.LESSONS, "SmallPackRack", "Products"), nil, "the first visit's rack")
-		expect.equal(LessonRules.forProduct(Pish.LESSONS, "CardSleeves"), "sleeves")
-		expect.equal(LessonRules.forProduct(Pish.LESSONS, "FirstSparkBox"), "boosterBox")
+		expect.equal(LessonRules.forProduct(Pish.LESSONS, "CardSleeves"), nil, "new stock has none now")
 		expect.equal(LessonRules.forProduct(Pish.LESSONS, "FirstSparkPack"), nil, "the first visit's packs")
 	end,
+
 	["busyWith: the register, boxes, placing, a window, a fight, a show or a popup keep him away (owner 2026-11-18)"] = function()
 		local free = { register = false, carrying = false, building = false, window = false, fight = false, show = false, popup = false }
 		expect.equal(LessonRules.busyWith(free), nil, "nothing on: free")
@@ -241,6 +247,10 @@ return {
 		local pace = Pish.PACE
 		assert(pace.free >= 3 and pace.free <= 8, "a few seconds free first")
 		assert(pace.gap >= 30, "never back to back")
+		-- Final tutorial check (owner 2026-11-19: "make sure the tutorial are not annoying. only appears at the right
+		-- time"): at 45 s apart he was back within a minute, again and again. A real breather between visits (and since
+		-- the same day only systems are taught, at first use: "what Pish still teaches")
+		assert(pace.gap >= 90, `a real breather between visits ({pace.gap} s)`)
 		assert(pace.wait >= 5 and pace.wait < Pish.LESSON_SECONDS, "he doesn't hang about while they're busy")
 	end,
 
@@ -250,6 +260,6 @@ return {
 		expect.equal(after.showcase, true, "a waiting lesson is done")
 		expect.equal(seen.showcase, false, "a copy")
 		expect.equal(LessonRules.used({}, "collectorCase").collectorCase, true, "placed at level 1: never taught later")
-		same(LessonRules.due(Pish.LESSONS, 1, 3, LessonRules.used({}, "showcase")), { "decor", "sleeves", "collectorCase" }, "not queued at level 2")
+		expect.isNil(LessonRules.onPlaced(Pish.LESSONS, "GlassShowcase", "CustomerCards", LessonRules.used({}, "showcase")), "seen: never explained again")
 	end,
 }

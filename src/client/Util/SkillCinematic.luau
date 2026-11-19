@@ -91,7 +91,8 @@ export type Framing = { hold: number?, lookUp: number?, up: number?, focusUp: nu
 -- ground) `travel` seconds later; `live()` false before then (a dodge) cuts it short
 function SkillCinematic.play(root: BasePart, impact: Vector3, release: number, travel: number, live: () -> boolean, framing: Framing?)
 	local camera = workspace.CurrentCamera
-	if not camera or SuperCinematic.isPlaying() then
+	-- not under a super's cinematic, nor while another cinematic holds the camera (the prologue: SuperCinematic.hold)
+	if not camera or SuperCinematic.isPlaying() or SuperCinematic.isHeld() then
 		return
 	end
 	SkillCinematic.stop()

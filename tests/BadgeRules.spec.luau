@@ -20,6 +20,19 @@ local function shown(picked: { [string]: boolean }): string
 end
 
 return {
+	-- Owner 2026-11-19: "can we only see EMPTY shelves if were near enough? cause imagine you have alot of shelves. then
+	-- the whole screen is filled with EMPTY": a badge shows only for a shelf within reach of the player (not the
+	-- camera, which zooms far out)
+	["only shelves near the player show their badge"] = function()
+		local function near(id: string, fromPlayer: number, x: number): BadgeRules.Candidate
+			return { id = id, distance = 20, x = x, y = 100, onScreen = true, fromPlayer = fromPlayer }
+		end
+		local picked = BadgeRules.pick({ near("beside", 6, 100), near("across", 30, 300), near("edge", 16, 500) }, 3, SIZE, 16)
+		expect.equal(shown(picked), "beside,edge", "the one across the shop waits until you walk over")
+		expect.equal(shown(BadgeRules.pick({ near("across", 30, 300) }, 3, SIZE, 16)), "", "none near: no badges at all")
+		expect.equal(shown(BadgeRules.pick({ near("across", 30, 300) }, 3, SIZE)), "across", "no reach given: as before")
+	end,
+
 	["the nearest few empty shelves show, the rest wait"] = function()
 		local picked = BadgeRules.pick({
 			badge("far", 30, 100, 100),

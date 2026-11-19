@@ -31,6 +31,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Services = script.Parent :: Instance
 local NpcMotion = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("NpcMotion"))
 local ShopBag = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("ShopBag"))
+local ReturnRules = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("ReturnRules"))
 local CardService = require(Services:WaitForChild("CardService"))
 local DataService = require(Services:WaitForChild("DataService"))
 local PartyService = require(Services:WaitForChild("PartyService"))
@@ -319,17 +320,45 @@ local function walkTo(customer: Customer, target: Vector3): boolean
 	end))
 end
 
--- Puts picked items back on the shelves they came from (customer left without paying)
+-- Stock a customer took goes back: the shelf it came from first, then the owner's other shelves already holding
+-- that product, and what fits nowhere (the shelf sold, refilled or holding something else by now) is paid back at what
+-- it cost, with a toast (Util/ReturnRules; owner 2026-11-19: nothing a customer took may be lost)
+local function returnStock(owner: Player, shelfUid: string, productId: string, units: number)
+	local shelves: { PlacementService.PlacedShelf } = {}
+	local home = PlacementService.GetShelf(owner, shelfUid)
+	if home then
+		table.insert(shelves, home)
+	end
+	for _, shelf in PlacementService.GetShelves(owner) do
+		if shelf ~= home and shelf.units > 0 and shelf.productId == productId then
+			table.insert(shelves, shelf)
+		end
+	end
+	local left = units
+	for _, shelf in shelves do
+		if left <= 0 then
+			break
+		end
+		left -= (PlacementService.AddStock(shelf, productId, left)) -- 0 when it can't hold it any more
+	end
+	local refund = ReturnRules.refund(Products.ById[productId], left)
+	if left > 0 and refund > 0 and owner.Parent then
+		EconomyService.AddCash(owner, refund)
+		local product = Products.ById[productId]
+		Remotes.Notify:FireClient(owner, `No shelf had room for {left} {product.name}: you got ${string.format("%.2f", refund)} back.`, false)
+	end
+end
+
+-- Puts picked items back on the shelves they came from (customer left without paying): a card in its slot, another
+-- free slot or the binder (ShowcaseService.ReturnFromCustomer); stock by returnStock. Items a customer arrived holding
+-- (`inHand`, no shelf) were never the owner's, so they just go
 local function restoreItems(customer: Customer)
 	for _, item in customer.items do
 		local card, productId = item.card, item.productId
 		if card then
 			ShowcaseService.ReturnFromCustomer(customer.owner, item.shelfUid, item.slot or 1, card)
-		elseif productId then
-			local shelf = PlacementService.GetShelf(customer.owner, item.shelfUid)
-			if shelf then
-				PlacementService.AddStock(shelf, productId, item.units)
-			end
+		elseif productId and item.shelfUid ~= "" then
+			returnStock(customer.owner, item.shelfUid, productId, item.units)
 		end
 	end
 	table.clear(customer.items)

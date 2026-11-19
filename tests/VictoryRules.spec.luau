@@ -69,6 +69,15 @@ return {
 		local full = VictoryRules.notes({ fullPay = true, lootIn = 420 })
 		expect.equal(full[1], "Full loot and cash again in 7:00")
 	end,
+	-- Boss Rush (Config/Events): a loot win during it says why the wait is shorter; a win between loot doesn't
+	["a loot win during an event says what the event did"] = function()
+		local rush = VictoryRules.notes({ fullPay = true, lootIn = 210, event = "Boss Rush: loot twice as fast today" })
+		expect.equal(#rush, 2)
+		expect.equal(rush[1], "Full loot and cash again in 3:30")
+		expect.equal(rush[2], "Boss Rush: loot twice as fast today")
+		expect.equal(#VictoryRules.notes({ fullPay = false, payShare = 0.25, lootIn = 100, event = "x" }), 1, "no loot, no event note")
+		expect.equal(#VictoryRules.notes({ fullPay = true, lootIn = 420, event = 5 }), 1, "junk ignored")
+	end,
 	["the subtitle names the foe and the time"] = function()
 		expect.equal(VictoryRules.subtitle("Meadow Warden", 84), "Meadow Warden defeated · 1:24")
 		expect.equal(VictoryRules.subtitle(nil, nil), "Fight won")

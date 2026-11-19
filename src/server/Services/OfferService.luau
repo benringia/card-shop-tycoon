@@ -197,6 +197,13 @@ local function onKidSale(customer: Customer, bought: { [string]: number }, byWor
 	end
 	-- Everyone nearby sees the rip (CustomerController)
 	customer.model:SetAttribute("Pulled", `{pull.cardId}|{pull.grade}|{if pull.foil then 1 else 0}`)
+	-- A big pull plays its cheer and reveal hit at the counter: the owner is told what that was (owner 2026-11-19: a
+	-- sound "without a notification of whats going on" while manning the register)
+	local pulled = Cards.ById[pull.cardId]
+	local line = OfferRules.pullLine(CustomerConfig, pulled.rarity, rarityOrder(pull), pulled.name, pull.foil)
+	if line and owner.Parent then
+		Remotes.Notify:FireClient(owner, line, false)
+	end
 
 	local plot = customer.plot
 	if byWorker or offers[plot] or not RegisterService.IsOwnerAtRegister(owner, plot) then

@@ -32,6 +32,7 @@ local Hud = require(ClientUtil:WaitForChild("Hud"))
 local ProductPrice = require(ClientUtil:WaitForChild("ProductPrice"))
 local RobuxPrice = require(ClientUtil:WaitForChild("RobuxPrice"))
 local ScreenClear = require(ClientUtil:WaitForChild("ScreenClear"))
+local CodeBox = require(ClientUtil:WaitForChild("CodeBox"))
 
 local StoreController = {}
 
@@ -359,9 +360,13 @@ local SLOT_LOOK: TileLook = {
 local function draw()
 	pricesPending = false
 	for _, child in list:GetChildren() do
-		if child:IsA("GuiObject") then
+		-- the code box stays through a redraw (a price arriving mustn't wipe what's being typed)
+		if child:IsA("GuiObject") and child.Name ~= "CodeBox" then
 			child:Destroy()
 		end
+	end
+	if not list:FindFirstChild("CodeBox") then
+		CodeBox.build(list, 40, Z) -- under everything sold: a code box for the codes we post (Config/Codes)
 	end
 	banner()
 

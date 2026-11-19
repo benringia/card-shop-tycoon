@@ -9,9 +9,28 @@ function MusicRules.inTown(x: number, z: number, bounds: { HALF_X: number, HALF_
 	return math.abs(x) <= bounds.HALF_X + margin and math.abs(z) <= bounds.HALF_Z + margin
 end
 
+-- A place's volume for its track `index`: its own number (`volumes`, pieces differ in loudness) or the place's
+function MusicRules.trackVolume(place: { volume: number, volumes: { [number]: number }? }, index: number): number
+	local own = if place.volumes then place.volumes[index] else nil
+	return own or place.volume
+end
+
 -- The track after `current` (0: none yet) of `count`, round and round
 function MusicRules.nextTrack(current: number, count: number): number
 	return current % count + 1
+end
+
+-- A place that starts on a random piece each time you arrive and after each one ends (`rotate = "random"`, the
+-- town): any of `count` the first time, then one of the others, by `roll` in [0, 1]
+function MusicRules.randomTrack(previous: number?, count: number, roll: number): number
+	if count <= 1 then
+		return 1
+	end
+	if not previous or previous < 1 or previous > count then
+		return math.min(count, math.floor(roll * count) + 1)
+	end
+	local pick = math.min(count - 1, math.floor(roll * (count - 1)) + 1)
+	return if pick >= previous then pick + 1 else pick
 end
 
 -- A place that changes piece each time you come (`rotate = "visit"`, the pack opening): the next one after `previous`

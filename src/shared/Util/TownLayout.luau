@@ -51,6 +51,37 @@ function TownLayout.plotRects(world: World): { Rect }
 	return rects
 end
 
+-- How far to move a footprint (a tree's canopy) so it stands clear of every shop: out of each shop it reaches into
+-- (its rect grown by `margin`: the wall and a little air), along the side it overlaps least. `stuck`: after moving it
+-- still reaches into a shop (wider than the gap it stands in): the caller takes it away
+function TownLayout.clearOf(box: Rect, rects: { Rect }, margin: number): (number, number, boolean)
+	local dx, dz = 0, 0
+	local function overlap(rect: Rect): (number, number)
+		local ox = math.min(box.maxX + dx, rect.maxX + margin) - math.max(box.minX + dx, rect.minX - margin)
+		local oz = math.min(box.maxZ + dz, rect.maxZ + margin) - math.max(box.minZ + dz, rect.minZ - margin)
+		return ox, oz
+	end
+	for _, rect in rects do
+		local ox, oz = overlap(rect)
+		if ox > 0 and oz > 0 then
+			if ox <= oz then
+				local centre = (box.minX + box.maxX) / 2 + dx
+				dx += if centre < (rect.minX + rect.maxX) / 2 then -ox else ox
+			else
+				local centre = (box.minZ + box.maxZ) / 2 + dz
+				dz += if centre < (rect.minZ + rect.maxZ) / 2 then -oz else oz
+			end
+		end
+	end
+	for _, rect in rects do
+		local ox, oz = overlap(rect)
+		if ox > 1e-6 and oz > 1e-6 then
+			return dx, dz, true
+		end
+	end
+	return dx, dz, false
+end
+
 local function matches(slot: string, name: string): boolean
 	if string.sub(name, 1, #slot) ~= slot then
 		return false

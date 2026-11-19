@@ -305,6 +305,53 @@ return {
 		expect.equal(kept.mainQuests[1], "Forge", "a saved list kept")
 	end,
 
+	-- Weekly events (owner 2026-11-19: "build the weekend events"): every save starts with Lucky Sunday's luck never
+	-- given; a saved table is kept for EventRules.clean
+	["v37: every save starts with no event luck given; a saved table kept"] = function()
+		local data: any = { version = 36, cash = 7 }
+		Migrations.run(data, 37)
+		expect.equal(data.version, 37)
+		expect.equal(data.events.luckDay, -1, "never given")
+		expect.equal(data.cash, 7, "the rest untouched")
+		local kept: any = { version = 36, events = { luckDay = 20779 } }
+		Migrations.run(kept, 37)
+		expect.equal(kept.events.luckDay, 20779, "a saved day kept")
+		local junk: any = { version = 36, events = "x" }
+		Migrations.run(junk, 37)
+		expect.equal(junk.events.luckDay, -1, "junk replaced")
+	end,
+
+	-- Codes (owner 2026-11-19: "yes do code box"): every save starts with no code used; a saved list is kept for
+	-- CodeRules.clean
+	["v38: every save starts with no codes used; a saved list kept"] = function()
+		local data: any = { version = 37, cash = 7 }
+		Migrations.run(data, 38)
+		expect.equal(data.version, 38)
+		expect.equal(typeof(data.codes), "table")
+		expect.equal(#data.codes, 0, "none used")
+		expect.equal(data.cash, 7, "the rest untouched")
+		local kept: any = { version = 37, codes = { "ONEMOREPACK" } }
+		Migrations.run(kept, 38)
+		expect.equal(kept.codes[1], "ONEMOREPACK", "a saved list kept")
+		local junk: any = { version = 37, codes = 5 }
+		Migrations.run(junk, 38)
+		expect.equal(#junk.codes, 0, "junk replaced")
+	end,
+
+	-- Posters are decor in `windows` now (owner 2026-11-19: "posters should be a decor"): the fixed front spots' list,
+	-- built and dropped the same day and never released, goes; the windows stay
+	["v39: the short-lived posters list goes; windows and the rest stay"] = function()
+		local data: any = { version = 38, cash = 7, posters = { "beware", "", "", "wanted" }, windows = { { style = "Square", side = "left", at = 0 } } }
+		Migrations.run(data, 39)
+		expect.equal(data.version, 39)
+		expect.isNil(data.posters, "dropped")
+		expect.equal(#data.windows, 1, "windows untouched")
+		expect.equal(data.cash, 7)
+		local plain: any = { version = 38 }
+		Migrations.run(plain, 39)
+		expect.equal(plain.version, 39)
+	end,
+
 	-- Weekly quests (owner 2026-11-17: "what players do after daily quests?"): every save starts with no week rolled
 	-- (QuestService rolls this week's); a saved week is kept for QuestRules.cleanWeek
 	["v34: every save starts with no weekly quests rolled; a saved week kept"] = function()

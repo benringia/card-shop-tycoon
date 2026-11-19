@@ -105,6 +105,8 @@ export type PlayerData = {
 	-- main quests whose first build has paid its shop XP: Config/MainQuests ids (MainQuestService; MainQuestRules.clean)
 	mainQuests: { string },
 	lastSeen: number, -- os.time this save was last written in the main game (OfflineService: welcome-back earnings)
+	events: { luckDay: number }, -- weekly events: the UTC day Lucky Sunday's free luck was last given (EventService; EventRules.clean)
+	codes: { string }, -- the codes this player has used (CodeService; CodeRules.clean)
 	-- daily, weekly and monthly gifts: the round, today's play time, the week's and month's bars (GiftService; GiftRules.State)
 	gifts: {
 		streak: number,
@@ -175,6 +177,8 @@ local TEMPLATE: PlayerData = {
 	weekly = { week = -1, list = {}, chest = false },
 	mainQuests = {},
 	lastSeen = 0,
+	events = { luckDay = -1 },
+	codes = {},
 }
 
 local DataService = {}

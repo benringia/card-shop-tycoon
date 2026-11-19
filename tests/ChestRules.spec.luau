@@ -130,6 +130,24 @@ return {
 		expect.isNil(chests.EMPTY, "no empty chest card")
 	end,
 
+	-- Boss Rush (Config/Events, owner 2026-11-19): one more of the material in every material chest, the two you
+	-- didn't pick too; a weapon's chest stays the weapon
+	["an event's bonus: more material in every material chest, never on the weapon"] = function()
+		local material = ChestRules.mine("verdantBlade", false, "m", 0.5, WEIGHTS, 1)
+		expect.equal(material.count, 2, "1 rolled + 1")
+		expect.equal(ChestRules.mine("verdantBlade", false, "m", 0.97, WEIGHTS, 1).count, 4, "3 rolled + 1")
+		local weapon = ChestRules.mine("verdantBlade", true, "m", 0.5, WEIGHTS, 1)
+		expect.equal(weapon.kind, "weapon")
+		expect.isNil(weapon.count)
+		local plain = ChestRules.others(false, "verdantBlade", "m", { 0.9, 0.1, 0.3 }, WEIGHTS, 1)
+		expect.equal(plain[1].count, 3)
+		expect.equal(plain[2].count, 2)
+		local withMystery = ChestRules.others(true, "verdantBlade", "m", { 0.5, 0.97, 0.8 }, WEIGHTS, 1)
+		expect.equal(withMystery[1].count, 2)
+		expect.equal(withMystery[2].kind, "mystery")
+		expect.equal(ChestRules.mine("verdantBlade", false, "m", 0.5, WEIGHTS, 0).count, 1, "no event")
+	end,
+
 	["not picked in time: the server opens one of the three"] = function()
 		expect.equal(ChestRules.autoIndex(0, 3), 1)
 		expect.equal(ChestRules.autoIndex(0.5, 3), 2)

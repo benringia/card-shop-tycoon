@@ -1,7 +1,7 @@
 --!strict
 -- Pish's lesson visits and the stuck helper (spec 2026-11-09-tutorial-pish-design 8, 16). Pure: `lessons` is
 -- Config/Pish LESSONS, `cfg` its STUCK.
-export type Lesson = { id: string, level: number?, icon: string, shelf: string?, product: string?, trigger: string? }
+export type Lesson = { id: string, level: number?, icon: string, shelf: string?, product: string?, trigger: string?, on: string? }
 export type Facts = {
 	played: number, -- seconds of play so far
 	quiet: number, -- seconds since the last order, restock, sale or pack
@@ -82,12 +82,29 @@ end
 
 -- The lessons a level-up from `fromLevel` to `toLevel` brings, in level order, leaving out ones seen (true) or already
 -- waiting (false). Loading a save (from = to) brings none, so players never get lessons for what they unlocked before.
--- Event lessons (no level) never come this way.
+-- Event lessons (no level) never come this way, nor first-use ones (`on`: they wait for their thing to be placed).
 function LessonRules.due(lessons: { Lesson }, fromLevel: number, toLevel: number, seen: { [string]: boolean }): { string }
 	return inLevelOrder(lessons, function(lesson)
 		local level = lesson.level
-		return level ~= nil and level > fromLevel and level <= toLevel and seen[lesson.id] == nil
+		return lesson.on == nil and level ~= nil and level > fromLevel and level <= toLevel and seen[lesson.id] == nil
 	end)
+end
+
+-- The first-use lesson a shelf just placed brings (`on = "placed"`: a machine or a card case, explained beside it):
+-- nil when it has none, or it was explained (true) or is waiting already (false)
+function LessonRules.onPlaced(lessons: { Lesson }, shelfId: string, _kind: string?, seen: { [string]: boolean }): string?
+	for _, lesson in lessons do
+		if lesson.on == "placed" and lesson.shelf == shelfId and seen[lesson.id] == nil then
+			return lesson.id
+		end
+	end
+	return nil
+end
+
+-- Whether a lesson has the player buy its thing (so it waits until they can pay: firstReady): one that walks them
+-- to a shelf or a product, not one that explains a thing already placed
+function LessonRules.buys(lesson: Lesson): boolean
+	return lesson.on == nil and (lesson.shelf ~= nil or lesson.product ~= nil)
 end
 
 -- The lessons an event brings (`trigger`, e.g. "trophy": the first trophy item), not seen or waiting yet

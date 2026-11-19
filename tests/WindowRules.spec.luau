@@ -106,4 +106,84 @@ return {
 			expect.equal(style.width % Windows.GRID == 0, true, `{id}: whole grid steps wide`)
 		end
 	end,
+	-- Posters (owner 2026-11-19: "posters should be a decor. not automatically placed to the glass. players can also
+	-- put it on walls inside the shop"): five funny posters in the Decor tab, placed like a window. They hang on the
+	-- side and back walls inside, or on the front's outer glass panes (never the doors or the panes they slide over);
+	-- they cut no hole, are free, and have their own cap
+	["five posters, free decor with their picture; they never cut the wall"] = function()
+		local posters = 0
+		for _, id in Windows.ORDER do
+			local style = Windows.STYLES[id]
+			if style.poster then
+				posters += 1
+				assert(string.find(style.poster, "rbxassetid://", 1, true), `{id}: its uploaded picture`)
+				expect.equal(style.price, 0, `{id}: free`)
+				expect.equal(style.level, 1, `{id}: from the start`)
+				expect.equal(WindowRules.isPoster(Windows, id), true)
+				expect.equal(WindowRules.cuts(Windows, window(id, "left", 0)), false, "no hole behind a poster")
+			end
+		end
+		expect.equal(posters, 5)
+		expect.equal(WindowRules.isPoster(Windows, "Square"), false)
+		expect.equal(WindowRules.cuts(Windows, window("Square", "left", 0)), true, "a window still cuts its hole")
+	end,
+
+	["a poster goes on a wall inside like a window, and can't overlap one"] = function()
+		expect.equal((WindowRules.canPlace(Windows, {}, window("PosterBeware", "left", 4))), true)
+		expect.equal((WindowRules.canPlace(Windows, {}, window("PosterBeware", "back", -6))), true)
+		local list = { window("Square", "left", 4) }
+		local ok, why = WindowRules.canPlace(Windows, list, window("PosterBeware", "left", 6))
+		expect.equal(ok, false, "on top of a window")
+		assert(why and why ~= "", "says why")
+		expect.equal((WindowRules.canPlace(Windows, list, window("PosterBeware", "left", 12))), true, "beside it")
+	end,
+
+	["on the front glass a poster takes an outer pane; never the doors, never a window"] = function()
+		local spots = WindowRules.frontSpots(Windows)
+		expect.equal(#spots, 4)
+		expect.near(spots[1], -18.5, 1e-6)
+		expect.near(spots[2], -13.5, 1e-6)
+		expect.near(spots[3], 13.5, 1e-6)
+		expect.near(spots[4], 18.5, 1e-6)
+		expect.equal((WindowRules.canPlace(Windows, {}, window("PosterWanted", "front", 13.5))), true)
+		expect.equal((WindowRules.canPlace(Windows, {}, window("PosterWanted", "front", 8.5))), false, "the pane the open door covers")
+		expect.equal((WindowRules.canPlace(Windows, {}, window("PosterWanted", "front", 0))), false, "the doors")
+		expect.equal((WindowRules.canPlace(Windows, {}, window("Square", "front", 13.5))), false, "windows stay on the walls")
+		local taken = { window("PosterWanted", "front", 13.5) }
+		expect.equal((WindowRules.canPlace(Windows, taken, window("PosterBeware", "front", 13.5))), false, "one poster a pane")
+		expect.equal((WindowRules.canPlace(Windows, taken, window("PosterBeware", "front", 18.5))), true, "the pane beside it")
+		-- the pointer's spot along a wall becomes a place to hang: the grid on a wall, the nearest outer pane on the front
+		expect.near(WindowRules.snapOn(Windows, "front", 11), 13.5, 1e-6)
+		expect.near(WindowRules.snapOn(Windows, "front", -40), -18.5, 1e-6)
+		expect.equal(WindowRules.snapOn(Windows, "left", 5.2), WindowRules.snap(Windows, 5.2))
+	end,
+
+	["posters have their own cap and don't use up the windows'"] = function()
+		local list = {}
+		for index = 1, Windows.MAX do
+			table.insert(list, window("Square", if index <= 3 then "left" else "right", (index % 3 - 1) * 8))
+		end
+		expect.equal(WindowRules.count(Windows, list, "Square"), Windows.MAX)
+		expect.equal(WindowRules.count(Windows, list, "PosterBeware"), 0)
+		expect.equal((WindowRules.canBuy(Windows, "PosterBeware", 1, 0, true, WindowRules.count(Windows, list, "PosterBeware"))), true, "a full set of windows leaves room for posters")
+		local ok, why = WindowRules.canBuy(Windows, "PosterBeware", 1, 0, true, Windows.MAX_POSTERS)
+		expect.equal(ok, false)
+		assert(why and string.find(why, "posters", 1, true), "the posters' own limit")
+		expect.equal((WindowRules.canBuy(Windows, "Square", 99, 99999, true, Windows.MAX)), false, "the windows' cap as before")
+		-- a saved list keeps both kinds, each within its own cap
+		local saved = table.clone(list)
+		table.insert(saved, window("PosterBeware", "front", 13.5))
+		table.insert(saved, window("PosterWanted", "back", 0))
+		local kept, refunded = WindowRules.clean(Windows, saved)
+		expect.equal(#kept, Windows.MAX + 2)
+		expect.equal(refunded, 0)
+	end,
+
+	["a poster hangs on the wall's face, or outside the front glass; a window sits in the wall"] = function()
+		expect.equal(WindowRules.depth(Windows, window("Square", "left", 0), 1), 0, "in the wall")
+		local inside = WindowRules.depth(Windows, window("PosterBeware", "left", 0), 1)
+		assert(inside < -0.5 and inside > -0.8, "into the room, just past the wall's face and its liner")
+		local front = WindowRules.depth(Windows, window("PosterBeware", "front", 13.5), 1)
+		assert(front > 0.15 and front < 0.4, "just outside the glass")
+	end,
 }

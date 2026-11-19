@@ -4,6 +4,8 @@
 -- ghost alike (WindowController). Round and arched tops are filled with the frame's colour round the curve (stepped
 -- pieces under a ring that hides the steps), so every hole stays a rectangle. The origin is the hole's middle on the
 -- wall's centre plane; -Z faces into the shop. A Root part (invisible, the hole's size) is the PrimaryPart.
+local WindowRules = require(script.Parent:WaitForChild("WindowRules"))
+
 local WindowLooks = {}
 
 local DEPTH = 1.3 -- the frame's depth: through the wall (1) and the inner layer (0.1), a little proud each side
@@ -185,12 +187,41 @@ function WindowLooks.cframe(floor: BasePart, window: { style: string, side: stri
 	local position, inward
 	if window.side == "back" then
 		position, inward = Vector3.new(window.at, y, depth / 2 + middle), Vector3.new(0, 0, -1)
+	elseif window.side == "front" then
+		position, inward = Vector3.new(window.at, y, -(depth / 2 + middle)), Vector3.new(0, 0, 1)
 	elseif window.side == "left" then
 		position, inward = Vector3.new(-(width / 2 + middle), y, window.at), Vector3.new(1, 0, 0)
 	else
 		position, inward = Vector3.new(width / 2 + middle, y, window.at), Vector3.new(-1, 0, 0)
 	end
+	-- a poster hangs on the wall's face or outside the front glass (WindowRules.depth: + is out of the shop)
+	position -= inward * WindowRules.depth(cfg, window, thick)
 	return floor.CFrame * CFrame.lookAt(position, position + inward)
+end
+
+-- A poster `w` x `h`: its picture on both faces of an unseen sheet, so it reads from the street and from inside
+function WindowLooks.poster(image: string, w: number, h: number): Model
+	local model = Instance.new("Model")
+	model.Name = "Window"
+	local root = add(model, "Root", Vector3.new(w, h, 0.06), CFrame.new(), WHITE)
+	root.Transparency = 1
+	model.PrimaryPart = root
+	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
+		local picture = Instance.new("Decal")
+		picture.Face = face
+		picture.Texture = image
+		picture.Parent = root
+	end
+	return model
+end
+
+-- The model of a Config/Windows style: a window, or a poster with its picture
+function WindowLooks.make(cfg: any, styleId: string): Model
+	local style = cfg.STYLES[styleId]
+	if style.poster then
+		return WindowLooks.poster(style.poster, style.width, style.height)
+	end
+	return WindowLooks.build(styleId, style.width, style.height)
 end
 
 -- A window of `style` for a `w` x `h` hole (Config/Windows sizes), its origin the hole's middle on the wall's centre

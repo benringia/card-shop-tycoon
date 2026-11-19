@@ -225,6 +225,7 @@ local function buildStorefront(parent: Instance, plotCFrame: CFrame, outerWidth:
 			local pane = shellPart(parent, "ShopWindow", Vector3.new(paneWidth, height, 0.3), plotCFrame * CFrame.new(x, bottom + height / 2, z), glass, Enum.Material.Glass)
 			pane.Transparency = look.GLASS_TRANSPARENCY
 			pane.CastShadow = false
+			pane:SetAttribute("WallSide", "front") -- a poster's ghost finds the glass by it (WindowController)
 		end
 		-- Uprights between the panes and at the door jambs
 		for index = 0, look.PANES do
@@ -671,7 +672,7 @@ local function drawWalls(plot: Plot)
 	folder.Name = "WallFinish"
 	local holes: { [string]: { WindowRules.Rect } } = { left = {}, right = {}, back = {} }
 	for _, window in plot.windows or {} do
-		if holes[window.side] then
+		if holes[window.side] and WindowRules.cuts(Windows, window) then -- a poster hangs on the wall: no hole
 			table.insert(holes[window.side], WindowRules.hole(Windows, window))
 		end
 	end
@@ -763,7 +764,7 @@ function PlotService.SetWindows(plot: Plot, windows: { WindowRules.Window })
 	for index, window in windows do
 		local style = Windows.STYLES[window.style]
 		if style then
-			local model = WindowLooks.build(window.style, style.width, style.height)
+			local model = WindowLooks.make(Windows, window.style)
 			model:SetAttribute("Index", index)
 			model:SetAttribute("Style", window.style)
 			model:SetAttribute("Side", window.side)

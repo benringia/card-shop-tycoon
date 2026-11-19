@@ -93,7 +93,7 @@ local function state(over: { [string]: any }): MainQuestRules.State
 end
 
 return {
-	["every main quest is a Build menu rack, case or machine Pish teaches, with a price and an icon"] = function()
+	["every main quest is a Build menu rack, case or machine with a price and an icon; what Pish explains is among them"] = function()
 		local facts = shelves()
 		for _, entry in MainQuests.ITEMS do
 			local shelf = facts[entry.id]
@@ -102,17 +102,20 @@ return {
 			assert(shelf.kind ~= "Decor" and shelf.kind ~= "Trophy", `{entry.id} isn't decor or a trophy`)
 			assert(typeof(entry.icon) == "string" and #entry.icon > 0, `{entry.id} has an icon`)
 		end
-		-- the same things Pish's lessons walk you through building (the decor lesson covers a whole tab: left out)
-		local taught = {}
+		-- everything Pish explains once it's placed (a machine, a card case: Config/Pish `on = "placed"`) is a main
+		-- quest, since the strip is what tells the player it can be built now (owner 2026-11-19: no visit at the level)
+		local listed = {}
+		for _, id in ids(items()) do
+			listed[id] = true
+		end
+		local taught = 0
 		for _, lesson in Pish.LESSONS do
-			if lesson.shelf and lesson.id ~= "decor" then
-				table.insert(taught, lesson.shelf)
+			if lesson.shelf then
+				taught += 1
+				assert(listed[lesson.shelf], `{lesson.shelf}: taught on its first placement, so the strip must offer it`)
 			end
 		end
-		table.sort(taught)
-		local listed = table.clone(ids(items()))
-		table.sort(listed)
-		same(listed, taught, "main quests vs Pish's shelf lessons")
+		assert(taught >= 6, "the cases and machines were read")
 	end,
 
 	["items come in the order they unlock, with their names, prices and icons"] = function()

@@ -73,6 +73,10 @@ function VictoryRules.notes(boss: any): { string }
 			table.insert(notes, `Full loot and cash again in {clock(boss.lootIn)}`)
 		end
 	end
+	-- a loot win during a weekly event (Boss Rush, Config/Events `note`): why the wait is shorter
+	if boss.fullPay == true and typeof(boss.event) == "string" and boss.event ~= "" then
+		table.insert(notes, boss.event)
+	end
 	return notes
 end
 

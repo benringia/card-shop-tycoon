@@ -45,4 +45,14 @@ return {
 		assert(window.phoneTabs >= 44, "tabs stay finger-sized")
 		assert(window.phoneHeight <= 0.98, "inside the screen")
 	end,
+
+	-- Owner 2026-11-19: Pish no longer visits for every unlock; a NEW tag on the tile says what just opened
+	["a tile is NEW for the level it unlocks at and the one after, never the starting things"] = function()
+		expect.equal(ShopTileRules.isNew(4, 4), true, "just unlocked")
+		expect.equal(ShopTileRules.isNew(5, 4), true, "one level later still")
+		expect.equal(ShopTileRules.isNew(6, 4), false, "old news")
+		expect.equal(ShopTileRules.isNew(3, 4), false, "locked: its lock says so, not NEW")
+		expect.equal(ShopTileRules.isNew(1, 1), false, "what a new shop starts with isn't news")
+		expect.equal(ShopTileRules.isNew(2, 1), false)
+	end,
 }

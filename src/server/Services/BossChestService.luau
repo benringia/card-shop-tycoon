@@ -2,7 +2,8 @@
 -- The boss chests (spec docs/superpowers/specs/2026-11-11-boss-chests-design.md; Config/BossChests, Util/ChestRules):
 -- after a full-loot win of a boss with a weapon, three chests on the player's reveal stage. Everything is decided and
 -- given at the win (BossService rolls the weapon as before and calls Prepare): no drop, and this rolls the material and
--- puts it in the Bag; the two other chests' contents are made too (shown, never given). The client only sends the
+-- puts it in the Bag (one more on Boss Rush: EventRules.chestBonus); the two other chests' contents are made too
+-- (shown, never given). The client only sends the
 -- index of the chest it tapped; the answer puts the player's own result there. Not picked in time, the server opens one.
 -- A weapon's reveal, light column and announcement (onOpen) come when its chest opens; a player who left first still
 -- has it, and the others still hear of an Epic or Legendary.
@@ -16,6 +17,8 @@ local BossChests = require(Config:WaitForChild("BossChests"))
 local Victory = require(Config:WaitForChild("Victory"))
 local Weapons = require(Config:WaitForChild("Weapons"))
 local ChestRules = require(Shared:WaitForChild("Util"):WaitForChild("ChestRules"))
+local EventNow = require(Shared:WaitForChild("Util"):WaitForChild("EventNow"))
+local EventRules = require(Shared:WaitForChild("Util"):WaitForChild("EventRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
@@ -103,7 +106,8 @@ function BossChestService.Prepare(player: Player, bossId: string, weaponId: stri
 		end
 		return
 	end
-	local mine = ChestRules.mine(weaponId, payload ~= nil, material, rng:NextNumber(), BossChests.MATERIAL)
+	local bonus = EventRules.chestBonus(EventNow.today())
+	local mine = ChestRules.mine(weaponId, payload ~= nil, material, rng:NextNumber(), BossChests.MATERIAL, bonus)
 	if mine.kind == "material" and mine.count then
 		ItemService.GiveItem(player, material, mine.count)
 	end
@@ -112,7 +116,7 @@ function BossChestService.Prepare(player: Player, bossId: string, weaponId: stri
 		bossId = bossId,
 		weaponId = weaponId,
 		mine = mine,
-		others = ChestRules.others(ChestRules.showsMystery(payload ~= nil, owns(player, weaponId)), weaponId, material, rolls(), BossChests.MATERIAL),
+		others = ChestRules.others(ChestRules.showsMystery(payload ~= nil, owns(player, weaponId)), weaponId, material, rolls(), BossChests.MATERIAL, bonus),
 		opened = false,
 	}
 	offer(player, { set = set, payload = payload, onOpen = onOpen })
@@ -126,13 +130,14 @@ function BossChestService.Preview(player: Player, bossId: string, weaponId: stri
 		return
 	end
 	local dropped = kind == "drop"
-	local mine = ChestRules.mine(weaponId, dropped, material, rng:NextNumber(), BossChests.MATERIAL)
+	local bonus = EventRules.chestBonus(EventNow.today())
+	local mine = ChestRules.mine(weaponId, dropped, material, rng:NextNumber(), BossChests.MATERIAL, bonus)
 	local set: ChestRules.Set = {
 		id = HttpService:GenerateGUID(false),
 		bossId = bossId,
 		weaponId = weaponId,
 		mine = mine,
-		others = ChestRules.others(ChestRules.showsMystery(dropped, owns(player, weaponId)), weaponId, material, rolls(), BossChests.MATERIAL),
+		others = ChestRules.others(ChestRules.showsMystery(dropped, owns(player, weaponId)), weaponId, material, rolls(), BossChests.MATERIAL, bonus),
 		opened = false,
 	}
 	local payload = if dropped then { weaponId = weaponId, grade = "A", refund = 0, material = material } else nil

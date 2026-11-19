@@ -6,6 +6,16 @@ local Customers = require("../src/shared/Config/Customers")
 local expect = require("./lib/expect")
 
 return {
+	-- Owner 2026-11-19: "when manning the register, sometimes there is a random sound playing when checking out without
+	-- a notification of whats going on": a kid's big rip plays the reveal hit, so the owner is told what it was
+	["a kid's big pull tells the shop's owner what the sound was"] = function()
+		expect.equal(OfferRules.pullLine(Customers, "Very Rare", 3, "Emberfox", false), "🎉 A kid pulled a Very Rare Emberfox from your pack!")
+		expect.equal(OfferRules.pullLine(Customers, "Epic", 4, "Voidmaw", false), "🎉 A kid pulled an Epic Voidmaw from your pack!")
+		expect.equal(OfferRules.pullLine(Customers, "Legendary", 5, "Solarion", true), "🎉 A kid pulled a foil Legendary Solarion from your pack!")
+		expect.isNil(OfferRules.pullLine(Customers, "Rare", 2, "Mossling", false), "no sound for a Rare: no line")
+		expect.isNil(OfferRules.pullLine(Customers, "Common", 1, "Pebble", true))
+	end,
+
 	["only some kids sell: rarity chance times grade"] = function()
 		expect.equal(OfferRules.wantsToSell(Customers, "Very Rare", "C", 0.45), true, "0.4 x 1.15 = 0.46")
 		expect.equal(OfferRules.wantsToSell(Customers, "Very Rare", "C", 0.47), false)

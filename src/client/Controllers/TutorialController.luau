@@ -84,7 +84,7 @@ type Target = {
 
 -- Each lesson (Config/Pish LESSONS) by id. One with a shelf, a product or the trophy is taught step by step
 -- (lessonSituation); the others point at one place: the first sword's way is the Wild portal, jobs their tile
-type Lesson = { id: string, level: number?, icon: string, shelf: string?, product: string?, trigger: string? }
+type Lesson = { id: string, level: number?, icon: string, shelf: string?, product: string?, trigger: string?, on: string? }
 local PORTAL = Wild.PLAZA_PORTAL
 local LESSONS: { [string]: Lesson } = {}
 for _, lesson in Pish.LESSONS do
@@ -897,6 +897,11 @@ end
 
 local function startVisit(kind: "lesson" | "nudge", id: string)
 	visit = { kind = kind, id = id, started = os.clock() }
+	-- a first-use lesson (a machine or a case just placed): he goes straight to it and says what it's for
+	local firstUse = if kind == "lesson" then LESSONS[id] else nil
+	if firstUse and firstUse.on == "placed" and PishTalk.AFTER[id] then
+		(visit :: Visit).after = 1
+	end
 	pointedAt = ""
 	shownKey = ""
 	clearCues()
@@ -1065,6 +1070,22 @@ local function updateVisit()
 		local ready = LessonRules.firstReady(lessonQueue, Pish.LESSONS, cash, function(lesson): number
 			local shelf = if lesson.shelf then Shelves.ById[lesson.shelf] else nil
 			local product = if lesson.product then Products.ById[lesson.product] else nil
+			-- a first-use lesson explains what's placed already: nothing left to pay for. It waits (keeping its place)
+			-- while its thing isn't standing in the shop: sold again, or queued by an older save's level-up
+			if lesson.on == "placed" and lesson.shelf then
+				local plot = ownPlot()
+				local standing = false
+				for _, item in if plot then plot:GetDescendants() else {} do
+					if item:IsA("BasePart") and item:GetAttribute("ShelfId") == lesson.shelf then
+						standing = true
+						break
+					end
+				end
+				return if standing then 0 else math.huge
+			end
+			if not LessonRules.buys(lesson) then
+				return 0
+			end
 			return if shelf then shelf.cost elseif product then product.boxCost else 0
 		end)
 		if ready then

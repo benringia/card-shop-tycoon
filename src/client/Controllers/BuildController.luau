@@ -14,6 +14,7 @@ local Bulk = require(Config:WaitForChild("Bulk"))
 local Products = require(Config:WaitForChild("Products"))
 local Offline = require(Config:WaitForChild("Offline"))
 local ShopTips = require(Shared:WaitForChild("Util"):WaitForChild("ShopTips"))
+local ShopTileRules = require(Shared:WaitForChild("Util"):WaitForChild("ShopTileRules"))
 local StockConfig = require(Config:WaitForChild("Stock"))
 local UIStyle = require(Config:WaitForChild("UIStyle"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -119,6 +120,9 @@ local function refreshShopRows()
 		row.button.TextSize = if achievement then 14 else 20
 		-- Soft buttons (UIKit): mint when you can buy it, pink when you're short, grey-lilac while locked
 		row.button.BackgroundColor3 = if locked then UIKit.Colors.Locked elseif short then UIKit.Colors.Danger else UIKit.Colors.Success
+		-- just unlocked: a NEW tag (Pish no longer visits for every unlock, owner 2026-11-19)
+		local isNew = not locked and not achievement and ShopTileRules.isNew(getNumberAttribute(player, "Level", 1), row.def.unlockLevel)
+		require(ClientUtil:WaitForChild("NewTag")).set(row.button.Parent, isNew)
 	end
 end
 

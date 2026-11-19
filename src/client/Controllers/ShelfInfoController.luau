@@ -135,16 +135,21 @@ local function showBadges()
 	local eye = camera.CFrame.Position
 	local view = camera.ViewportSize
 	local candidates: { BadgeRules.Candidate } = {}
+	local character = player.Character
+	local body = if character then character:FindFirstChild("HumanoidRootPart") else nil
+	local standing = if body and body:IsA("BasePart") then body.Position else nil
 	for shelf in badges do
 		local at = shelf.CFrame:PointToWorldSpace(badgeOffset(shelf))
 		local distance = (at - eye).Magnitude
 		if shelf:GetAttribute("Empty") == true and distance <= cfg.EMPTY_MAX_DISTANCE then
 			local point, inFront = camera:WorldToViewportPoint(at)
 			local onScreen = inFront and point.X >= 0 and point.Y >= 0 and point.X <= view.X and point.Y <= view.Y
-			table.insert(candidates, { id = shelf, distance = distance, x = point.X, y = point.Y, onScreen = onScreen })
+			-- from the character on the floor, not the zoomed-out camera (BadgeRules: only shelves in reach)
+			local fromPlayer = if standing then (Vector3.new(at.X, standing.Y, at.Z) - standing).Magnitude else nil
+			table.insert(candidates, { id = shelf, distance = distance, x = point.X, y = point.Y, onScreen = onScreen, fromPlayer = fromPlayer })
 		end
 	end
-	local picked = BadgeRules.pick(candidates, PlacementConfig.EMPTY_BADGES.MAX, PlacementConfig.EMPTY_BADGES.SPACE)
+	local picked = BadgeRules.pick(candidates, PlacementConfig.EMPTY_BADGES.MAX, PlacementConfig.EMPTY_BADGES.SPACE, PlacementConfig.EMPTY_BADGES.REACH)
 	for shelf, board in badges do
 		board.Enabled = picked[shelf] == true
 	end

@@ -82,6 +82,8 @@ local warmView: ViewportFrame? = nil
 local preloadAsked: { string } = {}
 local preloadDone: { [string]: boolean } = {}
 local preloading = false
+local modelReady: { [Model]: boolean } = {} -- templates downloaded and drawn once (CreatureVisuals.isReady)
+local modelAsked: { [Model]: boolean } = {} -- templates CreatureVisuals.ensure is downloading now
 
 -- Keeps a copy of a downloaded creature model drawn in a tiny, nearly invisible viewport in a corner of the screen.
 -- Roblox only finishes loading a texture once something draws it, so without this a pet's first summon showed it pale
@@ -160,6 +162,41 @@ function CreatureVisuals.preload(cardNames: { string })
 			pcall(ContentProvider.PreloadAsync, ContentProvider, templates)
 			for _, template in templates do
 				warmModel(template)
+				modelReady[template] = true
+			end
+		end
+	end)
+end
+
+-- Whether a card's creature model is fully in (downloaded and drawn once): the pack opening only lets a creature burst
+-- out of its card then, so a new player's first packs never show a rough, half-loaded model (owner 2026-11-19). A
+-- card without a model (a placeholder) counts as ready
+function CreatureVisuals.isReady(cardName: string): boolean
+	local template = CreatureVisuals.cardTemplate(cardName)
+	return template == nil or modelReady[template] == true
+end
+
+-- Downloads these cards' creature models right now, ahead of the background queue (a pack's pulls the moment they
+-- arrive: the rip and the cards before give them a few seconds). Returns at once
+function CreatureVisuals.ensure(cardNames: { string })
+	local templates: { Model } = {}
+	for _, name in cardNames do
+		local template = CreatureVisuals.cardTemplate(name)
+		if template and not modelReady[template] and not modelAsked[template] then
+			modelAsked[template] = true
+			table.insert(templates, template)
+		end
+	end
+	if #templates == 0 then
+		return
+	end
+	task.spawn(function()
+		pcall(ContentProvider.PreloadAsync, ContentProvider, templates)
+		for _, template in templates do
+			if not modelReady[template] then
+				warmModel(template)
+				task.wait() -- drawn for a frame, so its textures are up
+				modelReady[template] = true
 			end
 		end
 	end)
@@ -171,6 +208,7 @@ function CreatureVisuals.preloadTemplates(templates: { Model })
 	pcall(ContentProvider.PreloadAsync, ContentProvider, templates)
 	for _, template in templates do
 		warmModel(template)
+		modelReady[template] = true
 	end
 end
 

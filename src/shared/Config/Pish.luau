@@ -40,37 +40,38 @@ return {
 	-- player has been free `free` seconds (not on the register, carrying boxes, placing, in a window, a fight, a show or
 	-- a popup: client Util/PlayerBusy) and `gap` seconds after his last visit; one under way steps back while they're
 	-- busy (his time stopped) and leaves after `wait` seconds of it, its lesson kept for a better moment
-	PACE = { free = 4, gap = 45, wait = 12 },
+	-- `gap` was 45 until the final tutorial check (owner 2026-11-19: "make sure the tutorial are not annoying"): shop
+	-- levels 2 to 4 come within minutes and queue six lessons plus the prices one, so he was back within a minute each
+	-- time; 90 gives a real breather (a lesson whose thing the player finds first is never taught: LessonRules.used)
+	PACE = { free = 4, gap = 90, wait = 12 },
 	LESSON_SECONDS = 20, -- a lesson visit that points leaves after this long (or when the new thing is used)
 	TEACH_QUIET_SECONDS = 30, -- a lesson that teaches leaves after this long with no step taken (each step starts it again)
-	-- One visit per town or shop unlock, once per player (owner 2026-11-10: "when a player unlocks something for the
-	-- first time, pish will visit and teach them"; tests/LessonRules checks every Products / Shelves unlock has one).
-	-- `shelf`: he walks them through Build to place it, `product`: through the order computer to order it (done when
-	-- they do, Util/LessonRules.forShelf / forProduct); `trigger`: an event instead of a level (the first trophy).
-	-- The two cases unlock at 1 and are taught once his first visit has given you cards. Combat is Chikin's.
+	-- What Pish teaches after his first visit, once per player. Until 2026-11-19 every town and shop unlock brought a
+	-- visit at its level (owner 2026-11-10); levels 2 to 4 come within minutes, so he came again and again while the
+	-- player was busiest (owner 2026-11-19: "so we should adjust the tutorial to not based on levels? whats the best
+	-- move here", then "A and B now"). Now he teaches at first use, and only what needs words:
+	--   `on = "placed"`: a machine or a card case, explained beside it the first time it's placed (PishTalk.AFTER;
+	--     LessonRules.onPlaced). Its `level` only orders the waiting lessons. The main quest strip is what tells the
+	--     player it can be built.
+	--   `level` alone: what can't be placed, taught when it's handed over or opens: the sword, jobs.
+	--   `trigger`: an event (the first trophy, the first title, the end of his first visit: prices).
+	-- Plain shelves, racks, decor and new stock have no lesson: the main quest strip and the NEW tag on their tile
+	-- (LevelRules.isNew) carry them. Combat is Chikin's.
 	LESSONS = {
-		{ id = "showcase", level = 2, icon = "Cases", shelf = "GlassShowcase" },
-		-- shop decor: one lesson for the whole Decor tab (looks and pieces), on its first piece (spec 2026-11-14-shop-decor)
-		{ id = "decor", level = 2, icon = "Decor", shelf = "PottedPlant" },
-		{ id = "sleeves", level = 3, icon = "Sleeves", product = "CardSleeves" },
-		{ id = "collectorCase", level = 3, icon = "Cases", shelf = "CollectorCase" },
+		{ id = "showcase", level = 2, icon = "Cases", shelf = "GlassShowcase", on = "placed" },
+		{ id = "collectorCase", level = 3, icon = "Cases", shelf = "CollectorCase", on = "placed" },
 		{ id = "sword", level = 4, icon = "Sword" },
-		{ id = "wallShelf", level = 4, icon = "Shelves", shelf = "WallShelf" },
-		{ id = "condenser", level = 5, icon = "Condenser", shelf = "Condenser" },
-		{ id = "forge", level = 6, icon = "Forge", shelf = "Forge" },
-		{ id = "expand", level = 7, icon = "DeckBox", product = "DeckBox" },
-		{ id = "accessoryHook", level = 7, icon = "Shelves", shelf = "AccessoryHook" },
-		{ id = "bigRack", level = 9, icon = "Shelves", shelf = "BigDisplayRack" },
-		{ id = "bulkBin", level = 10, icon = "Copies", shelf = "BulkBin" },
-		{ id = "boosterBox", level = 11, icon = "BoosterBox", product = "FirstSparkBox" },
-		{ id = "grading", level = 14, icon = "GradingSeal", shelf = "GradingStation" },
+		{ id = "condenser", level = 5, icon = "Condenser", shelf = "Condenser", on = "placed" },
+		{ id = "forge", level = 6, icon = "Forge", shelf = "Forge", on = "placed" },
 		{ id = "jobs", level = 8, icon = "Jobs" },
+		{ id = "bulkBin", level = 10, icon = "Copies", shelf = "BulkBin", on = "placed" },
+		{ id = "grading", level = 14, icon = "GradingSeal", shelf = "GradingStation", on = "placed" },
 		{ id = "trophy", icon = "Trophy", trigger = "trophy" },
 		{ id = "titles", icon = "Trophy", trigger = "title" }, -- the first title earned: how to equip it (owner 2026-11-13)
 		-- right after his first visit: setting your own prices (owner 2026-11-16: "let pish teach players how to set prices
 		-- through shelves or the prices tile")
 		{ id = "prices", icon = "Prices", trigger = "tourDone" },
-	} :: { { id: string, level: number?, icon: string, shelf: string?, product: string?, trigger: string? } },
+	} :: { { id: string, level: number?, icon: string, shelf: string?, product: string?, trigger: string?, on: string? } },
 	-- The stuck helper: in a player's first `firstSeconds` of play, after `quiet` seconds without progress, at most
 	-- once per `gap` seconds
 	STUCK = { firstSeconds = 3600, quiet = 60, gap = 120 },

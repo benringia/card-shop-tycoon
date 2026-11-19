@@ -39,7 +39,7 @@ golden loot beam with the real Solarion card in it, a purple Epic beam far off, 
 Chikin; `thumb_8_drop`: true, Wild drops are 2.5% Epic and 0.5% Legendary, Solarion a First Spark Legendary that Ember
 zones drop). Scenes from Figma's image generator with no text, titles by `tools/ui-art/make_thumbnail.py`
 (`--x` puts a title over one side: run it again on its output for a split's second title); files in
-`assets/ui/game-page` (not synced). Every number on them must stay true.
+`assets/ui/game-page` (not synced). Every number on them must stay true. The page's description (under 1,000 characters, owner 2026-11-19: "using keywords/marketing") is `assets/ui/game-page/description.txt`: the same rule for its numbers (1 in 250,000, 40+ creatures, 5 elements, 7 bosses, 60,000 HP, 13 weapons to +10, the weekend events).
 
 ---
 
@@ -2480,7 +2480,7 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   thunderclap, helpers, heals, gets angry, or the Hydra's element changes, with their real numbers). A locked boss
   past the "Next" one keeps its tricks a surprise ("???: reach it to find out", `BossRules.revealTricks`; the Hydra's
   element pill reads "???" and shows no element to bring); its needs and rewards always show. **Rewards:** a
-  loot pill ("Loot ready" green, or "Loot in 6:12" counting down; tooltip: loot once every 7 min, earlier wins pay
+  loot pill ("Loot ready" green, or "Loot in 6:12" counting down; tooltip: loot once every 7 min, 3.5 on Boss Rush, 7.15; earlier wins pay
   cash and XP only); each win's drops as slots with a count badge and the chance under each (`BossRules.chanceText` /
   `countText`), a
   fragment for a boss already opened faded with "-" (it no longer drops); the first-win chest (until beaten) and the
@@ -4066,6 +4066,104 @@ all 15) and glass cases sold singles one at a time; past that, Commons piled up.
   be sold (like any stocked shelf). Studio: `/bulk [cards]` (a free bin and that many plain Commons; the admin panel's
   Decor section).
 
+### 7.15 Weekly events (built 2026-11-19)
+Owner, after the pre-launch QA ("our goal is for the players to keep coming back"): "suggest a recurring scheduled
+events", then "build the weekend events". The same every week on UTC days, so nobody runs them; each boosts something
+the game already has, nothing is sold, and a missed day comes back next week. `Config/Events` (`DAYS` by weekday, 1
+Monday .. 7 Sunday), `Util/EventRules` (pure: the weekday, today's event, the next one, the chip's words, the toast),
+`Util/EventNow` (the event on right now by the server's clock, for the server and the client).
+- **Boss Rush (Saturday)**: a boss's loot timer is half (`lootCooldown = 0.5`: 3:30 instead of 7:00, set when the loot
+  win happens: `BossService`), and every material chest holds one more of the material (`chestMaterial = 1`:
+  `ChestRules.mine` / `others` take a bonus, the two chests you didn't pick show it too; a weapon's chest stays the
+  weapon). The victory screen says why the wait is shorter ("Boss Rush: loot twice as fast today",
+  `VictoryRules.notes`, sent as `boss.event` on a loot win).
+- **Lucky Sunday (Sunday)**: 30 minutes of free 2x Luck once that UTC day (`LuckService.Give`, so it runs down only
+  while you play and waits behind a running 3x), given a moment after you arrive or when the day turns. Saved as
+  `events.luckDay` (the UTC day it was last given; schema v37), so a rejoin or another place can't give it twice.
+- **How players see it**: a toast once you've arrived (12 s after your save loads; again when the day turns; in each
+  place you enter): "Boss Rush today! Boss loot twice as fast, +1 material in boss chests." / "Lucky Sunday! You got 30
+  minutes of free 2x Luck on your packs." (a rejoin says "Today's free 2x Luck is already yours."). On a computer a
+  chip under the quest strip, under Turts' chip (`EventController`, `QuestController.Below`): gold while an event is on
+  ("Boss Rush · 5h left"), plain while it counts down ("Next: Boss Rush in 1d 16h"); its tooltip says what it does. A
+  phone shows no chip (`CompactHud.phonePieces` eventChip), nor does a window under 550 px tall (it would sit on the
+  cash and weapon corner). The Boss Ladder's rewards say "Boss Rush today: loot twice as fast, +1 material in chests"
+  and its loot tooltip gives today's wait. New players hear nothing through the prologue and Pish's tour.
+- **Server**: `EventService` (all three places, after `LuckService`): the toast and Sunday's luck, checked every 20 s.
+  The boss services read `EventNow` / `EventRules` themselves, never `EventService`: it needs `LuckService`, whose
+  requires lead back to `BossService` (a require cycle stops the server booting; `tests/RequireCycles` now fails for
+  one).
+- **Studio**: `/event <bossRush|luckySunday|off|auto>` sets the Workspace attribute `EventOverride` (read only in
+  Studio) for everyone there; `/event luck` lets Sunday's luck be given again today. The admin panel's buttons sit
+  with the boss ones.
+- **Not built yet** (the proposal's other days): Market Monday (half again as many customers), Wild Wednesday (double
+  Wild Ore and creature XP), Forge Friday (upgrades 25% cheaper), and the Rush Hour every 2 hours. Each is one entry in
+  `Events.DAYS` plus its hook.
+
+### 7.16 Codes (built 2026-11-19)
+Owner: "should we add JOIN our DISCORD or something now that we have discord server? reward?", then "yes do code
+box". Nothing is rewarded for joining anything off Roblox (most players are under 13 and can't, and the game never
+shows a link); instead a code box at the bottom of the phone's Store takes codes we post on the game page and in our
+community, and everyone can use them. `Config/Codes` (`CODES[<CODE>] = { reward, ends? }`, a gift's reward shape:
+cash, items, luck), `Util/CodeRules` (pure: what's typed becomes capitals and digits, `check` says ok / unknown / used
+/ expired / empty, the saved list cleaned, "You got: ..." in words).
+- **Server** (`CodeService`, main game): `Remotes.RedeemCode(typed)` is rate-limited (1.5 s), type- and length-checked,
+  cleaned and checked; a code works once a player; nothing is paid unless the whole gift fits the Bag (the code stays
+  unused); not during a fight. The code is recorded before anything is given. The answer comes back on
+  `Remotes.CodeResult(ok, message)`; codes are never sent to the client. Saved as `codes` (the ones used; schema v38).
+  A code removed from the config stays used, so listing it again can't pay twice; an ended one (`ends`, Unix) says so.
+- **Client** (`Util/CodeBox`, built into `StoreController`'s list and kept through its redraws): a field (capitals as
+  you type), Redeem (48 px; it waits out the cooldown, so a try is never dropped without an answer) and the answer
+  under them in green or red.
+- **Shipped**: `ONEMOREPACK` ($250 and 2 First Spark Packs, the launch code for the game page) and `PISHANDCHIKIN`
+  (2 XP Tonics and 15 minutes of 2x Luck, the community's). A code is a small gift, never an economy skip: at most
+  $1,000 and 5 of an item (tested). Adding one: an entry in `Config/Codes`, publish, post it.
+- Studio: `/codes reset` (yours can be used again; the admin panel's button).
+
+### 7.17 The town's dressing (built 2026-11-19)
+Owner: "in town, do you have any suggestion to make it more immersive and beautiful that doesnt cost too much
+performance?", then "do town beauties". All on the client, built once (`TownDressController`, `Config/TownDress`,
+`Util/TownDressRules`): small parts and a few particles, no lights, no GUIs, nothing per frame.
+- **Event days in the world**: on Boss Rush a dark red banner with a gold trophy hangs on each of the eight street
+  lights, on Lucky Sunday a green one with a clover (`TownDress.LOOKS` by `Config/Events` id, `Util/EventNow`,
+  `TownDressRules.banner`: beside the pole at 7.4 studs, facing the street). Nothing on a plain day. The first build
+  strung lights lamp to lamp with pennants between; the owner the same day: "remove/replace string lights. it's too
+  much. its also covering the shops entrances". The lamp posts stand in the gaps between the shops, so nothing hangs
+  across a shop front now.
+- **Falling leaves** from the plaza's four planter trees (1.2 a second each, about 8 in the air a tree, tinted green
+  to amber; `assets/ui/fx-town/leaf.png`, `tools/textures/make_leaf.py`), and **a shooting star** every 45-110 s deep
+  in the night (a Trail far off and high up). Both only while the extras run (`Util/Extras`).
+- **Trees clear of the shops** (owner 2026-11-19: "some shops have leaves sticking out of their walls"): 14
+  hand-placed trees (`assets/town`) reached up to 4.6 studs through the shops' back and side walls. `TownService` moves
+  any `TownDecor` tree whose footprint reaches into a plot (plus 2 studs: the wall and a little air) out of it the
+  short way at start (`TownLayout.clearOf`, Lune-tested); one too wide for its gap would be taken away (none is).
+- Not built from the list: chimney smoke and window glow (the shops have no chimneys and their fronts are lit
+  already). Butterflies by day and fireflies at night were there already.
+
+### 7.18 Posters (built 2026-11-19)
+Owner: "since we have glass entrances. can we add like 5 poster arts players could place in on the glass part of
+their shop but not in the sliding doors", "I want the posters to be funny you can use figma to design something",
+then, on seeing them in fixed spots on the glass: "posters should be a decor. not automatically placed to the glass.
+players can also put it on walls inside the shop". So posters are decor, placed like a shop window: five poster
+styles in `Config/Windows` (a `poster` picture), in the Decor tab after the windows.
+- **The five**: Just One More (a kid buried in pack wrappers: "I said that 40 packs ago"), Missing: Wallet (a crying
+  empty wallet: "Last seen near the packs"), Beware of Dog (Pish in a spiked collar: "He will lick you"), Wanted
+  (Chikin with a golden card in his mouth: "For eating a Legendary"), Top Employee (Turts asleep on the register:
+  "Asleep since Monday"). Scenes from Figma's image generator with no text (`assets/ui/posters/art`; Figma file nodes
+  189:2-189:6); the jokes are put on by `tools/ui-art/make_posters.py` (Fredoka), so they're easy to reword; uploaded
+  as images (512 x 768).
+- **Where** (`WindowRules.canPlace`): on a side or back wall inside (the windows' grid; never overlapping a window or
+  another poster), or on the shop front's glass: the two outer panes each side of the door (`WindowRules.frontSpots`,
+  one poster a pane). Never on the doors or the inner pane a door leaf rests on when open; windows still can't go on
+  the front. The front's panes carry `WallSide = "front"` so the placing ghost finds them.
+- **How**: a Decor tab tile ("Free") starts placing: the ghost follows the pointer along the walls and the front
+  glass, Place puts it up (`Remotes.PlaceWindow`, the windows' own checks); its Edit prompt moves it or takes it down.
+- **Rules**: free, from shop level 1, no decor points (free points would be a free rating), their own cap of 8
+  (`MAX_POSTERS`; the 6 windows are counted apart, `WindowRules.count`). A poster cuts no hole (`WindowRules.cuts`):
+  it hangs 0.14 studs off the wall's inside face, past the look's liner, or just outside the front glass
+  (`WindowRules.depth`), its picture on both faces (`WindowLooks.poster`). Saved with the windows (`windows`).
+- The first build (four fixed front spots, their own service, picker and `posters` save field) was dropped the same
+  day; schema v39 only removes that never-released field.
+
 ## 8. Monetization
 
 Principle: sell **convenience, speed and looks**, not "win". Never sell anything that makes another player's experience worse.
@@ -4751,7 +4849,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v36)
+### 10.4 Player data schema (v39)
 ```lua
 {
     version = 21,
@@ -4806,6 +4904,8 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     lastSeen = 1795000000, -- os.time of the last main-game save: welcome-back earnings (OfflineService; v33, 0 = never)
     weekly = { week = 2914, list = { { id = "rip", goal = 56, progress = 12, claimed = false } }, chest = false }, -- this week's quests (Monday weeks, GiftRules.weekOf) and the Weekly Chest opened (QuestService, Util/QuestRules; v34)
     mainQuests = { "Forge", "WallShelf" }, -- main quest items whose first build paid its shop XP (MainQuestService, Util/MainQuestRules; v36)
+    events = { luckDay = 20779 }, -- weekly events: the UTC day Lucky Sunday's free luck was last given, -1 never (EventService, Util/EventRules; v37)
+    codes = { "ONEMOREPACK" }, -- the Store codes this player has used (CodeService, Util/CodeRules; v38)
 }
 ```
 Bump `version` and write a migration whenever the shape changes.
@@ -4834,7 +4934,7 @@ Studio on the test slot plays its own save, `Player_<id>_studio` (2026-11-16: St
 live playthrough), so Studio and the live game never share one.
 Anyone else's `/slot` does nothing. (`SaveSlotService`, pure `Server/Util/SaveSlots`, Lune-tested.)
 
-Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; v17 added `tutorial` (the first visit with Pish; existing saves "done" with their first pack given and his gift still to come, so only new players go through it); each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity); `tutorial` gained `customerSent` (read as false when missing, true for v17's existing shops; no bump: an older server dropping it allows one more of Pish's customers). v18 added `combat` (Chikin's combat tutorial, the same shape; done for every shop past Pish's tour, still to do for a player mid-way through it). v19 added `dungeon` (`secretFound` and `seenIntro` false for everyone; a junk value is replaced). v20 added `title` ("" for everyone: automatic, the same title as before; a saved string kept, junk replaced). v21 added `upgrades`, `skipTokens` and `purchases` (empty for everyone; a good skip count kept, junk replaced). v22 added `support` (no gifts for everyone; good counts kept). v23 added `titles` (`known`, `fresh` empty, `seeded` false: the first load counts the titles a player already has without telling). v24 added `turts` (nothing bought for everyone; good ids kept, a broken "restock now" roll dropped). v25 added `decor` (Cozy Wood in use and no looks bought for everyone; good ids kept, cleaned against Config/Decor on load). v26 added `windows` (none for everyone; a saved list kept and cleaned on load by `WindowRules.clean`, which pays back any window that no longer fits). v27 added `luck` (no bought luck for everyone). v28 added `unlocks` (none for everyone). v29 added `seenPrologue` (true for every save from before it, so the prologue only greets new players). v30 added `gifts` (the round at day 1, nothing played or earned, for everyone; a saved table kept and cleaned on load by `GiftRules.clean`). v31 kept `combat`'s shape but reordered Chikin's steps (the sword and a fight with it in his first visit): a tour in progress keeps its place by step name. v32 added `tips` (none seen for everyone; a saved table kept and cleaned on load by `TipRules.clean`). v33 added `quests` and `lastSeen`; v34 added `weekly`. v35 kept `tutorial`'s shape but put Pish's "summonPal" step second (owner 2026-11-17): a saved step from 2 on moves one along, so a tour in progress keeps its place. v36 added `mainQuests` (none paid for everyone; the items standing in the shop at load count as paid). A service that didn't load for a player (e.g. no free plot) never overwrites
+Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; v17 added `tutorial` (the first visit with Pish; existing saves "done" with their first pack given and his gift still to come, so only new players go through it); each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity); `tutorial` gained `customerSent` (read as false when missing, true for v17's existing shops; no bump: an older server dropping it allows one more of Pish's customers). v18 added `combat` (Chikin's combat tutorial, the same shape; done for every shop past Pish's tour, still to do for a player mid-way through it). v19 added `dungeon` (`secretFound` and `seenIntro` false for everyone; a junk value is replaced). v20 added `title` ("" for everyone: automatic, the same title as before; a saved string kept, junk replaced). v21 added `upgrades`, `skipTokens` and `purchases` (empty for everyone; a good skip count kept, junk replaced). v22 added `support` (no gifts for everyone; good counts kept). v23 added `titles` (`known`, `fresh` empty, `seeded` false: the first load counts the titles a player already has without telling). v24 added `turts` (nothing bought for everyone; good ids kept, a broken "restock now" roll dropped). v25 added `decor` (Cozy Wood in use and no looks bought for everyone; good ids kept, cleaned against Config/Decor on load). v26 added `windows` (none for everyone; a saved list kept and cleaned on load by `WindowRules.clean`, which pays back any window that no longer fits). v27 added `luck` (no bought luck for everyone). v28 added `unlocks` (none for everyone). v29 added `seenPrologue` (true for every save from before it, so the prologue only greets new players). v30 added `gifts` (the round at day 1, nothing played or earned, for everyone; a saved table kept and cleaned on load by `GiftRules.clean`). v31 kept `combat`'s shape but reordered Chikin's steps (the sword and a fight with it in his first visit): a tour in progress keeps its place by step name. v32 added `tips` (none seen for everyone; a saved table kept and cleaned on load by `TipRules.clean`). v33 added `quests` and `lastSeen`; v34 added `weekly`. v35 kept `tutorial`'s shape but put Pish's "summonPal" step second (owner 2026-11-17): a saved step from 2 on moves one along, so a tour in progress keeps its place. v36 added `mainQuests` (none paid for everyone; the items standing in the shop at load count as paid). v37 added `events` (Lucky Sunday's luck never given, for everyone; a saved table kept and cleaned on load by `EventRules.clean`). v38 added `codes` (none used, for everyone; a saved list kept and cleaned on load by `CodeRules.clean`). v39 changed no shape: it drops `posters`, a field built and removed the same day and never released (posters are decor in `windows` now, as `Config/Windows` poster styles). A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
 
 ### 10.6 UI style and HUD
@@ -5583,6 +5683,62 @@ boss models; the ranch and Heroic tiers come after those.
   at about 6,000 XP, $2 x level), Roblox's Robux glyph on every price (`Util/RobuxPrice`), a new case card waits for its price
   (`Util/ListingHold`), To Bag with its own icon (pick B) and Pish's tip bubble (`Util/TileTip`, schema v32 `tips`),
   and Open another on the pack results.
+- The town's music is a playlist (owner 2026-11-19: "add the two extra music with volume 0.21"): White Owl (0.18),
+  Wistful Wonderings and Soft Tranquility (0.21 each), with 6 s of quiet between (`Music.TOWN.tracks`, `volumes`,
+  `MusicRules.trackVolume`). A random one each time you arrive in town (starting the game, back from the Wild or a
+  pack opening) and after each ends, never the one just heard (`rotate = "random"`, `MusicRules.randomTrack`; owner:
+  "randomize the town music between those 3 music every time player came back to town or starting the game").
+- **Lessons on first use, not by level** (owner 2026-11-19: "so we should adjust the tutorial to not based on
+  levels? whats the best move here", then "A and B now"; this replaces 7.6's "one visit per unlock"). Pish's
+  lessons went from 18 to 11 (`Pish.LESSONS`):
+  - No visit any more for plain shelves, racks, decor and new stock (Wall Shelf, Accessory Hook, Big Display Rack,
+    the Decor tab, Card Sleeves, Deck Boxes, Booster Boxes). The main quest strip says what can be built, and a
+    pink NEW tag sits on a Shop or Order Stock tile for the level it unlocks at and the one after
+    (`ShopTileRules.isNew`, client `Util/NewTag`).
+  - A machine or a card case (Glass Showcase, Collector Case, Condenser, Forge, Bulk Bin, Grading Station;
+    `on = "placed"`) is explained the first time it's placed: `TutorialService` queues it then
+    (`LessonRules.onPlaced`), and Pish goes straight to it and says what it's for (`PishTalk.AFTER`), with no
+    build walkthrough. It never waits for cash (`LessonRules.buys`), and waits while its thing isn't standing in
+    the shop (an older save's level-queued lesson waits for the machine).
+  - Still at their level, since nothing is placed: the sword (4, handed over then) and jobs (8). Events as before:
+    prices after his first visit, the first trophy, the first title.
+  - A level-up now brings at most one visit (`LessonRules.due`: sword, jobs). The pacing gates and the 90 s
+    breather are unchanged.
+- Empty badges only near you (owner 2026-11-19: "can we only see EMPTY shelves if were near enough?"): a shelf's
+  "Empty" badge shows only within 16 studs of your character (`Placement.EMPTY_BADGES.REACH`, `BadgeRules.pick`'s
+  `reach`; measured from the character, since the camera zooms far out), still the nearest 3 and never overlapping.
+- Final tutorial check 2026-11-19 (owner: "make sure the tutorial are not annoying. only appears at the right
+  time"). The rules already keep Pish away unless the player is in town, free for 4 s (not on the register,
+  carrying, placing, in a window, a fight, a show or a popup), Chikin isn't leading, and a lesson that buys
+  something waits until the cash covers it; a visit steps back while the player is busy and leaves after 12 s;
+  the stuck helper only in the first hour, after 60 s without progress, at most every 2 minutes, muted by "Got
+  it". One change: his breather between visits 45 s -> 90 s (`Pish.PACE.gap`): shop levels 2 to 4 come within
+  minutes and queue six lessons plus the prices one, so he was back within a minute each time. Not playtested as a
+  brand-new account in this pass (rules, config and tests only).
+- Playthrough fixes 2026-11-19 (the owner's list after the weekend events):
+  - **Prologue flicker**: a super's cinematic (Supernova) cast as the Hydra's killing blow began set the camera every
+    frame while the prologue's shot did too. The prologue's `holdCamera` now calls `SkillCinematic.stop()` and
+    `SuperCinematic.hold(true)` first (a running super cinematic cuts back, none starts until `releaseCamera`); the
+    move itself still plays in the world.
+  - **Chikin's guard abuse**: creatures that can't faint in his fight steps let a new player kill any monster. The
+    guard now holds only against a normal monster up to `Chikin.GUARDED_MAX_LEVEL` (5, the Meadow's top): never an
+    elite, a boss or a higher zone (`Util/ChikinRules.guards`, Lune-tested).
+  - **Rough creature models in early packs**: every new card's creature bursts out of it, and a new player's models
+    were still downloading. The pack's models now download the moment its pulls arrive (`CreatureVisuals.ensure`), and
+    a creature only comes out once its model is in and drawn (`CreatureVisuals.isReady`, `RevealRules.comesAlive`'s
+    `ready`); otherwise the card reveals as usual (a Legendary's sky still tears).
+  - **A sound at the register with nothing said**: a kid's Very Rare or better rip plays the reveal hit over their
+    head, out of a first-person owner's view. The owner now gets a toast ("A kid pulled an Epic Abyssal Koi from your
+    pack!", `OfferRules.pullLine`, `Customers.REVEAL.cheerOrder`).
+  - **Stock a customer took is never lost**: a bargain hunter turned down (or any customer leaving unpaid) put stock
+    back only if its shelf still stood and held that product. Now: that shelf, then the owner's other shelves of the
+    product, then a refund of what fits nowhere at what it cost, with a toast (`CustomerService.returnStock`, server
+    `Util/ReturnRules.refund`). Cards already went to their slot, a free slot or the binder.
+  - **Quest icons**: the bubbles' 2 px float moved in whole pixels and looked jerky; the icons now sway 8 degrees
+    either way (`Quests.STRIP.sway`), the main quest's too.
+  - Checked in Studio: the prologue replay and the welcome flight end with the camera and the town music back and
+    nothing in Output; every music volume is the owner's by-ear number. To judge by ear: the Frontier's boss music
+    (0.006-0.007) is now quieter than its areas' (0.012 since 2026-11-17).
 - Pre-launch QA 2026-11-19 (owner: "do all necessary final tests before I publish"): 2,137 tests, every source file
   compiles, three places build and boot with a clean Output (the old `203785492` asset warning isn't ours); all 97
   client-to-server remotes have a handler, 95 rate-limited and the other two bounded (PullRevealed by its pending

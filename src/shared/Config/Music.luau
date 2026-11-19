@@ -24,9 +24,19 @@ return {
 		key = "town",
 		-- What plays: the owner's pick from `options` (Studio: "/music <n> [volume]" plays option n over the ambience,
 		-- "/music 0" goes back to these)
+		-- A playlist since the owner 2026-11-19 ("should we have a playlist for music for town? instead of just one?"):
+		-- a random one of the three each time you arrive (starting the game, back from the Wild) and after each ends,
+		-- never the one just heard (`rotate`, MusicRules.randomTrack; owner: "randomize the town music between those 3
+		-- music every time player came back to town or starting the game"), with `gap` seconds of quiet between them
+		rotate = "random",
 		tracks = {
 			"rbxassetid://9048757009", -- "White Owl" (bells and piano; the owner's pick, 2026-11-04, after Drifting Into Dreamland)
+			"rbxassetid://9043424638", -- "Wistful Wonderings" (guitar and harmonium)
+			"rbxassetid://105460275738508", -- "Soft Tranquility" (sparse)
 		},
+		-- Each track's own volume where it isn't `volume` (MusicRules.trackVolume; owner 2026-11-19: "add the two extra
+		-- music with volume 0.21")
+		volumes = { [2] = 0.21, [3] = 0.21 },
 		-- Soft APM pieces to choose from (owner 2026-11-04: the first pick overpowered the ambience)
 		options = {
 			{ name = "White Owl (bells and piano)", id = "rbxassetid://9048757009" },

@@ -12,11 +12,13 @@ local Config = Shared:WaitForChild("Config")
 local Products = require(Config:WaitForChild("Products"))
 local PricingConfig = require(Config:WaitForChild("Pricing"))
 local OrderRules = require(Shared:WaitForChild("Util"):WaitForChild("OrderRules"))
+local ShopTileRules = require(Shared:WaitForChild("Util"):WaitForChild("ShopTileRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local NewTag = require(ClientUtil:WaitForChild("NewTag"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
 local ProductPicture = require(ClientUtil:WaitForChild("ProductPicture"))
 local UIController = require(Controllers:WaitForChild("UIController"))
@@ -58,6 +60,8 @@ local function refreshRows()
 		row.button.BackgroundColor3 = if ready then UIKit.Colors.Success else UIKit.Colors.Locked
 		row.button.AutoButtonColor = ready
 		row.lock.Visible = look.state == "locked"
+		-- just unlocked: a NEW tag (Pish no longer visits for new stock, owner 2026-11-19)
+		NewTag.set(row.button.Parent, look.state ~= "locked" and ShopTileRules.isNew(getNumber("Level", 1), row.product.unlockLevel))
 		-- The lock sits before "Lv 11": the text moves over to make room for it
 		local padding = row.button:FindFirstChildOfClass("UIPadding")
 		if padding then

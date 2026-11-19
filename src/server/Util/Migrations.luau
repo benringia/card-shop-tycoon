@@ -388,6 +388,24 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 			data.mainQuests = {}
 		end
 	end,
+	-- 36 -> 37: weekly events (owner 2026-11-19): Lucky Sunday's free luck never given yet (EventService; a saved table
+	-- is kept for EventRules.clean)
+	[36] = function(data)
+		if typeof(data.events) ~= "table" then
+			data.events = { luckDay = -1 }
+		end
+	end,
+	-- 37 -> 38: codes (owner 2026-11-19): no code used yet (CodeService; a saved list is kept for CodeRules.clean)
+	[37] = function(data)
+		if typeof(data.codes) ~= "table" then
+			data.codes = {}
+		end
+	end,
+	-- 38 -> 39: posters are decor in `windows` now (Config/Windows poster styles, owner 2026-11-19): the fixed front
+	-- spots' `posters` list, built and dropped the same day and never released, goes
+	[38] = function(data)
+		data.posters = nil
+	end,
 }
 
 local function lowestGrade(): string

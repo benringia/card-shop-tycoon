@@ -31,6 +31,8 @@ local FrontierConfig = require(Config:WaitForChild("Frontier"))
 local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
+local EventNow = require(Shared:WaitForChild("Util"):WaitForChild("EventNow"))
+local EventRules = require(Shared:WaitForChild("Util"):WaitForChild("EventRules"))
 local ItemRules = require(Shared:WaitForChild("Util"):WaitForChild("ItemRules"))
 local WeaponRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponRules"))
 local SoftColors = require(Shared:WaitForChild("Util"):WaitForChild("SoftColors"))
@@ -635,6 +637,7 @@ local function renderRewards(column: ScrollingFrame, index: number)
 	local state = states[bossId]
 	local phone = UIKit.isPhone()
 
+	local event = EventNow.today() -- the weekly event on now (Boss Rush changes the wait and the chests)
 	local top = strip(column, 0, 28, 8)
 	heading(top, 1, "REWARDS")
 	if state then
@@ -643,7 +646,9 @@ local function renderRewards(column: ScrollingFrame, index: number)
 		pill.LayoutOrder = 2
 		pill.Size = UDim2.fromOffset(0, 26)
 		pill.ZIndex = top.ZIndex + 1
-		Tooltip.attach(pill, `A boss drops loot once every {Bosses.LOOT_COOLDOWN // 60} min. Wins before then give no loot and {math.round(Bosses.REPEAT_PAY * 100)}% of the cash.`)
+		-- the wait as it is today (half on Boss Rush: Config/Events)
+		local wait = string.format("%g", EventRules.lootCooldown(event, Bosses.LOOT_COOLDOWN) / 60)
+		Tooltip.attach(pill, `A boss drops loot once every {wait} min. Wins before then give no loot and {math.round(Bosses.REPEAT_PAY * 100)}% of the cash.`)
 		lootPill = pill
 		-- The Robux reset of every boss timer (Bosses.RESET) on its own row under the timer, while this boss's timer runs;
 		-- "Coming soon" until its product is made
@@ -665,7 +670,12 @@ local function renderRewards(column: ScrollingFrame, index: number)
 	end
 
 	-- Each loot win's drops and their chances (the same every win since 2026-11-19: no daily limit)
-	text(column, "Each win can drop", UIKit.textSize("small"), UIKit.Colors.Subtext).LayoutOrder = 2
+	if event and event.board then
+		-- the event's line in gold over it (wrapped: a phone's column is narrow)
+		wrapped(column, 2, `<font color="#{palette.hint:ToHex()}">{event.board}</font>\nEach win can drop`, UIKit.Colors.Subtext, true)
+	else
+		text(column, "Each win can drop", UIKit.textSize("small"), UIKit.Colors.Subtext).LayoutOrder = 2
+	end
 	local size = if phone then PHONE_DROP_SIZE else DROP_SIZE
 	local drops = wrappingStrip(column, 3, size + 18, 8)
 	for order, drop in boss.drops do

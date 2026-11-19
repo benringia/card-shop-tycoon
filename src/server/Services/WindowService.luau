@@ -91,12 +91,13 @@ local function onPlace(player: Player, styleId: unknown, sideIn: unknown, atIn: 
 		return
 	end
 	local met = style.needs == nil or TitleService.Meets(player, style.needs)
-	local ok, why = WindowRules.canBuy(Windows, styleId, EconomyService.GetLevel(player), EconomyService.GetCash(player), met, #list)
+	-- its own kind's count: posters and windows each have their cap
+	local ok, why = WindowRules.canBuy(Windows, styleId, EconomyService.GetLevel(player), EconomyService.GetCash(player), met, WindowRules.count(Windows, list, styleId))
 	if not ok then
 		Blocked.tell(player, why or "You can't buy that window.")
 		return
 	end
-	if not EconomyService.TrySpend(player, style.price) then
+	if style.price > 0 and not EconomyService.TrySpend(player, style.price) then -- posters are free
 		Blocked.tell(player, `You need ${style.price} for {style.name}.`)
 		return
 	end
@@ -143,7 +144,7 @@ local function onSell(player: Player, index: unknown)
 	end
 	table.remove(list, index)
 	local style = Windows.STYLES[window.style]
-	if style then
+	if style and style.price > 0 then -- a poster is free: nothing to pay back
 		EconomyService.AddCash(player, math.floor(style.price * Windows.SELL_REFUND))
 	end
 	apply(player)

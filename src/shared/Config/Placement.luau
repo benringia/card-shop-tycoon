@@ -28,5 +28,7 @@ return {
 	-- The "Empty" badges (Util/BadgeRules; owner 2026-11-14: a full shop's badges buried the screen): at most this
 	-- many show, the nearest first, never two overlapping on screen (the badge's size in pixels, plus a margin), picked
 	-- again every EMPTY_REFRESH seconds
-	EMPTY_BADGES = { MAX = 3, SIZE = { w = 96, h = 30 }, SPACE = { w = 104, h = 36 }, REFRESH = 0.2 },
+	-- REACH: only shelves within this many studs of your character show one (owner 2026-11-19: across the shop they
+	-- were noise; walk over and it appears)
+	EMPTY_BADGES = { MAX = 3, SIZE = { w = 96, h = 30 }, SPACE = { w = 104, h = 36 }, REFRESH = 0.2, REACH = 16 },
 }

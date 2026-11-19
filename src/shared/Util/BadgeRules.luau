@@ -1,13 +1,16 @@
 --!strict
 -- Which of your empty shelves show their floating "Empty" badge (ShelfInfoController; owner 2026-11-14: a shop full
 -- of empty shelves buried the screen in badges): the nearest ones first, at most `max`, skipping any off screen or
--- whose badge would overlap one already shown. Pure (Lune-tested).
+-- whose badge would overlap one already shown, and only those within `reach` studs of the player (owner 2026-11-19:
+-- "can we only see EMPTY shelves if were near enough?"; the camera zooms far out, so its distance doesn't say you're
+-- near). Pure (Lune-tested).
 local BadgeRules = {}
 
 -- One empty shelf: how far it is, and where its badge would sit on screen (pixels)
-export type Candidate = { id: any, distance: number, x: number, y: number, onScreen: boolean }
+-- (`fromPlayer`: studs from the player's character, when known)
+export type Candidate = { id: any, distance: number, x: number, y: number, onScreen: boolean, fromPlayer: number? }
 
-function BadgeRules.pick(candidates: { Candidate }, max: number, size: { w: number, h: number }): { [any]: boolean }
+function BadgeRules.pick(candidates: { Candidate }, max: number, size: { w: number, h: number }, reach: number?): { [any]: boolean }
 	local sorted = table.clone(candidates)
 	table.sort(sorted, function(a, b)
 		return a.distance < b.distance
@@ -18,7 +21,7 @@ function BadgeRules.pick(candidates: { Candidate }, max: number, size: { w: numb
 		if #placed >= max then
 			break
 		end
-		if not candidate.onScreen then
+		if not candidate.onScreen or (reach and candidate.fromPlayer and candidate.fromPlayer > reach) then
 			continue
 		end
 		local clear = true

@@ -43,7 +43,8 @@ return {
 	-- The strip at the top right (client Util/QuestStrip, owner 2026-11-17: "add design/immersive animations on the quest
 	-- strip", look A of artifact XyGHP2ku71fRaYeuEkGZ6D): pixels and seconds. `bubbles`: each quest's icon bubble in
 	-- its kind's baby colour; the band's shine passes every `shineEvery` s, the scroll wiggles every `wiggleEvery` s, each
-	-- bar's shine every `barShineEvery` s; the bubbles float `float` px up and down over `floatSeconds`. Its chevron
+	-- bar's shine every `barShineEvery` s; each bubble's icon sways `sway` degrees either way over `swaySeconds` (a 2 px
+	-- float moved in whole pixels and looked jerky: owner 2026-11-19, "make icon animations on Quest smoother"). Its chevron
 	-- (owner 2026-11-17: "can we make the quest window minimizable/hideable?") folds a computer's strip to the band, for
 	-- the session (a new day's quests show it open again). A phone shows a chip beside the cash instead (owner 2026-11-17,
 	-- "go A"): `phoneBand` tall, its chip `phoneChip.left` px in (the scroll before it) and `phoneChip.right` from its end.
@@ -51,7 +52,7 @@ return {
 		width = 250, band = 28, phoneBand = 30, phoneChip = { left = 31, right = 7 }, rowHeight = 32, rowGap = 5, pad = 8,
 		bubbles = { shop = "mint", cards = "sky", adventure = "peach" },
 		shineEvery = 5, wiggleEvery = 4, barShineEvery = 3.5,
-		float = 2, floatSeconds = 1.5,
+		sway = 8, swaySeconds = 1.6,
 		fillSeconds = 0.6, confetti = 7,
 	},
 }

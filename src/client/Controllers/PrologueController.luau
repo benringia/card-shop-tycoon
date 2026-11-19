@@ -36,6 +36,8 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local ScreenFx = require(ClientUtil:WaitForChild("ScreenFx"))
+local SkillCinematic = require(ClientUtil:WaitForChild("SkillCinematic"))
+local SuperCinematic = require(ClientUtil:WaitForChild("SuperCinematic"))
 local ScreenClear = require(ClientUtil:WaitForChild("ScreenClear"))
 local SoundBank = require(ClientUtil:WaitForChild("SoundBank"))
 local PrologueStage = require(ClientUtil:WaitForChild("PrologueStage"))
@@ -367,6 +369,11 @@ local function play()
 		end
 		cameraHold = name
 		local started = os.clock()
+		-- a super's or sword skill's own cinematic gives the camera back first and none starts under this shot (owner
+		-- 2026-11-19: Supernova cast as the Hydra's killing blow began made the whole prologue flicker, both
+		-- setting the camera every frame)
+		SkillCinematic.stop()
+		SuperCinematic.hold(true)
 		camera.CameraType = Enum.CameraType.Scriptable
 		RunService:BindToRenderStep(name, Enum.RenderPriority.Camera.Value + 1, function()
 			camera.CFrame = frame(os.clock() - started)
@@ -377,6 +384,7 @@ local function play()
 			RunService:UnbindFromRenderStep(cameraHold)
 			cameraHold = nil
 		end
+		SuperCinematic.hold(false)
 		camera.CameraType = Enum.CameraType.Custom
 		camera.CameraSubject = humanoid
 	end

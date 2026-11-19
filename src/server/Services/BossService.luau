@@ -21,6 +21,8 @@ local Weapons = require(Config:WaitForChild("Weapons"))
 local Victory = require(Config:WaitForChild("Victory"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
+local EventNow = require(Shared:WaitForChild("Util"):WaitForChild("EventNow"))
+local EventRules = require(Shared:WaitForChild("Util"):WaitForChild("EventRules"))
 local PaidRandomRules = require(Shared:WaitForChild("Util"):WaitForChild("PaidRandomRules"))
 local WeaponRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -390,7 +392,7 @@ local function onBossWin(player: Player, monster: WildService.Monster, fight: { 
 	local record = byBoss[bossId]
 	local carried = not fight.contributed
 	-- fullPay: a loot win (or the first clear), paid in full; otherwise BattleService pays `payShare` of the cash
-	local result = { bossId = bossId, items = {}, firstClear = false, bonus = false, lootIn = 0, carried = carried, fullPay = false, payShare = Bosses.REPEAT_PAY }
+	local result: { [string]: any } = { bossId = bossId, items = {}, firstClear = false, bonus = false, lootIn = 0, carried = carried, fullPay = false, payShare = Bosses.REPEAT_PAY }
 
 	-- The first clear's chest always comes to those who helped (it's the way up the ladder, however strong the party)
 	if not record.cleared and not carried then
@@ -410,7 +412,10 @@ local function onBossWin(player: Player, monster: WildService.Monster, fight: { 
 	end
 	if BossRules.lootEligible(record, now) then
 		result.fullPay = true
-		record.lootAt = now + Bosses.LOOT_COOLDOWN
+		-- the weekly event on now (Config/Events): Boss Rush halves the wait and says so on the victory screen
+		local event = EventNow.today()
+		record.lootAt = now + EventRules.lootCooldown(event, Bosses.LOOT_COOLDOWN)
+		result.event = if event then event.note else nil
 		-- Its chests (BossChestService) after every loot win of those who helped (the owner 2026-11-11: "chests every
 		-- win"); they hold the weapon or its material, so the material's own roll is skipped here
 		local weaponId = weaponOf[bossId]

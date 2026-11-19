@@ -375,6 +375,13 @@ local function onPackOpened(productId: string, results: { PullResult }, newFlags
 			})
 		end
 	end
+	-- their creature models start downloading now, ahead of the background queue: the rip and the cards before give
+	-- them a few seconds, and one that still isn't in stays in its card (CreatureVisuals.isReady; owner 2026-11-19)
+	local names = {}
+	for _, pull in pulls do
+		table.insert(names, pull.card.name)
+	end
+	require(ClientUtil:WaitForChild("CreatureVisuals")).ensure(names)
 	generation += 1
 	local gen = generation
 	opened = pack

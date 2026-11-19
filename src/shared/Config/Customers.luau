@@ -300,6 +300,7 @@ return {
 		maxDistance = 90,
 		cheer = "🎉",
 		cheerFrom = "Very Rare",
+		cheerOrder = 3, -- cheerFrom's Rarities.Tiers order (the owner's toast: OfferRules.pullLine)
 		beam = { height = 26, width = 2.2, transparency = 0.6, seconds = 2.8, color = { 255, 214, 92 } },
 	},
 	TYPES = {

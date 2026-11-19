@@ -128,6 +128,7 @@ export type PhonePieces = {
 	turtsChip: boolean,
 	questChip: boolean,
 	mainRow: boolean, -- the main quest's row under the quest strip (Util/QuestStrip)
+	eventChip: boolean, -- the weekly event's chip under the quest strip (EventController; a phone gets its toast)
 }
 
 function CompactHud.phonePieces(compact: boolean, inTown: boolean, giftReady: boolean, turtsFresh: boolean): PhonePieces
@@ -143,6 +144,7 @@ function CompactHud.phonePieces(compact: boolean, inTown: boolean, giftReady: bo
 			turtsChip = true,
 			questChip = false,
 			mainRow = true,
+			eventChip = true,
 		}
 	end
 	return {
@@ -156,6 +158,7 @@ function CompactHud.phonePieces(compact: boolean, inTown: boolean, giftReady: bo
 		turtsChip = turtsFresh,
 		questChip = true,
 		mainRow = false,
+		eventChip = false,
 	}
 end
 

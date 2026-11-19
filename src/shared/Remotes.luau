@@ -40,6 +40,8 @@ local NAMES = {
 	"PrologueReplay", -- server → client: () Studio's /prologue: play it now (PrologueController)
 	"PrologueStep", -- client → server: (step: "begin" | "fight" | "vanish" | "take") the prologue's next part (PrologueService)
 	"PrologueArena", -- server → client: (centre: Vector3?) this player's lair, its loadout lent; nil: no prologue now
+	"RedeemCode", -- client → server: (typed: string) the Store's code box: try this code (CodeService; rate-limited)
+	"CodeResult", -- server → client: (ok: boolean, message: string) the answer for the code just sent (Util/CodeBox)
 	"StoreWin", -- server → client: (kind: "x2" | "x3" | "jobslot", seconds: number) a Store purchase went through: its win card (StoreWinController)
 	"GiftState", -- server → client: (view: GiftRules.View, counting: boolean) the daily, weekly and monthly gifts; client → server: () send it again (GiftService)
 	"GiftClaim", -- client → server: (kind: "daily" | "weekly" | "monthly") claim it; server → client: (kind, day: number, lines: { GiftRules.Line }) its win moment (GiftController)
@@ -195,6 +197,8 @@ return {
 	BuyLuck = remotes.BuyLuck,
 	BuyUnlock = remotes.BuyUnlock,
 	StoreWin = remotes.StoreWin,
+	RedeemCode = remotes.RedeemCode,
+	CodeResult = remotes.CodeResult,
 	GiftState = remotes.GiftState,
 	GiftClaim = remotes.GiftClaim,
 	QuestState = remotes.QuestState,

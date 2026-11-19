@@ -326,4 +326,28 @@ return {
 			expect.near(distance(last, trail[#trail]), town.FLOOR.PATH_END_INSET, 1e-6, "stops short of the portal")
 		end
 	end,
+	-- Owner 2026-11-19 ("some shops have leaves sticking out of their walls. fix it."): 14 hand-placed trees
+	-- (assets/town) stood so close that their canopies came through the shops' back and side walls. TownService moves
+	-- any tree whose footprint reaches into a shop out of it, the short way, with a little air
+	["a tree whose canopy reaches into a shop is moved out of it the short way"] = function()
+		local rects = TownLayout.plotRects(WORLD)
+		local shop = rects[1] -- x -84..-44, z -88..-48
+		expect.equal(shop.minZ, -88)
+		-- behind the shop: its canopy 2.5 studs through the back wall
+		local dx, dz = TownLayout.clearOf({ minX = -71, maxX = -51, minZ = -106, maxZ = -85.5 }, rects, 2)
+		expect.equal(dx, 0)
+		expect.near(dz, -(2.5 + 2), 1e-6, "back out of the wall, plus the air")
+		-- beside the shop: 3 studs through the side wall
+		dx, dz = TownLayout.clearOf({ minX = -100, maxX = -81, minZ = -60, maxZ = -42 }, rects, 2)
+		expect.near(dx, -(3 + 2), 1e-6, "sideways, away from the shop")
+		expect.equal(dz, 0)
+		-- a tree in the gap between two shops, wider than the gap: it can't clear both, so it's left for removal
+		local _, _, stuck = TownLayout.clearOf({ minX = -46, maxX = -18, minZ = -80, maxZ = -60 }, rects, 2)
+		expect.equal(stuck, true, "no room: the caller takes it away")
+		-- a tree well away from every shop stays
+		dx, dz, stuck = TownLayout.clearOf({ minX = -10, maxX = 10, minZ = -120, maxZ = -100 }, rects, 2)
+		expect.equal(dx, 0)
+		expect.equal(dz, 0)
+		expect.equal(stuck, false)
+	end,
 }

@@ -170,7 +170,7 @@ function MusicController.Start()
 		-- piece of a place that changes it per visit (the pack opening)
 		local turns = place.rotate ~= "visit" and (place.gap ~= nil or #place.tracks > 1)
 		local index = tracks[place.key] or 1
-		return { place = place, id = place.tracks[index], looped = not turns, volume = place.volume, compressor = place.compressor, name = place.key }
+		return { place = place, id = place.tracks[index], looped = not turns, volume = MusicRules.trackVolume(place, index), compressor = place.compressor, name = place.key }
 	end
 
 	local function wantedAmbience(place: any): Want
@@ -189,6 +189,9 @@ function MusicController.Start()
 			visiting = key
 			if place and place.rotate == "visit" then
 				tracks[place.key] = MusicRules.visitTrack(tracks[place.key], #place.tracks)
+			elseif place and place.rotate == "random" then
+				-- the town: a random piece each time you arrive (starting the game too), never the one just heard
+				tracks[place.key] = MusicRules.randomTrack(tracks[place.key], #place.tracks, math.random())
 			end
 		end
 		apply(music, wantedMusic(place))
@@ -208,10 +211,13 @@ function MusicController.Start()
 				if index ~= music.live or deck.token ~= token or music.playing ~= place.key then
 					return
 				end
-				local turn = MusicRules.nextTrack(tracks[place.key] or 1, #place.tracks)
+				local turn = if place.rotate == "random"
+					then MusicRules.randomTrack(tracks[place.key], #place.tracks, math.random())
+					else MusicRules.nextTrack(tracks[place.key] or 1, #place.tracks)
 				tracks[place.key] = turn
 				deck.sound.SoundId = place.tracks[turn]
 				deck.sound.TimePosition = 0
+				deck.sound.Volume = MusicRules.trackVolume(place, turn) -- each piece at its own volume (the town's playlist)
 				deck.sound:Play()
 			end)
 		end)

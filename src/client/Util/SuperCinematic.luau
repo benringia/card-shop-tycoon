@@ -64,6 +64,10 @@ type Running = {
 }
 
 local running: Running? = nil
+-- Another cinematic owns the camera (the prologue's shots: SuperCinematic.hold): no super's cinematic plays. Two
+-- cinematics each setting the camera every frame made the whole screen flicker (owner 2026-11-19: Supernova cast as
+-- the Hydra's killing blow began)
+local held = false
 
 local function vec(v: Vector3): SuperFxRules.Vec
 	return { x = v.X, y = v.Y, z = v.Z }
@@ -330,8 +334,12 @@ local function impactNow(run: Running, t: number)
 	end
 end
 
--- Plays the cinematic for one super from your creature (stops any still playing first)
+-- Plays the cinematic for one super from your creature (stops any still playing first); nothing while another
+-- cinematic holds the camera (the move itself still plays in the world)
 function SuperCinematic.play(args: Args)
+	if held then
+		return
+	end
 	if running then
 		finish(running)
 	end
@@ -466,6 +474,19 @@ end
 
 function SuperCinematic.isPlaying(): boolean
 	return running ~= nil
+end
+
+-- Another cinematic takes (true) or gives back (false) the camera: a super's cinematic playing now cuts back at once,
+-- and none starts until it's given back. Call it before taking the camera, so the cut's restore doesn't undo the take
+function SuperCinematic.hold(on: boolean)
+	held = on
+	if on then
+		SuperCinematic.cut()
+	end
+end
+
+function SuperCinematic.isHeld(): boolean
+	return held
 end
 
 return SuperCinematic

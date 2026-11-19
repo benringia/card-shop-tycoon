@@ -17,6 +17,17 @@ local function between(low: number, high: number, roll: number): number
 end
 
 -- A kid sells a pull by its rarity's chance times its grade's factor (better grades are kept more often)
+-- The toast for the shop's owner when a kid's rip is big enough for its cheer and reveal sound (Customers.REVEAL
+-- cheerFrom; `order`: the rarity's Rarities.Tiers order), so the sound at the counter is never a mystery; nil below it
+function OfferRules.pullLine(cfg: any, rarity: string, order: number, name: string, foil: boolean): string?
+	if order < cfg.REVEAL.cheerOrder then
+		return nil
+	end
+	local kind = if foil then `foil {rarity}` else rarity
+	local article = if string.match(kind, "^[AEIOUaeiou]") then "an" else "a"
+	return `🎉 A kid pulled {article} {kind} {name} from your pack!`
+end
+
 function OfferRules.wantsToSell(cfg: any, rarity: string, grade: string, roll: number): boolean
 	local offer = cfg.OFFER
 	local chance = offer.chance[rarity]

@@ -31,6 +31,10 @@ return {
 	-- His fights where your creatures can't faint (owner 2026-11-17: "make sure pets doesnt die in the first tutorial";
 	-- BattleSim `guarded`: they stop at 1 HP, so none rests 5 minutes after a new player's first fights)
 	GUARDED_STEPS = { fight = true, fight2 = true } :: { [string]: boolean },
+	-- ...and only against the monsters those fights are for: a normal monster up to this level (the Meadow's top,
+	-- Wild.ZONES[1].maxLevel; Util/ChikinRules.guards). Elites, bosses and higher zones fight as always (owner
+	-- 2026-11-19: a new player walked to a higher-level monster and killed it with creatures that couldn't faint)
+	GUARDED_MAX_LEVEL = 5,
 	-- His goodbyes: their last button says "Bye!" (a hello's says "Let's go!", Config/ChikinTalk GO)
 	BYE_STEPS = { swordWin = true, boss = true } :: { [string]: boolean },
 	-- His goodbye after the sword fight points at the town button from this line (owner 2026-11-18: "let the player know

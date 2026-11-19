@@ -1341,7 +1341,13 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 		leaderInput.hpNow = left[leaderId]
 		-- Chikin's tutorial fights (owner 2026-11-17: "make sure pets doesnt die in the first tutorial"): a new player's
 		-- creatures stop at 1 HP and never faint there, so nothing has to rest 5 minutes after its first fight
-		local guarded = not boss and Chikin.GUARDED_STEPS[player:GetAttribute("CombatStep") or ""] == true
+		-- only against the Meadow's normal monsters his fights are for (ChikinRules.guards): never an elite or a
+		-- higher zone's monster (owner 2026-11-19, abuse)
+		local ChikinRules = require(Shared:WaitForChild("Util"):WaitForChild("ChikinRules")) :: any
+		local step = player:GetAttribute("CombatStep")
+		local guarded = not boss
+			and not run
+			and ChikinRules.guards(Chikin, if typeof(step) == "string" then step else nil, { level = monster.level, elite = monster.elite, boss = monster.boss })
 		leaderInput.guarded = guarded
 		if not swordOnly then
 			table.insert(leaders, leaderInput)

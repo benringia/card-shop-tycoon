@@ -64,6 +64,14 @@ local function log(callback: () -> ())
 	pcall(callback)
 end
 
+-- The lessons explained once their thing is placed (Pish.LESSONS `on`): placing never completes them, it starts them
+local FIRST_USE: { [string]: boolean } = {}
+for _, lesson in Pish.LESSONS do
+	if lesson.on == "placed" then
+		FIRST_USE[lesson.id] = true
+	end
+end
+
 local function publish(player: Player)
 	local state = states[player]
 	if not state then
@@ -476,8 +484,18 @@ function TutorialService.Start()
 			record(player, "buildRack")
 		end
 		local def = Shelves.ById[shelfId]
-		local lesson = LessonRules.forShelf(Pish.LESSONS, shelfId, if def then def.kind else nil)
-		if lesson then
+		local kind = if def then def.kind else nil
+		local state = states[player]
+		-- a machine or a card case placed for the first time: Pish comes to explain it (a first-use lesson; a second
+		-- one, or one placed while it waits, changes nothing)
+		local firstUse = if state then LessonRules.onPlaced(Pish.LESSONS, shelfId, kind, state.lessons) else nil
+		if state and firstUse then
+			state.lessons[firstUse] = false
+			publish(player)
+			return
+		end
+		local lesson = LessonRules.forShelf(Pish.LESSONS, shelfId, kind)
+		if lesson and not FIRST_USE[lesson] then
 			usedLesson(player, lesson)
 		end
 	end)

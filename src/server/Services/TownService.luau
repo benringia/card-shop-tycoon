@@ -40,6 +40,7 @@ local PORTAL_LABELS = {
 	{ spot = Pvp.ARENA_PORTAL, text = "⚔️ PvP Arena", detail = "Watch battles", ring = "Arena", effect = "Arena" },
 }
 local PORTAL_MATCH_DISTANCE = 1 -- a Portal prop at this spot belongs to that portal
+local TREE_CLEARANCE = 2 -- studs a hand-placed tree's canopy keeps from a shop's plot: its wall and a little air
 
 local function point(spot: { x: number, z: number, y: number? }): TownLayout.Point
 	return { x = spot.x, z = spot.z, y = spot.y }
@@ -399,6 +400,26 @@ function TownService.GetWorld(): TownLayout.World
 	return getWorld()
 end
 
+-- Hand-placed trees stand clear of the shops (owner 2026-11-19: "some shops have leaves sticking out of their
+-- walls"): a tree whose canopy reaches into a shop is moved out of it the short way (TownLayout.clearOf); one that
+-- can't clear (wider than the gap it stands in) is taken away
+local function clearTrees(decor: Instance)
+	local rects = TownLayout.plotRects(getWorld())
+	for _, item in decor:GetDescendants() do
+		if item:IsA("Model") and string.find(string.lower(item.Name), "tree", 1, true) then
+			local center, size = item:GetBoundingBox()
+			local at = center.Position
+			local box = { minX = at.X - size.X / 2, maxX = at.X + size.X / 2, minZ = at.Z - size.Z / 2, maxZ = at.Z + size.Z / 2 }
+			local dx, dz, stuck = TownLayout.clearOf(box, rects, TREE_CLEARANCE)
+			if stuck then
+				item:Destroy()
+			elseif dx ~= 0 or dz ~= 0 then
+				item:PivotTo(item:GetPivot() + Vector3.new(dx, 0, dz))
+			end
+		end
+	end
+end
+
 function TownService.Start()
 	if Place.isFrontier() then
 		return
@@ -407,6 +428,7 @@ function TownService.Start()
 	local decor = workspace:FindFirstChild("TownDecor")
 	if decor then
 		Props.strip(decor)
+		clearTrees(decor)
 	end
 	local folder = Instance.new("Folder")
 	folder.Name = "Town"

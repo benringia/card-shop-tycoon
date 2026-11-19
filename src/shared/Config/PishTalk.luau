@@ -88,18 +88,11 @@ return {
 	-- Each lesson visit's first line (what's new and why); a shelf or stock lesson then teaches it with TEACH
 	LESSONS = {
 		showcase = "Sell your spare cards in a Glass Showcase!",
-		decor = "Decor is here! Make your shop look cosy.",
-		sleeves = "New at the computer: Card Sleeves!",
 		collectorCase = "Sell cards to other players in a Collector Case!",
 		sword = "You got a sword! Try it in the Wild!",
-		wallShelf = "Wall Shelves are here! More room for stock.",
 		condenser = "The Card Condenser is here! It powers up cards.",
 		forge = "The Forge is here! Make and upgrade weapons.",
-		expand = "Deck Boxes are here! Customers love them.",
-		accessoryHook = "Accessory Hooks are here! For sleeves and decks.",
-		bigRack = "The Big Display Rack is here! Lots of stock.",
 		bulkBin = "The Bulk Bin is here! Sell your extra Commons.",
-		boosterBox = "Booster Boxes are in! They sell for a lot.",
 		grading = "The Grading Station is here! Grade your cards.",
 		jobs = "Your cards can work now! Tap Jobs.",
 		trophy = "You won a trophy! Show it off in your shop.",
@@ -120,22 +113,10 @@ return {
 			"Press Edit, then Cards, to put your best ones in.",
 			"Players who visit your shop can buy them!",
 		},
-		wallShelf = {
-			"It holds packs, just like your rack.",
-			"Carry a box to it to stock it!",
-		},
-		accessoryHook = {
-			"It holds Card Sleeves and Deck Boxes.",
-			"Carry their boxes to it to stock it!",
-		},
 		bulkBin = {
 			"Walk up and press Add extras.",
 			"Your extra Commons go in, 5 to a handful.",
 			"Customers buy them! You keep 2 of each card.",
-		},
-		bigRack = {
-			"It holds lots of stock at once.",
-			"Fill it up and customers buy more!",
 		},
 		condenser = {
 			"Put spare copies of a card in here.",
@@ -158,23 +139,6 @@ return {
 			"Tap + or - to change a price.",
 			"At market price, customers almost always buy!",
 			"Higher earns more, but fewer will buy.",
-		},
-		decor = {
-			"Decor makes your shop look like yours!",
-			"A cosy shop brings customers more often.",
-			"Try a new shop look in the Decor tab too!",
-		},
-		sleeves = {
-			"Your box is on its way!",
-			"Carry it to a shelf. Customers love sleeves!",
-		},
-		expand = {
-			"Your box is on its way!",
-			"Carry it to a shelf. Deck Boxes sell for more!",
-		},
-		boosterBox = {
-			"Your box is on its way!",
-			"Put it on a shelf. It sells for a lot!",
 		},
 	} :: { [string]: { string } },
 

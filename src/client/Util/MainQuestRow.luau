@@ -212,7 +212,9 @@ function MainQuestRow.build(parent: Instance, order: number)
 	picture.Position = UDim2.fromScale(0.5, 0.5)
 	picture.ZIndex = 5
 	Icon.layer(picture, 5)
-	TweenService:Create(bubble, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Position = UDim2.new(0, 6, 0.5, -2) }):Play()
+	-- its icon sways like the quests' (Quests.STRIP sway: a 2 px float moved in whole pixels and looked jerky)
+	picture.Rotation = -8
+	TweenService:Create(picture, TweenInfo.new(1.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Rotation = 8 }):Play()
 	check = UIKit.label(bubble, "✅", Enum.Font.GothamBold, 13, Color3.new(1, 1, 1))
 	check.Name = "Check"
 	check.AnchorPoint = Vector2.new(0.5, 0.5)

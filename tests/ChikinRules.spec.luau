@@ -5,6 +5,8 @@ local Chikin = require("../src/shared/Config/Chikin")
 local ChikinTalk = require("../src/shared/Config/ChikinTalk")
 local Pish = require("../src/shared/Config/Pish")
 local TutorialRules = require("../src/shared/Util/TutorialRules")
+local ChikinRules = require("../src/shared/Util/ChikinRules")
+local Wild = require("../src/shared/Config/Wild")
 local expect = require("./lib/expect")
 
 local STEPS = Chikin.STEPS
@@ -55,6 +57,22 @@ return {
 		end
 		table.sort(guarded)
 		expect.equal(table.concat(guarded, ","), "fight,fight2", "the creature's first fight and the sword fight")
+	end,
+
+	-- Owner 2026-11-19 ("Abuse: at the chikin tutorial, where pets are unkillable. a player can go to a higher level
+	-- monster and kill it without their pet dying"): the guard holds only against the monsters his fights are for
+	["the guard is only for his own fights: the Meadow's normal monsters, never an elite, a boss or a higher zone"] = function()
+		local meadow = Wild.ZONES[1]
+		expect.equal(Chikin.GUARDED_MAX_LEVEL, meadow.maxLevel, "the Meadow's top level")
+		expect.equal(ChikinRules.guards(Chikin, "fight", { level = 1 }), true)
+		expect.equal(ChikinRules.guards(Chikin, "fight2", { level = meadow.maxLevel }), true)
+		expect.equal(ChikinRules.guards(Chikin, "fight", { level = meadow.maxLevel + 1 }), false, "a Caves monster")
+		expect.equal(ChikinRules.guards(Chikin, "fight2", { level = 12 }), false, "an Ember Ridge monster")
+		expect.equal(ChikinRules.guards(Chikin, "fight", { level = 2, elite = true }), false, "an elite")
+		expect.equal(ChikinRules.guards(Chikin, "fight", { level = 1, boss = "meadowWarden" }), false, "a boss")
+		expect.equal(ChikinRules.guards(Chikin, "wild", { level = 1 }), false, "not one of his fight steps")
+		expect.equal(ChikinRules.guards(Chikin, nil, { level = 1 }), false, "his tutorial is over")
+		expect.equal(ChikinRules.guards(Chikin, "fight", { level = 0 / 0 }), false, "junk")
 	end,
 
 	["town: Chikin's Courage and his portal-side walk"] = townChecks,
