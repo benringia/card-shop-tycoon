@@ -81,6 +81,11 @@ function WeaponService.GetOwned(player: Player, weaponId: string): Owned?
 end
 
 -- The equipped weapon's Power: every sword cut and skill hit is multiplied by it
+-- Every weapon the player owns, by id (not a lent one); empty while their save isn't loaded
+function WeaponService.GetAll(player: Player): { [string]: Owned }
+	return owned[player] or {}
+end
+
 function WeaponService.Power(player: Player): number
 	local weaponId = WeaponService.GetEquipped(player)
 	if not weaponId then

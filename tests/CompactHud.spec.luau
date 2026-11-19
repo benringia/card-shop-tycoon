@@ -3,9 +3,48 @@
 -- one weapon chip; where each HUD button sits (Util/CompactHud, Util/UiLayout.weaponSwitch)
 local CompactHud = require("../src/shared/Util/CompactHud")
 local UiLayout = require("../src/shared/Util/UiLayout")
+local PhoneForm = require("../src/shared/Config/PhoneForm")
+local SoftHud = require("../src/shared/Config/SoftHud")
 local expect = require("./lib/expect")
 
 return {
+	-- Pre-launch QA 2026-11-19 (owner: "do all"): standing up, the Phone's app tiles came out 31 px on a Galaxy A06 and
+	-- 36 px on an iPhone 17 Pro (the rule is 48). On a short screen it lies on its side, where they stay finger-sized.
+	["the Phone lies on its side on a short screen, so its app tiles stay finger-sized"] = function()
+		local tile = SoftHud.TILE.size
+		-- screen heights under Roblox's 58 px top bar
+		for name, height in { GalaxyA06 = 280, iPhone17Pro = 323 } do
+			local tallScale = math.min(1, height * PhoneForm.fit / PhoneForm.tall.h)
+			assert(tallScale * tile < PhoneForm.minTile, `{name}: standing up its tiles were too small`)
+			local wide, scale = CompactHud.phoneForm(height, PhoneForm, tile)
+			expect.equal(wide, true, name)
+			assert(scale * tile >= PhoneForm.minTile, `{name}: tiles {scale * tile} px`)
+			assert(scale * PhoneForm.wide.h <= height, `{name}: fits the screen's height`)
+		end
+		assert(CompactHud.phoneForm(280, PhoneForm, tile) and 705 >= select(2, CompactHud.phoneForm(280, PhoneForm, tile)) * PhoneForm.wide.w + 32, "fits a Galaxy A06's width")
+		-- a tall screen keeps the standing phone at its size
+		local wide, scale = CompactHud.phoneForm(1022, PhoneForm, tile)
+		expect.equal(wide, false, "a desktop")
+		expect.equal(scale, 1)
+		local short, shortScale = CompactHud.phoneForm(477, PhoneForm, tile)
+		expect.equal(short, false, "a short desktop window: still big enough standing")
+		assert(shortScale * tile >= PhoneForm.minTile, "its tiles")
+		local tablet, tabletScale = CompactHud.phoneForm(710, PhoneForm, tile)
+		expect.equal(tablet, false, "an iPad")
+		assert(tabletScale * tile >= PhoneForm.minTile, "its tiles are big enough standing")
+	end,
+
+	["the Phone on its side holds every app in two rows beside the dogs"] = function()
+		local tile, gapX, gapY, top = SoftHud.TILE.size, 12, 26, 22 -- Util/Hud's app grid
+		local screenWidth = PhoneForm.wide.w - 20 -- inside the bezel
+		local appsWidth = screenWidth - (PhoneForm.wideSide + 34)
+		assert(appsWidth >= PhoneForm.wideColumns * tile + (PhoneForm.wideColumns - 1) * gapX, `apps row: {appsWidth}`)
+		local homeHeight = PhoneForm.wide.h - 20 - 34 -- under the status bar
+		local rows = 2 -- ten apps at most (nine and Studio's Admin)
+		assert(homeHeight - 44 >= top + rows * tile + (rows - 1) * gapY, "two rows of apps")
+		assert(PhoneForm.wideColumns * rows >= 10, "room for every app")
+	end,
+
 	-- Owner 2026-11-17 ("move quest done strip a little higher on mobile. it overlaps with the jump button"): the strip
 	-- went under the top-right column's frame (a fixed height with room to spare), onto Roblox's jump button
 	["the phone's quest strip: under the column's last piece, never on the jump button"] = function()

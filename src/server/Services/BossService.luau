@@ -389,12 +389,14 @@ local function onBossWin(player: Player, monster: WildService.Monster, fight: { 
 	local today = BossRules.dayNumber(now)
 	local record = byBoss[bossId]
 	local carried = not fight.contributed
-	local result = { bossId = bossId, items = {}, firstClear = false, bonus = false, lootIn = 0, carried = carried }
+	-- fullPay: a loot win (or the first clear), paid in full; otherwise BattleService pays `payShare` of the cash
+	local result = { bossId = bossId, items = {}, firstClear = false, bonus = false, lootIn = 0, carried = carried, fullPay = false, payShare = Bosses.REPEAT_PAY }
 
 	-- The first clear's chest always comes to those who helped (it's the way up the ladder, however strong the party)
 	if not record.cleared and not carried then
 		record.cleared = true
 		result.firstClear = true
+		result.fullPay = true
 		-- One-time and saved as cleared at once, so it goes straight into the Bag (only repeatable loot scatters)
 		for _, entry in boss.firstClear do
 			ItemService.GiveItem(player, entry.item, entry.count)
@@ -407,6 +409,7 @@ local function onBossWin(player: Player, monster: WildService.Monster, fight: { 
 		end
 	end
 	if BossRules.lootEligible(record, now) then
+		result.fullPay = true
 		record.lootAt = now + Bosses.LOOT_COOLDOWN
 		-- Its chests (BossChestService) after every loot win of those who helped (the owner 2026-11-11: "chests every
 		-- win"); they hold the weapon or its material, so the material's own roll is skipped here

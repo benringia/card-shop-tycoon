@@ -80,6 +80,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	BossRules = require("./BossRules.spec"),
 	BulkRules = require("./BulkRules.spec"),
 	ShopTips = require("./ShopTips.spec"),
+	ShopTileRules = require("./ShopTileRules.spec"),
 	CreatureCull = require("./CreatureCull.spec"),
 	AdminPanel = require("./AdminPanel.spec"),
 	UiLayout = require("./UiLayout.spec"),

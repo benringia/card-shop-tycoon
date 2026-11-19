@@ -183,6 +183,45 @@ return {
 		expect.isNil(WeaponRules.reforgeCost(W, "starterSword"))
 	end,
 
+	-- The owner 2026-11-19 ("do all", the pre-launch QA's fifth finding): supers need a weapon of the creature's
+	-- element, and a first one at $1,500 and 20 Wild Ore was about an hour and a half in, so an early Epic's super
+	-- stayed locked that long. Your first Forge weapon costs FIRST_FORGE; every one after it the full price.
+	["your first Forge weapon is cheap; the next ones, and every reforge, cost the full price"] = function()
+		local starter = { starterSword = { grade = "C", level = 0 } }
+		local first = WeaponRules.makeCost(W, "forgeSword_Ember", starter)
+		assert(first, "a cost")
+		expect.equal(first.cash, 500)
+		expect.equal(first.items.wildOre, 8)
+		expect.equal(first.unlockLevel, 6, "still from the Forge's shop level")
+		expect.equal(WeaponRules.firstForge(W, starter), true)
+		expect.equal(WeaponRules.firstForge(W, {}), true)
+		-- a boss's weapon dropping first doesn't use the offer up: it may be another element
+		local dropped = { starterSword = { grade = "C", level = 0 }, verdantBlade = { grade = "B", level = 0 } }
+		expect.equal(WeaponRules.firstForge(W, dropped), true)
+		local spear = WeaponRules.makeCost(W, "forgeSpear_Tide", dropped)
+		assert(spear, "a cost")
+		expect.equal(spear.cash, 500, "any Forge weapon, any family")
+		-- once one is forged: the full price
+		local forged = { starterSword = { grade = "C", level = 0 }, forgeSword_Ember = { grade = "C", level = 0 } }
+		expect.equal(WeaponRules.firstForge(W, forged), false)
+		local second = WeaponRules.makeCost(W, "forgeSword_Volt", forged)
+		assert(second, "a cost")
+		expect.equal(second.cash, 1500)
+		expect.equal(second.items.wildOre, 20)
+		-- boss weapons and masterworks never take it; nor does a reforge; nor a caller that doesn't say what's owned
+		local rare = WeaponRules.makeCost(W, "verdantBlade", starter)
+		assert(rare, "a cost")
+		expect.equal(rare.cash, 2000)
+		local reforge = WeaponRules.reforgeCost(W, "forgeSword_Ember")
+		assert(reforge, "a cost")
+		expect.equal(reforge.cash, 750, "half the full price")
+		local plain = WeaponRules.makeCost(W, "forgeSword_Ember")
+		assert(plain, "a cost")
+		expect.equal(plain.cash, 1500)
+		assert(W.FIRST_FORGE.cash < 1500 and W.FIRST_FORGE.items.wildOre < 20, "cheaper than the full price")
+		assert(typeof(W.FIRST_FORGE.line) == "string" and W.FIRST_FORGE.line ~= "", "its words")
+	end,
+
 	["upgrades: +5 and +10 need Star Shards; none past +10; Forge weapons pay in Wild Ore"] = function()
 		local five = WeaponRules.upgradeCost(W, "verdantBlade", 5)
 		assert(five, "+5")
@@ -224,7 +263,7 @@ return {
 		expect.equal(need, 20)
 		id, need = WeaponRules.materialGoal(W, "wildOre", {})
 		expect.equal(id, "forgeSword_Ember", "the first Forge Sword")
-		expect.equal(need, 20)
+		expect.equal(need, 8, "your first Forge weapon's special price (Weapons.FIRST_FORGE)")
 		id, need = WeaponRules.materialGoal(W, "wildOre", { forgeSword_Ember = { grade = "C", level = 0 } })
 		expect.equal(id, "forgeSword_Ember", "once owned: its next upgrade")
 		expect.equal(need, 2)

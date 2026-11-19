@@ -20,7 +20,7 @@ return {
 	TILE_HEIGHT = 58,
 	TABS = { "Stats", "Elements", "Titles" },
 	STATS = {
-		{ key = "power", icon = "Power", name = "Power", line = "Your strongest card. Bosses check it." },
+		{ key = "power", icon = "Power", name = "Power", line = "Your strongest card. Bosses check all three." },
 		{ key = "attack", icon = "Atk", name = "Attack", line = "How much harder your sword hits." },
 		{ key = "defense", icon = "Shield", name = "Defense", line = "Your party's Power added up: softer hits on you." },
 	},

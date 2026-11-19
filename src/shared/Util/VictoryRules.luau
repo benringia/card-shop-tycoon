@@ -65,7 +65,13 @@ function VictoryRules.notes(boss: any): { string }
 		table.insert(notes, "Carried: smaller loot (deal 10% of the damage or take 15% of the hits for full loot)")
 	end
 	if typeof(boss.lootIn) == "number" and boss.lootIn > 0 then
-		table.insert(notes, `Full loot again in {clock(boss.lootIn)}`)
+		if boss.fullPay == false then
+			-- a win before the loot timer ended: a share of the cash (BossRules.pay), and when it's all back
+			local percent = math.round((tonumber(boss.payShare) or 0) * 100)
+			table.insert(notes, `Loot timer running: {percent}% cash. Full loot and cash in {clock(boss.lootIn)}`)
+		else
+			table.insert(notes, `Full loot and cash again in {clock(boss.lootIn)}`)
+		end
 	end
 	return notes
 end

@@ -170,7 +170,7 @@ end
 
 local function costFor(weaponId: string): WeaponRules.Cost?
 	if tab == FORGE then
-		return WeaponRules.makeCost(Weapons, weaponId)
+		return WeaponRules.makeCost(Weapons, weaponId, owned) -- a first Forge weapon is cheap (Weapons.FIRST_FORGE)
 	elseif tab == REFORGE then
 		return WeaponRules.reforgeCost(Weapons, weaponId)
 	end
@@ -538,7 +538,11 @@ local function renderPane(entry: Entry?)
 
 	-- What it costs: a picture chip each, green when you have enough, red when not
 	if cost and not done then
-		if not phone then
+		local special = tab == FORGE and weapon.source.kind == "forge" and WeaponRules.firstForge(Weapons, owned)
+		if special then
+			-- the first Forge weapon's one-time price, said out loud (Weapons.FIRST_FORGE)
+			addLabel(pane, Weapons.FIRST_FORGE.line, Enum.Font.FredokaOne, if phone then 13 else 15, palette.good, 5)
+		elseif not phone then
 			addLabel(pane, "You pay", Enum.Font.FredokaOne, 15, palette.ink, 5)
 		end
 		costChips(pane, 6, cost)

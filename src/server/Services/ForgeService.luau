@@ -118,7 +118,7 @@ local function costOf(player: Player, action: Action, weapon: Weapons.Weapon): C
 			notify(player, `You have the {weapon.name}. Reforge it for a new grade.`)
 			return nil
 		end
-		return WeaponRules.makeCost(Weapons, weapon.id)
+		return WeaponRules.makeCost(Weapons, weapon.id, WeaponService.GetAll(player)) -- a first Forge weapon is cheap
 	elseif not owned then
 		notify(player, `Forge the {weapon.name} first.`)
 		return nil

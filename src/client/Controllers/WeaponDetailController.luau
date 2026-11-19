@@ -316,7 +316,7 @@ end
 -- Not yours: the boss that drops it, then its forge materials as bars
 local function howToGet(weapon: Weapons.Weapon, state: State)
 	local how = WeaponText.howToGet(Weapons, Bosses, weapon.id)
-	local cost = WeaponRules.makeCost(Weapons, weapon.id)
+	local cost = WeaponRules.makeCost(Weapons, weapon.id, state.owned) -- a first Forge weapon's special price shows here too
 	if not how.drop and not (how.forge and cost) then
 		return
 	end

@@ -385,6 +385,11 @@ return {
 	-- mins"; earlier the same day "remove both", the over-power shrink and the minimum fight time): every loot win is
 	-- full, as many a day as a player likes
 	LOOT_COOLDOWN = 420,
+	-- A win before the loot timer ends pays this share of the boss's cash (and of the shop XP that follows the cash); a
+	-- loot win pays in full, creature XP is the same every win (owner 2026-11-19, "do all": the pre-launch QA found full
+	-- cash on every win paid $4,000-7,000 an hour at the recommended Power and about $12,000 with a maxed party, against
+	-- the shop's $700-1,550; BossRules.pay)
+	REPEAT_PAY = 0.25,
 	-- The Robux reset (owner 2026-11-19: "go A, both spots, R$ 19. but it should also tell players that all the bosses
 	-- reset"): one buy ends every running boss loot timer, not just one boss's. Its button shows on the boss victory
 	-- screen and beside the boss board's loot timer while a timer has `minLeft` seconds to go (BossRules.resetOffered),

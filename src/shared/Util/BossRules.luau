@@ -123,6 +123,28 @@ function BossRules.lootEligible(record: Record, now: number): boolean
 	return now >= record.lootAt
 end
 
+-- The party's Power as the Boss Ladder reads it against a boss's recommended Power: the average of its `slots`
+-- (empty ones count as nothing), not its best card (owner 2026-11-19: a party with one card at the recommended Power
+-- and two at 60% read "Ready" and won about 1 fight in 5; one whose average is the recommended Power wins like three
+-- even cards: tools/balance/bosses `best+2` and `avg x1`)
+function BossRules.partyPower(powers: { number }, slots: number): number
+	local sum = 0
+	for _, power in powers do
+		sum += power
+	end
+	return math.floor(sum / math.max(slots, 1))
+end
+
+-- The share of a boss's cash a win pays: all of it with loot, REPEAT_PAY before the loot timer ends
+function BossRules.payShare(config: { REPEAT_PAY: number }, lootWin: boolean): number
+	return if lootWin then 1 else config.REPEAT_PAY
+end
+
+-- A win's cash (to the cent)
+function BossRules.pay(config: { REPEAT_PAY: number }, cash: number, lootWin: boolean): number
+	return math.round(cash * BossRules.payShare(config, lootWin) * 100) / 100
+end
+
 -- The Robux reset (Bosses.RESET; owner 2026-11-19, pick A: one buy ends every boss's timer): offered while some boss's
 -- loot timer has at least `minLeft` seconds to go, so a buy never lands after every timer ran out by itself
 function BossRules.resetOffered(lootIns: { number }, minLeft: number): boolean

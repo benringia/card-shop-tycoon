@@ -184,12 +184,29 @@ end
 
 -- What making a weapon costs: the Forge's price, a boss weapon's by its rarity, a masterwork's recipe; nil for the
 -- Steel Sword and weapons not built yet
-function WeaponRules.makeCost(cfg: any, weaponId: string): Cost?
+-- Whether the player hasn't forged a Forge weapon yet (owned: their weapons by id): the first one costs
+-- cfg.FIRST_FORGE. A boss's weapon dropping first doesn't use it up (it may be another element).
+function WeaponRules.firstForge(cfg: any, owned: { [string]: any }): boolean
+	for id in owned do
+		local weapon = cfg.ById[id]
+		if weapon and weapon.source.kind == "forge" then
+			return false
+		end
+	end
+	return true
+end
+
+-- `owned` (the player's weapons by id), when given, makes a first Forge weapon cost cfg.FIRST_FORGE; without it the
+-- full price (a reforge, the tests' tables, what a material is for)
+function WeaponRules.makeCost(cfg: any, weaponId: string, owned: { [string]: any }?): Cost?
 	local weapon = readyWeapon(cfg, weaponId)
 	if not weapon then
 		return nil
 	end
 	local source = weapon.source
+	if source.kind == "forge" and owned and cfg.FIRST_FORGE and WeaponRules.firstForge(cfg, owned) then
+		return copyCost(cfg.FIRST_FORGE)
+	end
 	if source.kind == "boss" then
 		local byRarity = cfg.BOSS_COST[weapon.rarity]
 		local material = cfg.MATERIALS[source.boss]
@@ -259,7 +276,7 @@ function WeaponRules.materialGoal(cfg: any, material: string, owned: { [string]:
 		local have = owned[weapon.id]
 		local cost = if have
 			then (if have.level < cfg.MAX_LEVEL then WeaponRules.upgradeCost(cfg, weapon.id, have.level + 1) else nil)
-			else WeaponRules.makeCost(cfg, weapon.id)
+			else WeaponRules.makeCost(cfg, weapon.id, owned)
 		local need = if cost then cost.items[material] else nil
 		if need and need > 0 then
 			return weapon.id, need

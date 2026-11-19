@@ -282,6 +282,45 @@ return {
 		assert(typeof(reset.restricted) == "string" and typeof(reset.nothing) == "string", "refusals")
 	end,
 
+	-- The owner 2026-11-19 ("do all", the pre-launch QA's first finding): boss cash on every win paid $4,000-12,000 an
+	-- hour against the shop's $700-1,550, so a win before the loot timer ends pays a quarter of the cash (and of the
+	-- shop XP that follows it); a loot win pays in full. Creature XP is the same every win.
+	["pay: full cash with loot, a quarter for a win before the loot timer ends"] = function()
+		expect.equal(Bosses.REPEAT_PAY, 0.25)
+		expect.equal(BossRules.payShare(Bosses, true), 1, "a loot win")
+		expect.equal(BossRules.payShare(Bosses, false), 0.25, "between loot wins")
+		expect.equal(BossRules.pay(Bosses, 96, true), 96)
+		expect.equal(BossRules.pay(Bosses, 96, false), 24)
+		expect.equal(BossRules.pay(Bosses, 36, false), 9)
+		expect.equal(BossRules.pay(Bosses, 66, false), 16.5, "cents kept")
+		-- the hour it fixes: a maxed party's Ember Colossus wins (about 27 s each) against the shop's best hour
+		local perHour = 3600 / 27
+		local loot = 3600 / Bosses.LOOT_COOLDOWN
+		local cash = Bosses.BOSSES.emberColossus.cash
+		local before = perHour * cash
+		local after = loot * cash + (perHour - loot) * BossRules.pay(Bosses, cash, false)
+		assert(before > 12000, `before {before}`)
+		assert(after < before * 0.35, `after {after}`)
+	end,
+
+	-- The board's Power is the party's average, not its best card (owner 2026-11-19, "do all"): one card at the
+	-- recommended Power with two at 60% read "Ready" and won about 1 fight in 5 (tools/balance/bosses `best+2`); a party
+	-- whose average is the recommended Power wins like three even cards (`avg x1`)
+	["the board's Power: the average of the party's slots, empty ones counting as nothing"] = function()
+		expect.equal(BossRules.partyPower({ 350, 350, 350 }, 3), 350)
+		expect.equal(BossRules.partyPower({ 350, 214, 214 }, 3), 259, "one strong card, two weak: under the 350 it's built for")
+		expect.equal(BossRules.partyPower({ 490, 280, 280 }, 3), 350, "uneven but enough")
+		expect.equal(BossRules.partyPower({ 900 }, 3), 300, "a lone card: the empty slots count")
+		expect.equal(BossRules.partyPower({}, 3), 0)
+		local step = { cleared = false, unlocked = true, keyNeeded = 0, fragments = 0, shopLevel = 10, needLevel = 1, recommended = 350 }
+		local weak: any = table.clone(step)
+		weak.power = BossRules.partyPower({ 350, 214, 214 }, 3)
+		expect.equal(BossRules.stepState(weak), "tooWeak", "the old 'ready' party")
+		local ok: any = table.clone(step)
+		ok.power = BossRules.partyPower({ 490, 280, 280 }, 3)
+		expect.equal(BossRules.stepState(ok), "ready")
+	end,
+
 	["dayNumber: the UTC day (the daily bonus chest)"] = function()
 		expect.equal(BossRules.dayNumber(86400 * 3 + 5), 3, "UTC day number")
 	end,
@@ -400,7 +439,7 @@ return {
 	end,
 	["every rule exists as soon as the module loads (none nested inside another)"] = function()
 		local fresh = luau.load(luau.compile(fs.readFile("src/shared/Util/BossRules.luau")), { debugName = "BossRules" })()
-		for _, name in { "read", "write", "dayNumber", "canStart", "lootEligible", "groupStats", "contributed", "carriedDrop", "groupPromptText", "ringSegments", "scatter", "insideRing", "levelReady", "shouldUnseal", "readIds", "phaseAt", "stepState", "travelChoice", "lockReason", "counterElements", "resetOffered", "resetTimers", "chanceText", "countText", "watchOut", "revealTricks" } do
+		for _, name in { "read", "write", "dayNumber", "canStart", "lootEligible", "groupStats", "contributed", "carriedDrop", "groupPromptText", "ringSegments", "scatter", "insideRing", "levelReady", "shouldUnseal", "readIds", "phaseAt", "stepState", "travelChoice", "lockReason", "counterElements", "resetOffered", "resetTimers", "payShare", "pay", "partyPower", "chanceText", "countText", "watchOut", "revealTricks" } do
 			expect.equal(typeof(fresh[name]), "function", name)
 		end
 	end,

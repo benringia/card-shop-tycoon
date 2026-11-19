@@ -911,17 +911,21 @@ local function payOut(fight: Fight, member: Member): any
 	local player, monster = member.player, fight.monster
 	local bossId = monster.boss
 	if bossId then
-		-- Bosses: their own XP and cash, every win; items only through BossService's farm-protected rules
+		-- Bosses: their own creature XP every win; items only through BossService's farm-protected rules, and the cash
+		-- (with the shop XP that follows it) in full on a loot win, a share before the loot timer ends (BossRules.pay;
+		-- owner 2026-11-19: full cash on every win paid many times the shop's income)
 		local boss = Bosses.BOSSES[bossId]
 		local xpEach = CombatMath.splitXp(boss.xp, #member.partyIds)
 		local party = giveXp(player, member.partyIds, xpEach)
-		EconomyService.AddCash(player, boss.cash)
-		local shopXp = LevelMath.fightXp(boss.cash, Levels)
-		EconomyService.AddXP(player, shopXp)
 		local share = BattleSim.contribution(fight.sim, member.owner)
 		local contributed = BossRules.contributed(Bosses, share.dealt, share.taken, share.totalDealt, share.totalTaken)
 		local loot = if bossRewards then bossRewards(player, monster, { contributed = contributed }) else nil
-		return { xpEach = xpEach, cash = boss.cash, shopXp = shopXp, shards = 0, boss = loot, party = party }
+		-- no loot answer (no boss record on this server): the full cash, as before
+		local cash = BossRules.pay(Bosses, boss.cash, loot == nil or loot.fullPay == true)
+		EconomyService.AddCash(player, cash)
+		local shopXp = LevelMath.fightXp(cash, Levels)
+		EconomyService.AddXP(player, shopXp)
+		return { xpEach = xpEach, cash = cash, shopXp = shopXp, shards = 0, boss = loot, party = party }
 	end
 	if fight.run then
 		-- A Dungeon room: the elite XP and cash of every monster in the pack, no cards or items

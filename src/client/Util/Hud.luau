@@ -21,6 +21,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local HudLayout = require(Shared:WaitForChild("Config"):WaitForChild("HudLayout"))
+local PhoneForm = require(Shared:WaitForChild("Config"):WaitForChild("PhoneForm"))
 local Music = require(Shared:WaitForChild("Config"):WaitForChild("Music"))
 local Town = require(Shared:WaitForChild("Config"):WaitForChild("Town"))
 local MusicRules = require(Shared:WaitForChild("Util"):WaitForChild("MusicRules"))
@@ -590,11 +591,6 @@ local function buildPhone(screenGui: ScreenGui)
 	UIKit.outline(phone, Color3.new(1, 1, 1), 4)
 	local fit = Instance.new("UIScale")
 	fit.Parent = phone
-	local function scaleToScreen()
-		fit.Scale = math.min(1, (screenGui.AbsoluteSize.Y * PHONE.fit) / PHONE.size[2])
-	end
-	screenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(scaleToScreen)
-	scaleToScreen()
 
 	phoneScreen = Instance.new("Frame")
 	phoneScreen.Name = "Screen"
@@ -674,6 +670,36 @@ local function buildPhone(screenGui: ScreenGui)
 	local pad = Instance.new("UIPadding")
 	pad.PaddingTop = UDim.new(0, 22) -- room for the icons popping over their tiles' top edge
 	pad.Parent = apps
+
+	-- Its form for this screen (Config/PhoneForm, CompactHud.phoneForm): standing up while its app tiles stay
+	-- finger-sized, else lying on its side with the name and the dogs on the left and the apps beside them (they were
+	-- 31 px on a Galaxy A06 standing up: pre-launch QA 2026-11-19)
+	local function shapePhone()
+		local wide, scale = CompactHud.phoneForm(screenGui.AbsoluteSize.Y, PhoneForm, HudLayout.TILE_SIZE.X)
+		fit.Scale = scale
+		if wide then
+			local side = PhoneForm.wideSide
+			phone.Size = UDim2.fromOffset(PhoneForm.wide.w, PhoneForm.wide.h)
+			name.Position = UDim2.fromOffset(14, 14)
+			name.Size = UDim2.fromOffset(side, 26)
+			dogs.Position = UDim2.fromOffset(14 + side / 2, 52)
+			dogs.Size = UDim2.fromOffset(side - 16, 150)
+			apps.Position = UDim2.fromOffset(side + 24, 8)
+			apps.Size = UDim2.new(1, -(side + 34), 1, -44)
+			grid.FillDirectionMaxCells = PhoneForm.wideColumns
+		else
+			phone.Size = UDim2.fromOffset(PhoneForm.tall.w, PhoneForm.tall.h)
+			name.Position = UDim2.fromOffset(12, 4)
+			name.Size = UDim2.new(1, -24, 0, 26)
+			dogs.Position = UDim2.new(0.5, 0, 0, 34)
+			dogs.Size = UDim2.new(1, -60, 0, 110)
+			apps.Position = UDim2.fromOffset(10, 160)
+			apps.Size = UDim2.new(1, -20, 1, -190)
+			grid.FillDirectionMaxCells = PhoneForm.columns
+		end
+	end
+	screenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(shapePhone)
+	shapePhone()
 
 	-- the home bar along the bottom: tapping it goes back home (or puts the phone away from home)
 	local home = Instance.new("TextButton")
@@ -903,10 +929,16 @@ function Hud.phonePage(id: string, title: string): Frame
 		local content = Instance.new("Frame")
 		content.Name = "Content"
 		content.BackgroundTransparency = 1
-		content.Position = UDim2.fromOffset(10, 50)
+		-- centred and never wider than PhoneForm.pageMax: the pages were made for the standing phone, and stay a
+		-- readable column when it lies on its side
+		content.AnchorPoint = Vector2.new(0.5, 0)
+		content.Position = UDim2.new(0.5, 0, 0, 50)
 		content.Size = UDim2.new(1, -20, 1, -70)
 		content.ZIndex = 34
 		content.Parent = made
+		local widest = Instance.new("UISizeConstraint")
+		widest.MaxSize = Vector2.new(PhoneForm.pageMax, math.huge)
+		widest.Parent = content
 		pages[id] = made
 	end
 	return made:FindFirstChild("Content") :: Frame

@@ -2428,7 +2428,11 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   tap, or 1-3 on PC), as the call-in in the window's first seconds and as a swap after. PvP keeps the bar below.
 - **Fight bar** (PvP): kept short for landscape phones: each creature is one 56 px row (name and HP beside its ability
   buttons), Bring in / Run below (`layoutBar` in BattleController).
-- **Farm protection:** unlimited fights; XP and cash on every win. Items come once per 7 minutes per boss (saved
+- **Farm protection:** unlimited fights; creature XP on every win. Cash (and the shop XP that follows it) in full on a
+  loot win, 25% on a win before the loot timer ends (`Bosses.REPEAT_PAY`, `BossRules.pay`; owner 2026-11-19, "do all":
+  full cash on every win paid $4,000-7,000 an hour at the recommended Power and about $12,000 with a maxed party,
+  against the shop's $700-1,550; the victory screen says "Loot timer running: 25% cash. Full loot and cash in 6:10").
+  Items come once per 7 minutes per boss (saved
   Unix time, so rejoining doesn't reset it), every loot win full, as many a day as a player likes: the one rule kids can
   follow ("Loot in 6:12"). Fragments for a boss you've already opened never drop. History (owner 2026-11-19): the
   15-minute wait went to 5 (a fight at the recommended Power takes 1.5-6 min, so most wins gave no items), then the
@@ -2481,7 +2485,10 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   `countText`), a
   fragment for a boss already opened faded with "-" (it no longer drops); the first-win chest (until beaten) and the
   day's first-win chest as small slots (the payload's `bonusReady`; "Daily bonus collected: back tomorrow" once
-  taken); cash and XP every win. Item slots have rich tooltips (`Tooltip.rich`: the gold
+  taken); the cash "with loot" (its tooltip: 25% before the loot timer ends). The Power row reads "Your party: n",
+  the average of the three party slots (`BossRules.partyPower`; the best card alone until 2026-11-19, when a party
+  with one card at the recommended Power and two at 60% read Ready and won about 1 fight in 5; a party averaging the
+  recommended Power wins 81-100%: tools/balance/bosses `best+2` and `avg x1`). Item slots have rich tooltips (`Tooltip.rich`: the gold
   name, what it does, its odds or chest). **Footer**, always in view: what to do next on a light tint of its colour
   (`BossRules.nextStep` from `BossRules.lockReason`: level up the shop, beat the boss before for n more keys with a
   "See it" button, level up or change the party with a "Party" button, go fight it, or fight again for loot) and the
@@ -2947,7 +2954,7 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
 
 ### 5.11 Weapons (round 1; spec docs/superpowers/specs/2026-11-06-weapons-round1-design.md; rounds 2-3, spears and scythes, below)
 - **Catalogue** (`Config/Weapons`, looks in `Config/WeaponLooks`): the Steel Sword (everyone's), the Forge Sword in five
-  elements (Common, $1,500 + 20 Wild Ore, shop level 6), the Verdant Blade (Rare, Meadow Warden), the Sunforged Blade
+  elements (Common, $1,500 + 20 Wild Ore, shop level 6; your first Forge weapon $500 + 8 Wild Ore: `Weapons.FIRST_FORGE`, owner 2026-11-19), the Verdant Blade (Rare, Meadow Warden), the Sunforged Blade
   (Epic Masterwork: $25,000, 20 Colossus Core, 10 Warden Heartwood, 10 Brood Silk, 5 Star Shards) and the Prism Blade
   (Legendary, Prism Hydra); the spears (round 2) and the scythes (round 3) below. Saved per copy: grade and upgrade level
   (`weapons`, `equippedWeapon`, schema 16; `WeaponService`). Rules: `Util/WeaponRules` (Lune-tested).
@@ -4538,6 +4545,8 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
         │   ├── CreamTheme.luau # the windows' colours (cotton candy now), outlines, corners, header bands (plain data)
         │   ├── BabyColors.luau # the cotton candy baby colours, roles, element rims, the soft glow, soft buttons (plain data)
         │   ├── SoftHud.luau    # the squircle HUD tiles: sizes, colours, the squishy hover (plain data)
+        │   ├── PhoneForm.luau  # the Phone standing up or lying on its side on a short screen (plain data)
+        │   ├── ShopTiles.luau  # the Shop window's tiles: the tall one, a phone's row tile, the window's chrome (plain data)
         │   ├── CardReveal.luau # how big each pull's reveal is: tease, rays, spotlight, sparks, banner (plain data)
         │   ├── RevealSounds.luau # each rarity's reveal riser and layered hit, with measured loudness (plain data)
         │   ├── CardDesign.luau # card face layout, colours and image ids (client)
@@ -4642,6 +4651,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── BulkHandful.luau   # a handful of card backs (the Bulk Bin's heaps, the register counter)
             ├── BulkRules.luau     # the Bulk Bin's extras, whole handfuls, the cards going in, who asks (pure)
             ├── ShopTips.luau      # what each Shop window item holds and does, for its tooltip (pure)
+            ├── ShopTileRules.luau # the Shop window's list height and a phone's row tile (pure, Lune-tested)
             ├── ShelfStock.luau    # stock boxes, display box fill and price tags on shelves (pure, Lune-tested)
             ├── PackModels.luau    # the 3D pack, deck box and display box (assets/packs, or stand-ins), dressed in a pack's look
             ├── ProductPictureRules.luau # a menu row's pack / deck box picture, else its icon (pure, Lune-tested)
@@ -5582,7 +5592,13 @@ boss models; the ranch and Heroic tiers come after those.
   perk text shrinks to fit; the slim card on desktop windows under 560 px tall); windows take 92% of a phone's height
   by default (a list showed a row and a half); no banner on the Boss Ladder on phones (the needs and rewards had about
   46 px); the Support nudge waits for a free moment with Pish on screen (it popped over "Pick a chest!"); the victory
-  screen's reset button stays 44 px tall on phones. Open, for the owner to decide: (1) boss cash and shop XP pay on
+  screen's reset button stays 44 px tall on phones. The five findings below were open; the owner's "do all" the same
+  day built them: (1) `Bosses.REPEAT_PAY` 0.25 (5.10 "Farm protection"); (2) the board's Power is the party's average
+  (`BossRules.partyPower`); (3) the Phone lies on its side on a short screen (`Config/PhoneForm`,
+  `CompactHud.phoneForm`: app tiles 55 px on a Galaxy A06, pages a centred column); (4) the Shop window's row tiles
+  on phones (`Config/ShopTiles`, `Util/ShopTileRules`, client `Util/ShopTile`: picture left, two to a row, a taller
+  window); (5) your first Forge weapon costs $500 and 8 Wild Ore (`Weapons.FIRST_FORGE`, `WeaponRules.firstForge`:
+  about half an hour in). As found: (1) boss cash and shop XP pay on
   every win with no wait: from boss 3 on that is $4,000-7,000 an hour at the recommended Power and about $12,000 with a
   maxed party, against the shop's $700-1,550; (2) the Boss Ladder says Ready from the best card's Power alone, and a
   party with one card at it and two at 60% wins about 1 fight in 5 from boss 2 on (tools/balance/bosses `best+2`); (3)

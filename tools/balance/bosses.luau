@@ -13,7 +13,10 @@
 --   rec x1   three Legendaries at about the boss's recommended Power
 --   rec x0.8 three at 80% of it (under-powered)
 --   rec x1.3 three at 130%
---   best+2   the best card at the recommended Power, two at 60% of it (a typical party the board calls "ready")
+--   best+2   the best card at the recommended Power, two at 60% of it (the board called it "ready" until 2026-11-19;
+--            it wins about 1 fight in 5, so the board now reads the party's average: BossRules.partyPower)
+--   avg x1   an uneven party whose average is the recommended Power: its best card at 140%, two at 80% (the weakest
+--            party the board calls "ready" now)
 --   maxed+2  one maxed Legendary (Lv 30, 5 stars, Grade S) and two Lv 1 Commons (a typical "one carry" party)
 --   3 maxed  (the Dungeon's boss only) three maxed Legendaries
 -- Every creature fights with its fight perk (Config/Party FIGHT_PERKS, from its element, rarity and stars), so the five
@@ -494,6 +497,8 @@ for index, id in Bosses.LADDER do
 	end
 	local best, weak = legendaryAt(boss.recommended), legendaryAt(boss.recommended * 0.6)
 	row(id, string.format("best+2   (%4d + 2 x %4d)", math.round(power(best)), math.round(power(weak))), { best, weak, weak })
+	local lead, rest = legendaryAt(boss.recommended * 1.4), legendaryAt(boss.recommended * 0.8)
+	row(id, string.format("avg x1   (%4d + 2 x %4d)", math.round(power(lead)), math.round(power(rest))), { lead, rest, rest })
 	row(id, string.format("maxed+2  (%4d + 2 Lv 1)", math.round(power(maxed))), { maxed, junk, junk })
 	if id == Dungeon.BOSS then
 		row(id, string.format("3 maxed  (3 x %4d)", math.round(power(maxed))), { maxed, maxed, maxed })

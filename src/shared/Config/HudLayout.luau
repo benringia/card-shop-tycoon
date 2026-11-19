@@ -6,6 +6,7 @@
 -- in the deep shade. Unknown ids look like Manage.
 local Config = script.Parent :: Instance
 local SoftHud = require(Config:WaitForChild("SoftHud"))
+local PhoneForm = require(Config:WaitForChild("PhoneForm"))
 local BabyColors = require(Config:WaitForChild("BabyColors"))
 local function rgb(color: { number }): Color3
 	return Color3.fromRGB(color[1], color[2], color[3])
@@ -41,8 +42,8 @@ return {
 	PHONE = {
 		icon = "Phone", -- Config/UIIcons (owner 2026-11-13 pick P1; the 📱 emoji before)
 		label = "Phone",
-		size = { 300, 580 },
-		fit = 0.9,
+		size = { PhoneForm.tall.w, PhoneForm.tall.h }, -- standing up; on a short screen it lies on its side (Config/PhoneForm)
+		fit = PhoneForm.fit,
 		dim = 0.5,
 		bezel = { 43, 35, 64 },
 		wall = { { 255, 224, 240 }, { 217, 204, 255 }, { 194, 230, 255 } },
@@ -50,7 +51,7 @@ return {
 		picture = "rbxassetid://131467700155398",
 		title = "%s's shop",
 		slide = 0.35,
-		columns = 3,
+		columns = PhoneForm.columns,
 		badge = { 255, 79, 106 },
 	},
 	KEY_CHIP = rgb(BabyColors.INK), -- the key letter in its white circle

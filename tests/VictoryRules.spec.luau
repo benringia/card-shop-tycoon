@@ -62,6 +62,12 @@ return {
 		expect.equal(#VictoryRules.notes(nil), 0)
 		-- The owner 2026-11-19: no "too fast" rule, no daily limit, so no note says a win was smaller
 		expect.equal(#VictoryRules.notes({ flagged = true, reduced = true }), 0, "no smaller-loot notes")
+		-- A win before the loot timer ends pays a quarter of the cash (BossRules.pay): it says so, with when it's full again
+		local small = VictoryRules.notes({ fullPay = false, payShare = 0.25, lootIn = 200 })
+		expect.equal(#small, 1)
+		expect.equal(small[1], "Loot timer running: 25% cash. Full loot and cash in 3:20")
+		local full = VictoryRules.notes({ fullPay = true, lootIn = 420 })
+		expect.equal(full[1], "Full loot and cash again in 7:00")
 	end,
 	["the subtitle names the foe and the time"] = function()
 		expect.equal(VictoryRules.subtitle("Meadow Warden", 84), "Meadow Warden defeated · 1:24")

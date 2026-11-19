@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Shelves = require(Config:WaitForChild("Shelves"))
+local ShopTiles = require(Config:WaitForChild("ShopTiles"))
 local Bulk = require(Config:WaitForChild("Bulk"))
 local Products = require(Config:WaitForChild("Products"))
 local Offline = require(Config:WaitForChild("Offline"))
@@ -25,6 +26,7 @@ local Tooltip = require(ClientUtil:WaitForChild("Tooltip"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
 local LookTiles = require(ClientUtil:WaitForChild("LookTiles"))
+local ShopTile = require(ClientUtil:WaitForChild("ShopTile"))
 local WindowController = require(Controllers:WaitForChild("WindowController"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local PlacementController = require(Controllers:WaitForChild("PlacementController"))
@@ -48,7 +50,7 @@ local BUILD_TABS = {
 	{ name = "Fixtures", icon = "Fixtures" },
 	{ name = "Decor", icon = "Decor" },
 }
-local BUILD_TILE = { WIDTH = 160, HEIGHT = 224, PICTURE = 110 }
+local BUILD_TILE = { PICTURE = ShopTiles.FULL.picture } -- the tile's size and its phone form: Config/ShopTiles
 
 type ShopRow = {
 	def: ShelfDef,
@@ -267,7 +269,11 @@ local function buildShopPanel(parent: Instance)
 	shopPanel, list = UIKit.panel(parent, "BuildMenu", "Shop", "Shop")
 	palette = UIKit.colorsFor(shopPanel)
 	Icon.header(shopPanel, "Shop", UIKit.HEADER_HEIGHT)
-	shopPanel.Size = UDim2.fromScale(0.9, 0.85)
+	-- A phone (Config/ShopTiles; pre-launch QA 2026-11-19): a taller window, slimmer tabs and row tiles, so a picture
+	-- and its price show together in the short list
+	local phone = UIKit.isPhone()
+	local window = ShopTiles.WINDOW
+	shopPanel.Size = UDim2.fromScale(if phone then 0.96 else 0.9, if phone then window.phoneHeight else window.height)
 	local limit = shopPanel:FindFirstChildOfClass("UISizeConstraint")
 	if limit then
 		limit.MaxSize = Vector2.new(720, 560)
@@ -275,8 +281,8 @@ local function buildShopPanel(parent: Instance)
 
 	local tabs = Instance.new("Frame")
 	tabs.Name = "Tabs"
-	tabs.Position = UDim2.fromOffset(12, UIKit.HEADER_HEIGHT + 10)
-	tabs.Size = UDim2.new(1, -24, 0, 48)
+	tabs.Position = UDim2.fromOffset(12, UIKit.HEADER_HEIGHT + (if phone then 6 else 10))
+	tabs.Size = UDim2.new(1, -24, 0, if phone then window.phoneTabs else window.tabs)
 	tabs.BackgroundTransparency = 1
 	tabs.Parent = shopPanel
 	local tabLayout = Instance.new("UIListLayout")
@@ -285,15 +291,16 @@ local function buildShopPanel(parent: Instance)
 	tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	tabLayout.Parent = tabs
 
-	list.Position = UDim2.fromOffset(12, UIKit.HEADER_HEIGHT + 68)
-	list.Size = UDim2.new(1, -24, 1, -(UIKit.HEADER_HEIGHT + 78))
+	local chrome = if phone then window.phoneChrome else window.chrome
+	local under = if phone then 8 else 10 -- the margin under the list
+	list.Position = UDim2.fromOffset(12, chrome - under)
+	list.Size = UDim2.new(1, -24, 1, -chrome)
 	local oldLayout = list:FindFirstChildOfClass("UIListLayout")
 	if oldLayout then
 		oldLayout:Destroy()
 	end
 	local grid = Instance.new("UIGridLayout")
-	grid.CellSize = UDim2.fromOffset(BUILD_TILE.WIDTH, BUILD_TILE.HEIGHT)
-	grid.CellPadding = UDim2.fromOffset(10, 10)
+	grid.CellSize, grid.CellPadding = ShopTile.cell(phone)
 	grid.SortOrder = Enum.SortOrder.LayoutOrder
 	grid.Parent = list
 
@@ -365,6 +372,14 @@ local function buildShopPanel(parent: Instance)
 	for index, def in Shelves.List do
 		if not def.requiresItem then -- trophies come from the Bag, not here
 			buildTile(list, 100 + index, def) -- after the six shop looks
+		end
+	end
+	if phone then
+		-- every tile (looks, windows, shelves: the same build) as a row tile
+		for _, child in list:GetChildren() do
+			if child:IsA("GuiObject") then
+				ShopTile.compact(child)
+			end
 		end
 	end
 	showCategory(BUILD_TABS[1].name)

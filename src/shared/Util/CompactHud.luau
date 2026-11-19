@@ -71,6 +71,21 @@ end
 -- screen's short side is 500 px or less, else 120 px, 170 and 210. Not ours to tune: it's where Roblox draws it.
 local JUMP = { smallScreen = 500, small = { size = 70, right = 95, bottom = 90 }, big = { size = 120, right = 170, bottom = 210 } }
 
+-- The Phone's form on a screen `height` px tall (under Roblox's top bar; Config/PhoneForm): standing up while its app
+-- tiles (`tile` px at full size) stay `minTile` px, else lying on its side. Returns whether it's on its side and its
+-- scale (never over 1)
+function CompactHud.phoneForm(
+	height: number,
+	form: { tall: { w: number, h: number }, wide: { w: number, h: number }, fit: number, wideFit: number, minTile: number },
+	tile: number
+): (boolean, number)
+	local tallScale = math.min(1, height * form.fit / form.tall.h)
+	if tallScale * tile >= form.minTile then
+		return false, tallScale
+	end
+	return true, math.min(1, height * form.wideFit / form.wide.h)
+end
+
 export type Rect = { x: number, y: number, w: number, h: number }
 
 -- The jump button's box in the HUD's space (`w` x `h`, under Roblox's top bar; anchored to the bottom, so the same

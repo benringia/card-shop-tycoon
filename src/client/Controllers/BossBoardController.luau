@@ -19,6 +19,7 @@ local RunService = game:GetService("RunService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Bosses = require(Config:WaitForChild("Bosses"))
+local PartyConfig = require(Config:WaitForChild("Party"))
 local Cards = require(Config:WaitForChild("Cards"))
 local Combat = require(Config:WaitForChild("Combat"))
 local Items = require(Config:WaitForChild("Items"))
@@ -118,18 +119,19 @@ local function clear(container: Instance)
 	end
 end
 
--- The strongest party card's Power (what the recommended Power compares)
+-- The party's Power: the average of its slots (what the recommended Power compares: BossRules.partyPower; its best
+-- card alone until 2026-11-19)
 local function bestPower(): number
 	local beasts = BinderController.GetBeasts()
-	local best = 0
+	local powers = {}
 	for _, beastId in partyIds do
 		local beast = beasts[beastId]
 		local card = if beast then Cards.ById[beast.cardId] else nil
 		if beast and card then
-			best = math.max(best, BeastRules.getPower(card, beast.foil, beast.level, beast.stars, beast.grade))
+			table.insert(powers, BeastRules.getPower(card, beast.foil, beast.level, beast.stars, beast.grade))
 		end
 	end
-	return math.floor(best)
+	return BossRules.partyPower(powers, PartyConfig.PARTY_SIZE)
 end
 
 local function shopLevel(): number
@@ -310,7 +312,7 @@ local function stepWords(index: number, step: StepState, power: number): string
 	elseif step == "ready" then
 		return `{boss.name}: ready to fight`
 	elseif step == "tooWeak" then
-		return `{boss.name}: built for {boss.recommended} Power`
+		return `{boss.name}: built for a party averaging {boss.recommended} Power`
 	end
 	local reason = BossRules.lockReason(stepData(index, power))
 	if reason == "level" then
@@ -597,8 +599,8 @@ local function renderNeeds(column: ScrollingFrame, index: number, power: number,
 		Tooltip.attach(keyRow, "The first boss is open from the start.")
 	end
 	local strong = power >= boss.recommended
-	local powerRow = needRow(column, 7, if strong then "ok" else "warn", "Power", `Power {boss.recommended}`, `Your best: {power}`, power / math.max(boss.recommended, 1))
-	Tooltip.attach(powerRow, "Your strongest party card's Power against the Power this boss is built for. Under it, the fight is hard.")
+	local powerRow = needRow(column, 7, if strong then "ok" else "warn", "Power", `Power {boss.recommended}`, `Your party: {power}`, power / math.max(boss.recommended, 1))
+	Tooltip.attach(powerRow, "The average Power of your three party creatures against the Power this boss is built for. One strong creature isn't enough: level the other two as well.")
 
 	-- Its tricks, spelled out (no hovering needed), or a surprise until you can reach it
 	heading(column, 9, "WATCH OUT")
@@ -641,7 +643,7 @@ local function renderRewards(column: ScrollingFrame, index: number)
 		pill.LayoutOrder = 2
 		pill.Size = UDim2.fromOffset(0, 26)
 		pill.ZIndex = top.ZIndex + 1
-		Tooltip.attach(pill, `A boss drops loot once every {Bosses.LOOT_COOLDOWN // 60} min. Wins before then give cash and XP only.`)
+		Tooltip.attach(pill, `A boss drops loot once every {Bosses.LOOT_COOLDOWN // 60} min. Wins before then give no loot and {math.round(Bosses.REPEAT_PAY * 100)}% of the cash.`)
 		lootPill = pill
 		-- The Robux reset of every boss timer (Bosses.RESET) on its own row under the timer, while this boss's timer runs;
 		-- "Coming soon" until its product is made
@@ -734,9 +736,9 @@ local function renderRewards(column: ScrollingFrame, index: number)
 	xpIcon.ZIndex = pay.ZIndex + 1
 	local xp = text(pay, `{boss.xp} XP`, UIKit.textSize("small"), palette.ink, true) -- the light XP blue doesn't read on cream
 	xp.LayoutOrder = 4
-	local every = text(pay, "every win", UIKit.textSize("small"), UIKit.Colors.Subtext)
+	local every = text(pay, "with loot", UIKit.textSize("small"), UIKit.Colors.Subtext)
 	every.LayoutOrder = 5
-	Tooltip.attach(pay, "Every win pays cash and XP, loot or not. Your party shares the XP.")
+	Tooltip.attach(pay, `Full cash with loot. A win before the loot timer ends pays {math.round(Bosses.REPEAT_PAY * 100)}% of it. Your party shares the XP on every win.`)
 
 	-- Phones: the way to its place sits at the end of the column (BossRules.detailsLayout), not in the footer
 	local hint = travelHint(bossId)
@@ -853,7 +855,7 @@ local function renderFooter(index: number, step: StepState, power: number): Fram
 	elseif kind == "ready" then
 		words, color = "You're ready! Go to its arena and press Fight.", palette.good
 	elseif kind == "tooWeak" then
-		words, color = "Too weak for now: level up your cards or put stronger ones in your party.", palette.bad
+		words, color = "Too weak for now: level up all three party creatures, or swap in stronger ones.", palette.bad
 		action = { label = "Party", icon = "Party", run = PartyController.Toggle }
 	elseif kind == "level" then
 		words, color = `Reach shop level {boss.shopLevel}: sell cards to level up.`, palette.bad

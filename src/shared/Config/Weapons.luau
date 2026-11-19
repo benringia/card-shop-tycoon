@@ -42,6 +42,11 @@ local WILD_ORE = "wildOre"
 -- A Forge weapon in every element: $1,500 and 20 Wild Ore, from shop level 6
 local FORGE_COST: Cost = { cash = 1500, items = { [WILD_ORE] = 20 }, unlockLevel = 6 }
 local ELEMENTS = { "Ember", "Tide", "Bloom", "Volt", "Shade" }
+-- Your first Forge weapon (owner 2026-11-19, "do all"): supers need a weapon of the creature's element, and at the
+-- full price a first one was about an hour and a half in ($1,500 at a new shop's $1,550 an hour, 20 Wild Ore at 15% a
+-- monster). At this price it's about half an hour: 8 ore is some 50 monsters. One time: every Forge weapon after it,
+-- and every reforge, costs the full price (WeaponRules.makeCost with what's owned, firstForge).
+local FIRST_FORGE_COST: Cost = { cash = 500, items = { [WILD_ORE] = 8 }, unlockLevel = 6 }
 
 local WEAPONS: { Weapon } = {
 	{
@@ -303,6 +308,7 @@ return {
 		starShards = { [5] = 1, [10] = 3 },
 		rarityCash = { Common = 0.5, Rare = 0.8, ["Very Rare"] = 1, Epic = 1.3, Legendary = 1.6 },
 	},
+	FIRST_FORGE = { cash = FIRST_FORGE_COST.cash, items = FIRST_FORGE_COST.items, unlockLevel = FIRST_FORGE_COST.unlockLevel, line = "Your first Forge weapon: special price!" },
 	MATERIALS = MATERIALS, -- each boss's weapon material (Config/Items)
 	WILD_ORE = WILD_ORE,
 	FORGE_UNLOCK_LEVEL = 6,
