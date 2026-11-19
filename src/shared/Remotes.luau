@@ -108,8 +108,9 @@ local NAMES = {
 	"ChallengeStatus", -- server → client: { state: sent|declined|expired|cancelled|queued|starting|refused, message?, position? }
 	"ItemsChanged", -- server → owner: { [itemId] = count }
 	"RequestItems", -- client → server: () resend ItemsChanged
-	"BossesChanged", -- server → owner: { [bossId] = { unlocked, cleared, lootIn: seconds, rewardedToday, fragments } }
+	"BossesChanged", -- server → owner: { [bossId] = { unlocked, cleared, lootIn: seconds, bonusReady, fragments, weaponPity } }
 	"RequestBosses", -- client → server: () resend BossesChanged
+	"BossResetBuy", -- client → server: () open the Robux "reset all boss timers" purchase (Bosses.RESET)
 	"BossCleared", -- server → clients: (displayName: string, bossId: string) someone beat a boss for the first time
 	"BossLoot", -- server → owner: { drops = { { id, item, count, x, y, z } }, from = { x, y, z } } or { taken = id }
 	"PickUpLoot", -- client → server: (ids: { string }) pick up your boss drops close by (up to Bosses.LOOT_PICKUP_BATCH)
@@ -278,6 +279,7 @@ return {
 	RequestItems = remotes.RequestItems,
 	BossesChanged = remotes.BossesChanged,
 	RequestBosses = remotes.RequestBosses,
+	BossResetBuy = remotes.BossResetBuy,
 	BossCleared = remotes.BossCleared,
 	BossLoot = remotes.BossLoot,
 	PickUpLoot = remotes.PickUpLoot,

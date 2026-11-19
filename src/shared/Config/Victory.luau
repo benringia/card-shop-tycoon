@@ -60,4 +60,7 @@ return {
 	-- notification"): a card per item at the top right, under Roblox's top bar, `width` px wide, stacking down (three
 	-- at most, clear of the weapon switch)
 	PICKUP = { seconds = 3, max = 3, width = 250, height = 56, gap = 8, top = 70, right = 16, sound = "rbxassetid://106984966606682" },
+	-- A gold button under a boss win's notes (Util/VictoryScreen `action`: the Robux reset of every boss timer,
+	-- Bosses.RESET), shown once the tiles have popped in, a line under it
+	ACTION = { width = 330, height = 46, textSize = 20, top = rgb(255, 214, 102), bottom = rgb(255, 184, 46), ink = rgb(90, 51, 0) },
 }

@@ -158,4 +158,17 @@ return {
 		expect.equal(legend.super and legend.super.name, "Supernova")
 		expect.equal(legend.super and legend.super.text, "A huge 4x hit")
 	end,
+
+	-- Owner 2026-11-19: a locked super says which weapon it needs, in the plain element names
+	["a locked super names the weapon it needs"] = function()
+		expect.equal(SkillText.weaponNeed("Fire"), "a Fire weapon")
+		expect.equal(SkillText.weaponNeed("Electric"), "an Electric weapon")
+		expect.equal(SkillText.superLocked("Infernox", "Fire"), "Infernox's super needs a Fire weapon. Switch to one, or make a Fire Forge Sword at the Forge.")
+		expect.equal(SkillText.superLocked("Stormking", "Electric"), "Stormking's super needs an Electric weapon. Switch to one, or make an Electric Forge Sword at the Forge.")
+		-- the card view says it first (a narrow row cuts the end)
+		local legend = SkillText.forCard(Combat, "Ember", "Solarion", "Fire")
+		expect.equal(legend.super and legend.super.text, "Needs a Fire weapon · A huge 4x hit")
+		expect.equal(SkillText.forCard(Combat, "Ember", "Solarion").super.text, "A huge 4x hit", "no element name: as before")
+		expect.equal(SkillText.forCard(Combat, "Tide", "Puffpuddle", "Water").super, nil, "a Common has no super")
+	end,
 }

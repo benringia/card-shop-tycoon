@@ -375,6 +375,18 @@ poses in `Util/PetRig`, effects in `Util/SignatureFx`, fired once when `PetRig.c
   antlers and crown are locked to `Head_0`; the mouth is cut along its painted line onto `Jaw_0`. Size 1.8. 22 bones,
   14,000 triangles. The first remake (27 Oct, a text prompt) came out turned 16 degrees with its head 38 off and still
   looked sideways after a hand fix. Replaced the tinted Lumistag.
+- **Bramblequake** (`rig_bramblequake.py`, Meshy, Epic, Bloom; new card 2026-11-19, owner's pick A of three concepts):
+  a massive armoured thorn ankylosaur, dark bark plates with big green thorns and pink-blossomed vines over its back,
+  mossy shoulders, a beaked head with two curved wooden horns, thick dark-green legs with bark-brown claws and a spiked
+  seed-pod club on its tail. Image-to-3D from `Bramblequake_concept.png` (cut out of its grey background with its feet's
+  shadows); Meshy built it facing -Y, square and symmetric, first time; its left front foot stands a little ahead, so each
+  leg's bones are placed on their own. The club swings whole on `Tail_3`. 14,000 triangles, 21 bones.
+- **Leonbloom** (`rig_leonbloom.py`, Meshy, Legendary, Bloom; new card 2026-11-19, owner's pick C of three): a colossal
+  lion god, sage green with an enormous mane of pink, white and gold flowers and leaves, golden branch antlers, a glowing
+  sun-seed gem on its forehead, golden leaf armour and claws, and a long tail ending in a pink flower bud. The pick looked
+  at the viewer, so it was redrawn neutral first (head along the body); Meshy built it square and symmetric first time,
+  only its tail curled off to its right, bent back straight in the rig script (`TAIL_SHIFT`). The antlers and gem are
+  locked to `Head_0`, the bud swings whole on `Tail_3`. 16,000 triangles, 21 bones.
 - **Riftwalker** (`rig_riftwalker.py`, Meshy, Epic): a massive black void dragon with glowing violet rift cracks, a
   fanged roaring maw, swept-back horns, back spikes, folded wings (`Wing_` bones) and a long spiked tail; prowls on four
   legs; its lower jaw is on `Jaw_0` (cut out of the head with `rig_kit.reweight`) and opens for roars and yawns.

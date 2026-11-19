@@ -449,7 +449,9 @@ local function renderSkills(card: Card)
 	title.LayoutOrder = 0
 	title.Size = UDim2.new(1, 0, 0, 16)
 	title.TextXAlignment = Enum.TextXAlignment.Left
-	local skills = SkillText.forCard(Combat, card.element, card.name)
+	-- its super's line names the weapon it needs (owner 2026-11-19: Epic and Legendary supers need one of its element)
+	local plain = require(Shared:WaitForChild("Util"):WaitForChild("ElementNames")).display(card.element, require(Shared:WaitForChild("Config"):WaitForChild("ElementNames")))
+	local skills = SkillText.forCard(Combat, card.element, card.name, plain)
 	skillRow(1, skills.pet, card.element, Cards.ELEMENTS[card.element], "PET MOVE")
 	-- Only cards with a super move get its row (a greyed "Epic and Legendary only" row cost the copies list its room
 	-- on short screens)

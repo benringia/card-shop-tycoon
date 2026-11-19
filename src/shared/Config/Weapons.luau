@@ -270,6 +270,11 @@ return {
 	-- Your summoned creature shares the weapon's element (the Prism Blade: any): weapon hits x damage, the super meter's
 	-- fill from sword hits x meter
 	BOND = { damage = 1.15, meter = 1.5 },
+	-- Supers need a weapon (owner 2026-11-19: "only epics and legendary super skills locked until you have same element
+	-- weapon", "weapon strength: OK"; WeaponRules.superUnlocked / superScale): a weapon of the creature's element (the
+	-- Prism Blade: any) unlocks its super, and the super fires `share` of the way from the Steel Sword's Power to the
+	-- weapon's (Config/Combat SUPER_SCALES: which of its numbers grow). Tuned with tools/balance/bosses.
+	SUPER = { share = 0.5, lockedTitle = "Super locked" },
 	PERK_S = 1.2, -- a Grade S weapon's perk number x this
 	-- A boss weapon: its boss's material and cash by rarity
 	BOSS_COST = {
@@ -281,8 +286,8 @@ return {
 	REFORGE_SHARE = 0.5, -- a reforge (a new grade roll, the better kept) costs this share of making it, rounded up
 	DUPLICATE_MATERIAL = 10, -- a boss dropping a weapon you own gives this many of its material instead
 	-- A boss's own weapon dropping outright on a full-loot kill: `base`, plus `step` for every full-loot kill since without
-	-- one (pity). By rarity (owner 2026-11-06), median kills at 6 a day: Rare 15 (2.5 days), Very Rare 25, Epic 50 (about
-	-- a week), Legendary 79 (about 2 weeks, like forging it)
+	-- one (pity). By rarity (owner 2026-11-06), median loot wins: Rare 15, Very Rare 25, Epic 50, Legendary 79 (set for 6
+	-- a day; since 2026-11-19 there's no daily limit, one every LOOT_COOLDOWN: about 2 / 3 / 6 / 9 hours on its boss)
 	DROP = {
 		Rare = { base = 0.01, step = 0.005 },
 		["Very Rare"] = { base = 0.005, step = 0.002 },

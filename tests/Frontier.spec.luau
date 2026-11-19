@@ -75,9 +75,14 @@ return {
 		expect.equal(byRarity.Legendary, 2, "legendaries")
 	end,
 
-	["Set 1 unchanged"] = function()
-		expect.equal(#cardList.SET1, 35, "35 cards")
+	-- Saved cards are ids by place in their set (FS01...), so Set 1 only ever grows at its end: Bloom's Epic and
+	-- Legendary came as FS36 and FS37 (owner 2026-11-19)
+	["Set 1 keeps its cards in place; new ones come at the end"] = function()
+		expect.equal(#cardList.SET1, 37, "37 cards")
 		expect.equal(cardList.SET1[1][1], "Cindercub", "FS01 is still Cindercub")
+		expect.equal(cardList.SET1[35][1], "Duskstalker", "FS35 is still Duskstalker")
+		expect.equal(cardList.SET1[36][1], "Bramblequake", "FS36: Bloom's Epic")
+		expect.equal(cardList.SET1[37][1], "Leonbloom", "FS37: Bloom's Legendary")
 		assert(places.FRONTIER_PLACE_ID ~= places.MAIN_PLACE_ID, "two different places")
 	end,
 }

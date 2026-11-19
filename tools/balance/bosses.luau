@@ -29,7 +29,11 @@
 -- Chilled); NO_DEBUFFS=1 runs without them, to compare. Walk slows (Entangled, Chilled) aren't modelled.
 -- WEAPON="<weapon id>:<level>:<grade>" (WEAPON="verdantBlade:10:S") gives every player that weapon (Config/Weapons): its
 -- Power on every cut and skill, its element on the wheel, the bond with the creature fighting for them and its perk;
--- without it they hold the Steel Sword (Power 1, no element), as in today's game.
+-- without it they hold the Steel Sword (Power 1, no element), as in today's game. WEAPON="match:<level>:<grade>": each
+-- player holds the Forge Sword of their party leader's element (the matching weapon a player makes for their best card).
+-- Supers need a weapon of their creature's element (owner 2026-11-19; the Prism Blade unlocks every one) and fire
+-- stronger with a stronger one (WeaponRules.superScale): with the Steel Sword nobody's fires. FREE_SUPERS=1 runs the
+-- old rule (every super at its base strength, no weapon needed), to compare.
 -- WEAPON_SET="<path>=<number>,..." tries other Config/Weapons numbers (WEAPON_SET="RARITY_POWER.Legendary=1.6,UPGRADE_STEP=0.04").
 -- The Dungeon's boss (Config/Dungeon.BOSS) is fought after its three rooms of elite packs, with the HP each creature
 -- has left (fainted ones stay out), as in a real run; its rows also print the party's HP share left before the boss.
@@ -95,12 +99,39 @@ end
 
 -- The weapon every player holds (WEAPON env), its Power and what a sword hit carries
 local WEAPON: { id: string, level: number, grade: string }? = nil
+local MATCH = false -- WEAPON="match:...": each player's Forge Sword in their leader's element
 if process.env.WEAPON then
 	local id, level, grade = string.match(process.env.WEAPON, "^([%w_]+):(%d+):(%a)$")
-	assert(id and level and grade and Weapons.ById[id] and Weapons.GRADE_POWER[grade], `WEAPON="<id>:<level>:<grade>" with a Config/Weapons id, got {process.env.WEAPON}`)
+	MATCH = id == "match"
+	if MATCH then
+		id = "forgeSword_Ember" -- every Forge Sword has the same Power; the element is each player's own (weaponIdFor)
+	end
+	assert(id and level and grade and Weapons.ById[id] and Weapons.GRADE_POWER[grade], `WEAPON="<id>:<level>:<grade>" with a Config/Weapons id (or match), got {process.env.WEAPON}`)
 	WEAPON = { id = id, level = tonumber(level) :: number, grade = grade }
 end
+local FREE_SUPERS = process.env.FREE_SUPERS == "1"
 local WEAPON_POWER = if WEAPON then WeaponRules.power(Weapons, WEAPON.id, WEAPON.grade, WEAPON.level) else Weapons.STARTER_POWER
+local leaderElement: { [string]: string } = {} -- each player's party leader's element (parties)
+
+-- The weapon `owner` holds: WEAPON's, a match player's Forge Sword in their leader's element, else the Steel Sword
+local function weaponIdFor(owner: string): string
+	if not WEAPON then
+		return Weapons.STARTER
+	end
+	return if MATCH then `forgeSword_{leaderElement[owner] or "Ember"}` else WEAPON.id
+end
+
+-- A creature's super's scale with its owner's weapon (nil: locked, no weapon of its element)
+local function superScaleFor(creature: any): number?
+	if FREE_SUPERS then
+		return 1
+	end
+	local weaponId = weaponIdFor(creature.owner)
+	if not WeaponRules.superUnlocked(Weapons, weaponId, creature.element) then
+		return nil
+	end
+	return if WEAPON then WeaponRules.superScale(Weapons, weaponId, WEAPON.grade, WEAPON.level) else 1
+end
 if WEAPON then
 	print(string.format("WEAPON %s +%d Grade %s: Power %.3f", WEAPON.id, WEAPON.level, WEAPON.grade, WEAPON_POWER))
 end
@@ -109,14 +140,15 @@ local function weaponHit(state: any, owner: string): any
 	if not WEAPON then
 		return nil
 	end
-	local weapon = Weapons.ById[WEAPON.id]
-	local bond, meter = WeaponRules.bond(Weapons, WEAPON.id, BattleSim.creatureElement(state, owner))
+	local id = weaponIdFor(owner)
+	local weapon = Weapons.ById[id]
+	local bond, meter = WeaponRules.bond(Weapons, id, BattleSim.creatureElement(state, owner))
 	return {
 		element = if weapon.prism then nil else weapon.element,
 		prism = weapon.prism == true,
 		bond = bond,
 		meter = meter,
-		perk = WeaponRules.perk(Weapons, WEAPON.id, WEAPON.grade),
+		perk = WeaponRules.perk(Weapons, id, WEAPON.grade),
 	}
 end
 
@@ -188,6 +220,9 @@ local function parties(party: { Card }, element: string, seed: number): { { any 
 		local own = {}
 		for index, card in party do
 			local elementOf = ELEMENTS[(table.find(ELEMENTS, element) :: number + player + index - 3) % #ELEMENTS + 1]
+			if index == 1 then
+				leaderElement[tostring(player)] = elementOf
+			end
 			table.insert(own, fighter(`p{player}c{index}`, card, elementOf, tostring(player), seed // 5 + player + index))
 		end
 		table.insert(out, own)
@@ -317,7 +352,8 @@ local function battle(players: { { any } }, foes: { any }, hpLeft: { [string]: n
 		for _, own in side.fighters do
 			if not own.fainted and not own.benched then
 				BattleSim.useAbility(state, own.id, "element", own.owner)
-				if BattleSim.useAbility(state, own.id, "signature", own.owner) then
+				local scale = if own.signature then superScaleFor(own) else nil
+				if scale and BattleSim.useAbility(state, own.id, "signature", own.owner, scale) then
 					superCasts += 1
 				end
 			end

@@ -42,10 +42,9 @@ export type Boss = {
 	hp: number,
 	atk: number,
 	spd: number,
-	recommended: number, -- the party Power it's balanced for (shown on the board; drops shrink far above it)
+	recommended: number, -- the party Power it's balanced for (shown on the board)
 	shopLevel: number, -- the shop level a player needs to fight it (every member of a group), on top of its fragments
 	groupAtkStep: number?, -- its own ATK step per extra player in a group (nil: GROUP_ATK_STEP)
-	minFightSeconds: number, -- a win faster than this is flagged and gives no loot
 	playerAttacks: PlayerAttacks,
 	unlock: { item: string, count: number }?, -- fragments that open it the first time (nil = open from the start)
 	fragment: string?, -- the next boss's fragment it drops
@@ -95,7 +94,6 @@ local BOSSES: { [string]: Boss } = {
 		spd = 8,
 		recommended = 200,
 		shopLevel = 4,
-		minFightSeconds = 12,
 		playerAttacks = { every = 10, warning = 1.4, big = 0.30, quick = 0.10, shape = "slam", debuff = "Entangled" }, -- root slam
 		groupAtkStep = 0.08, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
 		fragment = "fragment_caveBroodQueen",
@@ -132,7 +130,6 @@ local BOSSES: { [string]: Boss } = {
 		spd = 12,
 		recommended = 350,
 		shopLevel = 7,
-		minFightSeconds = 18,
 		playerAttacks = { every = 9, warning = 1.3, big = 0.35, quick = 0.12, shape = "swipe", debuff = "Poison" }, -- web spit
 		hugeSwipe = { chance = 0.35, length = 1.8, halfAngle = 1.6 }, -- owner 2026-11-04: the web sometimes huge (47 studs, 56 deg)
 		groupAtkStep = 0.08, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
@@ -174,7 +171,6 @@ local BOSSES: { [string]: Boss } = {
 		spd = 9,
 		recommended = 650,
 		shopLevel = 14,
-		minFightSeconds = 25,
 		playerAttacks = { every = 8, warning = 1.2, big = 0.40, quick = 0.14, shape = "slam", debuff = "Burn" }, -- lava slam
 		groupAtkStep = 0.08, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
 		unlock = { item = "fragment_emberColossus", count = 5 },
@@ -216,7 +212,6 @@ local BOSSES: { [string]: Boss } = {
 		recommended = 1100,
 		shopLevel = 26,
 		groupAtkStep = 0.1, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
-		minFightSeconds = 60,
 		-- ice spikes falling from the sky (the owner 2026-11-10): one over each player (step out of its ring) and one
 		-- over `pets` random pets, which can't; a hit freezes a player (Frozen) and a pet for `petFreeze` seconds
 		-- (`petHit`: a pet's spike deals half a normal hit)
@@ -257,7 +252,6 @@ local BOSSES: { [string]: Boss } = {
 		recommended = 1500,
 		shopLevel = 34,
 		groupAtkStep = 0.1, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
-		minFightSeconds = 70,
 		playerAttacks = { every = 6.5, warning = 1.0, big = 0.50, quick = 0.17, shape = "slam", debuff = "Shocked" },
 		unlock = { item = "fragment_stormSovereign", count = 8 },
 		fragment = "fragment_riftDevourer",
@@ -296,7 +290,6 @@ local BOSSES: { [string]: Boss } = {
 		recommended = 1900,
 		shopLevel = 43,
 		groupAtkStep = 0.1, -- retuned with the player in the fight (tools/balance/bosses with 2 and 4 players)
-		minFightSeconds = 80,
 		playerAttacks = { every = 6, warning = 1.0, big = 0.55, quick = 0.18, shape = "swipe", debuff = "Weakened" },
 		unlock = { item = "fragment_riftDevourer", count = 8 },
 		fragment = "fragment_prismHydra",
@@ -337,7 +330,6 @@ local BOSSES: { [string]: Boss } = {
 		recommended = 2400,
 		shopLevel = 57,
 		groupAtkStep = 0.3,
-		minFightSeconds = 120,
 		-- its rainbow rock fissure (the cone) or a quick bite at a player, every 10 s (owner 2026-11-12; was 5)
 		playerAttacks = { every = 10, warning = 0.9, big = 0.60, quick = 0.20, doubleChance = 0.35, shape = "swipe", debuff = "byPhase" },
 		unlock = { item = "fragment_prismHydra", count = 10 },
@@ -388,12 +380,26 @@ return {
 	LOOT_CLIENT_REACH = 5, -- the client asks this close
 	LOOT_PICKUP_COOLDOWN = 0.1, -- seconds between pickup requests (each may pick up several drops)
 	LOOT_PICKUP_BATCH = 12, -- drops one pickup request may name
-	LOOT_COOLDOWN = 900, -- seconds between full loot from the same boss, per player (saved Unix time)
-	SOFT_CAP_AFTER = 6, -- rewarded kills of a boss a day at full drop chances
-	SOFT_CAP_STEP = 0.75, -- each further rewarded kill's drop chances, times the one before
-	SOFT_CAP_FLOOR = 0.2,
-	OVERPOWER_RATIO = 2.5, -- party Power above this times the recommended shrinks drops...
-	OVERPOWER_FACTOR = 0.35, -- ...to this
+	-- Seconds between loot from the same boss, per player (saved Unix time); wins before then pay cash and XP only. The
+	-- one rule that paces boss loot (owner 2026-11-19: "remove the 6 full loot daily limit. but make the wait time like 7
+	-- mins"; earlier the same day "remove both", the over-power shrink and the minimum fight time): every loot win is
+	-- full, as many a day as a player likes
+	LOOT_COOLDOWN = 420,
+	-- The Robux reset (owner 2026-11-19: "go A, both spots, R$ 19. but it should also tell players that all the bosses
+	-- reset"): one buy ends every running boss loot timer, not just one boss's. Its button shows on the boss victory
+	-- screen and beside the boss board's loot timer while a timer has `minLeft` seconds to go (BossRules.resetOffered),
+	-- never where Roblox restricts paid random items (Util/PaidRandomRules: it buys another roll at random loot)
+	RESET = {
+		product = "BossReset", -- Config/Monetization PRODUCTS (R$ 20 on Creator Hub, managed pricing on)
+		minLeft = 60,
+		button = "Reset all boss timers", -- the victory screen's button, with its Robux price
+		under = "Every boss gives loot again right away", -- under it
+		boardButton = "Reset all bosses", -- the boss board's, beside "Loot in 6:12"
+		tooltip = "Ends the loot wait on every boss, not just this one. Your next win on any boss gives loot.",
+		done = "All boss timers reset! Every boss gives loot on your next win.", -- the toast once bought
+		restricted = "Boss resets aren't sold where you live. Every boss gives loot again when its timer ends.",
+		nothing = "Every boss already gives loot: no timer to reset.",
+	},
 
 	GATE_PROMPT_DISTANCE = 10, -- the gate prompt shows this close
 	GATE_DISTANCE = 12, -- studs from the gate the server accepts a start (past the prompt's reach, for lag)

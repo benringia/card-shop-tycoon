@@ -2167,7 +2167,336 @@ local function devourImpact(view: View, grade: string, target: Vector3, _targetB
 	end
 end
 
--- The ten looks (spec "The ten moves"), by look id (tests/SuperFx: every super has one in Config/SuperFx)
+
+-- Bloom's petals (Seed Club Slam, World Bloom): flat pink pieces and a few leaves tumbling out from `from` over `radius`
+-- and fading; `drop` studs they sink as they go (a storm falling from the sky)
+local BLOOM_PETALS = { Color3.fromRGB(255, 170, 205), Color3.fromRGB(255, 214, 230), Color3.fromRGB(240, 120, 175), Color3.fromRGB(255, 236, 170) }
+local BLOOM_LEAF = Color3.fromRGB(96, 178, 74)
+
+local function petalBurst(b: Bag, from: Vector3, count: number, radius: number, size: number, seconds: number, drop: number?)
+	for index = 1, count do
+		local tint = if index % 4 == 0 then BLOOM_LEAF else BLOOM_PETALS[(index % #BLOOM_PETALS) + 1]
+		local petal = part(b, Vector3.new(0.5, 0.06, 0.34) * size, tint, CFrame.new(from) * CFrame.Angles(math.random() * 6, math.random() * 6, 0), 0)
+		petal.Material = Enum.Material.SmoothPlastic
+		local angle = math.random() * 2 * math.pi
+		local out = from + Vector3.new(math.cos(angle), 0, math.sin(angle)) * radius * (0.35 + math.random() * 0.65)
+			+ UP * (math.random() * radius * 0.3 - (drop or 0) * (0.6 + math.random() * 0.4))
+		local spin = CFrame.Angles(math.random() * 12, math.random() * 12, math.random() * 12)
+		tween(petal, seconds * (0.7 + math.random() * 0.5), { CFrame = CFrame.new(out) * spin, Transparency = 1 }, Enum.EasingStyle.Sine)
+	end
+end
+
+-- Seed Club Slam (Bramblequake, Epic, Bloom; owner 2026-11-19): leaves and petals swirl round its feet as it gathers
+-- itself, then it stomps; thorny roots race across the ground to the boss, burst up round it and curl over it for the
+-- stun, then wither. By grade: more roots and blossoms; S: the cage bursts into blossoms and a ring of thorns rises
+-- round Bramblequake.
+local SEED = SuperFxConfig.LOOKS.SeedClubSlam
+local SEED_SOUNDS = SuperFxConfig.SOUNDS.SeedClubSlam
+
+local function seedCharge(view: View, grade: string, seconds: number, _target: Vector3?): () -> ()
+	local g = SEED.grades[grade]
+	local b = bag()
+	local green = color(SEED.color)
+	local feet = groundAt(view.root.Position)
+	local source = anchor(b, CFrame.new(feet + UP * view.height * 0.5))
+	play(b, source, SEED_SOUNDS.call, 1)
+	task.delay(seconds * 0.55, function()
+		if not b.done then
+			play(b, source, SEED_SOUNDS.charge, 1)
+			quake(g, feet, 0.5)
+		end
+	end)
+	local glow = Instance.new("PointLight")
+	glow.Color = green
+	glow.Range = view.height * 2.5
+	glow.Brightness = 0
+	glow.Parent = source
+	tween(glow, seconds, { Brightness = 3 })
+	-- the ground stirs: small roots poke up round its feet and leaves swirl up
+	for index = 1, 3 + math.floor(g.scale * 2) do
+		local angle = index / (3 + math.floor(g.scale * 2)) * 2 * math.pi
+		local spot = feet + Vector3.new(math.cos(angle), 0, math.sin(angle)) * view.height * 0.8
+		task.delay(seconds * 0.15 * index / 3, function()
+			if not b.done then
+				ElementFx.rootBurst(spot, spot - feet, 0.35 + 0.1 * g.scale, math.max(0.3, seconds * 0.6))
+			end
+		end)
+	end
+	local swirl = ElementFx.emitter(source, "spark", green, { size = { 0.5, 0.1 }, life = { 0.6, 1.1 }, speed = { 3, 6 }, spread = 80, accel = UP * 3 })
+	swirl.Shape = Enum.ParticleEmitterShape.Sphere
+	swirl.Rate = g.particles
+	everyFrame(b, function(elapsed, _dt)
+		if elapsed < seconds and math.random() < 0.25 then
+			petalBurst(b, feet + UP * 0.5, 1, view.height * 0.9, 1 + 0.2 * g.scale, 0.9)
+		end
+	end)
+	local stopGlow = ElementFx.chargeGlow(view.root, green, seconds, 1.5 * g.scale)
+	return function()
+		stopGlow()
+		clear(b)
+	end
+end
+
+local function seedImpact(view: View, grade: string, target: Vector3, _targetBody: BasePart?, targetHeight: number): () -> ()
+	local g = SEED.grades[grade]
+	local b = bag()
+	local green = color(SEED.color)
+	local stun = (SuperFx.abilityOf("SeedClubSlam") or { stun = 2 }).stun
+	local landing = groundAt(view.root.Position)
+	local ground = groundAt(target)
+	local fit = math.clamp(targetHeight * 0.45, 3, 12)
+	local boom = anchor(b, CFrame.new(landing + UP * 2))
+	play(b, boom, SEED_SOUNDS.impact, 1.2)
+	if grade == "A" or grade == "S" then
+		play(b, boom, SEED_SOUNDS.layer, 1)
+	end
+	-- The stomp: a shockwave of leaves and dust where it lands
+	quake(g, landing, 1.2)
+	ElementFx.ring(landing + UP * 0.2, green, view.height * 1.4 * g.scale, 0.45)
+	ElementFx.burst(landing + UP, Color3.fromRGB(120, 96, 70), 1.3 * g.scale)
+	petalBurst(b, landing + UP, g.blossoms, view.height * 1.6, 1.2, 1)
+	-- Roots racing across the ground to the boss: each line a run of roots lashing up, bigger as they near it
+	local flat = Vector3.new(ground.X - landing.X, 0, ground.Z - landing.Z)
+	local reach = math.max(flat.Magnitude - fit * 0.6, 4)
+	local travel = 0.35
+	for line = 1, g.roots do
+		local spread = (line - (g.roots + 1) / 2) * 0.16
+		local aim = if flat.Magnitude > 0.5 then CFrame.lookAt(landing, landing + flat) * CFrame.Angles(0, spread, 0) else CFrame.new(landing)
+		local steps = 4
+		for step = 1, steps do
+			local share = step / steps
+			task.delay(travel * share, function()
+				if b.done then
+					return
+				end
+				local spot = groundAt(landing + aim.LookVector * reach * share)
+				ElementFx.rootBurst(spot, aim.LookVector, 0.3 + 0.35 * share * g.scale, 0.5)
+			end)
+		end
+	end
+	-- Under the boss: roots burst up round it and curl over it, holding it for the stun
+	task.delay(travel, function()
+		if b.done then
+			return
+		end
+		quake(g, ground, 0.9)
+		play(b, anchor(b, CFrame.new(ground + UP * 2)), SEED_SOUNDS.roots, 1.1)
+		ElementFx.eruption(ground, green, fit * 1.2, g.cage * 2)
+		for index = 1, g.cage do
+			local angle = index / g.cage * 2 * math.pi
+			local spot = ground + Vector3.new(math.cos(angle), 0, math.sin(angle)) * fit * 0.9
+			ElementFx.rootBurst(spot, ground - spot, (0.8 + 0.25 * g.scale) * math.clamp(targetHeight / 14, 0.6, 1.6), stun)
+		end
+		groundDecal(b, ground, fit * 3, TEX.crack, green, 0.3)
+		-- S: the cage bursts into blossoms, and a ring of thorns rises round Bramblequake
+		if g.extra then
+			task.delay(stun * 0.5, function()
+				if not b.done then
+					petalBurst(b, ground + UP * fit, g.blossoms, fit * 2.2, 1.5, 1.4)
+					ElementFx.burst(ground + UP * fit, BLOOM_PETALS[1], 2.4)
+				end
+			end)
+			for index = 1, 8 do
+				local angle = index / 8 * 2 * math.pi
+				local spot = landing + Vector3.new(math.cos(angle), 0, math.sin(angle)) * view.height * 1.2
+				ElementFx.rootBurst(spot, spot - landing, 0.6, 1.4)
+			end
+		end
+	end)
+	-- The roots wither as the stun ends
+	local rumble: Sound? = nil
+	task.delay(travel + stun, function()
+		if b.done then
+			return
+		end
+		rumble = play(b, anchor(b, CFrame.new(ground + UP * 2)), SEED_SOUNDS.linger, 0.7)
+		ElementFx.burst(ground + UP, Color3.fromRGB(110, 90, 60), 1)
+		petalBurst(b, ground + UP * 2, math.floor(g.blossoms * 0.5), fit * 1.6, 1, 1.2, 2)
+	end)
+	task.delay(travel + stun + 1.6, function()
+		if rumble then
+			tween(rumble, 0.4, { Volume = 0 })
+		end
+		task.delay(0.5, function()
+			clear(b)
+		end)
+	end)
+	return function()
+		clear(b)
+	end
+end
+
+-- World Bloom (Leonbloom, Legendary, Bloom; owner 2026-11-19): the sky turns green-gold (Config/SuperFx sky, on the
+-- caster's screen), a glowing seed grows over its mane and rises high over the boss, where a giant flower closes round
+-- it; at the impact the flower opens and bursts: a white-out, a beam of light down onto the boss, a storm of petals and
+-- thorny roots erupting round it. By grade: a bigger flower, more petals and roots; S: a second flower and a ring of
+-- golden light pillars. The seed rises like Supernova's sun (`burst`: where; the cinematic frames it too).
+local BLOOM = SuperFxConfig.LOOKS.WorldBloom
+local BLOOM_SOUNDS = SuperFxConfig.SOUNDS.WorldBloom
+local SEED_CORE = Color3.fromRGB(255, 252, 214)
+local SEED_GOLD = Color3.fromRGB(255, 220, 120)
+
+local function bloomCharge(view: View, grade: string, seconds: number, target: Vector3?): () -> ()
+	local g = BLOOM.grades[grade]
+	local b = bag()
+	local pink = color(BLOOM.color)
+	local above = view.root.Position + UP * (view.height * 1.3 + 2)
+	local sky = (target or (view.root.Position + view.root.CFrame.LookVector * 14)) + UP * g.burst
+	play(b, anchor(b, CFrame.new(above)), BLOOM_SOUNDS.call, 1)
+	play(b, anchor(b, CFrame.new(above)), BLOOM_SOUNDS.charge, 0.9)
+	local grow, rise = seconds * 0.35, seconds * 0.45
+	local swell = math.max(0.2, seconds - grow - rise)
+	-- The seed grows over its mane, light and petals pulling in
+	local corona = part(b, Vector3.one * 0.8, SEED_GOLD, CFrame.new(above), 0.45, Enum.PartType.Ball)
+	local core = part(b, Vector3.one * 0.5, SEED_CORE, CFrame.new(above), 0, Enum.PartType.Ball)
+	local light = Instance.new("PointLight")
+	light.Color = SEED_GOLD
+	light.Range = g.seed * 5
+	light.Brightness = 4
+	light.Parent = core
+	local smooth = TweenInfo.new(grow, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+	TweenService:Create(core, smooth, { Size = Vector3.one * g.seed }):Play()
+	TweenService:Create(corona, smooth, { Size = Vector3.one * g.seed * 1.7 }):Play()
+	local stopGather = ElementFx.gather(above, pink, grow, g.seed * 3)
+	local stopPull = nothing
+	-- Then it rises high over the boss, trailing petals and light
+	task.delay(grow, function()
+		if b.done then
+			return
+		end
+		local lift = TweenInfo.new(rise, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+		TweenService:Create(core, lift, { CFrame = CFrame.new(sky) }):Play()
+		TweenService:Create(corona, lift, { CFrame = CFrame.new(sky), Size = Vector3.one * g.seed * 2.2 }):Play()
+		local trail = ElementFx.emitter(core, "spark", pink, { size = { 0.8, 0.1 }, life = 0.6, speed = 0, fade = 0.3 })
+		trail.Rate = 50
+	end)
+	-- And the giant flower closes round it up there, glowing brighter as it swells
+	task.delay(grow + rise, function()
+		if b.done then
+			return
+		end
+		local setPetals = petals(b, sky - UP * g.flower * 0.25, g.petals, g.flower, pink)
+		stopPull = ElementFx.gather(sky, SEED_GOLD, swell, g.flower * 1.5)
+		tween(light, swell, { Brightness = 10, Range = g.flower * 4 })
+		everyFrame(b, function(elapsed)
+			local p = math.clamp(elapsed / swell, 0, 1)
+			setPetals(0.1 + 0.15 * math.sin(p * math.pi * 3) ^ 2, 0)
+		end)
+	end)
+	local stopGlow = ElementFx.chargeGlow(view.root, pink, seconds, 1.8 * g.scale)
+	return function()
+		stopGather()
+		stopPull()
+		stopGlow()
+		clear(b)
+	end
+end
+
+local function bloomImpact(_view: View, grade: string, target: Vector3, _targetBody: BasePart?, targetHeight: number): () -> ()
+	local g = BLOOM.grades[grade]
+	local b = bag()
+	local pink = color(BLOOM.color)
+	local green = Color3.fromRGB(124, 206, 92)
+	local ground = groundAt(target)
+	local blast = math.max(8, targetHeight * 1.1) * g.scale
+	local sky = target + UP * g.burst
+	-- The flower opens into a wide cup (it reads from below and from the side) and bursts: its petals fly out and fade,
+	-- a white flash up there, a ring of light, petals flung out
+	local leaves = {}
+	for index = 1, g.petals do
+		local leaf = part(b, Vector3.new(g.flower * 0.42, 0.25, g.flower), pink, CFrame.new(sky), 0.15, Enum.PartType.Ball)
+		table.insert(leaves, { leaf = leaf, angle = (index - 1) / g.petals * 2 * math.pi })
+	end
+	everyFrame(b, function(elapsed)
+		local open = math.clamp(elapsed / 0.25, 0, 1)
+		local fly = math.max(0, elapsed - 0.35)
+		for _, p in leaves do
+			local tilt = math.rad(90 - 55 * open) -- 90: closed round the seed, 35: a wide cup
+			p.leaf.CFrame = CFrame.new(sky) * CFrame.Angles(0, p.angle, 0) * CFrame.new(0, -fly * 4, -fly * g.flower * 2.2)
+				* CFrame.Angles(tilt + fly * 2, 0, 0) * CFrame.new(0, 0, -g.flower * 0.5)
+			p.leaf.Transparency = math.min(1, 0.15 + fly * 1.1)
+		end
+	end)
+	local flash = part(b, Vector3.one * g.seed * 1.4, SEED_CORE, CFrame.new(sky), 0, Enum.PartType.Ball)
+	tween(flash, 0.5, { Size = Vector3.one * g.flower * 3, Transparency = 1 }, Enum.EasingStyle.Quart)
+	ElementFx.burst(sky, pink, 4 * g.scale)
+	ElementFx.ring(sky, SEED_GOLD, g.flower * 2.5, 0.6)
+	petalBurst(b, sky, math.floor(g.storm * 0.6), g.flower * 2.5, 2.2, 1.6, g.burst * 0.6)
+	play(b, anchor(b, CFrame.new(sky)), BLOOM_SOUNDS.impact, 1.2)
+	if grade == "A" or grade == "S" then
+		play(b, anchor(b, CFrame.new(sky)), BLOOM_SOUNDS.layer, 1)
+	end
+	quake(g, target, 1.3)
+	-- A beam of light down onto the boss, then the ground answers: roots erupt round it and petals rain down
+	local top = anchor(b, CFrame.new(sky))
+	local foot = anchor(b, CFrame.new(ground))
+	local ray = beam(attachment(top, Vector3.zero), attachment(foot, Vector3.zero), AttackFx.TEXTURES.streak, sequence(SEED_CORE, pink), 5 * g.scale, 3 * g.scale, { speed = 3, length = 10 })
+	task.delay(0.8, function()
+		tween(ray, 0.6, { Width0 = 0, Width1 = 0 })
+	end)
+	task.delay(0.3, function()
+		if b.done then
+			return
+		end
+		quake(g, ground, 1.5)
+		-- a soft glow of light round the boss (not a white-out: the flower over it stays in view)
+		local dome = part(b, Vector3.one * 2, SEED_CORE, CFrame.new(ground), 0.35, Enum.PartType.Ball)
+		tween(dome, 0.35, { Size = Vector3.one * blast * 1.3, Color = pink }, Enum.EasingStyle.Quart)
+		task.delay(0.35, function()
+			tween(dome, 0.6, { Transparency = 1 })
+		end)
+		ElementFx.burst(target, pink, 3 * g.scale)
+		ElementFx.eruption(ground, green, blast * 0.8, 14)
+		for ring = 1, 2 do
+			task.delay((ring - 1) * 0.18, function()
+				ElementFx.ring(ground + UP * 0.2, if ring == 1 then pink else SEED_GOLD, blast * (1 + ring * 0.35), 0.6)
+			end)
+		end
+		for index = 1, g.roots do
+			local angle = index / g.roots * 2 * math.pi + math.random() * 0.3
+			local spot = ground + Vector3.new(math.cos(angle), 0, math.sin(angle)) * blast * 0.55
+			ElementFx.rootBurst(spot, spot - ground, (0.7 + 0.25 * g.scale) * math.clamp(targetHeight / 14, 0.6, 1.6), 1.6)
+		end
+		groundDecal(b, ground, blast * 2, TEX.crack, green, 0.25)
+		local linger = play(b, anchor(b, CFrame.new(ground + UP * 3)), BLOOM_SOUNDS.linger, 0.8)
+		-- The petal storm: petals keep falling over the boss for a while
+		local falling = 0
+		everyFrame(b, function(_elapsed, dt)
+			falling += dt * g.storm
+			while falling >= 1 do
+				falling -= 1
+				local angle = math.random() * 2 * math.pi
+				local from = ground + UP * (10 + math.random() * 8) + Vector3.new(math.cos(angle), 0, math.sin(angle)) * blast * math.random()
+				petalBurst(b, from, 1, 3, 1.6, 1.8, 10)
+			end
+		end)
+		-- S: a second flower opens lower down, and golden pillars of light ring the crater
+		if g.extra then
+			local second = petals(b, ground + UP * targetHeight * 0.6, g.petals, g.flower * 0.7, BLOOM_PETALS[2])
+			everyFrame(b, function(elapsed)
+				second(math.clamp(elapsed / 0.4, 0, 1), elapsed * 2)
+			end)
+			for index = 1, 6 do
+				local a = index / 6 * 2 * math.pi
+				ElementFx.pillar(ground + Vector3.new(math.cos(a), 0, math.sin(a)) * blast * 1.1, SEED_GOLD, 24, 1.6, "glow")
+			end
+		end
+		task.delay(2.6, function()
+			if linger then
+				tween(linger, 0.6, { Volume = 0 })
+			end
+			task.delay(0.8, function()
+				clear(b)
+			end)
+		end)
+	end)
+	return function()
+		clear(b)
+	end
+end
+
+-- The looks (spec "The ten moves", Bloom's two since 2026-11-19), by look id (tests/SuperFx: every super has one in
+-- Config/SuperFx)
 local LOOKS: { [string]: Look } = {
 	Inferno = { charge = infernoCharge, impact = infernoImpact },
 	MagmaSlam = { charge = magmaCharge, impact = magmaImpact },
@@ -2179,6 +2508,8 @@ local LOOKS: { [string]: Look } = {
 	Supernova = { charge = novaCharge, impact = novaImpact },
 	Thunderstorm = { charge = stormCharge, impact = stormImpact },
 	Devour = { charge = devourCharge, impact = devourImpact },
+	SeedClubSlam = { charge = seedCharge, impact = seedImpact },
+	WorldBloom = { charge = bloomCharge, impact = bloomImpact },
 }
 
 -- Everything from the press to the impact on the caster; returns a stop

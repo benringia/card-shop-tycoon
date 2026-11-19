@@ -80,6 +80,7 @@ export type View = {
 	creatureHp: number,
 	creatureMax: number,
 	hasSignature: boolean,
+	superNeed: string?, -- its super is locked (owner 2026-11-19): the plain name of the element its weapon must be
 	reserves: { Reserve },
 	party: { PartyTile }?, -- boss fights: the party strip (owner 2026-11-05, option A)
 	-- Wild fights: a called-in creature on the field too, the run chance
@@ -119,6 +120,10 @@ type Button = {
 	meter: number?, -- the Super button: its meter's share (owner 2026-11-06, option A), filling gold from the bottom
 	fill: ImageLabel?,
 	fillShape: UIGradient?,
+	tint: Color3, -- the button's colour (its edge; its icon and name lean toward it)
+	-- the Super button locked without its weapon (owner 2026-11-19, look C): its padlock
+	lock: ImageLabel?,
+	locked: boolean?,
 }
 
 local BUTTON_ORDER = { "attack", "dodge", "skill", "pet", "signature", "swap", "run", "target" }
@@ -276,6 +281,7 @@ local function makeButton(parent: Instance, name: string, onPress: () -> (), sho
 	-- when full
 	local fill: ImageLabel? = nil
 	local fillShape: UIGradient? = nil
+	local lock: ImageLabel? = nil
 	if name == "signature" then
 		local gold = Instance.new("ImageLabel")
 		gold.Name = "Meter"
@@ -291,8 +297,82 @@ local function makeButton(parent: Instance, name: string, onPress: () -> (), sho
 		shape.Transparency = NumberSequence.new(1)
 		shape.Parent = gold
 		fill, fillShape = gold, shape
+		-- Locked without its weapon (owner 2026-11-19, look C; CombatHud SUPER_LOCK): a padlock over the icon, and its
+		-- name turns into a pill naming the weapon (setSuperLock)
+		local lockLook = CombatHudConfig.SUPER_LOCK
+		local padlock = Instance.new("ImageLabel")
+		padlock.Name = "Lock"
+		padlock.BackgroundTransparency = 1
+		padlock.Image = UIIcons.Lock
+		padlock.ScaleType = Enum.ScaleType.Fit
+		padlock.AnchorPoint = Vector2.new(0.5, 0.5)
+		padlock.Position = UDim2.fromScale(0.5, 0.5)
+		padlock.Size = UDim2.fromScale(lockLook.lock, lockLook.lock)
+		padlock.ZIndex = 4
+		padlock.Visible = false
+		padlock.Parent = frame
+		local square = Instance.new("UIAspectRatioConstraint")
+		square.DominantAxis = Enum.DominantAxis.Height
+		square.Parent = padlock
+		local round = Instance.new("UICorner")
+		round.CornerRadius = UDim.new(0.5, 0)
+		round.Parent = label
+		local pad = Instance.new("UIPadding")
+		pad.PaddingLeft, pad.PaddingRight = UDim.new(0, 8), UDim.new(0, 8)
+		pad.Parent = label
+		lock = padlock
 	end
-	return { frame = frame, drain = drain, shade = shade, seconds = seconds, label = label, readyAt = 0, total = 1, fill = fill, fillShape = fillShape }
+	return {
+		frame = frame,
+		drain = drain,
+		shade = shade,
+		seconds = seconds,
+		label = label,
+		readyAt = 0,
+		total = 1,
+		fill = fill,
+		fillShape = fillShape,
+		tint = tint,
+		lock = lock,
+	}
+end
+
+-- The Super button locked without a weapon of its creature's element (owner 2026-11-19, look C; CombatHud SUPER_LOCK)
+-- or not (`need` nil): greyed with a padlock, no meter, its name a pill in the element's colour (`ring`) naming the
+-- weapon (`need`: the element's plain name)
+local function setSuperLock(button: Button, need: string?, ring: Color3?)
+	local lockLook = CombatHudConfig.SUPER_LOCK
+	local locked = need ~= nil
+	button.locked = locked
+	local icon = button.frame:FindFirstChild("Icon")
+	if icon and icon:IsA("ImageLabel") then
+		icon.ImageColor3 = if locked then color(lockLook.dim) else Color3.new(1, 1, 1):Lerp(button.tint, 0.25)
+	end
+	local edge = button.frame:FindFirstChild("Edge")
+	if edge and edge:IsA("ImageLabel") then
+		edge.ImageColor3 = if locked then color(lockLook.dim) else button.tint
+	end
+	if button.fill then
+		button.fill.Visible = not locked
+	end
+	if button.lock then
+		button.lock.Visible = locked
+	end
+	local label = button.label
+	local stroke = label:FindFirstChildOfClass("UIStroke")
+	if locked then
+		label.Text = string.format(lockLook.label, need :: string)
+		label.BackgroundColor3 = ring or Color3.new(1, 1, 1)
+		label.BackgroundTransparency = 0
+		label.TextColor3 = color(lockLook.text)
+		label.Visible = button.frame.Visible
+	else
+		label.BackgroundTransparency = 1
+		label.TextColor3 = Color3.new(1, 1, 1):Lerp(button.tint, 0.55)
+	end
+	if stroke then
+		stroke.Enabled = not locked -- the pill's dark words need no outline
+	end
 end
 
 -- The meter's gradient: shown from the bottom up to `share`, hidden above
@@ -882,6 +962,9 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		end
 		if name == "signature" then
 			tipBody.Text ..= `\n{CombatHudConfig.METER.tip}`
+			if view and view.superNeed then
+				tipBody.Text ..= `\nNeeds {SkillText.weaponNeed(view.superNeed)}.` -- locked (owner 2026-11-19)
+			end
 		end
 		tipEdge.Color = color(spec.color)
 		local half = CombatHudConfig.TIP_WIDTH / 2 + 8
@@ -1177,10 +1260,11 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		for _, button in buttons do
 			local meter = button.meter
 			if meter and button.fill then
-				-- The Super button: its meter's percent while it fills, a soft glow pulse once it's full
-				button.seconds.Text = if meter < 1 then `{math.floor(meter * 100)}%` else ""
+				-- The Super button: its meter's percent while it fills, a soft glow pulse once it's full (locked: neither,
+				-- the meter hides behind its padlock until a weapon of its element is in hand)
+				button.seconds.Text = if meter < 1 and not button.locked then `{math.floor(meter * 100)}%` else ""
 				local pulse = CombatHudConfig.METER.pulse
-				button.fill.ImageTransparency = if meter >= 1
+				button.fill.ImageTransparency = if meter >= 1 and not button.locked
 					then pulse[1] + (pulse[2] - pulse[1]) * (0.5 + 0.5 * math.sin(now * pulse[3]))
 					else CombatHudConfig.METER.transparency
 				continue
@@ -1280,6 +1364,9 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		for name, button in buttons do
 			button.label.Text = string.upper(moveName(name))
 			button.label.Visible = showNames and button.frame.Visible
+		end
+		if buttons.signature then
+			setSuperLock(buttons.signature, if view.hasSignature then view.superNeed else nil, view.perkColor)
 		end
 		if tipFor then
 			onTip(tipFor, true) -- a swap renames the pet's move under an open tooltip

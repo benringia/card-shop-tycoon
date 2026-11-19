@@ -1,20 +1,19 @@
 --!strict
--- The boss ladder's rules (Config/Bosses): whether a boss can be started, whether a win gives full loot, and how much
--- the farm protection shrinks its drops. Pure (no requires, no Roblox APIs): callers pass the config in, so tests/ can
--- run it in Lune. BossService keeps each player's records (saved).
+-- The boss ladder's rules (Config/Bosses): whether a boss can be started and whether a win gives loot (once per
+-- LOOT_COOLDOWN; no daily limit since the owner 2026-11-19). Pure (no requires, no Roblox APIs): callers pass the config
+-- in, so tests/ can run it in Lune. BossService keeps each player's records (saved).
 local BossRules = {}
 
 -- One player's progress on one boss
 export type Record = {
 	unlocked: boolean, -- its key was used (or it's open from the start)
 	cleared: boolean, -- first clear done (trophy given)
-	lootAt: number, -- Unix time full loot is available again
-	day: number, -- UTC day number of rewardedToday
-	rewardedToday: number, -- rewarded kills that day (the soft cap)
+	lootAt: number, -- Unix time loot is available again
 	bonusDay: number, -- UTC day the daily bonus chest was last given
-	weaponPity: number, -- full-loot kills since its weapon last dropped (Config/Weapons DROP: bad-luck protection)
+	weaponPity: number, -- loot wins since its weapon last dropped (Config/Weapons DROP: bad-luck protection)
 }
-type Config = { SOFT_CAP_AFTER: number, SOFT_CAP_STEP: number, SOFT_CAP_FLOOR: number, OVERPOWER_RATIO: number, OVERPOWER_FACTOR: number }
+-- (Saves from before 2026-11-19 also hold `day` and `rewardedToday`, the old daily limit's count: read drops them, so
+-- they're gone at the next save; no schema bump, an older server reads them as 0, a fresh day)
 type GroupConfig = { GROUP_MAX: number, GROUP_HP_STEP: number, GROUP_ATK_STEP: number, GROUP_SWINGS_STEP: number, CONTRIBUTION_DAMAGE: number, CONTRIBUTION_TANK: number, CARRIED_FACTOR: number }
 
 local function readCount(value: unknown): number
@@ -31,8 +30,6 @@ function BossRules.read(saved: unknown, startsOpen: boolean): Record
 		unlocked = startsOpen or data.unlocked == true,
 		cleared = data.cleared == true,
 		lootAt = readCount(data.lootAt),
-		day = readCount(data.day),
-		rewardedToday = readCount(data.rewardedToday),
 		bonusDay = readCount(data.bonusDay),
 		weaponPity = readCount(data.weaponPity),
 	}
@@ -57,17 +54,6 @@ end
 
 function BossRules.dayNumber(unixTime: number): number
 	return math.floor(unixTime / 86400)
-end
-
--- The record with today's counts (a new UTC day starts them from zero)
-function BossRules.dayCounts(record: Record, today: number): Record
-	if record.day == today then
-		return record
-	end
-	local copy = table.clone(record)
-	copy.day = today
-	copy.rewardedToday = 0
-	return copy
 end
 
 -- Whether the boss can be started: unlocked already, or the player owns the fragments its key needs
@@ -137,21 +123,27 @@ function BossRules.lootEligible(record: Record, now: number): boolean
 	return now >= record.lootAt
 end
 
--- Drop chances times this after SOFT_CAP_AFTER rewarded kills today: STEP per extra kill, never under FLOOR
-function BossRules.softCapFactor(config: Config, rewardedToday: number): number
-	if rewardedToday < config.SOFT_CAP_AFTER then
-		return 1
+-- The Robux reset (Bosses.RESET; owner 2026-11-19, pick A: one buy ends every boss's timer): offered while some boss's
+-- loot timer has at least `minLeft` seconds to go, so a buy never lands after every timer ran out by itself
+function BossRules.resetOffered(lootIns: { number }, minLeft: number): boolean
+	for _, left in lootIns do
+		if left >= minLeft then
+			return true
+		end
 	end
-	return math.max(config.SOFT_CAP_FLOOR, config.SOFT_CAP_STEP ^ (rewardedToday - config.SOFT_CAP_AFTER + 1))
+	return false
 end
 
--- Drop chances times this when the party is far stronger than the boss
-function BossRules.overPowerFactor(config: Config, partyPower: number, recommended: number): number
-	return if partyPower > recommended * config.OVERPOWER_RATIO then config.OVERPOWER_FACTOR else 1
-end
-
-function BossRules.dropFactor(config: Config, record: Record, partyPower: number, recommended: number): number
-	return BossRules.softCapFactor(config, record.rewardedToday) * BossRules.overPowerFactor(config, partyPower, recommended)
+-- A bought reset: every running loot timer ends now (loot on each boss's next win); how many were running
+function BossRules.resetTimers(records: { [string]: Record }, now: number): number
+	local count = 0
+	for _, record in records do
+		if record.lootAt > now then
+			record.lootAt = now
+			count += 1
+		end
+	end
+	return count
 end
 
 -- A boss's HP and ATK for a group of `size` players (1 = as configured)
@@ -173,10 +165,10 @@ function BossRules.contributed(config: GroupConfig, dealt: number, taken: number
 end
 
 -- A carried member's chance at a drop: a fraction of it, never a fragment
--- A boss's own weapon is rolled (and its pity counted) only on a full-loot kill (spec 4.4): none of the soft cap's
--- or the over-power shrink's reduction, and never for a carried group member
-function BossRules.rollsWeapon(factor: number, carried: boolean): boolean
-	return factor >= 1 and not carried
+-- A boss's own weapon is rolled (and its pity counted) on every loot win (spec 4.4; no reduced wins since 2026-11-19),
+-- never for a carried group member
+function BossRules.rollsWeapon(carried: boolean): boolean
+	return not carried
 end
 
 -- A boss weapon's pity after a full-loot roll: back to 0 only once the weapon was really given; a miss, or a drop
@@ -353,11 +345,6 @@ function BossRules.counterElements(beats: { [string]: { string } }, element: str
 	end
 	table.sort(counters)
 	return counters
-end
-
--- Rewarded wins left today at full drop chances (the soft cap)
-function BossRules.fullDropsLeft(config: Config, rewardedToday: number): number
-	return math.max(0, config.SOFT_CAP_AFTER - rewardedToday)
 end
 
 local function percent(share: number): string

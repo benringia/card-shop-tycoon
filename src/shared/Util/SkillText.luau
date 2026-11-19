@@ -64,6 +64,20 @@ function SkillText.buttonTip(combat: any, button: string, element: string, super
 	return nil
 end
 
+-- The weapon a locked super needs, with its article ("a Fire weapon", "an Electric weapon"); `plain`: the element's
+-- player-facing name (Util/ElementNames)
+function SkillText.weaponNeed(plain: string): string
+	local article = if string.find(string.lower(string.sub(plain, 1, 1)), "[aeiou]") then "an" else "a"
+	return `{article} {plain} weapon`
+end
+
+-- The locked card when a super is pressed without its weapon (owner 2026-11-19: Epic and Legendary supers need a weapon
+-- of their creature's element; the Forge makes one of every element)
+function SkillText.superLocked(cardName: string, plain: string): string
+	local forge = string.gsub(SkillText.weaponNeed(plain), " weapon$", ` Forge Sword`)
+	return `{cardName}'s super needs {SkillText.weaponNeed(plain)}. Switch to one, or make {forge} at the Forge.`
+end
+
 -- The skill button for a sword's moveset (Config/CombatHud SKILLS; the Steel Sword and anything unknown: the dash
 -- slash's BUTTONS.skill): its icon, name and tooltip, the tooltip ending with the dodge rule (SKILL_DODGE_TIP)
 function SkillText.swordSkill(hud: any, moveset: string?): { icon: string, name: string, tip: string }
@@ -92,9 +106,15 @@ function SkillText.matchups(combat: any, element: string): { strong: { string },
 end
 
 -- A card's skills: `pet` from its element, `super` from its name (nil: it has none)
-function SkillText.forCard(combat: any, element: string, cardName: string): { pet: Skill, super: Skill? }
+-- `plain`: the element's player-facing name; given, the super's line starts with the weapon it needs (owner 2026-11-19)
+function SkillText.forCard(combat: any, element: string, cardName: string, plain: string?): { pet: Skill, super: Skill? }
 	local signature = combat.SIGNATURES[cardName]
-	return { pet = skill(combat.ABILITIES[element]), super = if signature then skill(signature) else nil }
+	local super = if signature then skill(signature) else nil
+	if super and plain then
+		local need = SkillText.weaponNeed(plain)
+		super.text = `Needs {need} · {super.text}`
+	end
+	return { pet = skill(combat.ABILITIES[element]), super = super }
 end
 
 return SkillText

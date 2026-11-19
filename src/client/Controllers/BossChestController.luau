@@ -118,11 +118,11 @@ local function portraitOf(weaponId: string?): string
 	return if look then look.portrait else ""
 end
 
--- The colour of a chest's light and burst: the weapon's rarity, gold for material, dusky for the "?" and empty
+-- The colour of a chest's light and burst: the weapon's rarity, gold for material, dusky for the "?"
 local function colorOf(content: ChestRules.Content): Color3
 	if content.kind == "weapon" then
 		return rarityColor(content.weaponId)
-	elseif content.kind == "mystery" or content.kind == "empty" then
+	elseif content.kind == "mystery" then
 		return MYSTERY_TINT
 	end
 	return rgb(LOOK.colors.glow)
@@ -224,14 +224,8 @@ local function card(show: Show, index: number, content: ChestRules.Content, mine
 	art.Size = UDim2.fromScale(0.8, 0.62)
 	art.Parent = frame
 	local line: string
-	local under: string? = nil
 	local weapon = if content.weaponId then Weapons.ById[content.weaponId] else nil
-	if content.kind == "empty" then
-		local words = (BossChests.EMPTY :: any)[content.reason or ""] or BossChests.EMPTY.strong
-		Icon.make(art, BossChests.EMPTY.glyph, UDim2.fromScale(1, 1))
-		line = words.line
-		under = words.under
-	elseif content.kind == "material" and content.item then
+	if content.kind == "material" and content.item then
 		Icon.make(art, (Items.ITEMS[content.item] or {}).icon or "?", UDim2.fromScale(1, 1))
 		line = `x{content.count or 1}`
 	else
@@ -264,7 +258,7 @@ local function card(show: Show, index: number, content: ChestRules.Content, mine
 	name.Size = UDim2.fromScale(0.9, 0.15)
 	name.TextXAlignment = Enum.TextXAlignment.Center
 	name.TextScaled = true
-	local goal = under or (if mine and content.kind == "material" and content.item then LootController.GoalLine(content.item) else nil)
+	local goal = if mine and content.kind == "material" and content.item then LootController.GoalLine(content.item) else nil
 	if goal then
 		local note = UIKit.label(frame, goal, Enum.Font.GothamBold, 14, TEXT)
 		note.Position = UDim2.fromScale(0.05, 0.85)
@@ -306,27 +300,20 @@ local function burst(show: Show)
 	local mine = contents[index]
 	local color = colorOf(mine)
 	local mouth = mouthOf(show, index)
-	local empty = mine.kind == "empty"
 	show.burstAt = os.clock()
 	show.openAt[index] = os.clock()
 	show.openSeconds[index] = LOOK.openSeconds * 0.6
 	ChestModel.light(show.chests[index], color, 0)
 	OpeningStage.fade(SOUNDS.tension, 0.12)
 	OpeningStage.play(SOUNDS.creak)
-	if empty then
-		OpeningStage.play(SOUNDS.empty)
-		dust(show, mouth, DUST, show.width * 1.4, 22)
-		OpeningStage.shake(BEATS.burst.shake * 0.4, 0.25)
-	else
-		OpeningStage.play(if mine.kind == "weapon" then SOUNDS.weapon else SOUNDS.material)
-		OpeningStage.play(SOUNDS.coins)
-		OpeningStage.flash(if mine.kind == "weapon" then 0.8 else BEATS.burst.flash, 0.45)
-		OpeningStage.shake(BEATS.burst.shake, 0.4)
-		OpeningFx.burst(mouth, color, BEATS.burst.size)
-		OpeningFx.shards(mouth, BEATS.burst.shards, true, 1)
-		OpeningFx.rays(true, color, mouth + Vector3.new(0, show.width * 0.6, show.width))
-		OpeningFx.motes(10, CFrame.new(mouth), color)
-	end
+	OpeningStage.play(if mine.kind == "weapon" then SOUNDS.weapon else SOUNDS.material)
+	OpeningStage.play(SOUNDS.coins)
+	OpeningStage.flash(if mine.kind == "weapon" then 0.8 else BEATS.burst.flash, 0.45)
+	OpeningStage.shake(BEATS.burst.shake, 0.4)
+	OpeningFx.burst(mouth, color, BEATS.burst.size)
+	OpeningFx.shards(mouth, BEATS.burst.shards, true, 1)
+	OpeningFx.rays(true, color, mouth + Vector3.new(0, show.width * 0.6, show.width))
+	OpeningFx.motes(10, CFrame.new(mouth), color)
 	card(show, index, mine, true)
 	task.delay(BEATS.burst.othersAfter, function()
 		if current ~= show then
@@ -384,7 +371,7 @@ function BossChestController.Collect(show: Show)
 	local mine = if show.picked and show.contents then show.contents[show.picked] else nil
 	for _, entry in show.cards do
 		local frame = entry.frame
-		if mine and mine.kind ~= "empty" and entry.index == show.picked then
+		if mine and entry.index == show.picked then
 			entry.flying = true
 			local view = workspace.CurrentCamera.ViewportSize
 			local info = TweenInfo.new(BEATS.collect.seconds, Enum.EasingStyle.Back, Enum.EasingDirection.In)
@@ -394,7 +381,7 @@ function BossChestController.Collect(show: Show)
 			TweenService:Create(entry.scale, TweenInfo.new(0.25), { Scale = 0 }):Play()
 		end
 	end
-	if mine and mine.kind ~= "empty" then
+	if mine then
 		OpeningStage.play(SOUNDS.collect)
 	end
 	task.delay(BEATS.collect.seconds + 0.05, finish, show, true)

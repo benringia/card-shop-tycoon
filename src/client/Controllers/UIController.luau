@@ -740,6 +740,9 @@ function UIController.Start()
 	toastStack.Size = UDim2.fromOffset(Toasts.WIDTH + 40, 420)
 	toastStack.BackgroundTransparency = 1
 	toastStack.ZIndex = 10
+	-- not a window: a fight's start closes the open windows (BattleController setHudHidden) but leaves this up (it hid
+	-- every toast for the rest of the session after the first fight until 2026-11-19)
+	toastStack:SetAttribute("KeepInFights", true)
 	toastStack.Parent = screenGui
 	Hud.scaleWith(toastStack)
 	local toastLayout = Instance.new("UIListLayout")

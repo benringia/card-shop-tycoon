@@ -135,6 +135,23 @@ function WeaponRules.bond(cfg: any, weaponId: string, creatureElement: string?):
 	return 1, 1
 end
 
+-- Whether a creature's super can fire with this weapon in hand (owner 2026-11-19: Epic and Legendary supers are locked
+-- until you hold a weapon of the creature's element; the Prism Blade unlocks every one). `weaponId` nil: no sword yet.
+function WeaponRules.superUnlocked(cfg: any, weaponId: string?, creatureElement: string?): boolean
+	local weapon = if weaponId then cfg.ById[weaponId] else nil
+	if not weapon or not creatureElement then
+		return false
+	end
+	return weapon.prism == true or (weapon.element ~= nil and weapon.element == creatureElement)
+end
+
+-- How much stronger the weapon makes the super it unlocks (owner 2026-11-19, "weapon strength: OK"): SUPER.share of the
+-- way from the Steel Sword's Power to the weapon's (Config/Combat SUPER_SCALES: which numbers grow)
+function WeaponRules.superScale(cfg: any, weaponId: string, grade: string, level: number): number
+	local power = WeaponRules.power(cfg, weaponId, grade, level)
+	return 1 + cfg.SUPER.share * (power - cfg.STARTER_POWER)
+end
+
 -- A weapon's perk at a grade (a copy; Grade S: its share x PERK_S)
 function WeaponRules.perk(cfg: any, weaponId: string, grade: string): Perk?
 	local weapon = cfg.ById[weaponId]

@@ -111,6 +111,8 @@ return {
 		CinderTitan = { fidget = "lavaslam", chance = 0.35 },
 		Kirin = { fidget = "blessing", chance = 0.35 },
 		Stormking = { fidget = "hornstorm", chance = 0.35 },
+		Bramblequake = { fidget = "thorncharge", chance = 0.35 }, -- Bloom's Epic (2026-11-19): Briarhorn's thorn charge
+		Leonbloom = { fidget = "vinebloom", chance = 0.35 }, -- Bloom's Legendary: petals and leaves burst from its flower mane
 		Reefray = { fidget = "mantaroll", chance = 0.35 },
 		Coalbit = { fidget = "emberglow", chance = 0.35 },
 		Sparkrat = { fidget = "staticshock", chance = 0.35 },
@@ -209,6 +211,8 @@ return {
 		CinderTitan = { fidgets = { "look", "sniff", "shake", "stomp", "yawn", "stretch" }, bounce = 0.9, stride = 1.35, legSwing = 0.75, sway = 2.6 }, -- a heavy brute: long slow lumbering steps, rolling from foot to foot
 		Kirin = { fidgets = { "look", "tilt", "sniff", "shake", "stretch" }, tailSpeed = 0.5, tailAmount = 1.1, bounce = 0.6, stride = 1.2 }, -- a graceful, unhurried divine beast
 		Stormking = { fidgets = { "look", "sniff", "shake", "stomp" }, tailSpeed = 0.4, tailAmount = 0.7, bounce = 0.3, stride = 1.3, jaw = 0.45 }, -- a colossal armoured plodder
+		Bramblequake = { fidgets = { "look", "sniff", "shake", "stomp" }, tailSpeed = 0.35, tailAmount = 0.8, bounce = 0.4, stride = 1.3, legSwing = 0.7, sway = 1.6 }, -- a heavy armoured plodder, its club swaying (2026-11-19)
+		Leonbloom = { fidgets = { "look", "tilt", "sniff", "stretch", "shake", "stomp" }, tailSpeed = 0.45, tailAmount = 0.8, bounce = 0.4, stride = 1.5 }, -- a god lion's calm prowl (2026-11-19)
 		Nightowl = { fidgets = { "look", "tilt", "tilt", "shake" }, tailSpeed = 0.6 }, -- a watchful owl, head tilting
 		Hushmoth = { fidgets = { "look", "tilt", "spin", "shake" } }, -- a fluttering flyer
 		GaleSprite = { fidgets = { "look", "tilt", "spin", "shake" }, tailSpeed = 0.9 }, -- a darting flyer
@@ -572,6 +576,8 @@ return {
 		Riftwalker = { pack = "Originals", model = "Riftwalker", size = 1.5 }, -- original, tools/blender/rig_riftwalker.py (Meshy-generated void dragon)
 		["Cinder Titan"] = { pack = "Originals", model = "CinderTitan", size = 2 }, -- original, tools/blender/rig_cindertitan.py (Meshy-generated volcano gorilla)
 		["Tideborne Kirin"] = { pack = "Originals", model = "Kirin", size = 2.5 }, -- original, tools/blender/rig_kirin.py (Meshy-generated celestial sea kirin, remade big and heavy-set 2026-11-14; was Aurora Drake)
+		Bramblequake = { pack = "Originals", model = "Bramblequake", size = 2 }, -- original, tools/blender/rig_bramblequake.py (Meshy-generated thorn ankylosaur, Bloom's Epic 2026-11-19)
+		Leonbloom = { pack = "Originals", model = "Leonbloom", size = 2.6 }, -- original, tools/blender/rig_leonbloom.py (Meshy-generated flower lion god, Bloom's Legendary 2026-11-19)
 		Stormking = { pack = "Originals", model = "Stormking", size = 2.4 }, -- original, tools/blender/rig_stormking.py (Meshy-generated storm titan beetle)
 	} :: { [string]: { pack: string, model: string, variant: string?, tint: { number }?, hue: number?, size: number?, flies: boolean? } },
 	-- Saved-animation models (Util/KeyframePlayer): idle below WALK_FROM, run blending in from RUN_FROM to RUN_FULL

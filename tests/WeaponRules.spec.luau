@@ -346,4 +346,32 @@ return {
 		expect.near(venom.share, 0.025, 1e-9)
 		expect.near((WeaponRules.perk(W, "widowsReaper", "S") :: any).share, 0.025 * W.PERK_S, 1e-9)
 	end,
+
+	-- Owner 2026-11-19: Epic and Legendary supers stay locked until you hold a weapon of your creature's element (the
+	-- Prism Blade unlocks every one); a sword, a spear or a scythe all count
+	["supers: unlocked by a weapon of the creature's element, or the Prism Blade"] = function()
+		expect.equal(WeaponRules.superUnlocked(W, "forgeSword_Ember", "Ember"), true)
+		expect.equal(WeaponRules.superUnlocked(W, "magmaHalberd", "Ember"), true, "a spear counts")
+		expect.equal(WeaponRules.superUnlocked(W, "riftReaper", "Shade"), true, "a scythe counts")
+		expect.equal(WeaponRules.superUnlocked(W, "prismBlade", "Volt"), true, "the Prism Blade: every element")
+		expect.equal(WeaponRules.superUnlocked(W, "prismBlade", "Bloom"), true)
+		expect.equal(WeaponRules.superUnlocked(W, "forgeSword_Ember", "Tide"), false, "another element")
+		expect.equal(WeaponRules.superUnlocked(W, "starterSword", "Ember"), false, "the Steel Sword has no element")
+		expect.equal(WeaponRules.superUnlocked(W, nil, "Ember"), false, "no sword yet")
+		expect.equal(WeaponRules.superUnlocked(W, "noSuchWeapon", "Ember"), false)
+		expect.equal(WeaponRules.superUnlocked(W, "forgeSword_Ember", nil), false)
+	end,
+
+	-- Owner 2026-11-19 ("weapon strength: OK"): the weapon that unlocks a super powers it, SUPER.share of the way from
+	-- the Steel Sword's Power to its own
+	["supers: a stronger weapon fires a stronger super"] = function()
+		local common = WeaponRules.superScale(W, "forgeSword_Ember", "C", 0)
+		expect.near(common, 1 + W.SUPER.share * (WeaponRules.power(W, "forgeSword_Ember", "C", 0) - 1), 1e-9)
+		local upgraded = WeaponRules.superScale(W, "forgeSword_Ember", "S", 10)
+		local legendary = WeaponRules.superScale(W, "riftReaper", "S", 10)
+		expect.equal(common > 1, true, "even a new Forge weapon adds a little")
+		expect.equal(upgraded > common, true, "upgrades and grade add more")
+		expect.equal(legendary > upgraded, true, "a Legendary weapon most")
+		expect.near(WeaponRules.superScale(W, "starterSword", "C", 0), 1, 1e-9, "the Steel Sword: no change")
+	end,
 }

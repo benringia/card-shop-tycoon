@@ -1,6 +1,6 @@
 --!strict
 -- Every card's row: { name, element, rarity, value }. Plain data only so Lune tests can load it; Cards.luau
--- builds the card tables from it. Set 1 "First Spark" (35, in packs) and the Frontier set (6, Frontier drops only).
+-- builds the card tables from it. Set 1 "First Spark" (37, in packs) and the Frontier set (6, Frontier drops only).
 return {
 	SET1 = {
 		{ "Cindercub", "Ember", "Common", 0.20 },
@@ -38,6 +38,10 @@ return {
 		{ "Briarhorn", "Bloom", "Very Rare", 4.00 },
 		{ "Voltkit", "Volt", "Very Rare", 5.00 },
 		{ "Duskstalker", "Shade", "Very Rare", 6.00 },
+		-- Bloom's Epic and Legendary (owner 2026-11-19: Bloom had none, so no Bloom creature had a super; picks
+		-- "Bramblequake and Leonbloom")
+		{ "Bramblequake", "Bloom", "Epic", 14.00 },
+		{ "Leonbloom", "Bloom", "Legendary", 120.00 },
 	},
 	FRONTIER = {
 		{ "Frostfang", "Tide", "Rare", 2.80 },

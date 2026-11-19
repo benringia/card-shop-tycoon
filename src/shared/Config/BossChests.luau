@@ -60,16 +60,9 @@ return {
 		weapon = "hitEpic",
 		material = "hitRare",
 		coins = "chestCoins",
-		empty = "chestPoof",
 		collect = "shimmer",
 	},
 	RATTLE_SPEED = 1.8,
-	-- A reduced win's empty chest (ChestRules.reason): its card's words and glyph
-	EMPTY = {
-		glyph = "💨",
-		strong = { line = "Too strong here!", under = "Harder bosses fill chests" },
-		tired = { line = "Empty for today", under = "Full chests again tomorrow" },
-	},
 	-- The chest model (Util/ChestModel): ReplicatedStorage.PackModels[MODEL] with its Body and Lid (tools/blender/
 	-- build_chest.py), else a stand-in built from parts
 	MODEL = "Chest",

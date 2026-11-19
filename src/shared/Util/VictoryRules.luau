@@ -64,11 +64,6 @@ function VictoryRules.notes(boss: any): { string }
 	if boss.carried then
 		table.insert(notes, "Carried: smaller loot (deal 10% of the damage or take 15% of the hits for full loot)")
 	end
-	if boss.flagged then
-		table.insert(notes, "Too fast for drops this time")
-	elseif boss.reduced then
-		table.insert(notes, "Reduced drops (many wins today or a much stronger party)")
-	end
 	if typeof(boss.lootIn) == "number" and boss.lootIn > 0 then
 		table.insert(notes, `Full loot again in {clock(boss.lootIn)}`)
 	end

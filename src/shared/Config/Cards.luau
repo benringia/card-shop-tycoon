@@ -1,5 +1,5 @@
 --!strict
--- Set 1 "First Spark" card list (35 cards). Names, elements and rarities from DESIGN.md section 5.4.
+-- Set 1 "First Spark" card list (37 cards; Bloom's Epic and Legendary since 2026-11-19). Names, elements and rarities from DESIGN.md section 5.4.
 -- Values are market value in dollars, inside each rarity's range (Rarities.luau). Foil = value × FOIL_MULTIPLIER.
 local Rarities = require((script.Parent :: Instance):WaitForChild("Rarities"))
 

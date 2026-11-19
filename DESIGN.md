@@ -805,8 +805,11 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
 
 **Odds are always visible in-game** (pack info button). Required by Roblox for any paid random items, and we show them for everything anyway.
 
-### 5.4 Set 1 — "First Spark" (35 cards)
-15 Common, 9 Rare, 5 Very Rare, 4 Epic, 2 Legendary. Placeholder names, art TBD.
+### 5.4 Set 1 — "First Spark" (37 cards)
+15 Common, 9 Rare, 5 Very Rare, 5 Epic, 3 Legendary. Bloom's Epic and Legendary came last (owner 2026-11-19: Bloom had
+none, so no Bloom creature had a super; picks "Bramblequake and Leonbloom" from concepts): they're FS36 and FS37, since
+saved cards are ids by place in their set (Set 1 only grows at its end; tests/Frontier). Each rarity's pull odds stay
+the same, shared by more cards.
 
 | # | Name | Element | Rarity |
 |---|---|---|---|
@@ -845,6 +848,8 @@ Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the 
 | 33 | Briarhorn | Bloom | Very Rare |
 | 34 | Voltkit | Volt | Very Rare |
 | 35 | Duskstalker | Shade | Very Rare |
+| 36 | Bramblequake | Bloom | Epic |
+| 37 | Leonbloom | Bloom | Legendary |
 
 ### 5.5 Card art plan
 - MVP: simple flat creature art, consistent style. Rarity frames + foil shimmer (UIGradient animation) do a lot of the heavy lifting.
@@ -1347,7 +1352,7 @@ option A "Super meter": it was every 15 s and got pressed on cooldown). One mete
 `BattleSim` `side.meters`), empty at a fight's start: each of its creatures' hits that lands adds 1.5 (Pet button
 moves too, never a super's own), each sword hit 2, each boss hit dodged or ring stepped out of 8, and every full max HP
 its creatures or player lose 10; a creature's Express perk fills it that much faster. Full (100) fires the summoned
-creature's super and empties it, so a full meter can wait for a swap to the creature whose super fits. About every
+creature's super and empties it, so a full meter can wait for a swap to the creature whose super fits. A super needs a weapon of its creature's element in hand (5.11 "Supers need a weapon"). About every
 20-25 s fighting well, 40-45 s standing still (`tools/balance/bosses` prints how often). The Super button fills gold
 from the bottom with its percent and pulses gold when full (`CombatHud.METER`); its tooltip says how it charges.
 Element wheel: Ember > Bloom >
@@ -2053,8 +2058,12 @@ dummy, each move at grade S): at most +0.34 ms at graphics level 10 and +0.63 ms
 Vine Snare's vines are solid tapering stems (cylinders with ball joints, wood at A and S) winding fewer turns round
 a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.hasEffect`).
 - **Super moves** (spec `2026-11-05-super-moves-design.md`; the owner: "way epic/cooler looking" than the pet moves,
-  "screen shakes / cinematics / particle effect / sound effects"): ten looks (`Config/SuperFx` LOOKS, by the super's
-  `look`; the Frontier four have their own), drawn in the world for everyone by `Util/SuperFx` (routed from
+  "screen shakes / cinematics / particle effect / sound effects"): twelve looks (`Config/SuperFx` LOOKS, by the super's
+  `look`; the Frontier four have their own; Bloom's two since 2026-11-19: Bramblequake's Seed Club Slam, a stomp
+  sending thorny roots racing to the boss that burst up round it and bind it for the stun (Stampede's hit and stun), and
+  Leonbloom's World Bloom, a green-gold sky, a glowing seed rising over the boss into a giant flower that opens and
+  bursts into a petal storm, a beam of light and roots round it (Supernova's huge hit); both on already-measured sounds;
+  `ElementFx.rootBurst` lends them the Warden's roots), drawn in the world for everyone by `Util/SuperFx` (routed from
   `Util/FightFx`: the charge from the press, the impact and linger with the landing; every look's big moment shakes
   the screens near it, `AttackFx.SHAKE.super` times its grade's shake; Inferno and Magma Slam's creature leaps high to
   wind up (`LOOKS.<look>.windupPose`, PetRig "leap") and drops back down as the move lands)
@@ -2419,13 +2428,17 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   tap, or 1-3 on PC), as the call-in in the window's first seconds and as a swap after. PvP keeps the bar below.
 - **Fight bar** (PvP): kept short for landscape phones: each creature is one 56 px row (name and HP beside its ability
   buttons), Bring in / Run below (`layoutBar` in BattleController).
-- **Farm protection:** unlimited fights; XP and cash on every win. Items need a win of at least `minFightSeconds`
-  (12 / 18 / 25 s) and come once per 15 minutes per boss (saved Unix time, so rejoining doesn't reset it). After 6
-  rewarded wins of a boss in a UTC day each further one's chances are x0.75 of the one before (floor x0.2); a
-  strongest card that fought (leader or called in; resting party cards don't count) above 2.5x the recommended
-  Power makes them x0.35. Fragments for a boss you've already opened
-  never drop. The first clear's chest (and the server-wide chat message) comes even on a too-fast win, so a strong
-  player can still climb.
+- **Farm protection:** unlimited fights; XP and cash on every win. Items come once per 7 minutes per boss (saved
+  Unix time, so rejoining doesn't reset it), every loot win full, as many a day as a player likes: the one rule kids can
+  follow ("Loot in 6:12"). Fragments for a boss you've already opened never drop. History (owner 2026-11-19): the
+  15-minute wait went to 5 (a fight at the recommended Power takes 1.5-6 min, so most wins gave no items), then the
+  daily limit went too (6 full wins a boss a day, then x0.75 each down to x0.2) with the wait at 7: "remove the 6 full
+  loot daily limit. but make the wait time like 7 mins". An hour on one boss gives about what the old day's full wins
+  did; longer play gives more. Earlier that day "remove both" took out the minimum fight time (12-120 s) and the
+  over-power shrink (x0.35 and no weapon roll above 2.5x the recommended Power): supers need a weapon of the
+  creature's element, so strong players go back to the early bosses for their weapons and materials, and the cooldown
+  paces loot whatever the kill speed. Saves from before hold each boss record's `day` and `rewardedToday`; they're
+  dropped at the next save (no bump: an older server reads them as 0).
 - **Items:** XP Tonic (300 card XP, owner 2026-11-17: "nerf exp tonic from 400exp to 300"; never on a Lv 30 card; used from the Party panel, or from the Bag: its Use button
   turns the item's panel into your party cards, portrait, level and XP bar, a Lv 30 one greyed with MAX; a tap sends one
   and the list stays open for more, quick taps queued past the server's rate limit; owner 2026-11-17: "xp tonics should
@@ -2463,13 +2476,12 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   thunderclap, helpers, heals, gets angry, or the Hydra's element changes, with their real numbers). A locked boss
   past the "Next" one keeps its tricks a surprise ("???: reach it to find out", `BossRules.revealTricks`; the Hydra's
   element pill reads "???" and shows no element to bring); its needs and rewards always show. **Rewards:** a
-  loot pill ("Loot ready" green, or "Loot in 12:34" counting down; tooltip: loot once every 15 min, earlier wins pay
-  cash and XP only); each win's drops as slots with a count badge and the chance under each, at the chance your next
-  win rolls (soft cap and over-power factors included, gold when shrunk; `BossRules.chanceText` / `countText`), a
+  loot pill ("Loot ready" green, or "Loot in 6:12" counting down; tooltip: loot once every 7 min, earlier wins pay
+  cash and XP only); each win's drops as slots with a count badge and the chance under each (`BossRules.chanceText` /
+  `countText`), a
   fragment for a boss already opened faded with "-" (it no longer drops); the first-win chest (until beaten) and the
   day's first-win chest as small slots (the payload's `bonusReady`; "Daily bonus collected: back tomorrow" once
-  taken); cash and XP every win; "Full drops: n more wins today" (`BossRules.fullDropsLeft`) or "Fewer drops today";
-  "Party very strong: fewer drops" above the over-power line. Item slots have rich tooltips (`Tooltip.rich`: the gold
+  taken); cash and XP every win. Item slots have rich tooltips (`Tooltip.rich`: the gold
   name, what it does, its odds or chest). **Footer**, always in view: what to do next on a light tint of its colour
   (`BossRules.nextStep` from `BossRules.lockReason`: level up the shop, beat the boss before for n more keys with a
   "See it" button, level up or change the party with a "Party" button, go fight it, or fight again for loot) and the
@@ -2497,8 +2509,8 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   doesn't. On a win each player gets their own XP, cash and loot roll.
   Full loot needs 10% of the group's damage or 15% of the hits it took (`BossRules.contributed`, counting only the
   players still in the fight); below that a player
-  is **carried**: item chances x0.25, no fragments, no first-clear chest, no daily bonus (the cooldown and soft cap
-  still apply). The fight bar shows your creatures and an ally row with the others' HP; the end screen says when you
+  is **carried**: item chances x0.25, no fragments, no first-clear chest, no daily bonus (the cooldown still
+  applies). The fight bar shows your creatures and an ally row with the others' HP; the end screen says when you
   were carried. While a group forms, the solo Fight prompt tells others (and members) to wait.
 - **Boss skills keep a gap:** a boss's shield, heal and thunderclap never come back to back (`Combat.BOSS_SKILL_GAP`
   6 s between any two), and heals run out (`heal.uses`: the Cave Brood Queen 3, the Prism Hydra's Bloom phase 2).
@@ -2947,6 +2959,22 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
   sword hits; perks: the Verdant Blade heals the creature 2% every 4th hit (a green "+N"), the Sunforged Blade burns
   3% of the creature's ATK a second for 3 s (refreshed, never stacked; its own clock beside Inferno's). Grade S perks
   are x1.2.
+- **Supers need a weapon** (owner 2026-11-19: "only epics and legendary super skills locked until you have same element
+  weapon", "weapon strength: OK"): an Epic or Legendary creature's super fires only while you hold a weapon of its
+  element (sword, spear or scythe; the Prism Blade unlocks every one; the Steel Sword none), and it fires stronger with
+  a stronger weapon: x(1 + 0.5 x (the weapon's Power - 1)) on its kind's strength numbers (`Weapons.SUPER`,
+  `Combat.SUPER_SCALES`: Inferno's burn, Tidal Shield's ward, Stampede's, Supernova's, Devour's and Rift Step's hits,
+  Eclipse's seconds, Tidal Blessing's heal and revive; stuns and timing stay), so a new Forge Sword x1.08, one at +10
+  Grade S x1.36, the Rift Reaper +10 S x1.55 (`WeaponRules.superUnlocked` / `superScale`, `BattleSim.scaledSuper`).
+  The server refuses a locked super with the locked card ("Infernox's super needs a Fire weapon. Switch to one, or make
+  a Fire Forge Sword at the Forge."; `WeaponService.SuperScale`, also in the arena); the prologue's lent party fires
+  freely. The meter still fills while locked, so a quick switch to the right weapon makes it ready at once. The combat
+  HUD shows the lock (`Util/SuperLock`, from the character's Sword attribute) and the card view's super line starts
+  with the weapon it needs (`SkillText.forCard`). Boss sim (`tools/balance/bosses`, 60 fights, fighting well, three
+  cards at the boss's Power): with the Steel Sword (no supers) Frost Tyrant 82%, Storm Sovereign 97%, Rift Devourer
+  78%, Prism Hydra 63% (all supers free before: 85 / 98 / 83 / 83%); with a new Forge Sword of the leader's element
+  (`WEAPON=match:0:C`) 82 / 100 / 93 / 82%; at +10 S 98 / 100 / 100 / 100%, the Hydra fight 132 s (Steel 185 s:
+  never halved). `FREE_SUPERS=1` runs the old rule.
 - **Power** = rarity base x grade (C 1, B 1.05, A 1.1, S 1.15) x (1 + 0.03 a level, +10 = x1.3). Bases tuned
   2026-11-06 against the spec's limits (no weapon lets a 0.8x party win more than 85% fighting well on its tier
   boss; +10 Grade S never more than halves a 1x fight): Common 1.15, Rare 1.25, Very Rare 1.4, Epic 1.6, Legendary
@@ -2997,11 +3025,11 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
   Every sword model has its edge along X and its flat along Z; the hand's grip (`Swords.HAND_GRIP`: 0.18 down, tilted
   -140 degrees about X, then `twist` 90 about the blade) puts the flat to the palm so the edge leads every cut (owner
   2026-11-07: "hold the sword the right way, not flat"; before it the flat led 63-92% of each swing).
-- **Drops** (`BossService`): each full-loot win of a boss with a built weapon (no soft cap or over-power shrink,
-  `BossRules.rollsWeapon`) rolls it at its rarity's odds plus a step per full-loot win since the last (`weaponPity` in
-  its saved record; `Weapons.DROP`, owner 2026-11-06): Rare 1% + 0.5% (median 15 kills, about 2.5 days at the soft
-  cap), Very Rare 0.5% + 0.2%, Epic 0.2% + 0.05% (about a week), Legendary 0.1% + 0.02% (median 79, about 2 weeks);
-  carried group members never roll it. A weapon you have turns into
+- **Drops** (`BossService`): each loot win of a boss with a built weapon (`BossRules.rollsWeapon`) rolls it at its
+  rarity's odds plus a step per loot win since the last (`weaponPity` in its saved record; `Weapons.DROP`, owner
+  2026-11-06): Rare 1% + 0.5% (median 15 loot wins, about 2 hours on its boss at one every 7 minutes), Very Rare 0.5% +
+  0.2%, Epic 0.2% + 0.05% (median 50, about 6 hours), Legendary 0.1% + 0.02% (median 79, about 9 hours; set when a day
+  allowed 6, so about 2 weeks then); carried group members never roll it. A weapon you have turns into
   10 of its material. The drop cinematic plays after the victory screen (`WeaponRevealController`, on the opening
   stage: rune circle, a light column in the rarity's colour, the weapon rising with its glow, "RARE! Verdant Blade",
   its grade, a line; a new weapon's card pops in face down beside it and turns over to its face and grade; its own
@@ -3013,15 +3041,13 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
   failing after a Forge payment gives it back.
 - **Boss chests** (owner 2026-11-11, spec `docs/superpowers/specs/2026-11-11-boss-chests-design.md`;
   `BossChestService`, `BossChestController`, `Util/ChestModel`, `Util/ChestRules`, `Config/BossChests`): every loot
-  win of a boss with a weapon (all seven; full or reduced: the owner 2026-11-11, "I defeated a boss and no chests
-  appeared", picked "chests every win") ends with three chests on the pack opening's stage (owner's pick B)
+  win of a boss with a weapon (all seven; the owner 2026-11-11, "I defeated a boss and no chests appeared", picked
+  "chests every win") ends with three chests on the pack opening's stage (owner's pick B)
   after the victory screen: "Pick a chest!", a 20 s countdown, a tap, a click or keys 1-3. Everything is decided and
   given at the win, before the pick: the weapon rolls as above (same odds, pity, grade, "Already yours" refund) and, if
   it dropped, is always in the chest you pick; otherwise you get its material, 1-3 (weights 85/10/5%, averaging the
-  old 80% x 1-2 roll it replaces, so making a weapon takes as long as before), straight into the Bag. A reduced win
-  (over-powered: party Power over 2.5x the recommended; or past the day's soft cap) rolls no weapon, as before, and its
-  material keeps the reduced chance: missed, your chest is empty with why ("Too strong here! Harder bosses fill
-  chests" / "Empty for today: full chests again tomorrow", `ChestRules.reason`). Your chest opens
+  old 80% x 1-2 roll it replaces, so making a weapon takes as long as before), straight into the Bag. Your chest is
+  never empty since 2026-11-19 (no reduced wins: "Too strong here!" and "Empty for today" are gone). Your chest opens
   with a burst of light and its card rises ("Yours!": the weapon, or the material with "9/15 for ..."), then the other
   two (shown only, never given): on a miss one shows the weapon darkened under a "?" (only while you don't have it: the
   owner 2026-11-11, `ChestRules.showsMystery`) and one a material amount; otherwise both show material. A drop then hands the stage to the drop cinematic (`WeaponRevealController.HandOver`); a
@@ -3031,7 +3057,7 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
   members get no chests (they roll no weapon). The chest (owner's pick A of three Blender looks, "classic wood"): a
   chunky cartoon chest, brown wood, gold bands and studs, a lock and a purple gem, its barrel lid a separate mesh
   (`tools/blender/build_chest.py`, `assets/packs/Chest.rbxm`: Body and Lid; until it's imported a stand-in built from
-  parts); `/chests <boss id> [drop|miss|strong|tired]` previews them (nothing given). The opening plays in beats (the
+  parts); `/chests <boss id> [drop|miss]` previews them (nothing given). The opening plays in beats (the
   owner 2026-11-11: "more immersive", storyboard approved; `Config/BossChests` BEATS, `Util/ChestMotion`): the chests
   drop in one after another (thud, dust, a small shake); while you choose they rattle now and then with light leaking
   from a cracked lid, glints run along their gold and the one under your pointer hops and glows; your pick pushes the
@@ -4055,10 +4081,31 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 | Revive (built) | Up where you were knocked out, your cards rested (7.8) | 25 R$ |
 | Finish now S / M / L (built) | A station job done now: up to 5 min / 20 min / 1 h left (7.8) | 12 / 30 / 70 R$ |
 | Support the dev 1 / 2 / 3 (built) | A gift: supporter title and golden aura (Support the dev below) | 160 / 325 / 510 R$ |
+| Reset all boss timers (built) | Every running boss loot timer ends now (Boss timer reset below) | 20 R$ (managed pricing) |
 
 Built products live in Config/Monetization PRODUCTS (0 = not created yet: "Coming soon"); create them on Creator Hub →
 the experience → Monetization → Developer Products, then paste the ids there. PurchaseService holds the one
 ProcessReceipt.
+
+### Boss timer reset (built 2026-11-19)
+Owner, once the daily limit was gone and loot came every 7 minutes per boss: "can we now add a reset on bosses? should
+we add it by region? by boss? or one for all", then "go A, both spots, R$ 19. but it should also tell players that all
+the bosses reset" (mockups https://claude.ai/artifact/HoeTka1aGpPVAEoHBVjgNa). One developer product, `BossReset`
+(`Bosses.RESET`, `Config/Monetization`; made 2026-11-19 at R$ 20 with managed pricing on, the Philippines R$ 8, so the
+buttons read each player's price live), ends every running boss loot
+timer at once (`BossRules.resetTimers`), so each boss's next win gives loot. All bosses rather than one: nothing to
+remember about which boss was paid for when Roblox confirms late (a rejoin, another place), and it helps whichever boss
+comes next. Its words say so everywhere: the victory screen's gold "Reset all boss timers · R$ 19" with "Every boss gives
+loot again right away" under it (`Util/VictoryScreen` `action`, shown once the tiles have popped in), the boss board's full-width "Reset all bosses" row under the loot timer (its tooltip: "Ends the loot
+wait on every boss, not just this one"), and once bought the toast "All boss timers reset! Every boss gives loot on your
+next win." Offered only while the timer has `RESET.minLeft` (60 s) to go (`BossRules.resetOffered`), so a purchase never
+lands after every timer ran out; the server checks the product, the timers and the player's country again before it
+prompts (remote `BossResetBuy`, `BossService`). It buys another roll at random loot, so it's a paid random item: hidden
+where Roblox restricts those (`Util/PaidRandomRules`, like Luck and Turts' restock; the server refuses with a Blocked
+card); the board already shows every drop's odds. Studio's `/bossreset` (the admin panel's "Boss timers reset (as if
+bought)") does what buying it does, free. Found while testing it: every fight's start hid the toast stack (it sat at a
+window's ZIndex) and never showed it again, so no toast showed after the first fight in a session since the speech
+bubbles (2026-11-06); the stack is marked `KeepInFights` and a fight's window-closing skips it.
 
 ### Luck for Robux and the Store (built 2026-11-14)
 Owner: "LUCK BOOSTER for ROBUX suggestions on how much, and the job extra slot". From the economy simulator (a player
@@ -4644,7 +4691,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── BinderGesture.luau # who owns a press on the 3D binder: one pointer, lost releases, holds vs swipes (pure, Lune-tested)
             ├── OddsRules.luau     # pull odds per card from a pack's slots (pure, Lune-tested)
             ├── PityRules.luau     # pack pity: when a hit slot is raised to a Legendary or Epic (pure, Lune-tested)
-            ├── BossRules.luau     # boss unlocks, loot cooldown, soft cap, over-power, phases, board words, where a loss sends you (pure, Lune-tested)
+            ├── BossRules.luau     # boss unlocks, loot cooldown, phases, board words, where a loss sends you (pure, Lune-tested)
             ├── ChestRules.luau    # the boss chests: material count, the other chests, the row, pick checks (pure, Lune-tested)
             ├── ChestMotion.luau   # the boss chests: their drop, rattle and tension shake (pure, Lune-tested)
             ├── WeaponRules.luau   # weapon Power, element wheel, bond, perks, costs, paying, material goals, drop chance (pure, Lune-tested)
@@ -4718,7 +4765,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     pvp = { wins = 0, losses = 0, draws = 0 }, -- PvP record
     items = {},             -- { [itemId] = count } item inventory (Config/Items), e.g. starShard
     pity = { legendary = 0, epic = 0, firstDone = false }, -- packs since the last Legendary / Epic or better; had a first Legendary
-    bosses = {},            -- { [bossId] = { unlocked, cleared, lootAt, day, rewardedToday, bonusDay } } boss ladder (5.10)
+    bosses = {},            -- { [bossId] = { unlocked, cleared, lootAt, bonusDay, weaponPity } } boss ladder (5.10)
     stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
     seenWelcome = false,    -- saw the first-visit welcome cinematic (WelcomeService)
     seenSword = false,      -- closed the "You got your first sword!" popup (SwordService)
@@ -5531,6 +5578,7 @@ boss models; the ranch and Heroic tiers come after those.
 - Not reproduced (2026-11-06): pack models on a freshly stocked shelf "slow to render" after joining (the server
   builds them at once, the client had them in 0.05 s, assets preloaded); waiting on how long and which restock.
 - Boss cash pays on every win with no cooldown (only items wait LOOT_COOLDOWN): a strong party farming the Meadow
-  Warden makes about $2000 an hour. Owner to decide: the loot cooldown or the overpower shrink on cash too.
+  Warden makes about $2000 an hour. Owner to decide: the loot cooldown on cash too (the over-power shrink is gone
+  since 2026-11-19).
 - The phone's Reviews app, next week (owner 2026-11-13: "we could also do a simple one for now"): saved history,
   likes, replies from Pish, a post of the day, posts about other players' shops.

@@ -1,6 +1,7 @@
 --!strict
 local BossRules = require("../src/shared/Util/BossRules")
 local Bosses = require("../src/shared/Config/Bosses")
+local Monetization = require("../src/shared/Config/Monetization")
 local Combat = require("../src/shared/Config/Combat")
 local Frontier = require("../src/shared/Config/Frontier")
 local Wild = require("../src/shared/Config/Wild")
@@ -26,11 +27,9 @@ return {
 		expect.equal(BossRules.nextWeaponPity(4, true, false), 5, "rolled but not given (its data not loaded): kept, counted as a miss")
 	end,
 
-	["a boss's weapon is rolled only on a full-loot kill: no soft cap or over-power shrink, never for the carried"] = function()
-		expect.equal(BossRules.rollsWeapon(1, false), true)
-		expect.equal(BossRules.rollsWeapon(0.5, false), false, "past the daily soft cap")
-		expect.equal(BossRules.rollsWeapon(0.2, false), false, "an over-powered party")
-		expect.equal(BossRules.rollsWeapon(1, true), false, "a carried group member")
+	["a boss's weapon is rolled on every loot win of those who helped, never for the carried"] = function()
+		expect.equal(BossRules.rollsWeapon(false), true)
+		expect.equal(BossRules.rollsWeapon(true), false, "a carried group member")
 	end,
 
 	["weapon pity: kills since its weapon last dropped, read safely (weapons round 1)"] = function()
@@ -226,9 +225,9 @@ return {
 
 	["read: bad saves become safe defaults"] = function()
 		expect.equal(BossRules.read(nil, true).unlocked, true, "an open boss starts unlocked")
-		local bad = BossRules.read({ lootAt = -5, rewardedToday = 0 / 0 }, false)
+		local bad = BossRules.read({ lootAt = -5, bonusDay = 0 / 0 }, false)
 		expect.equal(bad.lootAt, 0, "negative lootAt")
-		expect.equal(bad.rewardedToday, 0, "NaN kills")
+		expect.equal(bad.bonusDay, 0, "NaN day")
 		expect.equal(bad.unlocked, false, "locked")
 		expect.equal(bad.cleared, false, "not cleared")
 		expect.equal(BossRules.read({ unlocked = true, cleared = true }, false).cleared, true, "kept")
@@ -250,28 +249,74 @@ return {
 		expect.equal(BossRules.lootEligible(saved, 1000), true, "ready")
 	end,
 
-	["dayCounts: a new UTC day resets today's kills"] = function()
-		local newDay = BossRules.dayCounts(record({ day = 5, rewardedToday = 9 }), 6)
-		expect.equal(newDay.rewardedToday, 0, "reset")
-		expect.equal(newDay.day, 6, "today")
-		local sameDay = BossRules.dayCounts(record({ day = 6, rewardedToday = 9 }), 6)
-		expect.equal(sameDay.rewardedToday, 9, "same day kept")
+	-- The Robux boss timer reset (owner 2026-11-19: "go A, both spots, R$ 19. but it should also tell players that all
+	-- the bosses reset"): one buy ends every running boss loot timer
+	["reset: offered while a boss timer has a minute left; one buy ends every running timer"] = function()
+		local minLeft = Bosses.RESET.minLeft
+		expect.equal(BossRules.resetOffered({}, minLeft), false, "no bosses")
+		expect.equal(BossRules.resetOffered({ 0, 0 }, minLeft), false, "nothing running")
+		expect.equal(BossRules.resetOffered({ 0, minLeft - 1 }, minLeft), false, "nearly done: a buy could land on nothing")
+		expect.equal(BossRules.resetOffered({ 0, 400 }, minLeft), true, "one running")
+		local records = {
+			meadowWarden = record({ lootAt = 1400 }),
+			caveBroodQueen = record({ lootAt = 1200 }),
+			emberColossus = record({ lootAt = 900 }),
+		}
+		expect.equal(BossRules.resetTimers(records, 1000), 2, "two were running")
+		expect.equal(records.meadowWarden.lootAt, 1000, "ready now")
+		expect.equal(records.caveBroodQueen.lootAt, 1000, "every running one, not just one boss")
+		expect.equal(records.emberColossus.lootAt, 900, "an ended one left alone")
+		expect.equal(BossRules.lootEligible(records.caveBroodQueen, 1000), true, "loot on the next win")
+	end,
+
+	["reset: a Robux product whose words say every boss resets"] = function()
+		local reset: any = Bosses.RESET
+		expect.equal(typeof((Monetization.PRODUCTS :: any)[reset.product]), "number", "a Monetization product (0 until made)")
+		assert(reset.minLeft >= 30 and reset.minLeft < Bosses.LOOT_COOLDOWN, "minLeft")
+		for _, key in { "button", "boardButton", "under", "tooltip", "done" } do
+			local words = reset[key]
+			assert(typeof(words) == "string", key)
+			local lower = string.lower(words)
+			assert(string.find(lower, "all", 1, true) or string.find(lower, "every", 1, true), `{key} says every boss: {words}`)
+		end
+		assert(typeof(reset.restricted) == "string" and typeof(reset.nothing) == "string", "refusals")
+	end,
+
+	["dayNumber: the UTC day (the daily bonus chest)"] = function()
 		expect.equal(BossRules.dayNumber(86400 * 3 + 5), 3, "UTC day number")
 	end,
 
-	["softCapFactor: full for 6 kills, then x0.75 each, never under 0.2"] = function()
-		for kills = 0, 5 do
-			expect.equal(BossRules.softCapFactor(Bosses, kills), 1, `kill {kills}`)
-		end
-		expect.near(BossRules.softCapFactor(Bosses, 6), 0.75, 1e-9, "7th rewarded kill")
-		expect.near(BossRules.softCapFactor(Bosses, 7), 0.5625, 1e-9, "8th")
-		expect.equal(BossRules.softCapFactor(Bosses, 40), 0.2, "floor")
+	-- The owner 2026-11-19 ("remove the 6 full loot daily limit. but make the wait time like 7 mins"): one rule kids
+	-- can follow, loot every 7 minutes a boss, as many times a day as they like
+	["no daily limit: every loot win is full, 7 minutes apart; old saves' day counts are dropped"] = function()
+		local rules: any, config: any = BossRules, Bosses
+		expect.equal(Bosses.LOOT_COOLDOWN, 420, "7 minutes")
+		expect.isNil(rules.softCapFactor, "no soft cap")
+		expect.isNil(rules.fullDropsLeft, "no full wins left today")
+		expect.isNil(rules.dayCounts, "no daily count")
+		expect.isNil(config.SOFT_CAP_AFTER, "SOFT_CAP_AFTER")
+		expect.isNil(config.SOFT_CAP_STEP, "SOFT_CAP_STEP")
+		expect.isNil(config.SOFT_CAP_FLOOR, "SOFT_CAP_FLOOR")
+		local old: any = BossRules.read({ unlocked = true, day = 5, rewardedToday = 9, lootAt = 10 }, false)
+		expect.isNil(old.rewardedToday, "an old save's count isn't kept")
+		expect.isNil(old.day, "nor its day")
+		local written: any = BossRules.write({ meadowWarden = { day = 5, rewardedToday = 9, lootAt = 10 } }, { meadowWarden = old })
+		expect.isNil(written.meadowWarden.rewardedToday, "never written back")
+		expect.equal(written.meadowWarden.lootAt, 10, "the cooldown kept")
 	end,
 
-	["overPowerFactor: far above the recommended Power drops less"] = function()
-		expect.equal(BossRules.overPowerFactor(Bosses, 500, 200), 1, "2.5x is fine")
-		expect.equal(BossRules.overPowerFactor(Bosses, 501, 200), 0.35, "above 2.5x")
-		expect.near(BossRules.dropFactor(Bosses, record({ rewardedToday = 6 }), 501, 200), 0.75 * 0.35, 1e-9, "both together")
+	-- The owner 2026-11-19 ("remove both"): supers need a weapon of the creature's element, so strong players go back to
+	-- the early bosses for their weapons and materials; a strong or fast party's win gets the same loot as anyone's, paced
+	-- only by the loot cooldown and the day's soft cap
+	["a strong or fast party's win is never shrunk: no over-power rule, no minimum fight time"] = function()
+		local rules: any, config: any = BossRules, Bosses
+		expect.isNil(rules.overPowerFactor, "no over-power factor")
+		expect.isNil(rules.dropFactor, "the soft cap is the only factor")
+		expect.isNil(config.OVERPOWER_RATIO, "OVERPOWER_RATIO")
+		expect.isNil(config.OVERPOWER_FACTOR, "OVERPOWER_FACTOR")
+		for id, boss in Bosses.BOSSES do
+			expect.isNil((boss :: any).minFightSeconds, `{id}: no minimum fight time`)
+		end
 	end,
 
 	["config: every boss after the first unlocks with the fragment the one before drops"] = function()
@@ -288,7 +333,7 @@ return {
 				assert(drop.chance >= 0 and drop.chance <= 1, `{id} drop chance out of range`)
 				assert(drop.min >= 1 and drop.max >= drop.min, `{id} drop count`)
 			end
-			assert(boss.recommended > 0 and boss.hp > 0 and boss.minFightSeconds > 0, `{id} numbers`)
+			assert(boss.recommended > 0 and boss.hp > 0, `{id} numbers`)
 		end
 	end,
 	["gate: the server accepts a press from anywhere its prompt shows"] = function()
@@ -355,7 +400,7 @@ return {
 	end,
 	["every rule exists as soon as the module loads (none nested inside another)"] = function()
 		local fresh = luau.load(luau.compile(fs.readFile("src/shared/Util/BossRules.luau")), { debugName = "BossRules" })()
-		for _, name in { "read", "write", "dayNumber", "dayCounts", "canStart", "lootEligible", "softCapFactor", "overPowerFactor", "dropFactor", "groupStats", "contributed", "carriedDrop", "groupPromptText", "ringSegments", "scatter", "insideRing", "levelReady", "shouldUnseal", "readIds", "phaseAt", "stepState", "travelChoice", "lockReason", "counterElements", "fullDropsLeft", "chanceText", "countText", "watchOut", "revealTricks" } do
+		for _, name in { "read", "write", "dayNumber", "canStart", "lootEligible", "groupStats", "contributed", "carriedDrop", "groupPromptText", "ringSegments", "scatter", "insideRing", "levelReady", "shouldUnseal", "readIds", "phaseAt", "stepState", "travelChoice", "lockReason", "counterElements", "resetOffered", "resetTimers", "chanceText", "countText", "watchOut", "revealTricks" } do
 			expect.equal(typeof(fresh[name]), "function", name)
 		end
 	end,
@@ -409,11 +454,6 @@ return {
 		expect.equal(table.concat(BossRules.counterElements(Combat.BEATS, "Bloom"), ","), "Ember", "Ember beats Bloom")
 		expect.equal(#BossRules.counterElements(Combat.BEATS, "Nothing"), 0, "unknown element")
 		expect.equal(table.concat(BossRules.counterElements({ A = { "C" }, B = { "C" } }, "C"), ","), "A,B", "several, sorted")
-	end,
-	["fullDropsLeft: wins left today before the soft cap"] = function()
-		expect.equal(BossRules.fullDropsLeft(Bosses, 0), Bosses.SOFT_CAP_AFTER, "none yet")
-		expect.equal(BossRules.fullDropsLeft(Bosses, Bosses.SOFT_CAP_AFTER - 1), 1, "one left")
-		expect.equal(BossRules.fullDropsLeft(Bosses, Bosses.SOFT_CAP_AFTER + 3), 0, "past the cap")
 	end,
 	["chanceText and countText: drop odds in words"] = function()
 		expect.equal(BossRules.chanceText(0.25), "25%", "quarter")

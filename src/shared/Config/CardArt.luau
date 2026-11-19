@@ -48,6 +48,8 @@ return {
 		["Cinder Titan"] = "rbxassetid://72010145388086",
 		["Tideborne Kirin"] = "rbxassetid://106778581218668", -- remade big and heavy-set (2026-11-14)
 		Stormking = "rbxassetid://109056817412625",
+		Bramblequake = "rbxassetid://117283739257826", -- Bloom's Epic (2026-11-19)
+		Leonbloom = "rbxassetid://86542729346131", -- Bloom's Legendary (2026-11-19)
 	} :: { [string]: string },
 	SMALL = {
 		Cindercub = "rbxassetid://128159320434694",
@@ -91,6 +93,8 @@ return {
 		["Cinder Titan"] = "rbxassetid://114557517809552",
 		["Tideborne Kirin"] = "rbxassetid://133138452894238",
 		Stormking = "rbxassetid://93959793017843",
+		Bramblequake = "rbxassetid://88948650456517",
+		Leonbloom = "rbxassetid://101906525397692",
 	} :: { [string]: string },
 	SMALL_HEIGHT = 507, -- pixels: the small copy's height; faces drawn taller use the full painting
 }

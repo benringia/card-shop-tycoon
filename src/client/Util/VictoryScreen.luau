@@ -14,11 +14,14 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Victory = require(Shared:WaitForChild("Config"):WaitForChild("Victory"))
 local VictoryRules = require(Shared:WaitForChild("Util"):WaitForChild("VictoryRules"))
 local Icon = require((script.Parent :: Instance):WaitForChild("Icon"))
+local RobuxPrice = require((script.Parent :: Instance):WaitForChild("RobuxPrice"))
 local ScreenCover = require((script.Parent :: Instance):WaitForChild("ScreenCover"))
 
 local VictoryScreen = {}
 
 export type PartyEntry = { name: string, art: string?, from: number, to: number, levelUp: boolean, level: number? }
+-- A gold button under the notes with its Robux price (`price` asked until Roblox says) and a line under it
+export type Action = { text: string, under: string?, price: () -> number?, onPress: () -> () }
 export type Show = {
 	kind: string, -- "win" | "conquered" | "lose" | "run"
 	title: string,
@@ -30,6 +33,7 @@ export type Show = {
 	-- no tap closes it: a boss win's whole moment plays (owner 2026-11-18: "Victory screen after bossfight should not be
 	-- skippable"); it still goes by itself after `seconds`
 	locked: boolean?,
+	action: Action?, -- a boss win's Robux reset of every boss timer (Util/BossReset)
 }
 
 local function rgb(c: { number }): Color3
@@ -266,13 +270,78 @@ function VictoryScreen.show(data: Show)
 	notesStroke.Parent = notes
 	notesLabel = notes
 
+	-- The action under the notes, once the tiles have popped in (so it never upstages the rewards)
+	local actionHeight = 0
+	local action = data.action
+	if action then
+		local look = Victory.ACTION
+		local button = Instance.new("TextButton")
+		button.Name = "Action"
+		button.AnchorPoint = Vector2.new(0.5, 0)
+		button.Position = UDim2.new(0.5, 0, 0, notesTop + notesHeight + 8)
+		button.Size = UDim2.fromOffset(look.width, look.height)
+		button.BackgroundColor3 = Color3.new(1, 1, 1)
+		button.AutoButtonColor = false
+		button.Font = Enum.Font.FredokaOne
+		button.TextSize = look.textSize
+		button.TextColor3 = rgb(look.ink)
+		button.Text = action.text
+		button.Visible = false
+		button.Parent = column
+		corner(button, look.height // 2)
+		local fill = Instance.new("UIGradient")
+		fill.Color = ColorSequence.new(rgb(look.top), rgb(look.bottom))
+		fill.Rotation = 90
+		fill.Parent = button
+		local edge = Instance.new("UIStroke")
+		edge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		edge.Color = Color3.new(1, 1, 1)
+		edge.Thickness = 3
+		edge.Parent = button
+		local under = if action.under then text(column, action.under, Enum.Font.GothamBold, 13, Color3.fromRGB(255, 236, 190)) else nil
+		if under then
+			under.Position = UDim2.new(0, 0, 0, notesTop + notesHeight + 8 + look.height + 4)
+			under.Size = UDim2.new(1, 0, 0, 16)
+			under.Visible = false
+			local underStroke = Instance.new("UIStroke")
+			underStroke.Thickness = 1.5
+			underStroke.Transparency = 0.4
+			underStroke.Parent = under
+		end
+		actionHeight = 8 + look.height + (if under then 20 else 0)
+		RobuxPrice.set(button, action.text, action.price())
+		task.spawn(function()
+			-- the price comes from Roblox a moment after it's first asked
+			for _ = 1, 20 do
+				if token ~= current or action.price() then
+					break
+				end
+				task.wait(0.25)
+			end
+			if token == current then
+				RobuxPrice.set(button, action.text, action.price())
+			end
+		end)
+		button.Activated:Connect(action.onPress)
+		task.delay(Victory.TILES_FROM + #tiles * Victory.TILE_GAP, function()
+			if token ~= current then
+				return
+			end
+			button.Visible = true
+			if under then
+				under.Visible = true
+			end
+			pop(button, 0.6, 0.3)
+		end)
+	end
+
 	-- The party under the notes (clear of the HUD buttons): portrait, name, XP bar filling (round to 0 again on a level
 	-- up), LEVEL UP
 	local party = data.party or {}
 	if #party > 0 then
 		local bar = Instance.new("Frame")
 		bar.AnchorPoint = Vector2.new(0.5, 0)
-		bar.Position = UDim2.new(0.5, 0, 0, notesTop + notesHeight + 14)
+		bar.Position = UDim2.new(0.5, 0, 0, notesTop + notesHeight + actionHeight + 14)
 		bar.Size = UDim2.fromOffset(#party * 150 + 20, Victory.PORTRAIT + 20)
 		bar.BackgroundColor3 = rgb(Victory.TILE_BACK)
 		bar.BackgroundTransparency = 0.2

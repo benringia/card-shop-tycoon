@@ -270,15 +270,14 @@ local function forceWeaponDrop(player: Player, text: string)
 	BossService.DropWeapon(player, weaponId)
 end
 
--- "/chests meadowWarden [drop|miss|strong|tired]": that boss's three chests on your screen now, nothing given (a drop
--- shows a new Grade A copy's reveal; strong / tired: a reduced win's empty chest); miss when left out (spec
--- 2026-11-11-boss-chests-design)
+-- "/chests meadowWarden [drop|miss]": that boss's three chests on your screen now, nothing given (a drop shows a new
+-- Grade A copy's reveal); miss when left out (spec 2026-11-11-boss-chests-design)
 local function previewChests(player: Player, text: string)
 	local bossId, kind = string.match(text, "%s+([%w_]+)%s*(%a*)")
 	local weaponId = if bossId then BossService.WeaponOf(bossId) else nil
-	local kinds = { drop = true, miss = true, strong = true, tired = true }
+	local kinds = { drop = true, miss = true }
 	if not bossId or not weaponId or (kind ~= "" and not kinds[kind]) then
-		Remotes.Notify:FireClient(player, "Usage: /chests <boss id with a built weapon> [drop|miss|strong|tired] (meadowWarden, prismHydra)", true)
+		Remotes.Notify:FireClient(player, "Usage: /chests <boss id with a built weapon> [drop|miss] (meadowWarden, prismHydra)", true)
 		return
 	end
 	BossChestService.Preview(player, bossId, weaponId, if kind == "" then "miss" else kind)
@@ -409,6 +408,10 @@ function DevService.Start()
 	addCommand(folder, "material", giveMaterial)
 	addCommand(folder, "weapondrop", forceWeaponDrop)
 	addCommand(folder, "chests", previewChests)
+	-- "/bossreset": what buying the boss reset does (Bosses.RESET): every running boss loot timer ends, its toast; free
+	addCommand(folder, "bossreset", function(player: Player, _text: string)
+		BossService.ResetTimers(player)
+	end)
 	addCommand(folder, "boss", function(player, text)
 		local index = tonumber(string.match(text, "%s+(%d+)") or "") or 0
 		local gate = BossService.GetGate(index)
@@ -664,7 +667,7 @@ function DevService.Start()
 			end
 		end
 		if not look or not ({ C = true, B = true, A = true, S = true })[grade] then
-			Remotes.Notify:FireClient(player, "Usage: /superfx <inferno|magmaslam|tidalshield|tidalblessing|stampede|eclipse|riftstep|supernova|thunderstorm|devour> [C|B|A|S]", true)
+			Remotes.Notify:FireClient(player, "Usage: /superfx <inferno|magmaslam|tidalshield|tidalblessing|stampede|eclipse|riftstep|supernova|thunderstorm|devour|seedclubslam|worldbloom> [C|B|A|S]", true)
 			return
 		end
 		local summoned = false
@@ -1000,7 +1003,7 @@ function DevService.Start()
 			run(player, text)
 		end
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /bulk [cards], /item <id> <amount>, /weapon <id> [grade] [level], /material <boss id> <amount>, /weapondrop <boss id>, /chests <boss id> [drop|miss|strong|tired], /boss <n> [fight|group], /jobslot, /luck <x2|x3> [minutes] | clear, /prologue [reset], /jobtired, /wild, /rest, /tire, /bosshp <1-100>, /townchikin, /turts <restock|move|offer <id>>, /gift <ready|day n|week n|month n|reset|tutorial|win kind>, /elite, /knockout, /support <0-3>, /titles forget, /review <outcome>, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /decor <look id|pieces>, /window <style> <side> <at>, /loading <main|wild|frontier|dungeon>, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-4> [volume], /victorysound <1-3>, /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S], /skillfx <sword> [cut1|cut2|cut3|skill] [level], /room <2-4>, /winroom, /puzzle <solve|beams|plates|lock>, /tap <piece>, /dungeonfx <intro|introshort|roar|glimpse>")
+	print("[DevService] Studio commands enabled: /cash <amount>, /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /bulk [cards], /item <id> <amount>, /weapon <id> [grade] [level], /material <boss id> <amount>, /weapondrop <boss id>, /chests <boss id> [drop|miss], /bossreset, /boss <n> [fight|group], /jobslot, /luck <x2|x3> [minutes] | clear, /prologue [reset], /jobtired, /wild, /rest, /tire, /bosshp <1-100>, /townchikin, /turts <restock|move|offer <id>>, /gift <ready|day n|week n|month n|reset|tutorial|win kind>, /elite, /knockout, /support <0-3>, /titles forget, /review <outcome>, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /decor <look id|pieces>, /window <style> <side> <at>, /loading <main|wild|frontier|dungeon>, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-4> [volume], /victorysound <1-3>, /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S], /skillfx <sword> [cut1|cut2|cut3|skill] [level], /room <2-4>, /winroom, /puzzle <solve|beams|plates|lock>, /tap <piece>, /dungeonfx <intro|introshort|roar|glimpse>")
 end
 
 return DevService

@@ -94,7 +94,7 @@ end
 -- rolled and given here: always on a full-loot win, at `factor`'s chance on a reduced one, else the chest is empty for
 -- `reason`). `onOpen(payload, here)` runs when a weapon's chest opens (its reveal and announcement; `here` false when
 -- the player is leaving).
-function BossChestService.Prepare(player: Player, bossId: string, weaponId: string, payload: any?, factor: number, reason: string?, onOpen: (payload: any, here: boolean) -> ())
+function BossChestService.Prepare(player: Player, bossId: string, weaponId: string, payload: any?, onOpen: (payload: any, here: boolean) -> ())
 	local material = Weapons.MATERIALS[bossId]
 	if not material then
 		-- No material to show (a config gap): the weapon's moment as before, no chests
@@ -103,7 +103,7 @@ function BossChestService.Prepare(player: Player, bossId: string, weaponId: stri
 		end
 		return
 	end
-	local mine = ChestRules.mine(weaponId, payload ~= nil, material, factor, rng:NextNumber(), rng:NextNumber(), BossChests.MATERIAL, reason)
+	local mine = ChestRules.mine(weaponId, payload ~= nil, material, rng:NextNumber(), BossChests.MATERIAL)
 	if mine.kind == "material" and mine.count then
 		ItemService.GiveItem(player, material, mine.count)
 	end
@@ -119,15 +119,14 @@ function BossChestService.Prepare(player: Player, bossId: string, weaponId: stri
 end
 
 -- Studio's /chests: a set that gives nothing (kind "drop": the reveal of a new Grade A copy, on this screen only;
--- "miss": material; "strong" / "tired": a reduced win's empty chest)
+-- "miss": material)
 function BossChestService.Preview(player: Player, bossId: string, weaponId: string, kind: string)
 	local material = Weapons.MATERIALS[bossId]
 	if not material then
 		return
 	end
 	local dropped = kind == "drop"
-	local reduced = kind == "strong" or kind == "tired"
-	local mine = ChestRules.mine(weaponId, dropped, material, if reduced then 0 else 1, 1, rng:NextNumber(), BossChests.MATERIAL, if reduced then kind else nil)
+	local mine = ChestRules.mine(weaponId, dropped, material, rng:NextNumber(), BossChests.MATERIAL)
 	local set: ChestRules.Set = {
 		id = HttpService:GenerateGUID(false),
 		bossId = bossId,

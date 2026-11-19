@@ -115,28 +115,19 @@ return {
 		expect.equal(ChestRules.canOpen(set, "abc"), false, "already opened")
 	end,
 
-	-- The owner 2026-11-11: "I defeated a boss and no chests appeared" (an over-powered win); picked "chests every win":
-	-- a reduced win still shows the chests, the weapon can't drop (as before) and the material keeps its reduced chance
-	["your chest: the weapon when it dropped, else the material, at a reduced win's chance or empty"] = function()
-		local weapon = ChestRules.mine("verdantBlade", true, "m", 1, 0.99, 0.5, WEIGHTS, nil)
+	-- The owner 2026-11-11 ("chests every win"); since 2026-11-19 every loot win is full (no strength rule, no daily
+	-- limit), so your chest always holds something: the weapon when it dropped, else its material
+	["your chest: the weapon when it dropped, else its material, never empty"] = function()
+		local weapon = ChestRules.mine("verdantBlade", true, "m", 0.5, WEIGHTS)
 		expect.equal(weapon.kind, "weapon")
 		expect.equal(weapon.weaponId, "verdantBlade")
-		local full = ChestRules.mine("verdantBlade", false, "m", 1, 0.99, 0.97, WEIGHTS, nil)
-		expect.equal(full.kind, "material", "full loot: always material")
-		expect.equal(full.count, 3)
-		local lucky = ChestRules.mine("verdantBlade", false, "m", 0.35, 0.34, 0.5, WEIGHTS, "strong")
-		expect.equal(lucky.kind, "material", "a reduced win under its chance")
-		expect.equal(lucky.count, 1)
-		local empty = ChestRules.mine("verdantBlade", false, "m", 0.35, 0.35, 0.5, WEIGHTS, "strong")
-		expect.equal(empty.kind, "empty", "a reduced win past its chance")
-		expect.equal(empty.reason, "strong")
-	end,
-
-	["why a win was reduced: too strong for the boss first, then the day's soft cap"] = function()
-		expect.isNil(ChestRules.reason(1, 1))
-		expect.equal(ChestRules.reason(1, 0.35), "strong")
-		expect.equal(ChestRules.reason(0.75, 0.35), "strong")
-		expect.equal(ChestRules.reason(0.75, 1), "tired")
+		local material = ChestRules.mine("verdantBlade", false, "m", 0.97, WEIGHTS)
+		expect.equal(material.kind, "material")
+		expect.equal(material.item, "m")
+		expect.equal(material.count, 3)
+		local rules: any, chests: any = ChestRules, BossChests
+		expect.isNil(rules.reason, "no reduced wins to explain")
+		expect.isNil(chests.EMPTY, "no empty chest card")
 	end,
 
 	["not picked in time: the server opens one of the three"] = function()

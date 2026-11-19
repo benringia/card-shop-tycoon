@@ -920,6 +920,12 @@ local function curlRoot(spot: Vector3, outward: Vector3, size: number, hold: num
 	sparks(spot + Vector3.new(0, 1, 0), DUST, 10 * size, 22, 1.4 * size, 30)
 end
 
+-- A root bursting up and curling (curlRoot) for other effects: Bloom's supers (Util/SuperFx Seed Club Slam, World
+-- Bloom; owner 2026-11-19)
+function ElementFx.rootBurst(spot: Vector3, outward: Vector3, size: number, hold: number)
+	curlRoot(spot, outward, size, hold)
+end
+
 -- A void tendril reaching from `from` to wherever `target()` is over `seconds`, holding a beat, then fading (the Rift
 -- Devourer's normal hit, AttackFx BOSS_HIT): a dark core inside a glow of `color`, curling a little as it goes
 local function tendril(from: Vector3, target: () -> Vector3, color: Color3, seconds: number)

@@ -165,7 +165,7 @@ local startBlockers: { (player: Player) -> string? } = {} -- ArenaService: no wi
 local fightEndedHandlers: { (monster: Monster, result: string, hpLeft: { [Player]: { [string]: number } }, stillIn: { Player }) -> () } = {}
 local memberLeftHandlers: { (player: Player, monster: Monster) -> () } = {}
 local prologueEndedHandlers: { (player: Player) -> () } = {}
-local bossRewards: ((player: Player, monster: Monster, fight: { seconds: number, fighterIds: { string }, contributed: boolean }) -> any)? = nil
+local bossRewards: ((player: Player, monster: Monster, fight: { contributed: boolean }) -> any)? = nil
 
 local function notify(player: Player, message: string, isError: boolean)
 	Remotes.Notify:FireClient(player, message, isError)
@@ -918,14 +918,9 @@ local function payOut(fight: Fight, member: Member): any
 		EconomyService.AddCash(player, boss.cash)
 		local shopXp = LevelMath.fightXp(boss.cash, Levels)
 		EconomyService.AddXP(player, shopXp)
-		-- The cards that really fought (resting ones in the party never did): the over-power check weighs these
-		local fighterIds = {}
-		for beastId in member.fought do
-			table.insert(fighterIds, beastId)
-		end
 		local share = BattleSim.contribution(fight.sim, member.owner)
 		local contributed = BossRules.contributed(Bosses, share.dealt, share.taken, share.totalDealt, share.totalTaken)
-		local loot = if bossRewards then bossRewards(player, monster, { seconds = fight.sim.time, fighterIds = fighterIds, contributed = contributed }) else nil
+		local loot = if bossRewards then bossRewards(player, monster, { contributed = contributed }) else nil
 		return { xpEach = xpEach, cash = boss.cash, shopXp = shopXp, shards = 0, boss = loot, party = party }
 	end
 	if fight.run then
@@ -1685,7 +1680,7 @@ function BattleService.SetBossHpShare(player: Player, share: number): boolean
 	return BattleSim.setHpShare(fight.sim, MONSTER_ID, share)
 end
 
-function BattleService.SetBossRewards(handler: (player: Player, monster: Monster, fight: { seconds: number, fighterIds: { string }, contributed: boolean }) -> any)
+function BattleService.SetBossRewards(handler: (player: Player, monster: Monster, fight: { contributed: boolean }) -> any)
 	bossRewards = handler
 end
 
@@ -1766,7 +1761,19 @@ local function onUseAbility(player: Player, fighterId: unknown, which: unknown)
 	if which ~= "element" and which ~= "signature" then
 		return
 	end
-	local events = BattleSim.useAbility(fight.sim, fighterId, which :: string, member.owner)
+	-- A super needs a weapon of its creature's element and grows with it (owner 2026-11-19); the prologue's lent
+	-- party fires theirs freely
+	local scale: number? = nil
+	if which == "signature" and not fight.prologue then
+		local info = BattleSim.getFighter(fight.sim, fighterId)
+		if info and info.signature then
+			scale = WeaponService.SuperScale(player, info.signature, info.element)
+			if not scale then
+				return
+			end
+		end
+	end
+	local events = BattleSim.useAbility(fight.sim, fighterId, which :: string, member.owner, scale)
 	if events then
 		handleEvents(fight, events)
 		if fight.sim.result then

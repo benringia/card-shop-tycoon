@@ -105,6 +105,11 @@ return {
 	COOLDOWN_SHADE = 0.45, -- transparency of the dark drain over a button cooling down
 	-- The Super button's meter (owner 2026-11-06, option A): gold filling it from the bottom with its percent, then a
 	-- glow pulsing between `pulse[1]` and `pulse[2]` transparency (`pulse[3]` radians a second) once it's full
+	-- A super locked without a weapon of its creature's element (owner 2026-11-19, look C "greyed with a tag";
+	-- Util/SuperLock): the icon and edge greyed to `dim`, a padlock `lock` of the button's height over it, no meter until
+	-- it's unlocked (it still fills), and under it a pill in the element's colour naming the weapon (`label`, the
+	-- element's plain name; `text` its words), shown even when the buttons' names are off
+	SUPER_LOCK = { dim = rgb(110, 106, 122), lock = 0.5, label = "🔒 %s weapon", text = rgb(43, 22, 6) },
 	METER = {
 		color = rgb(255, 196, 46),
 		transparency = 0.35,

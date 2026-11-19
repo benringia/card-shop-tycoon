@@ -40,7 +40,10 @@ return {
 		for _ in SuperFx.LOOKS do
 			count += 1
 		end
-		expect.equal(count, 10, "ten looks")
+		expect.equal(count, 12, "twelve looks (Bloom's two since 2026-11-19)")
+		-- Bloom's Epic and Legendary (owner 2026-11-19): Bloom had no super before
+		expect.equal(Combat.SIGNATURES.Bramblequake.look, "SeedClubSlam")
+		expect.equal(Combat.SIGNATURES.Leonbloom.look, "WorldBloom")
 		for card, ability in Combat.SIGNATURES do
 			local look = SuperFx.LOOKS[ability.look]
 			assert(look, `{card}: its look {ability.look}`)

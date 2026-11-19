@@ -62,6 +62,18 @@ return {
 	-- Super moves (spec 2026-11-05-super-moves-design): `look` picks its effects (Config/SuperFx LOOKS; the Frontier
 	-- four share their base move's kind but have looks of their own), `windup` the seconds it winds up before landing
 	-- (Epic 1.5, Legendary 2: the caster's cinematic plays meanwhile)
+	-- What the weapon that unlocks a super scales (owner 2026-11-19, "weapon strength: OK"; Config/Weapons SUPER,
+	-- BattleSim.scaledSuper): each kind's strength numbers; its stun, timing and caps stay
+	SUPER_SCALES = {
+		Inferno = { "perSecond" },
+		TidalShield = { "shield" },
+		Stampede = { "power" },
+		Eclipse = { "seconds" },
+		Supernova = { "power" },
+		Devour = { "power" },
+		Barrage = { "power" },
+		Rebirth = { "heal", "revive" },
+	},
 	SIGNATURES = {
 		Infernox = { kind = "Inferno", name = "Inferno", seconds = 6, perSecond = 0.4, look = "Inferno", windup = 1.5 },
 		-- Tidal Shield: every ally (players too) a ward of `shield` of its own max HP for `seconds` (owner 2026-11-05;
@@ -84,6 +96,10 @@ return {
 		-- `revive` of their max HP (once a fight), the rest of its owner's party (the player too) heals `heal` of theirs
 		["Tideborne Kirin"] = { kind = "Rebirth", name = "Tidal Blessing", revive = 0.35, heal = 0.15, look = "TidalBlessing", windup = 2 },
 		Stormking = { kind = "Supernova", name = "Thunderstorm", power = 4, look = "Thunderstorm", windup = 2 },
+		-- Bloom's (owner 2026-11-19): Bramblequake's stomp sends thorny roots to bind the foe (Stampede's hit and stun),
+		-- Leonbloom's giant flower opens over the foe and bursts (Supernova's huge hit)
+		Bramblequake = { kind = "Stampede", name = "Seed Club Slam", power = 2, stun = 2, look = "SeedClubSlam", windup = 1.5 },
+		Leonbloom = { kind = "Supernova", name = "World Bloom", power = 4, look = "WorldBloom", windup = 2 },
 	},
 	-- The caster's player can't be hit from a super's press until control returns: its wind-up plus this (the impact
 	-- beat and the camera's ease back); the boss starts nothing new at them meanwhile (owner 2026-11-05: "while your

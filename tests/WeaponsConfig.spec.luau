@@ -190,12 +190,14 @@ return {
 		expect.equal(count, 7, "all seven bosses")
 	end,
 
-	["the pace: a Rare weapon in about 2 days, a Legendary in 6-16 (owner's approved pace)"] = function()
-		local perDay = Bosses.SOFT_CAP_AFTER * 0.8 * 1.5 + 2 -- full-chance kills x chance x average count + the daily chest
-		local rare = Weapons.BOSS_COST.Rare.material / perDay
-		local legendary = Weapons.BOSS_COST.Legendary.material / perDay
-		assert(rare >= 1.5 and rare <= 3, `Rare {rare} days`)
-		assert(legendary >= 6 and legendary <= 16, `Legendary {legendary} days`)
+	-- Since 2026-11-19 loot is paced by the cooldown alone (no daily limit): an hour on one boss is about as many loot
+	-- wins as the old day's full ones, so the pace is counted in hours of play on that boss
+	["the pace: a Rare weapon in 1-3 hours on its boss, a Legendary in 4-16"] = function()
+		local perHour = 3600 / Bosses.LOOT_COOLDOWN * 1.2 -- loot wins an hour x the chest's average material
+		local rare = Weapons.BOSS_COST.Rare.material / perHour
+		local legendary = Weapons.BOSS_COST.Legendary.material / perHour
+		assert(rare >= 1 and rare <= 3, `Rare {rare} hours`)
+		assert(legendary >= 4 and legendary <= 16, `Legendary {legendary} hours`)
 	end,
 
 	["Wild Ore drops from Wild and Frontier monsters"] = function()

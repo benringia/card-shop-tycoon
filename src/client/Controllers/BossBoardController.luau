@@ -7,8 +7,7 @@
 -- (BossRules.bannerColor) with a big disc, its name, title and status; its element, where it lives and the element to
 -- bring; two columns: To fight it (a checklist: shop level, its key fragments, the Power it's built for; then its tricks,
 -- BossRules.watchOut) and Rewards (when full loot is ready again, what each win can drop with its odds, shrunk by the
--- soft cap and the over-power rule as the server rolls them, the first-win and daily chests, cash and XP, full-drop
--- wins left today); and a footer always in view: what to do next (BossRules.nextStep) with its button, and "Take me
+-- day's soft cap as the server rolls them, the first-win and daily chests, cash and XP, full-drop wins left today); and a footer always in view: what to do next (BossRules.nextStep) with its button, and "Take me
 -- there" (its gate here, BossTravel) or the way to its place. Icons have tooltips (items: what they do and their odds).
 -- Data comes from BossService (BossesChanged); the loot timer counts down here between updates.
 -- Also: the leader of a group forming at a gate sees "Start now" on its group prompt.
@@ -38,6 +37,10 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
+local RobuxPrice = require(ClientUtil:WaitForChild("RobuxPrice"))
+-- loaded with the board at the client's start, so its country check (paid random items) is done before the first boss
+-- win's victory screen asks it (BattleController)
+local BossReset = require(ClientUtil:WaitForChild("BossReset"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local ElementBadge = require(ClientUtil:WaitForChild("ElementBadge"))
 local Hud = require(ClientUtil:WaitForChild("Hud"))
@@ -49,7 +52,7 @@ local UIController = require(Controllers:WaitForChild("UIController"))
 local BinderController = require(Controllers:WaitForChild("BinderController"))
 local PartyController = require(Controllers:WaitForChild("PartyController"))
 
-type BossState = { unlocked: boolean, cleared: boolean, lootIn: number, rewardedToday: number, fragments: number, bonusReady: boolean, weaponPity: number? }
+type BossState = { unlocked: boolean, cleared: boolean, lootIn: number, fragments: number, bonusReady: boolean, weaponPity: number? }
 type StepState = "beaten" | "ready" | "tooWeak" | "locked"
 type Mark = "ok" | "no" | "warn"
 type Line = string | { text: string, color: Color3 }
@@ -98,6 +101,7 @@ local receivedAt = 0 -- os.clock() when `states` arrived (lootIn counts down fro
 local partyIds: { string } = {}
 local selected = 1 -- the boss shown beside the list
 local lootPill: TextLabel? = nil -- the shown boss's loot timer
+local resetButton: TextButton? = nil -- beside it: the Robux reset of every boss timer (Util/BossReset)
 
 local function clock(seconds: number): string
 	return string.format("%d:%02d", seconds // 60, seconds % 60)
@@ -111,7 +115,7 @@ local function clear(container: Instance)
 	end
 end
 
--- The strongest party card's Power (what the over-power rule and the recommended Power compare)
+-- The strongest party card's Power (what the recommended Power compares)
 local function bestPower(): number
 	local beasts = BinderController.GetBeasts()
 	local best = 0
@@ -155,10 +159,33 @@ local function stepOf(index: number, power: number): StepState
 	return BossRules.stepState(stepData(index, power))
 end
 
+-- Seconds left on a boss's loot timer now (lootIn counts down from when the states arrived)
+local function secondsLeft(state: BossState): number
+	return math.max(0, math.ceil(state.lootIn - (os.clock() - receivedAt)))
+end
+
 -- The timer pill: green when full loot is ready, dark while it counts down
 local function lootStatus(state: BossState): (string, Color3)
-	local left = math.max(0, math.ceil(state.lootIn - (os.clock() - receivedAt)))
+	local left = secondsLeft(state)
 	return if left > 0 then `Loot in {clock(left)}` else "Loot ready", if left > 0 then UIStyle.PANEL else UIStyle.GREEN
+end
+
+-- The reset button beside the shown boss's timer: only while it runs with a minute to go (Util/BossReset), its Robux
+-- price once Roblox says
+local function showReset()
+	local button = resetButton
+	local state = states[Bosses.LADDER[selected]]
+	if not button or not button.Parent or not state then
+		return
+	end
+	local shown = BossReset.state({ secondsLeft(state) })
+	local row = button.Parent
+	if row:IsA("GuiObject") then
+		row.Visible = shown ~= "hidden" -- its whole row, so no gap stays under the timer
+	end
+	if shown == "offer" then
+		RobuxPrice.set(button, Bosses.RESET.boardButton, BossReset.price())
+	end
 end
 
 local function text(parent: Instance, value: string, size: number, color: Color3, bold: boolean?): TextLabel
@@ -485,7 +512,7 @@ local function itemCell(parent: Instance, order: number, itemId: string, size: n
 end
 
 -- A drop each win may give: the item over its chance for your next win
-local function dropCell(parent: Instance, order: number, drop: Bosses.Drop, factor: number, size: number)
+local function dropCell(parent: Instance, order: number, drop: Bosses.Drop, size: number)
 	local item = Items.ITEMS[drop.item]
 	-- A fragment for a boss you've opened doesn't drop any more (BossService)
 	local opens, kind = ItemRules.bossOf(drop.item, Bosses.LADDER)
@@ -501,13 +528,13 @@ local function dropCell(parent: Instance, order: number, drop: Bosses.Drop, fact
 	layout.Padding = UDim.new(0, 2)
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = holder
-	local chance = BossRules.chanceText(drop.chance * factor)
+	local chance = BossRules.chanceText(drop.chance)
 	local count = BossRules.countText(drop.min, drop.max)
 	local odds: Line = if opened
 		then { text = "That boss is open: this won't drop any more.", color = UIKit.Colors.Subtext }
-		else { text = `{chance} chance a win · {count}`, color = if factor < 1 then UIStyle.HINT else UIStyle.GOOD }
+		else { text = `{chance} chance a win · {count}`, color = UIStyle.GOOD }
 	itemCell(holder, 1, drop.item, size, count, { item.description, odds }, opened)
-	local label = text(holder, if opened then "-" else chance, UIKit.textSize("small") - 1, if factor < 1 then palette.hint else palette.good, true)
+	local label = text(holder, if opened then "-" else chance, UIKit.textSize("small") - 1, palette.good, true)
 	label.LayoutOrder = 2
 end
 
@@ -597,13 +624,13 @@ end
 
 -- Right column: what do I get? The loot timer, each win's drops with odds, the chests, cash and XP, the soft cap,
 -- and the way there
-local function renderRewards(column: ScrollingFrame, index: number, power: number)
+local function renderRewards(column: ScrollingFrame, index: number)
 	local bossId = Bosses.LADDER[index]
 	local boss = Bosses.BOSSES[bossId]
 	local state = states[bossId]
 	local phone = UIKit.isPhone()
 
-	local top = strip(column, 1, 28, 8)
+	local top = strip(column, 0, 28, 8)
 	heading(top, 1, "REWARDS")
 	if state then
 		local words, fill = lootStatus(state)
@@ -613,16 +640,32 @@ local function renderRewards(column: ScrollingFrame, index: number, power: numbe
 		pill.ZIndex = top.ZIndex + 1
 		Tooltip.attach(pill, `A boss drops loot once every {Bosses.LOOT_COOLDOWN // 60} min. Wins before then give cash and XP only.`)
 		lootPill = pill
+		-- The Robux reset of every boss timer (Bosses.RESET) on its own row under the timer, while this boss's timer runs;
+		-- "Coming soon" until its product is made
+		local soon = BossReset.state({ secondsLeft(state) }) == "soon"
+		local resetWords = if soon then `{Bosses.RESET.boardButton} · Coming soon` else Bosses.RESET.boardButton
+		local row = strip(column, 1, 32, 0)
+		local reset = UIKit.button(row, resetWords, UIKit.Colors.Accent)
+		reset.Name = "ResetAll"
+		reset.Size = UDim2.new(1, 0, 0, 30)
+		reset.TextSize = 15
+		reset.ZIndex = row.ZIndex + 1
+		Tooltip.attach(reset, Bosses.RESET.tooltip)
+		if not soon then
+			RobuxPrice.set(reset, resetWords, BossReset.price())
+			reset.Activated:Connect(BossReset.buy)
+		end
+		resetButton = reset
+		showReset()
 	end
 
-	-- Each win's drops, at the chances your next win rolls them (soft cap and over-power included)
-	local factor = if state then BossRules.softCapFactor(Bosses, state.rewardedToday) * BossRules.overPowerFactor(Bosses, power, boss.recommended) else 1
+	-- Each loot win's drops and their chances (the same every win since 2026-11-19: no daily limit)
 	text(column, "Each win can drop", UIKit.textSize("small"), UIKit.Colors.Subtext).LayoutOrder = 2
 	local size = if phone then PHONE_DROP_SIZE else DROP_SIZE
 	local drops = wrappingStrip(column, 3, size + 18, 8)
 	for order, drop in boss.drops do
 		if Items.ITEMS[drop.item] then
-			dropCell(drops, order, drop, factor, size)
+			dropCell(drops, order, drop, size)
 		end
 	end
 
@@ -692,16 +735,6 @@ local function renderRewards(column: ScrollingFrame, index: number, power: numbe
 	every.LayoutOrder = 5
 	Tooltip.attach(pay, "Every win pays cash and XP, loot or not. Your party shares the XP.")
 
-	if state then
-		local left = BossRules.fullDropsLeft(Bosses, state.rewardedToday)
-		local line = iconLine(column, 8, "Trophy", if left > 0 then `Full drops: {left} more {if left == 1 then "win" else "wins"} today` else "Fewer drops today: full again tomorrow", if left > 0 then palette.ink else palette.hint)
-		Tooltip.attach(line, `After {Bosses.SOFT_CAP_AFTER} loot wins in a day, drops get rarer. Every day starts fresh.`)
-	end
-	local threshold = math.floor(boss.recommended * Bosses.OVERPOWER_RATIO)
-	if power > threshold then
-		local line = iconLine(column, 9, "Power", "Party very strong: fewer drops", palette.hint)
-		Tooltip.attach(line, `Over {threshold} Power this boss drops less. Climb to the next boss, or fight it with weaker cards.`)
-	end
 	-- Phones: the way to its place sits at the end of the column (BossRules.detailsLayout), not in the footer
 	local hint = travelHint(bossId)
 	if hint and BossRules.detailsLayout(UIKit.isPhone()).hintInRewards then
@@ -897,6 +930,7 @@ end
 local function renderDetails(index: number, step: StepState, power: number, isNext: boolean)
 	clear(details)
 	lootPill = nil
+	resetButton = nil
 	local phone = UIKit.isPhone()
 	local gap = if phone then 5 else 7
 	local bannerHeight = if phone then PHONE_BANNER_HEIGHT else BANNER_HEIGHT
@@ -931,7 +965,7 @@ local function renderDetails(index: number, step: StepState, power: number, isNe
 	footer:GetPropertyChangedSignal("AbsoluteSize"):Connect(placeColumns)
 	placeColumns()
 	renderNeeds(left, index, power, reveal)
-	renderRewards(right, index, power)
+	renderRewards(right, index)
 end
 
 render = function()
@@ -1123,6 +1157,7 @@ function BossBoardController.Start()
 		if state and pill and pill.Parent then
 			pill.Text, pill.BackgroundColor3 = lootStatus(state)
 		end
+		showReset()
 	end)
 end
 

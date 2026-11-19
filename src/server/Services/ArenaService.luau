@@ -29,6 +29,7 @@ local EconomyService = require(Services:WaitForChild("EconomyService"))
 local PartyService = require(Services:WaitForChild("PartyService"))
 local PlotService = require(Services:WaitForChild("PlotService"))
 local WildService = require(Services:WaitForChild("WildService"))
+local WeaponService = require(Services:WaitForChild("WeaponService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 local Blocked = require(Util:WaitForChild("Blocked"))
 local TitleService = require(Services:WaitForChild("TitleService"))
@@ -882,7 +883,18 @@ local function onUseAbility(player: Player, fighterId: unknown, which: unknown)
 	if which ~= "element" and which ~= "signature" then
 		return
 	end
-	local events = BattleSim.useAbility(current.sim, fighterId, which :: string)
+	-- A super needs a weapon of its creature's element and grows with it (owner 2026-11-19), here too
+	local scale: number? = nil
+	if which == "signature" then
+		local info = BattleSim.getFighter(current.sim, fighterId)
+		if info and info.signature then
+			scale = WeaponService.SuperScale(player, info.signature, info.element)
+			if not scale then
+				return
+			end
+		end
+	end
+	local events = BattleSim.useAbility(current.sim, fighterId, which :: string, nil, scale)
 	if events then
 		handleEvents(current, events)
 		if current.sim.result then

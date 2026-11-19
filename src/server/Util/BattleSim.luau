@@ -1759,7 +1759,20 @@ releaseCasts = function(state: State, events: { Event })
 	end
 end
 
-function BattleSim.useAbility(state: State, id: string, which: string, owner: string?): ({ Event }?, string?)
+-- A super made stronger by the weapon that unlocks it (owner 2026-11-19, "weapon strength: OK"): a copy with its kind's
+-- strength numbers (Config/Combat SUPER_SCALES) times `scale`; the config's own table is never changed
+function BattleSim.scaledSuper(combat: any, ability: any, scale: number): any
+	local copy = table.clone(ability)
+	for _, field in combat.SUPER_SCALES[ability.kind] or {} do
+		if typeof(copy[field]) == "number" then
+			copy[field] *= scale
+		end
+	end
+	return copy
+end
+
+-- `superScale`: a super's weapon scale (BattleService: WeaponRules.superScale of the weapon that unlocks it); nil: as is
+function BattleSim.useAbility(state: State, id: string, which: string, owner: string?, superScale: number?): ({ Event }?, string?)
 	if state.result then
 		return nil, "ended"
 	end
@@ -1788,6 +1801,9 @@ function BattleSim.useAbility(state: State, id: string, which: string, owner: st
 			return nil, "charging"
 		end
 		side.meters[key] = 0
+		if superScale and superScale ~= 1 then
+			ability = BattleSim.scaledSuper(combat, ability, superScale)
+		end
 	else
 		return nil, "none"
 	end
@@ -2094,9 +2110,12 @@ function BattleSim.forfeit(state: State, sideName: string): { Event }
 	return events
 end
 
-function BattleSim.getFighter(state: State, id: string): { hp: number, maxHp: number, fainted: boolean }?
+-- `signature`: its super's card name, when it has one (BattleService: the weapon a super needs)
+function BattleSim.getFighter(state: State, id: string): { hp: number, maxHp: number, fainted: boolean, element: string, signature: string? }?
 	local fighter = find(state, id)
-	return if fighter then { hp = fighter.hp, maxHp = fighter.maxHp, fainted = fighter.fainted } else nil
+	return if fighter
+		then { hp = fighter.hp, maxHp = fighter.maxHp, fainted = fighter.fainted, element = fighter.element, signature = fighter.signature }
+		else nil
 end
 
 -- Town Chikin's Courage on `owner`'s creatures: they hit `share` harder (0: none). BattleService follows the player's

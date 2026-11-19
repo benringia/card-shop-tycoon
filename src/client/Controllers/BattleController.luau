@@ -95,6 +95,7 @@ local HUD_NAMES = { "HudSide", "HudBottom", "HudFan", "StatusRow", "PartyDock", 
 
 local BattleController = {}
 BattleController.pylonTargets = {} :: { { id: string, part: BasePart, radius: number } } -- the Dungeon's room 3 (swordTargets)
+BattleController.superFree = false -- this fight's supers need no weapon (the prologue's lent party; Util/SuperLock)
 
 -- Fight bar layout (pixels): kept short so the fight stays visible on a landscape phone
 local PAD = 8
@@ -729,6 +730,10 @@ local function updateHud(hud: CombatHud.Hud, snapshot: Snapshot)
 		creatureHp = if creature then creature.hp else 0,
 		creatureMax = if creature then creature.maxHp else 1,
 		hasSignature = creature ~= nil and creature.signature ~= nil,
+		-- its super locked without a weapon of its element (owner 2026-11-19): the element it needs
+		superNeed = if creature and creature.signature
+			then require(ClientUtil:WaitForChild("SuperLock")).need(creature.element, BattleController.superFree)
+			else nil,
 		creatureElement = if creature then creature.element else "",
 		perkElement = if creature then creature.element else nil, -- the chip's icon (CombatHud)
 		perkText = if creature and creature.perk and Party.PERKS[creature.element]
@@ -882,9 +887,10 @@ local function setHudHidden(hidden: boolean)
 				table.insert(hiddenHud, item)
 			end
 		end
-		-- Close any open panel (binder, party...) so the fight bar is on top
+		-- Close any open panel (binder, party...) so the fight bar is on top; overlays marked KeepInFights (the toasts)
+		-- aren't windows and stay
 		for _, child in screenGui:GetChildren() do
-			if child:IsA("Frame") and child.ZIndex >= UIKit.PANEL_Z_INDEX and child ~= bar and child ~= bossBar then
+			if child:IsA("Frame") and child.ZIndex >= UIKit.PANEL_Z_INDEX and child ~= bar and child ~= bossBar and child:GetAttribute("KeepInFights") ~= true then
 				child.Visible = false
 			end
 		end
@@ -1476,6 +1482,11 @@ local function showEnd(summary: any, wasBoss: boolean, monsterAt: Vector2?)
 			notes = notes,
 			party = party,
 			locked = true, -- a boss win plays out in full (owner 2026-11-18)
+			-- the Robux reset of every boss timer while this one runs (Bosses.RESET; required here: this file is at Luau's
+			-- 200-local limit)
+			action = if typeof(summary.boss) == "table" and typeof(summary.boss.lootIn) == "number"
+				then require(ClientUtil:WaitForChild("BossReset")).victoryAction(summary.boss.lootIn)
+				else nil,
 		})
 	elseif result == "lose" then
 		-- The defeat screen (owner 2026-11-04, design A): the fight's numbers, a tip, the whole countdown to town
@@ -1800,6 +1811,7 @@ local function onStarted(payload: any)
 	combatSword = false
 	foeElite = payload.elite == true
 	BattleController.pylonTargets = if typeof(payload.pylons) == "table" then payload.pylons else {}
+	BattleController.superFree = payload.prologue == true
 	if boss then
 		startCombat(payload.buttonNames == true, nil, nil, payload.noRun == true)
 	elseif mode == "wild" then

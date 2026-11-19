@@ -1,11 +1,13 @@
 --!strict
 -- The boss ladder (Config/Bosses, spec 2026-10-28-boss-ladder-design.md): each player's progress on every boss
--- (saved: data.bosses), the arenas' gates, the fights and their rewards. Rules (unlock, loot cooldown, soft cap,
--- over-power) are in Util/BossRules. A boss is spawned for the one player who starts it at the gate and fought on the
+-- (saved: data.bosses), the arenas' gates, the fights and their rewards. Rules (unlock, loot cooldown, soft cap) are in
+-- Util/BossRules. A boss is spawned for the one player who starts it at the gate and fought on the
 -- usual combat core (BattleService); a win's XP and cash come from there, its items from here.
 local HttpService = game:GetService("HttpService")
+local MarketplaceService = game:GetService("MarketplaceService")
 local MessagingService = game:GetService("MessagingService")
 local Players = game:GetService("Players")
+local PolicyService = game:GetService("PolicyService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -14,13 +16,12 @@ local Bosses = require(Config:WaitForChild("Bosses"))
 local Dungeon = require(Config:WaitForChild("Dungeon"))
 local DungeonRules = require(Shared:WaitForChild("Util"):WaitForChild("DungeonRules"))
 local WildConfig = require(Config:WaitForChild("Wild")) -- the main game's: a remote arena copy streams in within its STREAM_TIMEOUT
-local Cards = require(Config:WaitForChild("Cards"))
 local Items = require(Config:WaitForChild("Items"))
 local Weapons = require(Config:WaitForChild("Weapons"))
 local Victory = require(Config:WaitForChild("Victory"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
-local ChestRules = require(Shared:WaitForChild("Util"):WaitForChild("ChestRules"))
+local PaidRandomRules = require(Shared:WaitForChild("Util"):WaitForChild("PaidRandomRules"))
 local WeaponRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Blocked = require((script.Parent :: Instance).Parent:WaitForChild("Util"):WaitForChild("Blocked"))
@@ -33,10 +34,10 @@ local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
 local BattleService = require(Services:WaitForChild("BattleService"))
 local BossChestService = require(Services:WaitForChild("BossChestService"))
-local CardService = require(Services:WaitForChild("CardService"))
 local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local ItemService = require(Services:WaitForChild("ItemService"))
+local PurchaseService = require(Services:WaitForChild("PurchaseService"))
 local WeaponService = require(Services:WaitForChild("WeaponService"))
 local WildService = require(Services:WaitForChild("WildService"))
 local TeamService = require(Services:WaitForChild("TeamService"))
@@ -62,6 +63,7 @@ local allowTeamJoin = RateLimiter.new(1)
 local allowStart = RateLimiter.new(Bosses.START_COOLDOWN)
 local allowPickUp = RateLimiter.new(Bosses.LOOT_PICKUP_COOLDOWN)
 local allowGroup = RateLimiter.new(Bosses.START_COOLDOWN) -- its own, so Fight then F right after both work
+local allowReset = RateLimiter.new(1)
 local allowRequest = RateLimiter.new(1)
 local allowTravel = RateLimiter.new(Bosses.TRAVEL_COOLDOWN)
 local rng = Random.new()
@@ -109,26 +111,12 @@ local function sendBosses(player: Player)
 			unlocked = record.unlocked,
 			cleared = record.cleared,
 			lootIn = math.max(0, record.lootAt - now),
-			rewardedToday = BossRules.dayCounts(record, today).rewardedToday,
-			bonusReady = record.bonusDay ~= today, -- the day's first rewarded win still adds its daily chest
+			bonusReady = record.bonusDay ~= today, -- the day's first loot win still adds its daily chest
 			fragments = if unlock then ItemService.GetCount(player, unlock.item) else 0,
-			weaponPity = record.weaponPity, -- full-loot kills since its weapon last dropped (the board's drop chance)
+			weaponPity = record.weaponPity, -- loot wins since its weapon last dropped (the board's drop chance)
 		}
 	end
 	Remotes.BossesChanged:FireClient(player, payload)
-end
-
--- The strongest fighter's Power (bosses recommend a Power per card)
-local function partyPower(player: Player, fighterIds: { string }): number
-	local best = 0
-	for _, beastId in fighterIds do
-		local beast = CardService.GetBeast(player, beastId)
-		local card = if beast then Cards.ById[beast.cardId] else nil
-		if beast and card then
-			best = math.max(best, BeastRules.getPower(card, beast.foil, beast.level, beast.stars, beast.grade))
-		end
-	end
-	return best
 end
 
 -- Adds the grants to `got` (merged by item): the loot that will scatter on the ground
@@ -158,10 +146,10 @@ local function wanted(byBoss: { [string]: BossRules.Record }, item: string): boo
 end
 
 -- A boss win's items (BattleService calls this; the XP and cash are already paid). Farm protection (spec section 7):
--- too fast a win gives no drops; full loot once per LOOT_COOLDOWN per boss, its chances shrunk by the daily soft cap
--- and the over-power penalty; the first clear and the day's first rewarded win add their chests. A group member who
--- helped too little (fight.contributed false) gets only the carried roll: a quarter of the chances, no fragments, no
--- chests.
+-- full loot once per LOOT_COOLDOWN per boss, its chances shrunk by the daily soft cap (the owner 2026-11-19 removed the
+-- minimum fight time and the over-power shrink: strong players farm the early bosses' weapons and materials); the
+-- first clear and the day's first rewarded win add their chests. A group member who helped too little
+-- (fight.contributed false) gets only the carried roll: a quarter of the chances, no fragments, no chests.
 -- Loot on the ground --------------------------------------------------------------------------------------
 
 type Drop = { item: string, count: number, position: Vector3 }
@@ -373,7 +361,7 @@ function BossService.DropWeapon(player: Player, weaponId: string, delay: number?
 	return payload
 end
 
--- On a full-loot win (BossRules.rollsWeapon): the boss's weapon at WeaponRules.dropChance of its pity, given at once
+-- On a loot win (BossRules.rollsWeapon): the boss's weapon at WeaponRules.dropChance of its pity, given at once
 -- (its chest shows it, BossChestService); a drop given resets the pity, anything else adds one (BossRules.nextWeaponPity)
 local function rollWeapon(player: Player, bossId: string, record: BossRules.Record): WeaponPayload?
 	local weaponId = weaponOf[bossId]
@@ -390,7 +378,7 @@ function BossService.WeaponOf(bossId: string): string?
 	return weaponOf[bossId]
 end
 
-local function onBossWin(player: Player, monster: WildService.Monster, fight: { seconds: number, fighterIds: { string }, contributed: boolean }): any
+local function onBossWin(player: Player, monster: WildService.Monster, fight: { contributed: boolean }): any
 	local bossId = monster.boss :: string
 	local boss = Bosses.BOSSES[bossId]
 	local byBoss = records[player]
@@ -399,10 +387,9 @@ local function onBossWin(player: Player, monster: WildService.Monster, fight: { 
 	end
 	local now = os.time()
 	local today = BossRules.dayNumber(now)
-	local record = BossRules.dayCounts(byBoss[bossId], today)
-	byBoss[bossId] = record
+	local record = byBoss[bossId]
 	local carried = not fight.contributed
-	local result = { bossId = bossId, items = {}, firstClear = false, bonus = false, lootIn = 0, reduced = false, flagged = false, carried = carried }
+	local result = { bossId = bossId, items = {}, firstClear = false, bonus = false, lootIn = 0, carried = carried }
 
 	-- The first clear's chest always comes to those who helped (it's the way up the ladder, however strong the party)
 	if not record.cleared and not carried then
@@ -419,18 +406,10 @@ local function onBossWin(player: Player, monster: WildService.Monster, fight: { 
 			announceEverywhere(player, bossId)
 		end
 	end
-	if fight.seconds < boss.minFightSeconds then
-		result.flagged = true
-	elseif BossRules.lootEligible(record, now) then
-		local power = partyPower(player, fight.fighterIds)
-		local softCap = BossRules.softCapFactor(Bosses, record.rewardedToday)
-		local overPower = BossRules.overPowerFactor(Bosses, power, boss.recommended)
-		local factor = BossRules.dropFactor(Bosses, record, power, boss.recommended)
-		result.reduced = factor < 1
+	if BossRules.lootEligible(record, now) then
 		record.lootAt = now + Bosses.LOOT_COOLDOWN
-		record.rewardedToday += 1
 		-- Its chests (BossChestService) after every loot win of those who helped (the owner 2026-11-11: "chests every
-		-- win", reduced ones too); they hold the weapon or its material, so the material's own roll is skipped here
+		-- win"); they hold the weapon or its material, so the material's own roll is skipped here
 		local weaponId = weaponOf[bossId]
 		local material = Weapons.MATERIALS[bossId]
 		local chests = weaponId ~= nil and material ~= nil and not carried
@@ -439,7 +418,7 @@ local function onBossWin(player: Player, monster: WildService.Monster, fight: { 
 			if chests and drop.item == material then
 				continue
 			end
-			local chance = drop.chance * factor
+			local chance = drop.chance
 			if carried then
 				chance = BossRules.carriedDrop(Bosses, drop.item, chance, opensBoss[drop.item] ~= nil)
 			end
@@ -448,13 +427,12 @@ local function onBossWin(player: Player, monster: WildService.Monster, fight: { 
 			end
 		end
 		grant(player, drops, result.items)
-		-- Its weapon: full loot only (no soft cap or over-power shrink), and those who helped only (carried members never
-		-- roll it, like key fragments)
-		if BossRules.rollsWeapon(factor, carried) then
+		-- Its weapon: those who helped only (carried members never roll it, like key fragments)
+		if BossRules.rollsWeapon(carried) then
 			result.weapon = rollWeapon(player, bossId, record)
 		end
 		if chests and weaponId then
-			BossChestService.Prepare(player, bossId, weaponId, result.weapon, factor, ChestRules.reason(softCap, overPower), function(payload, here)
+			BossChestService.Prepare(player, bossId, weaponId, result.weapon, function(payload, here)
 				BossService.AnnounceWeapon(player, payload, here)
 			end)
 		elseif result.weapon then
@@ -1053,6 +1031,50 @@ local function sendLosersHome(monster: WildService.Monster, losers: { Player })
 	end
 end
 
+-- The Robux reset (Bosses.RESET; owner 2026-11-19, pick A): the purchase opens only when its product is made, Roblox
+-- allows paid random items here (it buys another roll at random loot: Util/PaidRandomRules) and some boss timer has
+-- RESET.minLeft to go; otherwise the player hears why (Util/Blocked)
+local function onResetBuy(player: Player)
+	if not allowReset(player) then
+		return
+	end
+	local productId = PurchaseService.ProductId(Bosses.RESET.product)
+	local byBoss = records[player]
+	if productId == 0 or not byBoss then
+		return -- not created yet (its button says "Coming soon"), or the save isn't loaded
+	end
+	local ok, info = pcall(function()
+		return PolicyService:GetPolicyInfoForPlayerAsync(player)
+	end)
+	if PaidRandomRules.restricted(ok, info) then
+		Blocked.tell(player, Bosses.RESET.restricted, { title = "Boss reset" })
+		return
+	end
+	local now = os.time()
+	local lootIns = {}
+	for _, record in byBoss do
+		table.insert(lootIns, record.lootAt - now)
+	end
+	if not BossRules.resetOffered(lootIns, Bosses.RESET.minLeft) then
+		Blocked.tell(player, Bosses.RESET.nothing, { title = "Boss reset" })
+		return
+	end
+	MarketplaceService:PromptProductPurchase(player, productId)
+end
+
+-- A bought reset: every running boss loot timer ends now, and the player is told all of them did (Studio's /bossreset
+-- too, DevService); false while their save isn't loaded here, so Roblox asks again
+function BossService.ResetTimers(player: Player): boolean
+	local byBoss = records[player]
+	if not byBoss then
+		return false
+	end
+	BossRules.resetTimers(byBoss, os.time())
+	sendBosses(player)
+	Remotes.Notify:FireClient(player, Bosses.RESET.done)
+	return true
+end
+
 function BossService.Start()
 	DataService.Register({ name = "BossService", load = load, save = save, unload = unload })
 	arenas = WildService.BuildBossArenas(onGate, onGroup, onReturn)
@@ -1096,6 +1118,8 @@ function BossService.Start()
 	end)
 	Remotes.PickUpLoot.OnServerEvent:Connect(onPickUp)
 	Remotes.BossTravel.OnServerEvent:Connect(onTravel)
+	Remotes.BossResetBuy.OnServerEvent:Connect(onResetBuy)
+	PurchaseService.OnProduct(Bosses.RESET.product, BossService.ResetTimers)
 	Remotes.TeamFight.OnServerEvent:Connect(onTeamJoin) -- a teammate's boss group (spec 2026-11-15-teams-design)
 	if Place.isDungeon() then
 		for _, arena in arenas do

@@ -78,7 +78,8 @@ AdminPanel.SECTIONS = {
 			{ label = "+50 Wild Ore", command = "/item wildOre 50" },
 			{ label = "Boss weapon drop", command = "/weapondrop %s", placeholder = "boss id (meadowWarden, prismHydra)" },
 			{ label = "Drop cinematic (preview)", command = "/weapondrop %s preview", placeholder = "boss id (meadowWarden, prismHydra)" },
-			{ label = "Boss chests", command = "/chests %s", placeholder = "boss id [drop|miss|strong|tired] (meadowWarden drop)" },
+			{ label = "Boss chests", command = "/chests %s", placeholder = "boss id [drop|miss] (meadowWarden drop)" },
+			{ label = "Boss timers reset (as if bought)", command = "/bossreset" },
 		},
 	},
 	{
@@ -133,6 +134,10 @@ AdminPanel.SECTIONS = {
 			{ label = "Thunderstorm S", command = "/superfx thunderstorm S" },
 			{ label = "Devour C", command = "/superfx devour C" },
 			{ label = "Devour S", command = "/superfx devour S" },
+			{ label = "Seed Club Slam C", command = "/superfx seedclubslam C" },
+			{ label = "Seed Club Slam S", command = "/superfx seedclubslam S" },
+			{ label = "World Bloom C", command = "/superfx worldbloom C" },
+			{ label = "World Bloom S", command = "/superfx worldbloom S" },
 		},
 	},
 	{

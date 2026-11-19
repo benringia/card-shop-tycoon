@@ -34,6 +34,9 @@ return {
 		SuperLuck30 = 3731135276,
 		-- The Extra Job Slot, one time (UNLOCKS): R$ 160 when made, managed pricing on
 		ExtraJobSlot = 3731134573,
+		-- Every boss's loot timer ended at once (Bosses.RESET, BossService; owner 2026-11-19, pick A): R$ 20, managed
+		-- pricing on (the Philippines R$ 8), so its buttons read the price live
+		BossReset = 3733394373,
 	},
 	PURCHASE_MEMORY = 100, -- receipts remembered in a save, so a retried one is never granted twice
 }

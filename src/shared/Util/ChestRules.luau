@@ -1,9 +1,7 @@
 --!strict
 -- The boss chests' rules (spec 2026-11-11-boss-chests-design; Config/BossChests): the material count, what the two
 -- chests you didn't pick show, where yours goes in the row, and the checks on a pick. Pure, Lune-tested.
--- kind "empty": a reduced win's chest whose material missed; reason: "strong" (too strong for the boss) or "tired"
--- (the day's soft cap)
-export type Content = { kind: "weapon" | "material" | "mystery" | "empty", weaponId: string?, item: string?, count: number?, reason: string? }
+export type Content = { kind: "weapon" | "material" | "mystery", weaponId: string?, item: string?, count: number? }
 export type Set = { id: string, bossId: string, weaponId: string, mine: Content, others: { Content }, opened: boolean }
 export type Weights = { { count: number, weight: number } }
 
@@ -21,24 +19,13 @@ function ChestRules.materialCount(roll: number, weights: Weights): number
 	return weights[#weights].count
 end
 
--- Your chest: the weapon if it dropped; otherwise its material (count by the weights), always on a full-loot win
--- (factor 1) and at `factor`'s chance on a reduced one, else empty with the reason
-function ChestRules.mine(weaponId: string, dropped: boolean, material: string, factor: number, chanceRoll: number, countRoll: number, weights: Weights, reason: string?): Content
+-- Your chest: the weapon if it dropped, otherwise its material (count by the weights). Every loot win is full since
+-- the owner 2026-11-19, so it's never empty
+function ChestRules.mine(weaponId: string, dropped: boolean, material: string, countRoll: number, weights: Weights): Content
 	if dropped then
 		return { kind = "weapon", weaponId = weaponId }
 	end
-	if factor >= 1 or chanceRoll < factor then
-		return { kind = "material", item = material, count = ChestRules.materialCount(countRoll, weights) }
-	end
-	return { kind = "empty", reason = reason }
-end
-
--- Why a win's loot was reduced (BossRules' two factors): too strong for the boss before the day's soft cap; nil: full
-function ChestRules.reason(softCap: number, overPower: number): string?
-	if overPower < 1 then
-		return "strong"
-	end
-	return if softCap < 1 then "tired" else nil
+	return { kind = "material", item = material, count = ChestRules.materialCount(countRoll, weights) }
 end
 
 -- Whether another chest shows the weapon under a "?": only when it didn't drop and you don't have it yet (the owner

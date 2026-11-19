@@ -192,7 +192,6 @@ return {
 		chestCreak = "rbxassetid://9120881682", -- Wood Groan Creak Opening Wood Chest Coffin 5 (Pro Sound Effects)
 		chestThud = "rbxassetid://9120798134", -- Wood Bench Hits 2 (Pro Sound Effects): a chest landing
 		chestCoins = "rbxassetid://9113849492", -- Coins Or Keys Jingle 6 (Pro Sound Effects): coins out of the chest
-		chestPoof = "rbxassetid://9114156934", -- Doppler Whooshes Crackly Airy Bursts 1 (Pro Sound Effects): an empty chest
 	},
 	VOLUMES = {
 		-- The rip at about half (owner 2026-11-10: lower the ripping sound); then all of the opening's sounds 0.7 of that
@@ -202,7 +201,7 @@ return {
 		forgeFire = 0.22, forgeStrike = 0.25, forgeClank = 0.32, forgeBurst = 0.25, forgeBoom = 0.3, forgeRing = 0.2,
 		-- The drop cinematic's: half again (owner 2026-11-06: good, but loud)
 		dropRise = 0.12, dropBurst = 0.15, dropRing = 0.08, dropSting = 0.11, dropBoom = 0.12, dropFlip = 0.2,
-		chestCreak = 0.35, chestThud = 0.35, chestCoins = 0.3, chestPoof = 0.25,
+		chestCreak = 0.35, chestThud = 0.35, chestCoins = 0.3,
 	},
 	-- Open 10 (BulkOpenController, owner 2026-11-17): seconds each rarity holds the turning over, and the grid's cards (the
 	-- biggest from max down to min px wide that fit every row on screen, OpeningLayout.gridCell; gaps in px)

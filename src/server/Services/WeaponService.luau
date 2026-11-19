@@ -10,6 +10,9 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Weapons = require(Shared:WaitForChild("Config"):WaitForChild("Weapons"))
 local Swords = require(Shared:WaitForChild("Config"):WaitForChild("Swords"))
 local WeaponRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponRules"))
+local SkillText = require(Shared:WaitForChild("Util"):WaitForChild("SkillText"))
+local ElementNames = require(Shared:WaitForChild("Util"):WaitForChild("ElementNames"))
+local ElementNamesConfig = require(Shared:WaitForChild("Config"):WaitForChild("ElementNames"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
@@ -93,6 +96,20 @@ function WeaponService.HitInfo(player: Player, creatureElement: string?, weaponI
 	local id = weaponId or WeaponService.GetEquipped(player) or Weapons.STARTER
 	local record = WeaponService.GetOwned(player, id)
 	return WeaponRules.hitInfo(Weapons, id, if record then record.grade else "C", creatureElement)
+end
+
+-- A super pressed (owner 2026-11-19: Epic and Legendary supers need a weapon of the creature's element; the Prism Blade
+-- unlocks every one): the scale the weapon in hand fires it at (WeaponRules.superScale), or nil after the locked card
+-- saying which weapon it needs. `cardName`: the creature's card, `element`: its element key.
+function WeaponService.SuperScale(player: Player, cardName: string, element: string): number?
+	local weaponId = WeaponService.GetEquipped(player)
+	if not weaponId or not WeaponRules.superUnlocked(Weapons, weaponId, element) then
+		local plain = ElementNames.display(element, ElementNamesConfig)
+		Blocked.tell(player, SkillText.superLocked(cardName, plain), { title = Weapons.SUPER.lockedTitle })
+		return nil
+	end
+	local record = WeaponService.GetOwned(player, weaponId)
+	return WeaponRules.superScale(Weapons, weaponId, if record then record.grade else "C", if record then record.level else 0)
 end
 
 -- The character's Sword, SwordGrade and SwordLevel attributes from the weapon in hand

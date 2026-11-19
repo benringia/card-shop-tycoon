@@ -60,7 +60,8 @@ return {
 		expect.equal(#notes, 3)
 		expect.equal(string.find(notes[1], "ground", 1, true) ~= nil, true)
 		expect.equal(#VictoryRules.notes(nil), 0)
-		expect.equal(#VictoryRules.notes({ flagged = true, reduced = true }), 1, "flagged wins over reduced")
+		-- The owner 2026-11-19: no "too fast" rule, no daily limit, so no note says a win was smaller
+		expect.equal(#VictoryRules.notes({ flagged = true, reduced = true }), 0, "no smaller-loot notes")
 	end,
 	["the subtitle names the foe and the time"] = function()
 		expect.equal(VictoryRules.subtitle("Meadow Warden", 84), "Meadow Warden defeated · 1:24")

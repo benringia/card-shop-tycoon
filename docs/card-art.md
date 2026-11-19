@@ -211,6 +211,20 @@ Tone follows rarity: the more common the card, the cuter and less dangerous the 
   head, golden feather blades floating at its shoulders, strong golden talons, a long tail of three flame ribbons,
   flames and embers rising off its wings (pose: rising up from a scorched rocky summit with its wings spread; lighting:
   epic dramatic, blazing golden sunlight).
+- **Bramblequake** (Bloom's Epic, 2026-11-19; Meshy original, concept A): a massive menacing armoured thorn
+  ankylosaurus beast, rounded stylized toy-like 3D style, a huge heavy low body on four thick dark green legs with
+  bark-brown claws, its back covered in overlapping dark brown bark armour plates with big sharp green thorns, thorny vines
+  with small pink blossoms wrapped between the plates, mossy green shoulders, a beaked armoured head with two short curved
+  wooden horns and fierce glowing amber eyes, a thick tail ending in a huge spiked seed-pod club, green leaves and pink
+  petals swirling around it (pose: standing firmly with its head lowered ready to charge; lighting: soft green sunlight
+  with a strong rim light).
+- **Leonbloom** (Bloom's Legendary, 2026-11-19; Meshy original, concept C redrawn neutral): a colossal godlike legendary
+  lion deity, rounded stylized toy-like 3D style, a massive heavy muscular sage-green body, an enormous mane of big pink,
+  white and gold flowers and broad emerald leaves, two golden branch antlers rising from the mane, a glowing golden
+  sun-seed gem on its forehead, golden leaf armour plates on its shoulders and chest, golden claws, fierce glowing golden
+  eyes, a long tail ending in a big pink flower bud, glowing golden pollen and pink petals swirling around it (pose:
+  standing proudly on a mossy rock with its head held high; lighting: epic dramatic with golden sunbeams; the scene in
+  full bloom with golden god rays).
 - **Pish**: a cute chubby cartoon Shih Tzu dog, rounded stylized style, a fluffy white coat with soft light grey-taupe
   floppy ears and a small light brown patch on his back, big round shiny dark brown eyes, a small black nose, a little
   underbite with two tiny white bottom teeth showing, a proud slightly grumpy look, a fluffy white tail curled up.

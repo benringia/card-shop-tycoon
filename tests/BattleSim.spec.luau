@@ -3387,4 +3387,34 @@ return {
 		local after = runFor(state, 5)
 		expect.equal(hitsOn(after, "b:x") > 0, true, "back to the usual choice")
 	end,
+
+	-- Owner 2026-11-19 ("weapon strength: OK"): the weapon that unlocks a super powers it (BattleService passes
+	-- WeaponRules.superScale): each kind's own numbers grow (Config/Combat SUPER_SCALES), the rest stay
+	["a super cast with a weapon's scale hits harder; its other numbers stay"] = function()
+		local function slam(scale: number?): number
+			local state = wild(fighter("a", "Volt", 100000, 100, 10, "Thunderhorn"), {}, monster("Tide", 1000000, 1, 1), 21)
+			charge(state)
+			BattleSim.useAbility(state, "a:a", "signature", nil, scale)
+			local damage = 0
+			for _, e in BattleSim.step(state, combat.SIGNATURES.Thunderhorn.windup) do
+				if e.type == "ability" and e.kind == "Stampede" then
+					damage += e.damage or 0
+				end
+			end
+			return damage
+		end
+		local plain, strong = slam(nil), slam(1.5)
+		expect.equal(plain > 0, true, "it lands")
+		expect.near(strong / plain, 1.5, 0.05, "1.5x the weapon scale: 1.5x the hit")
+		local scaled = BattleSim.scaledSuper(combat, combat.SIGNATURES.Thunderhorn, 1.5)
+		expect.near(scaled.power, combat.SIGNATURES.Thunderhorn.power * 1.5, 1e-9)
+		expect.equal(scaled.stun, combat.SIGNATURES.Thunderhorn.stun, "the stun stays")
+		expect.equal(combat.SIGNATURES.Thunderhorn.power, 2, "the config itself is untouched")
+		local shield = BattleSim.scaledSuper(combat, combat.SIGNATURES["Abyssal Koi"], 2)
+		expect.near(shield.shield, combat.SIGNATURES["Abyssal Koi"].shield * 2, 1e-9)
+		expect.equal(shield.seconds, combat.SIGNATURES["Abyssal Koi"].seconds, "how long it lasts stays")
+		for name, ability in combat.SIGNATURES do
+			expect.equal(combat.SUPER_SCALES[ability.kind] ~= nil, true, `{name}'s kind {ability.kind} says what a weapon scales`)
+		end
+	end,
 }

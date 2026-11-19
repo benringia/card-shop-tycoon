@@ -1,6 +1,7 @@
 --!strict
 -- The super moves' looks (spec 2026-11-05-super-moves-design; the owner: "since this is epic and legendary skills I
--- want them to be way epic/cooler looking than the ones we already did"). Ten looks (Config/Combat SIGNATURES `look`),
+-- want them to be way epic/cooler looking than the ones we already did"). Twelve looks (Config/Combat SIGNATURES `look`;
+-- Bloom's two since 2026-11-19),
 -- each a step up from grade C to S ("the higher the creature grade the better the skill must look and feel"), S with
 -- an extra the others don't have. Rarity sets the cinematic's size (TIERS): Epic a quick swoop, Legendary the full
 -- show (bars, a sky change, a black-and-white impact frame). Drawn by Util/SuperFx (everyone) and Util/SuperCinematic
@@ -168,6 +169,25 @@ return {
 			streams = { 4, 6, 8, 12 },
 			bites = { 1, 1, 1, 2 },
 		}, "voidroar"), rgb(150, 110, 210), -0.32, -0.45, 0.22), -- the world dims
+		-- Bloom's Epic (owner 2026-11-19, Bramblequake): it stomps and thorny roots race across the ground to the boss,
+		-- burst up round it and bind it for the stun, then wither (S: blossoms burst from the roots and a ring of thorns
+		-- round it)
+		SeedClubSlam = look("Epic", "Bramblequake", "Bloom", rgb(124, 206, 92), {
+			roots = { 3, 4, 5, 7 }, -- root lines racing to the boss
+			cage = { 4, 5, 6, 8 }, -- roots bursting up round it
+			blossoms = { 10, 16, 24, 36 },
+		}, "thorncharge"),
+		-- Bloom's Legendary (owner 2026-11-19, Leonbloom): the sky turns green-gold, a glowing seed grows over its mane,
+		-- rises over the boss and opens into a giant flower that bursts into a storm of petals and thorny roots (S: a ring
+		-- of golden light pillars and a second flower). Its seed rises like Supernova's sun; `burst` the same framing.
+		WorldBloom = withSky(look("Legendary", "Leonbloom", "Bloom", rgb(255, 150, 196), {
+			seed = { 3, 3.5, 4.5, 6 },
+			flower = { 8, 10, 12, 15 }, -- the flower's petal length (studs)
+			petals = { 8, 10, 12, 14 },
+			burst = { 16, 17, 19, 21 }, -- studs over the target the flower opens (the cinematic frames it too)
+			storm = { 30, 44, 60, 84 }, -- petals a second raining down
+			roots = { 4, 5, 6, 8 },
+		}, "vinebloom"), rgb(220, 255, 200), 0.04, 0.2, 0.1), -- a spring glow
 	},
 	-- White textures with the shape in the alpha (tools/textures/make_super_fx.py, uploaded), filled look by look
 	TEXTURES = {
@@ -246,6 +266,22 @@ return {
 			impact = "rbxassetid://9120016037", -- Thunder Cracks Big Rumbling Blasts Booming 1
 			layer = "rbxassetid://9126082854", -- Synth Thunder Cracks Individual Explosion (A and S)
 			linger = "rbxassetid://9112852465", -- Rain Continuous Drizzle 1
+		},
+		-- Bloom's two (owner 2026-11-19): sounds already measured for the other looks (Config/SoundLevels)
+		SeedClubSlam = {
+			call = "rbxassetid://9113985717", -- Creature Roar Mix Of Animals Gate Creaks 1 (a woody roar)
+			charge = "rbxassetid://9118617342", -- Rock Impact Large Hit Scrape 1 (it stomps)
+			impact = "rbxassetid://9125484367", -- Deep Hits Big Reverberant Booms Rumbling Tail 2 (the slam)
+			layer = "rbxassetid://9118587494", -- Rock Drop On Concrete Drops Breaks 2 (A and S)
+			roots = "rbxassetid://9118617328", -- Rock Impact Large Hit Scrape 3 (the roots burst up)
+			linger = "rbxassetid://9125883906", -- Rocks Tumble Falling Down Cliff Grit Scatter (they wither)
+		},
+		WorldBloom = {
+			call = "rbxassetid://9125602386", -- Heavenly Harmonic Presence Glowing Crystal (the sky turns)
+			charge = "rbxassetid://9125635430", -- Magical Exit Sparkling Pass Bys Clinking Chimes (the seed grows, opens)
+			impact = "rbxassetid://9113216700", -- Avalanche Crashing 3 (the flower bursts)
+			layer = "rbxassetid://9126100173", -- Thunder With Lion Roar Growl Low Rumble Roar (A and S: its roar)
+			linger = "rbxassetid://9114791989", -- Heavenly Presence Thick Melodic Choir Pad 1 (the petals falling)
 		},
 		Devour = {
 			call = "rbxassetid://9125603019", -- Heavenly Presence Eerie Choral Tones Dark (the world dims)
