@@ -298,7 +298,7 @@ local function play(payload: any)
 				return nil
 			end
 			local view = CreatureController.GetFightView(target)
-			return if view then { root = view.root, element = view.element, height = view.height, grade = grade, mine = true } else nil
+			return if view then { root = view.root, element = view.element, height = view.height, grade = grade, rarity = view.rarity, mine = true } else nil
 		end,
 		setCharging = CreatureController.SetCharging,
 		pose = CreatureController.Pose,

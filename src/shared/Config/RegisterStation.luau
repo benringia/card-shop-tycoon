@@ -65,7 +65,10 @@ return {
 	AUTO_GIVE_SECONDS = 0.7,
 	-- Money given lands on the counter in a row, right of the card machine
 	-- (notes lie lengthwise, toward the cashier, so each one is its own tap)
-	GIVEN = { x = 0.6, z = 0.5, step = 0.34, billSize = { 0.26, 0.03, 0.5 }, coinSize = { 0.06, 0.22, 0.22 } },
+	-- as the drawer's own notes and coins with their pictures (owner 2026-11-19: "add money model on the cashier for
+	-- moneys at the table"; they were plain green bars and gold discs): `perRow` across, a note NOTE_ASPECT wide for its
+	-- length, `rowGap` between rows
+	GIVEN = { x = 0.35, z = 0.55, step = 0.47, perRow = 4, rowGap = 0.06, billSize = { 0.42, 0.02, 0.61 }, coinSize = { 0.035, 0.32, 0.32 } },
 	SCREEN_PIXELS = 300, -- SurfaceGui PixelsPerStud on the screen and the keypad
 	-- The screen's one big line for each situation (owner 2026-11-16: "improve the registers UI ... it is also currently
 	-- confusing for the kids"; round 2 mockup approved): it is the guide, so there's no hint strip
@@ -91,6 +94,9 @@ return {
 		drawer = "👇 drawer",
 		give = "GIVE CHANGE",
 		keypadLabel = "CARD · AMOUNT",
+		-- the card machine asleep (owner 2026-11-19: "make the card machine unusable when it's not supposed to be used")
+		keypadOff = "💳 💤",
+		keypadOffHint = "Wakes up when someone pays by card",
 		keypadType = "TYPE %s",
 		exact = "✔️ EXACT!",
 		more = "+ %d more",

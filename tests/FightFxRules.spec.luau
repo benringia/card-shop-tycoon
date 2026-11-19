@@ -343,6 +343,49 @@ return {
 	end,
 	-- Your creatures' basic attacks toned down in a boss fight (owner 2026-11-18: "toning it a bit is a good idea": a
 	-- Grade S Lv 30 creature hitting every 0.6 s covered the boss and its hits)
+	-- Owner 2026-11-19 (second playthrough): "basic attacks for pets should correspond to their grade and rarity.
+	-- commons have small projectiles while the legendaries have large and with some additional VFX (but not too much
+	-- that it will cover bosses)"
+	["a basic attack's size follows the card's rarity and its grade: a Common small, a Legendary large with flair"] = function()
+		local order = { "Common", "Rare", "Very Rare", "Epic", "Legendary" }
+		for _, grade in { "C", "B", "A", "S" } do
+			local last = 0
+			for _, rarity in order do
+				local look = FightFxRules.look(grade, rarity, AttackFx)
+				assert(look.scale > last, `{rarity} grade {grade}: bigger than the rarity before`)
+				last = look.scale
+				assert(look.scale <= AttackFx.MAX_SCALE, `{rarity} grade {grade}: never past the cap`)
+				expect.equal(look.extra, AttackFx.GRADE[grade].extra, "the grade's extras are the grade's")
+			end
+		end
+		for _, rarity in order do
+			local c, s = FightFxRules.look("C", rarity, AttackFx), FightFxRules.look("S", rarity, AttackFx)
+			assert(s.scale > c.scale, `{rarity}: a better grade is bigger`)
+		end
+		local common = FightFxRules.look("C", "Common", AttackFx)
+		assert(common.scale < 0.8, "a Common's is small")
+		expect.equal(common.flair, 0, "and plain")
+		expect.equal(FightFxRules.look("C", "Very Rare", AttackFx).flair, 0)
+		expect.equal(FightFxRules.look("C", "Epic", AttackFx).flair, 1, "an Epic's sparkles")
+		local legendary = FightFxRules.look("C", "Legendary", AttackFx)
+		expect.equal(legendary.flair, 2, "a Legendary's has its ring too")
+		assert(legendary.scale >= 1.25, "and is large at any grade")
+		-- no rarity known (an old marker): as before, the grade alone
+		local plain = FightFxRules.look("A", nil, AttackFx)
+		expect.equal(plain.scale, AttackFx.GRADE.A.scale)
+		expect.equal(plain.flair, 0)
+		expect.equal(FightFxRules.look("A", "Mythic", AttackFx).scale, AttackFx.GRADE.A.scale, "an unknown rarity too")
+		expect.equal(AttackFx.GRADE.S.scale, 2, "the grade table itself is untouched")
+		-- "not too much that it will cover bosses": in a boss fight the flair stops at the sparkle and the size is toned
+		local tone = AttackFx.BOSS_TONE
+		local boss = FightFxRules.toned(FightFxRules.look("S", "Legendary", AttackFx), true, tone)
+		expect.equal(boss.flair, 1, "no ring on every hit under a boss")
+		assert(boss.scale <= AttackFx.MAX_SCALE * tone.scale + 1e-9, "toned")
+		assert(boss.scale <= 2, "a maxed Legendary's hits stay under twice a plain hit in a boss fight")
+		expect.equal(FightFxRules.toned(FightFxRules.look("S", "Legendary", AttackFx), false, tone).flair, 2, "full anywhere else")
+		expect.equal(FightFxRules.toned(FightFxRules.tier("S", AttackFx), true, tone).flair, 0, "a tier with no flair has none")
+	end,
+
 	["in a boss fight creatures' basic attacks are toned down: smaller, fewer sparks, no grade S extras, less shake"] = function()
 		local tone = AttackFx.BOSS_TONE
 		local s = FightFxRules.tier("S", AttackFx)

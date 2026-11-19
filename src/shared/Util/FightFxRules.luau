@@ -56,6 +56,24 @@ function FightFxRules.tier(grade: string?, cfg: any): { scale: number, sparks: n
 	return (if grade then cfg.GRADE[grade] else nil) or cfg.GRADE.C
 end
 
+-- ...and for its card's rarity on top (AttackFx.RARITY): the grade's size, sparks and shake times the rarity's, the
+-- size capped at MAX_SCALE, the grade's extras as they are, and the rarity's `flair` (0 none, 1 a sparkle, 2 a ring
+-- too). No rarity or an unknown one: the grade alone
+function FightFxRules.look(grade: string?, rarity: string?, cfg: any): { scale: number, sparks: number, extra: number, shake: number, flair: number }
+	local tier = FightFxRules.tier(grade, cfg)
+	local by = if rarity then cfg.RARITY[rarity] else nil
+	if not by then
+		return { scale = tier.scale, sparks = tier.sparks, extra = tier.extra, shake = tier.shake, flair = 0 }
+	end
+	return {
+		scale = math.min(tier.scale * by.scale, cfg.MAX_SCALE),
+		sparks = tier.sparks * by.sparks,
+		extra = tier.extra,
+		shake = tier.shake * by.shake,
+		flair = by.flair,
+	}
+end
+
 -- Whether an element's basic attack cuts (the Bloom combo, the Shade moon slash): its hits land with the slash
 -- streaks; a fireball or bolt lands without them (owner 2026-11-09)
 function FightFxRules.cuts(element: string, cfg: any): boolean
@@ -113,15 +131,17 @@ end
 
 -- A creature's grade look in a boss fight (Config/AttackFx BOSS_TONE): smaller, fewer sparks, less shake, its extras
 -- capped (no grade S sky strike, pillar or screen flash on every hit); as it is anywhere else
-function FightFxRules.toned(tier: { scale: number, sparks: number, extra: number, shake: number }, bossFight: boolean, tone: any): { scale: number, sparks: number, extra: number, shake: number }
+function FightFxRules.toned(tier: { scale: number, sparks: number, extra: number, shake: number, flair: number? }, bossFight: boolean, tone: any): { scale: number, sparks: number, extra: number, shake: number, flair: number }
+	local flair = tier.flair or 0
 	if not bossFight then
-		return tier
+		return { scale = tier.scale, sparks = tier.sparks, extra = tier.extra, shake = tier.shake, flair = flair }
 	end
 	return {
 		scale = tier.scale * tone.scale,
 		sparks = tier.sparks * tone.sparks,
 		extra = math.min(tier.extra, tone.extra),
 		shake = tier.shake * tone.shake,
+		flair = math.min(flair, tone.flair),
 	}
 end
 

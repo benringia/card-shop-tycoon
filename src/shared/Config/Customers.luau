@@ -52,6 +52,7 @@ return {
 	LIFETIME_RECHECK = 10, -- queued customers have their own timers, so the safety net checks again later
 
 	BUBBLE_SECONDS = 2.5,
+	STOCK_BACK_SECONDS = 3, -- "+2 back" over a shelf stock went back to (a deal turned down; CustomerService)
 	-- Config/UIIcons names (anything else shows as text)
 	BUBBLE_ANNOYED = "Angry", -- price over the top band
 	BUBBLE_NO_STOCK = "Thinking", -- nothing they wanted on the shelves
@@ -286,7 +287,46 @@ return {
 	HAGGLE = { offLow = 0.10, offHigh = 0.25, gapLow = 0.4, gapHigh = 0.8 },
 	-- The offer panel at the register (RegisterController), in pixels; buttons and chips at least 48 tall for phones
 	-- On phones it sits below the cash row (phoneTop) and left of the jump button's column (phoneRight)
-	PANEL = { width = 230, padding = 10, gap = 6, buttonHeight = 48, cardWidth = 54, cardHeight = 76, topOffset = -20, phoneTop = 44, phoneRight = 100 },
+	-- `quoteHeight`: the customer's own words in a speech bubble; `boxHeight`: your price and theirs side by side
+	PANEL = { width = 300, padding = 12, gap = 6, buttonHeight = 48, cardWidth = 54, cardHeight = 76, topOffset = -20, phoneTop = 44, phoneRight = 100, quoteHeight = 38, boxHeight = 58, shortScreen = 640 },
+	-- The offer panel's words (Util/OfferWords, Lune-tested; owner 2026-11-19: "improve bargainers offer UI to be
+	-- immersive and easily understandable": it said "Offers $2.72 for $3.25 (-16%)" over Deal / Counter / No). The
+	-- customer asks in their own words, your price sits beside theirs, the line under says what it means for you, the
+	-- buttons say what they do and the foot what No does. %s: money; delta's %d: the percent off
+	OFFER_WORDS = {
+		haggle = {
+			title = "🏷️ Bargain hunter",
+			quote = '"Can I have it all for %s?"',
+			left = "Your price",
+			right = "Their offer",
+			delta = "You get %s less (-%d%%)",
+			yes = "Deal for %s",
+			counter = "Ask for more",
+			no = "No deal",
+			foot = "No deal: they leave and it goes back on your shelves.",
+			counterTitle = "Name your price",
+			counterHint = "One try! Too high and they walk away.",
+			send = "Ask for %s",
+		},
+		kid = {
+			title = "🎒 A kid wants to sell!",
+			quote = '"Want to buy my %s?"',
+			card = "card",
+			left = "It's worth",
+			right = "They ask",
+			under = "%s under its worth: a good buy!",
+			over = "%s over its worth.",
+			fair = "A fair price.",
+			yes = "Buy for %s",
+			counter = "Offer less",
+			no = "No thanks",
+			foot = "No thanks: they keep their card.",
+			counterTitle = "Your offer",
+			counterHint = "Too low and they say no.",
+			lastTry = "They said no. One more try!",
+			send = "Offer %s",
+		},
+	},
 	-- The counter's face for the price you picked (from the server's edges, never the exact price they'd take)
 	FACES = { sure = "😀 Sure!", maybe = "😐 Hmm, maybe", no = "😠 No way" },
 	-- A kid's rip over the counter (CustomerController): the card grows in, holds, then shrinks away; Very Rare or

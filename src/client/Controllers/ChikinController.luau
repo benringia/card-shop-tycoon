@@ -442,6 +442,16 @@ local function updateTalk(situationName: string)
 		elseif Chikin.BYE_STEPS[step] and not (step == "swordWin" and levelFour) then ChikinTalk.BYE
 		else ChikinTalk.GO
 	TutorialTalk.speaker(NAME)
+	if not line.next and ChikinRules.gotIt(Chikin, step) then
+		-- his level 4 visit's waiting line: Got it! sends him off (only the button, not a tap on the card)
+		TutorialTalk.say(line.text, Chikin.STEP_ICONS[step], ChikinTalk.GOT_IT, function()
+			if not nextSent then
+				nextSent = true
+				Remotes.CombatTutorialAction:FireServer("gotIt")
+			end
+		end, true)
+		return
+	end
 	TutorialTalk.say(line.text, Chikin.STEP_ICONS[step], label, function()
 		if line.finish then
 			if not nextSent then

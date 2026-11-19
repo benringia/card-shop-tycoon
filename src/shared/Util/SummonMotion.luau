@@ -17,6 +17,39 @@ function SummonMotion.popScale(t: number, seconds: number): number
 	return SMALLEST + (1 - SMALLEST) * v
 end
 
+-- A summon's beats in seconds from its start (Party.SUMMON_FX): the card lands, the creature bursts out of the light,
+-- its pop is over
+function SummonMotion.beats(cfg: any): { land: number, burst: number, done: number }
+	local land = cfg.card.fly
+	local burst = land + cfg.windup
+	return { land = land, burst = burst, done = burst + cfg.pop }
+end
+
+-- Its size share `t` seconds into a summon: a speck inside the circle until the burst, then the pop
+function SummonMotion.summonScale(t: number, cfg: any): number
+	local burst = SummonMotion.beats(cfg).burst
+	if t < burst then
+		return SMALLEST
+	end
+	return SummonMotion.popScale(t - burst, cfg.pop)
+end
+
+-- How high over the straight line the flying card is `u` (0-1) of the way: 0 at both ends, `arc` in the middle
+function SummonMotion.arcLift(u: number, arc: number): number
+	local v = math.clamp(u, 0, 1)
+	return 4 * arc * v * (1 - v)
+end
+
+-- A summon's size for its card's rarity (cfg.BY_RARITY); a Common's for none or an unknown one
+function SummonMotion.tier(cfg: any, rarity: string?): { scale: number, pillar: number, rings: number, sparks: number, shake: number, beam: boolean }
+	return (if rarity then cfg.BY_RARITY[rarity] else nil) or cfg.BY_RARITY.Common
+end
+
+-- An unsummon's beats: when its card forms where the creature was, and when the creature is gone
+function SummonMotion.leaveBeats(cfg: any): { card: number, done: number }
+	return { card = cfg.unsummon * cfg.leave.cardAt, done = cfg.unsummon }
+end
+
 -- Its size share `t` seconds into shrinking away over `seconds`: from full to tiny, quickening
 function SummonMotion.shrinkScale(t: number, seconds: number): number
 	local u = math.clamp(t / seconds, 0, 1)

@@ -88,6 +88,23 @@ return {
 		expect.equal(ChikinRules.arrivesWithCinematic(Chikin, ""), false, "not leading")
 	end,
 
+	-- Owner 2026-11-19 (second playthrough): "add a GOT IT for chikin too": on his level 4 visit, the line he waits on
+	-- ("Follow my paws to the Wild!") has a Got it! that sends him off, like Pish's lessons. His first visit (the real
+	-- tutorial, with the sword) keeps its Skip
+	["Got it! sends him off on his level 4 visit's waiting line, never in his first visit"] = function()
+		expect.equal(ChikinRules.gotIt(Chikin, "wild2"), true, "following his paws to the Wild")
+		for _, step in Chikin.VISITS[1] do
+			expect.equal(ChikinRules.gotIt(Chikin, step), false, `{step}: his first visit has no Got it`)
+		end
+		expect.equal(ChikinRules.gotIt(Chikin, Chikin.WAIT_STEP), false)
+		expect.equal(ChikinRules.gotIt(Chikin, ""), false)
+		for step in Chikin.GOT_IT_STEPS do
+			assert(table.find(Chikin.VISITS[2], step), `{step} is one of his level 4 visit's steps`)
+			assert(next(ChikinTalk.STEPS[step].now) ~= nil, `{step} waits on a line with no Next`)
+		end
+		expect.equal(ChikinTalk.GOT_IT, "Got it!")
+	end,
+
 	["town: Chikin's Courage and his portal-side walk"] = townChecks,
 
 	-- owner 2026-11-16: "in the wilds. chikin will make you fight a monster with your summoned pet. after the monster is
@@ -218,7 +235,7 @@ return {
 	-- The owner 2026-11-11 (the calm HUD's focus mode, pick A): while Chikin leads in town the HUD shows only what his
 	-- step uses; the peeking Pish waits till the tour is over; the Wild keeps the whole HUD (fights need it)
 	["while Chikin leads in town the HUD keeps only what his step uses"] = function()
-		local PIECES = { party = true, weapons = true, bosses = true, buffs = true, mascot = true }
+		local PIECES = { party = true, weapons = true, bosses = true, buffs = true, mascot = true, quests = true }
 		local function keeps(step: string, inTown: boolean): string?
 			local kept = TutorialRules.chikinFocus(step, inTown, Chikin.FOCUS, Chikin.WAIT_STEP, Chikin.FOCUS_ALWAYS)
 			return if kept then table.concat(kept, ",") else nil
@@ -228,7 +245,13 @@ return {
 		-- then never disappear": the party bar stays through every step of his
 		expect.equal(keeps("hello", true), "party", "his hello: the party bar stays")
 		expect.equal(keeps("summon", true), "party", "summon: the party bar")
-		expect.equal(keeps("sword", true), "party,weapons", "the sword: the weapon switch too")
+		expect.equal(keeps("sword", true), "party,weapons,quests", "the sword: the weapon switch too")
+		-- Owner 2026-11-19 (second playthrough): "at level 4 when he appear. the quest disappears too. it should not":
+		-- the quest strip stays through his whole level 4 visit
+		for _, step in Chikin.VISITS[2] do
+			local kept = TutorialRules.chikinFocus(step, true, Chikin.FOCUS, Chikin.WAIT_STEP, Chikin.FOCUS_ALWAYS)
+			assert(kept and table.find(kept, "quests"), `{step}: the quest strip stays`)
+		end
 		expect.equal(keeps("wild", true), "party", "on his way to the portal")
 		for _, step in STEPS do
 			if step ~= Chikin.WAIT_STEP then

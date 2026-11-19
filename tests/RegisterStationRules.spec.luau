@@ -92,6 +92,41 @@ return {
 		end
 	end,
 
+	-- Owner 2026-11-19 (second playthrough): "make the card machine unusable when it's not supposed to be used": its
+	-- keys only work while a customer pays by card; any other time its face is asleep
+	["the card machine is awake only for a card payment"] = function()
+		expect.equal(RegisterStationRules.keypadOn("card"), true)
+		for _, situation in { "off", "idle", "scan", "charge", "offer", "cash" } do
+			expect.equal(RegisterStationRules.keypadOn(situation :: any), false, `{situation}: asleep`)
+		end
+		assert(#RegisterStation.SCREEN.keypadOff > 0 and #RegisterStation.SCREEN.keypadOffHint > 0, "its sleeping face says so")
+	end,
+
+	-- Owner 2026-11-19 (second playthrough): "add money model on the cashier for moneys at the table": the change you
+	-- lay on the counter is the drawer's own notes and coins (their pictures), big enough to read and to tap
+	["money on the counter is the drawer's notes and coins: note-shaped, apart, clear of the counter's decor"] = function()
+		local Town = require("../src/shared/Config/Town")
+		local given = RegisterStation.GIVEN
+		local bill, coin = given.billSize, given.coinSize
+		local aspect = bill[1] / bill[3]
+		assert(math.abs(aspect - RegisterStation.NOTE_ASPECT) < 0.03, "a note keeps its picture's shape")
+		assert(bill[3] >= 0.55, "a note big enough to read from the cashier's eye")
+		assert(coin[2] >= 0.28 and coin[2] == coin[3], "a round coin big enough to tap")
+		assert(given.step >= bill[1] + 0.03, "notes side by side don't overlap")
+		local last = RegisterStationRules.givenSpot(given, given.perRow, given.perRow)
+		local decor = Town.COUNTER.DECOR
+		assert(last.x + bill[1] / 2 <= decor.x - decor.width / 2, "a full row stops before the counter's decor")
+		local register = Town.COUNTER.REGISTER
+		local first = RegisterStationRules.givenSpot(given, 1, given.perRow)
+		assert(first.x - bill[1] / 2 >= register.x + register.width / 2, "and starts past the register")
+		local second = RegisterStationRules.givenSpot(given, given.perRow + 1, given.perRow)
+		assert(first.z - second.z >= bill[3] + 0.02, "a second row clear of the first")
+		for _, cents in Payment.DRAWER do
+			assert(RegisterStation.MONEY_IMAGES[cents], `{cents}: its picture`)
+			assert(RegisterStation.MONEY_COLORS[cents], `{cents}: its colour`)
+		end
+	end,
+
 	["money given lines up on the counter, and wraps to a second row"] = function()
 		local given = RegisterStation.GIVEN
 		local first = RegisterStationRules.givenSpot(given, 1, 8)

@@ -27,4 +27,9 @@ function ChikinRules.arrivesWithCinematic(cfg: { STEPS: { string } }, step: stri
 	return step ~= "" and step == cfg.STEPS[1]
 end
 
+-- Whether his line at `step` has a "Got it!" that sends him off for good (Config/Chikin GOT_IT_STEPS)
+function ChikinRules.gotIt(cfg: { GOT_IT_STEPS: { [string]: boolean } }, step: string?): boolean
+	return step ~= nil and cfg.GOT_IT_STEPS[step] == true
+end
+
 return ChikinRules

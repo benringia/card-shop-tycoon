@@ -4,7 +4,9 @@
 -- the card's face in a cotton candy bubble with two small dots trailing down to the head. A kid who ripped a pack at the
 -- counter (attribute Pulled = "<cardId>|<grade>|<foil 0/1>") shows their best card growing in over their head for
 -- everyone nearby: Very Rare or better with a cheer and the pack opening's hit sound, a Legendary with a light beam
--- (Config/Customers REVEAL). Looks only; the server decides everything.
+-- (Config/Customers REVEAL). And what customers say (owner 2026-11-19: "add personalities for the customers like chat
+-- bubbles"): a speech bubble over one when its Say attribute changes (Config/CustomerChat, Util/ChatRules), in its
+-- type's voice. Looks only; the server decides everything.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
@@ -13,10 +15,14 @@ local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local CreamTheme = require(Config:WaitForChild("CreamTheme"))
 local Customers = require(Config:WaitForChild("Customers"))
+local CustomerChat = require(Config:WaitForChild("CustomerChat"))
+local ChatRules = require(Shared:WaitForChild("Util"):WaitForChild("ChatRules"))
 local RevealSounds = require(Config:WaitForChild("RevealSounds"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
-local CardFace = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("CardFace"))
+local ClientUtil = ((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util")
+local CardFace = require(ClientUtil:WaitForChild("CardFace"))
+local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 
 local CustomerController = {}
 
@@ -199,10 +205,106 @@ local function showPull(model: Model)
 	end)
 end
 
+-- What the customer says now (its Say attribute): a white speech bubble with a little tail, popping in over the head
+-- (above the mood icon; above a collector's card or a kid's pull) and fading after CustomerChat.SECONDS
+local CHAT_INK = Color3.fromRGB(80, 60, 90)
+
+local function showChat(model: Model)
+	local said = ChatRules.decode(model:GetAttribute("Say"))
+	local head = model:FindFirstChild("Head")
+	if not said or not head or not head:IsA("BasePart") then
+		return
+	end
+	local kind = model:GetAttribute("CustomerType")
+	local line = ChatRules.text(CustomerChat, if typeof(kind) == "string" then kind else "plain", said.moment, said.index, said.word)
+	if not line then
+		return
+	end
+	local old = head:FindFirstChild("ChatBubble")
+	if old then
+		old:Destroy()
+	end
+	local high = head:FindFirstChild("WantedBubble") ~= nil or head:FindFirstChild("PullReveal") ~= nil
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "ChatBubble"
+	gui.Size = UDim2.fromOffset(CustomerChat.WIDTH, CustomerChat.HEIGHT + 14)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, if high then CustomerChat.OFFSET_Y_COLLECTOR else CustomerChat.OFFSET_Y, 0)
+	gui.MaxDistance = CustomerChat.MAX_DISTANCE
+	gui.LightInfluence = 0
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+	local holder = Instance.new("Frame")
+	holder.BackgroundTransparency = 1
+	holder.AnchorPoint = Vector2.new(0.5, 0.5)
+	holder.Position = UDim2.fromScale(0.5, 0.5)
+	holder.Size = UDim2.fromScale(1, 1)
+	holder.Parent = gui
+	local scale = Instance.new("UIScale")
+	scale.Scale = 0.3
+	scale.Parent = holder
+
+	-- the tail: a small square on its corner under the bubble
+	local tail = Instance.new("Frame")
+	tail.AnchorPoint = Vector2.new(0.5, 0.5)
+	tail.Position = UDim2.new(0.5, 0, 0, CustomerChat.HEIGHT - 2)
+	tail.Size = UDim2.fromOffset(18, 18)
+	tail.Rotation = 45
+	tail.BackgroundColor3 = Color3.new(1, 1, 1)
+	tail.BorderSizePixel = 0
+	tail.Parent = holder
+	local tailStroke = Instance.new("UIStroke")
+	tailStroke.Color = rgb(CreamTheme.rowEdge)
+	tailStroke.Thickness = 2
+	tailStroke.Parent = tail
+
+	local bubble = Instance.new("Frame")
+	bubble.AnchorPoint = Vector2.new(0.5, 0)
+	bubble.Position = UDim2.fromScale(0.5, 0)
+	bubble.Size = UDim2.fromOffset(0, CustomerChat.HEIGHT)
+	bubble.AutomaticSize = Enum.AutomaticSize.X
+	bubble.BackgroundColor3 = Color3.new(1, 1, 1)
+	bubble.Parent = holder
+	round(bubble, UDim.new(0, 16))
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = rgb(CreamTheme.rowEdge)
+	stroke.Thickness = 2
+	stroke.Parent = bubble
+	local padding = Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0, 14)
+	padding.PaddingRight = UDim.new(0, 14)
+	padding.Parent = bubble
+	-- the tail's top half hides behind this patch, so only its point shows under the bubble
+	local text = UIKit.label(bubble, line, Enum.Font.FredokaOne, 19, CHAT_INK)
+	text.BackgroundColor3 = Color3.new(1, 1, 1)
+	text.BackgroundTransparency = 0
+	text.BorderSizePixel = 0
+	text.AutomaticSize = Enum.AutomaticSize.X
+	text.Size = UDim2.new(0, 0, 1, -4)
+	text.Position = UDim2.fromOffset(0, 2)
+	text.TextXAlignment = Enum.TextXAlignment.Center
+	text.TextWrapped = false
+	gui.Parent = head
+
+	TweenService:Create(scale, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	task.delay(CustomerChat.SECONDS, function()
+		if not gui.Parent then
+			return
+		end
+		local shrink = TweenService:Create(scale, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 0 })
+		shrink.Completed:Once(function()
+			gui:Destroy()
+		end)
+		shrink:Play()
+	end)
+end
+
 local function watch(model: Instance)
 	if not model:IsA("Model") then
 		return
 	end
+	model:GetAttributeChangedSignal("Say"):Connect(function()
+		showChat(model)
+	end)
 	if model:GetAttribute("WantedCard") ~= nil then
 		task.spawn(showWanted, model)
 	end

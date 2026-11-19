@@ -39,8 +39,8 @@ local Spotlight = require((script.Parent :: Instance):WaitForChild("Spotlight"))
 local FightFx = {}
 
 -- grade: its card copy's (the attack grows with it); mine: the local player's creature
-export type View = { root: BasePart, element: string, height: number, grade: string?, mine: boolean }
-type Tier = { scale: number, sparks: number, extra: number, shake: number }
+export type View = { root: BasePart, element: string, height: number, grade: string?, rarity: string?, mine: boolean }
+type Tier = { scale: number, sparks: number, extra: number, shake: number, flair: number }
 export type Resolve = {
 	marker: (id: string) -> BasePart?, -- a fighter's marker by sim id
 	creature: (marker: BasePart) -> View?, -- the creature drawn on it (nil: a monster or boss, not handled here)
@@ -137,8 +137,9 @@ function FightFx.new(resolve: Resolve): Dispatcher
 
 	-- A creature's basic attack look at its grade (AttackFx GRADE), toned down in a boss fight so the boss and its hits
 	-- read through it (AttackFx BOSS_TONE, owner 2026-11-18)
-	local function tierOf(grade: string?): Tier
-		return FightFxRules.toned(FightFxRules.tier(grade, AttackFx), Extras.bossFight(), AttackFx.BOSS_TONE)
+	-- ...and at its card's rarity (AttackFx RARITY, owner 2026-11-19: a Common's small, a Legendary's large with flair)
+	local function tierOf(view: View): Tier
+		return FightFxRules.toned(FightFxRules.look(view.grade, view.rarity, AttackFx), Extras.bossFight(), AttackFx.BOSS_TONE)
 	end
 
 	local function hitSound(element: string, at: Vector3)
@@ -160,6 +161,14 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		hitSound(view.element, at)
 		if view.mine then
 			ScreenFx.shakeAt((if finisher or tier.extra >= 2 then AttackFx.SHAKE.creatureFinisher else AttackFx.SHAKE.creatureHit) * tier.shake, at)
+		end
+		-- its rarity's flair: an Epic's pale second burst, a Legendary's ring on the ground too (one at most in a boss fight)
+		if tier.flair >= 1 then
+			local flair = AttackFx.FLAIR
+			ElementFx.burst(at, tint:Lerp(Color3.new(1, 1, 1), flair.white), s * flair.burst * foe)
+			if tier.flair >= 2 then
+				ElementFx.ring(at - Vector3.new(0, 2, 0), tint, flair.ring.radius * s, flair.ring.seconds)
+			end
 		end
 		if tier.extra < 2 then
 			return
@@ -187,7 +196,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		if not marker or not view or not kind or not FightFxRules.budget(active, Extras.enabled(), AttackFx) or Spotlight.active() then
 			return
 		end
-		local tier = tierOf(view.grade)
+		local tier = tierOf(view)
 		local s = tier.scale
 		local lead = math.max(0, tonumber(event.seconds) or 0)
 		local tint = color(AttackFx.ELEMENT[view.element].color)
@@ -229,7 +238,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 				local from = view.root.Position + Vector3.new(0, view.height * 0.5, 0)
 				local flight = schedule.impactIn - schedule.releaseIn
 				local ember = view.element == "Ember"
-				local opts = { scale = s, flames = ember, rings = if view.element == "Tide" then 1 + tier.extra else 0, sparkle = tier.extra >= 2 }
+				local opts = { scale = s, flames = ember, rings = if view.element == "Tide" then 1 + tier.extra else 0, sparkle = tier.extra >= 2 or tier.flair >= 1 }
 				-- Ember throws one more fireball a grade A, two more at S, a little after and to the sides, all landing
 				-- together; Bloom always a volley of three smaller thorns (FightFxRules.shots)
 				local shots = FightFxRules.shots(view.element, tier.extra, AttackFx)
@@ -385,7 +394,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		local tint = color(AttackFx.ELEMENT[view.element].color)
 		local spot = targetPosition(event.to, view.root.Position)
 		resolve.pose(marker, "strike")
-		local tier = tierOf(view.grade)
+		local tier = tierOf(view)
 		hitPicture(view.element, spot, 0.7 * tier.scale * foeScale(event.to), tint, 1)
 		hitSound(view.element, spot)
 	end

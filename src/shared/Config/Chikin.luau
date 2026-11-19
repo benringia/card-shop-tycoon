@@ -60,11 +60,18 @@ return {
 	-- HUD; the peeking Pish waits till the tour is over (Util/TutorialRules.chikinFocus)
 	FOCUS = {
 		summon = { "party" },
-		sword = { "weapons" },
+		-- his level 4 visit keeps the quest strip (owner 2026-11-19: "at level 4 when he appear. the quest disappears
+		-- too. it should not")
+		sword = { "weapons", "quests" },
+		wild2 = { "quests" },
+		boss = { "quests" },
 	} :: { [string]: { string } },
 	-- ...and the party bar stays through every step (owner 2026-11-20: "it should appear on the first time the player
 	-- got a pet and then never disappear"; it used to go whenever he led, so it vanished when he came back at level 4)
 	FOCUS_ALWAYS = { "party" },
+	-- Steps whose waiting line has a "Got it!" that sends him off for good (owner 2026-11-19: "add a GOT IT for chikin
+	-- too"): his level 4 visit's walk to the Wild, like Pish's lessons. His first visit keeps its Skip (ChikinRules.gotIt)
+	GOT_IT_STEPS = { wild2 = true } :: { [string]: boolean },
 	HEIGHT = 2.6, -- studs: Pish's size
 	-- Pish's licensed barks (Config/Pish SOUNDS), pitched up a little: a smaller, higher dog
 	SOUNDS = {

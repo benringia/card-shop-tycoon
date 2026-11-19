@@ -4,6 +4,9 @@
 -- a bargain hunter haggles (OfferService, spec
 -- 2026-11-06-customers-design, mockup option A): Buy / Deal, Counter, No, and the counter's view: - / + steps, quick
 -- chips, your price and their face (from the server's edges, so the exact price they'd take never reaches here).
+-- Its words are Util/OfferWords' (owner 2026-11-19: "improve bargainers offer UI to be immersive and easily
+-- understandable"): the customer's ask in a speech bubble, your price beside theirs, what the difference means, a big
+-- Deal button with the price on it, and what No does.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
@@ -14,6 +17,7 @@ local Cards = require(Config:WaitForChild("Cards"))
 local CustomerConfig = require(Config:WaitForChild("Customers"))
 local BellConfig = require(Config:WaitForChild("RegisterBell"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
+local OfferWords = require(Shared:WaitForChild("Util"):WaitForChild("OfferWords"))
 local RegisterBell = require(Shared:WaitForChild("Util"):WaitForChild("RegisterBell"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
@@ -52,9 +56,20 @@ local cardHolder: Frame
 local cardFace: Frame
 local cardStroke: UIStroke
 local nameLabel: TextLabel
-local priceLabel: TextLabel
+local quoteLabel: TextLabel
+local quoteHolder: Frame
+local leftLabel: TextLabel
+local leftValue: TextLabel
+local rightLabel: TextLabel
+local rightValue: TextLabel
+local deltaLabel: TextLabel
+local footLabel: TextLabel
 local mainHint: TextLabel
 local yesButton: TextButton
+local counterButton: TextButton
+local noButton: TextButton
+local sendButton: TextButton
+local palette: UIKit.Palette
 local counterPriceLabel: TextLabel
 local faceLabel: TextLabel
 local counterHint: TextLabel
@@ -63,12 +78,18 @@ local chipButtons: { TextButton } = {}
 local current: Offer? = nil -- the open offer, nil when there's none
 local counterPrice = 0
 
--- Middle-right on bigger screens; on phones below the cash row and left of the jump button
+-- Middle-right on bigger screens; on phones below the cash row and left of the jump button; on a short window at the
+-- top right, clear of the cash in the corner
 local function placeOfferPanel()
 	local look = CustomerConfig.PANEL
+	local screen = offerPanel.Parent
+	local short = screen and screen:IsA("LayerCollector") and screen.AbsoluteSize.Y < look.shortScreen
 	if UIKit.isPhone() then
 		offerPanel.AnchorPoint = Vector2.new(1, 0)
 		offerPanel.Position = UDim2.new(1, -look.phoneRight, 0, look.phoneTop)
+	elseif short then
+		offerPanel.AnchorPoint = Vector2.new(1, 0)
+		offerPanel.Position = UDim2.new(1, -12, 0, look.phoneTop)
 	else
 		offerPanel.AnchorPoint = Vector2.new(1, 0.5)
 		offerPanel.Position = UDim2.new(1, -12, 0.5, look.topOffset)
@@ -99,6 +120,21 @@ local function moodFor(offer: Offer, price: number): string
 	return if price <= edges.sure + 1e-9 then "sure" elseif price <= edges.maybe + 1e-9 then "maybe" else "no"
 end
 
+-- The offer as Util/OfferWords reads it
+local function wordsOf(offer: Offer): OfferWords.Offer
+	local card = offer.card
+	local info = if card then Cards.ById[card.cardId] else nil
+	return {
+		kind = offer.kind,
+		cardName = if info then info.name else nil,
+		asking = offer.asking,
+		worth = offer.worth,
+		offer = offer.offer,
+		total = offer.total,
+		triesLeft = offer.triesLeft,
+	}
+end
+
 local function setCounterPrice(price: number)
 	local offer = current
 	if not offer then
@@ -107,14 +143,12 @@ local function setCounterPrice(price: number)
 	counterPrice = math.clamp(cents(price), offer.range[1], offer.range[2])
 	counterPriceLabel.Text = money(counterPrice)
 	faceLabel.Text = CustomerConfig.FACES[moodFor(offer, counterPrice)]
-end
-
--- The hint under the price: a kid who turned a counter down gives you one more go
-local function hintFor(offer: Offer): string
-	if offer.kind == "kid" and offer.triesLeft < CustomerConfig.OFFER.retries + 1 then
-		return if offer.triesLeft == 1 then "They said no. One more try!" else ""
-	end
-	return ""
+	-- the button says the price it sends; the hint what a wrong one costs (a bargain hunter: one try)
+	local words = OfferWords.counter(CustomerConfig.OFFER_WORDS, wordsOf(offer), counterPrice, CustomerConfig.OFFER.retries)
+	counterTitle.Text = words.title
+	sendButton.Text = words.send
+	counterHint.Text = words.hint
+	counterHint.TextColor3 = if words.warn then palette.bad else palette.inkSoft
 end
 
 local function showView(counter: boolean)
@@ -124,34 +158,42 @@ end
 
 local function render(offer: Offer)
 	local card = offer.card
+	local words = OfferWords.main(CustomerConfig.OFFER_WORDS, wordsOf(offer))
 	if offer.kind == "kid" and card then
 		local info = Cards.ById[card.cardId]
-		titleLabel.Text = "A kid wants to sell!"
 		cardHolder.Visible = true
 		CardFace.render(cardFace, cardStroke, info, card.foil, false, { level = 1, stars = BeastRules.START_STARS, grade = card.grade })
 		nameLabel.Visible = true
 		nameLabel.Text = `{info.name} · {info.rarity} · {BeastRules.describeGrade(card.grade)}`
-		priceLabel.Text = `{money(offer.asking or 0)} (worth {money(offer.worth or 0)})`
-		yesButton.Text = "Buy"
 	else
-		local total = offer.total or 0
-		local off = if total > 0 then math.round((1 - (offer.offer or 0) / total) * 100) else 0
-		titleLabel.Text = "Bargain hunter"
 		cardHolder.Visible = false
 		nameLabel.Visible = false
-		priceLabel.Text = `Offers {money(offer.offer or 0)} for {money(total)} (-{off}%)`
-		yesButton.Text = "Deal"
 	end
+	-- a phone's short screen: a kid's panel (it has their card too) drops the lines the card and the buttons already say
+	local compact = UIKit.isPhone() and offer.kind == "kid"
+	quoteHolder.Visible = not compact
+	footLabel.Visible = not compact
+	nameLabel.Visible = nameLabel.Visible and not compact
+	titleLabel.Text = words.title
+	quoteLabel.Text = words.quote
+	leftLabel.Text = words.leftLabel
+	leftValue.Text = words.leftValue
+	rightLabel.Text = words.rightLabel
+	rightValue.Text = words.rightValue
+	deltaLabel.Text = words.delta
+	deltaLabel.TextColor3 = if words.tone == "good" then palette.good elseif words.tone == "bad" then palette.bad else palette.inkSoft
+	yesButton.Text = words.yes
+	counterButton.Text = words.counter
+	noButton.Text = words.no
+	footLabel.Text = words.foot
 	local chipNames = if offer.kind == "kid" then { "-20%", "-15%", "-10%", "Worth" } else { "-20%", "-15%", "-10%", "Full" }
 	for index, chip in chipButtons do
 		chip.Text = chipNames[index] or ""
 	end
-	counterTitle.Text = if offer.kind == "kid" then "Your offer" else "Your price"
-	local hint = hintFor(offer)
-	mainHint.Text = hint
-	mainHint.Visible = hint ~= ""
-	counterHint.Text = hint
-	counterHint.Visible = hint ~= ""
+	-- a kid who turned a counter down gives one more go: said on the first view too
+	local refused = offer.kind == "kid" and offer.triesLeft < CustomerConfig.OFFER.retries + 1 and offer.triesLeft == 1
+	mainHint.Text = if refused then CustomerConfig.OFFER_WORDS.kid.lastTry else ""
+	mainHint.Visible = refused
 end
 
 local function onOffer(payload: unknown)
@@ -255,13 +297,66 @@ local function buildMainView(parent: Instance, colors: UIKit.Palette)
 	cardStroke.Parent = cardFace
 
 	nameLabel = text(mainView, 3, 18, UIKit.textSize("small"), colors.inkSoft)
-	priceLabel = text(mainView, 4, 22, UIKit.textSize("body"), colors.ink)
-	mainHint = text(mainView, 5, 18, UIKit.textSize("small"), colors.bad)
-	local buttons = buttonRow(mainView, 6, {
-		{ text = "Buy", color = UIKit.Colors.Success, onTap = function()
+
+	-- what they say, in a speech bubble (a white row with a little tail up toward the title)
+	local quote = holder(mainView, 4, look.quoteHeight)
+	quoteHolder = quote
+	quote.BackgroundTransparency = 0
+	quote.BackgroundColor3 = colors.row
+	UIKit.corner(quote, 14)
+	local quoteEdge = Instance.new("UIStroke")
+	quoteEdge.Color = colors.rowEdge
+	quoteEdge.Thickness = 2
+	quoteEdge.Parent = quote
+	quoteLabel = UIKit.label(quote, "", Enum.Font.FredokaOne, UIKit.textSize("name"), colors.ink)
+	quoteLabel.TextXAlignment = Enum.TextXAlignment.Center
+	quoteLabel.Size = UDim2.new(1, -12, 1, 0)
+	quoteLabel.Position = UDim2.fromOffset(6, 0)
+	quoteLabel.TextScaled = true
+	local quoteLimit = Instance.new("UITextSizeConstraint")
+	quoteLimit.MaxTextSize = UIKit.textSize("name")
+	quoteLimit.MinTextSize = 11
+	quoteLimit.Parent = quoteLabel
+
+	-- your price beside theirs: two boxes, theirs the one that stands out
+	local compare = holder(mainView, 5, look.boxHeight)
+	list(compare, look.gap, true)
+	local boxWidth = math.floor((look.width - look.padding * 2 - look.gap) / 2)
+	local function box(order: number, strong: boolean): (TextLabel, TextLabel)
+		local frame = Instance.new("Frame")
+		frame.Size = UDim2.fromOffset(boxWidth, look.boxHeight)
+		frame.BackgroundColor3 = colors.row
+		frame.LayoutOrder = order
+		frame.Parent = compare
+		UIKit.corner(frame, 12)
+		local edge = Instance.new("UIStroke")
+		edge.Color = if strong then colors.power else colors.rowEdge
+		edge.Thickness = if strong then 3 else 2
+		edge.Parent = frame
+		local caption = UIKit.label(frame, "", Enum.Font.GothamBold, UIKit.textSize("small"), colors.inkSoft)
+		caption.TextXAlignment = Enum.TextXAlignment.Center
+		caption.Size = UDim2.new(1, 0, 0, 18)
+		caption.Position = UDim2.fromOffset(0, 5)
+		local value = UIKit.label(frame, "", Enum.Font.FredokaOne, UIKit.textSize("title"), colors.ink)
+		value.TextXAlignment = Enum.TextXAlignment.Center
+		value.Size = UDim2.new(1, 0, 0, 30)
+		value.Position = UDim2.fromOffset(0, 23)
+		return caption, value
+	end
+	leftLabel, leftValue = box(1, false)
+	rightLabel, rightValue = box(2, true)
+
+	deltaLabel = text(mainView, 6, 18, UIKit.textSize("small"), colors.bad)
+	mainHint = text(mainView, 7, 18, UIKit.textSize("small"), colors.bad)
+	-- the yes on its own row, as wide as the panel, its price on it
+	yesButton = buttonRow(mainView, 8, {
+		{ text = "", color = UIKit.Colors.Success, onTap = function()
 			send("accept")
 		end },
-		{ text = "Counter", color = UIKit.Colors.Secondary, onTap = function()
+	})[1]
+	yesButton.TextSize = UIKit.textSize("name") -- the one to read first
+	local buttons = buttonRow(mainView, 9, {
+		{ text = "", color = UIKit.Colors.Secondary, onTap = function()
 			local offer = current
 			if offer then
 				-- Start from their price (a kid's asking, a bargain hunter's offer)
@@ -269,11 +364,14 @@ local function buildMainView(parent: Instance, colors: UIKit.Palette)
 				showView(true)
 			end
 		end },
-		{ text = "No", color = UIKit.Colors.Danger, onTap = function()
+		{ text = "", color = UIKit.Colors.Danger, onTap = function()
 			send("decline")
 		end },
 	})
-	yesButton = buttons[1]
+	counterButton, noButton = buttons[1], buttons[2]
+	-- what No does, so nobody fears pressing it
+	footLabel = text(mainView, 10, 30, UIKit.textSize("small"), colors.inkSoft)
+	footLabel.TextWrapped = true
 end
 
 local function buildCounterView(parent: Instance, colors: UIKit.Palette)
@@ -331,10 +429,13 @@ local function buildCounterView(parent: Instance, colors: UIKit.Palette)
 
 	faceLabel = text(counterView, 4, 24, UIKit.textSize("body"), colors.ink)
 	counterHint = text(counterView, 5, 18, UIKit.textSize("small"), colors.bad)
-	buttonRow(counterView, 6, {
-		{ text = "Offer", color = UIKit.Colors.Success, onTap = function()
+	sendButton = buttonRow(counterView, 6, {
+		{ text = "", color = UIKit.Colors.Success, onTap = function()
 			send("counter", counterPrice)
 		end },
+	})[1]
+	sendButton.TextSize = UIKit.textSize("name")
+	buttonRow(counterView, 7, {
 		{ text = "Back", color = UIKit.Colors.Secondary, onTap = function()
 			showView(false)
 		end },
@@ -351,6 +452,7 @@ local function buildOfferPanel(parent: Instance)
 	offerPanel.Parent = parent
 	UIKit.creamWindow(offerPanel)
 	local colors = UIKit.colorsFor(offerPanel)
+	palette = colors
 
 	local content = Instance.new("Frame")
 	content.Name = "Content"

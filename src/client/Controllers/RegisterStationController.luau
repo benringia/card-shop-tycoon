@@ -46,7 +46,10 @@ local GIVEN = RegisterStation.GIVEN
 -- 4 across and 3 down: each key taller, so it's a thumb's size on a phone (owner 2026-11-16: "buttons are too small
 -- for phone")
 local KEYS = { "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", ".", "del" }
-local GIVEN_PER_ROW = 5
+local GIVEN_PER_ROW = GIVEN.perRow
+-- a Top-face picture is drawn with its top edge along the part's -X: plates are turned a quarter to read upright from
+-- the cashier's side (as the drawer's, server Util/RegisterBuild)
+local QUARTER = CFrame.Angles(0, math.rad(-90), 0)
 local CHECK_SECONDS = 0.25
 local ERROR_SECONDS = 2.5
 local FIRST_SALE_STEP = "ringUp" -- Pish's first sale: the helper glow shows at once
@@ -80,6 +83,7 @@ local screen: RegisterScreen.Screen
 local keypadGui: SurfaceGui
 local keypadScreen: TextLabel
 local keypadLabel: TextLabel
+local keypadSleep: Frame -- the card machine's sleeping face, over its keys while nobody pays by card
 local leaveButton: TextButton
 local autoGiveAt: number? = nil -- exact change gives itself then (AUTO_GIVE_SECONDS)
 local helper: Highlight
@@ -206,6 +210,9 @@ local function buildKeypad()
 		button.Parent = grid
 		UIKit.corner(button, 12)
 		button.Activated:Connect(function()
+			if not RegisterStationRules.keypadOn(situation()) then
+				return -- asleep: no card payment to type
+			end
 			typed = PaymentRules.typeKey(typed, key, Payment.MAX_TYPED)
 			keypadScreen.Text = if typed == "" then "$0.00" else "$" .. typed
 		end)
@@ -225,7 +232,7 @@ local function buildKeypad()
 	UIKit.corner(ok, 12)
 	ok.Activated:Connect(function()
 		local now = request
-		if not now then
+		if not now or not RegisterStationRules.keypadOn(situation()) then
 			return
 		end
 		-- a wrong total says so at once; a right one goes to the server, which checks it again
@@ -236,6 +243,37 @@ local function buildKeypad()
 			showError(LINES.wrongCard)
 		end
 	end)
+
+	-- Its sleeping face (owner 2026-11-19: "make the card machine unusable when it's not supposed to be used"): over the
+	-- keys whenever nobody pays by card, taking their taps
+	keypadSleep = Instance.new("Frame")
+	keypadSleep.Name = "Asleep"
+	keypadSleep.Active = true
+	keypadSleep.BackgroundColor3 = Color3.fromRGB(14, 16, 22)
+	keypadSleep.Size = UDim2.fromScale(1, 1)
+	keypadSleep.ZIndex = 5
+	keypadSleep.Parent = keypadGui
+	local face = Instance.new("TextLabel")
+	face.BackgroundTransparency = 1
+	face.Position = UDim2.fromScale(0.1, 0.22)
+	face.Size = UDim2.fromScale(0.8, 0.3)
+	face.Font = Enum.Font.FredokaOne
+	face.TextScaled = true
+	face.TextColor3 = rgb(C.soft)
+	face.Text = WORDS.keypadOff
+	face.ZIndex = 6
+	face.Parent = keypadSleep
+	local hint = Instance.new("TextLabel")
+	hint.BackgroundTransparency = 1
+	hint.Position = UDim2.fromScale(0.08, 0.56)
+	hint.Size = UDim2.fromScale(0.84, 0.2)
+	hint.Font = Enum.Font.GothamBold
+	hint.TextScaled = true
+	hint.TextWrapped = true
+	hint.TextColor3 = rgb(C.off)
+	hint.Text = WORDS.keypadOffHint
+	hint.ZIndex = 6
+	hint.Parent = keypadSleep
 end
 
 local function giveChange()
@@ -278,28 +316,65 @@ local function layOutGiven()
 	if not top then
 		return
 	end
+	-- each piece is the drawer's own note or coin (owner 2026-11-19: "add money model on the cashier for moneys at the
+	-- table"): its body in its colour and its picture on top, a touch askew like money laid down by hand
 	for index, cents in pieces do
 		local spot = RegisterStationRules.givenSpot(GIVEN, index, GIVEN_PER_ROW)
 		local bill = cents >= 100
 		local size = if bill then GIVEN.billSize else GIVEN.coinSize
+		local twist = CFrame.Angles(0, math.rad(((index * 37) % 9) - 4), 0)
 		local part = Instance.new("Part")
 		part.Name = "GivenMoney"
 		part.Anchored = true
 		part.CanCollide = false
 		part.CanTouch = false
 		part.CastShadow = false
-		part.Size = Vector3.new(size[1], size[2], size[3])
+		part.TopSurface = Enum.SurfaceType.Smooth
+		part.BottomSurface = Enum.SurfaceType.Smooth
 		part.Color = rgb(RegisterStation.MONEY_COLORS[cents])
+		local thickness = if bill then size[2] else size[1]
+		local flat = top * CFrame.new(spot.x, thickness / 2 + 0.01, spot.z) * twist
+		local faceSize: Vector3
 		if bill then
-			part.CFrame = top * CFrame.new(spot.x, size[2] / 2 + 0.01, spot.z)
+			part.Material = Enum.Material.SmoothPlastic
+			part.Size = Vector3.new(size[1], size[2], size[3])
+			part.CFrame = flat
+			faceSize = Vector3.new(size[3], 0.004, size[1])
 		else
 			part.Shape = Enum.PartType.Cylinder
 			part.Material = Enum.Material.Metal
-			part.CFrame = top * CFrame.new(spot.x, size[1] / 2 + 0.01, spot.z) * CFrame.Angles(0, 0, math.rad(90))
+			part.Size = Vector3.new(size[1], size[2], size[3])
+			part.CFrame = flat * CFrame.Angles(0, 0, math.rad(90))
+			faceSize = Vector3.new(size[2], 0.004, size[3])
 		end
 		part:SetAttribute("GivenIndex", index)
 		part.Parent = workspace
 		table.insert(givenParts, part)
+		local image = RegisterStation.MONEY_IMAGES[cents]
+		if image then
+			local plate = Instance.new("Part")
+			plate.Name = "GivenMoneyFace"
+			plate.Anchored = true
+			plate.CanCollide = false
+			plate.CanTouch = false
+			plate.CanQuery = false
+			plate.CastShadow = false
+			plate.Transparency = 1
+			plate.Size = faceSize
+			plate.CFrame = flat * CFrame.new(0, thickness / 2 + 0.003, 0) * QUARTER
+			plate.Parent = part
+			local gui = Instance.new("SurfaceGui")
+			gui.Face = Enum.NormalId.Top
+			gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+			gui.PixelsPerStud = 400
+			gui.LightInfluence = 0.4
+			gui.Parent = plate
+			local face = Instance.new("ImageLabel")
+			face.BackgroundTransparency = 1
+			face.Size = UDim2.fromScale(1, 1)
+			face.Image = image
+			face.Parent = gui
+		end
 	end
 end
 
@@ -411,6 +486,13 @@ local function refresh()
 	-- the card machine says what to type
 	keypadLabel.Text = if now == "card" and paying then string.format(WORDS.keypadType, PaymentRules.money(paying.total)) else WORDS.keypadLabel
 	keypadLabel.TextColor3 = rgb(if now == "card" then C.now else C.soft)
+	-- asleep unless someone pays by card: its keys covered, whatever was typed gone
+	local awake = RegisterStationRules.keypadOn(now)
+	keypadSleep.Visible = not awake
+	if not awake and typed ~= "" then
+		typed = ""
+		keypadScreen.Text = "$0.00"
+	end
 	-- exact change gives itself after a beat ("Exact!" on the screen first)
 	if now == "cash" and paying and giving() == change and change > 0 then
 		if not autoGiveAt then

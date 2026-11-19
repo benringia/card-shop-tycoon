@@ -79,11 +79,19 @@ function RegisterStationRules.clock(clockTime: number): string
 	return string.format("%d:%02d %s", shown, minute, if hour < 12 then "AM" else "PM")
 end
 
--- Where the nth piece of money given lands on the counter (Config/RegisterStation GIVEN), `perRow` to a row
-function RegisterStationRules.givenSpot(given: { x: number, z: number, step: number }, index: number, perRow: number): { x: number, z: number }
+-- Where the nth piece of money given lands on the counter (Config/RegisterStation GIVEN), `perRow` to a row, each row
+-- a note's length (and `rowGap`) further from the cashier
+function RegisterStationRules.givenSpot(given: { x: number, z: number, step: number, billSize: { number }?, rowGap: number? }, index: number, perRow: number): { x: number, z: number }
 	local column = (index - 1) % perRow
 	local row = (index - 1) // perRow
-	return { x = given.x + column * given.step, z = given.z - row * given.step * 1.4 }
+	local depth = if given.billSize then given.billSize[3] + (given.rowGap or 0) else given.step * 1.4
+	return { x = given.x + column * given.step, z = given.z - row * depth }
+end
+
+-- Whether the card machine's keys work (owner 2026-11-19: "make the card machine unusable when it's not supposed to be
+-- used"): only while a customer pays by card; asleep any other time
+function RegisterStationRules.keypadOn(situation: Situation): boolean
+	return situation == "card"
 end
 
 -- How many coins fly into the cash pill for a sale of `amount` dollars (Config/RegisterStation SALE_FX coins): the

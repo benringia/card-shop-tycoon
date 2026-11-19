@@ -168,6 +168,7 @@ local function buyFromKid(offer: Offer, price: number)
 	local name = `{if card.foil then "foil " else ""}{Cards.ById[card.cardId].name}`
 	notify(owner, string.format("You bought %s (%s) for $%.2f!", name, BeastRules.describeGrade(card.grade), price), false)
 	CustomerService.ShowBubble(offer.customer, CustomerConfig.BUBBLE_HAPPY)
+	CustomerService.Say(offer.customer, "sold")
 	close(offer)
 end
 
@@ -203,6 +204,9 @@ local function onKidSale(customer: Customer, bought: { [string]: number }, byWor
 	local line = OfferRules.pullLine(CustomerConfig, pulled.rarity, rarityOrder(pull), pulled.name, pull.foil)
 	if line and owner.Parent then
 		Remotes.Notify:FireClient(owner, line, false)
+	end
+	if line then
+		CustomerService.Say(customer, "pull") -- a great pull: they shout about it
 	end
 
 	local plot = customer.plot
@@ -256,6 +260,7 @@ local function onKidSale(customer: Customer, bought: { [string]: number }, byWor
 	task.delay(reveal, function()
 		if offers[plot] == offer then
 			send(offer)
+			CustomerService.Say(customer, "sell")
 		end
 	end)
 end
@@ -309,6 +314,7 @@ local function onHaggle(plot: Plot, customer: Customer, offerPrice: number, tota
 	}
 	open(offer)
 	send(offer)
+	CustomerService.Say(customer, "haggle", string.format("$%.2f", offerPrice)) -- they say their offer out loud
 end
 
 local function answerHaggle(offer: Offer, action: string, price: number?)
@@ -319,7 +325,10 @@ local function answerHaggle(offer: Offer, action: string, price: number?)
 		agreed = price
 	end
 	close(offer)
-	RegisterService.SettleHaggle(offer.plot, agreed)
+	if agreed then
+		CustomerService.Say(offer.customer, "deal")
+	end
+	RegisterService.SettleHaggle(offer.plot, agreed) -- no deal: CustomerService.Refuse says so
 end
 
 -- The owner's answer ----------------------------------------------------------------------------------------------

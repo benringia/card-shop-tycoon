@@ -14,6 +14,7 @@ local Config = Shared:WaitForChild("Config")
 local Chikin = require(Config:WaitForChild("Chikin"))
 local WildValleyConfig = require(Config:WaitForChild("WildValley"))
 local Bosses = require(Config:WaitForChild("Bosses"))
+local ChikinRules = require(Shared:WaitForChild("Util"):WaitForChild("ChikinRules"))
 local TutorialRules = require(Shared:WaitForChild("Util"):WaitForChild("TutorialRules"))
 local WildValley = require(Shared:WaitForChild("Util"):WaitForChild("WildValley"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -33,7 +34,7 @@ type Saved = TutorialRules.Saved
 local CombatTutorialService = {}
 
 local ACTION_COOLDOWN = 0.5 -- seconds between CombatTutorialAction requests
-local ACTIONS = { next = true, skip = true, replay = true }
+local ACTIONS = { next = true, skip = true, replay = true, gotIt = true }
 local FUNNEL = "CombatTutorial"
 
 local STEPS = Chikin.STEPS
@@ -184,6 +185,13 @@ local function onAction(player: Player, action: unknown)
 		states[player] = TutorialRules.skip(state)
 		log(function()
 			AnalyticsService:LogCustomEvent(player, "CombatTutorialSkipped", state.step)
+		end)
+		publish(player)
+	elseif action == "gotIt" and state.firstVisit == "todo" and ChikinRules.gotIt(Chikin, current) then
+		-- "Got it!" on his level 4 visit's waiting line: he's off for good (the boss is on the Bosses board)
+		states[player] = TutorialRules.skip(state)
+		log(function()
+			AnalyticsService:LogCustomEvent(player, "CombatTutorialGotIt", state.step)
 		end)
 		publish(player)
 	elseif action == "replay" and state.firstVisit ~= "todo" then

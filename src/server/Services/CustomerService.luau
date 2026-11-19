@@ -24,6 +24,8 @@ local CollectorRules = require(Shared:WaitForChild("Util"):WaitForChild("Collect
 local CustomerTypes = require(Shared:WaitForChild("Util"):WaitForChild("CustomerTypes"))
 local CustomerLook = require(Shared:WaitForChild("Util"):WaitForChild("CustomerLook"))
 local ReactionRules = require(Shared:WaitForChild("Util"):WaitForChild("ReactionRules"))
+local ChatRules = require(Shared:WaitForChild("Util"):WaitForChild("ChatRules"))
+local CustomerChat = require(Config:WaitForChild("CustomerChat"))
 local ShelfSearch = require(Shared:WaitForChild("Util"):WaitForChild("ShelfSearch"))
 local PriceRules = require(Shared:WaitForChild("Util"):WaitForChild("PriceRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -306,6 +308,58 @@ local function showBubble(customer: Customer, icon: string)
 	end)
 end
 
+-- A line in a speech bubble over the customer, in their type's voice (Config/CustomerChat, Util/ChatRules; owner
+-- 2026-11-19: "add personalities for the customers like chat bubbles"): the model's Say attribute, drawn by each client
+-- (CustomerController). Some moments are only said now and then; `word` fills a line's %s (a bargain hunter's offer)
+local chatSerial = 0
+local function say(customer: Customer, moment: string, word: string?)
+	if not customer.alive or not customer.model.Parent then
+		return
+	end
+	local index = ChatRules.pick(CustomerChat, customer.kind, moment, rng:NextNumber(), rng:NextNumber())
+	if not index then
+		return
+	end
+	chatSerial += 1
+	customer.model:SetAttribute("Say", ChatRules.encode(moment, index, chatSerial, word))
+end
+
+-- "+2 back" over a shelf stock went back to (Util/ReturnRules.popText), for a few seconds
+local function stockPop(shelf: PlacementService.PlacedShelf, units: number)
+	local text = ReturnRules.popText(units)
+	if not text or not shelf.part.Parent then
+		return
+	end
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "StockBack"
+	gui.Size = UDim2.fromOffset(150, 40)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, shelf.part.Size.Y / 2 + 1.6, 0)
+	gui.AlwaysOnTop = true
+	gui.MaxDistance = 90
+	gui.LightInfluence = 0
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundColor3 = Color3.fromRGB(47, 77, 64)
+	label.TextColor3 = Color3.fromRGB(95, 224, 164)
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.Text = text
+	label.Parent = gui
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0.5, 0)
+	corner.Parent = label
+	local padding = Instance.new("UIPadding")
+	padding.PaddingTop = UDim.new(0, 5)
+	padding.PaddingBottom = UDim.new(0, 5)
+	padding.PaddingLeft = UDim.new(0, 12)
+	padding.PaddingRight = UDim.new(0, 12)
+	padding.Parent = label
+	gui.Parent = shelf.part
+	task.delay(CustomerConfig.STOCK_BACK_SECONDS, function()
+		gui:Destroy()
+	end)
+end
+
 -- Walks along a computed path; falls back to a straight line if no path is found
 local react: (customer: Customer) -> ()
 
@@ -323,7 +377,8 @@ end
 -- Stock a customer took goes back: the shelf it came from first, then the owner's other shelves already holding
 -- that product, and what fits nowhere (the shelf sold, refilled or holding something else by now) is paid back at what
 -- it cost, with a toast (Util/ReturnRules; owner 2026-11-19: nothing a customer took may be lost)
-local function returnStock(owner: Player, shelfUid: string, productId: string, units: number)
+-- Returns the units that went back on shelves; each of those shelves shows "+N back" (stockPop)
+local function returnStock(owner: Player, shelfUid: string, productId: string, units: number): number
 	local shelves: { PlacementService.PlacedShelf } = {}
 	local home = PlacementService.GetShelf(owner, shelfUid)
 	if home then
@@ -339,7 +394,9 @@ local function returnStock(owner: Player, shelfUid: string, productId: string, u
 		if left <= 0 then
 			break
 		end
-		left -= (PlacementService.AddStock(shelf, productId, left)) -- 0 when it can't hold it any more
+		local placed = (PlacementService.AddStock(shelf, productId, left)) -- 0 when it can't hold it any more
+		left -= placed
+		stockPop(shelf, placed)
 	end
 	local refund = ReturnRules.refund(Products.ById[productId], left)
 	if left > 0 and refund > 0 and owner.Parent then
@@ -347,21 +404,29 @@ local function returnStock(owner: Player, shelfUid: string, productId: string, u
 		local product = Products.ById[productId]
 		Remotes.Notify:FireClient(owner, `No shelf had room for {left} {product.name}: you got ${string.format("%.2f", refund)} back.`, false)
 	end
+	return units - math.max(left, 0)
 end
 
 -- Puts picked items back on the shelves they came from (customer left without paying): a card in its slot, another
 -- free slot or the binder (ShowcaseService.ReturnFromCustomer); stock by returnStock. Items a customer arrived holding
 -- (`inHand`, no shelf) were never the owner's, so they just go
-local function restoreItems(customer: Customer)
+-- Returns what went back, for the owner's toast (Util/ReturnRules.backLine): each product's units and the cards
+local function restoreItems(customer: Customer): ({ { name: string, units: number } }, number)
+	local stock: { { name: string, units: number } } = {}
+	local cards = 0
 	for _, item in customer.items do
 		local card, productId = item.card, item.productId
 		if card then
 			ShowcaseService.ReturnFromCustomer(customer.owner, item.shelfUid, item.slot or 1, card)
+			cards += 1
 		elseif productId and item.shelfUid ~= "" then
-			returnStock(customer.owner, item.shelfUid, productId, item.units)
+			local placed = returnStock(customer.owner, item.shelfUid, productId, item.units)
+			local product = Products.ById[productId]
+			table.insert(stock, { name = if product then product.name else productId, units = placed })
 		end
 	end
 	table.clear(customer.items)
+	return stock, cards
 end
 
 -- Every way out of the queue goes through here so RegisterService can clear the counter straight away
@@ -542,6 +607,7 @@ local function admireCard(customer: Customer): boolean
 			end)
 			faceToward(customer, part.Position)
 			showBubble(customer, reactions.whoa)
+			say(customer, "admire")
 			fireOutcome(customer.owner, "happyMoment")
 			task.wait(reactions.seconds)
 			return true
@@ -567,6 +633,7 @@ local function petCreature(customer: Customer)
 	end
 	faceToward(customer, marker.Position)
 	showBubble(customer, reactions.heart)
+	say(customer, "pet")
 	marker:SetAttribute("PetMe", os.clock())
 	fireOutcome(customer.owner, "happyMoment")
 	task.wait(reactions.seconds)
@@ -606,6 +673,7 @@ local function shopFor(customer: Customer, productId: string, wanted: number, vi
 	-- By its type (Util/CustomerTypes): bargain hunters and big spenders still buy a band higher than the rest
 	if CustomerTypes.outOfReach(CustomerConfig, customer.kind, price, product.marketPrice, Pricing.BUY_BANDS) then
 		showBubble(customer, CustomerConfig.BUBBLE_ANNOYED)
+		say(customer, "pricey")
 		fireOutcome(customer.owner, "annoyed")
 		return true
 	end
@@ -620,6 +688,7 @@ local function shopFor(customer: Customer, productId: string, wanted: number, vi
 	local taken = PlacementService.TakeStock(shelf, units)
 	if taken > 0 then
 		table.insert(customer.items, { shelfUid = shelf.uid, productId = productId, units = taken, unitPrice = price })
+		say(customer, "found")
 	end
 	return true
 end
@@ -655,6 +724,7 @@ local function shopForCard(customer: Customer, visited: { [string]: boolean }): 
 	local band = PriceRules.getBand(displayed.price, displayedWorth(displayed))
 	if not band then
 		showBubble(customer, CustomerConfig.BUBBLE_ANNOYED)
+		say(customer, "pricey")
 		fireOutcome(customer.owner, "annoyed")
 		return true
 	end
@@ -773,6 +843,7 @@ local function searchShelves(customer: Customer, visited: { [string]: boolean })
 		task.wait(CustomerConfig.BROWSE_SECONDS)
 	end
 	showBubble(customer, CustomerConfig.BUBBLE_NO_STOCK)
+	say(customer, "missing")
 	fireOutcome(customer.owner, "noStock")
 	task.wait(CustomerConfig.BUBBLE_SECONDS)
 end
@@ -795,6 +866,7 @@ end
 local function waitInQueue(customer: Customer)
 	local state = getPlotState(customer.plot)
 	table.insert(state.queue, customer)
+	say(customer, "queue")
 	walkTo(customer, getQueuePoint(customer.plot, #state.queue))
 
 	-- Calm (Tide creature summoned): customers wait longer
@@ -842,6 +914,7 @@ local function waitInQueue(customer: Customer)
 
 	removeFromQueue(customer)
 	showBubble(customer, CustomerConfig.BUBBLE_GAVE_UP)
+	say(customer, "gaveUp")
 	fireOutcome(customer.owner, "gaveUp")
 end
 
@@ -853,6 +926,7 @@ local function run(customer: Customer)
 	if icon then
 		showBubble(customer, icon)
 	end
+	say(customer, "enter")
 	if customer.inHand then
 		-- No shelf: restoreItems finds none, so these never land on the owner's shelves
 		for productId, units in pickShoppingList(customer.owner, customer.kind) do
@@ -1095,6 +1169,7 @@ function CustomerService.CompletePurchase(customer: Customer)
 		removeFromQueue(customer)
 	end
 	showBubble(customer, CustomerConfig.BUBBLE_HAPPY)
+	say(customer, "paid")
 	fireOutcome(customer.owner, "paid")
 end
 
@@ -1116,10 +1191,22 @@ function CustomerService.Refuse(customer: Customer)
 	if not customer.alive then
 		return
 	end
-	restoreItems(customer)
+	local stock, cards = restoreItems(customer)
+	-- the owner sees it went back (owner 2026-11-19: "when I decline a bargainer. add an indication that the cards were
+	-- back on the shelves"): a toast naming it, and "+N back" over each shelf (returnStock)
+	local line = ReturnRules.backLine(stock, cards)
+	if line and customer.owner.Parent then
+		Remotes.Notify:FireClient(customer.owner, line, false)
+	end
 	removeFromQueue(customer)
 	showBubble(customer, CustomerConfig.BUBBLE_ANNOYED)
+	say(customer, "noDeal")
 	fireOutcome(customer.owner, "annoyed")
+end
+
+-- A line over a customer at a moment of their visit (Config/CustomerChat), for OfferService's haggles and kids
+function CustomerService.Say(customer: Customer, moment: string, word: string?)
+	say(customer, moment, word)
 end
 
 -- A mood icon over a customer (Config/UIIcons name or text), for OfferService's reactions

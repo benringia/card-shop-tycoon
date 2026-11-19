@@ -349,7 +349,22 @@ return {
 	-- `shake` times its grade's, `extra` its grade's extras at most (1: no grade S sky strike, pillar, boom or screen flash
 	-- on every hit), and on a big boss its hits at most `foeMax` times their size on a creature (they grew to ~2.8x on
 	-- the Warden). Pet button moves and supers keep their full looks.
-	BOSS_TONE = { scale = 0.75, sparks = 0.6, extra = 1, shake = 0.5, foeMax = 2 },
+	-- `flair`: a rarity's flair at most (1: the sparkle, no Legendary ring under a boss).
+	BOSS_TONE = { scale = 0.75, sparks = 0.6, extra = 1, shake = 0.5, foeMax = 2, flair = 1 },
+	-- ...and by its card's rarity, times the grade's (owner 2026-11-19: "basic attacks for pets should correspond to
+	-- their grade and rarity. commons have small projectiles while the legendaries have large and with some additional
+	-- VFX (but not too much that it will cover bosses)"; FightFxRules.look): size, sparks and shake multipliers, and
+	-- `flair`: 1 a sparkle trail and a pale second burst where it lands (Epic), 2 a ring on the ground too (Legendary).
+	-- The size never passes MAX_SCALE (a Grade S Legendary).
+	RARITY = {
+		Common = { scale = 0.65, sparks = 0.7, shake = 0.7, flair = 0 },
+		Rare = { scale = 0.8, sparks = 0.85, shake = 0.85, flair = 0 },
+		["Very Rare"] = { scale = 0.95, sparks = 1, shake = 1, flair = 0 },
+		Epic = { scale = 1.1, sparks = 1.15, shake = 1.1, flair = 1 },
+		Legendary = { scale = 1.3, sparks = 1.3, shake = 1.2, flair = 2 },
+	} :: { [string]: { scale: number, sparks: number, shake: number, flair: number } },
+	MAX_SCALE = 2.4,
+	FLAIR = { burst = 0.55, white = 0.55, ring = { radius = 3.2, seconds = 0.35 } },
 	GRADE = {
 		C = { scale = 1, sparks = 1, extra = 0, shake = 1 },
 		B = { scale = 1.25, sparks = 1.4, extra = 0, shake = 1.2 },

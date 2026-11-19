@@ -651,13 +651,45 @@ return {
 	-- an unsummon shrinks it away and a light flies back into its owner over `unsummon` seconds (the server waits that
 	-- long before removing it); a faint flashes, tips it over in `tip` seconds, spins dizzy stars for `stars` seconds,
 	-- then it fades in a puff over `fade` seconds (and comes back when the fight is over)
-	SUMMON_FX = { window = 1.5, pop = 0.4, pillar = 9, unsummon = 0.45, tip = 0.3, stars = 1.3, fade = 0.4 },
+	-- Your card comes alive (owner 2026-11-20: "can we add a better/immersive summon and unsummon effects"; Util/SummonFx,
+	-- Util/SummonMotion). Summon: the card itself (its painting on the front) flies `card.fly` seconds from your chest to
+	-- the spot in an arc, spinning, and stands `card.hover` studs up; a circle `circle` studs wide spins under it for
+	-- `windup` seconds while light gathers; then the card stretches into a pillar and the creature pops out (`pop`).
+	-- Unsummon (`unsummon` seconds, the time the server keeps the marker): the creature turns to light (`leave.glow`)
+	-- and shrinks; `leave.cardAt` of the way through its card forms there and flies `leave.fly` seconds back into you.
+	-- BY_RARITY: the circle's and burst's size, the pillar's height in studs, the shockwave rings, the spark share, the
+	-- camera shake on your own (0-1, Util/ScreenFx) and a Legendary's beam from the sky.
+	SUMMON_FX = {
+		window = 1.5,
+		pop = 0.4,
+		unsummon = 0.6,
+		tip = 0.3,
+		stars = 1.3,
+		fade = 0.4,
+		windup = 0.25,
+		circle = 2.4,
+		-- where it appears: this far in front of you and a little to your right, on the ground (PartyService; it stood
+		-- on top of you before), staying there until its pop is over, then it follows you
+		ahead = 5,
+		aside = 1.5,
+		card = { width = 1.5, height = 2.1, thick = 0.06, fly = 0.3, arc = 3, spins = 1.5, hover = 1.7, chest = 0.6, pixels = 120, drop = 7 },
+		leave = { glow = 0.25, cardAt = 0.5, fly = 0.35, arc = 2.5, spins = 1 },
+		BY_RARITY = {
+			Common = { scale = 1, pillar = 8, rings = 1, sparks = 0.8, shake = 0, beam = false },
+			Rare = { scale = 1.1, pillar = 9, rings = 1, sparks = 1, shake = 0, beam = false },
+			["Very Rare"] = { scale = 1.2, pillar = 10, rings = 2, sparks = 1.1, shake = 0, beam = false },
+			Epic = { scale = 1.4, pillar = 13, rings = 2, sparks = 1.3, shake = 0.15, beam = false },
+			Legendary = { scale = 1.6, pillar = 16, rings = 3, sparks = 1.6, shake = 0.3, beam = true },
+		},
+	},
 	-- Their sounds (owner 2026-11-04; Pro Sound Effects, Roblox-licensed), played where the creature is, at a steady pitch:
 	-- one soft bell ding as it pops up (the owner found the first chime cluster loud and busy: "subtle, premium"), a
 	-- quiet airy whoosh as it flies back into you. Volume is the Sound's own; range in studs.
 	SUMMON_SOUNDS = {
 		summon = { id = "rbxassetid://9116395089", volume = 0.1, pitch = 1 }, -- "Quiet twinkle cluster" (owner's pick 2026-11-04): PSE "Magic Glows Soft Clusters Of Chiming Hits 4"
 		unsummon = { id = "rbxassetid://9117962385", volume = 0.1, pitch = 1 }, -- "Soft magic fade" (owner's pick 2026-11-04): PSE "Pulsing Tone Smooth Mid Range Synth Tone 3"
+		-- the card leaving your hand (2026-11-20): the "Quick swish" below, quiet, under the chime that follows
+		throw = { id = "rbxassetid://9116401192", volume = 0.07, pitch = 1.15 },
 		range = 60,
 		-- Sounds for the owner to choose from (2026-11-03): in Studio "/summonsound <n> [volume]" and
 		-- "/unsummonsound <n> [volume]" (or the admin panel) play option n and use it for your summons until "<cmd> 0"

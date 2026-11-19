@@ -5736,6 +5736,53 @@ boss models; the ranch and Heroic tiers come after those.
     prices after his first visit, the first trophy, the first title.
   - A level-up now brings at most one visit (`LessonRules.due`: sword, jobs). The pacing gates and the 90 s
     breather are unchanged.
+- **Second playthrough list** (owner 2026-11-19):
+  - *Chikin's Got it!* ("add a GOT IT for chikin too"): on his level 4 visit the line he waits on ("Follow my paws
+    to the Wild!") has a Got it! that sends him off for good (`Chikin.GOT_IT_STEPS`, `ChikinRules.gotIt`, action
+    `gotIt` in CombatTutorialService, analytics `CombatTutorialGotIt`). His first visit keeps its Skip. The quest
+    strip stays through that visit (`Chikin.FOCUS` sword / wild2 / boss keep `quests`).
+  - *Basic attacks by rarity and grade* ("commons have small projectiles while the legendaries have large and with
+    some additional VFX (but not too much that it will cover bosses)"): `AttackFx.RARITY` multiplies the grade's
+    size, sparks and shake (Common 0.65x ... Legendary 1.3x, size capped at `MAX_SCALE` 2.4); `flair` 1 (Epic) a
+    sparkle trail and a pale second burst, 2 (Legendary) a ground ring too. In a boss fight the flair stops at 1
+    and the size is toned as before (`BOSS_TONE.flair`). `FightFxRules.look(grade, rarity, cfg)`; the fight view
+    carries `rarity` (CreatureController.GetFightView).
+  - *Money on the counter* ("add money model on the cashier for moneys at the table"): the change you lay down is
+    the drawer's own notes and coins with their pictures (`RegisterStation.GIVEN`: 4 to a row, a note 0.42 x 0.61
+    studs, a coin 0.32 across), no more plain green bars and gold discs.
+  - *The card machine sleeps* ("make the card machine unusable when it's not supposed to be used"): its keys are
+    covered by a sleeping face unless a customer pays by card (`RegisterStationRules.keypadOn`); whatever was typed
+    is cleared.
+  - *The offer panel in plain words* ("improve bargainers offer UI to be immersive and easily understandable"; it
+    said "Offers $2.72 for $3.25 (-16%)"): the customer's ask in a speech bubble, "Your price" beside "Their
+    offer", "You get $0.53 less (-16%)", a full-width "Deal for $2.72", then "Ask for more" and "No deal", and a
+    foot line saying what No does. A kid's offer the same way ("It's worth" / "They ask", a good buy or not). The
+    counter view's button carries the price and warns a bargain hunter gives one try. Words: `Customers.OFFER_WORDS`
+    through `Util/OfferWords` (Lune-tested). The bargain hunter also says the offer out loud (chat bubble).
+  - *Customers talk* ("add personalities for the customers like chat bubbles"): each type has its own lines for
+    the moments of its visit (walking in, finding something, too pricey, nothing in stock, the queue, giving up,
+    paying, haggling, a kid's pull, admiring a card, petting your creature): `Config/CustomerChat`,
+    `Util/ChatRules`. The server picks moment and line (`CustomerService.Say`, model attribute `Say`), some moments
+    only now and then so a full shop isn't a wall of text; each client draws a white speech bubble for 3.2 s
+    (CustomerController).
+  - *A turned-down deal shows what went back* ("when I decline a bargainer. add an indication that the cards were
+    back on the shelves"): a toast "Back on your shelves: 2 First Spark Pack" (`ReturnRules.backLine`) and "+2
+    back" over each shelf the stock went to for 3 s (`ReturnRules.popText`, CustomerService `stockPop`).
+- **Your card comes alive: the summon and unsummon** (owner 2026-11-20: "can we add a better/immersive summon and
+  unsummon effects"; it was a ring, a pillar and a pop at your feet, and a light flying back). `Util/SummonFx`,
+  curves and beats in `Util/SummonMotion` (Lune-tested), numbers in `Party.SUMMON_FX`:
+  - *Summon* (about 0.95 s): the creature's own card, its painting on the front and the card back behind, leaves your
+    chest with a quiet swish and flies 0.3 s in an arc, spinning, to a spot 5 studs in front of you and a little to
+    your right (`ahead`, `aside`; PartyService `getSummonCFrame`: where you stand when a wall or a ledge is in the
+    way). A circle spins under it for 0.25 s while light gathers and the card stretches into a line of light; then
+    the pillar, the rings and the chime, and the creature pops out glowing. It stays on that spot until the pop is
+    over (`settleUntil`), then follows you as before.
+  - *By rarity* (`BY_RARITY`, `SummonMotion.tier`): a Common's is small with one ring; each rarity up is wider and
+    taller with more rings and sparks; an Epic shakes your own camera a little; a Legendary adds a taller gold beam
+    and a wide gold ring.
+  - *Unsummon* (0.6 s, the time the server keeps the marker): the creature turns to light and shrinks over a closing
+    circle; halfway through its card forms at its middle and flies 0.35 s back into your chest, folding away with a
+    small burst and a ring at your feet.
 - Empty badges only near you (owner 2026-11-19: "can we only see EMPTY shelves if were near enough?"): a shelf's
   "Empty" badge shows only within 16 studs of your character (`Placement.EMPTY_BADGES.REACH`, `BadgeRules.pick`'s
   `reach`; measured from the character, since the camera zooms far out), still the nearest 3 and never overlapping.

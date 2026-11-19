@@ -111,4 +111,5 @@ return {
 	NEXT = "Next",
 	BYE = "Bye!",
 	GO = "Let's go!", -- a hello's last button
+	GOT_IT = "Got it!", -- sends him off (Config/Chikin GOT_IT_STEPS)
 }

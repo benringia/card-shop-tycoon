@@ -392,7 +392,9 @@ local function add(marker: BasePart)
 	local color = Cards.ELEMENTS[card.element] or Color3.new(1, 1, 1)
 	local summonedAt = marker:GetAttribute("SummonedAt")
 	if SummonMotion.fresh(if typeof(summonedAt) == "number" then summonedAt else nil, workspace:GetServerTimeNow(), Party.SUMMON_FX.window) then
-		SummonFx.summon(body, color)
+		-- its card flies from its owner to the spot and comes alive there (the card's painting and rarity: Util/SummonFx)
+		local summoner = Players:GetPlayerByUserId(tonumber(marker:GetAttribute("OwnerUserId")) or 0)
+		SummonFx.summon(body, color, { owner = if summoner then summoner.Character else nil, cardName = card.name, rarity = card.rarity, mine = summoner == Players.LocalPlayer })
 		creature.nextChirp = os.clock() + Party.VOICE.hello -- your creature says hello as it lands
 	end
 	if marker:GetAttribute("Fainted") == true then
@@ -400,7 +402,7 @@ local function add(marker: BasePart)
 	end
 	table.insert(creature.connections, marker:GetAttributeChangedSignal("Unsummon"):Connect(function()
 		local owner = Players:GetPlayerByUserId(tonumber(marker:GetAttribute("OwnerUserId")) or 0)
-		SummonFx.unsummon(body, color, if owner then owner.Character else nil)
+		SummonFx.unsummon(body, color, if owner then owner.Character else nil, { cardName = card.name, rarity = card.rarity })
 	end))
 	table.insert(creature.connections, marker:GetAttributeChangedSignal("Fainted"):Connect(function()
 		if marker:GetAttribute("Fainted") == true then
@@ -534,7 +536,8 @@ end
 
 -- What the fight effects need of the creature drawn on this marker (nil if none is drawn)
 -- grade: its card copy's (its attacks grow with it, AttackFx.GRADE); mine: it's the local player's
-function CreatureController.GetFightView(marker: BasePart): { root: BasePart, element: string, height: number, grade: string?, mine: boolean }?
+-- rarity: its card's (a Common's attacks small, a Legendary's large: AttackFx.RARITY)
+function CreatureController.GetFightView(marker: BasePart): { root: BasePart, element: string, height: number, grade: string?, rarity: string?, mine: boolean }?
 	local creature = creatures[marker]
 	if not creature then
 		return nil
@@ -545,6 +548,7 @@ function CreatureController.GetFightView(marker: BasePart): { root: BasePart, el
 		element = creature.element,
 		height = creature.height,
 		grade = if typeof(grade) == "string" then grade else nil,
+		rarity = creature.rarity,
 		mine = marker:GetAttribute("OwnerUserId") == Players.LocalPlayer.UserId,
 	}
 end
@@ -634,7 +638,8 @@ function CreatureController.Start()
 			local creature = creatures[child]
 			if child:GetAttribute("Benched") == true and creature then
 				local owner = Players:GetPlayerByUserId(tonumber(child:GetAttribute("OwnerUserId")) or 0)
-				SummonFx.unsummon(creature.body, Cards.ELEMENTS[creature.element] or Color3.new(1, 1, 1), if owner then owner.Character else nil)
+				local benched = Cards.ById[child:GetAttribute("CardId") :: string]
+				SummonFx.unsummon(creature.body, Cards.ELEMENTS[creature.element] or Color3.new(1, 1, 1), if owner then owner.Character else nil, { cardName = if benched then benched.name else nil, rarity = creature.rarity })
 				task.delay(Party.SUMMON_FX.unsummon, refreshCull)
 			else
 				refreshCull()

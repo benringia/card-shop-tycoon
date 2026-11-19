@@ -17,6 +17,7 @@ local Items = require(Config:WaitForChild("Items"))
 local Party = require(Config:WaitForChild("Party"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local PartyRules = require(Shared:WaitForChild("Util"):WaitForChild("PartyRules"))
+local SummonMotion = require(Shared:WaitForChild("Util"):WaitForChild("SummonMotion"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
@@ -38,6 +39,7 @@ type PartyState = {
 	locked: boolean, -- in a fight (BattleService): no party changes or summons
 	hold: CFrame?, -- in a fight the summoned creature stands here instead of following
 	post: CFrame?, -- sent somewhere (the Dungeon's plates): it walks there and stays until called back or resummoned
+	settleUntil: number?, -- just summoned: it stays where its card landed until its pop is over (os.clock)
 }
 
 local PartyService = {}
@@ -238,6 +240,27 @@ local function despawn(player: Player)
 	end
 end
 
+local rayParams = RaycastParams.new()
+rayParams.FilterType = Enum.RaycastFilterType.Exclude
+
+-- Where a summoned creature appears (owner 2026-11-20: its card is thrown there, Util/SummonFx): a few studs in front of
+-- its owner and a little to their right, on the ground, facing their way. With a wall in the way, where they stand.
+local function getSummonCFrame(root: BasePart): CFrame
+	local look = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
+	look = if look.Magnitude > 0 then look.Unit else Vector3.new(0, 0, -1)
+	local right = Vector3.new(-look.Z, 0, look.X)
+	local reach = look * Party.SUMMON_FX.ahead + right * Party.SUMMON_FX.aside
+	if workspace:Raycast(root.Position, reach * 1.15, rayParams) then
+		return root.CFrame
+	end
+	local target = root.Position + reach
+	local hit = workspace:Raycast(target + Vector3.new(0, 4, 0), Vector3.new(0, -20, 0), rayParams)
+	if not hit then
+		return root.CFrame -- nothing to stand on out there (a ledge)
+	end
+	return CFrame.lookAt(hit.Position, hit.Position + look)
+end
+
 local function spawnMarker(player: Player)
 	local state = states[player]
 	if not state or not getSummonedBeast(player) then
@@ -245,15 +268,13 @@ local function spawnMarker(player: Player)
 	end
 	despawn(player)
 	local root = if player.Character then player.Character:FindFirstChild("HumanoidRootPart") :: BasePart? else nil
-	local marker = newMarker(`Creature_{player.UserId}`, if root then root.CFrame else CFrame.new(0, -500, 0))
+	local marker = newMarker(`Creature_{player.UserId}`, if root then getSummonCFrame(root) else CFrame.new(0, -500, 0))
+	state.settleUntil = os.clock() + SummonMotion.beats(Party.SUMMON_FX).done
 	state.marker = marker
 	refreshMarker(player)
 	marker:SetAttribute("SummonedAt", workspace:GetServerTimeNow()) -- clients pop it in (Util/SummonFx)
 	marker.Parent = creaturesFolder
 end
-
-local rayParams = RaycastParams.new()
-rayParams.FilterType = Enum.RaycastFilterType.Exclude
 
 -- Where the creature stands: behind and to the side of its owner, on the ground
 -- spread: how much further out a big creature walks (its model entry's size), so it never stands on its owner
@@ -300,6 +321,8 @@ local function moveMarkers()
 				local heading = Vector3.new(goal.X - marker.Position.X, 0, goal.Z - marker.Position.Z)
 				marker.CFrame = if heading.Magnitude > 0.3 then CFrame.lookAt(step.Position, step.Position + heading) else step
 			end
+		elseif marker and state.settleUntil and os.clock() < state.settleUntil then
+			continue -- just summoned: it stays where its card landed until it has popped out
 		elseif marker and root then
 			local entry = Party.CREATURE_MODELS[marker:GetAttribute("CardName") :: string]
 			local target = getFollowCFrame(root, marker.CFrame, if entry and entry.size then entry.size else 1)
