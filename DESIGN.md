@@ -5573,6 +5573,23 @@ boss models; the ranch and Heroic tiers come after those.
   at about 6,000 XP, $2 x level), Roblox's Robux glyph on every price (`Util/RobuxPrice`), a new case card waits for its price
   (`Util/ListingHold`), To Bag with its own icon (pick B) and Pish's tip bubble (`Util/TileTip`, schema v32 `tips`),
   and Open another on the pack results.
+- Pre-launch QA 2026-11-19 (owner: "do all necessary final tests before I publish"): 2,137 tests, every source file
+  compiles, three places build and boot with a clean Output (the old `203785492` asset warning isn't ours); all 97
+  client-to-server remotes have a handler, 95 rate-limited and the other two bounded (PullRevealed by its pending
+  list, WildTravel by `canTravel`); no loadstring, HTTP or asset requires; dev commands Studio-only. Fixed, client
+  only: the Bosses tile's K key (shown, never bound); the Phone opening closes the windows open now (one stayed open
+  behind it); the Party cards on phones (no HP / ATK / SPD bars or legend there: the perk hid under the buttons; the
+  perk text shrinks to fit; the slim card on desktop windows under 560 px tall); windows take 92% of a phone's height
+  by default (a list showed a row and a half); no banner on the Boss Ladder on phones (the needs and rewards had about
+  46 px); the Support nudge waits for a free moment with Pish on screen (it popped over "Pick a chest!"); the victory
+  screen's reset button stays 44 px tall on phones. Open, for the owner to decide: (1) boss cash and shop XP pay on
+  every win with no wait: from boss 3 on that is $4,000-7,000 an hour at the recommended Power and about $12,000 with a
+  maxed party, against the shop's $700-1,550; (2) the Boss Ladder says Ready from the best card's Power alone, and a
+  party with one card at it and two at 60% wins about 1 fight in 5 from boss 2 on (tools/balance/bosses `best+2`); (3)
+  the Phone's app icons are 31 px on a Galaxy A06 and 36 px on an iPhone 17 Pro (the rule is 48); (4) the Shop
+  window's tiles (224 px) are taller than its list on phones (100-140 px), so a picture and its price never show
+  together; (5) a first element weapon ($1,500 and 20 Wild Ore) is about an hour and a half in, so an early Epic's
+  super stays locked that long.
 - [ ] Weapons round 3 part 2: the Widow's Reaper's Eight Legs and the Storm Reaper's Storm Cyclone (spec 5.3); the
   final review's deferred minors (Chain Lightning per foe, the capped harvest shake, the light version's cracks).
 - Not reproduced (2026-11-06): pack models on a freshly stocked shelf "slow to render" after joining (the server

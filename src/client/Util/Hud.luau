@@ -414,6 +414,13 @@ local function setFan(open: boolean)
 	end
 	local slide = TweenInfo.new(PHONE.slide, Enum.EasingStyle.Back, if open then Enum.EasingDirection.Out else Enum.EasingDirection.In)
 	if open then
+		-- one thing at a time: the windows open now close (a window stayed open behind the Phone and its pages until
+		-- 2026-11-19); only UIKit.panel windows (they carry a Theme), never the fight bar or the register's screens
+		for _, frame in UIKit.openPanelList() do
+			if frame:GetAttribute("Theme") ~= nil then
+				frame.Visible = false
+			end
+		end
 		showHome()
 		clockLabel.Text = os.date("%H:%M") :: string
 		fan.Visible = true

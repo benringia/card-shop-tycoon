@@ -155,9 +155,20 @@ local function build()
 	end)
 end
 
--- After a good moment: Pish asks from his bubble, once a session (Util/SupportRules.nudge)
+-- After a good moment: Pish asks from his bubble, once a session (Util/SupportRules.nudge). "Tap me" is the Pish over
+-- the cash, so it waits (up to NUDGE_WAIT s) until he's on screen and the player is free: it used to pop over the boss
+-- chests' "Pick a chest!", and on a phone, where he's hidden, there was nobody to tap (found 2026-11-19)
+local NUDGE_WAIT = 120
 local function nudgeSoon()
 	task.delay(Support.NUDGE.delay, function()
+		local PlayerBusy = require(ClientUtil:WaitForChild("PlayerBusy"))
+		local waited = 0
+		while waited < NUDGE_WAIT and (HudMascotView.head() == nil or PlayerBusy.reason() ~= nil) do
+			waited += task.wait(1)
+		end
+		if HudMascotView.head() == nil or PlayerBusy.reason() ~= nil then
+			return -- never a free moment with him in view: another good moment asks again
+		end
 		local ready = workspace:GetAttribute("PlaceKind") ~= "Main" or player:GetAttribute("TutorialDone") == true
 		if SupportRules.nudge({ asked = asked, best = best(), touring = touring(), ready = ready }) then
 			asked = true

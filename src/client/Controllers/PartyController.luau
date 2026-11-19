@@ -43,7 +43,15 @@ local MAX_SIZE = Vector2.new(780, 500)
 local GAP = 8
 local CHIP_HEIGHT = 28
 local LEGEND_HEIGHT = 24
-local PHONE_LEGEND_HEIGHT = 20
+-- A window shorter than this uses the phone's slim cards too: between UIKit.PHONE_HEIGHT and here the full card was
+-- 16 px taller than its column, so a three-line perk ran under the Summon button (found 2026-11-19)
+local TIGHT_HEIGHT = 560
+
+-- Whether the party cards use the slim (phone) layout: a phone, or a desktop window too short for the full card
+local function slim(): boolean
+	local camera = workspace.CurrentCamera
+	return UIKit.isPhone() or (camera ~= nil and camera.ViewportSize.Y < TIGHT_HEIGHT)
+end
 local LEGEND = { { "Power", "Power" }, { "Hp", "Health" }, { "Atk", "Attack" }, { "Spd", "Attack Speed" } }
 
 local PartyController = {}
@@ -157,7 +165,11 @@ local function buildCardColumn(slot: number, beastId: string, summoned: boolean)
 		return
 	end
 	UIKit.outline(column, if summoned then palette.good else palette.rowEdge, if summoned then 4 else 2)
-	local phone = UIKit.isPhone()
+	local phone = slim()
+	-- A real phone's column is too short for everything (a Galaxy A06 leaves 96 px over the buttons, an iPhone 17 Pro
+	-- 120; the slim card needs 150): the HP / ATK / SPD bars go (Power sums them up; the card view has them) so the
+	-- perk reads in full over the buttons instead of hiding under them (found 2026-11-19)
+	local tiny = UIKit.isPhone()
 	local stack = Instance.new("Frame")
 	stack.BackgroundTransparency = 1
 	stack.Size = UDim2.new(1, 0, 1, -56)
@@ -201,7 +213,8 @@ local function buildCardColumn(slot: number, beastId: string, summoned: boolean)
 	-- HP, ATK, SPD against the strongest card's
 	local stats = BeastRules.getStats(card, beast.foil, beast.level, beast.stars, beast.grade)
 	local reference = CardTips.reference()
-	for index, stat in { { "Hp", stats.hp, reference.hp }, { "Atk", stats.atk, reference.atk }, { "Spd", stats.spd, reference.spd } } do
+	local bars: { { any } } = if tiny then {} else { { "Hp", stats.hp, reference.hp }, { "Atk", stats.atk, reference.atk }, { "Spd", stats.spd, reference.spd } }
+	for index, stat in bars do
 		local row = UIKit.statRow(stack, stat[1] :: string, CompareRules.share(stat[2] :: number, stat[3] :: number))
 		row.LayoutOrder = 1 + index
 		local picture = row:FindFirstChild("Icon") :: Frame
@@ -228,6 +241,12 @@ local function buildCardColumn(slot: number, beastId: string, summoned: boolean)
 	perkText.AutomaticSize = Enum.AutomaticSize.None
 	perkText.TextWrapped = true
 	perkText.Size = UDim2.new(1, -26, 1, 0)
+	-- two perks can wrap onto three lines ("Fights: creature attacks 19% faster"): shrink to fit, never cut off
+	perkText.TextScaled = true
+	local perkLimit = Instance.new("UITextSizeConstraint")
+	perkLimit.MaxTextSize = UIKit.textSize("small")
+	perkLimit.MinTextSize = 9
+	perkLimit.Parent = perkText
 	local rest = text(stack, "", UIKit.textSize("small"), palette.bad, true)
 	rest.LayoutOrder = 7
 	rest.Visible = false
@@ -280,8 +299,9 @@ local function buildCardColumn(slot: number, beastId: string, summoned: boolean)
 
 	if summoned then
 		local tag = UIKit.pill(column, "SUMMONED", UIStyle.GREEN, nil, "Party")
-		tag.AnchorPoint = Vector2.new(0.5, 0.5)
-		tag.Position = UDim2.new(0.5, 0, 0, -10)
+		-- on a phone the name sits right under the column's top edge: the tag goes to the right corner, clear of it
+		tag.AnchorPoint = if tiny then Vector2.new(1, 0.5) else Vector2.new(0.5, 0.5)
+		tag.Position = if tiny then UDim2.new(1, 4, 0, -10) else UDim2.new(0.5, 0, 0, -10)
 		tag.ZIndex = column.ZIndex + 6
 	end
 end
@@ -350,7 +370,9 @@ local function layout()
 	panel.Size = if phone then UDim2.fromScale(0.97, 0.98) else UDim2.fromScale(0.92, 0.86)
 	local top = if phone then 10 else 18
 	local bottom = if phone then 6 else 10
-	local legendHeight = if phone then PHONE_LEGEND_HEIGHT else LEGEND_HEIGHT
+	-- no stat bars on a phone (buildCardColumn), so no legend for them either: its row goes to the cards
+	local legendHeight = if phone then 0 else LEGEND_HEIGHT
+	legend.Visible = not phone
 	columns.Position = UDim2.fromOffset(12, UIKit.HEADER_HEIGHT + top)
 	columns.Size = UDim2.new(1, -24, 1, -(UIKit.HEADER_HEIGHT + top + legendHeight + 2 * bottom))
 	legend.Position = UDim2.new(0.5, 0, 1, -bottom)

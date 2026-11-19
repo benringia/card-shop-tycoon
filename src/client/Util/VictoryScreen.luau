@@ -275,20 +275,24 @@ function VictoryScreen.show(data: Show)
 	local action = data.action
 	if action then
 		local look = Victory.ACTION
+		-- the column shrinks on a phone (`fit`): the button grows back so it stays a finger-sized target on screen
+		-- (it was 28 px tall on a Galaxy A06, found 2026-11-19)
+		local grow = math.max(1, look.minTap / (look.height * fit.Scale))
+		local buttonHeight = math.round(look.height * grow)
 		local button = Instance.new("TextButton")
 		button.Name = "Action"
 		button.AnchorPoint = Vector2.new(0.5, 0)
 		button.Position = UDim2.new(0.5, 0, 0, notesTop + notesHeight + 8)
-		button.Size = UDim2.fromOffset(look.width, look.height)
+		button.Size = UDim2.fromOffset(math.round(look.width * math.min(grow, 1.3)), buttonHeight)
 		button.BackgroundColor3 = Color3.new(1, 1, 1)
 		button.AutoButtonColor = false
 		button.Font = Enum.Font.FredokaOne
-		button.TextSize = look.textSize
+		button.TextSize = math.round(look.textSize * math.min(grow, 1.3))
 		button.TextColor3 = rgb(look.ink)
 		button.Text = action.text
 		button.Visible = false
 		button.Parent = column
-		corner(button, look.height // 2)
+		corner(button, buttonHeight // 2)
 		local fill = Instance.new("UIGradient")
 		fill.Color = ColorSequence.new(rgb(look.top), rgb(look.bottom))
 		fill.Rotation = 90
@@ -300,7 +304,7 @@ function VictoryScreen.show(data: Show)
 		edge.Parent = button
 		local under = if action.under then text(column, action.under, Enum.Font.GothamBold, 13, Color3.fromRGB(255, 236, 190)) else nil
 		if under then
-			under.Position = UDim2.new(0, 0, 0, notesTop + notesHeight + 8 + look.height + 4)
+			under.Position = UDim2.new(0, 0, 0, notesTop + notesHeight + 8 + buttonHeight + 4)
 			under.Size = UDim2.new(1, 0, 0, 16)
 			under.Visible = false
 			local underStroke = Instance.new("UIStroke")
@@ -308,7 +312,7 @@ function VictoryScreen.show(data: Show)
 			underStroke.Transparency = 0.4
 			underStroke.Parent = under
 		end
-		actionHeight = 8 + look.height + (if under then 20 else 0)
+		actionHeight = 8 + buttonHeight + (if under then 20 else 0)
 		RobuxPrice.set(button, action.text, action.price())
 		task.spawn(function()
 			-- the price comes from Roblox a moment after it's first asked

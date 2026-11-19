@@ -65,7 +65,10 @@ local ROW_HEIGHT = 52 -- a boss's row (phones: a tap target, PHONE_ROW_HEIGHT)
 local PHONE_ROW_HEIGHT = 48
 local DISC_SIZE = 38
 local BANNER_HEIGHT = 92 -- the chosen boss's banner (phones: PHONE_BANNER_HEIGHT)
-local PHONE_BANNER_HEIGHT = 64
+-- No banner on a phone: with it (64 px) a Galaxy A06 left the two columns about 46 px between the banner and the
+-- footer, so the needs and the rewards couldn't be read (found 2026-11-19). The list row beside them already names
+-- the boss and shows its state.
+local PHONE_BANNER_HEIGHT = 0
 local GAP = 8
 local STEP_BADGES: { [StepState]: string? } = { beaten = "Trophy", ready = "Check", locked = "Lock" }
 local STEP_WORDS: { [StepState]: string } = { beaten = "Beaten", ready = "Ready", tooWeak = "Too weak", locked = "Locked" }
@@ -935,7 +938,9 @@ local function renderDetails(index: number, step: StepState, power: number, isNe
 	local gap = if phone then 5 else 7
 	local bannerHeight = if phone then PHONE_BANNER_HEIGHT else BANNER_HEIGHT
 	local reveal = BossRules.revealTricks(step, isNext)
-	renderBanner(index, step, isNext, bannerHeight)
+	if bannerHeight > 0 then
+		renderBanner(index, step, isNext, bannerHeight)
+	end
 	local plan = BossRules.detailsLayout(phone)
 	local footer = renderFooter(index, step, power)
 	local left = scroller(details, UDim2.new(), UDim2.new(), gap)
@@ -952,7 +957,7 @@ local function renderDetails(index: number, step: StepState, power: number, isNe
 	divider.ZIndex = details.ZIndex + 1
 	divider.Parent = details
 	local function placeColumns()
-		local top = bannerHeight + GAP + (if plan.pillsInColumn then 0 else pills.AbsoluteSize.Y + GAP)
+		local top = (if bannerHeight > 0 then bannerHeight + GAP else GAP) + (if plan.pillsInColumn then 0 else pills.AbsoluteSize.Y + GAP)
 		local bottom = footer.AbsoluteSize.Y + GAP * 2
 		left.Position = UDim2.fromOffset(GAP, top)
 		left.Size = UDim2.new(0.5, -GAP * 1.5, 1, -(top + bottom))
@@ -1101,6 +1106,20 @@ function BossBoardController.Start()
 
 	-- hidden through Pish's first visit (a calm HUD)
 	Hud.calmPiece(Hud.tile({ id = "Bosses", icon = "Trophy", label = "Bosses", key = "K", group = "Bottom", order = 3, phoneApp = 7, phoneAlways = true, onClick = toggle }), "bosses")
+	-- Its K key (the tile showed the letter but nothing listened until 2026-11-19): opens it wherever the tile may
+	-- show, never over a fight, a show (pack opening, chests) or the register; closing always works
+	game:GetService("UserInputService").InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
+		if gameProcessed or input.KeyCode ~= Enum.KeyCode.K or Hud.hides("bosses") then
+			return
+		end
+		if not panel.Visible then
+			local busy = require(ClientUtil:WaitForChild("PlayerBusy")).facts()
+			if busy.fight or busy.show or busy.register then
+				return
+			end
+		end
+		toggle()
+	end)
 
 	Remotes.WeaponsChanged.OnClientEvent:Connect(function(state: unknown)
 		if typeof(state) == "table" and typeof((state :: any).owned) == "table" then

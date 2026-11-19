@@ -930,7 +930,10 @@ function UIKit.panel(
 	frame.Name = name
 	frame.AnchorPoint = Vector2.new(0.5, 0.5)
 	frame.Position = UDim2.fromScale(0.5, 0.5)
-	frame.Size = UDim2.fromScale(0.92, 0.7)
+	-- A phone's screen is short (280 px under Roblox's top bar on a Galaxy A06): windows take nearly all of it, or a
+	-- list (Prices, Order Stock, Quests) showed one and a half rows (found 2026-11-19). Windows that size themselves
+	-- (the Shop, Party, the Boss Ladder) set their own after this.
+	frame.Size = UDim2.fromScale(0.92, if UIKit.isPhone() then 0.92 else 0.7)
 	frame.Visible = false
 	frame.ZIndex = UIKit.PANEL_Z_INDEX -- over the HUD buttons, which stay at the default 1
 	frame:SetAttribute("Theme", look)
