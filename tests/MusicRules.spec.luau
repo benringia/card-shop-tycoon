@@ -161,6 +161,23 @@ return {
 		expect.equal(MusicRules.randomTrack(nil, 3, 1), 3, "a roll of exactly 1 stays in range")
 	end,
 
+	-- Owner 2026-11-19 ("do 1 and 2 now"): in the Frontier, drums fade in over the area's music while you fight a
+	-- monster and out when it ends; louder against an elite. Never in a boss fight (the arenas have their own music)
+	["Frontier fights get a drum layer: in for a monster, louder for an elite, never for a boss"] = function()
+		local frontier = (Music :: any).FRONTIER
+		local fight = frontier.fight
+		assert(fight and string.match(fight.tracks[1], "^rbxassetid://%d+$"), "its loop")
+		assert(#fight.options >= 3, "options to pick by ear (/music frontierfight <n>)")
+		assert(fight.volume > 0 and fight.volume <= 0.05, "under the hits, like the valley's quiet music")
+		assert(fight.elite > 1 and fight.elite <= 2, "an elite's fight drums a little louder")
+		expect.equal(MusicRules.find(Music, fight.key), fight, "the preview finds it")
+		expect.equal(MusicRules.fightVolume(frontier, { fighting = true }), fight.volume)
+		expect.equal(MusicRules.fightVolume(frontier, { fighting = true, elite = true }), fight.volume * fight.elite)
+		expect.equal(MusicRules.fightVolume(frontier, { fighting = true, boss = true }), 0, "a boss arena has its own music")
+		expect.equal(MusicRules.fightVolume(frontier, { fighting = false }), 0, "no fight, no drums")
+		expect.equal(MusicRules.fightVolume(Music.WILD, { fighting = true }), 0, "the Wild has no drum layer")
+	end,
+
 	["the tracks take turns and wrap round"] = function()
 		expect.equal(MusicRules.nextTrack(0, 2), 1, "nothing played yet: the first")
 		expect.equal(MusicRules.nextTrack(1, 2), 2)

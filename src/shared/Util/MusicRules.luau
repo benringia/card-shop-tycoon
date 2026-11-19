@@ -15,6 +15,16 @@ function MusicRules.trackVolume(place: { volume: number, volumes: { [number]: nu
 	return own or place.volume
 end
 
+-- A world's fight layer volume right now (its `fight` loop: drums over the area's music): in for a fight with a
+-- monster, louder against an elite, 0 otherwise (no fight, a boss arena with its own music, a world without one)
+function MusicRules.fightVolume(world: any, state: { fighting: boolean, elite: boolean?, boss: boolean? }): number
+	local fight = world.fight
+	if not fight or not state.fighting or state.boss then
+		return 0
+	end
+	return fight.volume * (if state.elite then fight.elite else 1)
+end
+
 -- The track after `current` (0: none yet) of `count`, round and round
 function MusicRules.nextTrack(current: number, count: number): number
 	return current % count + 1
@@ -93,6 +103,9 @@ function MusicRules.find(music: any, key: string): any
 		if place.key == key then
 			return place
 		end
+	end
+	if music.FRONTIER and music.FRONTIER.fight and music.FRONTIER.fight.key == key then
+		return music.FRONTIER.fight
 	end
 	local lists = { music.WILD.areas, music.WILD.arenas }
 	if music.FRONTIER then

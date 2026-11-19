@@ -18,6 +18,7 @@ local Bosses = require(Config:WaitForChild("Bosses"))
 local Music = require(Config:WaitForChild("Music"))
 local Town = require(Config:WaitForChild("Town"))
 local MusicRules = require(Shared:WaitForChild("Util"):WaitForChild("MusicRules"))
+local Remotes = require(Shared:WaitForChild("Remotes"))
 local WildValley = require(Shared:WaitForChild("Util"):WaitForChild("WildValley"))
 local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 local WildValleyConfig = Place.getValley() -- the place's valley (Util/Place)
@@ -109,6 +110,16 @@ function MusicController.Start()
 	local player = Players.LocalPlayer
 	local music = makeLayer("Music")
 	local ambience = makeLayer("Ambience")
+	-- the fight drums (a world with a `fight` loop: the Frontier): in over the area's music while you fight a monster
+	local drums = makeLayer("Fight")
+	local fightState = { fighting = false, elite = false, boss = false }
+	Remotes.BattleStarted.OnClientEvent:Connect(function(payload: unknown)
+		local info: any = if typeof(payload) == "table" then payload else {}
+		fightState = { fighting = true, elite = info.elite == true, boss = typeof(info.boss) == "string" }
+	end)
+	Remotes.BattleEnded.OnClientEvent:Connect(function()
+		fightState = { fighting = false, elite = false, boss = false }
+	end)
 	local last: string? = nil -- the place you were in
 	local tracks: { [string]: number } = {} -- each place's track in its turns
 
@@ -196,6 +207,13 @@ function MusicController.Start()
 		end
 		apply(music, wantedMusic(place))
 		apply(ambience, wantedAmbience(place))
+		local fight = World.fight
+		local volume = MusicRules.fightVolume(World, fightState)
+		if fight and volume > 0 and not preview() then
+			apply(drums, { place = fight, id = fight.tracks[1], looped = true, volume = volume, compressor = nil, name = fight.key })
+		else
+			apply(drums, QUIET)
+		end
 	end
 
 	-- A place's music track ended (the town's turns): its next one after the quiet gap, on the same deck

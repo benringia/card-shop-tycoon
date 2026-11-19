@@ -38,6 +38,8 @@ local rng = Random.new()
 local state: any = nil -- the last DungeonRun message
 local fighting = false
 local music: Sound
+local musicTone: EqualizerSoundEffect -- the music's treble: muffled at the start of a run, clear at the end
+local lastPitch = -1
 local heartbeat: Sound
 local nextRoar = math.huge
 local nextGlimpse = math.huge
@@ -242,7 +244,14 @@ end
 local function layers()
 	local inBoss = state and state.stage == "boss" and fighting
 	local share = if fighting then LOOK.fightShare else 1
-	local bed = if quiet() or inBoss then 0 else LOOK.musicVolume * Dungeon.SOUNDS.music.volume * share
+	-- the music climbs with the run: louder, higher and clearer with every step done (AmbienceRules.climb)
+	local rise, pitch, treble = AmbienceRules.climb(stepsDone(), #Dungeon.STEPS, LOOK.climb)
+	local bed = if quiet() or inBoss then 0 else LOOK.musicVolume * Dungeon.SOUNDS.music.volume * share * rise
+	if pitch ~= lastPitch then
+		lastPitch = pitch
+		TweenService:Create(music, TweenInfo.new(FADE), { PlaybackSpeed = pitch }):Play()
+		TweenService:Create(musicTone, TweenInfo.new(FADE), { HighGain = treble, MidGain = treble / 3 }):Play()
+	end
 	local beat = if quiet() or inBoss then 0 else AmbienceRules.heartbeat(stepsDone(), LOOK.heartbeatFrom, #Dungeon.STEPS) * LOOK.heartbeatVolume * share
 	-- a new fade only when the target changes (not every check while one is running)
 	if bed ~= targets.bed then
@@ -257,6 +266,17 @@ end
 
 function DungeonAmbienceController.Start()
 	music = newSound("music", true)
+	musicTone = Instance.new("EqualizerSoundEffect")
+	musicTone.LowGain = 0
+	musicTone.MidGain = LOOK.climb.muffle[1] / 3
+	musicTone.HighGain = LOOK.climb.muffle[1]
+	musicTone.Parent = music
+	music.PlaybackSpeed = LOOK.climb.pitch[1]
+	-- the cave: every sound here echoes
+	local reverb = (Enum.ReverbType :: any)[LOOK.reverb]
+	if reverb then
+		SoundService.AmbientReverb = reverb
+	end
 	heartbeat = newSound("heartbeat", true)
 	music:Play()
 	heartbeat:Play()

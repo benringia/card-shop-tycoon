@@ -5688,6 +5688,19 @@ boss models; the ranch and Heroic tiers come after those.
   `MusicRules.trackVolume`). A random one each time you arrive in town (starting the game, back from the Wild or a
   pack opening) and after each ends, never the one just heard (`rotate = "random"`, `MusicRules.randomTrack`; owner:
   "randomize the town music between those 3 music every time player came back to town or starting the game").
+- Frontier and Dungeon sound (owner 2026-11-19: "do you have any suggestions on making frontier and dungeon
+  better?", then "do 1 and 2 now, rest after launch"; checked in Studio, the owner by ear: "drums 1, echo is
+  fine"):
+  - **Dungeon**: every sound echoes (`SoundService.AmbientReverb`, `Dungeon.AMBIENCE.reverb = "Cave"`), and the
+    music climbs with the run (`AmbienceRules.climb`, `AMBIENCE.climb`): 0.7x its volume, a touch low (0.94) and
+    muffled (-14 dB treble) with no step done, 1.5x, its own pitch and clear at the Hydra's door.
+  - **Frontier**: fight drums (`Music.FRONTIER.fight`, `MusicRules.fightVolume`, MusicController's Fight layer): a
+    drums-only APM loop fades in over the area's music while you fight a monster, 1.5x louder against an elite,
+    never in a boss fight. The owner's pick "War Drums Of The North (Loop)" at 0.012; the other two candidates with
+    `/music frontierfight <1-3> [volume]`.
+  - After launch (proposed): crystals that wake near you, the Hydra's shadow under the bridges, run results and a
+    best-time board, the last bridge crumbling; Frontier weather fronts, breath and footprints, an aurora, camp
+    warmth, discovery spots.
 - **Lessons on first use, not by level** (owner 2026-11-19: "so we should adjust the tutorial to not based on
   levels? whats the best move here", then "A and B now"; this replaces 7.6's "one visit per unlock"). Pish's
   lessons went from 18 to 11 (`Pish.LESSONS`):

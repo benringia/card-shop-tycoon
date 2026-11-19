@@ -127,6 +127,12 @@ return {
 		musicVolume = 0.07, -- the owner: lower, twice (2026-11-12; was 0.35, then 0.15)
 		heartbeatVolume = 0.4,
 		fightShare = 0.5, -- roars and music at this share during a fight
+		-- The music climbs with the run (owner 2026-11-19: "do 1 and 2 now"; AmbienceRules.climb): its volume as a
+		-- share of musicVolume, its pitch and its treble (dB: muffled first), each from no step done to all done
+		climb = { volume = { 0.7, 1.5 }, pitch = { 0.94, 1 }, muffle = { -14, 0 } },
+		-- Every sound in the Dungeon echoes like a cavern (SoundService.AmbientReverb, an Enum.ReverbType name; the
+		-- owner 2026-11-19: "echo is fine")
+		reverb = "Cave",
 	},
 	-- The welcome's and the danger's sounds (Pro Sound Effects; the music APM). Volumes are the sound's own.
 	SOUNDS = {

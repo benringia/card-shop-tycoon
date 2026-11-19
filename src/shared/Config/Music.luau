@@ -252,6 +252,22 @@ return {
 	-- strings, drums, choir), its three areas and three boss arenas the same way as the Wild's (MusicController picks
 	-- this world in the Frontier). First picks of three APM candidates each; the owner picks by ear with /music
 	FRONTIER = {
+		-- Fight drums (owner 2026-11-19: "do 1 and 2 now"; MusicController's fight layer, MusicRules.fightVolume): a
+		-- drums-only loop fades in over the area's music while you fight a monster and out when it ends, `elite` times
+		-- louder against an elite; never in a boss fight (the arenas have their own music). The owner's pick of three
+		-- APM candidates by ear (2026-11-19: "drums 1"); try the others with "/music frontierfight <n> [volume]"
+		fight = {
+			key = "frontierfight",
+			tracks = { "rbxassetid://1843011412" }, -- War Drums Of The North (Loop): the owner's pick
+			options = {
+				option("War Drums Of The North (loop)", "1843011412"),
+				option("Drums Of War (drums only)", "1838618449"),
+				option("Percussive Tension B", "1847601156"),
+			},
+			volume = 0.012, -- the areas' own level
+			elite = 1.5,
+			fade = 1.2, -- seconds in and out
+		},
 		areas = {
 			{
 				key = "frostwood", -- snowy ruins, red eyes in the fog: cold and wondering

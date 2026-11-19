@@ -14,6 +14,16 @@ function AmbienceRules.roarVolume(done: number, steps: number, range: { number }
 	return range[1] + (range[2] - range[1]) * share
 end
 
+-- The music's climb with the run (`climb`: its volume share, pitch and treble in dB, each from the first step to
+-- the last): quiet, low and muffled with nothing done, full once all `steps` are
+function AmbienceRules.climb(done: number, steps: number, climb: { volume: { number }, pitch: { number }, muffle: { number } }): (number, number, number)
+	local share = if steps > 0 then math.clamp(done / steps, 0, 1) else 1
+	local function at(range: { number }): number
+		return range[1] + (range[2] - range[1]) * share
+	end
+	return at(climb.volume), at(climb.pitch), at(climb.muffle)
+end
+
 -- The heartbeat layer's share (0..1): none before `from` steps are done, in at `from` (the lock), full when all `steps` are
 function AmbienceRules.heartbeat(done: number, from: number, steps: number): number
 	if done < from then
