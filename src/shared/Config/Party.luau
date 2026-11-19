@@ -733,6 +733,10 @@ return {
 		POP = 1.35, -- a card joining the party pops up this much, then settles
 		POP_SECONDS = 0.5,
 		NAME_WAIT = 2, -- seconds the "joined your party" toast waits for a new card's name to arrive with the binder
+		-- ...and it never shows over a pack opening (it gave the pull away, owner 2026-11-20): it waits for the opening
+		-- to close (at most OPENING_WAIT seconds), then AFTER_OPENING more
+		OPENING_WAIT = 90,
+		AFTER_OPENING = 0.6,
 		EMPTY = { 238, 220, 196 }, -- an empty slot's fill
 		EMPTY_EDGE = { 214, 188, 156 }, -- its faint ring
 		TEXT = { 107, 74, 42 }, -- brown words on cream (levels, the "+")

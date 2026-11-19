@@ -22,6 +22,7 @@ local Town = require(Config:WaitForChild("Town"))
 local MusicRules = require(Shared:WaitForChild("Util"):WaitForChild("MusicRules"))
 local TalkRules = require(Shared:WaitForChild("Util"):WaitForChild("TalkRules"))
 local TutorialRules = require(Shared:WaitForChild("Util"):WaitForChild("TutorialRules"))
+local ChikinRules = require(Shared:WaitForChild("Util"):WaitForChild("ChikinRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -501,7 +502,7 @@ end
 local function updateFocus()
 	local at = root()
 	local inTown = at ~= nil and MusicRules.inTown(at.Position.X, at.Position.Z, Town.BOUNDS, Music.TOWN.margin)
-	Hud.setFocus("chikin", TutorialRules.chikinFocus(step, inTown, Chikin.FOCUS, Chikin.WAIT_STEP))
+	Hud.setFocus("chikin", TutorialRules.chikinFocus(step, inTown, Chikin.FOCUS, Chikin.WAIT_STEP, Chikin.FOCUS_ALWAYS))
 end
 
 local function arrive()
@@ -530,6 +531,14 @@ local function arrive()
 		return
 	end
 	ensureDog()
+	-- his cinematic (the camera on his run-in, his name card) only the very first time; later he's simply there
+	-- (owner 2026-11-20: "chikin cinematic should only appear once. only on its first appearance")
+	if not ChikinRules.arrivesWithCinematic(Chikin, step) then
+		arriving = false
+		play("bark")
+		TutorialCues.skipButton(true, openTourCard)
+		return
+	end
 	DogArrival.run(at, marker :: Part, visual, player.Character, function()
 		play("bark")
 	end, function()

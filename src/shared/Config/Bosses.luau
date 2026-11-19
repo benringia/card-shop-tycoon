@@ -207,7 +207,9 @@ local BOSSES: { [string]: Boss } = {
 		-- 14900 / 46 before its spikes froze pets (2026-11-10): lowered so a typical party at its recommended Power still
 		-- wins about as often (tools/balance/bosses: well 87%, still 60%)
 		hp = 13000,
-		atk = 42,
+		-- 42 until 2026-11-20: every other boss eases off for a party a little under its Power, this one was a wall
+		-- (0.8x fought well: 2% solo; at 38: 53%, and 83% at its Power as before; lune run tools/balance/bosses)
+		atk = 38,
 		spd = 9,
 		recommended = 1100,
 		shopLevel = 26,

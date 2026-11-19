@@ -12,16 +12,19 @@ return {
 	-- after, through a super's charge and `super` seconds of its move, and a Pet button move's wind-up and `move` seconds
 	-- of it (2026-11-11: "apply this and the previous adjustments to all skills")
 	SPOTLIGHT = { tail = 0.8, super = 2.5, move = 1.5 },
-	FLIGHT = { Ember = 0.35, Tide = 0.25, Shade = 0.3 }, -- seconds a projectile or moon slash flies
+	FLIGHT = { Ember = 0.35, Tide = 0.25, Shade = 0.3, Bloom = 0.3 }, -- seconds a projectile or moon slash flies
 	COMBO = { count = 3, window = 0.45 }, -- a combo's hits over this many seconds, the last with the damage
 	EXTRA_SHOT_GAP = 0.08, -- seconds between a grade A / S Ember's extra fireballs (they land together)
-	-- Each element's normal attack: a thrown projectile, a 3-hit combo up close, a lightning bolt shot from where it
-	-- stands (the owner's mockup) or a moon slash flung from a paw (owner 2026-11-05: Shade "a ranged moon slash dark
-	-- purple"); everything but the combo stands back (Combat.RANGED_BACK)
+	-- Each element's normal attack: a thrown projectile, a lightning bolt shot from where it stands (the owner's
+	-- mockup) or a moon slash flung from a paw (owner 2026-11-05: Shade "a ranged moon slash dark purple"); every one
+	-- from range, standing back (Combat.RANGED_BACK). No creature fights up close (owner 2026-11-20: "no melee attacks
+	-- on pets"): Bloom lashed with a 3-hit combo until then and throws a volley of thorns now (`shots` at once; Ember's
+	-- `gradeShots` adds its grade's extra fireballs: FightFxRules.shots). The "combo" kind stays in the code (FightFx,
+	-- PetRig) with no element using it.
 	ELEMENT = {
-		Ember = { kind = "projectile", color = rgb(255, 122, 58) },
+		Ember = { kind = "projectile", color = rgb(255, 122, 58), gradeShots = true },
 		Tide = { kind = "projectile", color = rgb(74, 168, 255) },
-		Bloom = { kind = "combo", color = rgb(74, 222, 128) },
+		Bloom = { kind = "projectile", color = rgb(74, 222, 128), shots = 3, shotScale = 0.6 },
 		Volt = { kind = "bolt", color = rgb(250, 204, 21) },
 		Shade = { kind = "slash", color = rgb(126, 58, 242) },
 	},
@@ -37,7 +40,8 @@ return {
 		-- Swish Sharp 13; Mud Puddle Splash 19 and three of its series
 		Tide = { release = "rbxassetid://9126013644", hit = { "rbxassetid://9125703162", "rbxassetid://9125701409", "rbxassetid://9125701521", "rbxassetid://9125702138" } },
 		-- Buggy Whip Quick Swish Crack 11, 10, 13, 14
-		Bloom = { hit = { "rbxassetid://9113612888", "rbxassetid://9113612885", "rbxassetid://9113613077", "rbxassetid://9113615218" } },
+		-- (its release: Foliage Movement 2, the leafy rustle under the Verdant Blade's cuts)
+		Bloom = { release = "rbxassetid://9114518070", hit = { "rbxassetid://9113612888", "rbxassetid://9113612885", "rbxassetid://9113613077", "rbxassetid://9113615218" } },
 		Volt = { hit = { "rbxassetid://9114277757", "rbxassetid://9114277709", "rbxassetid://9114277338" } }, -- Electric Zaps 12, 10, 4
 		-- Whoosh Fast Swish By 4; Sword Swishes 4, 1, 2, 3
 		Shade = { release = "rbxassetid://9120717850", hit = { "rbxassetid://9119749812", "rbxassetid://9119750029", "rbxassetid://9119749495", "rbxassetid://9119749641" } },
@@ -54,7 +58,7 @@ return {
 	VARY = { pitch = { 0.8, 1.22 }, volume = { 0.82, 1 }, pitchGap = 0.08 },
 	CHARGE_LIGHT = 3, -- a charging creature's glow (PointLight brightness at full charge)
 	PROJECTILE_SIZE = 1.2, -- studs
-	ARC = { Ember = 6, Tide = 0, Shade = 1 }, -- studs a projectile rises at its midpoint
+	ARC = { Ember = 6, Tide = 0, Shade = 1, Bloom = 2 }, -- studs a projectile rises at its midpoint
 	-- The moon slash: a crescent `length` studs tip to tip and `width` thick (times the grade's scale), bowed `bow`
 	-- studs forward, tilted `tilt` degrees, trailing a shadow `trail` seconds long; grade A adds one crossed the
 	-- other way, S a third flat across

@@ -25,11 +25,28 @@ return {
 		expect.isNil(FightFxRules.kindFor("Plasma", AttackFx), "an unknown element has none")
 	end,
 
+	-- Owner 2026-11-20 (first public playthrough): "all creature attacks should not be melee ... the bramble pet is
+	-- attacking in melee where it should be range like its element. no melee attacks on pets"
+	["no creature fights up close: every element attacks from range, Bloom with a volley of three thorns"] = function()
+		for _, element in { "Ember", "Tide", "Bloom", "Volt", "Shade" } do
+			expect.equal(FightFxRules.isRanged(element, AttackFx), true, `{element} attacks from range`)
+			assert(FightFxRules.kindFor(element, AttackFx) ~= "combo", `{element}: no lash up close`)
+		end
+		expect.equal(FightFxRules.kindFor("Bloom", AttackFx), "projectile")
+		expect.equal(FightFxRules.shots("Bloom", 0, AttackFx), 3, "three thorns at once")
+		expect.equal(FightFxRules.shots("Bloom", 2, AttackFx), 3, "the same at every grade")
+		expect.equal(FightFxRules.shots("Ember", 0, AttackFx), 1, "one fireball")
+		expect.equal(FightFxRules.shots("Ember", 2, AttackFx), 3, "a grade S Ember throws two more")
+		expect.equal(FightFxRules.shots("Tide", 2, AttackFx), 1, "Tide always one")
+		assert(AttackFx.FLIGHT.Bloom and AttackFx.FLIGHT.Bloom > 0, "its thorns' flight")
+		assert(AttackFx.SOUNDS.Bloom.release, "a sound as they leave")
+	end,
+
 	["projectile and bolt attackers fight from range, combo ones up close"] = function()
 		expect.equal(FightFxRules.isRanged("Ember", AttackFx), true, "Ember throws fireballs")
 		expect.equal(FightFxRules.isRanged("Tide", AttackFx), true, "Tide throws water")
 		expect.equal(FightFxRules.isRanged("Volt", AttackFx), true, "Volt shoots a bolt")
-		expect.equal(FightFxRules.isRanged("Bloom", AttackFx), false, "Bloom lashes up close")
+		expect.equal(FightFxRules.isRanged("Bloom", AttackFx), true, "Bloom throws thorns (it lashed up close until 2026-11-20)")
 		-- The owner (2026-11-05): "Remodel shade basic attack, change it to a ranged moon slash dark purple"
 		expect.equal(FightFxRules.isRanged("Shade", AttackFx), true, "Shade flings a moon slash")
 		expect.equal(FightFxRules.isRanged("Plasma", AttackFx), false, "an unknown element stands close")
@@ -210,9 +227,8 @@ return {
 	-- Owner 2026-11-09: creature hits get the sword hit's pack effects, "slashes on slash attacks and no slash on non
 	-- slash attacks", the element's own particles on all
 	["a creature's cut lands with the slash streaks, its other attacks without"] = function()
-		expect.equal(FightFxRules.cuts("Bloom", AttackFx), true, "the Bloom combo")
 		expect.equal(FightFxRules.cuts("Shade", AttackFx), true, "the moon slash")
-		for _, element in { "Ember", "Tide", "Volt" } do
+		for _, element in { "Ember", "Tide", "Volt", "Bloom" } do
 			expect.equal(FightFxRules.cuts(element, AttackFx), false, element)
 		end
 		expect.equal(FightFxRules.cuts("Plasma", AttackFx), false, "an unknown element")

@@ -62,6 +62,9 @@ return {
 		summon = { "party" },
 		sword = { "weapons" },
 	} :: { [string]: { string } },
+	-- ...and the party bar stays through every step (owner 2026-11-20: "it should appear on the first time the player
+	-- got a pet and then never disappear"; it used to go whenever he led, so it vanished when he came back at level 4)
+	FOCUS_ALWAYS = { "party" },
 	HEIGHT = 2.6, -- studs: Pish's size
 	-- Pish's licensed barks (Config/Pish SOUNDS), pitched up a little: a smaller, higher dog
 	SOUNDS = {

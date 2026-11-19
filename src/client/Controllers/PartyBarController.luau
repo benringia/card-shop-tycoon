@@ -758,6 +758,15 @@ local function announce()
 		end
 		waited += task.wait(0.2)
 	end
+	-- never over a pack opening (owner 2026-11-20: "Boltlynx joined your party" showed before his first card's opening
+	-- was done, giving the pull away): it waits for the opening to close, then a beat
+	local held = 0
+	while player:GetAttribute("PackOpeningBusy") == true and held < BAR.OPENING_WAIT do
+		held += task.wait(0.25)
+	end
+	if held > 0 then
+		task.wait(BAR.AFTER_OPENING)
+	end
 	local messages = {}
 	for _, change in pendingChanges do
 		table.insert(messages, PartyRules.changeText(change.kind, nameOf(change.after), nameOf(change.before)))

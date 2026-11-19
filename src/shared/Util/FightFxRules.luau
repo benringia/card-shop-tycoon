@@ -41,6 +41,16 @@ function FightFxRules.isRanged(element: string, cfg: any): boolean
 	return kind == "projectile" or kind == "bolt" or kind == "slash"
 end
 
+-- How many projectiles an element's basic attack throws at once: its own `shots` (Bloom's thorn volley), plus the
+-- grade's `extra` for one with `gradeShots` (Ember: one more fireball at A, two at S)
+function FightFxRules.shots(element: string, extra: number, cfg: any): number
+	local entry = cfg.ELEMENT[element]
+	if not entry then
+		return 1
+	end
+	return (entry.shots or 1) + (if entry.gradeShots then extra else 0)
+end
+
 -- How big a creature's basic attack looks for its grade (AttackFx.GRADE; C for no grade or an unknown one)
 function FightFxRules.tier(grade: string?, cfg: any): { scale: number, sparks: number, extra: number, shake: number }
 	return (if grade then cfg.GRADE[grade] else nil) or cfg.GRADE.C

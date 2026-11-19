@@ -230,8 +230,12 @@ function FightFx.new(resolve: Resolve): Dispatcher
 				local flight = schedule.impactIn - schedule.releaseIn
 				local ember = view.element == "Ember"
 				local opts = { scale = s, flames = ember, rings = if view.element == "Tide" then 1 + tier.extra else 0, sparkle = tier.extra >= 2 }
-				-- Ember throws one more fireball a grade A, two more at S, a little after and to the sides, all landing together
-				local shots = if ember then 1 + tier.extra else 1
+				-- Ember throws one more fireball a grade A, two more at S, a little after and to the sides, all landing
+				-- together; Bloom always a volley of three smaller thorns (FightFxRules.shots)
+				local shots = FightFxRules.shots(view.element, tier.extra, AttackFx)
+				local volley = AttackFx.ELEMENT[view.element]
+				local shotScale = if volley and volley.shotScale then volley.shotScale else 1
+				opts.scale = s * shotScale
 				for shot = 1, shots do
 					local wait = (shot - 1) * AttackFx.EXTRA_SHOT_GAP
 					local side = if shot == 1 then 0 elseif shot % 2 == 0 then 1 else -1
@@ -241,7 +245,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 							local goal = targetPosition(entry.to, from)
 							local flat = Vector3.new(goal.X - from.X, 0, goal.Z - from.Z)
 							if side ~= 0 and flat.Magnitude > 0.1 then
-								offset = flat.Unit:Cross(Vector3.yAxis) * side * 1.5 * s
+								offset = flat.Unit:Cross(Vector3.yAxis) * side * 1.5 * s * shotScale
 							end
 							return goal + offset
 						end, tint, math.max(0.1, flight - wait), (AttackFx.ARC[view.element] or 0) + (shot - 1) * 2, function(at)
@@ -252,7 +256,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 							elseif not Spotlight.active() then
 								ElementFx.burst(at, tint, s * 0.6 * foeScale(entry.to))
 							end
-						end, if shot == 1 then opts else { scale = s * 0.75, flames = ember, sparkle = opts.sparkle })
+						end, if shot == 1 then opts else { scale = s * shotScale * (if ember then 0.75 else 1), flames = ember, sparkle = opts.sparkle })
 					end)
 				end
 			end)

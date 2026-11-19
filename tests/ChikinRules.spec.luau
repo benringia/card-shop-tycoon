@@ -75,6 +75,19 @@ return {
 		expect.equal(ChikinRules.guards(Chikin, "fight", { level = 0 / 0 }), false, "junk")
 	end,
 
+	-- Owner 2026-11-20: "chikin cinematic should only appear once. only on its first appearance": his run-in with the
+	-- camera plays for his very first step only; every later arrival (his level 4 visit, a rejoin mid-visit, back from
+	-- the Wild) he just comes to you
+	["his arrival's cinematic plays once: on his first step only"] = function()
+		expect.equal(ChikinRules.arrivesWithCinematic(Chikin, STEPS[1]), true, "his first hello")
+		expect.equal(STEPS[1], "hello")
+		for index = 2, #STEPS do
+			expect.equal(ChikinRules.arrivesWithCinematic(Chikin, STEPS[index]), false, `{STEPS[index]}: no cinematic`)
+		end
+		expect.equal(ChikinRules.arrivesWithCinematic(Chikin, "sword"), false, "his level 4 visit")
+		expect.equal(ChikinRules.arrivesWithCinematic(Chikin, ""), false, "not leading")
+	end,
+
 	["town: Chikin's Courage and his portal-side walk"] = townChecks,
 
 	-- owner 2026-11-16: "in the wilds. chikin will make you fight a monster with your summoned pet. after the monster is
@@ -207,13 +220,22 @@ return {
 	["while Chikin leads in town the HUD keeps only what his step uses"] = function()
 		local PIECES = { party = true, weapons = true, bosses = true, buffs = true, mascot = true }
 		local function keeps(step: string, inTown: boolean): string?
-			local kept = TutorialRules.chikinFocus(step, inTown, Chikin.FOCUS, Chikin.WAIT_STEP)
+			local kept = TutorialRules.chikinFocus(step, inTown, Chikin.FOCUS, Chikin.WAIT_STEP, Chikin.FOCUS_ALWAYS)
 			return if kept then table.concat(kept, ",") else nil
 		end
-		expect.equal(keeps("hello", true), "", "his hello: nothing extra")
+		-- Owner 2026-11-20 (first public playthrough): "the party section/character info on the bottom left side keeps
+		-- disappearing specially when chikin reappeared. it should appear on the first time the player got a pet and
+		-- then never disappear": the party bar stays through every step of his
+		expect.equal(keeps("hello", true), "party", "his hello: the party bar stays")
 		expect.equal(keeps("summon", true), "party", "summon: the party bar")
-		expect.equal(keeps("sword", true), "weapons", "the sword: the weapon switch")
-		expect.equal(keeps("wild", true), "", "on his way to the portal")
+		expect.equal(keeps("sword", true), "party,weapons", "the sword: the weapon switch too")
+		expect.equal(keeps("wild", true), "party", "on his way to the portal")
+		for _, step in STEPS do
+			if step ~= Chikin.WAIT_STEP then
+				local kept = TutorialRules.chikinFocus(step, true, Chikin.FOCUS, Chikin.WAIT_STEP, Chikin.FOCUS_ALWAYS)
+				assert(kept and table.find(kept, "party"), `{step}: the party bar never goes`)
+			end
+		end
 		expect.isNil(keeps("fight", false), "the Wild: the whole HUD")
 		expect.isNil(keeps(Chikin.WAIT_STEP, true), "his wait for shop level 4: not leading")
 		expect.isNil(keeps("", true), "no tour")

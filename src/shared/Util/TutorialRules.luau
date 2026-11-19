@@ -216,12 +216,19 @@ function TutorialRules.tipWaits(step: string): boolean
 end
 
 -- The calm HUD pieces kept while Chikin leads (`focus`: Config/Chikin FOCUS, by step; the owner 2026-11-11, focus
--- mode): nil when he isn't leading (no step, his wait) or the player is out of town (the Wild keeps the whole HUD)
-function TutorialRules.chikinFocus(step: string, inTown: boolean, focus: { [string]: { string } }, waitStep: string): { string }?
+-- mode): nil when he isn't leading (no step, his wait) or the player is out of town (the Wild keeps the whole HUD).
+-- `always`: pieces kept through every step (the party bar: once a player has a pet it never goes, owner 2026-11-20)
+function TutorialRules.chikinFocus(step: string, inTown: boolean, focus: { [string]: { string } }, waitStep: string, always: { string }?): { string }?
 	if step == "" or step == waitStep or not inTown then
 		return nil
 	end
-	return focus[step] or {}
+	local kept = table.clone(always or {})
+	for _, name in focus[step] or {} do
+		if not table.find(kept, name) then
+			table.insert(kept, name)
+		end
+	end
+	return kept
 end
 
 return TutorialRules

@@ -1777,7 +1777,7 @@ and rewards in `BossService`.
 | 1 | Meadow Warden | Meadow | Bloom | 6 | 1300 / 7 / 8 | 200 | - | 4 | open |
 | 2 | Cave Brood Queen | Caves | Shade | 11 | 2600 / 10 / 12 | 350 | heals 15% below half HP, every 12 s, 3 times at most | 7 | 3 Brood Queen Key Fragments |
 | 3 | Ember Colossus | Ember Ridge | Ember | 16 | 6300 / 29 / 9 | 650 | enrages below half HP (ATK x1.5) | 14 | 5 Colossus Key Fragments |
-| 4 | Frost Tyrant | Frontier, Frostwood | Tide | 22 | 13000 / 42 / 9 | 1100 | ice shield (6% HP) every 20 s; breaking it stuns it 3 s; ice spikes freeze | 26 | 5 Frost Tyrant Key Fragments |
+| 4 | Frost Tyrant | Frontier, Frostwood | Tide | 22 | 13000 / 38 / 9 | 1100 | ice shield (6% HP) every 20 s; breaking it stuns it 3 s; ice spikes freeze | 26 | 5 Frost Tyrant Key Fragments |
 | 5 | Storm Sovereign | Frontier, Stormpeak | Volt | 32 | 28000 / 44 / 14 | 1500 | thunderclap every 14 s: rears up 2 s with a 28-stud storm circle, then claps: your creatures stunned (2.5 s base, shorter on fast ones), you Electrocuted unless you ran out or dodged | 34 | 8 Sovereign Key Fragments |
 | 6 | Rift Devourer | Frontier, The Rift | Shade | 45 | 34000 / 66 / 10 | 1900 | summons 2 Rift Horrors (twice an elite's size, 5% HP, 30% ATK each) through rifts at 70% and 35% HP: out at the arena's corners, they run at your pets; hit first, boss takes half damage meanwhile | 43 | 8 Devourer Key Fragments |
 | 7 | Prism Hydra | the Dungeon (after 3 rooms) | by phase | 55 | 60000 / 38 / 11 | 2400 | five phases, one per element (below) | 57 | 10 Hydra Key Fragments |
@@ -5688,6 +5688,25 @@ boss models; the ranch and Heroic tiers come after those.
   `MusicRules.trackVolume`). A random one each time you arrive in town (starting the game, back from the Wild or a
   pack opening) and after each ends, never the one just heard (`rotate = "random"`, `MusicRules.randomTrack`; owner:
   "randomize the town music between those 3 music every time player came back to town or starting the game").
+- Group boss fights, 2026-11-20: five live 2-player fights on the Meadow Warden (Studio Clients and Servers): join
+  "2/4", start-now, each player's own pay, drops, loot timer and chests, 25% cash between loot, walking off pulled
+  back to the ring, Run mid-fight leaves with no pay while the other wins alone. No errors. Simulator, fought well
+  at the recommended Power: solo 100 / 100 / 98 / 82 / 97 / 78 / 63% (bosses 1-7), groups of 2 and 4 about 100%;
+  at 0.8x: solo about 60%, groups 80-100%. Kept: groups are easier (friends are the way past a wall).
+  **Frost Tyrant ATK 42 -> 38**: it alone was a cliff at 0.8x (2% solo, 41% for two); at 38 it's 53% solo and 83% at
+  its Power as before. After launch: a boss keeps its group HP when a member leaves (the one left fought 52 s, not
+  20): shrink it.
+- Owner's fresh playthrough, 2026-11-20 (four findings, fixed):
+  - **No melee creatures** ("all creature attacks should not be melee ... no melee attacks on pets"): Bloom, the
+    only element that fought up close (a 3-hit lash), now throws a volley of three thorns from range
+    (`AttackFx.ELEMENT.Bloom`: a projectile, `shots = 3`; `FightFxRules.shots`). Every element stands back
+    (`FightFxRules.isRanged`). The "combo" kind stays in the code with no element using it.
+  - **"X joined your party" over the first card's opening**: the party toast now waits for a pack opening to close
+    (`PackOpeningBusy`, `Party.BAR.OPENING_WAIT` / `AFTER_OPENING`).
+  - **Chikin's cinematic once**: his run-in with the camera and name card plays for his first step only
+    (`ChikinRules.arrivesWithCinematic`); at his level 4 visit, a rejoin or back in town he is simply there.
+  - **The party bar never goes**: Chikin's focus mode keeps it through every step (`Chikin.FOCUS_ALWAYS`,
+    `TutorialRules.chikinFocus`); it used to hide whenever he led in town.
 - Frontier and Dungeon sound (owner 2026-11-19: "do you have any suggestions on making frontier and dungeon
   better?", then "do 1 and 2 now, rest after launch"; checked in Studio, the owner by ear: "drums 1, echo is
   fine"):

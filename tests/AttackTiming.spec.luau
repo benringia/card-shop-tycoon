@@ -44,7 +44,7 @@ return {
 			expect.equal(entry ~= nil and known[entry.kind] == true, true, element)
 		end
 		expect.equal(AttackFx.ELEMENT.Ember.kind, "projectile")
-		expect.equal(AttackFx.ELEMENT.Bloom.kind, "combo")
+		expect.equal(AttackFx.ELEMENT.Bloom.kind, "projectile") -- a thorn volley (a lash up close until 2026-11-20)
 		expect.equal(AttackFx.ELEMENT.Volt.kind, "bolt") -- shot from where it stands (the owner's mockup), no dash
 		-- A crescent of dark purple moonlight flung at the foe (owner 2026-11-05), flying like a projectile
 		expect.equal(AttackFx.ELEMENT.Shade.kind, "slash")
