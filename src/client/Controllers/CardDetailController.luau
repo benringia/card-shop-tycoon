@@ -77,6 +77,7 @@ local PHONE_ROW_HEIGHT = 48 -- a tap target, never smaller
 local PHONE_HEADER = 44 -- phones: a slimmer band, no pills row (the card face shows rarity and element) and no list title
 local TITLE_HEIGHT = 18 -- "ALL COPIES, BEST FIRST" over the copies list
 local CARD_GAP = 16 -- between the 3D card and the panel
+local PANEL_LEAST = 260 -- px: the panel never shrinks under this (CardViewRules.fitPanel)
 local LIST_PAD = 4 -- room inside the copies list for the chosen row's outline
 local CHOOSER_BUTTON = 130 -- the chooser's Cancel / Back: compact, on the right
 local SLOT_ART_MIN, SLOT_ART_MAX = 52, 150 -- the chooser's slot card heights
@@ -194,9 +195,17 @@ local function layout()
 	-- The 3D card and the panel centred as a pair (wide screens had an empty half on the left)
 	local left = UiLayout.detailPanelLeft(view.X, CardInspectorController.GetCardWidth(), CARD_GAP, width, right)
 	local parentX = (panel.Parent :: GuiObject).AbsolutePosition.X - (if screen then screen.AbsolutePosition.X else 0)
-	panel.Position = UDim2.new(0, left + width - parentX, 0, top)
-	panel.Size = UDim2.new(0, width, 1, -(top + (if phone then PHONE_PANEL_BOTTOM else PANEL_BOTTOM)))
 	local band = if phone then PHONE_HEADER else UIKit.HEADER_HEIGHT
+	-- as tall as what it shows (owner 2026-11-20: "theres a huge space here"), centred in the room; the whole room
+	-- while a chooser is open or the content needs it (then the body scrolls)
+	local column = body:FindFirstChildOfClass("UIListLayout")
+	local content = (if column then column.AbsoluteContentSize.Y else 0) + LIST_PAD * 2
+	local parentY = (panel.Parent :: GuiObject).AbsolutePosition.Y - (if screen then screen.AbsolutePosition.Y else 0)
+	local room = { top = top, bottom = view.Y - (if phone then PHONE_PANEL_BOTTOM else PANEL_BOTTOM) }
+	local choosing = (partyChooser ~= nil and partyChooser.Visible) or (jobChooser ~= nil and jobChooser.Visible)
+	local fit = CardViewRules.fitPanel(content, band + GAP + 66, room, PANEL_LEAST, choosing)
+	panel.Position = UDim2.new(0, left + width - parentX, 0, fit.top - parentY)
+	panel.Size = UDim2.new(0, width, 0, fit.height)
 	UIKit.sizeHeader(header, band)
 	body.Position = UDim2.fromOffset(12, band + GAP)
 	body.Size = UDim2.new(1, -24, 1, -(band + GAP + 66))
@@ -1143,6 +1152,10 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	column.Padding = UDim.new(0, GAP)
 	column.SortOrder = Enum.SortOrder.LayoutOrder
 	column.Parent = body
+	-- the panel fits what it shows: again whenever that grows or shrinks (More, a copy picked)
+	column:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+		layout()
+	end)
 	-- Room for the outlines (drawn outside each box) and the scroll bar
 	local bodyPadding = Instance.new("UIPadding")
 	bodyPadding.PaddingTop = UDim.new(0, LIST_PAD)
@@ -1308,6 +1321,12 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	jobChooser.Parent = panel
 	UIKit.corner(jobChooser, 14)
 	UIKit.outline(jobChooser, palette.rowEdge, UIStyle.EDGE_THICKNESS)
+	-- a chooser takes the whole room while it's open (CardViewRules.fitPanel `full`)
+	for _, chooser in { partyChooser, jobChooser } do
+		chooser:GetPropertyChangedSignal("Visible"):Connect(function()
+			layout()
+		end)
+	end
 	partyButton.Activated:Connect(function()
 		if partyTarget then
 			jobChooser.Visible = false

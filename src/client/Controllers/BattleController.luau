@@ -1436,7 +1436,9 @@ local function restLine(): string
 	local place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 	local spring = if place.isFrontier() then "the entrance spring" else "the plaza spring"
 	return if place.isDungeon() then "Fainted creatures are out for the rest of this run"
-		else `Rest {math.floor(Combat.REST_SECONDS / 60)}:00 · {spring} heals faster`
+		else `Rest {require(Shared:WaitForChild("Util"):WaitForChild("EarlyRules")).restWords(
+			require(Shared:WaitForChild("Util"):WaitForChild("EarlyRules")).rest(tonumber(player:GetAttribute("Level")) or 1, require(Shared:WaitForChild("Config"):WaitForChild("Early")), Combat.REST_SECONDS)
+		)} · {spring} heals faster`
 end
 
 -- The fight's end: a boss's big screen (Util/VictoryScreen: title, rewards and party XP; a loss or a run in red or

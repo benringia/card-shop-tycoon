@@ -34,6 +34,16 @@ function TalkRules.cardAtTop(top: number, height: number, pawRoom: number, targe
 	return not covered
 end
 
+-- Where the card goes: "top", "bottom" (cardAtTop), or "side" while you man the register in first person (seen
+-- 2026-11-20 on Pish's first sale: the register's screen is at the top centre and its cash drawer at the bottom, and
+-- the card lay on the amount to give back): at the left edge, half way down
+function TalkRules.cardPlace(top: number, height: number, pawRoom: number, target: Target?, forceTop: boolean, manning: boolean): string
+	if manning and not forceTop then
+		return "side"
+	end
+	return if TalkRules.cardAtTop(top, height, pawRoom, target, forceTop) then "top" else "bottom"
+end
+
 -- A line with the game's name in it ("{game}")
 function TalkRules.fill(text: string, gameName: string): string
 	return (string.gsub(text, "{game}", function()

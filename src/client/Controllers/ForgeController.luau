@@ -13,6 +13,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
+local Early = require(Config:WaitForChild("Early"))
+local EarlyRules = require(Shared:WaitForChild("Util"):WaitForChild("EarlyRules"))
 local BabyColors = require(Config:WaitForChild("BabyColors"))
 local Bosses = require(Config:WaitForChild("Bosses"))
 local CardDesign = require(Config:WaitForChild("CardDesign"))
@@ -187,7 +189,7 @@ local function buttonFor(weapon: Weapons.Weapon, record: Owned?, cost: WeaponRul
 		elseif tab == REFORGE then UpgradeRules.seconds(Upgrades, "reforge")
 		else UpgradeRules.seconds(Upgrades, "level", if record then record.level + 1 else 1)
 	local text, ready = WeaponText.button(action, cost, items, cash(), Items, {
-		wait = UpgradeRules.clock(seconds),
+		wait = UpgradeRules.clock(EarlyRules.stationWait(seconds, tonumber(player:GetAttribute("Level")) or 1, Early)),
 		level = if record then record.level + 1 else nil,
 		unlockLevel = if weapon.source.cost then weapon.source.cost.unlockLevel else nil,
 		shopLevel = shopLevel(),

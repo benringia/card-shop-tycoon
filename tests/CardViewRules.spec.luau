@@ -59,4 +59,18 @@ return {
 		expect.equal(chips[2].good, false)
 		expect.equal(#CardViewRules.matchups({ strong = {}, weak = {} }, names), 0, "no matchups: no chips")
 	end,
+	-- owner 2026-11-20 (a screenshot of the short view): "theres a huge space here on this window fix it": the panel
+	-- is as tall as what it shows (header, body, buttons), never taller than the room, centred in it
+	["the card view's panel fits what it shows, centred in the room, never past it"] = function()
+		local fit = CardViewRules.fitPanel(300, 130, { top = 84, bottom = 947 }, 260)
+		expect.equal(fit.height, 430, "the short view: its content and chrome, no empty space")
+		expect.equal(fit.top, 84 + (863 - 430) / 2, "centred in the room")
+		local tall = CardViewRules.fitPanel(2000, 130, { top = 84, bottom = 947 }, 260)
+		expect.equal(tall.height, 863, "the long view (More, many copies): the whole room, it scrolls")
+		expect.equal(tall.top, 84)
+		local small = CardViewRules.fitPanel(40, 130, { top = 84, bottom = 947 }, 260)
+		expect.equal(small.height, 260, "never smaller than its least")
+		local full = CardViewRules.fitPanel(300, 130, { top = 84, bottom = 947 }, 260, true)
+		expect.equal(full.height, 863, "a chooser open (party, job): the whole room")
+	end,
 }

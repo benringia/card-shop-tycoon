@@ -204,4 +204,46 @@ return {
 		assert(pill.height >= 48 and pill.width >= 120, "a tap target with room for the icon, the word and the key")
 		assert(typeof(pill.icon) == "string" and #pill.icon > 0, "an icon, like the other buttons")
 	end,
+	-- owner 2026-11-20: "in cash register. can we just add a permanent guide/highlight for the change/give back? some
+	-- kids doesnt do well with math and this will be so confusing for them"
+	["the change guide is always on: the next note or coin glows from the first moment"] = function()
+		expect.equal(RegisterStation.HELPER_SECONDS, 0, "no wait before it shows")
+		expect.equal(RegisterStationRules.guideOn(0, RegisterStation), true, "the moment the customer pays")
+		expect.equal(RegisterStationRules.guideOn(30, RegisterStation), true)
+		assert(RegisterStation.HELPER_TAG.text ~= "", "a pointer over the glowing money")
+	end,
+	-- owner 2026-11-20: "change TAP to something like 'TAP 2X,3X' that decreases with every tap so that kids will
+	-- understand it more"
+	["the guide's pill counts the taps left on the glowing note or coin, down to 1"] = function()
+		local drawer = Payment.DRAWER
+		local tag = RegisterStation.HELPER_TAG
+		local piece, taps = RegisterStationRules.tapsLeft(drawer, 350)
+		expect.equal(piece, 100, "$3.50 left: the $1 note")
+		expect.equal(taps, 3, "three times")
+		expect.equal(RegisterStationRules.tapWords(taps, tag), "Tap 3x")
+		piece, taps = RegisterStationRules.tapsLeft(drawer, 250)
+		expect.equal(taps, 2, "one tap later: twice")
+		expect.equal(RegisterStationRules.tapWords(taps, tag), "Tap 2x")
+		piece, taps = RegisterStationRules.tapsLeft(drawer, 150)
+		expect.equal(RegisterStationRules.tapWords(taps, tag), "Tap 1x")
+		piece, taps = RegisterStationRules.tapsLeft(drawer, 50)
+		expect.equal(piece, 25, "then the quarters")
+		expect.equal(taps, 2)
+		piece, taps = RegisterStationRules.tapsLeft(drawer, 4)
+		expect.equal(piece, 1)
+		expect.equal(taps, 4, "four pennies")
+		piece, taps = RegisterStationRules.tapsLeft(drawer, 0)
+		expect.isNil(piece, "nothing left to give")
+		expect.equal(taps, 0)
+		-- following the count always lands on the exact change
+		for change = 1, 4999, 53 do
+			local left = change
+			while left > 0 do
+				local coin, times = RegisterStationRules.tapsLeft(drawer, left)
+				assert(coin and times >= 1, `a piece to tap for {left}`)
+				left -= (coin :: number) * times
+			end
+			expect.equal(left, 0, `exact for {change}`)
+		end
+	end,
 }

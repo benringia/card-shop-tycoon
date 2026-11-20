@@ -13,6 +13,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
+local Early = require(Config:WaitForChild("Early"))
+local EarlyRules = require(Shared:WaitForChild("Util"):WaitForChild("EarlyRules"))
 local Beasts = require(Config:WaitForChild("Beasts"))
 local Cards = require(Config:WaitForChild("Cards"))
 local BabyColors = require(Config:WaitForChild("BabyColors"))
@@ -382,7 +384,7 @@ local function renderPane(card: Card?)
 	end
 
 	local canCondense = takes ~= nil and not inFlight
-	local wait = UpgradeRules.clock(UpgradeRules.seconds(Upgrades, "star", nextStars))
+	local wait = UpgradeRules.clock(EarlyRules.stationWait(UpgradeRules.seconds(Upgrades, "star", nextStars), tonumber(player:GetAttribute("Level")) or 1, Early))
 	local buttonText = CondenseRules.buttonWords(takes ~= nil, reason, wait, inFlight)
 	local condense = UIKit.button(pane, buttonText, if canCondense then UIKit.Colors.Accent else UIKit.Colors.Locked)
 	condense.AnchorPoint = Vector2.new(0.5, 0) -- grows evenly under the mouse, inside the pane's EDGE

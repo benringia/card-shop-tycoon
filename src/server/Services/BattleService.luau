@@ -43,6 +43,8 @@ local DangerRules = require(Shared:WaitForChild("Util"):WaitForChild("DangerRule
 local DefeatRules = require(Shared:WaitForChild("Util"):WaitForChild("DefeatRules"))
 local DungeonRules = require(Shared:WaitForChild("Util"):WaitForChild("DungeonRules"))
 local SpringRules = require(Shared:WaitForChild("Util"):WaitForChild("SpringRules"))
+local EarlyRules = require(Shared:WaitForChild("Util"):WaitForChild("EarlyRules"))
+local Early = require(Config:WaitForChild("Early"))
 local FightFxRules = require(Shared:WaitForChild("Util"):WaitForChild("FightFxRules"))
 local MarkerNames = require(Shared:WaitForChild("Util"):WaitForChild("MarkerNames"))
 local PartyRules = require(Shared:WaitForChild("Util"):WaitForChild("PartyRules"))
@@ -247,6 +249,12 @@ function BattleService.ClearResting(player: Player)
 end
 
 -- DevService's /tire: every party card but the summoned one rests, so a boss fight can be lost in Studio
+-- How long a fainted creature of this player's rests: a minute in a new shop, the full five later (Config/Early; owner
+-- 2026-11-20: "players should NOT wait for something in early game")
+local function restSeconds(player: Player): number
+	return EarlyRules.rest(tonumber(player:GetAttribute("Level")) or 1, Early, Combat.REST_SECONDS)
+end
+
 function BattleService.TireParty(player: Player)
 	local entries = resting[player]
 	local party = PartyService.GetParty(player)
@@ -255,7 +263,7 @@ function BattleService.TireParty(player: Player)
 	end
 	for slot, beastId in party.slots do
 		if slot ~= party.summoned then
-			entries[beastId] = os.time() + Combat.REST_SECONDS
+			entries[beastId] = os.time() + restSeconds(player)
 		end
 	end
 	sendResting(player)
@@ -1037,7 +1045,7 @@ local function release(fight: Fight, member: Member): { string }
 	if entries then
 		for _, beastId in BattleSim.getFainted(fight.sim, "a") do
 			if table.find(member.partyIds, beastId) then
-				entries[beastId] = os.time() + Combat.REST_SECONDS
+				entries[beastId] = os.time() + restSeconds(player)
 				table.insert(rested, beastId)
 			end
 		end

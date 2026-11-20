@@ -3,6 +3,7 @@
 -- (Util/TutorialRules), his two visits with a hidden wait for shop level 4 between them, and his lines
 local Chikin = require("../src/shared/Config/Chikin")
 local ChikinTalk = require("../src/shared/Config/ChikinTalk")
+local TalkRules = require("../src/shared/Util/TalkRules")
 local Pish = require("../src/shared/Config/Pish")
 local TutorialRules = require("../src/shared/Util/TutorialRules")
 local ChikinRules = require("../src/shared/Util/ChikinRules")
@@ -133,6 +134,9 @@ return {
 		end
 		-- His hellos and goodbyes are intro lines only: their last Next moves on (Config/Chikin FINISH_STEPS)
 		for step in Chikin.FINISH_STEPS do
+			if step == "swordWin" then
+				continue -- his goodbye before level 4 ends when you open your Quests (below)
+			end
 			expect.equal(next(ChikinTalk.STEPS[step].now), nil, `{step} ends on its last Next`)
 			assert(#ChikinTalk.STEPS[step].intro > 0, `{step} has lines`)
 		end
@@ -195,8 +199,28 @@ return {
 		assert(string.find(all, "level 4", 1, true), "hunting to shop level 4")
 		local town = Chikin.TOWN_LINE
 		expect.equal(town.step, "swordWin", "his goodbye after the sword fight")
-		expect.equal(town.from, #goodbye, "the last line points at the town button")
+		expect.equal(town.from, #goodbye, "the last intro line points at the town button")
+		expect.equal(town.upTo, #goodbye, "only that line: the next points at your Quests")
 		assert(string.find(goodbye[town.from], "faster", 1, true), "selling in town is faster")
+	end,
+
+	-- owner 2026-11-20: "at the end of chikin tutorial where you need to get to level 4. make the player check the
+	-- QUESTS on the phone": his goodbye ends on a line that waits for you to open Quests, the paw on the Phone and then
+	-- on its Quests app; opening them finishes his visit
+	["his goodbye before level 4 ends with you opening Quests on your Phone"] = function()
+		local now = ChikinTalk.STEPS.swordWin.now
+		assert(now.default and string.find(now.default, "Quests", 1, true) and string.find(now.default, "Phone", 1, true), "it says to open Quests on the Phone")
+		assert(now.phoneOpen and string.find(now.phoneOpen, "Quests", 1, true), "with the Phone open: tap Quests")
+		assert(now.closeWindow, "another window in the way: close it")
+		for _, line in now do
+			assert((utf8.len(line) :: number) <= 60, `short: {line}`)
+		end
+		expect.equal(Chikin.QUESTS_STEP, "swordWin", "the step that ends on the Quests window")
+		local shown = TalkRules.show(ChikinTalk.STEPS.swordWin, #ChikinTalk.STEPS.swordWin.intro, "default")
+		expect.equal(shown.finish, false, "the town line's button is Next now, not Bye")
+		local waiting = TalkRules.show(ChikinTalk.STEPS.swordWin, #ChikinTalk.STEPS.swordWin.intro + 1, "default")
+		expect.equal(waiting.next, false, "no button: opening Quests moves on")
+		expect.equal(waiting.text, now.default)
 	end,
 
 	["a sword fight not won stays on the fight step (the second visit needs a win to finish); the first moves on"] = function()

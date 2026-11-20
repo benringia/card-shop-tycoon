@@ -12,6 +12,8 @@ local BrandBox = require(Shared:WaitForChild("Util"):WaitForChild("BrandBox"))
 local PadRules = require(Shared:WaitForChild("Util"):WaitForChild("PadRules"))
 local DeliveryLooks = require(Shared:WaitForChild("Util"):WaitForChild("DeliveryLooks"))
 local Config = Shared:WaitForChild("Config")
+local Early = require(Config:WaitForChild("Early"))
+local EarlyRules = require(Shared:WaitForChild("Util"):WaitForChild("EarlyRules"))
 local Products = require(Config:WaitForChild("Products"))
 local Items = require(Config:WaitForChild("Items"))
 local ItemRules = require(Shared:WaitForChild("Util"):WaitForChild("ItemRules"))
@@ -294,7 +296,8 @@ local function onOrder(player: Player, productId: unknown)
 	local tourStep = player:GetAttribute("TutorialStep")
 	local deliverySeconds = if tourStep == "orderStock" or tourStep == "stockRack"
 		then StockConfig.TOUR_DELIVERY_SECONDS
-		else math.max(1, math.round(StockConfig.DELIVERY_SECONDS * (1 - PartyService.GetPerk(player, "Express"))))
+		-- a new shop's are quick (Config/Early: 3 s up to shop level 8, the full 10 from 15)
+		else math.max(1, math.round(EarlyRules.delivery(tonumber(player:GetAttribute("Level")) or 1, Early, StockConfig.DELIVERY_SECONDS) * (1 - PartyService.GetPerk(player, "Express"))))
 	notify(player, `Ordered {product.name}. Arrives in {deliverySeconds}s.`, false)
 
 	task.delay(deliverySeconds, function()

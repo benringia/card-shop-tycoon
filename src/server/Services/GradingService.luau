@@ -8,6 +8,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
+local Early = require(Config:WaitForChild("Early"))
+local EarlyRules = require(Shared:WaitForChild("Util"):WaitForChild("EarlyRules"))
 local Cards = require(Config:WaitForChild("Cards"))
 local GradingConfig = require(Config:WaitForChild("Grading"))
 local Upgrades = require(Config:WaitForChild("Upgrades"))
@@ -137,7 +139,7 @@ local function onGradeUp(player: Player, shelfUid: unknown, cardId: unknown, mai
 	-- The new grade waits in the station (spec 2026-11-12-timed-upgrades-revive-design): the copy goes in now, a
 	-- levelled one lifted out, a plain one taken off its new grade's stack
 	local now = os.time()
-	local seconds = UpgradeRules.seconds(Upgrades, "grade", grade)
+	local seconds = EarlyRules.stationWait(UpgradeRules.seconds(Upgrades, "grade", grade), tonumber(player:GetAttribute("Level")) or 1, Early)
 	local job: UpgradeRules.Job = { kind = "grade", startedAt = now, finishAt = now + seconds }
 	if typeof(mainBeastId) == "string" then
 		job.beast = CardService.HoldBeast(player, mainBeastId)

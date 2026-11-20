@@ -13,7 +13,13 @@ return {
 	FIRST_SPAWN_DELAY = 5, -- seconds after a shop is claimed
 	-- A new player's shop: none come until Pish sends his own customer (TutorialRules.holdsCustomers), then the shop's
 	-- own wait this long, so his first sale has the counter to itself (owner 2026-11-16)
-	AFTER_PISH_CUSTOMER = 40,
+	-- (20 since 2026-11-20, 40 before: his customer always buys now, so the first sale is quick and nobody should
+	-- stand waiting for the second)
+	AFTER_PISH_CUSTOMER = 20,
+	-- Pish's own customer (owner 2026-11-20: "the customer should always buy so that players dont have to wait for a
+	-- buying customer"; CustomerTypes.decides `sure`): it wants `units` of something that is on a shelf, looks at the
+	-- shelf `browse` seconds, buys at any price and never gives up in the queue
+	SURE = { browse = 0.5, units = 1 },
 	SPAWN_INTERVAL_MIN = 8, -- seconds between customers; shop rating will shorten this later
 	SPAWN_INTERVAL_MAX = 15,
 	SPAWN_CHECK_INTERVAL = 1,

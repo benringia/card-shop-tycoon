@@ -98,6 +98,7 @@ local keypadSleep: Frame -- the card machine's sleeping face, over its keys whil
 local leaveButton: TextButton
 local autoGiveAt: number? = nil -- exact change gives itself then (AUTO_GIVE_SECONDS)
 local helper: Highlight
+local helperTag: BillboardGui -- the pointer bobbing over the glowing note or coin
 
 local function rgb(values: { number }): Color3
 	return Color3.fromRGB(values[1], values[2], values[3])
@@ -599,11 +600,16 @@ local function setDrawer(open: boolean)
 	tween:Play()
 end
 
--- The helper glow: after a stall (or on Pish's first sale) the next note or coin to give glows gold
+-- The change guide (owner 2026-11-20: permanent; it waited for a stall before): the next note or coin to give glows
+-- gold with a pointer bobbing over it, from the moment the customer pays
 local function updateHelper(now: RegisterStationRules.Situation)
 	local paying = request
-	local stalled = os.clock() - lastProgressAt >= RegisterStation.HELPER_SECONDS or player:GetAttribute("TutorialStep") == FIRST_SALE_STEP
-	local nextCents = if paying and now == "cash" and stalled then RegisterStationRules.nextPiece(Payment.DRAWER, paying.given - paying.total - giving()) else nil
+	local stalled = RegisterStationRules.guideOn(os.clock() - lastProgressAt, RegisterStation) or player:GetAttribute("TutorialStep") == FIRST_SALE_STEP
+	-- the piece to give next and how many taps of it are left ("Tap 3x": RegisterStationRules.tapsLeft)
+	local nextCents: number?, taps = nil, 0
+	if paying and now == "cash" and stalled then
+		nextCents, taps = RegisterStationRules.tapsLeft(Payment.DRAWER, paying.given - paying.total - giving())
+	end
 	local target: BasePart? = nil
 	local model = unit()
 	local drawer = if model then model:FindFirstChild("CashDrawer") else nil
@@ -617,6 +623,21 @@ local function updateHelper(now: RegisterStationRules.Situation)
 	end
 	helper.Adornee = target
 	helper.Enabled = target ~= nil
+	helperTag.Adornee = target
+	helperTag.Enabled = target ~= nil
+	local words = helperTag:FindFirstChildOfClass("TextLabel")
+	if words and target then
+		local text = RegisterStationRules.tapWords(taps, RegisterStation.HELPER_TAG)
+		if words.Text ~= text then
+			words.Text = text
+			-- a little pop as the count goes down, so the change is seen
+			local pop = words:FindFirstChildOfClass("UIScale")
+			if pop then
+				pop.Scale = RegisterStation.HELPER_TAG.pop
+				TweenService:Create(pop, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+			end
+		end
+	end
 end
 
 -- Camera and refresh -----------------------------------------------------------------------------------------------
@@ -646,6 +667,7 @@ local function refresh()
 	leaveButton.Visible = manned
 	if not manned then
 		helper.Enabled = false
+		helperTag.Enabled = false
 		return
 	end
 	local paying = request
@@ -1029,6 +1051,37 @@ function RegisterStationController.Start()
 	helper.DepthMode = Enum.HighlightDepthMode.Occluded
 	helper.Enabled = false
 	helper.Parent = player:WaitForChild("PlayerGui")
+	local tagLook = RegisterStation.HELPER_TAG
+	helperTag = Instance.new("BillboardGui")
+	helperTag.Name = "RegisterHelperTag"
+	helperTag.Size = UDim2.fromOffset(tagLook.width / 0.8, tagLook.height / 0.8) -- the pill is 0.8 of it (room to pop)
+	-- up your screen from the stack and toward you, so the drawer never hides it. Not AlwaysOnTop: those don't draw in
+	-- the register's first-person view (found 2026-11-20: the tag was on and nowhere to be seen)
+	helperTag.StudsOffset = Vector3.new(0, tagLook.lift, tagLook.toward)
+	helperTag.AlwaysOnTop = false
+	helperTag.LightInfluence = 0
+	helperTag.Enabled = false
+	helperTag.Parent = player:WaitForChild("PlayerGui")
+	local tagLabel = Instance.new("TextLabel")
+	tagLabel.BackgroundColor3 = rgb(RegisterStation.HELPER_COLOR)
+	tagLabel.Size = UDim2.fromScale(0.8, 0.8) -- room to pop inside the billboard
+	tagLabel.Font = Enum.Font.FredokaOne
+	tagLabel.TextSize = 22
+	tagLabel.TextColor3 = rgb(tagLook.ink)
+	tagLabel.Text = ""
+	tagLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+	tagLabel.Position = UDim2.fromScale(0.5, 0.5)
+	tagLabel.Parent = helperTag
+	Instance.new("UIScale").Parent = tagLabel
+	local tagCorner = Instance.new("UICorner")
+	tagCorner.CornerRadius = UDim.new(0.5, 0)
+	tagCorner.Parent = tagLabel
+	local tagEdge = Instance.new("UIStroke")
+	tagEdge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	tagEdge.Color = rgb(tagLook.ink)
+	tagEdge.Thickness = 2
+	tagEdge.Parent = tagLabel
+	TweenService:Create(helperTag, TweenInfo.new(tagLook.seconds, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { StudsOffset = Vector3.new(0, tagLook.lift + tagLook.bob, tagLook.toward) }):Play()
 	hover = Instance.new("Highlight")
 	hover.Name = "RegisterHover"
 	hover.FillColor = rgb(GIVE_FX.hover.color)

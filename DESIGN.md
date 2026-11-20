@@ -6169,6 +6169,47 @@ boss models; the ranch and Heroic tiers come after those.
     own outline (its stroke as drawn plus `Cues.RING.gap`, 2 px). The spotlight's hole takes the drawn corner too.
     Measured live: the Phone's tile at 1.2 scale (face 86.4 px, corner 25.2, outline 4.8: ring 100 px, corner 32) and
     an app tile inside the Phone at scale 1 (72 px, corner 21: ring 84 px, corner 27).
+  - *No waiting in the early game* (owner 2026-11-20, three asks):
+    - **Pish's customer always buys** ("when pish says LOOK A CUSTOMER LET THEM SHOP. the customer should always buy
+      so that players dont have to wait for a buying customer"). His customer used to pick a random list (things the
+      rack might not hold) and roll the price's buy chance like anyone, so it could walk out empty-handed. Now
+      (`Customers.SURE`, `CustomerTypes.decides`'s `sure`, CustomerService `customer.sure`): it wants one of what is
+      on a shelf, looks 0.5 s, buys at any price, skips the singles, and never gives up in the queue. The shop's own
+      customers follow 20 s after it (40 before).
+    - **The change guide is always on** ("can we just add a permanent guide/highlight for the change/give back? some
+      kids doesnt do well with math"). The next note or coin to give glows gold from the moment the customer pays
+      (it waited 5 s without a tap), with a gold pill bobbing over it that counts the taps left on that note or coin
+      and pops as it goes down ("Tap 3x", "Tap 2x", "Tap 1x", then on to the next coin; owner: "change TAP to
+      something like 'TAP 2X,3X' that decreases with every tap so that kids will understand it more";
+      `RegisterStationRules.tapsLeft`, `tapWords`); following it always lands on the exact change, which gives itself
+      (`RegisterStation.HELPER_SECONDS` 0, `HELPER_TAG`, `RegisterStationRules.guideOn`).
+      The pill is a plain billboard held toward the camera: AlwaysOnTop ones don't draw in the register's
+      first-person view. And on Pish's first sale his talk card stood on the register's screen (the amount to give
+      back): at the register it stands at the left side, a little smaller (`TalkRules.cardPlace`).
+    - **A new shop's waits are short** ("optimize early game, players should NOT wait for something in early game";
+      `Config/Early`, `Util/EarlyRules`, the same window as the new shop's customer boost: in full to shop level 8,
+      gone by 15): an order arrives in 3 s (10 later); a fainted creature rests 1 minute (5 later; the spring still
+      triples it, and the lost-fight line says the real time); the stations' timers are a quarter as long (a first
+      star 8 s, not 30; the server starts the job with it and the windows show it).
+    Left as they are, on purpose: customers every 6 to 10 s in a new shop, the boss loot timers, daily gifts, and
+    the cinematics. Seen live: a cash sale at the register with the guide and the side card. Not seen live: his
+    customer buying (the test shop's shelves were empty; its rule is unit-tested).
+  - *Chikin sends you to your Quests* (owner 2026-11-20: "at the end of chikin tutorial where you need to get to
+    level 4. make the player chack the QUESTS on the phone"): his goodbye after the sword fight no longer ends on
+    Bye. After "...or tap here to sell in your shop: much faster!" he says "Quests give lots of shop XP! Open Quests
+    on your Phone.", the paw on the Phone, then "Tap Quests!" with the paw on its Quests app; the Quests window
+    opening ends his visit (`Chikin.QUESTS_STEP`, `ChikinTalk.STEPS.swordWin.now`, ChikinController). A shop already
+    at level 4 skips it (the boss visit comes straight on). Not played through live yet.
+  - *The card view fits what it shows* (owner 2026-11-20, a card with one copy: "theres a huge space here on this
+    window fix it"): the panel is as tall as its content and buttons, centred beside the card, the whole room only
+    when the content needs it (More, many copies: it scrolls) or a chooser is open (`CardViewRules.fitPanel`).
+  - *The game page's video* (owner 2026-11-20: a 17:51 recording to "edit so we can put it into our game video"):
+    `tools/video/make_trailer.py <recording> <out> [--mute]` cuts 14 clips into 30 s (a pack rip, a RARE pull, Open
+    10, the binder, a sale at the register, the dogs, a wild fight, the Meadow Warden, VICTORY, the boss chests, the
+    young Hydra, Supernova, the plaza at night under the game's name), with four short captions. Roblox's rules for a
+    game's video (Creator Hub, Thumbnails): real gameplay, no voice-over, no music with lyrics, no ads or claims, a
+    logo and a few describing words allowed; 3 uploads a month, rejected ones count. Needs Pillow and
+    imageio-ffmpeg (it brings ffmpeg).
   - *The falls by the Wild portal* (owner 2026-11-20: "the portal to wild is too loud. lower its volume"): the portal
     has no sound of its own; the only one there is the Forest Falls' waterfall 40 studs away. Its volume 0.5 -> 0.2
     (`Config/Scenery` SOUNDS).

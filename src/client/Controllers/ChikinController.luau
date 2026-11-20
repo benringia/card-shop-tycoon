@@ -187,7 +187,7 @@ end
 -- His goodbye's line that says "tap here to sell in your shop" points at the town button (Config/Chikin TOWN_LINE)
 local function pointsAtTown(): GuiObject?
 	local town = Chikin.TOWN_LINE
-	if step ~= town.step or introIndex < town.from then
+	if step ~= town.step or introIndex < town.from or introIndex > town.upTo then
 		return nil
 	end
 	return townButton()
@@ -225,6 +225,22 @@ local function situation(stepId: string): (string, Target)
 	elseif stepId == "boss" then
 		local ground = WARDEN.ground or 0
 		return "default", { spot = Vector3.new(WARDEN.portal.x, ground + SPOT_HEIGHT, WARDEN.portal.z) }
+	elseif stepId == Chikin.QUESTS_STEP then
+		-- his goodbye's last line (owner 2026-11-20): the Quests window open moves on; else the paw on the Phone, then
+		-- on its Quests app
+		local gui = mainGui()
+		local quests = gui and gui:FindFirstChild("Quests")
+		if quests and quests:IsA("GuiObject") and shown(quests) then
+			return "questsOpen", {}
+		end
+		local inTheWay = windowInTheWay({})
+		if inTheWay then
+			return "closeWindow", { gui = inTheWay }
+		end
+		if Hud.isTrayOpen() then
+			return "phoneOpen", { gui = Hud.find("Quests") }
+		end
+		return "default", { gui = Hud.find("Manage") }
 	end
 	return "default", {}
 end
@@ -419,10 +435,18 @@ local function updateTalk(situationName: string)
 			talk = { intro = ChikinTalk.LOST, now = {} }
 		end
 	elseif step == "swordWin" and levelFour then
-		-- Already at shop level 4: the boss visit comes straight on, so no "come back at level 4"
+		-- Already at shop level 4: the boss visit comes straight on, so no "come back at level 4" (nor the Quests)
 		local lines = table.clone(talk.intro)
 		lines[#lines] = ChikinTalk.SWORD_NOW
 		talk = { intro = lines, now = {} }
+	elseif step == Chikin.QUESTS_STEP and situationName == "questsOpen" and introIndex > #talk.intro then
+		-- you opened your Quests: his visit is over (the server moves on to the level 4 wait and he leaves)
+		if not nextSent then
+			nextSent = true
+			Remotes.CombatTutorialAction:FireServer("next")
+		end
+		TutorialTalk.hide()
+		return
 	end
 	TutorialTalk.atTop(false)
 	if TutorialCues.isTourCardOpen() then

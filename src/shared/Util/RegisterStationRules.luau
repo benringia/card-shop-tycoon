@@ -71,6 +71,27 @@ function RegisterStationRules.nextPiece(drawer: { number }, remaining: number): 
 	return best
 end
 
+-- The guide's count (owner 2026-11-20: "TAP 2X,3X that decreases with every tap"): the note or coin to give next
+-- (nextPiece) and how many taps of it the change left still takes; nil and 0 with nothing left (or too much given)
+function RegisterStationRules.tapsLeft(drawer: { number }, remaining: number): (number?, number)
+	local piece = RegisterStationRules.nextPiece(drawer, remaining)
+	if not piece then
+		return nil, 0
+	end
+	return piece, remaining // piece
+end
+
+-- The pill's words: "Tap 3x"
+function RegisterStationRules.tapWords(taps: number, tag: { text: string }): string
+	return string.format(tag.text, taps)
+end
+
+-- Whether the change guide shows `sinceTap` seconds after your last tap: always (owner 2026-11-20: "a permanent
+-- guide/highlight for the change"; it waited HELPER_SECONDS, 5, before)
+function RegisterStationRules.guideOn(sinceTap: number, cfg: { HELPER_SECONDS: number }): boolean
+	return sinceTap >= cfg.HELPER_SECONDS
+end
+
 -- The town's hour (Lighting.ClockTime, 0-24) as the register's clock: "9:42 AM"
 function RegisterStationRules.clock(clockTime: number): string
 	local minutes = math.floor((clockTime % 24) * 60 + 1e-6)

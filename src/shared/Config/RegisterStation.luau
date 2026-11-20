@@ -180,9 +180,16 @@ return {
 	NOTE_ASPECT = 352 / 512, -- a drawer note's width over its length (its picture's)
 	NOTE_ROW = 0.58, -- the notes' share of the drawer's depth (the coins take the rest)
 	COIN_STACK = 3,
-	-- The helper glow (owner 2026-11-16: "after 5 s stuck"): the next note or coin to give glows gold after this long
-	-- without a tap, and always on Pish's first sale (Util/RegisterStationRules nextPiece)
-	HELPER_SECONDS = 5,
+	-- The change guide (owner 2026-11-20: "can we just add a permanent guide/highlight for the change/give back? some
+	-- kids doesnt do well with math"; it showed after 5 s stuck, owner 2026-11-16): the next note or coin to give glows
+	-- gold from the moment the customer pays, a pointer bobbing over it (Util/RegisterStationRules nextPiece, guideOn).
+	-- Following it always lands on the exact change
+	HELPER_SECONDS = 0,
+	-- the pointer: a gold pill over the glowing stack on your screen saying how many taps of it are left ("Tap 3x",
+	-- then "Tap 2x", "Tap 1x": owner 2026-11-20, "so that kids will understand it more"; RegisterStationRules
+	-- .tapsLeft; `text` takes the count); px wide and tall, studs up the screen from the stack and `toward` the
+	-- camera, its bob and its seconds; it pops to `pop` times its size when the count changes
+	HELPER_TAG = { text = "Tap %dx", width = 112, height = 40, lift = 0.5, toward = 0.5, bob = 0.14, seconds = 0.45, pop = 1.25, ink = { 60, 32, 12 } },
 	-- A sale while you man the register (owner 2026-11-16: "money should be visible while I'm using cash register. with
 	-- immersive animation/effects when someone buys something. the same with exp"; mockup approved): the screen flashes
 	-- "SOLD! +$12.50" for `soldSeconds`, coins (`coins` fewest and most: more for a bigger sale, RegisterStationRules

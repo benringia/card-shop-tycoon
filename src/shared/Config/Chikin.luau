@@ -40,7 +40,11 @@ return {
 	-- His goodbye after the sword fight points at the town button from this line (owner 2026-11-18: "let the player know
 	-- they can stay here and kill monsters to level 4 or go back to town (highlight the town icon) for faster shop
 	-- exp"): the round ReturnToTown icon in Roblox's top bar (BattleController)
-	TOWN_LINE = { step = "swordWin", from = 4 },
+	-- (`upTo`: the line after it points at the Phone's Quests, QUESTS_STEP)
+	TOWN_LINE = { step = "swordWin", from = 4, upTo = 4 },
+	-- His goodbye before shop level 4 ends when you open your Quests (owner 2026-11-20: "make the player check the
+	-- QUESTS on the phone"): its line for now waits, the paw on the Phone and then on its Quests app
+	QUESTS_STEP = "swordWin",
 	-- Each step's picture on his talk card (Config/UIIcons)
 	STEP_ICONS = {
 		hello = "Paw",

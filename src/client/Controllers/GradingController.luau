@@ -10,6 +10,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
+local Early = require(Config:WaitForChild("Early"))
+local EarlyRules = require(Shared:WaitForChild("Util"):WaitForChild("EarlyRules"))
 local Beasts = require(Config:WaitForChild("Beasts"))
 local Cards = require(Config:WaitForChild("Cards"))
 local GradingConfig = require(Config:WaitForChild("Grading"))
@@ -282,7 +284,7 @@ local function renderPane(card: Card?)
 		have = formatCash(cash),
 		affordable = affordable,
 		gold = goldPays,
-		clock = if plan then UpgradeRules.clock(UpgradeRules.seconds(Upgrades, "grade", plan.grade)) else "",
+		clock = if plan then UpgradeRules.clock(EarlyRules.stationWait(UpgradeRules.seconds(Upgrades, "grade", plan.grade), tonumber(player:GetAttribute("Level")) or 1, Early)) else "",
 		reason = reason,
 	})
 	local gradeButton = UIKit.button(pane, buttonText, if canGrade then UIKit.Colors.Accent else UIKit.Colors.Locked)

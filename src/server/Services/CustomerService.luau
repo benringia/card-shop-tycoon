@@ -71,6 +71,7 @@ export type Customer = {
 	lastScanAt: number?, -- set by RegisterService on each scan; switches to checkout patience
 	heldUntil: number?, -- a kid who paid stays at the counter until then (the rip reveal, an open offer: OfferService)
 	inHand: boolean?, -- Studio's /customer only: arrives holding its list (no shelf stock used, nothing put back)
+	sure: boolean?, -- Pish's tutorial customer: wants what's on a shelf, always buys, never gives up (Customers.SURE)
 	seen: { [string]: boolean }, -- cards on display this customer already stopped at ("<shelf uid>#<slot>")
 	petted: boolean, -- already had their one chance to pet the owner's creature
 	reacting: boolean, -- stopped for a reaction right now
@@ -503,8 +504,17 @@ end
 
 -- Products this shop has unlocked, so customers only ask for things the owner could stock. A kid wants a pack or two,
 -- a big spender a booster box when one is stocked (else a stack of packs); bulk cards only as maybeBulk adds them
-local function pickShoppingList(owner: Player, kind: string): { [string]: number }
+local function pickShoppingList(owner: Player, kind: string, sure: boolean?): { [string]: number }
 	local level = EconomyService.GetLevel(owner)
+	if sure then
+		-- Pish's customer wants something that is there: the first stocked shelf's product
+		for _, shelf in PlacementService.GetShelves(owner) do
+			local product = if shelf.productId then Products.ById[shelf.productId] else nil
+			if product and not product.bulk and shelf.units > 0 then
+				return { [product.id] = CustomerConfig.SURE.units }
+			end
+		end
+	end
 	if kind == "kid" or kind == "bigSpender" then
 		local list: { [string]: number } = {}
 		local box = CustomerConfig.BIG_SPENDER.box
@@ -666,25 +676,27 @@ local function shopFor(customer: Customer, productId: string, wanted: number, vi
 	if not customer.alive then
 		return true
 	end
-	task.wait(CustomerConfig.BROWSE_SECONDS)
+	task.wait(if customer.sure then CustomerConfig.SURE.browse else CustomerConfig.BROWSE_SECONDS)
 
 	local product = Products.ById[productId]
 	local price = PricingService.GetPrice(customer.owner, productId)
-	-- By its type (Util/CustomerTypes): bargain hunters and big spenders still buy a band higher than the rest
-	if CustomerTypes.outOfReach(CustomerConfig, customer.kind, price, product.marketPrice, Pricing.BUY_BANDS) then
+	-- By its type (Util/CustomerTypes): bargain hunters and big spenders still buy a band higher than the rest; Haggle
+	-- (Shade creature summoned) makes them more willing at the owner's price; Pish's own customer always buys
+	local haggle = PartyService.GetPerk(customer.owner, "Haggle")
+	local decision = CustomerTypes.decides(CustomerConfig, customer.kind, price, product.marketPrice, rng:NextNumber(), haggle, Pricing.BUY_BANDS, customer.sure)
+	if decision == "pricey" then
 		showBubble(customer, CustomerConfig.BUBBLE_ANNOYED)
 		say(customer, "pricey")
 		fireOutcome(customer.owner, "annoyed")
 		return true
-	end
-	-- Haggle (Shade creature summoned): more willing to buy at the owner's price
-	local haggle = PartyService.GetPerk(customer.owner, "Haggle")
-	if not CustomerTypes.buys(CustomerConfig, customer.kind, price, product.marketPrice, rng:NextNumber(), haggle, Pricing.BUY_BANDS) then
+	elseif decision ~= "buy" then
 		return true
 	end
 
 	-- Someone else may have emptied it while this customer walked over; over market they take fewer (CustomerTypes.unitsAt)
-	local units = CustomerTypes.unitsAt(CustomerConfig, customer.kind, wanted, price, product.marketPrice, Pricing.BUY_BANDS, EconomyService.GetLevel(customer.owner))
+	local units = if customer.sure
+		then wanted
+		else CustomerTypes.unitsAt(CustomerConfig, customer.kind, wanted, price, product.marketPrice, Pricing.BUY_BANDS, EconomyService.GetLevel(customer.owner))
 	local taken = PlacementService.TakeStock(shelf, units)
 	if taken > 0 then
 		table.insert(customer.items, { shelfUid = shelf.uid, productId = productId, units = taken, unitPrice = price })
@@ -889,8 +901,8 @@ local function waitInQueue(customer: Customer)
 				removeFromQueue(customer)
 				return
 			end
-		elseif os.clock() >= getDeadline() then
-			break
+		elseif not customer.sure and os.clock() >= getDeadline() then
+			break -- Pish's customer waits for a new player as long as it takes
 		end
 		-- Step forward as people ahead leave
 		local target = getQueuePoint(customer.plot, index)
@@ -938,7 +950,7 @@ local function run(customer: Customer)
 		end
 		return
 	end
-	for productId, wanted in pickShoppingList(customer.owner, customer.kind) do
+	for productId, wanted in pickShoppingList(customer.owner, customer.kind, customer.sure) do
 		if not shopFor(customer, productId, wanted, visited) then
 			missing = true
 		end
@@ -949,7 +961,7 @@ local function run(customer: Customer)
 	-- A collector hunts the card they want; of the rest only some care about singles
 	if customer.wanted then
 		huntCard(customer, visited)
-	elseif rng:NextNumber() < ShowcaseConfig.CUSTOMER_CARD_CHANCE then
+	elseif not customer.sure and rng:NextNumber() < ShowcaseConfig.CUSTOMER_CARD_CHANCE then
 		shopForCard(customer, visited)
 	end
 	if not customer.alive then
@@ -1007,20 +1019,20 @@ local function pickWanted(owner: Player): string
 	return CollectorRules.wanted(CustomerConfig, owned, all, rng:NextNumber(), rng:NextNumber())
 end
 
-local startCustomer: (plot: Plot, owner: Player, state: PlotState, model: Model, kind: string, wanted: string?, inHand: boolean?) -> ()
+local startCustomer: (plot: Plot, owner: Player, state: PlotState, model: Model, kind: string, wanted: string?, inHand: boolean?, sure: boolean?) -> ()
 
 -- forcedKind / forcedWanted: Studio's /customer command only
-local function spawnCustomer(plot: Plot, owner: Player, state: PlotState, forcedKind: string?, forcedWanted: string?, inHand: boolean?)
+local function spawnCustomer(plot: Plot, owner: Player, state: PlotState, forcedKind: string?, forcedWanted: string?, inHand: boolean?, sure: boolean?)
 	local entry = getEntryCFrame(plot)
 	local kind = forcedKind
 		or CustomerTypes.pick(CustomerConfig, { hasShowcase = showsCards(owner), shopLevel = EconomyService.GetLevel(owner) }, rng:NextNumber())
 	local model = createModel(entry, kind)
 	local wanted = if kind == "collector" then forcedWanted or pickWanted(owner) else nil
-	startCustomer(plot, owner, state, model, kind, wanted, inHand)
+	startCustomer(plot, owner, state, model, kind, wanted, inHand, sure)
 end
 
 -- Makes `model` (a fresh rig or a town walker) a customer of this shop and starts its visit
-startCustomer = function(plot: Plot, owner: Player, state: PlotState, model: Model, kind: string, wanted: string?, inHand: boolean?)
+startCustomer = function(plot: Plot, owner: Player, state: PlotState, model: Model, kind: string, wanted: string?, inHand: boolean?, sure: boolean?)
 	if wanted then
 		model:SetAttribute("WantedCard", wanted)
 	end
@@ -1036,6 +1048,7 @@ startCustomer = function(plot: Plot, owner: Player, state: PlotState, model: Mod
 		kind = kind,
 		wanted = wanted,
 		inHand = inHand,
+		sure = sure,
 		seen = {},
 		petted = false,
 		reacting = false,
@@ -1245,14 +1258,15 @@ function CustomerService.HasRoom(owner: Player): boolean
 	return plot ~= nil and #getPlotState(plot).customers < CustomerConfig.MAX_PER_PLOT
 end
 
--- A plain customer now, when the shop has room (Pish's tutorial sends one, once ever: TutorialService). The game's own;
--- the dev command below is Studio's (tests/DevGate keeps the two apart)
+-- A plain customer now, when the shop has room (Pish's tutorial sends one, once ever: TutorialService), who always
+-- buys (owner 2026-11-20: Config/Customers SURE). The game's own; the dev command below is Studio's (tests/DevGate
+-- keeps the two apart)
 function CustomerService.SendPlain(owner: Player): boolean
 	local plot = PlotService.GetPlot(owner)
 	if not plot or not CustomerService.HasRoom(owner) then
 		return false
 	end
-	task.spawn(spawnCustomer, plot, owner, getPlotState(plot), "plain", nil, nil)
+	task.spawn(spawnCustomer, plot, owner, getPlotState(plot), "plain", nil, nil, true)
 	return true
 end
 

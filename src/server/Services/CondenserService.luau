@@ -7,6 +7,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
+local Early = require(Config:WaitForChild("Early"))
+local EarlyRules = require(Shared:WaitForChild("Util"):WaitForChild("EarlyRules"))
 local Cards = require(Config:WaitForChild("Cards"))
 local CondenserConfig = require(Config:WaitForChild("Condenser"))
 local Upgrades = require(Config:WaitForChild("Upgrades"))
@@ -123,7 +125,7 @@ local function onCondense(player: Player, shelfUid: unknown, cardId: unknown, ma
 		return
 	end
 	local now = os.time()
-	local seconds = UpgradeRules.seconds(Upgrades, "star", held.stars)
+	local seconds = EarlyRules.stationWait(UpgradeRules.seconds(Upgrades, "star", held.stars), tonumber(player:GetAttribute("Level")) or 1, Early)
 	UpgradeJobService.Begin(player, "condenser", { kind = "star", startedAt = now, finishAt = now + seconds, beast = held })
 	notify(player, `{card.name} is in the Condenser ({UpgradeRules.clock(seconds)}){shardText}`, false)
 end

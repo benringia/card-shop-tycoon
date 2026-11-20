@@ -4,6 +4,7 @@
 -- Util/TalkRules.cardAtTop), a cotton candy card with Pish's face (his model in a little window), his name, one short line in big
 -- text, the picture of the thing to use, and a big Next while he has more to say. A new line types itself in; a tap on
 -- the card (or Next) shows the rest, then moves on. Lines come from Config/PishTalk through Util/TalkRules.
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -38,6 +39,7 @@ local FIGHT_TOP = 66 -- px in a fight: under the boss's HP bar
 local BAR_GAP = 12 -- px above the placement bar while the player places something
 local PAW_ROOM = 82 -- px over the button Pish points at for his bouncing paw (Util/TutorialCues: 64 + lift + bounce)
 local EDGE = 8 -- px kept clear of the screen's edges and the HUD's side columns
+local SIDE_FIT = 0.82 -- at the register the card stands at the left side, a little smaller (TalkRules.cardPlace)
 local TYPE_SPEED = 45 -- letters a second
 local POP = TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 
@@ -242,9 +244,19 @@ local function build(): Frame
 			pointed = { top = top, low = low, across = across }
 		end
 		local top = if forceTop then FIGHT_TOP else TOP
-		local atTop = TalkRules.cardAtTop(top, height, PAW_ROOM, pointed, forceTop)
-		made.AnchorPoint = Vector2.new(0.5, if atTop then 0 else 1)
-		made.Position = UDim2.fromOffset(centre, if atTop then top else bottom)
+		local manning = Players.LocalPlayer:GetAttribute("ManningRegister") == true
+		local where = TalkRules.cardPlace(top, height, PAW_ROOM, pointed, forceTop, manning)
+		if where == "side" then
+			-- at the register: left of its screen and drawer, half way down (under the Leave pill)
+			made.AnchorPoint = Vector2.new(0, 0.5)
+			made.Position = UDim2.fromOffset(EDGE + 4, screenSize.Y * 0.47)
+			if scale and not scale:GetAttribute("Popping") then
+				scale.Scale = math.min(fit, SIDE_FIT)
+			end
+		else
+			made.AnchorPoint = Vector2.new(0.5, if where == "top" then 0 else 1)
+			made.Position = UDim2.fromOffset(centre, if where == "top" then top else bottom)
+		end
 		if line and shownText ~= "" then
 			local letters = math.floor((os.clock() - typedAt) * TYPE_SPEED)
 			line.MaxVisibleGraphemes = if letters >= utf8.len(shownText) :: number then -1 else letters

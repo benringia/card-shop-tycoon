@@ -67,4 +67,14 @@ function CardViewRules.matchups(wheel: { strong: { string }, weak: { string } },
 	return chips
 end
 
+-- The panel's height and top (owner 2026-11-20: "theres a huge space here on this window fix it"): `content` px of
+-- body plus `chrome` px (header, gaps, the buttons) as tall as that, at least `least`, never past the room (`room`:
+-- its top and bottom on screen; then the body scrolls), centred in the room. `full`: a chooser is open (party, job),
+-- which takes the whole room
+function CardViewRules.fitPanel(content: number, chrome: number, room: { top: number, bottom: number }, least: number, full: boolean?): { height: number, top: number }
+	local space = room.bottom - room.top
+	local height = if full then space else math.clamp(content + chrome, math.min(least, space), space)
+	return { height = height, top = room.top + (space - height) / 2 }
+end
+
 return CardViewRules

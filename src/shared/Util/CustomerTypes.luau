@@ -80,6 +80,30 @@ function CustomerTypes.buys(cfg: any, kind: string, price: number, market: numbe
 	return band.chance * (1 + perkBonus) > roll
 end
 
+-- What a customer does at a shelf priced `price`: "buy", "pricey" (out of its reach: the annoyed bubble) or "pass".
+-- `sure` (Pish's tutorial customer, owner 2026-11-20: "the customer should always buy so that players dont have to
+-- wait for a buying customer"): it always buys
+function CustomerTypes.decides(cfg: any, kind: string, price: number, market: number, roll: number, perkBonus: number, bands: { Band }, sure: boolean?): string
+	if sure then
+		return "buy"
+	elseif CustomerTypes.outOfReach(cfg, kind, price, market, bands) then
+		return "pricey"
+	end
+	return if CustomerTypes.buys(cfg, kind, price, market, roll, perkBonus, bands) then "buy" else "pass"
+end
+
+-- What a customer does at a shelf priced `price`: "buy", "pricey" (out of its reach: the annoyed bubble) or "pass".
+-- `sure` (Pish's tutorial customer, owner 2026-11-20: "the customer should always buy so that players dont have to
+-- wait for a buying customer"): it always buys
+function CustomerTypes.decides(cfg: any, kind: string, price: number, market: number, roll: number, perkBonus: number, bands: { Band }, sure: boolean?): string
+	if sure then
+		return "buy"
+	elseif CustomerTypes.outOfReach(cfg, kind, price, market, bands) then
+		return "pricey"
+	end
+	return if CustomerTypes.buys(cfg, kind, price, market, roll, perkBonus, bands) then "buy" else "pass"
+end
+
 type Sizes = { { count: number, new: number, late: number } }
 
 -- How much of a new shop's boost a shop at `level` still has (Config/Customers NEW_SHOP): 1 up to fullUntil, 0 from

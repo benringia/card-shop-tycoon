@@ -214,4 +214,15 @@ return {
 		expect.equal(TalkRules.cardAtTop(TOP, HEIGHT, PAW, aside, false), true, "beside the card: the top")
 		expect.equal(TalkRules.cardAtTop(TOP, HEIGHT, PAW, high, true), true, "a fight keeps it at the top")
 	end,
+
+	-- seen 2026-11-20 on Pish's first sale: at the top centre his card lay on the register's screen (what to give
+	-- back), and at the bottom it would lie on the cash drawer. At the register it stands at the left side
+	["at the register the talk card stands aside: the screen and the drawer stay clear"] = function()
+		local TOP, HEIGHT, PAW = 66, 112, 82
+		expect.equal(TalkRules.cardPlace(TOP, HEIGHT, PAW, nil, false, true), "side", "manning the register")
+		expect.equal(TalkRules.cardPlace(TOP, HEIGHT, PAW, { top = 120, low = 170, across = true }, false, true), "side")
+		expect.equal(TalkRules.cardPlace(TOP, HEIGHT, PAW, nil, false, false), "top", "anywhere else: as before")
+		expect.equal(TalkRules.cardPlace(TOP, HEIGHT, PAW, { top = 120, low = 170, across = true }, false, false), "bottom")
+		expect.equal(TalkRules.cardPlace(TOP, HEIGHT, PAW, nil, true, false), "top", "a fight")
+	end,
 }

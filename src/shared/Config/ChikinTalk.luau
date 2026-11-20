@@ -50,7 +50,13 @@ return {
 				"Stay and hunt here to reach shop level 4...",
 				"...or tap here to sell in your shop: much faster!",
 			},
-			now = {},
+			-- then he waits for you to open your Quests (owner 2026-11-20: "make the player check the QUESTS on the
+			-- phone"; Config/Chikin QUESTS_STEP): the paw on the Phone, then on its Quests app
+			now = {
+				default = "Quests give lots of shop XP! Open Quests on your Phone.",
+				phoneOpen = "Tap Quests!",
+				closeWindow = "Tap the X to close this window.",
+			},
 		},
 		sword = {
 			intro = { "Woof! Shop level 4!", "A boss is waiting for you!" },

@@ -148,4 +148,18 @@ return {
 		expect.equal(middle > cfg.gap and middle < 1, true, "fading in between")
 		expect.equal(1 / cfg.gap >= 1.35 and 1 / cfg.gap <= 1.5, true, "about 1.4x the customers")
 	end,
+	-- owner 2026-11-20: "In tutorial. when pish says LOOK A CUSTOMER LET THEM SHOP. the customer should always buy so
+	-- that players dont have to wait for a buying customer"
+	["Pish's customer always buys: whatever the price, whatever the roll"] = function()
+		expect.equal(CustomerTypes.decides(Customers, "plain", 100, 10, 0.99, 0, BANDS, true), "buy", "ten times market, the worst roll")
+		expect.equal(CustomerTypes.decides(Customers, "plain", 10, 10, 0.99, 0, BANDS, true), "buy")
+		-- anyone else decides as before
+		expect.equal(CustomerTypes.decides(Customers, "plain", 100, 10, 0, 0, BANDS, false), "pricey", "out of reach: the annoyed bubble")
+		expect.equal(CustomerTypes.decides(Customers, "plain", 10, 10, 0, 0, BANDS, false), "buy", "market price, a good roll")
+		expect.equal(CustomerTypes.decides(Customers, "plain", 10, 10, 0.9999, 0, BANDS, false), if CustomerTypes.buys(Customers, "plain", 10, 10, 0.9999, 0, BANDS) then "buy" else "pass")
+		local sure = Customers.SURE
+		assert(sure.browse <= 1, "it doesn't dawdle at the shelf")
+		assert(sure.units >= 1, "it takes something")
+		assert(Customers.AFTER_PISH_CUSTOMER <= 25, "the shop's own customers follow soon after his")
+	end,
 }
