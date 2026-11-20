@@ -204,7 +204,9 @@ local function build(): Frame
 		local height = HEIGHT * math.min(WIDTH, screenSize.X * SCREEN_SHARE) / WIDTH
 		for _, columnName in { "StatusRow", "HudSide", "PartyDock" } do
 			local column = gui and gui:FindFirstChild(columnName)
-			if column and column:IsA("GuiObject") and column.Visible then
+			-- a computer's party dock sits in the bottom bar's middle (Config/DesktopHud): not a column at the left edge
+			local inBar = columnName == "PartyDock" and column ~= nil and column:IsA("GuiObject") and column.AbsolutePosition.X > screenSize.X * 0.2
+			if column and column:IsA("GuiObject") and column.Visible and not inBar then
 				local top, low = column.AbsolutePosition.Y, column.AbsolutePosition.Y + column.AbsoluteSize.Y
 				if low > bottom - height and top < bottom then
 					if columnName == "StatusRow" then

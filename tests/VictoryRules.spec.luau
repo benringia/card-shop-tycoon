@@ -157,4 +157,12 @@ return {
 		expect.equal(Victory.START_AT.win, options[1].startAt)
 		assert(Victory.SOUNDS.win ~= "rbxassetid://1844539433", "not the old orchestral hits")
 	end,
+	-- Owner 2026-11-21 (launch day), on a monster win's banner: "make this bigger and make it last longer"
+	["a monster win's banner is big and stays long enough to read"] = function()
+		local Victory = require("../src/shared/Config/Victory")
+		local toast = Victory.TOAST
+		assert(toast.seconds >= 4 and toast.seconds <= 6, "long enough to read three pills, gone before the next fight ends")
+		assert(toast.scale >= 1.25 and toast.scale <= 1.6, "bigger on a desktop")
+		assert(toast.touchScale >= 1 and toast.touchScale < toast.scale, "a phone's a little bigger too, within its width")
+	end,
 }

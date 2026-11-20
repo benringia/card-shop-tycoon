@@ -50,6 +50,38 @@ function ToastRules.stackCorner(head: { x: number, y: number }, tailRight: numbe
 	return { x = head.x + tailRight * scale, y = head.y - tail / 2 * scale - 2 }
 end
 
+-- How the bubbles sit (owner 2026-11-21): "down" on a touch screen (the stack hangs under the corner's column, tails on
+-- top), "row" on a computer with Pish perched on the quest strip (side by side along the top bar's strip, the newest
+-- over his head: a stack beside him covered an open window's close button), "up" over the cash at the bottom
+-- In a fight (`fight`, owner 2026-11-20: the combat HUD tidy) they hang "under" the foe's bar at the top centre: in
+-- the lower right they landed on the skill buttons
+function ToastRules.mode(touch: boolean, perched: boolean, fight: boolean?): "down" | "row" | "up" | "under"
+	if fight then
+		return "under"
+	end
+	return if touch then "down" elseif perched then "row" else "up"
+end
+
+-- A fight's stack: its top-centre point (px) under the foe's bar (`bar`), below whatever hangs from the bar (`hang`:
+-- the lowest foot of its states and adds; 0 for none), `gap` px clear
+function ToastRules.under(bar: { x: number, y: number, w: number, h: number }, hang: number, gap: number): { x: number, y: number }
+	return { x = bar.x + bar.w / 2, y = math.max(bar.y + bar.h, hang) + gap }
+end
+
+-- Whether a bubble has a tail: someone says it (`speaker`: Pish is on the HUD), or it hangs from a phone's column;
+-- a computer's bubbles with no Pish are plain
+function ToastRules.tail(mode: string, speaker: boolean): boolean
+	if mode == "under" then
+		return false -- a fight's toasts under the foe's bar: nobody says them
+	end
+	return speaker or mode == "down"
+end
+
+-- How many bubbles show at once: fewer where there's less room (a phone's short screen, the row along the top)
+function ToastRules.max(mode: string, cfg: { MAX: number, MAX_TOUCH: number }): number
+	return if mode == "up" then cfg.MAX else cfg.MAX_TOUCH
+end
+
 -- Whether the mascot hops now: not since `lastHop` (nil: never) for `gap` seconds
 function ToastRules.hopNow(lastHop: number?, now: number, gap: number): boolean
 	return lastHop == nil or now - lastHop >= gap

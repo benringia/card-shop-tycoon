@@ -4,7 +4,8 @@
 -- was: bottom right left of the cash on a PC, under the cash at the top right on a phone. On top your 3 party slots as
 -- a carousel: the creature that's out (or the one last in the middle) big in the middle, the other two smaller either
 -- side, each a round portrait in its element's rim with its key number; the summoned one has the orange glow and OUT
--- tag; an empty one is a faint ring with a "+" (picks a card in the binder). Tap a side one, or press 1 / 2 / 3, to
+-- tag; an empty one is a faint ring with a "+" (picks a card in the binder). On a keyboard 1 and 3 turn the carousel
+-- and E calls the middle one (owner 2026-11-21, Palworld's keys; Party.BAR.DOCK.summonKey). Tap a side one to
 -- summon it (it slides to the middle); tap the one out to send it back. Its name, level and element under it. Under
 -- that, you: your face (CharacterController: the character window), your health (full outside fights; a fight shows its
 -- own) and your level with its XP bar; on a phone everything flush right, your row at the very top over the cash pill,
@@ -12,6 +13,7 @@
 -- fight dim and show an hourglass and "2:41". Hovering a card (or holding a finger on it) shows its tooltip above it:
 -- Power, HP / ATK / SPD bars, perk and rest (Util/CardTips). Numbers: Config/Party BAR (DOCK).
 local ContextActionService = game:GetService("ContextActionService")
+local ProximityPromptService = game:GetService("ProximityPromptService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -87,7 +89,11 @@ local BROWN = rgb(BAR.TEXT)
 local OUT_COLOR = rgb(BAR.OUT)
 local WHITE = Color3.new(1, 1, 1)
 local INK = Color3.fromRGB(20, 28, 60)
-local SUMMON_KEYS = { Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three }
+-- A keyboard's party keys (Party.BAR.DOCK.summonKey): 1 and 3 turn the carousel, the summon key calls the middle one
+local TURN_KEYS: { [Enum.KeyCode]: "left" | "right" } = { [Enum.KeyCode.One] = "left", [Enum.KeyCode.Three] = "right" }
+local SUMMON_KEY = (Enum.KeyCode :: any)[Party.BAR.DOCK.summonKey] :: Enum.KeyCode
+local DesktopHudConfig = require(Config:WaitForChild("DesktopHud"))
+local DesktopHud = require(Shared:WaitForChild("Util"):WaitForChild("DesktopHud"))
 local SUMMON_ACTION = "PartySummon"
 local TIP_GAP = 10
 local TIP_WIDTH = 250
@@ -555,9 +561,42 @@ end
 
 -- The carousel (Util/PartyDock.carousel): each slot slides to its spot, the middle one big and in front, and the name
 -- line under it tells who it is
+-- A keyboard key's cap: a white square with a darker lip under it (as the register's Leave key)
+local keyCaps: { Frame } = {}
+local function keyCap(parent: GuiObject, key: string, at: { x: number, y: number })
+	local cap = DOCK.keys.cap
+	local lip = Instance.new("Frame")
+	lip.Name = "Key" .. key
+	lip.AnchorPoint = Vector2.new(0.5, 0.5)
+	lip.Position = UDim2.fromOffset(at.x, at.y + 2)
+	lip.Size = UDim2.fromOffset(cap, cap)
+	lip.BackgroundColor3 = INK
+	lip.BackgroundTransparency = 0.35
+	lip.ZIndex = 9
+	lip.Visible = false
+	lip.Parent = parent
+	UIKit.corner(lip, 5)
+	local face = UIKit.label(lip, key, Enum.Font.FredokaOne, 13, INK)
+	face.Name = "Cap"
+	face.Position = UDim2.fromOffset(0, -3)
+	face.Size = UDim2.fromScale(1, 1)
+	face.TextXAlignment = Enum.TextXAlignment.Center
+	face.BackgroundColor3 = WHITE
+	face.BackgroundTransparency = 0
+	face.ZIndex = 10
+	UIKit.corner(face, 5)
+	table.insert(keyCaps, lip)
+end
+
 local function placeCarousel()
-	local spots = PartyDock.carousel(slots, previewSlot or summoned, focus, Party.PARTY_SIZE)
+	-- a keyboard (not a phone's pair): the one you picked stays in the middle whoever is out
+	local spots = PartyDock.carousel(slots, previewSlot or summoned, focus, Party.PARTY_SIZE, not compact)
 	focus, centerSlot = spots.center, spots.center
+	-- a keyboard's three key caps stay where they are round the carousel (1, the summon key, 3); only portraits move
+	local keysShown = not compact and UserInputService.KeyboardEnabled
+	for _, cap in keyCaps do
+		cap.Visible = keysShown
+	end
 	-- a phone (owner 2026-11-17, "go A" and placement 2; CompactHud.phonePieces): the middle creature alone in the pair,
 	-- its count and swipe chevrons; never the quick Party button or the name line
 	local pieces = CompactHud.phonePieces(compact, Hud.inTown(), false, false)
@@ -574,6 +613,11 @@ local function placeCarousel()
 	elementBadge.Position = UDim2.fromOffset(width / 2 + DOCK.elementAt, DOCK.height / 2 + DOCK.elementAt)
 	if quickParty then
 		quickParty.Visible = pieces.quickParty
+		-- past the 3 key's cap on a keyboard
+		local room = if keysShown then DOCK.keys.cap + DOCK.keys.gap else 0
+		if not compact then
+			quickParty.Position = UDim2.new(1, DOCK.quick.gap + room, 0.5, DOCK.quick.lift)
+		end
 	end
 	if nameRow then
 		nameRow.Visible = pieces.partyName
@@ -587,7 +631,7 @@ local function placeCarousel()
 		local y = DOCK.height / 2 + (if inMiddle then 0 else DOCK.sideY)
 		view.hit.ZIndex = if inMiddle then 3 else 2
 		view.veil.Visible = compact and not inMiddle
-		;(view.chipEdge.Parent :: GuiObject).Visible = not compact -- no key numbers on a phone
+		;(view.chipEdge.Parent :: GuiObject).Visible = false -- the keys are the carousel's own caps now, not each portrait's
 		TweenService:Create(view.hit, slide, { Position = UDim2.fromOffset(x, y) }):Play()
 		local middleScale = if compact then PAIR.center else DOCK.center
 		TweenService:Create(view.lift, slide, { Scale = if inMiddle then middleScale else DOCK.side }):Play()
@@ -925,6 +969,41 @@ function PartyBarController.GetSummonButton(): GuiObject?
 	return if view then view.hit else nil
 end
 
+-- Your face (CharacterController makes it and hands it over): first in your row, or beside the cash at the coin's size
+-- in a computer's column layout (UIController.GetFaceSpot, Util/DesktopHud.faceSize)
+local faceButton: GuiObject? = nil
+local function fitFace()
+	local me = faceButton
+	if not me or not meRow then
+		return
+	end
+	local spot = if compact then nil else UIController.GetFaceSpot()
+	local face = me:FindFirstChild("Face")
+	local hit, picture = DOCK.meHeight, BAR.PORTRAIT
+	if spot then
+		local fit = DesktopHud.faceSize(HudLayout.STATUS_ICON, DesktopHudConfig.CASH_SCALE, DesktopHudConfig.FACE.ring)
+		hit, picture = fit.hit, fit.face
+	end
+	me.Parent = spot or meRow
+	-- beside the cash it's out of your row, which a guide's calm HUD hides ("party"): it hides with it
+	me.Visible = not (spot ~= nil and Hud.hides("party"))
+	me.LayoutOrder = if spot then 1 else -1 -- left of the cash pill (2), or before your bars
+	me.Size = UDim2.fromOffset(hit, hit)
+	if face and face:IsA("GuiObject") then
+		face.Size = UDim2.fromOffset(picture, picture)
+		local round = face:FindFirstChildOfClass("UICorner")
+		if round then
+			round.CornerRadius = UDim.new(0, picture / 2)
+		end
+	end
+end
+
+function PartyBarController.SetFace(button: GuiObject)
+	faceButton = button
+	fitFace()
+	Hud.onCalm(fitFace) -- a tour's calm HUD began or ended
+end
+
 function PartyBarController.GetMeRow(): Frame
 	return meRow
 end
@@ -1223,12 +1302,20 @@ function PartyBarController.Start()
 		-- a PC (owner 2026-11-13: "on desktop can we move character info and party on the bottom left. align them"):
 		-- the dock in the bottom-left corner, every row flush left
 		bar.Parent = if on then UIController.GetStatusRow() else UIController.GetDockHolder()
-		stack.HorizontalAlignment = if on then Enum.HorizontalAlignment.Right else Enum.HorizontalAlignment.Left
-		meRow.Parent = if on then UIController.GetStatusRow() else bar
+		-- a computer's layout A (owner 2026-11-21; Config/DesktopHud): your row sits in the top row beside the cash, the
+		-- creatures (and their name, centred under them) in the bottom bar
+		local top = if on then nil else UIController.GetMeSpot()
+		stack.HorizontalAlignment = if on then Enum.HorizontalAlignment.Right elseif top then Enum.HorizontalAlignment.Center else Enum.HorizontalAlignment.Left
+		meRow.Parent = if on then UIController.GetStatusRow() elseif top then top else bar
 		meRow.LayoutOrder = if on then -2 else 3
+		-- a computer's column layout: your face beside the cash (fitFace), this row under them only as tall as its bar,
+		-- your buffs left of the bar so the bar ends flush with the cash's right edge
+		local faceOut = not on and UIController.GetFaceSpot() ~= nil
+		meRow.Size = UDim2.fromOffset(0, if faceOut then DesktopHudConfig.FACE.rowHeight else DOCK.meHeight)
 		if buffs then
-			buffs.LayoutOrder = if on then -3 else 10
+			buffs.LayoutOrder = if on or faceOut then -3 else 10
 		end
+		fitFace()
 		-- The quick Party button sits past the right portrait on a computer; on a phone the dock is flush with the
 		-- screen's right edge, so it goes past the left one (owner 2026-11-17: "the party section is cutoff")
 		local quick = carousel:FindFirstChild("PartyQuick")
@@ -1385,23 +1472,57 @@ function PartyBarController.Start()
 	for slot = 1, Party.PARTY_SIZE do
 		slotViews[slot] = makeSlot(carousel, slot)
 	end
+	-- the keys round the carousel, as in Palworld (owner 2026-11-21): 1 on its left, the summon key over its middle, 3
+	-- on its right; they stay still while the portraits turn
+	local keySpots = PartyDock.keySpots(DOCK, BAR.PORTRAIT)
+	keyCap(carousel, "1", keySpots.left)
+	keyCap(carousel, Party.BAR.DOCK.summonKey, keySpots.top)
+	keyCap(carousel, "3", keySpots.right)
 	render()
 
-	-- 1 / 2 / 3 summon (bound above Roblox's own hotbar keys; never while typing)
+	-- A keyboard's keys (owner 2026-11-21, Palworld's): 1 and 3 turn the carousel, the summon key (E) calls the middle
+	-- creature out or back. Bound above Roblox's own hotbar keys; never while typing. The summon key is a prompt's key
+	-- too (stock a shelf, man the register): while one of those is up it's the prompt's, and it does nothing behind an
+	-- open window or on the register (no "leave first" card for a key pressed out of habit)
+	local promptsUp: { [ProximityPrompt]: boolean } = {}
+	ProximityPromptService.PromptShown:Connect(function(prompt)
+		if prompt.KeyboardKeyCode == SUMMON_KEY then
+			promptsUp[prompt] = true
+		end
+	end)
+	ProximityPromptService.PromptHidden:Connect(function(prompt)
+		promptsUp[prompt] = nil
+	end)
 	ContextActionService:BindActionAtPriority(SUMMON_ACTION, function(_, state, input)
 		if state ~= Enum.UserInputState.Begin then
 			return Enum.ContextActionResult.Pass
 		end
-		local slot = table.find(SUMMON_KEYS, input.KeyCode)
-		if not slot or not bar.Visible or not (bar.Parent :: GuiObject).Visible then
+		local side = TURN_KEYS[input.KeyCode]
+		local summon = input.KeyCode == SUMMON_KEY
+		if compact or not (side or summon) or not bar.Visible or not (bar.Parent :: GuiObject).Visible or UIKit.anyPanelOpen() then
 			return Enum.ContextActionResult.Pass
 		end
-		if slots[slot] then
-			focus = slot
+		if side then
+			local to = PartyDock.turn(slots, centerSlot, side, Party.PARTY_SIZE)
+			if to then
+				focus = to
+				placeCarousel()
+				flashName(to)
+			end
+			return Enum.ContextActionResult.Sink
 		end
-		useSlot(slot)
+		for prompt in promptsUp do
+			if prompt.Parent and prompt.Enabled then
+				return Enum.ContextActionResult.Pass -- the prompt's key now
+			end
+			promptsUp[prompt] = nil
+		end
+		if player:GetAttribute("ManningRegister") == true then
+			return Enum.ContextActionResult.Pass
+		end
+		useSlot(centerSlot)
 		return Enum.ContextActionResult.Sink
-	end, false, Enum.ContextActionPriority.High.Value, table.unpack(SUMMON_KEYS))
+	end, false, Enum.ContextActionPriority.High.Value, Enum.KeyCode.One, Enum.KeyCode.Three, SUMMON_KEY)
 
 	Remotes.PartyChanged.OnClientEvent:Connect(function(payload)
 		if typeof(payload) ~= "table" or typeof(payload.slots) ~= "table" then
@@ -1416,6 +1537,9 @@ function PartyBarController.Start()
 		end
 		local wasSummoned = summoned
 		summoned = if typeof(payload.summoned) == "number" then payload.summoned else nil
+		if summoned and summoned ~= wasSummoned then
+			focus = summoned -- whoever came out (the Party window, a swap) is the one in the middle
+		end
 		if previewSlot and summoned == previewSlot then
 			previewSlot = nil -- a phone's swipe came out
 		end

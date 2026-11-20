@@ -72,7 +72,7 @@ function SwordService.Touch(player: Player)
 	end)
 end
 
--- A boss fight starts for this player: one more fought with the sword HUD (saved, capped)
+-- A fight with the sword starts for this player (a boss's, or a wild one): one more fought with the sword HUD (saved, capped)
 function SwordService.CountFight(player: Player)
 	local count = fightCounts[player]
 	if count then
@@ -80,7 +80,7 @@ function SwordService.CountFight(player: Player)
 	end
 end
 
--- Whether this fight's HUD shows the buttons' names: the player's first NAME_FIGHTS boss fights
+-- Whether this fight's HUD shows the buttons' names: the player's first NAME_FIGHTS fights with the sword
 function SwordService.ShowButtonNames(player: Player): boolean
 	local count = fightCounts[player]
 	return count ~= nil and count <= CombatHud.NAME_FIGHTS

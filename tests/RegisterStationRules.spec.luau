@@ -127,6 +127,43 @@ return {
 		end
 	end,
 
+	-- Owner 2026-11-20: "make clicking on moneys on the cashier more immersive": a tapped note or coin flies out of
+	-- the drawer onto the counter (and back when you take it off), with its own sound climbing as you count
+	["counting change: each piece's sound a little higher than the last, never a squeak"] = function()
+		local fx = RegisterStation.GIVE_FX
+		expect.equal(RegisterStationRules.givePitch(1, fx), 1, "the first piece at its own pitch")
+		assert(RegisterStationRules.givePitch(2, fx) > 1, "the second a little higher")
+		assert(RegisterStationRules.givePitch(4, fx) > RegisterStationRules.givePitch(3, fx))
+		expect.equal(RegisterStationRules.givePitch(40, fx), fx.sounds.pitchMax, "capped")
+		expect.equal(RegisterStationRules.givePitch(0, fx), 1)
+		assert(fx.sounds.pitchMax <= 1.4, "never a squeak")
+		assert(fx.sounds.backPitch < 1, "taking one back sounds lower")
+		for _, kind in { "note", "coin" } do
+			local sound = fx.sounds[kind]
+			assert(string.match(sound.id, "^rbxassetid://%d+$"), `{kind}: a sound`)
+			assert(sound.volume > 0 and sound.volume <= 0.5, `{kind}: under the register's own sounds`)
+			assert(sound.cut > 0.1 and sound.cut <= 0.8, `{kind}: one short flick of a longer clip`)
+		end
+		assert(fx.fly >= 0.15 and fx.fly <= 0.35, "quick: a fast counter never waits for it")
+		assert(fx.back <= fx.fly)
+	end,
+
+	["the piece you just laid down is the last of its value in the row (the row runs high to low)"] = function()
+		expect.equal(RegisterStationRules.addedIndex({ 100 }, 100), 1)
+		expect.equal(RegisterStationRules.addedIndex({ 500, 100, 100, 25 }, 100), 3, "after the $1 already there")
+		expect.equal(RegisterStationRules.addedIndex({ 500, 100, 25, 25, 1 }, 25), 4)
+		expect.equal(RegisterStationRules.addedIndex({ 500, 100 }, 500), 1)
+		expect.isNil(RegisterStationRules.addedIndex({ 500, 100 }, 25), "not on the counter")
+		expect.isNil(RegisterStationRules.addedIndex({}, 25))
+	end,
+
+	["a piece flies in a low arc: on the line at both ends, highest in the middle"] = function()
+		expect.equal(RegisterStationRules.arcLift(0, 0.5), 0)
+		expect.equal(RegisterStationRules.arcLift(1, 0.5), 0)
+		expect.equal(RegisterStationRules.arcLift(0.5, 0.5), 0.5)
+		expect.equal(RegisterStationRules.arcLift(3, 0.5), 0, "never under the counter")
+	end,
+
 	["money given lines up on the counter, and wraps to a second row"] = function()
 		local given = RegisterStation.GIVEN
 		local first = RegisterStationRules.givenSpot(given, 1, 8)
@@ -148,5 +185,23 @@ return {
 		expect.equal(small < mid and mid < big, true, `more for more ({small}, {mid}, {big})`)
 		expect.equal(huge, fx.coins[2], "never past the most")
 		expect.equal(RegisterStationRules.saleCoins(0, fx), fx.coins[1], "a free sale still shows the fewest")
+	end,
+	-- Owner 2026-11-21: "make this LEAVE button in cashier consistent with the rest of the buttons. and add a hotkey":
+	-- the soft cotton candy look with an icon and a key in a white circle, like the HUD's tiles; its key leaves too
+	["Leave has a hotkey no other button on the register or the HUD uses"] = function()
+		local pill = RegisterStation.LEAVE_PILL
+		assert(typeof(pill.key) == "string" and string.match(pill.key, "^%u$"), "one letter")
+		for _, taken in { "B", "I", "K", "P", "Q", "Z", "C", "E", "F", "R", "W", "A", "S", "D", "M", "O" } do
+			assert(pill.key ~= taken, `{taken} is taken (HUD tiles, weapons, prompts, walking, Roblox's own)`)
+		end
+		-- "hotkey X look like a close" (owner 2026-11-21): never the letter of a close button, and drawn as a square key
+		assert(pill.key ~= "X", "an X on a button reads as close")
+		assert(pill.cap >= 22, "a keyboard key you can read")
+		expect.equal(RegisterStationRules.leaveKey(pill.key, pill, true, false), true, "its key, on the register")
+		expect.equal(RegisterStationRules.leaveKey(pill.key, pill, false, false), false, "not on the register: nothing")
+		expect.equal(RegisterStationRules.leaveKey(pill.key, pill, true, true), false, "typing in a box: nothing")
+		expect.equal(RegisterStationRules.leaveKey("B", pill, true, false), false, "another key")
+		assert(pill.height >= 48 and pill.width >= 120, "a tap target with room for the icon, the word and the key")
+		assert(typeof(pill.icon) == "string" and #pill.icon > 0, "an icon, like the other buttons")
 	end,
 }

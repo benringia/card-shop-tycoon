@@ -109,7 +109,7 @@ local function playHit(rarity: string, parent: Instance)
 	end
 	local sound = Instance.new("Sound")
 	sound.SoundId = look.hit[1].id
-	sound.Volume = look.hit[1].volume
+	sound.Volume = look.hit[1].volume * Customers.REVEAL.hitVolume -- someone else's pull: well under your own
 	sound.RollOffMaxDistance = Customers.REVEAL.maxDistance
 	sound.Parent = parent
 	sound.Ended:Once(function()

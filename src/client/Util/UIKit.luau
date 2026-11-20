@@ -18,6 +18,8 @@ local BabyColors = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild
 local SoftColors = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("SoftColors"))
 local HoverRules = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("HoverRules"))
 local UIMotion = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("UIMotion"))
+local HudGrowConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("HudGrow"))
+local HudGrow = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("HudGrow"))
 local Motion = require((script.Parent :: Instance):WaitForChild("Motion"))
 local Icon = require((script.Parent :: Instance):WaitForChild("Icon"))
 
@@ -981,13 +983,49 @@ function UIKit.panel(
 		end
 		UIKit.closePanel(frame)
 	end)
+	-- Bigger on a desktop (owner 2026-11-21: "increase overall font sizes for desktop. fontsizes are too small for
+	-- laptops"): the window's rest scale (Util/Motion RestScale) grows with the screen like the HUD, as far as the
+	-- window still fits (Util/HudGrow.window), worked out from its Size and size limit each time it shows and when
+	-- the screen changes. A touch screen's stays 1.
+	local function grown(): number
+		local layer = frame:FindFirstAncestorWhichIsA("LayerCollector")
+		local parent = frame.Parent
+		if not HudGrowConfig.WINDOWS or not layer or not parent or not parent:IsA("GuiBase2d") then
+			return 1
+		end
+		local screen = layer.AbsoluteSize
+		local room = parent.AbsoluteSize
+		local size = frame.Size
+		local width = room.X * size.X.Scale + size.X.Offset
+		local height = room.Y * size.Y.Scale + size.Y.Offset
+		local limit = frame:FindFirstChildOfClass("UISizeConstraint")
+		if limit then
+			width = math.clamp(width, limit.MinSize.X, math.max(limit.MinSize.X, limit.MaxSize.X))
+			height = math.clamp(height, limit.MinSize.Y, math.max(limit.MinSize.Y, limit.MaxSize.Y))
+		end
+		local grow = HudGrow.scale(screen.Y, UserInputService.TouchEnabled, HudGrowConfig)
+		return HudGrow.window(grow, { w = width, h = height }, { w = screen.X, h = screen.Y }, HudGrowConfig)
+	end
 	-- Pops in whenever it's shown; hidden straight away (by code) it just resets
 	frame:GetPropertyChangedSignal("Visible"):Connect(function()
 		if frame.Visible then
+			frame:SetAttribute("RestScale", grown())
 			Motion.popIn(frame)
 		else
 			Motion.reset(frame)
 		end
+	end)
+	task.defer(function()
+		local layer = frame:FindFirstAncestorWhichIsA("LayerCollector")
+		if not layer then
+			return
+		end
+		layer:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+			if frame.Visible then
+				frame:SetAttribute("RestScale", grown())
+				Motion.reset(frame)
+			end
+		end)
 	end)
 
 	local list = Instance.new("ScrollingFrame")

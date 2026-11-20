@@ -32,12 +32,14 @@ return {
 		expect.equal(LevelUpRules.nextUnlockText(4, unordered), "Lv 5: Card Condenser", "the list's order doesn't matter")
 	end,
 
-	-- Small cash every level: $2 x the new level since levels came 6x faster (owner 2026-11-17), so the level cash per
-	-- hour stays about what $10 x paid at round 4's pace ($4 x at 2.7x, $3 x at 4x)
-	["small cash every level"] = function()
-		expect.equal(LevelUpRules.rewards(cfg, 1, 2).cash, 4, "Lv 2")
-		expect.equal(LevelUpRules.rewards(cfg, 6, 7).cash, 14, "Lv 7")
-		expect.equal(LevelUpRules.rewards(cfg, 8, 11).cash, 18 + 20 + 22, "8 -> 11: each level pays")
+	-- Cash every level: $10 x the new level (owner 2026-11-20: "can we increase the gold per level? gold is too slow",
+	-- then "go B"). It was $2 x since levels came 6x faster (2026-11-17), which kept the level cash per hour where $10 x
+	-- had it at round 4's pace; but levels then outran the cash their unlocks cost (the Forge, $1,500 at Lv 6)
+	["cash every level: $10 x the new level"] = function()
+		expect.equal(LevelUpRules.rewards(cfg, 1, 2).cash, 20, "Lv 2")
+		expect.equal(LevelUpRules.rewards(cfg, 6, 7).cash, 70, "Lv 7")
+		expect.equal(LevelUpRules.rewards(cfg, 8, 11).cash, 90 + 100 + 110, "8 -> 11: each level pays")
+		expect.equal(LevelUpRules.rewards(cfg, 1, 20).cash, 2090, "everything up to Lv 20")
 	end,
 
 	-- Owner 2026-11-16: "small cash every level. only give gift every 5 levels (wild ores and etc) make sure its not
@@ -71,7 +73,7 @@ return {
 			kinds += 1
 		end
 		expect.equal(kinds, 4, "nothing else")
-		expect.equal(all.cash, 2 * (100 * 101 / 2 - 1), "$2 x each level: $10,098 in all")
+		expect.equal(all.cash, 10 * (100 * 101 / 2 - 1), "$10 x each level: $50,490 in all")
 	end,
 
 	["skipped levels each give theirs"] = function()
@@ -84,7 +86,7 @@ return {
 
 	["nothing past the cap or backwards"] = function()
 		local top = LevelUpRules.rewards(cfg, 99, 150)
-		expect.equal(top.cash, 200, "only Lv 100 pays")
+		expect.equal(top.cash, 1000, "only Lv 100 pays")
 		expect.equal(count(top.items, "sparkPack"), 1, "Lv 100's pack")
 		expect.equal(count(top.items, "goldSeal"), 1, "and seal")
 		for _, case in { { 100, 101 }, { 5, 5 }, { 7, 3 } } do

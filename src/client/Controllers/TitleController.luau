@@ -2,7 +2,8 @@
 -- Players' name tags (every place): a player's Title attribute (TitleService: "Hydra Slayer" for clearing the Prism
 -- Hydra, a supporter's "Legend"...) small in its gradient (Config/Titles) with their name under it, in place of
 -- Roblox's own name tag. Your own hides on your
--- screen while a tour leads (the owner 2026-11-11: "hide the title and creature tag only on tutorial").
+-- screen while a tour leads (the owner 2026-11-11: "hide the title and creature tag only on tutorial"), at your register
+-- and in your own fight (owner 2026-11-20, the combat HUD tidy; TitleRules.ownTag).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -10,6 +11,7 @@ local TweenService = game:GetService("TweenService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Chikin = require(Shared:WaitForChild("Config"):WaitForChild("Chikin"))
 local Titles = require(Shared:WaitForChild("Config"):WaitForChild("Titles"))
+local TitleRules = require(Shared:WaitForChild("Util"):WaitForChild("TitleRules"))
 local TutorialRules = require(Shared:WaitForChild("Util"):WaitForChild("TutorialRules"))
 
 local TitleController = {}
@@ -37,17 +39,18 @@ local function rgb(values: { number }): Color3
 	return Color3.fromRGB(values[1], values[2], values[3])
 end
 
--- Whether `player`'s tag shows on this screen: everyone's but your own while a tour leads
+-- Whether `player`'s tag shows on this screen: everyone's, and your own unless a tour leads, you man your register
+-- (in first person it hung across the top of the view, QA 2026-11-17) or you're in a fight (BattleController's FightHud)
 local function shownHere(player: Player): boolean
 	if player ~= Players.LocalPlayer then
 		return true
 	end
-	-- on your register in first person your own tag hung across the top of the view (QA 2026-11-17); others still see it
-	if player:GetAttribute("ManningRegister") == true then
-		return false
-	end
 	local pish, combat = player:GetAttribute("TutorialStep"), player:GetAttribute("CombatStep")
-	return not TutorialRules.tourLeading(if typeof(pish) == "string" then pish else "", if typeof(combat) == "string" then combat else "", Chikin.WAIT_STEP)
+	return TitleRules.ownTag({
+		fight = player:GetAttribute("FightHud") == true,
+		register = player:GetAttribute("ManningRegister") == true,
+		tour = TutorialRules.tourLeading(if typeof(pish) == "string" then pish else "", if typeof(combat) == "string" then combat else "", Chikin.WAIT_STEP),
+	})
 end
 
 local function text(parent: Instance, value: string, most: number): TextLabel
@@ -149,8 +152,8 @@ local function watch(player: Player)
 end
 
 function TitleController.Start()
-	-- A tour starting or ending, or stepping onto your register or off it: your own title hides or comes back
-	for _, name in { "TutorialStep", "CombatStep", "ManningRegister" } do
+	-- A tour starting or ending, stepping onto your register or off it, a fight of yours: your own tag hides or comes back
+	for _, name in { "TutorialStep", "CombatStep", "ManningRegister", "FightHud" } do
 		Players.LocalPlayer:GetAttributeChangedSignal(name):Connect(function()
 			show(Players.LocalPlayer)
 		end)

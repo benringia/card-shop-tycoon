@@ -30,6 +30,8 @@ local UIStyle = require(Config:WaitForChild("UIStyle"))
 local PackFx = require(Config:WaitForChild("PackFx"))
 local QuestRules = require(Shared:WaitForChild("Util"):WaitForChild("QuestRules"))
 local MainQuestRules = require(Shared:WaitForChild("Util"):WaitForChild("MainQuestRules"))
+local HudGrow = require(Shared:WaitForChild("Util"):WaitForChild("HudGrow"))
+local HudGrowConfig = require(Config:WaitForChild("HudGrow"))
 
 local ClientUtil = script.Parent :: Instance
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
@@ -95,6 +97,7 @@ local claimLook: string? = nil -- "computer" (pulsing), "phone" (still) or nil: 
 local trophyTween: Tween? = nil
 local lastMain: MainQuestRules.Goal? = nil -- the main quest's goal (QuestStrip.setMain)
 local fighting = false -- a fight is on: the main row steps aside (the fight's buttons sit under the strip)
+local inPhone = false -- the quests are a Phone app on this screen (QuestStrip.setInPhone): no strip, no main row
 
 local function tween(object: Instance, seconds: number, goal: { [string]: any }, style: Enum.EasingStyle?, direction: Enum.EasingDirection?): Tween
 	local playing = TweenService:Create(object, TweenInfo.new(seconds, style or Enum.EasingStyle.Quad, direction or Enum.EasingDirection.Out), goal)
@@ -196,12 +199,19 @@ local function wiggle(object: GuiObject)
 	end)
 end
 
+-- A quick swell and back. On a piece the HUD scales (the strip itself, grown on a desktop: Hud.scaleWith) it starts
+-- and ends at that size, read when each step plays (owner 2026-11-21: folding the strip left it small)
 local function bump(object: GuiObject, size: number)
 	local scale = scaleOf(object)
-	scale.Scale = 1
-	tween(scale, 0.12, { Scale = size }, Enum.EasingStyle.Quad)
+	local function steps(): (number, number, number)
+		return HudGrow.bump(HudGrow.rest(object:GetAttribute(HudGrowConfig.ATTRIBUTE)), size)
+	end
+	local from, peak = steps()
+	scale.Scale = from
+	tween(scale, 0.12, { Scale = peak }, Enum.EasingStyle.Quad)
 	task.delay(0.12, function()
-		tween(scale, 0.35, { Scale = 1 }, Enum.EasingStyle.Back)
+		local _, _, back = steps()
+		tween(scale, 0.35, { Scale = back }, Enum.EasingStyle.Back)
 	end)
 end
 
@@ -777,7 +787,7 @@ end
 -- The main quest: its row under the strip on a computer (not folded); a phone's chip shows it once both chests are
 -- opened (its icon and "54%", "Build!" or "Lv 10" instead of the hours left)
 local function refreshMain()
-	MainQuestRow.setWanted(lastCompact == false and not folded and not fighting)
+	MainQuestRow.setWanted(lastCompact == false and not folded and not fighting and not inPhone)
 	local current = last
 	local goal = lastMain
 	if not lastCompact or not current or #current.quests == 0 or QuestRules.stripMode(current) ~= "done" then
@@ -996,6 +1006,15 @@ function QuestStrip.mainDone(name: string, xp: number)
 end
 
 -- A fight started or ended: the main row steps aside while it's on (the fight's soft lock button sits under the strip)
+-- The quests live in the Phone on this screen (a computer, Config/DesktopHud QUESTS): the main quest's row under the
+-- strip goes with it (the Quests window shows it)
+function QuestStrip.setInPhone(on: boolean)
+	if inPhone ~= on then
+		inPhone = on
+		refreshMain()
+	end
+end
+
 function QuestStrip.setFighting(on: boolean)
 	fighting = on
 	refreshMain()

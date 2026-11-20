@@ -101,11 +101,31 @@ a lantern inside, a dark teal inlay in its floor; matte mid tones, since white p
 sun and mirrored the sky); a
 pair of giant cards on a stone plinth in the north-west corner, facing where new players appear: the leaderboard (owner
 2026-11-13, see 9. Social features; five giant cards of real card art stood there before);
-three festival carts (the user's pick A of three stall designs; pink PACKS, blue CARDS, green SNACKS): a wooden
+the Support corner in the south-east quarter (owner 2026-11-20: "a dog bed/house with a jar ... remove one group in
+any side. and replace them with the support dev"; `Config/Plaza` SUPPORT, code-built by `PlazaBuild`): Pish and
+Chikin's dog house (cream planks, the pink of the cart that stood there on its gabled roof, an arched door, their names
+on a bone over it, a gold heart in the gable, two bowls and a bone), their two round beds beside it (pink and blue,
+rolled rims open to the front) and, beside the house on its other side, the tip jar: glass on a crate, glowing gold
+coins in it, hearts on its front and sides, under a cream board hanging from a post, "SUPPORT THE DEV" on both faces,
+the faces turned along the ring (owner 2026-11-20, the same day: "the jar and the sign is hard to see since the
+players will be coming from the sides not from the front(there is a fountain). move the jar and sign out of the way";
+first it stood in front of the house with a chalkboard facing the fountain). Its prompt ("Support the dev · Pish &
+Chikin's jar", E) opens the Support card (`SupportController`, by the prompt's name `SupportJar`). The pink PACKS
+cart, the table at 336 with its sitter and the bench at 315 went for it. **The dogs come home to it** (owner: "add the
+dog house as a stop for both dogs. currently they are phashing through the dog house"): each has a spot right in
+front of its own bed (`PlazaLayout.dogHomes`), Pish on 15% of his walks that aren't a shop visit (`Pish.TOWN`
+homeChance), Chikin as one of his weighted stops (the one stop off the portal side, `home = true`); there they face
+the bed and nap or sit. And a town dog's walk now goes round every solid thing in the plaza, not only the fountain:
+the carts, the tables, the leaderboard's cards, the dog house, the jar and the beds (`PishPath.routeRound`,
+`PlazaLayout.dogObstacles`, Server/Util/TownDog). The plaza cat sleeps on the second bed (its bench went, below);
+**no benches in the plaza** (owner 2026-11-20: "also remove benches like this that blocks the way"): the four stood
+13.5 studs out, in the ring between the gazebo and the carts, tables and leaderboard; `Town.LAYOUT.BENCH_ANGLES` is
+empty, so town walkers stroll and stand but no longer sit. A hand-placed bench between two shops (TownDecor) stays;
+two festival carts (the user's pick A of three stall designs; blue CARDS, green SNACKS; the pink PACKS one stood where the Support corner is): a wooden
 box with a slatted front in its colour and white, two big spoked wheels, a handle with a prop leg, turned posts under
 a rounded striped canopy with a scalloped fringe and gold corner balls, a warm lantern at one corner, card packs and
-boxes on the counter and a chalkboard sign beside it (empty counters otherwise, ready for event NPCs); five round
-wooden cafe tables (the sixth stood in front of the leaderboard's cards)
+boxes on the counter and a chalkboard sign beside it (empty counters otherwise, ready for event NPCs); four round
+wooden cafe tables (one stood in front of the leaderboard's cards, one where the Support corner is)
 (a cloth under the top, a little vase of flowers) with three bistro chairs each (round seat on thin dark legs, round
 back on two posts); three townsfolk sitting at three of them (the customers' blocky look, a cup in hand; anchored
 rigs, so no physics; each client plays the sit animation and lifts their cups to sip now and then, `PlazaNpcController`,
@@ -1345,8 +1365,9 @@ the party vs a one-monster side.
 
 **Battles part 1: wild fights.** A portal at the end of the plaza street moves you to the wild map (same server, far
 from the shops; your shop keeps selling). Press Fight near a monster, or get caught by one that chases you. Your
-summoned creature fights (it must be rested); in the first 5 s you may call in one more party card (max 2 of yours
-vs 1 monster). You can run around within 25 studs of the fight (further puts you back at the edge). Fighters attack on their own (interval from SPD, `2 x (10 / SPD)^0.62` between 0.55 and 2.5 s: SPD 10 every 2 s, 27 every 1.08 s, 47 every 0.77 s, 69 every 0.6 s, so every bit of SPD counts; a fast attacker charges for at most 75% of its gap); each has an element
+summoned creature fights (it must be rested); one of yours fights at a time, and a tap on another party card swaps it
+in (no call-in since 2026-11-21: `Combat.CALL_IN = false`; until then the first 5 s let a second card join, max 2 of
+yours vs 1 monster). You can run around within 25 studs of the fight (further puts you back at the edge). Fighters attack on their own (interval from SPD, `2 x (10 / SPD)^0.62` between 0.55 and 2.5 s: SPD 10 every 2 s, 27 every 1.08 s, 47 every 0.77 s, 69 every 0.6 s, so every bit of SPD counts; a fast attacker charges for at most 75% of its gap); each has an element
 ability (8 s cooldown) and the Epic/Legendary cards a super move, fired from a full super meter (owner 2026-11-06,
 option A "Super meter": it was every 15 s and got pressed on cooldown). One meter per player (`Combat.SUPER_METER`,
 `BattleSim` `side.meters`), empty at a fight's start: each of its creatures' hits that lands adds 1.5 (Pet button
@@ -1889,7 +1910,7 @@ group, checked before its fragments and every time (not only the first). Below i
   `UiLayout.combatButtons`): Attack, Dodge (Shift; Shift Lock moves to Ctrl), Skill (E), Pet skill (R),
   Signature (Epic and Legendary cards) and Run. Swaps are the **party strip** under the status (the owner 2026-11-05,
   option A: "add an indication who to summon, for good UX not just numbers"; it replaced the small Swap button): a tile
-  per party card with its painting and name, its key 1-3 on a gold chip (PC; the party slot as the party bar numbers
+  per party card with its painting and name, its key on a gold chip (PC; since 2026-11-20 key 1 is the card left of the one fighting and 3 the one right of it, 2 retired; before that the party slot as the party bar numbers
   it, `SwapKeys.party`/`pick`, Lune-tested). Its look (option C, the owner: "Remove strong/weak/out just add an effect
   or animation or icons for who's out/dead"): the one fighting has a green light running round its edge and a
   heartbeat pulse in place of its name; a card that fainted in this fight lies face down (the card back's violet and gold) with
@@ -1932,7 +1953,7 @@ group, checked before its fragments and every time (not only the first). Below i
   the fight effects' sounds at a pitch and loudness from `AttackFx.VARY` (owner 2026-11-04: nothing the same over and
   over); the hit sound plays the moment the blade lands when your own reach
   check connects (the server's hit arrives a round trip later and only sounds if that check missed,
-  `Swords.HIT_SOUND_WINDOW`). Buttons show their names underneath in your first 3 boss fights (`CombatHud.NAME_FIGHTS`,
+  `Swords.HIT_SOUND_WINDOW`). Buttons show their names underneath in your first 5 fights with the sword, wild ones too (3 boss fights until 2026-11-20; `CombatHud.NAME_FIGHTS`,
   counted in saved `swordFights`); the pet and signature buttons are named after the creature's moves. Resting the
   mouse on a button (or holding a finger on it for 0.4 s, which doesn't press it) shows a tooltip saying what it does,
   in one short line; the Pet and Super buttons say what the creature's own moves do, with their numbers (owner
@@ -2790,7 +2811,7 @@ Spec `docs/superpowers/specs/2026-10-29-dungeon-final-boss-design.md`. The ladde
   - **Wild fights swap** (owner 2026-11-12: "replace summoned pets with another"): the party strip under your bars, as
     in boss fights; in the first seconds a tap still calls the card in beside yours, after that it swaps (8 s apart,
     Combat.WILD_SWAP_SECONDS); by hand only: a faint still loses the fight (BattleSim `autoSwap` false). Tapping your
-    creature's tile (its word: "Unsummon") or its 1-3 key unsummons it (owner: "let me unsummon my pet while in combat";
+    creature's tile (its word: "Unsummon") unsummons it (its own 1-3 key did too until 2026-11-20; the keys are 1 and 3 for its neighbours now) (owner: "let me unsummon my pet while in combat";
     BattleSim.recall): it goes back unhurt and you fight on with your sword (no sword: a card says why not), and a tap
     brings it or another card back at once; it waits out the same swap cooldown.
   - **Low health** (owner: "a heartbeat sound and more agressive red flashes"): below 30% (yours, or a creature of yours
@@ -3440,9 +3461,10 @@ Old saves keep their XP and load on the new level for it (a Lv 10 shop is Lv 20)
 | 26 / 34 / 43 / 57 | 11,300 / 21,460 / 37,460 / 72,820 | bosses 4 / 5 / 6 / 7 |
 | 100 | 271,540 | the cap |
 
-**Level-up rewards** (`Config/Levels`, `Util/LevelUpRules`, Lune-tested): every level pays $2 × the new level
-(EconomyService, in `AddXP`; $4 at Lv 2, $200 at Lv 100; $10 × before levels came 6x faster, so the level cash per
-hour stays about the same), and a gift comes every 5th level only (owner 2026-11-16:
+**Level-up rewards** (`Config/Levels`, `Util/LevelUpRules`, Lune-tested): every level pays $10 × the new level
+(EconomyService, in `AddXP`; $20 at Lv 2, $200 at Lv 20, $1,000 at Lv 100, $50,490 in all; owner 2026-11-20: "gold
+is too slow", pick B. It was $2 × from 2026-11-17, when levels came 6x faster, to keep the level cash per hour the
+same; levels then outran what their unlocks cost: all the level cash to Lv 14 was $208 against $9,100 of unlocks), and a gift comes every 5th level only (owner 2026-11-16:
 "small cash every level. only give gift every 5 levels (wild ores and etc) make sure its not economy breaking"):
 levels ending in 5 give Wild Ore x3 and an XP Tonic, every 10th a First Spark Pack (a Bag item, `Items.sparkPack`,
 `open = "FirstSparkPack"`), every 25th a Gold Seal too, all given by `LevelUpService` as Bag items. All 100 levels give
@@ -4309,7 +4331,10 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
 1. Server-wide pull announcements (MVP, cheap win)
 2. Buy singles from other players' Collector Cases (done)
 3. Trading window (with confirm + both sides lock)
-4. Leaderboards: richest shop, rarest collection. First one built (owner 2026-11-13: "Remove roblox leaderboards on
+4. Leaderboards: richest shop, rarest collection. The game's owner is on neither list (owner 2026-11-20: "can I(the
+   owner) not be included in the leaderboard"; `Config/Leaderboard` HIDE_OWNER, `LeaderboardRules.hidden` /
+   `without` / `readSize`): their total is never sent, their old entry is taken out of the store when a live server
+   starts, both lists skip them, and one more row is read from the store so ten still show. First one built (owner 2026-11-13: "Remove roblox leaderboards on
    load, we will be adding a leaderboard in game at the plaza for most cards opened"): Roblox's player list is hidden
    on join (UIController) and the lists are two giant trading cards on the plaza (pick A of three designs, "replace the
    cards on the plaza with it": they stand where the five-card fan stood, facing the spawn; a board in the street was
@@ -5783,6 +5808,350 @@ boss models; the ranch and Heroic tiers come after those.
   - *Unsummon* (0.6 s, the time the server keeps the marker): the creature turns to light and shrinks over a closing
     circle; halfway through its card forms at its middle and flies 0.35 s back into your chest, folding away with a
     small burst and a ring at your feet.
+- **Small round 2026-11-20** (owner: "go B. then make clicking on moneys on the cashier more immersive. make town
+  musics a little bit louder. turn down kid pulling a high rarity card sound"):
+  - *Level cash $10 x level* (was $2 x; `Levels.REWARD_CASH_PER_LEVEL`, section 7.2's level-up rewards).
+  - *Tapping the register's money* (`RegisterStation.GIVE_FX`, `RegisterStationRules.givePitch` / `addedIndex` /
+    `arcLift`): a tapped note or coin flies 0.22 s out of its drawer stack in a low arc (a coin flips, a note tilts)
+    onto the counter, with a note's flick or a coin's clink whose pitch climbs with every piece laid down (1.00,
+    1.04, 1.08... to 1.3), and its value pops over it ("+$1"). Tapped on the counter it flies 0.18 s home, lower in
+    pitch, with "-$0.25". The drawer stack under the mouse glows gold; the exact change glows mint for a beat before
+    it gives itself. Sounds are Pro Sound Effects (Cash Counting Paper Money Constant 3, Coin Throws 9), a short cut
+    of each.
+  - *Town music a little louder*: White Owl 0.18 -> 0.22, the two added pieces 0.21 -> 0.25.
+  - *A kid's big pull quieter*: its reveal hit plays at `Customers.REVEAL.hitVolume` (0.35) of the pack opening's own.
+- **Deliveries and product looks** (owner 2026-11-20: "delivery boxes should use the actualy first spark model as box
+  icons / improve delivery pad systems. when there is alot of boxes piled up, and the players just want to take the
+  one on top. it's dificult / also change the Icons and the box icons of the other products / improve booster box
+  design on shelf and cashier"):
+  - *The pad's stacks* (`Util/PadRules`, Lune-tested; `Stock.PAD_HIGH`): the pad's 2x2 grid is four stacks, one
+    product to a stack (a second stack once the first is 3 high; 4 x 3 = the 12-box limit). Only the top box of a
+    stack has its Pick up prompt, and it says what the stack holds and how many of it wait ("Card Sleeves · 2
+    boxes"). Before, boxes filled the grid layer by layer in arrival order and every box had a prompt, so a pile
+    offered whichever was nearest, often one at the bottom.
+  - *Real pictures everywhere* (`Config/ProductPictures` PRODUCTS, `ProductPictureRules.forProduct`): Card Sleeves and
+    the First Spark Booster Box have pictures of their real models like the pack and the deck box. Order Stock and
+    Prices show them (`Util/ProductPicture`), and every delivery box's sticker wears its product's picture, whole and
+    unstretched (`DeliveryLooks.finishBox`, a SurfaceGui: the stickers had the drawn UI icons as decals).
+  - *The sealed booster box* (`Util/BoosterBoxLook`, `Stock.BOOSTER_BOX`, words from `PropFit.boosterWords`): on
+    shelves and the register's counter the First Spark Booster Box is printed like a real one: the phoenix across
+    every side in a gold rim, FIRST SPARK in gold on a dark band, BOOSTER BOX on a band in the product's colour, the
+    card back's seal on the ends, a little shrink-wrap shine. It was a plain yellow shipping case with a hand hole
+    (`Util/BrandBox`, still the stand-in for a delivery box with no model).
+- **The Card Condenser in plain words, and a finished star that waits** (owner 2026-11-20: "the card condenser is
+  currently very confusing. make it better/easily understandable and imersive. after the timer than condenser just
+  do nothing. I just got a toast notification. I need a better notification inside the condenser after the timer is
+  done, that is waiting for me to reopen the condenser"):
+  - *A finished star waits inside.* When the job's time is up the card goes back to the binder as before, and
+    CondenserService (`UpgradeJobService.OnFinished`) sets the player's `CondenserDone` attribute
+    (`CondenseRules.encodeDone`: the card as it is now). The toast says "<name> is ready! Open the Condenser to take
+    it out." (`Upgrades.CONDENSER_READY`), a bobbing "Ready!" tag sits over the machine (StationTimerController) and
+    the window shows the reveal over everything, at once if it's open, else each time it opens: "Fresh out of the
+    Condenser!", the card, its stars with the new one popping in to a soft bell, "Now 3 stars!", its Power with how
+    much it grew, and **Take it out** (remote `CondenserSeen` clears the attribute). Also for a job that ended while
+    away. Not saved: leaving before taking it out loses only the reveal, never the card. The reveal is client
+    `Util/DoneReveal` (numbers in `Upgrades.REVEAL`), shared with the Grading Station.
+  - *Plain words* (`CondenseRules.rowLine`, `buttonWords`, `Condenser.EXPLAIN`): one line says what the machine does
+    ("Squish extra copies into one card. Each time adds a star: more Power and Value!"); a row says "You have 7
+    copies · a star uses 4" or "2 of 4 copies for the next star"; the box under the card says "You keep: Grade B ·
+    Lv 1" and "Uses up: 4 Grade C"; the button says "Add a star · takes 0:30" (or "Need 4 extra copies (you have
+    2)"); the header counts "15 can get a star"; the third filter is "Need copies" (was "Raising").
+  - *No arrows* (owner the same day, on that rewrite: "this part needs to be better/easily understandable with no
+    '->'"): the chosen card's side says "Adds star 1 of 5" under its stars, and shows Power and Value in a small
+    **Now / After** table (client `Util/NowAfter`: the After column green, with the gain, "371  +51"); the box says
+    "Gets the star: your Grade S · Lv 1 copy" and "Used up: 3 Grade C + 1 Grade B" (`CondenseRules.starWords`,
+    `keepWords`, `gain`). tests/CondenseRules checks none of these words holds an arrow.
+- **The Grading Station and the Forge, the same treatment** (owner 2026-11-20: "also check the other
+  machines(forge,grading maching) for pain points/ confusing elements. Relayout/redesign anything you need"):
+  - *Grading Station* (it was a block of text: "Grade C -> B / Power 490 -> 505 / Costs 1 copy + $500", rows "Owned
+    3 · C -> B: 1 + $500", and its timer ended in a toast): rows say "You have 3 copies · Grade B uses 1 + $500";
+    beside the card its name, "Makes it Grade B" and a Now / After table (Grade, Power, Value); a box "Gets the
+    grade: your Grade C · Lv 1 copy" / "Used up: 1 Grade C + $500"; the button "Make it Grade B · $500 · takes 1:00"
+    (`CondenseRules.gradeRowLine`, `gradeWords`, `gradeButtonWords`). A finished grade waits like a star: the
+    `GradingDone` attribute (GradingService, `UpgradeJobService.OnFinished`), the toast "<name> is ready! Open the
+    Grading Station to take it out.", "Ready!" over the machine and the reveal ("Fresh from the Grading Station!",
+    the new grade on a gold pill popping in, "Now Grade B!", Take it out; remote `GradingSeen`).
+  - *Forge* (it already revealed a finished weapon when reopened): its button says the wait too ("Forge · $1,500 ·
+    takes 1:00:00", `WeaponText.button` `wait`); "Grade C to S · +0" became "Comes out Grade C, B, A or S" and the
+    You get box "A random grade / C, B, A or S (S is the best)"; a weapon waiting for its reveal puts "Ready!" over
+    the Forge (a local `ForgeDone` attribute; `Upgrades.READY_ATTRIBUTES`, StationTimerController).
+- **Launch day** (2026-11-21, "game launched to public"):
+  - *One creature of yours at a time* ("sometimes I can summon 2 pets. fix it"): the old call-in. In a wild fight's
+    (or a Dungeon room's) first 5 s a tap on another party card added it as a second fighter; its button went on
+    2026-11-17 but the rule stayed. BattleService's fights now set `callIn = Combat.CALL_IN` (false): the tap always
+    swaps, and the snapshot's `callInFor` is 0 without a call-in. The Arena's PvP keeps its own.
+  - *A monster win's banner bigger and longer* ("make this bigger and make it last longer"): `Victory.TOAST` 4.5 s
+    (was 2.6), drawn 1.4x on a desktop and 1.15x on a touch screen (`scale`, `touchScale`; Util/FightToast).
+  - *HUD pieces that grow on a desktop* ("increase font size. its small on the laptops"; "also make this bigger on
+    desktop"): the HUD's own scale only shrank (1 from 560 px tall up). The quest strip with the chips under it and
+    the party dock now also grow with the screen on a mouse-and-keyboard screen: `height / 560`, capped at 1.35
+    (`Config/HudGrow`, `Util/HudGrow`, `Hud.scaleWith(frame, min, true)`). Touch screens keep their sizes.
+  - *Everything bigger on a desktop* (a little later: "increase overall font sizes for desktop. fontsizes are too
+    small for laptops"): the same growth for the rest of the HUD (the side and bottom tiles, the cash row, the
+    toasts) and for every window: a `UIKit.panel` rests at a scale that grows with the screen as far as the window
+    still fits 94% of it each way (`HudGrow.window`; its `RestScale` attribute, which `Util/Motion`'s pop in, pop
+    out and reset now end at). `HudGrow.WINDOWS = false` turns the windows' growth off. Checked in Studio the same
+    day (the growth forced on at a small viewport, then set back): pieces and windows grow and stay in place.
+  - *The healing spring's lesson* ("if a player pet dies for the first time, chikin or pish should appear and talk to
+    them about the healing spring. with an option to skip it ofcourse"): a creature's first faint
+    (`BattleService.OnFainted`) queues Pish's lesson `spring` (`trigger = "faint"`, `TutorialService.Event`). Back in
+    town he says "Your pal fainted! The healing spring wakes it up fast.", his paws lead to the spring, Got it! sends
+    him off. Chikin's guarded tutorial fights and the prologue's lent cards never faint, so it comes with the first
+    real one. `/tutorial lesson spring` shows it again.
+- Launch day, later (owner 2026-11-21), round 17:
+  - *The card view opens on what matters* ("make this suitable for a person with low attention span. relayout
+    this, only display what is important"): the binder's card view (CardDetailController; `Config/CardView`,
+    `Util/CardViewRules`) shows the pills, **This copy** (grade, level, stars, worth, one big Power, the XP bar
+    "Level 2: 0/50 XP" and the next star, no arrows) and two chips, "Strong vs Water" and "Weak vs Fire" (plain
+    element names; the pill said the raw key "Tide" until now). **More about this card** opens the rest: skills,
+    buffs, the element numbers, HP / ATK / SPD and the sell hint. The copies list shows only with more than one
+    copy (or More). Every card opens on the short view.
+  - *The soft colour filter* ("can we put a filter so the colors are not too sharp/saturated?"): one dial over
+    every sky look's grading (`Config/SoftFilter`: saturation -0.2, contrast -0.05, never under -0.25 because of
+    it; `Util/SoftFilter`, applied in `Util/SkyLook.apply`: the town's day cycle, the valleys, the arenas). The
+    town's looks ran +0.12 to +0.22 saturation, so it now sits about neutral. `ON = false` puts it back. It reaches
+    the 3D world only: the UI's colours are its theme's (`Config/CreamTheme`, `BabyColors`).
+  - *Thrown basic attacks* ("other basic attacks look weak compared to lightning attack ... do not change
+    lightning"): fire, water, the thorns and the moon slash (`AttackFx.THROW`, `FightFxRules.throwLook`, nil for the
+    bolt) fly 1.35x bigger with a longer ribbon, leave with a muzzle flash (a flare and a ring facing the flight,
+    `ElementFx.muzzle`), drag their own trail (smoke and embers, falling drops, tumbling leaves, dark wisps) and
+    land their own way on top of the hit (`ElementFx.throwLand`: a ring on the ground, then flames licking up, a
+    splash crown, thorns out of the ground, a crossed cut). Sizes still follow grade and rarity and the boss-fight
+    tone; the landing grows at most 1.5x on a big foe.
+  - *Tutorial cues* ("make the highlight more noticeable, also make it fit the shape of what it is highlighting.
+    also make the pawprint more noticeable"; `Config/Cues`, `Util/CueShape`, client `Util/TutorialCues`): the gold
+    ring takes the button's own corner (its UICorner, or that of a face inside that fills it: a round button gets a
+    round ring), is 6 px thick with a dark line outside it, and a second ring pings outward every 1.1 s. The
+    spotlight's hole has the same shape (the four dims leave a box; a thick outline clipped to the box fills its
+    corners). Every paw is bigger with a dark brown backing; the bouncing one has a gold halo; the trail's prints
+    swell as the wave passes and never fade under 70% (they went to 45%).
+  - *Pish introduces jobs the moment they unlock* ("The moment player unlock jobs. pish will introduce it to
+    them"): the jobs lesson (shop level 8) came at its level but waited its turn, behind lessons queued earlier and
+    his 90 s breather. It is now a `rush` lesson (`Pish.LESSONS`, `LessonRules.rushFirst`, `mayStart(..., rush)`):
+    first in line and no breather; he still waits for a free moment (the level-up card closed, no fight, in town).
+    He says "Your cards can work now! Tap Jobs on your Phone." with his paw on the Phone, then on the Jobs app, and
+    with the window open gives four lines with Next (`PishTalk.AFTER.jobs`): what a job is, the Restocker and the
+    Cashier, Pick a card then Assign job, and that a working card can't fight. A lesson with such an introduction
+    (jobs, prices) waits 45 s for the tap instead of 20 (`Pish.INTRO_SECONDS`, `LessonRules.pointSeconds`).
+  - *No admin command works in the live game* (owner: "make sure no admin commands is effective on the live
+    version"): audited. Every dev command (the chat commands, `ServerStorage.DevCommand`, the admin panel's
+    `DevPanel` remote) is made in `DevService.Start`, whose first lines leave outside Studio; the admin panel's tile
+    is only built in Studio; none of the 100 client-to-server remotes is a dev back door. The live game has one
+    chat command, `/slot` (the owner's test save), checked on the server against the game's creator id.
+    `tests/DevGate` reads the source and fails if any of that moves. It found one misnamed call: Pish's tutorial
+    sent its one customer through `CustomerService.SpawnForTest`; that is now `CustomerService.SendPlain` (same
+    behaviour, once ever, within the shop's cap).
+  - *The quest strip kept its desktop size* ("this window is going back to its small size when I hide then show
+    it"): folding the strip plays a small bump on it, and the bump took the strip's one UIScale (the HUD's own,
+    holding the desktop growth), set it to 1 and left it there. A scaled HUD piece now carries its scale at rest in
+    its `HudScale` attribute (`Hud.scaleWith`, kept up to date on a resize) and the bump starts and ends there
+    (`HudGrow.rest`, `HudGrow.bump`).
+  - *The desktop HUD* (three mockups shown; the owner picked A, "lets go A, and we can drop the rating", saw it in
+    the game and changed: "can you change it to C? Keep combat UI for now."). On a mouse-and-keyboard screen
+    `Config/DesktopHud` LAYOUT picks the arrangement (`Util/DesktopHud`, UIController `placeDesktop`):
+    - **"column" (C, in use):** the cash sits on top of the right column, in the top bar's strip, its right edge in
+      line with the quest strip under it (`DesktopHud.topRight`, `GuiService.TopbarInset`); the team strip, quests
+      and chips follow as before (they start 70 px down, under it at any size). Your creatures and your row (face,
+      shop level, XP, buffs) stay bottom left, the tiles bottom centre, the weapon dial bottom right beside Pish.
+    - **"bar" (A, kept in the code):** your row and the cash in a top row beside Roblox's buttons; the creatures,
+      the weapon dial and the tiles as one centred bar (`DesktopHud.bar`: a piece not showing leaves no hole, a
+      window too narrow keeps the corners).
+    - **"corners":** the cash bottom right under Pish, as before either.
+    In every desktop layout the cash row is level with Roblox's own pills (its middle `TOP.level` px down, the coin
+    at least `TOP.clear` px under the screen's top: `DesktopHud.cashTop`; owner: "Level the coins with the roblox
+    pills to add gap at the coin pill top"), and **Pish peeks from behind the quest box** ("move pish icon at the
+    top of quests", "make pish icon look like he's peeking from the quest box"): his seat (`PishPerch`) sits on the
+    quest strip's top edge near its left end, made before the quests' gui so the strip draws over his paws, and
+    follows the strip. His toasts sit in a row along the top bar's strip, the newest over his head (its tail
+    pointing down at him) and an older one to its left, two at most (`ToastRules.mode` "row", `ToastRules.max`,
+    `stackCorner`; UIController `shapeToasts`). A first version hung them in a column to his left, which covered an
+    open window's close button. The bottom-right corner then holds only the weapon dial. The side column (the Phone, the gift) hangs under Roblox's buttons, `SIDE.top` px under the
+    top bar, not from the screen's middle (owner: "make phone and daily gift move up below roblox";
+    `DesktopHud.sideTop`, `Hud.liftSide(px, top)`). The gift's tile comes first and the Phone under it (owner: "switch phone and
+    daily reward position. phone at the bottom of daily reward"; `Gifts.TILE.order = -1`, the Phone's is 0). The rating chip is gone from the HUD (`Customers.RATING.chip.hud = false`; the rating stays on
+    the Phone and the shop's sign). The fight HUD is untouched: a fight hides these pieces by name (BattleController
+    `HUD_NAMES`, now with `TopRow`); manning the register keeps the cash and the dock. Touch screens keep their own
+    layout (`CompactHud`).
+  - *The register's Leave button* ("make this LEAVE button in cashier consistent with the rest of the buttons. and
+    add a hotkey"; then "this button hotkey X look like a close ... change the design so that the X will not look
+    like close button"): the soft cotton candy look (pink, white rim, an arrow icon), growing on a desktop with the
+    HUD. Its key is **L** (for Leave), drawn as a square keyboard key with a lip inside the button after the word,
+    not a white circle on the corner (`RegisterStation.LEAVE_PILL`, `RegisterStationRules.leaveKey`: only while you
+    man it and aren't typing; a test keeps the key off X).
+  - *The party's keys, like Palworld's* ("1 and 3 keys are the arrows to the carousel press a summon button (E
+    Preffered) and whatever creature is in the middle will be summoned"): on a keyboard **1** brings the creature
+    on the left to the middle and **3** the one on the right (empty slots skipped: `PartyDock.turn`), and **E**
+    calls the middle one out, or back in when it's the one that's out (`Party.BAR.DOCK.summonKey`). The one you
+    picked stays in the middle whoever is out (`PartyDock.carousel` `picking`); the portraits show their keys by
+    where they sit (`PartyDock.keys`: 1, E, 3). E is the prompts' key too: while a prompt that uses it is up (a
+    shelf, the register) it's the prompt's, and it does nothing behind an open window or while you man the
+    register. Key 2 is no longer a party key. A click on a portrait still calls that creature. Phones keep their
+    swipes; a fight keeps its own keys (1 2 3 swapped there until 2026-11-20; 1 and 3 since, as here).
+  - *The pills under the quests only when they matter* (owner: "I want to clean up", picked 1 of three mockups):
+    a computer follows the rule a phone already had. **Turts' pill** shows only while he's just restocked (gold
+    "Turts restocked!", `Turts.CHIP.glowSeconds` after a restock you haven't opened his window in:
+    `CompactHud.phonePieces` `turtsChip = turtsFresh` on every screen); his rug's sign shows the countdown in the
+    world. **The event's pill** shows on the event's day and from an hour before it (`Events.CHIP.soon`,
+    `EventRules.chipShown`, `EventNow.chipShown`); "Next: Boss Rush in 1d 2h" was nothing to act on.
+  - *Quests in the Phone, and the Phone tells you* (owner: "can we just put the quests inside phone and just add a
+    noticeable notification on the phone everytime there's some changes to the quest or anything that is inside the
+    phone"): on a computer (`DesktopHud.QUESTS = "phone"`, `questsInPhone`) the quest strip and the main quest's row
+    leave the HUD; **Quests** is the Phone's first app and opens the Quests window, away from town too. The Quests
+    app wears a red count of what waits (`PhoneNotice.quests`: quests to claim, the day's chest, the Weekly Chest,
+    the main quest's build once you can pay for it) and the **Phone's own tile shows the sum of every app's count**
+    (`Hud.setBadge`, `PhoneNotice.total`; Reviews' unread too). The tile moves when something inside changes
+    (`Hud.notice`, `PhoneNotice.kind`): a **ping** when more waits than before (two red rings, its icon rocks, its
+    count pops), a **nudge** for progress only (one small ring). A computer only (nothing pulses on a phone's HUD);
+    a phone keeps its quest chip by the cash. The Turts and event pills, when they show, sit at the top right under
+    the cash. `QUESTS = "strip"` puts the strip back.
+  - *Pish with no quest strip* ("propose a few designs for the weapons section that pish can be placed to"): he
+    waits in the bottom-right corner, peeking over the screen's edge with the weapon dial beside him and his toasts
+    rising over him (`DesktopHud.pishAt` "corner"; `ToastRules.mode` "up"). Three designs for him by the weapons were
+    mocked (the corner as built, behind the big weapon chip, a weapon tray); the owner picks.
+  - *The party's keys stay still* (with Palworld's picture: "Can you make the party keys positioned exactly like
+    this? only the images switch. the keys stay still"): three square key caps fixed round the carousel, **1** left
+    of the left portrait, **E** over the middle one, **3** right of the right one (`PartyDock.keySpots`,
+    `Party.BAR.DOCK.keys`); the portraits' own key chips are gone, and the quick Party button sits past the 3.
+  - *The desktop HUD as it stands after the day's clean-up* (owner 2026-11-21, the last word on each piece; this
+    replaces the Pish and toast placements in the notes above):
+    - **Top left**, under Roblox's buttons: the gift's tile, then the Phone (its red count: what waits in Quests).
+    - **Top right**, two lines right-aligned: **your face beside the cash** (its tap area the coin's size:
+      "Make the player avatar as small as the coin. then put the avatar beside the coin"; `DesktopHud.faceSize`,
+      `faceBesideCash`, UIController's `CashLine`, PartyBarController `fitFace`), the cash pill a little smaller
+      (`DesktopHud.CASH_SCALE` 0.85) and level with Roblox's pills; under them **your buffs, shop level and XP
+      bar** with its next-unlock line ("move character info and level below the coin"; `DesktopHud.meUnderCash`),
+      the buffs left of the bar so the bar ends flush with the cash. The team
+      strip and the Turts and event pills, when they show, start under your row (`DesktopHud.columnStart`,
+      `UIController.GetColumnStart`).
+    - **Bottom left**: your creatures with their three fixed keys. **Bottom centre**: Cards, Bag. **Bottom right**:
+      the weapon dial.
+    - **No Pish on the HUD** ("okay just remove pish. and make the toast notification appear on the lower right";
+      `DesktopHud.PISH = false`, `pishAt` nil): toasts are plain bubbles (no tail: `ToastRules.tail`) in the lower
+      right, over the weapon dial when there is one (`DesktopHud.toastCorner`). Three designs for him by the
+      weapons were mocked first; the owner chose none. `PISH = true` brings him back.
+    - **No count on the Reviews app** ("remove notifications for reviews on the phone"; `Reviews.BADGE = false`,
+      `ReviewRules.badge`): the Phone's count is the quests' alone until another app reports.
+  - *The Quests window, easier to read* (owner 2026-11-21, with its picture: "improve quest window UI. easily
+    understandable/immersive"): each section has a heading that says how it's going: **Main Quest** ("Grow your
+    shop"), **Today** ("2 of 3 done", and "New quests in 1h 46m" on its right: the window's footer line moved up
+    beside what it's about), **This week** ("3 days left"). A quest's row shows its count beside its words
+    ("3 / 8"), a thicker bar, and its pay as chips with pictures (a coin "$75", a star "75 XP"; a weekly one "Weekly
+    Chest") instead of a "250/250 · +$75 · +75 shop XP" line; a finished one turns mint with Claim. The Main
+    Quest's row uses the same pieces ("$250 / $250", a "25 XP when built" chip) and its list reads "Next:". A chest
+    says how many quests are left ("2 more to go"). A goal of one reads like a sentence ("Beat a boss", never "Beat
+    a boss 1 times": `Quests.POOL` `one`). Rules: `QuestRules.rowState`, `countText`, `pay`, `sectionLine`,
+    `chestLeft`, `chestWaiting`.
+  - *The idle quest reminder* (owner 2026-11-21, going to sleep: "add something that always reminds players to
+    check quests specially when they are doing nothing. but not to the point that it is annoying"): on a computer,
+    where the quests live in the Phone, a small bubble pops out beside the Phone's tile once the player has stood
+    idle and free 40 s: what waits ("3 quests are done! Claim them.", "You can build the Forge!") or the quest
+    nearest done ("Quest: Serve 6 customers · 5 / 6", then the week's); the tile pings (something to take) or
+    nudges. Up 7 s; a tap opens the Quests window. Never in the first 90 s after joining, at most once every 5
+    minutes, never while busy (a fight, a window, the register, carrying, a guide's tour: `Util/PlayerBusy`,
+    `Hud.isCalm`), and nothing at all once every quest is done. `Config/Quests` REMIND, `Util/QuestRemind`
+    (`due`, `words`), QuestController `startReminder`.
+  - *The check after the day's HUD changes* (same message: "do necessary checks make sure nothing broke ... check
+    combat, check phone. tutorials and etc. if you see bugs fix it"). Played in Studio in all three places: a wild
+    fight, a boss fight to its win screen, Pish's first visit from a reset, a lesson visit, the Phone and Quests.
+    Found and fixed:
+    - **Dungeon**: its OBJECTIVE line drew over the level row now at the top right; it starts under it
+      (`UIController.GetColumnStart`, `OnPlaced`).
+    - **Calm HUD**: your face (now beside the cash) stayed up through Pish's tour while the rest of your row hid;
+      it hides with it. The Phone's quest count and ping stay quiet while a tour hides the quests
+      (`PhoneNotice.quests` `hidden`).
+    - **Buff tooltip** opened upward from the top-right cluster, off the screen; it opens downward in the screen's
+      top half.
+    - **Item pick-up cards** and the **register's offer panel on a short window** start under the cash and level
+      rows.
+    - **Tutorial paw** on a left-column tile sat on the tile above it (the gift over the Phone); it points from
+      the right side (`CueShape.pawSide`). **Skip** keeps left of the top-right cluster.
+    - **Leave** on the register never shrinks under 48 px on a short phone.
+    - **Pish's goodbye** said "Tap me on your party bar": he hasn't been there since 2026-11-13. Now "Find me in
+      town! Pet me for luck. Bye!".
+    - The reminder itself first checked a flag only the main place sets (it would never show in the Frontier).
+    Checked and fine: fight keys (the fight binds above the party's 1 / 3 / E, and the dock hides in a fight), E
+    beside a Fight prompt starts the fight, the HUD back after a fight, the win screen's cash flying to the top
+    right. Left for the owner: with no Pish on the HUD the "Support the dev" nudge (he asked from his bubble) no
+    longer shows on a computer, as on a phone since 2026-11-19.
+  - *The combat HUD tidy* (owner 2026-11-20, after three mocked directions: "Do. C", and to "in fights, should 1 and
+    3 mean left and right creature (matching the new carousel), retiring 2": "YES"). The layout stays; the noise goes:
+    - **1 and 3.** The party strip is a carousel like the party dock's: the creature fighting in the middle, the others
+      either side. Key 1 brings in the one on its left, key 3 the one on its right (two creatures: both keys reach the
+      other; a lone one unsummoned in a wild fight: either key calls it back). The gold key chips sit on the side
+      tiles ("1", "3"); the middle one has none. Key 2 does nothing in a fight; unsummoning in a wild fight is the
+      middle tile's tap. `SwapKeys.center`, `sideSlot`, `party(..., center)`; BattleController `fightCenter`.
+    - **Button names** go after your first 5 fights with the sword, wild fights included (3 boss fights before, and a
+      wild fight was always named). Before the sword (the creature-only wild HUD) they stay. `CombatHud.NAME_FIGHTS`,
+      `SwordService.CountFight` for every fight with the sword.
+    - **The perk sentence** under your creature's bar is its element's icon in a small chip. It opens into the words
+      for 2.5 s when a creature comes in, 3 s after a tap, and while the pointer rests on it
+      (`PERK_OPEN_SECONDS`, `PERK_TAP_SECONDS`). The swap's separate toast at the top centre is gone.
+    - **The weapon dial** sits right over the fight buttons in its column (over Super), not at mid height
+      (`UiLayout.weaponSwitch`'s `layout`: the combat HUD says which buttons it drew, its `Layout` attribute).
+    - **Toasts** hang under the foe's bar at the top centre for the fight (plain, two at most), under its states and
+      adds; in their corner they landed on the skill buttons. `ToastRules.mode(..., fight)` "under",
+      `ToastRules.under`, `UIController.SetToastAnchor` (BattleController sets the bar, clears it at the fight's end).
+      The Frontier's "Back to the shops" pill sat there: it hides for the fight like the rest of the HUD.
+    - **Your own name tag** (title and name) hides on your screen in your own fight; others still see it
+      (`TitleRules.ownTag`, the client's `FightHud` attribute).
+    Checked in Studio in a Frontier wild fight (keys, the strip turning, the chip, the dial, a toast under the bar)
+    and then in a boss fight in the main place.
+    Left as they are: Target and Run (they could shrink to small icons) and the locked super's "Electric weapon" label.
+  - *The boss fight check* (2026-11-20, the main place free again): boss 3's fight showed the strip in carousel order
+    with 1 and 3, no button names, the dial right over Super, your own tag hidden and the toasts' stack centred under
+    the boss plate. (Boss 1 fell in 5 s to a level 30 card, too quick to look.)
+  - *The healing spring answers* (owner 2026-11-20: "make the healing spring interactable. when new players interact
+    with it. It says something like 'bring your injured pet here to get healed' fix the wordings"): a prompt on it,
+    "How it works · Healing Spring", key F (E calls your creature), reaching the healing area's edge. It shows a
+    friendly card (the locked card's shape with a water-blue edge, no shake, a brighter chime, 6 s; `Blocked.tell`'s
+    tone "info"): nobody hurt, "Is a creature hurt? Bring it here! It gets better 3 times faster by the spring."; one
+    resting, "Thunderhorn is hurt. Stay by the spring: all better in about 2 minutes!"; several, their count and the
+    longest one's time. "Hurt" is the word the rest badge already uses. Every place with a spring.
+    `Config/Combat` SPRING_ASK, `Util/SpringRules`, WildService's `SpringPrompt`, BattleService `onSpringAsked`.
+  - *The Phone's dogs a bit smaller* (owner 2026-11-20): Pish and Chikin over the apps 86 px tall (110 before; lying
+    on its side 118, 150 before), the apps moved up by the difference (`HudLayout.PHONE.pictureHeight`).
+  - *A computer's fight buttons, compact* (owner 2026-11-20: "on combat UI DESKTOP ONLY. make the icons more compact.
+    I dont think we need to have the dodge button to be in the desktop version. make the target button small. or even
+    remove it entirely in desktop. it automatically activates when fight starts anyway. also make the run button
+    smaller"): with a mouse the HUD draws four buttons, about a third smaller (the unit 11% of the screen's height,
+    44 to 76 px; 17%, up to 110, on touch): Skill (E) and the Pet button (R) in a row in the corner, Super over the
+    Pet button, a small Run left of Skill (half a unit, never under 32 px). No Dodge or Target button: Shift still
+    dodges, Tab still targets, and the fight locks a target by itself (`CombatHud.MOUSE_HIDES`,
+    `UiLayout.combatButtons(view, true)` has no rect for them). Chikin's tour already says "Press Shift to dodge a
+    hit!" on a keyboard. Phones and tablets are unchanged. Then five follow-ups (owner, the same day: "do all"), all
+    with a mouse only:
+    - **The dodge's cooldown** on a small "Shift" keycap with the dodge's icon beside the perk chip under your bars:
+      dimmed while it cools down, a line under it filling back (`CombatHud.DODGE_KEY`).
+    - **The weapon dial** 0.7 of its size in the fight (130 px to 91), right over Super
+      (`HudLayout.WEAPON_SWITCH.fightScale`, `UiLayout.weaponSwitch`).
+    - **The locked Super** is the padlock alone; the pill naming the weapon ("Electric weapon") shows on touch only,
+      and resting the pointer on the button says "Needs ..." (`SUPER_LOCK.mousePill`).
+    - **Run** left the corner for Roblox's top bar, right of its buttons (where the Wild's "Return to town" sits out
+      of a fight): a round 40 px icon; on a hover "Run · Leave the fight", in a wild fight "Run · 62% to get away"
+      (`CombatHud.MOUSE_RUN`). The corner is Skill, the Pet button and Super.
+    - **The party strip's tiles are slim**: the painting and its key, 60 px tall from 74; the name (or "Unsummon" in
+      a wild fight) shows under the tile while the pointer is on it (`PARTY_STRIP.SLIM_FOOT`).
+  - *Before the 2026-11-20 publish* (owner: three small asks, then "do final checks before I publish"):
+    - **A material's line in simpler words** (the boss chest's card said "Enough to make the Sunforged Blade!"):
+      "You can make the Sunforged Blade now!", and short of it "Get 6 more to make the Verdant Blade" in place of
+      "9/15 to make ..."; the same with "upgrade" for a weapon you own (`WeaponText.goalLine`).
+    - **The Super has a key: F** ("add hotkey to super skills"; `CombatHud.BUTTONS.signature.key`, BattleController's
+      combat keys). The server refuses it while it's charging or locked, as for the button.
+    - **No creature models in pack openings** ("Remove pet models on pack openings"): no creature bursts out of an
+      Epic, Legendary, Frontier or new card, none comes through a Legendary's sky tear, and their models aren't
+      fetched for an opening (`CardReveal.CREATURE.on = false`, `RevealRules.comesAlive`'s `on`). The cards, the tear
+      and their effects play as before.
+    - **The checks**: 2,322 Lune tests; all 667 Luau files compile (Lune's tests never parse the client); the three
+      places build; each Studio window held the latest code and booted with a clean Output; a rarity pack opened in
+      the main place (an Epic and a Legendary reveal: no creature, no error). The saved shape is unchanged (schema
+      39, no migration), so old and new servers read the same saves.
+  - *The falls by the Wild portal* (owner 2026-11-20: "the portal to wild is too loud. lower its volume"): the portal
+    has no sound of its own; the only one there is the Forest Falls' waterfall 40 studs away. Its volume 0.5 -> 0.2
+    (`Config/Scenery` SOUNDS).
+  - *Where Support could live besides the Phone* (owner 2026-11-20, a question): four mocked spots, none on the main
+    HUD: a tip jar by the dogs in the plaza (recommended), a row at the foot of the Store, one line after a great
+    moment (the nudge lost with Pish on a computer), a supporters list on the leaderboard. Nothing built; the owner
+    picks.
 - Empty badges only near you (owner 2026-11-19: "can we only see EMPTY shelves if were near enough?"): a shelf's
   "Empty" badge shows only within 16 studs of your character (`Placement.EMPTY_BADGES.REACH`, `BadgeRules.pick`'s
   `reach`; measured from the character, since the camera zooms far out), still the nearest 3 and never overlapping.

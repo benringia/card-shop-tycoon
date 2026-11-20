@@ -28,10 +28,13 @@ local MusicRules = require(Shared:WaitForChild("Util"):WaitForChild("MusicRules"
 local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 local UIMotion = require(Shared:WaitForChild("Config"):WaitForChild("UIMotion"))
 local CompactHud = require(Shared:WaitForChild("Util"):WaitForChild("CompactHud"))
+local HudGrowConfig = require(Shared:WaitForChild("Config"):WaitForChild("HudGrow"))
+local HudGrow = require(Shared:WaitForChild("Util"):WaitForChild("HudGrow"))
 
 local SoftHud = require(Shared:WaitForChild("Config"):WaitForChild("SoftHud"))
 
 local Util = script.Parent :: Instance
+local PhoneNotice = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("PhoneNotice"))
 local UIKit = require(Util:WaitForChild("UIKit"))
 local Motion = require(Util:WaitForChild("Motion"))
 local Icon = require(Util:WaitForChild("Icon"))
@@ -69,6 +72,8 @@ local clockLabel: TextLabel
 local pages: { [string]: Frame } = {}
 local openPage: string? = nil
 local badges: { [string]: TextLabel } = {}
+local badgeCounts: { [string]: number } = {} -- what waits in each app (Hud.setBadge): the Phone tile shows their sum
+local phoneBadge: TextLabel? = nil
 local manageTile: TextButton? = nil
 local fanOpen = false
 local tiles: { [string]: TextButton } = {}
@@ -87,7 +92,7 @@ local compact = false -- the phone's slim HUD (UIController: touch screens)
 local townShown = not (Place.isFrontier() or Place.isDungeon())
 local townListeners: { (boolean) -> () } = {}
 local screen: ScreenGui
-local scaled: { { scale: UIScale, min: number } } = {}
+local scaled: { { scale: UIScale, min: number, grow: boolean } } = {}
 local TILE = SoftHud.TILE
 local SQUISH = SoftHud.SQUISH
 local resets: { () -> () } = {} -- each tile's way back to rest (Hud.setHidden: hidden rows get no MouseLeave)
@@ -455,11 +460,30 @@ local function setFan(open: boolean)
 	end)
 end
 
+-- A red count on a tile's corner, hidden at 0
+local function makeBadge(button: GuiObject): TextLabel
+	local badge = Instance.new("TextLabel")
+	badge.Name = "Badge"
+	badge.AnchorPoint = Vector2.new(0.5, 0.5)
+	badge.Position = UDim2.new(1, -6, 0, -10)
+	badge.Size = UDim2.fromOffset(24, 24)
+	badge.BackgroundColor3 = rgbOf(PHONE.badge)
+	badge.Font = Enum.Font.FredokaOne
+	badge.TextColor3 = Color3.new(1, 1, 1)
+	badge.TextSize = 15
+	badge.ZIndex = 20
+	badge.Visible = false
+	badge.Parent = button
+	UIKit.corner(badge, 12)
+	UIKit.outline(badge, Color3.new(1, 1, 1), 2)
+	return badge
+end
+
 local function ensureManageTile()
 	if manageTile then
 		return
 	end
-	manageTile = makeTile(side, {
+	local tile = makeTile(side, {
 		id = "Manage", -- the Phone tile keeps the Manage id (the tutorial points at it by that name)
 		icon = PHONE.icon,
 		label = PHONE.label,
@@ -469,6 +493,13 @@ local function ensureManageTile()
 			setFan(not fanOpen)
 		end,
 	}, HudLayout.CANDY.Manage)
+	manageTile = tile
+	-- everything waiting in its apps, added up (Hud.setBadge; owner 2026-11-21)
+	local badge = makeBadge(tile)
+	local pop = Instance.new("UIScale")
+	pop.Name = "Pop"
+	pop.Parent = badge
+	phoneBadge = badge
 end
 
 -- Puts every tile and app where it goes now (CompactHud.spot: a phone screen or not, in town or not) and shows the
@@ -512,12 +543,22 @@ function Hud.scaleFor(min: number?): number
 	return math.clamp(height / look.REFERENCE_HEIGHT, min or look.MIN, 1)
 end
 
--- Gives a HUD frame a UIScale that follows the screen's height (kept up to date when the screen resizes)
-function Hud.scaleWith(frame: GuiObject, min: number?): UIScale
+-- How much bigger a growing piece draws on a desktop (Config/HudGrow: the party dock, the quest strip; owner
+-- 2026-11-21: "small on the laptops"); 1 on a touch screen
+function Hud.growFor(): number
+	local height = if screen then screen.AbsoluteSize.Y else HudGrowConfig.REFERENCE
+	return HudGrow.scale(height, UserInputService.TouchEnabled, HudGrowConfig)
+end
+
+-- Gives a HUD frame a UIScale that follows the screen's height (kept up to date when the screen resizes). `grow`: it
+-- also grows on a desktop's bigger screens (Hud.growFor)
+function Hud.scaleWith(frame: GuiObject, min: number?, grow: boolean?): UIScale
 	local scale = Instance.new("UIScale")
-	scale.Scale = Hud.scaleFor(min)
+	scale.Scale = Hud.scaleFor(min) * (if grow then Hud.growFor() else 1)
 	scale.Parent = frame
-	table.insert(scaled, { scale = scale, min = min or HudLayout.SCALE.MIN })
+	-- its scale at rest, for anything else that animates this UIScale (the quest strip's bump: Util/HudGrow.rest)
+	frame:SetAttribute(HudGrowConfig.ATTRIBUTE, scale.Scale)
+	table.insert(scaled, { scale = scale, min = min or HudLayout.SCALE.MIN, grow = grow == true })
 	return scale
 end
 
@@ -650,14 +691,15 @@ local function buildPhone(screenGui: ScreenGui)
 	dogs.ScaleType = Enum.ScaleType.Fit
 	dogs.AnchorPoint = Vector2.new(0.5, 0)
 	dogs.Position = UDim2.new(0.5, 0, 0, 34)
-	dogs.Size = UDim2.new(1, -60, 0, 110)
+	dogs.Size = UDim2.new(1, -60, 0, PHONE.pictureHeight.tall)
 	dogs.ZIndex = 34
 	dogs.Parent = homeScreen
 	apps = Instance.new("Frame")
 	apps.Name = "Apps"
 	apps.BackgroundTransparency = 1
-	apps.Position = UDim2.fromOffset(10, 160)
-	apps.Size = UDim2.new(1, -20, 1, -190)
+	local appsTop = 50 + PHONE.pictureHeight.tall -- under the name and the dogs
+	apps.Position = UDim2.fromOffset(10, appsTop)
+	apps.Size = UDim2.new(1, -20, 1, -(appsTop + 30))
 	apps.ZIndex = 34
 	apps.Parent = homeScreen
 	local grid = Instance.new("UIGridLayout")
@@ -683,7 +725,7 @@ local function buildPhone(screenGui: ScreenGui)
 			name.Position = UDim2.fromOffset(14, 14)
 			name.Size = UDim2.fromOffset(side, 26)
 			dogs.Position = UDim2.fromOffset(14 + side / 2, 52)
-			dogs.Size = UDim2.fromOffset(side - 16, 150)
+			dogs.Size = UDim2.fromOffset(side - 16, PHONE.pictureHeight.wide)
 			apps.Position = UDim2.fromOffset(side + 24, 8)
 			apps.Size = UDim2.new(1, -(side + 34), 1, -44)
 			grid.FillDirectionMaxCells = PhoneForm.wideColumns
@@ -692,9 +734,9 @@ local function buildPhone(screenGui: ScreenGui)
 			name.Position = UDim2.fromOffset(12, 4)
 			name.Size = UDim2.new(1, -24, 0, 26)
 			dogs.Position = UDim2.new(0.5, 0, 0, 34)
-			dogs.Size = UDim2.new(1, -60, 0, 110)
-			apps.Position = UDim2.fromOffset(10, 160)
-			apps.Size = UDim2.new(1, -20, 1, -190)
+			dogs.Size = UDim2.new(1, -60, 0, PHONE.pictureHeight.tall)
+			apps.Position = UDim2.fromOffset(10, appsTop)
+			apps.Size = UDim2.new(1, -20, 1, -(appsTop + 30))
 			grid.FillDirectionMaxCells = PhoneForm.columns
 		end
 	end
@@ -728,7 +770,11 @@ function Hud.mount(screenGui: ScreenGui)
 	watchTown()
 	screenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
 		for _, entry in scaled do
-			entry.scale.Scale = Hud.scaleFor(entry.min)
+			entry.scale.Scale = Hud.scaleFor(entry.min) * (if entry.grow then Hud.growFor() else 1)
+			local owner = entry.scale.Parent
+			if owner then
+				owner:SetAttribute(HudGrowConfig.ATTRIBUTE, entry.scale.Scale)
+			end
 		end
 	end)
 	side = Instance.new("Frame")
@@ -761,22 +807,41 @@ function Hud.mount(screenGui: ScreenGui)
 
 	buildPhone(screenGui)
 	for _, frame in { side, bottom } do
-		Hud.scaleWith(frame)
+		Hud.scaleWith(frame, nil, true) -- bigger on a desktop with the rest of the HUD (Config/HudGrow)
 	end
 	ensureManageTile() -- the Phone tile, shown once it holds an app (layout)
 	layout()
 end
 
+-- The bottom row's place: centred (nil), or its left edge `left` px from the screen's left (a computer's bar, where it
+-- follows your creatures and the weapon dial: UIController, Config/DesktopHud)
+function Hud.placeBottom(left: number?)
+	if not bottom then
+		return
+	end
+	if left then
+		bottom.AnchorPoint = Vector2.new(0, 1)
+		bottom.Position = UDim2.new(0, left, 1, -HudLayout.BOTTOM_MARGIN)
+	else
+		bottom.AnchorPoint = Vector2.new(0.5, 1)
+		bottom.Position = UDim2.new(0.5, 0, 1, -HudLayout.BOTTOM_MARGIN)
+	end
+end
+
 -- Lifts the side column (the Phone, Cards) `px` up from the screen's middle: the party dock under it on a short PC
 -- window (UIController). On a phone it hangs from the top instead (HudLayout.SIDE_TOP), clear of the thumbstick's
 -- resting spot low on the left (owner 2026-11-17: "make sure nothing is cutoff/overlapping on all devices")
-function Hud.liftSide(px: number)
+-- `top` (a computer's layout, Config/DesktopHud SIDE): it hangs that many px under the top bar, below Roblox's buttons
+function Hud.liftSide(px: number, top: number?)
 	if not side then
 		return
 	end
 	if compact then
 		side.AnchorPoint = Vector2.new(0, 0)
 		side.Position = UDim2.new(0, HudLayout.SIDE_X, 0, HudLayout.SIDE_TOP)
+	elseif top then
+		side.AnchorPoint = Vector2.new(0, 0)
+		side.Position = UDim2.new(0, HudLayout.SIDE_X, 0, top)
 	else
 		side.AnchorPoint = Vector2.new(0, 0.5)
 		side.Position = UDim2.new(0, HudLayout.SIDE_X, 0.5, -px)
@@ -831,21 +896,13 @@ function Hud.fanButton(spec: FanSpec): TextButton
 	}, HudLayout.CANDY_FAN[(math.max(spec.order, 1) - 1) % #HudLayout.CANDY_FAN + 1])
 	button.ZIndex = 35
 	-- a red count on its corner (Hud.setBadge), hidden at 0
-	local badge = Instance.new("TextLabel")
-	badge.Name = "Badge"
-	badge.AnchorPoint = Vector2.new(0.5, 0.5)
-	badge.Position = UDim2.new(1, -6, 0, -10)
-	badge.Size = UDim2.fromOffset(24, 24)
-	badge.BackgroundColor3 = rgbOf(PHONE.badge)
-	badge.Font = Enum.Font.FredokaOne
-	badge.TextColor3 = Color3.new(1, 1, 1)
-	badge.TextSize = 15
-	badge.ZIndex = 20
-	badge.Visible = false
-	badge.Parent = button
-	UIKit.corner(badge, 12)
-	UIKit.outline(badge, Color3.new(1, 1, 1), 2)
+	local badge = makeBadge(button)
 	badges[spec.id] = badge
+	local waiting = badgeCounts[spec.id]
+	if waiting and waiting > 0 then
+		badge.Visible = true
+		badge.Text = PhoneNotice.text(waiting) -- set before its app was made
+	end
 	table.insert(entries, {
 		button = button,
 		rule = { app = true, everywhere = spec.everywhere },
@@ -958,12 +1015,83 @@ function Hud.showPhonePage(id: string)
 	openPage = id
 end
 
--- The red count on an app's icon (0 hides it)
+-- The red count on an app's icon (0 hides it), and on the Phone's own tile the sum of every app's (owner 2026-11-21:
+-- "a noticeable notification on the phone everytime there's some changes to ... anything that is inside the phone")
 function Hud.setBadge(id: string, count: number)
+	badgeCounts[id] = math.max(0, count)
 	local badge = badges[id]
 	if badge then
 		badge.Visible = count > 0
-		badge.Text = if count > 9 then "9+" else tostring(count)
+		badge.Text = PhoneNotice.text(count)
+	end
+	local total = PhoneNotice.total(badgeCounts)
+	local whole = phoneBadge
+	if whole then
+		whole.Visible = total > 0
+		whole.Text = PhoneNotice.text(total)
+	end
+end
+
+-- The Phone's tile tells you something inside it changed (Util/PhoneNotice.kind): "ping" (more waits than before: two
+-- rings, its icon rocks, its count pops) or "nudge" (progress only: one small ring). A computer only (nothing pulses
+-- on a phone's HUD), and not while the Phone is open or its tile is hidden
+function Hud.notice(kind: string?)
+	local tile = manageTile
+	local look = if kind then (PHONE.notice :: any)[kind] else nil
+	if not tile or not look or compact or fanOpen or not tile.Visible or not side.Visible then
+		return
+	end
+	local corner = HudLayout.TILE_SIZE.X * TILE.corner
+	for ring = 1, look.rings do
+		task.delay((ring - 1) * look.gap, function()
+			if not tile.Parent then
+				return
+			end
+			local frame = Instance.new("Frame")
+			frame.Name = "Notice"
+			frame.BackgroundTransparency = 1
+			frame.AnchorPoint = Vector2.new(0.5, 0.5)
+			frame.Position = UDim2.fromScale(0.5, 0.5)
+			frame.Size = UDim2.fromScale(1, 1)
+			frame.ZIndex = 1
+			frame.Parent = tile
+			local round = Instance.new("UICorner")
+			round.CornerRadius = UDim.new(0, corner)
+			round.Parent = frame
+			local stroke = Instance.new("UIStroke")
+			stroke.Color = rgbOf(PHONE.badge)
+			stroke.Thickness = PHONE.notice.thickness
+			stroke.Parent = frame
+			local out = TweenInfo.new(look.seconds, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+			TweenService:Create(frame, out, { Size = UDim2.new(1, look.grow * 2, 1, look.grow * 2) }):Play()
+			TweenService:Create(round, out, { CornerRadius = UDim.new(0, corner + look.grow) }):Play()
+			TweenService:Create(stroke, out, { Transparency = 1 }):Play()
+			task.delay(look.seconds + 0.1, function()
+				frame:Destroy()
+			end)
+		end)
+	end
+	-- its icon rocks side to side and comes to rest upright
+	local icon = tile:FindFirstChild("Icon", true)
+	if icon and icon:IsA("GuiObject") then
+		task.spawn(function()
+			local step = TweenInfo.new(0.07, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+			for _ = 1, look.rocks do
+				for _, angle in { look.wiggle, -look.wiggle } do
+					local rock = TweenService:Create(icon, step, { Rotation = angle })
+					rock:Play()
+					rock.Completed:Wait()
+				end
+			end
+			TweenService:Create(icon, step, { Rotation = 0 }):Play()
+		end)
+	end
+	-- its count pops
+	local badge = phoneBadge
+	local pop = if badge then badge:FindFirstChild("Pop") else nil
+	if pop and pop:IsA("UIScale") then
+		pop.Scale = look.pop
+		TweenService:Create(pop, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 	end
 end
 

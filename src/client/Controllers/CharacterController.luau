@@ -807,6 +807,7 @@ local function addFace()
 	UIKit.outline(dot, Color3.new(1, 1, 1), 2)
 	faceDot = dot
 	updateDot()
+	PartyBarController.SetFace(hit) -- its home and size: your row, or beside the cash on a computer
 	if UserInputService.KeyboardEnabled then
 		local chip = UIKit.label(face, Look.FACE.key, Enum.Font.FredokaOne, 12, Color3.fromRGB(20, 28, 60))
 		chip.Name = "Key"

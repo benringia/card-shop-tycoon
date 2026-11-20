@@ -144,7 +144,7 @@ local function drawFeed()
 end
 
 local function updateBadge()
-	Hud.setBadge("Reviews", ReviewRules.unseen(posts, seenAt))
+	Hud.setBadge("Reviews", ReviewRules.badge(ReviewRules.unseen(posts, seenAt), Reviews))
 end
 
 local function open()

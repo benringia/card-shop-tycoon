@@ -768,6 +768,25 @@ return {
 		expect.equal(#state.sides.a.fighters, 2, "both on the field")
 	end,
 
+	-- Owner 2026-11-21 (launch day): "sometimes I can summon 2 pets. fix it". The old call-in: in a wild fight's first
+	-- seconds a tap on another party card added it as a second fighter instead of swapping (its button went on
+	-- 2026-11-17, the rule stayed). Fights now set callIn false (Combat.CALL_IN): one of yours at a time, always a swap
+	["no call-in: tapping another card in the first seconds swaps, one of yours on the field"] = function()
+		expect.equal(combat.CALL_IN, false, "the game's fights have no call-in")
+		local state = bossFightWithPlayer(3, 1)
+		local events = BattleSim.swap(state, "a:r1", "1")
+		assert(events and events[1].type ~= "callin", "a swap, not a second creature")
+		local creatures = 0
+		for _, fighter in state.sides.a.fighters do
+			if not fighter.player then
+				creatures += 1
+			end
+		end
+		expect.equal(creatures, 1, "one creature of yours fighting")
+		expect.equal(BattleSim.snapshot(state).sides.a.callInFor, 0, "and no call-in countdown for the client")
+		expect.equal((BattleSim.callIn(state, "a:p1", "1")), false, "the call-in itself is closed")
+	end,
+
 	["swap: when all yours faint the healthiest reserve comes in by itself"] = function()
 		local state = swapFight(4, 1)
 		runToEnd(state, combat.CALL_IN_SECONDS + 1)

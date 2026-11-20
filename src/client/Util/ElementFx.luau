@@ -28,6 +28,7 @@ local WEB = Color3.fromRGB(236, 232, 245)
 local MOLTEN = Color3.fromRGB(255, 196, 64)
 local CRACK = Color3.fromRGB(255, 72, 18)
 local VOID = Color3.fromRGB(40, 12, 70) -- the Rift Devourer's dark bursts
+local SOOT = Color3.fromRGB(62, 50, 46) -- a fireball's smoke
 local GOLD = Color3.fromRGB(255, 215, 106)
 
 local function folder(): Folder
@@ -284,9 +285,104 @@ function ElementFx.burst(at: Vector3, color: Color3, scale: number?)
 	light(holder(at, 0.6), color, 12 * s, 2.5, 0.35)
 end
 
+-- Where a thrown basic attack leaves (AttackFx.THROW muzzle): a flare, a ring facing the way it flies, a few sparks
+-- and a flash of light
+function ElementFx.muzzle(at: Vector3, toward: Vector3, color: Color3, scale: number?)
+	local s = scale or 1
+	local m = AttackFx.THROW.muzzle
+	flashSprite(at, "flare", color, m.from * s, m.to * s, m.seconds, { spin = { 150, 250 }, core = false, brightness = 2.2 })
+	local anchor = holder(at, m.seconds + 0.5)
+	if (toward - at).Magnitude > 0.1 then
+		anchor.CFrame = CFrame.lookAt(at, toward)
+	end
+	local flat = { size = { 0.6 * s, m.ring * 2 * s }, life = m.seconds, speed = 0.01, orientation = Enum.ParticleOrientation.VelocityPerpendicular, direction = Enum.NormalId.Front, rotation = 0, fade = 0.2 }
+	emitter(anchor, "ring", color, flat):Emit(1)
+	local inner = table.clone(flat)
+	inner.size = { 0.4 * s, m.ring * 1.3 * s }
+	inner.brightness = 2.2
+	emitter(anchor, "ring", WHITE, inner):Emit(1)
+	sparks(at, color, 10 * s, 16, 0.8 * s, 10)
+	light(anchor, color, 9 * s, 2.5, m.seconds + 0.1)
+end
+
+-- A thrown basic attack's own trail (AttackFx.THROW ELEMENT trail) on its flying `carrier`: fire's dark smoke and
+-- rising embers, water's falling drops, the thorns' tumbling leaves, the moon slash's dark wisps. Returns its emitters
+-- (their Rate set), to stop when it lands.
+local function throwTrail(carrier: BasePart, style: string, color: Color3, s: number): { ParticleEmitter }
+	local made: { ParticleEmitter } = {}
+	local function keep(e: ParticleEmitter, rate: number)
+		e.Rate = detail(rate)
+		table.insert(made, e)
+	end
+	if style == "smoke" then
+		keep(emitter(carrier, "smoke", SOOT, { size = { 1.1 * s, 2.6 * s }, life = { 0.35, 0.6 }, speed = { 0.5, 1.5 }, spread = 180, light = 0, brightness = 1, start = 0.5, fade = 0.2, zOffset = -0.6, accel = Vector3.new(0, 4, 0) }), 26)
+		keep(emitter(carrier, "spark", MOLTEN, { size = { 0.5 * s, 0.1 }, life = { 0.4, 0.8 }, speed = { 1, 4 }, spread = 180, accel = Vector3.new(0, 9, 0), drag = 2, brightness = 2.2 }), 30)
+	elseif style == "drops" then
+		keep(emitter(carrier, "raindrop", color:Lerp(WHITE, 0.3), { size = { 0.7 * s, 0.3 * s }, life = { 0.3, 0.55 }, speed = { 2, 6 }, spread = 180, rotation = 0, orientation = Enum.ParticleOrientation.VelocityParallel, accel = Vector3.new(0, -42, 0), brightness = 2 }), 44)
+		keep(emitter(carrier, "glow", color:Lerp(WHITE, 0.5), { size = { 2.2 * s, 3.4 * s }, life = { 0.25, 0.4 }, speed = 0.5, spread = 180, start = 0.6, fade = 0.2, zOffset = -0.4 }), 16)
+	elseif style == "leaves" then
+		keep(emitter(carrier, "shard", color, { size = { 0.8 * s, 0.3 * s }, life = { 0.4, 0.7 }, speed = { 2, 5 }, spread = 180, spin = { -320, 320 }, accel = Vector3.new(0, -8, 0), drag = 2, brightness = 1.5 }), 34)
+		keep(emitter(carrier, "glow", color:Lerp(WHITE, 0.4), { size = { 0.5 * s, 0 }, life = { 0.4, 0.7 }, speed = { 1, 3 }, spread = 180, accel = Vector3.new(0, 4, 0), start = 0.3 }), 14)
+	elseif style == "wisps" then
+		keep(emitter(carrier, "smoke", VOID:Lerp(color, 0.35), { size = { 1.4 * s, 3.2 * s }, life = { 0.35, 0.65 }, speed = { 0.5, 2 }, spread = 180, spin = { -60, 60 }, light = 0.2, brightness = 1, start = 0.4, fade = 0.25, zOffset = -0.6 }), 30)
+		keep(emitter(carrier, "flare", color:Lerp(WHITE, 0.3), { size = { 0.7 * s, 0.1 }, life = { 0.3, 0.5 }, speed = { 1, 4 }, spread = 180, spin = { -200, 200 }, brightness = 2.2 }), 18)
+	end
+	return made
+end
+
+-- Where a thrown basic attack lands (AttackFx.THROW land, ELEMENT land): a ring on the ground at `ground`, then the
+-- element's own: flames licking up with smoke and embers, a splash crown thrown up and falling with mist, `count`
+-- thorns out of the ground with leaves, or a crossed cut with dark smoke (`at`: the hit, `from`: who threw it)
+function ElementFx.throwLand(style: string, ground: Vector3, at: Vector3, from: Vector3, color: Color3, scale: number?, count: number?)
+	local s = scale or 1
+	local pieces = count or 8
+	local land = AttackFx.THROW.land
+	shockwave(ground, color, land.ring * s, land.seconds)
+	if style == "flames" then
+		local anchor = holder(ground + Vector3.new(0, 0.4, 0), 1.6)
+		emitter(anchor, "flame", color, { size = { 1.7 * s, 0.3 * s }, life = { 0.35, 0.6 }, speed = { 7 * s, 13 * s }, spread = 28, rotation = { -20, 20 }, accel = Vector3.new(0, 8, 0), fade = 0.4 }):Emit(detail(pieces))
+		emitter(anchor, "flame", WHITE, { size = { 0.8 * s, 0.15 * s }, life = { 0.25, 0.4 }, speed = { 7 * s, 11 * s }, spread = 16, rotation = { -20, 20 }, brightness = 2.2 }):Emit(detail(pieces * 0.5))
+		emitter(anchor, "smoke", SOOT, { size = { 1.6 * s, 3.6 * s }, life = { 0.7, 1.1 }, speed = { 3, 6 }, spread = 35, light = 0, brightness = 1, start = 0.5, fade = 0.25, accel = Vector3.new(0, 3, 0), zOffset = -0.5 }):Emit(detail(5))
+		emitter(anchor, "spark", MOLTEN, { size = { 0.5 * s, 0.1 }, life = { 0.6, 1.1 }, speed = { 3, 9 }, spread = 70, accel = Vector3.new(0, 7, 0), drag = 2, brightness = 2.2 }):Emit(detail(14))
+		light(anchor, color, 11 * s, 3, 0.45)
+	elseif style == "splash" then
+		local anchor = holder(ground + Vector3.new(0, 0.4, 0), 1.6)
+		emitter(anchor, "raindrop", color:Lerp(WHITE, 0.3), { size = { 0.9 * s, 0.4 * s }, life = { 0.5, 0.8 }, speed = { 13 * s, 21 * s }, spread = 38, rotation = 0, orientation = Enum.ParticleOrientation.VelocityParallel, accel = Vector3.new(0, -62, 0), brightness = 2, fade = 0.8 }):Emit(detail(pieces))
+		emitter(anchor, "glow", color:Lerp(WHITE, 0.5), { size = { 2.4 * s, 5.5 * s }, life = { 0.4, 0.6 }, speed = { 2, 4 }, spread = 60, start = 0.55, fade = 0.2 }):Emit(detail(5))
+		task.delay(0.1, function()
+			shockwave(ground, color:Lerp(WHITE, 0.5), land.ring * 0.6 * s, land.seconds) -- a second ripple
+		end)
+		light(anchor, color, 10 * s, 2.5, 0.4)
+	elseif style == "thorns" then
+		for index = 1, detail(pieces) do
+			local spot = scatter(ground, 2.2 * s)
+			local height = (2.2 + math.random() * 1.6) * s
+			task.delay(index * 0.02, function()
+				local anchor = holder(spot + Vector3.new(0, height * 0.4, 0), 1)
+				local thorn = { size = { 0.5 * s, height }, life = 0.6, rotation = { -14, 14 }, orientation = Enum.ParticleOrientation.FacingCameraWorldUp, fade = 0.55 }
+				emitter(anchor, "shard", color, thorn):Emit(1)
+				local core = table.clone(thorn)
+				core.size = { 0.22 * s, height * 0.55 }
+				core.brightness = 2.2
+				core.life = 0.4
+				emitter(anchor, "shard", WHITE, core):Emit(1)
+			end)
+		end
+		local anchor = holder(at, 1.4)
+		emitter(anchor, "shard", color, { size = { 0.9 * s, 0.3 * s }, life = { 0.6, 1 }, speed = { 6, 12 }, spread = 180, spin = { -320, 320 }, accel = Vector3.new(0, -9, 0), drag = 3, brightness = 1.5, fade = 0.7 }):Emit(detail(14))
+		light(anchor, color, 10 * s, 2.5, 0.4)
+	elseif style == "cross" then
+		ElementFx.slash(at, from, color, "vine", 1, s * 0.9, 45)
+		ElementFx.slash(at, from, color:Lerp(WHITE, 0.5), "vine", 2, s * 0.9, -45)
+		local anchor = holder(at, 1.5)
+		emitter(anchor, "smoke", VOID:Lerp(color, 0.3), { size = { 1.6 * s, 4 * s }, life = { 0.6, 1 }, speed = { 3, 7 }, spread = 180, spin = { -60, 60 }, light = 0.2, brightness = 1, start = 0.4, fade = 0.25, drag = 2 }):Emit(detail(pieces))
+		light(anchor, color, 10 * s, 2.5, 0.4)
+	end
+end
+
 -- A comet from `from` to wherever `target()` is, rising `arc` studs at its middle, taking `seconds`; then
 -- `onArrive(position)`. o: scale, flames (fire licking off it), rings (water rings spiralling round it, how many
--- layers), sparkle (gold sparkles: a grade S trail)
+-- layers), sparkle (gold sparkles: a grade S trail), trail (its element's own: throwTrail; with it a longer ribbon)
 function ElementFx.projectile(from: Vector3, target: () -> Vector3, color: Color3, seconds: number, arc: number, onArrive: (Vector3) -> (), o: any?)
 	local opts = o or {}
 	local s = opts.scale or 1
@@ -319,6 +415,11 @@ function ElementFx.projectile(from: Vector3, target: () -> Vector3, color: Color
 	if opts.sparkle then
 		keep(emitter(ball, "flare", GOLD, { size = { 0.9 * s, 0.2 }, life = 0.45, speed = { 1, 3 }, spread = 180, spin = { -200, 200 }, brightness = 2.2 }), 30)
 	end
+	if opts.trail then
+		for _, e in throwTrail(ball, opts.trail, color, s) do
+			table.insert(emitters, e)
+		end
+	end
 	-- A glowing ribbon behind it
 	local a0, a1 = Instance.new("Attachment"), Instance.new("Attachment")
 	a0.Position = Vector3.new(0, 0.55 * s, 0)
@@ -329,7 +430,7 @@ function ElementFx.projectile(from: Vector3, target: () -> Vector3, color: Color
 	trail.Color = ColorSequence.new(WHITE, color)
 	trail.Transparency = NumberSequence.new(0.1, 1)
 	trail.WidthScale = NumberSequence.new(1, 0)
-	trail.Lifetime = 0.2
+	trail.Lifetime = if opts.trail then AttackFx.THROW.trail else 0.2
 	trail.LightEmission = 1
 	trail.FaceCamera = true
 	trail.Parent = ball
@@ -361,8 +462,8 @@ end
 -- A crescent of moonlight flung from `from` at a (moving) target over `seconds` (Shade's basic attack, AttackFx
 -- MOON_SLASH): a glowing crescent bowed forward and tilted, a white core, a dark shadow sheet trailing behind it and
 -- motes; `onArrive` where it lands. tilt: degrees (the default's own tilt when nil); `lit` false: no light of its own
--- (Reaping Cyclone's rings share one)
-function ElementFx.moonSlash(from: Vector3, target: () -> Vector3, color: Color3, seconds: number, onArrive: (Vector3) -> (), scale: number?, tilt: number?, lit: boolean?)
+-- (Reaping Cyclone's rings share one); `wisps`: dark wisps dragged behind it (a creature's basic attack: throwTrail)
+function ElementFx.moonSlash(from: Vector3, target: () -> Vector3, color: Color3, seconds: number, onArrive: (Vector3) -> (), scale: number?, tilt: number?, lit: boolean?, wisps: boolean?)
 	local cfg = AttackFx.MOON_SLASH
 	local s = scale or 1
 	local half = cfg.length * 0.5 * s
@@ -405,6 +506,7 @@ function ElementFx.moonSlash(from: Vector3, target: () -> Vector3, color: Color3
 	trail.Parent = carrier
 	local motes = emitter(carrier, "spark", color, { size = { 0.6 * s, 0.1 }, life = { 0.25, 0.45 }, speed = { 1, 3 }, spread = 180, brightness = 2 })
 	motes.Rate = detail(40)
+	local dragged = if wisps then throwTrail(carrier, "wisps", color, s) else {}
 	if lit ~= false then
 		light(carrier, color, 9 * s, 2, seconds + 0.2)
 	end
@@ -419,6 +521,9 @@ function ElementFx.moonSlash(from: Vector3, target: () -> Vector3, color: Color3
 		if t >= 1 then
 			connection:Disconnect()
 			motes.Rate = 0
+			for _, e in dragged do
+				e.Rate = 0
+			end
 			trail.Enabled = false
 			for _, b in beams do
 				b.Enabled = false

@@ -65,6 +65,7 @@ export type Monster = {
 local WildService = {}
 
 local buildSpring: (folder: Instance) -> ()
+local springPrompt: ProximityPrompt? = nil -- the spring's "How it works" (buildSpring)
 
 local SPAWN_TAG = "WildSpawn"
 local TRAVEL_COOLDOWN = 1
@@ -213,6 +214,24 @@ function buildSpring(folder: Instance)
 	label.Parent = board
 	board.Adornee = crystal
 	board.Parent = area
+
+	-- Asking it how it works (owner 2026-11-20; Config/Combat SPRING_ASK): a prompt on an unseen part in the fountain's
+	-- middle, reaching the healing area's edge. BattleService answers (it knows who is resting)
+	local ask = Combat.SPRING_ASK
+	local anchor = block(folder, "SpringAsk", Vector3.new(1, 1, 1), CFrame.new(spot + Vector3.new(0, 4, 0)), SPRING_COLOR, Enum.Material.SmoothPlastic)
+	anchor.Transparency = 1
+	anchor.CanCollide = false
+	anchor.CanQuery = false
+	anchor.CastShadow = false
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "SpringPrompt"
+	prompt.ObjectText = ask.object
+	prompt.ActionText = ask.action
+	prompt.KeyboardKeyCode = (Enum.KeyCode :: any)[ask.key]
+	prompt.MaxActivationDistance = ask.distance
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = anchor
+	springPrompt = prompt
 end
 
 local function sign(parent: Instance, text: string, cframe: CFrame)
@@ -792,6 +811,11 @@ end
 
 function WildService.GetSpringPosition(): Vector3
 	return vec(Wild.SPRING)
+end
+
+-- The spring's "How it works" prompt (nil where no spring was built): BattleService answers it
+function WildService.GetSpringPrompt(): ProximityPrompt?
+	return springPrompt
 end
 
 -- A monster at a spot, never respawned: /elite, and bosses (with their Config/Bosses id and the zone they belong to)

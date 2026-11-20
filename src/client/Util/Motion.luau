@@ -3,6 +3,8 @@
 -- scales anything (round 5): UIKit's noGreyHover lights a button up instead.
 -- A newer motion on the same object cancels the running one, so fast repeated taps never leave anything
 -- stuck half-scaled. Numbers: Config/UIMotion.
+-- An object's size at rest is 1, or its RestScale attribute (a window grown for a desktop: UIKit.panel, Config/HudGrow):
+-- popping in, out and resetting all end there.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
@@ -24,6 +26,12 @@ local function getScale(gui: GuiObject): UIScale
 	return created
 end
 
+-- The scale it rests at: 1, or its RestScale attribute
+local function rest(gui: GuiObject): number
+	local value = gui:GetAttribute("RestScale")
+	return if typeof(value) == "number" and value > 0 then value else 1
+end
+
 local function play(gui: GuiObject, to: number, info: TweenInfo): Tween
 	local current = running[gui]
 	if current then
@@ -38,18 +46,18 @@ end
 -- Grows from a little smaller to full size with a slight overshoot
 function Motion.popIn(gui: GuiObject)
 	closing[gui] = nil
-	getScale(gui).Scale = UIMotion.OPEN_FROM
-	play(gui, 1, TweenInfo.new(UIMotion.OPEN_SECONDS, Enum.EasingStyle.Back, Enum.EasingDirection.Out))
+	getScale(gui).Scale = UIMotion.OPEN_FROM * rest(gui)
+	play(gui, rest(gui), TweenInfo.new(UIMotion.OPEN_SECONDS, Enum.EasingStyle.Back, Enum.EasingDirection.Out))
 end
 
 -- Shrinks a little and calls onDone when it finishes (not if another motion cancelled it)
 function Motion.popOut(gui: GuiObject, onDone: (() -> ())?)
 	closing[gui] = true
-	local tween = play(gui, UIMotion.OPEN_FROM, TweenInfo.new(UIMotion.CLOSE_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.In))
+	local tween = play(gui, UIMotion.OPEN_FROM * rest(gui), TweenInfo.new(UIMotion.CLOSE_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.In))
 	tween.Completed:Once(function(state)
 		if state == Enum.PlaybackState.Completed then
 			closing[gui] = nil
-			getScale(gui).Scale = 1
+			getScale(gui).Scale = rest(gui)
 			if onDone then
 				onDone()
 			end
@@ -67,7 +75,9 @@ function Motion.reset(gui: GuiObject)
 	closing[gui] = nil
 	local scale = gui:FindFirstChild("MotionScale")
 	if scale and scale:IsA("UIScale") then
-		scale.Scale = 1
+		scale.Scale = rest(gui)
+	elseif rest(gui) ~= 1 then
+		getScale(gui).Scale = rest(gui)
 	end
 end
 

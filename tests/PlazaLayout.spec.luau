@@ -177,7 +177,7 @@ return {
 		end
 	end,
 
-	["chairs ring each table facing it, and three tables have someone sitting"] = function()
+	["chairs ring each table facing it, and two tables have someone sitting"] = function()
 		local t = plaza.TABLE
 		for index, angle in plaza.TABLES.angles do
 			local chairs = PlazaLayout.chairs(plaza, index)
@@ -191,7 +191,7 @@ return {
 				expect.near(chair.faceX * (middle.x - chair.x) + chair.faceZ * (middle.z - chair.z), d, 1e-9, "faces the table")
 			end
 		end
-		expect.equal(#t.sitters, 3, "three townsfolk")
+		expect.equal(#t.sitters, 2, "two townsfolk (the third sat where the Support corner is)")
 		for _, sitter in t.sitters do
 			assert(plaza.TABLES.angles[sitter.table], `no table {sitter.table}`)
 			assert(sitter.chair >= 1 and sitter.chair <= t.chairs, `no chair {sitter.chair}`)
@@ -266,28 +266,29 @@ return {
 		expect.equal(laps, 1, "one animal running laps")
 	end,
 
-	["the cat sleeps on a bench"] = function()
+	-- its bench went with the others (owner 2026-11-20: benches blocked the way round the gazebo): it took a dog's bed
+	["the cat sleeps on one of the dogs' beds"] = function()
 		local sleepers = 0
 		for _, critter in ambient.CRITTERS do
 			if critter.area == "plaza" and critter.sleeps then
 				sleepers += 1
-				local onBench = false
-				for _, angle in town.LAYOUT.BENCH_ANGLES do
-					local bench = PlazaLayout.at(angle, town.LAYOUT.BENCH_RADIUS)
-					if math.sqrt((bench.x - critter.home.x) ^ 2 + (bench.z - critter.home.z) ^ 2) <= plaza.BENCH_REACH then
-						onBench = true
+				local onBed = false
+				for _, bed in PlazaLayout.dogBeds(plaza) do
+					if math.sqrt((bed.x - critter.home.x) ^ 2 + (bed.z - critter.home.z) ^ 2) <= plaza.SUPPORT.beds.radius * 0.4 then
+						onBed = true
 					end
 				end
-				assert(onBench, `the {critter.model} isn't on a bench`)
+				assert(onBed, `the {critter.model} isn't on a dog bed`)
+				assert(critter.y > plaza.SUPPORT.beds.height and critter.y < 1, "lying on the pillow, not in it")
 			end
 		end
 		expect.equal(sleepers, 1, "one sleeper")
 	end,
 
-	["eight lamps, three stalls, five tables, four potted trees"] = function()
+	["eight lamps, two stalls, four tables, four potted trees"] = function()
 		expect.equal(#plaza.LAMPS.angles, 8, "lamps")
-		expect.equal(#plaza.STALLS, 3, "stalls")
-		expect.equal(#plaza.TABLES.angles, 5, "tables (the one in front of the leaderboard went)")
+		expect.equal(#plaza.STALLS, 2, "stalls (the pink one made room for the Support corner)")
+		expect.equal(#plaza.TABLES.angles, 4, "tables (one in front of the leaderboard went, one for the Support corner)")
 		expect.equal(#plaza.TREES, 4, "potted trees")
 	end,
 	["the plaza's signpost stands in a planter beside the spawn, clear of the lamps and trees"] = function()
@@ -315,5 +316,127 @@ return {
 		local spawn = plaza.SPAWN
 		local gap = math.sqrt((spawn.x - sign.x) ^ 2 + (spawn.z - sign.z) ^ 2)
 		assert(gap <= 12, `{gap} studs from the spawn`)
+	end,
+	-- owner 2026-11-20: "a is a dog bed/house with a jar. replace these 3 elements with them ... remove one group in any
+	-- side. and replace them with the support dev": the pink cart, its table and its bench went; the dogs' house, their
+	-- beds and the tip jar stand there
+	["the Support corner: a dog house, the dogs' beds and the tip jar where the pink cart's group stood"] = function()
+		local support = plaza.SUPPORT
+		local kinds = {}
+		for _, f in PlazaLayout.footprints(plaza) do
+			kinds[f.kind] = (kinds[f.kind] or 0) + 1
+		end
+		expect.equal(kinds["dog house"], 1)
+		expect.equal(kinds["dog beds"], 1)
+		expect.equal(kinds["tip jar"], 1)
+		-- owner 2026-11-20: "players will be coming from the sides not from the front(there is a fountain). move the jar
+		-- and sign out of the way": beside the house, not in front of it
+		assert(math.abs(support.jar.r - support.house.r) <= 2, "the jar stands beside the house, as far out as it")
+		assert(math.abs(support.jar.angle - support.house.angle) >= 12, "beside it, not in front")
+		for _, stall in plaza.STALLS do
+			assert(math.abs(stall.angle - support.house.angle) > 60, "no cart in the corner's quarter")
+		end
+		for _, angle in plaza.TABLES.angles do
+			assert(angle < 270 or math.abs(angle - support.house.angle) > 60, "no table in the corner's quarter")
+		end
+		expect.equal(#town.LAYOUT.BENCH_ANGLES, 0, "no benches in the ring (they blocked the way round the gazebo)")
+	end,
+
+	["the tip jar's prompt: its own name for the client, E, reaching past the jar's stand"] = function()
+		local prompt = plaza.SUPPORT.prompt
+		expect.equal(prompt.name, "SupportJar")
+		assert(prompt.action ~= "" and prompt.object ~= "", "says what it is")
+		assert(prompt.distance >= plaza.SUPPORT.jar.reach + 4 and prompt.distance <= 12, "reached standing by it, not from across the plaza")
+	end,
+
+	-- owner 2026-11-20: "also remove benches like this that blocks the way" (a bench in the ring between the gazebo and
+	-- the leaderboard), and the jar "out of the way"
+	["the way round the gazebo is open: nothing stands in the ring"] = function()
+		local edge = plaza.GAZEBO.platform.radius
+		for _, f in allFootprints() do
+			local inner = math.sqrt(f.x * f.x + f.z * f.z) - f.radius
+			assert(inner >= edge + 3.5, `{f.kind} at {f.x}, {f.z} stands in the way round the gazebo ({inner - edge} studs from its edge)`)
+		end
+	end,
+
+	["the sign over the jar reads from both ways round: a board on a post, taller than a player"] = function()
+		local sign = plaza.SUPPORT.jar.sign
+		assert(sign.text ~= "", "it says something")
+		assert(sign.post >= 5, "the board hangs over the jar")
+		assert(sign.bottom > plaza.SUPPORT.jar.stand + plaza.SUPPORT.jar.height, "clear of the jar's lid")
+	end,
+
+	-- owner 2026-11-20: "add the dog house as a stop for both dogs. currently they are phashing through the dog house"
+	["the dogs' home: each a spot in front of its own bed, and the house is something they walk round"] = function()
+		local homes = PlazaLayout.dogHomes(plaza)
+		local beds = PlazaLayout.dogBeds(plaza)
+		expect.equal(#homes, 2)
+		expect.equal(#beds, 2)
+		local solid = PlazaLayout.dogObstacles(plaza, 0.8)
+		local kinds = {}
+		for _, o in solid do
+			kinds[o.kind] = true
+		end
+		for _, kind in { "dog house", "tip jar", "stall", "table", "giant card" } do
+			assert(kinds[kind], `they'd walk through the {kind}`)
+		end
+		assert(kinds["dog bed"], "the cat sleeps on a bed: they walk round the beds too")
+		assert(not kinds.planter, "the planters are at the edge")
+		for index, home in homes do
+			local d = math.sqrt((home.x - beds[index].x) ^ 2 + (home.z - beds[index].z) ^ 2)
+			assert(d > plaza.SUPPORT.beds.radius and d < plaza.SUPPORT.beds.radius + 2, `home {index} is right in front of bed {index}`)
+			assert(math.sqrt(home.x ^ 2 + home.z ^ 2) < math.sqrt(beds[index].x ^ 2 + beds[index].z ^ 2), "on the gazebo's side of it")
+			for _, o in solid do
+				assert(math.sqrt((home.x - o.x) ^ 2 + (home.z - o.z) ^ 2) > o.radius, `home {index} is inside the {o.kind}`)
+			end
+		end
+		local chikin = require("../src/shared/Config/Chikin")
+		local pish = require("../src/shared/Config/Pish")
+		local own = 0
+		for _, stop in chikin.TOWN.stops do
+			if stop.home then
+				own += 1
+				expect.near(stop.x, homes[2].x, 0.05, "Chikin's home stop is in front of the second bed")
+				expect.near(stop.z, homes[2].z, 0.05)
+			end
+		end
+		expect.equal(own, 1, "one home stop for Chikin")
+		assert(pish.TOWN.homeChance > 0 and pish.TOWN.homeChance <= 0.3, "Pish comes home now and then")
+	end,
+	-- seen 2026-11-20: Pish walked across the second bed, through the sleeping cat
+	["from anywhere round the plaza to their homes and back, the dogs never cut through the house, the jar or a bed"] = function()
+		local PishPath = require("../src/shared/Util/PishPath")
+		local circles = { { kind = "fountain", x = 0, z = 0, radius = plaza.FOUNTAIN_RADIUS + 2 } }
+		for _, o in PlazaLayout.dogObstacles(plaza, 0.8) do
+			table.insert(circles, o)
+		end
+		local function gap(a: any, b: any, c: any): number
+			local dx, dz = b.x - a.x, b.z - a.z
+			local lengthSq = dx * dx + dz * dz
+			local t = if lengthSq > 0 then math.clamp(((c.x - a.x) * dx + (c.z - a.z) * dz) / lengthSq, 0, 1) else 0
+			return math.sqrt((a.x + dx * t - c.x) ^ 2 + (a.z + dz * t - c.z) ^ 2)
+		end
+		local starts = {}
+		for angle = 0, 345, 15 do
+			table.insert(starts, PlazaLayout.at(angle, 16))
+			table.insert(starts, PlazaLayout.at(angle, 40))
+		end
+		for _, home in PlazaLayout.dogHomes(plaza) do
+			for _, start in starts do
+				for _, way in { { start, home }, { home, start } } do
+					local last = way[1]
+					for _, point in PishPath.routeRound(way[1], way[2], circles :: any) do
+						for _, o in circles do
+							if o.kind == "dog house" or o.kind == "tip jar" or o.kind == "dog bed" then
+								-- its real size (the routing circle is 0.8 wider), but for a leg that starts or ends inside it
+								local inside = math.sqrt((last.x - o.x) ^ 2 + (last.z - o.z) ^ 2) < o.radius or math.sqrt((point.x - o.x) ^ 2 + (point.z - o.z) ^ 2) < o.radius
+								assert(inside or gap(last, point, o) >= o.radius - 0.8 - 1e-6, `a walk from {way[1].x}, {way[1].z} to {way[2].x}, {way[2].z} cuts through the {o.kind}`)
+							end
+						end
+						last = point
+					end
+				end
+			end
+		end
 	end,
 }

@@ -88,8 +88,9 @@ local function placeOfferPanel()
 		offerPanel.AnchorPoint = Vector2.new(1, 0)
 		offerPanel.Position = UDim2.new(1, -look.phoneRight, 0, look.phoneTop)
 	elseif short then
+		-- at the top right, under the cash and level rows that sit there on a computer (UIController.GetColumnStart)
 		offerPanel.AnchorPoint = Vector2.new(1, 0)
-		offerPanel.Position = UDim2.new(1, -12, 0, look.phoneTop)
+		offerPanel.Position = UDim2.new(1, -12, 0, UIController.GetColumnStart(look.phoneTop))
 	else
 		offerPanel.AnchorPoint = Vector2.new(1, 0.5)
 		offerPanel.Position = UDim2.new(1, -12, 0.5, look.topOffset)

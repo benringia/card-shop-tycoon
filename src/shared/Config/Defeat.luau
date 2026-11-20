@@ -25,7 +25,7 @@ return {
 		general = {
 			"Shift dashes through attacks, and you can't be hit while dashing",
 			"A creature whose element beats the boss hits it 50% harder",
-			"Swap in a rested creature with 1-3 before yours faints",
+			"Swap in a rested creature with 1 or 3 before yours faints",
 		},
 		meadowWarden = {
 			"Step out of the root ring before it closes, or dash through it",

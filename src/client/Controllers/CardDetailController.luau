@@ -2,9 +2,12 @@
 -- The binder's card view (spec 2026-10-29-collection-screens-ui-design.md 4.2): the 3D card on the left
 -- (CardInspectorController: tilt, Flip, Legendary aura, a BEST COPY ribbon while your best copy shows), and right
 -- beside it (the pair centred on the screen) a panel in the style kit: the name in a blue band with the worth, rarity / element / number / copies
--- pills, then "This copy" first (round 5, owner pick A: the chosen copy's grade, level, stars and worth over its Power,
--- HP, ATK and SPD tiles and its XP and next-star bars, in a gold box), "All copies, best first" under it (the first one
--- wears a gold BEST ribbon), and Add to party / Assign job (a disabled button says why; the binder's X closes it). Icons without
+-- pills, then "This copy" first (round 5, owner pick A: the chosen copy's grade, level, stars and worth over its Power
+-- and its XP and next-star bars, in a gold box), "All copies, best first" under it (the first one
+-- wears a gold BEST ribbon), and Add to party / Assign job. It opens on a few things only (owner 2026-11-21: "suitable
+-- for a person with low attention span ... only display what is important"; Config/CardView, Util/CardViewRules):
+-- this copy with one big Power, what it's strong and weak against, and "More about this card", which opens the
+-- skills, buffs, element numbers, the other stats and the sell hint. One copy: no copies list until then (a disabled button says why; the binder's X closes it). Icons without
 -- a label have word tooltips (Util/Tooltip). Add to party opens a chooser: "Who should X replace?" over the three
 -- slot cards (each saying how much more or less Power X has), then the comparison for a filled slot. The binder
 -- owns the data (Source) and builds this once into its panel.
@@ -29,6 +32,10 @@ local CondenseRules = require(Shared:WaitForChild("Util"):WaitForChild("Condense
 local CompareRules = require(Shared:WaitForChild("Util"):WaitForChild("CompareRules"))
 local PartyRules = require(Shared:WaitForChild("Util"):WaitForChild("PartyRules"))
 local UiLayout = require(Shared:WaitForChild("Util"):WaitForChild("UiLayout"))
+local CardView = require(Config:WaitForChild("CardView"))
+local CardViewRules = require(Shared:WaitForChild("Util"):WaitForChild("CardViewRules"))
+local ElementNamesConfig = require(Config:WaitForChild("ElementNames"))
+local ElementNames = require(Shared:WaitForChild("Util"):WaitForChild("ElementNames"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -76,6 +83,11 @@ local SLOT_ART_MIN, SLOT_ART_MAX = 52, 150 -- the chooser's slot card heights
 local CHOOSER_CHROME = 44 + 66 -- the chooser's title above the slot cards and its buttons below
 local ART_ASPECT = 1.4
 
+-- The matchup chips and rows: soft green for "strong", soft red for "weak", dark text on both
+local MATCH_GOOD, MATCH_GOOD_EDGE = Color3.fromRGB(220, 252, 231), Color3.fromRGB(147, 224, 168)
+local MATCH_BAD, MATCH_BAD_EDGE = Color3.fromRGB(254, 226, 226), Color3.fromRGB(243, 176, 176)
+local MATCH_INK = Color3.fromRGB(68, 48, 40)
+
 local player = Players.LocalPlayer
 
 local CardDetailController = {}
@@ -95,6 +107,9 @@ local copiesList: Frame
 local buffsBox: Frame -- the copy's town and fight buffs
 local elementsBox: Frame -- strong and weak against
 local selectedBox: Frame
+local matchupsRow: Frame -- "Strong vs" / "Weak vs" chips, always shown
+local toggleButton: TextButton -- "More about this card" / "Show less"
+local showMore = false -- the details are open (closed again each time a card opens)
 local buttonRow: Frame
 local partyButton: TextButton
 local jobButton: TextButton
@@ -163,8 +178,8 @@ local function growthOf(entry: Entry): CardFace.Growth
 end
 
 -- Panel on the right, as wide as the screen allows; the 3D card's right edge goes just left of it. The body scrolls as
--- one column: pills, skills, buffs, elements, this copy, then all copies (owner 2026-11-05: "I cant scroll down to
--- other copies")
+-- one column: pills, this copy, matchups, the More button, (skills, buffs, elements), then all copies (owner
+-- 2026-11-05: "I cant scroll down to other copies")
 local function layout()
 	local camera = workspace.CurrentCamera
 	if not camera or not panel then
@@ -450,7 +465,7 @@ local function renderSkills(card: Card)
 	title.Size = UDim2.new(1, 0, 0, 16)
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	-- its super's line names the weapon it needs (owner 2026-11-19: Epic and Legendary supers need one of its element)
-	local plain = require(Shared:WaitForChild("Util"):WaitForChild("ElementNames")).display(card.element, require(Shared:WaitForChild("Config"):WaitForChild("ElementNames")))
+	local plain = ElementNames.display(card.element, ElementNamesConfig)
 	local skills = SkillText.forCard(Combat, card.element, card.name, plain)
 	skillRow(1, skills.pet, card.element, Cards.ELEMENTS[card.element], "PET MOVE")
 	-- Only cards with a super move get its row (a greyed "Epic and Legendary only" row cost the copies list its room
@@ -487,14 +502,42 @@ local function renderElements(card: Card)
 	local wheel = SkillText.matchups(Combat, card.element)
 	local order = 1
 	for _, other in wheel.strong do
-		detailRow(elementsBox, order, other, Color3.fromRGB(220, 252, 231), `Strong vs {other}`,
-			`Deals {Combat.STRONG}x damage to {other} foes, takes {Combat.WEAK}x from them`)
+		local plain = ElementNames.display(other, ElementNamesConfig)
+		detailRow(elementsBox, order, other, MATCH_GOOD, `Strong vs {plain}`,
+			`Deals {Combat.STRONG}x damage to {plain} foes, takes {Combat.WEAK}x from them`)
 		order += 1
 	end
 	for _, other in wheel.weak do
-		detailRow(elementsBox, order, other, Color3.fromRGB(254, 226, 226), `Weak vs {other}`,
-			`Deals {Combat.WEAK}x damage to {other} foes, takes {Combat.STRONG}x from them`)
+		local plain = ElementNames.display(other, ElementNamesConfig)
+		detailRow(elementsBox, order, other, MATCH_BAD, `Weak vs {plain}`,
+			`Deals {Combat.WEAK}x damage to {plain} foes, takes {Combat.STRONG}x from them`)
 		order += 1
+	end
+end
+
+-- The matchups at a glance (always shown): a green "Strong vs Fire" chip and a red "Weak vs Water" one, each with the
+-- element's icon; the numbers wait in the Elements box (More)
+local function renderMatchups(card: Card)
+	clear(matchupsRow)
+	local chips = CardViewRules.matchups(SkillText.matchups(Combat, card.element), ElementNamesConfig)
+	matchupsRow.Visible = #chips > 0
+	for index, chip in chips do
+		local frame = Instance.new("Frame")
+		frame.LayoutOrder = index
+		frame.BackgroundColor3 = if chip.good then MATCH_GOOD else MATCH_BAD
+		frame.ZIndex = matchupsRow.ZIndex + 1
+		frame.Parent = matchupsRow
+		UIKit.corner(frame, 10)
+		UIKit.outline(frame, if chip.good then MATCH_GOOD_EDGE else MATCH_BAD_EDGE, 2)
+		local picture = Icon.make(frame, chip.element, UDim2.fromOffset(24, 24))
+		picture.AnchorPoint = Vector2.new(0, 0.5)
+		picture.Position = UDim2.new(0, 8, 0.5, 0)
+		picture.ZIndex = frame.ZIndex + 1
+		local words = text(frame, chip.words, UIKit.textSize("body"), MATCH_INK, true)
+		words.Position = UDim2.fromOffset(38, 0)
+		words.Size = UDim2.new(1, -42, 1, 0)
+		words.TextXAlignment = Enum.TextXAlignment.Left
+		words.TextTruncate = Enum.TextTruncate.AtEnd
 	end
 end
 
@@ -540,23 +583,28 @@ local function renderSelected(card: Card, entry: Entry?)
 	worth.Size = UDim2.fromOffset(110, 24)
 	worth.TextXAlignment = Enum.TextXAlignment.Right
 
+	-- The stats: one big Power first; HP, ATK and SPD join it with the details (CardViewRules.stats)
+	local shown = CardViewRules.stats(showMore)
+	local big = #shown == 1
+	local values: { [string]: { any } } = {
+		Power = { math.floor(entry.power), palette.power },
+		Hp = { stats.hp, palette.ink },
+		Atk = { stats.atk, palette.ink },
+		Spd = { stats.spd, palette.ink },
+	}
 	local tiles = Instance.new("Frame")
 	tiles.LayoutOrder = 1
 	tiles.BackgroundTransparency = 1
-	tiles.Size = UDim2.new(1, 0, 0, 36)
+	tiles.Size = UDim2.new(1, 0, 0, if big then CardView.POWER.height else 36)
 	tiles.ZIndex = selectedBox.ZIndex
 	tiles.Parent = selectedBox
 	local grid = Instance.new("UIGridLayout")
-	grid.CellSize = UDim2.new(0.25, -5, 1, 0)
+	grid.CellSize = UDim2.new(1 / #shown, if big then 0 else -5, 1, 0)
 	grid.CellPadding = UDim2.fromOffset(6, 0)
 	grid.SortOrder = Enum.SortOrder.LayoutOrder
 	grid.Parent = tiles
-	for index, stat in {
-		{ "Power", math.floor(entry.power), palette.power },
-		{ "Hp", stats.hp, palette.ink },
-		{ "Atk", stats.atk, palette.ink },
-		{ "Spd", stats.spd, palette.ink },
-	} do
+	for index, name in shown do
+		local stat = values[name]
 		local cell = Instance.new("Frame")
 		cell.LayoutOrder = index
 		cell.BackgroundColor3 = palette.slotEmpty
@@ -564,24 +612,33 @@ local function renderSelected(card: Card, entry: Entry?)
 		cell.Parent = tiles
 		UIKit.corner(cell, 8)
 		UIKit.outline(cell, palette.rowEdge, 2)
-		Tooltip.icon(cell, stat[1] :: string)
-		local picture = Icon.make(cell, stat[1] :: string, UDim2.fromOffset(20, 20))
+		Tooltip.icon(cell, name)
+		local iconSize = if big then 34 else 20
+		local picture = Icon.make(cell, name, UDim2.fromOffset(iconSize, iconSize))
 		picture.AnchorPoint = Vector2.new(0, 0.5)
-		picture.Position = UDim2.new(0, 5, 0.5, 0)
+		picture.Position = UDim2.new(0, if big then 10 else 5, 0.5, 0)
 		picture.ZIndex = cell.ZIndex + 1
-		local value = text(cell, tostring(stat[2]), UIKit.textSize("body"), stat[3] :: Color3, true, true)
-		value.Position = UDim2.fromOffset(28, 0)
-		value.Size = UDim2.new(1, -30, 1, 0)
+		local value = text(cell, tostring(stat[1]), if big then CardView.POWER.size else UIKit.textSize("body"), stat[2] :: Color3, true, true)
+		value.Position = UDim2.fromOffset(if big then 54 else 28, 0)
+		value.Size = UDim2.new(1, if big then -150 else -30, 1, 0)
+		value.TextXAlignment = Enum.TextXAlignment.Left
 		value.TextTruncate = Enum.TextTruncate.AtEnd
+		if big then
+			local word = text(cell, "POWER", UIKit.textSize("small"), palette.hint, true)
+			word.AnchorPoint = Vector2.new(1, 0)
+			word.Position = UDim2.new(1, -12, 0, 0)
+			word.Size = UDim2.new(0, 80, 1, 0)
+			word.TextXAlignment = Enum.TextXAlignment.Right
+		end
 	end
 
 	local beast = entry.beast
 	local toNext = BeastRules.getXpToNext(growth.level)
 	if toNext > 0 then
 		local xp = if beast then beast.xp else 0
-		barRow(selectedBox, 2, "Xp", xp / toNext, UIStyle.XP, `Lv {growth.level} -> {growth.level + 1}: {xp}/{toNext}`, palette.ink)
+		barRow(selectedBox, 2, "Xp", xp / toNext, UIStyle.XP, CardViewRules.xpWords(growth.level, xp, toNext), palette.ink)
 	else
-		barRow(selectedBox, 2, "Xp", 1, UIStyle.GOLD, "MAX LEVEL", palette.hint)
+		barRow(selectedBox, 2, "Xp", 1, UIStyle.GOLD, CardViewRules.xpWords(growth.level, 0, 0), palette.hint)
 	end
 
 	local cost = BeastRules.getCondenseCost(growth.stars)
@@ -589,9 +646,9 @@ local function renderSelected(card: Card, entry: Entry?)
 		local main = { beast = beast ~= nil, foil = entry.foil, grade = entry.grade, stars = growth.stars }
 		local have = CondenseRules.countDuplicates(source.stacks(card.id), main)
 		local short = have < cost
-		barRow(selectedBox, 3, "Star", math.min(have / cost, 1), UIStyle.GOLD, `Next star: {have}/{cost} copies`, if short then palette.bad else palette.good)
+		barRow(selectedBox, 3, "Star", math.min(have / cost, 1), UIStyle.GOLD, CardViewRules.starWords(have, cost), if short then palette.bad else palette.good)
 	else
-		barRow(selectedBox, 3, "Star", 1, UIStyle.GOLD, "Max stars", palette.hint)
+		barRow(selectedBox, 3, "Star", 1, UIStyle.GOLD, CardViewRules.starWords(0, nil), palette.hint)
 	end
 
 	local job = if beast then source.working()[beast.id] else nil
@@ -828,7 +885,7 @@ function CardDetailController.Refresh()
 
 	clear(pillRow)
 	UIKit.pill(pillRow, card.rarity, CardFace.getRarityColor(card.rarity)).LayoutOrder = 1
-	UIKit.pill(pillRow, card.element, Cards.ELEMENTS[card.element], nil, card.element).LayoutOrder = 2
+	UIKit.pill(pillRow, ElementNames.display(card.element, ElementNamesConfig), Cards.ELEMENTS[card.element], nil, card.element).LayoutOrder = 2
 	UIKit.pill(pillRow, string.format("#%02d", card.number), palette.row).LayoutOrder = 3
 	local copies = UIKit.pill(pillRow, if onDisplay > 0 then `x{owned} · {onDisplay} shown` else `x{owned}`, palette.row, nil, "Copies")
 	copies.LayoutOrder = 4
@@ -838,14 +895,31 @@ function CardDetailController.Refresh()
 	for index, entry in entries do
 		addCopyRow(entry, index, index == 1 and #entries > 1)
 	end
-	local footer = text(copiesList, HOW_TO_SELL, UIKit.textSize("small"), UIKit.Colors.Subtext)
-	footer.LayoutOrder = #entries + 1
-	footer.TextWrapped = true
-	footer.Size = UDim2.new(1, -8, 0, 36)
+	if CardViewRules.sellHint(showMore) then
+		local footer = text(copiesList, HOW_TO_SELL, UIKit.textSize("small"), UIKit.Colors.Subtext)
+		footer.LayoutOrder = #entries + 1
+		footer.TextWrapped = true
+		footer.Size = UDim2.new(1, -8, 0, 36)
+	end
 
-	renderSkills(card)
-	renderBuffs(card, selected)
-	renderElements(card)
+	-- What shows (Util/CardViewRules): a few things first, the rest behind the More button
+	local sections: { [string]: boolean } = {}
+	for _, id in CardViewRules.sections(showMore, #entries) do
+		sections[id] = true
+	end
+	skillsBox.Visible = sections.skills == true
+	buffsBox.Visible = sections.buffs == true
+	elementsBox.Visible = sections.elements == true
+	copiesTitle.Visible = sections.copies == true and not UIKit.isPhone()
+	copiesList.Visible = sections.copies == true
+	toggleButton.Text = CardViewRules.toggleWords(showMore, CardView)
+
+	if showMore then
+		renderSkills(card)
+		renderBuffs(card, selected)
+		renderElements(card)
+	end
+	renderMatchups(card)
 	renderSelected(card, selected)
 	refreshButtons(selected)
 	-- A shop sale or a binder update mustn't close a chooser someone is reading: redraw it, or close it if the copy
@@ -872,6 +946,8 @@ function CardDetailController.Open(card: Card)
 	currentCard = card
 	local strongest = source.getEntries(card)[1] -- open on the strongest copy
 	selectedKey = if strongest then strongest.key else nil
+	showMore = false -- every card opens on the short view
+	body.CanvasPosition = Vector2.zero
 	layout()
 	panel.Visible = true
 	CardDetailController.Refresh()
@@ -1079,21 +1155,51 @@ function CardDetailController.Build(parent: Frame, from: Source)
 	pillRow.Name = "Pills"
 	pillRow.LayoutOrder = 1
 
-	-- The sections (owner 2026-11-05, option A): skills, buffs, elements, this copy, then all copies
-	skillsBox = sectionBox("Skills", 2, Color3.fromRGB(156, 198, 255))
-	buffsBox = sectionBox("Buffs", 3, Color3.fromRGB(147, 224, 168))
-	elementsBox = sectionBox("Elements", 4, Color3.fromRGB(243, 176, 176))
-	selectedBox = sectionBox("Selected", 5, UIStyle.GOLD)
+	-- The sections (owner 2026-11-21: only what matters first): this copy, its matchups and the More button; then,
+	-- once opened, skills, buffs and elements; the copies list last (hidden while there's one copy and More is closed)
+	selectedBox = sectionBox("Selected", 2, UIStyle.GOLD)
 	local selectedList = selectedBox:FindFirstChildOfClass("UIListLayout") :: UIListLayout
 	selectedList.Padding = UDim.new(0, 6)
 
+	matchupsRow = Instance.new("Frame")
+	matchupsRow.Name = "Matchups"
+	matchupsRow.LayoutOrder = 3
+	matchupsRow.BackgroundTransparency = 1
+	matchupsRow.Size = UDim2.new(1, 0, 0, 0)
+	matchupsRow.AutomaticSize = Enum.AutomaticSize.Y
+	matchupsRow.ZIndex = body.ZIndex + 1
+	matchupsRow.Parent = body
+	local chipGrid = Instance.new("UIGridLayout")
+	chipGrid.CellSize = UDim2.new(0.5, -4, 0, CardView.CHIP_HEIGHT)
+	chipGrid.CellPadding = UDim2.fromOffset(8, 6)
+	chipGrid.SortOrder = Enum.SortOrder.LayoutOrder
+	chipGrid.Parent = matchupsRow
+
+	toggleButton = UIKit.button(body, CardView.TOGGLE.more, palette.row) -- a neutral button (the kit's sky blue in this window); Add to party stays the gold one
+	toggleButton.Name = "More"
+	toggleButton.LayoutOrder = 4
+	toggleButton.Size = UDim2.new(1, 0, 0, CardView.TOGGLE_HEIGHT)
+	toggleButton.TextSize = UIKit.textSize("body")
+	toggleButton.ZIndex = body.ZIndex + 1
+	toggleButton.Activated:Connect(function()
+		showMore = not showMore
+		if not showMore then
+			body.CanvasPosition = Vector2.zero
+		end
+		CardDetailController.Refresh()
+	end)
+
+	skillsBox = sectionBox("Skills", 5, Color3.fromRGB(156, 198, 255))
+	buffsBox = sectionBox("Buffs", 6, Color3.fromRGB(147, 224, 168))
+	elementsBox = sectionBox("Elements", 7, Color3.fromRGB(243, 176, 176))
+
 	copiesTitle = text(body, "ALL COPIES, BEST FIRST", UIKit.textSize("small"), palette.hint, true)
 	copiesTitle.Size = UDim2.new(1, 0, 0, TITLE_HEIGHT)
-	copiesTitle.LayoutOrder = 6
+	copiesTitle.LayoutOrder = 8
 
 	copiesList = Instance.new("Frame")
 	copiesList.Name = "Copies"
-	copiesList.LayoutOrder = 7
+	copiesList.LayoutOrder = 9
 	copiesList.BackgroundTransparency = 1
 	copiesList.Size = UDim2.new(1, 0, 0, 0)
 	copiesList.AutomaticSize = Enum.AutomaticSize.Y

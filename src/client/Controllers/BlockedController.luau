@@ -25,8 +25,11 @@ local function rgb(values: { number }): Color3
 end
 
 -- The locked card: a lock, "Not yet", the reason; pops in, shakes once, floats away
--- `title`, `icon`: another heading for the card (a knockout's "Knocked out!"), else Config/Blocked's
-local function showCard(reason: string, title: string?, icon: string?)
+-- `title`, `icon`: another heading for the card (a knockout's "Knocked out!"), else Config/Blocked's. `info`: an
+-- answer, not a refusal (the healing spring's): a water-blue edge, no shake, a brighter chime; `seconds`: how long it
+-- stays
+local function showCard(reason: string, title: string?, icon: string?, info: boolean?, seconds: number?)
+	local look = if info then UiConfig.INFO else UiConfig
 	local now = os.clock()
 	if reason == lastShown.reason and now - lastShown.at < UiConfig.REPEAT_SECONDS then
 		return -- the same refusal again a moment later (a held key, a double tap)
@@ -58,7 +61,7 @@ local function showCard(reason: string, title: string?, icon: string?)
 	corner.CornerRadius = UDim.new(0, 18)
 	corner.Parent = card
 	local edge = Instance.new("UIStroke")
-	edge.Color = rgb(UiConfig.EDGE)
+	edge.Color = rgb(look.EDGE)
 	edge.Thickness = 3
 	edge.Parent = card
 	local pad = Instance.new("UIPadding")
@@ -90,7 +93,7 @@ local function showCard(reason: string, title: string?, icon: string?)
 		label.Parent = card
 	end
 	line(icon or UiConfig.ICON, 40, Color3.new(1, 1, 1), 1, Enum.Font.FredokaOne)
-	line(title or UiConfig.TITLE, 28, rgb(UiConfig.EDGE), 2, Enum.Font.FredokaOne)
+	line(title or UiConfig.TITLE, 28, rgb(look.EDGE), 2, Enum.Font.FredokaOne)
 	line(reason, 22, Color3.new(1, 1, 1), 3, Enum.Font.GothamBold)
 	local scale = Instance.new("UIScale")
 	scale.Scale = 0.4
@@ -98,21 +101,23 @@ local function showCard(reason: string, title: string?, icon: string?)
 	card.Parent = gui
 	gui.Parent = playerGui
 	TweenService:Create(scale, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
-	-- a little shake: "no"
-	task.delay(0.3, function()
-		for _, x in { -10, 9, -6, 4, 0 } do
-			card.Position = UDim2.new(0.5, x, 0.4, 0)
-			task.wait(0.04)
-		end
-	end)
+	-- a little shake: "no" (an answer doesn't shake)
+	if not info then
+		task.delay(0.3, function()
+			for _, x in { -10, 9, -6, 4, 0 } do
+				card.Position = UDim2.new(0.5, x, 0.4, 0)
+				task.wait(0.04)
+			end
+		end)
+	end
 	local sound = Instance.new("Sound")
-	sound.SoundId = UiConfig.SOUND.id
-	sound.Volume = UiConfig.SOUND.volume
-	sound.PlaybackSpeed = UiConfig.SOUND.pitch
+	sound.SoundId = look.SOUND.id
+	sound.Volume = look.SOUND.volume
+	sound.PlaybackSpeed = look.SOUND.pitch
 	sound.Parent = SoundService
 	sound:Play()
 	task.delay(4, sound.Destroy, sound)
-	task.delay(UiConfig.SECONDS, function()
+	task.delay(seconds or UiConfig.SECONDS, function()
 		if not gui.Parent then
 			return
 		end
@@ -156,7 +161,13 @@ end
 function BlockedController.Start()
 	Remotes.Blocked.OnClientEvent:Connect(function(payload)
 		if typeof(payload) == "table" and typeof(payload.reason) == "string" then
-			showCard(payload.reason, if typeof(payload.title) == "string" then payload.title else nil, if typeof(payload.icon) == "string" then payload.icon else nil)
+			showCard(
+				payload.reason,
+				if typeof(payload.title) == "string" then payload.title else nil,
+				if typeof(payload.icon) == "string" then payload.icon else nil,
+				payload.tone == "info",
+				if typeof(payload.seconds) == "number" then math.clamp(payload.seconds, 1, 15) else nil
+			)
 			-- a dangerous monster shoving you off (BattleService onContact): your own character, so your client moves it
 			local character = player.Character
 			local root = if character then character:FindFirstChild("HumanoidRootPart") else nil

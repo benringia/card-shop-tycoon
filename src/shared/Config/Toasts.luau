@@ -32,6 +32,8 @@ return {
 	SHADOW_OFFSET = 4,
 	TAIL = 12, -- the tail's square, turned 45 degrees, half of it showing under the bubble
 	TAIL_RIGHT = 22, -- from the bubble's right edge
+	-- A computer with Pish on the quest strip (owner 2026-11-21; ToastRules.mode "row"): the bubbles sit in a row in
+	-- the top bar's strip, the newest over his head and older ones to its left, at most MAX_TOUCH of them
 	KINDS = {
 		news = { chip = { 255, 240, 201 }, ink = { 91, 61, 110 }, icon = "Info" },
 		money = { chip = { 217, 247, 223 }, ink = { 22, 112, 52 }, icon = "Coin" },
@@ -43,5 +45,6 @@ return {
 	POP = { from = 0.2, rise = 24, over = 1.1, squash = 0.96, seconds = 0.45 },
 	OUT = { scale = 0.85, rise = 8, seconds = 0.25 },
 	BUMP = { scale = 1.08, seconds = 0.2 },
+	UNDER_GAP = 8, -- a fight's toasts hang this far under the foe's bar (ToastRules.under)
 	HOP_GAP = 1, -- the HUD's Cindercub hops at most once in this many seconds (one hop for a burst of toasts)
 }

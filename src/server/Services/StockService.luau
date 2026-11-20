@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Props = require(Shared:WaitForChild("Util"):WaitForChild("Props"))
 local BrandBox = require(Shared:WaitForChild("Util"):WaitForChild("BrandBox"))
+local PadRules = require(Shared:WaitForChild("Util"):WaitForChild("PadRules"))
 local DeliveryLooks = require(Shared:WaitForChild("Util"):WaitForChild("DeliveryLooks"))
 local Config = Shared:WaitForChild("Config")
 local Products = require(Config:WaitForChild("Products"))
@@ -93,20 +94,36 @@ local function makePrompt(parent: Instance, actionText: string, objectText: stri
 	return prompt
 end
 
--- Arrange waiting boxes in a 2x2 grid on the pad, stacking upward
+-- Arrange waiting boxes on the pad: a 2x2 grid of stacks, each product on its own (Util/PadRules; owner 2026-11-20:
+-- "when there is alot of boxes piled up, and the players just want to take the one on top. it's dificult"). Only the
+-- top box of a stack can be picked up, and its prompt says what the stack holds and how many of it wait.
 local function layoutWaiting(shop: Shop)
 	local pad = shop.plot.deliverySpot
 	local size = StockConfig.BOX_SIZE
 	local standHeight = pad:GetAttribute("StandHeight") -- the pallet drawn on the pad (PlotService)
 	local lift = if typeof(standHeight) == "number" then standHeight else 0
+	local products: { string } = {}
+	local waitingOf: { [string]: number } = {}
 	for index, box in shop.waiting do
-		local i = index - 1
-		local layer = i // StockConfig.BOXES_PER_LAYER
-		local slot = i % StockConfig.BOXES_PER_LAYER
+		local productId = box:GetAttribute("ProductId")
+		products[index] = if typeof(productId) == "string" then productId else ""
+		waitingOf[products[index]] = (waitingOf[products[index]] or 0) + 1
+	end
+	local places = PadRules.arrange(products, StockConfig.BOXES_PER_LAYER, StockConfig.PAD_HIGH)
+	local tops = PadRules.tops(places)
+	for index, box in shop.waiting do
+		local place = places[index]
+		local slot = place.column - 1
 		local x = (slot % 2 - 0.5) * size.X
 		local z = (slot // 2 - 0.5) * size.Z
-		local y = pad.Size.Y / 2 + lift + size.Y * (layer + 0.5)
+		local y = pad.Size.Y / 2 + lift + size.Y * (place.level + 0.5)
 		box.CFrame = pad.CFrame * CFrame.new(x, y, z)
+		local prompt = box:FindFirstChildOfClass("ProximityPrompt")
+		if prompt then
+			local product = Products.ById[products[index]]
+			prompt.Enabled = tops[index] == true
+			prompt.ObjectText = PadRules.label(if product then product.name else "Box", waitingOf[products[index]] or 1)
+		end
 	end
 end
 
@@ -222,7 +239,7 @@ local function createBox(shop: Shop, productId: string, units: number)
 	local model = Props.weldFit(product.boxProp, box)
 	if model then
 		box.Transparency = 1
-		DeliveryLooks.finishBox(model, product.icon)
+		DeliveryLooks.finishBox(model, product.id, product.icon)
 	else
 		BrandBox.draw(box, product, `x{units}`)
 	end

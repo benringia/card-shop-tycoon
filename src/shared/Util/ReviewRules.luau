@@ -46,4 +46,9 @@ function ReviewRules.unseen(list: { Post }, seenAt: number): number
 	return count
 end
 
+-- The Reviews app's count on the Phone: the unread posts, or nothing with the count switched off (Config BADGE)
+function ReviewRules.badge(unseen: number, cfg: { BADGE: boolean }): number
+	return if cfg.BADGE then unseen else 0
+end
+
 return ReviewRules

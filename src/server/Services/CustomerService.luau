@@ -1245,6 +1245,17 @@ function CustomerService.HasRoom(owner: Player): boolean
 	return plot ~= nil and #getPlotState(plot).customers < CustomerConfig.MAX_PER_PLOT
 end
 
+-- A plain customer now, when the shop has room (Pish's tutorial sends one, once ever: TutorialService). The game's own;
+-- the dev command below is Studio's (tests/DevGate keeps the two apart)
+function CustomerService.SendPlain(owner: Player): boolean
+	local plot = PlotService.GetPlot(owner)
+	if not plot or not CustomerService.HasRoom(owner) then
+		return false
+	end
+	task.spawn(spawnCustomer, plot, owner, getPlotState(plot), "plain", nil, nil)
+	return true
+end
+
 -- Studio's /customer command: a customer of this type now (a collector wanting `wanted` when given)
 -- inHand: it arrives holding its shopping list instead of taking stock off the shelves (testing with empty shelves)
 function CustomerService.SpawnForTest(owner: Player, kind: string, wanted: string?, inHand: boolean?): boolean

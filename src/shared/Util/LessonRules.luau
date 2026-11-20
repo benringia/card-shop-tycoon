@@ -1,7 +1,7 @@
 --!strict
 -- Pish's lesson visits and the stuck helper (spec 2026-11-09-tutorial-pish-design 8, 16). Pure: `lessons` is
 -- Config/Pish LESSONS, `cfg` its STUCK.
-export type Lesson = { id: string, level: number?, icon: string, shelf: string?, product: string?, trigger: string?, on: string? }
+export type Lesson = { id: string, level: number?, icon: string, shelf: string?, product: string?, trigger: string?, on: string?, rush: boolean? }
 export type Facts = {
 	played: number, -- seconds of play so far
 	quiet: number, -- seconds since the last order, restock, sale or pack
@@ -41,12 +41,37 @@ function LessonRules.busyWith(busy: Busy, allowed: { [string]: boolean }?): stri
 end
 
 -- Whether a visit (a lesson or a nudge) may start now: the player free since `freeSince` for `pace.free` seconds, and
--- `pace.gap` seconds past the end of his last visit (`lastEnded`, nil: none yet), so he never comes back to back
-function LessonRules.mayStart(now: number, freeSince: number?, lastEnded: number?, pace: Pace): boolean
+-- `pace.gap` seconds past the end of his last visit (`lastEnded`, nil: none yet), so he never comes back to back.
+-- `rush`: a lesson that comes the moment its thing unlocks (jobs) skips the breather, never the free moment
+function LessonRules.mayStart(now: number, freeSince: number?, lastEnded: number?, pace: Pace, rush: boolean?): boolean
 	if freeSince == nil or now - freeSince < pace.free then
 		return false
 	end
-	return lastEnded == nil or now - lastEnded >= pace.gap
+	return rush == true or lastEnded == nil or now - lastEnded >= pace.gap
+end
+
+-- How long a pointing lesson waits for the tap: longer when it has an introduction to give once its window is open
+function LessonRules.pointSeconds(hasIntro: boolean, cfg: { LESSON_SECONDS: number, INTRO_SECONDS: number }): number
+	return if hasIntro then cfg.INTRO_SECONDS else cfg.LESSON_SECONDS
+end
+
+-- Whether a lesson comes the moment its thing unlocks (Config/Pish LESSONS `rush`: jobs)
+function LessonRules.rushes(lessons: { Lesson }, lessonId: string): boolean
+	for _, lesson in lessons do
+		if lesson.id == lessonId then
+			return lesson.rush == true
+		end
+	end
+	return false
+end
+
+-- The waiting lessons with the rushing ones first in line, the rest in their order
+function LessonRules.rushFirst(queue: { string }, lessons: { Lesson }): { string }
+	local first, rest = {}, {}
+	for _, id in queue do
+		table.insert(if LessonRules.rushes(lessons, id) then first else rest, id)
+	end
+	return table.move(rest, 1, #rest, #first + 1, first)
 end
 
 -- A visit under way while the player is busy since `busySince` (nil: they aren't): "on" carries on, "pause" steps back

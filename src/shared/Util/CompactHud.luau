@@ -141,10 +141,12 @@ function CompactHud.phonePieces(compact: boolean, inTown: boolean, giftReady: bo
 			sideSlots = true,
 			weaponChip = true,
 			giftTile = true,
-			turtsChip = true,
+			-- only while he's just restocked, as on a phone (owner 2026-11-21, "I want to clean up", pick 1: the pills
+			-- under the quests show when there's something to do; his rug shows the countdown in the world)
+			turtsChip = turtsFresh,
 			questChip = false,
 			mainRow = true,
-			eventChip = true,
+			eventChip = true, -- on the event's day and the hour before it (EventRules.chipShown)
 		}
 	end
 	return {

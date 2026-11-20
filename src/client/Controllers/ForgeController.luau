@@ -23,6 +23,7 @@ local Rarities = require(Config:WaitForChild("Rarities"))
 local UIIcons = require(Config:WaitForChild("UIIcons"))
 local Weapons = require(Config:WaitForChild("Weapons"))
 local Upgrades = require(Config:WaitForChild("Upgrades"))
+local UpgradeRules = require(Shared:WaitForChild("Util"):WaitForChild("UpgradeRules"))
 local WeaponLooks = require(Config:WaitForChild("WeaponLooks"))
 local WeaponRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponRules"))
 local WeaponText = require(Shared:WaitForChild("Util"):WaitForChild("WeaponText"))
@@ -181,7 +182,12 @@ end
 -- The one button for this tab: what it does when everything's there, else what's missing (WeaponText.button)
 local function buttonFor(weapon: Weapons.Weapon, record: Owned?, cost: WeaponRules.Cost?): (string, boolean)
 	local action = if tab == FORGE then "forge" elseif tab == UPGRADE then "upgrade" else "reforge"
+	-- how long the job takes, on the button (owner 2026-11-20: the waits run to an hour and were only seen after)
+	local seconds = if tab == FORGE then UpgradeRules.seconds(Upgrades, "craft")
+		elseif tab == REFORGE then UpgradeRules.seconds(Upgrades, "reforge")
+		else UpgradeRules.seconds(Upgrades, "level", if record then record.level + 1 else 1)
 	local text, ready = WeaponText.button(action, cost, items, cash(), Items, {
+		wait = UpgradeRules.clock(seconds),
 		level = if record then record.level + 1 else nil,
 		unlockLevel = if weapon.source.cost then weapon.source.cost.unlockLevel else nil,
 		shopLevel = shopLevel(),
@@ -396,7 +402,7 @@ local function boxesFor(weaponId: string, weapon: Weapons.Weapon, record: Owned?
 			{ title = "After", big = "C to S", lines = { "you keep the better" }, good = true },
 		}
 	end
-	return { { title = "You get", big = "Grade C to S", lines = { "a random grade, at +0" }, good = true } }
+	return { { title = "You get", big = "A random grade", lines = { "C, B, A or S (S is the best)" }, good = true } }
 end
 
 -- The cost as chips: the cash or item picture and its words, green when you have enough, red when not (wrapping)
@@ -521,7 +527,7 @@ local function renderPane(entry: Entry?)
 		wordsLayout.Padding = UDim.new(0, 4)
 		wordsLayout.Parent = beside
 		addLabel(beside, weapon.name, Enum.Font.FredokaOne, 20, palette.ink, 1)
-		local gradeLine = if tab == FORGE then "Grade C to S · +0" elseif record then `Grade {record.grade} · +{record.level}` else nil
+		local gradeLine = if tab == FORGE then "Comes out Grade C, B, A or S" elseif record then `Grade {record.grade} · +{record.level}` else nil
 		if gradeLine then
 			addLabel(beside, gradeLine, Enum.Font.FredokaOne, 15, palette.ink, 2)
 		end
@@ -624,6 +630,7 @@ local function playReveals()
 	end
 	local queue = pending
 	pending = {}
+	player:SetAttribute("ForgeDone", nil) -- the "Ready!" over the Forge goes (StationTimerController)
 	reopenAfterReveal = true -- before hiding: the Visible handler keeps the machine for the reopen
 	panel.Visible = false
 	for _, result in queue do
@@ -711,6 +718,7 @@ local function onResult(result: any)
 		playReveals()
 		return
 	end
+	player:SetAttribute("ForgeDone", true) -- "Ready!" over the Forge until it's opened (a local attribute: this client's)
 	local weapon = Weapons.ById[result.weaponId]
 	local name = if weapon then weapon.name else "weapon"
 	UIController.Notify((string.gsub(Upgrades.FORGE_READY, "{name}", name)), false)

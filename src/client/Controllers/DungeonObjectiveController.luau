@@ -160,7 +160,13 @@ function DungeonObjectiveController.Start()
 	local touch = UserInputService.TouchEnabled
 	local align = if touch then Enum.HorizontalAlignment.Center else Enum.HorizontalAlignment.Right
 	holder.AnchorPoint = if touch then Vector2.new(0.5, 0) else Vector2.new(1, 0)
-	holder.Position = if touch then UDim2.new(0.5, 0, 0, SIZES.top) else UDim2.new(1, -SIZES.right, 0, SIZES.top)
+	-- a computer: under the cash and your level row, which sit in that corner since 2026-11-21 (Config/DesktopHud;
+	-- UIController.GetColumnStart: found on the Dungeon's first boot with that HUD, the objective drew over the XP bar)
+	local function placeHolder()
+		holder.Position = if touch then UDim2.new(0.5, 0, 0, SIZES.top) else UDim2.new(1, -SIZES.right, 0, UIController.GetColumnStart(SIZES.top))
+	end
+	placeHolder()
+	UIController.OnPlaced(placeHolder)
 	holder.Size = UDim2.fromOffset(sizes.width, 60)
 	holder.Visible = false
 	local layout = Instance.new("UIListLayout")

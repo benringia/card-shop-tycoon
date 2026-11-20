@@ -56,7 +56,9 @@ function ProductPicture.add(row: Frame, productId: string, iconName: string): Gu
 		local image, fallback = ProductPictureRules.pick(ProductPictures, pack.look, if pack.kind == "Deck" then "Deck" else "Pack")
 		shown = if image then picture(row, image, fallback) else Icon.make(row, fallback, UDim2.fromOffset(ICON_SIZE, ICON_SIZE))
 	else
-		shown = Icon.make(row, iconName, UDim2.fromOffset(ICON_SIZE, ICON_SIZE))
+		-- any other product with a picture of its real model (sleeves, a booster box), else its drawn icon
+		local image = ProductPictureRules.forProduct(ProductPictures, productId, nil, nil)
+		shown = if image then picture(row, image, iconName) else Icon.make(row, iconName, UDim2.fromOffset(ICON_SIZE, ICON_SIZE))
 	end
 	shown.AnchorPoint = Vector2.new(0.5, 0.5)
 	shown.Position = UDim2.new(0, 38, 0.5, 0)

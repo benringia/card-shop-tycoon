@@ -84,4 +84,40 @@ return {
 		expect.equal(PishPath.holdEnd(10 + max + 50, 10, max), 10 + max, "petted again and again: he moves on after petHoldMax")
 		expect.equal(PishPath.holdEnd(5, 10, max), 5, "not petted now: no hold")
 	end,
+	-- owner 2026-11-20: "currently they are phashing through the dog house": a walk goes round everything solid in its
+	-- way, not only the fountain
+	["a walk goes round every solid thing in its way, nearest first"] = function()
+		local fountain = { x = 0, z = 0, radius = 9 }
+		local house = { x = 14, z = -14, radius = 4 }
+		local from, to = { x = -20, z = 12 }, { x = 22, z = -22 }
+		local points = PishPath.routeRound(from, to, { fountain, house })
+		expect.equal(points[#points].x, 22)
+		expect.equal(points[#points].z, -22)
+		assert(#points >= 3, "round both")
+		local last = from
+		for i, point in points do
+			for _, o in { fountain, house } do
+				assert(clearance(last, point, o) >= o.radius * 0.99, `leg {i} keeps clear of the thing at {o.x}, {o.z}`)
+			end
+			last = point
+		end
+	end,
+
+	["nothing in the way: one straight leg; a stop inside something is walked to straight"] = function()
+		local house = { x = 14, z = -14, radius = 4 }
+		expect.equal(#PishPath.routeRound({ x = -30, z = 20 }, { x = 30, z = 20 }, { { x = 0, z = 0, radius = 9 }, house }), 1)
+		expect.equal(#PishPath.routeRound({ x = 30, z = -14 }, { x = 15, z = -14 }, { house }), 1, "its stop is inside: nothing to go round")
+		expect.equal(#PishPath.routeRound({ x = 0, z = 0 }, { x = 5, z = 5 }, {}), 1)
+	end,
+
+	["with only the fountain it's the walk it always was"] = function()
+		local from, to = { x = -30, z = 0 }, { x = 30, z = 0 }
+		local old = PishPath.route(from, to, CENTRE, 9)
+		local new = PishPath.routeRound(from, to, { { x = 0, z = 0, radius = 9 } })
+		expect.equal(#new, #old)
+		for index, point in old do
+			expect.near(new[index].x, point.x, 1e-9)
+			expect.near(new[index].z, point.z, 1e-9)
+		end
+	end,
 }

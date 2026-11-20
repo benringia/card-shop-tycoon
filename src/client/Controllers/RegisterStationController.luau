@@ -8,10 +8,12 @@
 -- lands on the counter, a tap takes it back; after a few seconds stuck the next note or coin to give glows). The camera
 -- leans in to the card machine or over the drawer. Leave (top left) puts you back in third person. The server checks
 -- every step (RegisterService); the unit is built there (Util/RegisterBuild)
+local Debris = game:GetService("Debris")
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
@@ -21,6 +23,7 @@ local Payment = require(Config:WaitForChild("Payment"))
 local RegisterConfig = require(Config:WaitForChild("Register"))
 local RegisterStation = require(Config:WaitForChild("RegisterStation"))
 local Town = require(Config:WaitForChild("Town"))
+local HudLayout = require(Config:WaitForChild("HudLayout"))
 local PaymentRules = require(Shared:WaitForChild("Util"):WaitForChild("PaymentRules"))
 local RegisterStationRules = require(Shared:WaitForChild("Util"):WaitForChild("RegisterStationRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -32,6 +35,7 @@ local Hud = require(ClientUtil:WaitForChild("Hud"))
 local RegisterScreen = require(ClientUtil:WaitForChild("RegisterScreen"))
 local RegisterSpot = require(ClientUtil:WaitForChild("RegisterSpot"))
 local SaleOrigin = require(ClientUtil:WaitForChild("SaleOrigin"))
+local SoundBank = require(ClientUtil:WaitForChild("SoundBank"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 
@@ -69,6 +73,13 @@ local request: Request? = nil
 local typed = ""
 local pieces: { number } = {}
 local givenParts: { BasePart } = {}
+-- a note or coin on the counter (or in flight): its body, the clear plate with its picture, and where it lies
+type Piece = { part: Part, plate: Part?, coin: boolean, thickness: number, rest: CFrame }
+local givenPieces: { Piece } = {}
+local GIVE_FX = RegisterStation.GIVE_FX
+local pile: Model? = nil -- the money on the counter, one model so the exact change can glow together
+local hover: Highlight -- the drawer stack under the mouse
+local exactGlow: Highlight
 local errorUntil = 0
 local errorLine = ""
 local lastProgressAt = 0 -- your last tap while paying cash (the helper glow waits for a stall)
@@ -292,12 +303,59 @@ end
 -- Leave: a pill in the top-left corner, clear of the drawer and the card machine (owner 2026-11-16)
 local function buildLeave()
 	local look = RegisterStation.LEAVE_PILL
-	leaveButton = UIKit.button(UIController.GetScreenGui(), "⬅ " .. RegisterStation.LEAVE, UIKit.Colors.Danger)
+	-- a holder in the soft cotton candy look (its buttons baby colours with a white rim, like the windows' and the
+	-- party dock's), growing on a desktop with the rest of the HUD
+	local holder = Instance.new("Frame")
+	holder.Name = "LeaveHolder"
+	holder.BackgroundTransparency = 1
+	holder.Position = UDim2.fromOffset(look.x, look.y)
+	holder.Size = UDim2.fromOffset(look.width, look.height)
+	holder:SetAttribute("SoftButtons", true)
+	holder.Parent = UIController.GetScreenGui()
+	Hud.scaleWith(holder, 1, true) -- grows on a desktop; never shrinks (a short phone's 0.7 made it 36 px tall)
+	leaveButton = UIKit.iconButton(holder, RegisterStation.LEAVE, look.icon, UIKit.Colors.Danger)
 	leaveButton.Name = "LeaveRegister"
-	leaveButton.Position = UDim2.fromOffset(look.x, look.y)
-	leaveButton.Size = UDim2.fromOffset(look.width, look.height)
+	leaveButton.Size = UDim2.fromScale(1, 1)
+	leaveButton.Font = Enum.Font.FredokaOne
 	leaveButton.TextSize = 20
 	leaveButton.Visible = false
+	for _, child in leaveButton:GetChildren() do
+		if child.Name == "Icon" and child:IsA("GuiObject") then
+			child.Rotation = 180 -- the arrow points out, to the left
+		end
+	end
+	-- its key as a square keyboard key inside the button, after the word (keyboards only): a white cap with a darker
+	-- lip under it. A white circle on the corner with an X in it read as a close button (owner 2026-11-21)
+	local cap = look.cap
+	local lip = Instance.new("Frame")
+	lip.Name = "Key"
+	lip.AnchorPoint = Vector2.new(1, 0.5)
+	-- the button's padding (below) moves its children: out past the padded edge, 12 px inside the button's own
+	lip.Position = UDim2.new(1, if UserInputService.KeyboardEnabled then cap + 2 else -12, 0.5, 2)
+	lip.Size = UDim2.fromOffset(cap, cap)
+	lip.BackgroundColor3 = HudLayout.KEY_CHIP
+	lip.BackgroundTransparency = 0.45
+	lip.ZIndex = leaveButton.ZIndex + 2
+	lip.Visible = UserInputService.KeyboardEnabled
+	lip.Parent = leaveButton
+	UIKit.corner(lip, 7)
+	local key = Instance.new("TextLabel")
+	key.Name = "Cap"
+	key.Position = UDim2.fromOffset(0, -3)
+	key.Size = UDim2.fromScale(1, 1)
+	key.BackgroundColor3 = Color3.new(1, 1, 1)
+	key.Font = Enum.Font.FredokaOne
+	key.Text = look.key
+	key.TextSize = 16
+	key.TextColor3 = HudLayout.KEY_CHIP
+	key.ZIndex = lip.ZIndex + 1
+	key.Parent = lip
+	UIKit.corner(key, 7)
+	-- room for the key: the icon and the word sit left of it
+	local pad = leaveButton:FindFirstChildOfClass("UIPadding")
+	if pad and lip.Visible then
+		pad.PaddingRight = UDim.new(0, cap + 14)
+	end
 	-- the phone's thumbstick and jump button hide while you're on the register (you don't walk there)
 	UIKit.hideTouchControlsWhileVisible(leaveButton)
 	leaveButton.Activated:Connect(function()
@@ -307,75 +365,201 @@ end
 
 -- Money on the counter ---------------------------------------------------------------------------------------------
 
+-- A piece lying flat at `flat` (a coin is a cylinder on its side; its picture's plate sits on top)
+local function placePiece(piece: Piece, flat: CFrame)
+	piece.part.CFrame = if piece.coin then flat * CFrame.Angles(0, 0, math.rad(90)) else flat
+	local plate = piece.plate
+	if plate then
+		plate.CFrame = flat * CFrame.new(0, piece.thickness / 2 + 0.003, 0) * QUARTER
+	end
+end
+
+local function moneyPile(): Model
+	local model = pile
+	if not model or not model.Parent then
+		model = Instance.new("Model")
+		model.Name = "GivenMoneyPile"
+		model.Parent = workspace
+		pile = model
+	end
+	return model :: Model
+end
+
+-- One of the drawer's own notes or coins (owner 2026-11-19: "add money model on the cashier for moneys at the
+-- table"): its body in its colour and its picture on top
+local function buildPiece(cents: number, flat: CFrame): Piece
+	local bill = cents >= 100
+	local size = if bill then GIVEN.billSize else GIVEN.coinSize
+	local part = Instance.new("Part")
+	part.Name = "GivenMoney"
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanTouch = false
+	part.CastShadow = false
+	part.TopSurface = Enum.SurfaceType.Smooth
+	part.BottomSurface = Enum.SurfaceType.Smooth
+	part.Color = rgb(RegisterStation.MONEY_COLORS[cents])
+	part.Size = Vector3.new(size[1], size[2], size[3])
+	local faceSize: Vector3
+	if bill then
+		part.Material = Enum.Material.SmoothPlastic
+		faceSize = Vector3.new(size[3], 0.004, size[1])
+	else
+		part.Shape = Enum.PartType.Cylinder
+		part.Material = Enum.Material.Metal
+		faceSize = Vector3.new(size[2], 0.004, size[3])
+	end
+	local piece: Piece = { part = part, plate = nil, coin = not bill, thickness = if bill then size[2] else size[1], rest = flat }
+	local image = RegisterStation.MONEY_IMAGES[cents]
+	if image then
+		local plate = Instance.new("Part")
+		plate.Name = "GivenMoneyFace"
+		plate.Anchored = true
+		plate.CanCollide = false
+		plate.CanTouch = false
+		plate.CanQuery = false
+		plate.CastShadow = false
+		plate.Transparency = 1
+		plate.Size = faceSize
+		plate.Parent = part
+		local gui = Instance.new("SurfaceGui")
+		gui.Face = Enum.NormalId.Top
+		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		gui.PixelsPerStud = 400
+		gui.LightInfluence = 0.4
+		gui.Parent = plate
+		local face = Instance.new("ImageLabel")
+		face.BackgroundTransparency = 1
+		face.Size = UDim2.fromScale(1, 1)
+		face.Image = image
+		face.Parent = gui
+		piece.plate = plate
+	end
+	placePiece(piece, flat)
+	part.Parent = moneyPile()
+	return piece
+end
+
+-- Where the nth piece lies on the counter: its row spot, a touch askew like money laid down by hand
+local function restOf(top: CFrame, index: number, cents: number): CFrame
+	local spot = RegisterStationRules.givenSpot(GIVEN, index, GIVEN_PER_ROW)
+	local size = if cents >= 100 then GIVEN.billSize else GIVEN.coinSize
+	local thickness = if cents >= 100 then size[2] else size[1]
+	return top * CFrame.new(spot.x, thickness / 2 + 0.01, spot.z) * CFrame.Angles(0, math.rad(((index * 37) % 9) - 4), 0)
+end
+
 local function layOutGiven()
 	for _, part in givenParts do
 		part:Destroy()
 	end
 	table.clear(givenParts)
+	table.clear(givenPieces)
 	local top = counterTop()
 	if not top then
 		return
 	end
-	-- each piece is the drawer's own note or coin (owner 2026-11-19: "add money model on the cashier for moneys at the
-	-- table"): its body in its colour and its picture on top, a touch askew like money laid down by hand
 	for index, cents in pieces do
-		local spot = RegisterStationRules.givenSpot(GIVEN, index, GIVEN_PER_ROW)
-		local bill = cents >= 100
-		local size = if bill then GIVEN.billSize else GIVEN.coinSize
-		local twist = CFrame.Angles(0, math.rad(((index * 37) % 9) - 4), 0)
-		local part = Instance.new("Part")
-		part.Name = "GivenMoney"
-		part.Anchored = true
-		part.CanCollide = false
-		part.CanTouch = false
-		part.CastShadow = false
-		part.TopSurface = Enum.SurfaceType.Smooth
-		part.BottomSurface = Enum.SurfaceType.Smooth
-		part.Color = rgb(RegisterStation.MONEY_COLORS[cents])
-		local thickness = if bill then size[2] else size[1]
-		local flat = top * CFrame.new(spot.x, thickness / 2 + 0.01, spot.z) * twist
-		local faceSize: Vector3
-		if bill then
-			part.Material = Enum.Material.SmoothPlastic
-			part.Size = Vector3.new(size[1], size[2], size[3])
-			part.CFrame = flat
-			faceSize = Vector3.new(size[3], 0.004, size[1])
-		else
-			part.Shape = Enum.PartType.Cylinder
-			part.Material = Enum.Material.Metal
-			part.Size = Vector3.new(size[1], size[2], size[3])
-			part.CFrame = flat * CFrame.Angles(0, 0, math.rad(90))
-			faceSize = Vector3.new(size[2], 0.004, size[3])
+		local piece = buildPiece(cents, restOf(top, index, cents))
+		piece.part:SetAttribute("GivenIndex", index)
+		table.insert(givenParts, piece.part)
+		table.insert(givenPieces, piece)
+	end
+end
+
+-- Tapping money (owner 2026-11-20: "make clicking on moneys on the cashier more immersive") ----------------------------
+
+-- A piece flies from `from` to `to` in a low arc over `seconds`: a coin flipping, a note tilting; then `done`. A piece
+-- taken away mid-flight (the row laid out again by the next tap) just stops
+local function flyPiece(piece: Piece, from: Vector3, to: CFrame, seconds: number, done: (() -> ())?)
+	local started = os.clock()
+	local turn = to - to.Position
+	placePiece(piece, CFrame.new(from) * turn) -- at its start now: never a frame lying at its place first
+	local connection: RBXScriptConnection
+	connection = RunService.RenderStepped:Connect(function()
+		if not piece.part.Parent then
+			connection:Disconnect()
+			return
 		end
-		part:SetAttribute("GivenIndex", index)
-		part.Parent = workspace
-		table.insert(givenParts, part)
-		local image = RegisterStation.MONEY_IMAGES[cents]
-		if image then
-			local plate = Instance.new("Part")
-			plate.Name = "GivenMoneyFace"
-			plate.Anchored = true
-			plate.CanCollide = false
-			plate.CanTouch = false
-			plate.CanQuery = false
-			plate.CastShadow = false
-			plate.Transparency = 1
-			plate.Size = faceSize
-			plate.CFrame = flat * CFrame.new(0, thickness / 2 + 0.003, 0) * QUARTER
-			plate.Parent = part
-			local gui = Instance.new("SurfaceGui")
-			gui.Face = Enum.NormalId.Top
-			gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-			gui.PixelsPerStud = 400
-			gui.LightInfluence = 0.4
-			gui.Parent = plate
-			local face = Instance.new("ImageLabel")
-			face.BackgroundTransparency = 1
-			face.Size = UDim2.fromScale(1, 1)
-			face.Image = image
-			face.Parent = gui
+		local u = math.clamp((os.clock() - started) / seconds, 0, 1)
+		local eased = 1 - (1 - u) ^ 2
+		local at = from:Lerp(to.Position, eased) + Vector3.new(0, RegisterStationRules.arcLift(u, GIVE_FX.arc), 0)
+		local spin = if piece.coin then CFrame.Angles((1 - eased) * GIVE_FX.flips * math.pi * 2, 0, 0) else CFrame.Angles(math.rad(GIVE_FX.tilt) * (1 - eased), 0, 0)
+		placePiece(piece, CFrame.new(at) * turn * spin)
+		if u >= 1 then
+			connection:Disconnect()
+			placePiece(piece, to)
+			if done then
+				done()
+			end
+		end
+	end)
+end
+
+-- A note's flick or a coin's clink: a short cut of its clip at `pitch`
+local function moneySound(cents: number, pitch: number)
+	local spec = if cents >= 100 then GIVE_FX.sounds.note else GIVE_FX.sounds.coin
+	local sound = SoundBank.make(spec.id)
+	sound.Volume = spec.volume
+	sound.PlaybackSpeed = pitch
+	sound.Parent = SoundService
+	sound:Play()
+	task.delay(spec.cut, function()
+		TweenService:Create(sound, TweenInfo.new(0.08), { Volume = 0 }):Play()
+	end)
+	Debris:AddItem(sound, spec.cut + 0.3)
+end
+
+-- Its value popping up over where it landed ("+$1"), rising and fading
+local function valuePop(cents: number, at: Vector3, sign: string)
+	local look = GIVE_FX.pop
+	local anchor = Instance.new("Attachment")
+	anchor.Position = at
+	anchor.Parent = workspace.Terrain -- Terrain sits at the origin, so this is the world position
+	local gui = Instance.new("BillboardGui")
+	gui.Size = UDim2.fromOffset(look.width, look.height)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, 0.25, 0)
+	gui.LightInfluence = 0
+	gui.Adornee = anchor
+	gui.Parent = anchor
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.TextColor3 = rgb(if sign == "+" then C.go else C.soft)
+	label.TextStrokeColor3 = Color3.fromRGB(18, 22, 30)
+	label.TextStrokeTransparency = 0.2
+	label.Text = sign .. PaymentRules.pieceText(cents)
+	label.Parent = gui
+	local tween = TweenInfo.new(look.seconds, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	TweenService:Create(gui, tween, { StudsOffsetWorldSpace = Vector3.new(0, 0.25 + look.rise, 0) }):Play()
+	TweenService:Create(label, TweenInfo.new(look.seconds * 0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In, 0, false, look.seconds * 0.5), { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
+	Debris:AddItem(anchor, look.seconds + 0.1)
+end
+
+-- The top of a value's stack in the open drawer (where a piece flies from and back to)
+local function drawerStack(cents: number): BasePart?
+	local model = unit()
+	local drawer = if model then model:FindFirstChild("CashDrawer") else nil
+	local found: BasePart? = nil
+	if drawer then
+		for _, part in drawer:GetChildren() do
+			if part:IsA("BasePart") and part:GetAttribute("Money") == cents and (not found or part.Position.Y > found.Position.Y) then
+				found = part
+			end
 		end
 	end
+	return found
+end
+
+-- The exact change glows mint for a beat before it gives itself
+local function flashExact()
+	local look = GIVE_FX.exact
+	exactGlow.Adornee = moneyPile()
+	exactGlow.FillTransparency = look.fill
+	exactGlow.OutlineTransparency = 0
+	exactGlow.Enabled = true
+	TweenService:Create(exactGlow, TweenInfo.new(look.seconds), { FillTransparency = 1, OutlineTransparency = 1 }):Play()
 end
 
 -- The drawer -------------------------------------------------------------------------------------------------------
@@ -496,6 +680,7 @@ local function refresh()
 	-- exact change gives itself after a beat ("Exact!" on the screen first)
 	if now == "cash" and paying and giving() == change and change > 0 then
 		if not autoGiveAt then
+			flashExact()
 			autoGiveAt = os.clock() + RegisterStation.AUTO_GIVE_SECONDS
 			task.delay(RegisterStation.AUTO_GIVE_SECONDS + 0.05, function()
 				local still = request
@@ -513,7 +698,8 @@ local function refresh()
 	moveCamera(if now == "card" or now == "cash" or now == "charge" then now else "default")
 end
 
-local function givePiece(cents: number)
+-- `from`: where in the drawer it was tapped; it flies from there onto the counter
+local function givePiece(cents: number, from: Vector3?)
 	if #pieces >= Payment.MAX_PIECES then
 		return
 	end
@@ -523,6 +709,39 @@ local function givePiece(cents: number)
 	end)
 	lastProgressAt = os.clock()
 	layOutGiven()
+	moneySound(cents, RegisterStationRules.givePitch(#pieces, GIVE_FX))
+	local index = RegisterStationRules.addedIndex(pieces, cents)
+	local piece = if index then givenPieces[index] else nil
+	if piece and from then
+		local rest = piece.rest
+		flyPiece(piece, from, rest, GIVE_FX.fly, function()
+			valuePop(cents, rest.Position, "+")
+		end)
+	end
+end
+
+-- A piece tapped on the counter goes back: the row closes up at once and a copy of it flies home to its drawer stack
+local function takeBack(index: number)
+	local cents = pieces[index]
+	local lying = givenPieces[index]
+	if not cents then
+		return
+	end
+	local from = if lying then lying.rest else nil
+	table.remove(pieces, index)
+	lastProgressAt = os.clock()
+	layOutGiven()
+	moneySound(cents, GIVE_FX.sounds.backPitch)
+	local home = drawerStack(cents)
+	if from and home then
+		valuePop(cents, from.Position, "-")
+		local flying = buildPiece(cents, from)
+		flying.part.CanQuery = false -- it can't be tapped on its way home
+		flyPiece(flying, from.Position, (from - from.Position) + home.Position + Vector3.new(0, 0.05, 0), GIVE_FX.back, function()
+			flying.part:Destroy()
+		end)
+		Debris:AddItem(flying.part, GIVE_FX.back + 0.5)
+	end
 end
 
 -- Manning ----------------------------------------------------------------------------------------------------------
@@ -682,6 +901,14 @@ end
 
 -- Taps on the drawer's money and on the money given (the screen's and keypad's buttons are GUI, handled there)
 local function onInput(input: InputObject, processed: boolean)
+	-- Leave's key (Config/RegisterStation LEAVE_PILL.key)
+	if input.UserInputType == Enum.UserInputType.Keyboard then
+		local typing = processed or UserInputService:GetFocusedTextBox() ~= nil
+		if RegisterStationRules.leaveKey(input.KeyCode.Name, RegisterStation.LEAVE_PILL, manned, typing) then
+			RegisterStationController.Leave()
+		end
+		return
+	end
 	if not manned or processed then
 		return
 	end
@@ -707,17 +934,39 @@ local function onInput(input: InputObject, processed: boolean)
 	end
 	local index = hit.Instance:GetAttribute("GivenIndex")
 	if typeof(index) == "number" then
-		table.remove(pieces, index)
-		lastProgressAt = os.clock()
-		layOutGiven()
+		takeBack(index)
 		refresh()
 		return
 	end
 	local cents = hit.Instance:GetAttribute("Money")
 	if typeof(cents) == "number" and situation() == "cash" then
-		givePiece(cents)
+		local stack = drawerStack(cents)
+		givePiece(cents, if stack then stack.Position + Vector3.new(0, 0.05, 0) else hit.Position)
 		refresh()
 	end
+end
+
+-- The drawer stack under the mouse glows while you count change, so it reads as something to tap
+local function onHover(input: InputObject)
+	if input.UserInputType ~= Enum.UserInputType.MouseMovement then
+		return
+	end
+	local camera = workspace.CurrentCamera
+	local model = unit()
+	local drawer = if model then model:FindFirstChild("CashDrawer") else nil
+	if not manned or not camera or not drawer or situation() ~= "cash" then
+		hover.Enabled = false
+		return
+	end
+	local ray = camera:ScreenPointToRay(input.Position.X, input.Position.Y)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = { drawer }
+	local hit = workspace:Raycast(ray.Origin, ray.Direction * 30, params)
+	local cents = if hit then hit.Instance:GetAttribute("Money") else nil
+	local stack = if typeof(cents) == "number" then drawerStack(cents) else nil
+	hover.Adornee = stack
+	hover.Enabled = stack ~= nil
 end
 
 -- The scan list from the server: { name, price, done } per counter item
@@ -780,6 +1029,21 @@ function RegisterStationController.Start()
 	helper.DepthMode = Enum.HighlightDepthMode.Occluded
 	helper.Enabled = false
 	helper.Parent = player:WaitForChild("PlayerGui")
+	hover = Instance.new("Highlight")
+	hover.Name = "RegisterHover"
+	hover.FillColor = rgb(GIVE_FX.hover.color)
+	hover.OutlineColor = rgb(GIVE_FX.hover.color)
+	hover.FillTransparency = GIVE_FX.hover.fill
+	hover.DepthMode = Enum.HighlightDepthMode.Occluded
+	hover.Enabled = false
+	hover.Parent = player:WaitForChild("PlayerGui")
+	exactGlow = Instance.new("Highlight")
+	exactGlow.Name = "RegisterExact"
+	exactGlow.FillColor = rgb(GIVE_FX.exact.color)
+	exactGlow.OutlineColor = rgb(GIVE_FX.exact.color)
+	exactGlow.DepthMode = Enum.HighlightDepthMode.Occluded
+	exactGlow.Enabled = false
+	exactGlow.Parent = player:WaitForChild("PlayerGui")
 
 	Remotes.CheckoutUpdate.OnClientEvent:Connect(function(newTotal: unknown, left: unknown, rawLines: unknown)
 		checkoutOpen = typeof(newTotal) == "number"
@@ -825,6 +1089,7 @@ function RegisterStationController.Start()
 		refresh()
 	end)
 	UserInputService.InputBegan:Connect(onInput)
+	UserInputService.InputChanged:Connect(onHover)
 	task.spawn(function()
 		while true do
 			task.wait(CHECK_SECONDS)

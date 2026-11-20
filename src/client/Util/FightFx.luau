@@ -73,6 +73,8 @@ local function color(rgb: { number }): Color3
 	return Color3.fromRGB(rgb[1], rgb[2], rgb[3])
 end
 
+local THROW_FOE_MAX = 1.5 -- a thrown attack's landing grows this much at most on a big foe
+
 -- Each special move's name by its kind (Combat ABILITIES and SIGNATURES), for its callout
 local MOVE_NAMES: { [string]: string } = {}
 for _, list in { Combat.ABILITIES, Combat.SIGNATURES } do
@@ -157,6 +159,12 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		end
 		local s = tier.scale
 		hitPicture(view.element, at, s * foe * (if finisher then 1.15 else 1), tint, 1)
+		-- a thrown attack's own landing (fire's flames, water's splash, thorns, the moon slash's crossed cut; never the
+		-- bolt's: AttackFx.THROW)
+		local throw = FightFxRules.throwLook(view.element, AttackFx)
+		if throw then
+			ElementFx.throwLand(throw.land, at - Vector3.new(0, 2, 0), at, view.root.Position, tint, s * math.min(foe, THROW_FOE_MAX), throw.count)
+		end
 		SuperFx.echoHit(view.root, at, s) -- Eclipse's mirror image strikes with it
 		hitSound(view.element, at)
 		if view.mine then
@@ -238,13 +246,20 @@ function FightFx.new(resolve: Resolve): Dispatcher
 				local from = view.root.Position + Vector3.new(0, view.height * 0.5, 0)
 				local flight = schedule.impactIn - schedule.releaseIn
 				local ember = view.element == "Ember"
-				local opts = { scale = s, flames = ember, rings = if view.element == "Tide" then 1 + tier.extra else 0, sparkle = tier.extra >= 2 or tier.flair >= 1 }
+				-- bigger, with a muzzle flash and its element's own trail (AttackFx.THROW)
+				local throw = FightFxRules.throwLook(view.element, AttackFx)
+				local big = if throw then AttackFx.THROW.size else 1
+				local trail = if throw then throw.trail else nil
+				if throw then
+					ElementFx.muzzle(from, targetPosition(entry.to, from), tint, s)
+				end
+				local opts = { scale = s, flames = ember, rings = if view.element == "Tide" then 1 + tier.extra else 0, sparkle = tier.extra >= 2 or tier.flair >= 1, trail = trail }
 				-- Ember throws one more fireball a grade A, two more at S, a little after and to the sides, all landing
 				-- together; Bloom always a volley of three smaller thorns (FightFxRules.shots)
 				local shots = FightFxRules.shots(view.element, tier.extra, AttackFx)
 				local volley = AttackFx.ELEMENT[view.element]
 				local shotScale = if volley and volley.shotScale then volley.shotScale else 1
-				opts.scale = s * shotScale
+				opts.scale = s * shotScale * big
 				for shot = 1, shots do
 					local wait = (shot - 1) * AttackFx.EXTRA_SHOT_GAP
 					local side = if shot == 1 then 0 elseif shot % 2 == 0 then 1 else -1
@@ -265,7 +280,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 							elseif not Spotlight.active() then
 								ElementFx.burst(at, tint, s * 0.6 * foeScale(entry.to))
 							end
-						end, if shot == 1 then opts else { scale = s * shotScale * (if ember then 0.75 else 1), flames = ember, sparkle = opts.sparkle })
+						end, if shot == 1 then opts else { scale = s * shotScale * big * (if ember then 0.75 else 1), flames = ember, sparkle = opts.sparkle, trail = trail })
 					end)
 				end
 			end)
@@ -329,6 +344,12 @@ function FightFx.new(resolve: Resolve): Dispatcher
 				local from = view.root.Position + Vector3.new(0, view.height * 0.55, 0)
 				local flight = schedule.impactIn - schedule.releaseIn
 				local tilts = { AttackFx.MOON_SLASH.tilt, -AttackFx.MOON_SLASH.tilt, 0 }
+				-- bigger, with a muzzle flash and dark wisps dragged behind it (AttackFx.THROW)
+				local throw = FightFxRules.throwLook(view.element, AttackFx)
+				local big = if throw then AttackFx.THROW.size else 1
+				if throw then
+					ElementFx.muzzle(from, targetPosition(entry.to, from), tint, s)
+				end
 				for shot = 1, 1 + tier.extra do
 					local wait = (shot - 1) * AttackFx.EXTRA_SHOT_GAP
 					task.delay(wait, function()
@@ -342,7 +363,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 							else
 								hitPicture(view.element, at, s * foeScale(entry.to) * AttackFx.LIGHT_HIT.size, tint, AttackFx.LIGHT_HIT.share)
 							end
-						end, s * (if shot == 1 then 1 else 0.8), tilts[shot])
+						end, s * big * (if shot == 1 then 1 else 0.8), tilts[shot], nil, throw ~= nil and shot == 1)
 					end)
 				end
 			end)

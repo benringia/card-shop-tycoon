@@ -45,6 +45,9 @@ return {
 	-- time; 90 gives a real breather (a lesson whose thing the player finds first is never taught: LessonRules.used)
 	PACE = { free = 4, gap = 90, wait = 12 },
 	LESSON_SECONDS = 20, -- a lesson visit that points leaves after this long (or when the new thing is used)
+	-- ...one with an introduction for inside its window (PishTalk.AFTER: jobs, prices) waits this long for the tap
+	-- (owner 2026-11-21: Pish introduces jobs; 20 s was gone before a new player found the Phone)
+	INTRO_SECONDS = 45,
 	TEACH_QUIET_SECONDS = 30, -- a lesson that teaches leaves after this long with no step taken (each step starts it again)
 	-- What Pish teaches after his first visit, once per player. Until 2026-11-19 every town and shop unlock brought a
 	-- visit at its level (owner 2026-11-10); levels 2 to 4 come within minutes, so he came again and again while the
@@ -63,7 +66,10 @@ return {
 		{ id = "sword", level = 4, icon = "Sword" },
 		{ id = "condenser", level = 5, icon = "Condenser", shelf = "Condenser", on = "placed" },
 		{ id = "forge", level = 6, icon = "Forge", shelf = "Forge", on = "placed" },
-		{ id = "jobs", level = 8, icon = "Jobs" },
+		-- `rush` (owner 2026-11-21: "The moment player unlock jobs. pish will introduce it to them"): first in line
+		-- and no breather after his last visit (PACE.gap); he still waits for a free moment (LessonRules.rushFirst,
+		-- mayStart). He points at Jobs on the Phone, then says what jobs are inside the window (PishTalk.AFTER.jobs)
+		{ id = "jobs", level = 8, icon = "Jobs", rush = true },
 		{ id = "bulkBin", level = 10, icon = "Copies", shelf = "BulkBin", on = "placed" },
 		{ id = "grading", level = 14, icon = "GradingSeal", shelf = "GradingStation", on = "placed" },
 		{ id = "trophy", icon = "Trophy", trigger = "trophy" },
@@ -71,7 +77,11 @@ return {
 		-- right after his first visit: setting your own prices (owner 2026-11-16: "let pish teach players how to set prices
 		-- through shelves or the prices tile")
 		{ id = "prices", icon = "Prices", trigger = "tourDone" },
-	} :: { { id: string, level: number?, icon: string, shelf: string?, product: string?, trigger: string?, on: string? } },
+		-- a creature's first faint (owner 2026-11-21, launch day: "if a player pet dies for the first time, chikin or
+		-- pish should appear and talk to them about the healing spring. with an option to skip it ofcourse"): one line,
+		-- his paws to the spring, Got it! to send him off (BattleService.OnFainted, CombatTutorialService)
+		{ id = "spring", icon = "Heart", trigger = "faint" },
+	} :: { { id: string, level: number?, icon: string, shelf: string?, product: string?, trigger: string?, on: string?, rush: boolean? } },
 	-- The stuck helper: in a player's first `firstSeconds` of play, after `quiet` seconds without progress, at most
 	-- once per `gap` seconds
 	STUCK = { firstSeconds = 3600, quiet = 60, gap = 120 },
@@ -86,6 +96,8 @@ return {
 		idleEvery = { 5, 10 },
 		napChance = 0.1,
 		shopChance = 0.5,
+		homeChance = 0.15, -- of his other walks: home to the dog house in the plaza, in front of his bed (owner 2026-11-20)
+		homeNap = 0.5, -- there he naps this often, else sits
 		petHoldMax = 8, -- seconds petting can hold him in one place (Util/PishPath.holdEnd): pets every 2 s can't keep him
 		idleClips = { "sit", "sniff", "bark", "roll", "dig", "shake", "playBow", "headTilt", "yawnStretch", "tailChase", "happyHop", "scratch" },
 		-- He greets a player who comes near, like Town Chikin (owner 2026-11-12: "npc pish should also greet people like

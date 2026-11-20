@@ -28,6 +28,27 @@ return {
 		Volt = { kind = "bolt", color = rgb(250, 204, 21) },
 		Shade = { kind = "slash", color = rgb(126, 58, 242) },
 	},
+	-- Thrown basic attacks (owner 2026-11-21: "other basic attacks look weak compared to lightning attack. adjust how
+	-- other attacks look add some immersiveness to them, do not change lightning"): every comet, thorn and moon slash
+	-- flies `size` times bigger with a ribbon `trail` seconds long, leaves with a muzzle flash (a flare growing
+	-- `from`..`to` studs over `seconds`, a ring `ring` studs across facing its flight) and lands with a ring on the
+	-- ground (`land`: studs, seconds), all times the creature's grade and rarity size. Each element then has its own
+	-- trail and landing (`count`: the landing's pieces): fire drags smoke and embers and lands in licking flames,
+	-- water sheds drops and lands in a splash crown, thorns shed leaves and land in thorns out of the ground, the moon
+	-- slash drags dark wisps and lands in a crossed cut. No Volt entry: the bolt stays as it is
+	-- (FightFxRules.throwLook, ElementFx.muzzle / throwLand).
+	THROW = {
+		size = 1.35,
+		trail = 0.38,
+		muzzle = { from = 2.2, to = 4.2, seconds = 0.25, ring = 2 },
+		land = { ring = 4.2, seconds = 0.38 },
+		ELEMENT = {
+			Ember = { trail = "smoke", land = "flames", count = 12 },
+			Tide = { trail = "drops", land = "splash", count = 18 },
+			Bloom = { trail = "leaves", land = "thorns", count = 5 },
+			Shade = { trail = "wisps", land = "cross", count = 8 },
+		} :: { [string]: { trail: string, land: string, count: number } },
+	},
 	MAX_ACTIVE = 12, -- effects playing at once (more are skipped; the damage numbers still show)
 	MAX_ACTIVE_LOW = 4, -- with the low-graphics switch off (Util/Extras)
 	-- Roblox-licensed Pro Sound Effects. A basic attack's hit (and a monster's strike) is a list of clips from one series:

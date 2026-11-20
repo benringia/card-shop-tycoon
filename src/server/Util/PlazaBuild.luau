@@ -1,8 +1,9 @@
 --!strict
 -- The Card Festival Square (the user's pick C, 2026-10-30; placements in Config/Plaza, Util/PlazaLayout): a cream
 -- gazebo with a stepped teal tiled dome over the healing fountain (WildService builds the fountain), a fan of five
--- giant cards with real card art and gold rims facing where new players appear, three festival carts with striped
--- canopies, six cafe tables with townsfolk sitting at three (PlazaNpcController makes them sip), string lights from the
+-- giant cards with real card art and gold rims facing where new players appear, two festival carts with striped
+-- canopies, four cafe tables with townsfolk sitting at two (PlazaNpcController makes them sip), the Support corner
+-- (the dogs' house, their beds and the tip jar), string lights from the
 -- gazebo's rim to eight lamp posts, and curved planters of bushes and flowers along the edge holding the lamps and four
 -- trees. Built once at server start by SceneryService; main game only.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -250,6 +251,188 @@ local function buildEasel(model: Model, frame: CFrame, word: string)
 	label.TextColor3 = Color3.fromRGB(250, 248, 240)
 	label.Text = word
 	label.Parent = gui
+end
+
+-- A flat tag showing an emoji or words on its front (toward -Z), `size` studs; `both`: on its back too (a hanging
+-- sign read from either side)
+local function tag(model: Model, name: string, size: Vector2, cframe: CFrame, text: string, ink: Color3?, back: Color3?, both: boolean?): Part
+	local part = detail(piece(model, name, Vector3.new(size.X, size.Y, 0.06), cframe, back or Color3.new(1, 1, 1), Enum.Material.SmoothPlastic))
+	part.Transparency = if back then 0 else 1
+	for _, face in if both then { Enum.NormalId.Front, Enum.NormalId.Back } else { Enum.NormalId.Front } do
+		local gui = Instance.new("SurfaceGui")
+		gui.Face = face
+		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		gui.PixelsPerStud = 60
+		gui.MaxDistance = 90
+		gui.LightInfluence = 0.4
+		gui.Parent = part
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.fromScale(0.78, 0.84) -- clear of the name plate's knobs at its ends
+		label.Position = UDim2.fromScale(0.11, 0.08)
+		label.BackgroundTransparency = 1
+		label.Font = Enum.Font.FredokaOne
+		label.TextScaled = true
+		label.TextColor3 = ink or Color3.new(1, 1, 1)
+		label.Text = text
+		label.Parent = gui
+	end
+	return part
+end
+
+-- A bone lying along X: a bar with two knobs at each end
+local function bone(model: Model, cframe: CFrame, length: number, thick: number, color: Color3)
+	detail(piece(model, "Bone", Vector3.new(length, thick, thick), cframe, color, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder))
+	for _, x in { -1, 1 } do
+		for _, z in { -1, 1 } do
+			detail(piece(model, "BoneKnob", Vector3.one * thick * 1.5, cframe * CFrame.new(x * length / 2, 0, z * thick * 0.5), color, Enum.Material.SmoothPlastic, Enum.PartType.Ball))
+		end
+	end
+end
+
+-- The Support corner (Plaza.SUPPORT; owner 2026-11-20): Pish and Chikin's dog house facing the gazebo, their two beds
+-- beside it and the tip jar on a crate in front, its prompt opening the Support card (client SupportController)
+local function buildSupport(parent: Instance)
+	local s = Plaza.SUPPORT
+	local stall = Plaza.STALL
+	local model = Instance.new("Model")
+	model.Name = "SupportCorner"
+	local wood, dark, gold = rgb(stall.wood), rgb(stall.woodDark), rgb(s.gold)
+	local wallColor, roofColor, doorColor, ink = rgb(s.wall), rgb(s.roofColor), rgb(s.door), rgb(s.ink)
+
+	-- The dog house: a plank box on a floor, an arched doorway, a pink gabled roof, their names on a bone over the door
+	local h = s.house
+	local frame = CFrame.lookAt(at(h.angle, h.r), centre())
+	local front = -h.depth / 2
+	local eaves = h.floor + h.wall
+	piece(model, "HouseFloor", Vector3.new(h.width + 0.5, h.floor, h.depth + 0.5), frame * CFrame.new(0, h.floor / 2, 0), dark, Enum.Material.Wood)
+	piece(model, "HouseWalls", Vector3.new(h.width, h.wall, h.depth), frame * CFrame.new(0, h.floor + h.wall / 2, 0), wallColor, Enum.Material.WoodPlanks)
+	for _, x in { -1, 1 } do
+		detail(piece(model, "CornerPost", Vector3.new(0.3, h.wall, 0.3), frame * CFrame.new(x * (h.width / 2 - 0.05), h.floor + h.wall / 2, front + 0.05), Color3.new(1, 1, 1), Enum.Material.Wood))
+	end
+	local door = h.door
+	local straight = door.height - door.width / 2
+	detail(piece(model, "Door", Vector3.new(door.width, straight, 0.1), frame * CFrame.new(0, h.floor + straight / 2, front - 0.03), doorColor, Enum.Material.SmoothPlastic))
+	detail(piece(model, "DoorArch", Vector3.new(0.1, door.width, door.width), frame * CFrame.new(0, h.floor + straight, front - 0.03) * CFrame.Angles(0, math.rad(90), 0), doorColor, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder))
+	-- the gable ends: two wedges each, their slopes meeting at the ridge
+	local roof = h.roof
+	for _, z in { front + 0.15, -front - 0.15 } do
+		for _, side in { -1, 1 } do
+			local wedge = Instance.new("WedgePart")
+			wedge.Name = "Gable"
+			wedge.Anchored = true
+			wedge.Size = Vector3.new(0.3, roof.rise, h.width / 2)
+			-- a wedge's tall face is its back (+Z): turned so it stands at the ridge, the slope falling to the eaves
+			wedge.CFrame = frame * CFrame.new(side * h.width / 4, eaves + roof.rise / 2, z) * CFrame.Angles(0, math.rad(-90 * side), 0)
+			wedge.Color = wallColor
+			wedge.Material = Enum.Material.WoodPlanks
+			wedge.TopSurface = Enum.SurfaceType.Smooth
+			wedge.BottomSurface = Enum.SurfaceType.Smooth
+			wedge.Parent = model
+		end
+	end
+	local slope = math.atan2(roof.rise, h.width / 2)
+	local run = math.sqrt((h.width / 2) ^ 2 + roof.rise ^ 2) + roof.overhang
+	for _, side in { -1, 1 } do
+		-- from the ridge down past the eaves, lying on the gables
+		local along = CFrame.Angles(0, 0, -slope * side)
+		local middle = frame * CFrame.new(0, eaves + roof.rise, 0) * along * CFrame.new(side * run / 2, roof.thickness / 2, 0)
+		piece(model, "Roof", Vector3.new(run, roof.thickness, h.depth + roof.overhang * 2), middle, roofColor, Enum.Material.SmoothPlastic)
+	end
+	detail(piece(model, "Ridge", Vector3.new(0.34, 0.34, h.depth + roof.overhang * 2 + 0.1), frame * CFrame.new(0, eaves + roof.rise + roof.thickness, 0), Color3.new(1, 1, 1), Enum.Material.SmoothPlastic))
+	tag(model, "Heart", Vector2.new(1, 1), frame * CFrame.new(0, eaves + roof.rise * 0.42, front - 0.04), "💛")
+	local plateY = h.floor + h.wall - 0.42
+	tag(model, "NamePlate", Vector2.new(2.9, 0.56), frame * CFrame.new(0, plateY, front - 0.08), h.plate, ink, rgb(s.plateColor))
+	for _, x in { -1, 1 } do
+		for _, y in { -1, 1 } do
+			detail(piece(model, "PlateKnob", Vector3.one * 0.44, frame * CFrame.new(x * 1.45, plateY + y * 0.17, front - 0.08), rgb(s.plateColor), Enum.Material.SmoothPlastic, Enum.PartType.Ball))
+		end
+	end
+	-- their bowls either side of the door (kibble, water) and a bone
+	local bowls = h.bowls
+	for index, x in { -bowls.x, bowls.x } do
+		local spot = frame * CFrame.new(x, 0, front - bowls.out)
+		detail(piece(model, "Bowl", Vector3.new(bowls.height, bowls.radius * 2, bowls.radius * 2), spot * CFrame.new(0, bowls.height / 2, 0) * UPRIGHT, rgb(s.bedColors[index]), Enum.Material.SmoothPlastic, Enum.PartType.Cylinder))
+		detail(piece(model, "BowlFill", Vector3.new(0.06, bowls.radius * 1.6, bowls.radius * 1.6), spot * CFrame.new(0, bowls.height, 0) * UPRIGHT, if index == 1 then dark else rgb(s.glass), Enum.Material.SmoothPlastic, Enum.PartType.Cylinder))
+	end
+	bone(model, frame * CFrame.new(-bowls.x - 0.2, 0.12, front - bowls.out - 0.9) * CFrame.Angles(0, math.rad(25), 0), 0.8, 0.16, rgb(s.plateColor))
+
+	-- Their beds: two round cushions side by side, a pillow in each, a rolled rim open at the front
+	local b = s.beds
+	local bedFrame = CFrame.lookAt(at(b.angle, b.r), centre())
+	for index, x in { -b.apart, b.apart } do
+		local color = rgb(s.bedColors[index])
+		local spot = bedFrame * CFrame.new(x, 0, 0)
+		piece(model, "Bed", Vector3.new(b.height, b.radius * 2, b.radius * 2), spot * CFrame.new(0, b.height / 2, 0) * UPRIGHT, color, Enum.Material.Fabric, Enum.PartType.Cylinder)
+		detail(piece(model, "Pillow", Vector3.new(0.28, b.radius * 1.5, b.radius * 1.5), spot * CFrame.new(0, b.height + 0.1, 0) * UPRIGHT, rgb(s.pillow), Enum.Material.Fabric, Enum.PartType.Cylinder))
+		for step = 1, b.rimCount do
+			local turn = step / b.rimCount * math.pi * 2
+			-- open toward the gazebo (-Z): the two rim rolls nearest the front are left out
+			if math.cos(turn) > -0.75 then
+				detail(piece(model, "BedRim", Vector3.one * b.rim, spot * CFrame.new(math.sin(turn) * (b.radius - b.rim * 0.35), b.height + 0.08, math.cos(turn) * (b.radius - b.rim * 0.35)), color:Lerp(Color3.new(0, 0, 0), 0.12), Enum.Material.Fabric, Enum.PartType.Ball))
+			end
+		end
+	end
+
+	-- The tip jar, beside the house (owner 2026-11-20: players come round the gazebo from the sides): glass on a crate,
+	-- coins in it, a heart on its front and both sides, and over it a board hanging from a post, its two faces turned
+	-- along the ring
+	local j = s.jar
+	local jarFrame = CFrame.lookAt(at(j.angle, j.r), centre())
+	piece(model, "Crate", Vector3.new(j.stand, j.stand, j.stand), jarFrame * CFrame.new(0, j.stand / 2, 0), wood, Enum.Material.WoodPlanks)
+	for _, y in { 0.12, j.stand - 0.12 } do
+		detail(piece(model, "CrateBand", Vector3.new(j.stand + 0.08, 0.2, j.stand + 0.08), jarFrame * CFrame.new(0, y, 0), dark, Enum.Material.Wood))
+	end
+	local coins = piece(model, "Coins", Vector3.new(j.height * 0.42, j.radius * 1.7, j.radius * 1.7), jarFrame * CFrame.new(0, j.stand + j.height * 0.21, 0) * UPRIGHT, gold, Enum.Material.Neon, Enum.PartType.Cylinder) -- glowing: gold reads through the glass by day and night
+	detail(coins)
+	for index, offset in { Vector3.new(0.18, 0.06, 0.1), Vector3.new(-0.2, 0.1, -0.12), Vector3.new(0.02, 0.16, -0.24) } do
+		detail(piece(model, "Coin", Vector3.new(0.07, 0.42, 0.42), jarFrame * CFrame.new(offset.X, j.stand + j.height * 0.42 + offset.Y, offset.Z) * UPRIGHT * CFrame.Angles(0, 0, math.rad(index * 23 - 30)), gold, Enum.Material.Metal, Enum.PartType.Cylinder))
+	end
+	local glass = piece(model, "Jar", Vector3.new(j.height, j.radius * 2, j.radius * 2), jarFrame * CFrame.new(0, j.stand + j.height / 2, 0) * UPRIGHT, rgb(s.glass), Enum.Material.Glass, Enum.PartType.Cylinder)
+	glass.Transparency = 0.72
+	glass.CastShadow = false
+	detail(piece(model, "JarLid", Vector3.new(0.2, j.radius * 1.7, j.radius * 1.7), jarFrame * CFrame.new(0, j.stand + j.height + 0.1, 0) * UPRIGHT, dark, Enum.Material.Wood, Enum.PartType.Cylinder))
+	tag(model, "JarHeart", Vector2.new(0.8, 0.8), jarFrame * CFrame.new(0, j.stand + j.height * 0.55, -j.radius - 0.05), "💛")
+	for _, side in { -1, 1 } do
+		-- a tag's front is its -Z: turned a quarter so it looks out along the ring
+		tag(model, "JarHeart", Vector2.new(0.8, 0.8), jarFrame * CFrame.new(side * (j.radius + 0.05), j.stand + j.height * 0.55, 0) * CFrame.Angles(0, math.rad(-90 * side), 0), "💛")
+	end
+	local sign = j.sign
+	local boardWide, boardTall = sign.board[1], sign.board[2]
+	local armY = sign.bottom + boardTall + 0.13
+	local boardZ = sign.behind - 0.25 - boardWide / 2 -- hanging from the arm, its far end at the post
+	piece(model, "SignPost", Vector3.new(0.32, sign.post, 0.32), jarFrame * CFrame.new(0, sign.post / 2, sign.behind), dark, Enum.Material.Wood)
+	detail(piece(model, "SignPostCap", Vector3.one * 0.5, jarFrame * CFrame.new(0, sign.post + 0.1, sign.behind), gold, Enum.Material.SmoothPlastic, Enum.PartType.Ball))
+	detail(piece(model, "SignArm", Vector3.new(0.24, 0.24, boardWide + 0.5), jarFrame * CFrame.new(0, armY, boardZ), dark, Enum.Material.Wood))
+	local boardFrame = jarFrame * CFrame.new(0, sign.bottom + boardTall / 2, boardZ) * CFrame.Angles(0, math.rad(90), 0)
+	detail(piece(model, "SignFrame", Vector3.new(boardWide + 0.24, boardTall + 0.24, 0.1), boardFrame, roofColor, Enum.Material.SmoothPlastic))
+	local board = tag(model, "SignBoard", Vector2.new(boardWide, boardTall), boardFrame, `💛 {sign.text} 💛`, ink, rgb(s.plateColor), true)
+	board.Size = Vector3.new(boardWide, boardTall, 0.16) -- proud of its frame on both faces
+	local light = Instance.new("PointLight")
+	light.Color = gold
+	light.Brightness = s.light.brightness
+	light.Range = s.light.range
+	light.Shadows = false
+	light.Parent = coins
+	local sparkle = Instance.new("ParticleEmitter")
+	sparkle.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	sparkle.Rate = 3
+	sparkle.Lifetime = NumberRange.new(1, 1.6)
+	sparkle.Speed = NumberRange.new(0.6, 1.2)
+	sparkle.SpreadAngle = Vector2.new(30, 30)
+	sparkle.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 0) })
+	sparkle.Color = ColorSequence.new(gold, Color3.new(1, 1, 1))
+	sparkle.LightEmission = 1
+	sparkle.EmissionDirection = Enum.NormalId.Right -- an upright cylinder's top
+	sparkle.Parent = coins
+	-- the prompt (the client opens the Support card by its name)
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = s.prompt.name
+	prompt.ObjectText = s.prompt.object
+	prompt.ActionText = s.prompt.action
+	prompt.MaxActivationDistance = s.prompt.distance
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = glass
+	model.Parent = parent
 end
 
 -- A festival cart (Plaza.STALL) facing the gazebo: -Z is its front, toward the customers
@@ -537,6 +720,7 @@ function PlazaBuild.build(parent: Instance)
 	for index in Plaza.TABLES.angles do
 		buildTable(folder, townsfolk, index)
 	end
+	buildSupport(folder)
 	for _, angle in Plaza.LAMPS.angles do
 		buildLampAndLights(folder, angle)
 	end

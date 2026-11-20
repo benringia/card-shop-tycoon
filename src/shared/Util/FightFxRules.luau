@@ -51,6 +51,16 @@ function FightFxRules.shots(element: string, extra: number, cfg: any): number
 	return (entry.shots or 1) + (if entry.gradeShots then extra else 0)
 end
 
+-- A thrown basic attack's own trail and landing (AttackFx.THROW): nil for the bolt (lightning stays as it is) and for
+-- an element without an attack
+function FightFxRules.throwLook(element: string, cfg: any): { trail: string, land: string, count: number }?
+	local kind = FightFxRules.kindFor(element, cfg)
+	if not kind or kind == "bolt" then
+		return nil
+	end
+	return cfg.THROW.ELEMENT[element]
+end
+
 -- How big a creature's basic attack looks for its grade (AttackFx.GRADE; C for no grade or an unknown one)
 function FightFxRules.tier(grade: string?, cfg: any): { scale: number, sparks: number, extra: number, shake: number }
 	return (if grade then cfg.GRADE[grade] else nil) or cfg.GRADE.C

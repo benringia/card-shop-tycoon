@@ -16,7 +16,7 @@ export type Week = { week: number, list: { Quest }, chest: boolean }
 export type StripMode = "daily" | "weekly" | "done"
 export type BandParts = { title: boolean, claim: boolean, count: boolean, fold: boolean }
 
-type Entry = { id: string, kind: string, event: string, icon: string, text: string, minLevel: number?, maxLevel: number?, goals: { { level: number, goal: number } } }
+type Entry = { id: string, kind: string, event: string, icon: string, text: string, one: string?, minLevel: number?, maxLevel: number?, goals: { { level: number, goal: number } } }
 type Config = { KINDS: { string }, EVENTS: { string }, POOL: { Entry }, REWARD: { cash: number, cashPerLevel: number, xp: number, xpPerLevel: number }, WEEKLY: { TIMES: number } }
 
 local DAY = 86400
@@ -212,9 +212,11 @@ local function rowOf(entry: Entry, quest: Quest, cash: number, xp: number): Ques
 	return {
 		id = quest.id,
 		kind = entry.kind,
-		text = (string.gsub(entry.text, "{n}", function()
-			return goal
-		end)),
+		text = if quest.goal == 1 and entry.one
+			then entry.one
+			else (string.gsub(entry.text, "{n}", function()
+				return goal
+			end)),
 		icon = entry.icon,
 		goal = quest.goal,
 		progress = quest.progress,
@@ -395,6 +397,60 @@ function QuestRules.bandParts(compact: boolean, claimable: boolean, weekly: bool
 		return { title = false, claim = claimable, count = not claimable, fold = false }
 	end
 	return { title = true, claim = claimable, count = not (claimable and weekly), fold = true }
+end
+
+-- The Quests window (owner 2026-11-21: "improve quest window UI. easily understandable/immersive") ----------------
+
+-- What a quest's row offers: "claim" (finished, its pay waits), "claimed", "done" (a weekly one finished: its chest
+-- pays), or "going"
+function QuestRules.rowState(quest: QuestView, weekly: boolean): string
+	if weekly then
+		return if quest.done then "done" else "going"
+	end
+	if quest.claimed then
+		return "claimed"
+	end
+	return if quest.done then "claim" else "going"
+end
+
+-- "3 / 8" beside a quest's name
+function QuestRules.countText(quest: QuestView): string
+	return `{math.min(quest.progress, quest.goal)} / {quest.goal}`
+end
+
+-- A quest's pay as chips (a picture from Config/UIIcons and a few words): cash and shop XP, or the Weekly Chest
+function QuestRules.pay(quest: QuestView, weekly: boolean): { { icon: string, text: string } }
+	if weekly then
+		return { { icon = "Gift", text = "Weekly Chest" } }
+	end
+	return { { icon = "Coin", text = `${quest.cash}` }, { icon = "Level", text = `{quest.xp} XP` } }
+end
+
+-- A section's heading words: how many of its quests are done
+function QuestRules.sectionLine(view: View): string
+	local done = 0
+	for _, quest in view.quests do
+		done += if quest.done then 1 else 0
+	end
+	return if done >= #view.quests then "All done!" else `{done} of {#view.quests} done`
+end
+
+-- How many quests still stand between you and a section's chest: the day's needs each one claimed, the week's each
+-- one done
+function QuestRules.chestLeft(view: View, weekly: boolean): number
+	local left = 0
+	for _, quest in view.quests do
+		if weekly then
+			left += if quest.done then 0 else 1
+		else
+			left += if quest.claimed then 0 else 1
+		end
+	end
+	return left
+end
+
+function QuestRules.chestWaiting(left: number): string
+	return if left <= 0 then "Ready!" else `{left} more to go`
 end
 
 return QuestRules

@@ -42,6 +42,7 @@ local DefenseRules = require(Shared:WaitForChild("Util"):WaitForChild("DefenseRu
 local DangerRules = require(Shared:WaitForChild("Util"):WaitForChild("DangerRules"))
 local DefeatRules = require(Shared:WaitForChild("Util"):WaitForChild("DefeatRules"))
 local DungeonRules = require(Shared:WaitForChild("Util"):WaitForChild("DungeonRules"))
+local SpringRules = require(Shared:WaitForChild("Util"):WaitForChild("SpringRules"))
 local FightFxRules = require(Shared:WaitForChild("Util"):WaitForChild("FightFxRules"))
 local MarkerNames = require(Shared:WaitForChild("Util"):WaitForChild("MarkerNames"))
 local PartyRules = require(Shared:WaitForChild("Util"):WaitForChild("PartyRules"))
@@ -164,6 +165,7 @@ local startBlockers: { (player: Player) -> string? } = {} -- ArenaService: no wi
 -- BossService: a boss win's items (the loot rules live there); its result goes to the client as summary.boss
 local fightEndedHandlers: { (monster: Monster, result: string, hpLeft: { [Player]: { [string]: number } }, stillIn: { Player }) -> () } = {}
 local memberLeftHandlers: { (player: Player, monster: Monster) -> () } = {}
+local faintedHandlers: { (player: Player) -> () } = {}
 local prologueEndedHandlers: { (player: Player) -> () } = {}
 local bossRewards: ((player: Player, monster: Monster, fight: { contributed: boolean }) -> any)? = nil
 
@@ -191,6 +193,11 @@ end
 -- BossService: a player left a fight that goes on without them (it moves them out of a sealed arena)
 function BattleService.OnMemberLeft(handler: (player: Player, monster: Monster) -> ())
 	table.insert(memberLeftHandlers, handler)
+end
+
+-- A fight left one or more of a player's creatures resting (they fainted): Pish's healing spring lesson, the first time
+function BattleService.OnFainted(handler: (player: Player) -> ())
+	table.insert(faintedHandlers, handler)
 end
 
 -- BossService: every fight's end, whatever the result (it unseals the arena)
@@ -1035,6 +1042,11 @@ local function release(fight: Fight, member: Member): { string }
 			end
 		end
 	end
+	if #rested > 0 then
+		for _, handler in faintedHandlers do
+			task.spawn(handler, player)
+		end
+	end
 	return rested
 end
 
@@ -1383,7 +1395,7 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 		canRun = true,
 		swapSeconds = if boss or run then Combat.BOSS_SWAP_SECONDS elseif wildSwaps then Combat.WILD_SWAP_SECONDS else nil,
 		autoSwap = if wildSwaps then false else nil,
-		callIn = if boss then false else nil,
+		callIn = Combat.CALL_IN, -- none: one of yours at a time, a tap on another card swaps (owner 2026-11-21)
 		creaturesDecide = not swordOnly and not boss and (not run or swords),
 	}
 	-- Room 3's pylons: the sim's by their part's name ("b:Pylon1"...)
@@ -1483,6 +1495,8 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 			if not prologue then
 				SwordService.CountFight(player) -- the prologue doesn't count as one of your first boss fights
 			end
+		elseif fightsWithSword(player, false, run, swords) then
+			SwordService.CountFight(player) -- a wild fight with the sword counts too: its buttons lose their names with it
 		end
 		local humanoid = (player.Character :: Model):FindFirstChildOfClass("Humanoid")
 		if humanoid then
@@ -2080,6 +2094,25 @@ local function stepFights(dt: number)
 	end
 end
 
+-- Asked how the spring works (its prompt, WildService): what it's for, or who of yours is hurt and how long their rest
+-- takes beside it (Util/SpringRules), as a friendly card
+local function onSpringAsked(player: Player)
+	local now = os.time()
+	local names: { string } = {}
+	local longest: number? = nil
+	for beastId, untilTime in resting[player] or {} do
+		local beast = CardService.GetBeast(player, beastId)
+		local card = if beast then Cards.ById[beast.cardId] else nil
+		if card and untilTime > now then
+			table.insert(names, card.name)
+			longest = math.max(longest or 0, untilTime - now)
+		end
+	end
+	table.sort(names)
+	local ask = Combat.SPRING_ASK
+	Blocked.tell(player, SpringRules.words(names, longest, Combat.SPRING_SPEED, ask), { title = ask.title, icon = ask.icon, tone = "info", seconds = ask.seconds })
+end
+
 -- Each second near the spring takes SPRING_SPEED - 1 extra seconds off every resting card
 local function tickSpring()
 	local spring = WildService.GetSpringPosition()
@@ -2228,6 +2261,15 @@ function BattleService.Start()
 			tickSpring()
 		end
 	end)
+	local springPrompt = WildService.GetSpringPrompt()
+	if springPrompt then
+		local allow = RateLimiter.new(1)
+		springPrompt.Triggered:Connect(function(player)
+			if allow(player) then
+				onSpringAsked(player)
+			end
+		end)
+	end
 end
 
 return BattleService

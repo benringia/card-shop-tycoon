@@ -780,6 +780,15 @@ return {
 		-- level star, on a see-through dark track with a white rim (the health bar went, owner 2026-11-13: "whats the
 		-- point of this HP bar here when we got our own HP bar when we get attacked?")
 		DOCK = {
+			-- A keyboard's keys (owner 2026-11-21, Palworld's: "1 and 3 keys are the arrows to the carousel press a
+			-- summon button (E Preffered) and whatever creature is in the middle will be summoned"): 1 and 3 turn the
+			-- carousel (Util/PartyDock.turn), this key calls the middle one out or back. Never while a prompt that uses
+			-- the same key is up, a window is open, or you man the register (PartyBarController)
+			summonKey = "E",
+			-- The keys' caps stay still round the carousel, as in Palworld (owner 2026-11-21: "only the images switch.
+			-- the keys stay still"; Util/PartyDock.keySpots): square white caps `cap` px, `gap` px outside the side
+			-- portraits, the summon key `rise` px over the middle portrait (room for its level chip)
+			keys = { cap = 18, gap = 5, rise = 10 },
 			width = 200,
 			height = 78,
 			sideX = 36,

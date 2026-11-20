@@ -13,6 +13,8 @@
 -- for, the window's first section, and a first build's moment (Remotes.MainQuestDone).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
@@ -56,6 +58,11 @@ local WEEK_ORDER = 20 -- the week's rows come after the day's and their chest in
 local MAIN_ORDER = -10 -- the main quest comes first in the window
 local MAIN_THEN = 3 -- at most this many other items to build listed under it
 
+local DesktopHudConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("DesktopHud"))
+local DesktopHud = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("DesktopHud"))
+local PhoneNotice = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("PhoneNotice"))
+local QuestRemind = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("QuestRemind"))
+
 local player = Players.LocalPlayer
 
 local view: View? = nil
@@ -64,7 +71,7 @@ local holder: Frame
 local tracker: TextButton
 local panel: Frame
 local list: ScrollingFrame
-local resetLabel: TextLabel
+local dayLabel: TextLabel? = nil -- "New quests in 1h 46m" in today's heading (ticks while the window is open)
 local weekLabel: TextLabel? = nil
 local belowSlot: Frame? = nil -- pieces riding under the strip (QuestController.Below)
 local belowPieces: { GuiObject } = {}
@@ -132,7 +139,9 @@ local function place()
 		end
 		return
 	end
-	local top = if teamBottom then math.max(TRACKER.desktopTop, teamBottom + 10) else TRACKER.desktopTop
+	-- under your row at the top right in a computer's column layout, and under the team strip
+	local start = UIController.GetColumnStart(TRACKER.desktopTop)
+	local top = if teamBottom then math.max(start, teamBottom + 10) else start
 	tracker.Position = UDim2.new(1, -TRACKER.margin, 0, top)
 	if slot then
 		local slotTop = if tracker.Visible then top + tracker.AbsoluteSize.Y + TRACKER.belowGap else top
@@ -140,10 +149,32 @@ local function place()
 	end
 end
 
+-- On a computer the quests are a Phone app (owner 2026-11-21; Config/DesktopHud QUESTS): no strip on the HUD
+local function inPhone(): boolean
+	return DesktopHud.questsInPhone(DesktopHud.layout(UIController.IsCompact(), DesktopHudConfig), DesktopHudConfig)
+end
+
+-- The Quests app's red count (what waits: Util/PhoneNotice.quests) and the Phone tile's ping or nudge when it rises or
+-- the quests moved on (`changed`)
+local phoneWaiting = 0
+local function tellPhone(changed: boolean)
+	if not inPhone() then
+		return
+	end
+	local goal = MainQuest.current()
+	-- quiet through a guide's tour that hides the quests (the calm HUD): no count, no ping
+	local hidden = Hud.hides("quests")
+	local count = PhoneNotice.quests(view :: any, goal ~= nil and goal.kind == "build" and goal.ready, hidden)
+	Hud.setBadge("Quests", count)
+	Hud.notice(if hidden then nil else PhoneNotice.kind(phoneWaiting, count, changed))
+	phoneWaiting = count
+end
+
 local function renderTracker()
 	local current = view
 	local aside = (UIController.IsCompact() and windowOpen) or bossFight
-	tracker.Visible = current ~= nil and #current.quests > 0 and not aside
+	QuestStrip.setInPhone(inPhone())
+	tracker.Visible = current ~= nil and #current.quests > 0 and not aside and not inPhone()
 	if belowSlot then
 		belowSlot.Visible = not aside
 	end
@@ -156,40 +187,110 @@ local function claim(which: number | string, button: GuiObject)
 	Remotes.QuestClaim:FireServer(which)
 end
 
--- One quest's row in the window: its picture, words, bar, pay and Claim (or how far it is, or claimed); a `weekly` one
--- pays nothing itself (the Weekly Chest does) and says Done once done
+-- A section's heading in the window: its picture and name on the left, how it's going on the right (returned, so a
+-- countdown can keep ticking in it)
+local function sectionHead(name: string, order: number, icon: string, title: string, right: string, palette: UIKit.Palette): TextLabel
+	local row = Instance.new("Frame")
+	row.Name = name
+	row.LayoutOrder = order
+	row.BackgroundTransparency = 1
+	row.Size = UDim2.new(1, -8, 0, 34)
+	row.Parent = list
+	local picture = Icon.make(row, icon, UDim2.fromOffset(26, 26))
+	picture.AnchorPoint = Vector2.new(0, 0.5)
+	picture.Position = UDim2.new(0, 10, 0.5, 0)
+	local words = UIKit.label(row, title, Enum.Font.FredokaOne, 20, UIStyle.BABY.lilac.deep)
+	words.Position = UDim2.fromOffset(44, 0)
+	words.Size = UDim2.new(0.5, -44, 1, 0)
+	words.TextWrapped = false
+	local side = UIKit.label(row, right, Enum.Font.GothamBold, 14, palette.hint)
+	side.Name = "Side"
+	side.AnchorPoint = Vector2.new(1, 0)
+	side.Position = UDim2.new(1, -10, 0, 0)
+	side.Size = UDim2.new(0.5, 0, 1, 0)
+	side.TextXAlignment = Enum.TextXAlignment.Right
+	side.TextWrapped = false
+	return side
+end
+
+-- A pay chip: a small picture and a few words in a soft pill ("$75", "75 XP", "Weekly Chest")
+local function payChip(parent: GuiObject, order: number, icon: string, text: string, palette: UIKit.Palette)
+	local chip = Instance.new("Frame")
+	chip.Name = "Pay"
+	chip.LayoutOrder = order
+	chip.BackgroundColor3 = palette.slotEmpty
+	chip.Size = UDim2.fromOffset(0, 20)
+	chip.AutomaticSize = Enum.AutomaticSize.X
+	chip.Parent = parent
+	UIKit.corner(chip, 10)
+	local pad = Instance.new("UIPadding")
+	pad.PaddingLeft = UDim.new(0, 4)
+	pad.PaddingRight = UDim.new(0, 8)
+	pad.Parent = chip
+	local line = Instance.new("UIListLayout")
+	line.FillDirection = Enum.FillDirection.Horizontal
+	line.VerticalAlignment = Enum.VerticalAlignment.Center
+	line.Padding = UDim.new(0, 3)
+	line.SortOrder = Enum.SortOrder.LayoutOrder
+	line.Parent = chip
+	Icon.make(chip, icon, UDim2.fromOffset(16, 16)).LayoutOrder = 1
+	local words = UIKit.label(chip, text, Enum.Font.GothamBold, 13, palette.ink)
+	words.LayoutOrder = 2
+	words.Size = UDim2.fromOffset(0, 20)
+	words.AutomaticSize = Enum.AutomaticSize.X
+	words.TextWrapped = false
+end
+
+-- One quest's row in the window (owner 2026-11-21: "easily understandable/immersive"): its picture, its words with
+-- the count beside them ("3 / 8"), a thick bar, its pay as chips with pictures, and what it offers on the right: Claim
+-- (the whole row turns mint: its pay waits), a stamp once claimed, or how far it is. A `weekly` one pays through the
+-- Weekly Chest and says Done once done (QuestRules.rowState, pay, countText)
 local function questRow(index: number, quest: QuestView, palette: UIKit.Palette, weekly: boolean)
+	local state = QuestRules.rowState(quest :: any, weekly)
+	local baby = UIStyle.BABY
 	local row = Instance.new("Frame")
 	row.Name = if weekly then `Week{index}` else `Quest{index}`
 	row.LayoutOrder = if weekly then WEEK_ORDER + index else index
 	row.Size = UDim2.new(1, -8, 0, ROW_HEIGHT)
-	row.BackgroundColor3 = palette.row
+	row.BackgroundColor3 = if state == "claim" then baby.mint.light else palette.row
 	row.Parent = list
 	UIKit.corner(row, 12)
-	UIKit.outline(row, if quest.done and not quest.claimed and not weekly then UIStyle.BABY.mint.deep else palette.rowEdge, 2)
+	UIKit.outline(row, if state == "claim" then baby.mint.deep else palette.rowEdge, 2)
 	local icon = Icon.make(row, quest.icon, UDim2.fromOffset(44, 44))
 	icon.AnchorPoint = Vector2.new(0, 0.5)
 	icon.Position = UDim2.new(0, 12, 0.5, 0)
+	local count = UIKit.label(row, QuestRules.countText(quest :: any), Enum.Font.FredokaOne, 15, if quest.done then baby.mint.deep else palette.inkSoft)
+	count.Name = "Count"
+	count.AnchorPoint = Vector2.new(1, 0)
+	count.Position = UDim2.new(1, -130, 0, 8)
+	count.Size = UDim2.fromOffset(84, 22)
+	count.TextXAlignment = Enum.TextXAlignment.Right
+	count.TextWrapped = false
 	local words = UIKit.label(row, quest.text, Enum.Font.FredokaOne, 17, palette.ink)
 	words.Position = UDim2.fromOffset(66, 8)
-	words.Size = UDim2.new(1, -66 - 130, 0, 22)
+	words.Size = UDim2.new(1, -66 - 130 - 88, 0, 22)
 	words.TextTruncate = Enum.TextTruncate.AtEnd
 	words.TextWrapped = false
-	local track = UIKit.bar(row, quest.progress / math.max(1, quest.goal), if quest.done then UIStyle.BABY.mint.fill else UIStyle.BABY.sky.fill)
-	track.Position = UDim2.fromOffset(66, 34)
-	track.Size = UDim2.new(1, -66 - 130, 0, 10)
-	local payText = if weekly then `{quest.progress}/{quest.goal} · for the Weekly Chest` else `{quest.progress}/{quest.goal} · +${quest.cash} · +{quest.xp} shop XP`
-	local pay = UIKit.label(row, payText, Enum.Font.GothamBold, 13, palette.inkSoft)
-	pay.Position = UDim2.fromOffset(66, 50)
-	pay.Size = UDim2.new(1, -66 - 130, 0, 18)
+	local track = UIKit.bar(row, quest.progress / math.max(1, quest.goal), if quest.done then baby.mint.fill else baby.sky.fill)
+	track.Position = UDim2.fromOffset(66, 33)
+	track.Size = UDim2.new(1, -66 - 130, 0, 12)
+	local pays = Instance.new("Frame")
+	pays.Name = "Pays"
+	pays.BackgroundTransparency = 1
+	pays.Position = UDim2.fromOffset(66, 50)
+	pays.Size = UDim2.new(1, -66 - 130, 0, 20)
+	pays.Parent = row
+	local payLine = Instance.new("UIListLayout")
+	payLine.FillDirection = Enum.FillDirection.Horizontal
+	payLine.VerticalAlignment = Enum.VerticalAlignment.Center
+	payLine.Padding = UDim.new(0, 6)
+	payLine.SortOrder = Enum.SortOrder.LayoutOrder
+	payLine.Parent = pays
+	for order, pay in QuestRules.pay(quest :: any, weekly) do
+		payChip(pays, order, pay.icon, pay.text, palette)
+	end
 	local action: GuiObject
-	if weekly and quest.done then
-		action = UIKit.label(row, "Done ✅", Enum.Font.FredokaOne, 16, UIStyle.BABY.mint.deep)
-		action.Size = UDim2.fromOffset(116, 48)
-	elseif quest.claimed then
-		action = UIKit.label(row, "Claimed ✅", Enum.Font.FredokaOne, 16, palette.hint)
-		action.Size = UDim2.fromOffset(116, 48)
-	elseif quest.done and not weekly then
+	if state == "claim" then
 		local button = UIKit.button(row, "Claim", UIKit.Colors.Success)
 		button.Name = "Claim"
 		button.Size = UDim2.fromOffset(116, 48)
@@ -198,7 +299,8 @@ local function questRow(index: number, quest: QuestView, palette: UIKit.Palette,
 		end)
 		action = button
 	else
-		action = UIKit.label(row, "Keep going!", Enum.Font.FredokaOne, 15, palette.hint)
+		local text = if state == "done" then "Done ✅" elseif state == "claimed" then "Claimed ✅" else "Keep going!"
+		action = UIKit.label(row, text, Enum.Font.FredokaOne, if state == "going" then 15 else 16, if state == "done" then baby.mint.deep else palette.hint)
 		action.Size = UDim2.fromOffset(116, 48)
 	end
 	action.AnchorPoint = Vector2.new(1, 0.5)
@@ -259,30 +361,6 @@ local function chestRow(chest: Chest, palette: UIKit.Palette)
 	end
 end
 
--- The week's heading in the window: "Weekly Quests" and the time left
-local function weekHeading(palette: UIKit.Palette)
-	local row = Instance.new("Frame")
-	row.Name = "WeekHead"
-	row.LayoutOrder = WEEK_ORDER
-	row.BackgroundTransparency = 1
-	row.Size = UDim2.new(1, -8, 0, 34)
-	row.Parent = list
-	local star = Icon.make(row, "⭐", UDim2.fromOffset(26, 26))
-	star.AnchorPoint = Vector2.new(0, 0.5)
-	star.Position = UDim2.new(0, 10, 0.5, 0)
-	local words = UIKit.label(row, "Weekly Quests", Enum.Font.FredokaOne, 20, UIStyle.BABY.lilac.deep)
-	words.Position = UDim2.fromOffset(44, 0)
-	words.Size = UDim2.new(0.6, -44, 1, 0)
-	words.TextWrapped = false
-	local left = UIKit.label(row, weekText(), Enum.Font.GothamBold, 14, palette.hint)
-	left.Name = "Left"
-	left.AnchorPoint = Vector2.new(1, 0)
-	left.Position = UDim2.new(1, -10, 0, 0)
-	left.Size = UDim2.new(0.4, 0, 1, 0)
-	left.TextXAlignment = Enum.TextXAlignment.Right
-	weekLabel = left
-end
-
 -- Standing by your shop (the server refuses placements from further: PlacementService)
 local function nearShop(): boolean
 	local plotId = player:GetAttribute("PlotId")
@@ -325,19 +403,7 @@ local function mainSection(palette: UIKit.Palette)
 		return
 	end
 	local baby = UIStyle.BABY
-	local head = Instance.new("Frame")
-	head.Name = "MainHead"
-	head.LayoutOrder = MAIN_ORDER
-	head.BackgroundTransparency = 1
-	head.Size = UDim2.new(1, -8, 0, 34)
-	head.Parent = list
-	local crown = Icon.make(head, "👑", UDim2.fromOffset(26, 26))
-	crown.AnchorPoint = Vector2.new(0, 0.5)
-	crown.Position = UDim2.new(0, 10, 0.5, 0)
-	local title = UIKit.label(head, "Main Quest", Enum.Font.FredokaOne, 20, baby.lilac.deep)
-	title.Position = UDim2.fromOffset(44, 0)
-	title.Size = UDim2.new(0.6, -44, 1, 0)
-	title.TextWrapped = false
+	sectionHead("MainHead", MAIN_ORDER, "👑", "Main Quest", if goal.kind == "build" then "Grow your shop" else "Level up your shop", palette)
 	local row = Instance.new("Frame")
 	row.Name = "MainQuest"
 	row.LayoutOrder = MAIN_ORDER + 1
@@ -349,23 +415,34 @@ local function mainSection(palette: UIKit.Palette)
 	local icon = Icon.make(row, goal.icon, UDim2.fromOffset(44, 44))
 	icon.AnchorPoint = Vector2.new(0, 0.5)
 	icon.Position = UDim2.new(0, 12, 0.5, 0)
+	-- as the quest rows: how far it is beside its words ("$250 / $250"), a thick bar, what it pays as a chip
+	local count = UIKit.label(row, goal.amount, Enum.Font.FredokaOne, 15, if goal.ready then baby.mint.deep else palette.inkSoft)
+	count.Name = "Count"
+	count.AnchorPoint = Vector2.new(1, 0)
+	count.Position = UDim2.new(1, -130, 0, 8)
+	count.Size = UDim2.fromOffset(130, 22)
+	count.TextXAlignment = Enum.TextXAlignment.Right
+	count.TextWrapped = false
 	local words = UIKit.label(row, goal.text, Enum.Font.FredokaOne, 17, palette.ink)
 	words.Position = UDim2.fromOffset(66, 8)
-	words.Size = UDim2.new(1, -66 - 130, 0, 22)
+	words.Size = UDim2.new(1, -66 - 130 - 134, 0, 22)
 	words.TextTruncate = Enum.TextTruncate.AtEnd
 	words.TextWrapped = false
 	local barColor = if goal.ready then baby.mint.fill elseif goal.kind == "level" then baby.lilac.fill else baby.butter.fill
 	local track = UIKit.bar(row, goal.progress, barColor)
-	track.Position = UDim2.fromOffset(66, 34)
-	track.Size = UDim2.new(1, -66 - 130, 0, 10)
-	local detail = if goal.kind == "build"
-		then `{goal.amount} · +{MainQuestRules.reward(MainQuests, goal.cost)} shop XP when built`
-		else `{goal.amount} of the way there`
-	local pay = UIKit.label(row, detail, Enum.Font.GothamBold, 13, palette.inkSoft)
-	pay.Position = UDim2.fromOffset(66, 50)
-	pay.Size = UDim2.new(1, -66 - 130, 0, 18)
-	pay.TextTruncate = Enum.TextTruncate.AtEnd
-	pay.TextWrapped = false
+	track.Position = UDim2.fromOffset(66, 33)
+	track.Size = UDim2.new(1, -66 - 130, 0, 12)
+	local pays = Instance.new("Frame")
+	pays.Name = "Pays"
+	pays.BackgroundTransparency = 1
+	pays.Position = UDim2.fromOffset(66, 50)
+	pays.Size = UDim2.new(1, -66 - 130, 0, 20)
+	pays.Parent = row
+	if goal.kind == "build" then
+		payChip(pays, 1, "Level", `{MainQuestRules.reward(MainQuests, goal.cost)} XP when built`, palette)
+	else
+		payChip(pays, 1, "Level", "Opens new things to build", palette)
+	end
 	local action: GuiObject
 	if goal.ready then
 		local button = UIKit.button(row, "Build", UIKit.Colors.Success)
@@ -401,7 +478,7 @@ local function mainSection(palette: UIKit.Palette)
 		local small = Icon.make(line, item.icon, UDim2.fromOffset(22, 22))
 		small.AnchorPoint = Vector2.new(0, 0.5)
 		small.Position = UDim2.new(0, 8, 0.5, 0)
-		local text = UIKit.label(line, `Then: {item.name} · {MainQuestRules.money(item.cost)}`, Enum.Font.GothamBold, 13, palette.inkSoft)
+		local text = UIKit.label(line, `Next: {item.name} · {MainQuestRules.money(item.cost)}`, Enum.Font.GothamBold, 13, palette.inkSoft)
 		text.Position = UDim2.fromOffset(38, 0)
 		text.Size = UDim2.new(1, -46, 1, 0)
 		text.TextTruncate = Enum.TextTruncate.AtEnd
@@ -416,8 +493,12 @@ local function renderPanel()
 	end
 	clearChildren(list)
 	weekLabel = nil
+	dayLabel = nil
 	local palette = UIKit.colorsFor(panel)
 	mainSection(palette)
+	-- today's quests under their own heading: how many are done on the left, when new ones come on the right (the
+	-- window's footer line moved here, beside what it's about)
+	dayLabel = sectionHead("DayHead", 0, "📜", `Today · {QuestRules.sectionLine(current :: any)}`, resetText(), palette)
 	for index, quest in current.quests do
 		questRow(index, quest, palette, false)
 	end
@@ -428,13 +509,13 @@ local function renderPanel()
 		items = Quests.BONUS,
 		ready = current.bonusReady,
 		opened = current.bonusClaimed,
-		waiting = "Claim all 3",
+		waiting = QuestRules.chestWaiting(QuestRules.chestLeft(current :: any, false)),
 		which = "bonus",
 		tint = UIStyle.BABY.butter,
 	}, palette)
 	local week = current.week
 	if week and #week.quests > 0 then
-		weekHeading(palette)
+		weekLabel = sectionHead("WeekHead", WEEK_ORDER, "⭐", `This week · {QuestRules.sectionLine(week :: any)}`, weekText(), palette)
 		for index, quest in week.quests do
 			questRow(index, quest, palette, true)
 		end
@@ -445,12 +526,11 @@ local function renderPanel()
 			items = Quests.WEEKLY.CHEST,
 			ready = week.bonusReady,
 			opened = week.bonusClaimed,
-			waiting = "Finish all 3",
+			waiting = QuestRules.chestWaiting(QuestRules.chestLeft(week :: any, true)),
 			which = "week",
 			tint = UIStyle.BABY.sky,
 		}, palette)
 	end
-	resetLabel.Text = resetText()
 end
 
 local function buildTracker()
@@ -462,6 +542,9 @@ local function buildTracker()
 	Hud.hideWith(holder) -- fights and full-screen views
 	Hud.calmPiece(holder, "quests") -- Pish's and Chikin's calm HUD
 	tracker = QuestStrip.build(holder)
+	-- bigger on a desktop (owner 2026-11-21: "increase font size. its small on the laptops"): the strip and the chips
+	-- under it grow with the screen (Util/Hud.scaleWith grow, Config/HudGrow); a phone's chip keeps its size
+	Hud.scaleWith(tracker, 1, true)
 	tracker.Activated:Connect(function()
 		panel.Visible = true
 	end)
@@ -480,6 +563,7 @@ local function buildTracker()
 	for _, piece in belowPieces do
 		piece.Parent = slot
 	end
+	Hud.scaleWith(slot, 1, true)
 	belowSlot = slot
 end
 
@@ -495,14 +579,7 @@ local function buildPanel()
 		layout.Padding = UDim.new(0, 8)
 		layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	end
-	list.Size = UDim2.new(1, -24, 1, -(UIKit.HEADER_HEIGHT + 52))
-	resetLabel = UIKit.label(panel, "", Enum.Font.FredokaOne, 15, UIKit.colorsFor(panel).hint)
-	resetLabel.Name = "Reset"
-	resetLabel.AnchorPoint = Vector2.new(0.5, 1)
-	resetLabel.Position = UDim2.new(0.5, 0, 1, -10)
-	resetLabel.Size = UDim2.new(1, -24, 0, 22)
-	resetLabel.TextXAlignment = Enum.TextXAlignment.Center
-	resetLabel.ZIndex = panel.ZIndex + 2
+	list.Size = UDim2.new(1, -24, 1, -(UIKit.HEADER_HEIGHT + 22)) -- no footer line: each section's heading has its own
 	panel:GetPropertyChangedSignal("Visible"):Connect(renderPanel)
 end
 
@@ -540,14 +617,17 @@ local function onClaimed(which: unknown, cash: unknown, xp: unknown, items: unkn
 end
 
 local function onState(payload: unknown, finished: unknown, weekFinished: unknown)
+	local before = view
 	view = if typeof(payload) == "table" then payload :: View else nil
 	renderTracker()
 	renderPanel()
+	tellPhone(PhoneNotice.questsChanged(before :: any, view :: any))
 	local current = view
 	if current and typeof(finished) == "number" then
 		local quest = current.quests[finished]
 		if quest then
-			UIController.Notify(`Quest done: {quest.text}! Tap Quests to claim.`, false, nil, quest.icon)
+			local where = if inPhone() then "Claim it on your Phone." else "Tap Quests to claim."
+			UIController.Notify(`Quest done: {quest.text}! {where}`, false, nil, quest.icon)
 		end
 	end
 	local week = if current then current.week else nil
@@ -571,6 +651,100 @@ function QuestController.Below(piece: GuiObject)
 	end
 end
 
+-- The idle reminder (owner 2026-11-21; Util/QuestRemind, Config/Quests REMIND): a computer's quests live in the Phone,
+-- so a player standing idle and free a while gets a small bubble by the Phone's tile saying what waits or the quest
+-- nearest done, and the tile pings or nudges. A tap on it opens the Quests window. Never in a fight, a window, a
+-- guide's visit or anything else that keeps them busy (Util/PlayerBusy), and minutes apart
+local function startReminder()
+	local remind = Quests.REMIND
+	local bubble = Instance.new("TextButton")
+	bubble.Name = "QuestReminder"
+	bubble.Text = ""
+	bubble.AutoButtonColor = false
+	bubble.AnchorPoint = Vector2.new(0, 0.5)
+	bubble.Size = UDim2.fromOffset(0, 40)
+	bubble.AutomaticSize = Enum.AutomaticSize.X
+	bubble.BackgroundColor3 = Color3.new(1, 1, 1)
+	bubble.Visible = false
+	bubble.ZIndex = 5
+	bubble.Parent = screen
+	UIKit.corner(bubble, 20)
+	UIKit.outline(bubble, UIStyle.BABY.lilac.deep, 2)
+	local pad = Instance.new("UIPadding")
+	pad.PaddingLeft = UDim.new(0, 8)
+	pad.PaddingRight = UDim.new(0, 14)
+	pad.Parent = bubble
+	local line = Instance.new("UIListLayout")
+	line.FillDirection = Enum.FillDirection.Horizontal
+	line.VerticalAlignment = Enum.VerticalAlignment.Center
+	line.Padding = UDim.new(0, 6)
+	line.SortOrder = Enum.SortOrder.LayoutOrder
+	line.Parent = bubble
+	local picture = Icon.make(bubble, "Gift", UDim2.fromOffset(26, 26))
+	picture.LayoutOrder = 1
+	local words = UIKit.label(bubble, "", Enum.Font.FredokaOne, 16, UIStyle.CREAM.INK)
+	words.LayoutOrder = 2
+	words.Size = UDim2.fromOffset(0, 40)
+	words.AutomaticSize = Enum.AutomaticSize.X
+	words.TextWrapped = false
+	local pop = Hud.scaleWith(bubble, 1, true) -- grows on a desktop with the HUD
+	bubble.Activated:Connect(function()
+		bubble.Visible = false
+		panel.Visible = true
+	end)
+
+	local joinedAt = os.clock()
+	local idleSince: number? = nil
+	local lastAt: number? = nil
+	local shownUntil = 0
+	-- any key, click or stick counts as doing something; so does walking
+	UserInputService.InputBegan:Connect(function()
+		idleSince = nil
+	end)
+	task.spawn(function()
+		local PlayerBusy = require(ClientUtil:WaitForChild("PlayerBusy")) :: any -- here, not at load: it requires half the controllers
+		while true do
+			task.wait(1)
+			local now = os.clock()
+			local character = player.Character
+			local human = if character then character:FindFirstChildOfClass("Humanoid") else nil
+			local moving = human ~= nil and human.MoveDirection.Magnitude > 0.05
+			local tile = Hud.find("Manage")
+			-- (TutorialDone is only set in the main game, false through Pish's tour; in the Frontier and the Dungeon the
+			-- tour is long over)
+			local free = inPhone() and not moving and tile ~= nil and tile.Visible and not Hud.isTrayOpen()
+				and player:GetAttribute("TutorialDone") ~= false and not Hud.isCalm() and PlayerBusy.reason() == nil
+			if not free then
+				idleSince = nil
+				bubble.Visible = false
+			elseif idleSince == nil then
+				idleSince = now
+			end
+			if bubble.Visible and now >= shownUntil then
+				bubble.Visible = false
+			end
+			if free and tile and not bubble.Visible and QuestRemind.due(now, joinedAt, idleSince, lastAt, remind) then
+				local goal = MainQuest.current()
+				local said = QuestRemind.words(view :: any, if goal and goal.kind == "build" and goal.ready then goal.name else nil)
+				if said then
+					lastAt = now
+					shownUntil = now + remind.show
+					Icon.set(picture, said.icon)
+					words.Text = said.text
+					local origin = screen.AbsolutePosition
+					bubble.Position = UDim2.fromOffset(tile.AbsolutePosition.X - origin.X + tile.AbsoluteSize.X + 14, tile.AbsolutePosition.Y - origin.Y + tile.AbsoluteSize.Y / 2)
+					bubble.Visible = true
+					Hud.notice(if said.strong then "ping" else "nudge")
+					-- it pops in at its grown size (its UIScale is the HUD's: start and end there)
+					local rest = pop.Scale
+					pop.Scale = rest * 0.7
+					TweenService:Create(pop, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = rest }):Play()
+				end
+			end
+		end
+	end)
+end
+
 function QuestController.Start()
 	screen = UIController.GetScreenGui()
 	buildTracker()
@@ -589,7 +763,27 @@ function QuestController.Start()
 	MainQuest.onChanged(function(goal)
 		QuestStrip.setMain(goal)
 		renderPanel()
+		tellPhone(false) -- a build you can now pay for waits in the Quests app
 	end)
+	-- A computer's Quests app, first on the Phone (owner 2026-11-21: "put the quests inside phone"); it opens the
+	-- Quests window, away from town too (a wild fight counts for a quest)
+	if inPhone() then
+		Hud.fanButton({
+			id = "Quests",
+			icon = "📜",
+			label = "Quests",
+			order = 0,
+			everywhere = true,
+			onClick = function()
+				panel.Visible = true
+			end,
+		})
+		tellPhone(false)
+		Hud.onCalm(function()
+			tellPhone(false) -- a tour began or ended: the count goes or comes back
+		end)
+		startReminder()
+	end
 	QuestStrip.setMain(MainQuest.current())
 	Remotes.BattleStarted.OnClientEvent:Connect(function(payload: unknown)
 		QuestStrip.setFighting(true)
@@ -624,7 +818,10 @@ function QuestController.Start()
 				QuestStrip.tick(resetText(), weekText())
 			end
 			if panel.Visible then
-				resetLabel.Text = resetText()
+				local day = dayLabel
+				if day then
+					day.Text = resetText()
+				end
 				local label = weekLabel
 				if label then
 					label.Text = weekText()

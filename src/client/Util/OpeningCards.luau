@@ -502,7 +502,7 @@ function OpeningCards.flip(index: number)
 		-- up there; then the card spins down out of the rift and the rift closes behind it
 		local sky = CardReveal.SKY_TEAR
 		OpeningRift.burst(color)
-		if creatureReady then
+		if creatureReady and CardReveal.CREATURE.on then
 			OpeningCreature.play(card.name, card.rarity, landing, color, riftAt)
 		end
 		creatureCame = true -- not in yet: the sky still tears and the card comes down, the creature stays in it
@@ -571,7 +571,7 @@ function OpeningCards.flip(index: number)
 	end
 	-- an Epic, a Legendary, a Frontier card or one you never had: its creature bursts out of it (Util/OpeningCreature),
 	-- unless it already came through the sky
-	if not creatureCame and RevealRules.comesAlive(card.rarity, shown.pull.isNew == true, CardFace.isFrontier(card), creatureReady) then
+	if not creatureCame and RevealRules.comesAlive(card.rarity, shown.pull.isNew == true, CardFace.isFrontier(card), creatureReady, CardReveal.CREATURE.on) then
 		OpeningCreature.play(card.name, card.rarity, landing, color)
 	end
 end

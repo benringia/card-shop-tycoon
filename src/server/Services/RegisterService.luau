@@ -27,7 +27,7 @@ local PropFit = require(Shared:WaitForChild("Util"):WaitForChild("PropFit"))
 local PackModels = require(Shared:WaitForChild("Util"):WaitForChild("PackModels"))
 local SleevePacket = require(Shared:WaitForChild("Util"):WaitForChild("SleevePacket"))
 local BulkHandful = require(Shared:WaitForChild("Util"):WaitForChild("BulkHandful"))
-local BrandBox = require(Shared:WaitForChild("Util"):WaitForChild("BrandBox"))
+local BoosterBoxLook = require(Shared:WaitForChild("Util"):WaitForChild("BoosterBoxLook"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
@@ -348,7 +348,7 @@ end
 
 -- What a counter item looks like (PropFit.counterLook): a pack, deck box or sleeve packet lies face up inside the part
 -- (its 3D model, Util/PackModels; a packet, Util/SleevePacket), which turns invisible but stays the scan target; a
--- booster box is the part itself, sized like one and printed like its delivery case (Util/BrandBox); anything else is
+-- booster box is the part itself, sized like one and printed as a sealed box (Util/BoosterBoxLook); anything else is
 -- the part in its product's colour. `index`: the item's place in the row (each packet the next sleeve colour)
 local function dressItem(part: BasePart, productId: string?, index: number)
 	local product = if productId then Products.ById[productId] else nil
@@ -364,7 +364,7 @@ local function dressItem(part: BasePart, productId: string?, index: number)
 		local scale = math.min(slot.X / box.WIDTH, slot.Z / box.DEPTH)
 		part.Size = Vector3.new(box.WIDTH, box.HEIGHT, box.DEPTH) * scale
 		part.CFrame = part.CFrame * CFrame.new(0, (part.Size.Y - slot.Y) / 2, 0)
-		BrandBox.draw(part, product, nil, box.PIXELS_PER_STUD)
+		BoosterBoxLook.draw(part, product, box.PIXELS_PER_STUD)
 		return
 	end
 	if look == "bulk" then

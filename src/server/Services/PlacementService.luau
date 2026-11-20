@@ -26,7 +26,7 @@ local Props = require(Shared:WaitForChild("Util"):WaitForChild("Props"))
 local PlotConfig = require(Config:WaitForChild("Plots"))
 local ShelfStock = require(Shared:WaitForChild("Util"):WaitForChild("ShelfStock"))
 local PackModels = require(Shared:WaitForChild("Util"):WaitForChild("PackModels"))
-local BrandBox = require(Shared:WaitForChild("Util"):WaitForChild("BrandBox"))
+local BoosterBoxLook = require(Shared:WaitForChild("Util"):WaitForChild("BoosterBoxLook"))
 local SleevePacket = require(Shared:WaitForChild("Util"):WaitForChild("SleevePacket"))
 local BulkHandful = require(Shared:WaitForChild("Util"):WaitForChild("BulkHandful"))
 local Bulk = require(Config:WaitForChild("Bulk"))
@@ -260,7 +260,7 @@ local function fillWithDecks(box: Part, productId: string)
 	place:Destroy()
 end
 
--- A booster box product's place holds sealed booster boxes printed like its delivery case (Util/BrandBox), stacked
+-- A booster box product's place holds sealed booster boxes (Util/BoosterBoxLook), stacked
 local function fillWithBoosters(box: Part, product: typeof(Products.List[1]))
 	local look = Town.SHELF_STOCK.BOOSTERS
 	local boosters = {}
@@ -278,7 +278,7 @@ local function fillWithBoosters(box: Part, product: typeof(Products.List[1]))
 		if not booster then
 			booster = newDecorPart("BoosterBox", box)
 			booster.Size = Vector3.new(look.WIDTH, look.HEIGHT, look.DEPTH)
-			BrandBox.draw(booster, product, nil, look.PIXELS_PER_STUD)
+			BoosterBoxLook.draw(booster, product, look.PIXELS_PER_STUD)
 		end
 		booster.CFrame = box.CFrame * CFrame.new(0, -box.Size.Y / 2 + look.HEIGHT * (index - 0.5), 0)
 	end

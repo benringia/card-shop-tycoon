@@ -67,7 +67,7 @@ end
 
 -- How a product lies on the register's counter (owner 2026-11-17: "card sleeves doesnt have a model on the counter"):
 -- "pack" or "deck" (its 3D model, Util/PackModels), "sleeves" (a sleeve packet, Util/SleevePacket), "booster" (a sealed
--- booster box, Util/BrandBox), by its Products `stockLook` and whether it's a pack (Config/Packs); "block": the plain
+-- booster box, Util/BoosterBoxLook), by its Products `stockLook` and whether it's a pack (Config/Packs); "block": the plain
 -- part, for nothing the shop sells
 function PropFit.counterLook(stockLook: string?, isPack: boolean): string
 	if stockLook == "Deck" then
@@ -80,6 +80,17 @@ function PropFit.counterLook(stockLook: string?, isPack: boolean): string
 		return "bulk" -- a handful of cards (Util/BulkHandful)
 	end
 	return if isPack then "pack" else "block"
+end
+
+-- What a sealed booster box prints (Util/BoosterBoxLook): the set's name on top and "BOOSTER BOX" under it, from the
+-- product's name ("First Spark Booster Box"); a name without those words goes on top whole
+function PropFit.boosterWords(name: string): (string, string)
+	local upper = string.upper(name)
+	local start = string.find(upper, " BOOSTER BOX", 1, true)
+	if start and start > 1 then
+		return string.sub(upper, 1, start - 1), "BOOSTER BOX"
+	end
+	return upper, ""
 end
 
 -- Register counter, front (customer side) at -Z: scan items lie along the front edge, props along the back.

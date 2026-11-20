@@ -2,7 +2,10 @@
 -- Combat numbers (battles part 1 spec). Plain data only so Lune tests can load this file.
 return {
 	TICK_RATE = 10, -- fight steps per second on the server
-	CALL_IN_SECONDS = 5, -- second party card may join only this early
+	CALL_IN_SECONDS = 5, -- second party card may join only this early (the Arena's fights: ArenaService)
+	-- The game's own fights (wild, boss, Dungeon: BattleService) have no call-in (owner 2026-11-21: "sometimes I can
+	-- summon 2 pets. fix it"): one of your creatures fights at a time, and a tap on another party card swaps
+	CALL_IN = false,
 	MAX_FIGHT_SECONDS = 120, -- a fight still going after this ends as a run (stuck or idle)
 	BOSS_MAX_FIGHT_SECONDS = 420, -- bosses have far more HP: their fights may run this long
 	BOSS_SWAP_SECONDS = 8, -- boss fights: seconds between a player's swaps (none needed when all of theirs fainted)
@@ -121,6 +124,21 @@ return {
 	HOME_BUTTON = { size = 48, gap = 8, transparency = 0.3 },
 	SPRING_RADIUS = 12,
 	SPRING_SPEED = 3,
+	-- The spring answers (owner 2026-11-20: "make the healing spring interactable ... 'bring your injured pet here to get
+	-- healed' fix the wordings"; Util/SpringRules): a prompt on it (key F: E calls your creature) and a friendly card:
+	-- what it's for when nobody is hurt, else who is hurt and how long it takes here. {speed}, {name}, {count}, {time}
+	SPRING_ASK = {
+		object = "Healing Spring",
+		action = "How it works",
+		key = "F",
+		distance = 12,
+		title = "Healing Spring",
+		icon = "💧",
+		seconds = 6, -- the card stays this long
+		idle = "Is a creature hurt? Bring it here! It gets better {speed} times faster by the spring.",
+		one = "{name} is hurt. Stay by the spring: all better in about {time}!",
+		many = "{count} creatures are hurt. Stay by the spring: all better in about {time}!",
+	},
 
 	-- The player in boss fights (spec 2026-11-02-you-in-the-fight-design): a sword beside one summoned creature
 	PLAYER_HP = 100, -- everyone's; boss hits on players are shares of it (Config/Bosses playerAttacks)

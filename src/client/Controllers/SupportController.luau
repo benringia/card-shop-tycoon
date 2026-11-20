@@ -7,12 +7,14 @@
 -- gifts.
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
+local ProximityPromptService = game:GetService("ProximityPromptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Chikin = require(Config:WaitForChild("Chikin"))
 local Monetization = require(Config:WaitForChild("Monetization"))
+local Plaza = require(Config:WaitForChild("Plaza"))
 local Support = require(Config:WaitForChild("Support"))
 local SupportRules = require(Shared:WaitForChild("Util"):WaitForChild("SupportRules"))
 local TutorialRules = require(Shared:WaitForChild("Util"):WaitForChild("TutorialRules"))
@@ -178,6 +180,12 @@ local function nudgeSoon()
 end
 
 function SupportController.Start()
+	-- the plaza's tip jar by the dogs' house (Config/Plaza SUPPORT, owner 2026-11-20): its prompt opens the card
+	ProximityPromptService.PromptTriggered:Connect(function(prompt)
+		if prompt.Name == Plaza.SUPPORT.prompt.name then
+			open()
+		end
+	end)
 	build()
 	HudMascotView.onTap(function()
 		if not touring() then

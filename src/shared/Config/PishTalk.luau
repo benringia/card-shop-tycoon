@@ -78,7 +78,9 @@ return {
 				"You're a real shop owner now!",
 				"Sell and rip packs to grow your shop level!",
 				"My buddy Chikin will teach you to fight!",
-				"Need me later? Tap me on your party bar. Bye!",
+				-- (it said "Tap me on your party bar": he hasn't been there since 2026-11-13, and a computer's HUD dropped
+				-- him on 2026-11-21; Town Pish walks the plaza and petting him gives luck)
+				"Find me in town! Pet me for luck. Bye!",
 			},
 			now = {},
 		},
@@ -94,10 +96,11 @@ return {
 		forge = "The Forge is here! Make and upgrade weapons.",
 		bulkBin = "The Bulk Bin is here! Sell your extra Commons.",
 		grading = "The Grading Station is here! Grade your cards.",
-		jobs = "Your cards can work now! Tap Jobs.",
+		jobs = "Your cards can work now! Tap Jobs on your Phone.",
 		trophy = "You won a trophy! Show it off in your shop.",
 		titles = "You earned a title! Tap your face to equip it.",
 		prices = "Set your own prices! Tap Prices on your Phone.",
+		spring = "Your pal fainted! The healing spring wakes it up fast.",
 	} :: { [string]: string },
 
 	-- Once it's placed or ordered, Pish runs to it and says what it's for, one line at a time with Next (the last one
@@ -135,6 +138,13 @@ return {
 			"Beat more bosses for more trophies.",
 		},
 		-- in the Prices window (owner 2026-11-16: "let pish teach players how to set prices"; Config/Pricing BUY_BANDS)
+		-- the Jobs window is open (owner 2026-11-21: Pish introduces jobs the moment they unlock)
+		jobs = {
+			"A card with a job works in your shop for you!",
+			"The Restocker fills shelves. The Cashier sells!",
+			"Tap Pick a card, choose one, then Assign job.",
+			"A working card can't fight. Take it off any time!",
+		},
 		prices = {
 			"Tap + or - to change a price.",
 			"At market price, customers almost always buy!",

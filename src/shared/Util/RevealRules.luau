@@ -37,9 +37,10 @@ end
 
 -- Whether a card's creature bursts out of it on the stage (Config/CardReveal CREATURE): an Epic, a Legendary, a Frontier
 -- card or a card the player never had. `ready` false: its model isn't fully downloaded yet (a new player's first
--- packs), so it stays in its card rather than show rough (owner 2026-11-19); nil: not asked
-function RevealRules.comesAlive(rarity: string, isNew: boolean, frontier: boolean, ready: boolean?): boolean
-	if ready == false then
+-- packs), so it stays in its card rather than show rough (owner 2026-11-19); nil: not asked. `on` false: creature
+-- models are switched off in pack openings (owner 2026-11-20; Config/CardReveal CREATURE.on): never
+function RevealRules.comesAlive(rarity: string, isNew: boolean, frontier: boolean, ready: boolean?, on: boolean?): boolean
+	if ready == false or on == false then
 		return false
 	end
 	return isNew or frontier or (RANK[rarity] or 0) >= RANK.Epic

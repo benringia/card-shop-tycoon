@@ -21,6 +21,11 @@ local HudMascotConfig = require(Shared:WaitForChild("Config"):WaitForChild("HudM
 local GuiService = game:GetService("GuiService")
 local SquishRules = require(Shared:WaitForChild("Util"):WaitForChild("SquishRules"))
 local SoftHud = require(Shared:WaitForChild("Config"):WaitForChild("SoftHud"))
+local DesktopHudConfig = require(Shared:WaitForChild("Config"):WaitForChild("DesktopHud"))
+local DesktopHud = require(Shared:WaitForChild("Util"):WaitForChild("DesktopHud"))
+local PartyConfig = require(Shared:WaitForChild("Config"):WaitForChild("Party"))
+local QuestsConfig = require(Shared:WaitForChild("Config"):WaitForChild("Quests"))
+local TeamsConfig = require(Shared:WaitForChild("Config"):WaitForChild("Teams"))
 local Toasts = require(Shared:WaitForChild("Config"):WaitForChild("Toasts"))
 local ToastRules = require(Shared:WaitForChild("Util"):WaitForChild("ToastRules"))
 local HudMascotView = require(ClientUtil:WaitForChild("HudMascotView"))
@@ -58,6 +63,47 @@ local cashLabel: TextLabel
 local cashPill: Frame
 local cashScale: UIScale -- the cash pill smaller on a touch screen (HudLayout.CASH.touchScale)
 local pishSeat: Frame? = nil -- Pish over the cash pill on a computer (HudMascotView)
+-- A computer's layout (owner 2026-11-21; Config/DesktopHud LAYOUT, Util/DesktopHud). "column" (C, in use): the cash
+-- in `topRow` at the top of the right column; the dock, your row and the dial where they were. "bar" (A): what you
+-- have in a row at the top beside Roblox's buttons (your row in `meSpot`, the cash), what you press in one bar at the
+-- bottom centre (the party dock, the weapon dial at `barSpot`, the tiles). Pish and his toasts stay bottom right
+local topRow: Frame
+local cashLine: Frame -- in the top row: the cash pill, and your face left of it in the column layout
+local topList: UIListLayout
+local meSpot: Frame
+local placedListeners: { () -> () } = {} -- told after each placing (the team strip follows the top row's foot)
+local barSpot: { x: number, bottom: number, scale: number }? = nil
+local function desktopLayout(): string?
+	return DesktopHud.layout(UserInputService.TouchEnabled, DesktopHudConfig)
+end
+-- Pish's seat on a computer (owner 2026-11-21: "move pish icon at the top of quests"): on the quest strip's top edge,
+-- his paws behind it; his toasts sit in a row along the top, the newest over his head (ToastRules.mode "row";
+-- placePerch)
+local perch: Frame
+local replace: () -> () = function() end -- Start's place(), for pieces that follow the quest strip
+-- "quests" (on the quest strip) or "corner" (the bottom right, by the weapon dial: the quests are in the Phone)
+local function pishAt(): string?
+	return DesktopHud.pishAt(desktopLayout(), DesktopHudConfig)
+end
+-- A fight's foe bar (SetToastAnchor): while it shows, the toasts hang under it (ToastRules.mode "under")
+local toastAnchor: GuiObject? = nil
+local shapedMode: string? = nil -- the mode the stack is shaped for (shapeToasts)
+local function toastMode(): "down" | "row" | "up" | "under"
+	local bar = toastAnchor
+	return ToastRules.mode(UserInputService.TouchEnabled, pishAt() == "quests", bar ~= nil and bar.Parent ~= nil and bar.Visible)
+end
+-- No peeking Pish: a phone never has one, a guide's calm HUD hides him, and a computer's layouts dropped him (owner
+-- 2026-11-21: "just remove pish"; Config/DesktopHud PISH)
+local function mascotHidden(): boolean
+	return UserInputService.TouchEnabled or Hud.hides("mascot") or (desktopLayout() ~= nil and pishAt() == nil)
+end
+-- The cash pill's size: smaller on a phone, a little smaller on a computer's layouts (Config/DesktopHud CASH_SCALE)
+local function cashSize(): number
+	if UserInputService.TouchEnabled then
+		return HudLayout.CASH.touchScale
+	end
+	return if desktopLayout() then DesktopHudConfig.CASH_SCALE else 1
+end
 local compactListeners: { (boolean) -> () } = {}
 local function isCompact(): boolean
 	return UserInputService.TouchEnabled
@@ -153,6 +199,52 @@ function UIController.GetDockHolder(): Frame
 	return dockHolder
 end
 
+-- Where your row (face, level, buffs) goes on a computer: the top row (beside the cash in the bar layout, under it
+-- in the column layout: owner 2026-11-21, "move character info and level below the coin"); nil on a touch screen or
+-- with the layouts off (it stays in the dock)
+function UIController.GetMeSpot(): Frame?
+	return if desktopLayout() then meSpot else nil
+end
+
+-- Where your face goes in the column layout: the cash's line, left of the pill (owner 2026-11-21: "put the avatar
+-- beside the coin"); nil elsewhere (it stays first in your row)
+function UIController.GetFaceSpot(): Frame?
+	return if DesktopHud.faceBesideCash(desktopLayout()) then cashLine else nil
+end
+
+-- Where the rest of the right column starts in the column layout (the team strip, the pills under the quests): under
+-- your row; `default` px down otherwise
+function UIController.GetColumnStart(default: number): number
+	local bottom: number? = nil
+	if desktopLayout() == "column" and topRow and topRow.Visible and topRow.AbsoluteSize.Y > 0 then
+		bottom = topRow.AbsolutePosition.Y + topRow.AbsoluteSize.Y
+	end
+	return DesktopHud.columnStart(bottom, default, DesktopHudConfig.TOP.below)
+end
+
+-- A fight's foe bar for the toasts to hang under (owner 2026-11-20, the combat HUD tidy: in their corner they landed on
+-- the skill buttons), or nil when the fight is over: back to their corner
+function UIController.SetToastAnchor(bar: GuiObject?)
+	if toastAnchor == bar then
+		return
+	end
+	toastAnchor = bar
+	task.defer(function()
+		replace() -- once the bar has its place
+	end)
+end
+
+-- Told after the HUD's pieces are placed (the top row moved or resized)
+function UIController.OnPlaced(listener: () -> ())
+	table.insert(placedListeners, listener)
+end
+
+-- The weapon dial's place in a computer's bottom bar: its left edge, its foot's distance from the screen's bottom and
+-- its scale; nil when it isn't in the bar (a touch screen, a window too narrow: WeaponSwitchController places it)
+function UIController.GetBarSpot(): { x: number, bottom: number, scale: number }?
+	return barSpot
+end
+
 -- The whole bottom-right corner, laid out left to right; the status column (GetStatusFrame) is LayoutOrder 10
 function UIController.GetStatusRow(): Frame
 	return statusRow
@@ -205,20 +297,24 @@ end
 -- column), and the white body with the icon chip in its kind's colour and the words in its kind's ink
 local function buildBubble(id: number, message: string, kind: string, icon: string): Bubble
 	local look = Toasts.KINDS[kind]
-	local touch = UserInputService.TouchEnabled
+	-- "down": a touch screen's stack hangs under the column, tails on top; "up" (over the cash) and "row" (a
+	-- computer's, along the top with the newest over Pish): tails underneath
+	local mode = toastMode()
+	local touch = mode == "down"
 	local edge = Toasts.EDGE_THICKNESS
 	local tailRoom = math.ceil(Toasts.TAIL * 0.75) + edge
 	-- A canvas group, so the whole bubble fades as one; padded so the tail and shadow fit inside it
 	local root = Instance.new("CanvasGroup")
 	root.Name = "Toast"
-	root.LayoutOrder = if touch then -id else id -- newest nearest the cash
+	-- newest nearest the cash (or Pish: last in the row, its right end; under a fight's foe bar: first under it)
+	root.LayoutOrder = if touch or mode == "under" then -id else id
 	root.Size = UDim2.new()
 	root.AutomaticSize = Enum.AutomaticSize.XY
 	root.BackgroundTransparency = 1
 	root.GroupTransparency = 1
 	local room = Instance.new("UIPadding")
 	room.PaddingTop = UDim.new(0, if touch then tailRoom else edge)
-	room.PaddingBottom = UDim.new(0, if touch then edge + Toasts.SHADOW_OFFSET else tailRoom + Toasts.SHADOW_OFFSET)
+	room.PaddingBottom = UDim.new(0, if touch or mode == "under" then edge + Toasts.SHADOW_OFFSET else tailRoom + Toasts.SHADOW_OFFSET)
 	room.PaddingLeft = UDim.new(0, edge)
 	room.PaddingRight = UDim.new(0, edge)
 	room.Parent = root
@@ -317,6 +413,9 @@ local function buildBubble(id: number, message: string, kind: string, icon: stri
 	tail.Parent = root
 	UIKit.corner(tail, 3)
 	UIKit.outline(tail, rgb(Toasts.EDGE), edge)
+	-- a plain bubble when nobody says it (a computer with no Pish on its HUD)
+	local tailed = ToastRules.tail(mode, not mascotHidden())
+	tail.Visible = tailed
 	local join = Instance.new("Frame")
 	join.Name = "TailJoin"
 	join.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -325,6 +424,7 @@ local function buildBubble(id: number, message: string, kind: string, icon: stri
 	join.BackgroundColor3 = Color3.new(1, 1, 1)
 	join.BorderSizePixel = 0
 	join.ZIndex = 6
+	join.Visible = tailed
 	join.Parent = root
 
 	-- The whole bubble is the close button (finger-sized on phones); the "x" darkens while the pointer is over it
@@ -371,14 +471,38 @@ local function popIn(bubble: Bubble)
 	grow:Play()
 end
 
+-- In a fight: the stack's top centre just under the foe's bar and whatever hangs from it (its states, its adds).
+-- False when no fight's bar is up
+local function placeUnder(): boolean
+	local bar = toastAnchor
+	if not toastStack or not bar or toastMode() ~= "under" then
+		return false
+	end
+	local origin = screenGui.AbsolutePosition
+	local hang = 0
+	for _, child in bar:GetChildren() do
+		if child:IsA("GuiObject") and child.Visible and child.AbsoluteSize.Y > 0 then
+			hang = math.max(hang, child.AbsolutePosition.Y + child.AbsoluteSize.Y - origin.Y)
+		end
+	end
+	local at, size = bar.AbsolutePosition - origin, bar.AbsoluteSize
+	local spot = ToastRules.under({ x = at.X, y = at.Y, w = size.X, h = size.Y }, hang, Toasts.UNDER_GAP)
+	toastStack.Position = UDim2.fromOffset(spot.x, spot.y)
+	return true
+end
+
 local function pushToast(message: string, kind: string, duration: number?, icon: string?): number
+	if toastMode() ~= shapedMode then
+		replace() -- a fight's bar came or went since the stack was shaped
+	end
+	placeUnder()
 	local look = Toasts.KINDS[kind]
 	local seconds = ToastRules.seconds(Toasts, kind, duration)
 	local entries: { ToastRules.Entry } = {}
 	for _, bubble in bubbles do
 		table.insert(entries, { id = bubble.id, message = bubble.message })
 	end
-	local max = if UserInputService.TouchEnabled then Toasts.MAX_TOUCH else Toasts.MAX
+	local max = ToastRules.max(toastMode(), Toasts)
 	local bumpId, drop = ToastRules.place(entries, message, max)
 	if bumpId then
 		for _, bubble in bubbles do
@@ -497,7 +621,7 @@ end
 local function buildStatusPills()
 	local column = statusFrame
 
-	cashPill = makePill(column, 2, "Coin")
+	cashPill = makePill(if desktopLayout() then cashLine else column, 2, "Coin") -- a computer: in the top row
 	cashPill.Name = "Cash"
 	cashPill.BackgroundColor3 = Color3.new(1, 1, 1)
 	cashPill.BackgroundTransparency = 0
@@ -509,7 +633,7 @@ local function buildStatusPills()
 	shade.Color = ColorSequence.new(HudLayout.CASH.top, HudLayout.CASH.bottom)
 	shade.Parent = cashPill
 	cashScale = Instance.new("UIScale")
-	cashScale.Scale = if isCompact() then HudLayout.CASH.touchScale else 1
+	cashScale.Scale = cashSize()
 	cashScale.Parent = cashPill
 	fitCoin(isCompact())
 	cashLabel = addValue(cashPill, Color3.new(1, 1, 1))
@@ -527,10 +651,29 @@ local function buildStatusPills()
 		seat.Size = UDim2.fromOffset(width + mascot.perch.x * 2, math.max(0, height - mascot.perch.overlap - PILL_GAP))
 		seat.Visible = not isCompact()
 		seat.ZIndex = 1
-		seat.Parent = column
+		seat.Parent = if desktopLayout() then perch else column -- a computer: on the quest strip
+		-- its own size, not AutomaticSize (that grew to his sticker's hidden foot under the seat); none with no Pish
+		perch.Size = if pishAt() == nil then UDim2.new() else seat.Size
 		cashPill.ZIndex = 2
 		pishSeat = seat
 		HudMascotView.mount(seat, seat.Size.Y.Offset + PILL_GAP)
+	end
+end
+
+-- The toasts' stack for this screen (ToastRules.mode): a column hanging down ("down", a touch screen), a column rising
+-- ("up", over the cash), or a row along the top, its right end at Pish ("row", a computer with him on the quests)
+local function shapeToasts()
+	local mode = toastMode()
+	shapedMode = mode
+	local row = mode == "row"
+	local under = mode == "under" -- a fight: hanging from the foe's bar, centred on it
+	toastStack.AnchorPoint = if under then Vector2.new(0.5, 0) elseif mode == "down" then Vector2.new(1, 0) else Vector2.new(1, 1)
+	toastStack.Size = if row then UDim2.fromOffset((Toasts.WIDTH + 40) * Toasts.MAX_TOUCH, 160) else UDim2.fromOffset(Toasts.WIDTH + 40, 420)
+	local toastLayout = toastStack:FindFirstChildOfClass("UIListLayout")
+	if toastLayout then
+		toastLayout.FillDirection = if row then Enum.FillDirection.Horizontal else Enum.FillDirection.Vertical
+		toastLayout.VerticalAlignment = if mode == "down" or under then Enum.VerticalAlignment.Top else Enum.VerticalAlignment.Bottom
+		toastLayout.HorizontalAlignment = if under then Enum.HorizontalAlignment.Center else Enum.HorizontalAlignment.Right
 	end
 end
 
@@ -563,11 +706,7 @@ local function arrange(rowLayout: UIListLayout)
 		columnLayout.VerticalAlignment = if touch then Enum.VerticalAlignment.Top else Enum.VerticalAlignment.Bottom
 	end
 	if toastStack then
-		toastStack.AnchorPoint = if touch then Vector2.new(1, 0) else Vector2.new(1, 1)
-		local toastLayout = toastStack:FindFirstChildOfClass("UIListLayout")
-		if toastLayout then
-			toastLayout.VerticalAlignment = if touch then Enum.VerticalAlignment.Top else Enum.VerticalAlignment.Bottom
-		end
+		shapeToasts()
 	end
 end
 
@@ -589,6 +728,13 @@ local function placeDock()
 		bottom = math.max(bottom, SquishRules.rowTop(SoftHud.TILE, SoftHud.SQUISH, HudLayout.BOTTOM_MARGIN, Hud.scaleFor()) + PILL_GAP)
 	end
 	dockHolder.Position = UDim2.new(0, HudLayout.SIDE_X, 1, -bottom)
+	-- a computer's layout: the side column hangs under Roblox's buttons (owner 2026-11-21: "make phone and daily
+	-- gift move up below roblox"), far above the dock
+	local sideTop = DesktopHud.sideTop(desktopLayout(), DesktopHudConfig)
+	if sideTop then
+		Hud.liftSide(0, sideTop)
+		return
+	end
 	local sideFrame = screenGui:FindFirstChild("HudSide")
 	if sideFrame and sideFrame:IsA("GuiObject") then
 		local dockTop = screenGui.AbsoluteSize.Y - bottom - dockHolder.AbsoluteSize.Y
@@ -604,13 +750,17 @@ local function placeStatusRow(rowLayout: UIListLayout)
 		-- the slim phone HUD on or off: the cash's words, and whoever listens
 		local compact = appliedTouch == true
 		if cashScale then
-			cashScale.Scale = if compact then HudLayout.CASH.touchScale else 1
+			cashScale.Scale = cashSize()
 		end
 		fitCoin(compact)
+		if cashPill then
+			cashPill.Parent = if desktopLayout() then cashLine else statusFrame -- a computer: in the top row
+		end
 		if pishSeat then
 			pishSeat.Visible = not compact
+			pishSeat.Parent = if desktopLayout() then perch else statusFrame
 		end
-		HudMascotView.setHidden(compact or Hud.hides("mascot"))
+		HudMascotView.setHidden(mascotHidden())
 		if cashLabel then
 			updateCash()
 		end
@@ -640,6 +790,12 @@ local function placeStatusRow(rowLayout: UIListLayout)
 	local tilesRight = width / 2 + (if tiles and tiles:IsA("GuiObject") then tiles.AbsoluteSize.X / 2 else 0)
 	local rowLeft = width - STATUS_MARGIN - rowLayout.AbsoluteContentSize.X
 	local scale = Hud.scaleFor()
+	if desktopLayout() then
+		-- nothing is left in this corner on a computer: the cash is at the top (placeDesktop), Pish on the quests with
+		-- his toasts beside him (placePerch)
+		statusRow.Position = UDim2.new(1, -STATUS_MARGIN, 1, -STATUS_MARGIN)
+		return
+	end
 	if rowLeft < tilesRight + STATUS_MARGIN then
 		-- Clear of the tiles' popped-out icons, hovered too (SquishRules.rowTop)
 		bottom = math.max(bottom, SquishRules.rowTop(SoftHud.TILE, SoftHud.SQUISH, HudLayout.BOTTOM_MARGIN, scale) + PILL_GAP)
@@ -656,6 +812,145 @@ local function placeStatusRow(rowLayout: UIListLayout)
 		end
 		local column = if statusLayout then statusLayout.AbsoluteContentSize.Y else STATUS_HEIGHT * scale
 		toastStack.Position = UDim2.new(1, -STATUS_MARGIN, 1, -(bottom + column + PILL_GAP))
+	end
+end
+
+-- A computer's layout (Config/DesktopHud), after the corners are placed. The column layout: only the cash moves, to
+-- the top right. The bar layout's top row and bottom bar: the top row beside Roblox's
+-- buttons (GuiService.TopbarInset: the top bar's free room), or under the bar at the left when it doesn't fit; the
+-- dock, the weapon dial and the tiles as one centred bar, or the corners as they were when the window is too narrow
+local function placeDesktop()
+	barSpot = nil
+	local layout = desktopLayout()
+	if not layout then
+		Hud.placeBottom(nil)
+		return
+	end
+	local view = screenGui.AbsoluteSize
+	local scale = Hud.scaleFor() * Hud.growFor()
+	local top = DesktopHudConfig.TOP
+	local inset = GuiService:GetGuiInset().Y
+	local free = GuiService.TopbarInset
+	-- the column layout stacks the cash over your row (right-aligned); the bar layout sets them side by side
+	local stacked = DesktopHud.meUnderCash(layout)
+	topList.FillDirection = if stacked then Enum.FillDirection.Vertical else Enum.FillDirection.Horizontal
+	topList.HorizontalAlignment = if stacked then Enum.HorizontalAlignment.Right else Enum.HorizontalAlignment.Left
+	topList.Padding = UDim.new(0, if stacked then top.stack else top.gap)
+	meSpot.LayoutOrder = if stacked then 3 else 1 -- the cash is 2
+	-- level with Roblox's own pills, the coin clear of the screen's top (owner 2026-11-21): the cash pill's own height
+	local lineHeight = if cashLine.AbsoluteSize.Y > 0 then cashLine.AbsoluteSize.Y else topRow.AbsoluteSize.Y
+	local level = DesktopHud.cashTop(top.level, lineHeight, ICON_SIZE * scale * cashSize(), top.clear)
+	if layout == "column" then
+		-- C: the cash on top of the right column, in the top bar's strip (the team strip and the quests start under
+		-- it); the dock bottom left (placeDock), the tiles centred, the dial by Pish (WeaponSwitchController)
+		topRow.AnchorPoint = Vector2.new(1, 0)
+		topRow.Position = UDim2.fromOffset(DesktopHud.topRight(free.Max.X, view.X, DesktopHudConfig), level - inset)
+		Hud.placeBottom(nil)
+		return
+	end
+	topRow.AnchorPoint = Vector2.new(0, 0)
+	local freeRight = free.Max.X
+	local quests = screenGui:FindFirstChild("QuestTracker", true)
+	if quests and quests:IsA("GuiObject") and quests.Visible and quests.AbsoluteSize.X > 0 then
+		freeRight = math.min(freeRight, quests.AbsolutePosition.X - top.gap) -- a grown row hangs under the top bar
+	end
+	local row = DesktopHud.topRow(free.Min.X, freeRight, topRow.AbsoluteSize.X, DesktopHudConfig)
+	topRow.Position = UDim2.fromOffset(row.x, if row.inBar then level - inset else top.under)
+
+	local look = HudLayout.WEAPON_SWITCH
+	local dialScale = math.max(scale, 48 / look.hit)
+	local dial = screenGui:FindFirstChild("WeaponSwitch")
+	local fighting = screenGui:FindFirstChild("CombatHud") ~= nil
+	local dialWanted = dial ~= nil and dial:GetAttribute("Wanted") == true and not fighting
+	local quick = PartyConfig.BAR.DOCK.quick
+	local dockWidth = if dockHolder.AbsoluteSize.X > 4 then dockHolder.AbsoluteSize.X + (quick.gap + quick.size) * scale else 0
+	local tiles = screenGui:FindFirstChild("HudBottom")
+	local tilesWidth = if tiles and tiles:IsA("GuiObject") then tiles.AbsoluteSize.X else 0
+	local side = screenGui:FindFirstChild("HudSide")
+	local clear = DesktopHudConfig.CLEAR * scale
+	local clearLeft = (if side and side:IsA("GuiObject") then side.AbsolutePosition.X - screenGui.AbsolutePosition.X + side.AbsoluteSize.X else 0) + clear
+	local clearRight = STATUS_MARGIN + clear
+	local spots = DesktopHud.bar(view.X, {
+		{ id = "party", w = dockWidth },
+		{ id = "weapon", w = if dialWanted then (look.arc + look.hit / 2 + look.chip / 2) * dialScale else 0 },
+		{ id = "tiles", w = tilesWidth },
+	}, DesktopHudConfig.GAP * scale, clearLeft, clearRight)
+	if not spots then
+		Hud.placeBottom(nil) -- too narrow: the dock bottom left (placeDock), the dial by the corner
+		return
+	end
+	if spots.party then
+		dockHolder.Position = UDim2.new(0, spots.party, 1, -HudLayout.BOTTOM_MARGIN)
+	end
+	Hud.placeBottom(spots.tiles)
+	if spots.weapon then
+		barSpot = { x = spots.weapon, bottom = HudLayout.BOTTOM_MARGIN, scale = dialScale }
+	end
+end
+
+-- Pish on a computer: on the quest strip's top edge near its left end, or where the strip would be while it isn't
+-- showing; his toasts sit in a row along the top, the newest one's tail over his head (ToastRules.stackCorner)
+local followed: Instance? = nil
+local function placePerch()
+	if not desktopLayout() or not perch then
+		return
+	end
+	local scale = Hud.scaleFor() * Hud.growFor()
+	local view = screenGui.AbsoluteSize
+	local at = pishAt()
+	if at == nil then
+		-- no Pish on a computer's HUD (owner 2026-11-21): his seat takes no room (the weapon dial has the corner), and
+		-- the toasts are plain bubbles in the lower right, over the dial while there's one to switch to
+		perch.Size = UDim2.new()
+		if toastStack then
+			local look = HudLayout.WEAPON_SWITCH
+			local dial = screenGui:FindFirstChild("WeaponSwitch")
+			local wanted = dial ~= nil and dial:GetAttribute("Wanted") == true
+			local dialHeight = if wanted then (look.arc + look.hit / 2 + look.chip / 2) * math.max(Hud.scaleFor(), 48 / look.hit) else 0
+			local corner = DesktopHud.toastCorner({ w = view.X, h = view.Y }, dialHeight, DesktopHudConfig)
+			toastStack.Position = UDim2.fromOffset(corner.x, corner.y)
+		end
+		return
+	end
+	if at == "corner" then
+		-- no quest strip to sit on (the quests are in the Phone): he peeks over the screen's bottom edge in the
+		-- bottom-right corner, his sticker's hidden foot just off the screen; the weapon dial sits beside him
+		-- (WeaponSwitchController) and his toasts rise over him (ToastRules.mode "up")
+		perch.Position = UDim2.fromOffset(view.X - STATUS_MARGIN - perch.AbsoluteSize.X, view.Y - (PILL_GAP + HudMascotConfig.perch.overlap) * scale)
+		if toastStack then
+			local head = HudMascotView.head()
+			local corner = if head
+				then ToastRules.stackCorner({ x = head.X, y = head.Y }, Toasts.TAIL_RIGHT, Toasts.TAIL, scale)
+				else { x = view.X - STATUS_MARGIN, y = perch.AbsolutePosition.Y - PILL_GAP }
+			toastStack.Position = UDim2.fromOffset(corner.x, corner.y)
+		end
+		return
+	end
+	local left = view.X - DesktopHudConfig.TOP.right - QuestsConfig.STRIP.width * scale
+	local top = TeamsConfig.STRIP.top
+	local quests = screenGui:FindFirstChild("QuestTracker", true)
+	if quests and quests:IsA("GuiObject") then
+		if followed ~= quests then
+			followed = quests
+			for _, property in { "AbsolutePosition", "AbsoluteSize", "Visible" } do
+				quests:GetPropertyChangedSignal(property):Connect(function()
+					replace()
+				end)
+			end
+		end
+		if quests.Visible and quests.AbsoluteSize.X > 0 then
+			left, top = quests.AbsolutePosition.X, quests.AbsolutePosition.Y
+		end
+	end
+	-- peeking from behind the quest box: his sticker's hidden foot (HudMascotConfig.perch.overlap under his seat's
+	-- line, PILL_GAP under the seat) and PERCH.sink px more sit behind the strip's top edge, which draws over him
+	perch.Position = UDim2.fromOffset(left + DesktopHudConfig.PERCH.inset * scale, top + (DesktopHudConfig.PERCH.sink - PILL_GAP) * scale)
+	if toastStack then
+		local head = HudMascotView.head()
+		local corner = if head
+			then ToastRules.stackCorner({ x = head.X, y = head.Y }, Toasts.TAIL_RIGHT, Toasts.TAIL, scale)
+			else { x = perch.AbsolutePosition.X + perch.AbsoluteSize.X, y = top - perch.AbsoluteSize.Y } -- he's hidden: where he would speak from
+		toastStack.Position = UDim2.fromOffset(corner.x, corner.y)
 	end
 end
 
@@ -688,7 +983,7 @@ function UIController.Start()
 	rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	rowLayout.Parent = statusRow
 	local touch = UserInputService.TouchEnabled -- touch screens: one column down the right edge from the top (arrange)
-	Hud.scaleWith(statusRow, if touch then HudLayout.SCALE.TOUCH_MIN else nil)
+	Hud.scaleWith(statusRow, if touch then HudLayout.SCALE.TOUCH_MIN else nil, true) -- bigger on a desktop (Config/HudGrow)
 	-- The PC's party dock holder (bottom left; PartyBarController puts the dock in it off a phone)
 	dockHolder = Instance.new("Frame")
 	dockHolder.Name = "PartyDock"
@@ -697,13 +992,100 @@ function UIController.Start()
 	dockHolder.AutomaticSize = Enum.AutomaticSize.XY
 	dockHolder.BackgroundTransparency = 1
 	dockHolder.Parent = screenGui
-	Hud.scaleWith(dockHolder)
+	Hud.scaleWith(dockHolder, nil, true) -- bigger on a desktop (owner 2026-11-21: "also make this bigger on desktop")
 	Hud.hideWith(dockHolder) -- full-screen views (the binder) cover it
 	Hud.calmPiece(dockHolder, "party") -- its name: manning the register keeps it (Hud.keepOnly), the shop bar in view
+	-- A computer's top row (Config/DesktopHud): your row (PartyBarController puts it in MeSpot) and the cash
+	topRow = Instance.new("Frame")
+	topRow.Name = "TopRow"
+	topRow.BackgroundTransparency = 1
+	topRow.Size = UDim2.new()
+	topRow.AutomaticSize = Enum.AutomaticSize.XY
+	topRow.Parent = screenGui
+	topList = Instance.new("UIListLayout")
+	topList.FillDirection = Enum.FillDirection.Horizontal
+	topList.VerticalAlignment = Enum.VerticalAlignment.Center
+	topList.Padding = UDim.new(0, DesktopHudConfig.TOP.gap)
+	topList.SortOrder = Enum.SortOrder.LayoutOrder
+	topList.Parent = topRow
+	cashLine = Instance.new("Frame")
+	cashLine.Name = "CashLine"
+	cashLine.LayoutOrder = 2
+	cashLine.BackgroundTransparency = 1
+	cashLine.Size = UDim2.new()
+	cashLine.AutomaticSize = Enum.AutomaticSize.XY
+	cashLine.Parent = topRow
+	local lineList = Instance.new("UIListLayout")
+	lineList.FillDirection = Enum.FillDirection.Horizontal
+	lineList.HorizontalAlignment = Enum.HorizontalAlignment.Right
+	lineList.VerticalAlignment = Enum.VerticalAlignment.Center
+	lineList.Padding = UDim.new(0, DesktopHudConfig.FACE.gap)
+	lineList.SortOrder = Enum.SortOrder.LayoutOrder
+	lineList.Parent = cashLine
+	cashLine:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+		replace()
+	end)
+	Hud.scaleWith(topRow, nil, true)
+	Hud.hideWith(topRow) -- full-screen views cover it; a fight hides it by name (BattleController HUD_NAMES)
+	Hud.keepName(topRow, "cash") -- manning the register keeps your money in view
+	meSpot = Instance.new("Frame")
+	meSpot.Name = "MeSpot"
+	meSpot.LayoutOrder = 1
+	meSpot.BackgroundTransparency = 1
+	meSpot.Size = UDim2.new()
+	meSpot.AutomaticSize = Enum.AutomaticSize.XY
+	meSpot.Parent = topRow
+	Hud.calmPiece(meSpot, "party") -- hidden with the dock through a guide's calm HUD, as when it sat in it
+	-- Pish's perch on the quest strip (placePerch); made before the quests' own gui, so the strip draws over his paws
+	perch = Instance.new("Frame")
+	perch.Name = "PishPerch"
+	perch.AnchorPoint = Vector2.new(0, 1)
+	perch.BackgroundTransparency = 1
+	perch.Size = UDim2.new()
+	perch.Parent = screenGui
+	Hud.scaleWith(perch, nil, true)
+	Hud.hideWith(perch)
+	local placing = false
 	local function place()
+		if placing then
+			return -- placing moves pieces whose size signals call this again
+		end
+		placing = true
+		if toastStack and toastMode() ~= shapedMode then
+			shapeToasts() -- a fight's bar came or went
+		end
 		placeStatusRow(rowLayout)
 		placeDock()
+		placeDesktop()
+		placePerch()
+		placeUnder() -- in a fight the toasts hang under the foe's bar, wherever the corners put them
+		placing = false
+		for _, listener in placedListeners do
+			task.spawn(listener)
+		end
 	end
+	replace = place
+	screenGui.DescendantAdded:Connect(function(added)
+		if added.Name == "QuestTracker" then
+			task.defer(place) -- the quest strip arrived: Pish goes onto it
+		end
+	end)
+	topRow:GetPropertyChangedSignal("AbsoluteSize"):Connect(place)
+	GuiService:GetPropertyChangedSignal("TopbarInset"):Connect(place)
+	-- the weapon dial joins or leaves the bar (WeaponSwitchController sets Wanted on its layer), a fight comes or goes
+	screenGui.ChildAdded:Connect(function(child)
+		if child.Name == "WeaponSwitch" then
+			child:GetAttributeChangedSignal("Wanted"):Connect(place)
+		end
+		if child.Name == "WeaponSwitch" or child.Name == "CombatHud" then
+			place()
+		end
+	end)
+	screenGui.ChildRemoved:Connect(function(child)
+		if child.Name == "CombatHud" then
+			place()
+		end
+	end)
 	dockHolder:GetPropertyChangedSignal("AbsoluteSize"):Connect(place)
 	place()
 	screenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(place)
@@ -736,28 +1118,26 @@ function UIController.Start()
 	-- binder and the pack opening
 	toastStack = Instance.new("Frame")
 	toastStack.Name = "Toasts"
-	toastStack.AnchorPoint = if touch then Vector2.new(1, 0) else Vector2.new(1, 1)
-	toastStack.Size = UDim2.fromOffset(Toasts.WIDTH + 40, 420)
 	toastStack.BackgroundTransparency = 1
 	toastStack.ZIndex = 10
 	-- not a window: a fight's start closes the open windows (BattleController setHudHidden) but leaves this up (it hid
 	-- every toast for the rest of the session after the first fight until 2026-11-19)
 	toastStack:SetAttribute("KeepInFights", true)
 	toastStack.Parent = screenGui
-	Hud.scaleWith(toastStack)
+	Hud.scaleWith(toastStack, nil, true)
 	local toastLayout = Instance.new("UIListLayout")
 	toastLayout.Padding = UDim.new(0, Toasts.GAP)
 	toastLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
-	toastLayout.VerticalAlignment = if touch then Enum.VerticalAlignment.Top else Enum.VerticalAlignment.Bottom
 	toastLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	toastLayout.Parent = toastStack
+	shapeToasts()
 	place()
 	-- Pish over the cash hides while a tour asks for the calm HUD (Util/Hud's "mascot" piece) and on a phone
 	Hud.onCalm(function()
-		HudMascotView.setHidden(isCompact() or Hud.hides("mascot"))
+		HudMascotView.setHidden(mascotHidden())
 		place()
 	end)
-	HudMascotView.setHidden(isCompact() or Hud.hides("mascot"))
+	HudMascotView.setHidden(mascotHidden())
 	-- Full-screen views (the binder) cover this corner with their own panels
 	Hud.hideWith(statusRow)
 	Hud.keepName(statusRow, "cash") -- manning the register keeps your money in view (owner 2026-11-16)

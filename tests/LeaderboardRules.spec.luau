@@ -86,4 +86,22 @@ return {
 			assert(face.lists[list] and face.lists[list].title ~= "", `{list} has a title`)
 		end
 	end,
+	-- owner 2026-11-20: "can I(the owner) not be included in the leaderboard"
+	["the game's owner is on neither list, and the lists stay full without them"] = function()
+		assert(Leaderboard.HIDE_OWNER == true, "the owner is left off")
+		local hidden = LeaderboardRules.hidden(77, "User", Leaderboard.HIDE_OWNER)
+		expect.equal(hidden[77], true)
+		expect.equal(next(LeaderboardRules.hidden(77, "Group", true)), nil, "a group's id is no player's")
+		expect.equal(next(LeaderboardRules.hidden(0, "User", true)), nil, "not published")
+		expect.equal(next(LeaderboardRules.hidden(77, "User", false)), nil, "switched off")
+		local stored = { { userId = 77, name = "Owner", count = 900 }, { userId = 2, name = "Ann", count = 40 } }
+		local live = { { userId = 77, name = "Owner", count = 905 }, { userId = 3, name = "Bo", count = 0 } }
+		expect.equal(names(LeaderboardRules.merge(LeaderboardRules.without(stored, hidden), LeaderboardRules.without(live, hidden), 10)), "Ann")
+		expect.equal(names(LeaderboardRules.rank(LeaderboardRules.without(live, hidden), 10, true)), "Bo", "this server's list too")
+		expect.equal(#LeaderboardRules.without(stored, {}), 2, "nobody hidden: everyone stays")
+		expect.equal(LeaderboardRules.readSize(10, hidden), 11, "one more read from the store, so ten still show")
+		expect.equal(LeaderboardRules.readSize(10, {}), 10)
+		expect.equal(LeaderboardRules.shouldWrite(50, nil, true), false, "a hidden player's total never goes up")
+		expect.equal(LeaderboardRules.shouldWrite(50, nil, false), true)
+	end,
 }

@@ -71,7 +71,8 @@ return {
 	["what a phone shows: the essentials, the rest only where and when it matters"] = function()
 		local pc = CompactHud.phonePieces(false, true, false, false)
 		for name, shown in pc :: any do
-			if name ~= "questChip" then
+			-- (Turts' pill follows his restock on a computer too since 2026-11-21: below)
+			if name ~= "questChip" and name ~= "turtsChip" then
 				expect.equal(shown, true, `{name}: as today on a computer`)
 			end
 		end
@@ -88,7 +89,11 @@ return {
 		expect.equal(town.questChip, true, "the quests as a chip by the cash")
 		expect.equal(town.mainRow, false, "no main quest row: the chip shows it once the day's quests are done")
 		expect.equal(town.eventChip, false, "no weekly event chip: a phone gets its toast and the Boss Ladder's line")
-		expect.equal(pc.eventChip, true, "a computer shows the event chip under the quests")
+		expect.equal(pc.eventChip, true, "a computer may show the event chip under the quests (when: EventRules.chipShown)")
+		-- Owner 2026-11-21 ("I want to clean up", pick 1 of three mockups): a computer's pills under the quests show
+		-- only when there's something to do, as a phone's always did
+		expect.equal(pc.turtsChip, false, "a computer: no Turts pill while he's only counting down")
+		expect.equal(CompactHud.phonePieces(false, true, false, true).turtsChip, true, "a computer: his pill once he has new stock")
 		local wild = CompactHud.phonePieces(true, false, true, true)
 		expect.equal(wild.sideSlots, false, "one creature in the Wild too (owner 2026-11-17: swipe or hold for the rest)")
 		expect.equal(wild.weaponChip, true, "the weapon chip in the Wild")

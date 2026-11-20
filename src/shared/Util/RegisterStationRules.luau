@@ -88,6 +88,29 @@ function RegisterStationRules.givenSpot(given: { x: number, z: number, step: num
 	return { x = given.x + column * given.step, z = given.z - row * depth }
 end
 
+-- The pitch of a piece's sound as it lands, `count` pieces on the counter with it (Config/RegisterStation GIVE_FX):
+-- each a little higher than the last, like counting up, never past pitchMax
+function RegisterStationRules.givePitch(count: number, fx: { sounds: { pitchStep: number, pitchMax: number } }): number
+	return math.min(fx.sounds.pitchMax, 1 + fx.sounds.pitchStep * math.max(0, count - 1))
+end
+
+-- Where the piece just laid down sits in the row (`pieces` high to low): the last of its value; nil when it isn't there
+function RegisterStationRules.addedIndex(pieces: { number }, cents: number): number?
+	local found: number? = nil
+	for index, value in pieces do
+		if value == cents then
+			found = index
+		end
+	end
+	return found
+end
+
+-- How high over the straight line a flying piece is `u` (0-1) of the way: 0 at both ends, `arc` in the middle
+function RegisterStationRules.arcLift(u: number, arc: number): number
+	local v = math.clamp(u, 0, 1)
+	return 4 * arc * v * (1 - v)
+end
+
 -- Whether the card machine's keys work (owner 2026-11-19: "make the card machine unusable when it's not supposed to be
 -- used"): only while a customer pays by card; asleep any other time
 function RegisterStationRules.keypadOn(situation: Situation): boolean
@@ -99,6 +122,11 @@ end
 function RegisterStationRules.saleCoins(amount: number, fx: { coins: { number } }): number
 	local fewest, most = fx.coins[1], fx.coins[2]
 	return math.clamp(fewest + math.floor(math.log(math.max(amount, 0) + 1, 2)), fewest, most)
+end
+
+-- Whether a key press leaves the register: Leave's own key (`pill.key`, a letter), while you man it and aren't typing
+function RegisterStationRules.leaveKey(key: string, pill: { key: string }, manned: boolean, typing: boolean): boolean
+	return manned and not typing and key == pill.key
 end
 
 return RegisterStationRules

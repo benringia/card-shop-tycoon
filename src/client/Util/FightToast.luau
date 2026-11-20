@@ -7,6 +7,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Victory = require(Shared:WaitForChild("Config"):WaitForChild("Victory"))
@@ -78,6 +79,9 @@ function FightToast.show(toast: VictoryRules.Toast)
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, 14)
 	corner.Parent = pill
+	local grow = Instance.new("UIScale") -- bigger (owner 2026-11-21): Victory.TOAST scale, a phone's touchScale
+	grow.Scale = if UserInputService.TouchEnabled then cfg.touchScale else cfg.scale
+	grow.Parent = pill
 	local edge = Instance.new("UIStroke")
 	edge.Color = edgeColor
 	edge.Thickness = 2

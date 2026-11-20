@@ -79,6 +79,12 @@ return {
 		expect.equal((WeaponText.button("upgrade", { cash = 1200, items = {} }, {}, 9000, Items, { level = 4 })), "Upgrade to +4 · $1,200")
 		expect.equal((WeaponText.button("reforge", { cash = 1000, items = {} }, {}, 9000, Items, {})), "Reforge · $1,000")
 		expect.equal((WeaponText.button("upgrade", nil, {}, 9000, Items, {})), "Maxed at +10")
+		-- owner 2026-11-20 ("check the other machines ... for pain points"): the button says how long it takes too,
+		-- like the Condenser's (the Forge's waits run to an hour and were only seen after pressing)
+		expect.equal((WeaponText.button("forge", { cash = 1500, items = {} }, {}, 9000, Items, { wait = "1:00:00" })), "Forge · $1,500 · takes 1:00:00")
+		expect.equal((WeaponText.button("upgrade", { cash = 1200, items = {} }, {}, 9000, Items, { level = 4, wait = "2:00" })), "Upgrade to +4 · $1,200 · takes 2:00")
+		expect.equal((WeaponText.button("reforge", { cash = 1000, items = {} }, {}, 9000, Items, { wait = "20:00" })), "Reforge · $1,000 · takes 20:00")
+		expect.equal((WeaponText.button("forge", { cash = 1500, items = {} }, {}, 100, Items, { wait = "1:00:00" })), "Need $1,400 more", "what's missing says no time")
 		text, ready = WeaponText.button("forge", { cash = 1500, items = {} }, {}, 9000, Items, { unlockLevel = 6, shopLevel = 5 })
 		expect.equal(text, "Opens at shop level 6")
 		expect.equal(ready, false)
@@ -245,11 +251,14 @@ return {
 	end,
 	-- A boss material's line on its chest card and pick-up card (owner 2026-11-16 saw "84/4 for Verdant Blade": the 4
 	-- was the next upgrade's cost of a sword already owned)
-	["a material's goal line says make or upgrade, and when there's enough"] = function()
-		expect.equal(WeaponText.goalLine(9, 15, "Verdant Blade", false), "9/15 to make the Verdant Blade")
-		expect.equal(WeaponText.goalLine(3, 4, "Verdant Blade", true), "3/4 to upgrade the Verdant Blade")
-		expect.equal(WeaponText.goalLine(84, 4, "Verdant Blade", true), "Enough to upgrade the Verdant Blade!")
-		expect.equal(WeaponText.goalLine(15, 15, "Verdant Blade", false), "Enough to make the Verdant Blade!")
+	-- in simpler words (owner 2026-11-20, of "Enough to make the Sunforged Blade!": "update description in a more simple
+	-- terms"): how many more to get, or that you can make it now. No fractions
+	["a material's goal line says make or upgrade, how many more to get, and when you can"] = function()
+		expect.equal(WeaponText.goalLine(9, 15, "Verdant Blade", false), "Get 6 more to make the Verdant Blade")
+		expect.equal(WeaponText.goalLine(3, 4, "Verdant Blade", true), "Get 1 more to upgrade the Verdant Blade")
+		expect.equal(WeaponText.goalLine(84, 4, "Verdant Blade", true), "You can upgrade the Verdant Blade now!")
+		expect.equal(WeaponText.goalLine(15, 15, "Verdant Blade", false), "You can make the Verdant Blade now!")
+		expect.equal(WeaponText.goalLine(1, 1, "Sunforged Blade", false), "You can make the Sunforged Blade now!")
 	end,
 }
 

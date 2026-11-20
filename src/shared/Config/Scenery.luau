@@ -416,7 +416,9 @@ return {
 	},
 	-- Ambient sounds, positioned and quiet (free Creator Store sounds; the user judges them by ear)
 	SOUNDS = {
-		{ name = "Falls", id = "rbxassetid://9116496316", x = 185, y = 6, z = -158, volume = 0.5, range = 90 }, -- Pro Sound Effects: Medium Size Waterfall 1
+		-- quieter (owner 2026-11-20: "the portal to wild is too loud": the Wild portal stands 40 studs from the falls, the
+		-- only sound there; 0.5 before)
+		{ name = "Falls", id = "rbxassetid://9116496316", x = 185, y = 6, z = -158, volume = 0.2, range = 90 }, -- Pro Sound Effects: Medium Size Waterfall 1
 		{ name = "Wind", id = "rbxassetid://5799870105", x = 195, y = 20, z = 130, volume = 0.35, range = 100 }, -- Ambient wind (Mukar)
 		{ name = "Embers", id = "rbxassetid://9112780462", x = -200, y = 4, z = 0, volume = 0.3, range = 70 }, -- Pro Sound Effects: Fireplace Constant Burning Flame 4
 		{ name = "Birds", id = "rbxassetid://9112831666", x = 0, y = 18, z = 0, volume = 0.25, range = 170 }, -- Pro Sound Effects: Morning Birds 2 (loop)

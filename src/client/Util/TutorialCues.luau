@@ -3,6 +3,10 @@
 -- a bouncing paw (and a gold ring) over what to tap (a HUD button, a button in a window or a thing in the shop), the
 -- small Skip at the top right and the tour card it opens (the step of the tour, the paw row, his gift, Keep going or
 -- Skip tour) (Pish's words: Util/TutorialTalk). Each returns a remover, or is set again.
+-- Owner 2026-11-21 ("make the highlight more noticeable, also make it fit the shape of what it is highlighting. also
+-- make the pawprint more noticeable"; Config/Cues, Util/CueShape): the ring and the spotlight's hole take the button's
+-- own corner (a round button gets a round ring), the ring is thicker with a dark line outside it and a second ring
+-- pinging outward, and every paw is bigger with a dark backing (and the bouncing one a gold halo).
 local PathfindingService = game:GetService("PathfindingService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -11,6 +15,8 @@ local RunService = game:GetService("RunService")
 local PishTalk = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("PishTalk"))
 local TrailRules = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("TrailRules"))
 local ScreenEdges = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("ScreenEdges"))
+local Cues = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Cues"))
+local CueShape = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("CueShape"))
 
 local ClientUtil = script.Parent :: Instance
 local Icon = require(ClientUtil:WaitForChild("Icon"))
@@ -21,14 +27,13 @@ local TutorialCues = {}
 
 local PRINT_GAP = 3 -- studs between paw prints
 local PRINT_MAX = 48 -- a walking route to the Wild runs ~300 studs: about one paw every 6
-local PRINT_PX = 46 -- px: a paw print up close (PRINT_NEAR studs away), smaller further off down to PRINT_MIN
-local PRINT_NEAR = 12
-local PRINT_MIN = 16
-local PAW_SIZE = 64 -- px: the bouncing paw over a button (smaller over a small one, down to PAW_MIN)
-local PAW_MIN = 40
-local RING_PAD = 5 -- px the gold ring stands off the button
-local RING_THICKNESS = 4
-local RING_CORNER = 14
+local PRINT_PX = Cues.PRINT.px -- px: a paw print up close (PRINT_NEAR studs away), smaller further off down to PRINT_MIN
+local PRINT_NEAR = Cues.PRINT.near
+local PRINT_MIN = Cues.PRINT.min
+local PAW_SIZE = Cues.PAW.size -- px: the bouncing paw over a button (smaller over a small one, down to PAW_MIN)
+local PAW_MIN = Cues.PAW.min
+local RING_PAD = Cues.RING.pad -- px the gold ring stands off the button
+local RING_THICKNESS = Cues.RING.thickness
 local BOUNCE = 10 -- px (studs * 0.4 on a thing in the shop)
 local BOUNCE_SPEED = 6
 local SCROLL_SWIPE = 60 -- px the scroll paw slides down each time
@@ -46,8 +51,10 @@ local ROW_PAW = 26 -- px each paw on the tour card
 local CARD_SIZE = Vector2.new(360, 250)
 local CARD_GREY = Color3.fromRGB(190, 195, 205)
 local DIM_COLOR = Color3.fromRGB(20, 10, 40) -- the spotlight's dimming
-local DIM_TRANSPARENCY = 0.45
-local SPOT_PAD = 8 -- px of light round the button
+local DIM_TRANSPARENCY = Cues.SPOT.dim
+local SPOT_PAD = Cues.SPOT.pad -- px of light round the button
+local BACKING = Color3.fromRGB(Cues.BACKING[1], Cues.BACKING[2], Cues.BACKING[3])
+local EDGE = Color3.fromRGB(Cues.EDGE[1], Cues.EDGE[2], Cues.EDGE[3])
 
 local screen: ScreenGui? = nil
 local skip: TextButton? = nil
@@ -84,6 +91,92 @@ local function gui(): ScreenGui
 	new.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 	screen = new
 	return new
+end
+
+local function fade(icon: Instance, transparency: number)
+	for _, image in icon:GetDescendants() do
+		if image:IsA("ImageLabel") then
+			image.ImageTransparency = transparency
+		end
+	end
+end
+
+-- A gold paw filling `holder` with a dark backing a little bigger behind it (a bare gold one was hard to see on light
+-- floors and walls). Returns the paw and its backing.
+local function pawIn(holder: GuiObject, rotation: number): (Frame, Frame)
+	local back = Icon.make(holder, "Paw", UDim2.fromScale(Cues.PAW.back, Cues.PAW.back))
+	back.Name = "Backing"
+	back.AnchorPoint = Vector2.new(0.5, 0.5)
+	back.Position = UDim2.fromScale(0.5, 0.5)
+	back.Rotation = rotation
+	tint(back, BACKING)
+	local paw = Icon.make(holder, "Paw", UDim2.fromScale(1, 1))
+	paw.Rotation = rotation
+	paw.ZIndex = back.ZIndex + 1
+	tint(paw, GOLD)
+	return paw, back
+end
+
+-- A soft gold disc behind the bouncing paw, breathing with its bounce
+local function haloIn(holder: GuiObject): Frame
+	local halo = Instance.new("Frame")
+	halo.Name = "Halo"
+	halo.AnchorPoint = Vector2.new(0.5, 0.5)
+	halo.Position = UDim2.fromScale(0.5, 0.5)
+	halo.Size = UDim2.fromScale(Cues.PAW.halo, Cues.PAW.halo)
+	halo.BackgroundColor3 = GOLD
+	halo.BackgroundTransparency = Cues.PAW.haloDim
+	halo.BorderSizePixel = 0
+	halo.ZIndex = 0 -- under the paw and its backing (siblings in the holder)
+	halo.Parent = holder
+	local round = Instance.new("UICorner")
+	round.CornerRadius = UDim.new(0.5, 0)
+	round.Parent = halo
+	return halo
+end
+
+-- The corner of the thing a cue is on: its own UICorner, else that of a face inside it that fills it (a HUD tile's
+-- rounded face sits two frames down); nil when it has none
+local function cornerOf(target: GuiObject): CueShape.Corner?
+	local own = target:FindFirstChildOfClass("UICorner")
+	if own then
+		return { scale = own.CornerRadius.Scale, offset = own.CornerRadius.Offset }
+	end
+	local size = { w = target.AbsoluteSize.X, h = target.AbsoluteSize.Y }
+	local function search(parent: Instance, depth: number): CueShape.Corner?
+		for _, child in parent:GetChildren() do
+			if child:IsA("GuiObject") and child.Visible and CueShape.fills({ w = child.AbsoluteSize.X, h = child.AbsoluteSize.Y }, size) then
+				local corner = child:FindFirstChildOfClass("UICorner")
+				if corner and child.BackgroundTransparency < 1 then
+					return { scale = corner.CornerRadius.Scale, offset = corner.CornerRadius.Offset }
+				end
+				if depth < 3 then
+					local deeper = search(child, depth + 1)
+					if deeper then
+						return deeper
+					end
+				end
+			end
+		end
+		return nil
+	end
+	return search(target, 1)
+end
+
+-- A see-through frame with a rounded outline (the gold ring, its dark edge, the ping)
+local function outlineFrame(name: string, color: Color3, thickness: number, z: number): (Frame, UICorner, UIStroke)
+	local frame = Instance.new("Frame")
+	frame.Name = name
+	frame.BackgroundTransparency = 1
+	frame.ZIndex = z
+	frame.Parent = gui()
+	local corner = Instance.new("UICorner")
+	corner.Parent = frame
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = color
+	stroke.Thickness = thickness
+	stroke.Parent = frame
+	return frame, corner, stroke
 end
 
 -- Where a point in the world shows on the cues' screen (it shares the HUD's inset), and how far it is; nil behind
@@ -129,7 +222,7 @@ function TutorialCues.trail(from: Vector3, to: Vector3): () -> ()
 	holder.Size = UDim2.fromScale(1, 1)
 	holder.ZIndex = 5
 	holder.Parent = gui()
-	local prints: { { at: Vector3, paw: Frame } } = {}
+	local prints: { { at: Vector3, holder: Frame, paw: Frame, back: Frame } } = {}
 	local stopped = false
 	local connection: RBXScriptConnection? = nil
 	task.spawn(function()
@@ -138,29 +231,31 @@ function TutorialCues.trail(from: Vector3, to: Vector3): () -> ()
 			return
 		end
 		for _, spot in paws do
-			local paw = Icon.make(holder, "Paw", UDim2.fromOffset(PRINT_PX, PRINT_PX))
-			paw.AnchorPoint = Vector2.new(0.5, 0.5)
-			paw.Rotation = spot.facing
-			paw.Visible = false
-			tint(paw, GOLD)
-			table.insert(prints, { at = Vector3.new(spot.x, spot.y + 0.15, spot.z), paw = paw })
+			local print = Instance.new("Frame")
+			print.Name = "Print"
+			print.BackgroundTransparency = 1
+			print.AnchorPoint = Vector2.new(0.5, 0.5)
+			print.Size = UDim2.fromOffset(PRINT_PX, PRINT_PX)
+			print.Visible = false
+			print.Parent = holder
+			local paw, back = pawIn(print, spot.facing)
+			table.insert(prints, { at = Vector3.new(spot.x, spot.y + 0.15, spot.z), holder = print, paw = paw, back = back })
 		end
 		local started = os.clock()
 		connection = RunService.RenderStepped:Connect(function()
 			local wave = (os.clock() - started) * 6
 			for i, entry in prints do
 				local point, depth = onScreen(entry.at)
-				entry.paw.Visible = point ~= nil
+				entry.holder.Visible = point ~= nil
 				if point then
-					local size = math.clamp(PRINT_PX * PRINT_NEAR / depth, PRINT_MIN, PRINT_PX)
-					entry.paw.Position = UDim2.fromOffset(point.X, point.Y)
-					entry.paw.Size = UDim2.fromOffset(size, size)
+					-- the wave passing: each print swells and brightens in turn, never fainter than PRINT.dim
 					local glow = 0.5 + 0.5 * math.sin(wave - i * 0.7)
-					for _, image in entry.paw:GetDescendants() do
-						if image:IsA("ImageLabel") then
-							image.ImageTransparency = 0.55 - glow * 0.5
-						end
-					end
+					local size = math.clamp(PRINT_PX * PRINT_NEAR / depth, PRINT_MIN, PRINT_PX) * (0.9 + 0.2 * glow)
+					entry.holder.Position = UDim2.fromOffset(point.X, point.Y)
+					entry.holder.Size = UDim2.fromOffset(size, size)
+					local dim = Cues.PRINT.dim * (1 - glow)
+					fade(entry.paw, dim)
+					fade(entry.back, 0.2 + dim)
 				end
 			end
 		end)
@@ -185,16 +280,16 @@ function TutorialCues.scrollPaw(list: GuiObject): () -> ()
 	holder.Size = UDim2.fromOffset(PAW_SIZE, PAW_SIZE)
 	holder.ZIndex = 20
 	holder.Parent = gui()
-	local paw = Icon.make(holder, "Paw", UDim2.fromScale(1, 1))
-	paw.Rotation = 180
-	tint(paw, GOLD)
+	local paw, back = pawIn(holder, 180)
 	local connection = RunService.RenderStepped:Connect(function()
 		local at, size = list.AbsolutePosition, list.AbsoluteSize
 		holder.Visible = list.Parent ~= nil and list.Visible and size.Y > PAW_SIZE * 2
 		-- a downward swipe: slides SCROLL_SWIPE px down, fading out at the bottom, then starts again
 		local cycle = ((os.clock() - started) * SCROLL_SPEED) % 1
 		holder.Position = UDim2.fromOffset(at.X + size.X / 2, at.Y + size.Y - 8 - SCROLL_SWIPE + cycle * SCROLL_SWIPE)
-		paw.ImageTransparency = if cycle > 0.7 then (cycle - 0.7) / 0.3 else 0
+		local gone = if cycle > 0.7 then (cycle - 0.7) / 0.3 else 0
+		fade(paw, gone)
+		fade(back, gone)
 	end)
 	return function()
 		connection:Disconnect()
@@ -213,23 +308,16 @@ function TutorialCues.pawOn(target: GuiObject | BasePart): () -> ()
 		holder.AnchorPoint = Vector2.new(0.5, 1)
 		holder.ZIndex = 20
 		holder.Parent = gui()
-		local paw = Icon.make(holder, "Paw", UDim2.fromScale(1, 1))
-		paw.Rotation = 180 -- toes down, toward the button
-		tint(paw, GOLD)
-		local ring = Instance.new("Frame")
-		ring.Name = "PawRing"
-		ring.BackgroundTransparency = 1
-		ring.ZIndex = 19
-		ring.Parent = gui()
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, RING_CORNER)
-		corner.Parent = ring
-		local stroke = Instance.new("UIStroke")
-		stroke.Color = GOLD
-		stroke.Thickness = RING_THICKNESS
-		stroke.Parent = ring
+		local paw, back = pawIn(holder, 180) -- toes down, toward the button
+		local halo = haloIn(holder)
+		-- the gold ring in the button's own shape, a dark line outside it, and a second ring pinging outward
+		local ring, corner, stroke = outlineFrame("PawRing", GOLD, RING_THICKNESS, 19)
+		local edge, edgeCorner, edgeStroke = outlineFrame("PawRingEdge", EDGE, Cues.RING.edge, 18)
+		edgeStroke.Transparency = 0.35
+		local ping, pingCorner, pingStroke = outlineFrame("PawPing", GOLD, Cues.PING.thickness, 18)
 		local connection = RunService.RenderStepped:Connect(function()
-			local beat = math.abs(math.sin((os.clock() - started) * BOUNCE_SPEED))
+			local elapsed = os.clock() - started
+			local beat = math.abs(math.sin(elapsed * BOUNCE_SPEED))
 			local at, size = target.AbsolutePosition, target.AbsoluteSize
 			-- a tile half scrolled out of its list: only the part showing, so the ring and paw stay inside the list
 			local list = target:FindFirstAncestorWhichIsA("ScrollingFrame")
@@ -248,22 +336,47 @@ function TutorialCues.pawOn(target: GuiObject | BasePart): () -> ()
 			-- up, when there's no room above (a button in Roblox's top bar: the town button, owner 2026-11-18)
 			local pawBottom = if clipped then at.Y + pawSize + 4 else at.Y - 4
 			local under = not clipped and pawBottom - pawSize - BOUNCE < ScreenCover.rect(gui()).y
-			paw.Rotation = if under then 0 else 180
-			holder.AnchorPoint = Vector2.new(0.5, if under then 0 else 1)
-			if under then
+			-- a tile in the left side column: from its right, toes pointing left (CueShape.pawSide)
+			local layer = gui()
+			local beside = not clipped and CueShape.pawSide({ x = at.X - layer.AbsolutePosition.X, w = size.X }, layer.AbsoluteSize.X, Cues.PAW.sideShare) == "right"
+			paw.Rotation = if beside then -90 elseif under then 0 else 180
+			back.Rotation = paw.Rotation
+			halo.BackgroundTransparency = Cues.PAW.haloDim + beat * (1 - Cues.PAW.haloDim) * 0.6
+			holder.AnchorPoint = if beside then Vector2.new(0, 0.5) else Vector2.new(0.5, if under then 0 else 1)
+			if beside then
+				holder.Position = UDim2.fromOffset(at.X + size.X + RING_PAD + RING_THICKNESS + 4 + beat * BOUNCE, at.Y + size.Y / 2)
+			elseif under then
 				holder.Position = UDim2.fromOffset(at.X + size.X / 2, at.Y + size.Y + 4 + beat * BOUNCE)
 			else
 				holder.Position = UDim2.fromOffset(at.X + size.X / 2, pawBottom - beat * BOUNCE)
 			end
+			-- the ring: the button's own corner (a tile half out of its list keeps the list's square edge there)
+			local radius = CueShape.radius({ w = size.X, h = size.Y }, cornerOf(target), RING_PAD, Cues.RING.fallback)
+			local pulse = Cues.RING.pulse
 			ring.Visible = shown
 			ring.Position = UDim2.fromOffset(at.X - RING_PAD, at.Y - RING_PAD)
 			ring.Size = UDim2.fromOffset(size.X + RING_PAD * 2, size.Y + RING_PAD * 2)
-			stroke.Transparency = 0.15 + beat * 0.45
+			corner.CornerRadius = UDim.new(0, radius)
+			stroke.Transparency = pulse[1] + beat * (pulse[2] - pulse[1])
+			local out = RING_PAD + RING_THICKNESS
+			edge.Visible = shown
+			edge.Position = UDim2.fromOffset(at.X - out, at.Y - out)
+			edge.Size = UDim2.fromOffset(size.X + out * 2, size.Y + out * 2)
+			edgeCorner.CornerRadius = UDim.new(0, radius + RING_THICKNESS)
+			local grow, gone = CueShape.ping(elapsed, Cues.PING)
+			local far = out + grow
+			ping.Visible = shown
+			ping.Position = UDim2.fromOffset(at.X - far, at.Y - far)
+			ping.Size = UDim2.fromOffset(size.X + far * 2, size.Y + far * 2)
+			pingCorner.CornerRadius = UDim.new(0, radius + RING_THICKNESS + grow)
+			pingStroke.Transparency = gone
 		end)
 		return function()
 			connection:Disconnect()
 			holder:Destroy()
 			ring:Destroy()
+			edge:Destroy()
+			ping:Destroy()
 		end
 	end
 	local part = target :: BasePart
@@ -275,15 +388,15 @@ function TutorialCues.pawOn(target: GuiObject | BasePart): () -> ()
 	holder.Size = UDim2.fromOffset(PAW_SIZE, PAW_SIZE)
 	holder.ZIndex = 20
 	holder.Parent = gui()
-	local paw = Icon.make(holder, "Paw", UDim2.fromScale(1, 1))
-	paw.Rotation = 180
-	tint(paw, GOLD)
+	pawIn(holder, 180)
+	local halo = haloIn(holder)
 	local connection = RunService.RenderStepped:Connect(function()
 		local point = onScreen(part.Position + Vector3.new(0, part.Size.Y / 2 + 0.5, 0))
 		holder.Visible = point ~= nil and part.Parent ~= nil
 		if point then
 			local beat = math.abs(math.sin((os.clock() - started) * BOUNCE_SPEED))
 			holder.Position = UDim2.fromOffset(point.X, point.Y - beat * BOUNCE)
+			halo.BackgroundTransparency = Cues.PAW.haloDim + beat * (1 - Cues.PAW.haloDim) * 0.6
 		end
 	end)
 	return function()
@@ -384,6 +497,12 @@ function TutorialCues.skipButton(shown: boolean, onTap: () -> ())
 			local column = hud and hud:FindFirstChild("StatusRow")
 			if column and column:IsA("GuiObject") and column.Visible and column.AbsolutePosition.Y < SKIP_SIZE.Y + 8 then
 				right = math.min(right, column.AbsolutePosition.X - SKIP_EDGE)
+			end
+			-- a computer's top-right cluster (the cash and, under it, your level: Config/DesktopHud) reaches under the
+			-- top bar: Skip sits left of it too
+			local cluster = hud and hud:FindFirstChild("TopRow")
+			if cluster and cluster:IsA("GuiObject") and cluster.Visible and cluster.AbsoluteSize.X > 0 and cluster.AbsolutePosition.Y + cluster.AbsoluteSize.Y > 4 then
+				right = math.min(right, cluster.AbsolutePosition.X - SKIP_EDGE)
 			end
 			made.Position = UDim2.fromOffset(right, 4)
 		end)
@@ -566,12 +685,34 @@ function TutorialCues.spotlight(target: GuiObject?)
 		table.insert(frames, dim)
 	end
 	spotFrames = frames
+	-- The hole in the button's shape: the four dims leave a box; inside it (clipped to it) a thick outline in the dim's
+	-- colour fills the box's corners round the button's own rounding
+	local box = Instance.new("Frame")
+	box.Name = "DimCorners"
+	box.BackgroundTransparency = 1
+	box.ClipsDescendants = true
+	box.ZIndex = 15
+	box.Active = false
+	box.Visible = false
+	box.Parent = gui()
+	local shape = Instance.new("Frame")
+	shape.BackgroundTransparency = 1
+	shape.Size = UDim2.fromScale(1, 1)
+	shape.ZIndex = 15
+	shape.Parent = box
+	local shapeCorner = Instance.new("UICorner")
+	shapeCorner.Parent = shape
+	local shapeStroke = Instance.new("UIStroke")
+	shapeStroke.Color = DIM_COLOR
+	shapeStroke.Transparency = DIM_TRANSPARENCY
+	shapeStroke.Parent = shape
 	RunService.RenderStepped:Connect(function()
 		local current = spotTarget
 		local shown = current ~= nil and current.Parent ~= nil and current.Visible and current.AbsoluteSize.X > 0
 		for _, dim in frames do
 			dim.Visible = shown
 		end
+		box.Visible = shown
 		if not shown or not current then
 			return
 		end
@@ -588,6 +729,11 @@ function TutorialCues.spotlight(target: GuiObject?)
 			frames[index].Position = UDim2.fromOffset(rect.x, rect.y)
 			frames[index].Size = UDim2.fromOffset(rect.w, rect.h)
 		end
+		local radius = CueShape.radius({ w = current.AbsoluteSize.X, h = current.AbsoluteSize.Y }, cornerOf(current), SPOT_PAD, 0)
+		box.Position = UDim2.fromOffset(hole.x, hole.y)
+		box.Size = UDim2.fromOffset(hole.w, hole.h)
+		shapeCorner.CornerRadius = UDim.new(0, radius)
+		shapeStroke.Thickness = radius -- reaches the box's corners (they are radius * 0.42 away)
 	end)
 end
 

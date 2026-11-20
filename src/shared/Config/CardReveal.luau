@@ -74,5 +74,7 @@ return {
 	-- every `spinSeconds`, a shine every
 	-- `shineEvery` s, its rarity's tag), and once all are turned the rest dims (black at `dim` over them)
 	BEST = { from = "Very Rare", halo = 2.3, glow = { 0.05, 0.4 }, rim = 3, spinSeconds = 2.4, shineEvery = 2.6, dim = 0.55 },
-	CREATURE = { height = 1.3, rise = 0.2, toward = 0.8, popSeconds = 0.45, roar = 1.12, turn = 18, facing = 25, holdSeconds = 1.6, backSeconds = 0.35 },
+	-- `on` false (owner 2026-11-20: "Remove pet models on pack openings"): no creature comes out of a card, nor through
+	-- a Legendary's sky tear; the cards, the tear and their effects play as before
+	CREATURE = { on = false, height = 1.3, rise = 0.2, toward = 0.8, popSeconds = 0.45, roar = 1.12, turn = 18, facing = 25, holdSeconds = 1.6, backSeconds = 0.35 },
 }

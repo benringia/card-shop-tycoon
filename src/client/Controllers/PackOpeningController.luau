@@ -381,7 +381,9 @@ local function onPackOpened(productId: string, results: { PullResult }, newFlags
 	for _, pull in pulls do
 		table.insert(names, pull.card.name)
 	end
-	require(ClientUtil:WaitForChild("CreatureVisuals")).ensure(names)
+	if CardReveal.CREATURE.on then -- no creature models in pack openings since 2026-11-20: nothing to fetch
+		require(ClientUtil:WaitForChild("CreatureVisuals")).ensure(names)
+	end
 	generation += 1
 	local gen = generation
 	opened = pack

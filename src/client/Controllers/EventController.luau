@@ -99,7 +99,8 @@ local function render()
 	local text = EventNow.chip()
 	-- TutorialDone is only set in the main game (false through Pish's tour); elsewhere the tour is long over
 	local roomy = UIController.GetScreenGui().AbsoluteSize.Y >= Events.CHIP.minScreen
-	local visible = allowed and roomy and event ~= nil and text ~= nil and Players.LocalPlayer:GetAttribute("TutorialDone") ~= false
+	-- only when it matters (owner 2026-11-21): the event's day and the hour before it
+	local visible = allowed and roomy and event ~= nil and text ~= nil and EventNow.chipShown() and Players.LocalPlayer:GetAttribute("TutorialDone") ~= false
 	holder.Visible = visible
 	if not visible or not event or not text then
 		return

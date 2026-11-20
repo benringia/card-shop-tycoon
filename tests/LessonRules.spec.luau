@@ -94,7 +94,7 @@ return {
 		expect.isNil(by.sword.on, "the sword is handed over at its level: taught then")
 		expect.equal(by.jobs.level, Jobs.UNLOCK_LEVEL, "jobs at their unlock (nothing to place)")
 		assert(by.trophy.trigger == "trophy" and by.titles.trigger == "title" and by.prices.trigger == "tourDone", "the event lessons as before")
-		expect.equal(#Pish.LESSONS, 11, "eleven lessons, not eighteen")
+		expect.equal(#Pish.LESSONS, 12, "twelve lessons, not eighteen (the healing spring's came on launch day)")
 	end,
 
 	["due: a level-up only brings what's taught at its level, never a first-use lesson"] = function()
@@ -188,6 +188,26 @@ return {
 		assert(trophy and trophy.level == nil, "the first trophy has an event lesson")
 	end,
 
+	-- Owner 2026-11-21 (launch day): "if a player pet dies for the first time, chikin or pish should appear and talk to
+	-- them about the healing spring. with an option to skip it ofcourse": Pish's lesson, brought by the first faint, one
+	-- line with Got it! (a lesson that teaches nothing step by step), his paws leading to the spring
+	["a creature's first faint brings the healing spring's lesson, once"] = function()
+		same(LessonRules.byEvent(Pish.LESSONS, "faint", {}), { "spring" }, "the first faint")
+		same(LessonRules.byEvent(Pish.LESSONS, "faint", { spring = false }), {}, "already waiting")
+		same(LessonRules.byEvent(Pish.LESSONS, "faint", { spring = true }), {}, "seen: never again")
+		local spring
+		for _, lesson in Pish.LESSONS do
+			if lesson.id == "spring" then
+				spring = lesson
+			end
+		end
+		assert(spring and spring.level == nil and spring.shelf == nil and spring.on == nil, "an event's lesson: never by level, nothing to place")
+		same(LessonRules.due(Pish.LESSONS, 1, 100, {}), LessonRules.due(Pish.LESSONS, 1, 100, { spring = true }), "never due by level")
+		local line = PishTalk.LESSONS.spring
+		assert(line and string.find(line, "spring", 1, true), "his line names the spring")
+		assert(not PishTalk.AFTER.spring, "one line and Got it!: no walkthrough")
+	end,
+
 	["byEvent: the trophy lesson until it's been seen or is waiting; never due by level"] = function()
 		same(LessonRules.byEvent(Pish.LESSONS, "trophy", {}), { "trophy" }, "the first trophy")
 		same(LessonRules.byEvent(Pish.LESSONS, "trophy", { trophy = false }), {}, "already waiting")
@@ -233,6 +253,38 @@ return {
 		expect.equal(LessonRules.mayStart(now, now - pace.free, nil, pace), true, "free long enough, no visit yet")
 		expect.equal(LessonRules.mayStart(now, now - 100, now - pace.gap + 1, pace), false, "his last visit just ended")
 		expect.equal(LessonRules.mayStart(now, now - 100, now - pace.gap, pace), true, "a breather later")
+	end,
+
+	-- Owner 2026-11-21: "The moment player unlock jobs. pish will introduce it to them." The jobs lesson came at its
+	-- level but waited its turn: behind lessons queued earlier and Pish's breather after his last visit (PACE.gap),
+	-- minutes after the unlock. It now comes first and skips the breather; he still never interrupts (free a moment)
+	["the jobs lesson comes the moment jobs unlock: first in line, no breather"] = function()
+		local by = {}
+		for _, lesson in Pish.LESSONS do
+			by[lesson.id] = lesson
+		end
+		expect.equal((by.jobs :: any).rush, true, "jobs rush")
+		expect.equal(LessonRules.rushes(Pish.LESSONS, "jobs"), true)
+		expect.equal(LessonRules.rushes(Pish.LESSONS, "forge"), false)
+		expect.equal(LessonRules.rushes(Pish.LESSONS, "nope"), false, "an unknown lesson")
+		same(LessonRules.rushFirst({ "showcase", "forge", "jobs", "trophy" }, Pish.LESSONS), { "jobs", "showcase", "forge", "trophy" }, "first in line, the rest in their order")
+		same(LessonRules.rushFirst({ "showcase", "forge" }, Pish.LESSONS), { "showcase", "forge" }, "none rushing: as it was")
+		same(LessonRules.rushFirst({}, Pish.LESSONS), {}, "nothing waiting")
+		local pace = Pish.PACE
+		local now = 1000
+		expect.equal(LessonRules.mayStart(now, now - 100, now - 5, pace, true), true, "his last visit just ended: he comes anyway")
+		expect.equal(LessonRules.mayStart(now, now - 100, now - 5, pace, false), false, "any other lesson waits the breather")
+		expect.equal(LessonRules.mayStart(now, nil, nil, pace, true), false, "never while they're busy (the level-up card, a fight)")
+		expect.equal(LessonRules.mayStart(now, now - pace.free + 0.5, nil, pace, true), false, "free a moment first")
+	end,
+
+	-- ...and an introduction isn't gone in 20 seconds: a lesson with words for inside its window (jobs, prices) waits
+	-- longer for the tap than one that only points
+	["a lesson with an introduction waits longer for the tap than one that only points"] = function()
+		expect.equal(LessonRules.pointSeconds(false, Pish), Pish.LESSON_SECONDS)
+		expect.equal(LessonRules.pointSeconds(true, Pish), Pish.INTRO_SECONDS)
+		assert(Pish.INTRO_SECONDS >= Pish.LESSON_SECONDS * 2, "time to read, find the Phone and tap")
+		assert(Pish.INTRO_SECONDS <= 60, "but he doesn't stand there for minutes")
 	end,
 
 	["whileBusy: a visit carries on, steps back while they're busy, and leaves past Pish.PACE.wait"] = function()

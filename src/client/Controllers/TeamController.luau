@@ -399,7 +399,8 @@ local function placeStrip()
 		local bottom = status.AbsolutePosition.Y + status.AbsoluteSize.Y
 		column.Position = UDim2.new(1, -STRIP.right, 0, bottom + 8)
 	else
-		column.Position = UDim2.new(1, -STRIP.right, 0, STRIP.top)
+		-- under your row at the top right in a computer's column layout (UIController.GetColumnStart)
+		column.Position = UDim2.new(1, -STRIP.right, 0, UIController.GetColumnStart(STRIP.top))
 	end
 end
 
@@ -502,6 +503,7 @@ local function buildStrip()
 	UIController.OnCompact(function()
 		task.defer(placeStrip)
 	end)
+	UIController.OnPlaced(placeStrip) -- the top row moved or grew
 end
 
 local function refreshPrompts()

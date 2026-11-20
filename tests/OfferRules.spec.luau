@@ -9,6 +9,9 @@ return {
 	-- Owner 2026-11-19: "when manning the register, sometimes there is a random sound playing when checking out without
 	-- a notification of whats going on": a kid's big rip plays the reveal hit, so the owner is told what it was
 	["a kid's big pull tells the shop's owner what the sound was"] = function()
+		-- its reveal hit plays at a share of the pack opening's own (owner 2026-11-20: "turn down kid pulling a high
+		-- rarity card sound": it played at full volume over the whole shop)
+		assert(Customers.REVEAL.hitVolume > 0 and Customers.REVEAL.hitVolume <= 0.5, "well under your own pack opening's")
 		expect.equal(OfferRules.pullLine(Customers, "Very Rare", 3, "Emberfox", false), "🎉 A kid pulled a Very Rare Emberfox from your pack!")
 		expect.equal(OfferRules.pullLine(Customers, "Epic", 4, "Voidmaw", false), "🎉 A kid pulled an Epic Voidmaw from your pack!")
 		expect.equal(OfferRules.pullLine(Customers, "Legendary", 5, "Solarion", true), "🎉 A kid pulled a foil Legendary Solarion from your pack!")

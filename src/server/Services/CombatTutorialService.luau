@@ -266,6 +266,10 @@ function CombatTutorialService.Start()
 	BattleService.OnMemberLeft(function(player)
 		fightOver(player, "run")
 	end)
+	-- a creature fainted: the first time, Pish tells them about the healing spring (owner 2026-11-21)
+	BattleService.OnFainted(function(player)
+		TutorialService.Event(player, "faint")
+	end)
 
 	task.spawn(function()
 		while true do

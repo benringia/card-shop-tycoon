@@ -66,8 +66,30 @@ end
 -- thumbstick (bottom-left). Sizes follow the screen's height; every button is at least 48 px. With a mouse
 -- (`noAttack`: a click attacks, owner 2026-11-03) there's no Attack button: the Pet button takes its corner and Dodge
 -- and Skill move up beside it.
+-- A computer's (owner 2026-11-20: "DESKTOP ONLY. make the icons more compact", no Dodge button, Target gone, Run
+-- smaller): Shift dodges and Tab targets (the fight locks one by itself), so it draws four, smaller: Skill and the Pet
+-- button in a row in the corner, Super over the Pet button (Swap, never shown, left of Skill). Run sits in the top bar
+-- there (Config/CombatHud MOUSE_RUN). No attack, dodge, target or run rect.
 export type CombatButtons = { attack: Rect, dodge: Rect, skill: Rect, pet: Rect, signature: Rect, swap: Rect, run: Rect, target: Rect }
+local function mouseButtons(view: Size): any
+	local u = math.clamp(view.h * 0.11, 44, 76)
+	local margin = 0.3 * u
+	local gap = 0.2 * u
+	local pet = { w = 1.1 * u, h = u, x = 0, y = 0 }
+	pet.x, pet.y = view.w - margin - pet.w, view.h - margin - pet.h
+	local skill = { w = pet.w, h = pet.h, x = pet.x - gap - pet.w, y = pet.y }
+	local signature = { w = 0.85 * u, h = 0.8 * u, x = 0, y = 0 }
+	-- room between them for Super's name or its lock's pill
+	signature.x, signature.y = pet.x + (pet.w - signature.w) / 2, pet.y - 0.32 * u - signature.h
+	local small = math.max(32, 0.5 * u)
+	local swap = { w = small, h = small, x = skill.x - gap - small, y = view.h - margin - small }
+	return { skill = skill, pet = pet, signature = signature, swap = swap }
+end
+
 function UiLayout.combatButtons(view: Size, noAttack: boolean?): CombatButtons
+	if noAttack then
+		return mouseButtons(view)
+	end
 	local u = math.clamp(view.h * 0.17, 52, 110)
 	local function dim(k: number): number
 		return math.max(48, k * u)
@@ -181,15 +203,22 @@ end
 -- The medallion dial (owner 2026-11-14 pick C): the weapon in hand in a `chip` px medallion in the box's bottom-right
 -- corner, the others on a track `arc` px from its middle, the one before on the left and the next on top, each with a
 -- `hit`-sized tap area: a square box from the left one's tap area to the medallion's edge
-export type SwitchLook = { chip: number, side: number, arc: number, hit: number, gap: number, right: number, compactChip: number? }
+-- `fightScale`: its size in a computer's fight (layout "mouse"), of its size out of one (owner 2026-11-20: it was the
+-- biggest thing over the compact buttons)
+export type SwitchLook = { chip: number, side: number, arc: number, hit: number, gap: number, right: number, compactChip: number?, fightScale: number? }
 export type SwitchRect = { x: number, y: number, w: number, h: number, scale: number }
 -- `clear`: boxes it keeps out of (a phone's top-right column with the party bar under it, owner 2026-11-13): it
 -- moves just under one it would sit on, kept on screen. `compact` (phones, owner 2026-11-13 pick A): only the weapon in
 -- hand, a bigger chip (`compactChip`), its count on its corner. `above` (a computer, owner 2026-11-13: "move weapon
 -- lower to close the gap"): the cash column; out of a fight it sits beside it, its foot with the column's (Pish's toasts
--- rise over the column), or just above it when that would reach the screen's middle (the bottom tiles)
-function UiLayout.weaponSwitch(view: Size, look: SwitchLook, scale: number, fight: boolean, clear: { Rect }?, compact: boolean?, above: Rect?): SwitchRect
+-- rise over the column), or just above it when that would reach the screen's middle (the bottom tiles).
+-- In a fight (owner 2026-11-20, the combat HUD tidy: "weapon dial joins the skills") it sits right over the fight
+-- buttons in its column, for the layout on screen (`layout`: "touch", "mouse" or "wild"; not told: clear of all three)
+function UiLayout.weaponSwitch(view: Size, look: SwitchLook, scale: number, fight: boolean, clear: { Rect }?, compact: boolean?, above: Rect?, layout: string?): SwitchRect
 	local s = math.max(scale, 48 / look.hit)
+	if fight and layout == "mouse" and look.fightScale then
+		s *= look.fightScale -- a pointer needs less than a finger
+	end
 	local chip = if compact then look.compactChip or look.chip else look.chip
 	local w = (if compact then chip else look.arc + look.hit / 2 + look.chip / 2) * s
 	local h = w
@@ -209,8 +238,13 @@ function UiLayout.weaponSwitch(view: Size, look: SwitchLook, scale: number, figh
 		end
 	end
 	if fight then
+		local sets: { any } = if layout == "touch" then { UiLayout.combatButtons(view) }
+			elseif layout == "mouse" then { UiLayout.combatButtons(view, true) }
+			elseif layout == "wild" then { UiLayout.wildButtons(view) }
+			else { UiLayout.combatButtons(view), UiLayout.combatButtons(view, true), UiLayout.wildButtons(view) }
 		local avoid: { Rect } = {}
-		for _, rects in { UiLayout.combatButtons(view) :: any, UiLayout.combatButtons(view, true), UiLayout.wildButtons(view) } do
+		y = view.h - h -- from the screen's foot up: it comes to rest on the top button in its column
+		for _, rects in sets do
 			for _, rect in rects do
 				table.insert(avoid, rect)
 			end

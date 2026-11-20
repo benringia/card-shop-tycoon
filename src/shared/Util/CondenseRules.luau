@@ -184,9 +184,125 @@ function CondenseRules.rowLine(owned: number, have: number, need: number, ready:
 		return "Max stars", 1
 	end
 	if ready then
-		return `x{owned} · {need} copies for the next star`, 1
+		return `You have {owned} copies · a star uses {need}`, 1
 	end
-	return `{have} of {need} copies`, math.clamp(have / need, 0, 1)
+	return `{have} of {need} copies for the next star`, math.clamp(have / need, 0, 1)
+end
+
+-- The big button's words (owner 2026-11-20: "very confusing ... easily understandable"): what it does and how long it
+-- takes (`clock`, "2:00"), "Putting it in..." while the server answers, else what's missing (`reason` from `plan`:
+-- "max", "short:<have>:<need>")
+function CondenseRules.buttonWords(canCondense: boolean, reason: string?, clock: string, inFlight: boolean): string
+	if inFlight then
+		return "Putting it in..."
+	elseif canCondense then
+		return `Add a star · takes {clock}`
+	elseif reason == "max" then
+		return "Max stars reached"
+	end
+	local have, need = string.match(reason or "", "^short:(%d+):(%d+)$")
+	return if have then `Need {need} extra copies (you have {have})` else "This copy can't go in now"
+end
+
+-- A finished star waiting to be shown (the player's CondenserDone attribute, set by CondenserService when the job ends
+-- and cleared when they take the card out in the Condenser's window): the card as it is now
+export type Done = { cardId: string, foil: boolean, grade: string, level: number, stars: number }
+
+local DONE_GRADES = { C = true, B = true, A = true, S = true }
+
+function CondenseRules.encodeDone(done: Done): string
+	return `{done.cardId}|{if done.foil then 1 else 0}|{done.grade}|{done.level}|{done.stars}`
+end
+
+-- `minStars`: the fewest stars a waiting result may have (1, a Condenser's new star; 0 for the Grading Station's, whose
+-- plain copies have none)
+function CondenseRules.decodeDone(value: unknown, minStars: number?): Done?
+	if typeof(value) ~= "string" then
+		return nil
+	end
+	local cardId, foil, grade, level, stars = string.match(value, "^([^|]+)|([01])|(%a)|(%d+)|(%d+)$")
+	local levelNumber, starNumber = tonumber(level), tonumber(stars)
+	if not cardId or not DONE_GRADES[grade] or not levelNumber or not starNumber or starNumber < (minStars or 1) then
+		return nil
+	end
+	return { cardId = cardId, foil = foil == "1", grade = grade, level = levelNumber, stars = starNumber }
+end
+
+-- The reveal's line under the stars: how many it has now, in words (owner 2026-11-20: "easily understandable with
+-- no '->'")
+function CondenseRules.doneLine(stars: number): string
+	if stars >= 5 then
+		return `Now {stars} stars: the most!`
+	end
+	return `Now {stars} star{if stars == 1 then "" else "s"}!`
+end
+
+-- Under the chosen card's stars: which star this adds, or that it has them all
+function CondenseRules.starWords(stars: number, maxStars: number): string
+	if stars >= maxStars then
+		return `Has all {maxStars} stars`
+	end
+	return `Adds star {stars + 1} of {maxStars}`
+end
+
+-- The box under the chosen card, two plain lines: the copy that stays and gets the star (`gradeText`: "Grade S"), and
+-- the copies used up (`uses`: "3 Grade C + 1 Grade B"; nil with nothing to use yet)
+-- (`what`: "star" at the Condenser, "grade" at the Grading Station)
+function CondenseRules.keepWords(gradeText: string, level: number, uses: string?, what: string?): (string, string?)
+	return `Gets the {what or "star"}: your {gradeText} · Lv {level} copy`, if uses then `Used up: {uses}` else nil
+end
+
+-- The Grading Station in plain words (owner 2026-11-20: "check the other machines ... for pain points/ confusing
+-- elements"; it said "Owned 7 · C -> B: 3 + $5") ----------------------------------------------------------------
+
+-- A row's line: the copies you have and what the next grade uses (`toGrade` nil at Grade S)
+function CondenseRules.gradeRowLine(owned: number, toGrade: string?, copies: number, cashText: string): string
+	local have = `You have {owned} {if owned == 1 then "copy" else "copies"}`
+	if not toGrade then
+		return `{have} · Grade S: the best`
+	end
+	return `{have} · Grade {toGrade} uses {copies} + {cashText}`
+end
+
+-- Under the chosen card's name: what grading does to it
+function CondenseRules.gradeWords(grade: string, nextGrade: string?): string
+	return if nextGrade then `Makes it Grade {nextGrade}` else `Grade {grade}: the best it can be`
+end
+
+-- The Grading Station's button: what it makes, the price (or that a Gold Seal pays) and the wait; else what's missing.
+-- `grade` false: this copy can't be graded now (`reason` from the plan: "max", "short:<have>:<need>")
+function CondenseRules.gradeButtonWords(view: { inFlight: boolean, grade: (string | boolean)?, cash: string, have: string, affordable: boolean, gold: boolean, clock: string, reason: string? }): string
+	if view.inFlight then
+		return "Putting it in..."
+	end
+	if typeof(view.grade) == "string" then
+		if not view.affordable then
+			return `Need {view.cash} (you have {view.have})`
+		end
+		return `Make it Grade {view.grade} · {if view.gold then "Gold Seal pays" else view.cash} · takes {view.clock}`
+	end
+	if view.reason == "max" then
+		return "Already Grade S"
+	end
+	local have, need = string.match(view.reason or "", "^short:(%d+):(%d+)$")
+	return if have then `Need {need} extra copies (you have {have})` else "This copy can't go in now"
+end
+
+-- The grade under `grade` (what a card was before its grading); nil for C
+local GRADE_UNDER = { B = "C", A = "B", S = "A" }
+function CondenseRules.gradeBefore(grade: string): string?
+	return GRADE_UNDER[grade]
+end
+
+-- The reveal's line under the new grade
+function CondenseRules.gradeDoneLine(grade: string): string
+	return if grade == "S" then "Now Grade S: the best!" else `Now Grade {grade}!`
+end
+
+-- How much a number grows, for the After column ("+51"); nothing when it doesn't
+function CondenseRules.gain(before: number, after: number): string
+	local more = math.floor(after - before + 0.5)
+	return if more > 0 then `+{more}` else ""
 end
 
 return CondenseRules

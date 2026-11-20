@@ -19,6 +19,30 @@ return {
 		assert(isAsset(deck), "deck box picture uploaded")
 	end,
 
+	-- Owner 2026-11-20: "delivery boxes should use the actualy first spark model as box icons ... also change the
+	-- Icons and the box icons of the other products": every product the shop orders has a picture of its real model,
+	-- on its row in the menus and on its delivery box's sticker
+	["every product's picture: by its own id, else its look's"] = function()
+		local sleeves = ProductPictureRules.forProduct(ProductPictures, "CardSleeves", nil, nil)
+		assert(isAsset(sleeves), "the sleeve packets' picture")
+		local box = ProductPictureRules.forProduct(ProductPictures, "FirstSparkBox", nil, nil)
+		assert(isAsset(box), "the sealed booster box's picture")
+		assert(sleeves ~= box)
+		expect.equal(ProductPictureRules.forProduct(ProductPictures, "FirstSparkPack", "FirstSpark", "Pack"), ProductPictures.LOOKS.FirstSpark.Pack, "a pack: its look's")
+		expect.equal(ProductPictureRules.forProduct(ProductPictures, "DeckBox", "FirstSpark", "Deck"), ProductPictures.LOOKS.FirstSpark.Deck)
+		expect.isNil(ProductPictureRules.forProduct(ProductPictures, "Mystery", nil, nil), "none yet: the drawn icon")
+		expect.isNil(ProductPictureRules.forProduct(ProductPictures, "Mystery", "Frontier", "Pack"))
+		-- everything Order Stock sells has one
+		local Products = require("../src/shared/Config/Products")
+		for _, product in Products.List do
+			if not product.bulk then
+				local look = if product.id == "FirstSparkPack" then "FirstSpark" elseif product.id == "DeckBox" then "FirstSpark" else nil
+				local kind = if product.id == "DeckBox" then "Deck" elseif look then "Pack" else nil
+				assert(isAsset(ProductPictureRules.forProduct(ProductPictures, product.id, look, kind)), `{product.name} has a picture`)
+			end
+		end
+	end,
+
 	["a look with no picture yet shows the drawn icon"] = function()
 		local pack, packIcon = ProductPictureRules.pick(ProductPictures, "Frontier", "Pack")
 		expect.isNil(pack)

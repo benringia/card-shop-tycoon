@@ -198,9 +198,7 @@ local function enter(player: Player, stepId: string)
 		-- shop's own customers complete the step
 		state = TutorialRules.customerSent(state)
 		states[player] = state
-		if CustomerService.HasRoom(player) then
-			CustomerService.SpawnForTest(player, "plain")
-		end
+		CustomerService.SendPlain(player)
 	elseif stepId == "gift" and not state.giftClaimed then
 		state.giftClaimed = true
 		ItemService.GiveItem(player, Pish.GIFT_ITEM, 1)
@@ -325,6 +323,12 @@ local function usedLesson(player: Player, lessonId: string)
 	elseif state.lessons[lessonId] == nil then
 		state.lessons = LessonRules.used(state.lessons, lessonId)
 	end
+end
+
+-- Something happened that a lesson waits for (Config/Pish LESSONS `trigger`), told from outside: a creature's first
+-- faint ("faint", CombatTutorialService from BattleService.OnFainted) brings the healing spring's
+function TutorialService.Event(player: Player, trigger: string)
+	queueEvent(player, trigger, inTown)
 end
 
 -- Studio's /tutorial lesson <id>: that lesson waits to be shown again

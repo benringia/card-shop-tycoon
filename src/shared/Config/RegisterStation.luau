@@ -69,6 +69,30 @@ return {
 	-- moneys at the table"; they were plain green bars and gold discs): `perRow` across, a note NOTE_ASPECT wide for its
 	-- length, `rowGap` between rows
 	GIVEN = { x = 0.35, z = 0.55, step = 0.47, perRow = 4, rowGap = 0.06, billSize = { 0.42, 0.02, 0.61 }, coinSize = { 0.035, 0.32, 0.32 } },
+	-- Tapping money (owner 2026-11-20: "make clicking on moneys on the cashier more immersive"; it popped onto the
+	-- counter with no sound): a tapped note or coin flies `fly` seconds out of its drawer slot in an arc `arc` studs
+	-- high (a coin flips `flips` times, a note tilts `tilt` degrees) and lands on the counter; tapped there it flies
+	-- `back` seconds home. Each has its sound: `cut` seconds of a longer clip, its pitch `pitchStep` higher with every
+	-- piece on the counter up to `pitchMax` (RegisterStationRules.givePitch), `backPitch` going back. Its value pops
+	-- over it ("+$1") and rises `pop.rise` studs; the stack under your mouse glows (`hover`); the exact change glows
+	-- mint (`exact`) before it gives itself. Sounds: Pro Sound Effects, Roblox-licensed, not heard by the owner yet.
+	GIVE_FX = {
+		fly = 0.22,
+		back = 0.18,
+		arc = 0.55,
+		flips = 1,
+		tilt = 22,
+		pop = { seconds = 0.75, rise = 0.5, width = 110, height = 34 },
+		sounds = {
+			note = { id = "rbxassetid://9113726249", volume = 0.35, cut = 0.32 }, -- Cash Counting Paper Money Constant 3
+			coin = { id = "rbxassetid://9113850236", volume = 0.3, cut = 0.55 }, -- Coin Throws 9 (a single quarter)
+			pitchStep = 0.04,
+			pitchMax = 1.3,
+			backPitch = 0.85,
+		},
+		hover = { color = { 255, 201, 63 }, fill = 0.75 },
+		exact = { color = { 95, 224, 164 }, fill = 0.35, seconds = 0.6 },
+	},
 	SCREEN_PIXELS = 300, -- SurfaceGui PixelsPerStud on the screen and the keypad
 	-- The screen's one big line for each situation (owner 2026-11-16: "improve the registers UI ... it is also currently
 	-- confusing for the kids"; round 2 mockup approved): it is the guide, so there's no hint strip
@@ -119,8 +143,14 @@ return {
 		bad = { 255, 120, 130 },
 		gold = { 58, 47, 18 },
 	},
-	-- Leave, a pill at the top-left corner below Roblox's buttons, clear of the drawer and the card machine
-	LEAVE_PILL = { x = 16, y = 64, width = 130, height = 48 },
+	-- Leave, at the top-left corner below Roblox's buttons, clear of the drawer and the card machine. In the soft
+	-- cotton candy look with an icon and its key in a white circle, like the HUD's tiles (owner 2026-11-21: "make
+	-- this LEAVE button in cashier consistent with the rest of the buttons. and add a hotkey"): `icon` (Config/UIIcons,
+	-- turned to point left) and `key`, which leaves too (RegisterStationRules.leaveKey). The key was X in a white
+	-- circle on the button's corner, which read as a close button (owner 2026-11-21: "hotkey X look like a close ...
+	-- change the design so that the X will not look like close button"): now L for Leave, drawn as a square keyboard
+	-- key (`cap` px, with a lip) inside the button after the word
+	LEAVE_PILL = { x = 16, y = 64, width = 176, height = 52, icon = "Next", key = "L", cap = 26 },
 	-- The drawer's pictures (tools/ui-art/make_money.py, assets/ui/money; our own play money, uploaded 2026-11-16)
 	MONEY_IMAGES = {
 		-- notes: the portrait drawer notes (drawer_<cents>.png: lying lengthwise, the value huge and upright)

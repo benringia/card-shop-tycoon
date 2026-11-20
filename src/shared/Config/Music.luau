@@ -36,7 +36,8 @@ return {
 		},
 		-- Each track's own volume where it isn't `volume` (MusicRules.trackVolume; owner 2026-11-19: "add the two extra
 		-- music with volume 0.21")
-		volumes = { [2] = 0.21, [3] = 0.21 },
+		-- All three a little louder since 2026-11-20 (owner: "make town musics a little bit louder"): 0.21 -> 0.25
+		volumes = { [2] = 0.25, [3] = 0.25 },
 		-- Soft APM pieces to choose from (owner 2026-11-04: the first pick overpowered the ambience)
 		options = {
 			{ name = "White Owl (bells and piano)", id = "rbxassetid://9048757009" },
@@ -48,7 +49,7 @@ return {
 		-- The owner's number (2026-11-04, with White Owl): 0.18, down from 0.21. Before: 0.12 overpowered the birds, wind
 		-- and waterfall (with the first, louder track); 0.013, 0.022, 0.045 and 0.07 too low. Try others with
 		-- "/music 4 <volume>".
-		volume = 0.18,
+		volume = 0.22, -- 0.18 until 2026-11-20 (owner: "a little bit louder")
 		-- A CompressorSoundEffect on the music as a limiter: the track swells in its later parts (owner 2026-11-03: "too
 		-- loud, specially on later parts"), so above the threshold it barely grows (ratio 20). Round 5 kept the threshold,
 		-- so the loudest part rises with the volume (tests/MusicRules).

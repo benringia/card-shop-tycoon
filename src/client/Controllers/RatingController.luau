@@ -158,7 +158,8 @@ local function onUpdate(payload: unknown)
 	end
 	local update = payload :: Update
 	latest = update
-	chip.Visible = not UIController.IsCompact() -- phones: the rating is on the Phone (its status bar, Reviews)
+	-- phones: the rating is on the Phone (its status bar, Reviews); a computer's HUD dropped its chip too (chip.hud)
+	chip.Visible = Customers.RATING.chip.hud and not UIController.IsCompact()
 	numberLabel.Text = string.format("%.1f", update.rating)
 	for index, clip in fills do
 		clip.Size = UDim2.fromScale(math.floor(math.clamp(update.rating - (index - 1), 0, 1) * 4) / 4, 1)
@@ -182,7 +183,7 @@ function RatingController.Start()
 		if compact then
 			chip.Visible = false
 		elseif latest then
-			chip.Visible = true
+			chip.Visible = Customers.RATING.chip.hud
 		end
 	end)
 end

@@ -84,7 +84,7 @@ type Target = {
 
 -- Each lesson (Config/Pish LESSONS) by id. One with a shelf, a product or the trophy is taught step by step
 -- (lessonSituation); the others point at one place: the first sword's way is the Wild portal, jobs their tile
-type Lesson = { id: string, level: number?, icon: string, shelf: string?, product: string?, trigger: string?, on: string? }
+type Lesson = { id: string, level: number?, icon: string, shelf: string?, product: string?, trigger: string?, on: string?, rush: boolean? }
 local PORTAL = Wild.PLAZA_PORTAL
 local LESSONS: { [string]: Lesson } = {}
 for _, lesson in Pish.LESSONS do
@@ -94,6 +94,8 @@ local POINT_AT: { [string]: Target } = {
 	sword = { spot = Vector3.new(PORTAL.x, PORTAL.y + SPOT_HEIGHT, PORTAL.z) },
 	jobs = { hud = "Jobs", tray = true },
 	prices = { hud = "Prices", tray = true },
+	-- a creature's first faint: his paws lead to the healing spring in the plaza
+	spring = { spot = Vector3.new(Wild.SPRING.x, Wild.SPRING.y + SPOT_HEIGHT, Wild.SPRING.z) },
 }
 -- The stuck helper's two nudges (Util/LessonRules.nudge)
 local NUDGES: { [string]: { target: Target, icon: string } } = {
@@ -1033,7 +1035,7 @@ local function updateVisit()
 			updateLessonTalk()
 		elseif visitUsed(spec) then
 			endVisit(true)
-		elseif os.clock() - now.started >= Pish.LESSON_SECONDS then
+		elseif os.clock() - now.started >= LessonRules.pointSeconds(now.kind == "lesson" and PishTalk.AFTER[now.id] ~= nil, Pish) then
 			endVisit(false)
 		end
 		return
@@ -1064,10 +1066,13 @@ local function updateVisit()
 		end
 		return
 	end
-	if #lessonQueue > 0 and mayStart then
+	-- a lesson that comes the moment its thing unlocks (jobs, owner 2026-11-21) goes first and skips the breather
+	local waiting = LessonRules.rushFirst(lessonQueue, Pish.LESSONS)
+	local rush = waiting[1] ~= nil and LessonRules.rushes(Pish.LESSONS, waiting[1])
+	if #waiting > 0 and (mayStart or LessonRules.mayStart(clock, freeSince, lastEnded, Pish.PACE, rush)) then
 		-- one that has you buy something waits until you can pay for it (owner 2026-11-16: the glass case)
 		local cash = tonumber(player:GetAttribute("Cash")) or 0
-		local ready = LessonRules.firstReady(lessonQueue, Pish.LESSONS, cash, function(lesson): number
+		local ready = LessonRules.firstReady(if mayStart then waiting else { waiting[1] }, Pish.LESSONS, cash, function(lesson): number
 			local shelf = if lesson.shelf then Shelves.ById[lesson.shelf] else nil
 			local product = if lesson.product then Products.ById[lesson.product] else nil
 			-- a first-use lesson explains what's placed already: nothing left to pay for. It waits (keeping its place)

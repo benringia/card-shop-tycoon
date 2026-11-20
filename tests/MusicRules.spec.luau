@@ -115,7 +115,8 @@ return {
 
 	-- Owner 2026-11-19 ("should we have a playlist for music for town? instead of just one?", then "add the two extra
 	-- music with volume 0.21"): White Owl, Wistful Wonderings and Soft Tranquility take turns, each at its own volume
-	["the town plays three pieces in turn, the two new ones at 0.21"] = function()
+	-- ...each a little louder since 2026-11-20 (owner: "make town musics a little bit louder"): 0.18 -> 0.22, 0.21 -> 0.25
+	["the town plays three pieces in turn, each at its own volume"] = function()
 		local town = Music.TOWN
 		expect.equal(#town.tracks, 3)
 		local names = {}
@@ -130,9 +131,9 @@ return {
 		assert(string.find(names[1], "White Owl", 1, true), "White Owl first")
 		assert(string.find(names[2], "Wistful Wonderings", 1, true), "then Wistful Wonderings")
 		assert(string.find(names[3], "Soft Tranquility", 1, true), "then Soft Tranquility")
-		expect.equal(MusicRules.trackVolume(town, 1), 0.18, "White Owl keeps the owner's number")
-		expect.equal(MusicRules.trackVolume(town, 2), 0.21)
-		expect.equal(MusicRules.trackVolume(town, 3), 0.21)
+		expect.equal(MusicRules.trackVolume(town, 1), 0.22, "White Owl")
+		expect.equal(MusicRules.trackVolume(town, 2), 0.25)
+		expect.equal(MusicRules.trackVolume(town, 3), 0.25, "the two added pieces stay a touch over it, as the owner set them")
 		expect.equal(MusicRules.trackVolume({ volume = 0.05 }, 2), 0.05, "a place without its own numbers: its volume")
 		expect.equal(MusicRules.trackVolume({ volume = 0.05, volumes = { [2] = 0.1 } }, 1), 0.05, "a track without one")
 	end,
@@ -310,7 +311,7 @@ return {
 		for _, id in town.tracks do
 			expect.equal(string.match(id, "^rbxassetid://%d+$") ~= nil, true, id)
 		end
-		expect.equal(town.volume, 0.18, "the owner's number (2026-11-04, down from 0.21 with White Owl)")
+		expect.equal(town.volume, 0.22, "a little louder (owner 2026-11-20; 0.18 since 2026-11-04)")
 		-- The limiter still flattens the swells: its threshold is unchanged, so the loudest part rises with the volume
 		-- (round 5: "still too low" outweighs 2026-11-03's "never louder on the loudest part")
 		expect.equal(town.compressor.threshold, -48.5)

@@ -386,4 +386,48 @@ return {
 		expect.equal(parts(true, true, false), "- claim - -", "a phone: the scroll and Claim!")
 		expect.equal(parts(true, true, true), "- claim - -", "the week's Claim! the same")
 	end,
+	-- Owner 2026-11-21, with a picture of the Quests window: "improve quest window UI. easily understandable/immersive".
+	-- Each section gets a heading that says how it's going, each quest its count beside its name and its pay as chips
+	-- with pictures (no "250/250 · +$75 · +75 shop XP" line), and a goal of one reads like a sentence
+	["a goal of one reads naturally (never 'Beat a boss 1 times')"] = function()
+		for _, pooled in Quests.POOL do
+			assert(typeof(pooled.one) == "string" and #pooled.one > 0, `{pooled.id} has words for a goal of one`)
+			assert(not string.find(pooled.one, "{n}", 1, true), `{pooled.id}: no number to fill`)
+			assert(not string.find(pooled.one, " 1 times", 1, true), pooled.id)
+		end
+		local one = QuestRules.view({ day = 1, list = { { id = "boss", goal = 1, progress = 0, claimed = false } }, bonus = false }, Quests, 4)
+		expect.equal(one.quests[1].text, "Beat a boss")
+		local two = QuestRules.view({ day = 1, list = { { id = "boss", goal = 2, progress = 0, claimed = false } }, bonus = false }, Quests, 26)
+		expect.equal(two.quests[1].text, "Beat a boss 2 times")
+	end,
+
+	["the window: what a quest's row offers, what it pays, how the day is going"] = function()
+		local going = { id = "rip", kind = "cards", text = "Rip 8 packs", icon = "Pack", goal = 8, progress = 3, done = false, claimed = false, cash = 75, xp = 75 }
+		local done = table.clone(going)
+		done.progress, done.done = 8, true
+		local claimed = table.clone(done)
+		claimed.claimed = true
+		expect.equal(QuestRules.rowState(going, false), "going")
+		expect.equal(QuestRules.rowState(done, false), "claim", "finished: its pay waits")
+		expect.equal(QuestRules.rowState(claimed, false), "claimed")
+		expect.equal(QuestRules.rowState(done, true), "done", "a weekly quest pays through its chest")
+		expect.equal(QuestRules.rowState(going, true), "going")
+		expect.equal(QuestRules.countText(going), "3 / 8")
+		local pay = QuestRules.pay(going, false)
+		expect.equal(#pay, 2)
+		expect.equal(pay[1].icon, "Coin")
+		expect.equal(pay[1].text, "$75")
+		expect.equal(pay[2].text, "75 XP")
+		local weekly = QuestRules.pay(going, true)
+		expect.equal(#weekly, 1)
+		expect.equal(weekly[1].text, "Weekly Chest")
+		local view: any = { quests = { going, done, claimed }, bonusReady = false, bonusClaimed = false, claimable = 1 }
+		expect.equal(QuestRules.sectionLine(view), "2 of 3 done")
+		expect.equal(QuestRules.sectionLine({ quests = { done, claimed }, bonusReady = false, bonusClaimed = false, claimable = 1 } :: any), "All done!")
+		expect.equal(QuestRules.chestLeft(view, false), 2, "the day's chest: every quest claimed first")
+		expect.equal(QuestRules.chestLeft(view, true), 1, "the week's: every quest done")
+		expect.equal(QuestRules.chestWaiting(2), "2 more to go")
+		expect.equal(QuestRules.chestWaiting(1), "1 more to go")
+		expect.equal(QuestRules.chestWaiting(0), "Ready!")
+	end,
 }

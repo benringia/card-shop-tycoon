@@ -39,4 +39,9 @@ function EventNow.chip(): (string?, boolean)
 	return EventRules.chip(Events, EventNow.unix(), EventNow.override())
 end
 
+-- Whether the chip shows now (an event on, or about to start: EventRules.chipShown)
+function EventNow.chipShown(): boolean
+	return EventRules.chipShown(Events, EventNow.unix(), EventNow.override())
+end
+
 return EventNow

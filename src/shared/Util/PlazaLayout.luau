@@ -77,6 +77,12 @@ function PlazaLayout.footprints(cfg: any): { Footprint }
 	for _, angle in cfg.TABLES.angles do
 		add("table", angle, cfg.TABLES.r, cfg.TABLE.reach)
 	end
+	local support = cfg.SUPPORT
+	if support then
+		add("dog house", support.house.angle, support.house.r, support.house.reach)
+		add("dog beds", support.beds.angle, support.beds.r, support.beds.reach)
+		add("tip jar", support.jar.angle, support.jar.r, support.jar.reach)
+	end
 	for _, angle in cfg.LAMPS.angles do
 		add("lamp", angle, cfg.LAMPS.r, cfg.LAMPS.reach)
 	end
@@ -84,6 +90,54 @@ function PlazaLayout.footprints(cfg: any): { Footprint }
 		add("potted tree", tree.angle, tree.r, cfg.TREE_REACH)
 	end
 	planterPieces(cfg, add)
+	return list
+end
+
+-- The dogs' two beds (Config/Plaza SUPPORT.beds), side by side across the line to the spring: their middles, the first
+-- on the left as you look at them from the gazebo... as Server/Util/PlazaBuild places them
+function PlazaLayout.dogBeds(cfg: any): { Point }
+	local beds = cfg.SUPPORT.beds
+	local p = PlazaLayout.at(beds.angle, beds.r)
+	local length = math.sqrt(p.x * p.x + p.z * p.z)
+	-- the right-hand side of a frame looking at the spring (CFrame.lookAt's RightVector)
+	local rx, rz = p.z / length, -p.x / length
+	return {
+		{ x = p.x - rx * beds.apart, z = p.z - rz * beds.apart },
+		{ x = p.x + rx * beds.apart, z = p.z + rz * beds.apart },
+	}
+end
+
+-- Where each dog stands when it comes home (owner 2026-11-20: "add the dog house as a stop for both dogs"): right in
+-- front of its own bed, on the gazebo's side (beds.front studs past the bed's rim)
+function PlazaLayout.dogHomes(cfg: any): { Point }
+	local beds = cfg.SUPPORT.beds
+	local p = PlazaLayout.at(beds.angle, beds.r)
+	local length = math.sqrt(p.x * p.x + p.z * p.z)
+	local out = beds.radius + beds.front
+	local homes = {}
+	for _, bed in PlazaLayout.dogBeds(cfg) do
+		table.insert(homes, { x = bed.x - p.x / length * out, z = bed.z - p.z / length * out })
+	end
+	return homes
+end
+
+-- The plaza's solid things a town dog walks round (Util/PishPath.routeRound), `clear` studs wider than they are: the
+-- carts, the tables, the leaderboard's cards, the dog house, the jar and each bed by its own size (the cat sleeps on
+-- one: Pish walked through it, 2026-11-20; their homes are just past the rims). Not the planters at the edge
+export type Solid = { kind: string, x: number, z: number, radius: number }
+local SOLID = { stall = true, table = true, ["giant card"] = true, ["dog house"] = true, ["tip jar"] = true }
+function PlazaLayout.dogObstacles(cfg: any, clear: number): { Solid }
+	local list: { Solid } = {}
+	for _, f in PlazaLayout.footprints(cfg) do
+		if SOLID[f.kind] then
+			table.insert(list, { kind = f.kind, x = f.x, z = f.z, radius = f.radius + clear })
+		end
+	end
+	if cfg.SUPPORT then
+		for _, bed in PlazaLayout.dogBeds(cfg) do
+			table.insert(list, { kind = "dog bed", x = bed.x, z = bed.z, radius = cfg.SUPPORT.beds.radius + clear })
+		end
+	end
 	return list
 end
 

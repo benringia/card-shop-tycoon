@@ -16,7 +16,10 @@ return {
 	-- Util/LevelUpCard). Owner 2026-11-16: "small cash every level. only give gift every 5 levels (wild ores and etc)
 	-- make sure its not economy breaking": all 100 levels give 30 Wild Ore, 10 XP Tonics, 10 packs and 4 Gold Seals
 	-- (tests/LevelUpRules)
-	REWARD_CASH_PER_LEVEL = 2, -- $2 x the new level: $4 at Lv 2, $200 at Lv 100 (cash per hour about as before: $10 x at round 4's pace)
+	-- $10 x the new level: $20 at Lv 2, $200 at Lv 20, $1,000 at Lv 100, $50,490 in all (owner 2026-11-20: "gold is too
+	-- slow", pick B). $2 x from 2026-11-17 (levels 6x faster, the level cash per hour kept where it was): levels then
+	-- outran the cash their unlocks cost.
+	REWARD_CASH_PER_LEVEL = 10,
 	-- Shop XP from fights (owner 2026-11-17: "can we add a small exp to the shop from killing monsters. combat exp for
 	-- pets stays the same"): a won fight gives this much shop XP per $1 it paid (a sale gives 1 per $1), at least 1:
 	-- a Meadow monster 1, a Rift one 7-10 (elites 3x), the Meadow Warden 18, the Prism Hydra 200 (LevelMath.fightXp)

@@ -13,6 +13,10 @@ function Leaderboard.storeName(dataStore: string): string
 end
 
 Leaderboard.TOP = 10 -- rows on each list
+-- The game's owner is on neither list (owner 2026-11-20: "can I(the owner) not be included in the leaderboard"): their
+-- total isn't sent, their old entry is taken out of the store, and they're left off both lists
+-- (LeaderboardRules.hidden)
+Leaderboard.HIDE_OWNER = true
 Leaderboard.READ_EVERY = 120 -- the all-time top is read from the store this often (GetSortedAsync has a per-minute budget)
 Leaderboard.WRITE_EVERY = 60 -- a player's changed total goes to the store at most this often, and when they leave
 Leaderboard.SERVER_EVERY = 1 -- this server's list (and the live totals on the all-time one) checked this often

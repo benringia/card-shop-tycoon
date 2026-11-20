@@ -13,6 +13,13 @@ return {
 			Deck = "rbxassetid://87594315794918",
 		},
 	},
+	-- Products that aren't a pack or deck box, by id (owner 2026-11-20: "also change the Icons and the box icons of the
+	-- other products"): the sleeve packets and the sealed booster box, shot in Studio on magenta and cut out the same
+	-- way (assets/ui/product-pictures). ProductPictureRules.forProduct picks for menus and the delivery boxes' stickers.
+	PRODUCTS = {
+		CardSleeves = "rbxassetid://105125617613671", -- assets/ui/product-pictures/CardSleeves.png
+		FirstSparkBox = "rbxassetid://133941027127296", -- assets/ui/product-pictures/FirstSparkBox.png
+	} :: { [string]: string },
 	-- A look with no picture yet shows the drawn icon (Config/UIIcons)
 	FALLBACK = { Pack = "BoosterPack", Deck = "DeckBox" },
 }

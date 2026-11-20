@@ -160,7 +160,7 @@ function WeaponText.button(
 	have: { [string]: number },
 	cashNow: number,
 	items: any,
-	opts: { level: number?, unlockLevel: number?, shopLevel: number? }
+	opts: { level: number?, unlockLevel: number?, shopLevel: number?, wait: string? }
 ): (string, boolean)
 	if not cost then
 		return if action == "upgrade" then "Maxed at +10" else "Not available", false
@@ -183,7 +183,8 @@ function WeaponText.button(
 	if cashNow < cost.cash then
 		return `Need {cash(math.ceil(cost.cash - cashNow))} more`, false
 	end
-	local price = cash(cost.cash)
+	-- `wait`: how long the job takes ("2:00"), said on the button so it's known before pressing (owner 2026-11-20)
+	local price = cash(cost.cash) .. (if opts.wait then ` · takes {opts.wait}` else "")
 	if action == "upgrade" then
 		return `Upgrade to +{opts.level or 1} · {price}`, true
 	elseif action == "reforge" then
@@ -392,15 +393,16 @@ function WeaponText.bond(cfg: any, weaponId: string): string?
 	return `+{percent(cfg.BOND.damage - 1)} hits and a {percent(cfg.BOND.meter - 1)} faster super with {who}`
 end
 
--- A boss material toward its weapon (the chest card, the pick-up card): "9/15 to make the Verdant Blade",
--- "3/4 to upgrade the Verdant Blade", or "Enough to upgrade the Verdant Blade!" once there's enough (`owned`: the
--- weapon is yours, so `need` is its next upgrade's cost)
+-- A boss material toward its weapon (the chest card, the pick-up card), in simple words (owner 2026-11-20; it said
+-- "9/15 to make ..." and "Enough to make ...!"): "Get 6 more to make the Verdant Blade", "Get 1 more to upgrade the
+-- Verdant Blade", or "You can make the Verdant Blade now!" once there's enough (`owned`: the weapon is yours, so
+-- `need` is its next upgrade's cost)
 function WeaponText.goalLine(have: number, need: number, weaponName: string, owned: boolean): string
 	local verb = if owned then "upgrade" else "make"
 	if have >= need then
-		return `Enough to {verb} the {weaponName}!`
+		return `You can {verb} the {weaponName} now!`
 	end
-	return `{have}/{need} to {verb} the {weaponName}`
+	return `Get {need - have} more to {verb} the {weaponName}`
 end
 
 return WeaponText

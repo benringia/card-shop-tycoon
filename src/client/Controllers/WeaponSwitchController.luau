@@ -347,16 +347,65 @@ local function clearOf(): { UiLayout.Rect }
 	return if box then { box } else {}
 end
 -- A computer: the cash column it sits just above (owner 2026-11-13: "move weapon lower to close the gap")
+-- With the corner empty (the cash at the top, Pish on the quests: Config/DesktopHud) it sits in the corner itself
 local function aboveOf(): UiLayout.Rect?
-	return if UserInputService.TouchEnabled then nil else columnBox()
+	if UserInputService.TouchEnabled then
+		return nil
+	end
+	local box = columnBox()
+	if box then
+		return box
+	end
+	local view = (holder.Parent :: GuiObject).AbsoluteSize
+	-- Pish in the corner (the quests are in the Phone): beside him, its foot on the screen's bottom margin
+	local main = holder:FindFirstAncestorOfClass("ScreenGui")
+	local perch = if main then main:FindFirstChild("PishPerch") else nil
+	if perch and perch:IsA("GuiObject") and perch.Visible and perch.AbsoluteSize.X > 0 and perch.AbsolutePosition.Y > view.Y / 2 then
+		local origin = (holder.Parent :: GuiObject).AbsolutePosition
+		return { x = perch.AbsolutePosition.X - origin.X, y = view.Y - HudLayout.BOTTOM_MARGIN, w = perch.AbsoluteSize.X, h = 0 }
+	end
+	return { x = view.X - LOOK.right + LOOK.gap, y = view.Y - HudLayout.BOTTOM_MARGIN, w = 0, h = 0 }
 end
 local function clearKey(): string
-	local b = columnBox()
+	local b = aboveOf() or columnBox()
 	return if b then `{math.floor(b.x)},{math.floor(b.y)},{math.floor(b.w)},{math.floor(b.h)}` else ""
 end
 local laidOutSpot = Vector2.zero
+local laidOutBar = ""
+local switchLayer: Frame? = nil -- the dial's layer: its Wanted attribute tells UIController the dial is in the bar
+-- A computer's bottom bar (owner 2026-11-21, layout A; UIController.GetBarSpot): the dial between your creatures and
+-- the tiles while no fight is on
+local function barOf(fight: boolean): { x: number, bottom: number, scale: number }?
+	return if fight or compact then nil else UIController.GetBarSpot()
+end
+local function barKey(fight: boolean): string
+	local spot = barOf(fight)
+	return if spot then `{math.floor(spot.x)},{math.floor(spot.bottom)},{spot.scale}` else ""
+end
+-- The name after a switch: left of the track; in the bar your creatures are there, so over the dial
+local function placeName(inBar: boolean)
+	if compact then
+		return -- the phone's place (setCompact)
+	end
+	if inBar then
+		nameFrame.AnchorPoint = Vector2.new(1, 1)
+		nameFrame.Position = UDim2.fromOffset(DIAL, -6)
+	else
+		nameFrame.AnchorPoint = Vector2.new(1, 0.5)
+		nameFrame.Position = UDim2.fromOffset(CENTER.X - LOOK.arc - LOOK.side / 2 - LOOK.gap, CENTER.Y)
+	end
+end
 local function relayout(view: Vector2, fight: boolean)
 	laidOutSize, laidOutFight, laidOutClear = view, fight, clearKey()
+	laidOutBar = barKey(fight)
+	local inBar = barOf(fight)
+	placeName(inBar ~= nil)
+	if inBar then
+		laidOutSpot = Vector2.zero
+		holder.Position = UDim2.fromOffset(inBar.x, view.Y - inBar.bottom - DIAL * inBar.scale)
+		holderScale.Scale = inBar.scale
+		return
+	end
 	local spot = PartyBarController.GetWeaponSpot()
 	if compact and not fight and spot and spot.Visible and spot.AbsoluteSize.X > 0 then
 		-- the phone's chip on its spot at the end of your row in the party dock
@@ -367,7 +416,10 @@ local function relayout(view: Vector2, fight: boolean)
 		return
 	end
 	laidOutSpot = Vector2.zero
-	local rect = UiLayout.weaponSwitch({ w = view.X, h = view.Y }, LOOK, Hud.scaleFor(), fight, clearOf(), compact, aboveOf())
+	-- in a fight: right over the fight buttons on screen (the combat HUD says which layout it drew)
+	local hud = if fight then UIController.GetScreenGui():FindFirstChild("CombatHud") else nil
+	local layout = if hud then hud:GetAttribute("Layout") else nil
+	local rect = UiLayout.weaponSwitch({ w = view.X, h = view.Y }, LOOK, Hud.scaleFor(), fight, clearOf(), compact, aboveOf(), if typeof(layout) == "string" then layout else nil)
 	holder.Position = UDim2.fromOffset(rect.x, rect.y)
 	holderScale.Scale = rect.scale
 end
@@ -379,6 +431,7 @@ local function build()
 	layer.Size = UDim2.fromScale(1, 1)
 	layer.BackgroundTransparency = 1
 	layer.Parent = UIController.GetScreenGui()
+	switchLayer = layer
 	Hud.hideWith(layer)
 	Hud.calmPiece(layer, "weapons") -- hidden through Pish's first visit (a calm HUD) and Chikin's but his sword step
 	holder = Instance.new("Frame")
@@ -688,7 +741,12 @@ function WeaponSwitchController.Start()
 			spot.Visible = wantSpot
 		end
 		local spotAt = if spot and spot.Visible and not fight then spot.AbsolutePosition else Vector2.zero
-		if view ~= laidOutSize or fight ~= laidOutFight or clearKey() ~= laidOutClear or spotAt ~= laidOutSpot then
+		-- in a computer's bar while there's a weapon to switch to here (UIController makes room for it)
+		local wanted = WeaponSwitch.visible(list) and weaponHere and not compact
+		if switchLayer and switchLayer:GetAttribute("Wanted") ~= wanted then
+			switchLayer:SetAttribute("Wanted", wanted)
+		end
+		if view ~= laidOutSize or fight ~= laidOutFight or clearKey() ~= laidOutClear or spotAt ~= laidOutSpot or barKey(fight) ~= laidOutBar then
 			relayout(view, fight)
 		end
 		holder.Visible = WeaponSwitch.visible(list)

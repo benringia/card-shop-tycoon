@@ -106,13 +106,16 @@ local function buffLines(): { string }
 	return lines
 end
 
--- The tooltip listing every buff: under the icons on a phone (they're at the top), over them on a computer (bottom left)
+-- The tooltip listing every buff: under the icons while they sit in the screen's top half (a phone's column, a
+-- computer's top-right cluster since 2026-11-21: it opened upward there, off the screen), over them at the bottom
 local function showTooltip(visible: boolean)
 	local lines = buffLines()
 	local shown = visible and #lines > 0
 	if shown then
 		local at, size = stack.AbsolutePosition, stack.AbsoluteSize
-		if UIController.IsCompact() then
+		local layer = stack:FindFirstAncestorWhichIsA("LayerCollector")
+		local high = layer ~= nil and at.Y + size.Y / 2 < layer.AbsolutePosition.Y + layer.AbsoluteSize.Y / 2
+		if UIController.IsCompact() or high then
 			tooltip.AnchorPoint = Vector2.new(1, 0)
 			tooltip.Position = UDim2.fromOffset(at.X + size.X, at.Y + size.Y + 4)
 		else
@@ -325,9 +328,11 @@ function BuffController.Start()
 	grid.SortOrder = Enum.SortOrder.LayoutOrder
 	grid.Parent = stack
 	-- toward your bars on a computer (the icons come after them), toward your face on a phone (before it)
+	-- (a computer's column layout puts them before your bars too, under the cash: UIController.GetFaceSpot)
 	UIController.OnCompact(function(on: boolean)
-		grid.StartCorner = if on then Enum.StartCorner.TopRight else Enum.StartCorner.TopLeft
-		grid.HorizontalAlignment = if on then Enum.HorizontalAlignment.Right else Enum.HorizontalAlignment.Left
+		local before = on or UIController.GetFaceSpot() ~= nil
+		grid.StartCorner = if before then Enum.StartCorner.TopRight else Enum.StartCorner.TopLeft
+		grid.HorizontalAlignment = if before then Enum.HorizontalAlignment.Right else Enum.HorizontalAlignment.Left
 	end)
 	stack.MouseEnter:Connect(function()
 		if UserInputService.MouseEnabled then

@@ -52,5 +52,7 @@ return {
 	-- plain while it counts down to the next; `tip`: its tooltip's last line; `minScreen`: on a window shorter than
 	-- this the chip would sit on the cash and weapon corner (the quests, Turts' chip and it reach 380 px down; the
 	-- corner starts 160 px from the bottom: 540 in all), so it stays away
-	CHIP = { height = 30, icon = 22, textSize = 14, gap = 6, tip = "It comes back every week.", minScreen = 550 },
+	-- `soon`: the chip shows on an event's day and from this many seconds before it (owner 2026-11-21, "I want to clean
+	-- up": "Next: Boss Rush in 1d 2h" was nothing to act on; EventRules.chipShown)
+	CHIP = { height = 30, icon = 22, textSize = 14, gap = 6, tip = "It comes back every week.", minScreen = 550, soon = 3600 },
 }

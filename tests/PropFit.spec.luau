@@ -198,4 +198,17 @@ return {
 			`sign bottom {wild.PORTAL_SIGN_HEIGHT - WILD_SIGN_HALF_HEIGHT} is inside the {town.SLOTS.Portal.height}-stud frame`
 		)
 	end,
+	-- Owner 2026-11-20: "improve booster box design on shelf and cashier": a sealed booster box prints the set's name
+	-- on top and what it is under it (Util/BoosterBoxLook)
+	["a booster box's words: the set's name, and BOOSTER BOX"] = function()
+		local title, kind = PropFit.boosterWords("First Spark Booster Box")
+		expect.equal(title, "FIRST SPARK")
+		expect.equal(kind, "BOOSTER BOX")
+		local other, otherKind = PropFit.boosterWords("Frontier booster box")
+		expect.equal(other, "FRONTIER", "any case")
+		expect.equal(otherKind, "BOOSTER BOX")
+		local plain, none = PropFit.boosterWords("Mystery Crate")
+		expect.equal(plain, "MYSTERY CRATE", "a name without it: all of it on top")
+		expect.equal(none, "")
+	end,
 }

@@ -68,4 +68,65 @@ return {
 		expect.equal(tiles[2].state, "resting")
 		expect.equal(SwapKeys.pick("b2", {}, FIGHTERS, true, 0), "resting", "a key still says it's resting")
 	end,
+	-- owner 2026-11-20: "in fights, should 1 and 3 mean left and right creature (matching the new carousel), retiring 2:
+	-- YES". The creature fighting sits in the middle of the strip; 1 brings in the one on its left, 3 the one on its right
+	["1 and 3 reach the creature left and right of the one fighting, round the party"] = function()
+		local slots = { [1] = "b1", [2] = "b2", [3] = "b3" }
+		expect.equal(SwapKeys.sideSlot(slots, 1, "left", 3), 3, "left of slot 1 wraps round to slot 3")
+		expect.equal(SwapKeys.sideSlot(slots, 1, "right", 3), 2)
+		expect.equal(SwapKeys.sideSlot(slots, 2, "left", 3), 1)
+		expect.equal(SwapKeys.sideSlot(slots, 2, "right", 3), 3)
+		expect.equal(SwapKeys.sideSlot(slots, 3, "right", 3), 1)
+	end,
+
+	["with two creatures both keys reach the other one; a lone creature answers either key"] = function()
+		local two = { [1] = "b1", [3] = "b3" }
+		expect.equal(SwapKeys.sideSlot(two, 1, "left", 3), 3)
+		expect.equal(SwapKeys.sideSlot(two, 1, "right", 3), 3, "the empty slot is skipped")
+		expect.equal(SwapKeys.sideSlot({ [2] = "b2" }, 2, "left", 3), 2, "unsummoned in a wild fight: it can come back")
+		expect.equal(SwapKeys.sideSlot({ [2] = "b2" }, 2, "right", 3), 2)
+		expect.isNil(SwapKeys.sideSlot({}, 1, "left", 3), "no cards")
+	end,
+
+	["the strip in carousel order: left, the one fighting, right, with the key that reaches each"] = function()
+		local slots = { [1] = "b3", [2] = "b1", [3] = "b2" }
+		local tiles = SwapKeys.party(slots, 3, { "a:b3" }, FIGHTERS, true, 0, 2)
+		expect.equal(#tiles, 3)
+		expect.equal(tiles[1].slot, 1, "left of the middle")
+		expect.equal(tiles[1].key, "1")
+		expect.equal(tiles[2].slot, 2, "the one fighting in the middle")
+		expect.isNil(tiles[2].key, "no key: it's out")
+		expect.equal(tiles[3].slot, 3)
+		expect.equal(tiles[3].key, "3")
+		local turned = SwapKeys.party(slots, 3, { "a:b3" }, FIGHTERS, true, 0, 1)
+		expect.equal(turned[1].slot, 3, "the middle moved: slot 3 is on its left now")
+		expect.equal(turned[2].slot, 1)
+		expect.equal(turned[3].slot, 2)
+	end,
+
+	["the strip with two creatures or one: the key on the side it sits"] = function()
+		local two = SwapKeys.party({ [1] = "b1", [3] = "b3" }, 3, { "a:b3" }, FIGHTERS, true, 0, 1)
+		expect.equal(#two, 2)
+		expect.equal(two[1].slot, 3, "slot 3 sits left of slot 1")
+		expect.equal(two[1].key, "1")
+		expect.isNil(two[2].key)
+		local right = SwapKeys.party({ [1] = "b1", [2] = "b3" }, 3, { "a:b3" }, FIGHTERS, true, 0, 1)
+		expect.equal(right[2].slot, 2)
+		expect.equal(right[2].key, "3")
+		local lone = SwapKeys.party({ [2] = "b1" }, 3, {}, FIGHTERS, true, 0, 2)
+		expect.equal(lone[1].key, "1", "alone: either key, shown as 1")
+		local old = SwapKeys.party({ [1] = "b1", [2] = "b2" }, 3, {}, FIGHTERS, true, 0)
+		expect.equal(old[1].slot, 1, "no middle given: the party's own order")
+		expect.isNil(old[1].key)
+	end,
+
+	-- The middle of the strip: the creature fighting, else the one last there, else the party's first card
+	["the strip's middle: who fights, else who was last there, else the first card"] = function()
+		local slots = { [1] = "b1", [2] = "b2", [3] = "b3" }
+		expect.equal(SwapKeys.center(slots, 3, "a:b2", 1), 2, "the one fighting")
+		expect.equal(SwapKeys.center(slots, 3, nil, 3), 3, "nobody out: where the middle was")
+		expect.equal(SwapKeys.center(slots, 3, "a:b9", nil), 1, "not in the party: the first card")
+		expect.equal(SwapKeys.center({ [2] = "b2" }, 3, nil, 1), 2, "the remembered slot is empty now")
+		expect.equal(SwapKeys.center({}, 3, nil, nil), 1)
+	end,
 }

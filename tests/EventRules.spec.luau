@@ -93,6 +93,19 @@ return {
 		expect.equal(EventRules.span(20), "1 min")
 	end,
 
+	-- Owner 2026-11-21 ("I want to clean up", pick 1): "Next: Boss Rush in 1d 2h" is nothing to act on. The pill shows
+	-- on the event's day and in the last hour before it; the rest of the week it stays away
+	["the event's pill shows only when it matters: the event's day, and the last hour before"] = function()
+		expect.equal(EventRules.chipShown(Events, SATURDAY + 19 * 3600), true, "Boss Rush is on")
+		expect.equal(EventRules.chipShown(Events, FRIDAY + 23 * 3600 + 60), true, "within the last hour before it")
+		expect.equal(EventRules.chipShown(Events, FRIDAY + 22 * 3600), false, "two hours to go: not yet")
+		expect.equal(EventRules.chipShown(Events, MONDAY + 12 * 3600), false, "days away: nothing to do")
+		expect.equal(EventRules.chipShown(Events, MONDAY, "luckySunday"), true, "a forced event (Studio's /event) shows")
+		local quiet: any = { DAYS = {}, CHIP = Events.CHIP }
+		expect.equal(EventRules.chipShown(quiet, MONDAY), false, "no events at all")
+		expect.equal(Events.CHIP.soon, 3600, "an hour's notice")
+	end,
+
 	["the chip: today's event and how long it lasts, or the next one and how long until it"] = function()
 		local words, live = EventRules.chip(Events, SATURDAY + 19 * 3600)
 		expect.equal(words, "Boss Rush · 5h left")

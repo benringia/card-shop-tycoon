@@ -45,6 +45,19 @@ local function screen(): ScreenGui
 	return made
 end
 
+-- How far down the cards start past their own top: a computer's cash and level rows sit in that corner (the main
+-- gui's TopRow, Config/DesktopHud), so the first card goes under them
+local function shift(): number
+	local main = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
+	local hud = if main then main:FindFirstChild("MainGui") else nil
+	local row = if hud then hud:FindFirstChild("TopRow") else nil
+	if not row or not row:IsA("GuiObject") or not row.Visible or row.AbsoluteSize.Y <= 0 then
+		return 0
+	end
+	local bottom = row.AbsolutePosition.Y + row.AbsoluteSize.Y - screen().AbsolutePosition.Y
+	return math.max(0, bottom + CFG.gap + 6 - CFG.top)
+end
+
 local function text(parent: Instance, value: string, size: number, color: Color3, font: Enum.Font, y: number): TextLabel
 	local label = Instance.new("TextLabel")
 	label.BackgroundTransparency = 1
@@ -82,7 +95,7 @@ local function layout()
 		keep[card.item] = true
 		local entry = shown[card.item]
 		if entry then
-			TweenService:Create(entry.frame, MOVE, { Position = UDim2.new(1, -CFG.right, 0, ItemPopupRules.slotY(index, CFG)) }):Play()
+			TweenService:Create(entry.frame, MOVE, { Position = UDim2.new(1, -CFG.right, 0, ItemPopupRules.slotY(index, CFG) + shift()) }):Play()
 		end
 	end
 	for item, entry in shown do
@@ -101,7 +114,7 @@ local function build(card: ItemPopupRules.Card, index: number, line: string): Sh
 	frame.Name = card.item
 	frame.AnchorPoint = Vector2.new(1, 0)
 	frame.Size = UDim2.fromOffset(CFG.width, CFG.height)
-	frame.Position = UDim2.new(1, CFG.width + 40, 0, ItemPopupRules.slotY(index, CFG))
+	frame.Position = UDim2.new(1, CFG.width + 40, 0, ItemPopupRules.slotY(index, CFG) + shift())
 	frame.BackgroundColor3 = BACK
 	frame.BackgroundTransparency = 0.1
 	frame.Parent = screen()
@@ -120,7 +133,7 @@ local function build(card: ItemPopupRules.Card, index: number, line: string): Sh
 	icon.Position = UDim2.fromOffset(8, 8)
 	local title = text(frame, titleOf(card), 18, Color3.new(1, 1, 1), Enum.Font.FredokaOne, 8)
 	local under = text(frame, line, 13, LINE, Enum.Font.GothamBold, 30)
-	TweenService:Create(frame, SLIDE, { Position = UDim2.new(1, -CFG.right, 0, ItemPopupRules.slotY(index, CFG)) }):Play()
+	TweenService:Create(frame, SLIDE, { Position = UDim2.new(1, -CFG.right, 0, ItemPopupRules.slotY(index, CFG) + shift()) }):Play()
 	return { frame = frame, title = title, line = under, scale = scale }
 end
 

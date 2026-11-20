@@ -205,4 +205,10 @@ return {
 		local month = GiftRules.lines(Gifts.MONTHLY.reward, Items, Luck)
 		expect.equal(month[1].text, "$5,000")
 	end,
+	-- Owner 2026-11-21: "switch phone and daily reward position. phone at the bottom of daily reward": in a computer's
+	-- side column the gift's tile comes first, the Phone (order 0, Util/Hud's Manage tile) under it
+	["the gift's tile sits over the Phone in the side column"] = function()
+		assert(Gifts.TILE.order < 0, "before the Phone's tile (order 0)")
+		expect.equal(Gifts.TILE.phoneBottom, true, "a phone still keeps it in the bottom row")
+	end,
 }

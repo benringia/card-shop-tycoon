@@ -219,7 +219,7 @@ return {
 
 	["spring area holds only benches and flowers"] = function()
 		local placements = TownLayout.build(WORLD, town)
-		expect.equal(count(placements, "Bench"), 4, "benches")
+		expect.equal(count(placements, "Bench"), 0, "benches (they stood in the way round the gazebo, owner 2026-11-20)")
 		for _, placement in placements do
 			if distance(placement, WORLD.spring) <= WORLD.springRadius then
 				assert(placement.slot == "Bench" or placement.slot == "Flower", `{placement.slot} is in the spring area`)

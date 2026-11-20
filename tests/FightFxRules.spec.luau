@@ -409,4 +409,35 @@ return {
 		expect.equal(FightFxRules.foeCap(1, true, tone), 1, "on a small foe: as before")
 		expect.equal(tone.foeMax >= 1.5, true, "still bigger on a boss than on a creature")
 	end,
+	-- Owner 2026-11-21: "other basic attacks look weak compared to lightning attack. adjust how other attacks look add
+	-- some immersiveness to them, do not change lightning. only the other basic attacks": every thrown attack (fire,
+	-- water, nature's thorns, the dark moon slash) flies bigger with a muzzle flash, its own trail and its own landing
+	["thrown basic attacks get their own trail and landing; lightning stays as it is"] = function()
+		expect.isNil(FightFxRules.throwLook("Volt", AttackFx), "the bolt: untouched")
+		expect.isNil(AttackFx.THROW.ELEMENT.Volt, "no entry for it either")
+		expect.isNil(FightFxRules.throwLook("Plasma", AttackFx), "an unknown element")
+		local trails, lands = {}, {}
+		for element, entry in AttackFx.ELEMENT do
+			local look = FightFxRules.throwLook(element, AttackFx)
+			if entry.kind == "bolt" then
+				expect.isNil(look, element)
+			else
+				assert(look, `{element} has a throw look`)
+				assert(typeof(look.trail) == "string" and typeof(look.land) == "string", element)
+				assert(look.count >= 1, element)
+				assert(not trails[look.trail] and not lands[look.land], `{element}: its own trail and landing, not another's`)
+				trails[look.trail], lands[look.land] = true, true
+			end
+		end
+	end,
+
+	["a thrown shot is bigger than before, but not big enough to cover a boss"] = function()
+		local throw = AttackFx.THROW
+		assert(throw.size > 1.15 and throw.size <= 1.5, "bigger, in reason")
+		assert(throw.trail > 0.2, "a longer ribbon than the old 0.2 s")
+		assert(throw.land.ring <= 5, "the landing's ring stays small")
+		-- a Grade S Legendary's in a boss fight: the ring under a boss stays a few studs
+		local tier = FightFxRules.toned(FightFxRules.look("S", "Legendary", AttackFx), true, AttackFx.BOSS_TONE)
+		assert(throw.land.ring * tier.scale <= 9, "the biggest landing ring in a boss fight")
+	end,
 }

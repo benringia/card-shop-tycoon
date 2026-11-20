@@ -200,16 +200,149 @@ return {
 		expect.equal(without.seals, 0, "no seals given")
 	end,
 
+	-- Owner 2026-11-20: "the card condenser is currently very confusing. make it better/easily understandable": the row
+	-- says what you have and what a star uses in plain words ("x21 · 4 copies for the next star" before)
 	["row line when ready"] = function()
 		local text, share = CondenseRules.rowLine(21, 4, 4, true)
-		expect.equal(text, "x21 · 4 copies for the next star", "text")
+		expect.equal(text, "You have 21 copies · a star uses 4", "text")
 		expect.equal(share, 1, "bar full")
 	end,
 
 	["row line while raising"] = function()
 		local text, share = CondenseRules.rowLine(3, 3, 4, false)
-		expect.equal(text, "3 of 4 copies", "text")
+		expect.equal(text, "3 of 4 copies for the next star", "text")
 		expect.equal(share, 0.75, "bar")
+	end,
+
+	["the big button says what it does and how long it takes, or what's missing"] = function()
+		expect.equal(CondenseRules.buttonWords(true, nil, "2:00", false), "Add a star · takes 2:00")
+		expect.equal(CondenseRules.buttonWords(true, nil, "2:00", true), "Putting it in...", "waiting for the server")
+		expect.equal(CondenseRules.buttonWords(false, "max", "2:00", false), "Max stars reached")
+		expect.equal(CondenseRules.buttonWords(false, "short:2:4", "2:00", false), "Need 4 extra copies (you have 2)")
+		expect.equal(CondenseRules.buttonWords(false, "working", "2:00", false), "This copy can't go in now")
+		expect.equal(CondenseRules.buttonWords(false, nil, "2:00", false), "This copy can't go in now")
+	end,
+
+	-- Owner 2026-11-20: "after the timer than condenser just do nothing. I just got a toast notification. I need a
+	-- better notification inside the condenser after the timer is done, that is waiting for me to reopen the
+	-- condenser": the finished card's new star waits (a player attribute) until they open the Condenser and take it out
+	["a finished star waits to be shown: its card round trips, junk is nothing"] = function()
+		local value = CondenseRules.encodeDone({ cardId = "FS27", foil = true, grade = "S", level = 30, stars = 3 })
+		local done = CondenseRules.decodeDone(value)
+		assert(done, "read back")
+		expect.equal(done.cardId, "FS27")
+		expect.equal(done.foil, true)
+		expect.equal(done.grade, "S")
+		expect.equal(done.level, 30)
+		expect.equal(done.stars, 3)
+		local plain = CondenseRules.decodeDone(CondenseRules.encodeDone({ cardId = "FS1", foil = false, grade = "C", level = 1, stars = 1 }))
+		expect.equal((plain :: any).foil, false)
+		expect.isNil(CondenseRules.decodeDone(nil))
+		expect.isNil(CondenseRules.decodeDone(""))
+		expect.isNil(CondenseRules.decodeDone("FS27|1|S|x|3"))
+		expect.isNil(CondenseRules.decodeDone("FS27|1|Z|30|3"), "a grade that isn't one")
+		expect.isNil(CondenseRules.decodeDone("FS27|1|S|30|0"), "no star to show")
+		expect.isNil(CondenseRules.decodeDone(12))
+	end,
+
+	-- Owner 2026-11-20 (the same day, on the first rewrite): "this part needs to be better/easily understandable with
+	-- no '->'": the chosen card's side says things in whole words and shows Now beside After
+	["the reveal's words: how many stars it has now, never an arrow"] = function()
+		expect.equal(CondenseRules.doneLine(3), "Now 3 stars!")
+		expect.equal(CondenseRules.doneLine(1), "Now 1 star!")
+		expect.equal(CondenseRules.doneLine(5), "Now 5 stars: the most!")
+	end,
+
+	["under the stars: which star this adds"] = function()
+		expect.equal(CondenseRules.starWords(0, 5), "Adds star 1 of 5")
+		expect.equal(CondenseRules.starWords(3, 5), "Adds star 4 of 5")
+		expect.equal(CondenseRules.starWords(5, 5), "Has all 5 stars")
+		expect.equal(CondenseRules.starWords(7, 5), "Has all 5 stars")
+	end,
+
+	["the box under the card: which copy gets the star, and which are used up"] = function()
+		local stays, used = CondenseRules.keepWords("Grade S", 1, "3 Grade C + 1 Grade B")
+		expect.equal(stays, "Gets the star: your Grade S · Lv 1 copy")
+		expect.equal(used, "Used up: 3 Grade C + 1 Grade B")
+		local only, none = CondenseRules.keepWords("Grade C", 12, nil)
+		expect.equal(only, "Gets the star: your Grade C · Lv 12 copy")
+		expect.isNil(none, "nothing to use yet: one line")
+	end,
+
+	["how much a number grows, for the After column"] = function()
+		expect.equal(CondenseRules.gain(320, 371), "+51")
+		expect.equal(CondenseRules.gain(1474, 1645), "+171")
+		expect.equal(CondenseRules.gain(100, 100), "")
+		expect.equal(CondenseRules.gain(100, 90), "", "never a loss shown")
+	end,
+
+	-- Owner 2026-11-20: "also check the other machines(forge,grading maching) for pain points/ confusing elements":
+	-- the Grading Station said "Owned 7 · C -> B: 3 + $5" and "Grade C -> B / Power 320 -> 371" in one block of text,
+	-- and its timer ended in a toast like the Condenser's
+	["the Grading Station's row: what you have and what the next grade uses"] = function()
+		expect.equal(CondenseRules.gradeRowLine(7, "B", 3, "$5.00"), "You have 7 copies · Grade B uses 3 + $5.00")
+		expect.equal(CondenseRules.gradeRowLine(1, "A", 1, "$40.00"), "You have 1 copy · Grade A uses 1 + $40.00")
+		expect.equal(CondenseRules.gradeRowLine(4, nil, 0, ""), "You have 4 copies · Grade S: the best")
+	end,
+
+	["the Grading Station's button: what it makes, its price and its wait, or what's missing"] = function()
+		local base = { inFlight = false, grade = "B", cash = "$5.00", have = "$2.00", affordable = true, gold = false, clock = "1:00", reason = nil }
+		local function with(changes: { [string]: any }): any
+			local copy = table.clone(base)
+			for key, value in changes do
+				(copy :: any)[key] = value
+			end
+			return copy
+		end
+		expect.equal(CondenseRules.gradeButtonWords(base), "Make it Grade B · $5.00 · takes 1:00")
+		expect.equal(CondenseRules.gradeButtonWords(with({ gold = true })), "Make it Grade B · Gold Seal pays · takes 1:00")
+		expect.equal(CondenseRules.gradeButtonWords(with({ affordable = false })), "Need $5.00 (you have $2.00)")
+		expect.equal(CondenseRules.gradeButtonWords(with({ inFlight = true })), "Putting it in...")
+		expect.equal(CondenseRules.gradeButtonWords(with({ grade = false, reason = "max" })), "Already Grade S")
+		expect.equal(CondenseRules.gradeButtonWords(with({ grade = false, reason = "short:1:3" })), "Need 3 extra copies (you have 1)")
+		expect.equal(CondenseRules.gradeButtonWords(with({ grade = false, reason = "working" })), "This copy can't go in now")
+	end,
+
+	["a finished grade waits like a finished star: plain copies have no stars, and the reveal says the grade"] = function()
+		local value = CondenseRules.encodeDone({ cardId = "FS35", foil = false, grade = "B", level = 1, stars = 0 })
+		expect.isNil(CondenseRules.decodeDone(value), "the Condenser's needs a star")
+		local done = CondenseRules.decodeDone(value, 0)
+		assert(done, "the Grading Station's doesn't")
+		expect.equal(done.grade, "B")
+		expect.equal(done.stars, 0)
+		expect.equal(CondenseRules.gradeDoneLine("B"), "Now Grade B!")
+		expect.equal(CondenseRules.gradeDoneLine("S"), "Now Grade S: the best!")
+		expect.equal(CondenseRules.gradeBefore("B"), "C")
+		expect.equal(CondenseRules.gradeBefore("A"), "B")
+		expect.equal(CondenseRules.gradeBefore("S"), "A")
+		expect.isNil(CondenseRules.gradeBefore("C"), "nothing under C")
+		expect.equal(CondenseRules.gradeWords("C", "B"), "Makes it Grade B")
+		expect.equal(CondenseRules.gradeWords("S", nil), "Grade S: the best it can be")
+		local stays, used = CondenseRules.keepWords("Grade C", 1, "3 Grade C + $5.00", "grade")
+		expect.equal(stays, "Gets the grade: your Grade C · Lv 1 copy")
+		expect.equal(used, "Used up: 3 Grade C + $5.00")
+	end,
+
+	["none of the Condenser's words use an arrow"] = function()
+		local lines = {
+			CondenseRules.doneLine(1),
+			CondenseRules.doneLine(5),
+			CondenseRules.starWords(0, 5),
+			CondenseRules.starWords(5, 5),
+			CondenseRules.buttonWords(true, nil, "0:30", false),
+			CondenseRules.buttonWords(false, "short:2:4", "0:30", false),
+			(CondenseRules.rowLine(7, 4, 4, true)),
+			(CondenseRules.rowLine(3, 3, 4, false)),
+			(CondenseRules.keepWords("Grade S", 1, "3 Grade C")),
+			CondenseRules.gradeRowLine(7, "B", 3, "$5.00"),
+			CondenseRules.gradeRowLine(7, nil, 0, ""),
+			CondenseRules.gradeDoneLine("B"),
+			CondenseRules.gradeWords("C", "B"),
+			CondenseRules.gradeButtonWords({ inFlight = false, grade = "B", cash = "$5.00", have = "$2.00", affordable = true, gold = false, clock = "1:00" }),
+		}
+		for _, text in lines do
+			assert(not string.find(text, "->", 1, true) and not string.find(text, ">", 1, true), `no arrow in "{text}"`)
+		end
 	end,
 
 	["row line at max stars"] = function()

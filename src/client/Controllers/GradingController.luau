@@ -1,7 +1,9 @@
 --!strict
 -- Grading Station panel, laid out like the Condenser's: cards you can grade on the left; on the right, choose the main
--- copy and see the next grade, what it costs (duplicates and cash), exactly which copies go, and Power and value before
--- -> after, plus the whole way to Grade S. Grade Up asks the server, which re-checks everything and takes the cash;
+-- copy and see the next grade, what it costs (duplicates and cash), exactly which copies go, and its grade, Power
+-- and value Now beside After (owner 2026-11-20: plain words, no arrows; Util/NowAfter), plus the whole way to Grade S.
+-- A finished grade waits here like the Condenser's star (Util/DoneReveal, the GradingDone attribute). Grade Up asks
+-- the server, which re-checks everything and takes the cash;
 -- the binder sync redraws the panel. Opened from your own Grading Station's prompt; closes when you walk away.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -13,6 +15,8 @@ local Cards = require(Config:WaitForChild("Cards"))
 local GradingConfig = require(Config:WaitForChild("Grading"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CondenseRules = require(Shared:WaitForChild("Util"):WaitForChild("CondenseRules"))
+local Upgrades = require(Config:WaitForChild("Upgrades"))
+local UpgradeRules = require(Shared:WaitForChild("Util"):WaitForChild("UpgradeRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -20,6 +24,8 @@ local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local JobPanel = require(ClientUtil:WaitForChild("JobPanel"))
+local DoneReveal = require(ClientUtil:WaitForChild("DoneReveal"))
+local NowAfter = require(ClientUtil:WaitForChild("NowAfter"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local BinderController = require(Controllers:WaitForChild("BinderController"))
 
@@ -36,7 +42,8 @@ local THUMBNAIL_SIZE = Vector2.new(40, 56)
 local DETAIL_FACE_SIZE = Vector2.new(96, 137)
 local DISTANCE_CHECK_SECONDS = 0.5
 local READY_FILL = Color3.fromRGB(60, 200, 110) -- the READY chip on a row
-local SUBTITLE_TEXT = "Raise a card's grade with duplicates and cash. Grade S is the best."
+local SUBTITLE_TEXT = GradingConfig.EXPLAIN
+local KEEPS_HEIGHT = 58
 local LIST_TOP = 124 -- below the subtitle and the search row
 
 local player = Players.LocalPlayer
@@ -185,13 +192,8 @@ local function describeTakes(takes: { CondenseRules.Take }): string
 	return "Uses " .. table.concat(parts, " + ")
 end
 
-local function describeReason(reason: string?): string
-	if reason == "max" then
-		return "Already Grade S"
-	end
-	local have, need = string.match(reason or "", "^short:(%d+):(%d+)$")
-	return if have then `Need {need} duplicates, you have {have}` else "Can't grade this copy"
-end
+-- A finished grade waiting in the Grading Station: its reveal over the window (Util/DoneReveal), set up in Start
+local refreshDone: (opened: boolean?) -> () = function() end
 
 local render: () -> ()
 
@@ -228,42 +230,61 @@ local function renderPane(card: Card?)
 	local plan, reason = getPlan(card, chosen)
 	local nextGrade = CondenseRules.nextGrade(Beasts.GRADES, chosen.grade)
 	local cash = getCash()
-	local lines = {
-		`{card.name}{if chosen.foil then " (FOIL)" else ""}`,
-		`{BeastRules.describeGrowth(chosen.level, chosen.stars)}`,
-	}
+	-- Beside the card: its name, what it is, what grading does, and its grade, Power and Value Now beside After
+	-- (owner 2026-11-20: it was one block of text with arrows)
+	local x = DETAIL_FACE_SIZE.X + 16
+	addLabel(pane, `{card.name}{if chosen.foil then " (FOIL)" else ""}`, UDim2.fromOffset(x, 8), UDim2.new(1, -(x + 8), 0, 22), Enum.Font.FredokaOne, 18, palette.ink)
+	addLabel(pane, BeastRules.describeGrowth(chosen.level, chosen.stars), UDim2.fromOffset(x, 32), UDim2.new(1, -(x + 8), 0, 16), Enum.Font.GothamBold, 12, palette.inkSoft)
+	addLabel(pane, CondenseRules.gradeWords(chosen.grade, nextGrade), UDim2.fromOffset(x, 50), UDim2.new(1, -(x + 8), 0, 16), Enum.Font.GothamBold, 12, palette.hint)
+	local y = DETAIL_FACE_SIZE.Y + 16
 	if nextGrade then
 		local powerAfter = BeastRules.getPower(card, chosen.foil, chosen.level, chosen.stars, nextGrade)
 		local valueNow = BeastRules.getValue(card, chosen.foil, chosen.level, chosen.stars, chosen.grade)
 		local valueAfter = BeastRules.getValue(card, chosen.foil, chosen.level, chosen.stars, nextGrade)
-		local step = CondenseRules.gradeStepCost(GradingConfig, card.rarity, nextGrade)
-		table.insert(lines, `Grade {chosen.grade} -> {nextGrade}`)
-		table.insert(lines, `Power {chosen.power} -> {powerAfter}`)
-		table.insert(lines, string.format("Value $%.2f -> $%.2f", valueNow, valueAfter))
-		if step then
-			table.insert(lines, `Costs {step.copies} {if step.copies == 1 then "copy" else "copies"} + {formatCash(step.cash)}`)
-		end
-		table.insert(lines, if plan
-			then describeTakes(plan.takes) .. (if plan.seals > 0 then ` + {plan.seals} Grading Seal{if plan.seals == 1 then "" else "s"}` else "")
-			else describeReason(reason))
-	else
-		table.insert(lines, "Grade S: the best it can be")
+		NowAfter.draw(pane, UDim2.fromOffset(x, 70), {
+			{ name = "Grade", now = chosen.grade, after = nextGrade, gain = "" },
+			{ name = "Power", now = tostring(chosen.power), after = tostring(powerAfter), gain = CondenseRules.gain(chosen.power, powerAfter) },
+			{ name = "Value", now = string.format("$%.2f", valueNow), after = string.format("$%.2f", valueAfter), gain = "" },
+		}, palette, 8)
+		y = math.max(y, 70 + NowAfter.height(3) + 8)
 	end
-	local info = UIKit.label(pane, table.concat(lines, "\n"), Enum.Font.GothamBold, 12, UIKit.Colors.Text)
-	info.Position = UDim2.fromOffset(DETAIL_FACE_SIZE.X + 16, 8)
-	info.Size = UDim2.new(1, -(DETAIL_FACE_SIZE.X + 22), 0, DETAIL_FACE_SIZE.Y)
-	info.TextYAlignment = Enum.TextYAlignment.Top
 
-	local y = DETAIL_FACE_SIZE.Y + 16
 	local goldAllowed = plan ~= nil and CondenseRules.goldSealAllowed(card.rarity, plan.grade)
 	local goldPays = useGold and goldCount > 0 and goldAllowed
 	local affordable = plan ~= nil and (goldPays or cash >= plan.cash)
 	local canGrade = affordable and not inFlight
-	local buttonText = if inFlight then "Grading..."
-		elseif plan and not affordable then `Need {formatCash(plan.cash)} (you have {formatCash(cash)})`
-		elseif plan and goldPays then `Grade up to {plan.grade} · $0 (Gold Seal)`
-		elseif plan then `Grade up to {plan.grade} · {formatCash(plan.cash)}`
-		else describeReason(reason)
+
+	-- The box: the copy that stays and gets the grade, and everything used up (copies, seals, cash)
+	local uses: string? = nil
+	if plan then
+		uses = (string.gsub(describeTakes(plan.takes), "^Uses ", ""))
+			.. (if plan.seals > 0 then ` + {plan.seals} Grading Seal{if plan.seals == 1 then "" else "s"}` else "")
+			.. (if goldPays then " + a Gold Seal" else ` + {formatCash(plan.cash)}`)
+	end
+	local stays, used = CondenseRules.keepWords(BeastRules.describeGrade(chosen.grade), chosen.level, uses, "grade")
+	local keeps = Instance.new("Frame")
+	keeps.Name = "Keeps"
+	keeps.Position = UDim2.fromOffset(8, y)
+	keeps.Size = UDim2.new(1, -16, 0, KEEPS_HEIGHT)
+	keeps.BackgroundColor3 = palette.row
+	keeps.Parent = pane
+	UIKit.corner(keeps, 10)
+	UIKit.outline(keeps, palette.rowEdge, 2)
+	local keepLabel = addLabel(keeps, if used then stays .. "\n" .. used else stays, UDim2.fromOffset(10, 0), UDim2.new(1, -20, 1, 0), Enum.Font.GothamBold, 13, palette.ink)
+	keepLabel.TextWrapped = true
+	keepLabel.TextTruncate = Enum.TextTruncate.None
+	y += KEEPS_HEIGHT + 10
+
+	local buttonText = CondenseRules.gradeButtonWords({
+		inFlight = inFlight,
+		grade = if plan then plan.grade else false,
+		cash = if plan then formatCash(plan.cash) else "",
+		have = formatCash(cash),
+		affordable = affordable,
+		gold = goldPays,
+		clock = if plan then UpgradeRules.clock(UpgradeRules.seconds(Upgrades, "grade", plan.grade)) else "",
+		reason = reason,
+	})
 	local gradeButton = UIKit.button(pane, buttonText, if canGrade then UIKit.Colors.Accent else UIKit.Colors.Locked)
 	gradeButton.Position = UDim2.fromOffset(8, y)
 	gradeButton.Size = UDim2.new(1, -16, 0, 48)
@@ -413,12 +434,13 @@ local function buildCardRow(card: Card, order: number, ready: boolean)
 	local textX = THUMBNAIL_SIZE.X + 14
 	local nameRoom = if ready then 84 else 8 -- leave room for the READY chip
 	addLabel(row, card.name, UDim2.fromOffset(textX, 8), UDim2.new(1, -(textX + nameRoom), 0, 20), Enum.Font.GothamBold, 15, UIKit.Colors.Text)
-	local status = `Owned {owned}`
+	-- what you have and what the next grade uses, in words (CondenseRules.gradeRowLine)
+	local status = CondenseRules.gradeRowLine(owned, nil, 0, "")
 	if main then
 		local nextGrade = CondenseRules.nextGrade(Beasts.GRADES, main.grade)
 		local step = if nextGrade then CondenseRules.gradeStepCost(GradingConfig, card.rarity, nextGrade) else nil
 		if nextGrade and step then
-			status ..= ` · {main.grade} -> {nextGrade}: {step.copies} + {formatCash(step.cash)}`
+			status = CondenseRules.gradeRowLine(owned, nextGrade, step.copies, formatCash(step.cash))
 		end
 	end
 	addLabel(row, status, UDim2.fromOffset(textX, 32), UDim2.new(1, -(textX + 8), 0, 18), Enum.Font.Gotham, 12, if ready then palette.good else UIKit.Colors.Subtext)
@@ -516,6 +538,7 @@ function GradingController.Open(part: BasePart)
 	inFlight = false
 	panel.Visible = true
 	render()
+	refreshDone(true) -- a grade still waiting shows again each time the window opens, until it's taken out
 end
 
 -- Closes once the owner walks away or the machine is moved or sold
@@ -537,6 +560,8 @@ function GradingController.Start()
 	local screenGui = UIController.GetScreenGui()
 	panel, list = UIKit.panel(screenGui, "GradingStation", "🏅 Grading Station")
 	JobPanel.attach(panel, "grading") -- a job inside: its card over the actions (spec 2026-11-12-timed-upgrades-revive-design)
+	-- a finished grade's reveal: over everything in the window (above the job veil), until Take it out
+	refreshDone = DoneReveal.attach(panel, { attribute = "GradingDone", seen = Remotes.GradingSeen, kind = "grade", heading = GradingConfig.DONE_HEADING })
 	palette = UIKit.colorsFor(panel)
 	panel.Size = UDim2.fromScale(0.94, 0.86)
 	local sizeLimit = panel:FindFirstChildOfClass("UISizeConstraint")

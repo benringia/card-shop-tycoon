@@ -263,7 +263,7 @@ AdminPanel.SECTIONS = {
 			{ label = "Coin sound 2: Cash Register", command = "/coinsound 2" },
 			{ label = "Coin sound 3: Coin Toss", command = "/coinsound 3" },
 			{ label = "Sword popup again", command = "/swordpopup" },
-			{ label = "Button names again (3 fights)", command = "/buttonnames" },
+			{ label = "Button names again (5 fights)", command = "/buttonnames" },
 		},
 	},
 	{
@@ -290,6 +290,7 @@ AdminPanel.SECTIONS = {
 			{ label = "Lesson: first trophy", command = "/tutorial lesson trophy" },
 			{ label = "Lesson: first title", command = "/tutorial lesson titles" },
 			{ label = "Lesson: setting prices", command = "/tutorial lesson prices" },
+			{ label = "Lesson: healing spring (first faint)", command = "/tutorial lesson spring" },
 			{ label = "Town Pish to me", command = "/pish" },
 			{ label = "Petting gives luck again now", command = "/pishluck" },
 		},

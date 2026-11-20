@@ -11,11 +11,27 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Plaza = require(Shared:WaitForChild("Config"):WaitForChild("Plaza"))
 local Wild = require(Shared:WaitForChild("Config"):WaitForChild("Wild"))
 local PishPath = require(Shared:WaitForChild("Util"):WaitForChild("PishPath"))
+local PlazaLayout = require(Shared:WaitForChild("Util"):WaitForChild("PlazaLayout"))
 local GreetRules = require(Shared:WaitForChild("Util"):WaitForChild("GreetRules"))
 
 local TownDog = {}
 
 local FOUNTAIN_CLEAR = 2 -- studs kept from the fountain's base
+local SOLID_CLEAR = 0.8 -- and from the plaza's other solid things (half a small dog)
+
+-- Everything in the plaza a dog walks round (owner 2026-11-20: "they are phashing through the dog house"): the fountain,
+-- the carts, the tables, the leaderboard's cards, the dog house and the jar (PlazaLayout.dogObstacles)
+local solids: { PishPath.Circle }? = nil
+local function obstacles(): { PishPath.Circle }
+	if not solids then
+		local list: { PishPath.Circle } = { { x = Wild.SPRING.x, z = Wild.SPRING.z, radius = Plaza.FOUNTAIN_RADIUS + FOUNTAIN_CLEAR } }
+		for _, solid in PlazaLayout.dogObstacles(Plaza, SOLID_CLEAR) do
+			table.insert(list, { x = Wild.SPRING.x + solid.x, z = Wild.SPRING.z + solid.z, radius = solid.radius })
+		end
+		solids = list
+	end
+	return solids :: { PishPath.Circle }
+end
 local PETTED_SECONDS = 2.5 -- it holds still this long for the "petted" clip
 
 export type Dog = {
@@ -99,12 +115,11 @@ function TownDog.waitFor(dog: Dog, seconds: number)
 	end
 end
 
--- Walks the marker to `target`, round the fountain, at `speed` studs a second
+-- Walks the marker to `target`, round the fountain and the plaza's other solid things, at `speed` studs a second
 function TownDog.walkTo(dog: Dog, target: Vector3, speed: number)
 	local marker = dog.marker
-	local centre = { x = Wild.SPRING.x, z = Wild.SPRING.z }
 	local here = marker.Position
-	local points = PishPath.route({ x = here.X, z = here.Z }, { x = target.X, z = target.Z }, centre, Plaza.FOUNTAIN_RADIUS + FOUNTAIN_CLEAR)
+	local points = PishPath.routeRound({ x = here.X, z = here.Z }, { x = target.X, z = target.Z }, obstacles())
 	marker:SetAttribute("Moving", true)
 	local holdLeft = dog.holdMax -- petting can stop this walk for this long in all
 	for _, point in points do

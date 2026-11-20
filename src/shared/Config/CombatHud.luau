@@ -32,11 +32,11 @@ return {
 			tip = "Your creature's special move.", -- what the creature's move does instead, when it has one (SkillText)
 		},
 		signature = {
-			color = rgb(250, 204, 21), icon = "Sparkle", emoji = "✨", key = nil, name = "SUPER MOVE",
+			color = rgb(250, 204, 21), icon = "Sparkle", emoji = "✨", key = "F", name = "SUPER MOVE", -- F (owner 2026-11-20: "add hotkey to super skills")
 			tip = "Your creature's super move.", -- likewise
 		},
 		swap = {
-			color = rgb(200, 205, 220), icon = "Swap", emoji = "🔄", key = "1-3", name = "SWAP",
+			color = rgb(200, 205, 220), icon = "Swap", emoji = "🔄", key = "1 / 3", name = "SWAP",
 			tip = "Switch to another creature.",
 		},
 		run = { color = rgb(248, 113, 113), icon = "Run", emoji = "🏃", key = nil, name = "RUN", tip = "Leave the fight." },
@@ -98,7 +98,19 @@ return {
 	} :: { [string]: { icon: string, name: string, tip: string } },
 	-- Under every skill's tooltip (a dodge before a skill's hit cancels its damage: SwordRules.skillDodged)
 	SKILL_DODGE_TIP = "Dodging before it lands cancels it.",
-	NAME_FIGHTS = 3, -- boss fights that show the buttons' names (saved per player: swordFights)
+	-- fights with the sword that show the buttons' names (saved per player: swordFights). Wild fights count too and
+	-- lose the names with it (owner 2026-11-20, the combat HUD tidy: 3 boss fights before, a wild fight always named)
+	NAME_FIGHTS = 5,
+	-- Not drawn with a mouse (owner 2026-11-20: a computer's compact fight buttons): Shift dodges, Tab targets and the
+	-- fight locks a target by itself; UiLayout.combatButtons has no rect for them there
+	MOUSE_HIDES = { "dodge", "target" },
+	-- and Run leaves the corner there for Roblox's top bar, right of its buttons (where the Wild's "Return to town"
+	-- sits out of a fight): a round icon `size` px, see-through like theirs, its words on a hover (`chanceTip` in a wild
+	-- fight, with the chance to get away)
+	MOUSE_RUN = { size = 40, gap = 8, transparency = 0.3, tip = "Run · Leave the fight", chanceTip = "Run · %d%% to get away" },
+	-- The dodge with no button (a computer): a small keycap beside the perk chip under your bars, dimmed to `dim`
+	-- while the dodge cools down, a line under it filling back
+	DODGE_KEY = { text = "Shift", dim = 0.6 },
 	TIP_HOLD = 0.4, -- seconds a phone tap is held to show the tooltip (that press doesn't act)
 	TIP_HOVER = 0.25, -- seconds the mouse rests on a button before its tooltip shows
 	TIP_WIDTH = 230,
@@ -109,7 +121,9 @@ return {
 	-- Util/SuperLock): the icon and edge greyed to `dim`, a padlock `lock` of the button's height over it, no meter until
 	-- it's unlocked (it still fills), and under it a pill in the element's colour naming the weapon (`label`, the
 	-- element's plain name; `text` its words), shown even when the buttons' names are off
-	SUPER_LOCK = { dim = rgb(110, 106, 122), lock = 0.5, label = "🔒 %s weapon", text = rgb(43, 22, 6) },
+	-- `mousePill`: with a mouse the pill naming the weapon isn't shown (owner 2026-11-20: the padlock alone; resting
+	-- the pointer on it says "Needs a ... weapon")
+	SUPER_LOCK = { dim = rgb(110, 106, 122), lock = 0.5, label = "🔒 %s weapon", text = rgb(43, 22, 6), mousePill = false },
 	METER = {
 		color = rgb(255, 196, 46),
 		transparency = 0.35,
@@ -118,7 +132,11 @@ return {
 	},
 	READY_FLASH = 0.25, -- seconds a button glows when it's ready again
 	PERK_CHIP_HEIGHT = 20, -- pixels: the fight perk chip under your creature's bar
-	PERK_TOAST_SECONDS = 1.8, -- a swap shows the new creature's perk this long
+	-- The chip is the element's icon alone (owner 2026-11-20, the combat HUD tidy: "buff sentence becomes a small icon
+	-- with a tooltip"); it opens into the perk's words PERK_OPEN_SECONDS when a creature comes in, PERK_TAP_SECONDS
+	-- after a tap, and while the pointer rests on it
+	PERK_OPEN_SECONDS = 2.5,
+	PERK_TAP_SECONDS = 3,
 	-- A boss's debuff on you (Config/Bosses DEBUFFS; the owner's approved look): a chip under the perk chip with the
 	-- seconds left and a draining bar, a badge on your portrait, an effect on your character (Util/DebuffFx)
 	DEBUFFS = {
@@ -151,6 +169,9 @@ return {
 		NAME = 12, -- text size (phones one less)
 		GAP = 10, -- pixels between tiles
 		TOP = 14, -- pixels below the status (the keys stick out above the tiles)
+		-- A computer's tiles are slim (owner 2026-11-20): the painting and its key, no name under it (it shows under the
+		-- tile while the pointer is on it); SLIM_FOOT px under the painting hold the heartbeat
+		SLIM_FOOT = 10,
 		-- A touch screen's Roblox thumbstick at rest (a phone's ring: 74 px, 29 in from the left and 19 up from the bottom;
 		-- the classic stick 70 px, 25 in, 20 up): px from the screen's left to its right edge and from the bottom to its top.
 		-- On a short phone the strip under the status would sit on it (owner 2026-11-17, a Galaxy A06: the ring's middle on

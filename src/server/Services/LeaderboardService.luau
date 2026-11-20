@@ -4,7 +4,8 @@
 -- OrderedDataStore when they change (at most every WRITE_EVERY seconds, and as they leave; never from Studio); the main
 -- game draws the lists on the plaza's two giant cards (Config/Plaza FAN, Server/Util/LeaderboardBoard), reads the
 -- all-time top every READ_EVERY seconds and shows it with the players here counted live (LeaderboardRules.merge), next
--- to this server's list. No remotes: the cards are drawn on the server and replicate.
+-- to this server's list. No remotes: the cards are drawn on the server and replicate. The game's owner is on neither
+-- list (Config/Leaderboard HIDE_OWNER).
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -26,6 +27,8 @@ local store: OrderedDataStore? = nil
 -- The total last sent to the store, by player (weak: a player who left by teleport never got the leave hook)
 local written: { [Player]: number } = setmetatable({}, { __mode = "k" }) :: any
 local names: { [number]: string } = {} -- display names of the all-time list's players, by user id
+-- Left off both lists and never sent to the store: the game's owner (Config/Leaderboard HIDE_OWNER)
+local hidden = LeaderboardRules.hidden(game.CreatorId, game.CreatorType.Name, Leaderboard.HIDE_OWNER)
 
 local function getStore(): OrderedDataStore?
 	if not store then
@@ -47,7 +50,7 @@ local function write(player: Player)
 		return
 	end
 	local count = DataService.GetStat(player, STAT)
-	if not LeaderboardRules.shouldWrite(count, written[player]) then
+	if not LeaderboardRules.shouldWrite(count, written[player], hidden[player.UserId] == true) then
 		return
 	end
 	local target = getStore()
@@ -64,7 +67,28 @@ local function write(player: Player)
 	end
 end
 
+-- A hidden player's entry from before they were hidden comes out of the store (once a server; never from Studio, like
+-- the writes)
+local function forgetHidden()
+	if RunService:IsStudio() then
+		return
+	end
+	local target = getStore()
+	if not target then
+		return
+	end
+	for userId in hidden do
+		local ok, err = pcall(function()
+			target:RemoveAsync(tostring(userId))
+		end)
+		if not ok then
+			warn("[LeaderboardService] couldn't take a hidden entry out:", err)
+		end
+	end
+end
+
 local function startWrites()
+	task.spawn(forgetHidden)
 	DataService.OnBeforeLeave(function(player)
 		task.spawn(write, player)
 	end)
@@ -116,7 +140,7 @@ local function readTop(): { LeaderboardRules.Entry }?
 		return nil
 	end
 	local ok, page = pcall(function()
-		return target:GetSortedAsync(false, Leaderboard.TOP):GetCurrentPage()
+		return target:GetSortedAsync(false, LeaderboardRules.readSize(Leaderboard.TOP, hidden)):GetCurrentPage()
 	end)
 	if not ok then
 		warn("[LeaderboardService] read failed:", page)
@@ -136,7 +160,7 @@ local function readTop(): { LeaderboardRules.Entry }?
 	for _, item in raw do
 		table.insert(entries, { userId = item.userId, name = names[item.userId] or "Player", count = item.count })
 	end
-	return entries
+	return LeaderboardRules.without(entries, hidden)
 end
 
 -- Everyone here now with their total
@@ -145,7 +169,7 @@ local function liveEntries(): { LeaderboardRules.Entry }
 	for _, player in Players:GetPlayers() do
 		table.insert(entries, { userId = player.UserId, name = player.DisplayName, count = DataService.GetStat(player, STAT) })
 	end
-	return entries
+	return LeaderboardRules.without(entries, hidden)
 end
 
 -- A list as text, to skip redrawing an unchanged board

@@ -2,8 +2,9 @@
 -- The Card Festival Square plaza (the user's pick C, 2026-10-30), built at server start by Server/Util/PlazaBuild:
 -- a cream gazebo with a teal tiled dome over the healing fountain (the Elemental Bloom lotus, round 2's pick B, built
 -- by Server/Util/BloomFountain), two giant cards that are the leaderboard (owner 2026-11-13; five cards of real card
--- art stood there before), three festival carts with
--- striped canopies, five cafe tables with townsfolk sitting at three, string lights from the gazebo to eight lamp
+-- art stood there before), two festival carts with
+-- striped canopies, four cafe tables with townsfolk sitting at two, the Support corner (Pish and Chikin's dog house,
+-- their beds and the tip jar, owner 2026-11-20), string lights from the gazebo to eight lamp
 -- posts, planters of bushes and flowers along the edge holding the lamps and the trees. Places are polar round the spring:
 -- angle in degrees (0 = +X, 90 = +Z: x = cos, z = sin), r in studs. The lanes (to the two shop doors and along the
 -- street) stay clear (Lune-tested, Util/PlazaLayout). Plain data, read by Lune tests. Colours { r, g, b }.
@@ -11,7 +12,7 @@ return {
 	FOUNTAIN_HEIGHT = 12.6, -- the healing fountain's height, floating card at its highest included (the gazebo is built round it)
 	FOUNTAIN_RADIUS = 7, -- its base step
 	LANE_HALF = 4.5, -- studs kept clear either side of each lane's middle
-	BENCH_REACH = 2, -- a bench's footprint (TownLayout places them at Town.LAYOUT.BENCH_RADIUS)
+	BENCH_REACH = 2, -- a bench's footprint (TownLayout places them at Town.LAYOUT.BENCH_RADIUS; none since 2026-11-20)
 	SPAWN = { x = -17, z = 0 }, -- the place's spawn pad: where new players appear
 
 	-- The Elemental Bloom: a lotus on a deep teal two-step base. Five outer petals, one per card element, each with a
@@ -110,8 +111,8 @@ return {
 		distance = 180, -- studs: the card faces draw this far (a landmark; only five screens)
 	},
 
+	-- (the pink PACKS cart at 315 went with its table and bench: the Support corner stands there, owner 2026-11-20)
 	STALLS = {
-		{ angle = 315, r = 19.5, color = { 255, 120, 168 }, sign = "PACKS" },
 		{ angle = 45, r = 19.5, color = { 80, 170, 255 }, sign = "CARDS" },
 		{ angle = 135, r = 19.5, color = { 96, 200, 110 }, sign = "SNACKS" },
 	},
@@ -139,8 +140,9 @@ return {
 		reach = 3.6,
 	},
 
-	-- (the one at 204 went: it stood in front of the leaderboard's cards, owner 2026-11-13)
-	TABLES = { angles = { 24, 66, 114, 156, 336 }, r = 18.4 },
+	-- (the one at 204 went: it stood in front of the leaderboard's cards, owner 2026-11-13; the one at 336 for the
+	-- Support corner, 2026-11-20)
+	TABLES = { angles = { 24, 66, 114, 156 }, r = 18.4 },
 	-- A round wooden cafe table with a cloth just under its top and a little vase, bistro chairs round it (a round
 	-- seat on four thin dark legs, a round back on two posts), facing it
 	TABLE = {
@@ -153,11 +155,10 @@ return {
 		seat = { radius = 0.62, height = 1.55, thickness = 0.18 },
 		back = { radius = 0.58, y = 2.75, lean = 8 },
 		leg = 0.12,
-		-- townsfolk sitting at three of the tables (the customers' look), sipping now and then (PlazaNpcController)
+		-- townsfolk sitting at two of the tables (the customers' look), sipping now and then (PlazaNpcController)
 		sitters = {
 			{ table = 1, chair = 1 },
 			{ table = 3, chair = 2 },
-			{ table = 5, chair = 3 },
 		},
 		wood = { 160, 108, 64 },
 		clothColor = { 248, 244, 236 },
@@ -171,6 +172,44 @@ return {
 		animation = "rbxassetid://2506281703", -- Roblox's default R15 sit
 		sip = { every = { 6, 11 }, raise = 1.1, hold = 1.4, range = 90, shoulder = 70, elbow = 60 }, -- seconds, seconds, seconds, studs, degrees, degrees
 		cup = { 255, 250, 240 },
+	},
+
+	-- The Support corner (owner 2026-11-20: "a dog bed/house with a jar ... remove one group in any side. and replace
+	-- them with the support dev"; where the pink cart, its table and its bench stood): Pish and Chikin's house facing the
+	-- gazebo, their two beds beside it and, in front where players walk, the tip jar on a crate with a chalkboard. The
+	-- jar's prompt opens the Support card (client SupportController, by the prompt's `name`). Code-built
+	-- (Server/Util/PlazaBuild). Studs; `reach`: each piece's footprint.
+	SUPPORT = {
+		house = {
+			angle = 315, r = 20.2, reach = 3.4,
+			width = 4.6, depth = 4.2, wall = 2.9, floor = 0.3,
+			roof = { rise = 2, overhang = 0.45, thickness = 0.28 },
+			door = { width = 1.9, height = 1.75 },
+			plate = "PISH & CHIKIN",
+			bowls = { x = 1.5, out = 0.7, radius = 0.45, height = 0.3 },
+		},
+		-- `front`: each dog's home spot this far in front of its bed's rim (PlazaLayout.dogHomes; the cat has the second
+		-- bed, Config/Ambient)
+		beds = { angle = 334, r = 18.4, reach = 2.7, radius = 1.25, apart = 1.4, height = 0.45, rim = 0.62, rimCount = 10, front = 1 },
+		-- Beside the house, not in front of it (owner 2026-11-20: "players will be coming from the sides not from the
+		-- front(there is a fountain). move the jar and sign out of the way"): the jar on its crate under a board hanging
+		-- from a post, the board's two faces turned along the ring so it reads from both ways round. `post`: its height;
+		-- `bottom`: the board's foot over the ground; `behind`: the post this far behind the jar; `board`: wide, tall
+		jar = {
+			angle = 296, r = 19.3, reach = 2.3, stand = 1.3, radius = 0.65, height = 1.7,
+			sign = { text = "SUPPORT THE DEV", post = 5.1, bottom = 3.35, behind = 1.45, board = { 2.7, 1.5 } },
+		},
+		prompt = { name = "SupportJar", object = "Pish & Chikin's jar", action = "Support the dev", distance = 9 },
+		wall = { 250, 236, 214 },
+		roofColor = { 255, 120, 168 }, -- the pink of the cart that stood here
+		door = { 62, 42, 40 },
+		plateColor = { 255, 250, 244 },
+		ink = { 91, 61, 110 },
+		bedColors = { { 255, 170, 200 }, { 150, 200, 255 } },
+		pillow = { 255, 248, 240 },
+		glass = { 235, 246, 255 },
+		gold = { 255, 204, 92 },
+		light = { brightness = 0.7, range = 9 },
 	},
 
 	LAMPS = { angles = { 22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5, 337.5 }, r = 25, height = 9, reach = 0.6 },

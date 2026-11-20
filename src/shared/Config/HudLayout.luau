@@ -49,10 +49,21 @@ return {
 		wall = { { 255, 224, 240 }, { 217, 204, 255 }, { 194, 230, 255 } },
 		ink = { 91, 61, 110 },
 		picture = "rbxassetid://131467700155398",
+		-- Pish and Chikin over the apps: px tall standing up and lying on its side (owner 2026-11-20: "make pish and
+		-- chikin icon a bit smaller"; 110 and 150 before). The apps move up by what the picture gave back
+		pictureHeight = { tall = 86, wide = 118 },
 		title = "%s's shop",
 		slide = 0.35,
 		columns = PhoneForm.columns,
 		badge = { 255, 79, 106 },
+		-- The Phone tile's notification on a computer (owner 2026-11-21; Util/PhoneNotice kinds, Util/Hud.notice): rings
+		-- in the badge's colour growing `grow` px off the tile and fading over `seconds`, `rings` of them `gap` s apart;
+		-- its icon rocks `wiggle` degrees `rocks` times; its count pops from `pop` times its size
+		notice = {
+			ping = { rings = 2, grow = 30, seconds = 0.75, gap = 0.3, wiggle = 12, rocks = 3, pop = 1.7 },
+			nudge = { rings = 1, grow = 14, seconds = 0.5, gap = 0, wiggle = 6, rocks = 1, pop = 1.25 },
+			thickness = 4,
+		},
 	},
 	KEY_CHIP = rgb(BabyColors.INK), -- the key letter in its white circle
 	CANDY = candy, -- by tile id: Manage butter, Cards sky, Bag pink, Bosses lilac, Admin grey-lilac, Rip and Drop peach
@@ -88,5 +99,6 @@ return {
 		angles = { before = 180, after = 90, later = 135 },
 		sideFade = 0.15, laterFade = 0.55, laterScale = 0.8, roll = 0.28, nameSeconds = 1.5, swipe = 30,
 		compactChip = 64, countText = 12,
+		fightScale = 0.7, -- in a computer's fight: 130 px -> 91, over the compact buttons (UiLayout.weaponSwitch)
 	},
 }

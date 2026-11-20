@@ -39,6 +39,9 @@ local jobs: { [Player]: { [string]: Job } } = {} -- loaded players only
 local tokens: { [Player]: Tokens } = {}
 local skipIntent: { [Player]: { station: string, at: number } } = {}
 local allowSkip = RateLimiter.new(1)
+-- What a station does when its job ends, after the item is back (CondenserService: the new star waits to be shown);
+-- words it returns replace the toast's
+local finishedHandlers: { [string]: (player: Player, job: Job) -> string? } = {}
 
 local function isStation(value: unknown): boolean
 	return typeof(value) == "string" and table.find(STATIONS, value) ~= nil
@@ -121,6 +124,15 @@ local function finish(player: Player, station: string)
 	end
 	mine[station] = nil
 	local ok, message = pcall(giveBack, player, job)
+	local handler = finishedHandlers[station]
+	if ok and handler then
+		local fine, words = pcall(handler, player, job)
+		if fine and typeof(words) == "string" then
+			message = words
+		elseif not fine then
+			warn(`[UpgradeJobService] {station}'s finish handler failed: {words}`)
+		end
+	end
 	if ok and message then
 		Remotes.Notify:FireClient(player, message, false)
 	elseif not ok then
@@ -169,6 +181,11 @@ function UpgradeJobService.Left(player: Player, station: string): number?
 end
 
 UpgradeJobService.Finish = finish
+
+-- `callback(player, job)` runs when a `station` job ends, the item already back; a string it returns is the toast
+function UpgradeJobService.OnFinished(station: string, callback: (player: Player, job: Job) -> string?)
+	finishedHandlers[station] = callback
+end
 
 -- A "Finish now" bought (a grant: always true, nothing bought is lost): the station the player pressed it on, else the
 -- job with the least time left this tier covers, else a token for the next job

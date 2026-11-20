@@ -18,8 +18,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Chikin = require(Shared:WaitForChild("Config"):WaitForChild("Chikin"))
 local ChikinTalk = require(Shared:WaitForChild("Config"):WaitForChild("ChikinTalk"))
+local Plaza = require(Shared:WaitForChild("Config"):WaitForChild("Plaza"))
+local Wild = require(Shared:WaitForChild("Config"):WaitForChild("Wild"))
 local LuckRules = require(Shared:WaitForChild("Util"):WaitForChild("LuckRules"))
 local PishPath = require(Shared:WaitForChild("Util"):WaitForChild("PishPath"))
+local PlazaLayout = require(Shared:WaitForChild("Util"):WaitForChild("PlazaLayout"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
@@ -47,7 +50,14 @@ local function day(walker: TownDog.Dog)
 			local far = (target - walker.marker.Position).Magnitude > town.trotFrom
 			TownDog.walkTo(walker, target, if far then town.trotSpeed else town.speed)
 			current = index
-			TownDog.idle(walker, town.idleClips, town.napChance, rng)
+			if stop.home then
+				-- home: in front of his bed by the dog house, facing it; a nap or a sit (owner 2026-11-20)
+				local bed = PlazaLayout.dogBeds(Plaza)[2]
+				TownDog.face(walker, TownDog.ground(Wild.SPRING.x + bed.x, Wild.SPRING.z + bed.z))
+				TownDog.play(walker, if rng:NextNumber() < town.homeNap then "nap" else "sit")
+			else
+				TownDog.idle(walker, town.idleClips, town.napChance, rng)
+			end
 		end
 		TownDog.waitFor(walker, rng:NextNumber(town.idleEvery[1], town.idleEvery[2]))
 	end

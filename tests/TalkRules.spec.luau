@@ -4,6 +4,7 @@
 local Pish = require("../src/shared/Config/Pish")
 local PishTalk = require("../src/shared/Config/PishTalk")
 local Game = require("../src/shared/Config/Game")
+local Jobs = require("../src/shared/Config/Jobs")
 local TalkRules = require("../src/shared/Util/TalkRules")
 local expect = require("./lib/expect")
 
@@ -180,6 +181,23 @@ return {
 		local lines = PishTalk.AFTER.prices
 		assert(lines and #lines >= 2, "what to do inside the window")
 		assert(string.find(lines[1], "+", 1, true) and string.find(lines[1], "-", 1, true), "the + and - buttons")
+	end,
+
+	-- Owner 2026-11-21: "The moment player unlock jobs. pish will introduce it to them": he points at Jobs on the Phone,
+	-- then, with the window open, says what a job is, the two jobs and what it costs you (a working card can't fight)
+	["Pish introduces jobs: where they are, then what they do inside the window"] = function()
+		local line = PishTalk.LESSONS.jobs
+		assert(string.find(line, "Jobs", 1, true) and string.find(line, "Phone", 1, true), "where to tap")
+		local lines = PishTalk.AFTER.jobs
+		assert(lines and #lines >= 3, "an introduction, not one line")
+		local all = table.concat(lines, " ")
+		for _, job in Jobs.JOBS do
+			assert(string.find(string.lower(all), string.lower(job), 1, true), `he names the {job}`)
+		end
+		assert(string.find(all, "fight", 1, true), "a working card can't fight")
+		for _, text in lines do
+			assert(utf8.len(text) :: number <= MAX_LENGTH, text)
+		end
 	end,
 
 	-- The owner 2026-11-11: "move the dialogue at the center top so that pish model can be seen"

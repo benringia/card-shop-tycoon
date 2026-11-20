@@ -18,6 +18,11 @@ return {
 		expect.equal(RevealRules.comesAlive("Legendary", true, false, false), false, "its model isn't in yet")
 		expect.equal(RevealRules.comesAlive("Common", true, false, false), false, "a new card, model not in yet")
 		expect.equal(RevealRules.comesAlive("Epic", false, false, true), true, "its model is in")
+		-- owner 2026-11-20: "Remove pet models on pack openings": switched off, no creature for any card (the card's own
+		-- reveal, the sky tear and the effects stay)
+		expect.equal(CardReveal.CREATURE.on, false, "no creature models in pack openings")
+		expect.equal(RevealRules.comesAlive("Legendary", true, true, true, false), false, "switched off: never")
+		expect.equal(RevealRules.comesAlive("Epic", false, false, true, true), true, "switched on: as before")
 		local alive = CardReveal.CREATURE
 		assert(alive.holdSeconds >= 1 and alive.holdSeconds <= 3, "a moment, not a wait")
 		assert(alive.height > 0 and alive.popSeconds > 0 and alive.backSeconds > 0, "its size and timings")

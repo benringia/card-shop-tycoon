@@ -98,6 +98,7 @@ return {
 		trotFrom = 60,
 		idleEvery = { 4, 9 },
 		napChance = 0.06,
+		homeNap = 0.5,
 		petHoldMax = 8, -- seconds petting can hold him in one place (Util/PishPath.holdEnd)
 		idleClips = { "sit", "sniff", "bark", "playBow", "headTilt", "shake", "scratch", "happyHop", "dig", "tailChase" },
 		-- He greets a player who comes within `range` studs (the owner 2026-11-11: "Make chicken greet you or other player
@@ -114,6 +115,9 @@ return {
 			{ x = 96, z = 0, weight = 2 }, -- the street's east end
 			{ x = 80, z = -14, weight = 1 },
 			{ x = 80, z = 14, weight = 1 },
+			-- home: in front of his bed by the dog house in the plaza (owner 2026-11-20: "add the dog house as a stop for
+			-- both dogs"; the spot is PlazaLayout.dogHomes' second, Lune-checked); there he naps `homeNap` of the time
+			{ x = 13.9, z = -8.34, weight = 2, home = true },
 			{ x = -110, z = 0, weight = 1 }, -- the Arena's trailhead, across town
 			{ x = -96, z = 0, weight = 1 },
 		},

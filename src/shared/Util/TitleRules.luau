@@ -117,4 +117,11 @@ function TitleRules.canEquip(id: string, earned: { string }): boolean
 	return id == "" or table.find(earned, id) ~= nil
 end
 
+-- Whether your own name tag (title and name) shows on your own screen: not in your own fight (owner 2026-11-20, the
+-- combat HUD tidy: it hung in the middle of the fight), not manning your register in first person, not while a tour
+-- leads. Others always see it
+function TitleRules.ownTag(facts: { fight: boolean, register: boolean, tour: boolean }): boolean
+	return not (facts.fight or facts.register or facts.tour)
+end
+
 return TitleRules

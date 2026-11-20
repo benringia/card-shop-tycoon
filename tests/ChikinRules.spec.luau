@@ -30,7 +30,8 @@ local function townChecks()
 		elseif stop.x <= -90 then
 			arena += stop.weight
 		end
-		assert(stop.x >= 60 or stop.x <= -90, `({stop.x}, {stop.z}) on the portal side, clear of Pish's shops`)
+		-- but for his home, the dog house in the plaza (owner 2026-11-20: "add the dog house as a stop for both dogs")
+		assert(stop.home or stop.x >= 60 or stop.x <= -90, `({stop.x}, {stop.z}) on the portal side, clear of Pish's shops`)
 	end
 	assert(east > arena, "mostly by the Wild and Frontier trails")
 	for _, clip in town.idleClips do

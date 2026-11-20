@@ -113,6 +113,16 @@ function EventRules.chip(cfg: Config, unix: number, override: string?): (string?
 	return `Next: {coming.name} in {EventRules.span(wait)}`, false
 end
 
+-- Whether the chip shows at all: an event is on, or the next one starts within `cfg.CHIP.soon` seconds; the rest of
+-- the week there's nothing to do about it
+function EventRules.chipShown(cfg: Config, unix: number, override: string?): boolean
+	if EventRules.today(cfg, unix, override) then
+		return true
+	end
+	local coming, wait = EventRules.next(cfg, unix)
+	return coming ~= nil and wait <= (cfg :: any).CHIP.soon
+end
+
 -- A saved state made safe: the UTC day the event's free luck was last given (-1: never)
 function EventRules.clean(saved: unknown): { luckDay: number }
 	local day = if typeof(saved) == "table" then (saved :: any).luckDay else nil

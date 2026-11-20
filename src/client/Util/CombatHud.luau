@@ -62,7 +62,8 @@ end
 export type Reserve = { id: string, name: string, hp: number, maxHp: number, art: string? }
 -- One party strip tile: state is Util/SwapKeys.party's ("swap" or "cooling": waiting to come in, "active", "fainted"
 -- in this fight, "resting" since an earlier one)
-export type PartyTile = { slot: number, simId: string, name: string, art: string?, color: Color3, state: string }
+-- `key`: the key that brings it in ("1": left of the creature fighting, "3": right of it; SwapKeys.party)
+export type PartyTile = { slot: number, simId: string, name: string, art: string?, color: Color3, state: string, key: string? }
 export type View = {
 	playerHp: number,
 	playerMax: number,
@@ -340,7 +341,8 @@ end
 -- The Super button locked without a weapon of its creature's element (owner 2026-11-19, look C; CombatHud SUPER_LOCK)
 -- or not (`need` nil): greyed with a padlock, no meter, its name a pill in the element's colour (`ring`) naming the
 -- weapon (`need`: the element's plain name)
-local function setSuperLock(button: Button, need: string?, ring: Color3?)
+-- `plain`: no pill (a computer: the tooltip names the weapon)
+local function setSuperLock(button: Button, need: string?, ring: Color3?, plain: boolean?)
 	local lockLook = CombatHudConfig.SUPER_LOCK
 	local locked = need ~= nil
 	button.locked = locked
@@ -365,7 +367,7 @@ local function setSuperLock(button: Button, need: string?, ring: Color3?)
 		label.BackgroundColor3 = ring or Color3.new(1, 1, 1)
 		label.BackgroundTransparency = 0
 		label.TextColor3 = color(lockLook.text)
-		label.Visible = button.frame.Visible
+		label.Visible = button.frame.Visible and not plain
 	else
 		label.BackgroundTransparency = 1
 		label.TextColor3 = Color3.new(1, 1, 1):Lerp(button.tint, 0.55)
@@ -498,12 +500,14 @@ type Tile = {
 	run: UIGradient,
 	scale: UIScale,
 	info: PartyTile,
+	slim: boolean, -- a computer's: no name under the painting, it shows while the pointer is on the tile
+	hover: boolean,
 }
 
 -- A party strip tile (option C): the card's painting over its name in a dark rounded panel, its key on a gold chip
 -- (PC), an overlay on the painting for the swap's seconds; under the painting a heartbeat pulse (shown while it
 -- fights), and a face-down card in the painting's place (shown when it's fainted or resting)
-local function makeTile(parent: Instance, info: PartyTile, onTap: (tile: PartyTile) -> ()): Tile
+local function makeTile(parent: Instance, info: PartyTile, onTap: (tile: PartyTile) -> (), slim: boolean): Tile
 	local spec = CombatHudConfig.PARTY_STRIP
 	local phone = UIKit.isPhone()
 	local width = if phone then spec.PHONE_TILE else spec.TILE
@@ -515,7 +519,7 @@ local function makeTile(parent: Instance, info: PartyTile, onTap: (tile: PartyTi
 	frame.AutoButtonColor = false
 	frame.BackgroundColor3 = color(CombatHudConfig.PANEL_COLOR)
 	frame.BackgroundTransparency = 0.12
-	frame.Size = UDim2.fromOffset(width, artHeight + nameSize + 12)
+	frame.Size = UDim2.fromOffset(width, if slim then artHeight + spec.SLIM_FOOT else artHeight + nameSize + 12)
 	frame.Parent = parent
 	UIKit.corner(frame, 10)
 	-- The edge; while it fights a light runs round it (a turning gradient over a white stroke)
@@ -578,12 +582,23 @@ local function makeTile(parent: Instance, info: PartyTile, onTap: (tile: PartyTi
 	name.TextXAlignment = Enum.TextXAlignment.Center
 	name.Position = UDim2.fromOffset(3, artHeight + 6)
 	name.Size = UDim2.new(1, -6, 0, nameSize + 2)
+	if slim then
+		-- under the tile, wider than it, only while the pointer is on the tile (paintTile)
+		name.Position = UDim2.new(0.5, 0, 0, artHeight + spec.SLIM_FOOT + 3)
+		name.AnchorPoint = Vector2.new(0.5, 0)
+		name.Size = UDim2.fromOffset(0, nameSize + 2)
+		name.AutomaticSize = Enum.AutomaticSize.X
+		name.TextTruncate = Enum.TextTruncate.None
+		name.Visible = false
+		name.ZIndex = 4
+		UIKit.outlined(name)
+	end
 	-- The heartbeat: a bright pulse sweeping across a dim bar where the name was
 	local beat = Instance.new("Frame")
 	beat.Name = "Heartbeat"
 	beat.BackgroundColor3 = color(spec.BEAT.color)
 	beat.AnchorPoint = Vector2.new(0.5, 0.5)
-	beat.Position = UDim2.new(0.5, 0, 0, artHeight + 6 + (nameSize + 2) / 2)
+	beat.Position = UDim2.new(0.5, 0, 0, if slim then artHeight + 4 + (spec.SLIM_FOOT - 4) / 2 else artHeight + 6 + (nameSize + 2) / 2)
 	beat.Size = UDim2.new(1, -14, 0, spec.BEAT.height)
 	beat.Visible = false
 	beat.Parent = frame
@@ -597,8 +612,8 @@ local function makeTile(parent: Instance, info: PartyTile, onTap: (tile: PartyTi
 		NumberSequenceKeypoint.new(1, 0.8),
 	})
 	pulse.Parent = beat
-	if not phone then
-		local key = UIKit.label(frame, tostring(info.slot), Enum.Font.FredokaOne, 13, color(spec.KEY_INK))
+	if not phone and info.key then
+		local key = UIKit.label(frame, info.key, Enum.Font.FredokaOne, 13, color(spec.KEY_INK))
 		key.Name = "Key"
 		key.TextXAlignment = Enum.TextXAlignment.Center
 		key.BackgroundColor3 = color(spec.KEY)
@@ -626,7 +641,15 @@ local function makeTile(parent: Instance, info: PartyTile, onTap: (tile: PartyTi
 		run = run,
 		scale = scale,
 		info = info,
+		slim = slim,
+		hover = false,
 	}
+	frame.MouseEnter:Connect(function()
+		tile.hover = true
+	end)
+	frame.MouseLeave:Connect(function()
+		tile.hover = false
+	end)
 	frame.Activated:Connect(function()
 		onTap(tile.info)
 	end)
@@ -641,10 +664,15 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 	-- With a mouse a click attacks (owner 2026-11-03): no Attack button, the others move into its corner. Phones,
 	-- tablets and other devices without a mouse keep it.
 	local clicks = UserInputService.MouseEnabled
+	-- a computer's fight with the sword: compact buttons, no Attack (a click), Dodge or Target button (Shift, Tab), Run
+	-- in the top bar (CombatHudConfig.MOUSE_HIDES, MOUSE_RUN)
+	local mouseOnly = clicks and not creatureOnly
 	local root = Instance.new("Frame")
 	root.Name = "CombatHud"
 	root.BackgroundTransparency = 1
 	root.Size = UDim2.fromScale(1, 1)
+	-- which buttons are on screen (UiLayout): the weapon dial sits right over them (WeaponSwitchController)
+	root:SetAttribute("Layout", if creatureOnly then "wild" elseif clicks then "mouse" else "touch")
 	root.Parent = parent
 
 	-- The red edges: the whole screen, the top bar too (MainGui starts below it)
@@ -694,23 +722,127 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		label.Parent.Visible = false -- shown once a called-in creature is on the field
 		secondLabel, secondBar = label, bar
 	end
-	-- The creature's fight perk working now: a chip in its element's colour under its bar (pops in on a swap)
+	-- The creature's fight perk working now: a chip in its element's colour under its bar (pops in on a swap). The
+	-- element's icon alone (owner 2026-11-20, the combat HUD tidy: "buff sentence becomes a small icon with a tooltip");
+	-- it opens into the perk's words for a moment when a creature comes in, after a tap, and while the pointer is on it
 	local chipSize = CombatHudConfig.PERK_CHIP_HEIGHT
-	local chip = UIKit.label(rows, "", Enum.Font.FredokaOne, chipSize - 8, Color3.new(1, 1, 1))
+	local chipRow = Instance.new("Frame") -- the perk chip, and a computer's dodge keycap beside it
+	chipRow.Name = "ChipRow"
+	chipRow.BackgroundTransparency = 1
+	chipRow.LayoutOrder = 3
+	chipRow.Size = UDim2.new(1, 0, 0, chipSize)
+	chipRow.Parent = rows
+	local chipRowList = Instance.new("UIListLayout")
+	chipRowList.FillDirection = Enum.FillDirection.Horizontal
+	chipRowList.VerticalAlignment = Enum.VerticalAlignment.Center
+	chipRowList.SortOrder = Enum.SortOrder.LayoutOrder
+	chipRowList.Padding = UDim.new(0, 6)
+	chipRowList.Parent = chipRow
+	local chip = Instance.new("TextButton")
 	chip.Name = "PerkChip"
-	chip.LayoutOrder = 3
+	chip.Text = ""
+	chip.AutoButtonColor = false
+	chip.LayoutOrder = 1
 	chip.Size = UDim2.fromOffset(0, chipSize)
 	chip.AutomaticSize = Enum.AutomaticSize.X
-	-- one line, as wide as its words: wrapped, its end ("19% faster") went to a hidden second line on a small phone
-	-- (owner 2026-11-17: "make sure nothing is cutoff")
-	chip.TextWrapped = false
 	chip.BackgroundColor3 = color(CombatHudConfig.PANEL_COLOR)
 	chip.BackgroundTransparency = 0.15
 	chip.Visible = false
+	chip.Parent = chipRow
 	UIKit.corner(chip, chipSize)
 	local chipPad = Instance.new("UIPadding")
-	chipPad.PaddingLeft, chipPad.PaddingRight = UDim.new(0, 8), UDim.new(0, 9)
+	chipPad.PaddingLeft, chipPad.PaddingRight = UDim.new(0, 7), UDim.new(0, 7)
 	chipPad.Parent = chip
+	local chipList = Instance.new("UIListLayout")
+	chipList.FillDirection = Enum.FillDirection.Horizontal
+	chipList.VerticalAlignment = Enum.VerticalAlignment.Center
+	chipList.SortOrder = Enum.SortOrder.LayoutOrder
+	chipList.Padding = UDim.new(0, 4)
+	chipList.Parent = chip
+	local chipIcon = Instance.new("ImageLabel")
+	chipIcon.Name = "Element"
+	chipIcon.BackgroundTransparency = 1
+	chipIcon.LayoutOrder = 1
+	chipIcon.Size = UDim2.fromOffset(chipSize - 6, chipSize - 6)
+	chipIcon.Parent = chip
+	-- one line, as wide as its words: wrapped, its end ("19% faster") went to a hidden second line on a small phone
+	-- (owner 2026-11-17: "make sure nothing is cutoff")
+	local chipText = UIKit.label(chip, "", Enum.Font.FredokaOne, chipSize - 8, Color3.new(1, 1, 1))
+	chipText.Name = "Words"
+	chipText.LayoutOrder = 2
+	chipText.TextWrapped = false
+	chipText.Size = UDim2.fromOffset(0, chipSize)
+	chipText.AutomaticSize = Enum.AutomaticSize.X
+	chipText.Visible = false
+	local chipHover, chipOpenUntil = false, 0
+	chip.MouseEnter:Connect(function()
+		chipHover = true
+	end)
+	chip.MouseLeave:Connect(function()
+		chipHover = false
+	end)
+	chip.Activated:Connect(function()
+		chipOpenUntil = os.clock() + CombatHudConfig.PERK_TAP_SECONDS
+	end)
+	-- The dodge with no button (a computer, owner 2026-11-20): a "Shift" keycap with the dodge's icon, dimmed while it
+	-- cools down, a line under it filling back (setCooldown feeds it)
+	local dodgeReadyAt, dodgeTotal = 0, 1
+	local dodgeIcon: ImageLabel?, dodgeText: TextLabel?, dodgeLine: Frame? = nil, nil, nil
+	if mouseOnly and armed then
+		local spec = CombatHudConfig.BUTTONS.dodge
+		local tint = color(spec.color)
+		local cap = Instance.new("Frame")
+		cap.Name = "DodgeKey"
+		cap.LayoutOrder = 2
+		cap.BackgroundColor3 = color(CombatHudConfig.PANEL_COLOR)
+		cap.BackgroundTransparency = 0.15
+		cap.Size = UDim2.fromOffset(0, chipSize)
+		cap.AutomaticSize = Enum.AutomaticSize.X
+		cap.Parent = chipRow
+		UIKit.corner(cap, 6)
+		local capEdge = Instance.new("UIStroke")
+		capEdge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		capEdge.Thickness = 1.5
+		capEdge.Color = tint
+		capEdge.Parent = cap
+		local content = Instance.new("Frame")
+		content.BackgroundTransparency = 1
+		content.Size = UDim2.fromOffset(0, chipSize)
+		content.AutomaticSize = Enum.AutomaticSize.X
+		content.Parent = cap
+		local capPad = Instance.new("UIPadding")
+		capPad.PaddingLeft, capPad.PaddingRight = UDim.new(0, 6), UDim.new(0, 7)
+		capPad.Parent = content
+		local capList = Instance.new("UIListLayout")
+		capList.FillDirection = Enum.FillDirection.Horizontal
+		capList.VerticalAlignment = Enum.VerticalAlignment.Center
+		capList.SortOrder = Enum.SortOrder.LayoutOrder
+		capList.Padding = UDim.new(0, 4)
+		capList.Parent = content
+		local icon = Instance.new("ImageLabel")
+		icon.BackgroundTransparency = 1
+		icon.Image = UIIcons[spec.icon] or ""
+		icon.ImageColor3 = Color3.new(1, 1, 1):Lerp(tint, 0.25)
+		icon.ScaleType = Enum.ScaleType.Fit
+		icon.LayoutOrder = 1
+		icon.Size = UDim2.fromOffset(chipSize - 6, chipSize - 6)
+		icon.Visible = icon.Image ~= ""
+		icon.Parent = content
+		local text = UIKit.label(content, CombatHudConfig.DODGE_KEY.text, Enum.Font.FredokaOne, chipSize - 8, Color3.new(1, 1, 1))
+		text.LayoutOrder = 2
+		text.TextWrapped = false
+		text.Size = UDim2.fromOffset(0, chipSize)
+		text.AutomaticSize = Enum.AutomaticSize.X
+		local line = Instance.new("Frame")
+		line.Name = "Ready"
+		line.BorderSizePixel = 0
+		line.BackgroundColor3 = tint
+		line.AnchorPoint = Vector2.new(0, 1)
+		line.Position = UDim2.new(0, 3, 1, -1)
+		line.Size = UDim2.new(1, -6, 0, 2)
+		line.Parent = cap
+		dodgeIcon, dodgeText, dodgeLine = icon, text, line
+	end
 	local chipEdge = Instance.new("UIStroke")
 	chipEdge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	chipEdge.Thickness = 1.5
@@ -776,30 +908,10 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		scale.Parent = frame
 		debuffChip, debuffName, debuffSecs, debuffDrain, debuffChipEdge, debuffScale = frame, name, secs, drain, edge, scale
 	end
-	-- A swap's toast: the new creature's perk, just under the top-left status for a moment
-	local toast = UIKit.label(root, "", Enum.Font.FredokaOne, 18, Color3.new(1, 1, 1))
-	toast.Name = "PerkToast"
-	toast.AnchorPoint = Vector2.new(0.5, 0)
-	toast.Position = UDim2.new(0.5, 0, 0, status.Size.Y.Offset + 16) -- clear of the status on narrow phones
-	toast.Size = UDim2.fromOffset(0, 34)
-	toast.AutomaticSize = Enum.AutomaticSize.X
-	toast.BackgroundColor3 = color(CombatHudConfig.PANEL_COLOR)
-	toast.BackgroundTransparency = 0.1
-	toast.Visible = false
-	UIKit.corner(toast, 10)
-	local toastPad = Instance.new("UIPadding")
-	toastPad.PaddingLeft, toastPad.PaddingRight = UDim.new(0, 14), UDim.new(0, 14)
-	toastPad.Parent = toast
-	local toastEdge = Instance.new("UIStroke")
-	toastEdge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	toastEdge.Thickness = 1.5
-	toastEdge.Parent = toast
-	local toastToken = 0
 	local lastPlayerHp: number? = nil
 	local creatureId: string? = nil
 	local hitAt, hitPeak = -math.huge, 0
 	local wasHurt = false
-	local swapped = false -- the first creature isn't a swap: no toast for it
 
 	-- The party strip under the status (owner 2026-11-05, option A; boss fights, and wild fights since the owner's
 	-- 2026-11-12 "replace summoned pets with another"); built again when the party changes
@@ -974,13 +1086,77 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		tipFor = name
 	end
 
+	-- with a mouse: no Attack (a click attacks), nor Dodge and Target (Shift and Tab; CombatHudConfig.MOUSE_HIDES), and
+	-- Run is the top bar's icon (below)
 	for _, name in (if creatureOnly then WILD_ORDER else BUTTON_ORDER) do
-		if (name ~= "attack" or not clicks) and presses[name] then
+		local hidden = mouseOnly and (name == "attack" or name == "run" or table.find(CombatHudConfig.MOUSE_HIDES, name) ~= nil)
+		if not hidden and presses[name] then
 			buttons[name] = makeButton(root, name, presses[name], onTip)
 		end
 	end
 	if strip then
 		buttons.swap.frame.Visible = false -- the party strip is the swap
+	end
+	-- Run with a mouse (owner 2026-11-20): out of the corner, a small round icon in Roblox's top bar right of its buttons
+	-- (the Wild's "Return to town" sits there out of a fight), its words under it while the pointer is on it
+	local runTip: TextLabel? = nil
+	local runPlaced: RBXScriptConnection? = nil
+	if mouseOnly and presses.run then
+		local look = CombatHudConfig.MOUSE_RUN
+		local spec = CombatHudConfig.BUTTONS.run
+		local top = Instance.new("TextButton")
+		top.Name = "run"
+		top.Text = ""
+		top.AutoButtonColor = false
+		top.Size = UDim2.fromOffset(look.size, look.size)
+		top.BackgroundColor3 = Color3.new(0, 0, 0)
+		top.BackgroundTransparency = look.transparency
+		top.Parent = root
+		UIKit.corner(top, look.size / 2)
+		local glyph = Instance.new("ImageLabel")
+		glyph.BackgroundTransparency = 1
+		glyph.Image = UIIcons[spec.icon] or ""
+		glyph.ImageColor3 = Color3.new(1, 1, 1):Lerp(color(spec.color), 0.45)
+		glyph.ScaleType = Enum.ScaleType.Fit
+		glyph.AnchorPoint = Vector2.new(0.5, 0.5)
+		glyph.Position = UDim2.fromScale(0.5, 0.5)
+		glyph.Size = UDim2.fromScale(0.62, 0.62)
+		glyph.Parent = top
+		local words = UIKit.label(top, look.tip, Enum.Font.GothamBold, 14, Color3.new(1, 1, 1))
+		words.Name = "Tip"
+		words.AnchorPoint = Vector2.new(0, 0)
+		words.Position = UDim2.new(0, 0, 1, 6)
+		words.Size = UDim2.fromOffset(0, 26)
+		words.AutomaticSize = Enum.AutomaticSize.X
+		words.TextWrapped = false
+		words.BackgroundColor3 = color(CombatHudConfig.PANEL_COLOR)
+		words.BackgroundTransparency = 0.05
+		words.Visible = false
+		words.ZIndex = 20
+		UIKit.corner(words, 8)
+		local wordsPad = Instance.new("UIPadding")
+		wordsPad.PaddingLeft, wordsPad.PaddingRight = UDim.new(0, 9), UDim.new(0, 9)
+		wordsPad.Parent = words
+		local wordsEdge = Instance.new("UIStroke")
+		wordsEdge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		wordsEdge.Thickness = 1.5
+		wordsEdge.Color = color(spec.color)
+		wordsEdge.Parent = words
+		local function placeRun()
+			-- the HUD's frame starts under the top bar: up into it, centred on its strip
+			local bar = GuiService.TopbarInset
+			top.Position = UDim2.fromOffset(bar.Min.X + look.gap, -(bar.Height + look.size) / 2)
+		end
+		placeRun()
+		runPlaced = GuiService:GetPropertyChangedSignal("TopbarInset"):Connect(placeRun)
+		top.MouseEnter:Connect(function()
+			words.Visible = true
+		end)
+		top.MouseLeave:Connect(function()
+			words.Visible = false
+		end)
+		top.Activated:Connect(presses.run)
+		runTip = words
 	end
 
 	-- Seconds until a swap is allowed (the Swap button's cooldown, still fed by setCooldown)
@@ -1017,8 +1193,8 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		tile.edge.Thickness = if active then 3 else 2
 		tile.run.Enabled = active
 		tile.beat.Visible = active
-		-- a wild fight's card fighting says what a tap does
-		tile.name.Visible = not active or wild == true
+		-- a wild fight's card fighting says what a tap does (a slim tile: its words only while the pointer is on it)
+		tile.name.Visible = (not active or wild == true) and (not tile.slim or tile.hover)
 		tile.name.Text = if active and wild then stripSpec.UNSUMMON else info.name
 		if active then
 			tile.run.Rotation = (now * stripSpec.RUN.turn) % 360
@@ -1081,7 +1257,7 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		local list = party or {}
 		local keyParts = {}
 		for _, info in list do
-			table.insert(keyParts, `{info.slot}={info.simId}`)
+			table.insert(keyParts, `{info.slot}={info.simId}:{info.key or ""}`)
 		end
 		local key = table.concat(keyParts, ",")
 		if key ~= tilesKey then
@@ -1090,8 +1266,10 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 				tile.frame:Destroy()
 			end
 			tiles = {}
-			for _, info in list do
-				table.insert(tiles, makeTile(strip, info, onTile))
+			for index, info in list do
+				local tile = makeTile(strip, info, onTile, clicks)
+				tile.frame.LayoutOrder = index -- the list's order: the creature fighting in the middle (SwapKeys.party)
+				table.insert(tiles, tile)
 			end
 			placeStrip()
 		end
@@ -1115,6 +1293,9 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		local nameSize = math.clamp(math.round((rects.attack or rects.pet).h * 0.13), 11, 16)
 		for name, button in buttons do
 			local r = rects[name]
+			if not r then
+				continue -- no place in this layout
+			end
 			button.frame.Position = UDim2.fromOffset(r.x, r.y)
 			button.frame.Size = UDim2.fromOffset(r.w, r.h)
 			button.shade.Size = UDim2.fromOffset(r.w, r.h)
@@ -1129,6 +1310,9 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 	local resized: RBXScriptConnection? = root:GetPropertyChangedSignal("AbsoluteSize"):Connect(relayout)
 
 	local function setCooldown(name: string, readyAt: number, total: number)
+		if name == "dodge" then
+			dodgeReadyAt, dodgeTotal = readyAt, math.max(total, 0.01) -- a computer's Shift keycap shows it
+		end
 		local button = buttons[name]
 		if button then
 			button.readyAt, button.total = readyAt, math.max(total, 0.01)
@@ -1248,6 +1432,14 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 	local ticker = RunService.RenderStepped:Connect(function()
 		local now = os.clock()
 		feedback(now)
+		chipText.Visible = chipHover or now < chipOpenUntil or not chipIcon.Visible -- no icon to stand for it: the words stay
+		if dodgeText and dodgeIcon and dodgeLine then
+			local left = dodgeReadyAt - now
+			local dim = if left > 0.05 then CombatHudConfig.DODGE_KEY.dim else 0
+			dodgeText.TextTransparency = dim
+			dodgeIcon.ImageTransparency = dim
+			dodgeLine.Size = UDim2.new(1 - math.clamp(left / dodgeTotal, 0, 1), -6, 0, 2)
+		end
 		if debuffKind then
 			local left = debuffUntil - now
 			if left <= 0 then
@@ -1298,6 +1490,10 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 
 	local function update(view: View)
 		latest = view
+		if runTip then
+			local look = CombatHudConfig.MOUSE_RUN
+			runTip.Text = if wild and view.runChance then string.format(look.chanceTip, math.round(view.runChance * 100)) else look.tip
+		end
 		local beaten = view.down or view.out
 		updateParty(view.party)
 		if creatureOnly then
@@ -1334,26 +1530,15 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 				badge.Image = view.creatureArt or ""
 				badge.Visible = view.creatureArt ~= nil
 			end
-			local perkColor = view.perkColor or Color3.new(1, 1, 1)
-			chip.Text = view.perkText or ""
-			ElementBadge.prefix(chip, view.perkElement)
+			-- its perk: the chip pops in open, saying it in words, then folds down to the element's icon
+			chipText.Text = view.perkText or ""
+			chipIcon.Image = ElementBadge.image(view.perkElement)
+			chipIcon.Visible = chipIcon.Image ~= ""
 			chip.Visible = view.perkText ~= nil
-			chipEdge.Color = perkColor
+			chipEdge.Color = view.perkColor or Color3.new(1, 1, 1)
+			chipOpenUntil = os.clock() + CombatHudConfig.PERK_OPEN_SECONDS
 			chipScale.Scale = 0.5
 			TweenService:Create(chipScale, CHIP_POP, { Scale = 1 }):Play()
-			if view.perkText and swapped then
-				toastToken += 1
-				local token = toastToken
-				toast.Text = view.perkText
-				toastEdge.Color = perkColor
-				toast.Visible = true
-				task.delay(CombatHudConfig.PERK_TOAST_SECONDS, function()
-					if toastToken == token then
-						toast.Visible = false
-					end
-				end)
-			end
-			swapped = true
 		elseif not creatureOnly then
 			creatureBar.set(view.creatureHp, view.creatureMax)
 		end
@@ -1366,7 +1551,7 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 			button.label.Visible = showNames and button.frame.Visible
 		end
 		if buttons.signature then
-			setSuperLock(buttons.signature, if view.hasSignature then view.superNeed else nil, view.perkColor)
+			setSuperLock(buttons.signature, if view.hasSignature then view.superNeed else nil, view.perkColor, mouseOnly and not CombatHudConfig.SUPER_LOCK.mousePill)
 		end
 		if tipFor then
 			onTip(tipFor, true) -- a swap renames the pet's move under an open tooltip
@@ -1391,6 +1576,9 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		end
 		if resized then
 			resized:Disconnect()
+		end
+		if runPlaced then
+			runPlaced:Disconnect()
 		end
 		root:Destroy()
 	end

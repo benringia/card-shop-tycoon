@@ -119,5 +119,12 @@ return {
 		progress.stats = { packsOpened = 500 }
 		expect.equal(TitleRules.meets({ kind = "stat", stat = "packsOpened", min = 500 }, progress), true)
 	end,
+	-- owner 2026-11-20 ("Do. C"): in your own fight your title and name hung in the middle of it; the foe's tag is the one
+	-- that matters there. Others still see yours
+	["your own name tag hides on your screen in your fight, at the register and through a tour"] = function()
+		expect.equal(TitleRules.ownTag({ fight = false, register = false, tour = false }), true)
+		expect.equal(TitleRules.ownTag({ fight = true, register = false, tour = false }), false, "your own fight")
+		expect.equal(TitleRules.ownTag({ fight = false, register = true, tour = false }), false)
+		expect.equal(TitleRules.ownTag({ fight = false, register = false, tour = true }), false)
+	end,
 }
-

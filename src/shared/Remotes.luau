@@ -83,6 +83,8 @@ local NAMES = {
 	"PullAnnouncement", -- server → clients: (displayName: string, cardId: string, foil: boolean, kind: "frontier"?, finderUserId?) big pulls and Frontier finds
 	"PullRevealed", -- client → server: (cardId: string, foil: boolean) puller flipped a big pull; announce it
 	"Condense", -- client → server: (shelfUid, cardId, mainBeastId?, mainFoil?, mainGrade?) +1 star from duplicates
+	"CondenserSeen", -- client → server: () the finished star was taken out in the Condenser's window (clears CondenserDone)
+	"GradingSeen", -- client → server: () the finished grade was taken out in the Grading Station's window (clears GradingDone)
 	"GradeUp", -- client → server: (shelfUid, cardId, mainBeastId?, mainFoil?, mainGrade?, useSeals, useGold) +1 grade from duplicates (and Grading Seals) and cash (or a Gold Seal)
 	"AssignJob", -- client → server: (target: beastId | { cardId, foil, grade }, job: string) card starts a shop job
 	"UnassignJob", -- client → server: (slot: number)
@@ -122,7 +124,7 @@ local NAMES = {
 	"DungeonLeave", -- client → server: () leave the Dungeon run (back to the Frontier)
 	"Titles", -- server → client: { earned = { titleId }, equipped = titleId ("" automatic) }; client → server: () ask (TitleService)
 	"EquipTitle", -- client → server: (titleId: string) show that earned title over your name ("" = automatic; TitleService)
-	"Blocked", -- server → client: { reason, title?, icon?, shove: Vector3? } you can't do that yet: a big locked card with what's needed (Util/Blocked, BlockedController); a knockout's card; a dangerous monster's shove for your client to apply
+	"Blocked", -- server → client: { reason, title?, icon?, shove: Vector3?, tone: "info"?, seconds? } you can't do that yet (tone "info": an answer, the healing spring's): a big locked card with what's needed (Util/Blocked, BlockedController); a knockout's card; a dangerous monster's shove for your client to apply
 	"DungeonCinematic", -- server → client: { kind = "door" | "hydra", door: Vector3, through: Vector3, sockets?: { Vector3 } } a puzzle's gate opening, or the way to the Hydra (DungeonCinematicController)
 	"DungeonChest", -- server → client: { key, kind = "puzzle" | "secret", cash?, xp?, item?, count?, title? } you opened that Dungeon chest
 	"UseXpTonic", -- client → server: (beastId: string) one XP Tonic on a party card
@@ -254,6 +256,8 @@ return {
 	PullAnnouncement = remotes.PullAnnouncement,
 	PullRevealed = remotes.PullRevealed,
 	Condense = remotes.Condense,
+	CondenserSeen = remotes.CondenserSeen,
+	GradingSeen = remotes.GradingSeen,
 	GradeUp = remotes.GradeUp,
 	AssignJob = remotes.AssignJob,
 	UnassignJob = remotes.UnassignJob,

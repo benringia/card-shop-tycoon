@@ -223,7 +223,9 @@ return {
 		-- The stars on the shop's sign (PlotService.SetSignRating): a row along the sign's bottom, filled by quarters
 		sign = { rowHeight = 0.32, nameHeight = 0.68, dim = 0.72, color = { 255, 205, 60 } },
 		-- The HUD chip (RatingController): a white pill of stars and the number in a 48 px tap area
-		chip = { height = 36, hit = 48, star = 18, text = 18 },
+		-- `hud` false (owner 2026-11-21, with the desktop layout: "we can drop the rating"): no chip on the HUD; the
+		-- rating stays on the Phone (its status bar, Reviews) and on the shop's sign
+		chip = { height = 36, hit = 48, star = 18, text = 18, hud = false },
 		tipsHeight = 250, -- the tips window's height in pixels
 	},
 	-- The tips window's lines per rating part: good when it scores RATING.goodFrom or more, else the fix
@@ -341,6 +343,9 @@ return {
 		cheer = "🎉",
 		cheerFrom = "Very Rare",
 		cheerOrder = 3, -- cheerFrom's Rarities.Tiers order (the owner's toast: OfferRules.pullLine)
+		-- its reveal hit at this share of the pack opening's own volume (owner 2026-11-20: "turn down kid pulling a high
+		-- rarity card sound")
+		hitVolume = 0.35,
 		beam = { height = 26, width = 2.2, transparency = 0.6, seconds = 2.8, color = { 255, 214, 92 } },
 	},
 	TYPES = {

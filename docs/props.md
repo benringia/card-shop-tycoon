@@ -335,6 +335,9 @@ pack the owner imports once:
 2. Import the FBX in Studio (default settings) and save the imported model as `assets/props-import/DeliveryProps.rbxm`.
 3. `lune run tools/props/split_pack assets/props-import/DeliveryProps.rbxm` writes `assets/props/<Name>.rbxm`.
 
+The stickers (`<Name>__Picture`, `__PictureBack`) wear the product's picture from `Config/ProductPictures`
+(`DeliveryLooks.finishBox`: a SurfaceGui with the picture fitted whole, since 2026-11-20; the drawn UI icon before).
+
 `Props.weldFit` welds each to its box with Welds (a WeldConstraint took the parts' offset when the box entered the
 world, after it was moved onto the pad, and left the model behind). The importer once gave `BoxDecks` a texture that
 loads as a picture but never on a mesh (black box): its palette was uploaded again and written into

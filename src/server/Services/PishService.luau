@@ -20,6 +20,7 @@ local Plaza = require(Config:WaitForChild("Plaza"))
 local PlotConfig = require(Config:WaitForChild("Plots"))
 local Town = require(Config:WaitForChild("Town"))
 local PishPath = require(Shared:WaitForChild("Util"):WaitForChild("PishPath"))
+local PlazaLayout = require(Shared:WaitForChild("Util"):WaitForChild("PlazaLayout"))
 local Wild = require(Config:WaitForChild("Wild"))
 local LuckRules = require(Shared:WaitForChild("Util"):WaitForChild("LuckRules"))
 local WalkerRules = require(Shared:WaitForChild("Util"):WaitForChild("WalkerRules"))
@@ -84,6 +85,13 @@ local function day()
 			TownDog.waitFor(dog, rng:NextNumber(town.visitSeconds[1], town.visitSeconds[2]))
 			dog.marker:SetAttribute("VisitingOwner", 0)
 			TownDog.walkTo(dog, approach, town.speed) -- back out past the pad before heading on
+		elseif rng:NextNumber() < town.homeChance then
+			-- home: in front of his bed by the dog house in the plaza, facing it; a nap or a sit (owner 2026-11-20)
+			local home = PlazaLayout.dogHomes(Plaza)[1]
+			local bed = PlazaLayout.dogBeds(Plaza)[1]
+			TownDog.walkTo(dog, ground(Wild.SPRING.x + home.x, Wild.SPRING.z + home.z), town.speed)
+			TownDog.face(dog, ground(Wild.SPRING.x + bed.x, Wild.SPRING.z + bed.z))
+			TownDog.play(dog, if rng:NextNumber() < town.homeNap then "nap" else "sit")
 		elseif #stops > 0 then
 			TownDog.walkTo(dog, stops[rng:NextInteger(1, #stops)], town.speed)
 			TownDog.idle(dog, town.idleClips, town.napChance, rng)

@@ -52,7 +52,11 @@ return {
 	-- Normal monsters get a toast instead (Util/FightToast): slides down at the top, edge colour by kind, gone after
 	-- `seconds`; a soft pop as it lands (the chime for a card or shards)
 	TOAST = {
-		seconds = 2.6,
+		-- bigger and longer (owner 2026-11-21, launch day: "make this bigger and make it last longer"; it was 2.6 s at
+		-- its own size): drawn `scale` times its size on a desktop, `touchScale` on a touch screen (a phone's width)
+		seconds = 4.5,
+		scale = 1.4,
+		touchScale = 1.15,
 		top = 64, -- px under the top bar, clear of the Shop button
 		edge = { win = rgb(62, 224, 138), rare = rgb(255, 207, 74), lose = rgb(224, 71, 58), run = rgb(154, 150, 168) },
 	},

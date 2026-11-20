@@ -4,6 +4,9 @@
 -- (CustomerService's outcomes), the newest MAX this session, not saved. Each outcome posts at its `chance` (most sales
 -- don't, or the feed would be only sales) with stars in `stars` and one of its `lines`. Plain data.
 return {
+	-- The Reviews app's red count of unread posts: off (owner 2026-11-21: "remove notifications for reviews on the
+	-- phone"); it also kept the Phone tile's count up. ReviewRules.badge
+	BADGE = false,
 	MAX = 20,
 	NAMES = {
 		"Maya", "Theo", "Lena", "Omar", "Zoe", "Kai", "Ivy", "Leo", "Nora", "Finn",

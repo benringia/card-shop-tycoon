@@ -154,6 +154,28 @@ end
 
 function GradingService.Start()
 	Remotes.GradeUp.OnServerEvent:Connect(onGradeUp)
+	-- The timer is up (owner 2026-11-20, as the Condenser's): the card is back in the binder already, and its new grade
+	-- waits here (the player's GradingDone attribute) until they open the Grading Station and take it out
+	UpgradeJobService.OnFinished("grading", function(player, job)
+		local beast, plain = job.beast, job.plain
+		local cardId = if beast then beast.cardId elseif plain then plain.cardId else nil
+		local card = if cardId then Cards.ById[cardId] else nil
+		if not card then
+			return nil
+		end
+		local done = if beast
+			then { cardId = beast.cardId, foil = beast.foil, grade = beast.grade, level = beast.level, stars = beast.stars }
+			else { cardId = (plain :: any).cardId, foil = (plain :: any).foil, grade = (plain :: any).grade, level = 1, stars = BeastRules.START_STARS }
+		player:SetAttribute("GradingDone", CondenseRules.encodeDone(done))
+		return (string.gsub(Upgrades.GRADING_READY, "{name}", function()
+			return card.name
+		end))
+	end)
+	Remotes.GradingSeen.OnServerEvent:Connect(function(player)
+		if allowAction(player) then
+			player:SetAttribute("GradingDone", nil)
+		end
+	end)
 end
 
 return GradingService

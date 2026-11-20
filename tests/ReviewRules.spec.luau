@@ -49,4 +49,11 @@ return {
 		expect.equal(ReviewRules.unseen(list, 0), Reviews.MAX)
 		expect.equal(ReviewRules.unseen({}, 0), 0)
 	end,
+	-- Owner 2026-11-21: "remove notifications for reviews on the phone": the Reviews app wears no count (and adds
+	-- nothing to the Phone tile's); the feed itself still marks what's new
+	["no count on the Reviews app"] = function()
+		expect.equal(Reviews.BADGE, false)
+		expect.equal(ReviewRules.badge(3, Reviews), 0, "unread posts: no count")
+		expect.equal(ReviewRules.badge(3, { BADGE = true }), 3, "switched back on: the unread ones")
+	end,
 }

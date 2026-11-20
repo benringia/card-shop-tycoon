@@ -1,10 +1,13 @@
 --!strict
 -- Applies a day cycle look (Util/DayCycle) to Lighting and its Atmosphere, Bloom, ColorCorrection and SunRays (made
 -- once by TownService). TownService sets the fixed look at start; on each client DayCycleController applies the cycle,
--- and the welcome cinematic holds it (hold) while it runs its own time-lapse.
+-- and the welcome cinematic holds it (hold) while it runs its own time-lapse. Every look's colours go through the soft
+-- colour filter (Config/SoftFilter, Util/SoftFilter).
 local Lighting = game:GetService("Lighting")
 
 local DayCycle = require(script.Parent:WaitForChild("DayCycle"))
+local SoftFilter = require(script.Parent:WaitForChild("SoftFilter"))
+local SoftFilterConfig = require(script.Parent.Parent:WaitForChild("Config"):WaitForChild("SoftFilter"))
 
 local SkyLook = {}
 
@@ -37,8 +40,8 @@ function SkyLook.apply(look: DayCycle.Look)
 	end
 	local grading = Lighting:FindFirstChildOfClass("ColorCorrectionEffect")
 	if grading then
-		grading.Saturation = look.saturation
-		grading.Contrast = look.contrast
+		-- the soft colour filter on top of the look's own grading (Config/SoftFilter)
+		grading.Saturation, grading.Contrast = SoftFilter.grade(look.saturation, look.contrast, SoftFilterConfig)
 		grading.TintColor = rgb(look.tint)
 	end
 	local rays = Lighting:FindFirstChildOfClass("SunRaysEffect")

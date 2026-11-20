@@ -91,11 +91,14 @@ local POISON_COLOR = Color3.fromRGB(140, 230, 90)
 local BURN_COLOR = Color3.fromRGB(255, 140, 50)
 local NUMBER_LIFT = 4 -- studs over a fighter a damage number starts
 -- HUD hidden while fighting so nothing gets tapped by mistake
-local HUD_NAMES = { "HudSide", "HudBottom", "HudFan", "StatusRow", "PartyDock", "ReturnToTown" } -- the Wild's pill sits in its holder
+-- the Wild's pill sits in its holder; the Frontier's "Back to the shops" (FrontierHome) sat under the foe's bar, where a
+-- fight's toasts hang now (2026-11-20)
+local HUD_NAMES = { "HudSide", "HudBottom", "HudFan", "StatusRow", "TopRow", "PartyDock", "ReturnToTown", "FrontierHome" }
 
 local BattleController = {}
 BattleController.pylonTargets = {} :: { { id: string, part: BasePart, radius: number } } -- the Dungeon's room 3 (swordTargets)
 BattleController.superFree = false -- this fight's supers need no weapon (the prologue's lent party; Util/SuperLock)
+BattleController.lastCenter = nil :: number? -- the party strip's middle slot in this fight (fightCenter)
 
 -- Fight bar layout (pixels): kept short so the fight stays visible on a landscape phone
 local PAD = 8
@@ -192,7 +195,9 @@ local combatWild = false -- the combat HUD is a wild monster fight's
 local combatSword = false -- the player fights in it with their sword (boss fights; wild ones once they have one)
 local foeElite = false -- this fight's monster is an elite (bigger: a bigger sword target)
 local COMBAT_ACTION = "BossCombat"
-local COMBAT_KEYS = { Enum.KeyCode.LeftShift, Enum.KeyCode.E, Enum.KeyCode.R, Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three }
+-- 1 and 3: the creature left and right of the one fighting (owner 2026-11-20; 2 retired: Util/SwapKeys)
+-- F: the creature's super (owner 2026-11-20: "add hotkey to super skills")
+local COMBAT_KEYS = { Enum.KeyCode.LeftShift, Enum.KeyCode.E, Enum.KeyCode.R, Enum.KeyCode.F, Enum.KeyCode.One, Enum.KeyCode.Three }
 
 -- An element's plain name and image icon (owner 2026-11-12: "use icons not emojis")
 local ElementBadge = require(ClientUtil:WaitForChild("ElementBadge"))
@@ -678,7 +683,17 @@ local function secondCreature(snapshot: Snapshot, lead: any?): any?
 	return nil
 end
 
--- Boss fights' party strip (owner 2026-11-05, option A, look C): each party slot's card and what its key does now
+-- The party strip's middle slot (Util/SwapKeys.center): your creature fighting, else where the middle last was. On the
+-- module table: this file is at Luau's 200 locals
+function BattleController.fightCenter(snapshot: Snapshot): number
+	local lead = myCreature(snapshot)
+	local center = SwapKeys.center(PartyController.GetSlots(), Party.PARTY_SIZE, if lead and not lead.fainted then lead.id else nil, BattleController.lastCenter)
+	BattleController.lastCenter = center
+	return center
+end
+
+-- A fight's party strip (owner 2026-11-05, option A, look C): the creature fighting in the middle with the others
+-- either side, like the party dock's carousel (owner 2026-11-20), each with what its key (1: left, 3: right) does now
 local function partyTiles(snapshot: Snapshot): { CombatHud.PartyTile }
 	local tiles = {}
 	local beasts = BinderController.GetBeasts()
@@ -691,7 +706,7 @@ local function partyTiles(snapshot: Snapshot): { CombatHud.PartyTile }
 	for _, id in snapshot.benched do
 		table.insert(roster, { id = id, fainted = true })
 	end
-	for _, slot in SwapKeys.party(PartyController.GetSlots(), Party.PARTY_SIZE, snapshot.reserves, roster, snapshot.swaps, snapshot.swapIn) do
+	for _, slot in SwapKeys.party(PartyController.GetSlots(), Party.PARTY_SIZE, snapshot.reserves, roster, snapshot.swaps, snapshot.swapIn, BattleController.fightCenter(snapshot)) do
 		local beast = beasts[slot.beastId]
 		local card = if beast then Cards.ById[beast.cardId] else nil
 		local name = fightNames[slot.simId] or (if card then card.name else nil)
@@ -702,6 +717,7 @@ local function partyTiles(snapshot: Snapshot): { CombatHud.PartyTile }
 			art = if name then CardArt.pick(name, tileArt, CardArtConfig) else nil,
 			color = if card then Cards.ELEMENTS[card.element] or Color3.new(0.3, 0.3, 0.3) else Color3.new(0.3, 0.3, 0.3),
 			state = slot.state,
+			key = slot.key,
 		})
 	end
 	return tiles
@@ -1653,12 +1669,18 @@ local function onCombatKey(_: string, state: Enum.UserInputState, input: InputOb
 		SwordController.Skill()
 	elseif key == Enum.KeyCode.R then
 		usePet("element")
+	elseif key == Enum.KeyCode.F then
+		usePet("signature") -- the server says no while it's charging or locked, as for the button
 	else
-		-- 1-3: the party slot as the party bar numbers it (not the reserves' order), and a word when it can't come in
-		local slot = table.find({ Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three }, key)
+		-- 1 and 3: the creature left and right of the one fighting, as the strip shows them (owner 2026-11-20: like the
+		-- party dock's carousel, 2 retired), and a word when it can't come in
+		local slots = PartyController.GetSlots()
+		local slot = if latest
+			then SwapKeys.sideSlot(slots, BattleController.fightCenter(latest), if key == Enum.KeyCode.One then "left" else "right", Party.PARTY_SIZE)
+			else nil
 		if slot and latest then
 			local swapLeft = latestAt + latest.swapIn - os.clock()
-			local action, value = SwapKeys.pick(PartyController.GetSlots()[slot], latest.reserves, latest.fighters, latest.swaps, swapLeft, combatWild)
+			local action, value = SwapKeys.pick(slots[slot], latest.reserves, latest.fighters, latest.swaps, swapLeft, combatWild)
 			if action == "swap" or action == "unsummon" then
 				swapTo(value)
 			elseif action == "cooling" then
@@ -1680,6 +1702,8 @@ local weaponWatch: RBXScriptConnection? = nil
 local function startCombat(showNames: boolean, wild: boolean?, sword: boolean?, noRun: boolean?)
 	combatWild = wild == true
 	combatSword = sword ~= false
+	BattleController.lastCenter = nil
+	player:SetAttribute("FightHud", true) -- your own name tag hides on your screen (TitleController)
 	local hud = CombatHud.new(screenGui, {
 		attack = SwordController.Attack,
 		dodge = SwordController.Dodge,
@@ -1723,6 +1747,8 @@ local function stopCombat()
 	pylonUi.clear()
 	local hud = combatHud
 	combatHud = nil
+	player:SetAttribute("FightHud", nil)
+	UIController.SetToastAnchor(nil) -- the toasts go back to their corner
 	if weaponWatch then
 		weaponWatch:Disconnect()
 		weaponWatch = nil
@@ -1815,9 +1841,12 @@ local function onStarted(payload: any)
 	if boss then
 		startCombat(payload.buttonNames == true, nil, nil, payload.noRun == true)
 	elseif mode == "wild" then
-		startCombat(true, true, payload.sword == true)
+		-- the names go after your first fights with the sword (the server counts them); before the sword they stay
+		startCombat(payload.buttonNames == true or payload.sword ~= true, true, payload.sword == true)
 	end
 	bossBar.Visible = boss ~= nil or combatWild
+	-- the toasts hang under the foe's bar for the fight (in their corner they landed on the skill buttons)
+	UIController.SetToastAnchor(if boss ~= nil or combatWild then bossBar else nil)
 	bossHp.reset(view.monster.hp, view.monster.maxHp) -- a new foe starts at its own HP, no ghost from the last fight
 	bossBar.Position = UDim2.new(0.5, 0, 0, BOSS_BAR_TOP - GuiService:GetGuiInset().Y) -- MainGui starts below the top bar
 	local height = if boss then (if UIKit.isPhone() then topSpec.PLATE_PHONE_HEIGHT else topSpec.PLATE_HEIGHT) else topSpec.SLIM_NAME + topSpec.SLIM_BAR + 10

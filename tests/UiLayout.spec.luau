@@ -99,25 +99,88 @@ return {
 			expect.equal(rects.attack.x > view.w / 2 and rects.attack.y > view.h / 2, true, "Attack sits bottom-right")
 		end
 	end,
-	["combat buttons with a mouse: no Attack, the Pet button in its corner, Dodge and Skill beside it"] = function()
-		for _, view in { { w = 1920, h = 1080 }, { w = 1280, h = 720 }, { w = 844, h = 390 } } do
-			local rects = UiLayout.combatButtons(view, true)
-			local names = { "dodge", "skill", "pet", "signature", "swap", "run", "target" }
+	-- owner 2026-11-20: "on combat UI DESKTOP ONLY. make the icons more compact. I dont think we need to have the dodge
+	-- button to be in the desktop version. make the target button small. or even remove it entirely in desktop ... also
+	-- make the run button smaller": a click attacks, Shift dodges, Tab targets (and the fight locks one by itself), so
+	-- a computer draws Skill, the Pet button, Super and a small Run
+	["combat buttons with a mouse: compact, no Attack, Dodge or Target button, a small Run"] = function()
+		local CombatHud = require("../src/shared/Config/CombatHud")
+		for _, view in { { w = 1920, h = 1080 }, { w = 1891, h = 672 }, { w = 1280, h = 720 }, { w = 844, h = 390 } } do
+			local where = `{view.w}x{view.h}`
+			local rects: any = UiLayout.combatButtons(view, true)
+			local full = UiLayout.combatButtons(view)
+			for _, gone in { "attack", "dodge", "target" } do
+				expect.isNil(rects[gone], `{where}: no {gone} button`)
+			end
+			expect.isNil(rects.run, `{where}: Run sits in the top bar (owner 2026-11-20: "do all"), not in the corner`)
+			local names = { "skill", "pet", "signature", "swap" }
 			for i, a in names do
-				local r = (rects :: any)[a] :: UiLayout.Rect
-				expect.equal(r.x >= 0 and r.y >= 0 and r.x + r.w <= view.w and r.y + r.h <= view.h, true, `{a} at {view.w}x{view.h}: on screen`)
+				local r = rects[a] :: UiLayout.Rect
+				expect.equal(r.x >= 0 and r.y >= 0 and r.x + r.w <= view.w and r.y + r.h <= view.h, true, `{a} at {where}: on screen`)
 				for j = i + 1, #names do
-					local r1, r2 = r, (rects :: any)[names[j]]
+					local r1, r2 = r, rects[names[j]]
 					local overlap = r1.x < r2.x + r2.w and r2.x < r1.x + r1.w and r1.y < r2.y + r2.h and r2.y < r1.y + r1.h
-					expect.equal(overlap, false, `{a} and {names[j]} at {view.w}x{view.h}`)
+					expect.equal(overlap, false, `{a} and {names[j]} at {where}`)
 				end
 			end
-			local full = UiLayout.combatButtons(view)
-			expect.near(rects.pet.x + rects.pet.w, full.attack.x + full.attack.w, 1e-6, "the Pet button's right edge is Attack's")
-			expect.equal(rects.pet.y + rects.pet.h > full.attack.y + full.attack.h - 1, true, "the Pet button sits at the bottom")
-			expect.equal(rects.dodge.x + rects.dodge.w < rects.pet.x, true, "Dodge left of the Pet button")
-			expect.equal(rects.dodge.x > full.dodge.x, true, "Dodge moves toward the corner")
-			expect.near(rects.skill.x, rects.dodge.x + rects.dodge.w - rects.skill.w, 1e-6, "Skill above Dodge, right-aligned")
+			-- compact: clearly smaller than a touch screen's, yet easy to click
+			assert(rects.pet.w <= full.pet.w * 0.8, `{where}: the Pet button is compact`)
+			assert(rects.skill.w <= full.skill.w * 0.8, `{where}: Skill is compact`)
+			assert(rects.pet.w >= 44 and rects.skill.w >= 44 and rects.signature.w >= 36, `{where}: still easy to click`)
+			-- one row along the bottom: Run, Skill, the Pet button in the corner; Super over the Pet button
+			expect.near(rects.skill.y, rects.pet.y, 1e-6, "Skill beside the Pet button")
+			assert(rects.skill.x + rects.skill.w < rects.pet.x, "Skill left of the Pet button")
+			assert(rects.signature.y + rects.signature.h < rects.pet.y, "Super over the Pet button")
+			-- the cluster hugs the corner: only things pressed mid-fight
+			assert(view.w - rects.skill.x < view.w - full.skill.x, `{where}: the cluster takes less of the screen`)
+		end
+		-- Run in the top bar: small, a real click target, and it says what it is
+		local top = CombatHud.MOUSE_RUN
+		assert(top.size >= 36 and top.size <= 48, "Run's top-bar icon is small")
+		assert(top.tip ~= "" and top.chanceTip ~= "", "it has a tooltip, with the chance in a wild fight")
+		-- the HUD draws no button a computer's layout has no place for
+		local rects: any = UiLayout.combatButtons({ w = 1920, h = 1080 }, true)
+		for _, name in CombatHud.MOUSE_HIDES do
+			expect.isNil(rects[name], `{name} is hidden with a mouse and has no rect`)
+		end
+		expect.equal(#CombatHud.MOUSE_HIDES, 2, "Dodge and Target")
+	end,
+
+	-- owner 2026-11-20, "do all" (the five follow-ups to the compact buttons)
+	["a computer's fight HUD: the dodge's cooldown on a Shift keycap, slim party tiles, the locked Super a padlock alone"] = function()
+		local CombatHud = require("../src/shared/Config/CombatHud")
+		local key = CombatHud.DODGE_KEY
+		expect.equal(key.text, "Shift")
+		assert(key.dim > 0.3 and key.dim < 0.8, "dimmed while it cools down, still readable")
+		local strip = CombatHud.PARTY_STRIP
+		assert(strip.SLIM_FOOT < strip.NAME + 12, "a slim tile is shorter than one with its name under the painting")
+		assert(strip.SLIM_FOOT >= strip.BEAT.height, "room for the heartbeat")
+		expect.equal(CombatHud.SUPER_LOCK.mousePill, false, "no pill naming the weapon with a mouse: the tooltip says it")
+		-- owner 2026-11-20: "add hotkey to super skills"
+		expect.equal(CombatHud.BUTTONS.signature.key, "F", "the Super has a key")
+		local seen = {}
+		for name, button in CombatHud.BUTTONS :: any do
+			if button.key then
+				assert(not seen[button.key], `{name} shares its key with {seen[button.key]}`)
+				seen[button.key] = name
+			end
+		end
+	end,
+
+	["weapon switch: smaller in a computer's fight, still over Super, still clickable"] = function()
+		-- Config/HudLayout WEAPON_SWITCH's numbers (it needs Roblox to load): 130 px out of a fight, about 90 in one
+		local look = { chip = 72, side = 36, arc = 70, hit = 48, gap = 6, right = 12, compactChip = 64, fightScale = 0.7 }
+		for _, view in { { w = 1920, h = 1080 }, { w = 1891, h = 672 }, { w = 1366, h = 768 } } do
+			local where = `{view.w}x{view.h}`
+			local calm = UiLayout.weaponSwitch(view, look :: any, 1, false, nil, false, nil)
+			local fight = UiLayout.weaponSwitch(view, look :: any, 1, true, nil, false, nil, "mouse")
+			expect.near(fight.scale, calm.scale * look.fightScale, 1e-6, `{where}: smaller in the fight`)
+			assert(look.hit * fight.scale >= 32, `{where}: its weapons are still click targets`)
+			local buttons: any = UiLayout.combatButtons(view, true)
+			expect.near(fight.y + fight.h, buttons.signature.y - look.gap, 1e-6, `{where}: right over Super`)
+			expect.near(fight.x + fight.w, view.w - look.right, 1e-6, `{where}: on the right edge`)
+			local touch = UiLayout.weaponSwitch(view, look :: any, 1, true, nil, true, nil, "touch")
+			expect.near(touch.scale, 1, 1e-6, `{where}: a touch screen's stays finger-sized`)
 		end
 	end,
 	["wild fight buttons: the Pet button big, all on screen, no overlaps, clear of the thumbstick"] = function()
@@ -207,8 +270,6 @@ return {
 		local r = UiLayout.weaponSwitch(narrow, look, 1, false, nil, false, column)
 		expect.near(r.y + r.h, column.y - look.gap, 1e-6, "narrow: just above the column")
 		expect.near(r.x + r.w, narrow.w - look.right, 1e-6, "narrow: on the right edge")
-		local fight = UiLayout.weaponSwitch({ w = 1920, h = 1080 }, look, 1, true, nil, false, nil)
-		expect.equal(fight.y < 1080 / 2 + 60, true, "in a fight (the column hidden): placed as before")
 	end,
 
 	["weapon switch: out of a fight, at mid height on the right edge"] = function()
@@ -322,5 +383,43 @@ return {
 			table.insert(buttons, r)
 		end
 		expect.equal(UiLayout.partyStripSpot(view, { x = 12, y = 164, w = 194, h = 64 }, buttons, { right = 104, top = 94 }, 8, 58, 48), nil, "stays")
+	end,
+	-- owner 2026-11-20 ("Do. C": the combat HUD tidy, "weapon dial joins the skills"): in a fight the dial sat at mid
+	-- height, far over the skills; it sits right over the buttons in its column (the Super button), for the layout on
+	-- screen
+	["weapon switch: in a fight it sits right over the fight buttons in its column"] = function()
+		local look = { chip = 72, side = 36, arc = 70, hit = 48, gap = 6, right = 12, compactChip = 64 }
+		local cases = {
+			{ view = { w = 1920, h = 1080 }, layout = "mouse", compact = false },
+			{ view = { w = 1366, h = 768 }, layout = "mouse", compact = false },
+			{ view = { w = 844, h = 390 }, layout = "touch", compact = true },
+			{ view = { w = 1180, h = 820 }, layout = "touch", compact = true },
+			{ view = { w = 844, h = 390 }, layout = "wild", compact = true },
+			{ view = { w = 1920, h = 1080 }, layout = "wild", compact = false },
+		}
+		for _, case in cases do
+			local view = case.view
+			local where = `{view.w}x{view.h} {case.layout}`
+			local r = UiLayout.weaponSwitch(view, look, 1, true, nil, case.compact, nil, case.layout)
+			local rects: any = if case.layout == "wild" then UiLayout.wildButtons(view) else UiLayout.combatButtons(view, case.layout == "mouse")
+			local top = math.huge
+			for name, b in rects do
+				local overlap = r.x < b.x + b.w and b.x < r.x + r.w and r.y < b.y + b.h and b.y < r.y + r.h
+				expect.equal(overlap, false, `{where}: clear of {name}`)
+				if r.x < b.x + b.w and b.x < r.x + r.w then
+					top = math.min(top, b.y)
+				end
+			end
+			expect.near(r.y + r.h, top - look.gap, 1e-6, `{where}: right over the top button in its column`)
+			expect.near(r.x + r.w, view.w - look.right, 1e-6, `{where}: on the right edge`)
+			expect.equal(r.y >= 0, true, `{where}: on screen`)
+		end
+		local unknown = UiLayout.weaponSwitch({ w = 1920, h = 1080 }, look, 1, true, nil, false, nil)
+		for _, rects in { UiLayout.combatButtons({ w = 1920, h = 1080 }) :: any, UiLayout.combatButtons({ w = 1920, h = 1080 }, true), UiLayout.wildButtons({ w = 1920, h = 1080 }) } do
+			for name, b in rects do
+				local overlap = unknown.x < b.x + b.w and b.x < unknown.x + unknown.w and unknown.y < b.y + b.h and b.y < unknown.y + unknown.h
+				expect.equal(overlap, false, `no layout told: clear of every layout's {name}`)
+			end
+		end
 	end,
 }

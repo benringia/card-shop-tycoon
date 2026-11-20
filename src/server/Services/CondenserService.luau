@@ -25,7 +25,11 @@ local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 local Blocked = require(Util:WaitForChild("Blocked"))
 local UpgradeJobService = require(Services:WaitForChild("UpgradeJobService"))
 
+local CondenseRules = require(Shared:WaitForChild("Util"):WaitForChild("CondenseRules"))
+
 local CondenserService = {}
+
+local DONE = "CondenserDone" -- the player's attribute: a finished star waiting to be shown (CondenseRules.encodeDone)
 
 local allowAction = RateLimiter.new(CondenserConfig.ACTION_COOLDOWN)
 
@@ -126,6 +130,25 @@ end
 
 function CondenserService.Start()
 	Remotes.Condense.OnServerEvent:Connect(onCondense)
+	-- The timer is up (owner 2026-11-20: "after the timer than condenser just do nothing. I just got a toast"): the card
+	-- is back in the binder already, and its new star waits here until they open the Condenser and take it out. Also for
+	-- a job that ended while they were away (finished on load).
+	UpgradeJobService.OnFinished("condenser", function(player, job)
+		local beast = job.beast
+		local card = if beast then Cards.ById[beast.cardId] else nil
+		if not beast or not card then
+			return nil
+		end
+		player:SetAttribute(DONE, CondenseRules.encodeDone({ cardId = beast.cardId, foil = beast.foil, grade = beast.grade, level = beast.level, stars = beast.stars }))
+		return (string.gsub(Upgrades.CONDENSER_READY, "{name}", function()
+			return card.name
+		end))
+	end)
+	Remotes.CondenserSeen.OnServerEvent:Connect(function(player)
+		if allowAction(player) then
+			player:SetAttribute(DONE, nil)
+		end
+	end)
 end
 
 return CondenserService

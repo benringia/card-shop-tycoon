@@ -65,7 +65,9 @@ return {
 		LAMP_INSET = 2, -- lamps stand this far into the street from the plot fronts
 		ROW_END_LAMP_OFFSET = 4, -- past the outer edge of each row's end plots
 		BENCH_RADIUS = 13.5, -- around the spring, just outside the plaza gazebo (Config/Plaza)
-		BENCH_ANGLES = { 45, 135, 225, 315 },
+		-- none (owner 2026-11-20: "remove benches like this that blocks the way": at 13.5 studs they stood in the ring
+		-- between the gazebo and the carts, tables and leaderboard; 45, 135, 225, 315 before)
+		BENCH_ANGLES = {},
 		EDGE_FENCE_INSET = 2, -- the fence round the island stands this far inside the bounds
 		FENCE_SECTION = 6.5, -- one Fence prop per section (the Fence model is 6.5 long at its 4-stud height)
 		STREET_HALF_LENGTH = 110, -- the street runs x -110..110

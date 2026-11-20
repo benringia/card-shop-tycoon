@@ -77,4 +77,39 @@ return {
 		expect.equal(Toasts.MAX, 3)
 		expect.equal(Toasts.MAX_TOUCH, 2)
 	end,
+	-- Owner 2026-11-21: "move pish icon at the top of quests". On a computer Pish now sits on the quest strip's top
+	-- edge at the top right. His bubbles sit in a row in the top bar's strip, the newest right over his head, older
+	-- ones to its left: a stack hanging down beside him covered an open window's close button (seen over the Bag)
+	["Pish on the quests: his bubbles sit in a row along the top, the newest over his head"] = function()
+		expect.equal(ToastRules.mode(false, true), "row", "a computer with Pish on the quests")
+		expect.equal(ToastRules.mode(false, false), "up", "Pish over the cash at the bottom: bubbles rise")
+		expect.equal(ToastRules.mode(true, false), "down", "a phone: under the column")
+		expect.equal(ToastRules.mode(true, true), "down", "a touch screen keeps its own")
+		expect.equal(ToastRules.max("row", Toasts), Toasts.MAX_TOUCH, "a row has room for two")
+		expect.equal(ToastRules.max("down", Toasts), Toasts.MAX_TOUCH)
+		expect.equal(ToastRules.max("up", Toasts), Toasts.MAX)
+	end,
+	-- Owner 2026-11-21: "just remove pish. and make the toast notification appear on the lower right": with nobody to
+	-- say them, a computer's bubbles are plain (no tail pointing at empty space)
+	["a bubble has a tail only when someone says it"] = function()
+		expect.equal(ToastRules.tail("up", true), true, "Pish over the cash: his speech bubble")
+		expect.equal(ToastRules.tail("up", false), false, "no Pish on the HUD: a plain bubble")
+		expect.equal(ToastRules.tail("row", true), true)
+		expect.equal(ToastRules.tail("down", false), true, "a phone's bubbles keep theirs, hanging from the column")
+	end,
+	-- owner 2026-11-20 ("Do. C": the combat HUD tidy): in a fight the toasts landed on the skill buttons (a computer's
+	-- lower right) or beside the party strip (a phone); they hang under the foe's bar at the top centre instead
+	["in a fight the toasts hang under the foe's bar, plain, two at most"] = function()
+		expect.equal(ToastRules.mode(false, false, true), "under")
+		expect.equal(ToastRules.mode(true, false, true), "under", "a phone too")
+		expect.equal(ToastRules.mode(false, true, true), "under", "whatever Pish does")
+		expect.equal(ToastRules.mode(false, false, false), "up", "no fight: as before")
+		expect.equal(ToastRules.tail("under", true), false, "nobody says them")
+		expect.equal(ToastRules.tail("under", false), false)
+		expect.equal(ToastRules.max("under", Toasts), Toasts.MAX_TOUCH)
+		local spot = ToastRules.under({ x = 600, y = 6, w = 720, h = 70 }, 96, Toasts.UNDER_GAP)
+		expect.equal(spot.x, 960, "centred on the bar")
+		expect.equal(spot.y, 96 + Toasts.UNDER_GAP, "under what hangs from the bar (its states, its adds)")
+		expect.equal(ToastRules.under({ x = 600, y = 6, w = 720, h = 70 }, 0, Toasts.UNDER_GAP).y, 76 + Toasts.UNDER_GAP, "nothing under the bar: its own foot")
+	end,
 }

@@ -49,7 +49,7 @@ return {
 	-- maxArc degrees at a time; variant: a Cute Pets colour variant (Golden, Rainbow, Shadow); sleeps: lies curled on its side in one spot facing `faces`, a "z Z z" over it; y: the
 	-- ground at home; height: studs tall.
 	CRITTERS = {
-		{ model = "Cat", area = "plaza", home = { x = -8.16, z = 10.3 }, sleeps = true, faces = { x = -7.45, z = 11.01 }, y = 1.56, height = 2.4 }, -- asleep along the seat of the bench nearest the spawn
+		{ model = "Cat", area = "plaza", home = { x = 15.92, z = -9.32 }, sleeps = true, faces = { x = 15.48, z = -10.22 }, y = 0.69, height = 2.4 }, -- asleep on the dogs' second bed by their house (PlazaLayout.dogBeds; its bench went with the others, 2026-11-20)
 		{ model = "Puppy", area = "plaza", home = { x = 0, z = 0 }, orbit = 10.9, maxArc = 120, y = 0.5, height = 2.2 }, -- laps on the gazebo's floor, outside the columns
 		{ model = "Fox", area = "town", home = { x = 150, z = -62 }, radius = 8, height = 2.6 },
 		{ model = "Bunny", area = "town", home = { x = 180, z = 12 }, radius = 8, height = 2 }, -- the grass by the grove (the plaza is paved now)

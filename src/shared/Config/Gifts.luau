@@ -82,8 +82,9 @@ return {
 		fill = 0.9,
 		tileWiggle = 2.4, -- the HUD tile's rattle once something's ready
 	},
-	-- The HUD tile (Util/Hud side, under the Phone; on a phone screen in the column under it)
+	-- The HUD tile (Util/Hud side). `order` -1: over the Phone, whose tile is order 0 (owner 2026-11-21: "switch phone
+	-- and daily reward position. phone at the bottom of daily reward"; 5, under it, before)
 	-- phoneBottom: on a phone the tile sits in the bottom-centre row (third in the side column it covered the
 	-- thumbstick's resting spot; owner 2026-11-17 "make sure nothing is cutoff/overlapping on all devices")
-	TILE = { icon = "PishPresent", label = "Gift", order = 5, phoneBottom = true, ready = "Open!" },
+	TILE = { icon = "PishPresent", label = "Gift", order = -1, phoneBottom = true, ready = "Open!" },
 }

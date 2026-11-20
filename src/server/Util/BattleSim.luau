@@ -2253,7 +2253,7 @@ function BattleSim.snapshot(state: State): any
 		return {
 			fighters = fighters,
 			reserves = reserves,
-			callInFor = if #side.reserves == 0 then 0 else math.max(0, state.combat.CALL_IN_SECONDS - state.time),
+			callInFor = if not side.callIn or #side.reserves == 0 then 0 else math.max(0, state.combat.CALL_IN_SECONDS - state.time),
 			runIn = math.max(0, side.runReadyAt - state.time),
 			runChance = if side.canRun then BattleSim.getRunChance(state, side.name) else 0,
 			canRun = side.canRun,

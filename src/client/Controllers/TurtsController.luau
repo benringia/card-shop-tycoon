@@ -401,8 +401,9 @@ local function buildWindow()
 	fillWindow()
 end
 
--- Town only, and only once his rug is open (after Pish's tour); a phone shows it only while he's just restocked (owner
--- 2026-11-17, "go A"; CompactHud.phonePieces)
+-- Town only, and only once his rug is open (after Pish's tour), and only while he's just restocked: a phone since
+-- 2026-11-17 ("go A"), a computer since 2026-11-21 ("I want to clean up", pick 1; CompactHud.phonePieces). His rug's
+-- sign shows the countdown in the world
 local function showChip()
 	local made = chip
 	if made then
