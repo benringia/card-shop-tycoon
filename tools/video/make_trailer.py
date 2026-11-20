@@ -28,21 +28,23 @@ EDGE = (44, 35, 64, 255)  # the UI's dark plum
 GOLD = (255, 207, 74, 255)
 
 # (start, end, caption): about 30 s in all
+# Fights and the rest take turns (owner 2026-11-20: "Combat, non combat, combat, non combat and so on"); a moment that
+# is two shots stays together (the rip and its pull, the last hits and VICTORY)
 CLIPS = [
-    (150.6, 152.8, "RIP PACKS"),  # the pack tears open
-    (156.7, 158.7, None),  # RARE! flash and the card
-    (656.0, 657.8, None),  # Open 10: fifty cards turning
-    (700.0, 701.4, "COLLECT THEM ALL"),  # the binder
+    # (no Hydra reveal: owner 2026-11-20, "remove intro cinematic. the game starts after prologue")
+    (33.4, 36.1, None),  # fight: the maxed Rift Reaper's Thousand Cuts
+    (150.6, 152.8, "RIP PACKS"),  # the pack tears open...
+    (156.7, 158.7, None),  # ...RARE! flash and the card
+    (325.0, 327.5, "BATTLE WITH YOUR CARDS"),  # fight: a wild monster
+    (656.0, 657.8, None),  # Open 10: fifty cards turning...
+    (700.0, 701.4, "COLLECT THEM ALL"),  # ...and the binder
+    (778.0, 780.6, None),  # fight: the Meadow Warden
     (433.2, 435.5, "RUN YOUR CARD SHOP"),  # exact change, SOLD!
+    (811.5, 814.0, "BEAT BOSSES"),  # fight: the last hits...
+    (815.6, 817.0, None),  # ...VICTORY!
+    (823.3, 826.0, None),  # the boss chests
+    (51.8, 54.0, None),  # fight: Supernova
     (110.0, 111.4, None),  # Pish and Chikin
-    (325.0, 327.0, "BATTLE WITH YOUR CARDS"),  # a wild fight
-    (778.0, 780.0, None),  # the Meadow Warden
-    (811.5, 814.0, "BEAT BOSSES"),  # the last hits
-    (815.6, 817.0, None),  # VICTORY!
-    (823.5, 825.7, None),  # the boss chests
-    (16.8, 18.4, None),  # the young Prism Hydra
-    (33.4, 36.1, None),  # the maxed Rift Reaper's Thousand Cuts (owner 2026-11-20: "insert a shot with the maxed out scythe")
-    (51.8, 54.0, None),  # Supernova
     (1021.5, 1024.0, "@title"),  # the plaza at night, the game's name over it
 ]
 TITLE = "ONE MORE PACK"
