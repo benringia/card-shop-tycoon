@@ -85,8 +85,7 @@ local function partsFor(owner: Player, state: State): { [string]: number }
 	for productId in stockedProducts do
 		local product = Products.ById[productId]
 		if product then
-			local band = PriceRules.getBand(PricingService.GetPrice(owner, productId), product.marketPrice)
-			table.insert(chances, if band then band.chance else 0)
+			table.insert(chances, PriceRules.getChance(PricingService.GetPrice(owner, productId), product.marketPrice))
 		end
 	end
 	state.unknown.prices = #chances == 0

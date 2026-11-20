@@ -37,7 +37,7 @@ return {
 	end,
 
 	["value: Cindercub Lv 15 3 stars"] = function()
-		expect.near(BeastMath.getValue(config, 0.20, 3, false, 15, 3, "C"), 14.40, 0.001) -- 0.20 * 2.4 * 30
+		expect.near(BeastMath.getValue(config, 0.20, 3, false, 15, 3, "C"), 0.20 * (1 + config.LEVEL_VALUE_GROWTH * 14) * config.STAR_VALUE[4], 0.006) -- to the cent
 	end,
 
 	["value: plain foil"] = function()
@@ -45,9 +45,39 @@ return {
 	end,
 
 	["value: star table 0 to 5"] = function()
-		local expected = { 1, 6, 15, 30, 50, 80 }
+		expect.equal(#config.STAR_VALUE, config.MAX_STARS + 1)
+		expect.equal(config.STAR_VALUE[1], 1, "no stars: the card's own value")
 		for stars = 0, 5 do
-			expect.near(BeastMath.getValue(config, 1, 3, false, 1, stars, "C"), expected[stars + 1], 0.001, `{stars} stars`)
+			expect.near(BeastMath.getValue(config, 1, 3, false, 1, stars, "C"), config.STAR_VALUE[stars + 1], 0.001, `{stars} stars`)
+		end
+	end,
+
+	-- owner 2026-11-20, from a tester: "you can easily earn money fast by upgrading stars of the cards then selling it.
+	-- make sure this doesnt get abused". A star was worth more than the copies that made it (1 star: 6x for 5 cards,
+	-- or for 3 cards and 2 Star Shards), and one sale to one customer carried all of it. A starred card is now worth
+	-- less than the cards that went into it, even with Star Shards standing in for half of them: stars are for power
+	-- ...and levels (free XP from fights and tonics) multiplied that again: a Lv 30 card sold for 3.9x. A maxed card,
+	-- 5 stars and Lv 30, is still worth less than the 65 cards inside it; a level adds a little
+	["levels add a little value, never a way to print money"] = function()
+		local top = 1 + config.LEVEL_VALUE_GROWTH * (config.MAX_LEVEL - 1)
+		assert(top > 1 and top <= 2, `a Lv {config.MAX_LEVEL} card is worth {top}x`)
+		local cards = 1
+		for _, cost in config.STAR_COSTS do
+			cards += cost
+		end
+		assert(config.STAR_VALUE[config.MAX_STARS + 1] * top < cards, "maxed: under the cards that went into it")
+	end,
+
+	["a starred card is never worth more than the cards that went into it"] = function()
+		local cards, fewest = 1, 1 -- the copies inside it, and the fewest with Star Shards filling their share
+		for stars = 1, config.MAX_STARS do
+			local cost = config.STAR_COSTS[stars]
+			cards += cost
+			fewest += cost - math.floor(cost * config.MAX_SHARD_SHARE)
+			local worth = config.STAR_VALUE[stars + 1]
+			assert(worth <= fewest * 0.9, `{stars} stars: worth {worth} cards, made of {fewest} at the least`)
+			assert(worth <= cards * 0.5, `{stars} stars: worth {worth} cards, made of {cards} without shards`)
+			assert(worth > config.STAR_VALUE[stars], `{stars} stars is still worth more than {stars - 1}`)
 		end
 	end,
 

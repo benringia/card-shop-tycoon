@@ -60,8 +60,45 @@ return {
 		expect.equal(config.MAX_LEVEL, 100, "MAX_LEVEL")
 		expect.equal(LevelMath.getLevelForXp(config, required(100)), 100, "exactly Lv 100")
 		expect.equal(LevelMath.getLevelForXp(config, 1e12), 100, "huge xp stops at 100")
+	end,
+
+	-- owner 2026-11-20: "Also after level 20. make the leveling up more difficult". Up to Lv 20 nothing changes; past it
+	-- each level costs the old curve's step times a factor that climbs to LATE.times by LATE.full and stays there
+	["up to Lv 20 the levels cost what they did"] = function()
+		local late = config.LATE
+		expect.equal(late.from, 20)
+		for level = 1, late.from do
+			local plain = math.round(config.BASE_XP * math.max(0, level - 1) ^ config.POWER / config.ROUND_TO) * config.ROUND_TO
+			expect.equal(required(level), plain, `Lv {level}`)
+		end
+	end,
+
+	["past Lv 20 every level costs more than it did, with no cliff, up to three times"] = function()
+		local late = config.LATE
+		local function plain(level: number): number
+			return config.BASE_XP * (level - 1) ^ config.POWER
+		end
+		assert(late.times >= 2, "clearly harder")
+		assert(late.full > late.from + 3, "it climbs over several levels")
+		for level = late.from + 1, 100 do
+			local step = required(level) - required(level - 1)
+			local before = plain(level) - plain(level - 1)
+			assert(step > before * 1.05, `Lv {level} costs {step}, more than the {before} it did`)
+			assert(step <= before * late.times + config.ROUND_TO, `Lv {level}: never more than {late.times}x`)
+		end
+		local first = (required(late.from + 1) - required(late.from)) / (required(late.from) - required(late.from - 1))
+		assert(first < 1.5, `Lv 21 is {first}x Lv 20's step: no wall`)
+		local full = (required(late.full + 5) - required(late.full + 4)) / (plain(late.full + 5) - plain(late.full + 4))
+		assert(math.abs(full - late.times) < 0.05, `from Lv {late.full} on, {late.times}x (got {full})`)
 		local top = required(100)
-		assert(top >= 265000 and top <= 278000, `Lv 100 needs {top}, want about 271,500`)
+		assert(top > 271500 * 2 and top < 271500 * late.times, `Lv 100 needs {top}`)
+	end,
+
+	["with no LATE the curve is the plain one (older saves' maths, the migration)"] = function()
+		local plainConfig = { BASE_XP = config.BASE_XP, POWER = config.POWER, ROUND_TO = config.ROUND_TO, MAX_LEVEL = config.MAX_LEVEL }
+		local top = LevelMath.getRequiredXp(plainConfig, 100)
+		assert(top >= 265000 and top <= 278000, `Lv 100 needed {top}, about 271,500`)
+		expect.equal(LevelMath.getRequiredXp(plainConfig, 20), required(20))
 	end,
 
 	["level for xp"] = function()

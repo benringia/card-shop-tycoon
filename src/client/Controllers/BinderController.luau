@@ -1130,6 +1130,22 @@ local function renderBagDetail()
 		end
 		y += 58
 	end
+	-- Shop stock (Config/Items `stock`: packs, deck boxes): To shop puts a box of them back on your delivery pad to
+	-- sell (owner 2026-11-20: "Cards in your inventory should also be placed in shelves by players"). Your shop is
+	-- in the main game
+	if info.stock and info.shop and (bagItems[selectedItem] or 0) > 0 and not Place.isFrontier() and not Place.isDungeon() then
+		local stockId = selectedItem
+		local toShop = UIKit.button(bagDetail, info.shop, UIKit.Colors.Secondary)
+		toShop.Name = "ToShop"
+		toShop.AnchorPoint = Vector2.new(0.5, 0)
+		toShop.Position = UDim2.new(0.5, 0, 0, y)
+		toShop.Size = UDim2.fromOffset(160, 44)
+		toShop.ZIndex = 34
+		toShop.Activated:Connect(function()
+			Remotes.ShopBagStock:FireServer(stockId)
+		end)
+		y += 54
+	end
 	-- The XP Tonic: Use, then pick the party card it goes on (owner 2026-11-17)
 	if selectedItem == "xpTonic" and tonics > 0 then
 		local use = UIKit.button(bagDetail, "Use", UIKit.Colors.Accent)

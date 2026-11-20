@@ -26,9 +26,17 @@ return {
 	STAR_STAT_GROWTH = 0.15, -- +15% stats per star
 	FOIL_STAT_MULTIPLIER = 1.05,
 
-	LEVEL_VALUE_GROWTH = 0.10, -- +10% value per level above 1
-	-- Value multiplier by stars 0-5 (index = stars + 1). Roughly the duplicates condensed plus a bonus.
-	STAR_VALUE = { 1, 6, 15, 30, 50, 80 },
+	-- +3% value per level above 1 (Lv 30: 1.87x). It was +10% (3.9x): levels come from free XP (fights, XP Tonics), so
+	-- a levelled card sold to a customer printed money, and with its stars a maxed card sold for far more than the
+	-- cards inside it (owner 2026-11-20, from a tester; tests/BeastMath)
+	LEVEL_VALUE_GROWTH = 0.03,
+	-- Value multiplier by stars 0-5 (index = stars + 1). Always less than the cards that went into it (1, 5, 13, 25,
+	-- 41, 65; with Star Shards filling half of each star 1, 3, 7, 13, 21, 33): owner 2026-11-20, from a tester, "you
+	-- can easily earn money fast by upgrading stars of the cards then selling it. make sure this doesnt get abused".
+	-- It was { 1, 6, 15, 30, 50, 80 }: a star added value out of nothing (double with shards), and one sale to one
+	-- customer carried all of it. Stars are for power now; selling the copies one by one always pays more
+	-- (tests/BeastMath).
+	STAR_VALUE = { 1, 2.5, 6, 11, 18, 28 },
 	-- Duplicates condensed for the next star: 0->1, 1->2, 2->3, 3->4, 4->5 (64 total)
 	STAR_COSTS = { 4, 8, 12, 16, 24 },
 	MAX_SHARD_SHARE = 0.5, -- Star Shards can cover at most this share of a star's duplicates

@@ -5,6 +5,10 @@ return {
 	-- Pish's tour (TutorialStep orderStock / stockRack): no dead wait in a new player's first minutes (owner 2026-11-17)
 	TOUR_DELIVERY_SECONDS = 1,
 	MAX_CARRY = 1, -- Carry Cart upgrade raises this later
+	-- The shelves that glow while you carry a box (owner 2026-11-20; Util/StockHint, client StockHintController): a
+	-- gold Highlight, its fill `fill` see-through, its outline breathing between the `outline` transparencies every
+	-- `beat` s; the shelves are looked at again every `check` s
+	HINT = { color = Color3.fromRGB(255, 207, 74), fill = 0.6, outline = { 0, 0.55 }, beat = 1.1, check = 0.3 },
 	MAX_BOXES_PER_PLOT = 12, -- incoming + waiting + carried, stops order spam filling the shop
 
 	ORDER_COOLDOWN = 0.3, -- seconds between order requests per player

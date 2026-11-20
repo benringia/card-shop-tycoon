@@ -194,9 +194,9 @@ return {
 	end,
 
 	-- Owner 2026-11-17: "nerf exp tonic from 400exp to 300"
-	["the XP Tonic gives 300 XP and says so"] = function()
-		expect.equal(config.ITEMS.xpTonic.xp, 300)
-		assert(string.find(config.ITEMS.xpTonic.description, "300 XP", 1, true), config.ITEMS.xpTonic.description)
+	["the XP Tonic gives 120 XP and says so"] = function()
+		expect.equal(config.ITEMS.xpTonic.xp, 120)
+		assert(string.find(config.ITEMS.xpTonic.description, "120 XP", 1, true), config.ITEMS.xpTonic.description)
 	end,
 
 	["sanitize: unknown ids, bad counts dropped; whole numbers; capped"] = function()
@@ -278,5 +278,28 @@ return {
 		expect.equal(kind, "trophy", "a trophy")
 		expect.isNil((ItemRules.bossOf("xpTonic", ladder)), "not a boss item")
 		expect.isNil((ItemRules.bossOf("fragment_unknownBoss", ladder)), "unknown boss")
+	end,
+
+	-- owner 2026-11-20: "Cards in your inventory should also be placed in shelves by players": packs and deck boxes in
+	-- the Bag go back to the shop as a box on the delivery pad, one box at a time
+	["Bag packs go back to the shop a box at a time"] = function()
+		expect.equal(ItemRules.boxUnits(30, 24, 3), 24, "a full box")
+		expect.equal(ItemRules.boxUnits(7, 24, 3), 7, "what's there")
+		expect.equal(ItemRules.boxUnits(0, 24, 3), 0, "none in the Bag")
+		expect.equal(ItemRules.boxUnits(30, 24, 0), 0, "no room on the pad")
+		expect.equal(ItemRules.boxUnits(2.9, 24, 1), 2, "whole packs")
+		expect.equal(ItemRules.boxUnits(0 / 0, 24, 1), 0)
+	end,
+
+	["only shop stock goes back: packs and deck boxes, never a gift"] = function()
+		expect.equal(ItemRules.stockOf(config, "sparkPack"), "FirstSparkPack")
+		expect.equal(ItemRules.stockOf(config, "deckBox"), "DeckBox")
+		expect.isNil(ItemRules.stockOf(config, "pishGift"))
+		expect.isNil(ItemRules.stockOf(config, "pishPresent"))
+		for id, info in config.ITEMS do
+			if info.stock then
+				assert(typeof(info.shop) == "string" and #info.shop > 0 and #info.shop <= 16, `{id}: its button's words`)
+			end
+		end
 	end,
 }

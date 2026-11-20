@@ -129,15 +129,19 @@ return {
 			use = "Open your Bag and tap Open",
 			open = "FirstSparkPack", -- the Config/Packs product it opens
 			stock = "FirstSparkPack",
+			-- its Bag button that puts a box of them back on your delivery pad to sell (owner 2026-11-20: "Cards in
+			-- your inventory should also be placed in shelves by players"; remote ShopBagStock, StockService)
+			shop = "To shop",
 		},
 		deckBox = {
 			name = "First Spark Deck Box",
 			icon = "FirstSparkDeck",
-			description = "A box of 5 First Spark cards. Two of them are Rare or better!",
+			description = "A box of 5 First Spark cards. One is always Very Rare or better!",
 			source = "Your shop's stock (carry a box, tap To Bag)",
 			use = "Open your Bag and tap Open",
 			open = "DeckBox",
 			stock = "DeckBox",
+			shop = "To shop",
 		},
 		-- Pish's present at the start of the first visit (spec 2026-11-09-tutorial-pish-design 15): a First Spark pack with
 		-- his picture (owner: "we need an icon for pish's gift. that will make players excited")
@@ -195,7 +199,7 @@ return {
 			icon = "GoldSeal",
 			description = "Pays the cash to grade a card up once, like C to B. Not for a Legendary from A to S.",
 			source = "Storm Sovereign, Rift Devourer, Prism Hydra (bosses) · shop level gifts",
-			use = "At the Grading Station, tap Use a Gold Seal",
+			use = "At the Grading Station, tap Gold Seals: one pays the cash for that grade.",
 		},
 		-- Boss trophies: placed in your shop straight from the Bag with Place (ItemRules.placesInShop,
 		-- BuildController.PlaceTrophy; owner 2026-11-17), no longer from the Shop's Build menu
@@ -234,17 +238,17 @@ return {
 		xpTonic = {
 			name = "XP Tonic",
 			icon = "XpTonic",
-			description = "Gives one of your creatures 300 XP to help it level up.",
+			description = "Gives one of your creatures 120 XP to help it level up.",
 			source = "Meadow Warden, Cave Brood Queen, Ember Colossus (bosses) · shop level gifts",
 			use = "In your Bag, tap Use and pick a creature from your party",
-			xp = 300, -- owner 2026-11-17: "nerf exp tonic from 400exp to 300"
+			xp = 120, -- owner 2026-11-20: "Reduce exp tonic exp to 120" (300 since 2026-11-17, 400 before)
 		},
 		gradingSeal = {
 			name = "Grading Seal",
 			icon = "GradingSeal",
 			description = "Works like a spare copy of a card when you grade it up.",
 			source = "Ember Colossus, Frost Tyrant (bosses)",
-			use = "At the Grading Station, tap Use Grading Seals. They can fill up to half a grade step.",
+			use = "At the Grading Station, tap Grading Seals (or an empty spot) to put them in. They can fill up to half the copies a grade needs.",
 		},
 		trophy_meadowWarden = {
 			name = "Meadow Warden Trophy",

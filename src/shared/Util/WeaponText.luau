@@ -16,7 +16,6 @@ local function elementName(key: string): string
 end
 
 export type Row = { label: string, value: string }
-export type Line = { text: string, enough: boolean }
 
 local WeaponText = {}
 
@@ -151,46 +150,172 @@ function WeaponText.switchLine(cfg: any, weaponId: string, owned: { grade: strin
 	return table.concat(parts, " · ")
 end
 
--- The Forge's one button (owner's pick B): what it does when everything's there ("Forge · $2,000", "Upgrade to +4 ·
--- $1,200", "Reforge · $1,000"), else what's missing first: the shop level, an item ("Need 6 more Warden Heartwood"),
--- then cash ("Need $500 more"). `cost` nil: an upgrade past +10. Returns the text and whether it can be pressed.
-function WeaponText.button(
-	action: "forge" | "upgrade" | "reforge",
-	cost: { cash: number, items: { [string]: number } }?,
-	have: { [string]: number },
-	cashNow: number,
-	items: any,
-	opts: { level: number?, unlockLevel: number?, shopLevel: number?, wait: string? }
-): (string, boolean)
-	if not cost then
-		return if action == "upgrade" then "Maxed at +10" else "Not available", false
-	end
-	if opts.unlockLevel and (opts.shopLevel or 0) < opts.unlockLevel then
-		return `Opens at shop level {opts.unlockLevel}`, false
-	end
+-- The Forge window's picture recipe (owner 2026-11-20: "redesign it like the condenser to be easily understood ...
+-- do the same with forge") ---------------------------------------------------------------------------------------------
+type Cost = { cash: number, items: { [string]: number } }
+export type RecipeOpts = {
+	name: string?, -- the weapon's name
+	level: number?, -- an upgrade: the level it becomes
+	unlockLevel: number?,
+	shopLevel: number?,
+	wait: string?, -- how long the job takes, in words ("2 minutes")
+	done: boolean?, -- a reforge: it is Grade S already
+}
+
+local function sortedIds(cost: Cost): { string }
 	local ids = {}
 	for id in cost.items do
 		table.insert(ids, id)
 	end
 	table.sort(ids)
-	for _, id in ids do
+	return ids
+end
+
+local function itemName(items: any, id: string): string
+	local item = items.ITEMS[id]
+	return if item then item.name else id
+end
+
+-- "15 Warden Heartwood", "2 Star Shards": a name that ends in a stuff word takes no s
+local STUFF = { "wood", "Silk", "Ore" }
+local function counted(items: any, id: string, count: number): string
+	local name = itemName(items, id)
+	local plural = count ~= 1
+	for _, ending in STUFF do
+		if string.sub(name, -#ending) == ending then
+			plural = false
+		end
+	end
+	return `{count} {name}{if plural then "s" else ""}`
+end
+
+-- The first thing that's missing: an item (its id and how many more), else the cash (how much more)
+local function missing(cost: Cost, have: { [string]: number }, cashNow: number): (string?, number)
+	for _, id in sortedIds(cost) do
 		local short = cost.items[id] - (have[id] or 0)
 		if short > 0 then
-			local item = items.ITEMS[id]
-			return `Need {short} more {if item then item.name else id}`, false
+			return id, short
 		end
 	end
 	if cashNow < cost.cash then
-		return `Need {cash(math.ceil(cost.cash - cashNow))} more`, false
+		return nil, math.ceil(cost.cash - cashNow)
 	end
-	-- `wait`: how long the job takes ("2:00"), said on the button so it's known before pressing (owner 2026-11-20)
-	local price = cash(cost.cash) .. (if opts.wait then ` · takes {opts.wait}` else "")
+	return nil, 0
+end
+
+-- The recipe's spots: each material by id with what you have of what it takes ("9 / 15", never more than it takes),
+-- then the cash ("$2,000"), each with its picture (a Config/UIIcons name or an emoji; "" for an unknown item) and
+-- whether you have enough
+export type Spot = { icon: string, count: string, enough: boolean }
+function WeaponText.spots(cost: Cost, have: { [string]: number }, cashNow: number, items: any): { Spot }
+	local spots: { Spot } = {}
+	for _, id in sortedIds(cost) do
+		local need = cost.items[id]
+		local count = have[id] or 0
+		local item = items.ITEMS[id]
+		table.insert(spots, { icon = if item then item.icon or "" else "", count = `{math.min(count, need)} / {need}`, enough = count >= need })
+	end
+	if cost.cash > 0 then
+		table.insert(spots, { icon = "Cash", count = cash(cost.cash), enough = cashNow >= cost.cash })
+	end
+	return spots
+end
+
+-- How many spots across: one row up to three, then two rows
+function WeaponText.spotColumns(count: number): number
+	return if count <= 3 then math.max(1, count) else math.ceil(count / 2)
+end
+
+-- What the action makes, after "to": "make the Verdant Blade", "make it +4", "roll a new grade"
+local function goal(action: string, opts: RecipeOpts): string
 	if action == "upgrade" then
-		return `Upgrade to +{opts.level or 1} · {price}`, true
+		return `make it +{opts.level or 1}`
 	elseif action == "reforge" then
-		return `Reforge · {price}`, true
+		return "roll a new grade"
 	end
-	return `Forge · {price}`, true
+	return `make the {opts.name or "weapon"}`
+end
+
+-- The one sentence over the recipe: what goes in and what comes out ("Use 15 Warden Heartwood and $2,000 to make the
+-- Verdant Blade!"; more than two kinds of material are counted, the spots show them), or what to get first ("Get 6
+-- more Warden Heartwood to ...", "Save up $500 more to ..."). `cost` nil: an upgrade past the top level
+function WeaponText.say(action: "forge" | "upgrade" | "reforge", cost: Cost?, have: { [string]: number }, cashNow: number, items: any, opts: RecipeOpts): string
+	if opts.done then
+		return "Grade S is the best grade: nothing to reforge!"
+	elseif not cost then
+		return if action == "upgrade" then "It is +10: fully upgraded!" else "The Forge can't make this yet."
+	elseif opts.unlockLevel and (opts.shopLevel or 0) < opts.unlockLevel then
+		return `The Forge makes this at shop level {opts.unlockLevel}.`
+	end
+	local what = goal(action, opts)
+	local id, short = missing(cost, have, cashNow)
+	if id then
+		return `Get {short} more {itemName(items, id)} to {what}.`
+	elseif short > 0 then
+		return `Save up {cash(short)} more to {what}.`
+	end
+	local ids = sortedIds(cost)
+	local parts: { string } = {}
+	if #ids > 2 then
+		table.insert(parts, `these {#ids} materials`)
+	else
+		for _, id2 in ids do
+			table.insert(parts, counted(items, id2, cost.items[id2]))
+		end
+	end
+	if cost.cash > 0 then
+		table.insert(parts, cash(cost.cash))
+	end
+	local last = table.remove(parts) or "nothing"
+	local list = if #parts > 0 then `{table.concat(parts, ", ")} and {last}` else last
+	if action == "upgrade" then
+		return `Use {list} to {what}: more Power!`
+	elseif action == "reforge" then
+		return `Use {list} to {what}. You keep the better one!`
+	end
+	return `Use {list} to {what}!`
+end
+
+-- The Forge's one button: its words, the small line under them and whether it can be pressed. Ready: what it does
+-- ("Forge it!", "Make it +4!", "Roll a new grade!") over how long it takes; else what's missing first (the shop level,
+-- an item, then cash) over what you have
+function WeaponText.recipeButton(action: "forge" | "upgrade" | "reforge", cost: Cost?, have: { [string]: number }, cashNow: number, items: any, opts: RecipeOpts): (string, string?, boolean)
+	if opts.done then
+		return "Already Grade S", nil, false
+	elseif not cost then
+		return if action == "upgrade" then "Fully upgraded" else "Not available", nil, false
+	elseif opts.unlockLevel and (opts.shopLevel or 0) < opts.unlockLevel then
+		return `Opens at shop level {opts.unlockLevel}`, nil, false
+	end
+	local id, short = missing(cost, have, cashNow)
+	if id then
+		return `Need {short} more {itemName(items, id)}`, `you have {have[id] or 0}`, false
+	elseif short > 0 then
+		return `Need {cash(short)} more`, `you have {cash(cashNow)}`, false
+	end
+	local sub = if opts.wait then `takes {opts.wait}` else nil
+	if action == "upgrade" then
+		return `Make it +{opts.level or 1}!`, sub, true
+	elseif action == "reforge" then
+		return "Roll a new grade!", sub, true
+	end
+	return "Forge it!", sub, true
+end
+
+-- Under the recipe's weapon: a pill (the grade or level it comes out with) and a line. `step`: an upgrade's
+-- WeaponText.ladderStep; `max`: it is fully upgraded; `grade`: a reforge's grade now; `done`: Grade S already
+function WeaponText.outcome(action: "forge" | "upgrade" | "reforge", view: { level: number?, step: string?, max: boolean?, grade: string?, done: boolean? }): (string, string?)
+	if action == "upgrade" then
+		return `+{view.level or 0}`, if view.max then "Awakened!" else view.step
+	elseif action == "reforge" then
+		return `Grade {view.grade or "C"}`, if view.done then nil else "A new roll, C to S. It never gets worse!"
+	end
+	return "Grade C to S", "It comes out at a random grade, like a card. S is the best!"
+end
+
+-- How much Power an upgrade adds, as the cards show Power (2 decimals)
+function WeaponText.powerGain(now: number, after: number): string
+	return string.format("+%.2f Power", math.max(0, after - now))
 end
 
 -- What reaching this upgrade level adds to the weapon's glow (Config/WeaponLooks LADDER; the aura starts earlier for
@@ -212,26 +337,6 @@ function WeaponText.ladderStep(looks: any, level: number, rarity: string): strin
 	return "It glows brighter"
 end
 
--- A cost's lines: its cash (when there is any), then each item by name with have/need, each marked enough or not
-function WeaponText.cost(cost: { cash: number, items: { [string]: number } }, have: { [string]: number }, cashNow: number, items: any): { Line }
-	local lines: { Line } = {}
-	if cost.cash > 0 then
-		table.insert(lines, { text = cash(cost.cash), enough = cashNow >= cost.cash })
-	end
-	local ids = {}
-	for id in cost.items do
-		table.insert(ids, id)
-	end
-	table.sort(ids)
-	for _, id in ids do
-		local need = cost.items[id]
-		local count = have[id] or 0
-		local item = items.ITEMS[id]
-		table.insert(lines, { text = `{if item then item.name else id} {count}/{need}`, enough = count >= need })
-	end
-	return lines
-end
-
 -- The Forge window's line under its tabs: what the tab does (owner's pick A, 2026-11-08)
 local TAB_LINES = {
 	Forge = "Make a weapon you don't have yet. You pay its materials and cash; it comes out at a random grade, C to S (like a card).",
@@ -240,32 +345,6 @@ local TAB_LINES = {
 }
 function WeaponText.tabLine(tab: string): string
 	return TAB_LINES[tab] or ""
-end
-
--- The Forge window's cost chips: cash first ("$250"), then each item by id ("2 Wild Ore (you have 11)"), each with its
--- picture (a Config/UIIcons name, or an emoji; "" for an unknown item) and whether you have enough
-export type Chip = { icon: string, text: string, enough: boolean }
-function WeaponText.costChips(cost: { cash: number, items: { [string]: number } }, have: { [string]: number }, cashNow: number, items: any): { Chip }
-	local chips: { Chip } = {}
-	if cost.cash > 0 then
-		table.insert(chips, { icon = "Cash", text = cash(cost.cash), enough = cashNow >= cost.cash })
-	end
-	local ids = {}
-	for id in cost.items do
-		table.insert(ids, id)
-	end
-	table.sort(ids)
-	for _, id in ids do
-		local need = cost.items[id]
-		local count = have[id] or 0
-		local item = items.ITEMS[id]
-		table.insert(chips, {
-			icon = if item then item.icon or "" else "",
-			text = `{need} {if item then item.name else id} (you have {count})`,
-			enough = count >= need,
-		})
-	end
-	return chips
 end
 
 -- The weapon window (Armory UI, owner's pick A 2026-11-09) ----------------------------------------------------------

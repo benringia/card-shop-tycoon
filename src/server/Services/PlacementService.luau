@@ -14,6 +14,8 @@ local Shelves = require(Config:WaitForChild("Shelves"))
 local Products = require(Config:WaitForChild("Products"))
 local Packs = require(Config:WaitForChild("Packs"))
 local PlacementConfig = require(Config:WaitForChild("Placement"))
+local Broke = require(Config:WaitForChild("Broke"))
+local BrokeRules = require(Shared:WaitForChild("Util"):WaitForChild("BrokeRules"))
 local ShowcaseConfig = require(Config:WaitForChild("Showcase"))
 local CaseLayout = require(Config:WaitForChild("CaseLayout"))
 local Town = require(Config:WaitForChild("Town"))
@@ -260,8 +262,9 @@ local function fillWithDecks(box: Part, productId: string)
 	place:Destroy()
 end
 
--- A booster box product's place holds sealed booster boxes (Util/BoosterBoxLook), stacked
-local function fillWithBoosters(box: Part, product: typeof(Products.List[1]))
+-- A booster box product's place holds `stack` sealed booster boxes (Util/BoosterBoxLook), one on the other: as many
+-- as are really there (ShelfStock.stacks)
+local function fillWithBoosters(box: Part, product: typeof(Products.List[1]), stack: number)
 	local look = Town.SHELF_STOCK.BOOSTERS
 	local boosters = {}
 	for _, child in box:GetChildren() do
@@ -269,11 +272,11 @@ local function fillWithBoosters(box: Part, product: typeof(Products.List[1]))
 			table.insert(boosters, child)
 		end
 	end
-	if #boosters ~= look.PER_STACK then
+	if #boosters ~= stack then
 		box:ClearAllChildren()
 		table.clear(boosters)
 	end
-	for index = 1, look.PER_STACK do
+	for index = 1, stack do
 		local booster = boosters[index]
 		if not booster then
 			booster = newDecorPart("BoosterBox", box)
@@ -428,6 +431,12 @@ local function updateStockBoxes(shelf: PlacedShelf, price: number)
 	local product = if shelf.productId then Products.ById[shelf.productId] else nil
 	local config = stockConfig(shelf)
 	local count = if product then ShelfStock.boxCount(shelf.units, shelf.def.capacity, ShelfStock.slotCount(config)) else 0
+	-- Booster boxes are counted one by one: a box in every place first, then the second layer (ShelfStock.stacks)
+	local stacks: { number }? = nil
+	if product and product.stockLook == "Booster" then
+		stacks = ShelfStock.stacks(shelf.units, ShelfStock.slotCount(config), Town.SHELF_STOCK.BOOSTERS.PER_STACK)
+		count = ShelfStock.stackedPlaces(stacks)
+	end
 	local boxes = shelf.stockBoxes
 	-- A different product may have taken the shelf: start the boxes fresh
 	local kind = if product then product.id else ""
@@ -468,7 +477,7 @@ local function updateStockBoxes(shelf: PlacedShelf, price: number)
 			fillWithSleeves(box, SleevePacket.color(index), color)
 		elseif product.stockLook == "Booster" then
 			box.Transparency = 1
-			fillWithBoosters(box, product)
+			fillWithBoosters(box, product, if stacks then stacks[index] else Town.SHELF_STOCK.BOOSTERS.PER_STACK)
 		elseif product.stockLook == "Bulk" then
 			box.Transparency = 1
 			fillWithBulk(box, index)
@@ -503,6 +512,7 @@ local function updateInfo(shelf: PlacedShelf)
 	updateStockBoxes(shelf, price)
 	local empty = not product or shelf.units <= 0
 	part:SetAttribute("Empty", empty)
+	part:SetAttribute("Units", shelf.units) -- how full it is, for the glow while its product is carried (StockHintController)
 	if empty or not product then
 		part:SetAttribute("Info", `{shelf.def.name} · Empty 0/{shelf.def.capacity}`)
 		return
@@ -743,9 +753,16 @@ local function onPlace(player: Player, shelfId: unknown, gridX: unknown, gridZ: 
 		notify(player, "Beat its boss to earn this trophy.", true)
 		return
 	end
-	if def.cost > 0 and not EconomyService.TrySpend(player, def.cost) then
-		notify(player, "Not enough cash.", true)
-		return
+	if def.cost > 0 then
+		-- a shelf that holds packs is what a shop sells from: its first one is never refused (Config/Broke)
+		local sellsPacks = def.kind == "Products" and BrokeRules.sells(def.accepts, Broke.PRODUCT)
+		local paid, kept = EconomyService.TrySpend(player, def.cost, if sellsPacks then "shelf" else nil)
+		if not paid then
+			if not kept then -- (kept: the shop keeps that cash to restock, and BrokeService said so)
+				notify(player, "Not enough cash.", true)
+			end
+			return
+		end
 	end
 	if item then
 		ItemService.TakeItem(player, item, 1)
@@ -806,6 +823,13 @@ local function onMoveFixture(player: Player, fixtureId: unknown, gridX: unknown,
 	PlotService.SetComputerCell(plot, gx, gz, rot)
 end
 
+-- A check before a shelf is sold (BrokeService: a shop keeps a rack to sell from, Config/Broke)
+local sellGuard: ((player: Player, shelf: PlacedShelf, refund: number) -> boolean)? = nil
+
+function PlacementService.SetSellGuard(guard: (player: Player, shelf: PlacedShelf, refund: number) -> boolean)
+	sellGuard = guard
+end
+
 local function onSell(player: Player, uid: unknown)
 	if not allowAction(player) then
 		return
@@ -831,6 +855,10 @@ local function onSell(player: Player, uid: unknown)
 	end
 
 	local refund = getRefund(shelf)
+	-- a shop's last rack stays (BrokeService: it tells the player itself)
+	if sellGuard and not sellGuard(player, shelf, refund) then
+		return
+	end
 	layout[uid] = nil
 	shelf.part:Destroy()
 	if refund > 0 then

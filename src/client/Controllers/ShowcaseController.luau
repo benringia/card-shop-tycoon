@@ -17,6 +17,7 @@ local Shelves = require(Config:WaitForChild("Shelves"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
 local PriceRules = require(Shared:WaitForChild("Util"):WaitForChild("PriceRules"))
+local PriceTaps = require(Shared:WaitForChild("Util"):WaitForChild("PriceTaps"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -77,7 +78,8 @@ local pickerFilter: PickerFilter = ALL_FILTER
 
 local casePart: BasePart? = nil
 local caseConnections: { RBXScriptConnection } = {}
-local pending: { [number]: number } = {} -- slot → price not sent yet
+-- slot → the price tapped and sent, shown until the card's own price says the same (Util/PriceTaps)
+local taps = PriceTaps.new(Pricing.ECHO_SECONDS)
 local sendToken = 0
 local pickerSlot: number? = nil
 local justListed: number? = nil -- the slot a card was just put in: its price editor opens as it arrives
@@ -162,14 +164,14 @@ local STEP_BUTTON_COLOR = UIKit.Colors.Secondary -- other choices (sky in the co
 
 local function flush(token: number)
 	local part = casePart
-	if token ~= sendToken or not part or next(pending) == nil then
+	local tapped = if token == sendToken and part then PriceTaps.flush(taps, os.clock()) else nil
+	if not tapped or not part then
 		return
 	end
 	local changes = {}
-	for slot, price in pending do
+	for slot, price in tapped do
 		table.insert(changes, { slot = slot, price = price })
 	end
-	pending = {}
 	Remotes.SetCardPrice:FireServer(part:GetAttribute("ShelfUid"), changes)
 end
 
@@ -177,7 +179,7 @@ local render: () -> ()
 local showPrice: (slot: number) -> ()
 
 local function queuePrice(slot: number, price: number)
-	pending[slot] = price
+	PriceTaps.tap(taps, slot, price)
 	showPrice(slot)
 	sendToken += 1
 	local token = sendToken
@@ -253,7 +255,7 @@ local function readListing(slot: number, cardPart: BasePart): Listing?
 		card = card,
 		foil = foil,
 		growth = { level = level, stars = stars, grade = grade },
-		price = pending[slot] or (if typeof(serverPrice) == "number" then serverPrice else 0),
+		price = PriceTaps.shown(taps, slot, if typeof(serverPrice) == "number" then serverPrice else 0, os.clock()),
 		market = CardRules.getMarketValue(card, foil, level, stars, grade),
 		stats = BeastRules.getStats(card, foil, level, stars, grade),
 		power = BeastRules.getPower(card, foil, level, stars, grade),
@@ -274,6 +276,16 @@ local function getMarketColor(listing: Listing): Color3
 		else palette.bad
 end
 
+-- A row's small tag under its price. In a Glass Showcase: how many customers buy at this price ("Always buy", "33%
+-- buy", "Won't buy"), which falls with every step up like a product's (owner 2026-11-20: "also do the same with glass
+-- prices"; PriceRules.getTag). In a Collector Case, where players buy: the price against market
+local function rowTag(listing: Listing, kind: string): string
+	if kind == "CustomerCards" then
+		return PriceRules.getTag(listing.price, listing.market)
+	end
+	return string.format("%d%% of market", math.round(getMarketRatio(listing) * 100))
+end
+
 local function describeGrowth(listing: Listing): string
 	return `{BeastRules.describeGrade(listing.growth.grade)} · {BeastRules.describeGrowth(listing.growth.level, listing.growth.stars)}`
 end
@@ -290,7 +302,10 @@ local function describeDetails(listing: Listing, kind: string): string
 	}
 	if kind == "CustomerCards" then
 		local band = PriceRules.getBand(listing.price, listing.market)
-		table.insert(lines, `Customers: {if band then band.label else Pricing.NEVER_LABEL}`)
+		-- past the first band, how many buy at this price too (it slides inside a band: PriceRules.getChance)
+		local first = band == Pricing.BUY_BANDS[1]
+		local share = math.max(1, math.round(PriceRules.getChance(listing.price, listing.market) * 100))
+		table.insert(lines, `Customers: {if not band then Pricing.NEVER_LABEL elseif first then band.label else `{band.label} ({share}%)`}`)
 	end
 	return table.concat(lines, "\n")
 end
@@ -367,8 +382,7 @@ local function buildListingRow(listing: Listing, kind: string)
 
 	local price = addRowLabel(row, string.format("$%.2f", listing.price), UDim2.new(1, -100, 0, 6), UDim2.fromOffset(90, 24), Enum.Font.FredokaOne, 19, palette.good)
 	price.TextXAlignment = Enum.TextXAlignment.Right
-	local ratio = string.format("%d%% of market", math.round(getMarketRatio(listing) * 100))
-	local tag = addRowLabel(row, ratio, UDim2.new(1, -100, 0, 34), UDim2.fromOffset(90, 18), Enum.Font.GothamBold, 12, getMarketColor(listing))
+	local tag = addRowLabel(row, rowTag(listing, kind), UDim2.new(1, -100, 0, 34), UDim2.fromOffset(90, 18), Enum.Font.GothamBold, 12, getMarketColor(listing))
 	tag.TextXAlignment = Enum.TextXAlignment.Right
 	rowPrices[listing.slot] = { price = price, tag = tag }
 
@@ -535,7 +549,7 @@ local function renderDetailPane(listings: { [number]: Listing }, kind: string, i
 		render()
 	end)
 	addPaneButton("Remove", UIKit.Colors.Danger, y + 54, function()
-		pending[listing.slot] = nil
+		PriceTaps.forget(taps, listing.slot)
 		editingSlot = nil
 		Remotes.RemoveDisplayedCard:FireServer(casePart and casePart:GetAttribute("ShelfUid"), listing.slot)
 	end)
@@ -551,15 +565,15 @@ showPrice = function(slot: number)
 		render()
 		return
 	end
+	local def = Shelves.ById[part.Name]
 	local row = rowPrices[slot]
 	if row and row.price.Parent then
 		row.price.Text = string.format("$%.2f", listing.price)
-		row.tag.Text = string.format("%d%% of market", math.round(getMarketRatio(listing) * 100))
+		row.tag.Text = rowTag(listing, if def then def.kind else "")
 		row.tag.TextColor3 = getMarketColor(listing)
 	end
 	local detail = detailPrice
 	if detail and detail.slot == slot and detail.line.Parent then
-		local def = Shelves.ById[part.Name]
 		detail.info.Text = describeDetails(listing, if def then def.kind else "")
 		detail.line.Text = string.format("Your price  $%.2f", listing.price)
 		local editor = detail.editor
@@ -1102,7 +1116,7 @@ function ShowcaseController.Open(part: BasePart)
 	end
 	disconnectCase()
 	casePart = part
-	pending = {}
+	PriceTaps.forget(taps, nil)
 	selectedSlot = nil
 	editingSlot = nil
 	justListed = nil
@@ -1204,6 +1218,22 @@ function ShowcaseController.Start()
 	Remotes.CollectionChanged.OnClientEvent:Connect(function()
 		if picker.Visible then
 			renderPicker()
+		end
+	end)
+	-- Walking away from the case is Done (owner 2026-11-20: "it should be considered done when the player walks away
+	-- even if they did not press DONE"): its window closes, which puts its new cards on sale with the prices set (the
+	-- server lets them go by itself too: ShowcaseService)
+	task.spawn(function()
+		local Showcase = require(Config:WaitForChild("Showcase")) :: any
+		local localPlayer = game:GetService("Players").LocalPlayer
+		while true do
+			task.wait(Showcase.WALK_CHECK)
+			local part = casePart
+			local character = localPlayer.Character
+			local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
+			if panel.Visible and part and root and root:IsA("BasePart") and (root.Position - part.Position).Magnitude > Showcase.WALK_AWAY then
+				panel.Visible = false
+			end
 		end
 	end)
 	panel:GetPropertyChangedSignal("Visible"):Connect(function()

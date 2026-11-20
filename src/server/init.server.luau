@@ -67,6 +67,7 @@ local BulkService = require(Services:WaitForChild("BulkService"))
 local OfflineService = require(Services:WaitForChild("OfflineService"))
 local EventService = require(Services:WaitForChild("EventService"))
 local CodeService = require(Services:WaitForChild("CodeService"))
+local BrokeService = require(Services:WaitForChild("BrokeService"))
 
 local Place = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("Place"))
 
@@ -195,6 +196,7 @@ else
 	MainQuestService.Start() -- main quests: first builds pay shop XP (after PlacementService and EconomyService)
 	CodeService.Start() -- the Store's code box: checks a typed code and pays its gift (after ItemService, LuckService, BattleService)
 	OfflineService.Start() -- welcome-back earnings: shelves sell while you're away (after PlacementService and PricingService load)
+	BrokeService.Start() -- a shop can always restock: the spend guards, Pish's help (after StockService, PlacementService, CustomerService)
 	TeamService.Start() -- teams in this world: invites, the team strip, the hunting bonus (bosses call teammates)
 	BinderReadService.Start() -- your binder open shows you reading it (after BattleService)
 	DevService.Start() -- Studio only

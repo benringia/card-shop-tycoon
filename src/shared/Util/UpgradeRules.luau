@@ -19,10 +19,11 @@ export type Job = {
 
 local KINDS = { star = "card", grade = "card", level = "weapon", reforge = "weapon", craft = "weapon" }
 local GRADES = { C = true, B = true, A = true, S = true }
-local MAX_SPAN = 3600 * 2 -- seconds: a saved job longer than this is junk
+local MAX_SPAN = 3600 * 3 -- seconds: a saved job longer than this is junk (the longest wait is Upgrades.MAX_WAIT, 2 h)
 
--- Seconds an upgrade waits: star / level by the target stars or level (1-based), grade by the target grade
-function UpgradeRules.seconds(cfg: any, kind: string, step: (number | string)?): number
+-- Seconds an upgrade waits before its item's rarity: star / level by the target stars or level (1-based), grade by
+-- the target grade
+local function baseSeconds(cfg: any, kind: string, step: (number | string)?): number
 	local waits = cfg.WAITS[kind]
 	if typeof(waits) == "number" then
 		return waits
@@ -37,6 +38,14 @@ function UpgradeRules.seconds(cfg: any, kind: string, step: (number | string)?):
 		end
 	end
 	return cfg.WAITS.craft
+end
+
+-- Seconds an upgrade waits: the stronger the upgrade the longer (the WAITS tables), and the rarer the card or weapon
+-- the longer (`rarity`: Config/Upgrades RARITY_TIMES; nil or unknown: the table's own), never over MAX_WAIT
+function UpgradeRules.seconds(cfg: any, kind: string, step: (number | string)?, rarity: string?): number
+	local times = if rarity and cfg.RARITY_TIMES then cfg.RARITY_TIMES[rarity] else nil
+	local seconds = math.max(1, math.round(baseSeconds(cfg, kind, step) * (if typeof(times) == "number" then times else 1)))
+	return if typeof(cfg.MAX_WAIT) == "number" then math.min(seconds, cfg.MAX_WAIT) else seconds
 end
 
 -- The "Finish now" tier for this much time left
@@ -59,6 +68,13 @@ function UpgradeRules.clock(seconds: number): string
 		return string.format("%d:%02d:%02d", hours, minutes, secs)
 	end
 	return string.format("%d:%02d", minutes, secs)
+end
+
+-- Whether a machine says "Ready!": only with nothing inside and a finished result waiting to be taken out (`done`:
+-- the player's CondenserDone / GradingDone note, the Forge's flag). Owner 2026-11-20: "sometimes it says Ready when
+-- it's still counting down": a note that outlived its Take it out showed again over the next job
+function UpgradeRules.showsReady(hasJob: boolean, done: any): boolean
+	return not hasJob and done ~= nil and done ~= false and done ~= ""
 end
 
 -- The requirement card's line when a station already has a job

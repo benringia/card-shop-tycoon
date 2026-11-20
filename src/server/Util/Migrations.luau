@@ -406,6 +406,44 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 	[38] = function(data)
 		data.posters = nil
 	end,
+	-- 39 -> 40: shop levels past 20 cost more XP (owner 2026-11-20: "after level 20. make the leveling up more
+	-- difficult"; Config/Levels LATE). A saved XP total past Lv 20 moves onto the new curve at the same level and the
+	-- same share of the way to the next, so nobody loses a level; XP past the cap is kept past the new cap. Both
+	-- curves are written out here (this module has no requires, and a migration must not move with the config).
+	[39] = function(data)
+		local xp = data.xp
+		if typeof(xp) ~= "number" or xp ~= xp or xp == math.huge or xp < 0 then
+			return -- junk is left for the loader
+		end
+		local BASE, POWER, ROUND, MAX = 40 / 6, 2.31, 10, 100
+		local FROM, FULL, TIMES = 20, 30, 3
+		local before: { number }, after: { number } = {}, {}
+		local raw, last = 0, 0
+		for level = 1, MAX do
+			local plain = if level <= 1 then 0 else BASE * (level - 1) ^ POWER
+			if level > FROM then
+				raw += (plain - last) * (1 + (TIMES - 1) * math.clamp((level - FROM) / (FULL - FROM), 0, 1))
+			else
+				raw = plain
+			end
+			last = plain
+			before[level] = math.round(plain / ROUND) * ROUND
+			after[level] = math.round(raw / ROUND) * ROUND
+		end
+		local level = 1
+		while level < MAX and xp >= before[level + 1] do
+			level += 1
+		end
+		if level <= FROM then
+			return
+		elseif level >= MAX then
+			data.xp = after[MAX] + math.floor(xp - before[MAX])
+			return
+		end
+		local share = (xp - before[level]) / (before[level + 1] - before[level])
+		-- never onto the next level's floor: a level is earned, not rounded into
+		data.xp = math.min(after[level] + math.floor((after[level + 1] - after[level]) * share), after[level + 1] - 1)
+	end,
 }
 
 local function lowestGrade(): string

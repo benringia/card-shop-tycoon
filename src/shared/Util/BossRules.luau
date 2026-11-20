@@ -145,6 +145,12 @@ function BossRules.pay(config: { REPEAT_PAY: number }, cash: number, lootWin: bo
 	return math.round(cash * BossRules.payShare(config, lootWin) * 100) / 100
 end
 
+-- The part of a boss win's cash its shop XP is worked out from (LevelMath.fightXp): SHOP_XP_SHARE of it (the cash
+-- doubled on 2026-11-21, the shop XP didn't)
+function BossRules.shopXpCash(config: { SHOP_XP_SHARE: number? }, cash: number): number
+	return cash * (config.SHOP_XP_SHARE or 1)
+end
+
 -- The Robux reset (Bosses.RESET; owner 2026-11-19, pick A: one buy ends every boss's timer): offered while some boss's
 -- loot timer has at least `minLeft` seconds to go, so a buy never lands after every timer ran out by itself
 function BossRules.resetOffered(lootIns: { number }, minLeft: number): boolean

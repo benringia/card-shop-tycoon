@@ -98,7 +98,7 @@ local REST: { Weapon } = {
 		source = {
 			kind = "masterwork",
 			cost = {
-				cash = 25000,
+				cash = 15000, -- $25,000 until 2026-11-20 (the Forge's top costs down 40%, below at BOSS_COST)
 				items = { [MATERIALS.emberColossus] = 20, [MATERIALS.meadowWarden] = 10, [MATERIALS.caveBroodQueen] = 10, starShard = 5 },
 			},
 		},
@@ -176,7 +176,7 @@ REST = {
 		source = {
 			kind = "masterwork",
 			cost = {
-				cash = 60000,
+				cash = 36000, -- $60,000 until 2026-11-20 (owner: "60k in our current economy takes too long to achieve")
 				items = { [MATERIALS.meadowWarden] = 30, [MATERIALS.frostTyrant] = 20, [MATERIALS.stormSovereign] = 20, starShard = 10 },
 			},
 		},
@@ -281,12 +281,15 @@ return {
 	-- weapon's (Config/Combat SUPER_SCALES: which of its numbers grow). Tuned with tools/balance/bosses.
 	SUPER = { share = 0.5, lockedTitle = "Super locked" },
 	PERK_S = 1.2, -- a Grade S weapon's perk number x this
-	-- A boss weapon: its boss's material and cash by rarity
+	-- A boss weapon: its boss's material and cash by rarity. The top costs came down 40% on 2026-11-20 (owner: "lower
+	-- the forging cost a bit. 60k in our current economy takes too long to achieve", his pick of three options): Epic
+	-- $12,000 -> $8,000, Legendary $30,000 -> $18,000, the masterworks $25,000 -> $15,000 and $60,000 -> $36,000 (a
+	-- shop earns about $700-1,550 an hour from packs). Materials as before; a reforge is still half of making
 	BOSS_COST = {
 		Rare = { material = 15, cash = 2000 },
 		["Very Rare"] = { material = 25, cash = 5000 },
-		Epic = { material = 40, cash = 12000 },
-		Legendary = { material = 60, cash = 30000 },
+		Epic = { material = 40, cash = 8000 },
+		Legendary = { material = 60, cash = 18000 },
 	},
 	REFORGE_SHARE = 0.5, -- a reforge (a new grade roll, the better kept) costs this share of making it, rounded up
 	DUPLICATE_MATERIAL = 10, -- a boss dropping a weapon you own gives this many of its material instead
@@ -299,6 +302,12 @@ return {
 		Epic = { base = 0.002, step = 0.0005 },
 		Legendary = { base = 0.001, step = 0.0002 },
 	},
+	-- The Wild's three bosses drop their weapons a little more often (owner 2026-11-20: "slightly increase weapon
+	-- droprate on wild bosses only"): their chance times DROP_WILD (median loot wins about 12 / 19 / 39 instead of
+	-- 15 / 25 / 50). The Frontier's and the Dungeon's are as above (tests/WeaponRules checks the list against
+	-- Config/Bosses' places)
+	DROP_WILD = 1.3,
+	WILD_BOSSES = { meadowWarden = true, caveBroodQueen = true, emberColossus = true } :: { [string]: boolean },
 	ANNOUNCE = { Epic = true, Legendary = true }, -- a dropped weapon of these rarities is announced to the server
 	-- Upgrades +1..+10: cash x the rarity's share and the weapon's material (Forge weapons: Wild Ore), Star Shards at +5
 	-- and +10. They never fail.

@@ -1780,6 +1780,11 @@ function BattleSim.useAbility(state: State, id: string, which: string, owner: st
 	if not fighter or not side or fighter.fainted or fighter.left or (owner ~= nil and fighter.owner ~= owner) then
 		return nil, "missing"
 	end
+	-- frozen by an ice spike or stunned by a thunderclap: no Pet move, no super (owner 2026-11-20: "Pets can still
+	-- press super/skill while frozen"); nothing is spent, so the move is there when it can move again
+	if state.time < fighter.stunUntil then
+		return nil, "stunned"
+	end
 	local combat = state.combat
 	local ability
 	if not side.abilities then
@@ -1791,7 +1796,7 @@ function BattleSim.useAbility(state: State, id: string, which: string, owner: st
 		elseif state.time < fighter.abilityReady then
 			return nil, "cooldown"
 		end
-		fighter.abilityReady = state.time + combat.ABILITY_COOLDOWN * (1 - perkOf(state, fighter, "Express"))
+		fighter.abilityReady = state.time + (ability.cooldown or combat.ABILITY_COOLDOWN) * (1 - perkOf(state, fighter, "Express"))
 	elseif which == "signature" then
 		ability = if fighter.signature then combat.SIGNATURES[fighter.signature] else nil
 		local key = ownerKey(fighter)

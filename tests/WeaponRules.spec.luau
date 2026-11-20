@@ -153,7 +153,7 @@ return {
 		built.ById.titansLance.ready = true
 		local cost = WeaponRules.makeCost(built, "titansLance")
 		assert(cost, "the Lance has a recipe")
-		expect.equal(cost.cash, 60000)
+		expect.equal(cost.cash, 36000) -- $60,000 until 2026-11-20 (the owner: "60k in our current economy takes too long")
 		expect.equal(cost.items.material_meadowWarden, 30)
 		expect.equal(cost.items.material_frostTyrant, 20)
 		expect.equal(cost.items.material_stormSovereign, 20)
@@ -169,7 +169,14 @@ return {
 		assert(sun, "the Sunforged Blade has a cost")
 		expect.equal(sun.items.material_emberColossus, 20)
 		expect.equal(sun.items.starShard, 5)
-		expect.equal(sun.cash, 25000)
+		expect.equal(sun.cash, 15000) -- $25,000 until 2026-11-20
+		-- the Forge's top costs came down 40% that day (the owner's pick of three); Rare and Very Rare stayed
+		expect.equal(W.BOSS_COST.Rare.cash, 2000)
+		expect.equal(W.BOSS_COST["Very Rare"].cash, 5000)
+		expect.equal(W.BOSS_COST.Epic.cash, 8000)
+		expect.equal(W.BOSS_COST.Legendary.cash, 18000)
+		expect.equal(W.BOSS_COST.Epic.material, 40, "materials as before")
+		expect.equal(W.BOSS_COST.Legendary.material, 60)
 		local forge = WeaponRules.makeCost(W, "forgeSword_Volt")
 		assert(forge, "a Forge Sword has a cost")
 		expect.equal(forge.cash, 1500)
@@ -322,8 +329,9 @@ return {
 	end,
 
 	["drop chance by rarity (owner 2026-11-06): a Rare 1% plus 0.5% a kill without one, a Legendary about 2 weeks"] = function()
-		expect.near(WeaponRules.dropChance(W, "verdantBlade", 0), 0.01, 1e-9)
-		expect.near(WeaponRules.dropChance(W, "verdantBlade", 10), 0.06, 1e-9)
+		local wild = W.DROP_WILD -- the Wild's bosses drop a little more often (owner 2026-11-20)
+		expect.near(WeaponRules.dropChance(W, "verdantBlade", 0), 0.01 * wild, 1e-9)
+		expect.near(WeaponRules.dropChance(W, "verdantBlade", 10), 0.06 * wild, 1e-9)
 		expect.equal(WeaponRules.dropChance(W, "verdantBlade", 500), 1)
 		expect.near(WeaponRules.dropChance(W, "prismBlade", 0), 0.001, 1e-9)
 		expect.near(WeaponRules.dropChance(W, "prismBlade", 10), 0.003, 1e-9)
@@ -412,5 +420,32 @@ return {
 		expect.equal(upgraded > common, true, "upgrades and grade add more")
 		expect.equal(legendary > upgraded, true, "a Legendary weapon most")
 		expect.near(WeaponRules.superScale(W, "starterSword", "C", 0), 1, 1e-9, "the Steel Sword: no change")
+	end,
+
+	-- owner 2026-11-20: "slightly increase weapon droprate on wild bosses only"
+	["the Wild's bosses drop their weapons a little more often; the Frontier's and the Dungeon's as before"] = function()
+		local Bosses = require("../src/shared/Config/Bosses")
+		assert(W.DROP_WILD > 1 and W.DROP_WILD <= 1.5, "slightly")
+		local wild, other = 0, 0
+		for _, weapon in W.WEAPONS do
+			local source = weapon.source
+			if source.kind == "boss" then
+				local boss = Bosses.BOSSES[source.boss]
+				local odds = W.DROP[weapon.rarity]
+				for _, pity in { 0, 7, 40 } do
+					local plain = math.min(1, odds.base + odds.step * pity)
+					local expected = if boss.place == "Wild" then math.min(1, plain * W.DROP_WILD) else plain
+					expect.near(WeaponRules.dropChance(W, weapon.id, pity), expected, 1e-9, `{weapon.id} at pity {pity}`)
+				end
+				if boss.place == "Wild" then
+					wild += 1
+					expect.equal(W.WILD_BOSSES[source.boss], true, `{source.boss} is a Wild boss`)
+				else
+					other += 1
+					expect.isNil(W.WILD_BOSSES[source.boss], `{source.boss} is not`)
+				end
+			end
+		end
+		assert(wild >= 3 and other >= 3, "both kinds checked")
 	end,
 }

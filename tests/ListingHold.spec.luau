@@ -50,4 +50,26 @@ return {
 		expect.equal(ListingHold.refresh(holds, "caseA", 2, 100, SECONDS), false, "a card on sale stays on sale")
 		expect.equal(ListingHold.isHeld(holds, "caseA", 2, 101), false, "slot 2")
 	end,
+
+	-- owner 2026-11-20: "glasscases: some players just add cards and doesnt press done. it should be considered done
+	-- when the player walks away even if they did not press DONE"
+	["walking away from the case is Done"] = function()
+		local Showcase = { WALK_AWAY = 16 }
+		expect.equal(ListingHold.away(4, Showcase.WALK_AWAY), false, "at the case")
+		expect.equal(ListingHold.away(Showcase.WALK_AWAY, Showcase.WALK_AWAY), false, "still in reach")
+		expect.equal(ListingHold.away(Showcase.WALK_AWAY + 0.1, Showcase.WALK_AWAY), true, "walked off")
+		expect.equal(ListingHold.away(nil, Showcase.WALK_AWAY), true, "no character, or the case is gone")
+	end,
+
+	["the walk-away distance is past the case's prompt and the server's reach"] = function()
+		-- Config/Showcase needs Roblox to load: its numbers are read from its text
+		local source = require("@lune/fs").readFile("src/shared/Config/Showcase.luau")
+		local Showcase = {
+			WALK_AWAY = tonumber(string.match(source, "WALK_AWAY = ([%d%.]+)")) :: number,
+			WALK_CHECK = tonumber(string.match(source, "WALK_CHECK = ([%d%.]+)")) :: number,
+		}
+		assert(Showcase.WALK_AWAY >= 14, "not while still pressing its buttons (Stock.INTERACT_DISTANCE 14)")
+		assert(Showcase.WALK_AWAY <= 24, "a few steps, not across the shop")
+		assert(Showcase.WALK_CHECK <= 1, "noticed within a second")
+	end,
 }

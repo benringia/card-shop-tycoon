@@ -706,7 +706,7 @@ return {
 				healed[entry.event.to] = (healed[entry.event.to] or 0) + entry.event.heal
 			end
 		end
-		expect.equal(healed["a:p1"], 250, "the Tide owner's creature is healed 25% over time")
+		expect.equal(healed["a:p1"], 150, "the Tide owner's creature is healed 15% over time")
 		expect.equal(healed["a:p2"], 0, "the other player's is not")
 	end,
 
@@ -1188,8 +1188,12 @@ return {
 		expect.equal(again, log, "deterministic")
 	end,
 
-	-- The owner (2026-11-05): Healing Rain heals 25% over time, not at once
-	["Healing Rain heals 25% over 5 ticks, one a second, only its own side"] = function()
+	-- The owner (2026-11-05): Healing Rain heals over time, not at once; 2026-11-20 "Nerf healing rain ... heals 25%
+	-- over 5 seconds with 8 second cooldown. which he only spam heals to defeat frost tyrant. tune down for all
+	-- creatures": 15% now, and its own longer wait
+	["Healing Rain heals 15% over 5 ticks, one a second, only its own side"] = function()
+		expect.equal(combat.ABILITIES.Tide.heal, 0.15)
+		expect.equal(combat.ABILITIES.Tide.ticks, 5)
 		local state = BattleSim.new(combat, side({ fighter("t", "Tide", 1000, 1, 1), fighter("x", "Ember", 1000, 1, 1) }), side({ fighter("e", "Volt", 1e6, 0, 1) }), 22)
 		state.sides.a.fighters[2].hp = 500
 		state.sides.b.fighters[1].hp = 500
@@ -1204,7 +1208,7 @@ return {
 			enemyHealed = enemyHealed or (entry.event.type == "regen" and entry.event.to == "b:e")
 		end
 		expect.equal(#ticks, 5, "five ticks")
-		expect.equal(ticks[1].event.heal, 50, "5% of 1000 a tick")
+		expect.equal(ticks[1].event.heal, 30, "3% of 1000 a tick")
 		expect.equal(ticks[1].event.from, "a:t", "from the caster")
 		expect.near(ticks[1].time - 0.5, 1, 0.11, "the first a second after it lands")
 		expect.near(ticks[2].time - ticks[1].time, 1, 0.11, "one a second")
@@ -1224,7 +1228,7 @@ return {
 				landed = true
 			elseif landed and entry.event.type == "regen" then
 				after += 1
-				expect.equal(entry.event.heal, 50, "each tick 5%")
+				expect.equal(entry.event.heal, 30, "each tick 3%")
 			end
 		end
 		expect.equal(landed, true, "the second Rain lands")
@@ -1573,7 +1577,7 @@ return {
 
 	-- The owner (2026-11-05): "S healing rain also heal player": a Grade S caster's rain heals its owner's player too,
 	-- 15% over the same ticks; lower grades leave the player alone, and never another player
-	["Grade S Healing Rain also heals its owner's player 15% over its ticks"] = function()
+	["Grade S Healing Rain also heals its owner's player 10% over its ticks"] = function()
 		local function playerHealed(grade: string?, owner: string): number
 			local tide: any = fighter("p1", "Tide", 500, 20, 10)
 			tide.owner = owner
@@ -1591,7 +1595,7 @@ return {
 			expect.equal(healed["a:@2"], 0, "never another player")
 			return healed["a:@1"]
 		end
-		expect.equal(playerHealed("S", "1"), 15, "Grade S: 15% of the player's 100 HP")
+		expect.equal(playerHealed("S", "1"), 10, "Grade S: 10% of the player's 100 HP")
 		expect.equal(playerHealed("A", "1"), 0, "Grade A: creatures only")
 		expect.equal(playerHealed(nil, "1"), 0, "no grade: creatures only")
 	end,
@@ -3435,5 +3439,36 @@ return {
 		for name, ability in combat.SIGNATURES do
 			expect.equal(combat.SUPER_SCALES[ability.kind] ~= nil, true, `{name}'s kind {ability.kind} says what a weapon scales`)
 		end
+	end,
+
+	["Healing Rain waits longer than the other Pet moves before it can be cast again"] = function()
+		local CombatMath = require("../src/shared/Util/CombatMath")
+		expect.equal(CombatMath.abilityCooldown(combat, "Tide"), 12)
+		expect.equal(CombatMath.abilityCooldown(combat, "Ember"), combat.ABILITY_COOLDOWN, "the others as before")
+		expect.equal(CombatMath.abilityCooldown(combat, "Nothing"), combat.ABILITY_COOLDOWN)
+		-- it can't keep a creature topped up: a rain's 15% against 12 seconds of waiting
+		local rain = combat.ABILITIES.Tide
+		assert(rain.heal / CombatMath.abilityCooldown(combat, "Tide") <= 0.0135, "under 1.35% of max HP a second, sustained (3.1% before)")
+		local state = BattleSim.new(combat, side({ fighter("t", "Tide", 1000, 1, 1) }), side({ fighter("e", "Volt", 1e6, 0, 1) }), 5)
+		castNow(state, "a:t", "element")
+		expect.near(state.sides.a.fighters[1].abilityReady - state.time, 12, 0.6, "its own wait")
+	end,
+
+	-- owner 2026-11-20: "Pets can still press super/skill while frozen. fix it."
+	["a frozen or stunned creature can't use its Pet move or its super, and nothing is spent"] = function()
+		local state = BattleSim.new(combat, side({ fighter("t", "Ember", 1000, 10, 10) }), side({ fighter("e", "Volt", 1e6, 0, 1) }), 9)
+		local pet = state.sides.a.fighters[1]
+		pet.stunUntil = state.time + 3 -- an ice spike's freeze, a thunderclap's stun
+		local readyBefore = pet.abilityReady
+		local events, reason = BattleSim.useAbility(state, "a:t", "element")
+		expect.isNil(events, "no move")
+		expect.equal(reason, "stunned")
+		expect.equal(pet.abilityReady, readyBefore, "its wait didn't start: the move is still there when it thaws")
+		local superEvents, superReason = BattleSim.useAbility(state, "a:t", "signature")
+		expect.isNil(superEvents, "no super")
+		expect.equal(superReason, "stunned")
+		pet.stunUntil = state.time -- thawed
+		local after = BattleSim.useAbility(state, "a:t", "element")
+		assert(after ~= nil, "it casts once it can move again")
 	end,
 }

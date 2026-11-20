@@ -34,6 +34,7 @@ local CondenserService = {}
 local DONE = "CondenserDone" -- the player's attribute: a finished star waiting to be shown (CondenseRules.encodeDone)
 
 local allowAction = RateLimiter.new(CondenserConfig.ACTION_COOLDOWN)
+local allowSeen = RateLimiter.new(0.1) -- Take it out (clears a note: cheap, and it must not be dropped)
 
 local function notify(player: Player, message: string, isError: boolean)
 	Remotes.Notify:FireClient(player, message, isError)
@@ -125,7 +126,7 @@ local function onCondense(player: Player, shelfUid: unknown, cardId: unknown, ma
 		return
 	end
 	local now = os.time()
-	local seconds = EarlyRules.stationWait(UpgradeRules.seconds(Upgrades, "star", held.stars), tonumber(player:GetAttribute("Level")) or 1, Early)
+	local seconds = EarlyRules.stationWait(UpgradeRules.seconds(Upgrades, "star", held.stars, card.rarity), tonumber(player:GetAttribute("Level")) or 1, Early)
 	UpgradeJobService.Begin(player, "condenser", { kind = "star", startedAt = now, finishAt = now + seconds, beast = held })
 	notify(player, `{card.name} is in the Condenser ({UpgradeRules.clock(seconds)}){shardText}`, false)
 end
@@ -146,8 +147,10 @@ function CondenserService.Start()
 			return card.name
 		end))
 	end)
+	-- Take it out: its own limit, never the actions' (a press within ACTION_COOLDOWN of a condense was dropped, and the
+	-- note stayed: "Ready!" again later)
 	Remotes.CondenserSeen.OnServerEvent:Connect(function(player)
-		if allowAction(player) then
+		if allowSeen(player) then
 			player:SetAttribute(DONE, nil)
 		end
 	end)

@@ -16,24 +16,30 @@ return {
 			{ { rarity = "Common", weight = 0.7 }, { rarity = "Rare", weight = 0.3 } },
 			{ { rarity = "Rare", weight = 0.7 }, { rarity = "Very Rare", weight = 0.15 }, { rarity = "Epic", weight = 0.14 }, { rarity = "Legendary", weight = 0.01 } },
 		},
-		-- The First Spark Deck Box: 5 cards opened at once, two of them Rare or better ($9 against a pack's $3)
+		-- The First Spark Deck Box: 5 cards opened at once, two of them Rare or better ($9 against a pack's $3). It
+		-- costs three packs, so it is worth three (owner 2026-11-20: "whats the point of deck box? its just an expensive
+		-- version of the booster pack? if not fix it"; tests/DeckBox): its hit card is always Very Rare or better, and
+		-- its chance of an Epic or better (40%) and of a Legendary (3%) is a little over three packs' (38.6%, 2.97%).
+		-- Three packs still give three times the cards. (Its hit slot was Rare 52 / Very Rare 25 / Epic 22 / Legendary 1:
+		-- worse than three packs at everything.)
 		DeckBox = {
 			COMMON,
 			COMMON,
 			{ { rarity = "Common", weight = 0.5 }, { rarity = "Rare", weight = 0.5 } },
 			{ { rarity = "Rare", weight = 0.75 }, { rarity = "Very Rare", weight = 0.25 } },
-			{ { rarity = "Rare", weight = 0.52 }, { rarity = "Very Rare", weight = 0.25 }, { rarity = "Epic", weight = 0.22 }, { rarity = "Legendary", weight = 0.01 } },
+			{ { rarity = "Very Rare", weight = 0.6 }, { rarity = "Epic", weight = 0.37 }, { rarity = "Legendary", weight = 0.03 } },
 		},
 	} :: { [string]: { { Weighted } } },
 
-	-- Bad-luck protection, counted per player across every pack and Deck Box they open (saved: data.pity). A player's
-	-- first Legendary is guaranteed within FIRST_LEGENDARY_PACKS packs (a quick hook for new players), every later one
-	-- within LEGENDARY_PACKS: the last pack of the run has a Legendary in its hit slot. Without an Epic or better for
-	-- EPIC_PACKS - 1 packs, the next one's is an Epic. A pity Legendary guarantees the card, not a good copy: its grade
-	-- rolls from LEGENDARY_GRADES, far stingier than a lucky pull's.
+	-- Bad-luck protection, counted per player across every pack and Deck Box they open (saved: data.pity). Without an
+	-- Epic or better for EPIC_PACKS - 1 packs, the next one's hit slot is an Epic. LEGENDARY_GRADES: the stingy grades
+	-- of a Legendary that wasn't luck (Turts' Legendary Pack; a pity Legendary's when a pity sets one).
 	PITY = {
-		FIRST_LEGENDARY_PACKS = 130,
-		LEGENDARY_PACKS = 210,
+		-- No Legendary guarantee (owner 2026-11-20: "remove the 140 cards to get legendary. My friend already has 1200
+		-- packs and spamming open 10 cards": the first was guaranteed within 130 packs and every later one within 210,
+		-- so packs by the hundred bought Legendaries). A Legendary is luck now: its 1% (3% in a Deck Box) and Luck.
+		-- Util/PityRules still knows FIRST_LEGENDARY_PACKS and LEGENDARY_PACKS should a pity set them again; the saved
+		-- count goes on.
 		EPIC_PACKS = 40,
 		LEGENDARY_GRADES = { C = 0.8, B = 0.18, A = 0.018, S = 0.002 },
 	},

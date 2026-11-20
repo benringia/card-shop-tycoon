@@ -741,7 +741,8 @@ local function shopForCard(customer: Customer, visited: { [string]: boolean }): 
 		return true
 	end
 	-- Haggle (Shade creature summoned): more willing to buy at the owner's price
-	if rng:NextNumber() > math.min(1, band.chance * (1 + PartyService.GetPerk(customer.owner, "Haggle"))) then
+	local buyChance = PriceRules.getChance(displayed.price, displayedWorth(displayed)) -- it slides inside the band
+	if rng:NextNumber() > math.min(1, buyChance * (1 + PartyService.GetPerk(customer.owner, "Haggle"))) then
 		return true
 	end
 
@@ -1250,6 +1251,24 @@ function CustomerService.Adopt(model: Model, plot: Plot, owner: Player, kind: st
 	local card = if kind == "collector" then (wanted or pickWanted(owner)) else nil
 	startCustomer(plot, owner, state, model, kind, card)
 	return true
+end
+
+-- Units of each product this owner's customers hold (picked off a shelf, not paid for yet): still stock to
+-- BrokeService, which must not call a shop stuck while a sale is on its way to the register
+function CustomerService.HeldProducts(owner: Player): { [string]: number }
+	local held: { [string]: number } = {}
+	local plot = PlotService.GetPlot(owner)
+	if not plot then
+		return held
+	end
+	for _, customer in getPlotState(plot).customers do
+		for _, item in customer.items do
+			if item.productId then
+				held[item.productId] = (held[item.productId] or 0) + item.units
+			end
+		end
+	end
+	return held
 end
 
 -- Whether this owner's shop has room for one more customer (MAX_PER_PLOT), e.g. the one Pish sends

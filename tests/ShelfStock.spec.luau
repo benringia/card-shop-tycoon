@@ -188,4 +188,36 @@ return {
 		expect.equal(ShelfStock.boxFill(0, 24, 12, 1, 6), 0, "empty")
 		expect.equal(ShelfStock.boxFill(30, 24, 12, 12, 6), 6, "more than fits still shows a full box")
 	end,
+
+	-- owner 2026-11-20: "restocking first spark booster box on shelves sometimes doesnt stock the shelf but notifies
+	-- 'stocked 1'": it was stocked, but the shelf showed a stack of two for the first box and nothing new for the next
+	-- three (places filled by the share of the shelf's 24 units). Every booster box stocked now shows as one more box
+	["every booster box stocked is one more box on the shelf"] = function()
+		local PER_STACK = town.SHELF_STOCK.BOOSTERS.PER_STACK
+		local function shown(stacks: { number }): number
+			local total = 0
+			for _, height in stacks do
+				total += height
+			end
+			return total
+		end
+		for _, slots in { 3, 6, 12 } do
+			for units = 0, slots * PER_STACK do
+				local stacks = ShelfStock.stacks(units, slots, PER_STACK)
+				expect.equal(#stacks, slots)
+				expect.equal(shown(stacks), units, `{units} on {slots} places`)
+			end
+			expect.equal(shown(ShelfStock.stacks(slots * PER_STACK + 5, slots, PER_STACK)), slots * PER_STACK, "a full shelf shows full")
+		end
+		local one = ShelfStock.stacks(1, 6, 2)
+		expect.equal(one[1], 1, "one box: one box, not a stack of two")
+		expect.equal(one[2], 0)
+		local seven = ShelfStock.stacks(7, 6, 2)
+		expect.equal(seven[1], 2, "a box in every place first, then the second layer")
+		expect.equal(seven[2], 1)
+		expect.equal(seven[6], 1)
+		expect.equal(ShelfStock.stackedPlaces(ShelfStock.stacks(4, 6, 2)), 4, "places with a box: their price tags")
+		expect.equal(ShelfStock.stackedPlaces(ShelfStock.stacks(0, 6, 2)), 0)
+		expect.equal(ShelfStock.stackedPlaces(ShelfStock.stacks(9, 6, 2)), 6)
+	end,
 }

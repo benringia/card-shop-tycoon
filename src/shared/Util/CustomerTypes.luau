@@ -44,26 +44,78 @@ function CustomerTypes.tolerance(cfg: any, kind: string): number
 	return if spec and spec.tolerance then spec.tolerance else 0
 end
 
+-- Where a price sits among `bands`: its band's index (past the last band, more bands follow as wide as the last one)
+-- and how far up that band it is, 0 at its cheapest price to 1 at its dearest (the first band has no up: 0)
+local function place(price: number, market: number, bands: { Band }): (number, number)
+	local ratio = price / market
+	local lower = 0
+	for i, band in bands do
+		if ratio <= band.maxRatio + 1e-9 then
+			if i == 1 then
+				return 1, 0
+			end
+			return i, math.clamp((ratio - lower) / math.max(band.maxRatio - lower, 1e-6), 0, 1)
+		end
+		lower = band.maxRatio
+	end
+	local last = bands[#bands].maxRatio
+	local width = math.max(last - (if #bands > 1 then bands[#bands - 1].maxRatio else 0), 1e-6)
+	local over = (ratio - last) / width
+	local steps = math.max(1, math.ceil(over - 1e-9))
+	return #bands + steps, math.clamp(over - (steps - 1), 0, 1)
+end
+
 -- The band a price falls in for this type: its index in `bands` (past the last band, more bands follow as wide as the
 -- last one), shifted `tolerance` bands cheaper; past the last band means it won't buy
 local function shiftedBand(cfg: any, kind: string, price: number, market: number, bands: { Band }): number
 	if market <= 0 or #bands == 0 then
 		return #bands + 1
 	end
-	local ratio = price / market
-	local index: number? = nil
-	for i, band in bands do
-		if ratio <= band.maxRatio + 1e-9 then
-			index = i
-			break
-		end
+	local index = place(price, market, bands)
+	return math.max(1, index - CustomerTypes.tolerance(cfg, kind))
+end
+
+-- The chance a customer who looks `tolerance` bands dearer than a plain one buys at `price`. It slides inside a band
+-- (owner 2026-11-20: "The prices can be abused ... the players set prices to the final step of the sometimes buy":
+-- flat across a band, its dearest price cost nothing): the band's own chance at its cheapest price, down in a straight
+-- line to the next band's at its dearest (nobody's after the last band). The best band stays flat: at market price
+-- and under, almost always.
+local function chanceFor(tolerance: number, price: number, market: number, bands: { Band }): number
+	if market <= 0 or #bands == 0 then
+		return 0
 	end
-	if not index then
-		local last = bands[#bands].maxRatio
-		local width = last - (if #bands > 1 then bands[#bands - 1].maxRatio else 0)
-		index = #bands + math.max(1, math.ceil((ratio - last) / math.max(width, 1e-6) - 1e-9))
+	local index, up = place(price, market, bands)
+	local shifted = math.max(1, index - tolerance)
+	local band = bands[shifted]
+	if not band then
+		return 0
+	elseif shifted == 1 then
+		return band.chance
 	end
-	return math.max(1, (index :: number) - CustomerTypes.tolerance(cfg, kind))
+	local after = bands[shifted + 1]
+	return band.chance + ((if after then after.chance else 0) - band.chance) * up
+end
+
+-- The chance this type buys at `price` against `market` (before any perk)
+function CustomerTypes.chance(cfg: any, kind: string, price: number, market: number, bands: { Band }): number
+	return chanceFor(CustomerTypes.tolerance(cfg, kind), price, market, bands)
+end
+
+-- ...and a plain customer's (the Prices window, cards in a Glass Showcase, welcome-back sales, the rating's fair prices)
+function CustomerTypes.plainChance(price: number, market: number, bands: { Band }): number
+	return chanceFor(0, price, market, bands)
+end
+
+-- What the Prices window says under a product at `price`: the best band's own words ("Always buy"), then how many buy
+-- ("33% buy": each step up shows what it costs), `never` once nobody does
+function CustomerTypes.priceTag(price: number, market: number, bands: { Band }, never: string): string
+	local chance = chanceFor(0, price, market, bands)
+	if chance <= 0 or market <= 0 or #bands == 0 then
+		return never
+	elseif place(price, market, bands) == 1 then
+		return (bands[1] :: any).tag
+	end
+	return `{math.max(1, math.floor(chance * 100 + 0.5 + 1e-6))}% buy`
 end
 
 -- Whether this type won't buy at all at `price` (past its last band): the annoyed bubble
@@ -71,25 +123,9 @@ function CustomerTypes.outOfReach(cfg: any, kind: string, price: number, market:
 	return shiftedBand(cfg, kind, price, market, bands) > #bands
 end
 
--- Whether this type buys at `price` against `market`: its shifted band's chance (raised by a perk) against roll
+-- Whether this type buys at `price` against `market`: its chance there (raised by a perk) against roll
 function CustomerTypes.buys(cfg: any, kind: string, price: number, market: number, roll: number, perkBonus: number, bands: { Band }): boolean
-	local band = bands[shiftedBand(cfg, kind, price, market, bands)]
-	if not band then
-		return false
-	end
-	return band.chance * (1 + perkBonus) > roll
-end
-
--- What a customer does at a shelf priced `price`: "buy", "pricey" (out of its reach: the annoyed bubble) or "pass".
--- `sure` (Pish's tutorial customer, owner 2026-11-20: "the customer should always buy so that players dont have to
--- wait for a buying customer"): it always buys
-function CustomerTypes.decides(cfg: any, kind: string, price: number, market: number, roll: number, perkBonus: number, bands: { Band }, sure: boolean?): string
-	if sure then
-		return "buy"
-	elseif CustomerTypes.outOfReach(cfg, kind, price, market, bands) then
-		return "pricey"
-	end
-	return if CustomerTypes.buys(cfg, kind, price, market, roll, perkBonus, bands) then "buy" else "pass"
+	return CustomerTypes.chance(cfg, kind, price, market, bands) * (1 + perkBonus) > roll
 end
 
 -- What a customer does at a shelf priced `price`: "buy", "pricey" (out of its reach: the annoyed bubble) or "pass".

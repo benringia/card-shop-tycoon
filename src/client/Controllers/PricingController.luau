@@ -11,6 +11,7 @@ local Config = Shared:WaitForChild("Config")
 local Products = require(Config:WaitForChild("Products"))
 local PricingConfig = require(Config:WaitForChild("Pricing"))
 local PriceRules = require(Shared:WaitForChild("Util"):WaitForChild("PriceRules"))
+local PriceTaps = require(Shared:WaitForChild("Util"):WaitForChild("PriceTaps"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -46,7 +47,8 @@ local function bandColor(index: number): Color3
 	return colors[index] or colors[1]
 end
 local rows: { Row } = {}
-local pending: { [string]: number } = {}
+-- The prices tapped and sent, shown until the server's own price says the same (Util/PriceTaps)
+local taps = PriceTaps.new(PricingConfig.ECHO_SECONDS)
 local sendToken = 0
 
 local function getServerPrice(product: Product): number
@@ -55,7 +57,7 @@ local function getServerPrice(product: Product): number
 end
 
 local function getShownPrice(product: Product): number
-	return pending[product.id] or getServerPrice(product)
+	return PriceTaps.shown(taps, product.id, getServerPrice(product), os.clock())
 end
 
 local function getLevel(): number
@@ -70,7 +72,8 @@ local function getBandInfo(price: number, marketPrice: number): (string, Color3)
 		return PricingConfig.NEVER_TAG, palette.bad
 	end
 	local index = table.find(PricingConfig.BUY_BANDS, band) or 1
-	return band.tag, bandColor(index)
+	-- past the first band the tag is how many buy at this price ("33% buy"): each step up shows what it costs
+	return PriceRules.getTag(price, marketPrice), bandColor(index)
 end
 
 local function refreshRow(row: Row)
@@ -91,17 +94,16 @@ local function refreshAll()
 end
 
 local function flush(token: number)
-	if token ~= sendToken or next(pending) == nil then
-		return
+	local changes = if token == sendToken then PriceTaps.flush(taps, os.clock()) else nil
+	if changes then
+		Remotes.SetPrices:FireServer(changes)
 	end
-	Remotes.SetPrices:FireServer(pending)
-	pending = {}
 end
 
 local function nudge(row: Row, direction: number)
 	local product = row.product
 	local newPrice = getShownPrice(product) + direction * PricingConfig.PRICE_STEP
-	pending[product.id] = PriceRules.clamp(newPrice, product.marketPrice)
+	PriceTaps.tap(taps, product.id, PriceRules.clamp(newPrice, product.marketPrice))
 	refreshRow(row)
 
 	sendToken += 1

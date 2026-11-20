@@ -3,7 +3,12 @@ local PityRules = require("../src/shared/Util/PityRules")
 local PackOdds = require("../src/shared/Config/PackOdds")
 local expect = require("./lib/expect")
 
-local PITY, RANK = PackOdds.PITY, PackOdds.RANK
+local RANK = PackOdds.RANK
+-- The game's pity: an Epic or better only (owner 2026-11-20: "remove the 140 cards to get legendary. My friend already
+-- has 1200 packs and spamming open 10 cards"). The rules still know a Legendary guarantee, for a pity that sets one:
+-- OLD is the game's until then (the first within 130 packs, then every 210)
+local REAL = PackOdds.PITY
+local PITY = { FIRST_LEGENDARY_PACKS = 130, LEGENDARY_PACKS = 210, EPIC_PACKS = REAL.EPIC_PACKS, LEGENDARY_GRADES = REAL.LEGENDARY_GRADES }
 
 -- Opens `count` packs with nothing better than `best`; returns the rarities pity raised them to and the final state
 local function openMany(state: PityRules.State, count: number, best: string): ({ string }, PityRules.State)
@@ -19,7 +24,31 @@ local function openMany(state: PityRules.State, count: number, best: string): ({
 end
 
 return {
-	["the first Legendary is guaranteed on the 130th pack, and never before"] = function()
+	["no number of packs guarantees a Legendary (1,200 packs and Open 10)"] = function()
+		expect.isNil((REAL :: any).FIRST_LEGENDARY_PACKS, "no first guarantee")
+		expect.isNil((REAL :: any).LEGENDARY_PACKS, "no later one")
+		local state: PityRules.State = { legendary = 0, epic = 0, firstDone = false }
+		local epics = 0
+		for _ = 1, 2000 do
+			local raised
+			raised, state = PityRules.open(REAL, RANK, state, "Very Rare")
+			assert(raised ~= "Legendary", "never raised to a Legendary")
+			if raised == "Epic" then
+				epics += 1
+			end
+		end
+		expect.equal(epics, 2000 // REAL.EPIC_PACKS, "the Epic guarantee goes on")
+		expect.equal(state.legendary, 2000, "the packs since a Legendary are still counted (saved)")
+		expect.equal(state.firstDone, false)
+		local legendary, epic = PityRules.remaining(REAL, { legendary = 500, epic = 0, firstDone = false })
+		expect.isNil(legendary, "nothing to count down to")
+		expect.equal(epic, REAL.EPIC_PACKS)
+		local _, lucky = PityRules.open(REAL, RANK, { legendary = 500, epic = 12, firstDone = false }, "Legendary")
+		expect.equal(lucky.legendary, 0, "a lucky Legendary still resets the counts")
+		expect.equal(lucky.firstDone, true)
+	end,
+
+	["a pity that sets one: the first Legendary is guaranteed on the 130th pack, and never before"] = function()
 		local forced, state = openMany({ legendary = 0, epic = 0, firstDone = false }, PITY.FIRST_LEGENDARY_PACKS - 1, "Very Rare")
 		local legendaries = 0
 		for _, rarity in forced do

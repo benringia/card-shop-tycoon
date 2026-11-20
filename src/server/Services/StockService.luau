@@ -19,6 +19,7 @@ local Items = require(Config:WaitForChild("Items"))
 local ItemRules = require(Shared:WaitForChild("Util"):WaitForChild("ItemRules"))
 local TutorialRules = require(Shared:WaitForChild("Util"):WaitForChild("TutorialRules"))
 local StockConfig = require(Config:WaitForChild("Stock"))
+local Offline = require(Config:WaitForChild("Offline"))
 local Tips = require(Config:WaitForChild("Tips"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Blocked = require((script.Parent :: Instance).Parent:WaitForChild("Util"):WaitForChild("Blocked"))
@@ -284,8 +285,11 @@ local function onOrder(player: Player, productId: unknown)
 		notify(player, "Your delivery area is full. Unpack some boxes first.", true)
 		return
 	end
-	if not EconomyService.TrySpend(player, product.boxCost) then
-		notify(player, "Not enough cash.", true)
+	local paid, kept = EconomyService.TrySpend(player, product.boxCost, "stock")
+	if not paid then
+		if not kept then -- (kept: the shop keeps that cash for a rack, and BrokeService said so)
+			notify(player, "Not enough cash.", true)
+		end
 		return
 	end
 
@@ -421,6 +425,14 @@ end
 -- that player can put all the cardpacks inside the box to their inventory or drop to the delivery box. that way. they
 -- will never have to go back to the delivery to pickup packs to rip"). A pack or deck box becomes its Bag item
 -- (ItemRules.stockItem); other boxes stay in your hands, and what the Bag can't hold stays in its box.
+-- A check before the owner takes stock for themselves (a pack ripped, a box into the Bag): BrokeService's, which
+-- tells the player itself when it refuses (a shop's last packs pay for its next box, Config/Broke)
+local takeGuard: ((player: Player, productId: string, units: number) -> boolean)? = nil
+
+function StockService.SetTakeGuard(guard: (player: Player, productId: string, units: number) -> boolean)
+	takeGuard = guard
+end
+
 local function onBagBox(player: Player)
 	if not allowDrop(player) then
 		return
@@ -436,11 +448,15 @@ local function onBagBox(player: Player)
 		return
 	end
 	local moved = 0
+	local kept = false -- a box the shop needs to sell stayed (the guard said so)
 	for index = #shop.carried, 1, -1 do
 		local box = shop.carried[index]
 		local units = box:GetAttribute("Units")
-		local itemId = ItemRules.stockItem(Items, box:GetAttribute("ProductId"))
-		if itemId and typeof(units) == "number" and units > 0 then
+		local boxProduct = box:GetAttribute("ProductId")
+		local itemId = ItemRules.stockItem(Items, boxProduct)
+		if itemId and typeof(units) == "number" and units > 0 and takeGuard and typeof(boxProduct) == "string" and not takeGuard(player, boxProduct, units) then
+			kept = true
+		elseif itemId and typeof(units) == "number" and units > 0 then
 			local added = ItemService.GiveItem(player, itemId, units)
 			moved += added
 			if added >= units then
@@ -461,13 +477,43 @@ local function onBagBox(player: Player)
 	end
 	syncCarry(shop)
 	if moved == 0 then
-		Blocked.tell(player, "Only boxes of packs or deck boxes go in your Bag, and it has to have room.")
+		if not kept then
+			Blocked.tell(player, "Only boxes of packs or deck boxes go in your Bag, and it has to have room.")
+		end
 		return
 	end
 	-- they know To Bag now: its tip never shows again
 	TipService.Done(player, Tips.TO_BAG.id, Tips.TO_BAG.shows)
 	player:SetAttribute("ToBagTip", nil)
 	notify(player, `{moved} {if moved == 1 then "pack" else "packs"} put in your Bag. Open them from the Bag anywhere!`, false)
+end
+
+-- Packs or deck boxes in your Bag go back to the shop (owner 2026-11-20: "Cards in your inventory should also be
+-- placed in shelves by players"): one box of them (ItemRules.boxUnits) onto your delivery pad, to stock like any box.
+-- Only shop stock items (Config/Items `stock`); gifts stay gifts.
+local function onShopBagStock(player: Player, itemId: unknown)
+	if not allowDrop(player) or typeof(itemId) ~= "string" then
+		return
+	end
+	local productId = ItemRules.stockOf(Items, itemId)
+	local product = if productId then Products.ById[productId] else nil
+	local shop = shops[player]
+	if not product or not shop then
+		return
+	end
+	local room = StockConfig.MAX_BOXES_PER_PLOT - (#shop.incoming + #shop.waiting + #shop.carried + #shop.workerBoxes)
+	if room <= 0 then
+		Blocked.tell(player, "Your delivery area is full. Put some boxes on your shelves first.")
+		return
+	end
+	local units = ItemRules.boxUnits(ItemService.GetCount(player, itemId), product.unitsPerBox, room)
+	if units <= 0 or not ItemService.TakeItem(player, itemId, units) then
+		return
+	end
+	createBox(shop, product.id, units)
+	syncPad(shop)
+	local what = Offline.PLURALS[product.id] or product.name
+	notify(player, `{units} {what} boxed up on your delivery pad. Put the box on a shelf to sell them!`, false)
 end
 
 local function onComputerUsed(player: Player, plot: Plot)
@@ -579,6 +625,10 @@ function StockService.TakeCarriedUnits(player: Player, units: number): number
 	if not shop or not box or typeof(available) ~= "number" or available <= 0 then
 		return 0
 	end
+	local productId = box:GetAttribute("ProductId")
+	if takeGuard and typeof(productId) == "string" and not takeGuard(player, productId, math.min(units, available)) then
+		return 0
+	end
 
 	local taken = math.min(units, available)
 	local left = available - taken
@@ -590,6 +640,48 @@ function StockService.TakeCarriedUnits(player: Player, units: number): number
 	end
 	syncCarry(shop)
 	return taken
+end
+
+-- Units of each product in the shop's boxes: on the pad, in hands (the owner's, a worker's) and on order. nil: no
+-- shop loaded for this player.
+function StockService.GetBoxStock(player: Player): { [string]: number }?
+	local shop = shops[player]
+	if not shop then
+		return nil
+	end
+	local stock: { [string]: number } = {}
+	for _, boxes in { shop.waiting, shop.carried, shop.workerBoxes } do
+		for _, box in boxes do
+			local productId, units = box:GetAttribute("ProductId"), box:GetAttribute("Units")
+			if typeof(productId) == "string" and typeof(units) == "number" then
+				stock[productId] = (stock[productId] or 0) + units
+			end
+		end
+	end
+	for _, productId in shop.incoming do
+		local product = Products.ById[productId]
+		if product then
+			stock[productId] = (stock[productId] or 0) + product.unitsPerBox
+		end
+	end
+	return stock
+end
+
+-- Studio testing only (DevService /broke): every box gone, the ones on order too
+function StockService.ClearForTesting(player: Player)
+	local shop = shops[player]
+	if not shop then
+		return
+	end
+	for _, boxes in { shop.waiting, shop.carried, shop.workerBoxes } do
+		for _, box in boxes do
+			box:Destroy()
+		end
+		table.clear(boxes)
+	end
+	table.clear(shop.incoming)
+	syncCarry(shop)
+	syncPad(shop)
 end
 
 -- Worker API (JobService restockers) -------------------------------------------------------------
@@ -683,6 +775,7 @@ function StockService.Start()
 	Remotes.StockShelf.OnServerEvent:Connect(onStockShelf)
 	Remotes.DropBox.OnServerEvent:Connect(onDropBox)
 	Remotes.BagBox.OnServerEvent:Connect(onBagBox)
+	Remotes.ShopBagStock.OnServerEvent:Connect(onShopBagStock)
 	Remotes.RemoveStock.OnServerEvent:Connect(onRemoveStock)
 	DataService.Register({ name = "StockService", load = load, save = save, unload = unload })
 	Players.PlayerAdded:Connect(onPlayerAdded)

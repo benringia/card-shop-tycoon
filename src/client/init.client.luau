@@ -106,6 +106,7 @@ local CharacterController = require(Controllers:WaitForChild("CharacterControlle
 local CameraLimitController = require(Controllers:WaitForChild("CameraLimitController"))
 local FightTouchController = require(Controllers:WaitForChild("FightTouchController"))
 local StationTimerController = require(Controllers:WaitForChild("StationTimerController"))
+local StockHintController = require(Controllers:WaitForChild("StockHintController"))
 local MusicController = require(Controllers:WaitForChild("MusicController"))
 local FootstepController = require(Controllers:WaitForChild("FootstepController"))
 local WildLoadingController = require(Controllers:WaitForChild("WildLoadingController"))
@@ -219,6 +220,7 @@ else
 	ForgeController.Start() -- the Forge window (weapons): forge, upgrade, reforge at your own Forge
 	GradingController.Start()
 	StationTimerController.Start() -- countdowns over your stations while they hold a job
+	StockHintController.Start() -- the shelves that glow while you carry a box of their product
 	JobsController.Start()
 	PartyController.Start()
 	ReviewsController.Start() -- the phone's Reviews app (after the other apps: it's the last icon)

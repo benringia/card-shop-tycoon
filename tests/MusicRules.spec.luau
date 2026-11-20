@@ -131,9 +131,9 @@ return {
 		assert(string.find(names[1], "White Owl", 1, true), "White Owl first")
 		assert(string.find(names[2], "Wistful Wonderings", 1, true), "then Wistful Wonderings")
 		assert(string.find(names[3], "Soft Tranquility", 1, true), "then Soft Tranquility")
-		expect.equal(MusicRules.trackVolume(town, 1), 0.22, "White Owl")
-		expect.equal(MusicRules.trackVolume(town, 2), 0.25)
-		expect.equal(MusicRules.trackVolume(town, 3), 0.25, "the two added pieces stay a touch over it, as the owner set them")
+		expect.equal(MusicRules.trackVolume(town, 1), 0.3, "White Owl")
+		expect.equal(MusicRules.trackVolume(town, 2), 0.34)
+		expect.equal(MusicRules.trackVolume(town, 3), 0.34, "the two added pieces stay a touch over it, as the owner set them")
 		expect.equal(MusicRules.trackVolume({ volume = 0.05 }, 2), 0.05, "a place without its own numbers: its volume")
 		expect.equal(MusicRules.trackVolume({ volume = 0.05, volumes = { [2] = 0.1 } }, 1), 0.05, "a track without one")
 	end,
@@ -311,7 +311,7 @@ return {
 		for _, id in town.tracks do
 			expect.equal(string.match(id, "^rbxassetid://%d+$") ~= nil, true, id)
 		end
-		expect.equal(town.volume, 0.22, "a little louder (owner 2026-11-20; 0.18 since 2026-11-04)")
+		expect.equal(town.volume, 0.3, "up again (owner 2026-11-20: \"turn the townmusic volume up\"; 0.22 that morning, 0.18 since 2026-11-04)")
 		-- The limiter still flattens the swells: its threshold is unchanged, so the loudest part rises with the volume
 		-- (round 5: "still too low" outweighs 2026-11-03's "never louder on the loudest part")
 		expect.equal(town.compressor.threshold, -48.5)

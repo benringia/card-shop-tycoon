@@ -41,6 +41,14 @@ local function tagFor(part: BasePart, station: string)
 	if tags[part] then
 		return
 	end
+	-- One tag a machine (owner 2026-11-20: "there's sometimes an extra timer on the condenser model"): the place
+	-- streams, so a machine you walk away from (to the Wild) leaves the workspace and the same part comes back when
+	-- you return, its old tag still on it. That one goes before the new one is made.
+	for _, child in part:GetChildren() do
+		if child.Name == "JobTimer" then
+			child:Destroy()
+		end
+	end
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "JobTimer"
 	gui.Size = UDim2.fromOffset(TAG.width, TAG.height)
@@ -61,9 +69,13 @@ local function tagFor(part: BasePart, station: string)
 	label.Size = UDim2.fromScale(1, 1)
 	label.TextXAlignment = Enum.TextXAlignment.Center
 	tags[part] = { gui = gui, label = label, station = station }
-	part.AncestryChanged:Connect(function()
+	local left: RBXScriptConnection
+	left = part.AncestryChanged:Connect(function()
 		if not part:IsDescendantOf(workspace) then
+			-- streamed out, moved or sold: its tag goes with it (it gets a fresh one if it comes back)
+			left:Disconnect()
 			tags[part] = nil
+			gui:Destroy()
 		end
 	end)
 end
@@ -97,7 +109,7 @@ function StationTimerController.Start()
 			-- a finished job waiting for you (owner 2026-11-20; a star, a grade, a weapon): "Ready!" over the machine
 			-- until you open it and take it out
 			local attribute = Upgrades.READY_ATTRIBUTES[tag.station]
-			local ready = job == nil and attribute ~= nil and player:GetAttribute(attribute) ~= nil
+			local ready = attribute ~= nil and UpgradeRules.showsReady(job ~= nil, player:GetAttribute(attribute))
 			tag.gui.Enabled = job ~= nil or ready
 			if job then
 				tag.label.Text = `⏳ {UpgradeRules.clock(job.left)}`

@@ -17,15 +17,56 @@ return {
 	["waits grow with the upgrade, crafting the longest (owner: up to 1 hour)"] = function()
 		expect.equal(UpgradeRules.seconds(cfg, "star", 1), 30)
 		expect.equal(UpgradeRules.seconds(cfg, "star", 5), 1800)
-		expect.equal(UpgradeRules.seconds(cfg, "grade", "S"), 1500)
+		expect.equal(UpgradeRules.seconds(cfg, "grade", "S"), 3600)
 		expect.equal(UpgradeRules.seconds(cfg, "level", 10), 1800)
 		expect.equal(UpgradeRules.seconds(cfg, "craft"), 3600)
-		for kind, waits in cfg.WAITS do -- nothing longer than crafting, nothing over an hour
+		for kind, waits in cfg.WAITS do -- nothing longer than crafting, nothing over an hour (before its rarity)
 			local list = if typeof(waits) == "table" then waits else { waits }
 			for _, s in list do
 				expect.equal(s <= cfg.WAITS.craft and s <= 3600, true, kind)
 			end
 		end
+	end,
+
+	-- owner 2026-11-20: "adjust upgrade times. the rarer/stronger the item the longer the wait time for upgraade"
+	["the rarer the card or weapon, the longer every upgrade waits"] = function()
+		local order = { "Common", "Rare", "Very Rare", "Epic", "Legendary" }
+		local jobs: { { any } } = { { "star", 1 }, { "star", 5 }, { "grade", "B" }, { "grade", "S" }, { "level", 1 }, { "level", 10 }, { "reforge" }, { "craft" } }
+		for _, job in jobs do
+			local last = 0
+			for _, rarity in order do
+				local seconds = UpgradeRules.seconds(cfg, job[1], job[2], rarity)
+				assert(seconds > last, `{job[1]} {tostring(job[2])}: a {rarity} waits {seconds}, more than the rarity before ({last})`)
+				expect.equal(seconds, math.floor(seconds), "whole seconds")
+				assert(seconds <= cfg.MAX_WAIT, `{job[1]} {rarity}: never over {cfg.MAX_WAIT} s`)
+				last = seconds
+			end
+		end
+		expect.equal(cfg.RARITY_TIMES["Very Rare"], 1, "the tables are a Very Rare's waits")
+		expect.equal(UpgradeRules.seconds(cfg, "star", 5, "Very Rare"), 1800)
+		expect.equal(UpgradeRules.seconds(cfg, "star", 5, "Legendary"), 1800 * cfg.RARITY_TIMES.Legendary)
+		expect.equal(UpgradeRules.seconds(cfg, "star", 1, "Common"), 30 * cfg.RARITY_TIMES.Common)
+		expect.equal(UpgradeRules.seconds(cfg, "star", 5), 1800, "no rarity given: the table's own")
+		expect.equal(UpgradeRules.seconds(cfg, "star", 5, "Mythic"), 1800, "an unknown one too")
+	end,
+
+	["the stronger the upgrade, the longer too, at every rarity"] = function()
+		for rarity in cfg.RARITY_TIMES do
+			for stars = 2, 5 do
+				assert(UpgradeRules.seconds(cfg, "star", stars, rarity) > UpgradeRules.seconds(cfg, "star", stars - 1, rarity), `{rarity} star {stars}`)
+			end
+			for level = 2, 10 do
+				assert(UpgradeRules.seconds(cfg, "level", level, rarity) > UpgradeRules.seconds(cfg, "level", level - 1, rarity), `{rarity} +{level}`)
+			end
+		end
+	end,
+
+	["the longest wait is a job the save still reads back, and a skip still has a price"] = function()
+		local longest = UpgradeRules.seconds(cfg, "craft", nil, "Legendary")
+		expect.equal(longest <= cfg.MAX_WAIT, true)
+		local job = UpgradeRules.readJob({ kind = "level", startedAt = 1000, finishAt = 1000 + cfg.MAX_WAIT, weaponId = Weapons.WEAPONS[1].id, grade = "C", level = 1 }, Cards, Weapons)
+		assert(job ~= nil, "a job as long as the longest wait isn't junk")
+		expect.equal(UpgradeRules.tier(cfg, cfg.MAX_WAIT), cfg.TIERS[#cfg.TIERS].name)
 	end,
 
 	["a skip's tier by the time left"] = function()
@@ -64,5 +105,35 @@ return {
 		expect.equal(UpgradeRules.due({ finishAt = 200 } :: any, 199), false)
 		expect.equal(UpgradeRules.due({ finishAt = 200 } :: any, 200), true)
 		expect.equal(UpgradeRules.due({ finishAt = 200 } :: any, 90000), true, "finished hours ago, offline")
+	end,
+
+	-- owner 2026-11-20: "Condenser: sometimes it says Ready when it's still counting down". A finished job leaves a
+	-- note for its reveal (the player's CondenserDone); a note that outlived its Take it out showed "Ready!" again over
+	-- the next job. A machine with a job in it is never ready
+	["a machine says Ready only with nothing inside and a result waiting"] = function()
+		expect.equal(UpgradeRules.showsReady(false, "FS01|0|C|1|1"), true, "finished, waiting to be taken out")
+		expect.equal(UpgradeRules.showsReady(true, "FS01|0|C|1|1"), false, "the next one is still counting down")
+		expect.equal(UpgradeRules.showsReady(true, nil), false)
+		expect.equal(UpgradeRules.showsReady(false, nil), false, "empty")
+		expect.equal(UpgradeRules.showsReady(false, ""), false)
+		expect.equal(UpgradeRules.showsReady(false, true), true, "the Forge's own flag")
+	end,
+
+	-- owner 2026-11-20: "Grading a rare/stronger card should take 45mins to hours" (a Legendary's Grade S took 50
+	-- minutes, its Grade A 16)
+	["grading a rare or strong card takes 45 minutes to hours"] = function()
+		local function minutes(grade: string, rarity: string): number
+			return UpgradeRules.seconds(cfg, "grade", grade, rarity) / 60
+		end
+		assert(minutes("S", "Rare") >= 45, "a Rare's Grade S")
+		assert(minutes("A", "Epic") >= 45, "an Epic's Grade A")
+		assert(minutes("A", "Legendary") >= 60, "a Legendary's Grade A: an hour")
+		expect.equal(minutes("S", "Legendary"), 120, "a Legendary's Grade S: two hours")
+		expect.equal(minutes("S", "Epic"), 90)
+		assert(minutes("B", "Common") <= 10, "a Common's first step stays short")
+		for _, rarity in { "Common", "Rare", "Very Rare", "Epic", "Legendary" } do
+			assert(minutes("B", rarity) < minutes("A", rarity) and minutes("A", rarity) < minutes("S", rarity), `{rarity}: each grade longer`)
+			assert(UpgradeRules.seconds(cfg, "grade", "S", rarity) <= cfg.MAX_WAIT, rarity)
+		end
 	end,
 }

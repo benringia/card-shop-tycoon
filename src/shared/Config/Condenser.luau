@@ -6,7 +6,8 @@ return {
 	USE_DISTANCE = 12, -- studs: how close the owner must stand to use it (server check, panel closes past it)
 	IN_FLIGHT_TIMEOUT = 2, -- seconds the Condense button stays locked waiting for the server (client)
 	-- What the window says it does, over the chosen card (owner 2026-11-20: "very confusing ... easily understandable")
-	EXPLAIN = "Squish extra copies into one card. Each time adds a star: more Power and Value!",
+	-- with no card picked (the recipe's own sentence says the rest: CondenseRules.say)
+	EXPLAIN = "Squish extra copies into one card. Each time adds a star: more Power!",
 	-- The heading of a finished star's reveal (client Util/DoneReveal; its numbers are Config/Upgrades REVEAL)
 	DONE_HEADING = "Fresh out of the Condenser!",
 }

@@ -47,6 +47,8 @@ AdminPanel.SECTIONS = {
 		buttons = {
 			{ label = "+$1,000", command = "/cash 1000" },
 			{ label = "+$100,000", command = "/cash 100000" },
+			{ label = "Broke: no stock, $8", command = "/broke 8" },
+			{ label = "No stock, $60", command = "/broke 60" },
 			{ label = "+1,000 XP", command = "/xp 1000" },
 			{ label = "+50,000 XP", command = "/xp 50000" },
 			{ label = "Set level", command = "/level %s", placeholder = "shop level" },

@@ -218,4 +218,25 @@ return {
 		expect.equal(TurtsRules.clock(480), "8:00")
 		expect.equal(TurtsRules.clock(-3), "0:00")
 	end,
+
+	-- owner 2026-11-20: "I meant increase the price of the upgrade materials on turts", then "x2 price is a bit harsh.
+	-- just x1.3 or 1.4": everything he sells that isn't a pack costs about a third more than it did (at least
+	-- UPGRADE_PREMIUM times its usual value); his packs cost what they did
+	["Turts' upgrade materials cost about a third more than they did; his packs don't"] = function()
+		expect.equal(Turts.UPGRADE_PREMIUM, 2)
+		local before = { wildOre = 40, xpTonic = 120, starShard = 300, gradingSeal = 400, goldSeal = 15000 }
+		for id, offer in Turts.OFFERS do
+			local pack = string.find(id, "Pack", 1, true) ~= nil
+			expect.equal(offer.upgrade == true, not pack, `{id}: an upgrade material or a pack`)
+			if offer.upgrade then
+				assert(offer.price >= offer.value * Turts.UPGRADE_PREMIUM, `{id}: ${offer.price} for a ${offer.value} value`)
+				local times = offer.price / (before[id] or 350)
+				assert(times >= 1.3 and times <= 1.4, `{id}: {times}x its old price, want 1.3 to 1.4`)
+				expect.equal(offer.price % 5, 0, `{id}: a round price`)
+			end
+		end
+		expect.equal(Turts.OFFERS.vrPack.price, 25)
+		expect.equal(Turts.OFFERS.epicPack.price, 75)
+		expect.equal(Turts.OFFERS.legendaryPack.price, 600)
+	end,
 }

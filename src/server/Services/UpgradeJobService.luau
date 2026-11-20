@@ -158,6 +158,12 @@ function UpgradeJobService.Begin(player: Player, station: string, job: Job): boo
 		return false
 	end
 	mine[station] = job
+	-- a new job in the machine: whatever it finished before isn't "Ready!" any more (owner 2026-11-20: "sometimes it
+	-- says Ready when it's still counting down": a note whose Take it out never arrived showed again over this job)
+	local note = Upgrades.READY_ATTRIBUTES[station]
+	if note then
+		player:SetAttribute(note, nil)
+	end
 	if job.weaponId and job.kind ~= "craft" then
 		WeaponService.SetLocked(player, job.weaponId, true)
 	end

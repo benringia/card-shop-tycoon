@@ -333,7 +333,13 @@ function WeaponRules.dropChance(cfg: any, weaponId: string, pity: number): numbe
 	if not odds then
 		return 0
 	end
-	return math.min(1, odds.base + odds.step * math.max(0, pity))
+	local chance = odds.base + odds.step * math.max(0, pity)
+	-- a Wild boss's weapon a little more often (Config/Weapons DROP_WILD)
+	local source = weapon.source
+	if source and source.boss and cfg.WILD_BOSSES and cfg.WILD_BOSSES[source.boss] then
+		chance *= cfg.DROP_WILD or 1
+	end
+	return math.min(1, chance)
 end
 
 -- Cleans a saved weapons table: unknown ids dropped (and named, to log), bad grades to C, levels whole and in range;

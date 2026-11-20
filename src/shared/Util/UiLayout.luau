@@ -170,8 +170,8 @@ function UiLayout.partyStripSpot(view: Size, under: Rect, buttons: { Rect }, rin
 end
 
 -- The Forge window's pane on a phone (Config/ForgeLayout): its height on a screen `viewH` px tall, and the height of
--- what it shows first: the card beside the Now / After boxes (the Forge tab: beside the element buttons), the cost
--- chips under them
+-- what it shows first: its sentence over the recipe (the card as tall as the spots, its pill under it); a Forge
+-- weapon: its element buttons over the recipe
 export type ForgeLook = {
 	HEADER: number,
 	INSET: number,
@@ -182,8 +182,8 @@ export type ForgeLook = {
 	PAD: number,
 	GAP: number,
 	CARD: { w: number, h: number },
-	BOX: { pad: number, title: number, big: number, line: number, gap: number, lines: number, side: number },
-	CHIP: number,
+	SAY: number,
+	UNDER: number,
 	ELEMENT: number,
 }
 function UiLayout.forgePhonePane(look: ForgeLook, viewH: number): number
@@ -191,10 +191,9 @@ function UiLayout.forgePhonePane(look: ForgeLook, viewH: number): number
 end
 
 function UiLayout.forgePhoneContent(look: ForgeLook, tab: string): number
-	local box = look.BOX
-	local boxHeight = box.pad + box.title + box.gap + box.big + (box.gap + box.line) * box.lines
-	local beside = if tab == "Forge" then look.ELEMENT else boxHeight
-	return look.PAD * 2 + math.max(look.CARD.h, beside) + look.GAP + look.CHIP
+	local plain = look.SAY + look.GAP + look.CARD.h + look.UNDER
+	local family = look.ELEMENT + look.GAP + look.CARD.h -- a Forge weapon (the Forge tab's first rows)
+	return look.PAD * 2 + (if tab == "Forge" then math.max(plain, family) else plain)
 end
 
 -- The quick weapon switch (Config/HudLayout WEAPON_SWITCH) on the right edge at mid height. Its HUD scale never shrinks

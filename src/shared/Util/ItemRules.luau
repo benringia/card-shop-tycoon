@@ -105,6 +105,16 @@ function ItemRules.stockOf(config: Config, itemId: any): string?
 	return if typeof(info) == "table" and typeof(info.stock) == "string" then info.stock else nil
 end
 
+-- How many of a Bag's stock item go back to the shop in one box (the Bag's To shop button; owner 2026-11-20): what's
+-- there up to a box's worth (`perBox`), none without room for a box on the delivery pad (`room`: boxes it can take)
+function ItemRules.boxUnits(have: number, perBox: number, room: number): number
+	local whole = if typeof(have) == "number" and have == have then math.floor(have) else 0
+	if whole < 1 or room < 1 then
+		return 0
+	end
+	return math.min(whole, perBox)
+end
+
 -- How many packs Open 10 opens from a stack of `have` (owner 2026-11-17): up to `max`, and only from two up (one pack
 -- has just Open)
 function ItemRules.openMany(have: number, max: number): number

@@ -129,15 +129,38 @@ function EconomyService.SetXPForTesting(player: Player, xp: number)
 	sync(player, wallet)
 end
 
--- Takes the cash only if the player can afford it
-function EconomyService.TrySpend(player: Player, amount: number): boolean
+-- A check every spend passes (BrokeService: a shop keeps the cash to restock, Config/Broke). It tells the player
+-- itself when it refuses. One guard; services that can't be required from here register through this.
+local spendGuard: ((player: Player, amount: number, kind: string?) -> boolean)? = nil
+
+function EconomyService.SetSpendGuard(guard: (player: Player, amount: number, kind: string?) -> boolean)
+	spendGuard = guard
+end
+
+-- Takes the cash only if the player can afford it. `kind`: what it buys, for the guard ("stock": an order, "shelf":
+-- a shelf that holds packs; nil: anything else). Returns false when it didn't, and true after it when the guard
+-- refused (the player has the cash and has been told why: no "Not enough cash" then).
+function EconomyService.TrySpend(player: Player, amount: number, kind: string?): (boolean, boolean?)
 	local wallet = wallets[player]
 	if not wallet or not isValidAmount(amount) or wallet.cash < amount then
 		return false
 	end
+	if spendGuard and not spendGuard(player, amount, kind) then
+		return false, true
+	end
 	wallet.cash = roundCents(wallet.cash - amount)
 	sync(player, wallet)
 	return true
+end
+
+-- Studio testing only (DevService /broke): sets the cash to any amount, down as well as up
+function EconomyService.SetCashForTesting(player: Player, cash: number)
+	local wallet = wallets[player]
+	if not wallet or cash ~= cash or cash < 0 or cash == math.huge then
+		return
+	end
+	wallet.cash = roundCents(cash)
+	sync(player, wallet)
 end
 
 function EconomyService.Start()

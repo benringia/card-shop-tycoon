@@ -176,6 +176,27 @@ return {
 		stock = "A box is waiting! Pick it up.",
 	} :: { [string]: string },
 
+	-- The talk card is easy to notice and never waits on a press (owner 2026-11-20: "My friend says tutorial is hard
+	-- to notice. fix it too. and people hardly press next on tutorial"; Util/TalkRules, client Util/TutorialTalk).
+	-- DESKTOP: times bigger on a computer, on top of the HUD's own growth (Config/HudGrow); a phone keeps its small
+	-- card (owner 2026-11-11: its screen is crowded). A new line pops in from POP of its size, flashes a gold edge
+	-- (`pad` px outside the card, `thickness` px, `beats` flashes fading over `seconds`) and plays a soft chime.
+	CARD = {
+		DESKTOP = 1.3,
+		POP = 0.8,
+		GLOW = { seconds = 1.8, beats = 3, thickness = 5, pad = 4, color = { 255, 207, 74 } },
+		SOUND = { id = "rbxassetid://9116223893", volume = 0.22, pitch = 1.5 }, -- the objective chime, higher and soft
+	},
+	-- A plain Next presses itself: once the line is typed it stays `base` s plus `perLetter` a letter (from `min` to
+	-- `max`) while a bar fills on the button, then moves on as a press would. Got it!, Bye! and Chikin's Go! send
+	-- someone off, so they wait for the player.
+	AUTO_NEXT = { base = 1.8, perLetter = 0.09, min = 2.6, max = 7.5 },
+	-- The gold ring round the card's button once the line is typed (the tutorial's "press here", Config/Cues RING):
+	-- `pad` px off it, `thickness` px, pulsing between the `pulse` transparencies every `beat` s
+	NEXT_RING = { pad = 4, thickness = 4, pulse = { 0, 0.65 }, beat = 0.9, color = { 255, 207, 74 } },
+	-- The bar that fills on Next: `height` px, `inset` px from the button's sides and bottom
+	NEXT_BAR = { height = 5, inset = 8, transparency = 0.45 },
+
 	NAME = "Pish", -- on the talk card
 	NEXT = "Next",
 	BYE = "Bye!", -- the goodbye's last button

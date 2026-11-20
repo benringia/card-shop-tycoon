@@ -93,6 +93,29 @@ function ShelfStock.stackOffsets(count: number, depth: number): { number }
 	return offsets
 end
 
+-- Products counted one by one on the shelf (booster boxes: each is a big sealed box, and a delivery brings one): how
+-- many stand in each of the `slots` places, a box in every place first and then the next layer, up to `perStack` high.
+-- So every one stocked shows as one more box until the shelf looks full (owner 2026-11-20: a restocked booster box
+-- changed nothing on the shelf)
+function ShelfStock.stacks(units: number, slots: number, perStack: number): { number }
+	local stacks = {}
+	for index = 1, slots do
+		stacks[index] = math.clamp(math.ceil((units - (index - 1)) / slots), 0, perStack)
+	end
+	return stacks
+end
+
+-- ...and how many places have at least one
+function ShelfStock.stackedPlaces(stacks: { number }): number
+	local places = 0
+	for _, height in stacks do
+		if height > 0 then
+			places += 1
+		end
+	end
+	return places
+end
+
 -- How many rows (bottom first, front then back) have at least one box: each gets a price tag
 function ShelfStock.stockedLevels(boxes: number, perLevel: number): number
 	if boxes <= 0 or perLevel <= 0 then

@@ -171,7 +171,7 @@ clearings). The scenery is built at server start from `Config/Scenery` (terrain 
 `SceneryService`, looping nature sounds at the falls, the wind, the embers and the plaza birds in `Scenery.SOUNDS`).
 **Town music** (owner 2026-11-04: "subtle gentle town music" with the ambience; `MusicController`, `Config/Music`,
 `Util/MusicRules`): APM "White Owl" (bells and piano, Roblox-licensed; the owner's pick 2026-11-04, after "Drifting
-Into Dreamland - Underscore") at volume 0.18 (the owner's number, 2026-11-04: 0.045 and 0.07 too low, 0.21 a little loud with White Owl) through a limiter (`compressor`, threshold -48.5 dB, ratio 20: the track swells in its later parts; the threshold stayed, so the loudest part rose with it), with 6 s of
+Into Dreamland - Underscore") at volume 0.3 (0.18 was the owner's number on 2026-11-04: 0.045 and 0.07 too low, 0.21 a little loud with White Owl; 0.22, then 0.3 on 2026-11-20: "turn the townmusic volume up") through a limiter (`compressor`, threshold -48.5 dB, ratio 20: the track swells in its later parts; the threshold stayed, so the loudest part rose with it), with 6 s of
 quiet between plays; it fades out over 3 s when you leave the island (more than 40 studs past `Town.BOUNDS`: the Wild
 valley, a boss arena) and back in when you return. Main place only. The owner picked it from five options
 (`Music.TOWN.options`, still there for trying others: in Studio `/music <n> [volume]` or the admin panel's Music
@@ -479,11 +479,22 @@ is over UI (`UIKit.pointerBlocked`).
 ### 4.4 Pricing
 - Each product has a **market price** (shown in UI). Player sets their sell price per product type.
 - Customer willingness to buy depends on price vs market:
-  - ≤ market: almost always buys
-  - up to +20%: sometimes buys
-  - +20% to +50%: rarely
+  - ≤ market: almost always buys (95%)
+  - up to +20%: sometimes buys, from 50% just over market down to 15% at +20%
+  - +20% to +50%: rarely, from 15% down to nobody at +50%
   - > +50%: never, and leaves a little annoyed (shows a 😠 bubble)
-- Sweet spot is slightly above market. This is the "skill" part of the sim.
+- The chance slides inside a band (owner 2026-11-20: "The prices can be abused ... the players set prices to the
+  final step of the sometimes buy": flat across a band, its dearest price cost nothing, and a booster box has 96 steps
+  of Sometimes). Every step up now costs buyers and takes less per customer; the Prices window shows the number past
+  the first band ("33% buy"). `Config/Pricing` BUY_BANDS, `CustomerTypes.chance` / `plainChance` / `priceTag`,
+  `PriceRules.getChance` / `getTag` (customers at shelves and Glass Showcases, welcome-back sales, the rating's fair
+  prices). Customer types slide in their own shifted bands; their best band stays flat.
+- Glass Showcase cards too (owner 2026-11-20: "also do the same with glass prices"): a card steps 10% of its market
+  value a tap, and both steps of Sometimes sold at 50%; now 110% sells at 33% and 120% at 15%. A Glass Showcase's rows
+  show the same tag under each price ("Always buy", "33% buy", "Won't buy": ShowcaseController `rowTag`) and its
+  details say "Sometimes buy (33%)"; a Collector Case, where players buy, keeps "110% of market". A collector hunting
+  one card still pays up to their own limit (`Util/CollectorRules`).
+- Market price sells fastest; a little over it trades buyers for margin. This is the "skill" part of the sim.
 
 ### 4.5 Customers (NPCs)
 - Spawn from the street, walk in using PathfindingService.
@@ -813,15 +824,21 @@ Each pack = 5 cards:
 - Slot 4: Common 70% / Rare 30%
 - Slot 5 ("hit slot"): Rare 70% / Very Rare 15% / Epic 14% / Legendary 1%
 
-The Deck Box's hit slot: Rare 52% / Very Rare 25% / Epic 22% / Legendary 1%. Slot odds and pity live in
+The Deck Box's hit slot: Very Rare 60% / Epic 37% / Legendary 3% (always Very Rare or better; owner 2026-11-20:
+"whats the point of deck box? its just an expensive version of the booster pack? if not fix it": it costs three packs,
+and its old hit slot, Rare 52 / Very Rare 25 / Epic 22 / Legendary 1, was worse than three packs at everything. Now its
+Epic-or-better chance, 40%, and its Legendary chance, 3%, are a little over three packs' 38.6% and 2.97%; three packs
+still give three times the cards. tests/DeckBox). Slot odds and pity live in
 `Config/PackOdds` (plain data, so the Lune tests and the economy simulator use the real numbers).
 
 **Pity** (bad-luck protection, `PackOdds.PITY`, `Util/PityRules`, Lune-tested): counted per player over every pack
-and Deck Box they open (saved, `data.pity`). A player's first Legendary is guaranteed within 130 packs (a quick hook),
-every later one within 210: the last pack of the run has a Legendary in its hit slot. Saves from before this that
-already own a Legendary start on 210. The 40th pack without an Epic or better has an Epic. A pity Legendary guarantees the card, not a good copy: its grade rolls
-C 80% / B 18% / A 1.8% / S 0.2% (a lucky pull's Legendary is S 1%). The pack screen shows "Legendary in N packs ·
-Epic in M" (player attributes PityLegendary / PityEpic); the odds panel and the rarity guide explain it.
+and Deck Box they open (saved, `data.pity`). The 40th pack without an Epic or better has an Epic. No number of packs guarantees a Legendary (owner 2026-11-20:
+"remove the 140 cards to get legendary. My friend already has 1200 packs and spamming open 10 cards"; the first was
+guaranteed within 130 packs and every later one within 210, so packs by the hundred bought Legendaries): a Legendary
+is luck, its 1% (3% in a Deck Box) and Luck. `PityRules` still knows a Legendary cap should `PackOdds.PITY` set one
+again, and the saved count goes on. The pack screen shows "Epic or better in M packs" (player attribute PityEpic); the
+odds panel and the rarity guide say a Legendary is pure luck. `PITY.LEGENDARY_GRADES` (C 80% / B 18% / A 1.8% /
+S 0.2%) stays for Turts' Legendary Pack.
 
 **Odds are always visible in-game** (pack info button). Required by Roblox for any paid random items, and we show them for everything anyway.
 
@@ -1010,7 +1027,7 @@ the same, shared by more cards.
   from the Bag gives its market price in shop XP, as ripping it from the box does (`ItemRules.stockOf`, LevelUpService).
 - **Deck boxes** (`Config/Packs` entries with `kind = "Deck"`, opened the same way: carry a box of them, Open T):
   the First Spark Deck Box holds 5 cards, two of them Rare or better (Common, Common, Common/Rare 50/50, Rare 75 /
-  Very Rare 25, and a hit slot of Rare 45 / Very Rare 25 / Epic 22 / Legendary 8, against a pack's 68/15/14/3), for
+  Very Rare 25, and a hit slot that is always Very Rare or better: Very Rare 60 / Epic 37 / Legendary 3, section 5.3), for
   $9 against a pack's $3. On the stage it is the 3D deck box: "Tap the lid to open" lifts the lid, and its cards
   stack and flip like a pack's. On shelves deck boxes stand as 3D deck boxes; menus (Set Price, Prices, Order Stock)
   show a sharp picture of the real pack and deck box (round 5, owner pick A: the 3D models rendered big in Studio, cut
@@ -1734,8 +1751,14 @@ Base stats by rarity:
 Element multipliers: Ember ATK ×1.20 · Tide HP ×1.20 · Bloom HP and ATK ×1.10 · Volt SPD ×1.25 · Shade ATK and SPD ×1.10.
 Then × level `1 + 0.06 × (level − 1)`, × stars `1 + 0.15 × stars`, × foil 1.05, rounded.
 
-Value (the market value used everywhere): `card.value × (foil ? 3 : 1) × (1 + 0.10 × (level − 1)) × STAR_VALUE[stars]`,
-`STAR_VALUE` for 0–5 stars = `{ 1, 6, 15, 30, 50, 80 }` (roughly the duplicates condensed plus a bonus).
+Value (the market value used everywhere): `card.value × (foil ? 3 : 1) × (1 + 0.03 × (level − 1)) × STAR_VALUE[stars]`,
+`STAR_VALUE` for 0–5 stars = `{ 1, 2.5, 6, 11, 18, 28 }`: always less than the cards that went into it (1, 5, 13, 25,
+41, 65; with Star Shards filling half of each star 1, 3, 7, 13, 21, 33). Owner 2026-11-20, from a tester: "you can
+easily earn money fast by upgrading stars of the cards then selling it. make sure this doesnt get abused". It was
+`{ 1, 6, 15, 30, 50, 80 }` and +10% a level: a star added value out of nothing (double with shards), levels (free XP)
+multiplied it up to 3.9x, and one sale to one customer carried all of it. Stars and levels are for power; selling the
+copies one by one always pays more (tests/BeastMath). A starred card listed at its old price now reads "Won't buy"
+until it is repriced.
 
 XP from level L to L+1: `round(50 × L^1.5)`. Extra XP carries over; at Lv 30 XP stops (stored as 0).
 Stars come only from the **Card Condenser** (a machine bought in the build menu, shop Lv 5, $500; no level gate,
@@ -1808,13 +1831,13 @@ group, checked before its fragments and every time (not only the first). Below i
 
 | Boss | Cash / XP per win | Drops (full loot) | First clear | Daily bonus |
 |---|---|---|---|---|
-| Meadow Warden | $36 / 620 | XP Tonic 60% (1-2), Brood Queen fragment 70% | 3 fragments, trophy, 3 XP Tonics | 2 XP Tonics |
-| Cave Brood Queen | $66 / 1360 | XP Tonic 60% (1-3), Star Shard 15%, Colossus fragment 60% | 3 fragments, trophy, 3 XP Tonics | 2 XP Tonics |
-| Ember Colossus | $96 / 2220 | Grading Seal 35%, XP Tonic 40% (2-3), Frost Tyrant fragment 60% | 3 fragments, trophy, 3 Grading Seals | 2 Grading Seals |
-| Frost Tyrant | $150 / 3600 | Grading Seal 40%, Star Shard 25% (1-2), Sovereign fragment 60% | 3 fragments, trophy, 3 Grading Seals | 2 Grading Seals |
-| Storm Sovereign | $210 / 5200 | Gold Seal 25%, Devourer fragment 55% | 3 fragments, trophy, 1 Gold Seal | 1 Gold Seal |
-| Rift Devourer | $280 / 7400 | Gold Seal 30%, Star Shard 30% (1-2), Hydra fragment 50% | 3 fragments, trophy, 3 Gold Seals | 1 Gold Seal |
-| Prism Hydra | $400 / 10000 | Gold Seal 40%, Star Shard 40% (1-2), Grading Seal 40% (1-2), XP Tonic 50% (2-3) | trophy, 5 each of Gold Seals, Star Shards, Grading Seals, XP Tonics | 2 Gold Seals |
+| Meadow Warden | $72 / 620 | XP Tonic 60% (1-2), Brood Queen fragment 70% | 3 fragments, trophy, 3 XP Tonics | 2 XP Tonics |
+| Cave Brood Queen | $132 / 1360 | XP Tonic 60% (1-3), Star Shard 15%, Colossus fragment 60% | 3 fragments, trophy, 3 XP Tonics | 2 XP Tonics |
+| Ember Colossus | $192 / 2220 | Grading Seal 35%, XP Tonic 40% (2-3), Frost Tyrant fragment 60% | 3 fragments, trophy, 3 Grading Seals | 2 Grading Seals |
+| Frost Tyrant | $300 / 3600 | Grading Seal 40%, Star Shard 25% (1-2), Sovereign fragment 60% | 3 fragments, trophy, 3 Grading Seals | 2 Grading Seals |
+| Storm Sovereign | $420 / 5200 | Gold Seal 25%, Devourer fragment 55% | 3 fragments, trophy, 1 Gold Seal | 1 Gold Seal |
+| Rift Devourer | $560 / 7400 | Gold Seal 30%, Star Shard 30% (1-2), Hydra fragment 50% | 3 fragments, trophy, 3 Gold Seals | 1 Gold Seal |
+| Prism Hydra | $800 / 10000 | Gold Seal 40%, Star Shard 40% (1-2), Grading Seal 40% (1-2), XP Tonic 50% (2-3) | trophy, 5 each of Gold Seals, Star Shards, Grading Seals, XP Tonics | 2 Gold Seals |
 
 - **Arenas:** a fenced ring beside each zone (its +X side), joined by a path, with a gate (prompt "Fight boss",
   recommended Power on it and on a sign). The gate checks distance (12 studs), the key and that you can fight; the
@@ -2464,7 +2487,7 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   creature's element, so strong players go back to the early bosses for their weapons and materials, and the cooldown
   paces loot whatever the kill speed. Saves from before hold each boss record's `day` and `rewardedToday`; they're
   dropped at the next save (no bump: an older server reads them as 0).
-- **Items:** XP Tonic (300 card XP, owner 2026-11-17: "nerf exp tonic from 400exp to 300"; never on a Lv 30 card; used from the Party panel, or from the Bag: its Use button
+- **Items:** XP Tonic (120 card XP, owner 2026-11-20: "Reduce exp tonic exp to 120"; 300 since 2026-11-17, 400 before; never on a Lv 30 card; used from the Party panel, or from the Bag: its Use button
   turns the item's panel into your party cards, portrait, level and XP bar, a Lv 30 one greyed with MAX; a tap sends one
   and the list stays open for more, quick taps queued past the server's rate limit; owner 2026-11-17: "xp tonics should
   have a "Use button" then lets the player choose which pet in the party"; `Util/TonicPicker`,
@@ -2976,7 +2999,7 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
 ### 5.11 Weapons (round 1; spec docs/superpowers/specs/2026-11-06-weapons-round1-design.md; rounds 2-3, spears and scythes, below)
 - **Catalogue** (`Config/Weapons`, looks in `Config/WeaponLooks`): the Steel Sword (everyone's), the Forge Sword in five
   elements (Common, $1,500 + 20 Wild Ore, shop level 6; your first Forge weapon $500 + 8 Wild Ore: `Weapons.FIRST_FORGE`, owner 2026-11-19), the Verdant Blade (Rare, Meadow Warden), the Sunforged Blade
-  (Epic Masterwork: $25,000, 20 Colossus Core, 10 Warden Heartwood, 10 Brood Silk, 5 Star Shards) and the Prism Blade
+  (Epic Masterwork: $15,000 ($25,000 until 2026-11-20), 20 Colossus Core, 10 Warden Heartwood, 10 Brood Silk, 5 Star Shards) and the Prism Blade
   (Legendary, Prism Hydra); the spears (round 2) and the scythes (round 3) below. Saved per copy: grade and upgrade level
   (`weapons`, `equippedWeapon`, schema 16; `WeaponService`). Rules: `Util/WeaponRules` (Lune-tested).
 - **Materials**: each boss's own (80% on full loot, 1-2; its daily chest 2) and Wild Ore (15% from Wild and Frontier
@@ -3016,19 +3039,26 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
 - **The Forge window** (`ForgeController`, owner's layout B; its pane relaid out 2026-11-08, the owner's pick A):
   tabs Forge / Upgrade / Reforge with one line under them saying what the tab does (`WeaponText.tabLine`; on phones the
   pane's first line); the weapons for the tab on the left as slim rows with their card (the Forge tab previews Grade C
-  +0); the chosen one on the right: its card (tap it for its stats: the weapon card view, `WeaponDetailController`,
-  which now sinks taps so none reach the window under it), its name, "Grade S · +0" and "Common · Ember"; the Forge
-  weapons' element buttons (48 px; the picked one bigger, the owned ones greyed); two boxes, Now and After, with the
-  kit's blue arrow picture between them (Upgrade: "+0, Power x1.32" and "+1, Power x1.36, It glows brighter"; Reforge:
-  "Grade B" and "C to S, you keep the better"; one box at +10 "Fully upgraded, Awakened!", for a Grade S reforge and
-  for the Forge tab's "You get: Grade C to S"); then "You pay" as picture chips ("$250", "2 Wild Ore (you have 11)",
-  green when you have enough, red when not; `WeaponText.costChips`; none for a Grade S reforge). One pinned button says
-  what it does ("Upgrade to +9 · $8,000") or what's missing first ("Opens at shop level 6", "Need 5 more Wild Ore",
-  "Need $500 more"; `WeaponText.button`). The window steps aside for the forge reveal and comes back after it; it
-  closes when you walk away. Phones (short screens): 0.97 x 0.96 of the screen, the tabs up in the header band; the
-  pane shows a small card with the Now / After boxes (their first line only) or a Forge weapon's element buttons
-  beside it, the cost chips under them and the tab's line last, so a 667 x 375 phone sees it all without scrolling
-  (`Config/ForgeLayout`, `UiLayout.forgePhonePane` / `forgePhoneContent`, tests/UiLayout).
+  +0); the chosen one on the right as a picture recipe (owner 2026-11-20: "redesign it like the condenser to be
+  easily understood ... do the same with forge"; client `Util/Recipe`, words in `Util/WeaponText`): one sentence
+  (`WeaponText.say`: "Use 20 Wild Ore and $1,500 to make the Fire Forge Sword!", "Use 5 Wild Ore and $600 to make it
+  +4: more Power!", "Use 10 Wild Ore and $750 to roll a new grade. You keep the better one!"; more than two kinds of
+  material are counted, "these 4 materials"; short of something: "Get 6 more Warden Heartwood to make the Verdant
+  Blade.", "Save up $500 more to make it +4."); a Forge weapon's element buttons (48 px; the picked one bigger, the
+  owned ones greyed); then a spot for each material with what you have of what it takes ("9 / 15") and one for the
+  cash ("$2,000"), red-edged when short (`WeaponText.spots`; one row up to three, then two rows, `spotColumns`), the
+  kit's blue arrow, and the weapon's card (tap it for its stats: the weapon card view, `WeaponDetailController`,
+  which sinks taps so none reach the window under it) with a gold pill under it saying what it comes out with
+  (`WeaponText.outcome`: "Grade C to S", a beating "+4", "Grade B"); an upgrade's green "+0.04 Power" chip and a small
+  line ("Its aura appears!", "A new roll, C to S. It never gets worse!"). A Grade S reforge and a +10 weapon show the
+  card alone. One pinned button (`WeaponText.recipeButton`) says what it does over how long it takes ("Forge it!",
+  "Make it +4!", "Roll a new grade!" over "takes 2 minutes") or what's missing first over what you have ("Opens at
+  shop level 6"; "Need 5 more Wild Ore" over "you have 15"; "Need $500 more" over "you have $1,500"). On its press the
+  spots fly into the card. The window steps aside for the forge reveal and comes back after it; it closes when you
+  walk away. Phones (short screens): 0.97 x 0.96 of the screen, the tabs up in the header band; the pane shows the
+  sentence, then the spots in one row, the arrow and a small card with its pill (a Forge weapon: its element buttons
+  first, the recipe with no pill, the sentence under it) and the tab's line last, so a 667 x 375 phone sees the
+  recipe without scrolling (`Config/ForgeLayout`, `UiLayout.forgePhonePane` / `forgePhoneContent`, tests/UiLayout).
 - **The Armory** (the binder's fourth set, `Collection.SETS`; cover `Config/BinderCovers` Armory): every weapon in
   catalogue order as a card in the creature cards' shape (`Util/WeaponFace` on `CardFace.parts`). Card art (owner's
   picks 2026-11-09, Armory UI): owned ones show their portrait over the Armory cover painting, dimmed, with soft rays
@@ -3215,7 +3245,7 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
 - **Spears** (weapons round 2; spec `2026-11-07-weapons-round2-design.md`, plan `2026-11-07-weapons-round2.md`, branch
   `weapons-round2`; the owner's picks 2026-11-07): the Forge Spear in five elements (Common, the Forge like the Forge
   Sword), the Magma Halberd (Very Rare, Ember Colossus), the Tidal Trident (Epic, Frost Tyrant) and the Titan's Lance
-  (Legendary Masterwork: $60,000, 30 Warden Heartwood, 20 Frost Heart, 20 Storm Crystal, 10 Star Shards). Heroic size
+  (Legendary Masterwork: $36,000 ($60,000 until 2026-11-20), 30 Warden Heartwood, 20 Frost Heart, 20 Storm Crystal, 10 Star Shards). Heroic size
   (8.5 / 8.5 / 8.7 / 9.2 studs, the owner's pick B), held upright at your right side between moves (pick C: the grip 31%
   up from the butt, `Config/Swords GRIPS.spear`; the hand's tilt -90, as keyed), on the back diagonally at scale 1.
   Perks: the Halberd's Eruption (every 5th hit bursts for 60% of it more, a lava burst), the Trident's Chill (the foe's
@@ -3427,6 +3457,13 @@ Packs and deck boxes are 3D models everywhere (`Util/PackModels`, `Config/Packs`
 - Starting shop: small room, register, order computer. No shelves: the first Small Pack Rack is bought from the Build menu.
 
 ### 7.2 Shop levels (XP per sale = sale price rounded, min 1; a pack ripped from stock = its market price)
+
+Past Lv 20 the levels cost more (owner 2026-11-20: "Also after level 20. make the leveling up more difficult";
+`Levels.LATE = { from = 20, full = 30, times = 3 }`): each level's step is the curve's times a factor that climbs in a
+straight line from 1 at Lv 20 to 3 at Lv 30 and stays there. Lv 21 costs 900 XP (750 before), Lv 30 3,720 (1,240),
+Lv 57 8,910 (2,970); Lv 100 needs 794,570 XP in all (271,540). Up to Lv 20 nothing changes, and every unlock stays at
+its level. Saved XP moved onto the new curve at the same level and the same share of the way to the next (Migrations
+v40), so nobody lost a level: a Lv 27 test save went from 12,908 XP to 19,164, still Lv 27, no level-up paid.
 
 Levels 1 to 100 (spec `2026-11-04-round4-design` section 8): the total XP to reach level n is
 `BASE_XP × (n − 1) ^ POWER` rounded to 10 (`Config/Levels`: 40 / 6, 2.31; maths in `Util/LevelMath.luau`, Lune-tested).
@@ -4532,7 +4569,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── WeaponSwitchController.luau # the quick weapon switch: the medallion dial on the right edge, a swipe, Q / Z (EquipWeapon)
     │   │   ├── WeaponRevealController.luau # a boss's weapon drop and the Forge's results: the reveal on the opening stage
     │   │   ├── BossChestController.luau # a boss win's three chests on the opening stage: the pick and the opening
-    │   │   ├── ForgeController.luau     # the Forge window: Forge / Upgrade / Reforge tabs and what each does, weapon rows, the chosen weapon's card, Now / After boxes, cost chips and one button
+    │   │   ├── ForgeController.luau     # the Forge window: Forge / Upgrade / Reforge tabs and what each does, weapon rows, the chosen weapon as a picture recipe (a sentence, its materials and cash as spots, the arrow, its card) and one button
     │   │   ├── WeaponDetailController.luau # a weapon's card view: pills, Your weapon / How to get it, skill, perk, bond, Equip
     │   │   ├── BossBoardController.luau # Bosses HUD tile and the Boss Ladder: bosses' list with status chips and Next, the chosen one's banner, To fight it checklist, Rewards with odds, footer with next step and Take me there
     │   │   ├── ChallengeController.luau # PvP: Challenge prompt on players, bet popup, incoming challenge popup
@@ -4551,6 +4588,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │       ├── LookTiles.luau          # the Decor tab's six shop look tiles (swatch, Using / Use / price / Lv N)
     │       ├── StationJobs.luau        # the stations' jobs on this client, counted down (remote UpgradeJobs)
     │       ├── JobPanel.luau           # a station window's job card: countdown, bar, Finish now
+    │       ├── Recipe.luau             # the station windows' picture recipe: spots in a grid, the arrow, a two-line button, the fly-in
     │       ├── ProductPrice.luau       # developer products' Robux prices, asked once each
     │       ├── RobuxPrice.luau         # a Robux price on a button: Roblox's Robux glyph, never "R$" (tests/RobuxIcon)
     │       ├── TileTip.luau            # a tip bubble with Pish's face pointing at a HUD tile, a gold ring round it (Config/Tips)
@@ -4959,7 +4997,7 @@ Studio on the test slot plays its own save, `Player_<id>_studio` (2026-11-16: St
 live playthrough), so Studio and the live game never share one.
 Anyone else's `/slot` does nothing. (`SaveSlotService`, pure `Server/Util/SaveSlots`, Lune-tested.)
 
-Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; v17 added `tutorial` (the first visit with Pish; existing saves "done" with their first pack given and his gift still to come, so only new players go through it); each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity); `tutorial` gained `customerSent` (read as false when missing, true for v17's existing shops; no bump: an older server dropping it allows one more of Pish's customers). v18 added `combat` (Chikin's combat tutorial, the same shape; done for every shop past Pish's tour, still to do for a player mid-way through it). v19 added `dungeon` (`secretFound` and `seenIntro` false for everyone; a junk value is replaced). v20 added `title` ("" for everyone: automatic, the same title as before; a saved string kept, junk replaced). v21 added `upgrades`, `skipTokens` and `purchases` (empty for everyone; a good skip count kept, junk replaced). v22 added `support` (no gifts for everyone; good counts kept). v23 added `titles` (`known`, `fresh` empty, `seeded` false: the first load counts the titles a player already has without telling). v24 added `turts` (nothing bought for everyone; good ids kept, a broken "restock now" roll dropped). v25 added `decor` (Cozy Wood in use and no looks bought for everyone; good ids kept, cleaned against Config/Decor on load). v26 added `windows` (none for everyone; a saved list kept and cleaned on load by `WindowRules.clean`, which pays back any window that no longer fits). v27 added `luck` (no bought luck for everyone). v28 added `unlocks` (none for everyone). v29 added `seenPrologue` (true for every save from before it, so the prologue only greets new players). v30 added `gifts` (the round at day 1, nothing played or earned, for everyone; a saved table kept and cleaned on load by `GiftRules.clean`). v31 kept `combat`'s shape but reordered Chikin's steps (the sword and a fight with it in his first visit): a tour in progress keeps its place by step name. v32 added `tips` (none seen for everyone; a saved table kept and cleaned on load by `TipRules.clean`). v33 added `quests` and `lastSeen`; v34 added `weekly`. v35 kept `tutorial`'s shape but put Pish's "summonPal" step second (owner 2026-11-17): a saved step from 2 on moves one along, so a tour in progress keeps its place. v36 added `mainQuests` (none paid for everyone; the items standing in the shop at load count as paid). v37 added `events` (Lucky Sunday's luck never given, for everyone; a saved table kept and cleaned on load by `EventRules.clean`). v38 added `codes` (none used, for everyone; a saved list kept and cleaned on load by `CodeRules.clean`). v39 changed no shape: it drops `posters`, a field built and removed the same day and never released (posters are decor in `windows` now, as `Config/Windows` poster styles). A service that didn't load for a player (e.g. no free plot) never overwrites
+Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; v17 added `tutorial` (the first visit with Pish; existing saves "done" with their first pack given and his gift still to come, so only new players go through it); each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity); `tutorial` gained `customerSent` (read as false when missing, true for v17's existing shops; no bump: an older server dropping it allows one more of Pish's customers). v18 added `combat` (Chikin's combat tutorial, the same shape; done for every shop past Pish's tour, still to do for a player mid-way through it). v19 added `dungeon` (`secretFound` and `seenIntro` false for everyone; a junk value is replaced). v20 added `title` ("" for everyone: automatic, the same title as before; a saved string kept, junk replaced). v21 added `upgrades`, `skipTokens` and `purchases` (empty for everyone; a good skip count kept, junk replaced). v22 added `support` (no gifts for everyone; good counts kept). v23 added `titles` (`known`, `fresh` empty, `seeded` false: the first load counts the titles a player already has without telling). v24 added `turts` (nothing bought for everyone; good ids kept, a broken "restock now" roll dropped). v25 added `decor` (Cozy Wood in use and no looks bought for everyone; good ids kept, cleaned against Config/Decor on load). v26 added `windows` (none for everyone; a saved list kept and cleaned on load by `WindowRules.clean`, which pays back any window that no longer fits). v27 added `luck` (no bought luck for everyone). v28 added `unlocks` (none for everyone). v29 added `seenPrologue` (true for every save from before it, so the prologue only greets new players). v30 added `gifts` (the round at day 1, nothing played or earned, for everyone; a saved table kept and cleaned on load by `GiftRules.clean`). v31 kept `combat`'s shape but reordered Chikin's steps (the sword and a fight with it in his first visit): a tour in progress keeps its place by step name. v32 added `tips` (none seen for everyone; a saved table kept and cleaned on load by `TipRules.clean`). v33 added `quests` and `lastSeen`; v34 added `weekly`. v35 kept `tutorial`'s shape but put Pish's "summonPal" step second (owner 2026-11-17): a saved step from 2 on moves one along, so a tour in progress keeps its place. v36 added `mainQuests` (none paid for everyone; the items standing in the shop at load count as paid). v37 added `events` (Lucky Sunday's luck never given, for everyone; a saved table kept and cleaned on load by `EventRules.clean`). v38 added `codes` (none used, for everyone; a saved list kept and cleaned on load by `CodeRules.clean`). v40 changed no shape: it moves `xp` onto the harder curve past Lv 20 at the same level and progress (owner 2026-11-20, 7.2). v39 changed no shape: it drops `posters`, a field built and removed the same day and never released (posters are decor in `windows` now, as `Config/Windows` poster styles). A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data.
 
 ### 10.6 UI style and HUD
@@ -6217,6 +6255,208 @@ boss models; the ranch and Heroic tiers come after those.
     dogs waking you up at your shop. The saved flag stays (no data change); the onboarding funnel still logs
     WelcomeFlightDone, now right after PrologueDone, so its step numbers don't move. Studio's `/intro` still plays the
     flight. Seen live: the prologue replayed to its end, then straight to "Hi! I'm Pish!" at the shop, no flight.
+  - *A shop can always restock* (owner 2026-11-20: "my friend accidentaly spend all his money for packs and could
+    not progress. fix/prevent this kind of scenarios"; `Config/Broke`, `Util/BrokeRules`, server BrokeService). A shop
+    earns from a rack with packs on it, so it keeps a reserve: the Small Pack Rack's cost ($100) until it has a shelf
+    that holds packs, and what its stock (shelves, boxes, orders on the way, packs in customers' hands, at market
+    prices) lacks of a First Spark box's cost ($48). Prevention, all on the server, each refusal a locked card saying
+    what to keep: an order with no rack must leave the rack's cost (a new player's $200 buys two boxes, never four);
+    any other spend must leave the whole reserve (EconomyService's one spend guard, so every cash sink passes it; a
+    first rack is never refused); ripping a pack from your stock or putting a box in the Bag is refused once what is
+    left would not pay for the next box ("Sell these packs first!": with $4 and one box, 9 packs open and 15 stay to
+    sell); your last rack can't be sold without the cash to build again. Rescue: every 5 s the server looks at each
+    shop, and one that has been stuck two looks in a row (no rack and less than its cost, or a rack, nothing left to
+    sell and less than a box's cost) gets what it lacks from Pish with a card ("You ran out of packs and cash, so Pish
+    gave you $40. Order a box of packs and sell them!"). The same guards keep that cash for the rack and the box, so
+    it can't be farmed. No saved data changes. Studio: `/broke [cash]` empties your shelves and boxes and sets your
+    cash (default $8). Seen live: $8 and no stock became $48 after 7 s with Pish's card; a $500 shop look with $540
+    and empty shelves was refused ("Keep $48 for your next box of packs"); To Bag of the last box with $4 refused;
+    rips stopped at 15 packs left.
+  - *The talk card is easy to notice and presses Next itself* (owner 2026-11-20: "My friend says tutorial is hard to
+    notice. fix it too. and people hardly press next on tutorial"; `Config/PishTalk` CARD, AUTO_NEXT, NEXT_RING,
+    NEXT_BAR, `Util/TalkRules`, client `Util/TutorialTalk`; Pish's and Chikin's card). On a computer the card draws
+    1.3 times bigger on top of the HUD's own growth (420 px to about 655 px wide on a laptop, its line from 18 px to
+    28 px); a phone keeps its small card (owner 2026-11-11: its screen is crowded). A new line pops in from 80% of its
+    size, flashes a gold edge three times over 1.8 s and plays a soft chime. Once the line is typed its button wears
+    the tutorial's pulsing gold ring. A plain Next presses itself: the line stays 1.8 s plus 0.09 s a letter (2.6 s to
+    7.5 s) while a bar fills on the button, then moves on as a press would; a press or a tap on the card is still
+    quicker. Got it!, Bye! and Chikin's Go! send someone off, so they wait. The line for what to do now has no button
+    and stays. Seen live: "Hi! I'm Pish!", "Welcome to One More Pack!" and "This is your very own card shop!" moved on
+    by themselves after 3.2 s, 4.6 s and 5.4 s and stopped on "I brought you a present. Open your Bag!".
+  - *Bag packs back to the shop* (owner 2026-11-20: "Cards in your inventory should also be placed in shelves by
+    players", read as the packs and deck boxes in the Bag): a stock item's Bag page (`Config/Items` `stock`, `shop`)
+    has a blue To shop button under Open. One press puts one box of them (up to a box's worth: 24 packs, 10 deck boxes;
+    `ItemRules.boxUnits`) on your delivery pad to stock like any box (remote `ShopBagStock`, StockService; a full pad
+    is refused with a card). Gift packs (Pish's, level-up, Turts') stay gifts. Main game only. Seen live: 24 of 210
+    packs became a box on the pad; a gift did nothing.
+  - *Walking away from a card case is Done* (owner 2026-11-20: "some players just add cards and doesnt press done. it
+    should be considered done when the player walks away"): a new card's wait for its price (`Util/ListingHold`) also
+    ends when its owner is more than 16 studs from the case (`Config/Showcase` WALK_AWAY, checked every 0.5 s by
+    ShowcaseService), and the case's window closes itself at that distance (ShowcaseController), which sends the
+    prices set. Seen live: a card stayed held 5 studs from its case and went on sale 0.1 s after its owner stood 21
+    studs away. The window closing itself wasn't seen live (the test save's tour hid the case's menu).
+  - *Chikin's Next* (owner 2026-11-20: "Chikin tutorial sometimes the NEXT is not clickable"). Three causes found
+    and fixed. A screen above the tutorial's with something that takes clicks over the card (a level-up card's
+    tap-to-close veil, after his fights) ate the press: the talk card now looks 5 times a second for a button of a
+    higher screen over it and waits out of the way until it's gone (`TutorialTalk` isCovered, `TutorialCues.quiet`
+    "covered"; Pish's card too). His last Next went to the server once and never again, so a dropped request left the
+    button dead: it is sent again after 1.5 s with no answer (`Config/Chikin` RESEND_SECONDS, `TalkRules.maySend`).
+    His next line showed up to 0.3 s after the press: it shows at once. Seen live: with the level-up card up the
+    tutorial's screen hid, and came back 0.3 s after it closed.
+  - *Shop workers earn while you hunt* (owner 2026-11-20: "make sure when adding an employee exps and gold still
+    count while you're in the wilds"): checked, no change needed. The Wild valley is in the main game, so the shop
+    runs: with the owner 1,173 studs away a Cashier rang up a customer in 17 s (cash +$5.75, shop XP +6, the sale
+    counted). In the Frontier and the Dungeon (other places) the shop isn't running; welcome-back earnings pay for
+    10 minutes away or more (`Config/Offline`).
+  - *Booster boxes on shelves are counted one by one* (owner 2026-11-20: "restocking first spark booster box on
+    shelves sometimes doesnt stock the shelf but notifies 'stocked 1'"). It was stocked; the shelf's picture didn't
+    change. A shelf's places filled by the stock's share of its 24 units, and each place drew a fixed stack of two: the
+    first booster box showed as two, and the second, third and fourth as nothing new. Now a booster box (`stockLook`
+    "Booster") is one box on the shelf: a box in every place first, then the second layer (`ShelfStock.stacks`,
+    `stackedPlaces`; PlacementService `fillWithBoosters`), until the shelf looks full. Seen live: one stocked, one box
+    shown (1/24); a second, two boxes in two places (2/24).
+  - *Tapped prices don't fall back* (owner 2026-11-20: "Fix boosterbox price also: pressing the + and - sometimes
+    goes down suddenly"). The Prices window and the card cases forgot their taps the moment they sent them, so until
+    the server's price came back (a fraction of a second) the old price showed, and a tap in that gap started again
+    from it: twenty taps up, a pause, one more tap, and the price sat one step over where it began. A sent price now
+    keeps showing until the server's own price says the same, or for 2 s when the server changed or refused it
+    (`Util/PriceTaps`, `Pricing.ECHO_SECONDS`; PricingController, ShowcaseController). Not seen live with a real
+    connection's delay (Studio answers at once); tests/PriceTaps plays the reported sequence.
+  - *The Condenser never says Ready over a running job* (owner 2026-11-20: "Condenser: sometimes it says Ready when
+    it's still counting down"). A finished star leaves a note for its reveal (the player's CondenserDone). Take it out
+    shared the Condense button's 0.5 s limit, so a quick press was dropped and the note stayed: "Ready!" and the
+    reveal came back later, over the next job. Now Take it out has its own limit (Condenser and Grading Station), a
+    new job clears its station's note (UpgradeJobService.Begin), the reveal and the tag over the machine only show
+    with nothing inside (`UpgradeRules.showsReady`), and the list's Ready tags and "N can get a star" hide while the
+    machine counts down.
+  - *The Condenser as a picture recipe* (owner 2026-11-20: "when using starshard on a card. the card disappears.
+    improve UIUX of using starshards", then of the whole window "make this window easier to understand and more
+    immersive. a kid wouldnt understand this" and "clicking a card sends me back to the top of the window"; pick A
+    of three mockups, artifact R2UZgNndUJZ4pENFTrc6T8; `CondenseRules.say` / `rowTag` / `buttonWords` / `waitWords` /
+    `slots` / `shardOffers` / `slotColumns` / `shardWords` / `keepsRow`, CondenserController). The right side: one
+    sentence ("Squish 4 extra Reefray into this one. It gets a star!", "Find 2 more Reefray to add a star.", "Reefray
+    has all 5 stars!"), the copies that go in as little cards (a grid of 4, 8, 12, 16 or 24 spots), an arrow, the card
+    that keeps the star with its stars under it (the new one beating), a green "+40 Power", and one big "Add a star!"
+    with "takes 23 seconds" under it ("2 more copies needed" when short). No Value, no Now / After table, no grades.
+    Star Shards are no switch any more: an empty spot that a shard could fill shows a faint shard, a tap fills them,
+    a tap on a shard takes them out, and a line under the button says so ("Tap an empty spot: Star Shards finish this
+    star! (12 left)"). "Keep a different copy" is a small link to the old copy picker. The left rows: the card's
+    stars and a gold Ready!, or "3 more" with a bar, or All stars. Pressing Add a star flies the copies into the
+    card. The card on the pane stays in the list and selected when the shards change which cards are ready, and the
+    list (the Grading Station's too) keeps its scroll through every redraw; a search, a filter or opening the window
+    starts at the top. Need copies no longer lists cards that already have every star. Seen live: a ready card (4
+    little Voltkit, the arrow, "+51 Power", "Add a star! takes 30 seconds"), a short one ("Find 2 more Solarion to add
+    a star.", two faint shards in its empty spots), the shards tapped in ("Squish 2 extra Solarion and 2 Star Shards
+    into this one. It gets a star!"), and the list staying at its scroll after a tap on a row.
+  - *Upgrade waits by rarity* (owner 2026-11-20: "adjust upgrade times. the rarer/stronger the item the longer the
+    wait time for upgraade"; `Upgrades.RARITY_TIMES`, `MAX_WAIT`, `UpgradeRules.seconds(cfg, kind, step, rarity)`).
+    Every wait (a star, a grade, a weapon's level, reforge, craft) is its table's seconds times the card's or weapon's
+    rarity factor: Common 0.5, Rare 0.75, Very Rare 1 (the tables), Epic 1.5, Legendary 2; whole seconds, never over
+    2 hours. The stronger the upgrade the longer, as before. A first star: 15 s Common, 30 s Very Rare, 1 min
+    Legendary. A fifth star: 15 min Common, 30 min Very Rare, 1 hour Legendary. A weapon to +10: 15 min Common, 1 hour
+    Legendary. Crafting: 30 min Common, 2 hours Legendary. A new shop's short waits (Config/Early) still apply, and
+    Finish now's three prices cover everything (the longest tier from 20 minutes up). Seen live: the Condenser's button
+    read "takes 0:15" on a Common and "takes 0:30" on a Very Rare.
+  - *Turts' upgrade materials cost about a third more* (owner 2026-11-20: "increase the price of the upgrade
+    materials on turts", then, of a first x2, "x2 price is a bit harsh. just x1.3 or 1.4"; `Turts.UPGRADE_PREMIUM = 2`,
+    offers' `upgrade`). Everything he sells that isn't a pack: Wild Ore $55 ($40 before), XP Tonic $160 ($120), Star
+    Shard $400 ($300), Grading Seal $540 ($400), a boss's material $475 ($350), Gold Seal $20,000 ($15,000): 1.33 to
+    1.38 times, at least twice its usual value. His packs cost what they did ($25 / $75 / $600), as do his odds and
+    his one-of-each rule.
+  - *One timer a machine* (owner 2026-11-20: "condenser: there's sometimes an extra timer on the condenser model").
+    The place streams (Workspace.StreamingEnabled), so a machine you walk away from (to the Wild) leaves the workspace
+    on your client, and the same part comes back when you return, its old countdown tag still on it; it then got a
+    second one. A tag now goes with its machine when it leaves, and any old one is cleared before a new one is made
+    (StationTimerController). Seen live: one tag after the Condenser left and came back, twice.
+  - *The shelves glow while you carry a box* (owner 2026-11-20: "When your carrying a box. highlight the shelf with
+    the same product as you are carrying"; `Util/StockHint`, client StockHintController, `Stock.HINT`). The shelves in
+    your own shop already holding that product with room left get a gold Highlight whose outline breathes; when there
+    are none, the empty shelves that can take it glow instead (a first box has no shelf of its own). Card cases,
+    machines, decor and shelves that can't hold the product never glow, and nothing glows with empty hands. A shelf's
+    part now carries a `Units` attribute. Seen live: carrying a box of packs with every shelf empty, the two Small
+    Pack Racks and the Wall Shelf glowed, the Bulk Bins did not.
+  - *Frozen creatures can't cast* (owner 2026-11-20: "Pets can still press super/skill while frozen"): a creature
+    frozen by an ice spike or stunned by a thunderclap can't use its Pet move or its super (BattleSim.useAbility
+    refuses with "stunned"; nothing is spent, so the move is there when it thaws), and its owner is told "Your
+    creature is frozen! It can't use moves yet."
+  - *Healing Rain toned down* (owner 2026-11-20: "Nerf healing rain. 5 star grade C abyssal koi's healing rain heals
+    25% over 5 seconds with 8 second cooldown. which he only spam heals to defeat frost tyrant. tune down for all
+    creatures"): 15% of max HP over its 5 ticks (25% before), a Grade S rain's player 10% (15%), and its own wait of
+    12 s before it can be cast again (the other Pet moves 8; `Combat.ABILITIES.Tide.cooldown`,
+    `CombatMath.abilityCooldown`). Kept up, that is 1.25% of max HP a second where it was 3.1%.
+  - *The Wild's bosses drop their weapons a little more often* (owner 2026-11-20: "slightly increase weapon droprate
+    on wild bosses only"; `Weapons.DROP_WILD = 1.3`, `WILD_BOSSES`): the Meadow Warden's, the Cave Brood Queen's and
+    the Ember Colossus's weapon chance times 1.3 at every pity step; the Frontier's and the Dungeon's as before.
+  - *Prices a little more forgiving* (owner 2026-11-20, hours after the sliding chance: "Rework prices. make it a
+    little bit more forgiving"; `Pricing.BUY_BANDS`): just over market 65% buy (50% before), +10% 48% (33%), +20% 30%
+    (15%), +35% 15% (8%), past +50% nobody, market price and under 95% as before. Every step up still costs buyers and
+    takes less per customer, so the last step of a band is still never free.
+  - *The grade swap* (owner 2026-11-20: "a player upgraded a C grade pet to a 5 star but later got S grade. should we
+    let him transfer the 5 star to an S grade pet at a cost?", then "okay do the grade swap. but make it a little more
+    expensive"; `Grading.SWAP = { share = 0.35, round = 10 }`, `CondenseRules.swapPlan` / `swapWords` / `swapLine`,
+    `CardService.GradeUp`'s `swap`, remote GradeUp's 8th argument, GradingController). Stars and levels never move:
+    at the Grading Station a levelled or starred card takes the grade of your best spare copy of the same card. The
+    spare is used up (a plain one before a foil), and it costs 35% of the grading cash for the steps between the two
+    grades, rounded to $10: C to S is $1,090 for a Common or Rare, $2,190 Very Rare, $4,550 Epic, $5,430 Legendary
+    (grading all the way: $3,100 / $6,250 / $13,000 / $15,500 and 14 to 6 copies). It waits like a grade-up to that
+    grade. No seals, no Gold Seal. A plain copy is never offered it (the better copy is already the better card). The
+    window shows it only when there is such a spare: a line ("Your spare Grade S copy gives this card its grade and is
+    used up. Its stars and level stay.") and a blue button ("Swap in your Grade S copy · $2,190 · 25:00"). Seen live:
+    a 1-star Grade C Voltkit with a Grade S spare took the swap for $2,190 and went into the station as Grade S.
+  - *Grading never uses up a better copy* (owner 2026-11-20: "yes skip better copies"; `CondenseRules.gradePlan`,
+    `gradeHave`): a step to Grade B listed a Grade S spare among the copies it would use ("Used up: 1 Grade B + 1
+    Grade S"). A grade-up now takes only copies of the card's own grade or lower; better ones stay (for the grade
+    swap, or to keep). The Condenser still takes any copy (a star is a star).
+  - *Grading takes longer* (owner 2026-11-20: "Grading a rare/stronger card should take 45mins to hours";
+    `Upgrades.WAITS.grade = { B = 600, A = 1800, S = 3600 }`, times the rarity factor, 2 hours at most): to Grade B
+    5 min Common, 10 min Very Rare, 20 min Legendary; to A 15 / 30 / 60 min; to S 30 min Common, 45 min Rare, 1 hour
+    Very Rare, 1 h 30 Epic, 2 hours Legendary. A new shop's short waits and Finish now as before.
+  - *The Grading Station as a picture recipe* (owner 2026-11-20: "in grading station window. redesign it like the
+    condenser to be easily understood. it's currently so confusing"; GradingController on client `Util/Recipe`, words
+    in `CondenseRules`: `gradeSay`, `gradeRowTag`, `gradeButton`, `sealWords`, `goldWords`). The right side: one
+    sentence ("Use 2 extra Voidmaw and $2,500 to make it Grade A!"; short: "Find 1 more Voidmaw to make it Grade
+    A."), the copies that go in as little cards (gold-edged foils) with the cash in a pill under them (red when you
+    can't pay, "Gold Seal" when one pays), the arrow, the card with the grade it becomes beating under it, a green
+    "+N Power" chip beside the cash, and one button: "Make it Grade A!" over "takes 30 minutes", or what's missing.
+    Over the button, whenever you own some, two chips with their picture (owner the same day: "whats the use of
+    grading seals? I cant see it inside the grading station", "also the golden seall or something";
+    `CondenseRules.sealChip` / `goldChip`): "Grading Seals x15 · Tap: fills a missing copy" (a tap puts them in the
+    empty spots or takes them out, like a tap on a spot; "Fill in for missing copies" when the copies are all there)
+    and "Gold Seals x11 · Tap: pays the cash" (gold-edged with "Pays the cash! Tap to undo" once on; "Not for a
+    Legendary's Grade S"). Under the button, only when they apply: the grade swap's line and two-line button, and a
+    "Keep a different copy" link (the copies as rows in place of the recipe) for players who mind which copy is
+    graded. A list row: the card's grade and the next one, and a gold "Ready!", "2 more" with a bar, "Need cash" or
+    "Top grade". No Value, no Now / After table, no "Used up" list (client `Util/NowAfter` is gone).
+  - *The Forge as a picture recipe* (the same message: "do the same with forge"): the Forge window's pane, above
+    ("Weapons": the Forge window). `WeaponText.button`, `cost` and `costChips` became `say`, `spots`, `spotColumns`,
+    `recipeButton`, `outcome` and `powerGain`; the Condenser, the Grading Station and the Forge share `Util/Recipe`
+    (`grid`, `spot`, `arrow`, `words`, `beat`, `flyIn`). The Forge's list keeps its scroll after a tap on a row, like
+    the other two. Seen live on a computer: the Grading Station ready ("Use 2 extra Voidmaw and $2,500 to make it
+    Grade A!", "takes 1 hour"), short ("Find 1 more Eclipse Fox to make it Grade B."), a Grading Seal tapped into a
+    spot, the copy picker, a Cindercub going in for 5 minutes; the Forge's three tabs, the Sunforged Blade's five
+    spots at $15,000 with the short ones red, a Fire Forge Sword going in for +1; the Condenser unchanged on the
+    shared helper. Not seen on a phone yet.
+  - *The Forge's top costs down 40%* (owner 2026-11-20: "lower the forging cost a bit. 60k in our current economy
+    takes too long to achieve. so lower it abit. give me options", his pick of three; `Weapons.BOSS_COST`, the
+    masterworks' `source.cost`): Titan's Lance $60,000 -> $36,000, Sunforged Blade $25,000 -> $15,000, a Legendary
+    boss weapon $30,000 -> $18,000, an Epic $12,000 -> $8,000. Rare $2,000, Very Rare $5,000, the Forge weapons and
+    every material as before; a reforge is half of making, so it came down too. Upgrades unchanged (a Legendary to +10
+    is $118,400 in all).
+  - *Nothing cut in the station windows* (owner 2026-11-20: "fix upgrading stations cutoff borders"): the Grading
+    Station's list had no room round its rows, so the list's edge cut their outlines (now padded like the other
+    two); its pane was 98 px taller than its window (482 in 384, before the window's 1.2 scale), so the Gold Seal
+    button was cut at the bottom: the Power chip sits beside the cash, the two seal chips share a row, and the pane
+    fits exactly. The Forge's pane ran 31 px over with a Forge weapon's element buttons: its card is 84 x 120 again,
+    its gaps 6 px, and a Forge weapon shows no line under the recipe (the pill says "Grade C to S"). Measured live:
+    both panes' canvas equals their window.
+  - *Boss cash doubled* (owner 2026-11-21: "increase boss gold drops tell me its current gold drops. and let me
+    choose how much increase", his pick of x1.5 / x2 / x3 / x5): a loot win pays $72 / $132 / $192 / $300 / $420 /
+    $560 / $800 (Meadow Warden to Prism Hydra; $36 to $400 before), a win before the loot timer ends a quarter of it
+    as before ($18 to $200). The shop XP from a boss win did not change (`Bosses.SHOP_XP_SHARE = 0.5`,
+    `BossRules.shopXpCash`: the Meadow Warden 18, the Prism Hydra 200). A maxed party chain-farming the Ember
+    Colossus (27 s a win) now makes about $7,600 an hour, $3,800 before.
+  - *Town music up* (owner 2026-11-20: "turn the townmusic volume up"): White Owl 0.22 -> 0.3, the two added pieces
+    0.25 -> 0.34.
   - *The falls by the Wild portal* (owner 2026-11-20: "the portal to wild is too loud. lower its volume"): the portal
     has no sound of its own; the only one there is the Forest Falls' waterfall 40 studs away. Its volume 0.5 -> 0.2
     (`Config/Scenery` SOUNDS).

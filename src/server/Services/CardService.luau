@@ -395,7 +395,9 @@ end
 -- grade's stack and stays plain. With `seals`, up to that many Grading Seals cover missing duplicates (the caller takes
 -- the number it reports used). All in one step with no yields. Returns the new grade, or nil and a reason ("max",
 -- "short:<have>:<need>", "cash:<need>", "working", "fighting", "missing", "unknown"), and the seals used.
-function CardService.GradeUp(player: Player, cardId: string, main: XpTarget, pay: (cash: number, grade: string) -> boolean, seals: number?): (string?, string?, number)
+-- `swap`: the grade swap instead (Config/Grading SWAP, CondenseRules.swapPlan): a levelled card takes its best spare
+-- copy's grade, the spare and a share of the cash paid; reasons then also "plain" and "none".
+function CardService.GradeUp(player: Player, cardId: string, main: XpTarget, pay: (cash: number, grade: string) -> boolean, seals: number?, swap: boolean?): (string?, string?, number)
 	local inventory = inventories[player]
 	local card = Cards.ById[cardId]
 	if not inventory or not card then
@@ -426,12 +428,18 @@ function CardService.GradeUp(player: Player, cardId: string, main: XpTarget, pay
 	end
 
 	local stacks = inventory.stacks[cardId] or {}
-	local plan, reason = CondenseRules.gradePlan(Grading, Beasts, card.rarity, stacks, {
+	local asMain = {
 		beast = beast ~= nil,
 		foil = foil,
 		grade = grade,
 		stars = if beast then beast.stars else BeastRules.START_STARS,
-	}, seals)
+	}
+	local plan: any, reason: string?
+	if swap then
+		plan, reason = CondenseRules.swapPlan(Grading, Beasts, card.rarity, stacks, asMain)
+	else
+		plan, reason = CondenseRules.gradePlan(Grading, Beasts, card.rarity, stacks, asMain, seals)
+	end
 	if not plan then
 		return nil, reason, 0
 	end

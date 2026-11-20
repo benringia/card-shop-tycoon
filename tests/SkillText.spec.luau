@@ -107,7 +107,7 @@ return {
 
 	["each Pet move says what it does, from the fight's numbers"] = function()
 		expect.equal(SkillText.describe(Combat.ABILITIES.Ember), "A big hit: 2.5x ATK")
-		expect.equal(SkillText.describe(Combat.ABILITIES.Tide), "Heals your creature 25% over 5 s")
+		expect.equal(SkillText.describe(Combat.ABILITIES.Tide), "Heals your creature 15% over 5 s")
 		expect.equal(SkillText.describe(Combat.ABILITIES.Bloom), "Slows the foe 40% for 4 s")
 		expect.equal(SkillText.describe(Combat.ABILITIES.Volt), "Next 3 attacks twice as fast")
 		expect.equal(SkillText.describe(Combat.ABILITIES.Shade), "Foe hits 30% weaker for 5 s")

@@ -5,11 +5,20 @@
 return {
 	WAITS = {
 		star = { 30, 120, 360, 900, 1800 }, -- the Condenser, to 1 star ... 5 stars
-		grade = { B = 60, A = 480, S = 1500 }, -- the Grading Station, to that grade
+		-- the Grading Station, to that grade: 10 min, 30 min, 1 h for a Very Rare (owner 2026-11-20: "Grading a
+		-- rare/stronger card should take 45mins to hours"; 1 min, 8 min, 25 min before). With its rarity: a Common 5 /
+		-- 15 / 30 min, a Rare 7.5 / 22 / 45, an Epic 15 / 45 / 90, a Legendary 20 min / 1 h / 2 h
+		grade = { B = 600, A = 1800, S = 3600 },
 		level = { 15, 30, 60, 120, 240, 420, 600, 900, 1320, 1800 }, -- the Forge's Upgrade, to +1 ... +10
 		reforge = 1200,
 		craft = 3600, -- making a weapon: the longest (owner: "I think crafting needs the longest")
 	},
+	-- The rarer the card or weapon, the longer every wait (owner 2026-11-20: "adjust upgrade times. the rarer/stronger
+	-- the item the longer the wait time for upgraade"): WAITS times its rarity's factor (the tables are a Very Rare's),
+	-- in whole seconds, never over MAX_WAIT. A Common's first star takes 15 s, a Legendary's fifth 1 hour, crafting a
+	-- Legendary weapon 2 hours. The stronger the upgrade the longer, as before (the tables). UpgradeRules.seconds.
+	RARITY_TIMES = { Common = 0.5, Rare = 0.75, ["Very Rare"] = 1, Epic = 1.5, Legendary = 2 },
+	MAX_WAIT = 7200,
 	-- "Finish now" (Robux developer products SkipS / SkipM / SkipL, Config/Monetization PRODUCTS): the tier a job's time
 	-- left falls in
 	-- a finished Forge job while the Forge is closed (owner 2026-11-12: "the cinematic should only appear when I open

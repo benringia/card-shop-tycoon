@@ -19,6 +19,10 @@ return {
 		{ "hello", "party", "summon", "wild", "fight", "firstWin", "fight2", "swordWin" },
 		{ "sword", "wild2", "boss" },
 	},
+	-- His last Next (and Got it!) goes to the server; with no answer after this many seconds a press sends it again
+	-- (owner 2026-11-20: "sometimes the NEXT is not clickable": it was sent once, and a dropped request left the button
+	-- dead; the server's cooldown is 0.5 s)
+	RESEND_SECONDS = 1.5,
 	WAIT_STEP = "level4", -- no visit: done once the shop reaches SWORD_LEVEL
 	SWORD_LEVEL = 4, -- Config/Swords UNLOCK_SHOP_LEVEL: everyone gets the starter sword here
 	-- Steps whose last Next moves on (the server records them when the client says so): his hello, the first fight's

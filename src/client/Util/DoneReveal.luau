@@ -18,16 +18,19 @@ local Cards = require(Config:WaitForChild("Cards"))
 local Upgrades = require(Config:WaitForChild("Upgrades"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CondenseRules = require(Shared:WaitForChild("Util"):WaitForChild("CondenseRules"))
+local UpgradeRules = require(Shared:WaitForChild("Util"):WaitForChild("UpgradeRules"))
 
 local ClientUtil = script.Parent :: Instance
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local StationJobs = require(ClientUtil:WaitForChild("StationJobs"))
 
 local DoneReveal = {}
 
 export type Options = {
 	attribute: string, -- the player attribute holding the waiting result
+	station: string, -- its station ("condenser", "grading"): a job inside means nothing is ready (UpgradeRules.showsReady)
 	seen: RemoteEvent, -- fired by Take it out
 	kind: "star" | "grade", -- what the job added
 	heading: string,
@@ -202,6 +205,10 @@ function DoneReveal.attach(panel: Frame, options: Options): (opened: boolean?) -
 			shown = "" -- a result still waiting shows again each time the window opens, until it's taken out
 		end
 		local value = player:GetAttribute(options.attribute)
+		-- a job counting down inside: the last one's note (if its Take it out never reached the server) stays quiet
+		if not UpgradeRules.showsReady(StationJobs.get(options.station) ~= nil, value) then
+			value = nil
+		end
 		local done = CondenseRules.decodeDone(value, if options.kind == "star" then 1 else 0)
 		local info = if done then Cards.ById[done.cardId] else nil
 		if not done or not info then

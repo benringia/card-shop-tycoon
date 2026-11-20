@@ -200,7 +200,7 @@ local function build(): Frame
 		return `Legendary {percent(chances.Legendary or 0)}, Epic {percent(chances.Epic or 0)}, Very Rare {percent(chances["Very Rare"] or 0)}`
 	end
 	addLine(list, 24, `🍀 Luck (Phone, Store) makes the last card in each pack better. Normal: {lastCard(0)}. {Luck.STRENGTHS.x2.name}: {lastCard(Luck.STRENGTHS.x2.boost)}. {Luck.STRENGTHS.x3.name}: {lastCard(Luck.STRENGTHS.x3.boost)}. Pish's Luck adds a little more.`)
-	addLine(list, 23, `🛡️ Pity: your first Legendary within {Packs.PITY.FIRST_LEGENDARY_PACKS} packs, then one at least every {Packs.PITY.LEGENDARY_PACKS} (a pity one is almost never high grade: S {percent(Packs.PITY.LEGENDARY_GRADES.S)}); an Epic or better every {Packs.PITY.EPIC_PACKS}.`)
+	addLine(list, 23, `🛡️ Pity: an Epic or better at least every {Packs.PITY.EPIC_PACKS} packs. A Legendary is pure luck: no number of packs guarantees one.`)
 	return frame
 end
 

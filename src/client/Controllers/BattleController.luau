@@ -784,7 +784,8 @@ local function updateHud(hud: CombatHud.Hud, snapshot: Snapshot)
 	local express = if creature and creature.perk and creature.perk.kind == "Express" then creature.perk.value else 0
 	SwordController.SetSkillScale(1 - express) -- Express: the sword skill recharges faster too
 	if creature then
-		hud.setCooldown("pet", latestAt + creature.abilityIn, Combat.ABILITY_COOLDOWN * (1 - express))
+		local petWait = (Combat.ABILITIES[creature.element] or {} :: any).cooldown or Combat.ABILITY_COOLDOWN -- Healing Rain's is longer
+		hud.setCooldown("pet", latestAt + creature.abilityIn, petWait * (1 - express))
 		hud.setMeter("signature", creature.superMeter)
 	end
 	hud.setCooldown("swap", latestAt + snapshot.swapIn, Combat.BOSS_SWAP_SECONDS)

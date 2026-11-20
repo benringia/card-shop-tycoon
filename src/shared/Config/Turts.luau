@@ -11,6 +11,7 @@ export type Offer = {
 	price: number,
 	value: number,
 	weight: number,
+	upgrade: boolean?, -- an upgrade material (everything but his packs): priced at UPGRADE_PREMIUM times its value
 	excited: boolean?, -- Turts spins when someone buys it
 	glow: string?, -- a Config/Rarities tier: its icon glows in that colour on his rug and in his window (his packs)
 }
@@ -21,7 +22,7 @@ export type Spot = { name: string, group: string, x: number, z: number, face: { 
 local BEACON_SECONDS = 30
 
 local function material(boss: string, name: string, weight: number): Offer
-	return { name = name, item = `material_{boss}`, count = 1, price = 350, value = 150, weight = weight, excited = true }
+	return { name = name, item = `material_{boss}`, count = 1, price = 475, value = 150, weight = weight, excited = true, upgrade = true }
 end
 
 local OFFERS: { [string]: Offer } = {
@@ -30,14 +31,17 @@ local OFFERS: { [string]: Offer } = {
 	-- 1.3 hours of play; now about every 3.5
 	epicPack = { name = "Epic Pack", item = "epicPack", count = 1, price = 75, value = 25, weight = 6, excited = true, glow = "Epic" },
 	legendaryPack = { name = "Legendary Pack", item = "legendaryPack", count = 1, price = 600, value = 300, weight = 0.8, excited = true, glow = "Legendary" },
+	-- Upgrade materials (`upgrade`): about a third dearer since 2026-11-20 (owner: "increase the price of the upgrade
+	-- materials on turts", then "x2 price is a bit harsh. just x1.3 or 1.4"; $40, $120, $300, $400, $15,000 and the
+	-- bosses' $350 before), at least UPGRADE_PREMIUM times their value
 	-- one, like everything he sells (owner 2026-11-17: "turts should only sell 1 quantity"; it was 10 for $400): the
 	-- same price and value per ore
-	wildOre = { name = "Wild Ore", item = "wildOre", count = 1, price = 40, value = 16.5, weight = 20 },
-	xpTonic = { name = "XP Tonic", item = "xpTonic", count = 1, price = 120, value = 35, weight = 16 },
-	starShard = { name = "Star Shard", item = "starShard", count = 1, price = 300, value = 90, weight = 10 },
-	gradingSeal = { name = "Grading Seal", item = "gradingSeal", count = 1, price = 400, value = 150, weight = 8 },
+	wildOre = { name = "Wild Ore", item = "wildOre", count = 1, price = 55, value = 16.5, weight = 20, upgrade = true },
+	xpTonic = { name = "XP Tonic", item = "xpTonic", count = 1, price = 160, value = 35, weight = 16, upgrade = true },
+	starShard = { name = "Star Shard", item = "starShard", count = 1, price = 400, value = 90, weight = 10, upgrade = true },
+	gradingSeal = { name = "Grading Seal", item = "gradingSeal", count = 1, price = 540, value = 150, weight = 8, upgrade = true },
 	-- value: the most grading cash it can pay (an Epic's A to S step); the spec's $12,500 broke its own 1.5x rule
-	goldSeal = { name = "Gold Seal", item = "goldSeal", count = 1, price = 15000, value = 10000, weight = 0.4 },
+	goldSeal = { name = "Gold Seal", item = "goldSeal", count = 1, price = 20000, value = 10000, weight = 0.4, upgrade = true },
 	-- each boss's weapon material, its own rare offer (owner: "you can add boss materials but at a low odds")
 	material_meadowWarden = material("meadowWarden", "Warden Heartwood", 0.6),
 	material_caveBroodQueen = material("caveBroodQueen", "Brood Silk", 0.6),
@@ -65,6 +69,7 @@ return {
 	RESTOCK_SECONDS = 480, -- the owner's 8 minutes, on the same clock in every server
 	PICKS = 3, -- offers per restock, each buyable once per player (owner: "only 1qty per item")
 	PREMIUM = 1.5, -- every price at least this times its usual value
+	UPGRADE_PREMIUM = 2, -- ...and an upgrade material's at least this (owner 2026-11-20; his packs keep PREMIUM)
 	PRODUCT = "TurtsRestock", -- Config/Monetization PRODUCTS: Robux "restock now" (a new roll for that player)
 	-- A paid re-roll is a chance-based purchase: where Roblox restricts those (Util/PaidRandomRules) it isn't sold
 	RESTOCK_RESTRICTED = "Restock now isn't available where you live. Turts restocks for free soon!",

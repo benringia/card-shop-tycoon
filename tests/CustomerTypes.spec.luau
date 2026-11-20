@@ -31,11 +31,12 @@ return {
 		expect.equal(CustomerTypes.tolerance(Customers, "plain"), 0)
 		expect.equal(CustomerTypes.tolerance(Customers, "bargain"), 1)
 		expect.equal(CustomerTypes.tolerance(Customers, "bigSpender"), 1)
-		expect.equal(CustomerTypes.buys(Customers, "plain", 1.3, 1, 0.3, 0, BANDS), false, "band 3 (15%) at roll 0.3")
-		expect.equal(CustomerTypes.buys(Customers, "bargain", 1.3, 1, 0.3, 0, BANDS), true, "one band cheaper: 50%")
+		expect.equal(CustomerTypes.buys(Customers, "plain", 1.3, 1, 0.3, 0, BANDS), false, "a third up band 3: 20%, at roll 0.3")
+		expect.equal(CustomerTypes.buys(Customers, "bargain", 1.3, 1, 0.3, 0, BANDS), true, "one band cheaper: over half")
 		expect.equal(CustomerTypes.buys(Customers, "plain", 1.6, 1, 0.0, 0, BANDS), false, "over every band: never")
-		expect.equal(CustomerTypes.buys(Customers, "bigSpender", 1.6, 1, 0.1, 0, BANDS), true, "over every band, one more: band 3")
-		expect.equal(CustomerTypes.buys(Customers, "plain", 1.3, 1, 0.16, 0.1, BANDS), true, "a perk bonus (Haggle) raises the chance")
+		expect.equal(CustomerTypes.buys(Customers, "bigSpender", 1.6, 1, 0.05, 0, BANDS), true, "over every band, one more: band 3")
+		expect.equal(CustomerTypes.buys(Customers, "plain", 1.3, 1, 0.21, 0, BANDS), false, "20% a third of the way up band 3")
+		expect.equal(CustomerTypes.buys(Customers, "plain", 1.3, 1, 0.21, 0.1, BANDS), true, "a perk bonus (Haggle) raises the chance")
 	end,
 
 	-- Past even a tolerant type's last band they won't buy and get annoyed, as a plain customer does past the last band
@@ -161,5 +162,90 @@ return {
 		assert(sure.browse <= 1, "it doesn't dawdle at the shelf")
 		assert(sure.units >= 1, "it takes something")
 		assert(Customers.AFTER_PISH_CUSTOMER <= 25, "the shop's own customers follow soon after his")
+	end,
+
+	-- owner 2026-11-20: "The prices can be abused. from always buy to sometimes buy specially on boxes take alot of
+	-- steps. so the players set prices to the final step of the sometimes buy": the chance was flat across a band, so
+	-- its dearest price cost nothing. Now it slides: a band starts at its own chance and ends at the next band's
+	["at market price and under, customers almost always buy, as before"] = function()
+		expect.equal(CustomerTypes.plainChance(3, 3, BANDS), BANDS[1].chance)
+		expect.equal(CustomerTypes.plainChance(1, 3, BANDS), BANDS[1].chance)
+		expect.equal(CustomerTypes.plainChance(120, 120, BANDS), BANDS[1].chance)
+	end,
+
+	["a band starts at its own chance and ends at the next band's"] = function()
+		local function near(a: number, b: number): boolean
+			return math.abs(a - b) < 0.012
+		end
+		assert(near(CustomerTypes.plainChance(1.001, 1, BANDS), BANDS[2].chance), "just over market: Sometimes' chance")
+		assert(near(CustomerTypes.plainChance(BANDS[2].maxRatio, 1, BANDS), BANDS[3].chance), "its last step: Rarely's")
+		assert(near(CustomerTypes.plainChance(BANDS[3].maxRatio, 1, BANDS), 0), "Rarely's last step: nobody")
+		expect.equal(CustomerTypes.plainChance(BANDS[3].maxRatio + 0.01, 1, BANDS), 0, "past every band")
+		expect.equal(CustomerTypes.plainChance(5, 0, BANDS), 0, "no market price")
+	end,
+
+	["every step up costs buyers: no free steps (the booster box's 96 steps of Sometimes)"] = function()
+		local market, step = 120, Pricing.PRICE_STEP
+		local last = CustomerTypes.plainChance(market, market, BANDS)
+		local lastTakings = market * last
+		local price = market + step
+		while price <= market * BANDS[#BANDS].maxRatio + 1e-9 do
+			local chance = CustomerTypes.plainChance(price, market, BANDS)
+			assert(chance < last, `${price}: fewer buy than a step cheaper`)
+			assert(price * chance < lastTakings, `${price}: it takes less per customer than a step cheaper`)
+			last, lastTakings = chance, price * chance
+			price += step
+		end
+		-- the abused price: the dearest of Sometimes sells like Rarely, not like Sometimes
+		local top = CustomerTypes.plainChance(market * BANDS[2].maxRatio, market, BANDS)
+		expect.equal(top, BANDS[3].chance, "it sells like Rarely's first step")
+		assert(top <= BANDS[2].chance * 0.5, "half of Sometimes' first step at the most")
+	end,
+
+	["customer types slide in their own bands"] = function()
+		expect.equal(CustomerTypes.chance(Customers, "plain", 1.1, 1, BANDS), CustomerTypes.plainChance(1.1, 1, BANDS))
+		expect.equal(CustomerTypes.chance(Customers, "bargain", 1.1, 1, BANDS), BANDS[1].chance, "a band cheaper: its best band, flat")
+		local bargain = CustomerTypes.chance(Customers, "bargain", 1.3, 1, BANDS)
+		assert(bargain < BANDS[2].chance and bargain > BANDS[3].chance, "a third of the way from Sometimes to Rarely")
+		expect.equal(CustomerTypes.chance(Customers, "plain", 1.6, 1, BANDS), 0)
+		assert(CustomerTypes.chance(Customers, "bigSpender", 1.6, 1, BANDS) > 0, "one band more")
+	end,
+
+	["the Prices window says how many buy at this price"] = function()
+		local never = Pricing.NEVER_TAG
+		expect.equal(CustomerTypes.priceTag(3, 3, BANDS, never), BANDS[1].tag, "market price: the band's own words")
+		expect.equal(CustomerTypes.priceTag(3.3, 3, BANDS, never), "48% buy", "half way up Sometimes")
+		expect.equal(CustomerTypes.priceTag(3.6, 3, BANDS, never), "30% buy")
+		expect.equal(CustomerTypes.priceTag(4.4, 3, BANDS, never), "3% buy")
+		expect.equal(CustomerTypes.priceTag(4.5, 3, BANDS, never), never, "nobody buys: say so")
+		expect.equal(CustomerTypes.priceTag(9, 3, BANDS, never), never)
+		for cents = 300, 460 do
+			assert(#CustomerTypes.priceTag(cents / 100, 3, BANDS, never) <= 10, "fits the row's tag")
+		end
+	end,
+
+	-- owner 2026-11-20: "also do the same with glass prices": a card in a Glass Showcase steps 10% of its market value
+	-- a tap (Config/Showcase PRICE_STEP_RATIO), and both steps of Sometimes sold at 50%
+	["a card's price steps in a Glass Showcase cost buyers too"] = function()
+		local market, step = 40, 4
+		local last = CustomerTypes.plainChance(market, market, BANDS)
+		for taps = 1, 5 do
+			local chance = CustomerTypes.plainChance(market + step * taps, market, BANDS)
+			assert(chance < last, `{taps} taps up: fewer buy than a tap cheaper`)
+			last = chance
+		end
+		expect.equal(CustomerTypes.priceTag(market + step, market, BANDS, Pricing.NEVER_TAG), "48% buy", "110% of market")
+		expect.equal(CustomerTypes.priceTag(market + 2 * step, market, BANDS, Pricing.NEVER_TAG), "30% buy", "120%")
+		expect.equal(CustomerTypes.priceTag(market + 5 * step, market, BANDS, Pricing.NEVER_TAG), Pricing.NEVER_TAG, "150%")
+	end,
+
+	-- owner 2026-11-20, a few hours after the sliding chance: "Rework prices. make it a little bit more forgiving"
+	["a little over market still sells: about two in three just over it, about one in three at +20%"] = function()
+		expect.equal(BANDS[1].chance, 0.95, "market price as before")
+		expect.equal(BANDS[2].chance, 0.65)
+		expect.equal(BANDS[3].chance, 0.3)
+		assert(CustomerTypes.plainChance(1.1, 1, BANDS) >= 0.45, "+10%: nearly half")
+		assert(CustomerTypes.plainChance(1.35, 1, BANDS) >= 0.14, "+35%: still some")
+		expect.equal(CustomerTypes.plainChance(1.51, 1, BANDS), 0, "past +50%: nobody, as before")
 	end,
 }

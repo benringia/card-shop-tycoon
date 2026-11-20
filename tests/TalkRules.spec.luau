@@ -6,6 +6,7 @@ local PishTalk = require("../src/shared/Config/PishTalk")
 local Game = require("../src/shared/Config/Game")
 local Jobs = require("../src/shared/Config/Jobs")
 local TalkRules = require("../src/shared/Util/TalkRules")
+local ChikinTalk = require("../src/shared/Config/ChikinTalk")
 local expect = require("./lib/expect")
 
 local MAX_LENGTH = 60 -- characters: one short line, big text
@@ -224,5 +225,72 @@ return {
 		expect.equal(TalkRules.cardPlace(TOP, HEIGHT, PAW, nil, false, false), "top", "anywhere else: as before")
 		expect.equal(TalkRules.cardPlace(TOP, HEIGHT, PAW, { top = 120, low = 170, across = true }, false, false), "bottom")
 		expect.equal(TalkRules.cardPlace(TOP, HEIGHT, PAW, nil, true, false), "top", "a fight")
+	end,
+
+	-- owner 2026-11-20: "My friend says tutorial is hard to notice. fix it too. and people hardly press next on
+	-- tutorial"
+	["Next presses itself once there has been time to read the line"] = function()
+		local auto = PishTalk.AUTO_NEXT
+		expect.equal(TalkRules.readSeconds(0, auto), auto.min)
+		expect.equal(TalkRules.readSeconds(13, auto), math.max(auto.min, auto.base + 13 * auto.perLetter), "Hi! I'm Pish!")
+		expect.equal(TalkRules.readSeconds(1000, auto), auto.max)
+		assert(TalkRules.readSeconds(60, auto) > TalkRules.readSeconds(20, auto), "a longer line stays longer")
+		assert(auto.min >= 2.5, "never a flash")
+		assert(auto.max <= 8, "never a long wait")
+		-- a child reads about two words a second: every intro line gets that
+		eachLine(function(where, text)
+			local words = select(2, string.gsub(text, "%S+", ""))
+			assert(TalkRules.readSeconds(utf8.len(text) :: number, auto) >= math.min(auto.max, words / 2), where)
+		end)
+	end,
+
+	["only a plain Next presses itself: Got it!, Bye! and Go! wait for the player"] = function()
+		expect.equal(TalkRules.pressesItself(PishTalk.NEXT, PishTalk.NEXT, false), true)
+		expect.equal(TalkRules.pressesItself(PishTalk.BYE, PishTalk.NEXT, false), false)
+		expect.equal(TalkRules.pressesItself(PishTalk.GOT_IT, PishTalk.NEXT, true), false)
+		expect.equal(TalkRules.pressesItself(PishTalk.NEXT, PishTalk.NEXT, true), false)
+		expect.equal(TalkRules.pressesItself(nil, PishTalk.NEXT, false), false, "no button: the line stays")
+		expect.equal(ChikinTalk.NEXT, PishTalk.NEXT, "Chikin's Next is the same button")
+	end,
+
+	["the talk card is bigger on a computer; a phone keeps its small one"] = function()
+		local card = PishTalk.CARD
+		assert(card.DESKTOP >= 1.2, "clearly bigger")
+		expect.equal(TalkRules.cardGrow(true, 1, card), 1, "a phone's screen is crowded (owner 2026-11-11)")
+		expect.equal(TalkRules.cardGrow(true, 1.35, card), 1)
+		expect.equal(TalkRules.cardGrow(false, 1, card), card.DESKTOP)
+		expect.equal(TalkRules.cardGrow(false, 1.35, card), 1.35 * card.DESKTOP, "on top of the HUD's own growth")
+	end,
+
+	["a new line flashes the card's edge gold, then leaves it alone"] = function()
+		local glow = PishTalk.CARD.GLOW
+		expect.equal(TalkRules.glow(0, glow), 0, "full gold at once")
+		expect.equal(TalkRules.glow(glow.seconds, glow), 1, "gone")
+		expect.equal(TalkRules.glow(glow.seconds + 5, glow), 1)
+		local dips = 0
+		local last = 0
+		for i = 0, 100 do
+			local see = TalkRules.glow(glow.seconds * i / 100, glow)
+			assert(see >= 0 and see <= 1, "a transparency")
+			if see < last - 0.001 and last > 0.9 then
+				dips += 1
+			end
+			last = see
+		end
+		assert(dips >= 1, "it comes back at least once: a flash, not a fade")
+		assert(glow.seconds <= 2.5, "short")
+		assert(PishTalk.CARD.SOUND.volume <= 0.3, "a soft sound")
+	end,
+
+	-- owner 2026-11-20: "Chikin tutorial sometimes the NEXT is not clickable": his last Next was sent once and never
+	-- again, so a request the server dropped left the button dead
+	["a Next the server didn't answer is sent again after a moment, never in a burst"] = function()
+		local Chikin = require("../src/shared/Config/Chikin")
+		local wait = Chikin.RESEND_SECONDS
+		expect.equal(TalkRules.maySend(-math.huge, 100, wait), true, "the first press")
+		expect.equal(TalkRules.maySend(100, 100.2, wait), false, "a double tap")
+		expect.equal(TalkRules.maySend(100, 100 + wait, wait), true, "still no answer: again")
+		assert(wait > 0.5, "longer than the server's cooldown (0.5 s), or the second is dropped too")
+		assert(wait <= 3, "not a long dead button")
 	end,
 }

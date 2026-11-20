@@ -105,7 +105,7 @@ local BOSSES: { [string]: Boss } = {
 		},
 		firstClear = { { item = "fragment_caveBroodQueen", count = 3 }, { item = "trophy_meadowWarden", count = 1 }, { item = "xpTonic", count = 3 } },
 		dailyBonus = { { item = "xpTonic", count = 2 }, { item = "material_meadowWarden", count = 2 } },
-		cash = 36,
+		cash = 72,
 		xp = 620,
 	},
 	caveBroodQueen = {
@@ -144,7 +144,7 @@ local BOSSES: { [string]: Boss } = {
 		},
 		firstClear = { { item = "fragment_emberColossus", count = 3 }, { item = "trophy_caveBroodQueen", count = 1 }, { item = "xpTonic", count = 3 } },
 		dailyBonus = { { item = "xpTonic", count = 2 }, { item = "material_caveBroodQueen", count = 2 } },
-		cash = 66,
+		cash = 132,
 		xp = 1360,
 	},
 	emberColossus = {
@@ -184,7 +184,7 @@ local BOSSES: { [string]: Boss } = {
 		},
 		firstClear = { { item = "fragment_frostTyrant", count = 3 }, { item = "trophy_emberColossus", count = 1 }, { item = "gradingSeal", count = 3 } },
 		dailyBonus = { { item = "gradingSeal", count = 2 }, { item = "material_emberColossus", count = 2 } },
-		cash = 96,
+		cash = 192,
 		xp = 2220,
 	},
 	-- The Frontier bosses (phase 3): arenas in the Frontier place
@@ -229,7 +229,7 @@ local BOSSES: { [string]: Boss } = {
 		},
 		firstClear = { { item = "fragment_stormSovereign", count = 3 }, { item = "trophy_frostTyrant", count = 1 }, { item = "gradingSeal", count = 3 } },
 		dailyBonus = { { item = "gradingSeal", count = 2 }, { item = "material_frostTyrant", count = 2 } },
-		cash = 150,
+		cash = 300,
 		xp = 3600,
 	},
 	stormSovereign = {
@@ -267,7 +267,7 @@ local BOSSES: { [string]: Boss } = {
 		},
 		firstClear = { { item = "fragment_riftDevourer", count = 3 }, { item = "trophy_stormSovereign", count = 1 }, { item = "goldSeal", count = 1 } },
 		dailyBonus = { { item = "goldSeal", count = 1 }, { item = "material_stormSovereign", count = 2 } },
-		cash = 210,
+		cash = 420,
 		xp = 5200,
 	},
 	riftDevourer = {
@@ -306,7 +306,7 @@ local BOSSES: { [string]: Boss } = {
 		},
 		firstClear = { { item = "fragment_prismHydra", count = 3 }, { item = "trophy_riftDevourer", count = 1 }, { item = "goldSeal", count = 3 } },
 		dailyBonus = { { item = "goldSeal", count = 1 }, { item = "material_riftDevourer", count = 2 } },
-		cash = 280,
+		cash = 560,
 		xp = 7400,
 	},
 	-- The final boss (phase 4): the Dungeon place, one phase per element and per mechanic of the ladder
@@ -365,7 +365,7 @@ local BOSSES: { [string]: Boss } = {
 			{ item = "xpTonic", count = 5 },
 		},
 		dailyBonus = { { item = "goldSeal", count = 2 }, { item = "material_prismHydra", count = 2 } },
-		cash = 400,
+		cash = 800,
 		xp = 10000,
 	},
 }
@@ -392,6 +392,11 @@ return {
 	-- cash on every win paid $4,000-7,000 an hour at the recommended Power and about $12,000 with a maxed party, against
 	-- the shop's $700-1,550; BossRules.pay)
 	REPEAT_PAY = 0.25,
+	-- Boss cash doubled on 2026-11-21 (owner: "increase boss gold drops ... let me choose how much increase", his pick
+	-- x2: $36 / $66 / $96 / $150 / $210 / $280 / $400 before). The shop XP a win gives followed the cash at half
+	-- (Config/Levels FIGHT_XP_PER_CASH); it counts this share of the cash now, so it stayed what it was
+	-- (BossRules.shopXpCash)
+	SHOP_XP_SHARE = 0.5,
 	-- The Robux reset (owner 2026-11-19: "go A, both spots, R$ 19. but it should also tell players that all the bosses
 	-- reset"): one buy ends every running boss loot timer, not just one boss's. Its button shows on the boss victory
 	-- screen and beside the boss board's loot timer while a timer has `minLeft` seconds to go (BossRules.resetOffered),

@@ -12,6 +12,12 @@ return {
 	POWER = 2.31,
 	ROUND_TO = 10,
 	MAX_LEVEL = 100,
+	-- Past Lv `from` the levels cost more (owner 2026-11-20: "Also after level 20. make the leveling up more
+	-- difficult"): each level's step is the curve's times a factor that climbs in a straight line from 1 at `from` to
+	-- `times` at `full`, and stays there. Lv 21 costs 1.2x what it did, Lv 30 and on 3x; Lv 100 needs about 794,600
+	-- XP (271,500 before). Up to Lv 20 nothing changes, and every unlock stays at its level. Saved XP was moved onto
+	-- this curve at the same level and share (Migrations v40): change these numbers again only with a new migration.
+	LATE = { from = 20, full = 30, times = 3 },
 	-- Level-up rewards (EconomyService pays the cash; LevelUpService gives the gifts; the middle card shows them,
 	-- Util/LevelUpCard). Owner 2026-11-16: "small cash every level. only give gift every 5 levels (wild ores and etc)
 	-- make sure its not economy breaking": all 100 levels give 30 Wild Ore, 10 XP Tonics, 10 packs and 4 Gold Seals

@@ -3,6 +3,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local PricingConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Pricing"))
+local CustomerTypes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("CustomerTypes"))
 
 export type Band = typeof(PricingConfig.BUY_BANDS[1])
 
@@ -29,6 +30,17 @@ function PriceRules.getBand(price: number, marketPrice: number): Band?
 		end
 	end
 	return nil
+end
+
+-- The chance a plain customer buys at this price: it slides inside a band (Config/Pricing BUY_BANDS,
+-- CustomerTypes.chance), so use this, never a band's own `chance`
+function PriceRules.getChance(price: number, marketPrice: number): number
+	return CustomerTypes.plainChance(price, marketPrice, PricingConfig.BUY_BANDS)
+end
+
+-- The Prices window's short words for this price ("Always buy", "33% buy", "Won't buy")
+function PriceRules.getTag(price: number, marketPrice: number): string
+	return CustomerTypes.priceTag(price, marketPrice, PricingConfig.BUY_BANDS, PricingConfig.NEVER_TAG)
 end
 
 return PriceRules

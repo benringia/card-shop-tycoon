@@ -15,6 +15,11 @@ return {
 	-- instantly be bought by a customer before you can set a higher price"): nobody buys it until the owner presses
 	-- Done or closes the case's window, or this many seconds pass with no price tap (Util/ListingHold)
 	LISTING_HOLD = 120,
+	-- Walking away is Done too (owner 2026-11-20: "some players just add cards and doesnt press done. it should be
+	-- considered done when the player walks away"): farther than WALK_AWAY studs from the case, its waiting cards go on
+	-- sale and its window closes; looked at every WALK_CHECK seconds (past the case's reach, Stock.INTERACT_DISTANCE 14)
+	WALK_AWAY = 16,
+	WALK_CHECK = 0.5,
 	RELEASE_COOLDOWN = 0.1, -- Done / window closed, per player
 	BUY_COOLDOWN = 0.5, -- player-to-player purchases per buyer
 	BUY_DISTANCE = 14, -- studs; buyer must be this close to the card

@@ -45,12 +45,22 @@ local function markHeld(shelf: PlacedShelf, slot: number, held: boolean)
 	end
 end
 
--- Clears the mark once the hold has run out on its own (no Done, no window closed: the owner left, say)
-local function watchHold(shelf: PlacedShelf, slot: number)
-	task.delay(ShowcaseConfig.LISTING_HOLD + 0.1, function()
-		if not ListingHold.isHeld(holds, shelf.uid, slot, os.clock()) then
-			markHeld(shelf, slot, false)
+-- Watches a waiting card until it's on sale: the owner walking away from the case is Done (owner 2026-11-20: "some
+-- players just add cards and doesnt press done"; ListingHold.away), and the mark clears when the hold ends any way
+-- (Done, the window closed, walked away, run out)
+local function watchHold(player: Player, shelf: PlacedShelf, slot: number)
+	task.spawn(function()
+		while ListingHold.isHeld(holds, shelf.uid, slot, os.clock()) do
+			task.wait(ShowcaseConfig.WALK_CHECK)
+			local character = player.Character
+			local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
+			local here = root ~= nil and root:IsA("BasePart") and shelf.part.Parent ~= nil
+			local distance = if here then ((root :: BasePart).Position - shelf.part.Position).Magnitude else nil
+			if ListingHold.away(distance, ShowcaseConfig.WALK_AWAY) then
+				ListingHold.release(holds, shelf.uid, slot)
+			end
 		end
+		markHeld(shelf, slot, false)
 	end)
 end
 
@@ -176,7 +186,7 @@ local function onDisplayCard(
 	})
 	ListingHold.hold(holds, shelf.uid, slotNumber, os.clock(), ShowcaseConfig.LISTING_HOLD)
 	markHeld(shelf, slotNumber, true)
-	watchHold(shelf, slotNumber)
+	watchHold(player, shelf, slotNumber)
 end
 
 local function onRemoveCard(player: Player, shelfUid: unknown, slot: unknown)
@@ -236,9 +246,8 @@ local function onSetPrices(player: Player, shelfUid: unknown, changes: unknown)
 				price = CardRules.clampPrice(price, card, displayed.foil, level, stars, copyGrade),
 				beast = displayed.beast,
 			})
-			if ListingHold.refresh(holds, shelf.uid, slot :: number, os.clock(), ShowcaseConfig.LISTING_HOLD) then
-				watchHold(shelf, slot :: number)
-			end
+			-- a price tap on a waiting card starts its time again (its watcher follows the hold)
+			ListingHold.refresh(holds, shelf.uid, slot :: number, os.clock(), ShowcaseConfig.LISTING_HOLD)
 		end
 	end
 end

@@ -80,7 +80,7 @@ local function buildOddsText(pack: Pack): string
 		table.insert(lines, `Card {index}: {table.concat(parts, " / ")}`)
 	end
 	table.insert(lines, string.format("Any card can be Foil (%gx value): %g%%", Rarities.FOIL_MULTIPLIER, Rarities.FOIL_CHANCE * 100))
-	table.insert(lines, `Pity: your first Legendary within {Packs.PITY.FIRST_LEGENDARY_PACKS} packs, then one at least every {Packs.PITY.LEGENDARY_PACKS}; an Epic or better every {Packs.PITY.EPIC_PACKS}`)
+	table.insert(lines, `Pity: an Epic or better at least every {Packs.PITY.EPIC_PACKS} packs. A Legendary is pure luck!`)
 	return table.concat(lines, "\n")
 end
 
@@ -88,14 +88,15 @@ end
 local function refreshPity()
 	local legendary = player:GetAttribute("PityLegendary")
 	local epic = player:GetAttribute("PityEpic")
-	if typeof(legendary) ~= "number" or typeof(epic) ~= "number" then
+	if typeof(epic) ~= "number" then
 		OpeningResults.pity("")
 		return
 	end
 	local function packs(count: number): string
 		return if count == 1 then "next pack" else `{count} packs`
 	end
-	OpeningResults.pity(`👑 Legendary in {packs(legendary)} · Epic in {packs(epic)}`)
+	-- no Legendary guarantee since 2026-11-20 (PityLegendary is only set when a pity has one)
+	OpeningResults.pity(if typeof(legendary) == "number" then `👑 Legendary in {packs(legendary)} · Epic in {packs(epic)}` else `Epic or better in {packs(epic)}`)
 end
 
 local function getPacksLeft(): number

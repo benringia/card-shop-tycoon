@@ -65,29 +65,109 @@ return {
 		expect.equal(WeaponText.pickup("Wild Ore", 1, 3, nil), "Wild Ore +1")
 	end,
 
-	["the Forge's one button says what it does, or what's missing"] = function()
+	-- owner 2026-11-20: "in grading station window. redesign it like the condenser to be easily understood ... do the
+	-- same with forge": the Forge's pane is a picture recipe (what goes in as spots, an arrow, the weapon), one
+	-- sentence over it and one button with a small line under its words
+	["the Forge's recipe: a spot for each material with what you have of what it takes, then the cash"] = function()
+		local spots = WeaponText.spots({ cash = 2000, items = { material_meadowWarden = 15, starShard = 1 } }, { material_meadowWarden = 9, starShard = 3 }, 2500, Items)
+		expect.equal(#spots, 3)
+		expect.equal(spots[1].icon, "WardenHeartwood")
+		expect.equal(spots[1].count, "9 / 15")
+		expect.equal(spots[1].enough, false)
+		expect.equal(spots[2].icon, "Shard")
+		expect.equal(spots[2].count, "1 / 1", "never more than it takes")
+		expect.equal(spots[2].enough, true)
+		expect.equal(spots[3].icon, "Cash")
+		expect.equal(spots[3].count, "$2,000")
+		expect.equal(spots[3].enough, true)
+		local poor = WeaponText.spots({ cash = 25000, items = {} }, {}, 900, Items)
+		expect.equal(#poor, 1)
+		expect.equal(poor[1].enough, false)
+		local free = WeaponText.spots({ cash = 0, items = { mystery = 2 } }, {}, 0, Items)
+		expect.equal(#free, 1, "no cash spot for a cost without cash")
+		expect.equal(free[1].icon, "", "an unknown item has no picture")
+		expect.equal(free[1].count, "0 / 2")
+	end,
+
+	["the recipe's spots sit in one row up to three, then in two rows"] = function()
+		expect.equal(WeaponText.spotColumns(1), 1)
+		expect.equal(WeaponText.spotColumns(2), 2)
+		expect.equal(WeaponText.spotColumns(3), 3)
+		expect.equal(WeaponText.spotColumns(4), 2)
+		expect.equal(WeaponText.spotColumns(5), 3)
+		expect.equal(WeaponText.spotColumns(6), 3)
+	end,
+
+	["the Forge's one sentence says what goes in and what comes out, or what to get first"] = function()
 		local cost = { cash = 2000, items = { material_meadowWarden = 15 } }
-		local text, ready = WeaponText.button("forge", cost, { material_meadowWarden = 9 }, 5000, Items, {})
+		local opts = { name = "Verdant Blade" }
+		expect.equal(WeaponText.say("forge", cost, { material_meadowWarden = 15 }, 5000, Items, opts), "Use 15 Warden Heartwood and $2,000 to make the Verdant Blade!")
+		expect.equal(WeaponText.say("forge", cost, { material_meadowWarden = 9 }, 5000, Items, opts), "Get 6 more Warden Heartwood to make the Verdant Blade.")
+		expect.equal(WeaponText.say("forge", cost, { material_meadowWarden = 15 }, 1500, Items, opts), "Save up $500 more to make the Verdant Blade.")
+		expect.equal(WeaponText.say("forge", cost, { material_meadowWarden = 15 }, 5000, Items, { name = "Verdant Blade", unlockLevel = 6, shopLevel = 5 }), "The Forge makes this at shop level 6.")
+		-- two kinds of material are both named; more than two are counted (the spots show them)
+		local two = { cash = 2000, items = { material_meadowWarden = 15, starShard = 2 } }
+		expect.equal(WeaponText.say("forge", two, { material_meadowWarden = 15, starShard = 2 }, 5000, Items, opts), "Use 15 Warden Heartwood, 2 Star Shards and $2,000 to make the Verdant Blade!")
+		local many = { cash = 25000, items = { material_meadowWarden = 30, material_caveBroodQueen = 30, material_emberColossus = 30, starShard = 5 } }
+		local all = { material_meadowWarden = 30, material_caveBroodQueen = 30, material_emberColossus = 30, starShard = 5 }
+		expect.equal(WeaponText.say("forge", many, all, 30000, Items, { name = "Sunforged Blade" }), "Use these 4 materials and $25,000 to make the Sunforged Blade!")
+		-- upgrading and reforging
+		expect.equal(WeaponText.say("upgrade", { cash = 600, items = { wildOre = 5 } }, { wildOre = 9 }, 9000, Items, { name = "Verdant Blade", level = 4 }), "Use 5 Wild Ore and $600 to make it +4: more Power!")
+		expect.equal(WeaponText.say("upgrade", { cash = 1200, items = {} }, {}, 9000, Items, { name = "Verdant Blade", level = 4 }), "Use $1,200 to make it +4: more Power!")
+		expect.equal(WeaponText.say("upgrade", { cash = 600, items = { wildOre = 5 } }, { wildOre = 1 }, 9000, Items, { name = "Verdant Blade", level = 4 }), "Get 4 more Wild Ore to make it +4.")
+		expect.equal(WeaponText.say("upgrade", nil, {}, 9000, Items, { name = "Verdant Blade" }), "It is +10: fully upgraded!")
+		expect.equal(WeaponText.say("reforge", { cash = 750, items = { wildOre = 10 } }, { wildOre = 10 }, 9000, Items, { name = "Fire Forge Sword" }), "Use 10 Wild Ore and $750 to roll a new grade. You keep the better one!")
+		expect.equal(WeaponText.say("reforge", { cash = 750, items = {} }, {}, 100, Items, { name = "Fire Forge Sword" }), "Save up $650 more to roll a new grade.")
+		expect.equal(WeaponText.say("reforge", { cash = 750, items = {} }, {}, 9000, Items, { name = "Fire Forge Sword", done = true }), "Grade S is the best grade: nothing to reforge!")
+	end,
+
+	["the Forge's one button: what it does and how long it takes, or what's missing and what you have"] = function()
+		local cost = { cash = 2000, items = { material_meadowWarden = 15 } }
+		local text, sub, ready = WeaponText.recipeButton("forge", cost, { material_meadowWarden = 9 }, 5000, Items, {})
 		expect.equal(text, "Need 6 more Warden Heartwood")
+		expect.equal(sub, "you have 9")
 		expect.equal(ready, false)
-		text, ready = WeaponText.button("forge", cost, { material_meadowWarden = 15 }, 1500, Items, {})
+		text, sub, ready = WeaponText.recipeButton("forge", cost, { material_meadowWarden = 15 }, 1500, Items, { wait = "2 minutes" })
 		expect.equal(text, "Need $500 more")
+		expect.equal(sub, "you have $1,500", "what's missing says no time")
 		expect.equal(ready, false)
-		text, ready = WeaponText.button("forge", cost, { material_meadowWarden = 20 }, 2000, Items, {})
-		expect.equal(text, "Forge · $2,000")
+		text, sub, ready = WeaponText.recipeButton("forge", cost, { material_meadowWarden = 20 }, 2000, Items, { wait = "2 minutes" })
+		expect.equal(text, "Forge it!")
+		expect.equal(sub, "takes 2 minutes")
 		expect.equal(ready, true)
-		expect.equal((WeaponText.button("upgrade", { cash = 1200, items = {} }, {}, 9000, Items, { level = 4 })), "Upgrade to +4 · $1,200")
-		expect.equal((WeaponText.button("reforge", { cash = 1000, items = {} }, {}, 9000, Items, {})), "Reforge · $1,000")
-		expect.equal((WeaponText.button("upgrade", nil, {}, 9000, Items, {})), "Maxed at +10")
-		-- owner 2026-11-20 ("check the other machines ... for pain points"): the button says how long it takes too,
-		-- like the Condenser's (the Forge's waits run to an hour and were only seen after pressing)
-		expect.equal((WeaponText.button("forge", { cash = 1500, items = {} }, {}, 9000, Items, { wait = "1:00:00" })), "Forge · $1,500 · takes 1:00:00")
-		expect.equal((WeaponText.button("upgrade", { cash = 1200, items = {} }, {}, 9000, Items, { level = 4, wait = "2:00" })), "Upgrade to +4 · $1,200 · takes 2:00")
-		expect.equal((WeaponText.button("reforge", { cash = 1000, items = {} }, {}, 9000, Items, { wait = "20:00" })), "Reforge · $1,000 · takes 20:00")
-		expect.equal((WeaponText.button("forge", { cash = 1500, items = {} }, {}, 100, Items, { wait = "1:00:00" })), "Need $1,400 more", "what's missing says no time")
-		text, ready = WeaponText.button("forge", { cash = 1500, items = {} }, {}, 9000, Items, { unlockLevel = 6, shopLevel = 5 })
+		text, sub = WeaponText.recipeButton("forge", cost, { material_meadowWarden = 20 }, 2000, Items, {})
+		expect.equal(sub, nil, "no wait known: its words alone")
+		expect.equal((WeaponText.recipeButton("upgrade", { cash = 1200, items = {} }, {}, 9000, Items, { level = 4 })), "Make it +4!")
+		expect.equal((WeaponText.recipeButton("reforge", { cash = 1000, items = {} }, {}, 9000, Items, {})), "Roll a new grade!")
+		text, sub, ready = WeaponText.recipeButton("upgrade", nil, {}, 9000, Items, {})
+		expect.equal(text, "Fully upgraded")
+		expect.equal(ready, false)
+		text, sub, ready = WeaponText.recipeButton("reforge", { cash = 1000, items = {} }, {}, 9000, Items, { done = true })
+		expect.equal(text, "Already Grade S")
+		expect.equal(ready, false)
+		text, sub, ready = WeaponText.recipeButton("forge", { cash = 1500, items = {} }, {}, 9000, Items, { unlockLevel = 6, shopLevel = 5 })
 		expect.equal(text, "Opens at shop level 6")
 		expect.equal(ready, false)
+	end,
+
+	["under the Forge's weapon: what comes out, in a pill and a line"] = function()
+		local pill, line = WeaponText.outcome("forge", {})
+		expect.equal(pill, "Grade C to S")
+		expect.equal(line, "It comes out at a random grade, like a card. S is the best!")
+		pill, line = WeaponText.outcome("upgrade", { level = 4, step = "Its aura appears!" })
+		expect.equal(pill, "+4")
+		expect.equal(line, "Its aura appears!")
+		pill, line = WeaponText.outcome("upgrade", { level = 10, max = true })
+		expect.equal(pill, "+10")
+		expect.equal(line, "Awakened!")
+		pill, line = WeaponText.outcome("reforge", { grade = "B" })
+		expect.equal(pill, "Grade B")
+		expect.equal(line, "A new roll, C to S. It never gets worse!")
+		pill, line = WeaponText.outcome("reforge", { grade = "S", done = true })
+		expect.equal(pill, "Grade S")
+		expect.equal(line, nil)
+		expect.equal(WeaponText.powerGain(1.4, 1.44), "+0.04 Power")
+		expect.equal(WeaponText.powerGain(1.25, 1.25), "+0.00 Power")
 	end,
 
 	["what each upgrade adds to the glow (the forge reveal's line), by rarity"] = function()
@@ -103,45 +183,10 @@ return {
 		expect.equal(WeaponText.ladderStep(Looks, 10, "Legendary"), "AWAKENED! Flames stream off it")
 	end,
 
-	["cost lines: cash first, then each item with have/need and whether it's enough"] = function()
-		local cost = { cash = 2000, items = { material_meadowWarden = 15, starShard = 1 } }
-		local lines = WeaponText.cost(cost, { material_meadowWarden = 9, starShard = 3 }, 2500, Items)
-		expect.equal(#lines, 3)
-		expect.equal(lines[1].text, "$2,000")
-		expect.equal(lines[1].enough, true)
-		expect.equal(lines[2].text, "Warden Heartwood 9/15")
-		expect.equal(lines[2].enough, false)
-		expect.equal(lines[3].text, "Star Shard 3/1")
-		expect.equal(lines[3].enough, true)
-		local poor = WeaponText.cost({ cash = 25000, items = {} }, {}, 900, Items)
-		expect.equal(poor[1].text, "$25,000")
-		expect.equal(poor[1].enough, false)
-		local unknown = WeaponText.cost({ cash = 0, items = { mystery = 2 } }, {}, 0, Items)
-		expect.equal(#unknown, 1, "no cash line for a free cost")
-		expect.equal(unknown[1].text, "mystery 0/2")
-	end,
-
 	["the Forge window's tab lines say what each tab does (owner's pick A, 2026-11-08)"] = function()
 		expect.equal(WeaponText.tabLine("Forge"), "Make a weapon you don't have yet. You pay its materials and cash; it comes out at a random grade, C to S (like a card).")
 		expect.equal(WeaponText.tabLine("Upgrade"), "Level a weapon you own up, +0 to +10: more Power and a brighter glow each level. Never fails. +5 and +10 also need Star Shards.")
 		expect.equal(WeaponText.tabLine("Reforge"), "Roll a new grade for half the making cost. You keep the better grade, so it never gets worse. Grade S can't be reforged.")
-	end,
-
-	["cost chips: cash first, then each item with its icon, need and what you have"] = function()
-		local chips = WeaponText.costChips({ cash = 250, items = { wildOre = 2 } }, { wildOre = 11 }, 100, Items)
-		expect.equal(#chips, 2)
-		expect.equal(chips[1].icon, "Cash")
-		expect.equal(chips[1].text, "$250")
-		expect.equal(chips[1].enough, false, "$100 of $250")
-		expect.equal(chips[2].icon, "WildOre")
-		expect.equal(chips[2].text, "2 Wild Ore (you have 11)")
-		expect.equal(chips[2].enough, true)
-		local free = WeaponText.costChips({ cash = 0, items = { starShard = 1, mystery = 2 } }, {}, 0, Items)
-		expect.equal(#free, 2, "no cash chip for a cost without cash")
-		expect.equal(free[1].text, "2 mystery (you have 0)", "sorted by id; an unknown item shows its id")
-		expect.equal(free[1].icon, "")
-		expect.equal(free[2].text, "1 Star Shard (you have 0)")
-		expect.equal(free[2].enough, false)
 	end,
 
 	-- Weapons round 3 (spec 4): the scythes' perks in words

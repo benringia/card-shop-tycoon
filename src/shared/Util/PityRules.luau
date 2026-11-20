@@ -6,7 +6,8 @@ local PityRules = {}
 
 -- packs opened since the last Legendary / Epic or better; firstDone: they've had their first Legendary
 export type State = { legendary: number, epic: number, firstDone: boolean }
-type Pity = { FIRST_LEGENDARY_PACKS: number, LEGENDARY_PACKS: number, EPIC_PACKS: number }
+-- FIRST_LEGENDARY_PACKS / LEGENDARY_PACKS nil: no Legendary guarantee (the game's since 2026-11-20)
+type Pity = { FIRST_LEGENDARY_PACKS: number?, LEGENDARY_PACKS: number?, EPIC_PACKS: number }
 
 local function readCount(value: unknown): number
 	return if typeof(value) == "number" and value == value and value >= 0 and value ~= math.huge then math.floor(value) else 0
@@ -18,9 +19,12 @@ function PityRules.read(saved: unknown): State
 	return { legendary = readCount(data.legendary), epic = readCount(data.epic), firstDone = data.firstDone == true }
 end
 
--- How many packs the current Legendary guarantee spans: the first one's is shorter
-function PityRules.legendaryCap(pity: Pity, state: State): number
-	return if state.firstDone then pity.LEGENDARY_PACKS else pity.FIRST_LEGENDARY_PACKS
+-- How many packs the current Legendary guarantee spans (the first one's is shorter); nil: there is none
+function PityRules.legendaryCap(pity: Pity, state: State): number?
+	if state.firstDone then
+		return pity.LEGENDARY_PACKS
+	end
+	return pity.FIRST_LEGENDARY_PACKS or pity.LEGENDARY_PACKS
 end
 
 -- One pack opened whose best natural pull is `best`: the rarity pity raises its hit slot to (nil = leave it), and
@@ -30,7 +34,8 @@ function PityRules.open(pity: Pity, rank: { [string]: number }, state: State, be
 	local sinceLegendary, sinceEpic = state.legendary + 1, state.epic + 1
 	local bestRank = rank[best] or 0
 	local forced: string? = nil
-	if bestRank < legendaryRank and sinceLegendary >= PityRules.legendaryCap(pity, state) then
+	local cap = PityRules.legendaryCap(pity, state)
+	if cap and bestRank < legendaryRank and sinceLegendary >= cap then
 		forced = "Legendary"
 	elseif bestRank < epicRank and sinceEpic >= pity.EPIC_PACKS then
 		forced = "Epic"
@@ -44,9 +49,10 @@ function PityRules.open(pity: Pity, rank: { [string]: number }, state: State, be
 	return forced, { legendary = sinceLegendary, epic = sinceEpic, firstDone = state.firstDone }
 end
 
--- Packs left until each guarantee: 1 means the very next pack
-function PityRules.remaining(pity: Pity, state: State): (number, number)
-	return math.max(1, PityRules.legendaryCap(pity, state) - state.legendary), math.max(1, pity.EPIC_PACKS - state.epic)
+-- Packs left until each guarantee, the Legendary's (nil: there is none) and the Epic's: 1 means the very next pack
+function PityRules.remaining(pity: Pity, state: State): (number?, number)
+	local cap = PityRules.legendaryCap(pity, state)
+	return if cap then math.max(1, cap - state.legendary) else nil, math.max(1, pity.EPIC_PACKS - state.epic)
 end
 
 return PityRules

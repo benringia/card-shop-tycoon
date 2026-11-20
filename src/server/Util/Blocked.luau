@@ -8,11 +8,23 @@ local Remotes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("R
 
 local Blocked = {}
 
+-- A refusal that must not be replaced by the caller's own right after it (`extra.first`: the spend guard's "keep
+-- $48 for packs" comes before a caller's "You need $250"): later tells to that player within HOLD seconds are dropped
+local HOLD = 0.1
+local heldAt: { [Player]: number } = setmetatable({}, { __mode = "k" }) :: any
+
 -- `reason`: what's needed, in words ("The Prism Hydra opens at shop level 57.")
 -- `extra`: another title and icon for the card (a knockout's), a shove for the player's client to apply; `tone`
 -- "info": not a refusal but an answer (the healing spring's "How it works"): a friendly card, no shake, a soft chime,
 -- up `seconds`
-function Blocked.tell(player: Player, reason: string, extra: { title: string?, icon: string?, shove: Vector3?, tone: string?, seconds: number? }?)
+function Blocked.tell(player: Player, reason: string, extra: { title: string?, icon: string?, shove: Vector3?, tone: string?, seconds: number?, first: boolean? }?)
+	local held = heldAt[player]
+	if held and os.clock() - held < HOLD then
+		return
+	end
+	if extra and extra.first then
+		heldAt[player] = os.clock()
+	end
 	if player.Parent then
 		Remotes.Blocked:FireClient(player, {
 			reason = reason,

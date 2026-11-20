@@ -146,11 +146,11 @@ local function give(player: Player, action: Action, weapon: Weapons.Weapon): { [
 	if action == "upgrade" then
 		local owned = WeaponService.GetOwned(player, weapon.id) :: WeaponService.Owned
 		local level = owned.level + 1
-		local seconds = EarlyRules.stationWait(UpgradeRules.seconds(Upgrades, "level", level), tonumber(player:GetAttribute("Level")) or 1, Early)
+		local seconds = EarlyRules.stationWait(UpgradeRules.seconds(Upgrades, "level", level, weapon.rarity), tonumber(player:GetAttribute("Level")) or 1, Early)
 		job = { kind = "level", startedAt = now, finishAt = now + seconds, weaponId = weapon.id, grade = owned.grade, level = level }
 	else
 		local kind = if action == "forge" then "craft" else "reforge"
-		local seconds = EarlyRules.stationWait(UpgradeRules.seconds(Upgrades, kind), tonumber(player:GetAttribute("Level")) or 1, Early)
+		local seconds = EarlyRules.stationWait(UpgradeRules.seconds(Upgrades, kind, nil, weapon.rarity), tonumber(player:GetAttribute("Level")) or 1, Early)
 		job = { kind = kind, startedAt = now, finishAt = now + seconds, weaponId = weapon.id, grade = BeastRules.rollGrade(rng:NextNumber(), weapon.rarity) }
 	end
 	if not UpgradeJobService.Begin(player, "forge", job) then

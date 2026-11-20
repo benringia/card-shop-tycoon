@@ -58,9 +58,8 @@ local function sellAway(player: Player, lastSeen: number)
 		local product = if shelf.def.kind == "Products" and shelf.productId then Products.ById[shelf.productId] else nil
 		if product and shelf.units > 0 then
 			local price = PricingService.GetPrice(player, product.id)
-			local band = PriceRules.getBand(price, product.marketPrice)
 			table.insert(stocked, shelf)
-			table.insert(shelves, { units = shelf.units, price = price, chance = if band then band.chance else 0 })
+			table.insert(shelves, { units = shelf.units, price = price, chance = PriceRules.getChance(price, product.marketPrice) })
 		end
 	end
 	local plan = OfflineRules.plan(shelves, minutes, Offline)

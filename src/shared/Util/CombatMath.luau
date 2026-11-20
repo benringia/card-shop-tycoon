@@ -62,6 +62,13 @@ function CombatMath.getDamage(combat: Combat, atk: number, multiplier: number, r
 	return math.max(1, math.round(atk * multiplier * spread))
 end
 
+-- Seconds an element's Pet button move waits before it can be cast again: its own `cooldown` (Healing Rain's), else
+-- ABILITY_COOLDOWN (before a creature's Express perk)
+function CombatMath.abilityCooldown(combat: any, element: string): number
+	local ability = combat.ABILITIES[element]
+	return if ability and typeof(ability.cooldown) == "number" then ability.cooldown else combat.ABILITY_COOLDOWN
+end
+
 function CombatMath.getRunChance(combat: Combat, leaderSpd: number, monsterSpd: number, elite: boolean): number
 	local chance = math.clamp(combat.RUN_BASE + combat.RUN_PER_SPD * (leaderSpd - monsterSpd), combat.RUN_MIN, combat.RUN_MAX)
 	if elite then

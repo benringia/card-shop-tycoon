@@ -711,4 +711,26 @@ return {
 		assert(tyrant.ringRadius >= 20, "his fighters stand clear of his bigger body")
 		assert(tyrant.introShot.back >= 46, "the intro camera fits him")
 	end,
+
+	-- owner 2026-11-21: "increase boss gold drops tell me its current gold drops. and let me choose how much
+	-- increase": his pick of four, x2. The shop XP a boss win gives stays what it was (it followed the cash at half:
+	-- the Meadow Warden 18, the Prism Hydra 200), so only the cash doubled
+	["boss cash doubled; the shop XP from a boss win stayed"] = function()
+		expect.equal(Bosses.BOSSES.meadowWarden.cash, 72, "Meadow Warden: $36 before")
+		expect.equal(Bosses.BOSSES.caveBroodQueen.cash, 132, "Cave Brood Queen: $66 before")
+		expect.equal(Bosses.BOSSES.emberColossus.cash, 192, "Ember Colossus: $96 before")
+		expect.equal(Bosses.BOSSES.frostTyrant.cash, 300, "Frost Tyrant: $150 before")
+		expect.equal(Bosses.BOSSES.stormSovereign.cash, 420, "Storm Sovereign: $210 before")
+		expect.equal(Bosses.BOSSES.riftDevourer.cash, 560, "Rift Devourer: $280 before")
+		expect.equal(Bosses.BOSSES.prismHydra.cash, 800, "Prism Hydra: $400 before")
+		local LevelMath = require("../src/shared/Util/LevelMath")
+		local Levels = require("../src/shared/Config/Levels")
+		expect.equal(LevelMath.fightXp(BossRules.shopXpCash(Bosses, Bosses.BOSSES.meadowWarden.cash), Levels), 18)
+		expect.equal(LevelMath.fightXp(BossRules.shopXpCash(Bosses, Bosses.BOSSES.prismHydra.cash), Levels), 200)
+		-- a win between loot pays a quarter of both, as before
+		local between = BossRules.pay(Bosses, Bosses.BOSSES.meadowWarden.cash, false)
+		expect.equal(between, 18)
+		expect.equal(LevelMath.fightXp(BossRules.shopXpCash(Bosses, between), Levels), 5, "4.5 rounded, as before")
+		expect.equal(BossRules.shopXpCash({} :: any, 72), 72, "no share set: all of it")
+	end,
 }

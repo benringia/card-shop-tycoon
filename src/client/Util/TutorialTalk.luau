@@ -4,14 +4,21 @@
 -- Util/TalkRules.cardAtTop), a cotton candy card with Pish's face (his model in a little window), his name, one short line in big
 -- text, the picture of the thing to use, and a big Next while he has more to say. A new line types itself in; a tap on
 -- the card (or Next) shows the rest, then moves on. Lines come from Config/PishTalk through Util/TalkRules.
+-- Easy to notice and never waiting on a press (owner 2026-11-20: "tutorial is hard to notice ... people hardly press
+-- next"; Config/PishTalk CARD, AUTO_NEXT, NEXT_RING): bigger on a computer, a new line pops in with a gold flash and a
+-- soft chime, the button wears the tutorial's gold ring once the line is typed, and a plain Next presses itself
+-- after time to read it (a bar fills on it).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local PishTalk = require(Shared:WaitForChild("Config"):WaitForChild("PishTalk"))
 local TalkRules = require(Shared:WaitForChild("Util"):WaitForChild("TalkRules"))
+local HudGrow = require(Shared:WaitForChild("Util"):WaitForChild("HudGrow"))
+local HudGrowConfig = require(Shared:WaitForChild("Config"):WaitForChild("HudGrow"))
 
 local ClientUtil = script.Parent :: Instance
 local Icon = require(ClientUtil:WaitForChild("Icon"))
@@ -61,6 +68,67 @@ local buttonSince = 0 -- when the button last changed what it does
 local speakerName = "Pish" -- whose card it is (TutorialTalk.speaker): his face and name
 local nameLabel: TextLabel? = nil
 local forceTop = false -- in a fight the card sits at the top, clear of the combat buttons (TutorialTalk.atTop)
+local glowStroke: UIStroke? = nil -- the gold edge a new line flashes
+local glowAt = -math.huge -- os.clock() of the last new line
+local ringStroke: UIStroke? = nil -- the gold ring round the button once the line is typed
+local nextBar: Frame? = nil -- the bar filling on a Next that presses itself
+local readFor = 0 -- seconds the typed line has been up (while the card shows)
+local chime: Sound? = nil
+local COVER_CHECK = 0.2 -- seconds between looks for something over the card
+local coverCheck = 0
+local covered = false -- a button or window of a screen above the tutorial's lies over the card (isCovered)
+local lineLimit: UITextSizeConstraint? = nil -- the line's text size limits (in screen px: they don't follow the UIScale)
+
+-- The card's widest, in px: as designed on a phone, bigger on a computer (TalkRules.cardGrow)
+local function widest(screenSize: Vector2): number
+	local touch = UserInputService.TouchEnabled
+	return WIDTH * TalkRules.cardGrow(touch, HudGrow.scale(screenSize.Y, touch, HudGrowConfig), PishTalk.CARD)
+end
+
+-- A see-through frame `pad` px round `parent` with a gold line on it (the card's flash, the button's ring)
+local function goldEdge(parent: GuiObject, name: string, pad: number, thickness: number, color: { number }, radius: number): UIStroke
+	local frame = Instance.new("Frame")
+	frame.Name = name
+	frame.BackgroundTransparency = 1
+	frame.Position = UDim2.fromOffset(-pad, -pad)
+	frame.Size = UDim2.new(1, pad * 2, 1, pad * 2)
+	frame.ZIndex = parent.ZIndex
+	frame.Parent = parent
+	UIKit.corner(frame, radius + pad)
+	local stroke = Instance.new("UIStroke")
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Color = Color3.fromRGB(color[1], color[2], color[3])
+	stroke.Thickness = thickness
+	stroke.Transparency = 1
+	stroke.Parent = frame
+	return stroke
+end
+
+-- Whether something that takes clicks lies over the card's button (else its middle) in a screen drawn above the
+-- tutorial's: a level-up card's tap-to-close veil, a win screen (owner 2026-11-20: "sometimes the NEXT is not
+-- clickable": the press went to what was on top). The card then waits out of the way (TutorialCues.quiet).
+local function isCovered(shown: Frame): boolean
+	local own = TutorialCues.screen()
+	local playerGui = own.Parent
+	if not playerGui or not playerGui:IsA("BasePlayerGui") then
+		return false
+	end
+	local button = nextButton
+	local piece: GuiObject = if button and button.Visible then button else shown
+	local at = piece.AbsolutePosition + piece.AbsoluteSize / 2
+	for _, object in playerGui:GetGuiObjectsAtPosition(at.X, at.Y) do
+		local layer = object:FindFirstAncestorWhichIsA("ScreenGui")
+		if layer and layer ~= own and layer.DisplayOrder > own.DisplayOrder and (object:IsA("GuiButton") or object.Active) then
+			return true
+		end
+	end
+	return false
+end
+
+local function cornerOf(piece: GuiObject): number
+	local corner = piece:FindFirstChildOfClass("UICorner")
+	return if corner then corner.CornerRadius.Offset else 12
+end
 
 -- The speaker's head in a little window, Pish's or Chikin's (the paw while his model isn't in the game)
 local function face(parent: Frame)
@@ -136,6 +204,7 @@ local function build(): Frame
 	limit.MaxTextSize = LINE_SIZE
 	limit.MinTextSize = LINE_MIN
 	limit.Parent = text
+	lineLimit = limit
 	line = text
 
 	local thing = Instance.new("Frame")
@@ -165,6 +234,30 @@ local function build(): Frame
 		TutorialTalk.advance()
 	end)
 	nextButton = button
+	local ring = PishTalk.NEXT_RING
+	ringStroke = goldEdge(button, "Ring", ring.pad, ring.thickness, ring.color, cornerOf(button))
+	local barLook = PishTalk.NEXT_BAR
+	local bar = Instance.new("Frame")
+	bar.Name = "Timer"
+	bar.AnchorPoint = Vector2.new(0, 1)
+	bar.Position = UDim2.new(0, barLook.inset, 1, -barLook.inset + 2)
+	bar.Size = UDim2.fromOffset(0, barLook.height)
+	bar.BackgroundColor3 = button.TextColor3
+	bar.BackgroundTransparency = barLook.transparency
+	bar.BorderSizePixel = 0
+	bar.Visible = false
+	bar.Parent = button
+	UIKit.corner(bar, barLook.height / 2)
+	nextBar = bar
+	local glow = PishTalk.CARD.GLOW
+	glowStroke = goldEdge(made, "Glow", glow.pad, glow.thickness, glow.color, cornerOf(made))
+	local sound = Instance.new("Sound")
+	sound.Name = "NewLine"
+	sound.SoundId = PishTalk.CARD.SOUND.id
+	sound.Volume = PishTalk.CARD.SOUND.volume
+	sound.PlaybackSpeed = PishTalk.CARD.SOUND.pitch
+	sound.Parent = made
+	chime = sound
 
 	-- A tap anywhere on the card moves on too
 	local tap = Instance.new("TextButton")
@@ -181,11 +274,28 @@ local function build(): Frame
 	end)
 
 	-- At the top centre, as wide as fits; just above the HUD's bottom tiles instead when it would cover what Pish points at
-	RunService.RenderStepped:Connect(function()
+	RunService.RenderStepped:Connect(function(dt)
 		if not made.Visible then
+			if covered then
+				covered = false
+				TutorialCues.quiet("covered", false)
+			end
 			return
 		end
+		coverCheck += dt
+		if coverCheck >= COVER_CHECK then
+			coverCheck = 0
+			local now = isCovered(made)
+			if now ~= covered then
+				covered = now
+				TutorialCues.quiet("covered", now)
+			end
+		end
+		if covered then
+			return -- waiting under what has the screen: no typing, no timer
+		end
 		local screenSize = TutorialCues.screen().AbsoluteSize
+		local grown = widest(screenSize)
 		if not tiles or not tiles.Parent then
 			local main = made:FindFirstAncestorWhichIsA("PlayerGui")
 			local gui = main and main:FindFirstChild("MainGui")
@@ -203,7 +313,7 @@ local function build(): Frame
 		if placing and placing:IsA("GuiObject") and placing.Visible then
 			bottom = math.min(bottom, placing.AbsolutePosition.Y - BAR_GAP)
 		end
-		local height = HEIGHT * math.min(WIDTH, screenSize.X * SCREEN_SHARE) / WIDTH
+		local height = HEIGHT * math.min(grown, screenSize.X * SCREEN_SHARE) / WIDTH
 		for _, columnName in { "StatusRow", "HudSide", "PartyDock" } do
 			local column = gui and gui:FindFirstChild(columnName)
 			-- a computer's party dock sits in the bottom bar's middle (Config/DesktopHud): not a column at the left edge
@@ -219,7 +329,7 @@ local function build(): Frame
 				end
 			end
 		end
-		local width = math.min(WIDTH, screenSize.X * SCREEN_SHARE)
+		local width = math.min(grown, screenSize.X * SCREEN_SHARE)
 		local centre = screenSize.X / 2
 		if centre + width / 2 > rightEdge or centre - width / 2 < leftEdge then
 			width = math.min(width, rightEdge - leftEdge)
@@ -257,9 +367,51 @@ local function build(): Frame
 			made.AnchorPoint = Vector2.new(0.5, if where == "top" then 0 else 1)
 			made.Position = UDim2.fromOffset(centre, if where == "top" then top else bottom)
 		end
+		local typed = false
+		local total = 0
 		if line and shownText ~= "" then
 			local letters = math.floor((os.clock() - typedAt) * TYPE_SPEED)
-			line.MaxVisibleGraphemes = if letters >= utf8.len(shownText) :: number then -1 else letters
+			total = utf8.len(shownText) :: number
+			typed = letters >= total
+			line.MaxVisibleGraphemes = if typed then -1 else letters
+		end
+		if glowStroke then
+			glowStroke.Transparency = TalkRules.glow(os.clock() - glowAt, PishTalk.CARD.GLOW)
+		end
+		-- a bigger card (a computer's) has bigger words: a scaled text's size limits are in screen px
+		if lineLimit and scale then
+			local grownText = math.max(1, scale.Scale)
+			lineLimit.MaxTextSize = math.round(LINE_SIZE * grownText)
+			lineLimit.MinTextSize = math.round(LINE_MIN * grownText)
+		end
+		-- Once the line is typed: the gold ring round the button, and a plain Next fills up and presses itself
+		local button = nextButton
+		local waiting = typed and button ~= nil and button.Visible
+		if ringStroke then
+			local ring = PishTalk.NEXT_RING
+			local beat = (math.sin(os.clock() * 2 * math.pi / ring.beat) + 1) / 2
+			ringStroke.Transparency = if waiting then ring.pulse[1] + beat * (ring.pulse[2] - ring.pulse[1]) else 1
+		end
+		local auto = waiting and button ~= nil and onNext ~= nil and TalkRules.pressesItself(button.Text, PishTalk.NEXT, not tapAdvances)
+		if nextBar then
+			nextBar.Visible = auto
+		end
+		if not auto or not button then
+			readFor = 0
+			return
+		end
+		readFor += dt
+		local need = TalkRules.readSeconds(total, PishTalk.AUTO_NEXT)
+		if nextBar then
+			local share = math.min(1, readFor / need)
+			nextBar.Size = UDim2.new(share, -PishTalk.NEXT_BAR.inset * 2 * share, 0, PishTalk.NEXT_BAR.height)
+		end
+		if readFor >= need then
+			readFor = 0
+			local callback = onNext
+			if callback then
+				callback()
+			end
 		end
 	end)
 	card = made
@@ -268,7 +420,7 @@ end
 
 local function fit(): number
 	local screenSize = TutorialCues.screen().AbsoluteSize
-	return math.min(WIDTH, screenSize.X * SCREEN_SHARE) / WIDTH
+	return math.min(widest(screenSize), screenSize.X * SCREEN_SHARE) / WIDTH
 end
 
 -- Show a line: `next` is the button's label (nil: no button, the line stays), `icon` the picture of the thing to use
@@ -303,10 +455,15 @@ function TutorialTalk.say(text: string, icon: string?, next: string?, advance: (
 	line.Text = text
 	typedAt = os.clock()
 	line.MaxVisibleGraphemes = 0
+	readFor = 0
+	glowAt = os.clock()
+	if chime then
+		chime:Play()
+	end
 	if scale then
 		local target = fit()
 		scale:SetAttribute("Popping", true)
-		scale.Scale = target * 0.92
+		scale.Scale = target * PishTalk.CARD.POP
 		local tween = TweenService:Create(scale, POP, { Scale = target })
 		tween.Completed:Once(function()
 			scale:SetAttribute("Popping", nil)

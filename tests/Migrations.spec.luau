@@ -340,6 +340,65 @@ return {
 
 	-- Posters are decor in `windows` now (owner 2026-11-19: "posters should be a decor"): the fixed front spots' list,
 	-- built and dropped the same day and never released, goes; the windows stay
+	-- v40 (owner 2026-11-20: "after level 20. make the leveling up more difficult"): levels past 20 cost more XP, so a
+	-- saved XP total is moved onto the new curve at the same level and the same share of the way to the next
+	["v40: a shop past level 20 keeps its level and its progress on the harder curve"] = function()
+		local LevelMath = require("../src/shared/Util/LevelMath")
+		local Levels = require("../src/shared/Config/Levels")
+		local Data = require("../src/shared/Config/Data")
+		expect.equal(Data.SCHEMA_VERSION >= 40, true, "the schema says so")
+		local old = { BASE_XP = Levels.BASE_XP, POWER = Levels.POWER, ROUND_TO = Levels.ROUND_TO, MAX_LEVEL = Levels.MAX_LEVEL }
+		local function oldAt(level: number, share: number): number
+			local floor = LevelMath.getRequiredXp(old, level)
+			return floor + math.floor((LevelMath.getRequiredXp(old, level + 1) - floor) * share)
+		end
+		for _, case in { { 21, 0 }, { 21, 0.5 }, { 30, 0.25 }, { 57, 0.4 }, { 57, 0.99 }, { 99, 0.5 } } do
+			local level, share = case[1], case[2]
+			local data: any = { version = 39, xp = oldAt(level, share) }
+			Migrations.run(data, 40)
+			expect.equal(LevelMath.getLevelForXp(Levels, data.xp), level, `Lv {level} at {share}: still Lv {level}`)
+			local into, span = LevelMath.getProgress(Levels, data.xp)
+			assert(math.abs(into / span - share) < 0.02, `Lv {level}: still {share} of the way ({into / span})`)
+			expect.equal(data.xp, math.floor(data.xp), "whole XP")
+			expect.equal(data.version, 40)
+		end
+	end,
+
+	["v40: a shop at level 20 or under, at the cap, or with junk XP"] = function()
+		local LevelMath = require("../src/shared/Util/LevelMath")
+		local Levels = require("../src/shared/Config/Levels")
+		local old = { BASE_XP = Levels.BASE_XP, POWER = Levels.POWER, ROUND_TO = Levels.ROUND_TO, MAX_LEVEL = Levels.MAX_LEVEL }
+		for _, xp in { 0, 10, 5999, LevelMath.getRequiredXp(old, 20), LevelMath.getRequiredXp(old, 21) - 1 } do
+			local data: any = { version = 39, xp = xp }
+			Migrations.run(data, 40)
+			expect.equal(data.xp, xp, `{xp} XP: untouched`)
+		end
+		local capped: any = { version = 39, xp = 300000 } -- past the old Lv 100 (271,500)
+		Migrations.run(capped, 40)
+		expect.equal(LevelMath.getLevelForXp(Levels, capped.xp), 100, "still the cap")
+		expect.equal(capped.xp >= LevelMath.getRequiredXp(Levels, 100) + 28000, true, "what it had past the cap is kept")
+		for _, junk in { "lots", -5, 0 / 0, math.huge } do
+			local data: any = { version = 39, xp = junk }
+			Migrations.run(data, 40)
+			expect.equal(data.version, 40, "junk is left for the loader")
+		end
+		local none: any = { version = 39 }
+		Migrations.run(none, 40)
+		expect.isNil(none.xp)
+	end,
+
+	["v40: its curve is today's (a later change to Config/Levels needs its own migration)"] = function()
+		local LevelMath = require("../src/shared/Util/LevelMath")
+		local Levels = require("../src/shared/Config/Levels")
+		-- the levels' floors move onto exactly today's floors
+		local old = { BASE_XP = 40 / 6, POWER = 2.31, ROUND_TO = 10, MAX_LEVEL = 100 }
+		for level = 21, 100 do
+			local data: any = { version = 39, xp = LevelMath.getRequiredXp(old, level) }
+			Migrations.run(data, 40)
+			expect.equal(data.xp, LevelMath.getRequiredXp(Levels, level), `Lv {level}'s floor`)
+		end
+	end,
+
 	["v39: the short-lived posters list goes; windows and the rest stay"] = function()
 		local data: any = { version = 38, cash = 7, posters = { "beware", "", "", "wanted" }, windows = { { style = "Square", side = "left", at = 0 } } }
 		Migrations.run(data, 39)

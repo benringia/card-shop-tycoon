@@ -938,7 +938,7 @@ local function payOut(fight: Fight, member: Member): any
 		-- no loot answer (no boss record on this server): the full cash, as before
 		local cash = BossRules.pay(Bosses, boss.cash, loot == nil or loot.fullPay == true)
 		EconomyService.AddCash(player, cash)
-		local shopXp = LevelMath.fightXp(cash, Levels)
+		local shopXp = LevelMath.fightXp(BossRules.shopXpCash(Bosses, cash), Levels)
 		EconomyService.AddXP(player, shopXp)
 		return { xpEach = xpEach, cash = cash, shopXp = shopXp, shards = 0, boss = loot, party = party }
 	end
@@ -1805,7 +1805,10 @@ local function onUseAbility(player: Player, fighterId: unknown, which: unknown)
 			end
 		end
 	end
-	local events = BattleSim.useAbility(fight.sim, fighterId, which :: string, member.owner, scale)
+	local events, refused = BattleSim.useAbility(fight.sim, fighterId, which :: string, member.owner, scale)
+	if refused == "stunned" then
+		Remotes.Notify:FireClient(player, "Your creature is frozen! It can't use moves yet.", true)
+	end
 	if events then
 		handleEvents(fight, events)
 		if fight.sim.result then

@@ -50,7 +50,11 @@ return {
 		-- Healing Rain (was Wave; owner 2026-11-05): `heal` of max HP over `ticks` ticks, one every `every` seconds, the
 		-- first `every` after it lands (BattleSim regen); a `playerGrade` caster's rain also heals its owner's player
 		-- `playerHeal` of their HP over the same ticks (the owner 2026-11-05: "S healing rain also heal player")
-		Tide = { kind = "Rain", name = "Healing Rain", heal = 0.25, ticks = 5, every = 1, playerHeal = 0.15, playerGrade = "S" },
+		-- Toned down 2026-11-20 (owner: "Nerf healing rain ... heals 25% over 5 seconds with 8 second cooldown. which he
+		-- only spam heals to defeat frost tyrant. tune down for all creatures"): 15% (25% before), a Grade S's player
+		-- 10% (15%), and its own `cooldown` of 12 s (the others' ABILITY_COOLDOWN, 8): 1.25% of max HP a second kept
+		-- up, 3.1% before
+		Tide = { kind = "Rain", name = "Healing Rain", heal = 0.15, ticks = 5, every = 1, playerHeal = 0.10, playerGrade = "S", cooldown = 12 },
 		Bloom = { kind = "Snare", name = "Vine Snare", slow = 0.4, seconds = 4 },
 		Volt = { kind = "Overcharge", name = "Overcharge", attacks = 3, speed = 2 },
 		Shade = { kind = "Curse", name = "Curse", weaken = 0.3, seconds = 5 },

@@ -34,6 +34,7 @@ local UpgradeJobService = require(Services:WaitForChild("UpgradeJobService"))
 local GradingService = {}
 
 local allowAction = RateLimiter.new(GradingConfig.ACTION_COOLDOWN)
+local allowSeen = RateLimiter.new(0.1) -- Take it out
 
 local function notify(player: Player, message: string, isError: boolean)
 	Remotes.Notify:FireClient(player, message, isError)
@@ -42,6 +43,10 @@ end
 local function describeReason(reason: string?): string
 	if reason == "max" then
 		return "Already Grade S."
+	elseif reason == "none" then
+		return "You have no spare copy of a better grade to swap in."
+	elseif reason == "plain" then
+		return "Only a levelled or starred card swaps its grade."
 	elseif reason == "working" then
 		return "That card is working. Unassign it first."
 	elseif reason == "fighting" then
@@ -80,7 +85,9 @@ local function refused(player: Player, station: string, mainBeastId: unknown, ca
 	return false
 end
 
-local function onGradeUp(player: Player, shelfUid: unknown, cardId: unknown, mainBeastId: unknown, mainFoil: unknown, mainGrade: unknown, useSeals: unknown, useGold: unknown)
+-- `swap` true: the grade swap (Config/Grading SWAP): a levelled card takes its best spare copy's grade for that copy
+-- and cash; no seals, no Gold Seal
+local function onGradeUp(player: Player, shelfUid: unknown, cardId: unknown, mainBeastId: unknown, mainFoil: unknown, mainGrade: unknown, useSeals: unknown, useGold: unknown, swap: unknown)
 	if not allowAction(player) then
 		return
 	end
@@ -113,16 +120,20 @@ local function onGradeUp(player: Player, shelfUid: unknown, cardId: unknown, mai
 	end
 	-- The cash and seals are recomputed and taken inside the same step as the cards: the client's preview is never
 	-- trusted
-	local seals = if useSeals == true then ItemService.GetCount(player, SEAL_ID) else 0
+	local swapping = swap == true
+	if swapping and typeof(mainBeastId) ~= "string" then
+		return -- only a levelled or starred card swaps
+	end
+	local seals = if useSeals == true and not swapping then ItemService.GetCount(player, SEAL_ID) else 0
 	-- A Gold Seal pays the cash instead, when there is one and the step allows it (never a Legendary's A to S)
 	local goldUsed = false
 	local grade, reason, sealsUsed = CardService.GradeUp(player, cardId, target, function(cash, toGrade)
-		if useGold == true and ItemService.GetCount(player, GOLD_ID) > 0 and CondenseRules.goldSealAllowed(card.rarity, toGrade) then
+		if useGold == true and not swapping and ItemService.GetCount(player, GOLD_ID) > 0 and CondenseRules.goldSealAllowed(card.rarity, toGrade) then
 			goldUsed = true
 			return true
 		end
 		return EconomyService.TrySpend(player, cash)
-	end, seals)
+	end, seals, swapping)
 	if not grade then
 		notify(player, describeReason(reason), true)
 		return
@@ -139,7 +150,7 @@ local function onGradeUp(player: Player, shelfUid: unknown, cardId: unknown, mai
 	-- The new grade waits in the station (spec 2026-11-12-timed-upgrades-revive-design): the copy goes in now, a
 	-- levelled one lifted out, a plain one taken off its new grade's stack
 	local now = os.time()
-	local seconds = EarlyRules.stationWait(UpgradeRules.seconds(Upgrades, "grade", grade), tonumber(player:GetAttribute("Level")) or 1, Early)
+	local seconds = EarlyRules.stationWait(UpgradeRules.seconds(Upgrades, "grade", grade, card.rarity), tonumber(player:GetAttribute("Level")) or 1, Early)
 	local job: UpgradeRules.Job = { kind = "grade", startedAt = now, finishAt = now + seconds }
 	if typeof(mainBeastId) == "string" then
 		job.beast = CardService.HoldBeast(player, mainBeastId)
@@ -174,7 +185,7 @@ function GradingService.Start()
 		end))
 	end)
 	Remotes.GradingSeen.OnServerEvent:Connect(function(player)
-		if allowAction(player) then
+		if allowSeen(player) then -- its own limit, never the actions' (CondenserService)
 			player:SetAttribute("GradingDone", nil)
 		end
 	end)

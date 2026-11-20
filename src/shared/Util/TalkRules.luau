@@ -44,6 +44,41 @@ function TalkRules.cardPlace(top: number, height: number, pawRoom: number, targe
 	return if TalkRules.cardAtTop(top, height, pawRoom, target, forceTop) then "top" else "bottom"
 end
 
+-- How long a typed line stays before its Next presses itself (Config/PishTalk AUTO_NEXT; owner 2026-11-20: "people
+-- hardly press next on tutorial"): longer for a longer line
+function TalkRules.readSeconds(letters: number, cfg: { base: number, perLetter: number, min: number, max: number }): number
+	return math.clamp(cfg.base + letters * cfg.perLetter, cfg.min, cfg.max)
+end
+
+-- Whether the card's button presses itself: only a plain Next (`label` is what the button says, nil: no button).
+-- Got it!, Bye! and Go! send someone off and wait for the player
+function TalkRules.pressesItself(label: string?, nextLabel: string, buttonOnly: boolean): boolean
+	return label == nextLabel and not buttonOnly
+end
+
+-- How much bigger the card draws (Config/PishTalk CARD): on a computer DESKTOP times the HUD's own growth
+-- (`hudGrow`, Config/HudGrow), on a touch screen as designed
+function TalkRules.cardGrow(touch: boolean, hudGrow: number, cfg: { DESKTOP: number }): number
+	return if touch then 1 else hudGrow * cfg.DESKTOP
+end
+
+-- The gold edge's transparency `elapsed` s after a new line (Config/PishTalk CARD.GLOW): full gold at once, `beats`
+-- flashes fading out over `seconds`, then gone (1)
+function TalkRules.glow(elapsed: number, cfg: { seconds: number, beats: number }): number
+	if elapsed >= cfg.seconds then
+		return 1
+	end
+	local share = math.max(0, elapsed) / cfg.seconds
+	local bright = math.abs(math.cos(math.pi * cfg.beats * share)) * (1 - share)
+	return math.clamp(1 - bright, 0, 1)
+end
+
+-- Whether a talk's request (its last Next, Got it!) may go to the server now: the first time, and again `seconds`
+-- after one that got no answer (Config/Chikin RESEND_SECONDS); never in a burst
+function TalkRules.maySend(sentAt: number, now: number, seconds: number): boolean
+	return now - sentAt >= seconds
+end
+
 -- A line with the game's name in it ("{game}")
 function TalkRules.fill(text: string, gameName: string): string
 	return (string.gsub(text, "{game}", function()

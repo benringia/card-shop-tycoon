@@ -27,7 +27,8 @@ local ById: { [string]: Pack } = {
 		look = "FirstSpark",
 		slots = PackOdds.SLOTS.FirstSparkPack,
 	},
-	-- The First Spark Deck Box: 5 cards opened at once, two of them Rare or better ($9 against a pack's $3)
+	-- The First Spark Deck Box: 5 cards opened at once, its hit card always Very Rare or better ($9 against a pack's
+	-- $3; Config/PackOdds)
 	DeckBox = {
 		productId = "DeckBox",
 		name = "First Spark",

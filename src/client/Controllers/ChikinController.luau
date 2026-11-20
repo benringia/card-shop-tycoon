@@ -66,7 +66,7 @@ local cueTarget: Instance? = nil
 local trailRemover: (() -> ())? = nil
 local trailFrom: Vector3? = nil
 local spotAnchor: Part? = nil
-local nextSent = false
+local sentAt = -math.huge -- os.clock() this step's Next or Got it! last went to the server (TalkRules.maySend)
 local leaveToken = 0 -- a goodbye's run-off, cancelled when the next visit starts straight away
 -- The fight's tips: which one is on, since when, and whether the last one has been seen through
 local tipIndex = 0
@@ -420,6 +420,15 @@ local function updateFight()
 	showCue("tip:" .. tip.key, { gui = button })
 end
 
+-- A talk's request to the server (his last Next, Got it!): once, and again after Chikin.RESEND_SECONDS with no answer
+-- (the step changes when the server takes it), so a dropped request never leaves the button dead
+local function send(action: string)
+	if TalkRules.maySend(sentAt, os.clock(), Chikin.RESEND_SECONDS) then
+		sentAt = os.clock()
+		Remotes.CombatTutorialAction:FireServer(action)
+	end
+end
+
 -- His line for the step: his intro one line at a time with Next, then the line for now; a hello or goodbye ends on
 -- its last Next (the first fight's end says the lost lines when it wasn't won)
 local function updateTalk(situationName: string)
@@ -441,10 +450,7 @@ local function updateTalk(situationName: string)
 		talk = { intro = lines, now = {} }
 	elseif step == Chikin.QUESTS_STEP and situationName == "questsOpen" and introIndex > #talk.intro then
 		-- you opened your Quests: his visit is over (the server moves on to the level 4 wait and he leaves)
-		if not nextSent then
-			nextSent = true
-			Remotes.CombatTutorialAction:FireServer("next")
-		end
+		send("next")
 		TutorialTalk.hide()
 		return
 	end
@@ -469,22 +475,17 @@ local function updateTalk(situationName: string)
 	if not line.next and ChikinRules.gotIt(Chikin, step) then
 		-- his level 4 visit's waiting line: Got it! sends him off (only the button, not a tap on the card)
 		TutorialTalk.say(line.text, Chikin.STEP_ICONS[step], ChikinTalk.GOT_IT, function()
-			if not nextSent then
-				nextSent = true
-				Remotes.CombatTutorialAction:FireServer("gotIt")
-			end
+			send("gotIt")
 		end, true)
 		return
 	end
 	TutorialTalk.say(line.text, Chikin.STEP_ICONS[step], label, function()
 		if line.finish then
-			if not nextSent then
-				nextSent = true
-				Remotes.CombatTutorialAction:FireServer("next")
-			end
+			send("next")
 			return
 		end
 		introIndex += 1
+		updateTalk(situationName) -- his next line at once (it used to wait for the next look, up to 0.3 s)
 	end)
 end
 
@@ -594,7 +595,7 @@ local function onStep()
 	local before = step
 	step = nextStep
 	introIndex = 1
-	nextSent = false
+	sentAt = -math.huge
 	tipIndex, tipsDone = 0, false
 	clearCue()
 	updateFocus()

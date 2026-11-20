@@ -1,13 +1,15 @@
 --!strict
 -- The Forge window (weapons round 1, Task 7; owner's pick B 2026-11-06: pick on the left, the weapon big on the
 -- right; relaid out 2026-11-08, the owner's pick A): tabs Forge / Upgrade / Reforge with a line saying what the tab
--- does (WeaponText.tabLine); the left lists the weapons for that tab as slim rows, the right shows the chosen one: its
--- card (Util/WeaponFace; tap it for its stats, WeaponDetailController), what it is now and what it becomes in two
--- boxes with an arrow picture between them, what it costs as picture chips (WeaponText.costChips), and one big
--- button that says what it does or what's missing (WeaponText.button). The Forge Sword is one row with its five
--- elements as buttons. The server re-checks everything (ForgeService); its result plays the reveal
--- (WeaponRevealController) with this window out of the way. Opened from your own Forge's prompt (BuildController);
--- closes when you walk away.
+-- does (WeaponText.tabLine); the left lists the weapons for that tab as slim rows, the right shows the chosen one as
+-- a picture recipe (owner 2026-11-20: "redesign it like the condenser to be easily understood ... do the same with
+-- forge"; Util/Recipe, its words in Util/WeaponText): one sentence ("Use 20 Wild Ore and $1,500 to make the Fire
+-- Forge Sword!"), a spot for each material with what you have of what it takes and one for the cash (red when short),
+-- an arrow, the weapon's card (Util/WeaponFace; tap it for its stats, WeaponDetailController) with the grade or level
+-- it comes out with under it, and one big button: what it does over how long it takes, or what's missing over what
+-- you have. The Forge Sword is one row with its five elements as buttons. The server re-checks everything
+-- (ForgeService); its result plays the reveal (WeaponRevealController) with this window out of the way. Opened from
+-- your own Forge's prompt (BuildController); closes when you walk away.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -15,6 +17,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Early = require(Config:WaitForChild("Early"))
 local EarlyRules = require(Shared:WaitForChild("Util"):WaitForChild("EarlyRules"))
+local CondenseRules = require(Shared:WaitForChild("Util"):WaitForChild("CondenseRules"))
 local BabyColors = require(Config:WaitForChild("BabyColors"))
 local Bosses = require(Config:WaitForChild("Bosses"))
 local CardDesign = require(Config:WaitForChild("CardDesign"))
@@ -22,7 +25,6 @@ local Combat = require(Config:WaitForChild("Combat"))
 local ForgeLayout = require(Config:WaitForChild("ForgeLayout"))
 local Items = require(Config:WaitForChild("Items"))
 local Rarities = require(Config:WaitForChild("Rarities"))
-local UIIcons = require(Config:WaitForChild("UIIcons"))
 local Weapons = require(Config:WaitForChild("Weapons"))
 local Upgrades = require(Config:WaitForChild("Upgrades"))
 local UpgradeRules = require(Shared:WaitForChild("Util"):WaitForChild("UpgradeRules"))
@@ -35,8 +37,7 @@ local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local JobPanel = require(ClientUtil:WaitForChild("JobPanel"))
-local ElementBadge = require(ClientUtil:WaitForChild("ElementBadge"))
-local Icon = require(ClientUtil:WaitForChild("Icon"))
+local Recipe = require(ClientUtil:WaitForChild("Recipe"))
 local WeaponFace = require(ClientUtil:WaitForChild("WeaponFace"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local WeaponRevealController = require(Controllers:WaitForChild("WeaponRevealController"))
@@ -51,7 +52,11 @@ local PANEL_MAX_SIZE = Vector2.new(820, 540)
 local LIST_WIDTH_SCALE = 0.42
 local ROW_HEIGHT = 66
 local THUMBNAIL_SIZE = Vector2.new(40, 56)
-local CARD_SIZE = Vector2.new(84, 120) -- the pane's card on desktops (phones: Config/ForgeLayout CARD)
+-- the pane's card on desktops (phones: Config/ForgeLayout CARD): with it a Forge weapon's sentence, element buttons
+-- and recipe fit the pane with nothing cut (292 px before the window's own scale; owner 2026-11-20: "fix upgrading
+-- stations cutoff borders")
+local CARD_SIZE = Vector2.new(84, 120)
+local RECIPE = Recipe.LOOK -- the recipe on the right: its arrow and the row under it (Util/Recipe, shared with the other stations)
 local ELEMENT_BUTTON = 48 -- tap targets are 48 px or more
 local ACTION_HEIGHT = 52
 local EDGE = 12
@@ -59,9 +64,6 @@ local TOOLBAR_TOP = UIKit.HEADER_HEIGHT + 8
 local TAB_LINE_HEIGHT = 34 -- under the tabs (desktops): what the tab does, two lines at most
 local TAB_LINE_TOP = TOOLBAR_TOP + BabyColors.SEGMENTED.hit + 6
 local LIST_TOP = TAB_LINE_TOP + TAB_LINE_HEIGHT + 4
-local BOX_GAP = 8
-local ARROW_SIZE = 36 -- the blue arrow picture between the Now and After boxes (UIIcons.Next)
-local CHIP_ICON = 24
 -- Phones: the tabs sit up in the header band, between the title and the close button
 local PHONE_TITLE_ROOM = 150
 local PHONE_CLOSE_ROOM = 66
@@ -93,6 +95,7 @@ local inFlightToken = 0
 local reopenAfterReveal = false
 local shown: { weaponId: string, view: string }? = nil -- the pane's weapon and what it drew from the cash
 local render: () -> ()
+local listToTop = false -- the next render starts the list at its top (a new tab, the window opening)
 
 local ELEMENTS = { "Ember", "Tide", "Bloom", "Volt", "Shade" }
 
@@ -181,27 +184,33 @@ local function costFor(weaponId: string): WeaponRules.Cost?
 	return if record then WeaponRules.upgradeCost(Weapons, weaponId, record.level + 1) else nil
 end
 
--- The one button for this tab: what it does when everything's there, else what's missing (WeaponText.button)
-local function buttonFor(weapon: Weapons.Weapon, record: Owned?, cost: WeaponRules.Cost?): (string, boolean)
-	local action = if tab == FORGE then "forge" elseif tab == UPGRADE then "upgrade" else "reforge"
+local function actionOf(): "forge" | "upgrade" | "reforge"
+	return if tab == FORGE then "forge" elseif tab == UPGRADE then "upgrade" else "reforge"
+end
+
+-- What the recipe's words need to know about this weapon (WeaponText.say, recipeButton)
+local function optsFor(weapon: Weapons.Weapon, record: Owned?): WeaponText.RecipeOpts
 	-- how long the job takes, on the button (owner 2026-11-20: the waits run to an hour and were only seen after)
-	local seconds = if tab == FORGE then UpgradeRules.seconds(Upgrades, "craft")
-		elseif tab == REFORGE then UpgradeRules.seconds(Upgrades, "reforge")
-		else UpgradeRules.seconds(Upgrades, "level", if record then record.level + 1 else 1)
-	local text, ready = WeaponText.button(action, cost, items, cash(), Items, {
-		wait = UpgradeRules.clock(EarlyRules.stationWait(seconds, tonumber(player:GetAttribute("Level")) or 1, Early)),
+	local seconds = if tab == FORGE then UpgradeRules.seconds(Upgrades, "craft", nil, weapon.rarity)
+		elseif tab == REFORGE then UpgradeRules.seconds(Upgrades, "reforge", nil, weapon.rarity)
+		else UpgradeRules.seconds(Upgrades, "level", if record then record.level + 1 else 1, weapon.rarity)
+	return {
+		name = weapon.name,
+		wait = CondenseRules.waitWords(EarlyRules.stationWait(seconds, shopLevel(), Early)),
 		level = if record then record.level + 1 else nil,
 		unlockLevel = if weapon.source.cost then weapon.source.cost.unlockLevel else nil,
 		shopLevel = shopLevel(),
-	})
-	if tab == REFORGE and record and not WeaponRules.canReforge(record) then
-		return "Already Grade S", false
-	end
-	return text, ready
+		done = tab == REFORGE and record ~= nil and not WeaponRules.canReforge(record),
+	}
 end
 
--- What a weapon's pane draws from the cash (its cost lines' colours and its button): a cash change redraws the window
--- only when this changes (in a staffed shop sales land every few seconds; a redraw then could swallow a tap)
+-- The one button for this tab: what it does over how long it takes, else what's missing over what you have
+local function buttonFor(weapon: Weapons.Weapon, record: Owned?, cost: WeaponRules.Cost?): (string, string?, boolean)
+	return WeaponText.recipeButton(actionOf(), cost, items, cash(), Items, optsFor(weapon, record))
+end
+
+-- What a weapon's pane draws from the cash (its spots' colours, its sentence and its button): a cash change redraws
+-- the window only when this changes (in a staffed shop sales land every few seconds; a redraw then could swallow a tap)
 local function cashView(weaponId: string): string
 	local weapon = Weapons.ById[weaponId]
 	local cost = costFor(weaponId)
@@ -210,12 +219,13 @@ local function cashView(weaponId: string): string
 	end
 	local parts = {}
 	if cost then
-		for _, line in WeaponText.cost(cost, items, cash(), Items) do
-			table.insert(parts, if line.enough then "1" else "0")
+		for _, spot in WeaponText.spots(cost, items, cash(), Items) do
+			table.insert(parts, if spot.enough then "1" else "0")
 		end
 	end
-	local text, ready = buttonFor(weapon, owned[weaponId], cost)
+	local text, sub, ready = buttonFor(weapon, owned[weaponId], cost)
 	table.insert(parts, text)
+	table.insert(parts, sub or "")
 	table.insert(parts, tostring(ready))
 	return table.concat(parts, "|")
 end
@@ -281,6 +291,7 @@ local function elementButtons(parent: Instance, entry: Entry, order: number)
 	holder.Parent = parent
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	layout.Wraps = true -- a second row on a narrow phone
 	layout.Padding = UDim.new(0, 6)
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -307,151 +318,65 @@ local function elementButtons(parent: Instance, entry: Entry, order: number)
 	end
 end
 
--- A box of the before/after row: a small title, a big value, its lines (`good`: the After box, in green)
-type Box = { title: string, big: string, lines: { string }, good: boolean? }
-
--- `compact` (phones): Config/ForgeLayout's fonts and padding, its first `lines` lines only
-local function box(parent: Instance, spec: Box, order: number, width: UDim, compact: boolean)
-	local frame = Instance.new("Frame")
-	frame.Name = spec.title
-	frame.LayoutOrder = order
-	frame.BackgroundColor3 = palette.row
-	frame.Size = UDim2.new(width, UDim.new(0, 0))
-	frame.AutomaticSize = Enum.AutomaticSize.Y
-	frame.Parent = parent
-	UIKit.corner(frame, 10)
-	UIKit.outline(frame, if spec.good then palette.good else palette.rowEdge, 2)
-	local look = ForgeLayout.BOX
-	local padding = Instance.new("UIPadding")
-	padding.PaddingTop = UDim.new(0, if compact then look.pad / 2 else 6)
-	padding.PaddingBottom = UDim.new(0, if compact then look.pad / 2 else 8)
-	padding.PaddingLeft = UDim.new(0, if compact then look.side else 10)
-	padding.PaddingRight = UDim.new(0, if compact then look.side else 10)
-	padding.Parent = frame
-	local layout = Instance.new("UIListLayout")
-	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Padding = UDim.new(0, look.gap)
-	layout.Parent = frame
-	-- a label is its font size + 4 px tall (addLabel), so the compact fonts are ForgeLayout's heights less 4
-	addLabel(frame, spec.title, Enum.Font.GothamBold, if compact then look.title - 4 else 12, palette.inkSoft, 1)
-	addLabel(frame, spec.big, Enum.Font.FredokaOne, if compact then look.big - 4 else 22, if spec.good then palette.good else palette.ink, 2)
-	for index, line in spec.lines do
-		if compact and index > look.lines then
-			break
-		end
-		addLabel(frame, line, Enum.Font.GothamBold, if compact then look.line - 4 else 13, if spec.good then palette.good else palette.ink, 2 + index)
+-- The recipe: a spot for each thing it takes (what you have of what it takes; red when short), an arrow, the weapon's
+-- card (tap it for its stats) and under it the grade or level it comes out with (`pill`; nil on a short phone pane
+-- with element buttons). Returns the spots and the card, for the fly-in
+local function recipeRow(order: number, weaponId: string, record: Owned?, cost: WeaponRules.Cost?, cardSize: Vector2, phone: boolean, pill: string?, beats: boolean): ({ GuiObject }, Frame)
+	local data = if cost then WeaponText.spots(cost, items, cash(), Items) else {}
+	local need = #data
+	local look = ForgeLayout.SLOTS
+	local slots = Vector2.zero
+	if need > 0 then
+		-- as wide as the pane leaves beside the arrow and the card (the window's own scale taken out)
+		local scaler = panel:FindFirstChildOfClass("UIScale")
+		local scale = if scaler and scaler.Scale > 0 then scaler.Scale else 1
+		local room = pane.AbsoluteSize.X / scale - 2 * EDGE - 8 - RECIPE.arrow - cardSize.X
+		slots = Vector2.new(math.clamp(room, look.min, if phone then look.phoneMax else look.max), cardSize.Y)
 	end
-end
-
--- Two boxes side by side with the arrow picture between them, the same height; one box alone fills the row
-local function compare(parent: Instance, order: number, boxes: { Box }, compact: boolean)
+	local under = if not pill then 0 elseif phone then ForgeLayout.UNDER else RECIPE.under
 	local row = Instance.new("Frame")
-	row.Name = "Compare"
+	row.Name = "Recipe"
 	row.LayoutOrder = order
 	row.BackgroundTransparency = 1
-	row.Size = UDim2.new(1, 0, 0, 0)
-	row.AutomaticSize = Enum.AutomaticSize.Y
-	row.Parent = parent
-	local layout = Instance.new("UIListLayout")
-	layout.FillDirection = Enum.FillDirection.Horizontal
-	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.VerticalAlignment = Enum.VerticalAlignment.Center
-	layout.ItemLineAlignment = Enum.ItemLineAlignment.Stretch
-	layout.Padding = UDim.new(0, BOX_GAP)
-	layout.Parent = row
-	if #boxes == 1 then
-		box(row, boxes[1], 1, UDim.new(1, 0), compact)
-		return
-	end
-	local arrowSize = if compact then ARROW_SIZE * 0.7 else ARROW_SIZE
-	local half = UDim.new(0.5, -(arrowSize / 2 + BOX_GAP))
-	box(row, boxes[1], 1, half, compact)
-	local arrow = Instance.new("ImageLabel")
-	arrow.Name = "Arrow"
-	arrow.LayoutOrder = 2
-	arrow.BackgroundTransparency = 1
-	arrow.Image = UIIcons.Next
-	arrow.ScaleType = Enum.ScaleType.Fit
-	arrow.Size = UDim2.fromOffset(arrowSize, arrowSize)
-	arrow.Parent = row
-	box(row, boxes[2], 3, half, compact)
-end
-
--- What this tab shows: Upgrade, now and after the next level (or Awakened at +10); Reforge, the grade now and the
--- roll (or Grade S, done); Forge, what comes out
-local function boxesFor(weaponId: string, weapon: Weapons.Weapon, record: Owned?): { Box }
-	if tab == UPGRADE and record then
-		local now = WeaponRules.shownPower(Weapons, Combat, weaponId, record.grade, record.level)
-		if record.level >= Weapons.MAX_LEVEL then
-			return { { title = "Fully upgraded", big = `+{record.level}`, lines = { "Awakened!", string.format("Power x%.2f", now) }, good = true } }
+	row.Size = UDim2.fromOffset(slots.X + (if need > 0 then RECIPE.arrow else 0) + cardSize.X, cardSize.Y + under)
+	row.Parent = pane
+	local card = Instance.new("Frame")
+	card.Name = "Keeps"
+	card.AnchorPoint = Vector2.new(1, 0)
+	card.Position = UDim2.fromScale(1, 0)
+	card.Size = UDim2.fromOffset(cardSize.X, cardSize.Y)
+	card.BackgroundTransparency = 1
+	card.Parent = row
+	-- The Forge tab shows what it will look like (Grade C, +0); the others, yours
+	WeaponFace.render(card, nil, weaponId, record or (if tab == FORGE then { grade = "C", level = 0 } else nil), nil)
+	local openCard = Instance.new("TextButton")
+	openCard.Name = "OpenCard"
+	openCard.Text = ""
+	openCard.BackgroundTransparency = 1
+	openCard.Size = UDim2.fromScale(1, 1)
+	openCard.ZIndex = card.ZIndex + 10
+	openCard.Parent = card
+	openCard.Activated:Connect(function()
+		WeaponDetailController.Open(weaponId)
+	end)
+	if pill then
+		local tag = UIKit.pill(row, pill, UIKit.Colors.Accent, UIKit.Colors.Ink)
+		tag.Name = "Becomes"
+		tag.AnchorPoint = Vector2.new(0.5, 0)
+		tag.Position = UDim2.new(1, -cardSize.X / 2, 0, cardSize.Y + 4)
+		if beats then
+			Recipe.beat(tag)
 		end
-		local after = WeaponRules.shownPower(Weapons, Combat, weaponId, record.grade, record.level + 1)
-		return {
-			{ title = "Now", big = `+{record.level}`, lines = { string.format("Power x%.2f", now) } },
-			{
-				title = "After",
-				big = `+{record.level + 1}`,
-				lines = { string.format("Power x%.2f", after), WeaponText.ladderStep(WeaponLooks, record.level + 1, weapon.rarity) },
-				good = true,
-			},
-		}
-	elseif tab == REFORGE and record then
-		if not WeaponRules.canReforge(record) then
-			return { { title = "Grade S", big = "S", lines = { "The best grade: nothing to reforge" }, good = true } }
-		end
-		return {
-			{ title = "Now", big = `Grade {record.grade}`, lines = { "its grade today" } },
-			{ title = "After", big = "C to S", lines = { "you keep the better" }, good = true },
-		}
 	end
-	return { { title = "You get", big = "A random grade", lines = { "C, B, A or S (S is the best)" }, good = true } }
-end
-
--- The cost as chips: the cash or item picture and its words, green when you have enough, red when not (wrapping)
-local function costChips(parent: Instance, order: number, cost: WeaponRules.Cost)
-	local holder = Instance.new("Frame")
-	holder.Name = "Costs"
-	holder.LayoutOrder = order
-	holder.BackgroundTransparency = 1
-	holder.Size = UDim2.new(1, 0, 0, 0)
-	holder.AutomaticSize = Enum.AutomaticSize.Y
-	holder.Parent = parent
-	local layout = Instance.new("UIListLayout")
-	layout.FillDirection = Enum.FillDirection.Horizontal
-	layout.Wraps = true
-	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Padding = UDim.new(0, 6)
-	layout.Parent = holder
-	for index, chip in WeaponText.costChips(cost, items, cash(), Items) do
-		local color = if chip.enough then palette.good else palette.bad
-		local frame = Instance.new("Frame")
-		frame.Name = "Chip"
-		frame.LayoutOrder = index
-		frame.BackgroundColor3 = palette.row
-		frame.AutomaticSize = Enum.AutomaticSize.XY
-		frame.Size = UDim2.fromOffset(0, CHIP_ICON)
-		frame.Parent = holder
-		UIKit.corner(frame, 10)
-		UIKit.outline(frame, color, 2)
-		local padding = Instance.new("UIPadding")
-		padding.PaddingTop, padding.PaddingBottom = UDim.new(0, 5), UDim.new(0, 5)
-		padding.PaddingLeft, padding.PaddingRight = UDim.new(0, 8), UDim.new(0, 10)
-		padding.Parent = frame
-		local inner = Instance.new("UIListLayout")
-		inner.FillDirection = Enum.FillDirection.Horizontal
-		inner.VerticalAlignment = Enum.VerticalAlignment.Center
-		inner.SortOrder = Enum.SortOrder.LayoutOrder
-		inner.Padding = UDim.new(0, 6)
-		inner.Parent = frame
-		if chip.icon ~= "" then
-			local picture = Icon.make(frame, chip.icon, UDim2.fromOffset(CHIP_ICON, CHIP_ICON))
-			picture.LayoutOrder = 1
+	local spots: { GuiObject } = {}
+	if need > 0 then
+		local grid = Recipe.grid(row, need, if phone then need else WeaponText.spotColumns(need), slots, if phone then cardSize.Y else look.tall)
+		for index, spot in data do
+			table.insert(spots, Recipe.spot(grid, "copy", { order = index, palette = palette, icon = if spot.icon ~= "" then spot.icon else nil, count = spot.count, short = not spot.enough }))
 		end
-		local label = UIKit.label(frame, chip.text, Enum.Font.GothamBold, 14, color)
-		label.LayoutOrder = 2
-		label.AutomaticSize = Enum.AutomaticSize.X
-		label.Size = UDim2.fromOffset(0, CHIP_ICON)
+		Recipe.arrow(row, slots.X + RECIPE.arrow / 2, cardSize.Y / 2)
 	end
+	return spots, card
 end
 
 local function renderPane(entry: Entry?)
@@ -459,13 +384,13 @@ local function renderPane(entry: Entry?)
 	clear(actionBar)
 	local layout = Instance.new("UIListLayout")
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Padding = UDim.new(0, 8)
+	layout.Padding = UDim.new(0, 6)
 	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	layout.Parent = pane
 	local phone = UIKit.isPhone()
 	local padding = Instance.new("UIPadding")
-	padding.PaddingTop = UDim.new(0, if phone then 6 else 10)
-	padding.PaddingBottom = UDim.new(0, if phone then 6 else 10)
+	padding.PaddingTop = UDim.new(0, 6)
+	padding.PaddingBottom = UDim.new(0, 6)
 	padding.PaddingLeft = UDim.new(0, EDGE)
 	padding.PaddingRight = UDim.new(0, EDGE)
 	padding.Parent = pane
@@ -480,80 +405,55 @@ local function renderPane(entry: Entry?)
 	local weapon = Weapons.ById[weaponId]
 	local record = owned[weaponId]
 	local cost = costFor(weaponId)
+	local action = actionOf()
+	local opts = optsFor(weapon, record)
 
 	local hasElements = tab == FORGE and (#entry.ids > 1 or weapon.source.kind == "forge")
-	local done = tab == REFORGE and record ~= nil and not WeaponRules.canReforge(record) -- nothing to pay for
+	local done = opts.done == true -- a reforge with nothing to pay for
+	local maxed = tab == UPGRADE and cost == nil
 	local cardSize = if phone then Vector2.new(ForgeLayout.CARD.w, ForgeLayout.CARD.h) else CARD_SIZE
-	local besideX = cardSize.X + (if phone then 8 else 12)
+	local text, sub, ready = buttonFor(weapon, record, cost)
 
-	-- The header: its card (tap it for its stats) and beside it, on desktops its name, grade and level, rarity and
-	-- element; on phones (short screens: Config/ForgeLayout; the list's row already names it) the Now / After boxes,
-	-- or a Forge weapon's element buttons
-	local top = Instance.new("Frame")
-	top.Name = "Top"
-	top.LayoutOrder = 1
-	top.BackgroundTransparency = 1
-	top.Size = UDim2.new(1, 0, 0, cardSize.Y)
-	top.AutomaticSize = Enum.AutomaticSize.Y
-	top.Parent = pane
-	local card = Instance.new("Frame")
-	card.Size = UDim2.fromOffset(cardSize.X, cardSize.Y)
-	card.BackgroundTransparency = 1
-	card.Parent = top
-	WeaponFace.render(card, nil, weaponId, record or (if tab == FORGE then { grade = "C", level = 0 } else nil), nil)
-	local openCard = Instance.new("TextButton")
-	openCard.Name = "OpenCard"
-	openCard.Text = ""
-	openCard.BackgroundTransparency = 1
-	openCard.Size = UDim2.fromScale(1, 1)
-	openCard.ZIndex = card.ZIndex + 10
-	openCard.Parent = card
-	openCard.Activated:Connect(function()
-		WeaponDetailController.Open(weaponId)
-	end)
-	local beside = Instance.new("Frame")
-	beside.BackgroundTransparency = 1
-	beside.Position = UDim2.fromOffset(besideX, 0)
-	beside.Size = UDim2.new(1, -besideX, 0, 0)
-	beside.AutomaticSize = Enum.AutomaticSize.Y
-	beside.Parent = top
-	if phone then
-		if hasElements then
-			elementButtons(beside, entry, 1)
-		else
-			compare(beside, 1, boxesFor(weaponId, weapon, record), true)
+	-- One sentence: what goes in and what comes out, or what to get first. A Forge weapon on a phone: under its
+	-- element buttons and its recipe (a short pane: Config/ForgeLayout)
+	local say = addLabel(pane, WeaponText.say(action, cost, items, cash(), Items, opts), Enum.Font.FredokaOne, if phone then 13 else 16, palette.ink, if phone and hasElements then 6 else 1)
+	say.Name = "Say"
+	say.TextXAlignment = Enum.TextXAlignment.Center
+	if tab == FORGE and weapon.source.kind == "forge" and WeaponRules.firstForge(Weapons, owned) then
+		-- the first Forge weapon's one-time price, said out loud (Weapons.FIRST_FORGE)
+		local special = addLabel(pane, Weapons.FIRST_FORGE.line, Enum.Font.FredokaOne, if phone then 12 else 14, palette.good, if phone and hasElements then 7 else 2)
+		special.TextXAlignment = Enum.TextXAlignment.Center
+	end
+	-- a Forge weapon's element first
+	if hasElements then
+		elementButtons(pane, entry, 3)
+		if not phone then
+			local pick = addLabel(pane, "Pick its element: it bonds with creatures of that element.", Enum.Font.GothamBold, 12, palette.hint, 4)
+			pick.TextXAlignment = Enum.TextXAlignment.Center
 		end
-	else
-		local wordsLayout = Instance.new("UIListLayout")
-		wordsLayout.SortOrder = Enum.SortOrder.LayoutOrder
-		wordsLayout.Padding = UDim.new(0, 4)
-		wordsLayout.Parent = beside
-		addLabel(beside, weapon.name, Enum.Font.FredokaOne, 20, palette.ink, 1)
-		local gradeLine = if tab == FORGE then "Comes out Grade C, B, A or S" elseif record then `Grade {record.grade} · +{record.level}` else nil
-		if gradeLine then
-			addLabel(beside, gradeLine, Enum.Font.FredokaOne, 15, palette.ink, 2)
-		end
-		local kind = if weapon.prism then `{weapon.rarity} · every element` elseif weapon.element then `{weapon.rarity} · {ElementBadge.name(weapon.element)}` else weapon.rarity
-		addLabel(beside, kind, Enum.Font.GothamBold, 13, palette.inkSoft, 3)
-		addLabel(beside, "Tap the card for its stats", Enum.Font.GothamBold, 11, palette.hint, 4)
-		-- a Forge weapon's element first, then what it is now and what it becomes
-		if hasElements then
-			elementButtons(pane, entry, 2)
-			addLabel(pane, "Pick its element: it bonds with creatures of that element.", Enum.Font.GothamBold, 12, palette.hint, 3)
-		end
-		compare(pane, 4, boxesFor(weaponId, weapon, record), false)
 	end
 
-	-- What it costs: a picture chip each, green when you have enough, red when not
-	if cost and not done then
-		local special = tab == FORGE and weapon.source.kind == "forge" and WeaponRules.firstForge(Weapons, owned)
-		if special then
-			-- the first Forge weapon's one-time price, said out loud (Weapons.FIRST_FORGE)
-			addLabel(pane, Weapons.FIRST_FORGE.line, Enum.Font.FredokaOne, if phone then 13 else 15, palette.good, 5)
-		elseif not phone then
-			addLabel(pane, "You pay", Enum.Font.FredokaOne, 15, palette.ink, 5)
-		end
-		costChips(pane, 6, cost)
+	-- The recipe, and under the weapon what it comes out with
+	local pill, line = WeaponText.outcome(action, {
+		level = if maxed and record then record.level elseif record then record.level + 1 else nil,
+		step = if record and not maxed then WeaponText.ladderStep(WeaponLooks, record.level + 1, weapon.rarity) else nil,
+		max = maxed,
+		grade = if record then record.grade else nil,
+		done = done,
+	})
+	local spots, card = recipeRow(5, weaponId, record, if done then nil else cost, cardSize, phone, if phone and hasElements then nil else pill, action == "upgrade" and not maxed)
+	if action == "upgrade" and record then
+		-- how much stronger it gets (fully upgraded: its Power)
+		local now = WeaponRules.shownPower(Weapons, Combat, weaponId, record.grade, record.level)
+		local words = if maxed then string.format("Power x%.2f", now) else WeaponText.powerGain(now, WeaponRules.shownPower(Weapons, Combat, weaponId, record.grade, record.level + 1))
+		local chip = UIKit.pill(pane, words, palette.good, Color3.new(1, 1, 1))
+		chip.Name = "Power"
+		chip.LayoutOrder = 8
+	end
+	if line and not hasElements then -- a Forge weapon's element line says its piece; the pill says the grade
+		local outcome = addLabel(pane, line, Enum.Font.GothamBold, 12, palette.hint, 9)
+		outcome.Name = "Outcome"
+		outcome.TextXAlignment = Enum.TextXAlignment.Center
 	end
 	-- Phones: what the tab does last, under the fold if need be
 	if phone then
@@ -561,20 +461,25 @@ local function renderPane(entry: Entry?)
 	end
 
 	-- The one button
-	local text, ready = buttonFor(weapon, record, cost)
 	shown = { weaponId = weaponId, view = cashView(weaponId) }
 	local canPress = ready and not inFlight
-	local button = UIKit.button(actionBar, if inFlight then "Working..." else text, if canPress then UIKit.Colors.Accent else UIKit.Colors.Locked)
+	local button = UIKit.button(actionBar, text, if canPress then UIKit.Colors.Accent else UIKit.Colors.Locked)
+	button.Name = "Go"
 	button.AnchorPoint = Vector2.new(0.5, 0.5)
 	button.Position = UDim2.fromScale(0.5, 0.5)
 	button.Size = UDim2.new(1, -2 * EDGE, 0, ACTION_HEIGHT)
-	button.TextSize = 17
 	button.AutoButtonColor = canPress
+	if inFlight then
+		Recipe.words(button, "Working...", nil)
+	else
+		Recipe.words(button, text, sub)
+	end
 	button.Activated:Connect(function()
 		local part = machine
 		if not canPress or inFlight or not part then
 			return
 		end
+		Recipe.flyIn(panel, spots, card)
 		inFlight = true
 		inFlightToken += 1
 		local token = inFlightToken
@@ -594,6 +499,10 @@ render = function()
 	if not panel.Visible then
 		return
 	end
+	-- the list stays where the player scrolled it (the Condenser's fix, owner 2026-11-20: a tap on a row rebuilt the
+	-- rows and the list snapped to its top)
+	local listAt = if listToTop then Vector2.zero else list.CanvasPosition
+	listToTop = false
 	clear(list)
 	setTab(tab)
 	tabLine.Text = WeaponText.tabLine(tab)
@@ -609,6 +518,12 @@ render = function()
 	for order, entry in found do
 		buildRow(entry, order)
 	end
+	list.CanvasPosition = listAt
+	game:GetService("RunService").Heartbeat:Once(function() -- and once the rebuilt rows are laid out
+		if list.Parent then
+			list.CanvasPosition = listAt
+		end
+	end)
 	if #found == 0 then
 		local empty = UIKit.label(list, if tab == FORGE then "Nothing left to forge." else "No weapons yet.", Enum.Font.GothamBold, 15, palette.inkSoft)
 		empty.Size = UDim2.new(1, -10, 0, 40)
@@ -678,6 +593,7 @@ end
 function ForgeController.Open(part: BasePart)
 	machine = part
 	inFlight = false
+	listToTop = true
 	layout()
 	panel.Visible = true
 	Remotes.WeaponsChanged:FireServer() -- the latest weapons (rate-limited on the server)
@@ -743,6 +659,7 @@ function ForgeController.Start()
 	local _, pick = UIKit.segmented(switchHolder, { FORGE, UPGRADE, REFORGE }, function(value)
 		tab = value
 		selectedKey = nil
+		listToTop = true
 		render()
 	end)
 	setTab = pick

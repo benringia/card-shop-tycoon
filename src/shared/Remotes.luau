@@ -70,6 +70,7 @@ local NAMES = {
 	"RatingUpdate",
 	"DropBox", -- client → server: put carried boxes back on the delivery pad
 	"BagBox", -- client → server: the packs in your carried boxes go in your Bag (To Bag)
+	"ShopBagStock", -- client → server: (itemId: string) a box of that Bag item (packs, deck boxes) onto your delivery pad
 	"RemoveStock", -- client → server: (shelfUid: string) box up a product shelf's stock onto the delivery pad
 	"RipPack", -- client → server: open one pack from the carried box
 	"PackOpened", -- server → client: (productId: string, results: { { cardId, foil, grade } }, newFlags: { boolean }, itemId: string?) itemId: the Bag item it came from (Open another)
@@ -85,7 +86,7 @@ local NAMES = {
 	"Condense", -- client → server: (shelfUid, cardId, mainBeastId?, mainFoil?, mainGrade?) +1 star from duplicates
 	"CondenserSeen", -- client → server: () the finished star was taken out in the Condenser's window (clears CondenserDone)
 	"GradingSeen", -- client → server: () the finished grade was taken out in the Grading Station's window (clears GradingDone)
-	"GradeUp", -- client → server: (shelfUid, cardId, mainBeastId?, mainFoil?, mainGrade?, useSeals, useGold) +1 grade from duplicates (and Grading Seals) and cash (or a Gold Seal)
+	"GradeUp", -- client → server: (shelfUid, cardId, mainBeastId?, mainFoil?, mainGrade?, useSeals, useGold, swap?) +1 grade from duplicates (and Grading Seals) and cash (or a Gold Seal); swap true: a levelled card takes its best spare copy's grade instead (Config/Grading SWAP)
 	"AssignJob", -- client → server: (target: beastId | { cardId, foil, grade }, job: string) card starts a shop job
 	"UnassignJob", -- client → server: (slot: number)
 	"SwitchJob", -- client → server: (slot: number) that slot's worker takes the next job (Restocker <-> Cashier)
@@ -243,6 +244,7 @@ return {
 	RatingUpdate = remotes.RatingUpdate,
 	DropBox = remotes.DropBox,
 	BagBox = remotes.BagBox,
+	ShopBagStock = remotes.ShopBagStock,
 	RemoveStock = remotes.RemoveStock,
 	RipPack = remotes.RipPack,
 	PackOpened = remotes.PackOpened,
