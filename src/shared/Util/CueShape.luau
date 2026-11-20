@@ -7,14 +7,22 @@ export type Size = { w: number, h: number }
 export type Corner = { scale: number, offset: number }
 
 -- The corner radius (px) of a ring standing `pad` px off a thing of `size` whose own corner is `corner` (a UICorner's
--- scale and offset; nil: none found, the ring keeps `fallback`). Never rounder than the thing itself.
-function CueShape.radius(size: Size, corner: Corner?, pad: number, fallback: number): number
+-- scale and offset; nil: none found, the ring keeps `fallback`). Never rounder than the thing itself. `scale`: how
+-- much bigger the thing is drawn than designed (its UIScales: a computer's HUD grows); `size` is as drawn, so a corner
+-- given in px grows with it
+function CueShape.radius(size: Size, corner: Corner?, pad: number, fallback: number, scale: number?): number
 	if not corner then
 		return fallback
 	end
 	local short = math.max(0, math.min(size.w, size.h))
-	local own = math.min(corner.scale * short + corner.offset, short / 2)
+	local own = math.min(corner.scale * short + corner.offset * (scale or 1), short / 2)
 	return math.max(0, own) + pad
+end
+
+-- How far off a thing its ring stands: just outside the thing's own outline (`stroke` px as designed, drawn times
+-- `scale`; nil: it has none), `ring.gap` px clear
+function CueShape.pad(stroke: number?, scale: number, ring: { gap: number }): number
+	return (stroke or 0) * scale + ring.gap
 end
 
 -- Whether a piece inside a button fills it (its face: the piece whose corner is the button's shape), not a key cap,

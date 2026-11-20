@@ -21,7 +21,9 @@ return {
 		summon = {
 			intro = {},
 			now = {
-				default = "Tap it on your party bar to call it out!",
+				-- (it said "on your party bar": the bar became the creature carousel, 2026-11-13; found in the 2026-11-20
+				-- check of the tours against the new HUD)
+				default = "Tap your creature to call it out!",
 				closeWindow = "Tap the X to close this window.",
 			},
 		},

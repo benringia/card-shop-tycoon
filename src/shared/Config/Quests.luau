@@ -32,6 +32,19 @@ return {
 	-- computer, where the quests live in the Phone, a bubble by the Phone's tile once the player has stood idle and free
 	-- `idle` seconds: never in the first `first` seconds after joining, at most once every `every` seconds, up `show`
 	-- seconds (a tap opens the Quests window), its words at most `maxLength` characters
+	-- The Quests window's layout (owner 2026-11-20: "looks awkward/broken. no gaps between the bar and the button,
+	-- borders cutoff ... redesign/relayout"; QuestRules.rowBox, client QuestController). Px. `list`: room kept inside
+	-- the scrolling list so a row's outline isn't cut and rows stop short of the scroll bar. A row: `pad` inside its
+	-- card, a picture tile `icon` wide, a `gap`, the words, bar and pay, a `gap`, then an action column `action` wide
+	-- (its button `button` tall). MAIN: the main quest's bigger card. THEN: the next things to build, side by side
+	WINDOW = {
+		width = 600,
+		height = 540,
+		list = { left = 4, right = 12, top = 4, bottom = 8, gap = 10 },
+		ROW = { height = 82, pad = 12, icon = 54, gap = 14, action = 116, button = 46, title = 17, bar = 12 },
+		MAIN = { height = 100, pad = 14, icon = 68, gap = 16, action = 132, button = 56, title = 20, bar = 14 },
+		THEN = { max = 3, height = 46, gap = 8, caption = "Coming next" },
+	},
 	REMIND = { first = 90, idle = 40, every = 300, show = 7, maxLength = 46 },
 	-- each quest: cash and shop XP of `cash` + `cashPerLevel` x the shop level ($18 at Lv 1, $105 at Lv 30)
 	REWARD = { cash = 15, cashPerLevel = 3, xp = 15, xpPerLevel = 3 },

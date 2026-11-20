@@ -6145,6 +6145,30 @@ boss models; the ranch and Heroic tiers come after those.
       places build; each Studio window held the latest code and booted with a clean Output; a rarity pack opened in
       the main place (an Epic and a Legendary reveal: no creature, no error). The saved shape is unchanged (schema
       39, no migration), so old and new servers read the same saves.
+  - *The Quests window laid out again* (owner 2026-11-20, a desktop screenshot: "looks awkward/broken. no gaps
+    between the bar and the button, borders cutoff ,etc redesign/relayout this"). Every row is a card of three
+    columns with a fixed gap between them (`Config/Quests` WINDOW, `QuestRules.rowBox`): its picture on a soft tile,
+    the words over a thick bar and its pay chips, and an action column. The action column holds Claim, else how far
+    the quest is, big ("3 / 8", in place of "Keep going!" on every row), else "Claimed" or "Done"
+    (`QuestRules.actionWords`). The main quest is a taller card with a bigger picture and title, its amount
+    ("$250 / $250") at the right end of its pay line, and a bigger Build. What comes next to build is one strip of up
+    to three cells side by side under "Coming next" (three stacked lines before). The list keeps 4 px inside its
+    edge and 12 px clear of its scroll bar, so no outline is cut. The window is 600 wide.
+  - *The tours against the new HUD* (owner 2026-11-20: "is the tutorial updated to our UI changes? if not, update it
+    accordingly"): Pish's and Chikin's lines and what their cues point at were read against today's HUD. They name
+    the Phone, Shop, Prices, Jobs, the Bag, your face, Leave: all still right, and Chikin's fight tips already say
+    "Press Shift" and "Press E" on a keyboard (a computer has no Dodge button now; the cue just has nothing to ring).
+    One stale line: Chikin's "Tap it on your party bar to call it out!" is "Tap your creature to call it out!".
+    Seen live: the titles lesson rings your face beside the cash.
+  - *The tutorial's ring fits what it's on* (owner 2026-11-20, the Phone's tile on a computer: "the highight border
+    doesnt fit the tile. check it and make sure every highlighted elements fit the highlight border"). Two causes: a
+    corner given in px is drawn times the thing's UIScale (a computer's HUD grows 1.2 times and more), and the ring
+    took the corner as designed, so it was squarer than the tile; and it stood a fixed 6 px off, leaving a band of
+    background. Now (`TutorialCues.shapeOf`, `CueShape.radius`'s `scale`, `CueShape.pad`): the ring goes round the
+    piece that holds the thing's shape (a tile's face), takes its corner as drawn, and stands just outside the piece's
+    own outline (its stroke as drawn plus `Cues.RING.gap`, 2 px). The spotlight's hole takes the drawn corner too.
+    Measured live: the Phone's tile at 1.2 scale (face 86.4 px, corner 25.2, outline 4.8: ring 100 px, corner 32) and
+    an app tile inside the Phone at scale 1 (72 px, corner 21: ring 84 px, corner 27).
   - *The falls by the Wild portal* (owner 2026-11-20: "the portal to wild is too loud. lower its volume"): the portal
     has no sound of its own; the only one there is the Forest Falls' waterfall 40 studs away. Its volume 0.5 -> 0.2
     (`Config/Scenery` SOUNDS).

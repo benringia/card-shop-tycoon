@@ -32,7 +32,7 @@ local PRINT_NEAR = Cues.PRINT.near
 local PRINT_MIN = Cues.PRINT.min
 local PAW_SIZE = Cues.PAW.size -- px: the bouncing paw over a button (smaller over a small one, down to PAW_MIN)
 local PAW_MIN = Cues.PAW.min
-local RING_PAD = Cues.RING.pad -- px the gold ring stands off the button
+local RING_PAD = Cues.RING.gap + 3 -- px the paw keeps beside a ringed tile (the ring's own pad: shapeOf)
 local RING_THICKNESS = Cues.RING.thickness
 local BOUNCE = 10 -- px (studs * 0.4 on a thing in the shop)
 local BOUNCE_SPEED = 6
@@ -135,20 +135,18 @@ local function haloIn(holder: GuiObject): Frame
 	return halo
 end
 
--- The corner of the thing a cue is on: its own UICorner, else that of a face inside it that fills it (a HUD tile's
--- rounded face sits two frames down); nil when it has none
-local function cornerOf(target: GuiObject): CueShape.Corner?
-	local own = target:FindFirstChildOfClass("UICorner")
-	if own then
-		return { scale = own.CornerRadius.Scale, offset = own.CornerRadius.Offset }
+-- The piece that holds the shape of the thing a cue is on: itself when it has a UICorner, else a face inside it that
+-- fills it (a HUD tile's rounded face sits two frames down); nil when nothing is rounded
+local function faceOf(target: GuiObject): GuiObject?
+	if target:FindFirstChildOfClass("UICorner") then
+		return target
 	end
 	local size = { w = target.AbsoluteSize.X, h = target.AbsoluteSize.Y }
-	local function search(parent: Instance, depth: number): CueShape.Corner?
+	local function search(parent: Instance, depth: number): GuiObject?
 		for _, child in parent:GetChildren() do
 			if child:IsA("GuiObject") and child.Visible and CueShape.fills({ w = child.AbsoluteSize.X, h = child.AbsoluteSize.Y }, size) then
-				local corner = child:FindFirstChildOfClass("UICorner")
-				if corner and child.BackgroundTransparency < 1 then
-					return { scale = corner.CornerRadius.Scale, offset = corner.CornerRadius.Offset }
+				if child:FindFirstChildOfClass("UICorner") and child.BackgroundTransparency < 1 then
+					return child
 				end
 				if depth < 3 then
 					local deeper = search(child, depth + 1)
@@ -161,6 +159,39 @@ local function cornerOf(target: GuiObject): CueShape.Corner?
 		return nil
 	end
 	return search(target, 1)
+end
+
+-- How much bigger a piece is drawn than designed: its own and its ancestors' UIScales (a computer's HUD grows, a
+-- window pops in)
+local function drawnScale(piece: Instance): number
+	local scale = 1
+	local at: Instance? = piece
+	while at and not at:IsA("LayerCollector") do
+		local own = at:FindFirstChildOfClass("UIScale")
+		if own then
+			scale *= own.Scale
+		end
+		at = at.Parent
+	end
+	return scale
+end
+
+-- The shape a ring (or the spotlight's hole) takes round `target` (owner 2026-11-20: "make sure every highlighted
+-- elements fit the highlight border"): the face that holds its shape (its rect is what the ring goes round), that
+-- face's corner as drawn, and how far off the ring stands: just outside the face's own outline
+local function shapeOf(target: GuiObject): (GuiObject, CueShape.Corner?, number, number)
+	local face = faceOf(target)
+	local piece = face or target
+	local scale = drawnScale(piece)
+	local round = if face then face:FindFirstChildOfClass("UICorner") else nil
+	local corner = if round then { scale = round.CornerRadius.Scale, offset = round.CornerRadius.Offset } else nil
+	local outline: number? = nil
+	for _, child in piece:GetChildren() do
+		if child:IsA("UIStroke") and child.Enabled and child.Transparency < 1 and child.ApplyStrokeMode == Enum.ApplyStrokeMode.Border then
+			outline = math.max(outline or 0, child.Thickness)
+		end
+	end
+	return piece, corner, scale, CueShape.pad(outline, scale, Cues.RING)
 end
 
 -- A see-through frame with a rounded outline (the gold ring, its dark edge, the ping)
@@ -318,7 +349,10 @@ function TutorialCues.pawOn(target: GuiObject | BasePart): () -> ()
 		local connection = RunService.RenderStepped:Connect(function()
 			local elapsed = os.clock() - started
 			local beat = math.abs(math.sin(elapsed * BOUNCE_SPEED))
-			local at, size = target.AbsolutePosition, target.AbsoluteSize
+			-- the piece that holds its shape (a tile's face), its corner as drawn, and the ring's place just outside its
+			-- own outline
+			local piece, pieceCorner, pieceScale, pad = shapeOf(target)
+			local at, size = piece.AbsolutePosition, piece.AbsoluteSize
 			-- a tile half scrolled out of its list: only the part showing, so the ring and paw stay inside the list
 			local list = target:FindFirstAncestorWhichIsA("ScrollingFrame")
 			local clipped = false
@@ -351,14 +385,14 @@ function TutorialCues.pawOn(target: GuiObject | BasePart): () -> ()
 				holder.Position = UDim2.fromOffset(at.X + size.X / 2, pawBottom - beat * BOUNCE)
 			end
 			-- the ring: the button's own corner (a tile half out of its list keeps the list's square edge there)
-			local radius = CueShape.radius({ w = size.X, h = size.Y }, cornerOf(target), RING_PAD, Cues.RING.fallback)
+			local radius = CueShape.radius({ w = size.X, h = size.Y }, pieceCorner, pad, Cues.RING.fallback, pieceScale)
 			local pulse = Cues.RING.pulse
 			ring.Visible = shown
-			ring.Position = UDim2.fromOffset(at.X - RING_PAD, at.Y - RING_PAD)
-			ring.Size = UDim2.fromOffset(size.X + RING_PAD * 2, size.Y + RING_PAD * 2)
+			ring.Position = UDim2.fromOffset(at.X - pad, at.Y - pad)
+			ring.Size = UDim2.fromOffset(size.X + pad * 2, size.Y + pad * 2)
 			corner.CornerRadius = UDim.new(0, radius)
 			stroke.Transparency = pulse[1] + beat * (pulse[2] - pulse[1])
-			local out = RING_PAD + RING_THICKNESS
+			local out = pad + RING_THICKNESS
 			edge.Visible = shown
 			edge.Position = UDim2.fromOffset(at.X - out, at.Y - out)
 			edge.Size = UDim2.fromOffset(size.X + out * 2, size.Y + out * 2)
@@ -729,7 +763,8 @@ function TutorialCues.spotlight(target: GuiObject?)
 			frames[index].Position = UDim2.fromOffset(rect.x, rect.y)
 			frames[index].Size = UDim2.fromOffset(rect.w, rect.h)
 		end
-		local radius = CueShape.radius({ w = current.AbsoluteSize.X, h = current.AbsoluteSize.Y }, cornerOf(current), SPOT_PAD, 0)
+		local _, spotCorner, spotScale = shapeOf(current)
+		local radius = CueShape.radius({ w = current.AbsoluteSize.X, h = current.AbsoluteSize.Y }, spotCorner, SPOT_PAD, 0, spotScale)
 		box.Position = UDim2.fromOffset(hole.x, hole.y)
 		box.Size = UDim2.fromOffset(hole.w, hole.h)
 		shapeCorner.CornerRadius = UDim.new(0, radius)

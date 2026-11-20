@@ -430,4 +430,39 @@ return {
 		expect.equal(QuestRules.chestWaiting(1), "1 more to go")
 		expect.equal(QuestRules.chestWaiting(0), "Ready!")
 	end,
+	-- owner 2026-11-20 (a desktop screenshot): "this quest window on desktop looks awkward/broken. no gaps between the bar
+	-- and the button, borders cutoff": every row is a picture tile, a middle column and an action column with a clear
+	-- gap between them, and the list keeps its rows clear of its own edge and scroll bar
+	["the window's rows: a clear gap between the bar and the button, nothing cut off by the list"] = function()
+		local window = Quests.WINDOW
+		for _, name in { "ROW", "MAIN" } do
+			local look = window[name]
+			for _, width in { 420, 520, 560 } do
+				local box = QuestRules.rowBox(width, look)
+				assert(box.actionX - (box.middleX + box.middleW) >= 12, `{name} at {width}: the bar stops short of the button`)
+				assert(box.middleX - (box.iconX + look.icon) >= 10, `{name}: room between the picture and the words`)
+				expect.near(box.actionX + box.actionW, width - look.pad, 1e-6, `{name}: the action keeps the card's padding`)
+				assert(box.middleW >= 150, `{name} at {width}: room for the words`)
+			end
+			assert(look.button >= 44 and look.button <= look.height - 20, `{name}: a button easy to click, inside its card`)
+		end
+		assert(window.MAIN.height > window.ROW.height and window.MAIN.icon > window.ROW.icon, "the main quest stands out")
+		assert(window.list.right >= 10, "rows stop short of the scroll bar")
+		assert(window.list.left >= 3 and window.list.top >= 3, "a row's outline isn't cut off by the list's edge")
+		expect.equal(window.THEN.max, 3, "three things to build next, side by side")
+	end,
+
+	-- the action column says how far a quest is, big, in place of "Keep going!" on every row
+	["a row's action: the count while it's going, a word once it's done"] = function()
+		local going = { id = "rip", kind = "cards", text = "Rip 8 packs", icon = "Pack", goal = 8, progress = 3, done = false, claimed = false, cash = 75, xp = 75 }
+		local done = table.clone(going)
+		done.progress, done.done = 8, true
+		local claimed = table.clone(done)
+		claimed.claimed = true
+		expect.equal(QuestRules.actionWords(going, false), "3 / 8")
+		expect.isNil(QuestRules.actionWords(done, false), "its Claim button stands there")
+		expect.equal(QuestRules.actionWords(claimed, false), "Claimed")
+		expect.equal(QuestRules.actionWords(done, true), "Done")
+		expect.equal(QuestRules.actionWords(going, true), "3 / 8")
+	end,
 }

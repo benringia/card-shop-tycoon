@@ -53,10 +53,9 @@ type Chest = { name: string, order: number, title: string, items: { { item: stri
 -- belowGap: the strip's outline (3 px, 4.5 glowing) and the chip's rim (3 px) are drawn outside them, so 12 shows about
 -- 6 (owner 2026-11-17: "add small gap between them"); cashGap: a phone's quest chip to the cash pill
 local TRACKER = { margin = 16, phoneGap = 8, desktopTop = Teams.STRIP.top, belowGap = 12, cashGap = 8 }
-local ROW_HEIGHT = 76
+local WINDOW = Quests.WINDOW
 local WEEK_ORDER = 20 -- the week's rows come after the day's and their chest in the window
 local MAIN_ORDER = -10 -- the main quest comes first in the window
-local MAIN_THEN = 3 -- at most this many other items to build listed under it
 
 local DesktopHudConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("DesktopHud"))
 local DesktopHud = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("DesktopHud"))
@@ -194,19 +193,19 @@ local function sectionHead(name: string, order: number, icon: string, title: str
 	row.Name = name
 	row.LayoutOrder = order
 	row.BackgroundTransparency = 1
-	row.Size = UDim2.new(1, -8, 0, 34)
+	row.Size = UDim2.new(1, 0, 0, 34)
 	row.Parent = list
 	local picture = Icon.make(row, icon, UDim2.fromOffset(26, 26))
 	picture.AnchorPoint = Vector2.new(0, 0.5)
-	picture.Position = UDim2.new(0, 10, 0.5, 0)
+	picture.Position = UDim2.new(0, 6, 0.5, 0)
 	local words = UIKit.label(row, title, Enum.Font.FredokaOne, 20, UIStyle.BABY.lilac.deep)
-	words.Position = UDim2.fromOffset(44, 0)
-	words.Size = UDim2.new(0.5, -44, 1, 0)
+	words.Position = UDim2.fromOffset(40, 0)
+	words.Size = UDim2.new(0.5, -40, 1, 0)
 	words.TextWrapped = false
 	local side = UIKit.label(row, right, Enum.Font.GothamBold, 14, palette.hint)
 	side.Name = "Side"
 	side.AnchorPoint = Vector2.new(1, 0)
-	side.Position = UDim2.new(1, -10, 0, 0)
+	side.Position = UDim2.new(1, -6, 0, 0)
 	side.Size = UDim2.new(0.5, 0, 1, 0)
 	side.TextXAlignment = Enum.TextXAlignment.Right
 	side.TextWrapped = false
@@ -241,44 +240,49 @@ local function payChip(parent: GuiObject, order: number, icon: string, text: str
 	words.TextWrapped = false
 end
 
--- One quest's row in the window (owner 2026-11-21: "easily understandable/immersive"): its picture, its words with
--- the count beside them ("3 / 8"), a thick bar, its pay as chips with pictures, and what it offers on the right: Claim
--- (the whole row turns mint: its pay waits), a stamp once claimed, or how far it is. A `weekly` one pays through the
--- Weekly Chest and says Done once done (QuestRules.rowState, pay, countText)
-local function questRow(index: number, quest: QuestView, palette: UIKit.Palette, weekly: boolean)
-	local state = QuestRules.rowState(quest :: any, weekly)
-	local baby = UIStyle.BABY
+-- A row's card in the window (Config/Quests WINDOW, QuestRules.rowBox; owner 2026-11-20, relaid out): its picture on
+-- a soft tile, and where its middle column and its action column go. Returns the card and its columns' places
+local function card(name: string, order: number, look: any, fill: Color3, edge: Color3, icon: string, tileFill: Color3): (Frame, QuestRules.RowBox)
 	local row = Instance.new("Frame")
-	row.Name = if weekly then `Week{index}` else `Quest{index}`
-	row.LayoutOrder = if weekly then WEEK_ORDER + index else index
-	row.Size = UDim2.new(1, -8, 0, ROW_HEIGHT)
-	row.BackgroundColor3 = if state == "claim" then baby.mint.light else palette.row
+	row.Name = name
+	row.LayoutOrder = order
+	row.Size = UDim2.new(1, 0, 0, look.height)
+	row.BackgroundColor3 = fill
 	row.Parent = list
-	UIKit.corner(row, 12)
-	UIKit.outline(row, if state == "claim" then baby.mint.deep else palette.rowEdge, 2)
-	local icon = Icon.make(row, quest.icon, UDim2.fromOffset(44, 44))
-	icon.AnchorPoint = Vector2.new(0, 0.5)
-	icon.Position = UDim2.new(0, 12, 0.5, 0)
-	local count = UIKit.label(row, QuestRules.countText(quest :: any), Enum.Font.FredokaOne, 15, if quest.done then baby.mint.deep else palette.inkSoft)
-	count.Name = "Count"
-	count.AnchorPoint = Vector2.new(1, 0)
-	count.Position = UDim2.new(1, -130, 0, 8)
-	count.Size = UDim2.fromOffset(84, 22)
-	count.TextXAlignment = Enum.TextXAlignment.Right
-	count.TextWrapped = false
-	local words = UIKit.label(row, quest.text, Enum.Font.FredokaOne, 17, palette.ink)
-	words.Position = UDim2.fromOffset(66, 8)
-	words.Size = UDim2.new(1, -66 - 130 - 88, 0, 22)
+	UIKit.corner(row, 14)
+	UIKit.outline(row, edge, 2)
+	local box = QuestRules.rowBox(0, look) -- from the card's own edges: middleW is what the middle gives up
+	local tile = Instance.new("Frame")
+	tile.Name = "Tile"
+	tile.AnchorPoint = Vector2.new(0, 0.5)
+	tile.Position = UDim2.new(0, box.iconX, 0.5, 0)
+	tile.Size = UDim2.fromOffset(look.icon, look.icon)
+	tile.BackgroundColor3 = tileFill
+	tile.Parent = row
+	UIKit.corner(tile, 12)
+	local picture = Icon.make(tile, icon, UDim2.fromScale(0.78, 0.78))
+	picture.AnchorPoint = Vector2.new(0.5, 0.5)
+	picture.Position = UDim2.fromScale(0.5, 0.5)
+	return row, box
+end
+
+-- A card's middle column: its title, a thick bar under it and a line of pay chips (returned, to fill)
+local function middle(row: Frame, box: QuestRules.RowBox, look: any, title: string, share: number, barColor: Color3, palette: UIKit.Palette): Frame
+	local top = (look.height - (look.title + 6 + 8 + look.bar + 8 + 20)) / 2
+	local words = UIKit.label(row, title, Enum.Font.FredokaOne, look.title, palette.ink)
+	words.Name = "Words"
+	words.Position = UDim2.fromOffset(box.middleX, top)
+	words.Size = UDim2.new(1, box.middleW, 0, look.title + 6)
 	words.TextTruncate = Enum.TextTruncate.AtEnd
 	words.TextWrapped = false
-	local track = UIKit.bar(row, quest.progress / math.max(1, quest.goal), if quest.done then baby.mint.fill else baby.sky.fill)
-	track.Position = UDim2.fromOffset(66, 33)
-	track.Size = UDim2.new(1, -66 - 130, 0, 12)
+	local track = UIKit.bar(row, share, barColor)
+	track.Position = UDim2.fromOffset(box.middleX, top + look.title + 6 + 6)
+	track.Size = UDim2.new(1, box.middleW, 0, look.bar)
 	local pays = Instance.new("Frame")
 	pays.Name = "Pays"
 	pays.BackgroundTransparency = 1
-	pays.Position = UDim2.fromOffset(66, 50)
-	pays.Size = UDim2.new(1, -66 - 130, 0, 20)
+	pays.Position = UDim2.fromOffset(box.middleX, top + look.title + 6 + 6 + look.bar + 8)
+	pays.Size = UDim2.new(1, box.middleW, 0, 20)
 	pays.Parent = row
 	local payLine = Instance.new("UIListLayout")
 	payLine.FillDirection = Enum.FillDirection.Horizontal
@@ -286,27 +290,54 @@ local function questRow(index: number, quest: QuestView, palette: UIKit.Palette,
 	payLine.Padding = UDim.new(0, 6)
 	payLine.SortOrder = Enum.SortOrder.LayoutOrder
 	payLine.Parent = pays
+	return pays
+end
+
+-- Puts a card's action (a button, or words) in its action column, centred
+local function seat(action: GuiObject, look: any)
+	action.AnchorPoint = Vector2.new(1, 0.5)
+	action.Position = UDim2.new(1, -look.pad, 0.5, 0)
+	action.Size = UDim2.fromOffset(look.action, look.button)
+	if action:IsA("TextLabel") then
+		action.TextXAlignment = Enum.TextXAlignment.Center
+		action.TextWrapped = true
+	end
+end
+
+-- One quest's row (owner 2026-11-21: "easily understandable/immersive"; relaid out 2026-11-20): its picture on a tile,
+-- its words over a thick bar and its pay as chips, and in the action column Claim (the whole card turns mint: its pay
+-- waits), else how far it is, big ("3 / 8"), or a word once it's claimed or done (QuestRules.actionWords)
+local function questRow(index: number, quest: QuestView, palette: UIKit.Palette, weekly: boolean)
+	local state = QuestRules.rowState(quest :: any, weekly)
+	local baby = UIStyle.BABY
+	local look = WINDOW.ROW
+	local waiting = state == "claim"
+	local finished = state == "claimed" or state == "done"
+	local row, box = card(
+		if weekly then `Week{index}` else `Quest{index}`,
+		if weekly then WEEK_ORDER + index else index,
+		look,
+		if waiting then baby.mint.light else palette.row,
+		if waiting then baby.mint.deep else palette.rowEdge,
+		quest.icon,
+		if waiting then Color3.new(1, 1, 1) else palette.slotEmpty
+	)
+	local pays = middle(row, box, look, quest.text, quest.progress / math.max(1, quest.goal), if quest.done then baby.mint.fill else baby.sky.fill, palette)
 	for order, pay in QuestRules.pay(quest :: any, weekly) do
 		payChip(pays, order, pay.icon, pay.text, palette)
 	end
-	local action: GuiObject
-	if state == "claim" then
+	local words = QuestRules.actionWords(quest :: any, weekly)
+	if words then
+		local label = UIKit.label(row, if finished then `{words} ✅` else words, Enum.Font.FredokaOne, if finished then 16 else 22, if finished then baby.mint.deep else palette.inkSoft)
+		label.Name = "Count"
+		seat(label, look)
+	else
 		local button = UIKit.button(row, "Claim", UIKit.Colors.Success)
 		button.Name = "Claim"
-		button.Size = UDim2.fromOffset(116, 48)
 		button.Activated:Connect(function()
 			claim(index, button)
 		end)
-		action = button
-	else
-		local text = if state == "done" then "Done ✅" elseif state == "claimed" then "Claimed ✅" else "Keep going!"
-		action = UIKit.label(row, text, Enum.Font.FredokaOne, if state == "going" then 15 else 16, if state == "done" then baby.mint.deep else palette.hint)
-		action.Size = UDim2.fromOffset(116, 48)
-	end
-	action.AnchorPoint = Vector2.new(1, 0.5)
-	action.Position = UDim2.new(1, -10, 0.5, 0)
-	if action:IsA("TextLabel") then
-		action.TextXAlignment = Enum.TextXAlignment.Center
+		seat(button, look)
 	end
 end
 
@@ -323,26 +354,19 @@ end
 
 -- A chest's row (the Quest Chest: all three claimed; the Weekly Chest: all three done): what's in it and Open
 local function chestRow(chest: Chest, palette: UIKit.Palette)
-	local row = Instance.new("Frame")
-	row.Name = chest.name
-	row.LayoutOrder = chest.order
-	row.Size = UDim2.new(1, -8, 0, ROW_HEIGHT)
-	row.BackgroundColor3 = chest.tint.light
-	row.Parent = list
-	UIKit.corner(row, 12)
-	UIKit.outline(row, chest.tint.deep, 2)
-	local icon = Icon.make(row, "Gift", UDim2.fromOffset(44, 44))
-	icon.AnchorPoint = Vector2.new(0, 0.5)
-	icon.Position = UDim2.new(0, 12, 0.5, 0)
-	local title = UIKit.label(row, chest.title, Enum.Font.FredokaOne, 17, palette.ink)
-	title.Position = UDim2.fromOffset(66, 10)
-	title.Size = UDim2.new(1, -66 - 130, 0, 22)
+	local look = WINDOW.ROW
+	local row, box = card(chest.name, chest.order, look, chest.tint.light, chest.tint.deep, "Gift", Color3.new(1, 1, 1))
+	local title = UIKit.label(row, chest.title, Enum.Font.FredokaOne, look.title, palette.ink)
+	title.Position = UDim2.fromOffset(box.middleX, 14)
+	title.Size = UDim2.new(1, box.middleW, 0, look.title + 6)
+	title.TextWrapped = false
 	local inside = UIKit.label(row, itemNames(chest.items), Enum.Font.GothamBold, 13, palette.inkSoft)
-	inside.Position = UDim2.fromOffset(66, 36)
-	inside.Size = UDim2.new(1, -66 - 130, 0, 30)
+	inside.Position = UDim2.fromOffset(box.middleX, 14 + look.title + 8)
+	inside.Size = UDim2.new(1, box.middleW, 0, 32)
+	inside.TextYAlignment = Enum.TextYAlignment.Top
 	local action: GuiObject
 	if chest.opened then
-		action = UIKit.label(row, "Opened ✅", Enum.Font.FredokaOne, 16, palette.hint)
+		action = UIKit.label(row, "Opened ✅", Enum.Font.FredokaOne, 16, UIStyle.BABY.mint.deep)
 	elseif chest.ready then
 		local button = UIKit.button(row, "Open", UIKit.Colors.Accent)
 		button.Name = if chest.which == "week" then "OpenWeekChest" else "OpenChest"
@@ -353,12 +377,7 @@ local function chestRow(chest: Chest, palette: UIKit.Palette)
 	else
 		action = UIKit.label(row, chest.waiting, Enum.Font.FredokaOne, 15, palette.hint)
 	end
-	action.Size = UDim2.fromOffset(116, 48)
-	action.AnchorPoint = Vector2.new(1, 0.5)
-	action.Position = UDim2.new(1, -10, 0.5, 0)
-	if action:IsA("TextLabel") then
-		action.TextXAlignment = Enum.TextXAlignment.Center
-	end
+	seat(action, look)
 end
 
 -- Standing by your shop (the server refuses placements from further: PlacementService)
@@ -403,41 +422,21 @@ local function mainSection(palette: UIKit.Palette)
 		return
 	end
 	local baby = UIStyle.BABY
+	local look = WINDOW.MAIN
 	sectionHead("MainHead", MAIN_ORDER, "👑", "Main Quest", if goal.kind == "build" then "Grow your shop" else "Level up your shop", palette)
-	local row = Instance.new("Frame")
-	row.Name = "MainQuest"
-	row.LayoutOrder = MAIN_ORDER + 1
-	row.Size = UDim2.new(1, -8, 0, ROW_HEIGHT)
-	row.BackgroundColor3 = baby.lilac.light
-	row.Parent = list
-	UIKit.corner(row, 12)
-	UIKit.outline(row, if goal.ready then baby.mint.deep else baby.lilac.deep, 2)
-	local icon = Icon.make(row, goal.icon, UDim2.fromOffset(44, 44))
-	icon.AnchorPoint = Vector2.new(0, 0.5)
-	icon.Position = UDim2.new(0, 12, 0.5, 0)
-	-- as the quest rows: how far it is beside its words ("$250 / $250"), a thick bar, what it pays as a chip
+	-- the hero card: a bigger picture and title, what it pays as a chip with how far it is ("$250 / $300") at that
+	-- line's right end (beside the title it cut "Build the Accessory Shelf" short), and Build (or what's missing) in
+	-- the action column
+	local row, box = card("MainQuest", MAIN_ORDER + 1, look, baby.lilac.light, if goal.ready then baby.mint.deep else baby.lilac.deep, goal.icon, Color3.new(1, 1, 1))
+	local barColor = if goal.ready then baby.mint.fill elseif goal.kind == "level" then baby.lilac.fill else baby.butter.fill
+	local pays = middle(row, box, look, goal.text, goal.progress, barColor, palette)
 	local count = UIKit.label(row, goal.amount, Enum.Font.FredokaOne, 15, if goal.ready then baby.mint.deep else palette.inkSoft)
 	count.Name = "Count"
 	count.AnchorPoint = Vector2.new(1, 0)
-	count.Position = UDim2.new(1, -130, 0, 8)
-	count.Size = UDim2.fromOffset(130, 22)
+	count.Position = UDim2.new(1, -(look.pad + look.action + look.gap), 0, pays.Position.Y.Offset)
+	count.Size = UDim2.fromOffset(130, 20)
 	count.TextXAlignment = Enum.TextXAlignment.Right
 	count.TextWrapped = false
-	local words = UIKit.label(row, goal.text, Enum.Font.FredokaOne, 17, palette.ink)
-	words.Position = UDim2.fromOffset(66, 8)
-	words.Size = UDim2.new(1, -66 - 130 - 134, 0, 22)
-	words.TextTruncate = Enum.TextTruncate.AtEnd
-	words.TextWrapped = false
-	local barColor = if goal.ready then baby.mint.fill elseif goal.kind == "level" then baby.lilac.fill else baby.butter.fill
-	local track = UIKit.bar(row, goal.progress, barColor)
-	track.Position = UDim2.fromOffset(66, 33)
-	track.Size = UDim2.new(1, -66 - 130, 0, 12)
-	local pays = Instance.new("Frame")
-	pays.Name = "Pays"
-	pays.BackgroundTransparency = 1
-	pays.Position = UDim2.fromOffset(66, 50)
-	pays.Size = UDim2.new(1, -66 - 130, 0, 20)
-	pays.Parent = row
 	if goal.kind == "build" then
 		payChip(pays, 1, "Level", `{MainQuestRules.reward(MainQuests, goal.cost)} XP when built`, palette)
 	else
@@ -447,6 +446,7 @@ local function mainSection(palette: UIKit.Palette)
 	if goal.ready then
 		local button = UIKit.button(row, "Build", UIKit.Colors.Success)
 		button.Name = "Build"
+		button.TextSize = 20
 		button.Activated:Connect(function()
 			buildMain(goal)
 		end)
@@ -454,35 +454,60 @@ local function mainSection(palette: UIKit.Palette)
 	elseif goal.kind == "build" then
 		local cash = player:GetAttribute("Cash")
 		local short = goal.cost - (if typeof(cash) == "number" then cash else 0)
-		action = UIKit.label(row, `{MainQuestRules.money(short)} to go`, Enum.Font.FredokaOne, 15, palette.hint)
+		action = UIKit.label(row, `{MainQuestRules.money(short)} to go`, Enum.Font.FredokaOne, 17, palette.hint)
 	else
-		action = UIKit.label(row, "Keep going!", Enum.Font.FredokaOne, 15, palette.hint)
+		action = UIKit.label(row, "Keep going!", Enum.Font.FredokaOne, 16, palette.hint)
 	end
-	action.Size = UDim2.fromOffset(116, 48)
-	action.AnchorPoint = Vector2.new(1, 0.5)
-	action.Position = UDim2.new(1, -10, 0.5, 0)
-	if action:IsA("TextLabel") then
-		action.TextXAlignment = Enum.TextXAlignment.Center
-	end
-	for index, item in MainQuest.others() do
-		if index > MAIN_THEN then
-			break
+	seat(action, look)
+	-- what's next to build: a small heading and up to three cells side by side (picture, name, price)
+	local nextLook = WINDOW.THEN
+	local others = MainQuest.others()
+	local shown = math.min(#others, nextLook.max)
+	if shown > 0 then
+		local strip = Instance.new("Frame")
+		strip.Name = "MainThen"
+		strip.LayoutOrder = MAIN_ORDER + 2
+		strip.BackgroundTransparency = 1
+		strip.Size = UDim2.new(1, 0, 0, 18 + nextLook.height)
+		strip.Parent = list
+		local caption = UIKit.label(strip, nextLook.caption, Enum.Font.GothamBold, 12, palette.hint)
+		caption.Position = UDim2.fromOffset(6, 0)
+		caption.Size = UDim2.new(1, -12, 0, 16)
+		caption.TextWrapped = false
+		local cells = Instance.new("Frame")
+		cells.BackgroundTransparency = 1
+		cells.Position = UDim2.fromOffset(0, 18)
+		cells.Size = UDim2.new(1, 0, 0, nextLook.height)
+		cells.Parent = strip
+		local line = Instance.new("UIListLayout")
+		line.FillDirection = Enum.FillDirection.Horizontal
+		line.SortOrder = Enum.SortOrder.LayoutOrder
+		line.Padding = UDim.new(0, nextLook.gap)
+		line.Parent = cells
+		for index = 1, shown do
+			local item = others[index]
+			local cell = Instance.new("Frame")
+			cell.Name = `Then{index}`
+			cell.LayoutOrder = index
+			-- equal shares of the row, the gaps taken out of each
+			cell.Size = UDim2.new(1 / shown, -nextLook.gap * (shown - 1) / shown, 1, 0)
+			cell.BackgroundColor3 = palette.row
+			cell.Parent = cells
+			UIKit.corner(cell, 12)
+			UIKit.outline(cell, palette.rowEdge, 1.5)
+			local small = Icon.make(cell, item.icon, UDim2.fromOffset(28, 28))
+			small.AnchorPoint = Vector2.new(0, 0.5)
+			small.Position = UDim2.new(0, 8, 0.5, 0)
+			local name = UIKit.label(cell, item.name, Enum.Font.FredokaOne, 14, palette.ink)
+			name.Position = UDim2.fromOffset(44, 6)
+			name.Size = UDim2.new(1, -50, 0, 18)
+			name.TextTruncate = Enum.TextTruncate.AtEnd
+			name.TextWrapped = false
+			local price = UIKit.label(cell, MainQuestRules.money(item.cost), Enum.Font.GothamBold, 13, palette.inkSoft)
+			price.Position = UDim2.fromOffset(44, 24)
+			price.Size = UDim2.new(1, -50, 0, 16)
+			price.TextWrapped = false
 		end
-		local line = Instance.new("Frame")
-		line.Name = `MainThen{index}`
-		line.LayoutOrder = MAIN_ORDER + 1 + index
-		line.Size = UDim2.new(1, -24, 0, 30)
-		line.BackgroundColor3 = palette.row
-		line.Parent = list
-		UIKit.corner(line, 10)
-		local small = Icon.make(line, item.icon, UDim2.fromOffset(22, 22))
-		small.AnchorPoint = Vector2.new(0, 0.5)
-		small.Position = UDim2.new(0, 8, 0.5, 0)
-		local text = UIKit.label(line, `Next: {item.name} · {MainQuestRules.money(item.cost)}`, Enum.Font.GothamBold, 13, palette.inkSoft)
-		text.Position = UDim2.fromOffset(38, 0)
-		text.Size = UDim2.new(1, -46, 1, 0)
-		text.TextTruncate = Enum.TextTruncate.AtEnd
-		text.TextWrapped = false
 	end
 end
 
@@ -572,13 +597,21 @@ local function buildPanel()
 	Icon.header(panel, "📜", UIKit.HEADER_HEIGHT)
 	local limit = panel:FindFirstChildOfClass("UISizeConstraint")
 	if limit then
-		limit.MaxSize = Vector2.new(560, 520)
+		limit.MaxSize = Vector2.new(WINDOW.width, WINDOW.height)
 	end
 	local layout = list:FindFirstChildOfClass("UIListLayout")
 	if layout then
-		layout.Padding = UDim.new(0, 8)
+		layout.Padding = UDim.new(0, WINDOW.list.gap)
 		layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	end
+	-- room inside the list: a row's outline isn't cut by the list's edge, and rows stop short of the scroll bar
+	-- (owner 2026-11-20: "borders cutoff")
+	local room = Instance.new("UIPadding")
+	room.PaddingLeft = UDim.new(0, WINDOW.list.left)
+	room.PaddingRight = UDim.new(0, WINDOW.list.right)
+	room.PaddingTop = UDim.new(0, WINDOW.list.top)
+	room.PaddingBottom = UDim.new(0, WINDOW.list.bottom)
+	room.Parent = list
 	list.Size = UDim2.new(1, -24, 1, -(UIKit.HEADER_HEIGHT + 22)) -- no footer line: each section's heading has its own
 	panel:GetPropertyChangedSignal("Visible"):Connect(renderPanel)
 end

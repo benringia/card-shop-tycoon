@@ -9,7 +9,7 @@ local expect = require("./lib/expect")
 
 return {
 	["the ring takes the shape of what it's on"] = function()
-		local pad = Cues.RING.pad
+		local pad = 5 -- how far off the ring stands (CueShape.pad: the thing's outline plus RING.gap)
 		expect.equal(CueShape.radius({ w = 52, h = 52 }, { scale = 0.5, offset = 0 }, pad, Cues.RING.fallback), 26 + pad, "a round button: a round ring")
 		expect.equal(CueShape.radius({ w = 200, h = 48 }, { scale = 0.5, offset = 0 }, pad, Cues.RING.fallback), 24 + pad, "a pill: a pill")
 		expect.equal(CueShape.radius({ w = 72, h = 72 }, { scale = 0, offset = 22 }, pad, Cues.RING.fallback), 22 + pad, "a tile: its own rounding")
@@ -56,5 +56,17 @@ return {
 		expect.equal(CueShape.pawSide({ x = 600, w = 680 }, 1891, Cues.PAW.sideShare), "above", "a window's button")
 		expect.equal(CueShape.pawSide({ x = 8, w = 96 }, 0, Cues.PAW.sideShare), "above", "no screen size yet")
 		assert(Cues.PAW.sideShare > 0.05 and Cues.PAW.sideShare < 0.2, "only what hugs the left edge")
+	end,
+	-- owner 2026-11-20 (the Phone's tile on a computer, where the HUD is drawn bigger): "the highight border doesnt fit
+	-- the tile. check it and make sure every highlighted elements fit the highlight border". A corner given in px is
+	-- drawn times the thing's scale, and the ring sits just outside the thing's own outline
+	["the ring fits a scaled thing: its corner grows with the scale, and it hugs the thing's own outline"] = function()
+		local pad = 4
+		expect.near(CueShape.radius({ w = 98.6, h = 98.6 }, { scale = 0, offset = 22 }, pad, Cues.RING.fallback, 1.37), 22 * 1.37 + pad, 1e-6, "a tile drawn 1.37 times bigger: its corner is too")
+		expect.equal(CueShape.radius({ w = 72, h = 72 }, { scale = 0, offset = 22 }, pad, Cues.RING.fallback, 1), 22 + pad, "not scaled: as before")
+		expect.equal(CueShape.radius({ w = 52, h = 52 }, { scale = 0.5, offset = 0 }, pad, Cues.RING.fallback, 1.37), 26 + pad, "a round thing stays round: its corner is a share of its drawn size")
+		expect.near(CueShape.pad(3, 1.37, Cues.RING), 3 * 1.37 + Cues.RING.gap, 1e-6, "just outside its white outline, drawn bigger too")
+		expect.equal(CueShape.pad(nil, 1, Cues.RING), Cues.RING.gap, "no outline: right on its edge")
+		assert(Cues.RING.gap >= 1 and Cues.RING.gap <= 4, "hugging: no band of background between the thing and its ring")
 	end,
 }

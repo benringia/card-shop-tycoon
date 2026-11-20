@@ -3,10 +3,11 @@
 -- more noticeable, also make it fit the shape of what it is highlighting. also make the pawprint more noticeable".
 -- Plain data, Lune-tested (tests/CueShape; shapes: Util/CueShape).
 return {
-	-- The gold ring round a button: `pad` px off it, `thickness` px, with a dark `edge` px line outside it (it shows
-	-- on light windows too); its corner is the button's own (`fallback` px when none is found); it pulses between the
-	-- `pulse` transparencies
-	RING = { pad = 6, thickness = 6, edge = 2, fallback = 14, pulse = { 0, 0.3 } },
+	-- The gold ring round a button: `gap` px outside the button's own outline (owner 2026-11-20: "the highight border
+	-- doesnt fit the tile": it stood 6 px off with a squarer corner than a tile drawn bigger on a computer),
+	-- `thickness` px, with a dark `edge` px line outside it (it shows on light windows too); its corner is the
+	-- button's own as drawn (`fallback` px when none is found); it pulses between the `pulse` transparencies
+	RING = { gap = 2, thickness = 6, edge = 2, fallback = 14, pulse = { 0, 0.3 } },
 	-- A second ring pinging outward from it: every `period` seconds it grows `grow` px and fades (from `from`
 	-- transparency), `thickness` px
 	PING = { period = 1.1, grow = 24, thickness = 4, from = 0.15 },

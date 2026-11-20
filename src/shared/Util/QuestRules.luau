@@ -413,6 +413,26 @@ function QuestRules.rowState(quest: QuestView, weekly: boolean): string
 	return if quest.done then "claim" else "going"
 end
 
+-- A row's three columns for a card `width` px wide (Config/Quests WINDOW.ROW or MAIN): the picture tile at `iconX`,
+-- the middle (words, bar, pay) from `middleX`, `middleW` wide, and the action column from `actionX`, `actionW` wide,
+-- with the look's gap between each (owner 2026-11-20: the bar ran into the button)
+export type RowBox = { iconX: number, middleX: number, middleW: number, actionX: number, actionW: number }
+function QuestRules.rowBox(width: number, look: { pad: number, icon: number, gap: number, action: number }): RowBox
+	local middleX = look.pad + look.icon + look.gap
+	local actionX = width - look.pad - look.action
+	return { iconX = look.pad, middleX = middleX, middleW = actionX - look.gap - middleX, actionX = actionX, actionW = look.action }
+end
+
+-- What a row's action column says where no button stands: how far the quest is while it's going, "Claimed" or (a
+-- weekly one) "Done" after; nil while its Claim button is there
+function QuestRules.actionWords(quest: QuestView, weekly: boolean): string?
+	local state = QuestRules.rowState(quest, weekly)
+	if state == "claim" then
+		return nil
+	end
+	return if state == "claimed" then "Claimed" elseif state == "done" then "Done" else QuestRules.countText(quest)
+end
+
 -- "3 / 8" beside a quest's name
 function QuestRules.countText(quest: QuestView): string
 	return `{math.min(quest.progress, quest.goal)} / {quest.goal}`
