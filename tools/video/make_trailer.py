@@ -31,17 +31,18 @@ GOLD = (255, 207, 74, 255)
 CLIPS = [
     (150.6, 152.8, "RIP PACKS"),  # the pack tears open
     (156.7, 158.7, None),  # RARE! flash and the card
-    (656.0, 658.2, None),  # Open 10: fifty cards turning
-    (700.0, 701.6, "COLLECT THEM ALL"),  # the binder
-    (433.0, 435.5, "RUN YOUR CARD SHOP"),  # exact change, SOLD!
-    (110.0, 111.6, None),  # Pish and Chikin
-    (325.0, 327.2, "BATTLE WITH YOUR CARDS"),  # a wild fight
-    (778.0, 780.4, None),  # the Meadow Warden
+    (656.0, 657.8, None),  # Open 10: fifty cards turning
+    (700.0, 701.4, "COLLECT THEM ALL"),  # the binder
+    (433.2, 435.5, "RUN YOUR CARD SHOP"),  # exact change, SOLD!
+    (110.0, 111.4, None),  # Pish and Chikin
+    (325.0, 327.0, "BATTLE WITH YOUR CARDS"),  # a wild fight
+    (778.0, 780.0, None),  # the Meadow Warden
     (811.5, 814.0, "BEAT BOSSES"),  # the last hits
-    (815.6, 817.2, None),  # VICTORY!
-    (823.3, 825.9, None),  # the boss chests
-    (16.6, 18.6, None),  # the young Prism Hydra
-    (51.5, 54.0, None),  # Supernova
+    (815.6, 817.0, None),  # VICTORY!
+    (823.5, 825.7, None),  # the boss chests
+    (16.8, 18.4, None),  # the young Prism Hydra
+    (33.4, 36.1, None),  # the maxed Rift Reaper's Thousand Cuts (owner 2026-11-20: "insert a shot with the maxed out scythe")
+    (51.8, 54.0, None),  # Supernova
     (1021.5, 1024.0, "@title"),  # the plaza at night, the game's name over it
 ]
 TITLE = "ONE MORE PACK"
