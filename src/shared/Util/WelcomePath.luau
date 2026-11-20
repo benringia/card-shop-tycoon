@@ -7,6 +7,12 @@ export type Key = { t: number, pos: Vec, look: Vec }
 local WelcomePath = {}
 
 -- The config's keys plus the shop's: `back` studs out along `outward` from the door, `up` above it, looking at the sign
+-- Whether the flight counts as seen: seen before (`saved`), or switched off (`cfg.PLAY` false) once the prologue is over
+-- (`prologueSeen`): then Pish's tour follows the prologue's wake-up straight away (owner 2026-11-20)
+function WelcomePath.seen(saved: boolean, prologueSeen: boolean, cfg: { PLAY: boolean? }): boolean
+	return saved or (cfg.PLAY == false and prologueSeen)
+end
+
 function WelcomePath.keys(cfg: any, door: Vec, outward: { x: number, z: number }): { Key }
 	local keys: { Key } = {}
 	for _, key in cfg.KEYS do

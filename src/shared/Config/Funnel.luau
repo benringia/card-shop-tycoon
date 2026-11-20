@@ -10,7 +10,7 @@ return {
 		"PrologueFight", -- the Hydra fight with the lent cards
 		"PrologueTaken", -- the Hydra took the cards
 		"PrologueDone", -- woke in town (or skipped in act 3)
-		"WelcomeFlightDone",
+		"WelcomeFlightDone", -- right after PrologueDone since the flight went (2026-11-20); kept so the steps don't renumber
 		-- Pish's tour (Config/Pish STEPS, in order)
 		"giftPack",
 		"summonPal",

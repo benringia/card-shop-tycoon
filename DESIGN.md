@@ -6210,6 +6210,13 @@ boss models; the ranch and Heroic tiers come after those.
     game's video (Creator Hub, Thumbnails): real gameplay, no voice-over, no music with lyrics, no ads or claims, a
     logo and a few describing words allowed; 3 uploads a month, rejected ones count. Needs Pillow and
     imageio-ffmpeg (it brings ffmpeg).
+  - *No intro flight* (owner 2026-11-20: "remove intro cinematic. the game starts after prologue", then "the
+    tutorial starts after the pish and chikin waking you up scene"): the first-visit welcome flight (past Forest
+    Falls, Frostpeak, the plaza and Ember Canyon to your shop) no longer plays. It counts as seen the moment the
+    prologue is over (`Config/Welcome` PLAY false, `WelcomePath.seen`, WelcomeService), so Pish's arrival follows the
+    dogs waking you up at your shop. The saved flag stays (no data change); the onboarding funnel still logs
+    WelcomeFlightDone, now right after PrologueDone, so its step numbers don't move. Studio's `/intro` still plays the
+    flight. Seen live: the prologue replayed to its end, then straight to "Hi! I'm Pish!" at the shop, no flight.
   - *The falls by the Wild portal* (owner 2026-11-20: "the portal to wild is too loud. lower its volume"): the portal
     has no sound of its own; the only one there is the Forest Falls' waterfall 40 studs away. Its volume 0.5 -> 0.2
     (`Config/Scenery` SOUNDS).

@@ -140,4 +140,16 @@ return {
 			last = pos
 		end
 	end,
+	-- owner 2026-11-20: "remove intro cinematic. the game starts after prologue", then "the tutorial starts after the
+	-- pish and chikin waking you up scene": the flight no longer plays for anyone; it counts as seen the moment the
+	-- prologue is over, so Pish's tour follows the dogs waking you up
+	["the flight is off: it counts as seen once the prologue is over"] = function()
+		expect.equal(welcome.PLAY, false, "switched off")
+		expect.equal(WelcomePath.seen(false, true, welcome), true, "the prologue over: on to Pish's tour")
+		expect.equal(WelcomePath.seen(false, false, welcome), false, "the prologue still to come: not yet")
+		expect.equal(WelcomePath.seen(true, false, welcome), true, "seen before: still seen")
+		local on = { PLAY = true }
+		expect.equal(WelcomePath.seen(false, true, on), false, "switched back on: it plays after the prologue")
+		expect.equal(WelcomePath.seen(true, true, on), true)
+	end,
 }

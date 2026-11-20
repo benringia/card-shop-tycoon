@@ -4,10 +4,14 @@
 -- false and says when it's done (Remotes.WelcomeSeen). Players from before the cinematic count as having seen it
 -- (Migrations v13). The prologue before it the same way (spec 2026-11-14-prologue-hydra-design; data.seenPrologue,
 -- attribute SeenPrologue, Remotes.PrologueSeen; saves from before it count it as seen, Migrations v29); the welcome
--- flight waits for it (WelcomeController).
+-- flight waits for it (WelcomeController). The flight is off since 2026-11-20 (Config/Welcome PLAY): it counts as seen
+-- the moment the prologue is, so Pish's tour follows the dogs waking you up; Studio's /intro still plays it.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Remotes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Remotes"))
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Remotes = require(Shared:WaitForChild("Remotes"))
+local Welcome = require(Shared:WaitForChild("Config"):WaitForChild("Welcome"))
+local WelcomePath = require(Shared:WaitForChild("Util"):WaitForChild("WelcomePath"))
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
@@ -40,6 +44,10 @@ local function setPrologueSeen(player: Player, value: boolean)
 	end
 	prologueSeen[player] = value
 	player:SetAttribute("SeenPrologue", value)
+	-- the flight is off (Config/Welcome PLAY): it counts as seen now, and Pish's tour starts (owner 2026-11-20)
+	if seen[player] == false and WelcomePath.seen(false, value, Welcome) then
+		setSeen(player, true)
+	end
 end
 
 -- Whether the prologue may play for this player now (not seen yet, or Studio's /prologue): PrologueService's check
@@ -81,7 +89,7 @@ local function load(player: Player, data: PlayerData)
 		Funnel.step(player, "Joined") -- a new player (the onboarding funnel's first step)
 	end
 	setPrologueSeen(player, data.seenPrologue == true)
-	setSeen(player, data.seenWelcome == true)
+	setSeen(player, WelcomePath.seen(data.seenWelcome == true, data.seenPrologue == true, Welcome))
 end
 
 local function save(player: Player, data: PlayerData)

@@ -9,6 +9,11 @@
 -- (FINALE). Nothing written and no dogs on screen (owner 2026-11-16: "on the intro. remove all texts and pish chikin.
 -- just the scenery is enough"): no title, no place cards; the Skip button only.
 return {
+	-- Off (owner 2026-11-20: "remove intro cinematic. the game starts after prologue", "the tutorial starts after the
+	-- pish and chikin waking you up scene"): nobody sees the flight; it counts as seen once the prologue is over
+	-- (Util/WelcomePath.seen, WelcomeService), so Pish's tour follows the dogs waking you up. Studio's /intro still
+	-- plays it
+	PLAY = false,
 	SECONDS = 12,
 	SUNSET_SHARE = 0.5,
 	KEYS = {
