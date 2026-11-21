@@ -9,6 +9,7 @@ local MessagingService = game:GetService("MessagingService")
 local Players = game:GetService("Players")
 local PolicyService = game:GetService("PolicyService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
@@ -411,6 +412,33 @@ local function rollCard(player: Player, boss: Bosses.Boss): { cardId: string, fo
 end
 
 -- Studio's /bosscard: this player's next boss loot win drops a Frontier card
+-- Studio (/bossbeaten <n> on|off): boss n counts as beaten and opened (to try a beaten boss's Take me there), and off
+-- puts back what it was before the on (with no on before: never beaten, never opened); the board told at once. False
+-- when it can't (not Studio, an unknown boss, not loaded)
+local beatenBefore: { [Player]: { [string]: { cleared: boolean, unlocked: boolean } } } = {}
+function BossService.DevSetBeaten(player: Player, index: number, beaten: boolean): boolean
+	local bossId = Bosses.LADDER[index]
+	local mine = records[player]
+	local record = if bossId and mine then mine[bossId] else nil
+	if not RunService:IsStudio() or not record then
+		return false
+	end
+	local kept = beatenBefore[player] or {}
+	beatenBefore[player] = kept
+	if beaten then
+		kept[bossId] = kept[bossId] or { cleared = record.cleared, unlocked = record.unlocked }
+		record.cleared = true
+		record.unlocked = true
+	else
+		local before = kept[bossId]
+		kept[bossId] = nil
+		record.cleared = if before then before.cleared else false
+		record.unlocked = if before then before.unlocked else Bosses.BOSSES[bossId].unlock == nil
+	end
+	sendBosses(player)
+	return true
+end
+
 function BossService.ForceCardForTest(player: Player)
 	forcedCards[player] = true
 end
@@ -1021,6 +1049,37 @@ function BossService.UseGate(player: Player, index: number, group: boolean?)
 	end
 end
 
+-- Arriving in the Frontier from a beaten boss's teleport (FrontierService.ToBoss: its data names the boss): once the
+-- character stands, off to that boss's gate. Checked against the save (BossRules.teleportTarget): the data passes
+-- through the client
+local ARRIVE_WAIT = 20 -- seconds for the character to appear
+local ARRIVE_SETTLE = 1.5 -- seconds after it appears, before the trip (the place's own arrival runs first)
+local function arriveAtBoss(player: Player)
+	local ok, data = pcall(function()
+		return player:GetJoinData().TeleportData
+	end)
+	local bossId = BossRules.teleportTarget(if ok then data else nil, "Frontier", Bosses, function(id: string): boolean
+		local mine = records[player]
+		local record = if mine then mine[id] else nil
+		return record ~= nil and record.cleared
+	end)
+	local index = if bossId then table.find(Bosses.LADDER, bossId) else nil
+	if not index then
+		return
+	end
+	task.spawn(function()
+		local deadline = os.clock() + ARRIVE_WAIT
+		while player.Parent and not (player.Character and player.Character:FindFirstChild("HumanoidRootPart")) and os.clock() < deadline do
+			task.wait(0.25)
+		end
+		task.wait(ARRIVE_SETTLE)
+		local gate = BossService.GetGate(index :: number)
+		if player.Parent and player.Character and gate then
+			WildService.TravelToWild(player, gate)
+		end
+	end)
+end
+
 local function load(player: Player, data: DataService.PlayerData)
 	local saved = if typeof(data.bosses) == "table" then data.bosses else {}
 	local byBoss: { [string]: BossRules.Record } = {}
@@ -1032,6 +1091,9 @@ local function load(player: Player, data: DataService.PlayerData)
 	seenIntro[player] = typeof(data.dungeon) == "table" and data.dungeon.seenIntro == true
 	setTitle(player)
 	task.defer(sendBosses, player) -- after the other services load (fragment counts)
+	if Place.isFrontier() then
+		arriveAtBoss(player) -- a beaten boss's teleport lands at its gate
+	end
 end
 
 local function save(player: Player, data: DataService.PlayerData)
@@ -1067,15 +1129,39 @@ local function onTravel(player: Player, raw: unknown)
 	if typeof(raw) ~= "number" or raw ~= math.floor(raw) or raw < 1 or raw > #Bosses.LADDER or not allowTravel(player) then
 		return
 	end
-	local boss = Bosses.BOSSES[Bosses.LADDER[raw]]
+	local bossId = Bosses.LADDER[raw]
+	local boss = Bosses.BOSSES[bossId]
 	local here = if Place.isDungeon() then "Dungeon" elseif Place.isFrontier() then "Frontier" else "Main"
+	local record = if records[player] then records[player][bossId] else nil
+	local choice = BossRules.travelChoice(boss.place, here, record ~= nil and record.cleared)
+	-- a beaten Frontier or Dungeon boss from another place: a teleport straight there (owner 2026-11-21). Refused
+	-- mid-fight; the Hydra's run needs a creature that can fight (it would put you out at once)
+	if choice == "teleport" then
+		if BattleService.IsFighting(player) then
+			notify(player, "Finish your fight first.", true)
+			return
+		elseif not BossRules.levelReady(boss.shopLevel, EconomyService.GetLevel(player)) then
+			notify(player, `The {boss.name} needs shop level {boss.shopLevel}.`, true)
+			return
+		end
+		local why = if boss.place == "Dungeon" then BattleService.WhyNotFight(player) else nil
+		if why then
+			notify(player, why, true)
+			return
+		end
+		-- (required here: FrontierService starts after this service in every place)
+		local FrontierService = require(Services:WaitForChild("FrontierService")) :: any
+		FrontierService.ToBoss(player, bossId)
+		return
+	end
 	local gate = BossService.GetGate(raw)
-	if BossRules.travelChoice(boss.place, here) ~= "gate" or not gate then
+	if choice ~= "gate" or not gate then
 		notify(player, `The {boss.name} isn't in this place.`, true)
 		return
 	end
 	WildService.TravelToWild(player, gate)
 end
+
 
 -- A lost boss fight: after LOSS_COUNTDOWN ("Teleporting back to town in 3, 2, 1") everyone who was still in it goes
 -- home (BossRules.lossHome); they no longer hold a remote copy, so its loot linger doesn't move them back. Members who

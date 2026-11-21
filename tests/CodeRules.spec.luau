@@ -7,6 +7,8 @@ local Codes = require("../src/shared/Config/Codes")
 local CodeRules = require("../src/shared/Util/CodeRules")
 local Items = require("../src/shared/Config/Items")
 local Luck = require("../src/shared/Config/Luck")
+local Gifts = require("../src/shared/Config/Gifts")
+local GiftRules = require("../src/shared/Util/GiftRules")
 local expect = require("./lib/expect")
 
 local CFG: any = {
@@ -18,6 +20,21 @@ local CFG: any = {
 }
 
 return {
+	-- Owner 2026-11-21: "add a noticeable notification if CODES get redeemed": a redeemed code plays the gifts' win
+	-- moment (Util/GiftWin: the screen dims, the present drops in, rattles and bursts, its gifts flip in as cards, a
+	-- pack can be opened right there), its own title and colours
+	["a redeemed code plays the gifts' win moment: its look, and every code's gifts as cards"] = function()
+		local look = (Gifts.WIN :: any).code
+		assert(look, "a look for codes")
+		expect.equal(look.title, "CODE REDEEMED!")
+		assert(typeof(look.picture) == "string" and look.chest == nil, "a picture, not a chest")
+		expect.equal(#look.colors, 2)
+		for code, entry in Codes.CODES do
+			local lines = GiftRules.lines(entry.reward, Items, Luck)
+			assert(#lines >= 1 and #lines <= 4, `{code}: {#lines} cards`)
+		end
+	end,
+
 	["what a player types becomes a code: capitals, no spaces or symbols"] = function()
 		expect.equal(CodeRules.normalize(" hello ", 20), "HELLO")
 		expect.equal(CodeRules.normalize("one-more pack!", 20), "ONEMOREPACK")

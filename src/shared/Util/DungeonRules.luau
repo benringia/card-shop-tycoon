@@ -48,6 +48,17 @@ function DungeonRules.expectedSize(data: unknown, max: number): number
 	return math.min(size, max)
 end
 
+-- Whether this run starts in the boss's lair (owner 2026-11-21: a beaten boss's teleport, FrontierService.ToBoss): the
+-- teleport named `bossId` for a run of one, and the save says this player beat it (teleport data passes through the
+-- client)
+function DungeonRules.straightToBoss(data: unknown, bossId: string, cleared: boolean): boolean
+	if typeof(data) ~= "table" or not cleared then
+		return false
+	end
+	local raw = data :: any
+	return raw.boss == bossId and raw.runSize == 1
+end
+
 -- At a gate: a member whose save hasn't loaded yet sits this fight out ("skip", still in the run); one with no
 -- creature left that can fight is out ("out"); everyone else goes in ("fight")
 function DungeonRules.gateCheck(loaded: boolean, ready: boolean): "fight" | "skip" | "out"

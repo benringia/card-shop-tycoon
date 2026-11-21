@@ -994,11 +994,12 @@ function UIKit.panel(
 	-- Bigger on a desktop (owner 2026-11-21: "increase overall font sizes for desktop. fontsizes are too small for
 	-- laptops"): the window's rest scale (Util/Motion RestScale) grows with the screen like the HUD, as far as the
 	-- window still fits (Util/HudGrow.window), worked out from its Size and size limit each time it shows and when
-	-- the screen changes. A touch screen's stays 1.
+	-- the screen changes. A touch screen's stays 1, and so does a window that fits and grows itself (its SizesItself
+	-- attribute: the order computer, clear of the bottom tiles).
 	local function grown(): number
 		local layer = frame:FindFirstAncestorWhichIsA("LayerCollector")
 		local parent = frame.Parent
-		if not HudGrowConfig.WINDOWS or not layer or not parent or not parent:IsA("GuiBase2d") then
+		if not HudGrowConfig.WINDOWS or frame:GetAttribute("SizesItself") or not layer or not parent or not parent:IsA("GuiBase2d") then
 			return 1
 		end
 		local screen = layer.AbsoluteSize

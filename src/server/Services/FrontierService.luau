@@ -4,12 +4,14 @@
 -- Main game: a plaza portal opens the menu (Explore, or Join a friend who is in a Frontier server).
 -- Frontier: the entrance's Return portal and the client's home button teleport back to the main game.
 -- Dungeon: the home button (and leaving the run) teleports back to the Frontier.
+-- A beaten Frontier or Dungeon boss's Take me there on the boss board (owner 2026-11-21; BossService): ToBoss.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TeleportService = game:GetService("TeleportService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Places = require(Shared:WaitForChild("Config"):WaitForChild("Places"))
+local Bosses = require(Shared:WaitForChild("Config"):WaitForChild("Bosses"))
 local Town = require(Shared:WaitForChild("Config"):WaitForChild("Town"))
 local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 local PortalTrails = require(Shared:WaitForChild("Util"):WaitForChild("PortalTrails"))
@@ -105,6 +107,34 @@ local function onTravel(player: Player, where: unknown, friendUserId: unknown)
 		end
 		local options = Instance.new("TeleportOptions")
 		options.ServerInstanceId = instanceId
+		teleport(player, Places.FRONTIER_PLACE_ID, options)
+	end
+end
+
+-- A beaten boss, straight there (owner 2026-11-21: "Add teleport to bosses in frontier and dungeon, when the player
+-- defeated the boss once"; BossService checked it's beaten and the player can go): a Frontier boss lands at its gate
+-- in a Frontier server (BossService reads the teleport there), the Prism Hydra opens a Dungeon run of your own that
+-- starts in its lair (DungeonService). In Studio it only says so.
+function FrontierService.ToBoss(player: Player, bossId: string)
+	local boss = Bosses.BOSSES[bossId]
+	if not boss then
+		return
+	end
+	local options = Instance.new("TeleportOptions")
+	if boss.place == "Dungeon" then
+		if Places.DUNGEON_PLACE_ID == 0 then
+			tell(player, "The Dungeon is coming soon!")
+			return
+		end
+		options.ShouldReserveServer = true
+		options:SetTeleportData({ runSize = 1, boss = bossId })
+		teleport(player, Places.DUNGEON_PLACE_ID, options)
+	elseif boss.place == "Frontier" then
+		if Places.FRONTIER_PLACE_ID == 0 then
+			tell(player, "The Frontier is coming soon!")
+			return
+		end
+		options:SetTeleportData({ boss = bossId })
 		teleport(player, Places.FRONTIER_PLACE_ID, options)
 	end
 end

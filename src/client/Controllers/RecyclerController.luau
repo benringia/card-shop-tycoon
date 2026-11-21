@@ -8,7 +8,11 @@
 -- it works the extras out again itself. A conversion is a timed job in the machine like the other stations': while it
 -- runs the window shows its card with the countdown and Finish now (Util/JobPanel), and what it made arrives when the
 -- time is up (a toast, and the window's sentence when it's open). Opened from your own Recycler's prompt; closes when
--- you walk away.
+-- you walk away. Nothing goes on one tap (owner 2026-11-21: "make sure players cant accidentally recycle their most
+-- powerful creatures. or the creatures they've been using"): a press shows the cards that would go, a picture each with
+-- how many, and only Yes, recycle sends them, with that list (the server takes nothing that wasn't in it). Creatures are
+-- never plain copies, so they never go, and every creature this client knows of (the binder's, and the ones in a
+-- station) keeps the copies it can still use.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -30,6 +34,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local Recipe = require(ClientUtil:WaitForChild("Recipe"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
 local JobPanel = require(ClientUtil:WaitForChild("JobPanel"))
@@ -63,6 +68,7 @@ local inFlight = false -- a request is waiting for the server; the buttons stay 
 local inFlightToken = 0
 local doneText: string? = nil -- what the last conversion made, shown in the sentence
 local doneToken = 0
+local review: { rarity: string? }? = nil -- a press waiting for Yes: one rarity's pile (nil: everything)
 
 local function clear(container: Instance)
 	for _, child in container:GetChildren() do
@@ -83,13 +89,57 @@ local function clockFor(gains: { RecycleRules.Gain }, cash: number): string
 	return UpgradeRules.clock(seconds)
 end
 
+-- Every creature this client knows of: the binder's (the party's and the workers' with them) and the ones held in a
+-- station; the server also counts the ones on display, so it only ever keeps more
+local function creatures(): { StationJobs.Held }
+	local list: { StationJobs.Held } = {}
+	for _, beast in BinderController.GetBeasts() do
+		table.insert(list, { cardId = beast.cardId, stars = beast.stars, grade = beast.grade })
+	end
+	for _, station in { "condenser", "grading" } do
+		local job = StationJobs.get(station)
+		local held = if job then job.card else nil
+		if held then
+			table.insert(list, held)
+		end
+	end
+	return list
+end
+
+local function currentPiles(): { [string]: RecycleRules.Pile }
+	return RecycleRules.piles(Recycler, Beasts, Grading, BinderController.GetGradedStacks() :: any, creatures(), rarityOf)
+end
+
+-- What a press does now: the copies that go, the materials it makes and the cash
+local function planFor(piles: { [string]: RecycleRules.Pile }, rarity: string?): ({ RecycleRules.Take }, { RecycleRules.Gain }, number)
+	if mode == "coins" then
+		local takes, cash = RecycleRules.coinPlan(Recycler, piles, rarity)
+		return takes, {}, cash
+	end
+	local takes, gains = RecycleRules.plan(Recycler, piles, rarity)
+	return takes, gains, 0
+end
+
+local function makeFace(parent: Instance, card: any)
+	local face = Instance.new("Frame")
+	face.Size = UDim2.fromScale(1, 1)
+	face.Parent = parent
+	UIKit.corner(face, 6)
+	local stroke = Instance.new("UIStroke")
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Parent = face
+	CardFace.render(face, stroke, card, false, false)
+end
+
 local render: () -> ()
 
-local function send(rarity: string?)
+-- Yes, recycle: the press with the list the player saw (`takes`)
+local function send(rarity: string?, takes: { RecycleRules.Take })
 	local part = machine
 	if inFlight or not part then
 		return
 	end
+	review = nil
 	-- Locked until the server answers (the job starts, or a timeout if it refused), so a second tap can't send the
 	-- same request
 	inFlight = true
@@ -101,7 +151,16 @@ local function send(rarity: string?)
 			render()
 		end
 	end)
-	Remotes.Recycle:FireServer(part:GetAttribute("ShelfUid"), rarity, mode)
+	Remotes.Recycle:FireServer(part:GetAttribute("ShelfUid"), rarity, mode, RecycleRules.shownMap(takes))
+	render()
+end
+
+-- A press: the window shows what would go before anything does
+local function ask(rarity: string?)
+	if inFlight then
+		return
+	end
+	review = { rarity = rarity }
 	render()
 end
 
@@ -198,8 +257,85 @@ local function buildRow(order: number, rarity: string, pile: RecycleRules.Pile)
 	button.AutoButtonColor = can
 	button.Activated:Connect(function()
 		if can then
-			send(rarity)
+			ask(rarity)
 		end
+	end)
+end
+
+-- The review: "Recycle these 52 cards?", that creatures are safe, the cards going (a picture each, how many), Yes,
+-- recycle with what it makes and how long, and Back
+local function renderReview(piles: { [string]: RecycleRules.Pile }, rarity: string?)
+	local takes, gains, cash = planFor(piles, rarity)
+	local total = 0
+	for _, take in takes do
+		total += take.count
+	end
+	local say = UIKit.label(list, RecycleRules.reviewSay(total), Enum.Font.FredokaOne, 16, palette.ink)
+	say.Name = "Say"
+	say.LayoutOrder = 0
+	say.Size = UDim2.new(1, -8, 0, SAY_HEIGHT)
+	say.TextXAlignment = Enum.TextXAlignment.Center
+	local safe = UIKit.label(list, Recycler.REVIEW_SAFE, Enum.Font.GothamBold, 12, palette.good)
+	safe.Name = "ReviewSafe"
+	safe.LayoutOrder = 1
+	safe.Size = UDim2.new(1, -8, 0, SAFE_HEIGHT)
+	safe.TextXAlignment = Enum.TextXAlignment.Center
+	safe.TextTruncate = Enum.TextTruncate.AtEnd
+
+	local tile = Recycler.REVIEW_TILE
+	local going = Instance.new("Frame")
+	going.Name = "Going"
+	going.LayoutOrder = 2
+	going.BackgroundTransparency = 1
+	going.Size = UDim2.new(1, -8, 0, 0)
+	going.AutomaticSize = Enum.AutomaticSize.Y
+	going.Parent = list
+	local grid = Instance.new("UIGridLayout")
+	grid.CellSize = UDim2.fromOffset(tile[1], tile[2] + 20)
+	grid.CellPadding = UDim2.fromOffset(6, 6)
+	grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	grid.SortOrder = Enum.SortOrder.LayoutOrder
+	grid.Parent = going
+	for order, line in RecycleRules.byCard(takes) do
+		local card = Cards.ById[line.cardId]
+		if card then
+			local cell = Instance.new("Frame")
+			cell.Name = "Card_" .. line.cardId
+			cell.LayoutOrder = order
+			cell.BackgroundTransparency = 1
+			cell.Parent = going
+			local holder = Instance.new("Frame")
+			holder.BackgroundTransparency = 1
+			holder.Size = UDim2.fromOffset(tile[1], tile[2])
+			holder.Parent = cell
+			makeFace(holder, card)
+			local count = UIKit.label(cell, `x{RecycleRules.count(line.count)}`, Enum.Font.FredokaOne, 14, palette.ink)
+			count.Name = "Count"
+			count.Position = UDim2.fromOffset(0, tile[2] + 2)
+			count.Size = UDim2.new(1, 0, 0, 18)
+			count.TextXAlignment = Enum.TextXAlignment.Center
+		end
+	end
+
+	local can = total > 0 and not inFlight
+	local yes = UIKit.button(list, Recycler.REVIEW_YES, if can then UIKit.Colors.Accent else UIKit.Colors.Locked)
+	yes.Name = "Yes"
+	yes.LayoutOrder = 3
+	yes.Size = UDim2.new(1, -8, 0, Recipe.LOOK.button)
+	yes.AutoButtonColor = can
+	Recipe.words(yes, Recycler.REVIEW_YES, if total > 0 then `Makes {RecycleRules.makes(Recycler, gains, cash)} · takes {clockFor(gains, cash)}` else nil)
+	yes.Activated:Connect(function()
+		if can then
+			send(rarity, takes)
+		end
+	end)
+	local back = UIKit.button(list, "Back", UIKit.Colors.Secondary)
+	back.Name = "Back"
+	back.LayoutOrder = 4
+	back.Size = UDim2.new(1, -8, 0, 44)
+	back.Activated:Connect(function()
+		review = nil
+		render()
 	end)
 end
 
@@ -210,15 +346,13 @@ render = function()
 	clear(list)
 	setMode(Recycler.MODE_WORDS[mode]) -- the switch shows the current choice (UIKit.segmented leaves that to us)
 	local coins = mode == "coins"
-	local piles = RecycleRules.piles(Recycler, Beasts, Grading, BinderController.GetGradedStacks() :: any, BinderController.GetBeasts() :: any, rarityOf)
-	local gains: { RecycleRules.Gain }, cash = {}, 0
-	if coins then
-		local _, paid = RecycleRules.coinPlan(Recycler, piles, nil)
-		cash = paid
-	else
-		local _, made = RecycleRules.plan(Recycler, piles, nil)
-		gains = made
+	local piles = currentPiles()
+	local asking = review
+	if asking then
+		renderReview(piles, asking.rarity)
+		return
 	end
+	local _, gains, cash = planFor(piles, nil)
 
 	local said = doneText
 	local say = UIKit.label(list, said or (if coins then Recycler.EXPLAIN_COINS else Recycler.EXPLAIN), Enum.Font.FredokaOne, 16, if said then palette.good else palette.ink)
@@ -243,7 +377,7 @@ render = function()
 	Recipe.words(all, title, if sub and some then `{sub} · takes {clockFor(gains, cash)}` else sub)
 	all.Activated:Connect(function()
 		if can then
-			send(nil)
+			ask(nil)
 		end
 	end)
 
@@ -265,6 +399,7 @@ function RecyclerController.Open(part: BasePart)
 	machine = part
 	inFlight = false
 	doneText = nil
+	review = nil
 	panel.Size = if UIKit.isShort() then UDim2.fromScale(0.97, 0.96) else UDim2.fromScale(0.92, 0.9)
 	panel.Visible = true
 	render()
@@ -312,6 +447,7 @@ function RecyclerController.Start()
 	local _, pick = UIKit.segmented(switchHolder, words, function(value)
 		mode = modeOf[value] or Recycler.MODES[1]
 		doneText = nil
+		review = nil -- the list was for the other mode
 		render()
 	end)
 	setMode = pick

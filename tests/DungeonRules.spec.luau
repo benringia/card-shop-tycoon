@@ -36,6 +36,18 @@ return {
 		expect.equal(DungeonRules.isOut({}, {}), true, "no party")
 	end,
 
+	-- a beaten Prism Hydra's teleport (owner 2026-11-21): a run of your own that starts in its lair, the rooms and
+	-- puzzles behind you; only alone, and only when your save says you beat it
+	["straightToBoss: alone, the Hydra named, and beaten"] = function()
+		expect.equal(DungeonRules.straightToBoss({ runSize = 1, boss = "prismHydra" }, "prismHydra", true), true)
+		expect.equal(DungeonRules.straightToBoss({ runSize = 1, boss = "prismHydra" }, "prismHydra", false), false, "never beaten")
+		expect.equal(DungeonRules.straightToBoss({ runSize = 2, boss = "prismHydra" }, "prismHydra", true), false, "a group walks")
+		expect.equal(DungeonRules.straightToBoss({ runSize = 1 }, "prismHydra", true), false, "the portal's run")
+		expect.equal(DungeonRules.straightToBoss({ runSize = 1, boss = "riftDevourer" }, "prismHydra", true), false)
+		expect.equal(DungeonRules.straightToBoss(nil, "prismHydra", true), false)
+		expect.equal(DungeonRules.straightToBoss("prismHydra", "prismHydra", true), false)
+	end,
+
 	["expectedSize clamps and survives junk"] = function()
 		expect.equal(DungeonRules.expectedSize(nil, 4), 1, "Studio")
 		expect.equal(DungeonRules.expectedSize({ runSize = 3 }, 4), 3, "group of 3")

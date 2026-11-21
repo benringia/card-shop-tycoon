@@ -46,11 +46,12 @@ export type Run = {
 	bossFight: boolean, -- the Prism Hydra is being fought
 	won: boolean, -- the Hydra fell: the way back is open
 	gathering: string?, -- the next puzzle, waiting until every player still in the run stands on its island
+	straight: boolean, -- a beaten Hydra's teleport (FrontierService.ToBoss): the run starts in its lair
 }
 
 local DungeonService = {}
 
-local run: Run = { members = {}, out = {}, hpLeft = {}, expected = 1, started = false, fought = false, cleared = 0, done = 0, room = nil, monster = nil, bossFight = false, won = false, gathering = nil }
+local run: Run = { members = {}, out = {}, hpLeft = {}, expected = 1, started = false, fought = false, cleared = 0, done = 0, room = nil, monster = nil, bossFight = false, won = false, gathering = nil, straight = false }
 local layout: DungeonBuilder.DungeonLayout
 local allowGate = RateLimiter.new(Bosses.START_COOLDOWN)
 local allowLeave = RateLimiter.new(1)
@@ -59,6 +60,7 @@ local allowLair = RateLimiter.new(1)
 -- Each member's welcome until their client says it started it ("introSeen"): sent with every run message, so a
 -- client that wasn't listening yet (or was still behind its loading screen) still gets it
 local pendingIntro: { [Player]: string } = {}
+local ARRIVE_WAIT = 20 -- seconds a beaten Hydra's run waits for its player's character before setting it down
 local rng = Random.new()
 local lastCount = "" -- the gather count last sent ("here/total")
 local gatherSince = 0 -- when the run began waiting for the group (os.clock)
@@ -182,6 +184,8 @@ local function onPylon(room: DungeonBuilder.Room, kind: string, pylon: BasePart?
 		}):Play()
 	end
 end
+
+local skipTo: (room: number, player: Player?) -> () -- set below (DungeonService.SkipTo's core)
 
 local function openDoor(door: BasePart)
 	DungeonBuilder.hide(door) -- the barrier and what it wears (the Hydra's door, its eyes)
@@ -332,6 +336,21 @@ local function tryStart(waited: number)
 		return
 	end
 	run.started = true
+	-- a beaten Hydra's run (owner 2026-11-21): no welcome, the rooms and puzzles behind you, set down in its lair
+	if run.straight then
+		local player = run.members[1]
+		send(player, "Straight to the Prism Hydra! Its gate is in front of you.")
+		task.spawn(function()
+			local deadline = os.clock() + ARRIVE_WAIT
+			while player.Parent and not (player.Character and player.Character:FindFirstChild("HumanoidRootPart")) and os.clock() < deadline do
+				task.wait(0.25)
+			end
+			if player.Parent and not run.fought then
+				skipTo(#Dungeon.ROOMS + 1, player)
+			end
+		end)
+		return
+	end
 	-- Each member's own welcome: the Hydra's full one the first time ever, a short one after (BossService saves it)
 	for _, player in run.members do
 		if player.Parent and not run.out[player] then
@@ -360,6 +379,9 @@ local function onArrive(player: Player)
 			return player:GetJoinData().TeleportData
 		end)
 		run.expected = DungeonRules.expectedSize(if ok then data else nil, Bosses.GROUP_MAX)
+		-- a beaten Hydra's teleport: checked against this save (BossService loads before this service)
+		local record = BossService.GetRecord(player, Dungeon.BOSS)
+		run.straight = DungeonRules.straightToBoss(if ok then data else nil, Dungeon.BOSS, record ~= nil and record.cleared)
 		task.delay(Dungeon.ARRIVAL_WAIT, tryStart, Dungeon.ARRIVAL_WAIT)
 	end
 	send(player, nil)
@@ -706,6 +728,12 @@ function DungeonService.SkipTo(room: number, player: Player?)
 	if not RunService:IsStudio() or not layout then
 		return
 	end
+	skipTo(room, player)
+end
+
+-- The rooms before `room` count as cleared, their doors open, and `player` goes to that room's gate (rooms + 1: the
+-- Prism Hydra's, in its lair): Studio's /room, and a beaten Hydra's run (tryStart)
+skipTo = function(room: number, player: Player?)
 	local target = DungeonRules.skipRoom(room, #Dungeon.ROOMS)
 	run.started = true
 	run.done = math.max(run.done, DungeonRules.doneBefore(Dungeon.STEPS, target))

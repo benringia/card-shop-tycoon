@@ -443,6 +443,41 @@ is over UI (`UIKit.pointerBlocked`).
   built in code (Computer slot, `built`): a white desk on black panel legs, a slim widescreen showing "ORDER STOCK",
   keyboard, mouse, a small plant, a drawer unit and an office chair.
 - Ordering costs cash immediately. Delivery arrives after a short delay (10s at start, upgradable) as boxes at the delivery spot.
+- **The order computer** (owner 2026-11-21: "COMPUTER: in this window, redesign it to be fully immersive computer
+  shopping layout", pick A of three mockups): the window is a cotton candy tablet (even bezels, a camera dot on the
+  top one, its edge showing under it; a monitor on a stand with "PACK·PC" and a green light until 2026-11-22, when the
+  owner asked "remove the monitor stand to make it look like an ipad because its overlaping with the bottom tile")
+  with a browser open on the supplier's store, **packenship.co** (the owner asked
+  for "packenshit.co"; a swear word puts a Roblox game in the Restricted label, 17+ ID-verified only, so the name is
+  the pun "packenship.co", one line in `Config/OrderComputer` WORDS). Tab row, address bar ("packenship.co/order"),
+  the store's sky-blue header (logo, **Order stock** / **My deliveries** with a pink count of boxes on the way, your
+  cash), and a taskbar (paw, the store, deliveries, the town's clock from `Lighting.ClockTime`).
+  - **Cards** (2 x 2): the product's real picture on its tinted panel with a "Box of 24" chip, its name, "sells $3.00
+    each", a green "+$24 profit a box" pill (a whole box sold at the market price, less the box), the box price and
+    **Add to cart**, which turns into a - n + stepper once one is in the cart. Greyed "Need $48" when the cash can't
+    cover it, "Pad full" when the delivery pad has no room; a locked product is a pale card with a lock and "Unlocks
+    at shop level 11". A pink tag over a card: **Shelves low** (the shelves holding it at a quarter full or less) or
+    **Shelf empty** (none holds it, an empty shelf could). Tapping a greyed button says why (never silent).
+  - **The cart** beside them: a line per product (its count and cost kept visible), the total, "Cash after: $x",
+    "Arrives at your door in 10 s", "Delivery pad: 3 of 12 spots used" with a bar (the boxes there, then the cart's
+    share in a lighter blue), and **Order now · $126**. Every box is paid at once and they all arrive together; the
+    store then shows My deliveries: each kind of box on its way with a countdown and a bar, the boxes waiting on the
+    pad, and a box picture with "Order stock" when nothing is coming.
+  - **A phone** (a short screen, `UIKit.isShort`) gets the same store on a thin screen: four cards in a row (no sell
+    line), the cart as a bar along the bottom ("3 boxes · $126", "At your door in 10 s · pad 3 of 12", Order now).
+  - The computer is drawn at a fixed size (960 x 600, a phone's 760 x 300) and scaled to fit (`OrderRules.fit`,
+    Lune-tested): `FIT` 0.96 of the room under Roblox's top bar, the room ending at the bottom tiles' icons while
+    they show (client `Hud.bottomTop`; a phone's slim HUD hides them under any window), centred in that room. It
+    grows on a big screen like the HUD (`Config/HudGrow`) as far as that room allows; the window's own growth is off
+    for it (`SizesItself`, `UIKit.panel`). On a short window (1661 x 695 in Studio) the tablet is about 0.9 so its
+    foot stays 12 px over the tiles' icons.
+  - Server (StockService): the client sends the cart (`OrderCart`: `{ [productId] = boxes }`); `OrderRules.readCart`
+    takes only known, orderable products (never bulk) in whole boxes, 1 to 12 in all; then the computer's distance,
+    each product's level, room on the pad for every box (`Util/Blocked` says what's wrong) and one `TrySpend` for the
+    total (BrokeService may keep it). The answer (`OrderPlaced`, also sent when refused with 0 boxes) and the window's
+    opening (`OpenOrderMenu`) carry the trip time (`OrderRules.deliverySeconds`: the tour's 1 s, a new shop's quick
+    ones, Express) and the boxes on the way. The player's `BoxesUsed` attribute counts the pad's spots in use. Rules
+    and words: `Util/OrderRules` (Lune-tested), look: `Config/OrderComputer`, client `OrderController`.
 - Player picks up a box (carry it, one at a time at start) and places it on a shelf to stock it.
 
 ### 4.3 Shelves & placement
@@ -3654,7 +3689,9 @@ All numbers in `Config/Pish`.
   the party UI and everything else should be displayed": step `summonPal`, "Wow! Your best card joined your party!",
   "Tap your new pal to call it out!" with the paw and spotlight on the party bar's creature, the only HUD piece shown
   then (`Pish.KEEP`); your own summon completes it, `PartyService.OnSummoned`; already out: done at once),
-  build a Small Pack Rack ("Your pal follows you everywhere now!" first), order First Spark packs, stock the rack (the tour's box arrives in 1 s, `Stock.TOUR_DELIVERY_SECONDS`,
+  build a Small Pack Rack ("Your pal follows you everywhere now!" first), order First Spark packs (the order computer's cart since
+  2026-11-21: "Add First Spark packs to your cart!" with the paw on the card's Add to cart, then "Now tap Order now!" on
+  Order now; the card's `InCart` attribute tells which), stock the rack (the tour's box arrives in 1 s, `Stock.TOUR_DELIVERY_SECONDS`,
   owner 2026-11-17; while it's on its way he says "Your packs are on the way!"; the server's BoxesComing / BoxesWaiting), a customer he sends reaches the counter, ring them
   up ("Tap each card they put on the counter!" once behind it, the paw on one, owner 2026-11-16), open his gift (`pishGift`: the hit card is Very Rare or better), his goodbye. **Pish talks** (`Util/TutorialTalk`, lines in
   `Config/PishTalk`, `Util/TalkRules`; the game's name from `Config/Game.NAME`): a talk card at the top centre (the owner
@@ -3718,7 +3755,8 @@ All numbers in `Config/Pish`.
   machine or trophy he then teaches like the first visit's rack ("Tap Manage.", "Tap Shop.", "Tap Cases.", "Tap the
   Glass Showcase!", "Put it on the floor and tap to place!"; a trophy through the Bag since 2026-11-17: "Tap your Bag.",
   "Tap the Meadow Warden Trophy!", "Tap Place!", then the floor), new stock through the computer
-  ("Walk to the computer.", "Tap Order on Card Sleeves!"; lines `PishTalk.TEACH`), a window in the way first ("Tap the
+  ("Walk to the computer.", "Add Card Sleeves to your cart!", then "Now tap Order now!" once it's in the cart; lines
+  `PishTalk.TEACH`), a window in the way first ("Tap the
   X..."). It's done when the server sees it placed or ordered (`LessonRules.forShelf` / `forProduct`; also when the
   player finds it before he comes): a happy hop, then he runs to it (new stock: the delivery pad) and says what it's
   for, a line at a time with Next, the last "Bye!" (`PishTalk.AFTER`, owner 2026-11-10: "make him explain what this
@@ -4186,6 +4224,12 @@ cash, items, luck), `Util/CodeRules` (pure: what's typed becomes capitals and di
 - **Client** (`Util/CodeBox`, built into `StoreController`'s list and kept through its redraws): a field (capitals as
   you type), Redeem (48 px; it waits out the cooldown, so a try is never dropped without an answer) and the answer
   under them in green or red.
+- **The win moment** (owner 2026-11-21: "add a noticeable notification if CODES get redeemed"): a redeemed code's
+  answer carries its gift (`Remotes.CodeResult(ok, message, reward)`), the Phone closes and the gifts' win moment
+  plays (`Util/GiftWin` look `code` in `Config/Gifts` WIN: "CODE REDEEMED!", a present, mint, the cymbal sting): the
+  screen dims, the present drops in, rattles and bursts in confetti, its gifts flip in as cards ($250, First Spark
+  Pack x2), OPEN IT NOW! for a pack and Nice!. GiftWin now picks a chest or a picture from its look (`chest`), not
+  from the kind.
 - **Shipped**: `ONEMOREPACK` ($250 and 2 First Spark Packs, the launch code for the game page) and `PISHANDCHIKIN`
   (2 XP Tonics and 15 minutes of 2x Luck, the community's). A code is a small gift, never an economy skip: at most
   $1,000 and 5 of an item (tested). Adding one: an entry in `Config/Codes`, publish, post it.
@@ -4261,9 +4305,24 @@ materials. make sure the costs are fair", layout A of two mockups (artifact Ujbn
   Grade S. No Grading Seals or Gold Seals (the Grade S chase keeps its price). Materials can't be sold: no money
   loop. Commons stay with the Bulk Bin.
 - **Extras** (pure `Util/RecycleRules.piles`, the same on both sides): a card's plain copies (never foils, never a
-  levelled or starred card) of Grade C or B past what it still needs: the duplicates for the stars its best card is
-  missing (up to 64), the ones for the grades above its best (up to 14), and 2 spare. The best grades are kept
-  first, the plainest go first. Recycling can never slow your own upgrades.
+  levelled or starred card) of Grade C or B past what it keeps: its 2 best copies, then what each of its creatures
+  still needs (the duplicates for its missing stars, up to 64, and its missing grades, up to 14), counted from the
+  copies that creature can use: its own grade and under first (the Condenser and Grading Station never use a better
+  copy), then the grades a grade-up opens, lowest first (`RecycleRules.keep`, `useOrder`); the most any one creature
+  needs of each grade. A card with no creature keeps a full kit for its best copy. The plainest go first.
+- **Creatures are safe** (owner 2026-11-21: "make sure players cant accidentally recycle their most powerful
+  creatures. or the creatures they've been using"): a creature is a levelled card, never a plain copy, so it never
+  goes; the server counts every creature the player has (the binder's, with the party's, workers' and fighters', the
+  ones in a station, `UpgradeJobService.HeldCards`, and the ones on display); the client the binder's and the
+  stations' (`StationJobs` job `card`). Until then the kit was kept best grade first from the most stars any copy had:
+  on the test save a maxed Lv 30 Thunderhorn made all 109 Grade B and C copies extras though the party's Lv 18 Grade
+  B one needed 70 of them; now those 70 stay and 39 go.
+- **Nothing goes on one tap**: a row's Recycle or Recycle everything shows a review first: "Recycle these 160
+  cards?", "Your creatures and the cards they still need stay safe.", each card going as a picture with how many,
+  Yes, recycle (what it makes, how long) and Back. Yes sends the list shown ("card:grade" = copies,
+  `RecycleRules.shownMap`); the server checks it (`readShown`: Grade C or B keys, whole counts, 300 lines at most) and
+  takes nothing past it (`trimToShown`), so a copy the player didn't see never goes (a pack opened meanwhile, a
+  creature the server knows of in a case). A forged press asking for 999 Thunderhorn took only its 39 extras.
 - **The window** (client `RecyclerController`): "Turn extra cards into upgrade stuff!", a row for each rarity (a pile
   in its colour, "438 extra Rares", "80 make 1 Wild Ore", then "Makes 5 Wild Ore" or a bar toward the first one, the
   material's picture, and Recycle, "42 more" or None), one big "Recycle everything" with what it makes under its
@@ -4315,6 +4374,26 @@ Devourer for the Hydra's 10, while levels now come six times faster than when th
   the next one's level, plays the keys as they were.
 - **The boss board** shows what a win gives you now: the fragment's cell reads 100% and x2, its tooltip "Every loot
   win · x2 (your shop level is high enough for that boss)".
+
+### 7.21 Teleports to beaten bosses (built 2026-11-21)
+Owner 2026-11-21: "Add teleport to bosses in frontier and dungeon, when the player defeated the boss once".
+- **The board** (`BossRules.travelChoice(place, here, cleared)` gives "teleport"): a Frontier boss you've beaten has
+  Take me there in the main game too, and the Prism Hydra in the main game and the Frontier, with a line saying what
+  it does ("You beat it: Take me there teleports you to its gate." / "...starts a run of your own in its lair.").
+  Before the first win the way there is walked as before (the Frostpeak portal, the Dungeon portal). Wild bosses from
+  the Frontier stay Go home.
+- **Server** (`BossService` onTravel on `Remotes.BossTravel`): the record says beaten; refused mid-fight, under the
+  boss's shop level, and for the Hydra without a creature that can fight (each with the big locked card); then
+  `FrontierService.ToBoss`: a Frontier boss teleports you to a Frontier server with `{ boss = id }`, the Hydra to a
+  reserved Dungeon server of your own with `{ runSize = 1, boss = id }`.
+- **Arriving**: in the Frontier, once the save is loaded and the character stands, BossService sends you to that
+  boss's gate (`BossRules.teleportTarget`: this place's boss, beaten on this save: teleport data passes through the
+  client). In the Dungeon, a run of one whose data names the Hydra and whose save beat it
+  (`DungeonRules.straightToBoss`) starts with every room and puzzle open, no welcome, and sets you down at the Hydra's
+  gate in its lair ("Straight to the Prism Hydra!"; the same skip as Studio's /room 4). A group, or a save that never
+  beat it, walks the run as before. The Hydra's loot still comes every 7 minutes.
+- Studio: `/bossbeaten <1-7> on|off` (boss n beaten and opened, to see Take me there; off puts back what it was).
+  Teleports only work in the published game: in Studio the button says so; the arrivals were not run in Studio.
 
 ## 8. Monetization
 
@@ -4780,6 +4859,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
         │   ├── Plots.luau      # plot layout and fixtures
         │   ├── Economy.luau    # starting cash/level
         │   ├── Stock.luau      # delivery, carrying
+        │   ├── OrderComputer.luau # the order computer's store: its name and words, sizes, colours (plain data)
         │   ├── Bulk.luau       # the Bulk Bin: handful size, cards kept, who asks for bulk, the crate's look (plain data)
         │   ├── Recycler.luau   # the Recycler: its recipes, what a card keeps, its words, the machine's look (plain data)
         │   ├── Placement.luau  # grid, placement rules
@@ -5331,10 +5411,9 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   colour, its short form (the bands' `tag`, 10 characters at most so it never runs under the stepper: "Always buy",
   "Sometimes", "Rarely buy", "Won't buy"; `tests/PricingConfig`), and on the right one pale stepper pill: a round pink - and butter + (drawn 30 px
   inside 48 px tap areas) either side of your price. A shelf's Set Price window uses the same row.
-- **Order Stock** (owner 2026-11-04, round 4 pick A; spec `2026-11-04-round4-design` section 4): the same slim white rows
-  as Prices (`Pricing.ROWS`): picture, name, "Box of 24" and a mint "sells ~$3.00" tag, and one mint button with the
-  box price (tap it to order). It greys out with "Need $48" when you can't afford the box and shows the lock and
-  "Lv 11" while locked (`Util/OrderRules`, Lune-tested); the server re-checks both.
+- **Order Stock** (owner 2026-11-21, pick A of the computer mockups; was the slim rows of round 4): the order
+  computer's store, packenship.co, on a tablet (a monitor on a stand until 2026-11-22): product cards with a stepper,
+  a cart and My deliveries (section 4.2).
 - **Stages right above the player** (`Config/Stages`, `Util/StageRules`, client `Util/StageSpot`): the binder, the card
   view and the pack opening each show on a client-only stage. Roblox works the world's light out round the camera, and
   a stage thousands of studs up made it drop the shop's: after closing, the room showed lit like the open air for

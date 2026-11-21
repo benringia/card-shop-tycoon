@@ -3,7 +3,10 @@
 -- into upgrade materials. make sure the costs are fair", layout A): which binder copies are extras, how many
 -- materials a pile makes, which copies go, and the window's words. Pure (no requires, no Roblox APIs): callers pass
 -- the configs and the card lookups in; RecyclerService and the client's RecyclerController use it, so the window
--- shows exactly what the server will do (tests/RecycleRules).
+-- shows exactly what the server will do (tests/RecycleRules). Never a creature (owner 2026-11-21: "make sure players
+-- cant accidentally recycle their most powerful creatures. or the creatures they've been using"): only plain copies
+-- go, a card keeps the copies its creatures can still use, and the server takes no copy the player didn't see in the
+-- list they confirmed (`trimToShown`).
 local RecycleRules = {}
 
 export type Take = { cardId: string, grade: string, count: number }
@@ -30,6 +33,10 @@ type GradingConfig = { COSTS: { [string]: { [string]: { copies: number, cash: nu
 type Stacks = { [string]: { [string]: any } }
 type BeastFacts = { cardId: string, stars: number, grade: string }
 
+local MAX_SHOWN = 300 -- lines in a confirmed list (a card and a grade each: 37 cards, two grades)
+local MAX_SHOWN_COUNT = 1000000 -- copies on one line
+local SHOWN_GRADES = { C = true, B = true } -- the grades that ever go (Config/Recycler GRADES)
+
 local function whole(value: any): number
 	return if typeof(value) == "number" and value == value and value > 0 and value ~= math.huge then math.floor(value) else 0
 end
@@ -55,11 +62,65 @@ function RecycleRules.reserve(config: Config, beasts: BeastsConfig, grading: Gra
 	return need
 end
 
--- The binder's extras by rarity (every rarity with a recipe has a pile, even an empty one). Per card: its plain
--- copies, best grade first, are kept until its reserve is filled; the rest, of a recycled grade only, are extras.
--- Foils never count and never go. `beasts`: the levelled cards (their stars and grades set the reserve). Takes come
--- plainest grade first, then by card id, so the same binder always gives the same list.
-function RecycleRules.piles(config: Config, beastsConfig: BeastsConfig, grading: GradingConfig, stacks: Stacks, beasts: { [string]: BeastFacts }, rarityOf: (cardId: string) -> string?): { [string]: Pile }
+-- The duplicates a creature of `rarity` still needs: the ones for the stars it is missing and for the grades over its
+-- own (its reserve without the spare copies)
+function RecycleRules.need(config: Config, beasts: BeastsConfig, grading: GradingConfig, rarity: string, stars: number, grade: string): number
+	return RecycleRules.reserve(config, beasts, grading, rarity, stars, grade) - config.SPARE
+end
+
+-- The grades a creature of `grade` takes copies of, in the order it keeps them: its own and the ones under it (the
+-- Condenser and the Grading Station never use a copy better than the card), then the ones over it from the lowest
+-- up (a grade-up opens them)
+function RecycleRules.useOrder(gradeOrder: { string }, grade: string): { string }
+	local at = table.find(gradeOrder, grade) or #gradeOrder
+	local order: { string } = {}
+	for index = at, #gradeOrder do
+		table.insert(order, gradeOrder[index])
+	end
+	for index = at - 1, 1, -1 do
+		table.insert(order, gradeOrder[index])
+	end
+	return order
+end
+
+-- The plain copies of one card that stay, by grade (`owned`: its plain copies by grade): its SPARE best ones, then
+-- what each of its creatures (`mains`: stars and grade) still needs from the copies it can use, the most any one of
+-- them needs of each grade
+function RecycleRules.keep(config: Config, beasts: BeastsConfig, grading: GradingConfig, rarity: string, owned: { [string]: number }, mains: { { stars: number, grade: string } }): { [string]: number }
+	local keep: { [string]: number } = {}
+	local left: { [string]: number } = {}
+	for _, grade in config.GRADE_ORDER do
+		keep[grade] = 0
+		left[grade] = whole(owned[grade])
+	end
+	local spare = config.SPARE
+	for _, grade in config.GRADE_ORDER do
+		local take = math.min(left[grade], spare)
+		keep[grade] += take
+		left[grade] -= take
+		spare -= take
+	end
+	local most: { [string]: number } = {}
+	for _, main in mains do
+		local need = RecycleRules.need(config, beasts, grading, rarity, main.stars, main.grade)
+		for _, grade in RecycleRules.useOrder(config.GRADE_ORDER, main.grade) do
+			local take = math.min(left[grade] or 0, need)
+			most[grade] = math.max(most[grade] or 0, take)
+			need -= take
+		end
+	end
+	for grade, count in most do
+		keep[grade] += count
+	end
+	return keep
+end
+
+-- The binder's extras by rarity (every rarity with a recipe has a pile, even an empty one). Per card: the plain copies
+-- it keeps (RecycleRules.keep) stay; the rest, of a recycled grade only, are extras. A creature (`beasts`: every
+-- levelled card the player has, in the binder, a station or a case: its card, stars and grade) is never a plain copy,
+-- so it never goes; a card with none keeps a full kit for its best copy (0 stars, its grade). Foils never count and
+-- never go. Takes come plainest grade first, then by card id, so the same binder always gives the same list.
+function RecycleRules.piles(config: Config, beastsConfig: BeastsConfig, grading: GradingConfig, stacks: Stacks, beasts: { [any]: BeastFacts }, rarityOf: (cardId: string) -> string?): { [string]: Pile }
 	local piles: { [string]: Pile } = {}
 	for _, rarity in config.ORDER do
 		piles[rarity] = { rarity = rarity, takes = {}, count = 0 }
@@ -68,16 +129,12 @@ function RecycleRules.piles(config: Config, beastsConfig: BeastsConfig, grading:
 	for index, grade in config.GRADE_ORDER do
 		rank[grade] = index
 	end
-	-- each card's most stars and best grade among its levelled cards
-	local stars: { [string]: number } = {}
-	local best: { [string]: number } = {}
+	-- each card's creatures
+	local mains: { [string]: { { stars: number, grade: string } } } = {}
 	for _, beast in beasts do
-		if typeof(beast) == "table" and typeof(beast.cardId) == "string" then
-			stars[beast.cardId] = math.max(stars[beast.cardId] or 0, whole(beast.stars))
-			local at = rank[beast.grade]
-			if at and at < (best[beast.cardId] or math.huge) then
-				best[beast.cardId] = at
-			end
+		if typeof(beast) == "table" and typeof(beast.cardId) == "string" and rank[beast.grade] then
+			mains[beast.cardId] = mains[beast.cardId] or {}
+			table.insert(mains[beast.cardId], { stars = whole(beast.stars), grade = beast.grade })
 		end
 	end
 	local ids = {}
@@ -90,25 +147,25 @@ function RecycleRules.piles(config: Config, beastsConfig: BeastsConfig, grading:
 		local pile = if rarity then piles[rarity] else nil
 		local byGrade = stacks[cardId]
 		if pile and rarity and typeof(byGrade) == "table" then
-			-- the best grade owned: a levelled card's, or a plain or foil copy's
-			local bestAt = best[cardId] or math.huge
+			-- its plain copies, and its best copy (plain or foil) for a card with no creature
+			local owned: { [string]: number } = {}
+			local bestAt = math.huge
 			for index, grade in config.GRADE_ORDER do
-				local owned = byGrade[grade]
-				if typeof(owned) == "table" and whole(owned.normal) + whole(owned.foil) > 0 and index < bestAt then
+				local entry = byGrade[grade]
+				local normal = if typeof(entry) == "table" then whole(entry.normal) else 0
+				local foil = if typeof(entry) == "table" then whole(entry.foil) else 0
+				owned[grade] = normal
+				if normal + foil > 0 and index < bestAt then
 					bestAt = index
 				end
 			end
 			local bestGrade = config.GRADE_ORDER[bestAt] or config.GRADE_ORDER[#config.GRADE_ORDER]
-			local keep = RecycleRules.reserve(config, beastsConfig, grading, rarity, stars[cardId] or 0, bestGrade)
+			local keep = RecycleRules.keep(config, beastsConfig, grading, rarity, owned, mains[cardId] or { { stars = 0, grade = bestGrade } })
 			for _, grade in config.GRADE_ORDER do
-				local owned = byGrade[grade]
-				local copies = if typeof(owned) == "table" then whole(owned.normal) else 0
-				local kept = math.min(copies, keep)
-				keep -= kept
-				local spare = copies - kept
-				if spare > 0 and config.GRADES[grade] then
-					table.insert(pile.takes, { cardId = cardId, grade = grade, count = spare })
-					pile.count += spare
+				local extra = owned[grade] - (keep[grade] or 0)
+				if extra > 0 and config.GRADES[grade] then
+					table.insert(pile.takes, { cardId = cardId, grade = grade, count = extra })
+					pile.count += extra
 				end
 			end
 		end
@@ -122,6 +179,92 @@ function RecycleRules.piles(config: Config, beastsConfig: BeastsConfig, grading:
 		end)
 	end
 	return piles
+end
+
+-- The confirmed list (owner 2026-11-21: "make sure players cant accidentally recycle ..."): a press shows the cards that
+-- will go first, and what the player confirmed caps what the server takes, card by card and grade by grade
+
+local function shownKey(cardId: string, grade: string): string
+	return `{cardId}:{grade}`
+end
+
+-- The list a press shows, as the client sends it: copies by "card:grade"
+function RecycleRules.shownMap(takes: { Take }): { [string]: number }
+	local shown: { [string]: number } = {}
+	for _, take in takes do
+		local key = shownKey(take.cardId, take.grade)
+		shown[key] = (shown[key] or 0) + take.count
+	end
+	return shown
+end
+
+-- What a client sent as its confirmed list, checked (keys "card:grade" of a grade that goes, whole counts, a sane
+-- size); nil when it isn't one
+function RecycleRules.readShown(raw: any): { [string]: number }?
+	if typeof(raw) ~= "table" then
+		return nil
+	end
+	local shown: { [string]: number } = {}
+	local lines = 0
+	for key, count in raw do
+		lines += 1
+		if lines > MAX_SHOWN or typeof(key) ~= "string" then
+			return nil
+		end
+		local grade = string.match(key, "^[%w_]+:(%u)$")
+		if not grade or not SHOWN_GRADES[grade] then
+			return nil
+		end
+		if typeof(count) ~= "number" or count ~= count or count < 1 or count ~= math.floor(count) or count > MAX_SHOWN_COUNT then
+			return nil
+		end
+		shown[key] = count
+	end
+	return shown
+end
+
+-- The server's piles cut back to the confirmed list: no card or grade the player didn't see, never more of it
+function RecycleRules.trimToShown(piles: { [string]: Pile }, shown: { [string]: number }): { [string]: Pile }
+	local out: { [string]: Pile } = {}
+	for rarity, pile in piles do
+		local trimmed: Pile = { rarity = pile.rarity, takes = {}, count = 0 }
+		for _, take in pile.takes do
+			local count = math.min(take.count, shown[shownKey(take.cardId, take.grade)] or 0)
+			if count > 0 then
+				table.insert(trimmed.takes, { cardId = take.cardId, grade = take.grade, count = count })
+				trimmed.count += count
+			end
+		end
+		out[rarity] = trimmed
+	end
+	return out
+end
+
+-- The review's list: one line a card (its grades added up), the most first, then by card id
+function RecycleRules.byCard(takes: { Take }): { { cardId: string, count: number } }
+	local counts: { [string]: number } = {}
+	for _, take in takes do
+		counts[take.cardId] = (counts[take.cardId] or 0) + take.count
+	end
+	local list: { { cardId: string, count: number } } = {}
+	for cardId, count in counts do
+		table.insert(list, { cardId = cardId, count = count })
+	end
+	table.sort(list, function(a, b)
+		if a.count ~= b.count then
+			return a.count > b.count
+		end
+		return a.cardId < b.cardId
+	end)
+	return list
+end
+
+-- The review's question: "Recycle these 52 cards?"
+function RecycleRules.reviewSay(count: number): string
+	if count == 1 then
+		return "Recycle this card?"
+	end
+	return `Recycle these {RecycleRules.count(count)} cards?`
 end
 
 -- What `count` extras make at `per` to one: the materials made, the cards used (whole materials only), and how many

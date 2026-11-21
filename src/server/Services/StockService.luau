@@ -18,6 +18,7 @@ local Products = require(Config:WaitForChild("Products"))
 local Items = require(Config:WaitForChild("Items"))
 local ItemRules = require(Shared:WaitForChild("Util"):WaitForChild("ItemRules"))
 local TutorialRules = require(Shared:WaitForChild("Util"):WaitForChild("TutorialRules"))
+local OrderRules = require(Shared:WaitForChild("Util"):WaitForChild("OrderRules"))
 local StockConfig = require(Config:WaitForChild("Stock"))
 local Offline = require(Config:WaitForChild("Offline"))
 local Tips = require(Config:WaitForChild("Tips"))
@@ -39,13 +40,16 @@ type Plot = typeof(PlotService.GetPlots()[1])
 type PlayerData = DataService.PlayerData
 type SavedBox = DataService.SavedBox
 
+-- A box ordered but not delivered yet: what's in it, when it lands (os.clock) and how long its trip is
+type Incoming = { productId: string, at: number, seconds: number }
+
 type Shop = {
 	owner: Player,
 	plot: Plot,
 	waiting: { Part }, -- boxes sitting on the delivery pad
 	carried: { Part },
 	workerBoxes: { Part }, -- taken off the pad by a restocker worker
-	incoming: { string }, -- product IDs ordered but not delivered yet
+	incoming: { Incoming }, -- ordered but not delivered yet
 	active: boolean, -- false once the owner leaves, so pending deliveries cancel
 }
 
@@ -158,10 +162,17 @@ local function setPromptEnabled(box: Part, enabled: boolean)
 	end
 end
 
--- Boxes on their way and boxes on the pad (Pish's stock line: "on the way" while a delivery hasn't come yet)
+-- Every box the shop has: on order, on the pad, in the owner's or a worker's hands (StockConfig.MAX_BOXES_PER_PLOT)
+local function boxCount(shop: Shop): number
+	return #shop.incoming + #shop.waiting + #shop.carried + #shop.workerBoxes
+end
+
+-- Boxes on their way and boxes on the pad (Pish's stock line: "on the way" while a delivery hasn't come yet), and the
+-- pad's spots used (the order computer: how many more boxes fit)
 local function syncPad(shop: Shop)
 	shop.owner:SetAttribute("BoxesComing", #shop.incoming)
 	shop.owner:SetAttribute("BoxesWaiting", #shop.waiting)
+	shop.owner:SetAttribute("BoxesUsed", boxCount(shop))
 end
 
 -- Whether this box holds packs or deck boxes (To Bag puts them in the Bag: ItemRules.stockItem)
@@ -255,64 +266,113 @@ local function createBox(shop: Shop, productId: string, units: number)
 	table.insert(shop.waiting, box)
 	layoutWaiting(shop)
 	box.Parent = shop.plot.model
+	syncPad(shop)
 end
 
-local function onOrder(player: Player, productId: unknown)
+-- How long a box takes to arrive for this player now: Pish's tour's at once, a new shop's quick (Config/Early: 3 s up
+-- to shop level 8, the full 10 from 15), Express (a Bloom creature summoned) shorter
+local function deliverySecondsFor(player: Player): number
+	local step = player:GetAttribute("TutorialStep")
+	local touring = step == "orderStock" or step == "stockRack"
+	local level = tonumber(player:GetAttribute("Level")) or 1
+	local early = EarlyRules.delivery(level, Early, StockConfig.DELIVERY_SECONDS)
+	return OrderRules.deliverySeconds(touring, StockConfig.TOUR_DELIVERY_SECONDS, early, PartyService.GetPerk(player, "Express"))
+end
+
+-- What the order computer shows: a box's trip time now and the boxes on the way (seconds left of each)
+local function orderInfo(player: Player, boxes: number): { [string]: any }
+	local shop = shops[player]
+	local now = os.clock()
+	local coming = {}
+	for _, order in if shop then shop.incoming else {} do
+		table.insert(coming, { productId = order.productId, left = math.max(0, order.at - now), seconds = order.seconds })
+	end
+	return { seconds = deliverySecondsFor(player), coming = coming, boxes = boxes }
+end
+
+-- The order computer's cart (OrderController): every box paid at once, all arriving together on the pad. The answer
+-- (OrderPlaced) says how many went through, 0 when refused (the reason shown with Util/Blocked or BrokeService).
+local function onOrderCart(player: Player, raw: unknown)
 	if not allowOrder(player) then
 		return
 	end
-	if typeof(productId) ~= "string" then
+	local cart = OrderRules.readCart(raw, Products.ById, StockConfig.MAX_BOXES_PER_PLOT)
+	if not cart then
 		return
 	end
-	local product = Products.ById[productId]
-	if not product or product.bulk then
-		return -- bulk is never ordered: a Bulk Bin is filled from the binder (BulkService)
+	local function refuse(reason: string?)
+		if reason then
+			Blocked.tell(player, reason)
+		end
+		Remotes.OrderPlaced:FireClient(player, orderInfo(player, 0))
 	end
 	local shop = getShop(player)
 	if not shop then
-		notify(player, "You need a shop to order stock.", true)
+		refuse("You need a shop to order stock.")
 		return
 	end
 	if not isNear(player, shop.plot.computer) then
-		notify(player, "Walk up to your computer to order.", true)
+		refuse("Walk up to your computer to order.")
 		return
 	end
-	if EconomyService.GetLevel(player) < product.unlockLevel then
-		Blocked.tell(player, `Unlocks at shop level {product.unlockLevel}.`)
-		return
-	end
-	if #shop.incoming + #shop.waiting + #shop.carried + #shop.workerBoxes >= StockConfig.MAX_BOXES_PER_PLOT then
-		notify(player, "Your delivery area is full. Unpack some boxes first.", true)
-		return
-	end
-	local paid, kept = EconomyService.TrySpend(player, product.boxCost, "stock")
-	if not paid then
-		if not kept then -- (kept: the shop keeps that cash for a rack, and BrokeService said so)
-			notify(player, "Not enough cash.", true)
-		end
-		return
-	end
-
-	table.insert(shop.incoming, product.id)
-	syncPad(shop)
-	fire(orderedHandlers, player, product.id)
-	-- Express (Bloom creature summoned): deliveries arrive faster; Pish's tour's at once (no dead wait in the first minutes)
-	local tourStep = player:GetAttribute("TutorialStep")
-	local deliverySeconds = if tourStep == "orderStock" or tourStep == "stockRack"
-		then StockConfig.TOUR_DELIVERY_SECONDS
-		-- a new shop's are quick (Config/Early: 3 s up to shop level 8, the full 10 from 15)
-		else math.max(1, math.round(EarlyRules.delivery(tonumber(player:GetAttribute("Level")) or 1, Early, StockConfig.DELIVERY_SECONDS) * (1 - PartyService.GetPerk(player, "Express"))))
-	notify(player, `Ordered {product.name}. Arrives in {deliverySeconds}s.`, false)
-
-	task.delay(deliverySeconds, function()
-		local index = table.find(shop.incoming, product.id)
-		if not shop.active or not index then
+	local level = EconomyService.GetLevel(player)
+	for _, product in Products.List do
+		if cart[product.id] and level < product.unlockLevel then
+			refuse(`{product.name} unlocks at shop level {product.unlockLevel}.`)
 			return
 		end
-		table.remove(shop.incoming, index)
-		createBox(shop, product.id, product.unitsPerBox)
-		syncPad(shop)
-		notify(player, `Your {product.name} box arrived!`, false)
+	end
+	local count = OrderRules.cartCount(cart)
+	local room = StockConfig.MAX_BOXES_PER_PLOT - boxCount(shop)
+	if count > room then
+		refuse(OrderRules.roomLine(room))
+		return
+	end
+	local cost = OrderRules.cartCost(cart, Products.ById)
+	local paid, kept = EconomyService.TrySpend(player, cost, "stock")
+	if not paid then
+		-- kept: the shop keeps that cash for a rack and a box, and BrokeService said so
+		refuse(if kept then nil else `You need {OrderRules.money(cost)} for this order.`)
+		return
+	end
+
+	local seconds = deliverySecondsFor(player)
+	local batch: { Incoming } = {}
+	local ordered: { string } = {}
+	for _, product in Products.List do
+		for _ = 1, cart[product.id] or 0 do
+			local order: Incoming = { productId = product.id, at = os.clock() + seconds, seconds = seconds }
+			table.insert(shop.incoming, order)
+			table.insert(batch, order)
+		end
+		if cart[product.id] then
+			table.insert(ordered, product.id)
+		end
+	end
+	syncPad(shop)
+	for _, productId in ordered do
+		fire(orderedHandlers, player, productId)
+	end
+	local name = Products.ById[batch[1].productId].name
+	notify(player, OrderRules.orderedLine(count, name, seconds), false)
+	Remotes.OrderPlaced:FireClient(player, orderInfo(player, count))
+
+	task.delay(seconds, function()
+		if not shop.active then
+			return
+		end
+		local arrived = 0
+		for _, order in batch do
+			local index = table.find(shop.incoming, order)
+			if index then -- (gone: cleared for testing)
+				table.remove(shop.incoming, index)
+				createBox(shop, order.productId, Products.ById[order.productId].unitsPerBox)
+				arrived += 1
+			end
+		end
+		if arrived > 0 then
+			notify(player, OrderRules.arrivedLine(arrived, name), false)
+		end
 	end)
 end
 
@@ -384,8 +444,7 @@ local function onRemoveStock(player: Player, uid: unknown)
 		notify(player, "This shelf is already empty.", true)
 		return
 	end
-	local boxCount = #shop.incoming + #shop.waiting + #shop.carried + #shop.workerBoxes
-	local room = StockConfig.MAX_BOXES_PER_PLOT - boxCount
+	local room = StockConfig.MAX_BOXES_PER_PLOT - boxCount(shop)
 	if room <= 0 then
 		notify(player, "Your delivery area is full. Unpack some boxes first.", true)
 		return
@@ -501,7 +560,7 @@ local function onShopBagStock(player: Player, itemId: unknown)
 	if not product or not shop then
 		return
 	end
-	local room = StockConfig.MAX_BOXES_PER_PLOT - (#shop.incoming + #shop.waiting + #shop.carried + #shop.workerBoxes)
+	local room = StockConfig.MAX_BOXES_PER_PLOT - boxCount(shop)
 	if room <= 0 then
 		Blocked.tell(player, "Your delivery area is full. Put some boxes on your shelves first.")
 		return
@@ -521,7 +580,7 @@ local function onComputerUsed(player: Player, plot: Plot)
 		notify(player, "This is someone else's shop.", true)
 		return
 	end
-	Remotes.OpenOrderMenu:FireClient(player)
+	Remotes.OpenOrderMenu:FireClient(player, orderInfo(player, 0))
 end
 
 local function onPlayerAdded(player: Player)
@@ -582,10 +641,10 @@ local function save(player: Player, data: PlayerData)
 	for _, box in shop.workerBoxes do
 		addPart(box)
 	end
-	for _, productId in shop.incoming do
-		local product = Products.ById[productId]
+	for _, order in shop.incoming do
+		local product = Products.ById[order.productId]
 		if product then
-			table.insert(boxes, { productId = productId, units = product.unitsPerBox })
+			table.insert(boxes, { productId = order.productId, units = product.unitsPerBox })
 		end
 	end
 	data.boxes = boxes
@@ -658,10 +717,10 @@ function StockService.GetBoxStock(player: Player): { [string]: number }?
 			end
 		end
 	end
-	for _, productId in shop.incoming do
-		local product = Products.ById[productId]
+	for _, order in shop.incoming do
+		local product = Products.ById[order.productId]
 		if product then
-			stock[productId] = (stock[productId] or 0) + product.unitsPerBox
+			stock[order.productId] = (stock[order.productId] or 0) + product.unitsPerBox
 		end
 	end
 	return stock
@@ -734,6 +793,7 @@ function StockService.ConsumeUnits(player: Player, box: Part, units: number)
 	else
 		table.remove(shop.workerBoxes, index)
 		box:Destroy()
+		syncPad(shop)
 	end
 end
 
@@ -771,7 +831,7 @@ function StockService.Start()
 		end)
 	end
 
-	Remotes.OrderProduct.OnServerEvent:Connect(onOrder)
+	Remotes.OrderCart.OnServerEvent:Connect(onOrderCart)
 	Remotes.StockShelf.OnServerEvent:Connect(onStockShelf)
 	Remotes.DropBox.OnServerEvent:Connect(onDropBox)
 	Remotes.BagBox.OnServerEvent:Connect(onBagBox)

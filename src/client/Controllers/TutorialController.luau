@@ -213,6 +213,17 @@ local function inside(window: GuiObject, name: string): GuiObject?
 	return if found and found:IsA("GuiObject") and shown(found) then found else nil
 end
 
+-- In the order computer (OrderController): the product's Add button until a box of it is in the cart (its card's
+-- InCart attribute), then Order now ("Checkout")
+local function orderTarget(order: GuiObject, productId: string): (string, GuiObject?)
+	local card = order:FindFirstChild(productId, true)
+	local inCart = if card then card:GetAttribute("InCart") else nil
+	if typeof(inCart) == "number" and inCart > 0 then
+		return "orderCart", inside(order, "Checkout")
+	end
+	return "orderOpen", if card and card:IsA("GuiObject") then inside(card, "Add") else nil
+end
+
 -- The scrolling list a window item sits in, when the item is out of its view (owner 2026-11-16: the paw pointed at
 -- nothing below the list's bottom): the player scrolls first
 local function scrolledAway(item: GuiObject): ScrollingFrame?
@@ -304,9 +315,9 @@ local function stepSituation(stepId: string): (string, Target)
 		return "default", { hud = "Manage" }
 	elseif stepId == "orderStock" then
 		local order = inMainGui("OrderMenu")
-		local row = order and order:FindFirstChild(Pish.ORDER_PRODUCT, true)
 		if order then
-			return "orderOpen", { gui = if row then inside(row :: GuiObject, "Order") else nil }
+			local situation, gui = orderTarget(order, Pish.ORDER_PRODUCT)
+			return situation, { gui = gui }
 		end
 		return "default", { part = "OrderComputer" }
 	elseif stepId == "stockRack" then
@@ -360,8 +371,8 @@ local function lessonSituation(lesson: Lesson): (string, Target, string)
 		local name = if product then product.name else lesson.product
 		local order = inMainGui("OrderMenu")
 		if order then
-			local row = order:FindFirstChild(lesson.product, true)
-			return "orderOpen", { gui = if row and row:IsA("GuiObject") then inside(row, "Order") else nil }, name
+			local situation, gui = orderTarget(order, lesson.product)
+			return situation, { gui = gui }, name
 		end
 		return "computer", { part = "OrderComputer" }, name
 	end

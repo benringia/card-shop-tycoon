@@ -33,8 +33,9 @@ local MAX_TYPED = Codes.MAX_LENGTH * 2 -- what's typed may hold spaces and dashe
 local redeemed: { [Player]: { string } } = {}
 local allowTry = RateLimiter.new(Codes.COOLDOWN)
 
-local function answer(player: Player, ok: boolean, message: string)
-	Remotes.CodeResult:FireClient(player, ok, message)
+-- `reward`: a redeemed code's gift (its cash, items and luck: plain data), for its win moment (client Util/CodeBox)
+local function answer(player: Player, ok: boolean, message: string, reward: any?)
+	Remotes.CodeResult:FireClient(player, ok, message, reward)
 end
 
 -- Whether every item of a gift fits in this player's Bag (a stack's limit: ItemRules.add)
@@ -85,7 +86,7 @@ local function onRedeem(player: Player, typed: unknown)
 	if reward.luck then
 		LuckService.Give(player, reward.luck.strength, reward.luck.seconds)
 	end
-	answer(player, true, `{Codes.TEXT.ok} {CodeRules.gotLine(reward, Items, Luck)}`)
+	answer(player, true, `{Codes.TEXT.ok} {CodeRules.gotLine(reward, Items, Luck)}`, reward)
 end
 
 local function load(player: Player, data: PlayerData)

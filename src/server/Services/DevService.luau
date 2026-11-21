@@ -821,6 +821,16 @@ function DevService.Start()
 	end)
 	-- your next boss loot win drops a Frontier card (owner 2026-11-21: the Frontier's bosses drop Frontier cards; any
 	-- boss, here only): its gold tile on the victory screen, then the "FRONTIER CARD!" reveal, then the chests
+	-- /bossbeaten <n> on|off: boss n counts as beaten and opened (a beaten Frontier or Dungeon boss's Take me there
+	-- teleports; owner 2026-11-21); off puts back what it was (with no on before: never beaten, never opened). Turn it
+	-- off again after: it's saved
+	addCommand(folder, "bossbeaten", function(player, text)
+		local number, word = string.match(text, "^/%w+%s+(%d+)%s*(%a*)")
+		local BossService = require(script.Parent:WaitForChild("BossService")) :: any
+		local on = word ~= "off"
+		local done = number ~= nil and BossService.DevSetBeaten(player, tonumber(number), on)
+		Remotes.Notify:FireClient(player, if done then `Boss {number} {if on then "beaten" else "not beaten"} (Studio)` else "Usage: /bossbeaten <1-7> on|off", not done)
+	end)
 	addCommand(folder, "bosscard", function(player)
 		local BossService = require(script.Parent:WaitForChild("BossService")) :: any
 		BossService.ForceCardForTest(player)

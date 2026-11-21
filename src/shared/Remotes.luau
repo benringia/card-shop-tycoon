@@ -5,8 +5,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local NAMES = {
-	"OpenOrderMenu", -- server → client: owner used their order computer
-	"OrderProduct", -- client → server: (productId: string)
+	"OpenOrderMenu", -- server → client: (info: { seconds, coming = { { productId, left, seconds } } }) owner used their order computer
+	"OrderCart", -- client → server: (cart: { [productId: string]: number }) boxes of each product to order (Util/OrderRules.readCart)
+	"OrderPlaced", -- server → client: (info: { seconds, coming, boxes }) the answer to OrderCart; boxes 0 when it was refused
 	"Notify", -- server → client: (message: string, isError: boolean, style: "side"?) side = small toast at the left (sales)
 	"PlaceShelf", -- client → server: (shelfId: string, gridX: number, gridZ: number, rotation: number)
 	"MoveShelf", -- client → server: (uid: string, gridX: number, gridZ: number, rotation: number)
@@ -43,7 +44,7 @@ local NAMES = {
 	"PrologueStep", -- client → server: (step: "begin" | "fight" | "vanish" | "take") the prologue's next part (PrologueService)
 	"PrologueArena", -- server → client: (centre: Vector3?) this player's lair, its loadout lent; nil: no prologue now
 	"RedeemCode", -- client → server: (typed: string) the Store's code box: try this code (CodeService; rate-limited)
-	"CodeResult", -- server → client: (ok: boolean, message: string) the answer for the code just sent (Util/CodeBox)
+	"CodeResult", -- server → client: (ok: boolean, message: string, reward: { cash?, items?, luck? }?) a code's answer; a redeemed one's gift plays its win moment (Util/CodeBox)
 	"StoreWin", -- server → client: (kind: "x2" | "x3" | "jobslot", seconds: number) a Store purchase went through: its win card (StoreWinController)
 	"GiftState", -- server → client: (view: GiftRules.View, counting: boolean) the daily, weekly and monthly gifts; client → server: () send it again (GiftService)
 	"GiftClaim", -- client → server: (kind: "daily" | "weekly" | "monthly") claim it; server → client: (kind, day: number, lines: { GiftRules.Line }) its win moment (GiftController)
@@ -121,7 +122,7 @@ local NAMES = {
 	"BossCleared", -- server → clients: (displayName: string, bossId: string) someone beat a boss for the first time
 	"BossLoot", -- server → owner: { drops = { { id, item, count, x, y, z } }, from = { x, y, z } } or { taken = id }
 	"PickUpLoot", -- client → server: (ids: { string }) pick up your boss drops close by (up to Bosses.LOOT_PICKUP_BATCH)
-	"BossTravel", -- client → server: (index: number) the board's Take me there: to boss n's gate when its arena is in this place
+	"BossTravel", -- client → server: (index: number) the board's Take me there: to boss n's gate in this place, or (a beaten Frontier or Dungeon boss) a teleport straight to it (FrontierService.ToBoss)
 	"DevPanel", -- client → server: (command: string) a dev chat command from the admin panel; handled in Studio only
 	"DungeonRun", -- server → client: { room, rooms, stage = "waiting" | "room" | "gather" | "beams" | "plates" | "lock" | "boss" | "won" | "out", next?, here?, total? (gather: the next puzzle, players on its island / still in the run), message?, intro? = "full" | "short" (play the Hydra's welcome; sent until the client acks) } the Dungeon run; client → server: () ask for it, or ("introSeen") the welcome started
 	"DungeonLeave", -- client → server: () leave the Dungeon run (back to the Frontier)
@@ -189,7 +190,8 @@ end
 
 return {
 	OpenOrderMenu = remotes.OpenOrderMenu,
-	OrderProduct = remotes.OrderProduct,
+	OrderCart = remotes.OrderCart,
+	OrderPlaced = remotes.OrderPlaced,
 	Notify = remotes.Notify,
 	TurtsStock = remotes.TurtsStock,
 	TurtsBuy = remotes.TurtsBuy,

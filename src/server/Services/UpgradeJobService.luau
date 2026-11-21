@@ -79,7 +79,10 @@ local function send(player: Player)
 	local view = {}
 	for station, job in jobs[player] or {} do
 		local name, detail = describe(job)
-		view[station] = { kind = job.kind, left = math.max(0, job.finishAt - now), total = job.finishAt - job.startedAt, name = name, detail = detail }
+		-- a creature held here: its card, stars and grade (the Recycler's window keeps what it needs)
+		local held = job.beast
+		local card = if held then { cardId = held.cardId, stars = held.stars, grade = held.grade } else nil
+		view[station] = { kind = job.kind, left = math.max(0, job.finishAt - now), total = job.finishAt - job.startedAt, name = name, detail = detail, card = card }
 	end
 	Remotes.UpgradeJobs:FireClient(player, view)
 end
@@ -199,6 +202,18 @@ function UpgradeJobService.Begin(player: Player, station: string, job: Job): boo
 	end
 	send(player)
 	return true
+end
+
+-- The creatures held in this player's stations now (a star or a grade being added): card, stars and grade
+function UpgradeJobService.HeldCards(player: Player): { { cardId: string, stars: number, grade: string } }
+	local list: { { cardId: string, stars: number, grade: string } } = {}
+	for _, job in jobs[player] or {} do
+		local beast = job.beast
+		if beast then
+			table.insert(list, { cardId = beast.cardId, stars = beast.stars, grade = beast.grade })
+		end
+	end
+	return list
 end
 
 -- Seconds left on a station's job, or nil when it's free

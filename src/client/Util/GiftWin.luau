@@ -171,14 +171,15 @@ local function button(parent: Instance, name: string, text: string, color: Color
 	return made
 end
 
--- Plays the win moment for `kind` ("daily" | "weekly" | "monthly"; `index`: the daily gift's day, 7 the big one) and
--- its gift `lines`; returns the pack item to open now, or nil
+-- Plays the win moment for `kind` (a Config/Gifts WIN look: "daily", "weekly", "monthly", "questWeek", "code"; `index`:
+-- the daily gift's day, 7 the big one) and its gift `lines`; returns the pack item to open now, or nil. A look with a
+-- `chest` drops that chest, the others their `picture`
 function GiftWin.play(kind: string, index: number, lines: { Line }): string?
 	local look = if kind == "daily" then (if index >= #Gifts.DAILY then WIN.big else WIN.daily) else (WIN :: any)[kind]
 	if typeof(look) ~= "table" then
 		return nil
 	end
-	local chest = kind ~= "daily"
+	local chest = look.chest ~= nil
 	ScreenClear.wait()
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "GiftWin"
@@ -248,7 +249,7 @@ function GiftWin.play(kind: string, index: number, lines: { Line }): string?
 
 	-- The burst
 	sound(gui, "burst")
-	if chest or index >= #Gifts.DAILY then
+	if chest or look.sting or (kind == "daily" and index >= #Gifts.DAILY) then
 		sound(gui, "sting")
 	end
 	if kind == "monthly" then

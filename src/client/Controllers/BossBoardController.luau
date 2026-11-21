@@ -628,8 +628,13 @@ end
 
 -- How to get to a boss's place when there's no travel button from here (nil: there is one, or nothing to say)
 local function travelHint(bossId: string): string?
-	local choice = BossRules.travelChoice(Bosses.BOSSES[bossId].place, here())
-	if choice == "viaPortal" then
+	local boss = Bosses.BOSSES[bossId]
+	local state = states[bossId]
+	local choice = BossRules.travelChoice(boss.place, here(), state ~= nil and state.cleared)
+	if choice == "teleport" then
+		-- beaten (owner 2026-11-21): Take me there goes straight to it
+		return if boss.place == "Dungeon" then "You beat it: Take me there starts a run of your own in its lair." else "You beat it: Take me there teleports you to its gate."
+	elseif choice == "viaPortal" then
 		return "Enter the Dungeon portal in the Frontier."
 	elseif choice == "walkToFrontier" then
 		return "Walk to the Frontier portal at Frostpeak (follow the blue line from the plaza)."
@@ -887,9 +892,9 @@ local function renderFooter(index: number, step: StepState, power: number): Fram
 			end,
 		}
 	end
-	local choice = BossRules.travelChoice(boss.place, here())
+	local choice = BossRules.travelChoice(boss.place, here(), state ~= nil and state.cleared)
 	local hint = if BossRules.detailsLayout(phone).hintInRewards then nil else travelHint(bossId)
-	local travel = choice == "gate" or choice == "toMain"
+	local travel = choice == "gate" or choice == "toMain" or choice == "teleport"
 
 	local footer = Instance.new("Frame")
 	footer.Name = "Footer"
@@ -932,16 +937,17 @@ local function renderFooter(index: number, step: StepState, power: number): Fram
 		button.Activated:Connect(action.run)
 	end
 	if travel then
-		local go = UIKit.iconButton(footer, if choice == "gate" then "Take me there" else "Go home", "Travel", if choice == "gate" then UIKit.Colors.Accent else UIKit.Colors.Secondary)
+		local home = choice == "toMain"
+		local go = UIKit.iconButton(footer, if home then "Go home" else "Take me there", "Travel", if home then UIKit.Colors.Secondary else UIKit.Colors.Accent)
 		go.LayoutOrder = 3
 		go.Size = UDim2.fromOffset(travelWidth, buttonHeight)
 		go.TextSize = UIKit.textSize("small")
 		go.ZIndex = footer.ZIndex + 1
 		go.Activated:Connect(function()
-			if choice == "gate" then
-				Remotes.BossTravel:FireServer(index)
-			else
+			if home then
 				Remotes.FrontierTravel:FireServer("home")
+			else
+				Remotes.BossTravel:FireServer(index) -- its gate here, or (beaten) a teleport straight to it
 			end
 			UIKit.closePanel(panel)
 		end)

@@ -43,6 +43,9 @@ return {
 		monthly = { title = "MONTHLY CHEST!", chest = { 255, 196, 60 }, colors = { { 255, 220, 110 }, { 255, 150, 30 } }, rainbow = true },
 		-- the weekly quests' chest (Config/Quests WEEKLY; QuestController plays it): sky blue, apart from the gifts' purple
 		questWeek = { title = "WEEKLY QUESTS!", chest = { 90, 190, 255 }, colors = { { 150, 220, 255 }, { 60, 150, 240 } } },
+		-- a redeemed code (owner 2026-11-21: "add a noticeable notification if CODES get redeemed"; Util/CodeBox plays
+		-- it): a present, mint, with the cymbal sting
+		code = { title = "CODE REDEEMED!", picture = "Gift", colors = { { 140, 245, 200 }, { 30, 185, 130 } }, sting = true },
 		RAYS = "rbxassetid://139701534930046", -- Config/PackFx rays (the Store's win card)
 		DIM = 0.55, -- the screen behind
 		DROP = 0.45, -- seconds the gift drops in

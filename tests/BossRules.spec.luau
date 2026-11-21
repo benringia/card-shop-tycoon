@@ -483,7 +483,7 @@ return {
 	end,
 	["every rule exists as soon as the module loads (none nested inside another)"] = function()
 		local fresh = luau.load(luau.compile(fs.readFile("src/shared/Util/BossRules.luau")), { debugName = "BossRules" })()
-		for _, name in { "read", "write", "dayNumber", "canStart", "lootEligible", "groupStats", "contributed", "carriedDrop", "groupPromptText", "ringSegments", "scatter", "insideRing", "levelReady", "shouldUnseal", "readIds", "phaseAt", "stepState", "travelChoice", "lockReason", "counterElements", "resetOffered", "resetTimers", "payShare", "pay", "partyPower", "chanceText", "countText", "watchOut", "revealTricks" } do
+		for _, name in { "read", "write", "dayNumber", "canStart", "lootEligible", "groupStats", "contributed", "carriedDrop", "groupPromptText", "ringSegments", "scatter", "insideRing", "levelReady", "shouldUnseal", "readIds", "phaseAt", "stepState", "travelChoice", "teleportTarget", "lockReason", "counterElements", "resetOffered", "resetTimers", "payShare", "pay", "partyPower", "chanceText", "countText", "watchOut", "revealTricks" } do
 			expect.equal(typeof(fresh[name]), "function", name)
 		end
 	end,
@@ -505,6 +505,39 @@ return {
 		expect.equal(BossRules.stepState(with({ unlocked = false, keyNeeded = 3, fragments = 3, power = 10 })), "tooWeak", "can start, too weak")
 		expect.equal(BossRules.stepState(with({ unlocked = false })), "ready", "no key needed, no data yet")
 	end,
+	-- Owner 2026-11-21: "Add teleport to bosses in frontier and dungeon, when the player defeated the boss once": the
+	-- board's Take me there teleports you to a beaten Frontier boss's gate (from the main game), or straight into the
+	-- Prism Hydra's lair in a Dungeon run of your own (from the main game or the Frontier). Before the first win the
+	-- way there is walked as before
+	["travelChoice: a beaten Frontier or Dungeon boss is a teleport away"] = function()
+		expect.equal(BossRules.travelChoice("Frontier", "Main", true), "teleport")
+		expect.equal(BossRules.travelChoice("Frontier", "Main", false), "walkToFrontier")
+		expect.equal(BossRules.travelChoice("Dungeon", "Main", true), "teleport")
+		expect.equal(BossRules.travelChoice("Dungeon", "Frontier", true), "teleport")
+		expect.equal(BossRules.travelChoice("Dungeon", "Frontier", false), "viaPortal")
+		expect.equal(BossRules.travelChoice("Frontier", "Frontier", true), "gate", "already here: its gate")
+		expect.equal(BossRules.travelChoice("Wild", "Main", true), "gate")
+		expect.equal(BossRules.travelChoice("Wild", "Frontier", true), "toMain", "only the Frontier's and the Dungeon's")
+		expect.equal(BossRules.travelChoice("Dungeon", "Dungeon", true), "none", "in a run")
+		-- where a teleport lands: the boss it names, when it's this place's and beaten (the data passes through the
+		-- client, so the arriving server checks it against the save)
+		local beaten = { frostTyrant = true, prismHydra = true }
+		local function cleared(id: string): boolean
+			return beaten[id] == true
+		end
+		expect.equal(BossRules.teleportTarget({ boss = "frostTyrant" }, "Frontier", Bosses, cleared), "frostTyrant")
+		expect.isNil(BossRules.teleportTarget({ boss = "stormSovereign" }, "Frontier", Bosses, cleared), "not beaten")
+		expect.isNil(BossRules.teleportTarget({ boss = "meadowWarden" }, "Frontier", Bosses, cleared), "not this place's")
+		expect.isNil(BossRules.teleportTarget({ boss = "nope" }, "Frontier", Bosses, cleared))
+		expect.isNil(BossRules.teleportTarget({ boss = 4 }, "Frontier", Bosses, cleared))
+		expect.isNil(BossRules.teleportTarget(nil, "Frontier", Bosses, cleared))
+		expect.isNil(BossRules.teleportTarget("frostTyrant", "Frontier", Bosses, cleared))
+		for _, id in Bosses.LADDER do
+			local place = Bosses.BOSSES[id].place
+			assert(place == "Wild" or place == "Frontier" or place == "Dungeon", `{id}: {place}`)
+		end
+	end,
+
 	["travelChoice: the gate in this place, else the normal travel"] = function()
 		expect.equal(BossRules.travelChoice("Wild", "Main"), "gate", "Wild boss from the main game")
 		-- The Frontier portal stands at the end of the Frostpeak trail now: walk there (the server only travels from it)

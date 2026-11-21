@@ -2,17 +2,24 @@
 -- The Store's code box (owner 2026-11-19: "yes do code box"; Config/Codes, Util/CodeRules): a card with a field to type
 -- a code in, a Redeem button and the answer under them. It only sends what's typed (Remotes.RedeemCode); the server
 -- checks and pays (CodeService) and answers with Remotes.CodeResult. The button waits out the server's cooldown, so a
--- try is never dropped without an answer.
+-- try is never dropped without an answer. A redeemed code plays the gifts' win moment with what it gave (owner
+-- 2026-11-21: "add a noticeable notification if CODES get redeemed"; Util/GiftWin "code"), a pack in it to open right
+-- there.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Codes = require(Config:WaitForChild("Codes"))
+local Items = require(Config:WaitForChild("Items"))
+local Luck = require(Config:WaitForChild("Luck"))
+local GiftRules = require(Shared:WaitForChild("Util"):WaitForChild("GiftRules"))
 local UIStyle = require(Config:WaitForChild("UIStyle"))
 local CodeRules = require(Shared:WaitForChild("Util"):WaitForChild("CodeRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local UIKit = require(script.Parent:WaitForChild("UIKit"))
+local GiftWin = require(script.Parent:WaitForChild("GiftWin"))
+local Hud = require(script.Parent:WaitForChild("Hud"))
 
 local CodeBox = {}
 
@@ -69,10 +76,44 @@ local function redeem()
 	end)
 end
 
-local function onResult(ok: unknown, message: unknown)
+-- A redeemed code's gift (from the server: its cash, items and luck) as the win moment's cards
+local function celebrate(reward: unknown)
+	if typeof(reward) ~= "table" then
+		return
+	end
+	local raw = reward :: any
+	local items = {}
+	for _, grant in if typeof(raw.items) == "table" then raw.items else {} do
+		if typeof(grant) == "table" and typeof(grant.item) == "string" and typeof(grant.count) == "number" then
+			table.insert(items, { item = grant.item, count = grant.count })
+		end
+	end
+	local luck = raw.luck
+	local clean = {
+		cash = if typeof(raw.cash) == "number" then raw.cash else nil,
+		items = items,
+		luck = if typeof(luck) == "table" and typeof(luck.strength) == "string" and typeof(luck.seconds) == "number" then luck else nil,
+	}
+	local lines = GiftRules.lines(clean :: any, Items, Luck)
+	if #lines == 0 then
+		return
+	end
+	task.spawn(function()
+		Hud.openTray(false) -- the Phone (the Store's page) closes for it, as the gifts' and quests' windows do
+		local pack = GiftWin.play("code", 0, lines)
+		if pack then
+			Remotes.OpenBagPack:FireServer(pack)
+		end
+	end)
+end
+
+local function onResult(ok: unknown, message: unknown, reward: unknown)
 	local mine = waiting
 	if mine == 0 then
 		return
+	end
+	if ok == true then
+		celebrate(reward)
 	end
 	say(if typeof(message) == "string" then message else "", if ok == true then UIStyle.CREAM.GOOD else UIStyle.CREAM.BAD)
 	local box = field

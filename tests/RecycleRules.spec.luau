@@ -94,7 +94,7 @@ return {
 			Z9 = { C = counts(500, 0) }, -- not a card
 			L1 = { C = "junk", B = { normal = -4, foil = 0 / 0 } },
 		}
-		local beasts = { one = { cardId = "E1", stars = 5, grade = "S" }, two = { cardId = "E1", stars = 2, grade = "C" } }
+		local beasts = { one = { cardId = "E1", stars = 5, grade = "S" } }
 		local got = piles(stacks, beasts)
 		-- R1 keeps its 3 A, its 50 B and 21 of its C: 279 Grade C go
 		expect.equal(got.Rare.count, 279)
@@ -115,6 +115,84 @@ return {
 		expect.equal(mixed.Rare.takes[2].cardId, "R2")
 		expect.equal(mixed.Rare.takes[3].grade, "B")
 		expect.equal(mixed.Rare.takes[3].count, 22, "R1 keeps its 78 best: 78 Grade B")
+	end,
+
+	-- Owner 2026-11-21: "make sure players cant accidentally recycle their most powerful creatures. or the creatures
+	-- they've been using". A creature (a levelled card) is never a plain copy, so it never goes; and the copies it
+	-- still needs stay, counted from the ones it can use: since the same day the Condenser never squishes a copy better
+	-- than the card that gets the star, so a Grade C creature's stars need Grade C copies
+	["a creature keeps the copies it can use: its own grade and under first, then the ones a grade-up opens"] = function()
+		local stacks = { R1 = { A = counts(2, 0), B = counts(30, 0), C = counts(100, 0) } }
+		local got = piles(stacks, { { cardId = "R1", stars = 0, grade = "C" } })
+		-- it keeps its 2 best (the Grade A copies) and the 78 its stars and grades need, all of them Grade C: kept
+		-- best-first instead, 54 Grade C would go and its stars could never be finished
+		expect.equal(got.Rare.count, 22 + 30)
+		expect.equal(got.Rare.takes[1].grade, "C")
+		expect.equal(got.Rare.takes[1].count, 22)
+		expect.equal(got.Rare.takes[2].grade, "B")
+		expect.equal(got.Rare.takes[2].count, 30)
+		local leftC = 100 - got.Rare.takes[1].count
+		assert(leftC >= 64 + 14, `its stars and grades still have their Grade C copies ({leftC})`)
+		-- short of its own grade: the grades a grade-up opens fill in, lowest first
+		local short = piles({ R1 = { B = counts(200, 0), C = counts(10, 0) } }, { { cardId = "R1", stars = 0, grade = "C" } })
+		-- spare: 2 B; its need 78: 10 C, then 68 B
+		expect.equal(short.Rare.count, 200 - 2 - 68)
+		for _, take in short.Rare.takes do
+			expect.equal(take.grade, "B", "every Grade C copy stays")
+		end
+		-- two creatures of one card: each keeps what it needs (the most either needs of each grade)
+		local both = piles({ R1 = { B = counts(100, 0), C = counts(100, 0) } }, { { cardId = "R1", stars = 0, grade = "C" }, { cardId = "R1", stars = 0, grade = "B" } })
+		-- spare 2 B; the Grade C one keeps 78 C; the Grade B one (64 + 12 for A and S) 76 B first: keeps 2 + 76 B, 78 C
+		expect.equal(both.Rare.count, (100 - 78) + (100 - 78))
+		-- a creature anywhere counts: in a station or on display, the server lists it too (RecyclerService)
+		local maxed = piles({ R1 = { C = counts(100, 0) } }, { { cardId = "R1", stars = 5, grade = "S" } })
+		expect.equal(maxed.Rare.count, 98, "a creature with every star and Grade S needs none: only the 2 spare stay")
+		-- what goes is only ever plain copies: never more than the stacks hold, never a foil
+		local foils = piles({ R1 = { C = counts(0, 500) } }, {})
+		expect.equal(foils.Rare.count, 0)
+	end,
+
+	-- "accidentally": the window shows the cards that will go before anything goes, and the server takes no copy that
+	-- wasn't in that list (a creature it knows of in a station or a case keeps even more)
+	["never more than you saw: the list you confirmed caps every card and grade"] = function()
+		local takes = { { cardId = "R1", grade = "C", count = 22 }, { cardId = "R1", grade = "B", count = 30 }, { cardId = "E1", grade = "C", count = 10 } }
+		local shown = RecycleRules.shownMap(takes)
+		expect.equal(shown["R1:C"], 22)
+		expect.equal(shown["R1:B"], 30)
+		expect.equal(shown["E1:C"], 10)
+		-- the server's own list (a pack opened since: more Grade C) is cut back to what was shown
+		local server = { Rare = { rarity = "Rare", count = 82, takes = { { cardId = "R1", grade = "C", count = 40 }, { cardId = "R2", grade = "C", count = 12 }, { cardId = "R1", grade = "B", count = 30 } } } }
+		local trimmed = RecycleRules.trimToShown(server, shown)
+		expect.equal(trimmed.Rare.count, 52)
+		expect.equal(#trimmed.Rare.takes, 2, "a card that wasn't shown never goes")
+		expect.equal(trimmed.Rare.takes[1].count, 22)
+		expect.equal(trimmed.Rare.takes[2].count, 30)
+		expect.equal(server.Rare.count, 82, "the server's own list is left as it was")
+		-- what a client sends is checked: card and grade keys, whole counts, a sane size; anything else, no list at all
+		local read = RecycleRules.readShown({ ["R1:C"] = 22, ["E1:B"] = 3 })
+		assert(read and read["R1:C"] == 22 and read["E1:B"] == 3, "a good list")
+		expect.isNil(RecycleRules.readShown(nil))
+		expect.isNil(RecycleRules.readShown("R1:C"))
+		expect.isNil(RecycleRules.readShown({ ["R1:A"] = 2 }), "Grade A never goes")
+		expect.isNil(RecycleRules.readShown({ ["R1:C"] = 2.5 }))
+		expect.isNil(RecycleRules.readShown({ ["R1:C"] = -1 }))
+		expect.isNil(RecycleRules.readShown({ ["R1:C"] = 0 / 0 }))
+		expect.isNil(RecycleRules.readShown({ [1] = 5 }))
+		local huge = {}
+		for index = 1, 301 do
+			huge[`C{index}:C`] = 1
+		end
+		expect.isNil(RecycleRules.readShown(huge), "too many lines")
+		-- the review's list: one line a card (its grades added up), the most first
+		local byCard = RecycleRules.byCard(takes)
+		expect.equal(#byCard, 2)
+		expect.equal(byCard[1].cardId, "R1")
+		expect.equal(byCard[1].count, 52)
+		expect.equal(byCard[2].count, 10)
+		-- its words
+		expect.equal(RecycleRules.reviewSay(52), "Recycle these 52 cards?")
+		expect.equal(RecycleRules.reviewSay(1), "Recycle this card?")
+		expect.equal(RecycleRules.reviewSay(3214), "Recycle these 3,214 cards?")
 	end,
 
 	["a pile makes whole materials; the rest stays"] = function()

@@ -35,7 +35,9 @@ return {
 			intro = { "Empty shelves don't sell. Let's order packs!" },
 			now = {
 				default = "Walk to the computer.",
-				orderOpen = "Pick First Spark packs, then Order!",
+				-- the order computer's cart (owner 2026-11-21): the packs into the cart, then Order now
+				orderOpen = "Add First Spark packs to your cart!",
+				orderCart = "Now tap Order now!",
 			},
 		},
 		stockRack = {
@@ -168,7 +170,8 @@ return {
 		scroll = "Scroll down to find the %s!",
 		placing = "Put it on the floor and tap to place!",
 		computer = "Walk to the computer.",
-		orderOpen = "Tap Order on %s!",
+		orderOpen = "Add %s to your cart!",
+		orderCart = "Now tap Order now!", -- it's in the cart: the order computer's Order now
 		closeWindow = "Tap the X to close this window.",
 		leaveRegister = "Tap Leave to step off the register.",
 		-- the trophy lesson (trophies are placed from the Bag, owner 2026-11-17): the Bag, the trophy's slot (`tile`), Place

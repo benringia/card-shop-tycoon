@@ -7,6 +7,10 @@
 -- given when its time is up, also while away; Finish now works on it), which tells the window what was made
 -- (Remotes.Recycled). Nothing to make, a busy machine, or no room in the Bag, shows the big locked card
 -- (Util/Blocked), never a silent no. Nothing of its own is saved: the job is UpgradeJobService's.
+-- Never a creature (owner 2026-11-21: "make sure players cant accidentally recycle their most powerful creatures. or
+-- the creatures they've been using"): only plain copies go; every creature the player has (in the binder, the party,
+-- a job, a station or a case) keeps the copies it can still use; and the press carries the list the window showed and
+-- the player confirmed, which caps what is taken card by card (RecycleRules.trimToShown).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -42,15 +46,41 @@ local function rarityOf(cardId: string): string?
 	return if card then card.rarity else nil
 end
 
+-- Every creature this player has, wherever it is: the binder's (with the party's, the workers' and the fighters'), the
+-- ones in a station (the Condenser, the Grading Station) and the ones on display in a case
+local function creaturesOf(player: Player): { { cardId: string, stars: number, grade: string } }
+	local list: { { cardId: string, stars: number, grade: string } } = {}
+	for _, beast in CardService.GetBeasts(player) do
+		table.insert(list, { cardId = beast.cardId, stars = beast.stars, grade = beast.grade })
+	end
+	for _, held in UpgradeJobService.HeldCards(player) do
+		table.insert(list, held)
+	end
+	for _, shelf in PlacementService.GetShelves(player) do
+		for _, displayed in shelf.cards do
+			local beast = displayed.beast
+			if beast then
+				table.insert(list, { cardId = beast.cardId, stars = beast.stars, grade = beast.grade })
+			end
+		end
+	end
+	return list
+end
+
 local function isNear(player: Player, part: BasePart): boolean
 	local character = player.Character
 	local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
 	return root ~= nil and root:IsA("BasePart") and (root.Position - part.Position).Magnitude <= Recycler.USE_DISTANCE
 end
 
--- `rarity`: one pile ("Rare"), or nil for every pile; `mode`: "materials" or "coins"
-local function onRecycle(player: Player, uid: unknown, rarity: unknown, mode: unknown)
+-- `rarity`: one pile ("Rare"), or nil for every pile; `mode`: "materials" or "coins"; `shown`: the list the player
+-- confirmed ("card:grade" = copies; RecycleRules.shownMap)
+local function onRecycle(player: Player, uid: unknown, rarity: unknown, mode: unknown, shown: unknown)
 	if typeof(uid) ~= "string" or (rarity ~= nil and typeof(rarity) ~= "string") or not RecycleRules.modeOk(mode) or not allow(player) then
+		return
+	end
+	local confirmed = RecycleRules.readShown(shown)
+	if not confirmed then
 		return
 	end
 	if rarity ~= nil and not Recycler.RECIPES[rarity :: string] then
@@ -66,7 +96,8 @@ local function onRecycle(player: Player, uid: unknown, rarity: unknown, mode: un
 		Blocked.tell(player, UpgradeRules.busyText(Upgrades.STATIONS.recycler, left))
 		return
 	end
-	local piles = RecycleRules.piles(Recycler, Beasts, Grading, CardService.GetStacks(player) :: any, CardService.GetBeasts(player) :: any, rarityOf)
+	-- worked out here from the binder and every creature, then cut back to what the player saw and confirmed
+	local piles = RecycleRules.trimToShown(RecycleRules.piles(Recycler, Beasts, Grading, CardService.GetStacks(player) :: any, creaturesOf(player), rarityOf), confirmed)
 	local takes: { RecycleRules.Take }, gains: { RecycleRules.Gain }, cash = {}, {}, 0
 	if mode == "coins" then
 		takes, cash = RecycleRules.coinPlan(Recycler, piles, rarity :: string?)
@@ -74,7 +105,7 @@ local function onRecycle(player: Player, uid: unknown, rarity: unknown, mode: un
 		takes, gains = RecycleRules.plan(Recycler, piles, rarity :: string?)
 	end
 	if #gains == 0 and cash <= 0 then
-		Blocked.tell(player, "No extra cards to recycle yet. The Recycler takes copies your cards don't need for their stars and grades (never foils, Grade A or S).")
+		Blocked.tell(player, "Nothing to recycle now: your cards changed since you looked. Check the list again.")
 		return
 	end
 	for _, gain in gains do

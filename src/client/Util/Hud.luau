@@ -828,6 +828,21 @@ function Hud.placeBottom(left: number?)
 	end
 end
 
+-- The bottom row's top on the screen (AbsolutePosition's space), its tiles' icons included (they pop out over the
+-- tiles); nil while it shows no tile, or on a phone's slim HUD (the row hides under any open window there). The order
+-- computer's tablet sits above it (OrderController, OrderRules.fit).
+function Hud.bottomTop(): number?
+	if not bottom or compact or not bottom.Visible or bottom.AbsoluteSize.Y <= 0 then
+		return nil
+	end
+	for _, child in bottom:GetChildren() do
+		if child:IsA("GuiObject") and child.Visible then
+			return bottom.AbsolutePosition.Y - bottom.AbsoluteSize.Y * TILE.iconRise
+		end
+	end
+	return nil
+end
+
 -- Lifts the side column (the Phone, Cards) `px` up from the screen's middle: the party dock under it on a short PC
 -- window (UIController). On a phone it hangs from the top instead (HudLayout.SIDE_TOP), clear of the thumbstick's
 -- resting spot low on the left (owner 2026-11-17: "make sure nothing is cutoff/overlapping on all devices")

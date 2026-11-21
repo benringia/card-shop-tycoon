@@ -143,11 +143,15 @@ return {
 		expect.equal(TalkRules.show(talk, 5, "default").text, "bye", "past the end: the last line")
 	end,
 	["a lesson teaches step by step: a line for each place the player is at (round 4)"] = function()
-		for _, situation in { "default", "trayOpen", "tab", "tile", "placing", "computer", "orderOpen", "closeWindow" } do
+		for _, situation in { "default", "trayOpen", "tab", "tile", "placing", "computer", "orderOpen", "orderCart", "closeWindow" } do
 			assert(PishTalk.TEACH[situation], `a line for {situation}`)
 		end
 		expect.equal(string.format(PishTalk.TEACH.tile, "Wall Shelf"), "Tap the Wall Shelf!")
-		expect.equal(string.format(PishTalk.TEACH.orderOpen, "Card Sleeves"), "Tap Order on Card Sleeves!")
+		-- the order computer's cart (owner 2026-11-21): the product into the cart, then Order now
+		expect.equal(string.format(PishTalk.TEACH.orderOpen, "Card Sleeves"), "Add Card Sleeves to your cart!")
+		expect.equal(PishTalk.TEACH.orderCart, "Now tap Order now!")
+		expect.equal(PishTalk.STEPS.orderStock.now.orderOpen, "Add First Spark packs to your cart!")
+		expect.equal(PishTalk.STEPS.orderStock.now.orderCart, "Now tap Order now!")
 		expect.equal(PishTalk.TEACH.closeWindow, PishTalk.LABELS.close)
 	end,
 	-- Owner 2026-11-17: trophies are placed from the Bag (its Place button), so the trophy lesson walks there: the Bag,

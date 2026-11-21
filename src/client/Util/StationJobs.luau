@@ -9,7 +9,9 @@ local Remotes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("R
 
 local StationJobs = {}
 
-export type Job = { kind: string, left: number, total: number, name: string, detail: string }
+-- `card`: a creature held in the station (its card, stars and grade; the Recycler's window keeps what it needs)
+export type Held = { cardId: string, stars: number, grade: string }
+export type Job = { kind: string, left: number, total: number, name: string, detail: string, card: Held? }
 
 local jobs: { [string]: Job } = {}
 local receivedAt = 0
@@ -28,12 +30,16 @@ local function start()
 		local fresh: { [string]: Job } = {}
 		for station, job in view :: any do
 			if typeof(station) == "string" and typeof(job) == "table" and typeof(job.left) == "number" and typeof(job.total) == "number" then
+				local held = job.card
 				fresh[station] = {
 					kind = tostring(job.kind),
 					left = job.left,
 					total = math.max(1, job.total),
 					name = tostring(job.name),
 					detail = tostring(job.detail),
+					card = if typeof(held) == "table" and typeof(held.cardId) == "string" and typeof(held.stars) == "number" and typeof(held.grade) == "string"
+						then { cardId = held.cardId, stars = held.stars, grade = held.grade }
+						else nil,
 				}
 			end
 		end
@@ -54,7 +60,7 @@ function StationJobs.get(station: string): Job?
 		return nil
 	end
 	local left = math.max(0, job.left - (os.clock() - receivedAt))
-	return { kind = job.kind, left = left, total = job.total, name = job.name, detail = job.detail }
+	return { kind = job.kind, left = left, total = job.total, name = job.name, detail = job.detail, card = job.card }
 end
 
 -- Told whenever the server sends the jobs again (one started, finished or was skipped)

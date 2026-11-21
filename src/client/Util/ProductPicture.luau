@@ -25,17 +25,16 @@ ProductPicture.WIDTH = 66 -- how far the row's text moves right
 -- that only turns true once the window draws it, and its change signal never fires (the icon stayed over the pack). The
 -- label itself is preloaded (an image id given as a string reports Failure), and only the picture's own fetch counts
 -- (the icon's glyph is fetched with it).
-local function picture(row: Frame, image: string, fallback: string): ImageLabel
-	local fit = ProductPictures.AREA - 2 * ProductPictures.MARGIN
+local function picture(row: GuiObject, image: string, fallback: string, size: UDim2, iconSize: UDim2): ImageLabel
 	local label = Instance.new("ImageLabel")
 	label.Name = "ProductPicture"
 	label.BackgroundTransparency = 1
 	label.Image = image
 	label.ScaleType = Enum.ScaleType.Fit
-	label.Size = UDim2.fromOffset(fit, fit)
+	label.Size = size
 	label.ZIndex = row.ZIndex + 2
 	label.Parent = row
-	local icon = Icon.make(label, fallback, UDim2.fromOffset(ICON_SIZE, ICON_SIZE))
+	local icon = Icon.make(label, fallback, iconSize)
 	icon.AnchorPoint = Vector2.new(0.5, 0.5)
 	icon.Position = UDim2.fromScale(0.5, 0.5)
 	icon.ZIndex = row.ZIndex + 1
@@ -49,17 +48,21 @@ local function picture(row: Frame, image: string, fallback: string): ImageLabel
 	return label
 end
 
-function ProductPicture.add(row: Frame, productId: string, iconName: string): GuiObject
+-- The picture to show for a product and the drawn icon under it: a pack's or deck box's by its look, any other
+-- product's real model (sleeves, a booster box), else its drawn icon alone
+local function choose(productId: string, iconName: string): (string?, string)
 	local pack = Packs.ById[productId]
-	local shown: GuiObject
 	if pack then
-		local image, fallback = ProductPictureRules.pick(ProductPictures, pack.look, if pack.kind == "Deck" then "Deck" else "Pack")
-		shown = if image then picture(row, image, fallback) else Icon.make(row, fallback, UDim2.fromOffset(ICON_SIZE, ICON_SIZE))
-	else
-		-- any other product with a picture of its real model (sleeves, a booster box), else its drawn icon
-		local image = ProductPictureRules.forProduct(ProductPictures, productId, nil, nil)
-		shown = if image then picture(row, image, iconName) else Icon.make(row, iconName, UDim2.fromOffset(ICON_SIZE, ICON_SIZE))
+		return ProductPictureRules.pick(ProductPictures, pack.look, if pack.kind == "Deck" then "Deck" else "Pack")
 	end
+	return ProductPictureRules.forProduct(ProductPictures, productId, nil, nil), iconName
+end
+
+function ProductPicture.add(row: Frame, productId: string, iconName: string): GuiObject
+	local image, fallback = choose(productId, iconName)
+	local fit = ProductPictures.AREA - 2 * ProductPictures.MARGIN
+	local iconSize = UDim2.fromOffset(ICON_SIZE, ICON_SIZE)
+	local shown: GuiObject = if image then picture(row, image, fallback, UDim2.fromOffset(fit, fit), iconSize) else Icon.make(row, fallback, iconSize)
 	shown.AnchorPoint = Vector2.new(0.5, 0.5)
 	shown.Position = UDim2.new(0, 38, 0.5, 0)
 	for _, label in row:GetChildren() do
@@ -68,6 +71,17 @@ function ProductPicture.add(row: Frame, productId: string, iconName: string): Gu
 			label.Size -= UDim2.fromOffset(ProductPicture.WIDTH, 0)
 		end
 	end
+	return shown
+end
+
+-- The product's picture filling `holder` (the order computer's cards and cart lines), centred, its drawn icon under it
+-- until it has loaded (or alone, for a product with no picture)
+function ProductPicture.fill(holder: GuiObject, productId: string, iconName: string): GuiObject
+	local image, fallback = choose(productId, iconName)
+	local iconSize = UDim2.fromScale(0.62, 0.62)
+	local shown: GuiObject = if image then picture(holder, image, fallback, UDim2.fromScale(1, 1), iconSize) else Icon.make(holder, fallback, iconSize)
+	shown.AnchorPoint = Vector2.new(0.5, 0.5)
+	shown.Position = UDim2.fromScale(0.5, 0.5)
 	return shown
 end
 

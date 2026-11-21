@@ -52,6 +52,11 @@ return {
 	EXPLAIN = "Turn extra cards into upgrade stuff!",
 	EXPLAIN_COINS = "Turn extra cards into coins!",
 	SAFE = "Cards you still need stay safe. So do foils and Grade A and S.", -- one line under the big button
+	-- A press first shows what goes (owner 2026-11-21: "make sure players cant accidentally recycle their most
+	-- powerful creatures. or the creatures they've been using"): the cards, then Yes or Back
+	REVIEW_SAFE = "Your creatures and the cards they still need stay safe.",
+	REVIEW_YES = "Yes, recycle",
+	REVIEW_TILE = { 58, 82 }, -- px: a card in the list
 
 	-- The machine's code-built look (Util/Props buildRecycler), bottom centre at the origin, front -Z: a dark plinth
 	-- with a green rim, a white body with a RECYCLER strip and a green band, and an open hopper on top with a heap of

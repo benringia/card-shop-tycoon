@@ -497,18 +497,38 @@ end
 -- What the board's travel button does for a boss whose arena is in bossPlace ("Wild" | "Frontier" | "Dungeon")
 -- while you are in `here` ("Main" | "Frontier" | "Dungeon"): its gate in this place, the trip home from the Frontier,
 -- directions to the Frontier portal (it stands at the end of the Frostpeak trail and the server only sends you from
--- it), the Dungeon portal's directions, or nothing (inside a Dungeon run)
-function BossRules.travelChoice(bossPlace: string, here: string): "gate" | "walkToFrontier" | "toMain" | "viaPortal" | "none"
+-- it), the Dungeon portal's directions, or nothing (inside a Dungeon run). A Frontier or Dungeon boss you have
+-- beaten (`cleared`) is a "teleport" instead (owner 2026-11-21: "Add teleport to bosses in frontier and dungeon, when
+-- the player defeated the boss once"): to its gate in a Frontier server, or into its lair in a Dungeon run of your own
+function BossRules.travelChoice(bossPlace: string, here: string, cleared: boolean?): "gate" | "walkToFrontier" | "toMain" | "viaPortal" | "teleport" | "none"
 	if here == "Dungeon" then
 		return "none"
 	end
 	if bossPlace == "Dungeon" then
-		return "viaPortal"
+		return if cleared then "teleport" else "viaPortal"
 	end
 	if (bossPlace == "Wild" and here == "Main") or (bossPlace == "Frontier" and here == "Frontier") then
 		return "gate"
 	end
-	return if bossPlace == "Frontier" then "walkToFrontier" else "toMain"
+	if bossPlace == "Frontier" then
+		return if cleared then "teleport" else "walkToFrontier"
+	end
+	return "toMain"
+end
+
+-- Where a boss teleport lands in `place` (its data: { boss = id }, FrontierService.ToBoss): that boss, when it is this
+-- place's and `cleared` says this player beat it; nil otherwise (teleport data passes through the client, so the
+-- arriving server checks it against the save)
+function BossRules.teleportTarget(data: any, place: string, config: { BOSSES: { [string]: { place: string } } }, cleared: (bossId: string) -> boolean): string?
+	local bossId = if typeof(data) == "table" then data.boss else nil
+	if typeof(bossId) ~= "string" then
+		return nil
+	end
+	local boss = config.BOSSES[bossId]
+	if not boss or boss.place ~= place or not cleared(bossId) then
+		return nil
+	end
+	return bossId
 end
 
 -- Where a lost boss fight sends you (spec 2026-11-02-you-in-the-fight-design), by place: the main game's plaza spring,
