@@ -5,6 +5,7 @@
 local LeaderboardRules = require("../src/shared/Util/LeaderboardRules")
 local Leaderboard = require("../src/shared/Config/Leaderboard")
 local Data = require("../src/shared/Config/Data")
+local UIIcons = require("../src/shared/Config/UIIcons")
 local expect = require("./lib/expect")
 
 local function names(list: { LeaderboardRules.Entry }): string
@@ -62,28 +63,26 @@ return {
 	end,
 
 	-- Owner 2026-11-21: "since this is a griding game. what do you suggest we add to the leaderboards? aside from pack
-	-- opened. boss kills?", then "just add the boss kills for now" and "Every win": a second ranking on the same two
-	-- giant cards, which show packs opened and boss kills in turn
-	["two rankings take turns on the cards: packs opened, then boss kills"] = function()
+	-- opened. boss kills?", then "just add the boss kills for now" and "Every win": a second ranking. Owner 2026-11-22,
+	-- pick A of three ("lets go A"): both up at once, each on its own pair of cards (Config/Plaza FAN), a plaque naming
+	-- it under the pair; nothing takes turns any more
+	["two rankings, both up at once: packs opened and boss kills, each with its plaque"] = function()
 		expect.equal(#Leaderboard.BOARDS, 2)
 		local packs, bosses = Leaderboard.BOARDS[1], Leaderboard.BOARDS[2]
 		expect.equal(packs.stat, "packsOpened")
 		expect.equal(packs.store, "PacksOpened", "the packs list keeps its store: nobody loses their place")
 		expect.equal(packs.subtitle, "MOST PACKS OPENED")
+		expect.equal(packs.plaque, "PACKS OPENED")
 		expect.equal(bosses.stat, "bossKills")
 		expect.equal(bosses.store, "BossKills")
 		expect.equal(bosses.subtitle, "MOST BOSS KILLS")
+		expect.equal(bosses.plaque, "BOSS KILLS")
 		assert(packs.empty ~= bosses.empty, "each says how to get on it")
+		for _, board in Leaderboard.BOARDS do
+			assert((UIIcons :: any)[board.icon] ~= nil, `{board.stat}'s plaque icon is a UI icon`)
+		end
 		expect.equal(Leaderboard.storeName(Data.STORE_NAME, bosses.store), `{Data.STORE_NAME}_BossKills`)
-		-- each stays up long enough to read ten names
-		assert(Leaderboard.FLIP_EVERY >= 10 and Leaderboard.FLIP_EVERY <= 30, "long enough to read, short enough to see both")
-		expect.equal(LeaderboardRules.shownBoard(0, 15, 2), 1)
-		expect.equal(LeaderboardRules.shownBoard(14.9, 15, 2), 1)
-		expect.equal(LeaderboardRules.shownBoard(15, 15, 2), 2)
-		expect.equal(LeaderboardRules.shownBoard(30, 15, 2), 1)
-		expect.equal(LeaderboardRules.shownBoard(46, 15, 2), 2)
-		expect.equal(LeaderboardRules.shownBoard(46, 15, 1), 1, "one ranking: always it")
-		expect.equal(LeaderboardRules.shownBoard(0 / 0, 15, 2), 1, "junk: the first")
+		expect.isNil((Leaderboard :: any).FLIP_EVERY, "nothing takes turns")
 		-- two sorted reads every READ_EVERY stay far inside the per-minute budget
 		assert(#Leaderboard.BOARDS * 60 / Leaderboard.READ_EVERY <= 2, "reads a minute")
 	end,

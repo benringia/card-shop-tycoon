@@ -1,6 +1,7 @@
 --!strict
 -- The plaza leaderboard's rules (Config/Leaderboard, server LeaderboardService): who's on each list and in what order,
--- when a player's lifetime packs-opened total goes to the shared store, and how counts read. Pure, Lune-tested.
+-- when a player's lifetime total (packs opened, boss kills) goes to the shared store, and how counts read. Pure,
+-- Lune-tested.
 local LeaderboardRules = {}
 
 export type Entry = { userId: number, name: string, count: number }
@@ -90,14 +91,6 @@ function LeaderboardRules.shouldWrite(count: number, written: number?, hide: boo
 end
 
 -- A count with thousands separators: 1,234,567
--- Which ranking the cards show `now` (seconds on any steady clock): each of `count` in turn for `every` seconds
-function LeaderboardRules.shownBoard(now: number, every: number, count: number): number
-	if now ~= now or count <= 1 or every <= 0 then
-		return 1
-	end
-	return math.floor(math.max(0, now) / every) % count + 1
-end
-
 function LeaderboardRules.countText(count: number): string
 	local digits = tostring(math.max(0, math.floor(count)))
 	local out = ""

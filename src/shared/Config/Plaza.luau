@@ -88,23 +88,34 @@ return {
 		beacon = { rate = 5, speed = { 4, 7 }, lifetime = { 3, 4.5 }, size = 0.6, spread = 15 },
 	},
 
-	-- The leaderboard's two giant cards (owner 2026-11-13: design A, "replace the cards on the plaza with it"; Config/
-	-- Leaderboard, LeaderboardService draws their faces): ALL TIME in a Legendary rim, THIS SERVER in a Rare rim, side by
-	-- side on a stone plinth facing the spawn. `list` names the list a card shows; the first card stands on the right as
-	-- you face them (all time reads first, on the left)
+	-- The leaderboard's giant cards (owner 2026-11-13: design A, "replace the cards on the plaza with it"; Config/
+	-- Leaderboard, LeaderboardService draws their faces): a pair for each ranking (owner 2026-11-22, pick A of three,
+	-- "lets go A": both rankings up at once), ALL TIME in a Legendary rim and THIS SERVER in a Rare rim, side by side on
+	-- one stone plinth facing the spawn, `pairGap` studs more between the pairs and a gold plaque naming each ranking on
+	-- the plinth's front under its pair. Four 7-stud cards didn't fit the quarter between the lanes, the edge planters
+	-- and the spawn's 45 degrees, so they're 6 (tests/PlazaLayout). `list` and `board` (a Leaderboard.BOARDS stat) name
+	-- what a card shows; the first card stands on the right as you face them. Boss kills on the left, packs opened on the
+	-- right, this server first in each pair: mirrored from the mockup (owner 2026-11-22, "go 1"), since the plaza's
+	-- signpost hides part of the row's left end from the spawn, so the emptiest list stands there
 	FAN = {
-		angle = 225,
-		r = 19,
-		face = { x = -10, z = 0 }, -- turned toward the plaza, with the spawn in front (and the street beyond)
+		angle = 229.25,
+		r = 20.125,
+		face = { x = -4.5, z = 0.5 }, -- turned toward the plaza, with the spawn in front (and the street beyond)
 		base = { height = 1.2, depth = 3, color = { 214, 206, 190 } }, -- the long stone plinth they stand on
-		step = 5.5, -- studs between the cards' middles
+		step = 4.7, -- studs between neighbouring cards' middles (a 6-stud card is 4.3 wide)
+		pairGap = 0.8, -- studs more between the two rankings' pairs
 		lean = 6, -- degrees each card leans out per step from the middle
 		tilt = 6, -- degrees every card leans back
 		depthStep = 0.5, -- each step out stands this much further back, so faces never fight
 		cards = {
-			{ list = "server", rarity = "Rare", height = 7 },
-			{ list = "allTime", rarity = "Legendary", height = 7 },
+			{ list = "allTime", board = "packsOpened", rarity = "Legendary", height = 6 },
+			{ list = "server", board = "packsOpened", rarity = "Rare", height = 6 },
+			{ list = "allTime", board = "bossKills", rarity = "Legendary", height = 6 },
+			{ list = "server", board = "bossKills", rarity = "Rare", height = 6 },
 		},
+		-- The gold plaque on the plinth's front under each pair (studs), its ranking's words and icon on it: `text` and
+		-- `icon` px tall at pixelsPerStud, in `ink`
+		plaque = { width = 5.4, height = 0.8, depth = 0.12, text = 20, icon = 24, ink = { 91, 61, 110 } },
 		gold = { 242, 193, 78 },
 		back = { 70, 110, 245 },
 		pixelsPerStud = 40,

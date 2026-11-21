@@ -99,8 +99,8 @@ plaza concepts, 2026-10-30; `Config/Plaza`, `Util/PlazaLayout`, `Server/Util/Pla
 a gazebo with eight cream plaster columns and a stepped teal dome of roof tiles over the fountain (a warm light and
 a lantern inside, a dark teal inlay in its floor; matte mid tones, since white plastic and a shiny roof glared in the
 sun and mirrored the sky); a
-pair of giant cards on a stone plinth in the north-west corner, facing where new players appear: the leaderboard (owner
-2026-11-13, see 9. Social features; five giant cards of real card art stood there before);
+row of four giant cards on a stone plinth in the north-west corner, facing where new players appear: the leaderboard
+(owner 2026-11-13 and 2026-11-22, see 9. Social features; five giant cards of real card art stood there before);
 the Support corner in the south-east quarter (owner 2026-11-20: "a dog bed/house with a jar ... remove one group in
 any side. and replace them with the support dev"; `Config/Plaza` SUPPORT, code-built by `PlazaBuild`): Pish and
 Chikin's dog house (cream planks, the pink of the cart that stood there on its gabled roof, an arched door, their names
@@ -4560,11 +4560,22 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
    A second ranking since 2026-11-21 (owner: "since this is a griding game. what do you suggest we add to the
    leaderboards? aside from pack opened. boss kills?", "just add the boss kills for now", every boss win counting):
    **most boss kills** (stats.bossKills, +1 for everyone in a won boss fight, loot or not; its own store
-   `<STORE_NAME>_BossKills`). The two giant cards show one ranking at a time, 15 seconds each
-   (`Leaderboard.BOARDS`, `FLIP_EVERY`, `LeaderboardRules.shownBoard`): the subtitle under each list's title turns
-   to "MOST BOSS KILLS" and the empty box says "Beat a boss to get on the board!". Kills from before were never
-   counted, so a save starts at the bosses it has cleared (Migrations v41). Every win counts by the owner's choice,
-   so the board can be led by quick wins on an early boss.
+   `<STORE_NAME>_BossKills`). Kills from before were never counted, so a save starts at the bosses it has cleared
+   (Migrations v41). Every win counts by the owner's choice, so the board can be led by quick wins on an early boss.
+   **Both rankings up at once** since 2026-11-22 (owner, pick A of three mockups: four cards, two cards each split in
+   half, or two cards each switching between all time and this server; "lets go A"). For a day the two cards took
+   turns, 15 s a ranking. Now each ranking has its own pair of giant cards, THIS SERVER then ALL TIME as you face
+   them, on one plinth: boss kills on the left, packs opened on the right, 0.8 studs more between the pairs
+   (`Config/Plaza` FAN `pairGap`, `PlazaLayout.fanCards`). Mirrored from the mockup the same day (owner: "go 1"): seen
+   from the spawn, the plaza's signpost hides part of the row's left end and no spot in the corner clears it, so the
+   emptiest list stands there, this server's boss kills, and the fullest, all time's packs opened, is in clear view. Each card's subtitle names its ranking ("MOST PACKS OPENED",
+   "MOST BOSS KILLS"), and a gold plaque on the plinth's front under each pair carries the ranking's icon and words
+   ("PACKS OPENED" with the pack icon, "BOSS KILLS" with the sword; `Leaderboard.BOARDS` plaque / icon,
+   `PlazaLayout.fanPlaques`). Four 7-stud cards didn't fit the corner between the shop-door lane, the edge planters
+   and the spawn's 45 degrees, so the cards are 6 studs tall and the plinth stands at 229.25 degrees, r 20.1, facing
+   (-4.5, 0.5) (the spawn 43 degrees off straight on; tests/PlazaLayout keeps every rule). PlazaBuild marks each card
+   with its list and ranking (`LeaderboardList`, `LeaderboardBoard` attributes); LeaderboardService draws every card
+   it finds and redraws one only when its list changed.
 5. Play Glimmerbeasts at tables (simple card battle mini-game), tournaments bring customers
 6. Weekly limited packs / events
 
@@ -4652,7 +4663,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── DungeonPuzzleService.luau # Dungeon: prism beams, weight plates, the secret wall, the element lock, their chests
     │   │   ├── DevService.luau       # Studio-only test chat commands (/crowd: extra players counted in the Wild's biomes)
     │   │   ├── LevelUpService.luau   # shop level-up packs, opening Bag packs (OpenBagPack, Open 10: OpenBagPacks), the LevelUpFx broadcast (held mid-fight)
-    │   │   ├── LeaderboardService.luau # the plaza leaderboard: packs-opened totals to an OrderedDataStore (every place), the cards' lists (main game)
+    │   │   ├── LeaderboardService.luau # the plaza leaderboard: each ranking's totals to an OrderedDataStore (every place), the cards' lists (main game)
     │   │   ├── TurtsService.luau     # Turts' rug shop: the restock clock, his spot, each player's offers and buys, Robux restock now (DESIGN 7.9)
     │   │   ├── QuestService.luau     # daily quests: rolled per UTC day, counted from the game, claims and the Quest Chest (DESIGN 7.12)
     │   │   ├── MainQuestService.luau # main quests: the ShopBuilt attribute, a first build's shop XP once, its moment (DESIGN 7.12)

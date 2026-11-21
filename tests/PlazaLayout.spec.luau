@@ -8,6 +8,7 @@ local plaza = require("../src/shared/Config/Plaza")
 local town = require("../src/shared/Config/Town")
 local combat = require("../src/shared/Config/Combat")
 local ambient = require("../src/shared/Config/Ambient")
+local leaderboard = require("../src/shared/Config/Leaderboard")
 local PlazaLayout = require("../src/shared/Util/PlazaLayout")
 local expect = require("./lib/expect")
 
@@ -83,15 +84,23 @@ return {
 		assert(g.radius < combat.SPRING_RADIUS, "the healing area reaches past the columns")
 	end,
 
-	-- Owner 2026-11-13: the plaza leaderboard as two giant cards (pick A), "replace the cards on the plaza with it"
-	["the giant cards are the leaderboard's two lists, facing where new players appear"] = function()
-		expect.equal(#plaza.FAN.cards, 2, "two cards")
-		local byList = {}
+	-- Owner 2026-11-13: the plaza leaderboard as giant cards (pick A), "replace the cards on the plaza with it"; owner
+	-- 2026-11-22, pick A of three ("lets go A"): both rankings up at once, each on its own pair of cards (all time and
+	-- this server), where the two cards showed them in turn
+	["the giant cards are the leaderboard's lists: each ranking's all time and this server, facing where new players appear"] = function()
+		expect.equal(#plaza.FAN.cards, 2 * #leaderboard.BOARDS, "a pair of cards for each ranking")
+		local seen = {}
 		for _, card in plaza.FAN.cards do
-			byList[card.list] = card
+			local key = `{card.board}/{card.list}`
+			assert(not seen[key], `{key} stands twice`)
+			seen[key] = true
+			expect.equal(card.rarity, if card.list == "allTime" then "Legendary" else "Rare", `{key}'s rim`)
 		end
-		expect.equal(byList.allTime and byList.allTime.rarity, "Legendary", "all time in a Legendary rim")
-		expect.equal(byList.server and byList.server.rarity, "Rare", "this server in a Rare rim")
+		for _, board in leaderboard.BOARDS do
+			for _, list in { "allTime", "server" } do
+				assert(seen[`{board.stat}/{list}`], `{board.stat} has no {list} card`)
+			end
+		end
 		-- New players appear in front of it, within 45 degrees of straight on
 		local centre = PlazaLayout.at(plaza.FAN.angle, plaza.FAN.r)
 		local fx, fz = plaza.FAN.face.x - centre.x, plaza.FAN.face.z - centre.z
@@ -100,13 +109,21 @@ return {
 		assert(cos >= math.cos(math.rad(45)), "the spawn isn't in front of the giant cards")
 	end,
 
-	["the two list cards stand side by side, neither hiding the other, all time on the left as you face them"] = function()
+	["the list cards stand side by side, neither hiding the other: boss kills' pair on the left, this server first in each, a wider gap between the pairs"] = function()
 		local cards = PlazaLayout.fanCards(plaza)
-		expect.equal(#cards, 2, "two")
-		local a, b = cards[1], cards[2]
-		local gap = math.sqrt((a.x - b.x) ^ 2 + (a.z - b.z) ^ 2)
-		assert(gap >= (a.width + b.width) / 2 + 0.3, "the cards overlap")
-		expect.near(a.lean, -b.lean, 1e-9, "leaning out alike")
+		local specs = plaza.FAN.cards
+		expect.equal(#cards, #specs)
+		local function apart(a: PlazaLayout.FanCard, b: PlazaLayout.FanCard): number
+			return math.sqrt((a.x - b.x) ^ 2 + (a.z - b.z) ^ 2)
+		end
+		for index = 1, #cards - 1 do
+			local a, b = cards[index], cards[index + 1]
+			assert(apart(a, b) >= (a.width + b.width) / 2 + 0.3, `cards {index} and {index + 1} overlap`)
+		end
+		for index = 1, #cards do
+			expect.near(cards[index].lean, -cards[#cards + 1 - index].lean, 1e-9, "leaning out alike")
+			assert(cards[index].height <= 7.5, "smaller than the old board")
+		end
 		-- Facing the cards (looking back along their facing), your left is the cards' own right side
 		local centre = PlazaLayout.at(plaza.FAN.angle, plaza.FAN.r)
 		local fx, fz = plaza.FAN.face.x - centre.x, plaza.FAN.face.z - centre.z
@@ -114,9 +131,65 @@ return {
 		local function leftness(index: number): number
 			return (cards[index].x - centre.x) * rx + (cards[index].z - centre.z) * rz
 		end
-		local allTime = if plaza.FAN.cards[1].list == "allTime" then 1 else 2
-		assert(leftness(allTime) > leftness(3 - allTime), "all time stands on the right")
-		assert(a.height <= 7.5 and b.height <= 7.5, "smaller than the old board")
+		local function find(board: string, list: string): number
+			for index, spec in specs do
+				if spec.board == board and spec.list == list then
+					return index
+				end
+			end
+			error(`no {board} {list} card`)
+		end
+		local packs, bosses = leaderboard.BOARDS[1].stat, leaderboard.BOARDS[2].stat
+		for _, board in { packs, bosses } do
+			local allTime, server = find(board, "allTime"), find(board, "server")
+			assert(math.abs(allTime - server) == 1, `{board}'s cards stand together`)
+			assert(leftness(server) > leftness(allTime), `{board}: this server stands on the right`)
+		end
+		assert(leftness(find(bosses, "allTime")) > leftness(find(packs, "server")), "packs opened stand left of boss kills")
+		local within = apart(cards[find(packs, "allTime")], cards[find(packs, "server")])
+		local between = apart(cards[find(packs, "server")], cards[find(bosses, "allTime")])
+		assert(between > within + 0.5, "no wider gap between the two rankings' pairs")
+	end,
+
+	-- Seen 2026-11-22 from the spawn: the plaza's signpost (Town.SIGNPOSTS[1], the user's pick A) hides part of the card
+	-- at the row's end nearest it, and no spot in the corner clears it; that end holds the list with the least on it
+	-- (owner: "go 1", the row mirrored from the mockup)
+	["the card at the signpost's end of the row is this server's boss kills"] = function()
+		local sign = town.SIGNPOSTS[1]
+		local nearest, best = 0, math.huge
+		for index, card in PlazaLayout.fanCards(plaza) do
+			local d = math.sqrt((card.x - sign.x) ^ 2 + (card.z - sign.z) ^ 2)
+			if d < best then
+				nearest, best = index, d
+			end
+		end
+		local spec = plaza.FAN.cards[nearest]
+		expect.equal(spec.board, "bossKills", "the ranking nearest the signpost")
+		expect.equal(spec.list, "server", "the list nearest the signpost")
+	end,
+
+	-- The mockup's gold plaques: one on the plinth's front under each pair, naming its ranking (Config/Leaderboard)
+	["a plaque under each pair names its ranking, inside the plinth"] = function()
+		local cards = PlazaLayout.fanCards(plaza)
+		local plaques = PlazaLayout.fanPlaques(plaza)
+		expect.equal(#plaques, #leaderboard.BOARDS, "one for each ranking")
+		local half = PlazaLayout.fanWidth(plaza) / 2
+		for _, plaque in plaques do
+			local sum, count, low, high = 0, 0, math.huge, -math.huge
+			for index, spec in plaza.FAN.cards do
+				if spec.board == plaque.board then
+					sum += cards[index].along
+					count += 1
+					low = math.min(low, cards[index].along - cards[index].width / 2)
+					high = math.max(high, cards[index].along + cards[index].width / 2)
+				end
+			end
+			expect.equal(count, 2, `{plaque.board}: under a pair`)
+			expect.near(plaque.along, sum / count, 1e-9, `{plaque.board}: in the middle of its pair`)
+			assert(plaza.FAN.plaque.width <= high - low, `{plaque.board}: wider than its pair`)
+			assert(math.abs(plaque.along) + plaza.FAN.plaque.width / 2 <= half, `{plaque.board}: off the plinth's end`)
+		end
+		assert(plaza.FAN.plaque.height < plaza.FAN.base.height, "taller than the plinth")
 	end,
 
 	-- The leaderboard is read up close: no cafe table (and its sitter) in front of a list card

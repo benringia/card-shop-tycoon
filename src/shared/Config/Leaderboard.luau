@@ -1,7 +1,7 @@
 --!strict
 -- The plaza leaderboard (owner 2026-11-13: "Remove roblox leaderboards on load, we will be adding a leaderboard in game
 -- at the plaza for most cards opened"; two lists, "names of all time players across all servers and names of the
--- players within their server"; no reward for now). Ranks lifetime packs opened (the save's stats.packsOpened). Built
+-- players within their server"; no reward for now). Ranks lifetime packs opened and boss kills (the save's stats). Built
 -- and kept by the server (LeaderboardService, Server/Util/LeaderboardBoard); Roblox's own player list is hidden on join
 -- (UIController). Plain data, read by Lune tests. Studs, seconds, colours { r, g, b }.
 local Leaderboard = {}
@@ -14,13 +14,14 @@ end
 
 -- The rankings (owner 2026-11-21: "just add the boss kills for now", every boss win counting): each a lifetime counter
 -- of the save (`stat`, DataService stats) with its own shared store (`store`, the name's ending: the packs list keeps
--- the one it always had). The two giant cards show one ranking at a time, each for FLIP_EVERY seconds
--- (LeaderboardRules.shownBoard), its `subtitle` under the list's title; `empty`: the text box's words with nobody on it
+-- the one it always had). Each has its own pair of giant cards, ALL TIME and THIS SERVER (owner 2026-11-22, pick A of
+-- three, "lets go A": both up at once; they took turns on two cards for a day), its `subtitle` under each list's
+-- title and a gold plaque under the pair with its `plaque` words and `icon` (a Config/UIIcons name; Config/Plaza
+-- FAN); `empty`: the text box's words with nobody on it
 Leaderboard.BOARDS = {
-	{ stat = "packsOpened", store = "PacksOpened", subtitle = "MOST PACKS OPENED", empty = "Open packs to get on the board!" },
-	{ stat = "bossKills", store = "BossKills", subtitle = "MOST BOSS KILLS", empty = "Beat a boss to get on the board!" },
+	{ stat = "packsOpened", store = "PacksOpened", subtitle = "MOST PACKS OPENED", plaque = "PACKS OPENED", icon = "Pack", empty = "Open packs to get on the board!" },
+	{ stat = "bossKills", store = "BossKills", subtitle = "MOST BOSS KILLS", plaque = "BOSS KILLS", icon = "Sword", empty = "Beat a boss to get on the board!" },
 }
-Leaderboard.FLIP_EVERY = 15 -- seconds a ranking stays up before the cards show the next one
 
 Leaderboard.TOP = 10 -- rows on each list
 -- The game's owner is on neither list (owner 2026-11-20: "can I(the owner) not be included in the leaderboard"): their

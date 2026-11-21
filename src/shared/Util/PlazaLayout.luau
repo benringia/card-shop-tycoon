@@ -5,8 +5,11 @@
 export type Point = { x: number, z: number }
 export type Vec = { x: number, y: number, z: number }
 export type Footprint = { kind: string, x: number, z: number, radius: number }
--- A giant card: where its foot stands, how far it leans (degrees, + to the left), how far behind the middle it stands
-export type FanCard = { x: number, z: number, width: number, height: number, lean: number, back: number, offset: number }
+-- A giant card: where its foot stands, how far it leans (degrees, + to the left), how far behind the middle it stands,
+-- its place along the plinth from the plinth's middle (`along`, studs, + toward CFrame.lookAt's right)
+export type FanCard = { x: number, z: number, width: number, height: number, lean: number, back: number, offset: number, along: number }
+-- A leaderboard plaque on the plinth's front: its ranking (a card's `board`) and its middle along the plinth
+export type Plaque = { board: string, along: number }
 -- A petal: its foot, middle and tip (studs from the fountain's foot), turned `angle` degrees round the fountain
 export type Petal = { angle: number, base: Vec, centre: Vec, tip: Vec }
 -- An outer lotus petal also carries its element and where its gem's water lands in the pool
@@ -24,31 +27,85 @@ function PlazaLayout.at(angle: number, r: number): Point
 end
 
 -- The giant cards side by side along the fan's plinth, facing cfg.FAN.face: the middle one straight and in front, the
--- others leaning out and standing a little further back the further out they are
+-- others leaning out and standing a little further back the further out they are. Neighbours stand `step` apart,
+-- `pairGap` more where the leaderboard's ranking changes (the cards' `board`), the row centred on the plinth.
 function PlazaLayout.fanCards(cfg: any): { FanCard }
 	local fan = cfg.FAN
+	local count = #fan.cards
+	if count == 0 then
+		return {}
+	end
 	local centre = PlazaLayout.at(fan.angle, fan.r)
 	local fx, fz = fan.face.x - centre.x, fan.face.z - centre.z
 	local length = math.sqrt(fx * fx + fz * fz)
 	fx, fz = fx / length, fz / length
 	-- CFrame.lookAt's right side when looking along (fx, fz)
 	local rx, rz = -fz, fx
+	local places: { number } = {}
+	local run = 0
+	for index, spec in fan.cards do
+		if index > 1 then
+			local newPair = spec.board ~= fan.cards[index - 1].board
+			run += fan.step + (if newPair then fan.pairGap or 0 else 0)
+		end
+		places[index] = run
+	end
+	local middle = (places[1] + places[count]) / 2
 	local cards = {}
-	local count = #fan.cards
 	for index, spec in fan.cards do
 		local offset = index - (count + 1) / 2
 		local back = math.abs(offset) * fan.depthStep
+		local along = places[index] - middle
 		table.insert(cards, {
-			x = centre.x + rx * offset * fan.step - fx * back,
-			z = centre.z + rz * offset * fan.step - fz * back,
+			x = centre.x + rx * along - fx * back,
+			z = centre.z + rz * along - fz * back,
 			width = spec.height / 1.4,
 			height = spec.height,
 			lean = -offset * fan.lean,
 			back = back,
 			offset = offset,
+			along = along,
 		})
 	end
 	return cards
+end
+
+-- The plinth's length under the fan: from the first card's middle to the last's, plus the widest card and a lip
+function PlazaLayout.fanWidth(cfg: any): number
+	local cards = PlazaLayout.fanCards(cfg)
+	if #cards == 0 then
+		return 0
+	end
+	local widest = 0
+	for _, card in cards do
+		widest = math.max(widest, card.width)
+	end
+	return cards[#cards].along - cards[1].along + widest + 0.6
+end
+
+-- A plaque under each leaderboard ranking's cards (cfg.FAN.plaque), in the middle of them, in the cards' order
+function PlazaLayout.fanPlaques(cfg: any): { Plaque }
+	local cards = PlazaLayout.fanCards(cfg)
+	local plaques: { Plaque } = {}
+	local totals: { [string]: { sum: number, count: number } } = {}
+	for index, spec in cfg.FAN.cards do
+		local board = spec.board
+		if typeof(board) == "string" then
+			local total = totals[board]
+			if not total then
+				total = { sum = 0, count = 0 }
+				totals[board] = total
+				table.insert(plaques, { board = board, along = 0 })
+			end
+			total.sum += cards[index].along
+			total.count += 1
+		end
+	end
+	for _, plaque in plaques do
+		local total = totals[plaque.board]
+		plaque.along = total.sum / total.count
+	end
+	return plaques
 end
 
 -- The pieces of each edge planter's curve as footprints, one every cfg.PLANTERS.piece degrees, ends included

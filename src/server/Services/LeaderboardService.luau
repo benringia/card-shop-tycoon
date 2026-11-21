@@ -2,10 +2,10 @@
 -- The plaza leaderboard (Config/Leaderboard; owner 2026-11-13): most packs opened and (since 2026-11-21) most boss
 -- kills, all time across every server and in this server. Every place sends its players' lifetime totals (DataService
 -- stats, one counter and one shared OrderedDataStore for each ranking in Leaderboard.BOARDS) when they change (at most
--- every WRITE_EVERY seconds, and as they leave; never from Studio); the main game draws the lists on the plaza's two
--- giant cards (Config/Plaza FAN, Server/Util/LeaderboardBoard), which show one ranking at a time, each for FLIP_EVERY
--- seconds. It reads each all-time top every READ_EVERY seconds and shows it with the players here counted live
--- (LeaderboardRules.merge), next to this server's list. No remotes: the cards are drawn on the server and replicate.
+-- every WRITE_EVERY seconds, and as they leave; never from Studio); the main game draws the lists on the plaza's giant
+-- cards (Config/Plaza FAN, Server/Util/LeaderboardBoard): a pair for each ranking, all time and this server, all up at
+-- once (owner 2026-11-22). It reads each all-time top every READ_EVERY seconds and shows it with the players here
+-- counted live (LeaderboardRules.merge), next to this server's list. No remotes: the cards are drawn on the server.
 -- The game's owner is on neither list (Config/Leaderboard HIDE_OWNER).
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
@@ -185,27 +185,36 @@ local function signature(list: { LeaderboardRules.Entry }): string
 	return table.concat(parts, "|")
 end
 
--- The plaza's list cards by list (PlazaBuild marks them; the scenery is built before this service starts)
-local function findCards(): { [string]: BasePart }
-	local cards: { [string]: BasePart } = {}
+-- A list card on the plaza: which list ("allTime" or "server") of which ranking it shows, and what it shows now
+type Shown = { list: string, board: Board, drawn: LeaderboardBoard.List, signature: string }
+
+-- The plaza's list cards (PlazaBuild marks each with its list and ranking; the scenery is built before this service
+-- starts), each drawn on
+local function attachCards(): { Shown }
+	local byStat: { [string]: Board } = {}
+	for _, board in Leaderboard.BOARDS do
+		byStat[board.stat] = board
+	end
+	local shown: { Shown } = {}
 	local scenery = workspace:FindFirstChild("Scenery")
 	for _, item in (if scenery then scenery else workspace):GetDescendants() do
-		local list = item:GetAttribute("LeaderboardList")
-		if item:IsA("BasePart") and typeof(list) == "string" then
-			cards[list] = item
+		local list, stat = item:GetAttribute("LeaderboardList"), item:GetAttribute("LeaderboardBoard")
+		local board = if typeof(stat) == "string" then byStat[stat] else nil
+		if item:IsA("BasePart") and (list == "allTime" or list == "server") and board then
+			table.insert(shown, { list = list :: string, board = board, drawn = LeaderboardBoard.attach(item, list :: string), signature = "" })
 		end
 	end
-	return cards
+	return shown
 end
 
 local function startBoard()
-	local cards = findCards()
-	if not cards.allTime or not cards.server then
-		warn("[LeaderboardService] the plaza's leaderboard cards are missing")
-		return
+	local cards = attachCards()
+	if #cards < 2 * #Leaderboard.BOARDS then
+		warn(`[LeaderboardService] {2 * #Leaderboard.BOARDS - #cards} of the plaza's leaderboard cards are missing`)
+		if #cards == 0 then
+			return
+		end
 	end
-	local allTimeList = LeaderboardBoard.attach(cards.allTime, "allTime")
-	local serverList = LeaderboardBoard.attach(cards.server, "server")
 	local face = Leaderboard.FACE
 	-- each ranking's all-time top as last read, and whether it was read at all
 	local stored: { [string]: { LeaderboardRules.Entry } } = {}
@@ -222,20 +231,25 @@ local function startBoard()
 			task.wait(Leaderboard.READ_EVERY)
 		end
 	end)
-	local shown = ""
 	task.spawn(function()
 		while true do
-			-- the rankings take turns on the two cards (LeaderboardRules.shownBoard)
-			local board = Leaderboard.BOARDS[LeaderboardRules.shownBoard(os.clock(), Leaderboard.FLIP_EVERY, #Leaderboard.BOARDS)]
-			local live = liveEntries(board)
-			local allTime = LeaderboardRules.merge(stored[board.store] or {}, live, Leaderboard.TOP)
-			local server = LeaderboardRules.rank(live, Leaderboard.TOP, true)
-			local ready = loaded[board.store] == true
-			local now = `{board.store}#{ready}#{signature(allTime)}#{signature(server)}`
-			if now ~= shown then
-				shown = now
-				LeaderboardBoard.fill(allTimeList, allTime, if ready or #allTime > 0 then board.empty else face.loading, board.subtitle)
-				LeaderboardBoard.fill(serverList, server, board.empty, board.subtitle)
+			-- each ranking's two lists, then every card shows its own (redrawn only when it changed)
+			local lists: { [string]: { [string]: { LeaderboardRules.Entry } } } = {}
+			for _, board in Leaderboard.BOARDS do
+				local live = liveEntries(board)
+				lists[board.stat] = {
+					allTime = LeaderboardRules.merge(stored[board.store] or {}, live, Leaderboard.TOP),
+					server = LeaderboardRules.rank(live, Leaderboard.TOP, true),
+				}
+			end
+			for _, card in cards do
+				local entries = lists[card.board.stat][card.list]
+				local ready = card.list == "server" or loaded[card.board.store] == true
+				local now = `{ready}#{signature(entries)}`
+				if now ~= card.signature then
+					card.signature = now
+					LeaderboardBoard.fill(card.drawn, entries, if ready or #entries > 0 then card.board.empty else face.loading, card.board.subtitle)
+				end
 			end
 			task.wait(Leaderboard.SERVER_EVERY)
 		end
@@ -247,7 +261,7 @@ function LeaderboardService.StartWrites()
 	startWrites()
 end
 
--- The main game: totals go to the store and the plaza's two giant cards show the lists
+-- The main game: totals go to the store and the plaza's giant cards show the lists
 function LeaderboardService.Start()
 	startWrites()
 	startBoard()

@@ -12,7 +12,9 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local CardDesign = require(Config:WaitForChild("CardDesign"))
 local Customers = require(Config:WaitForChild("Customers"))
+local Leaderboard = require(Config:WaitForChild("Leaderboard"))
 local Plaza = require(Config:WaitForChild("Plaza"))
+local UIIcons = require(Config:WaitForChild("UIIcons"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local Wild = require(Config:WaitForChild("Wild"))
 local PlazaLayout = require(Shared:WaitForChild("Util"):WaitForChild("PlazaLayout"))
@@ -114,7 +116,7 @@ end
 
 -- One giant card: gold, its art inset with a rim in its rarity colour; the card back on the other side. A card with a
 -- `list` is one of the leaderboard's: its front is left for LeaderboardService (Server/Util/LeaderboardBoard) to draw,
--- found by its LeaderboardList attribute
+-- found by its LeaderboardList attribute (which list) and LeaderboardBoard (which ranking: a Leaderboard.BOARDS stat)
 local function giantCard(parent: Instance, spec: any, cframe: CFrame)
 	local fan = Plaza.FAN
 	local width = spec.height / 1.4
@@ -125,6 +127,7 @@ local function giantCard(parent: Instance, spec: any, cframe: CFrame)
 	card:SetAttribute("Rarity", spec.rarity)
 	if spec.list then
 		card:SetAttribute("LeaderboardList", spec.list)
+		card:SetAttribute("LeaderboardBoard", spec.board)
 	else
 		local front = Instance.new("SurfaceGui")
 		front.Face = Enum.NormalId.Front
@@ -180,6 +183,51 @@ local function giantCard(parent: Instance, spec: any, cframe: CFrame)
 	end
 end
 
+-- A leaderboard ranking's gold plaque on the plinth's front under its pair of cards: its icon and words (Config/
+-- Leaderboard BOARDS, Config/Plaza FAN.plaque)
+local function plaque(parent: Instance, board: any, cframe: CFrame)
+	local fan = Plaza.FAN
+	local spec = fan.plaque
+	local plate = detail(piece(parent, "Plaque", Vector3.new(spec.width, spec.height, spec.depth), cframe, rgb(fan.gold), Enum.Material.Metal))
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = fan.pixelsPerStud
+	gui.LightInfluence = 0.3
+	gui.MaxDistance = fan.distance
+	gui.Parent = plate
+	local row = Instance.new("Frame")
+	row.BackgroundTransparency = 1
+	row.Size = UDim2.fromScale(1, 1)
+	row.Parent = gui
+	local list = Instance.new("UIListLayout")
+	list.FillDirection = Enum.FillDirection.Horizontal
+	list.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	list.VerticalAlignment = Enum.VerticalAlignment.Center
+	list.Padding = UDim.new(0, 6)
+	list.SortOrder = Enum.SortOrder.LayoutOrder
+	list.Parent = row
+	local icon = (UIIcons :: any)[board.icon]
+	if icon then
+		local picture = Instance.new("ImageLabel")
+		picture.BackgroundTransparency = 1
+		picture.Size = UDim2.fromOffset(spec.icon, spec.icon)
+		picture.Image = icon
+		picture.LayoutOrder = 1
+		picture.Parent = row
+	end
+	local words = Instance.new("TextLabel")
+	words.BackgroundTransparency = 1
+	words.AutomaticSize = Enum.AutomaticSize.X
+	words.Size = UDim2.fromOffset(0, spec.text + 4)
+	words.Text = board.plaque
+	words.TextSize = spec.text
+	words.Font = Enum.Font.GothamBold
+	words.TextColor3 = rgb(spec.ink)
+	words.LayoutOrder = 2
+	words.Parent = row
+end
+
 local function buildFan(parent: Instance)
 	local fan = Plaza.FAN
 	local model = Instance.new("Model")
@@ -190,14 +238,18 @@ local function buildFan(parent: Instance)
 	local cards = PlazaLayout.fanCards(Plaza)
 	-- A long stone plinth under them all, a gold band along its top
 	local base = fan.base
-	local widest = 0
-	for _, card in cards do
-		widest = math.max(widest, card.width)
-	end
-	local width = (#cards - 1) * fan.step + widest + 0.6
+	local width = PlazaLayout.fanWidth(Plaza)
 	local plinth = facing * CFrame.new(0, base.height / 2, fan.depthStep)
 	piece(model, "Plinth", Vector3.new(width, base.height, base.depth), plinth, rgb(base.color), Enum.Material.Limestone)
 	detail(piece(model, "PlinthBand", Vector3.new(width + 0.16, 0.2, base.depth + 0.16), plinth * CFrame.new(0, base.height / 2 - 0.16, 0), rgb(fan.gold), Enum.Material.Metal))
+	-- A plaque on its front under each ranking's pair, in the middle of the stone below the band
+	for _, spot in PlazaLayout.fanPlaques(Plaza) do
+		for _, board in Leaderboard.BOARDS do
+			if board.stat == spot.board then
+				plaque(model, board, plinth * CFrame.new(spot.along, -0.1, -(base.depth + fan.plaque.depth) / 2))
+			end
+		end
+	end
 	for index, spec in fan.cards do
 		local card = cards[index]
 		local foot = CFrame.lookAt(Vector3.new(card.x, 0, card.z) + centre() * Vector3.new(1, 0, 1), Vector3.new(card.x, 0, card.z) + centre() * Vector3.new(1, 0, 1) + facing.LookVector)
