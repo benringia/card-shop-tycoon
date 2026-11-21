@@ -393,6 +393,22 @@ function DevService.Start()
 		EconomyService.SetCashForTesting(player, cash)
 		Remotes.Notify:FireClient(player, string.format("No stock left, cash $%.2f (Studio)", cash), false)
 	end)
+	-- your Products shelves filled with a product (each to that many units, or full), to see how it stands on them
+	addCommand(folder, "stock", function(player, text)
+		local Products = require(Shared:WaitForChild("Config"):WaitForChild("Products")) :: any
+		local productId, amount = string.match(text, "^/%w+%s+(%S+)%s*(%d*)")
+		if not productId or not Products.ById[productId] then
+			Remotes.Notify:FireClient(player, "Usage: /stock <product id> [units a shelf] (FirstSparkPack, FirstSparkBox, CardSleeves, DeckBox...)", true)
+			return
+		end
+		local total = 0
+		for _, shelf in PlacementService.GetShelves(player) do
+			if shelf.def.kind == "Products" then
+				total += (PlacementService.AddStock(shelf, productId, tonumber(amount) or shelf.def.capacity))
+			end
+		end
+		Remotes.Notify:FireClient(player, `Stocked {total} {productId} (Studio)`, false)
+	end)
 	addCommand(folder, "xp", withAmount(EconomyService.AddXP))
 	addCommand(folder, "level", withAmount(jumpToLevel))
 	addCommand(folder, "setxp", function(player, text)
@@ -802,6 +818,13 @@ function DevService.Start()
 	addCommand(folder, "carddrop", function(player)
 		BattleService.ForceDropForTest(player)
 		Remotes.Notify:FireClient(player, "Your next monster win drops a card", false)
+	end)
+	-- your next boss loot win drops a Frontier card (owner 2026-11-21: the Frontier's bosses drop Frontier cards; any
+	-- boss, here only): its gold tile on the victory screen, then the "FRONTIER CARD!" reveal, then the chests
+	addCommand(folder, "bosscard", function(player)
+		local BossService = require(script.Parent:WaitForChild("BossService")) :: any
+		BossService.ForceCardForTest(player)
+		Remotes.Notify:FireClient(player, "Your next boss loot win drops a Frontier card", false)
 	end)
 	-- a beaten monster's knockout without the fight (owner 2026-11-18, pick A; Config/MonsterKO): the nearest monster not
 	-- in a fight flies off away from you; "/ko elite" the nearest elite

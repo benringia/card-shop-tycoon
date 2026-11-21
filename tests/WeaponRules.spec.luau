@@ -48,8 +48,8 @@ return {
 	end,
 
 	["shown Power: the Prism Blade's counts its always-on strong hit and bond; the others are their Power"] = function()
-		expect.near(WeaponRules.shownPower(W, Combat, "prismBlade", "C", 0), 1 * Combat.STRONG * W.BOND.damage, 1e-9)
-		expect.near(WeaponRules.shownPower(W, Combat, "prismBlade", "S", 10), 1.15 * 1.3 * Combat.STRONG * W.BOND.damage, 1e-9)
+		expect.near(WeaponRules.shownPower(W, Combat, "prismBlade", "C", 0), 0.87 * Combat.STRONG * W.BOND.damage, 1e-9)
+		expect.near(WeaponRules.shownPower(W, Combat, "prismBlade", "S", 10), 0.87 * 1.15 * 1.5 * Combat.STRONG * W.BOND.damage, 1e-9)
 		assert(WeaponRules.shownPower(W, Combat, "prismBlade", "C", 0) > WeaponRules.shownPower(W, Combat, "sunforgedBlade", "C", 0), "the Legendary reads strongest")
 		expect.equal(WeaponRules.shownPower(W, Combat, "verdantBlade", "A", 3), WeaponRules.power(W, "verdantBlade", "A", 3))
 		expect.equal(WeaponRules.shownPower(W, Combat, "starterSword", "C", 0), 1)
@@ -64,15 +64,16 @@ return {
 
 	["Power: rarity x grade x levels; the Steel Sword stays 1"] = function()
 		expect.equal(WeaponRules.power(W, "starterSword", "C", 0), 1)
-		expect.near(WeaponRules.power(W, "verdantBlade", "C", 0), 1.25, 1e-9)
-		expect.near(WeaponRules.power(W, "sunforgedBlade", "S", 10), 1.6 * 1.15 * 1.3, 1e-9)
-		expect.near(WeaponRules.power(W, "forgeSword_Volt", "B", 4), 1.15 * 1.05 * 1.12, 1e-9)
+		-- the bases and the 5% a level since 2026-11-21 (1.25 / 1.6 / 1.15 and 3% before)
+		expect.near(WeaponRules.power(W, "verdantBlade", "C", 0), 1.1, 1e-9)
+		expect.near(WeaponRules.power(W, "sunforgedBlade", "S", 10), 1.39 * 1.15 * 1.5, 1e-9)
+		expect.near(WeaponRules.power(W, "forgeSword_Volt", "B", 4), 1.05 * 1.05 * 1.2, 1e-9)
 		expect.equal(WeaponRules.power(W, "nope", "S", 3), 1, "an unknown weapon hits like the Steel Sword")
 	end,
 
 	["the Prism Blade's own base replaces its rarity's (always strong and bonded is its edge)"] = function()
-		expect.near(WeaponRules.power(W, "prismBlade", "C", 0), 1, 1e-9)
-		expect.near(WeaponRules.power(W, "prismBlade", "S", 10), 1.15 * 1.3, 1e-9)
+		expect.near(WeaponRules.power(W, "prismBlade", "C", 0), 0.87, 1e-9)
+		expect.near(WeaponRules.power(W, "prismBlade", "S", 10), 0.87 * 1.15 * 1.5, 1e-9)
 	end,
 
 	["a hit's weapon info is the weapon it's given (a skill's caster weapon), not whatever is equipped by then"] = function()
@@ -233,7 +234,7 @@ return {
 		local five = WeaponRules.upgradeCost(W, "verdantBlade", 5)
 		assert(five, "+5")
 		expect.equal(five.items.starShard, 1)
-		expect.equal(five.items.material_meadowWarden, 4)
+		expect.equal(five.items.material_meadowWarden, 8) -- 4 until 2026-11-21 (upgrades take twice the materials)
 		expect.equal(five.cash, 4000 * 0.8)
 		local ten = WeaponRules.upgradeCost(W, "verdantBlade", 10)
 		assert(ten, "+10")
@@ -242,12 +243,12 @@ return {
 		expect.isNil(WeaponRules.upgradeCost(W, "verdantBlade", 0))
 		local tide = WeaponRules.upgradeCost(W, "forgeSword_Tide", 1)
 		assert(tide, "a Forge Sword upgrades")
-		expect.equal(tide.items.wildOre, 2)
+		expect.equal(tide.items.wildOre, 4)
 		expect.isNil(tide.items.starShard)
 		expect.isNil(WeaponRules.upgradeCost(W, "starterSword", 1))
 		local sun = WeaponRules.upgradeCost(W, "sunforgedBlade", 1)
 		assert(sun, "the Sunforged Blade upgrades")
-		expect.equal(sun.items.material_emberColossus, 2, "a masterwork pays in its recipe's main material")
+		expect.equal(sun.items.material_emberColossus, 4, "a masterwork pays in its recipe's main material")
 	end,
 
 	["each weapon's material: its boss's, Wild Ore for the Forge, a masterwork's main one; none for the Steel Sword"] = function()
@@ -264,7 +265,7 @@ return {
 		expect.equal(need, 15)
 		id, need = WeaponRules.materialGoal(W, "material_meadowWarden", { verdantBlade = { grade = "A", level = 4 } })
 		expect.equal(id, "verdantBlade")
-		expect.equal(need, 4, "its +5 needs 4")
+		expect.equal(need, 8, "its +5 needs 8")
 		id, need = WeaponRules.materialGoal(W, "material_emberColossus", {})
 		expect.equal(id, "sunforgedBlade", "the masterwork's recipe (the Magma Halberd isn't built)")
 		expect.equal(need, 20)
@@ -273,7 +274,7 @@ return {
 		expect.equal(need, 8, "your first Forge weapon's special price (Weapons.FIRST_FORGE)")
 		id, need = WeaponRules.materialGoal(W, "wildOre", { forgeSword_Ember = { grade = "C", level = 0 } })
 		expect.equal(id, "forgeSword_Ember", "once owned: its next upgrade")
-		expect.equal(need, 2)
+		expect.equal(need, 4)
 		id, need = WeaponRules.materialGoal(W, "material_frostTyrant", {})
 		expect.equal(id, "tidalTrident", "the Frost Tyrant's own weapon (weapons round 2)")
 		expect.equal(need, 40)
@@ -328,13 +329,14 @@ return {
 		expect.equal(none, 0)
 	end,
 
-	["drop chance by rarity (owner 2026-11-06): a Rare 1% plus 0.5% a kill without one, a Legendary about 2 weeks"] = function()
+	["drop chance by rarity: a Rare 6% plus 2.5% a kill without one (1% plus 0.5% until 2026-11-21), a Legendary as rare as ever"] = function()
 		local wild = W.DROP_WILD -- the Wild's bosses drop a little more often (owner 2026-11-20)
-		expect.near(WeaponRules.dropChance(W, "verdantBlade", 0), 0.01 * wild, 1e-9)
-		expect.near(WeaponRules.dropChance(W, "verdantBlade", 10), 0.06 * wild, 1e-9)
+		expect.near(WeaponRules.dropChance(W, "verdantBlade", 0), 0.06 * wild, 1e-9)
+		expect.near(WeaponRules.dropChance(W, "verdantBlade", 10), 0.31 * wild, 1e-9)
 		expect.equal(WeaponRules.dropChance(W, "verdantBlade", 500), 1)
-		expect.near(WeaponRules.dropChance(W, "prismBlade", 0), 0.001, 1e-9)
-		expect.near(WeaponRules.dropChance(W, "prismBlade", 10), 0.003, 1e-9)
+		-- a Legendary 0.5% plus 0.08% (0.1% plus 0.02% until 2026-11-21: "it's almoost imposible to get")
+		expect.near(WeaponRules.dropChance(W, "prismBlade", 0), 0.005, 1e-9)
+		expect.near(WeaponRules.dropChance(W, "prismBlade", 10), 0.013, 1e-9)
 		expect.equal(WeaponRules.dropChance(W, "nope", 0), 0)
 		-- Median full-loot kills to a drop (6 a day at the daily soft cap): Rare ~15 (2.5 days), Legendary ~79 (13 days)
 		local function median(rarity: string): number
@@ -346,8 +348,8 @@ return {
 			until miss <= 0.5
 			return kills
 		end
-		expect.equal(median("Rare"), 15)
-		expect.equal(median("Legendary"), 79)
+		expect.equal(median("Rare"), 6)
+		expect.equal(median("Legendary"), 37)
 		assert(median("Rare") < median("Very Rare") and median("Very Rare") < median("Epic") and median("Epic") < median("Legendary"), "rarer is slower")
 	end,
 
@@ -447,5 +449,62 @@ return {
 			end
 		end
 		assert(wild >= 3 and other >= 3, "both kinds checked")
+	end,
+
+	-- owner 2026-11-21: "should we up the weapons drop rate overall? to make it easier for the players to get their
+	-- hands on one but. increase the grind to upgrade it", option B, then "epic/legendary weapons should still be hard
+	-- to get": a weapon is weaker when it drops and gains 5% a level, so +10 is about what it was; Rare and Very Rare
+	-- drop much sooner; upgrades take twice the materials
+	["weapons: easier to get, their Power in the upgrades"] = function()
+		local function at(id: string, level: number): number
+			return WeaponRules.power(W, id, "C", level)
+		end
+		-- a fresh one is weaker than it was (1.15 / 1.25 / 1.4 / 1.6 / 1.8), never under the Steel Sword
+		expect.near(at("forgeSword_Ember", 0), 1.05, 1e-9)
+		expect.near(at("verdantBlade", 0), 1.1, 1e-9)
+		expect.near(at("magmaHalberd", 0), 1.22, 1e-9)
+		expect.near(at("sunforgedBlade", 0), 1.39, 1e-9)
+		expect.near(at("riftReaper", 0), 1.21, 1e-9)
+		expect.near(at("titansLance", 0), 1.04, 1e-9)
+		for _, weapon in W.WEAPONS do
+			if weapon.ready and not weapon.prism then
+				assert(at(weapon.id, 0) >= W.STARTER_POWER, `{weapon.id} at +0 under the Steel Sword`)
+			end
+		end
+		-- every level adds 5%: +10 is where it was (the old base x 1.3), within 6%
+		expect.equal(W.UPGRADE_STEP, 0.05)
+		local before = { forgeSword_Ember = 1.15, verdantBlade = 1.25, magmaHalberd = 1.4, sunforgedBlade = 1.6, riftReaper = 1.4, titansLance = 1.2, prismBlade = 1 }
+		for id, base in before do
+			local was, now = base * 1.3, at(id, 10)
+			assert(math.abs(now / was - 1) <= 0.06, `{id} at +10: {now}, {was} before`)
+			assert(at(id, 0) < base, `{id} drops weaker than before`)
+		end
+		-- the wins it takes (median, with the pity; a Wild boss's a little sooner)
+		local function median(rarity: string): number
+			local odds = W.DROP[rarity]
+			local left, wins = 1, 0
+			while left > 0.5 do
+				left *= 1 - math.min(1, odds.base + odds.step * wins)
+				wins += 1
+			end
+			return wins
+		end
+		expect.equal(median("Rare"), 6, "15 before")
+		expect.equal(median("Very Rare"), 10, "25 before")
+		-- "epic/legendary weapons should still be hard to get" kept them at 50 and 79 for a few hours; then the owner on
+		-- the Tidal Trident's 0.20%: "weapon drop chance for some weapons like this is too low. it's almoost imposible to
+		-- get make it more forgiving". Still the slowest, no longer a week
+		expect.equal(median("Epic"), 22, "50 before")
+		expect.equal(median("Legendary"), 37, "79 before")
+		-- what the boss board shows on the first try: a number a player can believe in
+		assert(W.DROP.Epic.base >= 0.01, "an Epic's first chance is at least 1%")
+		assert(W.DROP.Legendary.base >= 0.005, "a Legendary's at least 0.5%")
+		-- upgrades: twice the materials (50 before), the same cash
+		local total = 0
+		for _, count in W.UPGRADE.material do
+			total += count
+		end
+		expect.equal(total, 100)
+		expect.equal(W.UPGRADE.cash[10], 22000)
 	end,
 }

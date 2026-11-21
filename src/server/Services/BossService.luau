@@ -19,6 +19,9 @@ local WildConfig = require(Config:WaitForChild("Wild")) -- the main game's: a re
 local Items = require(Config:WaitForChild("Items"))
 local Weapons = require(Config:WaitForChild("Weapons"))
 local Victory = require(Config:WaitForChild("Victory"))
+local Announcements = require(Config:WaitForChild("Announcements"))
+local CardEffects = require(Config:WaitForChild("CardEffects"))
+local Cards = require(Config:WaitForChild("Cards"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 local EventNow = require(Shared:WaitForChild("Util"):WaitForChild("EventNow"))
@@ -36,6 +39,7 @@ local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
 local BattleService = require(Services:WaitForChild("BattleService"))
 local BossChestService = require(Services:WaitForChild("BossChestService"))
+local CardService = require(Services:WaitForChild("CardService"))
 local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local ItemService = require(Services:WaitForChild("ItemService"))
@@ -363,6 +367,54 @@ function BossService.DropWeapon(player: Player, weaponId: string, delay: number?
 	return payload
 end
 
+-- A boss's Frontier card (Config/Bosses card; owner 2026-11-21: "Make the boss drop frontier cards and make it
+-- noticeable"): on a loot win, for those who helped, a card of the rolled rarity goes into the binder at once. Its
+-- big moment (FrontierRevealController's "FRONTIER CARD!") follows the victory screen, where its tile already shows
+-- in gold; the chests wait for it. An Epic or Legendary one is told to the whole server, like a monster's
+local forcedCards: { [Player]: boolean } = setmetatable({}, { __mode = "k" }) :: any
+local FALLBACK_CARD = { chance = 1, rarity = { Rare = 60, Epic = 30, Legendary = 10 } } -- Studio's /bosscard on a Wild boss
+
+local function revealCard(player: Player, cardId: string, grade: string)
+	if not player.Parent then
+		return
+	end
+	local card = Cards.ById[cardId]
+	if card and Announcements.FRONTIER_RARITIES[card.rarity] then
+		Remotes.PullAnnouncement:FireAllClients(player.DisplayName, cardId, false, "frontier", player.UserId, grade)
+	else
+		Remotes.PullAnnouncement:FireClient(player, player.DisplayName, cardId, false, "frontier", player.UserId, grade)
+	end
+end
+
+local function rollCard(player: Player, boss: Bosses.Boss): { cardId: string, foil: boolean, grade: string }?
+	local forced = forcedCards[player]
+	forcedCards[player] = nil
+	local rarity = if forced
+		then BossRules.cardRarity(boss.card or FALLBACK_CARD, 0, rng:NextNumber())
+		else BossRules.cardRarity(boss.card, rng:NextNumber(), rng:NextNumber())
+	if not rarity then
+		return nil
+	end
+	local pool = {}
+	for _, card in Cards.BySet.Frontier do
+		if card.rarity == rarity then
+			table.insert(pool, card.id)
+		end
+	end
+	if #pool == 0 then
+		return nil
+	end
+	local dropped = { cardId = pool[rng:NextInteger(1, #pool)], foil = false, grade = BeastRules.rollGrade(rng:NextNumber(), rarity) }
+	CardService.AddFresh(player, { dropped })
+	task.delay(Victory.SECONDS, revealCard, player, dropped.cardId, dropped.grade)
+	return dropped
+end
+
+-- Studio's /bosscard: this player's next boss loot win drops a Frontier card
+function BossService.ForceCardForTest(player: Player)
+	forcedCards[player] = true
+end
+
 -- On a loot win (BossRules.rollsWeapon): the boss's weapon at WeaponRules.dropChance of its pity, given at once
 -- (its chest shows it, BossChestService); a drop given resets the pity, anything else adds one (BossRules.nextWeaponPity)
 local function rollWeapon(player: Player, bossId: string, record: BossRules.Record): WeaponPayload?
@@ -439,10 +491,18 @@ local function onBossWin(player: Player, monster: WildService.Monster, fight: { 
 		if BossRules.rollsWeapon(carried) then
 			result.weapon = rollWeapon(player, bossId, record)
 		end
+		-- Its Frontier card: those who helped only; the chests come after its reveal
+		local cardWait = 0
+		if not carried then
+			result.card = rollCard(player, boss)
+			if result.card then
+				cardWait = CardEffects.FRONTIER.REVEAL_SECONDS
+			end
+		end
 		if chests and weaponId then
 			BossChestService.Prepare(player, bossId, weaponId, result.weapon, function(payload, here)
 				BossService.AnnounceWeapon(player, payload, here)
-			end)
+			end, cardWait)
 		elseif result.weapon then
 			-- No chests to show it in (a config gap): its moment after the victory screen, as before the chests
 			task.delay(Victory.SECONDS, BossService.AnnounceWeapon, player, result.weapon)

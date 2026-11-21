@@ -18,7 +18,7 @@ local MainQuest = {}
 
 type Goal = MainQuestRules.Goal
 
-local ATTRIBUTE = "ShopBuilt" -- MainQuestService: the main quest items standing in the shop
+local ATTRIBUTE = "ShopBuilt" -- MainQuestService: the main quest items built once (sold since or not)
 
 local player = Players.LocalPlayer
 local listeners: { (Goal?) -> () } = {}

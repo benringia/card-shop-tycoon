@@ -166,6 +166,12 @@ return {
 		revealSeconds = 3,
 	},
 	BIG_SPENDER = { box = "FirstSparkBox", packs = { 6, 12 }, tip = 0.1 },
+	-- Tips (owner 2026-11-21: "lets add occasional tips from customers. to slightly boost gold earn";
+	-- CustomerTypes.tip): now and then a customer of these `types` leaves a little extra when every price was at or
+	-- under market: `chance` of those sales, `share` of the total (rolled between the two), at least `min`. About 2%
+	-- on top of a fairly priced shop's plain customers. A big spender keeps its own sure tip (above); a kid's pocket
+	-- money, a collector's card and a bargain hunter's deal leave none
+	TIPS = { chance = 0.15, share = { 0.1, 0.2 }, min = 0.25, types = { plain = true } :: { [string]: boolean } },
 	-- The shop bag a customer carries out after paying (owner 2026-11-16: "customers that bought something should carry
 	-- a shopping bag on their way out. shopping bag should have pish and chikin design on them"; server Util/ShopBag).
 	-- One part: `image` (tools/ui-art/make_shop_bag.py, assets/ui/bag; look A: kraft paper, the dogs' gold seal from the

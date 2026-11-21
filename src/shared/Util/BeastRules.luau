@@ -39,7 +39,7 @@ function BeastRules.getPower(card: Card, foil: boolean, level: number, stars: nu
 end
 
 function BeastRules.getValue(card: Card, foil: boolean, level: number, stars: number, grade: string?): number
-	return BeastMath.getValue(Beasts, card.value, Rarities.FOIL_MULTIPLIER, foil, level, stars, grade or Beasts.DEFAULT_GRADE)
+	return BeastMath.getValue(Beasts, card.value, Rarities.FOIL_MULTIPLIER, foil, level, stars, grade or Beasts.DEFAULT_GRADE, card.rarity)
 end
 
 function BeastRules.isGrade(grade: unknown): boolean

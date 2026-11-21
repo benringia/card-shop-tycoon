@@ -154,6 +154,24 @@ function CustomerTypes.newShopShare(cfg: any, level: number): number
 	return (boost.goneAt - level) / (boost.goneAt - boost.fullUntil)
 end
 
+-- What a customer leaves on top of a sale of `total` (to the cent): a big spender BIG_SPENDER.tip of it, every time;
+-- the TIPS types a share of it now and then (`chanceRoll` under TIPS.chance; the share by `shareRoll`, at least
+-- TIPS.min). `fair`: every product was at or under its market price; nobody tips over that
+function CustomerTypes.tip(cfg: any, kind: string, total: number, fair: boolean, chanceRoll: number, shareRoll: number): number
+	if not fair or total <= 0 then
+		return 0
+	end
+	if kind == "bigSpender" then
+		return math.round(total * cfg.BIG_SPENDER.tip * 100) / 100
+	end
+	local tips = cfg.TIPS
+	if not tips or not tips.types[kind] or chanceRoll >= tips.chance then
+		return 0
+	end
+	local share = tips.share[1] + (tips.share[2] - tips.share[1]) * math.clamp(shareRoll, 0, 1)
+	return math.max(tips.min, math.round(total * share * 100) / 100)
+end
+
 -- The gap between customers times this at `level`: a new shop's NEW_SHOP.gap (about 1.4x as many customers), back to 1
 function CustomerTypes.newShopGap(cfg: any, level: number): number
 	return 1 + (cfg.NEW_SHOP.gap - 1) * CustomerTypes.newShopShare(cfg, level)

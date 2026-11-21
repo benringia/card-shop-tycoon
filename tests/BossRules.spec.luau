@@ -733,4 +733,77 @@ return {
 		expect.equal(LevelMath.fightXp(BossRules.shopXpCash(Bosses, between), Levels), 5, "4.5 rounded, as before")
 		expect.equal(BossRules.shopXpCash({} :: any, 72), 72, "no share set: all of it")
 	end,
+
+	-- owner 2026-11-21: "decrease gold seal drop rate. it's a legendary item"
+	["a Gold Seal is a rare boss drop, and no daily bonus hands one out but the Hydra's"] = function()
+		local function chance(bossId: string): number?
+			for _, drop in Bosses.BOSSES[bossId].drops do
+				if drop.item == "goldSeal" then
+					return drop.chance
+				end
+			end
+			return nil
+		end
+		-- 25% / 30% / 40% before; 5% / 6% / 10% for a few hours, then "slightly increase droprates of golld seals"
+		expect.equal(chance("stormSovereign"), 0.08)
+		expect.equal(chance("riftDevourer"), 0.1)
+		expect.equal(chance("prismHydra"), 0.15)
+		local function daily(bossId: string): number
+			local count = 0
+			for _, entry in Bosses.BOSSES[bossId].dailyBonus do
+				if entry.item == "goldSeal" then
+					count += entry.count
+				end
+			end
+			return count
+		end
+		expect.equal(daily("stormSovereign"), 0, "1 a day before")
+		expect.equal(daily("riftDevourer"), 0, "1 a day before")
+		expect.equal(daily("prismHydra"), 1, "2 a day before")
+		for id, boss in Bosses.BOSSES do
+			if id ~= "stormSovereign" and id ~= "riftDevourer" and id ~= "prismHydra" then
+				expect.equal(chance(id), nil, `{id} never drops one`)
+			end
+		end
+	end,
+
+	-- owner 2026-11-21: "Make the boss drop frontier cards and make it noticeable", "ONLY Frontier bosses drop"
+	-- then: "Also on frontier. make the bosses always drop a frontier card. but decrease the droprate the higher the
+	-- rarity"
+	["the Frontier's three bosses always drop a Frontier card on a loot win, the rarer the less often; no other boss"] = function()
+		for _, id in { "frostTyrant", "stormSovereign", "riftDevourer" } do
+			local card = Bosses.BOSSES[id].card
+			assert(card, `{id} drops Frontier cards`)
+			expect.equal(card.chance, 1, `{id}: every loot win`)
+			assert(card.rarity.Rare > card.rarity.Epic and card.rarity.Epic > card.rarity.Legendary, `{id}: the rarer the less often`)
+			local total = card.rarity.Rare + card.rarity.Epic + card.rarity.Legendary
+			assert(card.rarity.Legendary / total <= 0.05, `{id}: a Legendary stays a moment`)
+			assert(card.rarity.Rare / total >= 0.7, `{id}: mostly Rare`)
+			expect.equal(Bosses.BOSSES[id].place, "Frontier")
+			-- whatever the roll, a card
+			for _, roll in { 0, 0.5, 0.999 } do
+				assert(BossRules.cardRarity(card, roll, roll) ~= nil, `{id} at {roll}`)
+			end
+		end
+		for id, boss in Bosses.BOSSES do
+			if boss.place ~= "Frontier" then
+				expect.equal(boss.card, nil, `{id} is not in the Frontier: Frontier cards are the Frontier's`)
+			end
+		end
+		-- the stronger the boss, the better its cards
+		assert(Bosses.BOSSES.frostTyrant.card.rarity.Legendary < Bosses.BOSSES.stormSovereign.card.rarity.Legendary)
+		assert(Bosses.BOSSES.stormSovereign.card.rarity.Legendary < Bosses.BOSSES.riftDevourer.card.rarity.Legendary)
+
+		local card = { chance = 0.3, rarity = { Rare = 60, Epic = 30, Legendary = 10 } }
+		expect.equal(BossRules.cardRarity(card, 0.3, 0), nil, "the chance missed")
+		expect.equal(BossRules.cardRarity(card, 0.99, 0), nil)
+		expect.equal(BossRules.cardRarity(nil, 0, 0), nil, "a boss with no card drop")
+		-- by weight, in the rarities' order (rarest last)
+		expect.equal(BossRules.cardRarity(card, 0, 0), "Rare")
+		expect.equal(BossRules.cardRarity(card, 0.29, 0.59), "Rare")
+		expect.equal(BossRules.cardRarity(card, 0, 0.6), "Epic")
+		expect.equal(BossRules.cardRarity(card, 0, 0.89), "Epic")
+		expect.equal(BossRules.cardRarity(card, 0, 0.9), "Legendary")
+		expect.equal(BossRules.cardRarity(card, 0, 0.999), "Legendary")
+	end,
 }

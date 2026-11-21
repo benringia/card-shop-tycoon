@@ -198,7 +198,7 @@ return {
 			name = "Gold Seal",
 			icon = "GoldSeal",
 			description = "Pays the cash to grade a card up once, like C to B. Not for a Legendary from A to S.",
-			source = "Storm Sovereign, Rift Devourer, Prism Hydra (bosses) · shop level gifts",
+			source = "A rare drop from the Storm Sovereign, Rift Devourer and Prism Hydra · shop level gifts",
 			use = "At the Grading Station, tap Gold Seals: one pays the cash for that grade.",
 		},
 		-- Boss trophies: placed in your shop straight from the Bag with Place (ItemRules.placesInShop,

@@ -940,7 +940,8 @@ local function payOut(fight: Fight, member: Member): any
 		EconomyService.AddCash(player, cash)
 		local shopXp = LevelMath.fightXp(BossRules.shopXpCash(Bosses, cash), Levels)
 		EconomyService.AddXP(player, shopXp)
-		return { xpEach = xpEach, cash = cash, shopXp = shopXp, shards = 0, boss = loot, party = party }
+		-- `card`: the boss's Frontier card (BossService; the victory screen's gold tile, then its big reveal)
+		return { xpEach = xpEach, cash = cash, shopXp = shopXp, shards = 0, boss = loot, party = party, card = if loot then loot.card else nil }
 	end
 	if fight.run then
 		-- A Dungeon room: the elite XP and cash of every monster in the pack, no cards or items

@@ -196,7 +196,7 @@ local function simulatePlayer(): Result
 				if pull.rarity == "Legendary" then
 					history.lastLegendary = seconds
 				end
-				local worth = BeastMath.getValue(Beasts, valueOf[pull.card], 1, false, 1, Beasts.START_STARS or 0, pull.grade)
+				local worth = BeastMath.getValue(Beasts, valueOf[pull.card], 1, false, 1, Beasts.START_STARS or 0, pull.grade, pull.rarity)
 				local asking = OfferRules.asking(Customers, worth, rng:NextNumber())
 				-- Spare cash first, then it comes out of the pack budget (the next packs wait)
 				local fromSpare = math.min(spare, asking)

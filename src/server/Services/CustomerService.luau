@@ -1147,20 +1147,18 @@ function CustomerService.OnLeftQueue(callback: CustomerCallback)
 	table.insert(leftQueueCallbacks, callback)
 end
 
--- A big spender tips a share of the total when every product was at or under market (Config/Customers BIG_SPENDER)
+-- What they leave on top (CustomerTypes.tip): a big spender a share of the total every time, a plain customer now and
+-- then (Config/Customers BIG_SPENDER, TIPS), when every product was at or under market
 local function tipFor(customer: Customer): number
-	if customer.kind ~= "bigSpender" then
-		return 0
-	end
-	local total = 0
+	local total, fair = 0, true
 	for _, item in customer.items do
 		local product = if item.productId then Products.ById[item.productId] else nil
 		if product and item.unitPrice > product.marketPrice + 1e-9 then
-			return 0
+			fair = false
 		end
 		total += item.unitPrice * item.units
 	end
-	return math.round(total * CustomerConfig.BIG_SPENDER.tip * 100) / 100
+	return CustomerTypes.tip(CustomerConfig, customer.kind, total, fair, rng:NextNumber(), rng:NextNumber())
 end
 
 -- The customer paid: their items are sold (not returned to shelves) and they head out happy
@@ -1183,7 +1181,7 @@ function CustomerService.CompletePurchase(customer: Customer)
 		removeFromQueue(customer)
 	end
 	showBubble(customer, CustomerConfig.BUBBLE_HAPPY)
-	say(customer, "paid")
+	say(customer, if tip > 0 then "tip" else "paid")
 	fireOutcome(customer.owner, "paid")
 end
 

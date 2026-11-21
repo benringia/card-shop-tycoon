@@ -227,6 +227,21 @@ return {
 		expect.isNil(MainQuestRules.parseBuilt(MainQuests, "Forge,,Nope").Nope, "unknown ids dropped")
 	end,
 
+	-- owner 2026-11-21: "buying then selling the accessory hook resets the main quest to buy accessory hook again. the
+	-- quest should complete when the player places the item it requested regardless if the player sells it afterwards"
+	["a quest stays done once its item was built: selling it never opens it again"] = function()
+		local paid = MainQuestRules.markBuilt({}, MainQuests, "AccessoryHook")
+		-- placed, then sold: nothing stands in the shop
+		local text = MainQuestRules.doneText(paid, {})
+		expect.equal(text, "AccessoryHook")
+		local done = MainQuestRules.parseBuilt(MainQuests, text)
+		local items = MainQuestRules.items(MainQuests, { AccessoryHook = { name = "Accessory Hook", cost = 100, unlockLevel = 1 } })
+		expect.equal(#MainQuestRules.open(items, 5, done), 0)
+		-- what stands in the shop counts too (a shop built before the list was saved), each id once
+		expect.equal(MainQuestRules.doneText({ Forge = true }, { WallShelf = true, Forge = true }), "Forge,WallShelf")
+		expect.equal(MainQuestRules.doneText({}, {}), "")
+	end,
+
 	["a phone's chip: the main quest's percent, Build! once paid for, the level to reach"] = function()
 		expect.equal(MainQuestRules.chipText(MainQuestRules.buildGoal(item("Forge"), 820)), "54%")
 		expect.equal(MainQuestRules.chipText(MainQuestRules.buildGoal(item("Forge"), 1500)), "Build!")

@@ -22,6 +22,7 @@ export type BeastConfig = {
 	GRADE_CHANCES: { [string]: number },
 	GRADE_CHANCES_BY_RARITY: { [string]: { [string]: number } }?,
 	GRADE_BONUS: { [string]: number },
+	GRADE_VALUE: { [string]: { [string]: number } }?,
 	DEFAULT_GRADE: string,
 	POWER_ATK_WEIGHT: number,
 	POWER_SPD_WEIGHT: number,
@@ -104,6 +105,17 @@ function BeastMath.getStats(
 	}
 end
 
+-- What a grade adds to a card's price, in card values: GRADE_VALUE for its rarity (an unknown rarity: the Common's)
+-- less the 1 the card itself is; 0 for an unknown grade
+local function gradePremium(config: BeastConfig, rarity: string?, grade: string): number
+	local table = config.GRADE_VALUE
+	local byGrade = if table then table[rarity or ""] or table.Common else nil
+	local times = if byGrade then byGrade[grade] else nil
+	return if times then math.max(0, times - 1) else 0
+end
+
+-- A copy's price: its card's value (x the foil's), times what its levels and stars are worth, plus its grade's part
+-- (Config/Beasts GRADE_VALUE by `rarity`), added once so stars and levels never multiply it
 function BeastMath.getValue(
 	config: BeastConfig,
 	baseValue: number,
@@ -111,13 +123,11 @@ function BeastMath.getValue(
 	foil: boolean,
 	level: number,
 	stars: number,
-	grade: string
+	grade: string,
+	rarity: string?
 ): number
-	local value = baseValue
-		* (if foil then foilMultiplier else 1)
-		* (1 + config.LEVEL_VALUE_GROWTH * (level - 1))
-		* (config.STAR_VALUE[stars + 1] or 1)
-		* getGradeMultiplier(config, grade)
+	local grown = (1 + config.LEVEL_VALUE_GROWTH * (level - 1)) * (config.STAR_VALUE[stars + 1] or 1)
+	local value = baseValue * (if foil then foilMultiplier else 1) * (grown + gradePremium(config, rarity, grade))
 	return math.round(value * 100) / 100
 end
 

@@ -25,12 +25,12 @@ return {
 
 	["stats: Power to 2 decimals, the element and its bond, the perk in words"] = function()
 		local rows = WeaponText.stats(Weapons, "verdantBlade", nil, Combat)
-		expect.equal(valueOf(rows, "Power"), "x1.25")
+		expect.equal(valueOf(rows, "Power"), "x1.10")
 		expect.equal(valueOf(rows, "Element"), "Nature · bonds with Nature creatures") -- plain element names (owner 2026-11-12)
 		expect.equal(valueOf(rows, "Perk"), "Every 4th hit heals your creature 2%")
 		expect.equal(valueOf(rows, "Grade"), nil, "not owned: no grade or level")
 		local owned = WeaponText.stats(Weapons, "verdantBlade", { grade = "S", level = 4 }, Combat)
-		expect.equal(valueOf(owned, "Power"), "x1.61") -- 1.25 x 1.15 x 1.12
+		expect.equal(valueOf(owned, "Power"), "x1.52") -- 1.1 x 1.15 x 1.2
 		expect.equal(valueOf(owned, "Perk"), "Every 4th hit heals your creature 2.4%", "Grade S perks are stronger")
 		expect.equal(valueOf(owned, "Grade"), "S")
 		expect.equal(valueOf(owned, "Level"), "+4")
@@ -39,7 +39,7 @@ return {
 	["stats: the burn, the prism and the plain Steel Sword"] = function()
 		expect.equal(valueOf(WeaponText.stats(Weapons, "sunforgedBlade", nil, Combat), "Perk"), "Sets the foe burning for 3 s")
 		local prism = WeaponText.stats(Weapons, "prismBlade", nil, Combat)
-		expect.equal(valueOf(prism, "Power"), "x1.72", "always strong and bonded (1.725)")
+		expect.equal(valueOf(prism, "Power"), "x1.50", "always strong and bonded (0.87 x 1.5 x 1.15)")
 		expect.equal(valueOf(prism, "Perk"), "Always strong against the foe's element")
 		expect.equal(valueOf(prism, "Element"), "Every element · bonds with every creature")
 		local steel = WeaponText.stats(Weapons, "starterSword", nil, Combat)
@@ -219,7 +219,7 @@ return {
 	end,
 
 	["powerRange: Grade C at +0 to Grade S at the top level, one number when they match"] = function()
-		expect.equal(WeaponText.powerRange(Weapons, Combat, "riftReaper"), "x1.40 to x2.09")
+		expect.equal(WeaponText.powerRange(Weapons, Combat, "riftReaper"), "x1.21 to x2.09")
 		expect.equal(WeaponText.powerRange(Weapons, Combat, "starterSword"), "x1.00")
 		expect.equal(WeaponText.powerRange(Weapons, Combat, "nope"), "")
 	end,

@@ -150,7 +150,81 @@ local function findUndeclared(path: string): { string }
 	return problems
 end
 
+-- A bare call `name(...)` to a name the file never declares (no local, no function, no parameter, no loop variable)
+-- and that isn't a Luau or Roblox global: a nil global, and the call errors when that line runs (the Condenser's
+-- "Keep a different copy" called a function a rewrite had deleted: a tester couldn't choose the copy to keep, 2026-11-21)
+local KEYWORDS = {}
+for _, name in { "if", "elseif", "while", "until", "and", "or", "not", "return", "function", "in", "then", "do", "else", "local", "for", "repeat", "end" } do
+	KEYWORDS[name] = true
+end
+local CALLABLE = {}
+for _, name in {
+	"print", "warn", "error", "assert", "require", "tostring", "tonumber", "typeof", "type", "select", "pairs", "ipairs",
+	"next", "unpack", "pcall", "xpcall", "rawget", "rawset", "rawequal", "rawlen", "setmetatable", "getmetatable",
+	"tick", "time", "wait", "spawn", "delay", "newproxy", "gcinfo", "elapsedTime", "settings", "UserSettings",
+} do
+	CALLABLE[name] = true
+end
+
+local function findUndefinedCalls(path: string): { string }
+	local source = fs.readFile(path)
+	local lines = codeLines(source)
+	local declared: { [string]: boolean } = {}
+	for _, line in lines do
+		-- `local a, b: T, c = ...`: the first name and each one after a comma (a type's own commas only add names)
+		local names = string.match(line, "^%s*local%s+(.-)%s*=") or string.match(line, "^%s*local%s+(.*)$")
+		if names then
+			for name in string.gmatch("," .. names, ",%s*([%w_]+)") do
+				declared[name] = true
+			end
+		end
+		for name in string.gmatch(line, "function%s+([%w_]+)%s*[%(<]") do
+			declared[name] = true
+		end
+		for names in string.gmatch(line, "for%s+([%w_,%s]+)%s+in") do
+			for name in string.gmatch(names, "([%w_]+)") do
+				declared[name] = true
+			end
+		end
+		for name in string.gmatch(line, "for%s+([%w_]+)%s*=") do
+			declared[name] = true
+		end
+	end
+	-- parameters, over as many lines as the list takes (type names in it count too: harmless)
+	local flat = table.concat(lines, "\n")
+	for params in string.gmatch(flat, "function[^%(\n]*(%b())") do
+		for name in string.gmatch(params, "([%w_]+)") do
+			declared[name] = true
+		end
+	end
+	local problems, seen = {}, {}
+	for index, line in lines do
+		local stripped = string.gsub(line, '%b""', "")
+		stripped = string.gsub(stripped, "%b``", "")
+		for before, name in string.gmatch(stripped, "(.?)%f[%w_]([%a_][%w_]*)%s*%(") do
+			if before ~= "." and before ~= ":" and not declared[name] and not KEYWORDS[name] and not CALLABLE[name] and not seen[name] then
+				seen[name] = true
+				table.insert(problems, `{path}:{index}: {name}() is called but never defined`)
+			end
+		end
+	end
+	return problems
+end
+
 return {
+	["no call to a function its file never defines"] = function()
+		local files = {}
+		listFiles("src", files)
+		local problems = {}
+		for _, path in files do
+			for _, problem in findUndefinedCalls(path) do
+				table.insert(problems, problem)
+			end
+		end
+		table.sort(problems)
+		assert(#problems == 0, `calls to nothing:\n    {table.concat(problems, "\n    ")}`)
+	end,
+
 	["every module a file uses is required or declared"] = function()
 		local files = {}
 		listFiles("src", files)

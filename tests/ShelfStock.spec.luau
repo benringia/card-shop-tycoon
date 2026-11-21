@@ -220,4 +220,47 @@ return {
 		expect.equal(ShelfStock.stackedPlaces(ShelfStock.stacks(0, 6, 2)), 0)
 		expect.equal(ShelfStock.stackedPlaces(ShelfStock.stacks(9, 6, 2)), 6)
 	end,
+
+	-- owner 2026-11-21: "wall shelf says it holds 48 but displays only 24": a place 2 studs wide held one stack of two
+	-- booster boxes. It holds as many as the shelf's room for one place (4: two side by side, two high)
+	["a wide shelf's place shows every booster box it holds, side by side and stacked"] = function()
+		-- the Wall Shelf: 8 studs wide, 4 places a level (a place's box 1.52 wide), 12 places, 48 units; a booster 0.74 wide
+		expect.equal(ShelfStock.perPlace(48, 12), 4)
+		expect.equal(ShelfStock.perPlace(24, 12), 2, "the Small Pack Rack")
+		expect.equal(ShelfStock.perPlace(96, 24), 4, "the Big Display Rack")
+		expect.equal(ShelfStock.perPlace(0, 12), 1)
+		expect.equal(ShelfStock.across(4, 2, 1.52, 0.74), 2)
+		expect.equal(ShelfStock.across(2, 2, 0.76, 0.74), 1, "a narrow place: one stack")
+		expect.equal(ShelfStock.across(4, 2, 0.76, 0.74), 1, "never more than fit")
+		local function total(stacks: { number }): number
+			local sum = 0
+			for _, height in stacks do
+				sum += height
+			end
+			return sum
+		end
+		expect.equal(total(ShelfStock.stacks(48, 12, 4)), 48, "a full Wall Shelf shows all 48")
+		expect.equal(total(ShelfStock.stacks(25, 12, 4)), 25)
+		-- where each box of a place stands: a lone one in the middle, then side by side, then the second layer
+		local one = ShelfStock.stackSpots(1, 2, 2)
+		expect.equal(#one, 1)
+		expect.equal(one[1].x, 0)
+		expect.equal(one[1].layer, 0)
+		local four = ShelfStock.stackSpots(4, 2, 2)
+		expect.equal(#four, 4)
+		expect.equal(four[1].x, -0.5)
+		expect.equal(four[2].x, 0.5)
+		expect.equal(four[2].layer, 0)
+		expect.equal(four[3].x, -0.5)
+		expect.equal(four[3].layer, 1)
+		expect.equal(four[4].layer, 1)
+		local three = ShelfStock.stackSpots(3, 2, 2)
+		expect.equal(three[3].x, -0.5, "the third on the first one")
+		-- a narrow place: one on the other
+		local two = ShelfStock.stackSpots(2, 1, 2)
+		expect.equal(two[1].x, 0)
+		expect.equal(two[2].x, 0)
+		expect.equal(two[2].layer, 1)
+		expect.equal(#ShelfStock.stackSpots(9, 2, 2), 4, "never more than the place holds")
+	end,
 }

@@ -105,6 +105,31 @@ function ShelfStock.stacks(units: number, slots: number, perStack: number): { nu
 	return stacks
 end
 
+-- How many of them one place holds: the shelf's room shared between its places (the Wall Shelf: 48 in 12, 4 each)
+function ShelfStock.perPlace(capacity: number, slots: number): number
+	return if slots > 0 then math.max(1, capacity // slots) else 1
+end
+
+-- ...standing in stacks `high` tall, as many stacks side by side as it takes and as fit a place `room` wide (owner
+-- 2026-11-21: "wall shelf says it holds 48 but displays only 24": a 2-stud place showed one stack of two)
+function ShelfStock.across(perPlace: number, high: number, room: number, width: number): number
+	local fit = math.max(1, math.floor(room / width + 1e-6))
+	return math.clamp(math.ceil(perPlace / math.max(1, high)), 1, fit)
+end
+
+-- Where each of a place's `count` boxes stands: `x` in column widths from the place's middle and its `layer` (0: on
+-- the shelf). A layer fills side by side before the next; a lone box stands in the middle
+export type Spot = { x: number, layer: number }
+function ShelfStock.stackSpots(count: number, across: number, high: number): { Spot }
+	local shown = math.clamp(count, 0, across * high)
+	local columns = math.min(shown, across)
+	local spots: { Spot } = {}
+	for index = 0, shown - 1 do
+		table.insert(spots, { x = index % across - (columns - 1) / 2, layer = index // across })
+	end
+	return spots
+end
+
 -- ...and how many places have at least one
 function ShelfStock.stackedPlaces(stacks: { number }): number
 	local places = 0

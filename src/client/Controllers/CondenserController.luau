@@ -63,6 +63,13 @@ local ROW_STAR = 13 -- px: a list row's little stars
 local BAR_HEIGHT = 6
 local RECIPE = Recipe.LOOK -- the recipe on the right: its spots, arrow and button (Util/Recipe, shared with the other stations)
 local CONDENSE_HEIGHT = RECIPE.button
+-- A phone (owner 2026-11-21, the night's device check: on a 705 x 338 phone the window was 241 px tall with 105 for
+-- its list and its recipe, the big button far under the fold): the window takes nearly the whole screen, the rows over
+-- the list go, the recipe is smaller and the big button sits pinned under the pane (`actionBar`), as in the Forge
+local PHONE_FACE = Vector2.new(66, 94)
+local PHONE_SAY = 38 -- the sentence's room (two lines of smaller words)
+local PHONE_TITLE_ROOM = 236 -- the header band: the title on the left, the filter switch, the close button
+local PHONE_CLOSE_ROOM = 66
 
 local player = Players.LocalPlayer
 
@@ -73,6 +80,9 @@ local palette: UIKit.Palette -- the cream window's colours (UIKit.colorsFor), se
 local readyBadge: TextLabel -- "2 ready" in the band
 local list: ScrollingFrame
 local pane: ScrollingFrame
+local actionBar: Frame -- a phone: the big button, pinned under the pane
+local search: TextBox
+local switchHolder: Frame
 local setFilter: (string) -> () = function() end
 local machine: BasePart? = nil
 local selectedCardId: string? = nil
@@ -254,8 +264,43 @@ local function buildSpot(parent: Instance, kind: string, card: Card, take: Conde
 	})
 end
 
+-- Keep a different copy: every copy that could keep the star as a row (its grade, level and stars, how many plain
+-- ones, its Power), the chosen one ringed; a tap keeps that one. Returns the y under the last row
+local function mainChoices(candidates: { Candidate }, chosen: Candidate, y: number): number
+	for _, candidate in candidates do
+		local row = Instance.new("TextButton")
+		row.Name = "Copy_" .. candidate.key
+		row.AnchorPoint = Vector2.new(0.5, 0) -- grows evenly under the mouse (the grow follows the anchor)
+		row.Position = UDim2.new(0.5, 0, 0, y)
+		row.Size = UDim2.new(1, -2 * EDGE, 0, MAIN_ROW_HEIGHT)
+		row.BackgroundColor3 = palette.row
+		row.Text = ""
+		row.Parent = pane
+		UIKit.corner(row, 10)
+		UIKit.outline(row, if candidate.key == chosen.key then UIKit.Colors.Accent else palette.rowEdge, 2)
+		local title = `{if candidate.foil then "FOIL · " else ""}{BeastRules.describeGrade(candidate.grade)} · {BeastRules.describeGrowth(candidate.level, candidate.stars)}`
+		if not candidate.beast then
+			title ..= ` · x{candidate.count}`
+		end
+		addLabel(row, title, UDim2.fromOffset(10, 0), UDim2.new(1, -100, 1, 0), Enum.Font.GothamBold, 13, palette.ink)
+		local power = addLabel(row, `Power {candidate.power}`, UDim2.new(1, -94, 0, 0), UDim2.new(0, 86, 1, 0), Enum.Font.GothamBold, 12, palette.power)
+		power.TextXAlignment = Enum.TextXAlignment.Right
+		row.Activated:Connect(function()
+			mainKey = candidate.key
+			choosingMain = false
+			render()
+		end)
+		y += MAIN_ROW_HEIGHT + 6
+	end
+	return y
+end
+
 local function renderPane(card: Card?)
 	clear(pane)
+	clear(actionBar)
+	local phone = UIKit.isShort()
+	local face = if phone then PHONE_FACE else DETAIL_FACE_SIZE
+	local sayTop = if phone then PHONE_SAY else RECIPE.top
 	if not card then
 		local hint = UIKit.label(pane, CondenserConfig.EXPLAIN .. " Pick a card on the left.", Enum.Font.GothamBold, 14, palette.inkSoft)
 		hint.Position = UDim2.fromOffset(EDGE, 10)
@@ -301,14 +346,15 @@ local function renderPane(card: Card?)
 	local nextStars = math.min(chosen.stars + 1, BeastRules.MAX_STARS)
 
 	-- one sentence: what will happen
-	local say = UIKit.label(pane, CondenseRules.say({ name = card.name, copies = copiesIn, shards = shardsIn, missing = missing, max = atMax, maxStars = BeastRules.MAX_STARS }), Enum.Font.FredokaOne, 16, palette.ink)
+	local sentence = if choosingMain then "Which copy keeps the star? Tap it." else CondenseRules.say({ name = card.name, copies = copiesIn, shards = shardsIn, missing = missing, max = atMax, maxStars = BeastRules.MAX_STARS })
+	local say = UIKit.label(pane, sentence, Enum.Font.FredokaOne, if phone then 13 else 16, palette.ink)
 	say.Name = "Say"
 	say.Position = UDim2.fromOffset(EDGE, 6)
-	say.Size = UDim2.new(1, -2 * EDGE, 0, RECIPE.top - 10)
+	say.Size = UDim2.new(1, -2 * EDGE, 0, sayTop - 10)
 	say.TextWrapped = true
 	say.TextXAlignment = Enum.TextXAlignment.Center
 
-	local y = RECIPE.top
+	local y = sayTop
 	-- Keep a different copy: the copies that could keep the star, in place of the recipe
 	if choosingMain then
 		y = mainChoices(candidates, chosen, y)
@@ -324,29 +370,29 @@ local function renderPane(card: Card?)
 	end
 
 	-- The recipe: the spots, an arrow, the card that keeps the star (alone once it has every star)
-	local wide = if atMax then DETAIL_FACE_SIZE.X else RECIPE.slots.X + RECIPE.arrow + DETAIL_FACE_SIZE.X
+	local wide = if atMax then face.X else RECIPE.slots.X + RECIPE.arrow + face.X
 	local recipe = Instance.new("Frame")
 	recipe.Name = "Recipe"
 	recipe.BackgroundTransparency = 1
 	recipe.AnchorPoint = Vector2.new(0.5, 0)
 	recipe.Position = UDim2.new(0.5, 0, 0, y)
-	recipe.Size = UDim2.fromOffset(wide, DETAIL_FACE_SIZE.Y + RECIPE.under)
+	recipe.Size = UDim2.fromOffset(wide, face.Y + RECIPE.under)
 	recipe.Parent = pane
 	local faceHolder = Instance.new("Frame")
 	faceHolder.Name = "Keeps"
 	faceHolder.AnchorPoint = Vector2.new(1, 0)
 	faceHolder.Position = UDim2.fromScale(1, 0)
-	faceHolder.Size = UDim2.fromOffset(DETAIL_FACE_SIZE.X, DETAIL_FACE_SIZE.Y)
+	faceHolder.Size = UDim2.fromOffset(face.X, face.Y)
 	faceHolder.BackgroundTransparency = 1
 	faceHolder.Parent = recipe
 	makeFace(faceHolder, card, chosen.foil, false, { level = chosen.level, stars = chosen.stars, grade = chosen.grade })
 	local stars = starRow(recipe, UDim2.new(), chosen.stars, not atMax, STAR_SIZE)
 	stars.AnchorPoint = Vector2.new(0.5, 0)
-	stars.Position = UDim2.new(1, -DETAIL_FACE_SIZE.X / 2, 0, DETAIL_FACE_SIZE.Y + 8)
+	stars.Position = UDim2.new(1, -face.X / 2, 0, face.Y + 8)
 
 	local spots: { GuiObject } = {}
 	if not atMax then
-		local grid = Recipe.grid(recipe, need, CondenseRules.slotColumns(need))
+		local grid = Recipe.grid(recipe, need, CondenseRules.slotColumns(need), Vector2.new(RECIPE.slots.X, face.Y))
 		-- the copies going in, one by one, in the order they're used
 		local copies: { CondenseRules.Take } = {}
 		for _, take in takes or CondenseRules.pick(Beasts.GRADES, byGrade, asMain(chosen), copiesIn) do
@@ -360,24 +406,24 @@ local function renderPane(card: Card?)
 				table.insert(spots, spot)
 			end
 		end
-		Recipe.arrow(recipe, RECIPE.slots.X + RECIPE.arrow / 2, DETAIL_FACE_SIZE.Y / 2)
+		Recipe.arrow(recipe, RECIPE.slots.X + RECIPE.arrow / 2, face.Y / 2)
 		-- how much stronger it gets, under the spots
 		local powerAfter = BeastRules.getPower(card, chosen.foil, chosen.level, nextStars, chosen.grade)
 		local chip = UIKit.pill(recipe, `+{math.max(0, powerAfter - chosen.power)} Power`, palette.good, Color3.new(1, 1, 1))
 		chip.Name = "Power"
 		chip.AnchorPoint = Vector2.new(0.5, 0)
-		chip.Position = UDim2.fromOffset(RECIPE.slots.X / 2, DETAIL_FACE_SIZE.Y + 6)
+		chip.Position = UDim2.fromOffset(RECIPE.slots.X / 2, face.Y + 6)
 	end
-	y += DETAIL_FACE_SIZE.Y + RECIPE.under + 10
+	y += face.Y + RECIPE.under + 10
 
 	-- The big button: Add a star! and how long it takes, or what's missing
 	local canCondense = takes ~= nil and not inFlight
 	local seconds = EarlyRules.stationWait(UpgradeRules.seconds(Upgrades, "star", nextStars, card.rarity), tonumber(player:GetAttribute("Level")) or 1, Early)
 	local buttonText, buttonSub = CondenseRules.buttonWords({ ready = takes ~= nil, inFlight = inFlight, max = atMax, missing = missing, seconds = seconds })
-	local condense = UIKit.button(pane, buttonText, if canCondense then UIKit.Colors.Accent else UIKit.Colors.Locked)
+	local condense = UIKit.button(if phone then actionBar else pane, buttonText, if canCondense then UIKit.Colors.Accent else UIKit.Colors.Locked)
 	condense.Name = "AddStar"
 	condense.AnchorPoint = Vector2.new(0.5, 0) -- grows evenly under the mouse, inside the pane's EDGE
-	condense.Position = UDim2.new(0.5, 0, 0, y)
+	condense.Position = UDim2.new(0.5, 0, 0, if phone then 4 else y)
 	condense.Size = UDim2.new(1, -2 * EDGE, 0, CONDENSE_HEIGHT)
 	condense.AutoButtonColor = canCondense
 	Recipe.words(condense, buttonText, buttonSub)
@@ -411,7 +457,9 @@ local function renderPane(card: Card?)
 		end
 		render()
 	end)
-	y += CONDENSE_HEIGHT + 8
+	if not phone then
+		y += CONDENSE_HEIGHT + 8
+	end
 
 	-- what a tap on a spot does with Star Shards, when there is something to say
 	local shardLine = CondenseRules.shardWords({ have = shardCount, on = useShards, used = shardsIn, offers = offers, could = could, missing = missing, max = atMax })
@@ -558,7 +606,8 @@ render = function()
 		return position[a.id] < position[b.id]
 	end)
 	readyBadge.Text = `{readyCount} can get a star`
-	readyBadge.Visible = readyCount > 0 and StationJobs.get("condenser") == nil
+	-- (a phone's header band holds the filter switch: no badge there)
+	readyBadge.Visible = not UIKit.isShort() and readyCount > 0 and StationJobs.get("condenser") == nil
 	local selected: Card? = nil
 	for _, card in cards do
 		if card.id == selectedCardId then
@@ -594,8 +643,33 @@ end
 local refreshDone: (opened: boolean?) -> () = function() end
 
 -- Opens the panel for your own Condenser
+-- The window's pieces for this screen: a computer's rows over the list, or a phone's bigger window with the filter
+-- switch up in the header band and the big button's bar under the pane
+local function layout()
+	local phone = UIKit.isShort()
+	panel.Size = if phone then UDim2.fromScale(0.97, 0.96) else UDim2.fromScale(0.94, 0.86)
+	local top = if phone then UIKit.HEADER_HEIGHT + 8 else LIST_TOP
+	search.Visible = not phone
+	if phone then
+		switchHolder.Position = UDim2.fromOffset(PHONE_TITLE_ROOM, (UIKit.HEADER_HEIGHT - BabyColors.SEGMENTED.hit) / 2)
+		switchHolder.Size = UDim2.new(1, -(PHONE_TITLE_ROOM + PHONE_CLOSE_ROOM), 0, BabyColors.SEGMENTED.hit)
+	else
+		switchHolder.Position = UDim2.fromOffset(16 + SEARCH_WIDTH + 10, TOOLBAR_TOP)
+		switchHolder.Size = UDim2.new(1, -(16 + SEARCH_WIDTH + 10 + 16), 0, BabyColors.SEGMENTED.hit)
+	end
+	local bar = if phone then CONDENSE_HEIGHT + 12 else 0
+	list.Position = UDim2.fromOffset(12, top)
+	list.Size = UDim2.new(LIST_WIDTH_SCALE, -18, 1, -(top + 12))
+	pane.Position = UDim2.new(LIST_WIDTH_SCALE, 6, 0, top)
+	pane.Size = UDim2.new(1 - LIST_WIDTH_SCALE, -18, 1, -(top + 12 + bar))
+	actionBar.Visible = phone
+	actionBar.Position = UDim2.new(LIST_WIDTH_SCALE, 6, 1, -12)
+	actionBar.Size = UDim2.new(1 - LIST_WIDTH_SCALE, -18, 0, bar)
+end
+
 function CondenserController.Open(part: BasePart)
 	machine = part
+	layout()
 	selectedCardId = nil
 	mainKey = nil
 	choosingMain = false
@@ -642,7 +716,7 @@ function CondenserController.Start()
 	readyBadge.ZIndex = header.ZIndex + 2
 
 	-- The toolbar: search by name or #number, then All / Ready / Raising
-	local search = Instance.new("TextBox")
+	search = Instance.new("TextBox")
 	search.Name = "Search"
 	search.Position = UDim2.fromOffset(16, TOOLBAR_TOP + (BabyColors.SEGMENTED.hit - SEARCH_HEIGHT) / 2)
 	search.Size = UDim2.fromOffset(SEARCH_WIDTH, SEARCH_HEIGHT)
@@ -667,11 +741,12 @@ function CondenserController.Start()
 		listToTop = true
 		render()
 	end)
-	local switchHolder = Instance.new("Frame")
+	switchHolder = Instance.new("Frame")
 	switchHolder.Name = "Show"
 	switchHolder.BackgroundTransparency = 1
 	switchHolder.Position = UDim2.fromOffset(16 + SEARCH_WIDTH + 10, TOOLBAR_TOP)
 	switchHolder.Size = UDim2.new(1, -(16 + SEARCH_WIDTH + 10 + 16), 0, BabyColors.SEGMENTED.hit)
+	switchHolder.ZIndex = panel.ZIndex + 3 -- over the header band and its title on a phone
 	switchHolder.Parent = panel
 	local _, pick = UIKit.segmented(switchHolder, { ALL_FILTER, READY_FILTER, RAISING_FILTER }, function(value)
 		activeFilter = value
@@ -704,6 +779,12 @@ function CondenserController.Start()
 	pane.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	pane.Parent = panel
 	UIKit.corner(pane, 12)
+	actionBar = Instance.new("Frame")
+	actionBar.Name = "Action"
+	actionBar.BackgroundTransparency = 1
+	actionBar.AnchorPoint = Vector2.new(0, 1)
+	actionBar.Visible = false
+	actionBar.Parent = panel
 
 	-- A finished star's reveal: over everything in the window (above the job veil), until Take it out
 	-- a job starting or ending: the Ready tags and a waiting star follow

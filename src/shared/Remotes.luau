@@ -81,7 +81,7 @@ local NAMES = {
 	"SetCardPrice", -- client → server: (shelfUid: string, changes: { { slot: number, price: number } })
 	"ReleaseListings", -- client → server: (shelfUid: string, slot: number?) Done on a new card, or its case's window closed: on sale now
 	"BuyDisplayedCard", -- client → server: (ownerUserId, shelfUid, slot, cardId, foil, expectedPrice, expectedBeastId?, expectedGrade?) from a Collector Case
-	"PullAnnouncement", -- server → clients: (displayName: string, cardId: string, foil: boolean, kind: "frontier"?, finderUserId?) big pulls and Frontier finds
+	"PullAnnouncement", -- server → clients: (displayName: string, cardId: string, foil: boolean, kind: "frontier"?, finderUserId?, grade: string?) big pulls and Frontier finds
 	"PullRevealed", -- client → server: (cardId: string, foil: boolean) puller flipped a big pull; announce it
 	"Condense", -- client → server: (shelfUid, cardId, mainBeastId?, mainFoil?, mainGrade?) +1 star from duplicates
 	"CondenserSeen", -- client → server: () the finished star was taken out in the Condenser's window (clears CondenserDone)

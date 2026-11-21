@@ -74,13 +74,13 @@ end
 
 -- Keeps a new set, offers it after the victory screen and opens one itself if nobody picks in time; a set still waiting
 -- from an earlier win opens first (nothing is lost)
-local function offer(player: Player, entry: Entry)
+local function offer(player: Player, entry: Entry, wait: number?)
 	local older = entries[player]
 	if older then
 		open(player, older, ChestRules.autoIndex(rng:NextNumber(), BossChests.COUNT), true)
 	end
 	entries[player] = entry
-	task.delay(Victory.SECONDS, function()
+	task.delay(Victory.SECONDS + (wait or 0), function()
 		if entries[player] ~= entry or not player.Parent then
 			return
 		end
@@ -97,7 +97,8 @@ end
 -- rolled and given here: always on a full-loot win, at `factor`'s chance on a reduced one, else the chest is empty for
 -- `reason`). `onOpen(payload, here)` runs when a weapon's chest opens (its reveal and announcement; `here` false when
 -- the player is leaving).
-function BossChestService.Prepare(player: Player, bossId: string, weaponId: string, payload: any?, onOpen: (payload: any, here: boolean) -> ())
+-- `wait`: seconds the chests hold back after the victory screen (a Frontier card's reveal plays first)
+function BossChestService.Prepare(player: Player, bossId: string, weaponId: string, payload: any?, onOpen: (payload: any, here: boolean) -> (), wait: number?)
 	local material = Weapons.MATERIALS[bossId]
 	if not material then
 		-- No material to show (a config gap): the weapon's moment as before, no chests
@@ -119,7 +120,7 @@ function BossChestService.Prepare(player: Player, bossId: string, weaponId: stri
 		others = ChestRules.others(ChestRules.showsMystery(payload ~= nil, owns(player, weaponId)), weaponId, material, rolls(), BossChests.MATERIAL, bonus),
 		opened = false,
 	}
-	offer(player, { set = set, payload = payload, onOpen = onOpen })
+	offer(player, { set = set, payload = payload, onOpen = onOpen }, wait)
 end
 
 -- Studio's /chests: a set that gives nothing (kind "drop": the reveal of a new Grade A copy, on this screen only;

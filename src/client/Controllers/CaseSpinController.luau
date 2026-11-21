@@ -11,6 +11,7 @@ local RunService = game:GetService("RunService")
 
 local Config = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
+local CardDesign = require(Config:WaitForChild("CardDesign"))
 local CardEffects = require(Config:WaitForChild("CardEffects"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local Showcase = require(Config:WaitForChild("Showcase"))
@@ -184,6 +185,51 @@ local function addLight(color: Color3, reach: number): (BasePart, BasePart, Base
 	return pad, ring, swirl, trail, sparkles
 end
 
+-- The card's grade over it, facing the camera (Showcase SPIN.GRADE_TAG): "Grade S" in the grade's colour, on the pad so
+-- it stays put while the card turns under it
+local function gradeTag(pad: BasePart, card: BasePart)
+	local old = pad:FindFirstChild("GradeTag")
+	if old then
+		old:Destroy()
+	end
+	local grade = card:GetAttribute("Grade")
+	local color = if typeof(grade) == "string" then CardDesign.GRADE_COLORS[grade] else nil
+	if typeof(grade) ~= "string" or not color then
+		return
+	end
+	local look = SPIN.GRADE_TAG
+	local grow = if grade == "S" then look.best else 1
+	local tag = Instance.new("BillboardGui")
+	tag.Name = "GradeTag"
+	tag.Size = UDim2.fromScale(look.width * grow, look.height * grow)
+	-- straight up from the pad: the offset is in the pad's own space, and the pad lies on its side (a cylinder)
+	tag.StudsOffsetWorldSpace = pad.CFrame:VectorToObjectSpace(Vector3.new(0, FLOAT + card.Size.Y + look.lift + look.height * grow / 2, 0))
+	tag.MaxDistance = look.range
+	tag.LightInfluence = 0
+	tag.Adornee = pad
+	tag.Parent = pad
+	local pill = Instance.new("TextLabel")
+	pill.Size = UDim2.fromScale(1, 1)
+	pill.BackgroundColor3 = color
+	pill.Font = Enum.Font.FredokaOne
+	pill.TextScaled = true
+	pill.TextColor3 = Color3.new(1, 1, 1)
+	pill.Text = `Grade {grade}`
+	pill.Parent = tag
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0.5, 0)
+	corner.Parent = pill
+	local edge = Instance.new("UIStroke")
+	edge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	edge.Color = Color3.new(1, 1, 1)
+	edge.Thickness = 2
+	edge.Parent = pill
+	local padding = Instance.new("UIPadding")
+	padding.PaddingTop, padding.PaddingBottom = UDim.new(0.12, 0), UDim.new(0.12, 0)
+	padding.PaddingLeft, padding.PaddingRight = UDim.new(0.08, 0), UDim.new(0.08, 0)
+	padding.Parent = pill
+end
+
 local function detach(part: BasePart)
 	local spinner = spinners[part]
 	if spinner then
@@ -233,6 +279,12 @@ local function attach(instance: Instance)
 	placePad(spinner, instance)
 	swirl.CFrame = pad.CFrame
 	drawBack(instance)
+	gradeTag(pad, instance)
+	instance:GetAttributeChangedSignal("Grade"):Connect(function()
+		if spinners[instance] == spinner then
+			gradeTag(pad, instance)
+		end
+	end)
 	instance.Destroying:Connect(function()
 		detach(instance)
 	end)

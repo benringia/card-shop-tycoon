@@ -1,8 +1,9 @@
 --!strict
 -- Main quests (owner 2026-11-18, look A of artifact Evh8Gx9pN61R5GkodcwR3C; Config/MainQuests): the next thing to
--- build for the shop. A Build menu rack, case or machine is open once the shop's level unlocks it and none stands in
--- the shop; the one shown is the first you can already pay for (a quick win), else the oldest unlock you're saving for,
--- its bar the cash toward its price. Building one the first time pays a share of its price in shop XP, once per item.
+-- build for the shop. A Build menu rack, case or machine is open once the shop's level unlocks it and it was never
+-- built (built once, its quest is done for good: selling it never opens it again, owner 2026-11-21); the one shown is
+-- the first you can already pay for (a quick win), else the oldest unlock you're saving for, its bar the cash toward
+-- its price. Building one the first time pays a share of its price in shop XP, once per item.
 -- With everything built, the next unlock's level is the goal, its bar running from the last unlock reached.
 -- Pure (no requires, no Roblox APIs): callers pass the configs, the shelves' facts and the XP curve, so tests/ can run
 -- it in Lune (tests/MainQuestRules).
@@ -80,7 +81,8 @@ function MainQuestRules.items(cfg: Config, shelves: Facts): { Item }
 	return list
 end
 
--- The items the shop's level unlocks with none in the shop, in unlock order
+-- The items the shop's level unlocks that were never built (`built`: the done set, MainQuestRules.doneText), in unlock
+-- order
 function MainQuestRules.open(items: { Item }, level: number, built: { [string]: boolean }): { Item }
 	local list: { Item } = {}
 	for _, item in items do
@@ -204,9 +206,22 @@ function MainQuestRules.toSave(done: { [string]: boolean }): { string }
 	return list
 end
 
--- The main quest items standing in the shop, as the player attribute the client reads ("Forge,WallShelf")
+-- A set of main quest items as the player attribute the client reads ("Forge,WallShelf")
 function MainQuestRules.builtText(built: { [string]: boolean }): string
 	return table.concat(MainQuestRules.toSave(built), ",")
+end
+
+-- The items whose quest is done, as that attribute: every one built once (`paid`), sold since or not (owner
+-- 2026-11-21: "the quest should complete when the player places the item it requested regardless if the player sells
+-- it afterwards"), and the ones `standing` in the shop
+function MainQuestRules.doneText(paid: { [string]: boolean }, standing: { [string]: boolean }): string
+	local done = table.clone(paid)
+	for id, on in standing do
+		if on then
+			done[id] = true
+		end
+	end
+	return MainQuestRules.builtText(done)
 end
 
 function MainQuestRules.parseBuilt(cfg: Config, text: any): { [string]: boolean }

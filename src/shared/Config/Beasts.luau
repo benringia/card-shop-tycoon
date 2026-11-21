@@ -55,7 +55,20 @@ return {
 		Epic = { C = 0.555, B = 0.3, A = 0.13, S = 0.015 },
 		Legendary = { C = 0.56, B = 0.3, A = 0.13, S = 0.01 },
 	} :: { [string]: { [string]: number } },
-	GRADE_BONUS = { C = 0, B = 0.03, A = 0.06, S = 0.10 },
+	GRADE_BONUS = { C = 0, B = 0.03, A = 0.06, S = 0.10 }, -- the stats' share (its price: GRADE_VALUE)
+	-- What a grade does to a card's price (owner 2026-11-21: "change the pricing of cards. Legendary Grade S should
+	-- be really expensive. Legendary Grade A should be expensive and so on. grades should affect cards price"; the
+	-- stats' 3 / 6 / 10% before): a plain copy is worth its value times this, the more the rarer the card. The
+	-- dearest Legendary ($150): Grade B $225, A $600, S $3,000 (a foil S $9,000). The part over 1 is added once, on top
+	-- of what its stars and levels are worth (BeastMath.getValue), so squishing plain copies into a Grade S card
+	-- can't multiply their worth; and every grading step costs more cash than it adds (tests/BeastMath)
+	GRADE_VALUE = {
+		Common = { C = 1, B = 1.25, A = 2, S = 5 },
+		Rare = { C = 1, B = 1.25, A = 2, S = 5 },
+		["Very Rare"] = { C = 1, B = 1.3, A = 2.5, S = 8 },
+		Epic = { C = 1, B = 1.4, A = 3, S = 12 },
+		Legendary = { C = 1, B = 1.5, A = 4, S = 20 },
+	} :: { [string]: { [string]: number } },
 	DEFAULT_GRADE = "C",
 
 	-- Power = HP + ATK * weight + SPD * weight: one number to compare cards

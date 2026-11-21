@@ -71,9 +71,19 @@ export type Boss = {
 	drops: { Drop }, -- full loot, rolled per drop (x the farm-protection factor)
 	firstClear: { Grant }, -- once, on the first win
 	dailyBonus: { Grant }, -- the first rewarded win each UTC day
+	-- A Frontier card on a loot win, for those who helped: its chance and the rarity's weights (BossRules.cardRarity;
+	-- the card's big reveal follows the victory screen, the chests after it)
+	card: { chance: number, rarity: { [string]: number } }?,
 	cash: number,
 	xp: number, -- split across the party like a Wild win
 }
+
+-- The Frontier's bosses drop Frontier cards (owner 2026-11-21: "Make the boss drop frontier cards and make it
+-- noticeable", "ONLY Frontier bosses drop"): rarer ones than its monsters' (Config/Frontier CARD_RARITY 70 / 25 / 5).
+-- The Wild's bosses and the Dungeon's Hydra drop none: Frontier cards stay the Frontier's
+-- Every loot win since the same day ("make the bosses always drop a frontier card. but decrease the droprate the
+-- higher the rarity"; 20 / 25 / 30% of them at 60 / 30 / 10 before): mostly Rare, a Legendary a moment, a little
+-- better the stronger the boss
 
 local BOSSES: { [string]: Boss } = {
 	meadowWarden = {
@@ -229,6 +239,7 @@ local BOSSES: { [string]: Boss } = {
 		},
 		firstClear = { { item = "fragment_stormSovereign", count = 3 }, { item = "trophy_frostTyrant", count = 1 }, { item = "gradingSeal", count = 3 } },
 		dailyBonus = { { item = "gradingSeal", count = 2 }, { item = "material_frostTyrant", count = 2 } },
+		card = { chance = 1, rarity = { Rare = 85, Epic = 13, Legendary = 2 } },
 		cash = 300,
 		xp = 3600,
 	},
@@ -262,11 +273,15 @@ local BOSSES: { [string]: Boss } = {
 		mechanics = { thunderclap = { every = 14, seconds = 2.5, minFactor = 0.3, maxFactor = 1.5, warning = 2, radius = 28, debuff = "Electrocuted" } },
 		drops = {
 			{ item = "material_stormSovereign", chance = 0.8, min = 1, max = 2 }, -- its weapon material (Config/Weapons), full loot only
-			{ item = "goldSeal", chance = 0.25, min = 1, max = 1 },
+			-- a Gold Seal is a legendary item (owner 2026-11-21: "decrease gold seal drop rate"): 25% / 30% / 40% of loot
+			-- wins before, and one a day from this boss's and the Rift Devourer's daily bonus (two from the Hydra's). 5% /
+			-- 6% / 10% at first, then "slightly increase droprates of golld seals": 8% / 10% / 15%
+			{ item = "goldSeal", chance = 0.08, min = 1, max = 1 },
 			{ item = "fragment_riftDevourer", chance = 0.55, min = 1, max = 1 },
 		},
 		firstClear = { { item = "fragment_riftDevourer", count = 3 }, { item = "trophy_stormSovereign", count = 1 }, { item = "goldSeal", count = 1 } },
-		dailyBonus = { { item = "goldSeal", count = 1 }, { item = "material_stormSovereign", count = 2 } },
+		dailyBonus = { { item = "gradingSeal", count = 2 }, { item = "material_stormSovereign", count = 2 } },
+		card = { chance = 1, rarity = { Rare = 82, Epic = 15, Legendary = 3 } },
 		cash = 420,
 		xp = 5200,
 	},
@@ -300,12 +315,13 @@ local BOSSES: { [string]: Boss } = {
 		mechanics = { adds = { at = { 0.7, 0.35 }, count = 2, hpShare = 0.05, atkShare = 0.3, guard = 0.5, species = "Rift Horror", size = 2, cast = 1.6, emerge = 1.2, run = 2.8 } },
 		drops = {
 			{ item = "material_riftDevourer", chance = 0.8, min = 1, max = 2 }, -- its weapon material (Config/Weapons), full loot only
-			{ item = "goldSeal", chance = 0.3, min = 1, max = 1 },
+			{ item = "goldSeal", chance = 0.1, min = 1, max = 1 },
 			{ item = "starShard", chance = 0.3, min = 1, max = 2 },
 			{ item = "fragment_prismHydra", chance = 0.5, min = 1, max = 1 },
 		},
 		firstClear = { { item = "fragment_prismHydra", count = 3 }, { item = "trophy_riftDevourer", count = 1 }, { item = "goldSeal", count = 3 } },
-		dailyBonus = { { item = "goldSeal", count = 1 }, { item = "material_riftDevourer", count = 2 } },
+		dailyBonus = { { item = "gradingSeal", count = 2 }, { item = "material_riftDevourer", count = 2 } },
+		card = { chance = 1, rarity = { Rare = 78, Epic = 18, Legendary = 4 } },
 		cash = 560,
 		xp = 7400,
 	},
@@ -352,7 +368,7 @@ local BOSSES: { [string]: Boss } = {
 		},
 		drops = {
 			{ item = "material_prismHydra", chance = 0.8, min = 1, max = 2 }, -- its weapon material (Config/Weapons), full loot only
-			{ item = "goldSeal", chance = 0.4, min = 1, max = 1 },
+			{ item = "goldSeal", chance = 0.15, min = 1, max = 1 },
 			{ item = "starShard", chance = 0.4, min = 1, max = 2 },
 			{ item = "gradingSeal", chance = 0.4, min = 1, max = 2 },
 			{ item = "xpTonic", chance = 0.5, min = 2, max = 3 },
@@ -364,7 +380,7 @@ local BOSSES: { [string]: Boss } = {
 			{ item = "gradingSeal", count = 5 },
 			{ item = "xpTonic", count = 5 },
 		},
-		dailyBonus = { { item = "goldSeal", count = 2 }, { item = "material_prismHydra", count = 2 } },
+		dailyBonus = { { item = "goldSeal", count = 1 }, { item = "material_prismHydra", count = 2 } },
 		cash = 800,
 		xp = 10000,
 	},

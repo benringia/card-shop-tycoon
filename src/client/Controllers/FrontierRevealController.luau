@@ -11,6 +11,7 @@ local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local CardEffects = require(Config:WaitForChild("CardEffects"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
@@ -54,7 +55,8 @@ local function sparkleBurst(parent: GuiObject)
 	end
 end
 
-local function reveal(card: typeof(Cards.List[1]), foil: boolean)
+-- `grade`: the copy's own grade, on its face (a boss's card: the victory screen's tile named it)
+local function reveal(card: typeof(Cards.List[1]), foil: boolean, grade: string?)
 	for _, child in overlay:GetChildren() do
 		if child:IsA("GuiObject") then
 			child:Destroy()
@@ -89,7 +91,7 @@ local function reveal(card: typeof(Cards.List[1]), foil: boolean)
 	local stroke = Instance.new("UIStroke")
 	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	stroke.Parent = holder
-	CardFace.render(holder, stroke, card, foil, true)
+	CardFace.render(holder, stroke, card, foil, true, if grade then { level = 1, stars = BeastRules.START_STARS, grade = grade } else nil)
 	for _, child in holder:GetChildren() do
 		if child:IsA("GuiObject") then
 			child.ZIndex = 52
@@ -142,10 +144,10 @@ function FrontierRevealController.Start()
 	overlay.Parent = UIController.GetScreenGui()
 	overlay.Activated:Connect(close)
 
-	Remotes.PullAnnouncement.OnClientEvent:Connect(function(_, cardId, foil, kind, finderUserId)
+	Remotes.PullAnnouncement.OnClientEvent:Connect(function(_, cardId, foil, kind, finderUserId, grade)
 		local card = if typeof(cardId) == "string" then Cards.ById[cardId] else nil
 		if kind == "frontier" and card and finderUserId == Players.LocalPlayer.UserId then
-			reveal(card, foil == true)
+			reveal(card, foil == true, if typeof(grade) == "string" and table.find(BeastRules.GRADES, grade) then grade else nil)
 		end
 	end)
 end

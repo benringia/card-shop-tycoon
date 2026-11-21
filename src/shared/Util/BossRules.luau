@@ -145,6 +145,32 @@ function BossRules.pay(config: { REPEAT_PAY: number }, cash: number, lootWin: bo
 	return math.round(cash * BossRules.payShare(config, lootWin) * 100) / 100
 end
 
+-- A boss's Frontier card on a loot win (Config/Bosses card): the rarity that drops, or nil. `chanceRoll` and
+-- `rarityRoll` are 0..1; the rarities are weighed in their own order, the rarest last
+local CARD_ORDER = { "Common", "Rare", "Very Rare", "Epic", "Legendary" }
+function BossRules.cardRarity(card: { chance: number, rarity: { [string]: number } }?, chanceRoll: number, rarityRoll: number): string?
+	if not card or chanceRoll >= card.chance then
+		return nil
+	end
+	local total = 0
+	for _, weight in card.rarity do
+		total += weight
+	end
+	local at = rarityRoll * total
+	local last: string? = nil
+	for _, rarity in CARD_ORDER do
+		local weight = card.rarity[rarity]
+		if weight and weight > 0 then
+			last = rarity
+			at -= weight
+			if at < 0 then
+				return rarity
+			end
+		end
+	end
+	return last
+end
+
 -- The part of a boss win's cash its shop XP is worked out from (LevelMath.fightXp): SHOP_XP_SHARE of it (the cash
 -- doubled on 2026-11-21, the shop XP didn't)
 function BossRules.shopXpCash(config: { SHOP_XP_SHARE: number? }, cash: number): number

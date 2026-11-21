@@ -284,6 +284,14 @@ end
 UIKit.PHONE_HEIGHT = 500 -- a screen this short (landscape phones) gets the compact layouts
 
 -- A phone-sized screen: touch only, or a short screen (the Device emulator's phones too)
+-- A short screen (a landscape phone): the layouts that only make room, whatever the input. A tablet is tall: it keeps
+-- the computer's layout (the night's device check, 2026-11-21: an iPad got the station windows' phone layout, tiny
+-- cards in a big window)
+function UIKit.isShort(): boolean
+	local camera = workspace.CurrentCamera
+	return camera ~= nil and camera.ViewportSize.Y < UIKit.PHONE_HEIGHT
+end
+
 function UIKit.isPhone(): boolean
 	local camera = workspace.CurrentCamera
 	local short = camera ~= nil and camera.ViewportSize.Y < UIKit.PHONE_HEIGHT

@@ -135,6 +135,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	BrokeRules = require("./BrokeRules.spec"),
 	DeckBox = require("./DeckBox.spec"),
 	PriceTaps = require("./PriceTaps.spec"),
+	CaseWindow = require("./CaseWindow.spec"),
 	StockHint = require("./StockHint.spec"),
 	ShelfSearch = require("./ShelfSearch.spec"),
 	CustomerLook = require("./CustomerLook.spec"),

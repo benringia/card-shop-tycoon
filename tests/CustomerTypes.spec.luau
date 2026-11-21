@@ -248,4 +248,31 @@ return {
 		assert(CustomerTypes.plainChance(1.35, 1, BANDS) >= 0.14, "+35%: still some")
 		expect.equal(CustomerTypes.plainChance(1.51, 1, BANDS), 0, "past +50%: nobody, as before")
 	end,
+
+	-- owner 2026-11-21: "lets add occasional tips from customers. to slightly boost gold earn"
+	["a plain customer tips now and then when every price was fair; a big spender always"] = function()
+		local tips = Customers.TIPS
+		assert(tips.chance >= 0.1 and tips.chance <= 0.2, "occasional")
+		assert(tips.share[1] >= 0.05 and tips.share[2] <= 0.25 and tips.share[1] < tips.share[2], "a little extra")
+		-- the roll under the chance: a share of the total between the two ends, to the cent
+		expect.equal(CustomerTypes.tip(Customers, "plain", 10, true, 0, 0), math.round(10 * tips.share[1] * 100) / 100)
+		expect.equal(CustomerTypes.tip(Customers, "plain", 10, true, 0, 1), math.round(10 * tips.share[2] * 100) / 100)
+		expect.equal(CustomerTypes.tip(Customers, "plain", 10, true, tips.chance, 0.5), 0, "the chance missed")
+		expect.equal(CustomerTypes.tip(Customers, "plain", 10, true, 0.99, 0.5), 0)
+		-- never when a price was over market, never on nothing
+		expect.equal(CustomerTypes.tip(Customers, "plain", 10, false, 0, 0.5), 0)
+		expect.equal(CustomerTypes.tip(Customers, "plain", 0, true, 0, 0.5), 0)
+		-- a small sale still leaves something worth a toast
+		expect.equal(CustomerTypes.tip(Customers, "plain", 1, true, 0, 0), tips.min)
+		-- the others: a kid's pocket money, a collector's card and a bargain hunter's deal leave none
+		for _, kind in { "kid", "collector", "bargain" } do
+			expect.equal(CustomerTypes.tip(Customers, kind, 10, true, 0, 0.5), 0, kind)
+		end
+		-- the big spender's sure tip, as before (BIG_SPENDER.tip of the total at fair prices)
+		expect.equal(CustomerTypes.tip(Customers, "bigSpender", 120, true, 0.99, 0.5), 12)
+		expect.equal(CustomerTypes.tip(Customers, "bigSpender", 120, false, 0, 0.5), 0)
+		-- "slightly": plain customers' tips add under 3% to their sales
+		local average = tips.chance * (tips.share[1] + tips.share[2]) / 2
+		assert(average > 0.01 and average < 0.03, `{average} of a plain customer's sales`)
+	end,
 }

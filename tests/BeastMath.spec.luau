@@ -162,13 +162,79 @@ return {
 		expect.isNil(BeastMath.sanitize(config, "junk", isKnown), "string")
 		expect.isNil(BeastMath.sanitize(config, nil, isKnown), "nil")
 	end,
-	["grade: S boosts stats and value by 10%"] = function()
+	["grade: S boosts stats by 10%"] = function()
 		local c = BeastMath.getStats(config, "Legendary", "Volt", false, 1, 0, "C")
 		local s = BeastMath.getStats(config, "Legendary", "Volt", false, 1, 0, "S")
 		expect.equal(c.hp, 180, "C hp")
 		expect.equal(s.hp, 198, "S hp")
-		expect.near(BeastMath.getValue(config, 10, 3, false, 1, 0, "S"), 11, 0.001, "S value")
-		expect.near(BeastMath.getValue(config, 10, 3, false, 1, 0, "B"), 10.3, 0.001, "B value")
+	end,
+
+	-- owner 2026-11-21: "change the pricing of cards. Legendary Grade S should be really expensive. Legendary Grade A
+	-- should be expensive and so on. grades should affect cards price" (a grade added 3 / 6 / 10% before)
+	["a card's grade is a big part of its price, the more the rarer the card"] = function()
+		local function worth(rarity: string, grade: string, base: number?, foil: boolean?, stars: number?): number
+			return BeastMath.getValue(config, base or 100, 3, foil == true, 1, stars or 0, grade, rarity)
+		end
+		-- a $100 card of each rarity at each grade
+		expect.equal(worth("Legendary", "C"), 100)
+		expect.equal(worth("Legendary", "B"), 150)
+		expect.equal(worth("Legendary", "A"), 400, "expensive")
+		expect.equal(worth("Legendary", "S"), 2000, "really expensive")
+		expect.equal(worth("Epic", "S"), 1200)
+		expect.equal(worth("Epic", "A"), 300)
+		expect.equal(worth("Very Rare", "S"), 800)
+		expect.equal(worth("Rare", "S"), 500)
+		expect.equal(worth("Common", "S"), 500)
+		expect.equal(worth("Common", "B"), 125)
+		-- every grade is worth more than the one under it, and a rarer card's grade more than a commoner one's
+		local order = { "Common", "Rare", "Very Rare", "Epic", "Legendary" }
+		for index, rarity in order do
+			for g = 2, #config.GRADES do
+				assert(worth(rarity, config.GRADES[g]) > worth(rarity, config.GRADES[g - 1]), `{rarity} {config.GRADES[g]}`)
+				if index > 1 then
+					assert(worth(rarity, config.GRADES[g]) >= worth(order[index - 1], config.GRADES[g]), `{rarity} {config.GRADES[g]} against {order[index - 1]}`)
+				end
+			end
+		end
+		-- the real cards: the dearest Legendary ($150) at Grade S, and its foil
+		expect.equal(worth("Legendary", "S", 150), 3000)
+		expect.equal(worth("Legendary", "S", 150, true), 9000)
+		-- an unknown rarity or grade: no premium
+		expect.equal(BeastMath.getValue(config, 100, 3, false, 1, 0, "S", nil), 500, "no rarity: the plainest table")
+		expect.equal(BeastMath.getValue(config, 100, 3, false, 1, 0, "Z", "Legendary"), 100)
+	end,
+
+	-- the grade's part is added once, never multiplied by the stars or the levels: squishing plain copies into a Grade S
+	-- card can't multiply what they're worth (the star rule above keeps holding at every grade)
+	["a grade's worth is added on top: stars and levels never multiply it"] = function()
+		for _, rarity in { "Common", "Epic", "Legendary" } do
+			local premium = BeastMath.getValue(config, 100, 3, false, 1, 0, "S", rarity) - BeastMath.getValue(config, 100, 3, false, 1, 0, "C", rarity)
+			for stars = 0, config.MAX_STARS do
+				for _, level in { 1, 15, config.MAX_LEVEL } do
+					local s = BeastMath.getValue(config, 100, 3, false, level, stars, "S", rarity)
+					local c = BeastMath.getValue(config, 100, 3, false, level, stars, "C", rarity)
+					expect.near(s - c, premium, 0.011, `{rarity} {stars} stars Lv {level}`)
+				end
+			end
+		end
+	end,
+
+	-- grading a card up to sell it never pays: every step's cash (Config/Grading) is more than the step adds to the
+	-- dearest card of its rarity, even a foil
+	["grading up never pays for itself in the card's price"] = function()
+		local Grading = require("../src/shared/Config/Grading")
+		-- each rarity's dearest card (Config/Rarities maxValue; that file needs Roblox) and the foil's x3
+		local TOP = { Common = 0.5, Rare = 3, ["Very Rare"] = 6, Epic = 20, Legendary = 150 }
+		local FOIL = 3
+		for rarity, steps in Grading.COSTS do
+			local top = TOP[rarity]
+			for g = 2, #config.GRADES do
+				local grade, under = config.GRADES[g], config.GRADES[g - 1]
+				local gain = BeastMath.getValue(config, top, FOIL, true, 1, 0, grade, rarity)
+					- BeastMath.getValue(config, top, FOIL, true, 1, 0, under, rarity)
+				assert(gain < steps[grade].cash, `{rarity} to {grade}: adds ${gain}, costs ${steps[grade].cash}`)
+			end
+		end
 	end,
 
 	["grade: unknown grade counts as C"] = function()

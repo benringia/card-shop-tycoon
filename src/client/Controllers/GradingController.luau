@@ -56,6 +56,11 @@ local SIDE = 10 -- the pane's things keep this far from its edges, so no outline
 -- 520 px tall before its own scale, the pane 384): the sentence, the recipe, the helper chips, the button, the link
 local SAY_HEIGHT = 46
 local HELPER = 46 -- the Grading Seals' and Gold Seals' chips (a tap target with the gap under them)
+-- A phone (owner 2026-11-21, the night's device check: on a 705 x 338 phone the window was 241 px tall with 105 for
+-- its list and its recipe, the big button far under the fold): the window takes nearly the whole screen, the rows over
+-- the list go, the recipe is smaller and the big button sits pinned under the pane (`actionBar`), as in the Forge
+local PHONE_FACE = Vector2.new(66, 94)
+local PHONE_SAY = 38 -- the sentence's room (two lines of smaller words)
 local LIST_TOP = 124 -- below the subtitle and the search row
 
 local player = Players.LocalPlayer
@@ -67,6 +72,8 @@ local palette: UIKit.Palette -- the cream window's colours (UIKit.colorsFor), se
 local subtitle: TextLabel
 local list: ScrollingFrame
 local pane: ScrollingFrame
+local actionBar: Frame -- a phone: the big button, pinned under the pane
+local search: TextBox
 local machine: BasePart? = nil
 local selectedCardId: string? = nil
 local searchText = ""
@@ -206,6 +213,10 @@ local render: () -> ()
 
 local function renderPane(card: Card?)
 	clear(pane)
+	clear(actionBar)
+	local phone = UIKit.isShort()
+	local face = if phone then PHONE_FACE else DETAIL_FACE_SIZE
+	local sayTop = if phone then PHONE_SAY else SAY_HEIGHT
 	if not card then
 		local hint = UIKit.label(pane, "Get two or more copies of a card to grade it up. Pick a card on the left.", Enum.Font.GothamBold, 14, palette.inkSoft)
 		hint.Position = UDim2.fromOffset(10, 10)
@@ -250,14 +261,14 @@ local function renderPane(card: Card?)
 
 	-- one sentence: what will happen
 	local sentence = if choosingMain then "Which copy do you want to grade? Tap it." else CondenseRules.gradeSay({ name = card.name, grade = nextGrade, copies = copiesIn, seals = sealsIn, cash = formatCash(price), missing = missing, gold = goldPays })
-	local say = UIKit.label(pane, sentence, Enum.Font.FredokaOne, 16, palette.ink)
+	local say = UIKit.label(pane, sentence, Enum.Font.FredokaOne, if phone then 13 else 16, palette.ink)
 	say.Name = "Say"
 	say.Position = UDim2.fromOffset(10, 6)
-	say.Size = UDim2.new(1, -20, 0, SAY_HEIGHT - 8)
+	say.Size = UDim2.new(1, -20, 0, sayTop - 8)
 	say.TextWrapped = true
 	say.TextXAlignment = Enum.TextXAlignment.Center
 
-	local y = SAY_HEIGHT
+	local y = sayTop
 	-- Keep a different copy: the copies that could be graded, in place of the recipe
 	if choosingMain then
 		for _, candidate in candidates do
@@ -295,19 +306,19 @@ local function renderPane(card: Card?)
 	end
 
 	-- The recipe: the spots, an arrow, the card that gets the grade (alone once it is Grade S)
-	local wide = if nextGrade then RECIPE.slots.X + RECIPE.arrow + DETAIL_FACE_SIZE.X else DETAIL_FACE_SIZE.X
+	local wide = if nextGrade then RECIPE.slots.X + RECIPE.arrow + face.X else face.X
 	local recipe = Instance.new("Frame")
 	recipe.Name = "Recipe"
 	recipe.BackgroundTransparency = 1
 	recipe.AnchorPoint = Vector2.new(0.5, 0)
 	recipe.Position = UDim2.new(0.5, 0, 0, y)
-	recipe.Size = UDim2.fromOffset(wide, DETAIL_FACE_SIZE.Y + RECIPE.under)
+	recipe.Size = UDim2.fromOffset(wide, face.Y + RECIPE.under)
 	recipe.Parent = pane
 	local faceHolder = Instance.new("Frame")
 	faceHolder.Name = "Keeps"
 	faceHolder.AnchorPoint = Vector2.new(1, 0)
 	faceHolder.Position = UDim2.fromScale(1, 0)
-	faceHolder.Size = UDim2.fromOffset(DETAIL_FACE_SIZE.X, DETAIL_FACE_SIZE.Y)
+	faceHolder.Size = UDim2.fromOffset(face.X, face.Y)
 	faceHolder.BackgroundTransparency = 1
 	faceHolder.Parent = recipe
 	makeFace(faceHolder, card, chosen.foil, false, { level = chosen.level, stars = chosen.stars, grade = chosen.grade })
@@ -315,14 +326,14 @@ local function renderPane(card: Card?)
 	local gradePill = UIKit.pill(recipe, BeastRules.describeGrade(nextGrade or chosen.grade), UIKit.Colors.Accent, UIKit.Colors.Ink)
 	gradePill.Name = "Grade"
 	gradePill.AnchorPoint = Vector2.new(0.5, 0.5) -- it beats about its middle, clear of the card and the chips under it
-	gradePill.Position = UDim2.new(1, -DETAIL_FACE_SIZE.X / 2, 0, DETAIL_FACE_SIZE.Y + 18)
+	gradePill.Position = UDim2.new(1, -face.X / 2, 0, face.Y + 18)
 	if nextGrade then
 		Recipe.beat(gradePill)
 	end
 
 	local spots: { GuiObject } = {}
 	if nextGrade then
-		local grid = Recipe.grid(recipe, need, CondenseRules.slotColumns(need))
+		local grid = Recipe.grid(recipe, need, CondenseRules.slotColumns(need), Vector2.new(RECIPE.slots.X, face.Y))
 		local copies: { CondenseRules.Take } = {}
 		for _, take in if plan then plan.takes else {} do
 			for _ = 1, take.count do
@@ -346,13 +357,13 @@ local function renderPane(card: Card?)
 				table.insert(spots, spot)
 			end
 		end
-		Recipe.arrow(recipe, RECIPE.slots.X + RECIPE.arrow / 2, DETAIL_FACE_SIZE.Y / 2)
+		Recipe.arrow(recipe, RECIPE.slots.X + RECIPE.arrow / 2, face.Y / 2)
 		-- under the spots: the cash it takes (red when you don't have it), or the Gold Seal paying it
 		-- ...and beside it how much stronger the card gets
 		local under = Instance.new("Frame")
 		under.Name = "Under"
 		under.BackgroundTransparency = 1
-		under.Position = UDim2.fromOffset(0, DETAIL_FACE_SIZE.Y + 6)
+		under.Position = UDim2.fromOffset(0, face.Y + 6)
 		under.Size = UDim2.fromOffset(RECIPE.slots.X + RECIPE.arrow, 24)
 		under.Parent = recipe
 		local underLayout = Instance.new("UIListLayout")
@@ -369,7 +380,7 @@ local function renderPane(card: Card?)
 		chip.Name = "Power"
 		chip.LayoutOrder = 2
 	end
-	y += DETAIL_FACE_SIZE.Y + RECIPE.under + 6
+	y += face.Y + RECIPE.under + 6
 
 	-- The helpers, over the button so they're seen (owner 2026-11-20: "whats the use of grading seals? I cant see it
 	-- inside the grading station", "also the golden seall or something"): a chip each for Grading Seals (a tap puts
@@ -441,9 +452,9 @@ local function renderPane(card: Card?)
 	-- The big button: Make it Grade A! and how long it takes, or what's missing
 	local seconds = if nextGrade then EarlyRules.stationWait(UpgradeRules.seconds(Upgrades, "grade", nextGrade, card.rarity), tonumber(player:GetAttribute("Level")) or 1, Early) else 0
 	local buttonText, buttonSub = CondenseRules.gradeButton({ inFlight = inFlight, grade = nextGrade, cash = formatCash(price), have = formatCash(cash), affordable = affordable, missing = missing, seconds = seconds })
-	local gradeButton = UIKit.button(pane, buttonText, if canGrade then UIKit.Colors.Accent else UIKit.Colors.Locked)
+	local gradeButton = UIKit.button(if phone then actionBar else pane, buttonText, if canGrade then UIKit.Colors.Accent else UIKit.Colors.Locked)
 	gradeButton.Name = "GradeUp"
-	gradeButton.Position = UDim2.fromOffset(8, y)
+	gradeButton.Position = UDim2.fromOffset(8, if phone then 4 else y)
 	gradeButton.Size = UDim2.new(1, -16, 0, RECIPE.button)
 	gradeButton.AutoButtonColor = canGrade
 	Recipe.words(gradeButton, buttonText, buttonSub)
@@ -477,7 +488,9 @@ local function renderPane(card: Card?)
 		end
 		render()
 	end)
-	y += RECIPE.button + 8
+	if not phone then
+		y += RECIPE.button + 8
+	end
 
 	-- The grade swap (Config/Grading SWAP; owner 2026-11-20): a levelled or starred card takes the grade of a better
 	-- spare copy. Offered only when there is one
@@ -684,8 +697,27 @@ local function close()
 end
 
 -- Opens the panel for your own Grading Station
+-- The window's pieces for this screen: a computer's line and search over the list, or a phone's bigger window
+-- without them and the big button's bar under the pane
+local function layout()
+	local phone = UIKit.isShort()
+	panel.Size = if phone then UDim2.fromScale(0.97, 0.96) else UDim2.fromScale(0.94, 0.86)
+	local top = if phone then UIKit.HEADER_HEIGHT + 8 else LIST_TOP
+	subtitle.Visible = not phone
+	search.Visible = not phone
+	local bar = if phone then RECIPE.button + 12 else 0
+	list.Position = UDim2.fromOffset(12, top)
+	list.Size = UDim2.new(LIST_WIDTH_SCALE, -18, 1, -(top + 12))
+	pane.Position = UDim2.new(LIST_WIDTH_SCALE, 6, 0, top)
+	pane.Size = UDim2.new(1 - LIST_WIDTH_SCALE, -18, 1, -(top + 12 + bar))
+	actionBar.Visible = phone
+	actionBar.Position = UDim2.new(LIST_WIDTH_SCALE, 6, 1, -12)
+	actionBar.Size = UDim2.new(1 - LIST_WIDTH_SCALE, -18, 0, bar)
+end
+
 function GradingController.Open(part: BasePart)
 	machine = part
+	layout()
 	selectedCardId = nil
 	mainKey = nil
 	choosingMain = false
@@ -726,7 +758,7 @@ function GradingController.Start()
 	subtitle = UIKit.label(panel, SUBTITLE_TEXT, Enum.Font.Gotham, 14, UIKit.Colors.Subtext)
 	subtitle.Position = UDim2.fromOffset(16, 56)
 	subtitle.Size = UDim2.new(1, -32, 0, 22)
-	local search = Instance.new("TextBox")
+	search = Instance.new("TextBox")
 	search.Name = "Search"
 	search.Position = UDim2.fromOffset(16, 82)
 	search.Size = UDim2.fromOffset(220, 34)
@@ -770,6 +802,12 @@ function GradingController.Start()
 	pane.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	pane.Parent = panel
 	UIKit.corner(pane, 10)
+	actionBar = Instance.new("Frame")
+	actionBar.Name = "Action"
+	actionBar.BackgroundTransparency = 1
+	actionBar.AnchorPoint = Vector2.new(0, 1)
+	actionBar.Visible = false
+	actionBar.Parent = panel
 
 	-- Seals come and go with the item inventory
 	Remotes.ItemsChanged.OnClientEvent:Connect(function(items)

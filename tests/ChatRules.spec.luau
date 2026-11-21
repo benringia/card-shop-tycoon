@@ -7,7 +7,7 @@ local Customers = require("../src/shared/Config/Customers")
 local expect = require("./lib/expect")
 
 -- every moment the server speaks at (CustomerService.Say callers)
-local MOMENTS = { "enter", "found", "pricey", "missing", "queue", "gaveUp", "paid", "haggle", "deal", "noDeal", "admire", "pet", "pull", "sell", "sold" }
+local MOMENTS = { "enter", "found", "pricey", "missing", "queue", "gaveUp", "paid", "tip", "haggle", "deal", "noDeal", "admire", "pet", "pull", "sell", "sold" }
 -- moments only one type lives through
 local ONLY = { haggle = "bargain", pull = "kid", sell = "kid", sold = "kid" }
 

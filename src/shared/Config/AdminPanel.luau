@@ -186,6 +186,7 @@ AdminPanel.SECTIONS = {
 			{ label = "Monster KO: nearest flies off", command = "/ko" },
 			{ label = "Monster KO: nearest elite", command = "/ko elite" },
 			{ label = "Next monster win drops a card", command = "/carddrop" },
+			{ label = "Next boss loot win drops a Frontier card", command = "/bosscard" },
 			{ label = "Knock me out (in the Wild)", command = "/knockout" },
 			{ label = "Supporter tier 1 (as if bought)", command = "/support 1" },
 			{ label = "Supporter tier 3 (as if bought)", command = "/support 3" },

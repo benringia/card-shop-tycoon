@@ -22,6 +22,7 @@ return {
 		queue = 0.35, -- joining the line
 		gaveUp = 1, -- waited too long
 		paid = 0.85, -- paid at the register
+		tip = 1, -- ...and left a tip (in place of the goodbye)
 		haggle = 1, -- a bargain hunter's offer
 		deal = 1, -- you took it (or your counter was fine)
 		noDeal = 1, -- no deal: they put it all back
@@ -40,6 +41,7 @@ return {
 			queue = { "Nice shop!", "Is this the line?", "Hmm hmm hmm..." },
 			gaveUp = { "This takes too long!", "I can't wait any more." },
 			paid = { "Thank you!", "Thanks! Bye!", "See you again!" },
+			tip = { "Keep the change!", "A little extra for you!", "Great shop! Here's a tip!" },
 			deal = { "Deal!" },
 			noDeal = { "No deal? Okay, bye." },
 			admire = { "Whoa! Look at that!", "What a card!" },
@@ -84,6 +86,7 @@ return {
 			pricey = { "Even I won't pay that!" },
 			queue = { "Lovely little shop.", "I'm in no rush." },
 			paid = { "Keep up the good work!", "Lovely shop! Bye!", "I'll be back for more!" },
+			tip = { "Keep the change, friend!", "Fair prices! Have a tip!" },
 		},
 	} :: { [string]: { [string]: { string } } },
 }

@@ -116,7 +116,7 @@ local REST: { Weapon } = {
 		source = { kind = "boss", boss = "prismHydra" },
 		-- Always strong (x1.5) and bonded with any creature (x1.15) makes it about 1.7 against every foe at +0; its own
 		-- base keeps +10 Grade S inside the Hydra's balance limit (spec 4.6; DESIGN.md weapons balance rows)
-		power = 1,
+		power = 0.87, -- 1 until 2026-11-21 (the Power moved into the upgrades: RARITY_POWER below)
 		perk = { kind = "prism" }, -- always strong against the foe's element
 	},
 }
@@ -183,7 +183,7 @@ REST = {
 		-- its own base Power and a heal every 4th hit (tools/balance/bosses on the Prism Hydra: at the Legendary 1.8 with a
 		-- heal on every hit a 0.8x party won 100% even at +0; this: +0 C 72%, +10 S 83%, a 1x fight 75% of the Steel
 		-- Sword's; DESIGN.md weapons balance rows)
-		power = 1.2,
+		power = 1.04, -- 1.2 until 2026-11-21 (the Power moved into the upgrades; +10 as before)
 		perk = { kind = "heal", every = 4, share = 0.01 }, -- every 4th hit heals your creature 1% of its max HP
 	},
 }
@@ -245,7 +245,7 @@ REST = {
 		-- its own base Power, as the Prism Blade's and the Titan's Lance's (tools/balance/bosses on the Prism Hydra, 200
 		-- fights: at the Legendary 1.8 a 0.8x party won 92% at +10 Grade S; at 1.4 +0 C 68%, +10 S 84%, a 1x fight 70%
 		-- of the Steel Sword's; DESIGN.md weapons balance rows)
-		power = 1.4,
+		power = 1.21, -- 1.4 until 2026-11-21 (the Power moved into the upgrades; +10 as before)
 		-- Reap: 30% more damage to a foe under 30% of its HP
 		perk = { kind = "execute", below = 0.3, share = 0.3 },
 	},
@@ -268,9 +268,14 @@ return {
 	-- WEAPON (spec 4.6: no weapon lets a party at 0.8x the recommended Power win more than 85% fighting well on its
 	-- tier boss, and +10 Grade S never more than halves a fight at 1x); the spec's starting numbers (1.15 / 1.35 / 1.55
 	-- / 1.8 / 2.1, +5% a level) broke both (DESIGN.md weapons balance rows)
-	RARITY_POWER = { Common = 1.15, Rare = 1.25, ["Very Rare"] = 1.4, Epic = 1.6, Legendary = 1.8 },
+	-- Easier to get, the Power in the upgrades (owner 2026-11-21: "up the weapons drop rate ... but increase the grind
+	-- to upgrade it", option B: "players dont want to hold on for the same weapon for too long"): a weapon drops weaker
+	-- (1.15 / 1.25 / 1.4 / 1.6 / 1.8 before) and gains 5% a level (3% before), so at +10 it is what it was (the old
+	-- base x 1.3; a Common 5% over, never under the Steel Sword at +0). tools/balance/bosses: a +10 Grade S Forge Sword
+	-- on the Meadow Warden 62 s, 64 s before; every other weapon is at or under its old Power at every level
+	RARITY_POWER = { Common = 1.05, Rare = 1.1, ["Very Rare"] = 1.22, Epic = 1.39, Legendary = 1.56 },
 	GRADE_POWER = { C = 1, B = 1.05, A = 1.1, S = 1.15 },
-	UPGRADE_STEP = 0.03,
+	UPGRADE_STEP = 0.05,
 	MAX_LEVEL = 10,
 	-- Your summoned creature shares the weapon's element (the Prism Blade: any): weapon hits x damage, the super meter's
 	-- fill from sword hits x meter
@@ -296,11 +301,17 @@ return {
 	-- A boss's own weapon dropping outright on a full-loot kill: `base`, plus `step` for every full-loot kill since without
 	-- one (pity). By rarity (owner 2026-11-06), median loot wins: Rare 15, Very Rare 25, Epic 50, Legendary 79 (set for 6
 	-- a day; since 2026-11-19 there's no daily limit, one every LOOT_COOLDOWN: about 2 / 3 / 6 / 9 hours on its boss)
+	-- Rare and Very Rare much sooner since 2026-11-21 (owner: "make it easier for the players to get their hands on
+	-- one", "epic/legendary weapons should still be hard to get"): median 6 and 10 loot wins (15 and 25 before; 1% +
+	-- 0.5% and 0.5% + 0.2%), a Wild boss's 5 and 8; Epic and Legendary as they were
 	DROP = {
-		Rare = { base = 0.01, step = 0.005 },
-		["Very Rare"] = { base = 0.005, step = 0.002 },
-		Epic = { base = 0.002, step = 0.0005 },
-		Legendary = { base = 0.001, step = 0.0002 },
+		Rare = { base = 0.06, step = 0.025 },
+		["Very Rare"] = { base = 0.03, step = 0.01 },
+		-- Epic and Legendary sooner too (owner 2026-11-21, on the boss board's "Drop chance now: 0.20%" for the Tidal
+		-- Trident: "it's almoost imposible to get make it more forgiving"): median 22 and 37 loot wins (50 and 79
+		-- before; 0.2% + 0.05% and 0.1% + 0.02%), about 2.5 and 4.5 hours on that boss
+		Epic = { base = 0.01, step = 0.002 },
+		Legendary = { base = 0.005, step = 0.0008 },
 	},
 	-- The Wild's three bosses drop their weapons a little more often (owner 2026-11-20: "slightly increase weapon
 	-- droprate on wild bosses only"): their chance times DROP_WILD (median loot wins about 12 / 19 / 39 instead of
@@ -313,7 +324,7 @@ return {
 	-- and +10. They never fail.
 	UPGRADE = {
 		cash = { 500, 1000, 1500, 2500, 4000, 6000, 8500, 12000, 16000, 22000 },
-		material = { 2, 2, 3, 3, 4, 5, 6, 7, 8, 10 },
+		material = { 4, 4, 6, 6, 8, 10, 12, 14, 16, 20 }, -- 100 in all: twice what it was until 2026-11-21 (the grind is the upgrade)
 		starShards = { [5] = 1, [10] = 3 },
 		rarityCash = { Common = 0.5, Rare = 0.8, ["Very Rare"] = 1, Epic = 1.3, Legendary = 1.6 },
 	},

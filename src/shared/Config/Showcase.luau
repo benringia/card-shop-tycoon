@@ -51,6 +51,11 @@ return {
 		-- with a bright core, a light spiralling up it (SWIRL, Util/CaseSwirl) and sparkles rising (SPARKLES)
 		RING = Vector3.new(0.08, 0.86, 0.86),
 		RING_COLOR = Color3.fromRGB(214, 218, 228),
+		-- Its grade over each card (owner 2026-11-21: "in glass cases make sure grades are noticeable too"; a grade is a
+		-- big part of a card's price now, Config/Beasts GRADE_VALUE): a tag in the grade's colour (Config/CardDesign
+		-- GRADE_COLORS) that always faces you. Studs: its size, how far over the card's top, how far it is drawn from;
+		-- a Grade S one is `best` times as big
+		GRADE_TAG = { width = 0.95, height = 0.36, lift = 0.3, range = 70, best = 1.25 },
 		BEAM_HEIGHT = 2.4, -- the light beam rising from the pad
 		BEAM_WIDTH = 0.9,
 		BEAM_TRANSPARENCY = 0.25, -- at its foot; it fades out to the top

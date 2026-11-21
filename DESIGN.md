@@ -1834,10 +1834,10 @@ group, checked before its fragments and every time (not only the first). Below i
 | Meadow Warden | $72 / 620 | XP Tonic 60% (1-2), Brood Queen fragment 70% | 3 fragments, trophy, 3 XP Tonics | 2 XP Tonics |
 | Cave Brood Queen | $132 / 1360 | XP Tonic 60% (1-3), Star Shard 15%, Colossus fragment 60% | 3 fragments, trophy, 3 XP Tonics | 2 XP Tonics |
 | Ember Colossus | $192 / 2220 | Grading Seal 35%, XP Tonic 40% (2-3), Frost Tyrant fragment 60% | 3 fragments, trophy, 3 Grading Seals | 2 Grading Seals |
-| Frost Tyrant | $300 / 3600 | Grading Seal 40%, Star Shard 25% (1-2), Sovereign fragment 60% | 3 fragments, trophy, 3 Grading Seals | 2 Grading Seals |
-| Storm Sovereign | $420 / 5200 | Gold Seal 25%, Devourer fragment 55% | 3 fragments, trophy, 1 Gold Seal | 1 Gold Seal |
-| Rift Devourer | $560 / 7400 | Gold Seal 30%, Star Shard 30% (1-2), Hydra fragment 50% | 3 fragments, trophy, 3 Gold Seals | 1 Gold Seal |
-| Prism Hydra | $800 / 10000 | Gold Seal 40%, Star Shard 40% (1-2), Grading Seal 40% (1-2), XP Tonic 50% (2-3) | trophy, 5 each of Gold Seals, Star Shards, Grading Seals, XP Tonics | 2 Gold Seals |
+| Frost Tyrant | $300 / 3600 | Grading Seal 40%, Star Shard 25% (1-2), Sovereign fragment 60%, a Frontier card every loot win | 3 fragments, trophy, 3 Grading Seals | 2 Grading Seals |
+| Storm Sovereign | $420 / 5200 | Gold Seal 8%, Devourer fragment 55%, a Frontier card every loot win | 3 fragments, trophy, 1 Gold Seal | 2 Grading Seals |
+| Rift Devourer | $560 / 7400 | Gold Seal 10%, Star Shard 30% (1-2), Hydra fragment 50%, a Frontier card every loot win | 3 fragments, trophy, 3 Gold Seals | 2 Grading Seals |
+| Prism Hydra | $800 / 10000 | Gold Seal 15%, Star Shard 40% (1-2), Grading Seal 40% (1-2), XP Tonic 50% (2-3) | trophy, 5 each of Gold Seals, Star Shards, Grading Seals, XP Tonics | 1 Gold Seal |
 
 - **Arenas:** a fenced ring beside each zone (its +X side), joined by a path, with a gate (prompt "Fight boss",
   recommended Power on it and on a sign). The gate checks distance (12 studs), the key and that you can fight; the
@@ -3026,7 +3026,10 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
   78%, Prism Hydra 63% (all supers free before: 85 / 98 / 83 / 83%); with a new Forge Sword of the leader's element
   (`WEAPON=match:0:C`) 82 / 100 / 93 / 82%; at +10 S 98 / 100 / 100 / 100%, the Hydra fight 132 s (Steel 185 s:
   never halved). `FREE_SUPERS=1` runs the old rule.
-- **Power** = rarity base x grade (C 1, B 1.05, A 1.1, S 1.15) x (1 + 0.03 a level, +10 = x1.3). Bases tuned
+- **Power** = rarity base x grade (C 1, B 1.05, A 1.1, S 1.15) x (1 + 0.05 a level, +10 = x1.5). Since 2026-11-21
+  the bases are Common 1.05, Rare 1.1, Very Rare 1.22, Epic 1.39, Legendary 1.56 (Prism Blade 0.87, Titan's Lance
+  1.04, Rift Reaper 1.21): the Power moved into the upgrades, +10 as it was (the round's note below). Before: 0.03 a
+  level, +10 = x1.3, bases tuned
   2026-11-06 against the spec's limits (no weapon lets a 0.8x party win more than 85% fighting well on its tier
   boss; +10 Grade S never more than halves a 1x fight): Common 1.15, Rare 1.25, Very Rare 1.4, Epic 1.6, Legendary
   1.8; the Prism Blade has its own base 1.0 (always strong and bonded makes it x1.73 against every foe). The spec's
@@ -4053,7 +4056,7 @@ the always-on tracker B, the money card A).
   and `Util/MainQuestRow`; tests/MainQuestRules): the next thing to build for the shop. The Build menu's racks, cases
   and machines that Pish teaches (Glass Showcase, Collector Case, Wall Shelf, Card Condenser, Forge, Accessory Hook, Big
   Display Rack, Bulk Bin, Grading Station; decor and trophies stay out) are open once the shop's level unlocks them and
-  none stands in the shop. One shows at a time: the first the cash already covers (a quick win), else the oldest unlock
+  they were never built. One shows at a time: the first the cash already covers (a quick win), else the oldest unlock
   being saved for. With everything built the goal is the next unlock's level ("Reach shop Lv 10: Bulk Bin", its bar the
   XP from the last unlock reached to it), so there's always one. On a computer a lilac "MAIN QUEST" row rides at the
   bottom of the quest strip (under the day's quests, the week's and "Quests done!"): the item's icon in a floating
@@ -4066,8 +4069,11 @@ the always-on tracker B, the money card A).
   of each item pays a tenth of its price in shop XP (the Forge +150, the Grading Station +500), once per save: the row
   flashes gold, "Forge built!", a check stamps in with confetti, "+150 shop XP" rises, a toast, and the next goal slides
   in after 1.8 s. Items already standing in the shop at load count as paid, so selling one and placing it again never
-  pays twice. The server sets the player's `ShopBuilt` attribute (the items standing in the shop: from the saved layout
-  in every place, then placements and sales in the main game, `PlacementService.OnPlaced` / `OnSold`) and fires
+  pays twice. A quest stays done once its item was built: selling the item never opens it again (owner 2026-11-21:
+  "buying then selling the accessory hook resets the main quest to buy accessory hook again";
+  `MainQuestRules.doneText`). The server sets the player's `ShopBuilt` attribute (the items built once, sold since or
+  not, and the ones standing in the shop: from the saved list and layout in every place, then placements in the main
+  game, `PlacementService.OnPlaced` / `OnSold`) and fires
   `Remotes.MainQuestDone` before it changes. Saved as `mainQuests` (the items paid; schema v36). Studio:
   `/mainquest reset` (every first build pays again).
 - **Welcome-back earnings** (`Config/Offline`, pure `Util/OfflineRules`, `OfflineService`, `WelcomeBackController`;
@@ -4525,7 +4531,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── AnnouncementController.luau # big-pull chat messages
     │   │   ├── BinderController.luau   # the binder screen: collection data, the 3D binder's pages (cover, 2x2 pockets with chips), set tabs, Q/E page keys, page counter, Filters window (F), set progress card, tooltips, the Bag window
     │   │   ├── CardDetailController.luau # the binder's card view: 3D card + copies panel (best first), stat tiles, XP and star bars, party / job buttons
-    │   │   ├── ShowcaseController.luau # manage your own card case, marketplace style: listings, details, tooltip, Set price
+    │   │   ├── ShowcaseController.luau # manage your own card case: its slots as big cards (grade across each, price tag, how it sells), one bar for the tapped card's price, tooltip, card picker
     │   │   ├── CondenserController.luau # Card Condenser panel (tidy two panes): toolbar, slim rows, the card's before -> after, Condense
     │   │   ├── GradingController.luau # Grading Station panel: pick card + copy, next grade, cost, Grade Up
     │   │   ├── JobsController.luau      # Jobs window: rule chips, worker rows (card tip, status, XP, speed and mistake words, Switch job), free and locked slots
@@ -6340,7 +6346,10 @@ boss models; the ranch and Heroic tiers come after those.
     with "takes 23 seconds" under it ("2 more copies needed" when short). No Value, no Now / After table, no grades.
     Star Shards are no switch any more: an empty spot that a shard could fill shows a faint shard, a tap fills them,
     a tap on a shard takes them out, and a line under the button says so ("Tap an empty spot: Star Shards finish this
-    star! (12 left)"). "Keep a different copy" is a small link to the old copy picker. The left rows: the card's
+    star! (12 left)"). "Keep a different copy" is a small link to the copy picker: every copy as a row (foil, grade, level, stars, how
+    many, Power) under "Which copy keeps the star? Tap it." (the rewrite had dropped its function: the tap errored and a
+    tester couldn't keep a Grade S copy, fixed 2026-11-21; tests/SourceOrder now fails on a call to a function its
+    file never defines). The left rows: the card's
     stars and a gold Ready!, or "3 more" with a bar, or All stars. Pressing Add a star flies the copies into the
     card. The card on the pane stays in the list and selected when the shards change which cards are ready, and the
     list (the Grading Station's too) keeps its scroll through every redraw; a search, a filter or opening the window
@@ -6455,6 +6464,113 @@ boss models; the ranch and Heroic tiers come after those.
     as before ($18 to $200). The shop XP from a boss win did not change (`Bosses.SHOP_XP_SHARE = 0.5`,
     `BossRules.shopXpCash`: the Meadow Warden 18, the Prism Hydra 200). A maxed party chain-farming the Ember
     Colossus (27 s a win) now makes about $7,600 an hour, $3,800 before.
+  - *Gold Seals rarer* (owner 2026-11-21: "decrease gold seal drop rate. it's a legendary item"): a loot win drops
+    one 8% of the time from the Storm Sovereign, 10% the Rift Devourer, 15% the Prism Hydra (25% / 30% / 40% before;
+    5% / 6% / 10% for a few hours, then "slightly increase droprates of golld seals").
+    The Sovereign's and the Devourer's daily bonus is 2 Grading Seals (a Gold Seal each before), the Hydra's 1 Gold
+    Seal (2). First clears, the level 25 / 50 / 75 / 100 gift and Turts' $20,000 one as before.
+  - *A wide shelf shows every booster box* (owner 2026-11-21: "wall shelf says it holds 48 but displays only 24"):
+    a place held one stack of two sealed boxes whatever the shelf. It now holds the shelf's room for one place
+    (`ShelfStock.perPlace`: the Wall Shelf and the Big Display Rack 4, the Small Pack Rack 2), two high and side by
+    side where the place is wide enough (`ShelfStock.across`, `stackSpots`: a lone box in the middle, then a pair,
+    then the second layer). Seen live: a full Wall Shelf shows 48, a Small Pack Rack 24. Studio's `/stock <product
+    id> [units]` fills your Products shelves.
+  - *The Frontier's bosses drop Frontier cards* (owner 2026-11-21: "Make the boss drop frontier cards and make it
+    noticeable", "ONLY Frontier bosses drop"; `Bosses` `card`, `BossRules.cardRarity`, BossService `rollCard`): on a
+    loot win (once every 7 minutes a boss), for those who helped, the Frost Tyrant drops one 20% of the time, the
+    Storm Sovereign 25%, the Rift Devourer 30%; its rarity Rare 60%, Epic 30%, Legendary 10% (the Frontier's monsters:
+    3% a win, 10% an elite, 70 / 25 / 5), its grade rolled like any card. So a loot win is a Rare 12% / 15% / 18%, an
+    Epic 6% / 7.5% / 9%, a Legendary 2% / 2.5% / 3%. The Wild's bosses and the Hydra drop none. Noticeable three
+    times: the victory screen shows it as a gold tile ("Grade A · Frostfang"); when that screen goes, the "FRONTIER
+    CARD!" reveal plays (the card spinning in with its own grade on its face, FrontierRevealController) and the
+    chests wait the reveal's 4.5 s (`BossChestService.Prepare`'s `wait`); an Epic or Legendary one is told to the
+    whole server like a monster's. Studio's `/bosscard` makes your next boss loot win drop one (any boss). Seen live
+    on the Meadow Warden with `/bosscard`: the gold tile, then the reveal, then "Pick a chest!".
+  - *Weapons: easier to get, the Power in the upgrades* (owner 2026-11-21: "should we up the weapons drop rate
+    overall? to make it easier for the players to get their hands on one but. increase the grind to upgrade it",
+    option B of three: "players dont want to hold on for the same weapon for too long. it may cause them to quit";
+    then "epic/legendary weapons should still be hard to get". This replaces the weapons section's numbers above):
+    - Drops (`Weapons.DROP`): a Rare 6% plus 2.5% a loot win without one, median 6 wins (1% + 0.5%, 15 before); a
+      Very Rare 3% + 1%, median 10 (0.5% + 0.2%, 25). The Wild's bosses x1.3 as before: the Verdant Blade about 5
+      wins, the Widow's Reaper and the Magma Halberd about 8. Epic (median 50) and Legendary (79) unchanged.
+    - Power (`RARITY_POWER`, `UPGRADE_STEP`): a weapon drops weaker, Common 1.05, Rare 1.1, Very Rare 1.22, Epic 1.39,
+      Legendary 1.56 (1.15 / 1.25 / 1.4 / 1.6 / 1.8 before), and gains 5% a level (3%), so at +10 it is what it was
+      (the old base x 1.3; a Common 5% over). The weapons with their own base moved the same way: Prism Blade 0.87
+      (1), Titan's Lance 1.04 (1.2), Rift Reaper 1.21 (1.4). No weapon at +0 is under the Steel Sword. A player's
+      weapons changed with it: a +0 one is 9-14% weaker, a +10 one the same.
+    - Upgrades (`UPGRADE.material`): 4, 4, 6, 6, 8, 10, 12, 14, 16, 20 of its material a level, 100 in all (50
+      before). Cash, Star Shards and waits as before.
+    - Balance (`tools/balance/bosses`, 150 fights): a +10 Grade S Forge Sword on the Meadow Warden, the one weapon
+      that ends a little stronger, 62 s at the recommended Power (64 s before), win rates the same. Every other
+      weapon is at or under its old Power at every level, so the limits it was tuned to still hold.
+  - *Customers tip* (owner 2026-11-21: "lets add occasional tips from customers. to slightly boost gold earn";
+    `Customers.TIPS`, `CustomerTypes.tip`, CustomerService `tipFor`): when every product was at or under its market
+    price, a plain customer leaves a tip on 15% of sales: 10% to 20% of the total, at least $0.25. It is paid with
+    the sale (the "Tip! +$1.20" side toast the big spender's tip already had) and they say so in place of their
+    goodbye ("Keep the change!", "A little extra for you!", "Great shop! Here's a tip!"). About 2% on top of plain
+    customers' sales. A big spender still tips 10% every time at fair prices; kids, collectors and bargain hunters
+    never. Sales a cashier rings up tip too; offline earnings don't.
+  - *A card's grade is a big part of its price* (owner 2026-11-21: "change the pricing of cards. Legendary Grade S
+    should be really expensive. Legendary Grade A should be expensive and so on. grades should affect cards price";
+    `Beasts.GRADE_VALUE`, `BeastMath.getValue`'s `rarity`). A grade added 3 / 6 / 10% before. Now a plain copy is
+    worth its card's value times: Common and Rare B 1.25, A 2, S 5; Very Rare 1.3 / 2.5 / 8; Epic 1.4 / 3 / 12;
+    Legendary 1.5 / 4 / 20. The dearest Legendary ($150): Grade B $225, A $600, S $3,000, a foil S $9,000; the
+    cheapest ($40): $60 / $160 / $800. The grade's part is added once on top of what stars and levels are worth
+    (value x (levels x stars + grade - 1)), so squishing plain copies into a Grade S card never multiplies their
+    worth, and every grading step costs more cash than it adds even to a foil of the dearest card of its rarity
+    (tests/BeastMath). With the pull odds (55 / 30 / 13 / 2%) the cards a pack holds are worth about 1.3x (Common)
+    to 1.7x (Legendary) what they were. Everything that prices a card follows: glass cases, kid offers, the pack
+    opening's total, the binder. Prices already set on cards in a case stay as they were.
+  - *Grades seen in the glass cases* (the same message: "in glass cases make sure grades are noticeable too";
+    `Showcase.SPIN.GRADE_TAG`, CaseSpinController `gradeTag`): every card standing in a case wears a tag over it,
+    "Grade S" in its grade's colour (grey C, green B, blue A, gold S; a Grade S one a quarter bigger), facing you
+    while the card turns.
+  - *The card cases' window is the case itself* (owner 2026-11-21: "redesign glass cases window", his pick A of
+    three mockups, artifact 9AF3pJKCDFKUDK48MaLthR; "also do the same for collector case"; ShowcaseController, words
+    and sizes in `Util/CaseWindow`, tests/CaseWindow). It was a list of slots beside a block of small text with the
+    grade in one grey line. Now every slot is a big card in a row of six (as big as the pane lets them; more than
+    six wrap): the card's face with "GRADE S" across its foot in the grade's colour, a yellow price tag under it
+    like the shelves' ("$3,000", commas, cents only when there are some) and two words on how it sells: a Glass
+    Showcase's "Always buy" / "48% buy" / "Won't buy" (the Prices window's words), a Collector Case's "Fair price" /
+    "20% under" / "25% over", green, amber or red; "Set its price" in gold while a new card waits. An empty slot is
+    a faint card with a + ("Add card": the card picker, unchanged). One bar under the cards is the tapped card's
+    (gold ring round it): its name and a grade pill, "Worth $225.00 · Legendary · Foil · Lv 12 · 2 stars", - price +
+    always there (no "Set price" step; a Collector Case's price can be typed), Done only while the card still waits
+    for its price, and Take out. A mouse over a card shows its stats. A narrower window scales the bar down. Seen
+    live on a computer: a Collector Case with a Grade B Voidmaw ("24% under" at its old $169.95, "6% over" after
+    three taps) and a Grade S Tidecaller, a Glass Showcase taking a Stormjack ("Set its price", Done, then "Always
+    buy"), the grade tags over the cards in the case. Not seen on a phone.
+  - *The card cases' window is a lit display case* (owner 2026-11-21, an hour after its first build: "make glass
+    cas/collection cases window more immersive. right now it's flat"; ShowcaseController `STAGE`, `slotLight`). The
+    cards stood on the window's plain lilac. Now they stand in the case: a dark stage in the case's own colours (the
+    Collector Case navy with a gold trim and a royal blue bed, the Glass Showcase plum with a silver trim) with a
+    soft shine across its glass; every card floats up and down over a glowing pad with a metal ring, in a light
+    beam of its rarity colour, like the cards in the shop; the tapped card floats a little higher in its gold ring;
+    a Grade S banner's edge pulses gold; an empty slot is a dim pad with a + over it. How a card sells is written in
+    brighter green, amber and red for the dark stage. Seen live: both cases.
+  - *Epic and Legendary weapons sooner* (owner 2026-11-21, on the boss board's "Drop chance now: 0.20%" for the Tidal
+    Trident: "weapon drop chance for some weapons like this is too low. it's almoost imposible to get make it more
+    forgiving"; it replaces "Epic and Legendary unchanged" above): an Epic 1% plus 0.2% a loot win without one,
+    median 22 wins (0.2% + 0.05%, 50 before); a Legendary 0.5% + 0.08%, median 37 (0.1% + 0.02%, 79). About 2.5 and
+    4.5 hours on that boss at a loot win every 7 minutes.
+  - *The Frontier's bosses always drop a Frontier card* (owner 2026-11-21: "make the bosses always drop a frontier
+    card. but decrease the droprate the higher the rarity"; it replaces the 20 / 25 / 30% above): every loot win, for
+    those who helped. Its rarity: the Frost Tyrant Rare 85%, Epic 13%, Legendary 2%; the Storm Sovereign 82 / 15 /
+    3; the Rift Devourer 78 / 18 / 4.
+  - *The station windows on a phone* (the night's device check, owner 2026-11-21: "Do a check on other major devices
+    ... make sure nothing is overlapping"; Studio's device simulator: Samsung Galaxy A06 705 x 338, iPhone 17 Pro
+    750 x 381, iPad 10th Generation 1179 x 819). On the small phone the Condenser's and the Grading Station's
+    windows were 241 px tall with 105 for the list and the recipe (the big button far under the fold), and the card
+    cases' bar left the cards a 40 px strip. On a short screen (`UIKit.isShort`: under 500 px; a tablet keeps the
+    computer's layout) the three now take 0.97 x 0.96 of the screen like the Forge. The Condenser: no search box,
+    its All / Ready / Need copies switch up in the header band. The Grading Station: no line or search over the
+    list. Both: a smaller recipe (a 66 x 94 card, 13 px sentence) and the big button pinned under the pane
+    (`actionBar`), always in view. The card cases: the tapped card's bar stands beside the cards as a column (name
+    and grade, worth, - price +, Done, Take out), six cards in a row beside it, a narrow card wearing its grade's
+    letter alone (`CaseWindow.gradeWords` with a width; `LOOK.minWidth` 56). Seen in the simulator: all three on
+    the Galaxy A06, the Grading Station on the iPhone 17 Pro (the whole recipe and the button in view) and the iPad
+    (the computer's layout, fitting exactly). The Forge's own phone layout holds; on the 338 px phone its recipe's
+    foot is under the fold of its pane (a scroll), the button in view.
   - *Town music up* (owner 2026-11-20: "turn the townmusic volume up"): White Owl 0.22 -> 0.3, the two added pieces
     0.25 -> 0.34.
   - *The falls by the Wild portal* (owner 2026-11-20: "the portal to wild is too loud. lower its volume"): the portal

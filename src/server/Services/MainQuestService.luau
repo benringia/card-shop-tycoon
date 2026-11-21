@@ -1,11 +1,13 @@
 --!strict
 -- Main quests (owner 2026-11-18: "when items like forge is unlocked and the players couldnt afford it yet, add it to
--- their main quests"; look A; Config/MainQuests, Util/MainQuestRules): which main quest items stand in each player's
--- shop, told to the client as the ShopBuilt attribute (its quest strip's main row picks the goal from it, the cash and
--- the level), and the first build of each paying its share of shop XP once, with its moment on the client
+-- their main quests"; look A; Config/MainQuests, Util/MainQuestRules): which main quest items each player has built,
+-- told to the client as the ShopBuilt attribute (its quest strip's main row picks the goal from it, the cash and the
+-- level), and the first build of each paying its share of shop XP once, with its moment on the client
 -- (Remotes.MainQuestDone). Saved as data.mainQuests (the items already paid). Every place reads the saved layout at load
 -- (the Frontier's strip shows the main row too); the main game follows placements and sales as they happen. Items
--- already standing in the shop at load count as paid, so selling one and placing it again never pays twice.
+-- already standing in the shop at load count as paid, so selling one and placing it again never pays twice. A quest
+-- stays done once its item was built: selling the item never opens it again (owner 2026-11-21: "buying then selling
+-- the accessory hook resets the main quest to buy accessory hook again"; MainQuestRules.doneText).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -25,15 +27,15 @@ type PlayerData = DataService.PlayerData
 
 local MainQuestService = {}
 
-local ATTRIBUTE = "ShopBuilt" -- the main quest items standing in the shop ("Forge,WallShelf"; MainQuestRules.builtText)
+local ATTRIBUTE = "ShopBuilt" -- the main quest items built once or standing in the shop ("Forge,WallShelf"; MainQuestRules.doneText)
 
 local paid: { [Player]: { [string]: boolean } } = {}
 local built: { [Player]: { [string]: boolean } } = {}
 
 local function publish(player: Player)
-	local set = built[player]
-	if set then
-		player:SetAttribute(ATTRIBUTE, MainQuestRules.builtText(set))
+	local set, done = built[player], paid[player]
+	if set and done then
+		player:SetAttribute(ATTRIBUTE, MainQuestRules.doneText(done, set))
 	end
 end
 
@@ -71,7 +73,7 @@ local function onPlaced(player: Player, shelfId: string)
 	publish(player)
 end
 
--- A shelf sold: the item stays built only while another copy stands in the shop
+-- A shelf sold: it stands in the shop only while another copy does (its quest stays done: `paid` keeps it)
 local function onSold(player: Player, shelfId: string, shelves: { any })
 	local set = built[player]
 	if not set or not MainQuestRules.isItem(MainQuests, shelfId) then

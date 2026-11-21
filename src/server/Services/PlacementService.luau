@@ -262,10 +262,15 @@ local function fillWithDecks(box: Part, productId: string)
 	place:Destroy()
 end
 
--- A booster box product's place holds `stack` sealed booster boxes (Util/BoosterBoxLook), one on the other: as many
--- as are really there (ShelfStock.stacks)
-local function fillWithBoosters(box: Part, product: typeof(Products.List[1]), stack: number)
+-- A booster box product's place holds `stack` sealed booster boxes (Util/BoosterBoxLook): as many as are really there
+-- (ShelfStock.stacks), PER_STACK high and side by side where the place is wide enough for the `perPlace` it holds
+-- (ShelfStock.across, stackSpots)
+local function fillWithBoosters(box: Part, product: typeof(Products.List[1]), stack: number, perPlace: number)
 	local look = Town.SHELF_STOCK.BOOSTERS
+	local across = ShelfStock.across(perPlace, look.PER_STACK, box.Size.X, look.WIDTH)
+	local spots = ShelfStock.stackSpots(stack, across, look.PER_STACK)
+	local pitch = box.Size.X / across
+	stack = #spots
 	local boosters = {}
 	for _, child in box:GetChildren() do
 		if child:IsA("BasePart") and child.Name == "BoosterBox" then
@@ -283,7 +288,8 @@ local function fillWithBoosters(box: Part, product: typeof(Products.List[1]), st
 			booster.Size = Vector3.new(look.WIDTH, look.HEIGHT, look.DEPTH)
 			BoosterBoxLook.draw(booster, product, look.PIXELS_PER_STUD)
 		end
-		booster.CFrame = box.CFrame * CFrame.new(0, -box.Size.Y / 2 + look.HEIGHT * (index - 0.5), 0)
+		local spot = spots[index]
+		booster.CFrame = box.CFrame * CFrame.new(spot.x * pitch, -box.Size.Y / 2 + look.HEIGHT * (spot.layer + 0.5), 0)
 	end
 end
 
@@ -433,8 +439,9 @@ local function updateStockBoxes(shelf: PlacedShelf, price: number)
 	local count = if product then ShelfStock.boxCount(shelf.units, shelf.def.capacity, ShelfStock.slotCount(config)) else 0
 	-- Booster boxes are counted one by one: a box in every place first, then the second layer (ShelfStock.stacks)
 	local stacks: { number }? = nil
+	local perPlace = ShelfStock.perPlace(shelf.def.capacity, ShelfStock.slotCount(config))
 	if product and product.stockLook == "Booster" then
-		stacks = ShelfStock.stacks(shelf.units, ShelfStock.slotCount(config), Town.SHELF_STOCK.BOOSTERS.PER_STACK)
+		stacks = ShelfStock.stacks(shelf.units, ShelfStock.slotCount(config), perPlace)
 		count = ShelfStock.stackedPlaces(stacks)
 	end
 	local boxes = shelf.stockBoxes
@@ -477,7 +484,7 @@ local function updateStockBoxes(shelf: PlacedShelf, price: number)
 			fillWithSleeves(box, SleevePacket.color(index), color)
 		elseif product.stockLook == "Booster" then
 			box.Transparency = 1
-			fillWithBoosters(box, product, if stacks then stacks[index] else Town.SHELF_STOCK.BOOSTERS.PER_STACK)
+			fillWithBoosters(box, product, if stacks then stacks[index] else perPlace, perPlace)
 		elseif product.stockLook == "Bulk" then
 			box.Transparency = 1
 			fillWithBulk(box, index)
