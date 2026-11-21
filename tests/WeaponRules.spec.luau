@@ -329,14 +329,15 @@ return {
 		expect.equal(none, 0)
 	end,
 
-	["drop chance by rarity: a Rare 6% plus 2.5% a kill without one (1% plus 0.5% until 2026-11-21), a Legendary as rare as ever"] = function()
+	["drop chance by rarity: a Rare 20% plus 2.5% a kill without one, a Legendary 6% plus 0.08%"] = function()
 		local wild = W.DROP_WILD -- the Wild's bosses drop a little more often (owner 2026-11-20)
-		expect.near(WeaponRules.dropChance(W, "verdantBlade", 0), 0.06 * wild, 1e-9)
-		expect.near(WeaponRules.dropChance(W, "verdantBlade", 10), 0.31 * wild, 1e-9)
+		expect.near(WeaponRules.dropChance(W, "verdantBlade", 0), 0.2 * wild, 1e-9)
+		expect.near(WeaponRules.dropChance(W, "verdantBlade", 10), 0.45 * wild, 1e-9)
 		expect.equal(WeaponRules.dropChance(W, "verdantBlade", 500), 1)
-		-- a Legendary 0.5% plus 0.08% (0.1% plus 0.02% until 2026-11-21: "it's almoost imposible to get")
-		expect.near(WeaponRules.dropChance(W, "prismBlade", 0), 0.005, 1e-9)
-		expect.near(WeaponRules.dropChance(W, "prismBlade", 10), 0.013, 1e-9)
+		-- a Legendary 6% plus 0.08% (0.5% until the evening of 2026-11-21, 0.1% plus 0.02% before: "it's almoost
+		-- imposible to get")
+		expect.near(WeaponRules.dropChance(W, "prismBlade", 0), 0.06, 1e-9)
+		expect.near(WeaponRules.dropChance(W, "prismBlade", 10), 0.068, 1e-9)
 		expect.equal(WeaponRules.dropChance(W, "nope", 0), 0)
 		-- Median full-loot kills to a drop (6 a day at the daily soft cap): Rare ~15 (2.5 days), Legendary ~79 (13 days)
 		local function median(rarity: string): number
@@ -348,8 +349,8 @@ return {
 			until miss <= 0.5
 			return kills
 		end
-		expect.equal(median("Rare"), 6)
-		expect.equal(median("Legendary"), 37)
+		expect.equal(median("Rare"), 3)
+		expect.equal(median("Legendary"), 11)
 		assert(median("Rare") < median("Very Rare") and median("Very Rare") < median("Epic") and median("Epic") < median("Legendary"), "rarer is slower")
 	end,
 
@@ -489,16 +490,26 @@ return {
 			end
 			return wins
 		end
-		expect.equal(median("Rare"), 6, "15 before")
-		expect.equal(median("Very Rare"), 10, "25 before")
-		-- "epic/legendary weapons should still be hard to get" kept them at 50 and 79 for a few hours; then the owner on
-		-- the Tidal Trident's 0.20%: "weapon drop chance for some weapons like this is too low. it's almoost imposible to
-		-- get make it more forgiving". Still the slowest, no longer a week
-		expect.equal(median("Epic"), 22, "50 before")
-		expect.equal(median("Legendary"), 37, "79 before")
-		-- what the boss board shows on the first try: a number a player can believe in
-		assert(W.DROP.Epic.base >= 0.01, "an Epic's first chance is at least 1%")
-		assert(W.DROP.Legendary.base >= 0.005, "a Legendary's at least 0.5%")
+		-- "epic/legendary weapons should still be hard to get" kept them at 50 and 79 wins for a few hours; then the owner
+		-- on the Tidal Trident's 0.20%: "weapon drop chance for some weapons like this is too low. it's almoost imposible
+		-- to get make it more forgiving" (22 and 37); then, the same evening, "increase epic weapon drop rate to 12% then
+		-- legendaries to 6. if thats fair", with Rare and Very Rare raised so rarer is still slower (his pick). A weapon
+		-- is quick to get; the grind is its upgrade
+		expect.equal(W.DROP.Rare.base, 0.2)
+		expect.equal(W.DROP["Very Rare"].base, 0.15)
+		expect.equal(W.DROP.Epic.base, 0.12)
+		expect.equal(W.DROP.Legendary.base, 0.06)
+		expect.equal(median("Rare"), 3, "15, then 6 before")
+		expect.equal(median("Very Rare"), 4, "25, then 10 before")
+		expect.equal(median("Epic"), 6, "50, then 22 before")
+		expect.equal(median("Legendary"), 11, "79, then 37 before")
+		-- the boss board's "Drop chance now" goes down with rarity, on the first try and after any number of misses
+		for _, misses in { 0, 5, 20 } do
+			local function at(rarity: string): number
+				return W.DROP[rarity].base + W.DROP[rarity].step * misses
+			end
+			assert(at("Rare") > at("Very Rare") and at("Very Rare") > at("Epic") and at("Epic") > at("Legendary"), `rarer is slower after {misses} misses`)
+		end
 		-- upgrades: twice the materials (50 before), the same cash
 		local total = 0
 		for _, count in W.UPGRADE.material do

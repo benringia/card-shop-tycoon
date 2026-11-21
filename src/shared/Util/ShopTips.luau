@@ -32,6 +32,8 @@ function ShopTips.lines(item: Item, stock: { string }): { string }
 		return { "A machine: it holds no stock.", "Spare copies and cash raise a card's grade. Better grades sell for more." }
 	elseif kind == "Forge" then
 		return { "A machine: it holds no stock.", "Make weapons from Wild Ore and cash, then upgrade them." }
+	elseif kind == "Recycler" then
+		return { "A machine: it holds no stock.", "Extra cards from your binder become upgrade materials or coins." }
 	elseif kind == "Decor" then
 		return { `Decor +{item.decor or 0} toward your shop's rating.`, "It makes your shop cosier. Customers love a nice shop!" }
 	elseif kind == "Trophy" then

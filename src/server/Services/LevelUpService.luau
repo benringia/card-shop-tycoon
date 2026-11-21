@@ -133,11 +133,12 @@ local function onOpenBagPack(player: Player, itemId: unknown)
 		ItemService.GiveItem(player, itemId :: string, 1) -- not a pack after all: give it back
 		return
 	end
-	-- A pack from your stock (To Bag) grows your shop as ripping it from the box does: its market price in XP
+	-- A pack from your stock (To Bag) grows your shop as ripping it from the box does: its market price in XP (two
+	-- thirds of it from shop Lv 30, Levels.OPEN_XP)
 	local stock = ItemRules.stockOf(Items, itemId)
 	local product = if stock then Products.ById[stock] else nil
 	if product then
-		EconomyService.AddXP(player, LevelMath.saleXp(product.marketPrice, RegisterConfig.MIN_XP_PER_SALE))
+		EconomyService.AddXP(player, LevelMath.openXp(product.marketPrice, RegisterConfig.MIN_XP_PER_SALE, EconomyService.GetLevel(player), Levels))
 	end
 end
 
@@ -167,7 +168,8 @@ local function onOpenBagPacks(player: Player, itemId: unknown, asked: unknown)
 	local stock = ItemRules.stockOf(Items, id)
 	local product = if stock then Products.ById[stock] else nil
 	if product then
-		EconomyService.AddXP(player, LevelMath.saleXp(product.marketPrice, RegisterConfig.MIN_XP_PER_SALE) * count)
+		-- every pack of the batch at the level the batch started on
+		EconomyService.AddXP(player, LevelMath.openXp(product.marketPrice, RegisterConfig.MIN_XP_PER_SALE, EconomyService.GetLevel(player), Levels) * count)
 	end
 end
 

@@ -535,10 +535,18 @@ local function dropCell(parent: Instance, order: number, drop: Bosses.Drop, size
 	layout.Padding = UDim.new(0, 2)
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = holder
-	local chance = BossRules.chanceText(drop.chance)
-	local count = BossRules.countText(drop.min, drop.max)
+	-- a key's fragments catch up once you're at the level of the boss it opens (Bosses.KEY_CATCH_UP): the board shows
+	-- what a win gives you now
+	local opensId = if kind == "fragment" and opens then Bosses.LADDER[opens] else nil
+	local opensLevel = if opensId and Bosses.BOSSES[opensId] then Bosses.BOSSES[opensId].shopLevel else nil
+	local level = tonumber(Players.LocalPlayer:GetAttribute("Level")) or 1
+	local dropChance, dropMin, dropMax = BossRules.keyDrop(Bosses, drop, opensLevel, level)
+	local caughtUp = opensLevel ~= nil and level >= opensLevel
+	local chance = BossRules.chanceText(dropChance)
+	local count = BossRules.countText(dropMin, dropMax)
 	local odds: Line = if opened
 		then { text = "That boss is open: this won't drop any more.", color = UIKit.Colors.Subtext }
+		elseif caughtUp then { text = `Every loot win · {count} (your shop level is high enough for that boss)`, color = UIStyle.GOOD }
 		else { text = `{chance} chance a win · {count}`, color = UIStyle.GOOD }
 	itemCell(holder, 1, drop.item, size, count, { item.description, odds }, opened)
 	local label = text(holder, if opened then "-" else chance, UIKit.textSize("small") - 1, palette.good, true)

@@ -15,6 +15,7 @@ return {
 		{ id = "AccessoryHook", icon = "Shelves" },
 		{ id = "BigDisplayRack", icon = "Shelves" },
 		{ id = "BulkBin", icon = "Copies" },
+		{ id = "Recycler", icon = "Copies" },
 		{ id = "GradingStation", icon = "GradingSeal" },
 	},
 	XP_SHARE = 0.1, -- building one for the first time pays this share of its price in shop XP (the Forge: +150)

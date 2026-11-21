@@ -250,6 +250,7 @@ local function buildTile(parent: Instance, order: number, def: ShelfDef)
 		elseif def.kind == "Condenser" then "Duplicates to stars"
 		elseif def.kind == "Grading" then "Duplicates to grades"
 		elseif def.kind == "Forge" then "Make and upgrade weapons"
+		elseif def.kind == "Recycler" then "Extra cards to materials"
 		elseif def.kind == "Decor" then `Decor +{def.decor or 0}`
 		else `{def.capacity} cards, {CASE_BUYERS[def.kind]}`
 	local info = UIKit.label(tile, detail, Enum.Font.GothamBold, 13, UIKit.Colors.Subtext)
@@ -405,7 +406,7 @@ local function openEditPanel(part: BasePart)
 	removeStockRow.Visible = def.kind == "Products"
 	moveDetail.Text = if isCase
 		then "Pick a new spot. Cards stay in it."
-		elseif def.kind == "Condenser" or def.kind == "Grading" or def.kind == "Forge" or def.kind == "Trophy" or def.kind == "Decor" then "Pick a new spot."
+		elseif def.kind == "Condenser" or def.kind == "Grading" or def.kind == "Forge" or def.kind == "Recycler" or def.kind == "Trophy" or def.kind == "Decor" then "Pick a new spot."
 		else "Pick a new spot. Stock stays on it."
 	sellDetail.Text = if def.requiresItem
 		then "Put it back in your bag."
@@ -529,7 +530,7 @@ end
 -- Card cases never take stock, so they always show Edit.
 local function applyPromptMode(part: BasePart, prompts: ShelfPrompts)
 	local def = Shelves.ById[part.Name]
-	if def and (def.kind == "Condenser" or def.kind == "Grading" or def.kind == "Forge" or def.id == Bulk.SHELF) then
+	if def and (def.kind == "Condenser" or def.kind == "Grading" or def.kind == "Forge" or def.kind == "Recycler" or def.id == Bulk.SHELF) then
 		-- A machine's (or a Bulk Bin's) use prompt (E) and Edit (F) both show; Edit is offset so they don't overlap
 		prompts.stock.Enabled = true
 		prompts.edit.Enabled = true
@@ -565,14 +566,23 @@ local function addShelfPrompts(child: Instance)
 	local isGrading = def.kind == "Grading"
 	local isForge = def.kind == "Forge"
 	local isBin = def.id == Bulk.SHELF
-	-- E: stock a product shelf, open the Condenser or the Grading Station, or put your extra Commons in a Bulk Bin
-	local action = if isCondenser then "Condense" elseif isGrading then "Grade" elseif isForge then "Forge" elseif isBin then "Add extras" else "Stock shelf"
+	local isRecycler = def.kind == "Recycler"
+	-- E: stock a product shelf, open a machine's window, or put your extra Commons in a Bulk Bin
+	local action = if isCondenser then "Condense" elseif isGrading then "Grade" elseif isForge then "Forge" elseif isRecycler then "Recycle" elseif isBin then "Add extras" else "Stock shelf"
 	local stock = makePrompt(child, action, def.name, Enum.KeyCode.E)
 	stock.Triggered:Connect(function()
 		if isBin then
 			local binUid = child:GetAttribute("ShelfUid")
 			if typeof(binUid) == "string" and not PlacementController.IsActive() then
 				Remotes.FillBulkBin:FireServer(binUid) -- BulkService: the extras go in, or the locked card says why not
+			end
+			return
+		end
+		if isRecycler then
+			if not PlacementController.IsActive() then
+				-- (required here: this file's top level is near Luau's 200 locals)
+				local RecyclerController = require(Controllers:WaitForChild("RecyclerController")) :: any
+				RecyclerController.Open(child)
 			end
 			return
 		end
@@ -596,7 +606,7 @@ local function addShelfPrompts(child: Instance)
 
 	local edit = makePrompt(child, "Edit", def.name, Enum.KeyCode.F)
 	edit.GamepadKeyCode = Enum.KeyCode.ButtonY
-	if isCondenser or isGrading or isForge or isBin then
+	if isCondenser or isGrading or isForge or isRecycler or isBin then
 		edit.UIOffset = Vector2.new(0, CONDENSER_EDIT_OFFSET)
 	end
 	edit.Triggered:Connect(function()

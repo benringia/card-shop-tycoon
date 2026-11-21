@@ -74,7 +74,7 @@ export type PlayerData = {
 	items: { [string]: number }, -- itemId -> count (Config/Items)
 	pity: { legendary: number, epic: number, firstDone: boolean }, -- packs since the last Legendary / Epic or better (PackService)
 	bosses: { [string]: any }, -- bossId -> BossRules.Record (BossService)
-	stats: { packsOpened: number, customersServed: number, totalEarned: number },
+	stats: { packsOpened: number, customersServed: number, totalEarned: number, bossKills: number },
 	seenWelcome: boolean, -- saw the first-visit welcome cinematic (WelcomeService)
 	seenPrologue: boolean, -- saw the prologue (the Hydra takes it all; WelcomeService, PrologueController)
 	seenSword: boolean, -- closed the "You got your first sword!" popup (SwordService)
@@ -150,7 +150,7 @@ local TEMPLATE: PlayerData = {
 	items = {},
 	pity = { legendary = 0, epic = 0, firstDone = false },
 	bosses = {},
-	stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
+	stats = { packsOpened = 0, customersServed = 0, totalEarned = 0, bossKills = 0 },
 	seenWelcome = false,
 	seenPrologue = false, -- new saves play the prologue once (saves from before: Migrations v29)
 	seenSword = false,
@@ -414,7 +414,7 @@ function DataService.GetStat(player: Player, stat: string): number
 end
 
 -- Lifetime counters (DESIGN stats). Written straight into the profile.
-function DataService.AddStat(player: Player, stat: "packsOpened" | "customersServed" | "totalEarned", amount: number)
+function DataService.AddStat(player: Player, stat: "packsOpened" | "customersServed" | "totalEarned" | "bossKills", amount: number)
 	local profile = profiles[player]
 	if not profile or amount ~= amount then
 		return

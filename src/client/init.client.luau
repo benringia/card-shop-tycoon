@@ -99,6 +99,7 @@ local QuestController = require(Controllers:WaitForChild("QuestController"))
 local EventController = require(Controllers:WaitForChild("EventController"))
 local WelcomeBackController = require(Controllers:WaitForChild("WelcomeBackController"))
 local BulkOpenController = require(Controllers:WaitForChild("BulkOpenController"))
+local RecyclerController = require(Controllers:WaitForChild("RecyclerController"))
 local TeamController = require(Controllers:WaitForChild("TeamController"))
 local SwordController = require(Controllers:WaitForChild("SwordController"))
 local WeaponSwitchController = require(Controllers:WaitForChild("WeaponSwitchController"))
@@ -232,6 +233,7 @@ else
 	EventController.Start() -- the weekly event's chip under the quest strip (after QuestController, before Turts' chip)
 	WelcomeBackController.Start() -- what the shop sold while you were away, once the screen is free
 	BulkOpenController.Start() -- Open 10: a stack of Bag packs opened at once, the cards in a grid
+	RecyclerController.Start() -- the Recycler's window: extra cards into upgrade materials
 	BuffController.Start()
 	PartyBarController.Start()
 	CardEffectsController.Start()

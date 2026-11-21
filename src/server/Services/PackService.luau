@@ -16,6 +16,7 @@ local Cards = require(Config:WaitForChild("Cards"))
 local Packs = require(Config:WaitForChild("Packs"))
 local Pish = require(Config:WaitForChild("Pish"))
 local Products = require(Config:WaitForChild("Products"))
+local Levels = require(Config:WaitForChild("Levels"))
 local RegisterConfig = require(Config:WaitForChild("Register"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
@@ -232,10 +233,11 @@ local function onRip(player: Player)
 	local results = rollPack(pack, player)
 	applyPity(player, results)
 	deliverPack(player, productId, results)
-	-- a pack ripped from your stock grows your shop as selling it would (owner 2026-11-16): its market price in XP
+	-- a pack ripped from your stock grows your shop as selling it would (owner 2026-11-16): its market price in XP,
+	-- two thirds of it from shop Lv 30 (Levels.OPEN_XP)
 	local product = Products.ById[productId]
 	if product then
-		EconomyService.AddXP(player, LevelMath.saleXp(product.marketPrice, RegisterConfig.MIN_XP_PER_SALE))
+		EconomyService.AddXP(player, LevelMath.openXp(product.marketPrice, RegisterConfig.MIN_XP_PER_SALE, EconomyService.GetLevel(player), Levels))
 	end
 end
 

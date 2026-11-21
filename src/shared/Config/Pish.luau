@@ -71,6 +71,11 @@ return {
 		-- mayStart). He points at Jobs on the Phone, then says what jobs are inside the window (PishTalk.AFTER.jobs)
 		{ id = "jobs", level = 8, icon = "Jobs", rush = true },
 		{ id = "bulkBin", level = 10, icon = "Copies", shelf = "BulkBin", on = "placed" },
+		-- The Recycler came after launch (owner 2026-11-21: "when recycler is in game, pish will introduce it to old
+		-- players and add it to tutorial for new players"): a level lesson that walks you to it in the Shop (no `on`),
+		-- so a new player gets it on reaching Lv 12; `late`: a save already past its level gets it at its next join,
+		-- once (LessonRules.late, TutorialService)
+		{ id = "recycler", level = 12, icon = "Copies", shelf = "Recycler", late = true },
 		{ id = "grading", level = 14, icon = "GradingSeal", shelf = "GradingStation", on = "placed" },
 		{ id = "trophy", icon = "Trophy", trigger = "trophy" },
 		{ id = "titles", icon = "Trophy", trigger = "title" }, -- the first title earned: how to equip it (owner 2026-11-13)
@@ -81,7 +86,7 @@ return {
 		-- pish should appear and talk to them about the healing spring. with an option to skip it ofcourse"): one line,
 		-- his paws to the spring, Got it! to send him off (BattleService.OnFainted, CombatTutorialService)
 		{ id = "spring", icon = "Heart", trigger = "faint" },
-	} :: { { id: string, level: number?, icon: string, shelf: string?, product: string?, trigger: string?, on: string?, rush: boolean? } },
+	} :: { { id: string, level: number?, icon: string, shelf: string?, product: string?, trigger: string?, on: string?, rush: boolean?, late: boolean? } },
 	-- The stuck helper: in a player's first `firstSeconds` of play, after `quiet` seconds without progress, at most
 	-- once per `gap` seconds
 	STUCK = { firstSeconds = 3600, quiet = 60, gap = 120 },

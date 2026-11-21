@@ -231,6 +231,17 @@ function BossRules.nextWeaponPity(pity: number, rolled: boolean, given: boolean)
 	return if rolled and given then 0 else pity + 1
 end
 
+-- A loot drop's chance and count for a player at shop `level`. A key fragment (`opensLevel`: the shop level of the
+-- boss it opens; nil for anything else) catches up once the player is at that level: every loot win, KEY_CATCH_UP.count
+-- at a time, never worse than the boss's own table
+function BossRules.keyDrop(config: { KEY_CATCH_UP: { chance: number, count: number } }, drop: { chance: number, min: number, max: number }, opensLevel: number?, level: number): (number, number, number)
+	if not opensLevel or level < opensLevel then
+		return drop.chance, drop.min, drop.max
+	end
+	local catchUp = config.KEY_CATCH_UP
+	return math.max(drop.chance, catchUp.chance), math.max(drop.min, catchUp.count), math.max(drop.max, catchUp.count)
+end
+
 function BossRules.carriedDrop(config: GroupConfig, _item: string, chance: number, isFragment: boolean): number
 	return if isFragment then 0 else chance * config.CARRIED_FACTOR
 end

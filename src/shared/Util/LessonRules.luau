@@ -1,7 +1,7 @@
 --!strict
 -- Pish's lesson visits and the stuck helper (spec 2026-11-09-tutorial-pish-design 8, 16). Pure: `lessons` is
 -- Config/Pish LESSONS, `cfg` its STUCK.
-export type Lesson = { id: string, level: number?, icon: string, shelf: string?, product: string?, trigger: string?, on: string?, rush: boolean? }
+export type Lesson = { id: string, level: number?, icon: string, shelf: string?, product: string?, trigger: string?, on: string?, rush: boolean?, late: boolean? }
 export type Facts = {
 	played: number, -- seconds of play so far
 	quiet: number, -- seconds since the last order, restock, sale or pack
@@ -112,6 +112,15 @@ function LessonRules.due(lessons: { Lesson }, fromLevel: number, toLevel: number
 	return inLevelOrder(lessons, function(lesson)
 		local level = lesson.level
 		return lesson.on == nil and level ~= nil and level > fromLevel and level <= toLevel and seen[lesson.id] == nil
+	end)
+end
+
+-- The lessons of things added after launch (`late`: the Recycler) that a save at shop `level` is already past and
+-- never heard of (owner 2026-11-21: "pish will introduce it to old players"): they wait to be shown from its next
+-- join, like a level-up's. Not seen (true) nor waiting (false) ones; other lessons never come for old unlocks.
+function LessonRules.late(lessons: { Lesson }, level: number, seen: { [string]: boolean }): { string }
+	return inLevelOrder(lessons, function(lesson)
+		return lesson.late == true and lesson.level ~= nil and lesson.level <= level and seen[lesson.id] == nil
 	end)
 end
 

@@ -443,6 +443,8 @@ local function onBossWin(player: Player, monster: WildService.Monster, fight: { 
 	local today = BossRules.dayNumber(now)
 	local record = byBoss[bossId]
 	local carried = not fight.contributed
+	-- every boss win counts for the plaza's boss kills list (owner 2026-11-21: "Every win"; LeaderboardService)
+	DataService.AddStat(player, "bossKills", 1)
 	-- fullPay: a loot win (or the first clear), paid in full; otherwise BattleService pays `payShare` of the cash
 	local result: { [string]: any } = { bossId = bossId, items = {}, firstClear = false, bonus = false, lootIn = 0, carried = carried, fullPay = false, payShare = Bosses.REPEAT_PAY }
 
@@ -478,12 +480,15 @@ local function onBossWin(player: Player, monster: WildService.Monster, fight: { 
 			if chests and drop.item == material then
 				continue
 			end
-			local chance = drop.chance
+			-- a key's fragments catch up once the player is at the level of the boss it opens (Bosses.KEY_CATCH_UP)
+			local opens = opensBoss[drop.item]
+			local opensLevel = if opens then Bosses.BOSSES[opens].shopLevel else nil
+			local chance, min, max = BossRules.keyDrop(Bosses, drop, opensLevel, EconomyService.GetLevel(player))
 			if carried then
-				chance = BossRules.carriedDrop(Bosses, drop.item, chance, opensBoss[drop.item] ~= nil)
+				chance = BossRules.carriedDrop(Bosses, drop.item, chance, opens ~= nil)
 			end
 			if wanted(byBoss, drop.item) and rng:NextNumber() < chance then
-				table.insert(drops, { item = drop.item, count = rng:NextInteger(drop.min, drop.max) })
+				table.insert(drops, { item = drop.item, count = rng:NextInteger(min, max) })
 			end
 		end
 		grant(player, drops, result.items)

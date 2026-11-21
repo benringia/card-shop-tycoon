@@ -18,6 +18,7 @@ local Items = require(Shared:WaitForChild("Config"):WaitForChild("Items"))
 local Pish = require(Shared:WaitForChild("Config"):WaitForChild("Pish"))
 local Products = require(Shared:WaitForChild("Config"):WaitForChild("Products"))
 local Shelves = require(Shared:WaitForChild("Config"):WaitForChild("Shelves"))
+local LevelRules = require(Shared:WaitForChild("Util"):WaitForChild("LevelRules"))
 local LessonRules = require(Shared:WaitForChild("Util"):WaitForChild("LessonRules"))
 local TutorialRules = require(Shared:WaitForChild("Util"):WaitForChild("TutorialRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -383,6 +384,12 @@ local function load(player: Player, data: DataService.PlayerData)
 	end
 	if state.firstVisit == "todo" then
 		newcomers[player] = os.clock()
+	end
+	-- a thing added after launch (the Recycler, owner 2026-11-21: "pish will introduce it to old players"): a save
+	-- already past its level never levels up into its lesson, so it waits from this join on, once
+	local level = LevelRules.getLevelForXp(if typeof(data.xp) == "number" then math.floor(data.xp) else 0)
+	for _, id in LessonRules.late(Pish.LESSONS, level, state.lessons) do
+		state.lessons[id] = false
 	end
 	publish(player)
 	begin(player)

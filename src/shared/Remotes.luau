@@ -14,6 +14,8 @@ local NAMES = {
 	"SellShelf", -- client → server: (uid: string)
 	"StockShelf", -- client → server: (uid: string) put the carried box's units on this shelf
 	"FillBulkBin", -- client → server: (uid: string) put the binder's extra Commons in this Bulk Bin (BulkService)
+	"Recycle", -- client → server: (uid: string, rarity: string?, mode: "materials" | "coins") put this rarity's extra cards (nil: every rarity's) in this Recycler, for materials or for coins (RecyclerService)
+	"Recycled", -- server → client: ({ { item: string, count: number } }, cash: number) what a finished conversion made
 	"SetPrices", -- client → server: ({ [productId: string]: number })
 	"CheckoutUpdate", -- server → client: (total: number?, remaining: number, lines: { { name, price, done, product?, card? } }?) nil total = checkout over
 	"RegisterBell", -- server → client: (ring: number) a customer waits at your register with nobody there (Config/RegisterBell)
@@ -222,6 +224,8 @@ return {
 	SellShelf = remotes.SellShelf,
 	StockShelf = remotes.StockShelf,
 	FillBulkBin = remotes.FillBulkBin,
+	Recycle = remotes.Recycle,
+	Recycled = remotes.Recycled,
 	SetPrices = remotes.SetPrices,
 	CheckoutUpdate = remotes.CheckoutUpdate,
 	PaymentStart = remotes.PaymentStart,

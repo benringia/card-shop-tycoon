@@ -7,10 +7,11 @@
 --   kind "Condenser":     a machine that combines duplicate cards for stars (holds nothing)
 --   kind "Grading":       the Grading Station, a machine that raises a card's grade (holds nothing)
 --   kind "Forge":         the Forge, a machine that makes, upgrades and reforges weapons (holds nothing)
+--   kind "Recycler":      the Recycler, a machine that turns extra cards into upgrade materials (holds nothing)
 --   kind "Trophy":        a boss trophy (holds nothing): placing it takes its trophy item, selling gives it back
 --   kind "Decor":         a shop decoration (holds nothing; spec 2026-11-14-shop-decor-design): its own cap
 --                         (Placement.MAX_DECOR_PER_PLOT), `decor` points toward the rating (Config/Decor)
-export type ShelfKind = "Products" | "CustomerCards" | "PlayerCards" | "Condenser" | "Grading" | "Forge" | "Trophy" | "Decor"
+export type ShelfKind = "Products" | "CustomerCards" | "PlayerCards" | "Condenser" | "Grading" | "Forge" | "Recycler" | "Trophy" | "Decor"
 
 export type Shelf = {
 	id: string,
@@ -117,6 +118,20 @@ local List: { Shelf } = {
 		unlockLevel = 6,
 		size = Vector3.new(6, 6, 6),
 		color = Color3.fromRGB(235, 120, 60),
+	},
+	{
+		-- The Recycler (Config/Recycler, RecyclerService; owner 2026-11-21): extra Rares, Very Rares, Epics and
+		-- Legendaries from your binder become Wild Ore, XP Tonics and Star Shards
+		id = "Recycler",
+		prop = "Recycler",
+		name = "Recycler",
+		kind = "Recycler",
+		category = "Fixtures", -- Build menu tab
+		capacity = 0,
+		cost = 800,
+		unlockLevel = 12,
+		size = Vector3.new(6, 6, 6),
+		color = Color3.fromRGB(80, 220, 130),
 	},
 	{
 		id = "trophy_meadowWarden",

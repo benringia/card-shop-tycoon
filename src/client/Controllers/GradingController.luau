@@ -18,6 +18,7 @@ local Early = require(Config:WaitForChild("Early"))
 local EarlyRules = require(Shared:WaitForChild("Util"):WaitForChild("EarlyRules"))
 local Beasts = require(Config:WaitForChild("Beasts"))
 local Cards = require(Config:WaitForChild("Cards"))
+local CardDesign = require(Config:WaitForChild("CardDesign"))
 local GradingConfig = require(Config:WaitForChild("Grading"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CondenseRules = require(Shared:WaitForChild("Util"):WaitForChild("CondenseRules"))
@@ -44,7 +45,6 @@ type Candidate = { key: string, beast: Beast?, foil: boolean, grade: string, lev
 local PANEL_MAX_SIZE = Vector2.new(820, 520)
 local LIST_WIDTH_SCALE = 0.5
 local ROW_HEIGHT = 64
-local MAIN_ROW_HEIGHT = 48 -- tap target minimum
 local THUMBNAIL_SIZE = Vector2.new(40, 56)
 local DETAIL_FACE_SIZE = Vector2.new(96, 137)
 local DISTANCE_CHECK_SECONDS = 0.5
@@ -83,7 +83,7 @@ local inFlightToken = 0
 local useSeals = false -- Grading Seals fill missing duplicates (up to half a step)
 local sealCount = 0 -- from ItemsChanged
 local useGold = false -- a Gold Seal pays the step's cash (not a Legendary's A to S)
-local choosingMain = false -- Keep a different copy: the copies show in place of the recipe
+local choosingMain = false -- Pick a different card: the copies show in place of the recipe
 local goldCount = 0
 
 local function clear(container: Instance)
@@ -260,7 +260,8 @@ local function renderPane(card: Card?)
 	local canGrade = plan ~= nil and affordable and not inFlight
 
 	-- one sentence: what will happen
-	local sentence = if choosingMain then "Which copy do you want to grade? Tap it." else CondenseRules.gradeSay({ name = card.name, grade = nextGrade, copies = copiesIn, seals = sealsIn, cash = formatCash(price), missing = missing, gold = goldPays })
+	local pickSay, pickSub = CondenseRules.pickSay(card.name, "grade")
+	local sentence = if choosingMain then pickSay else CondenseRules.gradeSay({ name = card.name, grade = nextGrade, copies = copiesIn, seals = sealsIn, cash = formatCash(price), missing = missing, gold = goldPays })
 	local say = UIKit.label(pane, sentence, Enum.Font.FredokaOne, if phone then 13 else 16, palette.ink)
 	say.Name = "Say"
 	say.Position = UDim2.fromOffset(10, 6)
@@ -269,39 +270,50 @@ local function renderPane(card: Card?)
 	say.TextXAlignment = Enum.TextXAlignment.Center
 
 	local y = sayTop
-	-- Keep a different copy: the copies that could be graded, in place of the recipe
+	-- Pick a different card: every copy that could be graded as a picture, in place of the recipe
 	if choosingMain then
+		local tiles: { Recipe.CopyTile } = {}
 		for _, candidate in candidates do
-			local row = Instance.new("TextButton")
-			row.Position = UDim2.fromOffset(8, y)
-			row.Size = UDim2.new(1, -16, 0, MAIN_ROW_HEIGHT)
-			row.BackgroundColor3 = palette.row
-			row.Text = ""
-			row.Parent = pane
-			UIKit.corner(row, 10)
-			UIKit.outline(row, if candidate.key == chosen.key then UIKit.Colors.Accent else palette.rowEdge, 2)
-			local title = `{if candidate.foil then "FOIL · " else ""}{BeastRules.describeGrade(candidate.grade)} · {BeastRules.describeGrowth(candidate.level, candidate.stars)}`
-			if not candidate.beast then
-				title ..= ` · x{candidate.count}`
-			end
-			addLabel(row, title, UDim2.fromOffset(10, 0), UDim2.new(1, -100, 1, 0), Enum.Font.GothamBold, 13, palette.ink)
-			local power = addLabel(row, `Power {candidate.power}`, UDim2.new(1, -94, 0, 0), UDim2.new(0, 86, 1, 0), Enum.Font.GothamBold, 12, palette.power)
-			power.TextXAlignment = Enum.TextXAlignment.Right
-			row.Activated:Connect(function()
-				mainKey = candidate.key
+			local upTo = CondenseRules.nextGrade(Beasts.GRADES, candidate.grade)
+			local cost = if upTo then CondenseRules.gradeStepCost(GradingConfig, card.rarity, upTo) else nil
+			local owned = CondenseRules.gradeHave(Beasts, byGrade, { beast = candidate.beast ~= nil, foil = candidate.foil, grade = candidate.grade, stars = candidate.stars })
+			local cashOk = cost == nil or cash >= cost.cash
+			local tagText, tagKind = CondenseRules.gradeRowTag(owned, if cost then cost.copies else 0, upTo, (getPlan(card, candidate)) ~= nil and cashOk, cashOk)
+			table.insert(tiles, {
+				key = candidate.key,
+				grade = BeastRules.describeGrade(candidate.grade),
+				gradeColor = CardDesign.GRADE_COLORS[candidate.grade] or CardDesign.GRADE_COLORS.C,
+				foil = candidate.foil,
+				label = CondenseRules.copyLabel({ beast = candidate.beast ~= nil, level = candidate.level, count = candidate.count }),
+				stars = candidate.stars,
+				tag = tagText,
+				gold = tagKind == "ready",
+				chosen = candidate.key == chosen.key,
+				draw = function(holder: Frame)
+					makeFace(holder, card, candidate.foil, false, { level = candidate.level, stars = candidate.stars, grade = candidate.grade })
+				end,
+			})
+		end
+		Recipe.copyPicker(pane, {
+			panel = panel,
+			y = y,
+			edge = SIDE,
+			face = PHONE_FACE,
+			maxStars = BeastRules.MAX_STARS,
+			palette = palette,
+			sub = pickSub,
+			tiles = tiles,
+			columnsFor = CondenseRules.pickColumns,
+			onPick = function(key: string)
+				mainKey = key
 				choosingMain = false
 				render()
-			end)
-			y += MAIN_ROW_HEIGHT + 6
-		end
-		local back = UIKit.button(pane, "Back", UIKit.Colors.Secondary)
-		back.AnchorPoint = Vector2.new(0.5, 0)
-		back.Position = UDim2.new(0.5, 0, 0, y + 4)
-		back.Size = UDim2.fromOffset(160, 48)
-		back.Activated:Connect(function()
-			choosingMain = false
-			render()
-		end)
+			end,
+			onBack = function()
+				choosingMain = false
+				render()
+			end,
+		})
 		return
 	end
 
@@ -525,21 +537,10 @@ local function renderPane(card: Card?)
 		y += RECIPE.button + 8
 	end
 
-	-- for players who mind which copy is graded (its level, its stars): a small link
+	-- which copy is graded (its level, its stars): a chip to the copies' pictures
 	if #candidates > 1 then
-		local change = Instance.new("TextButton")
-		change.Name = "Change"
-		change.AnchorPoint = Vector2.new(0.5, 0)
-		change.Position = UDim2.new(0.5, 0, 0, y)
-		change.Size = UDim2.fromOffset(220, 44)
-		change.BackgroundTransparency = 1
-		change.Font = Enum.Font.GothamBold
-		change.TextSize = 13
-		change.RichText = true
-		change.Text = "<u>Keep a different copy</u>"
-		change.TextColor3 = palette.hint
-		change.Parent = pane
-		change.Activated:Connect(function()
+		local chipTitle, chipSub = CondenseRules.pickChip(#candidates)
+		Recipe.pickChip(pane, y, palette, chipTitle, chipSub, function()
 			choosingMain = true
 			render()
 		end)

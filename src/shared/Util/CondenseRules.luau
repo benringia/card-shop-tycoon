@@ -3,7 +3,8 @@
 -- shared by the client previews and the server.
 -- Pure (no requires, no Roblox APIs): callers pass Config/Beasts (and Config/Grading) in, so tests/ can run it in Lune.
 -- Rule: plain copies of the same card only; all normal copies weakest grade first, then foil copies
--- weakest grade first. A plain main copy is set aside first and is not a duplicate.
+-- weakest grade first. A plain main copy is set aside first and is not a duplicate. A copy better than the card that
+-- gets the star or the grade is never used up (the Grading Station since 2026-11-20, the Condenser since 2026-11-21).
 local CondenseRules = {}
 
 export type Counts = { normal: number, foil: number }
@@ -36,16 +37,9 @@ local function eachStack(grades: { string }, visit: (grade: string, foil: boolea
 	end
 end
 
-function CondenseRules.countDuplicates(byGrade: { [string]: any }, main: Main, config: Config?): number
-	local total = 0
-	eachStack(if config then config.GRADES else DEFAULT_GRADES, function(grade, foil)
-		total += available(byGrade, grade, foil, main)
-	end)
-	return total
-end
-
--- The grades a grade-up may use copies of: the main copy's own and the ones under it. A copy better than the card
--- being graded is never used up (owner 2026-11-20: a step to Grade B listed a Grade S spare among its copies)
+-- The grades a star or a grade-up may use copies of: the main copy's own and the ones under it. A copy better than the
+-- card it goes into is never used up (owner 2026-11-20: a step to Grade B listed a Grade S spare among its copies;
+-- 2026-11-21: "condenser never uses better copies")
 local function noBetter(grades: { string }, main: Main): { string }
 	local top = table.find(grades, main.grade) or #grades
 	local list: { string } = {}
@@ -53,6 +47,27 @@ local function noBetter(grades: { string }, main: Main): { string }
 		list[index] = grades[index]
 	end
 	return list
+end
+
+-- The duplicates a star may use for this main copy: the plain copies no better than it
+function CondenseRules.countDuplicates(byGrade: { [string]: any }, main: Main, config: Config?): number
+	local total = 0
+	eachStack(noBetter(if config then config.GRADES else DEFAULT_GRADES, main), function(grade, foil)
+		total += available(byGrade, grade, foil, main)
+	end)
+	return total
+end
+
+-- The plain copies better than this main copy: never used up, so the window can say they're safe
+function CondenseRules.betterCopies(byGrade: { [string]: any }, main: Main, config: Config?): number
+	local grades = if config then config.GRADES else DEFAULT_GRADES
+	local total = 0
+	for index = (table.find(grades, main.grade) or #grades) + 1, #grades do
+		for _, foil in { false, true } do
+			total += available(byGrade, grades[index], foil, main)
+		end
+	end
+	return total
 end
 
 -- The copies to take for the next star, or nil and a reason: "max" or "short:<have>:<need>". With shards,
@@ -69,7 +84,7 @@ function CondenseRules.plan(config: Config, byGrade: { [string]: any }, main: Ma
 	if have + used < need then
 		return nil, `short:{have}:{need}`, 0
 	end
-	return CondenseRules.pick(config.GRADES, byGrade, main, need - used), nil, used
+	return CondenseRules.pick(noBetter(config.GRADES, main), byGrade, main, need - used), nil, used
 end
 
 -- The first `count` duplicates in the order they're used (normals weakest grade first, then foils), never the plain
@@ -87,23 +102,63 @@ function CondenseRules.pick(grades: { string }, byGrade: { [string]: any }, main
 	return takes
 end
 
--- Main copy choices in default order: levelled cards first (the card you've been raising), then plain
--- foil, then plain normal; strongest first inside each group. Sorts in place.
-export type MainChoice = { key: string, beast: any, foil: boolean, power: number } -- beast: truthy for a levelled card
+-- Main copy choices in default order: levelled cards first (the card you've been raising), then plain ones; inside
+-- each the best grade first (owner 2026-11-21: "sort by grade": a foil Grade C stood before a plain Grade A), then a
+-- foil before a plain copy of its grade, then the strongest. Sorts in place.
+export type MainChoice = { key: string, beast: any, foil: boolean, grade: string, power: number } -- beast: truthy for a levelled card
+
+local GRADE_RANK = { S = 4, A = 3, B = 2, C = 1 }
 
 function CondenseRules.sortMainChoices<T>(choices: { T & MainChoice })
-	local function group(choice: MainChoice): number
-		return if choice.beast then 1 elseif choice.foil then 2 else 3
-	end
 	table.sort(choices, function(a, b)
-		if group(a) ~= group(b) then
-			return group(a) < group(b)
+		local levelledA, levelledB = a.beast and true or false, b.beast and true or false
+		if levelledA ~= levelledB then
+			return levelledA
+		end
+		local rankA, rankB = GRADE_RANK[a.grade] or 0, GRADE_RANK[b.grade] or 0
+		if rankA ~= rankB then
+			return rankA > rankB
+		end
+		if a.foil ~= b.foil then
+			return a.foil
 		end
 		if a.power ~= b.power then
 			return a.power > b.power
 		end
 		return a.key < b.key
 	end)
+end
+
+-- The copy picker (owner 2026-11-21: "Keep a different card is so confusing. can we change wording or anything to make
+-- it more understandable. also the next window make it more understandable"): a chip under the big button that says
+-- what it does, and the copies as pictures with a few plain words.
+
+-- The chip's words: `count` copies to choose from
+function CondenseRules.pickChip(count: number): (string, string)
+	return "Pick a different card", `you have {count} to choose from`
+end
+
+-- The picker's sentence and its small line; `what`: "star" (the Condenser) or "grade" (the Grading Station)
+function CondenseRules.pickSay(name: string, what: string): (string, string)
+	return `Which {name} gets the {what}?`, "Tap the one you want. Better ones are never used up."
+end
+
+-- Under a copy's picture: a levelled card's level, or how many plain ones there are (a foil wears its own tag)
+function CondenseRules.copyLabel(view: { beast: boolean, level: number, count: number }): string
+	return if view.beast then `Lv {view.level}` else `You have {view.count}`
+end
+
+-- The Condenser's line when copies are missing and better ones were left out; nil with none
+function CondenseRules.safeWords(better: number): string?
+	if better <= 0 then
+		return nil
+	end
+	return if better == 1 then "Your 1 better copy stays safe: it is never squished." else `Your {better} better copies stay safe: they are never squished.`
+end
+
+-- How many copies stand in a row of the picker: `tile` wide each, `gap` apart, in `width`
+function CondenseRules.pickColumns(width: number, tile: number, gap: number): number
+	return math.max(1, math.floor((width + gap) / (tile + gap)))
 end
 
 -- After condensing a plain main: the levelled card it became (an ID that wasn't there before, same card,

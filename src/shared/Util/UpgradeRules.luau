@@ -15,9 +15,14 @@ export type Job = {
 	weaponId: string?,
 	grade: string?,
 	level: number?,
+	-- the Recycler's (kind "recycle"): no item inside, what it gives when its time is up
+	gains: { { item: string, count: number } }?,
+	cash: number?,
 }
 
-local KINDS = { star = "card", grade = "card", level = "weapon", reforge = "weapon", craft = "weapon" }
+local KINDS = { star = "card", grade = "card", level = "weapon", reforge = "weapon", craft = "weapon", recycle = "bundle" }
+local MAX_GAIN = 9999 -- of one item in a Recycler's job (a Bag stack's most)
+local MAX_CASH = 1000000 -- in a Recycler's job: past it the job is junk
 local GRADES = { C = true, B = true, A = true, S = true }
 local MAX_SPAN = 3600 * 3 -- seconds: a saved job longer than this is junk (the longest wait is Upgrades.MAX_WAIT, 2 h)
 
@@ -117,6 +122,25 @@ function UpgradeRules.readJob(raw: any, cards: any, weapons: any): Job?
 		return nil
 	end
 	local job: Job = { kind = raw.kind, startedAt = startedAt, finishAt = finishAt }
+	-- the Recycler's job: its good lines kept (one bad line never loses the rest), never an item with it
+	if KINDS[raw.kind] == "bundle" then
+		if raw.beast ~= nil or raw.plain ~= nil or raw.weaponId ~= nil then
+			return nil
+		end
+		local gains = {}
+		for _, gain in if typeof(raw.gains) == "table" then raw.gains else {} do
+			if typeof(gain) == "table" and typeof(gain.item) == "string" and typeof(gain.count) == "number" and gain.count == gain.count and gain.count >= 1 then
+				table.insert(gains, { item = gain.item, count = math.min(math.floor(gain.count), MAX_GAIN) })
+			end
+		end
+		local cash = raw.cash
+		local paid = if typeof(cash) == "number" and cash == cash and cash > 0 and cash <= MAX_CASH then math.round(cash * 100) / 100 else 0
+		if #gains == 0 and paid <= 0 then
+			return nil
+		end
+		job.gains, job.cash = gains, paid
+		return job
+	end
 	local items = 0
 	local beast = raw.beast
 	if beast ~= nil then

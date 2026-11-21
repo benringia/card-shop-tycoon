@@ -1,7 +1,8 @@
 --!strict
 -- Timed station upgrades (owner 2026-11-12: "forge, condenser, and grading station should have a waiting time on
 -- upgrades, the higher the upgrade the longer wait time. also with an option to pay robux for instant upgrade"; spec
--- 2026-11-12-timed-upgrades-revive-design). Each station (Condenser, Grading Station, Forge) holds one job at a time:
+-- 2026-11-12-timed-upgrades-revive-design). Each station (Condenser, Grading Station, Forge, and the Recycler, whose job
+-- holds no item: the materials or cash it is making, given when its time is up) holds one job at a time:
 -- the upgraded item waits inside (a levelled card lifted out of the collection, a plain copy taken off its stack, a
 -- weapon locked in the Forge or not made yet) until its time is up, then comes back on its own with a toast, also for
 -- time spent away (finished on the next load). "Finish now" (Robux SkipS / SkipM / SkipL, PurchaseService) ends the job
@@ -13,6 +14,8 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local Upgrades = require(Config:WaitForChild("Upgrades"))
+local Recycler = require(Config:WaitForChild("Recycler"))
+local RecycleRules = require(Shared:WaitForChild("Util"):WaitForChild("RecycleRules"))
 local Weapons = require(Config:WaitForChild("Weapons"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local UpgradeRules = require(Shared:WaitForChild("Util"):WaitForChild("UpgradeRules"))
@@ -22,6 +25,8 @@ local Services = script.Parent :: Instance
 local ServerUtil = (Services.Parent :: Instance):WaitForChild("Util")
 local DataService = require(Services:WaitForChild("DataService"))
 local CardService = require(Services:WaitForChild("CardService"))
+local ItemService = require(Services:WaitForChild("ItemService"))
+local EconomyService = require(Services:WaitForChild("EconomyService"))
 local WeaponService = require(Services:WaitForChild("WeaponService"))
 local PurchaseService = require(Services:WaitForChild("PurchaseService"))
 local RateLimiter = require(ServerUtil:WaitForChild("RateLimiter"))
@@ -32,7 +37,7 @@ type Tokens = { S: number, M: number, L: number }
 
 local UpgradeJobService = {}
 
-local STATIONS = { "condenser", "grading", "forge" }
+local STATIONS = { "condenser", "grading", "forge", "recycler" }
 local SKIP_INTENT_SECONDS = 120 -- how long a "Finish now" press keeps pointing at its station while the purchase runs
 
 local jobs: { [Player]: { [string]: Job } } = {} -- loaded players only
@@ -49,7 +54,9 @@ end
 
 -- What's inside: its name, and what it's becoming (a reforge's grade stays a surprise till it's done)
 local function describe(job: Job): (string, string)
-	if job.beast then
+	if job.kind == "recycle" then
+		return "Extra cards", RecycleRules.makes(Recycler, job.gains or {}, job.cash)
+	elseif job.beast then
 		local card = Cards.ById[job.beast.cardId]
 		local detail = if job.kind == "star" then BeastRules.describeGrowth(job.beast.level, job.beast.stars) else `Grade {job.beast.grade}`
 		return if card then card.name else "A card", detail
@@ -80,7 +87,22 @@ end
 -- Gives the (upgraded) item back; the toast's words (nil for a weapon: the Forge window tells it, ForgeController)
 local function giveBack(player: Player, job: Job): string?
 	local name, detail = describe(job)
-	if job.beast then
+	if job.kind == "recycle" then
+		-- the Recycler's job: what it made goes to the Bag and the wallet (cash only through EconomyService)
+		local gains = job.gains or {}
+		for _, gain in gains do
+			local added = ItemService.GiveItem(player, gain.item, gain.count)
+			if added < gain.count then
+				warn(`[UpgradeJobService] {player.Name}: {gain.count - added} {gain.item} from the Recycler had no room`)
+			end
+		end
+		local cash = job.cash or 0
+		if cash > 0 then
+			EconomyService.AddCash(player, cash)
+		end
+		Remotes.Recycled:FireClient(player, gains, cash)
+		return `Your Recycler is done! {RecycleRules.doneWords(Recycler, gains, cash)}`
+	elseif job.beast then
 		CardService.AddBeast(player, job.beast)
 	elseif job.plain then
 		CardService.GiveCard(player, job.plain.cardId, job.plain.foil, job.plain.grade)

@@ -73,7 +73,7 @@ local function required(level: number): number
 	return LevelMath.getRequiredXp(Levels, level)
 end
 
-local ALL = { "GlassShowcase", "CollectorCase", "WallShelf", "Condenser", "Forge", "AccessoryHook", "BigDisplayRack", "BulkBin", "GradingStation" }
+local ALL = { "GlassShowcase", "CollectorCase", "WallShelf", "Condenser", "Forge", "AccessoryHook", "BigDisplayRack", "BulkBin", "Recycler", "GradingStation" }
 
 local function state(over: { [string]: any }): MainQuestRules.State
 	local base: any = {

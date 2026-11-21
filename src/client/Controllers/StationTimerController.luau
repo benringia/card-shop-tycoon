@@ -17,7 +17,7 @@ local StationJobs = require(ClientUtil:WaitForChild("StationJobs"))
 
 local StationTimerController = {}
 
-local STATION_OF = { Condenser = "condenser", GradingStation = "grading", Forge = "forge" } -- machine name -> station
+local STATION_OF = { Condenser = "condenser", GradingStation = "grading", Forge = "forge", Recycler = "recycler" } -- machine name -> station
 local TAG = { width = 96, height = 34, up = 4.5, maxDistance = 70 }
 local INK = Color3.fromRGB(80, 60, 90)
 local READY_INK = Color3.fromRGB(196, 122, 0)

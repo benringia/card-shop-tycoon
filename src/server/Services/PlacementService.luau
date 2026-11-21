@@ -145,9 +145,9 @@ local function isForge(def: ShelfDef): boolean
 	return def.kind == "Forge"
 end
 
--- Machines (the Condenser, the Grading Station, the Forge) hold nothing and are only used by their owner
+-- Machines (the Condenser, the Grading Station, the Forge, the Recycler) hold nothing and are only used by their owner
 local function isMachine(def: ShelfDef): boolean
-	return isCondenser(def) or isGradingStation(def) or isForge(def)
+	return isCondenser(def) or isGradingStation(def) or isForge(def) or def.kind == "Recycler"
 end
 
 -- Boss trophies: decorations placed from a trophy item (Config/Shelves requiresItem)

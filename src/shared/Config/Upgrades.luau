@@ -44,5 +44,6 @@ return {
 	-- What says "Ready!" over a machine (StationTimerController): the player attribute a finished job leaves
 	READY_ATTRIBUTES = { condenser = "CondenserDone", grading = "GradingDone", forge = "ForgeDone" },
 	TIERS = { { name = "S", upTo = 300 }, { name = "M", upTo = 1200 }, { name = "L", upTo = 3600 } },
-	STATIONS = { condenser = "Condenser", grading = "Grading Station", forge = "Forge" },
+	-- the Recycler's jobs hold no item: what it is making, given when its time is up (Config/Recycler SECONDS)
+	STATIONS = { condenser = "Condenser", grading = "Grading Station", forge = "Forge", recycler = "Recycler" },
 }

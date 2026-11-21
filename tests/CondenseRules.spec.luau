@@ -95,20 +95,78 @@ return {
 		expect.equal(reason, "max", "reason")
 	end,
 
-	["default main: levelled first, then plain foil, then plain normal"] = function()
+	-- owner 2026-11-21: "sort by grade" (a foil Grade C stood before a plain Grade A)
+	["default copy: levelled cards first, then plain ones; in each the best grade first, a foil before a plain of its grade"] = function()
 		local copies = {
-			{ key = "plainSfoil", beast = false, foil = true, power = 300 },
-			{ key = "plainC", beast = false, foil = false, power = 200 },
-			{ key = "lv1", beast = true, foil = false, power = 230 },
-			{ key = "lv8", beast = true, foil = false, power = 400 },
-			{ key = "plainBfoil", beast = false, foil = true, power = 250 },
+			{ key = "foilC", beast = false, foil = true, grade = "C", power = 311 },
+			{ key = "plainA", beast = false, foil = false, grade = "A", power = 312 },
+			{ key = "plainB", beast = false, foil = false, grade = "B", power = 304 },
+			{ key = "plainC", beast = false, foil = false, grade = "C", power = 295 },
+			{ key = "foilA", beast = false, foil = true, grade = "A", power = 330 },
+			{ key = "lvB", beast = true, foil = false, grade = "B", power = 900 },
+			{ key = "lvS", beast = true, foil = false, grade = "S", power = 400 },
+			{ key = "lvSweak", beast = true, foil = false, grade = "S", power = 380 },
 		}
 		CondenseRules.sortMainChoices(copies)
 		local order = {}
 		for _, copy in copies do
 			table.insert(order, copy.key)
 		end
-		expect.equal(table.concat(order, ","), "lv8,lv1,plainSfoil,plainBfoil,plainC", "order")
+		expect.equal(table.concat(order, ","), "lvS,lvSweak,lvB,foilA,plainA,plainB,foilC,plainC", "order")
+	end,
+
+	-- owner 2026-11-21: "condenser never uses better copies"
+	["a star never uses up a copy better than the card that gets it"] = function()
+		local pal = { beast = true, foil = false, grade = "B", stars = 0 } -- needs 4
+		local takes = CondenseRules.plan(config, { C = counts(2, 1), B = counts(1, 0), A = counts(3, 0), S = counts(5, 5) }, pal)
+		assert(takes, "C, C, B and the foil C")
+		expect.equal(total(takes), 4)
+		for _, take in takes do
+			assert(take.grade == "C" or take.grade == "B", `never a Grade {take.grade}`)
+		end
+		-- not enough without the better ones: short, however many of those there are
+		local none, reason = CondenseRules.plan(config, { C = counts(2, 0), B = counts(1, 0), S = counts(9, 0) }, pal)
+		expect.isNil(none)
+		expect.equal(reason, "short:3:4")
+		expect.equal(CondenseRules.countDuplicates({ C = counts(2, 0), B = counts(1, 0), S = counts(9, 0) }, pal, config), 3)
+		-- Star Shards fill only what the usable copies leave
+		local withShards, _, used = CondenseRules.plan(config, { C = counts(2, 0), B = counts(1, 0), S = counts(9, 0) }, pal, 10)
+		assert(withShards, "3 copies and a shard")
+		expect.equal(used, 1)
+		expect.equal(total(withShards), 3)
+		-- a plain Grade A kept: its own grade's other copies and the ones under it
+		local plain = { beast = false, foil = false, grade = "A", stars = 0 }
+		expect.equal(CondenseRules.countDuplicates({ C = counts(1, 0), A = counts(3, 0), S = counts(2, 0) }, plain, config), 3)
+		-- the better copies left alone, to say so
+		expect.equal(CondenseRules.betterCopies({ C = counts(2, 0), B = counts(1, 0), A = counts(1, 1), S = counts(9, 0) }, pal, config), 11)
+		expect.equal(CondenseRules.betterCopies({ C = counts(2, 0) }, pal, config), 0)
+		expect.equal(CondenseRules.betterCopies({ S = counts(3, 0) }, { beast = false, foil = false, grade = "S", stars = 0 }, config), 0)
+	end,
+
+	-- owner 2026-11-21: "Keep a different card is so confusing. can we change wording or anything to make it more
+	-- understandable. also the next window make it more understandable": a chip that says what it does, and the copies
+	-- as pictures with plain words
+	["the copy picker in plain words"] = function()
+		local title, sub = CondenseRules.pickChip(4)
+		expect.equal(title, "Pick a different card")
+		expect.equal(sub, "you have 4 to choose from")
+		local say, small = CondenseRules.pickSay("Tidecaller", "star")
+		expect.equal(say, "Which Tidecaller gets the star?")
+		expect.equal(small, "Tap the one you want. Better ones are never used up.")
+		say = CondenseRules.pickSay("Tidecaller", "grade")
+		expect.equal(say, "Which Tidecaller gets the grade?")
+		-- under a copy's picture: what it is in a few words (a foil wears its own tag on the picture)
+		expect.equal(CondenseRules.copyLabel({ beast = false, level = 1, count = 2 }), "You have 2")
+		expect.equal(CondenseRules.copyLabel({ beast = false, level = 1, count = 1 }), "You have 1")
+		expect.equal(CondenseRules.copyLabel({ beast = true, level = 12, count = 1 }), "Lv 12")
+		-- the line about better copies left out, only when there are some
+		expect.isNil(CondenseRules.safeWords(0))
+		expect.equal(CondenseRules.safeWords(1), "Your 1 better copy stays safe: it is never squished.")
+		expect.equal(CondenseRules.safeWords(3), "Your 3 better copies stay safe: they are never squished.")
+		-- how many copies stand in a row of the picker
+		expect.equal(CondenseRules.pickColumns(370, 88, 6), 4)
+		expect.equal(CondenseRules.pickColumns(369, 88, 6), 3)
+		expect.equal(CondenseRules.pickColumns(40, 88, 6), 1)
 	end,
 
 	["finds the card a plain main became"] = function()
@@ -482,9 +540,10 @@ return {
 		expect.equal(total(sealed.takes), 1)
 	end,
 
-	["the Condenser still uses every copy (a star is a star whatever the copies' grades)"] = function()
+	["the Condenser leaves better copies alone too (since 2026-11-21)"] = function()
 		local main = { beast = true, foil = false, grade = "C", stars = 0 }
-		expect.equal(CondenseRules.countDuplicates({ C = counts(1, 0), S = counts(3, 0) }, main, config), 4)
+		expect.equal(CondenseRules.countDuplicates({ C = counts(1, 0), S = counts(3, 0) }, main, config), 1)
+		expect.equal(CondenseRules.countDuplicates({ C = counts(1, 0), S = counts(3, 0) }, main), 1, "the card view's count, with no config")
 	end,
 
 	-- owner 2026-11-20: "in grading station window. redesign it like the condenser to be easily understood. it's

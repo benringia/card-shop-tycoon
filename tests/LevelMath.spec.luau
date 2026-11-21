@@ -18,6 +18,23 @@ return {
 		expect.equal(LevelMath.saleXp(0 / 0, 1), 1, "junk: the minimum")
 	end,
 
+	-- Owner 2026-11-21: a tester opened 5,000 packs with Open 10 for the shop XP (15,000 for $10,000, with no limit on
+	-- how fast: ten times the shop's own pace). "lets just do 2 exp after level 30": from shop Lv 30 an opened pack pays
+	-- two thirds of its price in XP; selling it still pays all of it
+	["an opened pack pays 3 shop XP, 2 from shop Lv 30"] = function()
+		expect.equal(config.OPEN_XP.from, 30)
+		expect.equal(LevelMath.openXp(3, 1, 1, config), 3, "a new shop")
+		expect.equal(LevelMath.openXp(3, 1, 29, config), 3)
+		expect.equal(LevelMath.openXp(3, 1, 30, config), 2)
+		expect.equal(LevelMath.openXp(3, 1, 100, config), 2)
+		expect.equal(LevelMath.openXp(9, 1, 29, config), 9, "a Deck Box")
+		expect.equal(LevelMath.openXp(9, 1, 30, config), 6, "a Deck Box: the same share")
+		expect.equal(LevelMath.openXp(0.2, 1, 50, config), 1, "never under the minimum")
+		expect.equal(LevelMath.openXp(0 / 0, 1, 50, config), 1, "junk: the minimum")
+		-- 5,000 packs from Lv 30 on: 10,000 XP, not 15,000
+		expect.equal(LevelMath.openXp(3, 1, 40, config) * 5000, 10000)
+	end,
+
 	-- Owner 2026-11-17: "can we add a small exp to the shop from killing monsters. combat exp for pets stays the same":
 	-- a won fight gives half the cash it paid in shop XP (a sale gives all of it), at least 1
 	["a won fight gives half its cash in shop XP, at least 1"] = function()

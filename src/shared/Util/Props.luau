@@ -10,6 +10,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Town = require(Shared:WaitForChild("Config"):WaitForChild("Town"))
 local ShopDetail = require(Shared:WaitForChild("Config"):WaitForChild("ShopDetail"))
 local Bulk = require(Shared:WaitForChild("Config"):WaitForChild("Bulk"))
+local Recycler = require(Shared:WaitForChild("Config"):WaitForChild("Recycler"))
 local PropFit = require(Shared:WaitForChild("Util"):WaitForChild("PropFit"))
 local TownLayout = require(Shared:WaitForChild("Util"):WaitForChild("TownLayout"))
 local ShelfLooks = require(Shared:WaitForChild("Util"):WaitForChild("ShelfLooks"))
@@ -265,6 +266,35 @@ local function buildForge(model: Model)
 	embers.Parent = bed
 end
 
+-- The Recycler (Config/Recycler LOOK; owner 2026-11-21), bottom centre at the origin, front -Z, in the other machines'
+-- style: a dark plinth with a green rim, a white body with a RECYCLER strip and a green band, and on top an open
+-- hopper (a dark ring of wall round a glowing floor) with a heap of cards in the rarities' colours lying in it
+local function buildRecycler(model: Model)
+	local look = Recycler.LOOK
+	local block = Enum.PartType.Block
+	local shell, dark, glow = Props.color(look.SHELL), Props.color(look.DARK), Props.color(look.GLOW)
+	local plinthTop, bodyTop = look.PLINTH_HEIGHT, look.BODY_HEIGHT
+	disc(model, look.BASE_RADIUS, plinthTop, plinthTop / 2, dark, Enum.Material.SmoothPlastic)
+	disc(model, look.BASE_RADIUS + 0.03, 0.07, 0.06, glow, Enum.Material.Neon)
+	disc(model, look.BODY_RADIUS, bodyTop - plinthTop, (plinthTop + bodyTop) / 2, shell, Enum.Material.SmoothPlastic).Reflectance = 0.08
+	disc(model, look.BODY_RADIUS + 0.02, 0.1, bodyTop - 0.5, glow, Enum.Material.Neon)
+	frontStrip(model, look.BODY_RADIUS, plinthTop + 1.1, 2, look.SCREEN_TEXT, glow:Lerp(Color3.new(1, 1, 1), 0.4))
+	-- the hopper: a dark rim, its glowing floor a little under the rim's top
+	local rimTop = bodyTop + look.HOPPER_HEIGHT
+	disc(model, look.HOPPER_RADIUS + look.HOPPER_WALL, look.HOPPER_HEIGHT, bodyTop + look.HOPPER_HEIGHT / 2, dark, Enum.Material.SmoothPlastic)
+	local floor = disc(model, look.HOPPER_RADIUS, 0.06, rimTop + 0.03, glow, Enum.Material.Neon)
+	floor.Name = "Glow"
+	-- the heap: card backs lying on it, each turned and tipped a little, rising toward the middle
+	local size = look.CARD_SIZE
+	for index = 1, look.CARDS do
+		local turn = index * 2.4 -- radians: no two cards the same way
+		local out = if index == 1 then 0 else look.HOPPER_RADIUS * 0.5
+		local at = CFrame.new(math.cos(turn) * out, rimTop + 0.1 + index * 0.06, math.sin(turn) * out)
+		local card = addPart(model, block, Vector3.new(size[1], size[2], size[3]), at * CFrame.Angles(math.rad(8 * math.sin(index)), turn, math.rad(10 * math.cos(index))), Props.color(look.CARD_COLORS[(index - 1) % #look.CARD_COLORS + 1]), Enum.Material.SmoothPlastic)
+		card.Name = "Card"
+	end
+end
+
 -- The Card Condenser (Town.CONDENSER_LOOK), bottom centre at the origin, front -Z, in the Grading Station's style: a
 -- dark plinth with a violet rim, a white body with a light band, a card slot and a CONDENSER strip, a see-through
 -- chamber with a glowing floor, a white cap. Its Rotors (the crystal with three cards, and a ring of small cards
@@ -508,6 +538,8 @@ local function buildFallback(slot: string, height: number, size: Vector3?, varia
 		buildForge(model)
 	elseif slot == "BulkBin" then
 		buildBulkBin(model, size or Vector3.new(4, 3, 4))
+	elseif slot == "Recycler" then
+		buildRecycler(model)
 	elseif slot == "Trophy" then
 		buildTrophy(model)
 	elseif DecorLooks.isDecor(slot) then

@@ -15,7 +15,7 @@ local LeaderboardBoard = {}
 
 type Spot = { root: Frame, avatar: ImageLabel, name: TextLabel, count: TextLabel }
 type Row = { band: Frame, avatar: ImageLabel, name: TextLabel, count: TextLabel }
-export type List = { podium: { Spot }, rows: { Row }, note: TextLabel }
+export type List = { podium: { Spot }, rows: { Row }, note: TextLabel, subtitle: TextLabel }
 
 local FACE = Leaderboard.FACE
 local SIZES = FACE.sizes
@@ -132,7 +132,8 @@ function LeaderboardBoard.attach(card: BasePart, list: string): List
 	gradient.Rotation = 90
 	gradient.Parent = sky
 	outlined(label(sky, look.title, UDim2.fromOffset(panelWidth, SIZES.title + 4), UDim2.fromOffset(0, 8), SIZES.title, FACE.white))
-	outlined(label(sky, FACE.subtitle, UDim2.fromOffset(panelWidth, SIZES.subtitle), UDim2.fromOffset(0, 12 + SIZES.title), SIZES.subtitle, FACE.white))
+	-- which ranking is up (LeaderboardBoard.fill sets it: the cards show the rankings in turn)
+	local subtitle = outlined(label(sky, FACE.subtitle, UDim2.fromOffset(panelWidth, SIZES.subtitle), UDim2.fromOffset(0, 12 + SIZES.title), SIZES.subtitle, FACE.white))
 	local column = (panelWidth - 16) / 3
 	local podium: { Spot } = {}
 	-- 2nd on the left, 1st in the middle, 3rd on the right
@@ -165,7 +166,7 @@ function LeaderboardBoard.attach(card: BasePart, list: string): List
 	end
 	local note = label(panel, FACE.loading, UDim2.fromOffset(panelWidth - 2 * FACE.boxPad, h * 2), UDim2.fromOffset(FACE.boxPad, top), SIZES.note, FACE.inkSoft)
 	note.TextWrapped = true
-	return { podium = podium, rows = rows, note = note }
+	return { podium = podium, rows = rows, note = note, subtitle = subtitle }
 end
 
 local function headshot(userId: number): string
@@ -174,7 +175,10 @@ end
 
 -- Shows `entries` (ranked, LeaderboardRules) on a list card; `note` in the text box while it has no rows (nobody yet,
 -- still loading, or everyone fits on the podium)
-function LeaderboardBoard.fill(list: List, entries: { LeaderboardRules.Entry }, note: string)
+function LeaderboardBoard.fill(list: List, entries: { LeaderboardRules.Entry }, note: string, subtitle: string?)
+	if subtitle then
+		list.subtitle.Text = subtitle
+	end
 	for place, spot in list.podium do
 		local entry = entries[place]
 		spot.root.Visible = entry ~= nil

@@ -364,6 +364,25 @@ return {
 		end
 	end,
 
+	-- v41 (owner 2026-11-21: a boss kills leaderboard): the lifetime counter stats.bossKills. Kills before it were
+	-- never counted, so a save starts at the bosses it has beaten at least once
+	["v41: boss kills start at the bosses a save has cleared"] = function()
+		local data: any = { version = 40, stats = { packsOpened = 12, customersServed = 3, totalEarned = 40 }, bosses = { meadowWarden = { cleared = true }, caveBroodQueen = { cleared = true }, emberColossus = { cleared = false }, junk = "x" } }
+		Migrations.run(data, 41)
+		expect.equal(data.version, 41)
+		expect.equal(data.stats.bossKills, 2)
+		expect.equal(data.stats.packsOpened, 12, "the other counters untouched")
+		local fresh: any = { version = 40, stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 } }
+		Migrations.run(fresh, 41)
+		expect.equal(fresh.stats.bossKills, 0)
+		local none: any = { version = 40 }
+		Migrations.run(none, 41)
+		expect.equal(none.version, 41, "no stats table: left for the loader")
+		local counted: any = { version = 40, stats = { bossKills = 9 }, bosses = { meadowWarden = { cleared = true } } }
+		Migrations.run(counted, 41)
+		expect.equal(counted.stats.bossKills, 9, "a count already there is kept")
+	end,
+
 	["v40: a shop at level 20 or under, at the cap, or with junk XP"] = function()
 		local LevelMath = require("../src/shared/Util/LevelMath")
 		local Levels = require("../src/shared/Config/Levels")

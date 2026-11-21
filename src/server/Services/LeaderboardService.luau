@@ -1,11 +1,12 @@
 --!strict
--- The plaza leaderboard (Config/Leaderboard; owner 2026-11-13): most packs opened, all time across every server and in
--- this server. Every place sends its players' lifetime totals (DataService stats.packsOpened) to a shared
--- OrderedDataStore when they change (at most every WRITE_EVERY seconds, and as they leave; never from Studio); the main
--- game draws the lists on the plaza's two giant cards (Config/Plaza FAN, Server/Util/LeaderboardBoard), reads the
--- all-time top every READ_EVERY seconds and shows it with the players here counted live (LeaderboardRules.merge), next
--- to this server's list. No remotes: the cards are drawn on the server and replicate. The game's owner is on neither
--- list (Config/Leaderboard HIDE_OWNER).
+-- The plaza leaderboard (Config/Leaderboard; owner 2026-11-13): most packs opened and (since 2026-11-21) most boss
+-- kills, all time across every server and in this server. Every place sends its players' lifetime totals (DataService
+-- stats, one counter and one shared OrderedDataStore for each ranking in Leaderboard.BOARDS) when they change (at most
+-- every WRITE_EVERY seconds, and as they leave; never from Studio); the main game draws the lists on the plaza's two
+-- giant cards (Config/Plaza FAN, Server/Util/LeaderboardBoard), which show one ranking at a time, each for FLIP_EVERY
+-- seconds. It reads each all-time top every READ_EVERY seconds and shows it with the players here counted live
+-- (LeaderboardRules.merge), next to this server's list. No remotes: the cards are drawn on the server and replicate.
+-- The game's owner is on neither list (Config/Leaderboard HIDE_OWNER).
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -21,49 +22,51 @@ local LeaderboardBoard = require((script.Parent.Parent :: Instance):WaitForChild
 
 local LeaderboardService = {}
 
-local STAT = "packsOpened"
+type Board = typeof(Leaderboard.BOARDS[1])
 
-local store: OrderedDataStore? = nil
--- The total last sent to the store, by player (weak: a player who left by teleport never got the leave hook)
-local written: { [Player]: number } = setmetatable({}, { __mode = "k" }) :: any
+local stores: { [string]: OrderedDataStore } = {} -- by a ranking's store name
+-- The total last sent to each ranking's store, by player (weak: a player who left by teleport never got the leave hook)
+local written: { [string]: { [Player]: number } } = {}
+for _, board in Leaderboard.BOARDS do
+	written[board.store] = setmetatable({}, { __mode = "k" }) :: any
+end
 local names: { [number]: string } = {} -- display names of the all-time list's players, by user id
 -- Left off both lists and never sent to the store: the game's owner (Config/Leaderboard HIDE_OWNER)
 local hidden = LeaderboardRules.hidden(game.CreatorId, game.CreatorType.Name, Leaderboard.HIDE_OWNER)
 
-local function getStore(): OrderedDataStore?
-	if not store then
+local function getStore(board: Board): OrderedDataStore?
+	if not stores[board.store] then
 		local ok, made = pcall(function()
-			return DataStoreService:GetOrderedDataStore(Leaderboard.storeName(Data.STORE_NAME))
+			return DataStoreService:GetOrderedDataStore(Leaderboard.storeName(Data.STORE_NAME, board.store))
 		end)
 		if ok then
-			store = made
+			stores[board.store] = made
 		else
 			warn("[LeaderboardService] no store:", made)
 		end
 	end
-	return store
+	return stores[board.store]
 end
 
--- Sends a player's total if it changed (Studio's test packs never count, nor the owner's test save: SaveSlotService)
+-- Sends a player's totals that changed, one ranking at a time (Studio's test packs and fights never count, nor the
+-- owner's test save: SaveSlotService)
 local function write(player: Player)
 	if RunService:IsStudio() or DataService.IsTestSlot(player) then
 		return
 	end
-	local count = DataService.GetStat(player, STAT)
-	if not LeaderboardRules.shouldWrite(count, written[player], hidden[player.UserId] == true) then
-		return
-	end
-	local target = getStore()
-	if not target then
-		return
-	end
-	local ok, err = pcall(function()
-		target:SetAsync(tostring(player.UserId), count)
-	end)
-	if ok then
-		written[player] = count
-	else
-		warn("[LeaderboardService] write failed:", err)
+	for _, board in Leaderboard.BOARDS do
+		local count = DataService.GetStat(player, board.stat)
+		local target = if LeaderboardRules.shouldWrite(count, written[board.store][player], hidden[player.UserId] == true) then getStore(board) else nil
+		if target then
+			local ok, err = pcall(function()
+				target:SetAsync(tostring(player.UserId), count)
+			end)
+			if ok then
+				written[board.store][player] = count
+			else
+				warn("[LeaderboardService] write failed:", err)
+			end
+		end
 	end
 end
 
@@ -73,16 +76,17 @@ local function forgetHidden()
 	if RunService:IsStudio() then
 		return
 	end
-	local target = getStore()
-	if not target then
-		return
-	end
-	for userId in hidden do
-		local ok, err = pcall(function()
-			target:RemoveAsync(tostring(userId))
-		end)
-		if not ok then
-			warn("[LeaderboardService] couldn't take a hidden entry out:", err)
+	for _, board in Leaderboard.BOARDS do
+		local target = getStore(board)
+		if target then
+			for userId in hidden do
+				local ok, err = pcall(function()
+					target:RemoveAsync(tostring(userId))
+				end)
+				if not ok then
+					warn("[LeaderboardService] couldn't take a hidden entry out:", err)
+				end
+			end
 		end
 	end
 end
@@ -133,9 +137,9 @@ local function resolveNames(ids: { number })
 	end
 end
 
--- The all-time top from the store; nil when it couldn't be read
-local function readTop(): { LeaderboardRules.Entry }?
-	local target = getStore()
+-- A ranking's all-time top from its store; nil when it couldn't be read
+local function readTop(board: Board): { LeaderboardRules.Entry }?
+	local target = getStore(board)
 	if not target then
 		return nil
 	end
@@ -163,11 +167,11 @@ local function readTop(): { LeaderboardRules.Entry }?
 	return LeaderboardRules.without(entries, hidden)
 end
 
--- Everyone here now with their total
-local function liveEntries(): { LeaderboardRules.Entry }
+-- Everyone here now with their total in a ranking
+local function liveEntries(board: Board): { LeaderboardRules.Entry }
 	local entries: { LeaderboardRules.Entry } = {}
 	for _, player in Players:GetPlayers() do
-		table.insert(entries, { userId = player.UserId, name = player.DisplayName, count = DataService.GetStat(player, STAT) })
+		table.insert(entries, { userId = player.UserId, name = player.DisplayName, count = DataService.GetStat(player, board.stat) })
 	end
 	return LeaderboardRules.without(entries, hidden)
 end
@@ -203,36 +207,42 @@ local function startBoard()
 	local allTimeList = LeaderboardBoard.attach(cards.allTime, "allTime")
 	local serverList = LeaderboardBoard.attach(cards.server, "server")
 	local face = Leaderboard.FACE
-	local stored: { LeaderboardRules.Entry } = {}
-	local loaded = false
+	-- each ranking's all-time top as last read, and whether it was read at all
+	local stored: { [string]: { LeaderboardRules.Entry } } = {}
+	local loaded: { [string]: boolean } = {}
 	task.spawn(function()
 		while true do
-			local top = readTop()
-			if top then
-				stored = top
+			for _, board in Leaderboard.BOARDS do
+				local top = readTop(board)
+				if top then
+					stored[board.store] = top
+				end
+				loaded[board.store] = true
 			end
-			loaded = true
 			task.wait(Leaderboard.READ_EVERY)
 		end
 	end)
 	local shown = ""
 	task.spawn(function()
 		while true do
-			local live = liveEntries()
-			local allTime = LeaderboardRules.merge(stored, live, Leaderboard.TOP)
+			-- the rankings take turns on the two cards (LeaderboardRules.shownBoard)
+			local board = Leaderboard.BOARDS[LeaderboardRules.shownBoard(os.clock(), Leaderboard.FLIP_EVERY, #Leaderboard.BOARDS)]
+			local live = liveEntries(board)
+			local allTime = LeaderboardRules.merge(stored[board.store] or {}, live, Leaderboard.TOP)
 			local server = LeaderboardRules.rank(live, Leaderboard.TOP, true)
-			local now = `{loaded}#{signature(allTime)}#{signature(server)}`
+			local ready = loaded[board.store] == true
+			local now = `{board.store}#{ready}#{signature(allTime)}#{signature(server)}`
 			if now ~= shown then
 				shown = now
-				LeaderboardBoard.fill(allTimeList, allTime, if loaded or #allTime > 0 then face.empty else face.loading)
-				LeaderboardBoard.fill(serverList, server, face.empty)
+				LeaderboardBoard.fill(allTimeList, allTime, if ready or #allTime > 0 then board.empty else face.loading, board.subtitle)
+				LeaderboardBoard.fill(serverList, server, board.empty, board.subtitle)
 			end
 			task.wait(Leaderboard.SERVER_EVERY)
 		end
 	end)
 end
 
--- The Frontier and the Dungeon: totals go to the store (Bag packs open there too), no board
+-- The Frontier and the Dungeon: totals go to the stores (Bag packs open there too, and their bosses are fought there), no board
 function LeaderboardService.StartWrites()
 	startWrites()
 end

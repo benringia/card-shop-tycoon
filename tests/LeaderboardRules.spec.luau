@@ -61,6 +61,33 @@ return {
 		expect.equal(LeaderboardRules.shouldWrite(0, nil), false, "not loaded yet, or nothing opened")
 	end,
 
+	-- Owner 2026-11-21: "since this is a griding game. what do you suggest we add to the leaderboards? aside from pack
+	-- opened. boss kills?", then "just add the boss kills for now" and "Every win": a second ranking on the same two
+	-- giant cards, which show packs opened and boss kills in turn
+	["two rankings take turns on the cards: packs opened, then boss kills"] = function()
+		expect.equal(#Leaderboard.BOARDS, 2)
+		local packs, bosses = Leaderboard.BOARDS[1], Leaderboard.BOARDS[2]
+		expect.equal(packs.stat, "packsOpened")
+		expect.equal(packs.store, "PacksOpened", "the packs list keeps its store: nobody loses their place")
+		expect.equal(packs.subtitle, "MOST PACKS OPENED")
+		expect.equal(bosses.stat, "bossKills")
+		expect.equal(bosses.store, "BossKills")
+		expect.equal(bosses.subtitle, "MOST BOSS KILLS")
+		assert(packs.empty ~= bosses.empty, "each says how to get on it")
+		expect.equal(Leaderboard.storeName(Data.STORE_NAME, bosses.store), `{Data.STORE_NAME}_BossKills`)
+		-- each stays up long enough to read ten names
+		assert(Leaderboard.FLIP_EVERY >= 10 and Leaderboard.FLIP_EVERY <= 30, "long enough to read, short enough to see both")
+		expect.equal(LeaderboardRules.shownBoard(0, 15, 2), 1)
+		expect.equal(LeaderboardRules.shownBoard(14.9, 15, 2), 1)
+		expect.equal(LeaderboardRules.shownBoard(15, 15, 2), 2)
+		expect.equal(LeaderboardRules.shownBoard(30, 15, 2), 1)
+		expect.equal(LeaderboardRules.shownBoard(46, 15, 2), 2)
+		expect.equal(LeaderboardRules.shownBoard(46, 15, 1), 1, "one ranking: always it")
+		expect.equal(LeaderboardRules.shownBoard(0 / 0, 15, 2), 1, "junk: the first")
+		-- two sorted reads every READ_EVERY stay far inside the per-minute budget
+		assert(#Leaderboard.BOARDS * 60 / Leaderboard.READ_EVERY <= 2, "reads a minute")
+	end,
+
 	["counts read with thousands separators"] = function()
 		expect.equal(LeaderboardRules.countText(7), "7")
 		expect.equal(LeaderboardRules.countText(1234), "1,234")
@@ -68,7 +95,7 @@ return {
 	end,
 
 	["the store resets with the save data, and the board keeps within Roblox's limits"] = function()
-		expect.equal(Leaderboard.storeName(Data.STORE_NAME), `{Data.STORE_NAME}_PacksOpened`)
+		expect.equal(Leaderboard.storeName(Data.STORE_NAME, "PacksOpened"), `{Data.STORE_NAME}_PacksOpened`)
 		assert(Leaderboard.TOP >= 5 and Leaderboard.TOP <= 10, "a readable list")
 		assert(Leaderboard.READ_EVERY >= 60, "GetSortedAsync is limited per minute")
 		assert(Leaderboard.WRITE_EVERY >= 30, "a write per player at most every half minute")

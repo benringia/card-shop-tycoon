@@ -8,16 +8,26 @@ local Leaderboard = {}
 
 -- The shared store of every player's total (an OrderedDataStore), named after the save store so the launch wipe
 -- (a new Data.STORE_NAME) clears it too
-function Leaderboard.storeName(dataStore: string): string
-	return `{dataStore}_PacksOpened`
+function Leaderboard.storeName(dataStore: string, board: string): string
+	return `{dataStore}_{board}`
 end
+
+-- The rankings (owner 2026-11-21: "just add the boss kills for now", every boss win counting): each a lifetime counter
+-- of the save (`stat`, DataService stats) with its own shared store (`store`, the name's ending: the packs list keeps
+-- the one it always had). The two giant cards show one ranking at a time, each for FLIP_EVERY seconds
+-- (LeaderboardRules.shownBoard), its `subtitle` under the list's title; `empty`: the text box's words with nobody on it
+Leaderboard.BOARDS = {
+	{ stat = "packsOpened", store = "PacksOpened", subtitle = "MOST PACKS OPENED", empty = "Open packs to get on the board!" },
+	{ stat = "bossKills", store = "BossKills", subtitle = "MOST BOSS KILLS", empty = "Beat a boss to get on the board!" },
+}
+Leaderboard.FLIP_EVERY = 15 -- seconds a ranking stays up before the cards show the next one
 
 Leaderboard.TOP = 10 -- rows on each list
 -- The game's owner is on neither list (owner 2026-11-20: "can I(the owner) not be included in the leaderboard"): their
 -- total isn't sent, their old entry is taken out of the store, and they're left off both lists
 -- (LeaderboardRules.hidden)
 Leaderboard.HIDE_OWNER = true
-Leaderboard.READ_EVERY = 120 -- the all-time top is read from the store this often (GetSortedAsync has a per-minute budget)
+Leaderboard.READ_EVERY = 120 -- each ranking's all-time top is read from its store this often (GetSortedAsync has a per-minute budget)
 Leaderboard.WRITE_EVERY = 60 -- a player's changed total goes to the store at most this often, and when they leave
 Leaderboard.SERVER_EVERY = 1 -- this server's list (and the live totals on the all-time one) checked this often
 

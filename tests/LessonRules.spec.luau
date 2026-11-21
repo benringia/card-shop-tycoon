@@ -94,7 +94,7 @@ return {
 		expect.isNil(by.sword.on, "the sword is handed over at its level: taught then")
 		expect.equal(by.jobs.level, Jobs.UNLOCK_LEVEL, "jobs at their unlock (nothing to place)")
 		assert(by.trophy.trigger == "trophy" and by.titles.trigger == "title" and by.prices.trigger == "tourDone", "the event lessons as before")
-		expect.equal(#Pish.LESSONS, 12, "twelve lessons, not eighteen (the healing spring's came on launch day)")
+		expect.equal(#Pish.LESSONS, 13, "thirteen lessons, not eighteen (the healing spring's came on launch day, the Recycler's the day after)")
 	end,
 
 	["due: a level-up only brings what's taught at its level, never a first-use lesson"] = function()
@@ -102,8 +102,8 @@ return {
 		same(LessonRules.due(Pish.LESSONS, 3, 4, {}), { "sword" }, "the sword, with the sword")
 		same(LessonRules.due(Pish.LESSONS, 4, 7, {}), {}, "the condenser and the forge wait to be placed")
 		same(LessonRules.due(Pish.LESSONS, 7, 8, {}), { "jobs" })
-		same(LessonRules.due(Pish.LESSONS, 1, 20, {}), { "sword", "jobs" }, "the whole way up: two visits by level")
-		same(LessonRules.due(Pish.LESSONS, 1, 20, { sword = true, jobs = false }), {}, "seen or waiting already")
+		same(LessonRules.due(Pish.LESSONS, 1, 20, {}), { "sword", "jobs", "recycler" }, "the whole way up: three visits by level")
+		same(LessonRules.due(Pish.LESSONS, 1, 20, { sword = true, jobs = false, recycler = true }), {}, "seen or waiting already")
 		same(LessonRules.due(Pish.LESSONS, 20, 20, {}), {}, "an old save loading at 20 gets none")
 	end,
 
@@ -160,6 +160,24 @@ return {
 		expect.equal(LessonRules.nudge(Pish.STUCK, facts({ boxWaiting = true, sinceNudge = 60 })), nil, "nudged a minute ago")
 		expect.equal(LessonRules.nudge(Pish.STUCK, facts({ boxWaiting = true, played = 4000 })), nil, "past the first hour")
 	end,
+	-- Owner 2026-11-21: "when recycler is in game, pish will introduce it to old players and add it to tutorial for
+	-- new players": a new player gets its lesson on reaching its level like any level lesson; a save already past that
+	-- level gets it at its next join (`late`), once. Other lessons never come for what was unlocked before
+	["a thing added after launch: Pish brings its lesson to players already past its level"] = function()
+		local recycler = lessonWhere("shelf", "Recycler")
+		assert(recycler and recycler.late == true, "the Recycler's lesson is a late one")
+		expect.equal(recycler.id, "recycler")
+		same(LessonRules.late(Pish.LESSONS, 30, {}), { "recycler" }, "an old save at Lv 30")
+		same(LessonRules.late(Pish.LESSONS, 12, {}), { "recycler" }, "at its level")
+		same(LessonRules.late(Pish.LESSONS, 11, {}), {}, "not unlocked yet: the level-up brings it")
+		same(LessonRules.late(Pish.LESSONS, 30, { recycler = true }), {}, "seen")
+		same(LessonRules.late(Pish.LESSONS, 30, { recycler = false }), {}, "waiting already")
+		-- a new player: the level-up brings it, and Pish walks them to it (a lesson that has them buy it)
+		same(LessonRules.due(Pish.LESSONS, 11, 12, {}), { "recycler" })
+		expect.equal(LessonRules.buys(recycler), true)
+		assert(PishTalk.LESSONS.recycler and PishTalk.AFTER.recycler, "his lines")
+	end,
+
 	["every machine and card case is explained on its first placement; plain shelves and stock have no lesson"] = function()
 		for _, product in Products.List do
 			expect.isNil(lessonWhere("product", product.id), `{product.id}: new stock shows on the order computer, no visit`)
@@ -174,6 +192,10 @@ return {
 				expect.isNil(lesson, `{shelf.id}: a plain shelf or decor piece, no visit`)
 			elseif shelf.kind == "CustomerCards" or shelf.kind == "PlayerCards" then
 				assert(lesson and lesson.on == "placed", `{shelf.id}: a card case is explained once placed`)
+			elseif lesson and lesson.late then
+				-- the Recycler came after launch (owner 2026-11-21): Pish brings it himself, at its level
+				expect.isNil(lesson.on, `{shelf.id}: Pish walks you to it`)
+				expect.equal(lesson.level, shelf.unlockLevel, `{shelf.id}: at its level`)
 			elseif lesson then
 				expect.equal(lesson.on, "placed", `{shelf.id}: a machine is explained once placed`)
 				expect.equal(lesson.level, shelf.unlockLevel, `{shelf.id}: its level orders the waiting lessons`)
@@ -181,7 +203,7 @@ return {
 		end
 		assert(trophies > 0, "the trophies were read")
 		assert(plain > 0, "the plain shelves were read")
-		for _, machine in { "Condenser", "Forge", "GradingStation", "BulkBin" } do
+		for _, machine in { "Condenser", "Forge", "GradingStation", "BulkBin", "Recycler" } do
 			assert(lessonWhere("shelf", machine), `{machine} has its lesson`)
 		end
 		local trophy = lessonWhere("trigger", "trophy")

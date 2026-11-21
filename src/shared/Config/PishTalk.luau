@@ -95,6 +95,7 @@ return {
 		condenser = "The Card Condenser is here! It powers up cards.",
 		forge = "The Forge is here! Make and upgrade weapons.",
 		bulkBin = "The Bulk Bin is here! Sell your extra Commons.",
+		recycler = "New machine: the Recycler! It eats extra cards.",
 		grading = "The Grading Station is here! Grade your cards.",
 		jobs = "Your cards can work now! Tap Jobs on your Phone.",
 		trophy = "You won a trophy! Show it off in your shop.",
@@ -120,6 +121,11 @@ return {
 			"Walk up and press Add extras.",
 			"Your extra Commons go in, 5 to a handful.",
 			"Customers buy them! You keep 2 of each card.",
+		},
+		recycler = {
+			"Walk up and press Recycle.",
+			"Extra cards turn into upgrade stuff or coins!",
+			"Cards you still need always stay safe.",
 		},
 		condenser = {
 			"Put spare copies of a card in here.",

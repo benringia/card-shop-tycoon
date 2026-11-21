@@ -444,6 +444,23 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 		-- never onto the next level's floor: a level is earned, not rounded into
 		data.xp = math.min(after[level] + math.floor((after[level + 1] - after[level]) * share), after[level + 1] - 1)
 	end,
+	-- v41 (owner 2026-11-21: a boss kills leaderboard): the lifetime counter stats.bossKills. Kills before it were
+	-- never counted, so a save starts at the bosses it has beaten at least once (data.bosses[id].cleared)
+	[40] = function(data)
+		local stats = data.stats
+		if typeof(stats) ~= "table" or typeof(stats.bossKills) == "number" then
+			return
+		end
+		local kills = 0
+		if typeof(data.bosses) == "table" then
+			for _, record in data.bosses do
+				if typeof(record) == "table" and record.cleared == true then
+					kills += 1
+				end
+			end
+		end
+		stats.bossKills = kills
+	end,
 }
 
 local function lowestGrade(): string

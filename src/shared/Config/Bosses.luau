@@ -403,6 +403,13 @@ return {
 	-- mins"; earlier the same day "remove both", the over-power shrink and the minimum fight time): every loot win is
 	-- full, as many a day as a player likes
 	LOOT_COOLDOWN = 420,
+	-- A key catches up (owner 2026-11-21: "my tester is already level 50 and he hasnt been to the rift boss yet which
+	-- unlocks at level 43", "we still keep the keys. but increase drop rate at a certain level"): once your shop level
+	-- reaches the level of the boss a key opens, the boss before it drops that key's fragments on every loot win,
+	-- `count` at a time (BossRules.keyDrop, BossService). Under that level the boss's own table stands (50-60%, one).
+	-- The Rift Devourer's 8 (3 from the Storm Sovereign's first win): 3 more loot wins instead of 9; the Hydra's 10: 4
+	-- instead of 14. Levels came faster than keys once they went 6x quicker; this lets the level lead again.
+	KEY_CATCH_UP = { chance = 1, count = 2 },
 	-- A win before the loot timer ends pays this share of the boss's cash (and of the shop XP that follows the cash); a
 	-- loot win pays in full, creature XP is the same every win (owner 2026-11-19, "do all": the pre-launch QA found full
 	-- cash on every win paid $4,000-7,000 an hour at the recommended Power and about $12,000 with a maxed party, against

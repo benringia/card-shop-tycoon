@@ -21,6 +21,50 @@ local function record(fields: { [string]: any }): BossRules.Record
 end
 
 return {
+	-- Owner 2026-11-21: "my tester is already level 50 and he hasnt been to the rift boss yet which unlocks at level
+	-- 43", then "we still keep the keys. but increase drop rate at a certain level": once your shop level reaches the
+	-- level of the boss a key opens, the boss before it drops that key's fragments every loot win, two at a time. Levels
+	-- come faster than keys did (about an hour of loot wins for the Storm Sovereign's key, 1.6 for the Hydra's)
+	["a key catches up: at the next boss's level its fragments drop every loot win, two at a time"] = function()
+		local catchUp = Bosses.KEY_CATCH_UP
+		expect.equal(catchUp.chance, 1)
+		expect.equal(catchUp.count, 2)
+		local drop = { item = "fragment_riftDevourer", chance = 0.55, min = 1, max = 1 }
+		-- under the Rift Devourer's level (43): as the boss's own table says
+		local chance, min, max = BossRules.keyDrop(Bosses, drop, 43, 42)
+		expect.equal(chance, 0.55)
+		expect.equal(min, 1)
+		expect.equal(max, 1)
+		-- at it and past it
+		for _, level in { 43, 50, 100 } do
+			chance, min, max = BossRules.keyDrop(Bosses, drop, 43, level)
+			expect.equal(chance, 1, `level {level}`)
+			expect.equal(min, 2)
+			expect.equal(max, 2)
+		end
+		-- not a key (no boss it opens): never changed
+		chance, min, max = BossRules.keyDrop(Bosses, { item = "xpTonic", chance = 0.4, min = 2, max = 3 }, nil, 100)
+		expect.equal(chance, 0.4)
+		expect.equal(min, 2)
+		expect.equal(max, 3)
+		-- never worse than the table (a boss that already gave more)
+		chance, min, max = BossRules.keyDrop(Bosses, { item = "x", chance = 1, min = 3, max = 4 }, 10, 50)
+		expect.equal(min, 3)
+		expect.equal(max, 4)
+		-- what it means for the tester: the Rift Devourer's 8 fragments, 3 from the Storm Sovereign's first win, 5 more
+		-- in 3 loot wins (9 before, on average); the Hydra's 10 in 4 (14 before)
+		for bossId, wins in { riftDevourer = 3, prismHydra = 4 } do
+			local need = Bosses.BOSSES[bossId].unlock.count - 3
+			expect.equal(math.ceil(need / catchUp.count), wins, bossId)
+		end
+		-- every key's boss has a level to catch up at, and every key fragment drops from the boss before it
+		for bossId, boss in Bosses.BOSSES do
+			if boss.unlock then
+				assert(boss.shopLevel > 1, `{bossId} has a level`)
+			end
+		end
+	end,
+
 	["a boss weapon's pity resets only when the weapon was really given; a miss or a failed give counts up"] = function()
 		expect.equal(BossRules.nextWeaponPity(4, false, false), 5, "no drop")
 		expect.equal(BossRules.nextWeaponPity(4, true, true), 0, "dropped and given")

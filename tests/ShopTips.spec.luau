@@ -34,7 +34,7 @@ return {
 	end,
 
 	["every kind of shop item has words: cases, machines, decor, trophies"] = function()
-		for _, kind in { "CustomerCards", "PlayerCards", "Condenser", "Grading", "Forge", "Decor", "Trophy" } do
+		for _, kind in { "CustomerCards", "PlayerCards", "Condenser", "Grading", "Forge", "Recycler", "Decor", "Trophy" } do
 			shortAndPlain(ShopTips.lines({ kind = kind, capacity = 6, decor = 2 }, STOCK), kind)
 		end
 		assert(string.find(ShopTips.lines({ kind = "Decor", capacity = 0, decor = 3 }, STOCK)[1], "+3", 1, true), "decor points")

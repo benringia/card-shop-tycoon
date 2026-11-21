@@ -304,14 +304,17 @@ return {
 	-- Rare and Very Rare much sooner since 2026-11-21 (owner: "make it easier for the players to get their hands on
 	-- one", "epic/legendary weapons should still be hard to get"): median 6 and 10 loot wins (15 and 25 before; 1% +
 	-- 0.5% and 0.5% + 0.2%), a Wild boss's 5 and 8; Epic and Legendary as they were
+	-- Then all four again that evening (owner 2026-11-21: "increase epic weapon drop rate to 12% then legendaries to 6.
+	-- if thats fair"; his pick of three: those two as asked, and Rare and Very Rare raised so rarer is still slower and
+	-- the boss board's "Drop chance now" goes down with rarity): median 3 / 4 / 6 / 11 loot wins, about 20, 30, 40 and
+	-- 80 minutes on that boss (6 / 10 / 22 / 37 before: 6% + 2.5%, 3% + 1%, 1% + 0.2%, 0.5% + 0.08%). A weapon is quick
+	-- to get; the grind is its upgrade (UPGRADE.material). A duplicate's 10 materials come more often too: about 2.6,
+	-- 1.9, 1.3 and 0.7 a loot win on top of the loot's own 1.2
 	DROP = {
-		Rare = { base = 0.06, step = 0.025 },
-		["Very Rare"] = { base = 0.03, step = 0.01 },
-		-- Epic and Legendary sooner too (owner 2026-11-21, on the boss board's "Drop chance now: 0.20%" for the Tidal
-		-- Trident: "it's almoost imposible to get make it more forgiving"): median 22 and 37 loot wins (50 and 79
-		-- before; 0.2% + 0.05% and 0.1% + 0.02%), about 2.5 and 4.5 hours on that boss
-		Epic = { base = 0.01, step = 0.002 },
-		Legendary = { base = 0.005, step = 0.0008 },
+		Rare = { base = 0.2, step = 0.025 },
+		["Very Rare"] = { base = 0.15, step = 0.01 },
+		Epic = { base = 0.12, step = 0.002 },
+		Legendary = { base = 0.06, step = 0.0008 },
 	},
 	-- The Wild's three bosses drop their weapons a little more often (owner 2026-11-20: "slightly increase weapon
 	-- droprate on wild bosses only"): their chance times DROP_WILD (median loot wins about 12 / 19 / 39 instead of

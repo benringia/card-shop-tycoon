@@ -4,7 +4,7 @@
 local LevelMath = {}
 
 type Late = { from: number, full: number, times: number }
-type Config = { BASE_XP: number, POWER: number, ROUND_TO: number, MAX_LEVEL: number, FIGHT_XP_PER_CASH: number?, LATE: Late? }
+type Config = { BASE_XP: number, POWER: number, ROUND_TO: number, MAX_LEVEL: number, FIGHT_XP_PER_CASH: number?, LATE: Late?, OPEN_XP: { from: number, share: number }? }
 
 -- Shop XP for a sale (its total) or a pack ripped from your stock (its market price: what selling it would give; owner
 -- 2026-11-16): the amount rounded, at least `minXp`
@@ -13,6 +13,16 @@ function LevelMath.saleXp(amount: number, minXp: number): number
 		return minXp
 	end
 	return math.max(minXp, math.round(amount))
+end
+
+-- Shop XP for a pack you open yourself (ripped from a box or opened from the Bag): its market price like a sale, and
+-- from shop Lv OPEN_XP.from only OPEN_XP.share of it (owner 2026-11-21: 2 for a pack, 6 for a Deck Box)
+function LevelMath.openXp(marketPrice: number, minXp: number, level: number, config: Config): number
+	local late = config.OPEN_XP
+	if late and level >= late.from then
+		return LevelMath.saleXp(marketPrice * late.share, minXp)
+	end
+	return LevelMath.saleXp(marketPrice, minXp)
 end
 
 -- Shop XP for a won fight (a monster, a Dungeon room, a boss; owner 2026-11-17): FIGHT_XP_PER_CASH of the cash it

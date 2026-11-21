@@ -166,6 +166,11 @@ for _, name in {
 	CALLABLE[name] = true
 end
 
+local LIBRARIES = {}
+for _, name in { "game", "workspace", "script", "math", "string", "table", "task", "os", "coroutine", "utf8", "bit32", "debug", "buffer", "vector", "shared", "plugin", "self" } do
+	LIBRARIES[name] = true
+end
+
 local function findUndefinedCalls(path: string): { string }
 	local source = fs.readFile(path)
 	local lines = codeLines(source)
@@ -205,6 +210,16 @@ local function findUndefinedCalls(path: string): { string }
 			if before ~= "." and before ~= ":" and not declared[name] and not KEYWORDS[name] and not CALLABLE[name] and not seen[name] then
 				seen[name] = true
 				table.insert(problems, `{path}:{index}: {name}() is called but never defined`)
+			end
+		end
+		-- ...and a method call or a field read on a lower-case name the file never declares (`player:GetAttribute(...)`
+		-- in a file with no `player`: the boss board, 2026-11-21, caught by eye before it shipped)
+		for _, pattern in { "(.?)%f[%w_]([%l_][%w_]*)%s*:%s*[%a_][%w_]*%s*%(", "(.?)%f[%w_]([%l_][%w_]*)%.[%a_]" } do
+			for before, name in string.gmatch(stripped, pattern) do
+				if before ~= "." and before ~= ":" and not declared[name] and not KEYWORDS[name] and not LIBRARIES[name] and not seen[name] then
+					seen[name] = true
+					table.insert(problems, `{path}:{index}: {name} is used but never declared`)
+				end
 			end
 		end
 	end

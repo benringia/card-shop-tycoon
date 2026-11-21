@@ -703,7 +703,9 @@ is over UI (`UIKit.pointerBlocked`).
 ### 4.7 Shop level & rating
 - **Shop XP** from every sale, and from every pack ripped from your own stock (its market price, what selling it
   would give: owner 2026-11-16 "pish should encourage players to rip packs for faster exp"; `LevelMath.saleXp`,
-  PackService; a First Spark pack costs $2 and gives 3 XP, so selling stays the money path). A won fight gives a
+  PackService; a First Spark pack costs $2 and gives 3 XP, so selling stays the money path; from shop Lv 30 an
+  opened pack gives two thirds, 2 XP and a Deck Box 6, `Levels.OPEN_XP` / `LevelMath.openXp`: owner 2026-11-21, a
+  tester opened 5,000 packs with Open 10 for the XP, "lets just do 2 exp after level 30"). A won fight gives a
   little shop XP too (owner 2026-11-17: "can we add a small exp to the shop from killing monsters. combat exp for pets
   stays the same"): half the cash it paid, at least 1 (`Levels.FIGHT_XP_PER_CASH`, `LevelMath.fightXp`; a Meadow
   monster 1, a Rift one 7-10, elites 3x, the Meadow Warden 18, the Prism Hydra 200; teammates' hunting bonus counts
@@ -1771,7 +1773,12 @@ Shards toggle (off: Ready counts copies only and Condense never spends shards). 
 edges and centre-anchored; hover never grows anything (round 5), so nothing is cut off.
 Duplicates used: plain copies of the same card only, all normal copies weakest grade first (C, B, A, S), then foils
 weakest grade first; levelled or starred copies are never used; a plain main copy is set aside first and becomes its
-own card. One star per press. Duplicates per star (`STAR_COSTS`):
+own card. A copy better than the card that gets the star is never used (owner 2026-11-21: "condenser never uses
+better copies"; `CondenseRules.countDuplicates` / `plan`, the server's too): a Grade B card takes Grade C and B copies
+only, and while copies are missing a line says "Your 2 better copies stay safe: they are never squished." The copy
+shown first (both stations, `CondenseRules.sortMainChoices`): levelled cards before plain ones, in each the best grade
+first, a foil before a plain copy of its grade, then the strongest (owner 2026-11-21: "sort by grade"; a foil Grade C
+stood before a plain Grade A). One star per press. Duplicates per star (`STAR_COSTS`):
 
 | Step | 0→1 | 1→2 | 2→3 | 3→4 | 4→5 | Total |
 |---|---|---|---|---|---|---|
@@ -4229,6 +4236,86 @@ styles in `Config/Windows` (a `poster` picture), in the Decor tab after the wind
 - The first build (four fixed front spots, their own service, picker and `posters` save field) was dropped the same
   day; schema v39 only removes that never-released field.
 
+### 7.19 The Recycler (built 2026-11-21)
+Owner 2026-11-21, after a tester opened 5,000 packs: "we also neeed a way to get rid of thousands of other copies of
+other rarities. we already have commons", then "can we have add a recycler. that can make extra cards turn into upgrade
+materials. make sure the costs are fair", layout A of two mockups (artifact UjbnCvUyswFQ7d1vQSrW7R).
+- **The machine** (`Config/Recycler`, Config/Shelves `Recycler`, kind "Recycler"): an $800 shop fixture from shop
+  Lv 12 (Build menu, Fixtures tab; between the Bulk Bin and the Grading Station), a white pod with a green rim, a
+  RECYCLER strip and an open hopper heaped with cards in the rarities' colours (code-built, `Util/Props`
+  buildRecycler). It holds nothing and only its owner uses it: Recycle (E) opens its window, Edit (F) under it.
+- **Recipes**: each rarity always makes the same material, so there is nothing to choose.
+
+  | Extra cards in | Material out | Back, of the cards' worth |
+  |---|---|---|
+  | 80 Rares | 1 Wild Ore | 11% |
+  | 60 Very Rares | 1 XP Tonic | 14% |
+  | 60 Epics | 1 Star Shard | 12% |
+  | 1 Legendary | 1 Star Shard | 75% |
+
+  Fair costs (tests/RecycleRules holds them between 8% and 20%, a Legendary between 50% and 100%): the cards' worth is
+  their market value, the material's is Turts' own `value` (its cost in farming time). 5,000 packs ($10,000) of extras
+  with every card maxed make about 51 Wild Ore, 10 XP Tonics and 9 Star Shards (some 23 Star Shards' worth), where the
+  same 80 minutes of late boss fights drop about 17 Star Shards and their seals: recycling tops playing up and never
+  beats it. A Legendary gives most of its worth, since a spare one only exists once that card has every star and
+  Grade S. No Grading Seals or Gold Seals (the Grade S chase keeps its price). Materials can't be sold: no money
+  loop. Commons stay with the Bulk Bin.
+- **Extras** (pure `Util/RecycleRules.piles`, the same on both sides): a card's plain copies (never foils, never a
+  levelled or starred card) of Grade C or B past what it still needs: the duplicates for the stars its best card is
+  missing (up to 64), the ones for the grades above its best (up to 14), and 2 spare. The best grades are kept
+  first, the plainest go first. Recycling can never slow your own upgrades.
+- **The window** (client `RecyclerController`): "Turn extra cards into upgrade stuff!", a row for each rarity (a pile
+  in its colour, "438 extra Rares", "80 make 1 Wild Ore", then "Makes 5 Wild Ore" or a bar toward the first one, the
+  material's picture, and Recycle, "42 more" or None), one big "Recycle everything" with what it makes under its
+  words, and "Cards you still need stay safe. So do foils and Grade A and S." What was made is said in the sentence
+  for 4 s ("You got 5 Wild Ore!"). It was instant for its first hour; see Timers.
+- **Server** (`RecyclerService`, `Remotes.Recycle` (uid, rarity or nil for every pile) and `Recycled`): rate-limited,
+  types checked, the shelf yours, a Recycler and within 12 studs; the extras are worked out again from the binder
+  (nothing the client says is used), exactly the copies that go are taken (`CardService.TakeFreshMany`) and what
+  they make goes in the machine as its job. Nothing to make, a busy machine, an unknown mode, or a Bag stack that
+  would pass 9,999, shows the big locked card or is ignored. Nothing of its own is saved: the job is
+  UpgradeJobService's.
+- **Coins** (owner 2026-11-21, an hour later: "on recycler add. convert to coins. for players who just need coins"):
+  the window's switch, Upgrade stuff or Coins. In Coins every extra card of a rarity pays a fixed price with no
+  leftovers (`Recycler.COINS`): a Rare $0.20, a Very Rare $0.50, an Epic $1.50, a Legendary $15, about an eighth of a
+  card's worth like the materials. This pay has no pace of its own (no customer, no case slot), so a test holds a
+  pack's cards under half the pack's price: a $2 pack's recycle for $0.64 at the most, a $6 Deck Box's for $1.68.
+  5,000 packs ($10,000) of extras pay about $3,200. The cash goes through EconomyService.
+- **Timers** ("then add timers for every conversion"): the Recycler is a timed station like the Condenser
+  (UpgradeJobService station "recycler", job kind "recycle" holding no item: `gains` and `cash`, saved with the other
+  jobs in `upgrades`). A press takes the cards at once and puts what they make in the machine; it is given when the
+  time is up, also while away (on the next join), with a toast ("Your Recycler is done! You got 5 Wild Ore!") and the
+  window's sentence. 20 s for each Wild Ore, 40 for an XP Tonic, 60 for a Star Shard, 1 s for each dollar, between
+  10 seconds and an hour (`Recycler.SECONDS`, `RecycleRules.seconds`; a new shop's wait shorter, EarlyRules): 5 Wild
+  Ore 1:40, $87.60 1:28. Every row says it ("Makes 5 Wild Ore · takes 1:40"), the big button too. One conversion
+  at a time: while it works the window shows the stations' job card (what it is making, the countdown, Finish now for
+  Robux, Util/JobPanel), a timer stands over the machine (StationTimerController), and another press shows "The
+  Recycler is busy (0:39 left)". A saved job with a bad line keeps its good ones (`UpgradeRules.readJob`).
+- **Pish** (owner 2026-11-21: "when recycler is in game, pish will introduce it to old players and add it to tutorial
+  for new players"): the `recycler` lesson (Config/Pish LESSONS, level 12, its shelf, `late`) is a level lesson that
+  walks you to it in the Shop once you can pay for it, then says what it's for beside it ("Walk up and press
+  Recycle.", "Extra cards turn into upgrade stuff or coins!", "Cards you still need always stay safe."). A new
+  player gets it on reaching Lv 12; a save already past Lv 12 gets it at its next join, once (`LessonRules.late`,
+  TutorialService's load: the only lesson that comes for an old unlock). It is a main quest too ("Build the
+  Recycler", +80 shop XP). Studio: `/tutorial lesson recycler`.
+
+### 7.20 Boss keys catch up (built 2026-11-21)
+Owner 2026-11-21: "my tester is already level 50 and he hasnt been to the rift boss yet which unlocks at level 43",
+then, to three options (beat it once, short keys, keep them with a hint): "no I still want the key. Idea. we still keep
+the keys. but increase drop rate at a certain level". The keys had become the real gate: after a boss's first win (3
+fragments) the rest came one loot win in two, a loot win every 7 minutes: about an hour of loot wins on the Frost
+Tyrant for the Storm Sovereign's 8, an hour on the Storm Sovereign for the Rift Devourer's 8, 1.6 hours on the Rift
+Devourer for the Hydra's 10, while levels now come six times faster than when those numbers were set.
+- **The rule** (`Bosses.KEY_CATCH_UP = { chance = 1, count = 2 }`, pure `BossRules.keyDrop`, BossService's loot roll):
+  once your shop level reaches the level of the boss a key opens, the boss before it drops that key's fragments on
+  every loot win, 2 at a time. Under that level the boss's own table stands (50-60%, one). Carried players still get
+  no fragments. A boss already opened drops none, as before.
+- **What it means**: at Lv 43 the Rift Devourer's key takes 3 more loot wins on the Storm Sovereign after its first
+  win (about 9 before); at Lv 57 the Hydra's takes 4 (about 14). A player who fights each boss as it unlocks, under
+  the next one's level, plays the keys as they were.
+- **The boss board** shows what a win gives you now: the fragment's cell reads 100% and x2, its tooltip "Every loot
+  win · x2 (your shop level is high enough for that boss)".
+
 ## 8. Monetization
 
 Principle: sell **convenience, speed and looks**, not "win". Never sell anything that makes another player's experience worse.
@@ -4391,6 +4478,14 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
    a minute and as they leave, never from Studio (LeaderboardService); the main game reads the all-time top every two
    minutes and shows it with the players here counted live (LeaderboardRules.merge). Drawn on the server
    (Server/Util/LeaderboardBoard on the cards PlazaBuild marks), no remotes. No reward for now.
+   A second ranking since 2026-11-21 (owner: "since this is a griding game. what do you suggest we add to the
+   leaderboards? aside from pack opened. boss kills?", "just add the boss kills for now", every boss win counting):
+   **most boss kills** (stats.bossKills, +1 for everyone in a won boss fight, loot or not; its own store
+   `<STORE_NAME>_BossKills`). The two giant cards show one ranking at a time, 15 seconds each
+   (`Leaderboard.BOARDS`, `FLIP_EVERY`, `LeaderboardRules.shownBoard`): the subtitle under each list's title turns
+   to "MOST BOSS KILLS" and the empty box says "Beat a boss to get on the board!". Kills from before were never
+   counted, so a save starts at the bosses it has cleared (Migrations v41). Every win counts by the owner's choice,
+   so the board can be led by quick wins on an early boss.
 5. Play Glimmerbeasts at tables (simple card battle mini-game), tournaments bring customers
 6. Weekly limited packs / events
 
@@ -4455,6 +4550,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── WindowService.luau    # shop windows: saved `windows`, PlaceWindow / MoveWindow / SellWindow, DecorAchieved
     │   │   ├── PackService.luau      # server-side pack rolls (one, or a stack at once for Open 10)
     │   │   ├── BulkService.luau      # the Bulk Bin's Add extras: the binder's extra Commons in, 5 to a handful
+    │   │   ├── RecyclerService.luau  # the Recycler: extra Rares to Legendaries into upgrade materials (DESIGN 7.19)
     │   │   ├── CardService.luau      # binder contents (not named CollectionService to avoid clashing with Roblox's)
     │   │   ├── ShowcaseService.luau  # display cards, price them, player buys, customer card buys
     │   │   ├── CondenserService.luau # Card Condenser remote: validate, then CardService.Condense
@@ -4556,6 +4652,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── QuestController.luau  # the daily quests' tracker at the top right, the Daily Quests window, claims with coins
     │   │   ├── WelcomeBackController.luau # the "Welcome back!" window: what the shop sold while you were away, Collect
     │   │   ├── BulkOpenController.luau # Open 10: the grid of cards turning over, the totals, Continue and Open 10 more
+    │   │   ├── RecyclerController.luau # the Recycler's window: a row for each rarity's extras, Recycle everything (DESIGN 7.19)
     │   │   ├── PriceTagController.luau  # point at / tap your shelf price tags to set the price
     │   │   ├── PartyBarController.luau  # bottom-right party cushion: Party pill + 3 round portraits (and the mascot), tap or 1/2/3 to summon
     │   │   ├── MonsterController.luau   # draws wild monsters on their markers (model or placeholder) at their species' height, glow masks, Fx_ bone effects; boss rigs, head glow, death
@@ -4684,6 +4781,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
         │   ├── Economy.luau    # starting cash/level
         │   ├── Stock.luau      # delivery, carrying
         │   ├── Bulk.luau       # the Bulk Bin: handful size, cards kept, who asks for bulk, the crate's look (plain data)
+        │   ├── Recycler.luau   # the Recycler: its recipes, what a card keeps, its words, the machine's look (plain data)
         │   ├── Placement.luau  # grid, placement rules
         │   ├── Pricing.luau    # price limits, customer buy bands
         │   ├── ProductPictures.luau # the menus' pack / deck box pictures by look, their fit, the fallback icons
@@ -4817,6 +4915,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── SleevePacket.luau  # one retail packet of card sleeves (shelf stock, the register counter)
             ├── BulkHandful.luau   # a handful of card backs (the Bulk Bin's heaps, the register counter)
             ├── BulkRules.luau     # the Bulk Bin's extras, whole handfuls, the cards going in, who asks (pure)
+            ├── RecycleRules.luau  # the Recycler's extras, what a pile makes, the copies going in, its words (pure)
             ├── ShopTips.luau      # what each Shop window item holds and does, for its tooltip (pure)
             ├── ShopTileRules.luau # the Shop window's list height and a phone's row tile (pure, Lune-tested)
             ├── ShelfStock.luau    # stock boxes, display box fill and price tags on shelves (pure, Lune-tested)
@@ -4943,7 +5042,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     items = {},             -- { [itemId] = count } item inventory (Config/Items), e.g. starShard
     pity = { legendary = 0, epic = 0, firstDone = false }, -- packs since the last Legendary / Epic or better; had a first Legendary
     bosses = {},            -- { [bossId] = { unlocked, cleared, lootAt, bonusDay, weaponPity } } boss ladder (5.10)
-    stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 },
+    stats = { packsOpened = 0, customersServed = 0, totalEarned = 0, bossKills = 0 }, -- bossKills: every boss win (v41)
     seenWelcome = false,    -- saw the first-visit welcome cinematic (WelcomeService)
     seenSword = false,      -- closed the "You got your first sword!" popup (SwordService)
     swordFights = 0,        -- boss fights fought with the sword HUD; its buttons show names for the first 3 (SwordService)
@@ -5004,7 +5103,7 @@ live playthrough), so Studio and the live game never share one.
 Anyone else's `/slot` does nothing. (`SaveSlotService`, pure `Server/Util/SaveSlots`, Lune-tested.)
 
 Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; v17 added `tutorial` (the first visit with Pish; existing saves "done" with their first pack given and his gift still to come, so only new players go through it); each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity); `tutorial` gained `customerSent` (read as false when missing, true for v17's existing shops; no bump: an older server dropping it allows one more of Pish's customers). v18 added `combat` (Chikin's combat tutorial, the same shape; done for every shop past Pish's tour, still to do for a player mid-way through it). v19 added `dungeon` (`secretFound` and `seenIntro` false for everyone; a junk value is replaced). v20 added `title` ("" for everyone: automatic, the same title as before; a saved string kept, junk replaced). v21 added `upgrades`, `skipTokens` and `purchases` (empty for everyone; a good skip count kept, junk replaced). v22 added `support` (no gifts for everyone; good counts kept). v23 added `titles` (`known`, `fresh` empty, `seeded` false: the first load counts the titles a player already has without telling). v24 added `turts` (nothing bought for everyone; good ids kept, a broken "restock now" roll dropped). v25 added `decor` (Cozy Wood in use and no looks bought for everyone; good ids kept, cleaned against Config/Decor on load). v26 added `windows` (none for everyone; a saved list kept and cleaned on load by `WindowRules.clean`, which pays back any window that no longer fits). v27 added `luck` (no bought luck for everyone). v28 added `unlocks` (none for everyone). v29 added `seenPrologue` (true for every save from before it, so the prologue only greets new players). v30 added `gifts` (the round at day 1, nothing played or earned, for everyone; a saved table kept and cleaned on load by `GiftRules.clean`). v31 kept `combat`'s shape but reordered Chikin's steps (the sword and a fight with it in his first visit): a tour in progress keeps its place by step name. v32 added `tips` (none seen for everyone; a saved table kept and cleaned on load by `TipRules.clean`). v33 added `quests` and `lastSeen`; v34 added `weekly`. v35 kept `tutorial`'s shape but put Pish's "summonPal" step second (owner 2026-11-17): a saved step from 2 on moves one along, so a tour in progress keeps its place. v36 added `mainQuests` (none paid for everyone; the items standing in the shop at load count as paid). v37 added `events` (Lucky Sunday's luck never given, for everyone; a saved table kept and cleaned on load by `EventRules.clean`). v38 added `codes` (none used, for everyone; a saved list kept and cleaned on load by `CodeRules.clean`). v40 changed no shape: it moves `xp` onto the harder curve past Lv 20 at the same level and progress (owner 2026-11-20, 7.2). v39 changed no shape: it drops `posters`, a field built and removed the same day and never released (posters are decor in `windows` now, as `Config/Windows` poster styles). A service that didn't load for a player (e.g. no free plot) never overwrites
-their saved data.
+their saved data. v41 added `stats.bossKills` (the plaza's boss kills ranking), starting at the number of bosses the save has cleared.
 
 ### 10.6 UI style and HUD
 - **Loading screen: the binder** (owner 2026-11-13, spec `docs/superpowers/specs/2026-11-13-loading-screen-binder-design.md`;
@@ -6346,10 +6445,15 @@ boss models; the ranch and Heroic tiers come after those.
     with "takes 23 seconds" under it ("2 more copies needed" when short). No Value, no Now / After table, no grades.
     Star Shards are no switch any more: an empty spot that a shard could fill shows a faint shard, a tap fills them,
     a tap on a shard takes them out, and a line under the button says so ("Tap an empty spot: Star Shards finish this
-    star! (12 left)"). "Keep a different copy" is a small link to the copy picker: every copy as a row (foil, grade, level, stars, how
-    many, Power) under "Which copy keeps the star? Tap it." (the rewrite had dropped its function: the tap errored and a
-    tester couldn't keep a Grade S copy, fixed 2026-11-21; tests/SourceOrder now fails on a call to a function its
-    file never defines). The left rows: the card's
+    star! (12 left)"). Under the button, with more than one copy to choose from, a white chip "Pick a different card · you have 4 to
+    choose from" (owner 2026-11-21: "Keep a different card is so confusing... also the next window make it more
+    understandable"; once a small underlined link whose function a rewrite had dropped: the tap errored and a tester
+    couldn't choose a Grade S copy; tests/SourceOrder now fails on a call to a function its file never defines). It
+    shows the copies as pictures in place of the recipe (`Recipe.copyPicker`, shared with the Grading Station; words in
+    `CondenseRules.pickChip` / `pickSay` / `copyLabel`): "Which Tidecaller gets the star?", "Tap the one you want.
+    Better ones are never used up.", then a tile for each copy, best grade first: its card, a gold Foil tag, its grade
+    in the grade's colour, its stars, "You have 2" or "Lv 12", and a gold Ready! or "3 more"; the one in use ringed
+    and lit; a tap picks it; Back. The left rows: the card's
     stars and a gold Ready!, or "3 more" with a bar, or All stars. Pressing Add a star flies the copies into the
     card. The card on the pane stays in the list and selected when the shards change which cards are ready, and the
     list (the Grading Station's too) keeps its scroll through every redraw; a search, a filter or opening the window
@@ -6433,8 +6537,8 @@ boss models; the ranch and Heroic tiers come after those.
     empty spots or takes them out, like a tap on a spot; "Fill in for missing copies" when the copies are all there)
     and "Gold Seals x11 · Tap: pays the cash" (gold-edged with "Pays the cash! Tap to undo" once on; "Not for a
     Legendary's Grade S"). Under the button, only when they apply: the grade swap's line and two-line button, and a
-    "Keep a different copy" link (the copies as rows in place of the recipe) for players who mind which copy is
-    graded. A list row: the card's grade and the next one, and a gold "Ready!", "2 more" with a bar, "Need cash" or
+    "Pick a different card" chip (the copies as pictures in place of the recipe, "Which Tidecaller gets the grade?",
+    the Condenser's picker) for players who mind which copy is graded. A list row: the card's grade and the next one, and a gold "Ready!", "2 more" with a bar, "Need cash" or
     "Top grade". No Value, no Now / After table, no "Used up" list (client `Util/NowAfter` is gone).
   - *The Forge as a picture recipe* (the same message: "do the same with forge"): the Forge window's pane, above
     ("Weapons": the Forge window). `WeaponText.button`, `cost` and `costChips` became `say`, `spots`, `spotColumns`,
@@ -6553,6 +6657,15 @@ boss models; the ranch and Heroic tiers come after those.
     forgiving"; it replaces "Epic and Legendary unchanged" above): an Epic 1% plus 0.2% a loot win without one,
     median 22 wins (0.2% + 0.05%, 50 before); a Legendary 0.5% + 0.08%, median 37 (0.1% + 0.02%, 79). About 2.5 and
     4.5 hours on that boss at a loot win every 7 minutes.
+  - *Every weapon quicker to get* (owner, the same evening: "increase epic weapon drop rate to 12% then legendaries
+    to 6. if thats fair", then his pick of three: those two as asked, with Rare and Very Rare raised so rarer is still
+    slower; it replaces every drop number above): a Rare 20% plus 2.5% a loot win without one, a Very Rare 15% + 1%,
+    an Epic 12% + 0.2%, a Legendary 6% + 0.08% (`Weapons.DROP`): median 3 / 4 / 6 / 11 loot wins, about 20, 30, 40 and
+    80 minutes on that boss (the Wild's three a little sooner, `DROP_WILD`). The boss board's "Drop chance now" goes
+    down with rarity at any number of misses (tests/WeaponRules). Asked alone, 12% and 6% would have made an Epic
+    drop as fast as a Rare (6 wins) and faster than a Very Rare (10). A weapon you own drops again more often too: a
+    duplicate's 10 materials add about 2.6, 1.9, 1.3 and 0.7 a loot win to the loot's own 1.2, so an Epic's 100
+    materials to +10 take about 40 loot wins (62 before).
   - *The Frontier's bosses always drop a Frontier card* (owner 2026-11-21: "make the bosses always drop a frontier
     card. but decrease the droprate the higher the rarity"; it replaces the 20 / 25 / 30% above): every loot win, for
     those who helped. Its rarity: the Frost Tyrant Rare 85%, Epic 13%, Legendary 2%; the Storm Sovereign 82 / 15 /

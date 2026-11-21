@@ -30,6 +30,11 @@ return {
 	-- pets stays the same"): a won fight gives this much shop XP per $1 it paid (a sale gives 1 per $1), at least 1:
 	-- a Meadow monster 1, a Rift one 7-10 (elites 3x), the Meadow Warden 18, the Prism Hydra 200 (LevelMath.fightXp)
 	FIGHT_XP_PER_CASH = 0.5,
+	-- Shop XP from opening your own packs (a pack ripped from a box or opened from the Bag pays its market price in XP,
+	-- as selling it would: 3 for a pack, 9 for a Deck Box). From shop Lv `from` it pays `share` of that: 2 and 6 (owner
+	-- 2026-11-21: a tester opened 5,000 packs with Open 10 for the XP, "lets just do 2 exp after level 30"; opening has
+	-- no pace of its own, selling has the customers'). LevelMath.openXp
+	OPEN_XP = { from = 30, share = 2 / 3 },
 	MILESTONE_EVERY = 10, -- the rainbow pillar (Config/LevelUpFx)
 	GIFT_EVERY = 5, -- a gift on every 5th level: by the level's last digit (Config/Items ids, Bag items)
 	GIFTS = {

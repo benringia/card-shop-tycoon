@@ -6,8 +6,9 @@
 -- ("Squish 4 extra Reefray into this one. It gets a star!"), the copies that go in as little cards, an arrow, the
 -- card that keeps the star with its stars under it (the new one beating), "+40 Power", and one big "Add a star!"
 -- with how long it takes. No Value, no grade talk. Star Shards are tapped into empty spots (and tapped out again).
--- "Keep a different copy" is a small link. A row shows its stars and a gold Ready!, "3 more" with a bar, or All
--- stars. On Add a star the copies fly into the card. Condense asks the server, which re-checks everything; the
+-- "Pick a different card" is a chip under the button: the copies as pictures (Recipe.copyPicker), the best grade
+-- first; a copy better than the card that gets the star is never squished (owner 2026-11-21). A row shows its stars
+-- and a gold Ready!, "3 more" with a bar, or All stars. On Add a star the copies fly into the card. Condense asks the server, which re-checks everything; the
 -- binder sync redraws the panel. Opened from your own Condenser's prompt; closes when you walk away. A finished star
 -- waits here (the player's CondenserDone attribute): opening the window shows the card with its new star popping in
 -- and Take it out. The list keeps its scroll through a redraw.
@@ -20,6 +21,7 @@ local Early = require(Config:WaitForChild("Early"))
 local EarlyRules = require(Shared:WaitForChild("Util"):WaitForChild("EarlyRules"))
 local Beasts = require(Config:WaitForChild("Beasts"))
 local Cards = require(Config:WaitForChild("Cards"))
+local CardDesign = require(Config:WaitForChild("CardDesign"))
 local BabyColors = require(Config:WaitForChild("BabyColors"))
 local CondenserConfig = require(Config:WaitForChild("Condenser"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
@@ -48,7 +50,6 @@ type Candidate = { key: string, beast: Beast?, foil: boolean, grade: string, lev
 local PANEL_MAX_SIZE = Vector2.new(820, 540)
 local LIST_WIDTH_SCALE = 0.5
 local ROW_HEIGHT = 66
-local MAIN_ROW_HEIGHT = 48 -- tap target minimum
 local THUMBNAIL_SIZE = Vector2.new(40, 56)
 local DETAIL_FACE_SIZE = Vector2.new(96, 137)
 local DISTANCE_CHECK_SECONDS = 0.5
@@ -63,6 +64,7 @@ local ROW_STAR = 13 -- px: a list row's little stars
 local BAR_HEIGHT = 6
 local RECIPE = Recipe.LOOK -- the recipe on the right: its spots, arrow and button (Util/Recipe, shared with the other stations)
 local CONDENSE_HEIGHT = RECIPE.button
+local CAPTION = 30 -- a small line under the chip (the better copies kept safe, what Star Shards do): two lines' room
 -- A phone (owner 2026-11-21, the night's device check: on a 705 x 338 phone the window was 241 px tall with 105 for
 -- its list and its recipe, the big button far under the fold): the window takes nearly the whole screen, the rows over
 -- the list go, the recipe is smaller and the big button sits pinned under the pane (`actionBar`), as in the Forge
@@ -89,7 +91,7 @@ local selectedCardId: string? = nil
 local searchText = ""
 local activeFilter = ALL_FILTER -- All, Ready (can take a star now) or Raising (in the list, not ready yet)
 local mainKey: string? = nil -- chosen main copy (Candidate.key); nil = the default choice
-local choosingMain = false -- Change: the copies to keep show in place of the buttons
+local choosingMain = false -- Pick a different card: the copies show in place of the recipe
 local inFlight = false -- a Condense request is waiting for the server; the button stays locked
 local useShards = false -- Star Shards fill missing duplicates (up to half a star's cost)
 local listToTop = false -- the next render starts the list at its top (render)
@@ -264,37 +266,6 @@ local function buildSpot(parent: Instance, kind: string, card: Card, take: Conde
 	})
 end
 
--- Keep a different copy: every copy that could keep the star as a row (its grade, level and stars, how many plain
--- ones, its Power), the chosen one ringed; a tap keeps that one. Returns the y under the last row
-local function mainChoices(candidates: { Candidate }, chosen: Candidate, y: number): number
-	for _, candidate in candidates do
-		local row = Instance.new("TextButton")
-		row.Name = "Copy_" .. candidate.key
-		row.AnchorPoint = Vector2.new(0.5, 0) -- grows evenly under the mouse (the grow follows the anchor)
-		row.Position = UDim2.new(0.5, 0, 0, y)
-		row.Size = UDim2.new(1, -2 * EDGE, 0, MAIN_ROW_HEIGHT)
-		row.BackgroundColor3 = palette.row
-		row.Text = ""
-		row.Parent = pane
-		UIKit.corner(row, 10)
-		UIKit.outline(row, if candidate.key == chosen.key then UIKit.Colors.Accent else palette.rowEdge, 2)
-		local title = `{if candidate.foil then "FOIL · " else ""}{BeastRules.describeGrade(candidate.grade)} · {BeastRules.describeGrowth(candidate.level, candidate.stars)}`
-		if not candidate.beast then
-			title ..= ` · x{candidate.count}`
-		end
-		addLabel(row, title, UDim2.fromOffset(10, 0), UDim2.new(1, -100, 1, 0), Enum.Font.GothamBold, 13, palette.ink)
-		local power = addLabel(row, `Power {candidate.power}`, UDim2.new(1, -94, 0, 0), UDim2.new(0, 86, 1, 0), Enum.Font.GothamBold, 12, palette.power)
-		power.TextXAlignment = Enum.TextXAlignment.Right
-		row.Activated:Connect(function()
-			mainKey = candidate.key
-			choosingMain = false
-			render()
-		end)
-		y += MAIN_ROW_HEIGHT + 6
-	end
-	return y
-end
-
 local function renderPane(card: Card?)
 	clear(pane)
 	clear(actionBar)
@@ -346,7 +317,8 @@ local function renderPane(card: Card?)
 	local nextStars = math.min(chosen.stars + 1, BeastRules.MAX_STARS)
 
 	-- one sentence: what will happen
-	local sentence = if choosingMain then "Which copy keeps the star? Tap it." else CondenseRules.say({ name = card.name, copies = copiesIn, shards = shardsIn, missing = missing, max = atMax, maxStars = BeastRules.MAX_STARS })
+	local pickSay, pickSub = CondenseRules.pickSay(card.name, "star")
+	local sentence = if choosingMain then pickSay else CondenseRules.say({ name = card.name, copies = copiesIn, shards = shardsIn, missing = missing, max = atMax, maxStars = BeastRules.MAX_STARS })
 	local say = UIKit.label(pane, sentence, Enum.Font.FredokaOne, if phone then 13 else 16, palette.ink)
 	say.Name = "Say"
 	say.Position = UDim2.fromOffset(EDGE, 6)
@@ -355,17 +327,48 @@ local function renderPane(card: Card?)
 	say.TextXAlignment = Enum.TextXAlignment.Center
 
 	local y = sayTop
-	-- Keep a different copy: the copies that could keep the star, in place of the recipe
+	-- Pick a different card: every copy that could get the star as a picture, in place of the recipe
 	if choosingMain then
-		y = mainChoices(candidates, chosen, y)
-		local back = UIKit.button(pane, "Back", UIKit.Colors.Secondary)
-		back.AnchorPoint = Vector2.new(0.5, 0)
-		back.Position = UDim2.new(0.5, 0, 0, y + 4)
-		back.Size = UDim2.fromOffset(160, 48)
-		back.Activated:Connect(function()
-			choosingMain = false
-			render()
-		end)
+		local tiles: { Recipe.CopyTile } = {}
+		for _, candidate in candidates do
+			local full = candidate.stars >= BeastRules.MAX_STARS
+			local cost = if full then 0 else BeastRules.getCondenseCost(candidate.stars) or 0
+			local tagText, tagKind = CondenseRules.rowTag(CondenseRules.countDuplicates(byGrade, asMain(candidate), Beasts), cost, (getPlan(card, candidate)) ~= nil)
+			table.insert(tiles, {
+				key = candidate.key,
+				grade = BeastRules.describeGrade(candidate.grade),
+				gradeColor = CardDesign.GRADE_COLORS[candidate.grade] or CardDesign.GRADE_COLORS.C,
+				foil = candidate.foil,
+				label = CondenseRules.copyLabel({ beast = candidate.beast ~= nil, level = candidate.level, count = candidate.count }),
+				stars = candidate.stars,
+				tag = tagText,
+				gold = tagKind == "ready",
+				chosen = candidate.key == chosen.key,
+				draw = function(holder: Frame)
+					makeFace(holder, card, candidate.foil, false, { level = candidate.level, stars = candidate.stars, grade = candidate.grade })
+				end,
+			})
+		end
+		Recipe.copyPicker(pane, {
+			panel = panel,
+			y = y,
+			edge = EDGE,
+			face = PHONE_FACE,
+			maxStars = BeastRules.MAX_STARS,
+			palette = palette,
+			sub = pickSub,
+			tiles = tiles,
+			columnsFor = CondenseRules.pickColumns,
+			onPick = function(key: string)
+				mainKey = key
+				choosingMain = false
+				render()
+			end,
+			onBack = function()
+				choosingMain = false
+				render()
+			end,
+		})
 		return
 	end
 
@@ -461,38 +464,43 @@ local function renderPane(card: Card?)
 		y += CONDENSE_HEIGHT + 8
 	end
 
-	-- what a tap on a spot does with Star Shards, when there is something to say
-	local shardLine = CondenseRules.shardWords({ have = shardCount, on = useShards, used = shardsIn, offers = offers, could = could, missing = missing, max = atMax })
-	if shardLine then
-		local caption = UIKit.label(pane, shardLine, Enum.Font.GothamBold, 13, if could then palette.good else palette.inkSoft)
-		caption.Name = "Shards"
-		caption.Position = UDim2.fromOffset(EDGE, y)
-		caption.Size = UDim2.new(1, -2 * EDGE, 0, 34)
-		caption.TextWrapped = true
-		caption.TextXAlignment = Enum.TextXAlignment.Center
-		y += 38
-	end
-
-	-- for players who mind which copy keeps the star (its grade, its level): a small link
+	-- which copy gets the star (its grade, its level): a chip to the copies' pictures, right under
+	-- the button so it is always in view
 	if #candidates > 1 then
-		local change = Instance.new("TextButton")
-		change.Name = "Change"
-		change.AnchorPoint = Vector2.new(0.5, 0)
-		change.Position = UDim2.new(0.5, 0, 0, y)
-		change.Size = UDim2.fromOffset(220, 44)
-		change.BackgroundTransparency = 1
-		change.Font = Enum.Font.GothamBold
-		change.TextSize = 13
-		change.RichText = true
-		change.Text = "<u>Keep a different copy</u>"
-		change.TextColor3 = palette.hint
-		change.Parent = pane
-		change.Activated:Connect(function()
+		local chipTitle, chipSub = CondenseRules.pickChip(#candidates)
+		Recipe.pickChip(pane, y, palette, chipTitle, chipSub, function()
 			choosingMain = true
 			render()
 		end)
 		y += 44
 	end
+
+	-- copies are missing while better ones sit unused: they are safe, said once
+	local safeLine = if missing > 0 then CondenseRules.safeWords(CondenseRules.betterCopies(byGrade, asMain(chosen), Beasts)) else nil
+	if safeLine then
+		local caption = UIKit.label(pane, safeLine, Enum.Font.GothamBold, 13, palette.inkSoft)
+		caption.Name = "Safe"
+		caption.Position = UDim2.fromOffset(EDGE, y + 4)
+		caption.Size = UDim2.new(1, -2 * EDGE, 0, CAPTION)
+		caption.TextWrapped = true
+		caption.TextXAlignment = Enum.TextXAlignment.Center
+		caption.TextYAlignment = Enum.TextYAlignment.Top
+		y += CAPTION + 2
+	end
+
+	-- what a tap on a spot does with Star Shards, when there is something to say
+	local shardLine = CondenseRules.shardWords({ have = shardCount, on = useShards, used = shardsIn, offers = offers, could = could, missing = missing, max = atMax })
+	if shardLine then
+		local caption = UIKit.label(pane, shardLine, Enum.Font.GothamBold, 13, if could then palette.good else palette.inkSoft)
+		caption.Name = "Shards"
+		caption.Position = UDim2.fromOffset(EDGE, y + 4)
+		caption.Size = UDim2.new(1, -2 * EDGE, 0, CAPTION)
+		caption.TextWrapped = true
+		caption.TextXAlignment = Enum.TextXAlignment.Center
+		caption.TextYAlignment = Enum.TextYAlignment.Top
+		y += CAPTION + 2
+	end
+
 	local bottom = Instance.new("Frame") -- keeps room under the last button for its hover grow
 	bottom.BackgroundTransparency = 1
 	bottom.Position = UDim2.fromOffset(0, y + EDGE)

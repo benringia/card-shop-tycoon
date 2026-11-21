@@ -287,6 +287,7 @@ AdminPanel.SECTIONS = {
 			{ label = "Lesson: Accessory Hook (Lv 7)", command = "/tutorial lesson accessoryHook" },
 			{ label = "Lesson: Big Display Rack (Lv 9)", command = "/tutorial lesson bigRack" },
 			{ label = "Lesson: Bulk Bin (Lv 10)", command = "/tutorial lesson bulkBin" },
+			{ label = "Lesson: Recycler (Lv 12)", command = "/tutorial lesson recycler" },
 			{ label = "Lesson: Booster Boxes (Lv 11)", command = "/tutorial lesson boosterBox" },
 			{ label = "Lesson: Grading Station (Lv 14)", command = "/tutorial lesson grading" },
 			{ label = "Lesson: Shop jobs (Lv 20)", command = "/tutorial lesson jobs" },

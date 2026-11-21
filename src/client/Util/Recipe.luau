@@ -164,4 +164,153 @@ function Recipe.flyIn(panel: Frame, spots: { GuiObject }, target: GuiObject)
 	end
 end
 
+-- The copy picker (owner 2026-11-21: "Keep a different card is so confusing. can we change wording or anything to make
+-- it more understandable. also the next window make it more understandable"; words in Util/CondenseRules): a chip
+-- under the big button that says what it does, and the copies as pictures in place of the recipe.
+
+-- The chip: its words and a small line under them, 44 px tall, its top at `y`
+function Recipe.pickChip(parent: Instance, y: number, palette: UIKit.Palette, title: string, sub: string, onTap: () -> ()): TextButton
+	local chip = Instance.new("TextButton")
+	chip.Name = "Change"
+	chip.Text = ""
+	chip.AnchorPoint = Vector2.new(0.5, 0)
+	chip.Position = UDim2.new(0.5, 0, 0, y + 2)
+	chip.Size = UDim2.fromOffset(250, 40)
+	chip.BackgroundColor3 = palette.row
+	chip.Parent = parent
+	UIKit.corner(chip, 10)
+	UIKit.outline(chip, palette.rowEdge, 2)
+	local words = UIKit.label(chip, title, Enum.Font.FredokaOne, 14, palette.ink)
+	words.Position = UDim2.fromOffset(4, 4)
+	words.Size = UDim2.new(1, -8, 0, 17)
+	words.TextXAlignment = Enum.TextXAlignment.Center
+	local small = UIKit.label(chip, sub, Enum.Font.GothamBold, 11, palette.inkSoft)
+	small.Position = UDim2.fromOffset(4, 21)
+	small.Size = UDim2.new(1, -8, 0, 14)
+	small.TextXAlignment = Enum.TextXAlignment.Center
+	chip.Activated:Connect(onTap)
+	return chip
+end
+
+export type CopyTile = {
+	key: string,
+	grade: string, -- "Grade A"
+	gradeColor: Color3,
+	foil: boolean, -- a gold Foil tag on its picture
+	label: string, -- "You have 2", "Lv 12"
+	stars: number,
+	tag: string, -- "Ready!", "3 more"
+	gold: boolean, -- its tag is the gold Ready!
+	chosen: boolean, -- the one in use now: ringed and lit
+	draw: (holder: Frame) -> (), -- draws its card's face into `holder`
+}
+
+-- The copies as tiles from `y` down (a small line, then each copy's picture, its grade, its stars, a few words and
+-- whether it is ready; a tap picks it), then Back. Returns the y under Back
+function Recipe.copyPicker(pane: GuiObject, view: {
+	panel: Frame,
+	y: number,
+	edge: number,
+	face: Vector2,
+	maxStars: number,
+	palette: UIKit.Palette,
+	sub: string,
+	tiles: { CopyTile },
+	columnsFor: (width: number, tile: number, gap: number) -> number,
+	onPick: (key: string) -> (),
+	onBack: () -> (),
+}): number
+	local palette, face = view.palette, view.face
+	local gap = 6
+	local tileWide, tileTall = face.X + 8, face.Y + 90
+	local scaler = view.panel:FindFirstChildOfClass("UIScale")
+	local scale = if scaler and scaler.Scale > 0 then scaler.Scale else 1
+	local room = pane.AbsoluteSize.X / scale - 2 * view.edge
+	local columns = math.min(math.max(1, #view.tiles), view.columnsFor(room, tileWide, gap))
+	local rowWide = columns * tileWide + (columns - 1) * gap
+	local y = view.y
+
+	local small = UIKit.label(pane, view.sub, Enum.Font.GothamBold, 12, palette.inkSoft)
+	small.Name = "PickSub"
+	small.Position = UDim2.fromOffset(view.edge, y)
+	small.Size = UDim2.new(1, -2 * view.edge, 0, 16)
+	small.TextXAlignment = Enum.TextXAlignment.Center
+	y += 22
+
+	for index, tile in view.tiles do
+		local column, row = (index - 1) % columns, (index - 1) // columns
+		local button = Instance.new("TextButton")
+		button.Name = "Copy_" .. tile.key
+		button.Text = ""
+		button.Position = UDim2.new(0.5, -rowWide / 2 + column * (tileWide + gap), 0, y + row * (tileTall + gap))
+		button.Size = UDim2.fromOffset(tileWide, tileTall)
+		button.BackgroundColor3 = if tile.chosen then Color3.fromRGB(255, 240, 196) else palette.row
+		button.Parent = pane
+		UIKit.corner(button, 10)
+		UIKit.outline(button, if tile.chosen then UIKit.Colors.Accent else palette.rowEdge, if tile.chosen then 3 else 2)
+		local holder = Instance.new("Frame")
+		holder.Name = "Face"
+		holder.BackgroundTransparency = 1
+		holder.Position = UDim2.fromOffset(4, 4)
+		holder.Size = UDim2.fromOffset(face.X, face.Y)
+		holder.Parent = button
+		tile.draw(holder)
+		if tile.foil then
+			local foil = UIKit.pill(button, "Foil", UIKit.Colors.Accent, UIKit.Colors.Ink)
+			foil.Name = "Foil"
+			foil.Position = UDim2.fromOffset(0, math.floor(face.Y * 0.2)) -- on the picture, clear of the card's name
+			foil.Size = UDim2.fromOffset(0, 18)
+			foil.TextSize = 11
+			foil.ZIndex = holder.ZIndex + 10
+		end
+		local grade = UIKit.pill(button, tile.grade, tile.gradeColor, Color3.new(1, 1, 1))
+		grade.Name = "Grade"
+		grade.AnchorPoint = Vector2.new(0.5, 0)
+		grade.Position = UDim2.new(0.5, 0, 0, face.Y + 8)
+		grade.Size = UDim2.fromOffset(0, 20)
+		grade.TextSize = 12
+		local starSize = 11
+		local stars = Instance.new("Frame")
+		stars.Name = "Stars"
+		stars.BackgroundTransparency = 1
+		stars.AnchorPoint = Vector2.new(0.5, 0)
+		stars.Position = UDim2.new(0.5, 0, 0, face.Y + 32)
+		stars.Size = UDim2.fromOffset(view.maxStars * (starSize + 2) - 2, starSize)
+		stars.Parent = button
+		for star = 1, view.maxStars do
+			local icon = Icon.make(stars, "Star", UDim2.fromOffset(starSize, starSize))
+			icon.Position = UDim2.fromOffset((star - 1) * (starSize + 2), 0)
+			Icon.set(icon, "Star")
+			local glyph = icon:FindFirstChild("Glyph")
+			if glyph and glyph:IsA("ImageLabel") then
+				glyph.ImageTransparency = if star <= tile.stars then 0 else 0.8
+			end
+		end
+		local label = UIKit.label(button, tile.label, Enum.Font.GothamBold, 11, palette.inkSoft)
+		label.Name = "Has"
+		label.Position = UDim2.fromOffset(2, face.Y + 46)
+		label.Size = UDim2.new(1, -4, 0, 14)
+		label.TextXAlignment = Enum.TextXAlignment.Center
+		local tag = UIKit.pill(button, tile.tag, if tile.gold then UIKit.Colors.Accent else palette.track, if tile.gold then UIKit.Colors.Ink else palette.inkSoft)
+		tag.Name = "Tag"
+		tag.AnchorPoint = Vector2.new(0.5, 1)
+		tag.Position = UDim2.new(0.5, 0, 1, -6)
+		tag.Size = UDim2.fromOffset(0, 20)
+		tag.TextSize = 11
+		button.Activated:Connect(function()
+			view.onPick(tile.key)
+		end)
+	end
+	local rows = math.ceil(#view.tiles / columns)
+	y += rows * (tileTall + gap) + 2
+
+	local back = UIKit.button(pane, "Back", UIKit.Colors.Secondary)
+	back.Name = "Back"
+	back.AnchorPoint = Vector2.new(0.5, 0)
+	back.Position = UDim2.new(0.5, 0, 0, y)
+	back.Size = UDim2.fromOffset(160, 48)
+	back.Activated:Connect(view.onBack)
+	return y + 48
+end
+
 return Recipe
