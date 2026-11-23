@@ -46,6 +46,39 @@ return {
 		assert(window.phoneHeight <= 0.98, "inside the screen")
 	end,
 
+	-- Owner 2026-11-23, Shop A: the line under a tile's name as chips, a coin on prices, "You have N" on the picture
+	["a tile's line becomes chips, the first the main one"] = function()
+		local chips = ShopTileRules.chips("Holds 24 · Any stock")
+		expect.equal(#chips, 2)
+		expect.equal(chips[1].text, "Holds 24")
+		expect.equal(chips[1].main, true)
+		expect.equal(chips[2].text, "Any stock")
+		expect.equal(chips[2].main, false)
+		expect.equal(#ShopTileRules.chips("Shop look"), 1, "one chip")
+		expect.equal(#ShopTileRules.chips(""), 0, "no line, no chips")
+		expect.equal(ShopTileRules.chips("Window · Decor +2")[2].text, "Decor +2", "the windows' own line splits the same way")
+	end,
+	["prices get the coin, other button words don't"] = function()
+		expect.equal(ShopTileRules.isPrice("$350"), true)
+		expect.equal(ShopTileRules.isPrice("$1200"), true)
+		expect.equal(ShopTileRules.isPrice("Use"), false)
+		expect.equal(ShopTileRules.isPrice("Using"), false)
+		expect.equal(ShopTileRules.isPrice("🔒 Lv 9"), false)
+		expect.equal(ShopTileRules.isPrice("Place"), false)
+	end,
+	["You have N only once you have one"] = function()
+		expect.equal(ShopTileRules.ownedText(2), "You have 2")
+		expect.isNil(ShopTileRules.ownedText(0))
+	end,
+	["desktops: three tiles to a row, the pieces fitting the tile"] = function()
+		local full = ShopTiles.FULL
+		expect.equal(full.columns, 3)
+		local nameTop, lineTop = full.picture + 12, full.picture + 34
+		local buttonTop = full.height - 8 - 48
+		assert(lineTop + ShopTiles.CHIPS.height <= buttonTop, `the chips over the button: {lineTop + ShopTiles.CHIPS.height} vs {buttonTop}`)
+		assert(nameTop + 22 <= lineTop, "the name over the chips")
+	end,
+
 	-- Owner 2026-11-19: Pish no longer visits for every unlock; a NEW tag on the tile says what just opened
 	["a tile is NEW for the level it unlocks at and the one after, never the starting things"] = function()
 		expect.equal(ShopTileRules.isNew(4, 4), true, "just unlocked")

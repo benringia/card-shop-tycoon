@@ -19,7 +19,7 @@ local ShopTips = require(Shared:WaitForChild("Util"):WaitForChild("ShopTips"))
 
 local LookTiles = {}
 
-local PICTURE = 110 -- the swatch's height, like the Build tiles' 3D pictures
+local PICTURE = require(Shared:WaitForChild("Config"):WaitForChild("ShopTiles")).FULL.picture -- like the Build tiles' 3D pictures
 local WALLPAPER_TILE = 44 -- pixels a wallpaper repeat on the swatch
 
 type Tile = { look: DecorRules.Look, frame: Frame, button: TextButton }

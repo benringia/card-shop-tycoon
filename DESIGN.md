@@ -563,6 +563,15 @@ is over UI (`UIKit.pointerBlocked`).
   (`Util/ShopTips`, tests/ShopTips; `Tooltip.rich`): a rack "Holds 24 of your stock: packs, sleeves, deck boxes or booster
   boxes. Carry a box to it to fill it. Customers buy from it.", cases, machines, decor (its points), the Bulk Bin, the
   shop looks and windows. The stock words are the welcome-back card's (`Offline.PLURALS`).
+- **The Shop window as a catalog** (owner 2026-11-23, pick A of artifact VSged5WBCtnhC9mcjegfiu): on a computer three
+  tiles to a row fill the window (`Config/ShopTiles` FULL), each a picture (its 3D model, a look's swatch, a window),
+  the name, the line under it as chips (`ShopTileRules.chips`, split at " · ": what it holds in mint, "Holds 24",
+  then what it takes in lavender, "Any stock", "Sleeves, deck boxes", "Extra Commons", "Customers buy"), "You have
+  N" over the picture for shelves, cases and machines you've placed (`ShopTile.trackOwned`, counting your plot's
+  Shelves by ShelfId), and a coin beside the price on its button (not on Use, Using, Place or a lock). Your cash shows
+  in the header by the close button. The layout is picked as the window opens and again when the screen changes size
+  (a computer whose game window started short kept the phone's rows); a phone still gets the row tiles (picture left,
+  two to a row), dressed the same way (client `Util/ShopTile`: `dress`, `compact`, `expand`).
 
 | Shelf | Capacity | Cost | Unlock |
 |---|---|---|---|
@@ -1763,15 +1772,20 @@ the Frontier leaves out; `HOME` (the way-home portal and the trailhead title) an
   own); each boss has a roar and an intro shot.
 
 **Party & summoning.** Binder card view → Add to party (slots 1–3; a plain copy becomes its own card). The Party
-panel (HUD; style kit, teal band) shows the three slots side by side with no scrolling: the card, name, grade pill,
-level and star icons, its Power (big, orange), HP / ATK / SPD bars (against the best stats any card reaches,
-`CardTips.reference`), its perk (element icon and a few words), "Resting m:ss" in red after fainting, and Summon
-(gold) or the green Summoned (tap to unsummon), XP Tonic (icon with a gold badge on its top right corner showing how
-many you hold, drawn above Remove; hidden at 0 or Lv 30) and Remove (red). The summoned column glows green with a
-SUMMONED tag; the band shows "Summoned: <card>" (or "Nobody summoned") and your PvP record; an empty slot has "Add a
-card" (opens the binder). A legend along the bottom names the stat icons once (Power, Health, Attack, Attack Speed), and
-every icon without a label has a word tooltip (`Util/Tooltip`; Remove says "Remove from party"). Phones get a smaller card and slimmer bars so every
-column fits. One creature is summoned at a time: the server moves
+panel (HUD; style kit, teal band) shows the three slots side by side with no scrolling, each as a trading card (owner
+2026-11-23, pick A of artifact VSged5WBCtnhC9mcjegfiu): the card's painting across the top (`CardArt.SMALL`) with
+its grade pill and "Lv N" over the top corners and its stars and element along the bottom; the name and its Power
+(orange) beside it; Health, Attack and Speed, each named, a bar against the best stats any card reaches
+(`CardTips.reference`) and its number; its perks in a cream box, in town while summoned (element icon, "You walk 19%
+faster": `PartyRules.effect`) and in fights (sword icon, "Creature attacks 19% faster": `PartyRules.fightEffect`;
+the perk's name in the tooltip); "XP to Lv N" with a lilac bar (Max level at Lv 30); "Resting m:ss" in red after
+fainting; and Summon (gold) or the green Summoned (tap to unsummon), XP Tonic (icon with a gold badge on its top right
+corner showing how many you hold; hidden at 0 or Lv 30) and a narrow Remove (sky: neutral buttons are never white,
+owner 2026-11-03, so the mockup's white Remove is sky). The summoned column glows green with a SUMMONED tag; the band
+shows the party's Power ("Party Power 3,328") and your PvP record; an empty slot has "Add a card" (opens the binder).
+The stats are named on each card, so the legend that named the icons along the bottom went; every icon has a word
+tooltip (`Util/Tooltip`; Remove says "Remove from party"). A short computer window gets a lower painting and slimmer
+stat lines and no XP line, a phone's card a strip of painting and no stat lines, so every column fits. One creature is summoned at a time: the server moves
 an invisible marker behind you on the ground (`workspace.Creatures`, 20 Hz, teleports when 40+ studs away) and every
 client draws the creature on it with walking, breathing and a rarity glow (`docs/creatures.md`), under a name tag
 like a gacha title (owner 2026-11-14, after looking at how Palworld, Pokemon, gacha and pet games do it, option B of
@@ -4838,7 +4852,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── CondenserController.luau # Card Condenser panel (tidy two panes): toolbar, slim rows, the card's before -> after, Condense
     │   │   ├── GradingController.luau # Grading Station panel: pick card + copy, next grade, cost, Grade Up
     │   │   ├── JobsController.luau      # Jobs window: rule chips, worker rows (card tip, status, XP, speed and mistake words, Switch job), free and locked slots
-    │   │   ├── PartyController.luau     # Party HUD button and panel: three columns (Power, bars, perk, rest), Summon, XP Tonic, Remove
+    │   │   ├── PartyController.luau     # Party HUD button and panel: three trading-card columns (painting, Power, named stats, perks, XP, rest), Summon, XP Tonic, Remove
     │   │   ├── BuffController.luau      # buff badge (bottom-right) and tooltip for the summoned creature's perk
     │   │   ├── ButterflyController.luau # client butterflies at the plaza spring, Forest Falls and the trails' start
     │   │   ├── DayCycleController.luau # the town's day cycle on this client (afternoon outside town)
@@ -5026,7 +5040,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
         │   ├── Delivery.luau   # the van's trip, street, look and sounds, the boxes' hop, the unboxing, the waiting chip (plain data)
         │   ├── CarryPose.luau  # a carried box's place on the chest and the arms' pose round it (plain data)
         │   ├── PhoneForm.luau  # the Phone standing up or lying on its side on a short screen (plain data)
-        │   ├── ShopTiles.luau  # the Shop window's tiles: the tall one, a phone's row tile, the window's chrome (plain data)
+        │   ├── ShopTiles.luau  # the Shop window's tiles: three to a row, a phone's row tile, chips, owned badge, coin, the window's chrome (plain data)
         │   ├── CardReveal.luau # how big each pull's reveal is: tease, rays, spotlight, sparks, banner (plain data)
         │   ├── RevealSounds.luau # each rarity's reveal riser and layered hit, with measured loudness (plain data)
         │   ├── CardDesign.luau # card face layout, colours and image ids (client)
@@ -5135,7 +5149,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── BulkRules.luau     # the Bulk Bin's extras, whole handfuls, the cards going in, who asks (pure)
             ├── RecycleRules.luau  # the Recycler's extras, what a pile makes, the copies going in, its words (pure)
             ├── ShopTips.luau      # what each Shop window item holds and does, for its tooltip (pure)
-            ├── ShopTileRules.luau # the Shop window's list height and a phone's row tile (pure, Lune-tested)
+            ├── ShopTileRules.luau # the Shop window's list height, a phone's row tile, a tile's chips, coin and owned badge (pure, Lune-tested)
             ├── ShelfStock.luau    # stock boxes, display box fill and price tags on shelves (pure, Lune-tested)
             ├── EditBarRules.luau  # what a placed thing's Edit bar offers: name, chip, hint, tiles, locks, holds (pure, Lune-tested)
             ├── DeliveryRules.luau # the van's place by the server's clock, its lane and stop, the boxes' times and arcs, unboxing shares (pure, Lune-tested)

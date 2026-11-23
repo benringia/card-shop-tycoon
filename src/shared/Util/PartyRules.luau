@@ -77,6 +77,21 @@ function PartyRules.describeFight(perk: Perk): string
 	return string.format(FIGHT_TEXT[perk.kind] or "%d%%", math.round(perk.value * 100))
 end
 
+-- "deliveries 15% faster" -> "Deliveries 15% faster"
+local function sentence(text: string): string
+	return string.upper(string.sub(text, 1, 1)) .. string.sub(text, 2)
+end
+
+-- "Deliveries 15% faster": a perk's effect alone (the Party window's perk box, owner 2026-11-23)
+function PartyRules.effect(perk: Perk): string
+	return sentence(string.format(TEXT[perk.kind] or "%d%%", math.round(perk.value * 100)))
+end
+
+-- "Creature attacks 5% faster": a fight perk's effect as a sentence
+function PartyRules.fightEffect(perk: Perk): string
+	return sentence(PartyRules.describeFight(perk))
+end
+
 -- "Hype: customers 5% more often"
 function PartyRules.describe(perk: Perk): string
 	local text = TEXT[perk.kind] or "%d%%"

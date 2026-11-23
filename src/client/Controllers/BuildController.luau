@@ -47,8 +47,8 @@ type ShelfDef = typeof(Shelves.List[1])
 local MACHINE_STATIONS: { [string]: string } = { Condenser = "condenser", GradingStation = "grading", Forge = "forge", Recycler = "recycler" }
 
 local CASE_BUYERS = {
-	CustomerCards = "customers buy",
-	PlayerCards = "players buy",
+	CustomerCards = "Customers buy",
+	PlayerCards = "Players buy",
 }
 
 -- Build menu tabs (Config/Shelves `category`); Decor also lists the shop looks first (Util/LookTiles). Trophies aren't
@@ -244,14 +244,18 @@ local function buildTile(parent: Instance, order: number, def: ShelfDef)
 	name.Size = UDim2.new(1, -20, 0, 22)
 	name.TextTruncate = Enum.TextTruncate.AtEnd
 	name.TextWrapped = false
-	local detail = if def.kind == "Products"
-		then `Holds {def.capacity}`
+	-- The line under the name, " · " between its chips (Util/ShopTile.dress): what it holds, then what it takes
+	local takes = stockWords(def.accepts)
+	local takesWords = if takes then table.concat(takes, ", ") else "any stock"
+	local detail = if def.kind == "Products" and def.id == Bulk.SHELF
+		then `Holds {def.capacity * Bulk.PER} cards · Extra Commons`
+		elseif def.kind == "Products" then `Holds {def.capacity} · {string.upper(string.sub(takesWords, 1, 1))}{string.sub(takesWords, 2)}`
 		elseif def.kind == "Condenser" then "Duplicates to stars"
 		elseif def.kind == "Grading" then "Duplicates to grades"
 		elseif def.kind == "Forge" then "Make and upgrade weapons"
 		elseif def.kind == "Recycler" then "Extra cards to materials"
 		elseif def.kind == "Decor" then `Decor +{def.decor or 0}`
-		else `{def.capacity} cards, {CASE_BUYERS[def.kind]}`
+		else `{def.capacity} cards · {CASE_BUYERS[def.kind]}`
 	local info = UIKit.label(tile, detail, Enum.Font.GothamBold, 13, UIKit.Colors.Subtext)
 	info.Position = UDim2.fromOffset(10, BUILD_TILE.PICTURE + 34)
 	info.Size = UDim2.new(1, -20, 0, 18)
@@ -273,11 +277,8 @@ local function buildShopPanel(parent: Instance)
 	shopPanel, list = UIKit.panel(parent, "BuildMenu", "Shop", "Shop")
 	palette = UIKit.colorsFor(shopPanel)
 	Icon.header(shopPanel, "Shop", UIKit.HEADER_HEIGHT)
-	-- A phone (Config/ShopTiles; pre-launch QA 2026-11-19): a taller window, slimmer tabs and row tiles, so a picture
-	-- and its price show together in the short list
-	local phone = UIKit.isPhone()
+	ShopTile.cashChip(shopPanel, UIKit.HEADER_HEIGHT) -- what you have to spend, by the close button
 	local window = ShopTiles.WINDOW
-	shopPanel.Size = UDim2.fromScale(if phone then 0.96 else 0.9, if phone then window.phoneHeight else window.height)
 	local limit = shopPanel:FindFirstChildOfClass("UISizeConstraint")
 	if limit then
 		limit.MaxSize = Vector2.new(720, 560)
@@ -285,8 +286,6 @@ local function buildShopPanel(parent: Instance)
 
 	local tabs = Instance.new("Frame")
 	tabs.Name = "Tabs"
-	tabs.Position = UDim2.fromOffset(12, UIKit.HEADER_HEIGHT + (if phone then 6 else 10))
-	tabs.Size = UDim2.new(1, -24, 0, if phone then window.phoneTabs else window.tabs)
 	tabs.BackgroundTransparency = 1
 	tabs.Parent = shopPanel
 	local tabLayout = Instance.new("UIListLayout")
@@ -295,18 +294,43 @@ local function buildShopPanel(parent: Instance)
 	tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	tabLayout.Parent = tabs
 
-	local chrome = if phone then window.phoneChrome else window.chrome
-	local under = if phone then 8 else 10 -- the margin under the list
-	list.Position = UDim2.fromOffset(12, chrome - under)
-	list.Size = UDim2.new(1, -24, 1, -chrome)
 	local oldLayout = list:FindFirstChildOfClass("UIListLayout")
 	if oldLayout then
 		oldLayout:Destroy()
 	end
 	local grid = Instance.new("UIGridLayout")
-	grid.CellSize, grid.CellPadding = ShopTile.cell(phone)
 	grid.SortOrder = Enum.SortOrder.LayoutOrder
 	grid.Parent = list
+
+	-- A phone (Config/ShopTiles; pre-launch QA 2026-11-19): a taller window, slimmer tabs and row tiles, so a picture
+	-- and its price show together in the short list; a computer the three-tile grid (Shop A). Decided as the window
+	-- opens and whenever the screen changes size (owner 2026-11-23: built once at start, a computer whose game window
+	-- began short kept the phone's rows)
+	local compacted: boolean? = nil
+	local function fit()
+		local phone = UIKit.isPhone()
+		if phone == compacted then
+			return
+		end
+		compacted = phone
+		shopPanel.Size = UDim2.fromScale(if phone then 0.96 else 0.9, if phone then window.phoneHeight else window.height)
+		tabs.Position = UDim2.fromOffset(12, UIKit.HEADER_HEIGHT + (if phone then 6 else 10))
+		tabs.Size = UDim2.new(1, -24, 0, if phone then window.phoneTabs else window.tabs)
+		local chrome = if phone then window.phoneChrome else window.chrome
+		local under = if phone then 8 else 10 -- the margin under the list
+		list.Position = UDim2.fromOffset(12, chrome - under)
+		list.Size = UDim2.new(1, -24, 1, -chrome)
+		grid.CellSize, grid.CellPadding = ShopTile.cell(phone)
+		for _, child in list:GetChildren() do
+			if child:IsA("GuiObject") then
+				if phone then
+					ShopTile.compact(child)
+				else
+					ShopTile.expand(child)
+				end
+			end
+		end
+	end
 
 	local lookTiles: { GuiObject } = {}
 	local windowTiles: { GuiObject } = {}
@@ -378,13 +402,22 @@ local function buildShopPanel(parent: Instance)
 			buildTile(list, 100 + index, def) -- after the six shop looks
 		end
 	end
-	if phone then
-		-- every tile (looks, windows, shelves: the same build) as a row tile
-		for _, child in list:GetChildren() do
-			if child:IsA("GuiObject") then
-				ShopTile.compact(child)
-			end
+	-- every tile (looks, windows, shelves: the same build) in the catalog look, then laid out for this screen
+	for _, child in list:GetChildren() do
+		if child:IsA("GuiObject") then
+			ShopTile.dress(child)
 		end
+	end
+	ShopTile.trackOwned(list) -- "You have N" on each shelf's tile
+	fit()
+	shopPanel:GetPropertyChangedSignal("Visible"):Connect(function()
+		if shopPanel.Visible then
+			fit()
+		end
+	end)
+	local camera = workspace.CurrentCamera
+	if camera then
+		camera:GetPropertyChangedSignal("ViewportSize"):Connect(fit)
 	end
 	showCategory(BUILD_TABS[1].name)
 	player:GetAttributeChangedSignal("Cash"):Connect(refreshShopRows)

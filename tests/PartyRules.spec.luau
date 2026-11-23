@@ -85,6 +85,18 @@ return {
 		assert(ember, "expected a perk")
 		expect.equal(PartyRules.describe(ember), "Hype: customers 5% more often", "ember")
 	end,
+	-- The Party window's perk box (owner 2026-11-23, Party A): each perk's effect alone, as a sentence
+	["a perk's effect as a sentence, in town and in fights"] = function()
+		local bloom = PartyRules.getPerk(config, "Bloom", "Rare", 0)
+		assert(bloom, "expected a perk")
+		expect.equal(PartyRules.effect(bloom), "Deliveries 15% faster")
+		local volt = PartyRules.getFightPerk(config, "Volt", "Common", 0)
+		assert(volt, "expected a fight perk")
+		expect.equal(PartyRules.fightEffect(volt), "Creature attacks 5% faster")
+		local shade = PartyRules.getFightPerk(config, "Shade", "Common", 0)
+		assert(shade, "expected a fight perk")
+		expect.equal(PartyRules.fightEffect(shade), "6% chance to crit", "a number first stays as it is")
+	end,
 	["changes: who joined, swapped in or left, by slot"] = function()
 		local list = PartyRules.changes({ [1] = "a", [3] = "c" }, { [1] = "b", [2] = "n" }, 3)
 		expect.equal(#list, 3, "three slots changed")

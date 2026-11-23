@@ -4,7 +4,7 @@
 local ShopTileRules = {}
 
 type Config = {
-	FULL: { width: number, height: number, picture: number, gap: number },
+	FULL: { columns: number, height: number, picture: number, gap: number },
 	PHONE: { columns: number, height: number, picture: number, gap: number, nameSize: number, detailSize: number, button: number },
 	WINDOW: { header: number, height: number, tabs: number, chrome: number, phoneHeight: number, phoneTabs: number, phoneChrome: number },
 }
@@ -14,6 +14,29 @@ type Config = {
 -- What a new shop starts with (level 1) is never news, and a locked tile shows its lock instead
 function ShopTileRules.isNew(level: number, unlockLevel: number): boolean
 	return unlockLevel > 1 and level >= unlockLevel and level - unlockLevel <= 1
+end
+
+-- A tile's line as chips (owner 2026-11-23, Shop A): "Holds 24 · Any stock" -> two chips, the first the main one (what
+-- it holds, mint), the rest soft; an empty line, none
+function ShopTileRules.chips(line: string): { { text: string, main: boolean } }
+	local chips = {}
+	for _, part in string.split(line, " · ") do
+		local text = string.match(part, "^%s*(.-)%s*$") or ""
+		if text ~= "" then
+			table.insert(chips, { text = text, main = #chips == 0 })
+		end
+	end
+	return chips
+end
+
+-- Whether a tile's button shows a price (a coin beside it): "$350" does, "Use", "Place", "🔒 Lv 9" don't
+function ShopTileRules.isPrice(text: string): boolean
+	return string.match(text, "^%$%d") ~= nil
+end
+
+-- "You have 2" over a tile's picture; nil (no badge) while you have none
+function ShopTileRules.ownedText(count: number): string?
+	return if count > 0 then `You have {count}` else nil
 end
 
 function ShopTileRules.listHeight(cfg: Config, guiHeight: number, phone: boolean): number

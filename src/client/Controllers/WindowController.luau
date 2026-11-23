@@ -29,7 +29,7 @@ local UIController = require(Controllers:WaitForChild("UIController"))
 
 local WindowController = {}
 
-local PICTURE = 110 -- the tile's picture height (the Build tiles' 3D pictures)
+local PICTURE = require(Config:WaitForChild("ShopTiles")).FULL.picture -- the tile's picture height (the Build tiles' 3D pictures)
 local RAY_LENGTH = 400
 
 type Session = {
