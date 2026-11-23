@@ -19,6 +19,8 @@ local Town = require(Config:WaitForChild("Town"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local WindowRules = require(Shared:WaitForChild("Util"):WaitForChild("WindowRules"))
 local WindowLooks = require(Shared:WaitForChild("Util"):WaitForChild("WindowLooks"))
+local ShopRooms = require(Shared:WaitForChild("Util"):WaitForChild("ShopRooms"))
+local RoomsConfig = require(Config:WaitForChild("ShopRooms"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
@@ -31,6 +33,14 @@ local WindowController = {}
 
 local PICTURE = require(Config:WaitForChild("ShopTiles")).FULL.picture -- the tile's picture height (the Build tiles' 3D pictures)
 local RAY_LENGTH = 400
+-- The shop's cells and the hall's back wall's middle plane (back posters hang on it; Util/ShopRooms)
+local GRID = ShopRooms.grid(PlotConfig.WIDTH, PlotConfig.DEPTH, PlacementConfig.GRID_SIZE)
+local BACK_Z = ShopRooms.innerWalls(RoomsConfig, GRID)[1].at
+
+-- The stretches of wall a piece may use in this shop: the hall's, and each room's once open (its OpenRooms attribute)
+local function spansOf(plot: Model): WindowRules.Spans
+	return ShopRooms.windowSpans(RoomsConfig, GRID, ShopRooms.parse(plot:GetAttribute("OpenRooms")))
+end
 
 type Session = {
 	style: string,
@@ -139,8 +149,8 @@ local function update()
 	if side and at then
 		local window: WindowRules.Window = { style = current.style, side = side, at = at }
 		current.window = window
-		current.ghost:PivotTo(WindowLooks.cframe(floor, window, Windows, PlotConfig.WIDTH, PlotConfig.DEPTH, Town.WALL_THICKNESS))
-		local ok, why = WindowRules.canPlace(Windows, placedWindows(plot), window, current.moving)
+		current.ghost:PivotTo(WindowLooks.cframe(floor, window, Windows, PlotConfig.WIDTH, PlotConfig.DEPTH, Town.WALL_THICKNESS, BACK_Z))
+		local ok, why = WindowRules.canPlace(Windows, spansOf(plot), placedWindows(plot), window, current.moving)
 		current.valid, current.reason = ok, why
 	else
 		current.valid = false

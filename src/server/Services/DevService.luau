@@ -558,7 +558,7 @@ function DevService.Start()
 		end
 		Remotes.Notify:FireClient(player, "Usage: /decor <CozyWood|CandyPastel|EnchantedForest|NeonArcade|CrystalCave|StarryNight|pieces>", true)
 	end)
-	-- "/window <style> <left|right|back> <at>": that window put in your shop for free, wherever it fits (shop windows,
+	-- "/window <style> <left|right> <at>": that window put in your shop for free, wherever it fits (shop windows,
 	-- spec 2026-11-14-shop-windows-design)
 	addCommand(folder, "window", function(player, text)
 		local style, side, at = string.match(text, "^/%w+%s+(%w+)%s+(%a+)%s+(%-?[%d%.]+)")
@@ -569,7 +569,7 @@ function DevService.Start()
 		if ok then
 			Remotes.Notify:FireClient(player, `Window: {style} on the {side} wall.`, false)
 		else
-			Remotes.Notify:FireClient(player, `Usage: /window <Square|Wide|Arched|Porthole|Stained> <left|right|back> <at>{if why then " (" .. why .. ")" else ""}`, true)
+			Remotes.Notify:FireClient(player, `Usage: /window <Square|Wide|Arched|Porthole|Stained> <left|right> <at>{if why then " (" .. why .. ")" else ""}`, true)
 		end
 	end)
 	-- "/loading <main|wild|frontier|dungeon>": that place's loading screen played on your screen (LoadingController)

@@ -180,13 +180,15 @@ local STYLES: { [string]: (model: Model, w: number, h: number) -> () } = {
 -- Where a window's model goes in a shop (the server's windows, the owner's ghost): its hole's middle on its wall's
 -- centre plane, facing into the shop. `floor` is the shop's floor part (its CFrame is the plot's), `cfg` Config/Windows,
 -- `width` / `depth` the floor's (Config/Plots), `thick` the walls' (Config/Town WALL_THICKNESS).
-function WindowLooks.cframe(floor: BasePart, window: { style: string, side: string, at: number }, cfg: any, width: number, depth: number, thick: number): CFrame
+-- `backZ`: the floor-local z of the middle plane of the wall back pieces hang on (the hall's back wall since the shop
+-- rooms, Util/ShopRooms.innerWalls)
+function WindowLooks.cframe(floor: BasePart, window: { style: string, side: string, at: number }, cfg: any, width: number, depth: number, thick: number, backZ: number): CFrame
 	local style = cfg.STYLES[window.style]
 	local y = floor.Size.Y / 2 + cfg.SILL + style.height / 2
 	local middle = thick / 2
 	local position, inward
 	if window.side == "back" then
-		position, inward = Vector3.new(window.at, y, depth / 2 + middle), Vector3.new(0, 0, -1)
+		position, inward = Vector3.new(window.at, y, backZ), Vector3.new(0, 0, -1)
 	elseif window.side == "front" then
 		position, inward = Vector3.new(window.at, y, -(depth / 2 + middle)), Vector3.new(0, 0, 1)
 	elseif window.side == "left" then

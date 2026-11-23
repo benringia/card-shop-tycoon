@@ -1,12 +1,17 @@
 --!strict
 -- Shop windows (spec docs/superpowers/specs/2026-11-14-shop-windows-design.md; Config/Windows): where a window may go
 -- on a wall, what a shop may buy, a saved list cleaned on load, and a wall cut into pieces round the windows' holes.
--- Roblox-free (Lune-tested). A window is { style, side ("left" | "right" | "back"), at: studs from the wall's middle };
--- a wall's coordinates run x along it (-length/2 to length/2) and y up from the floor.
+-- Roblox-free (Lune-tested). A window is { style, side ("left" | "right" | "back" | "front"), at: studs from the wall's
+-- middle }; a wall's coordinates run x along it (-length/2 to length/2) and y up from the floor. The stretches of wall a
+-- piece may use come in as `spans` (Util/ShopRooms.windowSpans; spec 2026-11-23-shop-rooms-design): this module never
+-- requires ShopRooms.
 local WindowRules = {}
 
 export type Window = { style: string, side: string, at: number }
 export type Rect = { x0: number, x1: number, y0: number, y1: number }
+-- A stretch of wall: `posters` takes posters only; `locked` is a closed room's (named `name`)
+export type Span = { from: number, to: number, posters: boolean?, room: string?, name: string?, locked: boolean? }
+export type Spans = { [string]: { Span } }
 
 local function money(amount: number): string
 	local text = tostring(math.floor(amount))
@@ -91,8 +96,19 @@ function WindowRules.hole(cfg: any, window: Window): Rect
 	}
 end
 
--- Whether `window` may go where it says, among `windows` (`ignore`: the index of the one being moved); why not
-function WindowRules.canPlace(cfg: any, windows: { Window }, window: Window, ignore: number?): (boolean, string?)
+-- Whether a side's stretches take windows (not only posters)
+local function takesWindows(list: { Span }): boolean
+	for _, span in list do
+		if not span.posters then
+			return true
+		end
+	end
+	return false
+end
+
+-- Whether `window` may go where it says on the shop's `spans`, among `windows` (`ignore`: the index of the one being
+-- moved); why not
+function WindowRules.canPlace(cfg: any, spans: Spans, windows: { Window }, window: Window, ignore: number?): (boolean, string?)
 	local style = cfg.STYLES[window.style]
 	if not style then
 		return false, "That window doesn't exist."
@@ -100,7 +116,7 @@ function WindowRules.canPlace(cfg: any, windows: { Window }, window: Window, ign
 	if window.side == "front" then
 		-- the front glass: posters only, on an outer pane, one a pane
 		if not style.poster then
-			return false, "Windows go on the side and back walls."
+			return false, "Windows go on the side walls."
 		end
 		local onPane = false
 		for _, spot in WindowRules.frontSpots(cfg) do
@@ -116,15 +132,29 @@ function WindowRules.canPlace(cfg: any, windows: { Window }, window: Window, ign
 		end
 		return true, nil
 	end
-	local length = cfg.WALLS[window.side]
-	if not length then
-		return false, if style.poster then "Posters go on a wall or the front glass." else "Windows go on the side and back walls."
+	local list = spans[window.side]
+	if not list or #list == 0 then
+		return false, if style.poster then "Posters go on a wall or the front glass." else "Windows go on the side walls."
+	end
+	if not style.poster and not takesWindows(list) then
+		return false, "Windows go on the side walls."
 	end
 	if typeof(window.at) ~= "number" or window.at ~= WindowRules.snap(cfg, window.at) then
 		return false, "That spot isn't on the wall's grid."
 	end
-	if math.abs(window.at) + style.width / 2 > length / 2 - cfg.CORNER then
+	local low, high = window.at - style.width / 2 - cfg.CORNER, window.at + style.width / 2 + cfg.CORNER
+	local found: Span? = nil
+	for _, span in list do
+		if low >= span.from and high <= span.to and (style.poster or not span.posters) then
+			found = span
+			break
+		end
+	end
+	if not found then
 		return false, "Too close to the corner."
+	end
+	if found.locked then
+		return false, `Open the {found.name or "room"} first.`
 	end
 	for index, other in windows do
 		local otherStyle = cfg.STYLES[other.style]
@@ -163,9 +193,85 @@ function WindowRules.canBuy(cfg: any, styleId: string, level: number, cash: numb
 	return true, nil
 end
 
--- A saved list made safe: every entry well formed and fitting among the ones before it, at most MAX; the price of each
--- known style dropped is paid back (never silently lost); unknown styles can't be priced
-function WindowRules.clean(cfg: any, saved: unknown): ({ Window }, number)
+-- Where a piece that no longer fits may go instead, best first (the caller checks each with canPlace): a window on a
+-- wall that takes no windows (the hall's back wall since the shop rooms) goes to the side walls' open stretches,
+-- nearest the back first, left before right; anything else to the spots on its own wall nearest where it was, then the
+-- other walls' the same way; a front poster to the nearest outer pane
+function WindowRules.spots(cfg: any, spans: Spans, window: Window): { Window }
+	local style = cfg.STYLES[window.style]
+	local list: { Window } = {}
+	if not style or typeof(window.at) ~= "number" or window.at ~= window.at then
+		return list
+	end
+	local function nearest(a: number, b: number): boolean
+		local da, db = math.abs(a - window.at), math.abs(b - window.at)
+		if da ~= db then
+			return da < db
+		end
+		return a < b
+	end
+	if window.side == "front" then
+		if style.poster then
+			local spots = WindowRules.frontSpots(cfg)
+			table.sort(spots, nearest)
+			for _, at in spots do
+				table.insert(list, { style = window.style, side = "front", at = at })
+			end
+		end
+		return list
+	end
+	-- every grid spot along a side's open stretches this piece could take
+	local function along(side: string): { number }
+		local ats = {}
+		for _, span in spans[side] or {} do
+			if not span.locked and (style.poster or not span.posters) then
+				local first = math.ceil((span.from + style.width / 2 + cfg.CORNER) / cfg.GRID) * cfg.GRID
+				local last = math.floor((span.to - style.width / 2 - cfg.CORNER) / cfg.GRID) * cfg.GRID
+				for at = first, last, cfg.GRID do
+					table.insert(ats, at)
+				end
+			end
+		end
+		return ats
+	end
+	if not style.poster and not takesWindows(spans[window.side] or {}) then
+		local all = {}
+		for _, side in { "left", "right" } do
+			for _, at in along(side) do
+				table.insert(all, { side = side, at = at })
+			end
+		end
+		table.sort(all, function(a, b)
+			if a.at ~= b.at then
+				return a.at > b.at
+			end
+			return a.side == "left" and b.side ~= "left"
+		end)
+		for _, spot in all do
+			table.insert(list, { style = window.style, side = spot.side, at = spot.at })
+		end
+		return list
+	end
+	local sides = { window.side }
+	for _, side in { "left", "right", "back" } do
+		if side ~= window.side then
+			table.insert(sides, side)
+		end
+	end
+	for _, side in sides do
+		local ats = along(side)
+		table.sort(ats, nearest)
+		for _, at in ats do
+			table.insert(list, { style = window.style, side = side, at = at })
+		end
+	end
+	return list
+end
+
+-- A saved list made safe: every entry well formed and fitting among the ones before it, at most MAX of each kind; one
+-- that no longer fits where it was moves to the first free spot WindowRules.spots finds; the price of each known style
+-- dropped is paid back (never silently lost); unknown styles can't be priced
+function WindowRules.clean(cfg: any, spans: Spans, saved: unknown): ({ Window }, number)
 	local kept: { Window } = {}
 	local refunded = 0
 	if typeof(saved) ~= "table" then
@@ -181,10 +287,22 @@ function WindowRules.clean(cfg: any, saved: unknown): ({ Window }, number)
 		end
 		local window = { style = entry.style, side = entry.side, at = entry.at }
 		local cap = if style.poster then cfg.MAX_POSTERS else cfg.MAX
-		local fits = typeof(entry.side) == "string" and typeof(entry.at) == "number"
-			and WindowRules.count(cfg, kept, entry.style) < cap and WindowRules.canPlace(cfg, kept, window)
-		if fits then
-			table.insert(kept, window)
+		local placed: Window? = nil
+		local wellFormed = typeof(entry.side) == "string" and typeof(entry.at) == "number" and entry.at == entry.at
+		if wellFormed and WindowRules.count(cfg, kept, entry.style) < cap then
+			if WindowRules.canPlace(cfg, spans, kept, window) then
+				placed = window
+			else
+				for _, spot in WindowRules.spots(cfg, spans, window) do
+					if WindowRules.canPlace(cfg, spans, kept, spot) then
+						placed = spot
+						break
+					end
+				end
+			end
+		end
+		if placed then
+			table.insert(kept, placed)
 		else
 			refunded += style.price
 		end

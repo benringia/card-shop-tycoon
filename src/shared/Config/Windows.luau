@@ -11,9 +11,10 @@ return {
 	-- (free points would be a free rating) and have their own cap. Funny scenes from Figma's image generator with no
 	-- text (assets/ui/posters/art), their jokes put on by tools/ui-art/make_posters.py; uploaded as images.
 	MAX_POSTERS = 8,
-	-- the shop front (Town.SHOP DOOR_WIDTH and PANES, the plot's width with its walls): a poster takes one of the two
-	-- outer panes each side of the door (WindowRules.frontSpots); the inner pane is where a door leaf rests when open
-	FRONT = { doorWidth = 12, outerWidth = 42, panes = 3 },
+	-- the shop front (Town.SHOP DOOR_WIDTH and PANES, the plot's width with its walls: 52 since the shop rooms): a poster
+	-- takes one of the two outer panes each side of the door (WindowRules.frontSpots); the inner pane is where a door
+	-- leaf rests when open
+	FRONT = { doorWidth = 12, outerWidth = 52, panes = 3 },
 	-- a poster hangs `inset` studs off a wall's inside face (past the look's liner), or `glass` outside the front
 	-- glass's middle (WindowRules.depth)
 	POSTER = { inset = 0.14, glass = 0.22 },
@@ -23,9 +24,9 @@ return {
 	-- the window's bottom stands this far over the floor: the decor band's top (Config/Decor SHELL BAND + TRIM) plus 1
 	SILL = 4.7,
 	SELL_REFUND = 0.5, -- of the price paid, as shelves
-	-- inside lengths of the walls a window can go on (Config/Plots DEPTH for the sides, WIDTH for the back)
-	WALLS = { left = 40, right = 40, back = 40 },
-	SIDES = { "left", "right", "back" },
+	-- The stretches of wall a piece may use come from the shop's rooms (Util/ShopRooms.windowSpans, passed to
+	-- WindowRules): each side wall's hall stretch and its room's once open, the hall's back wall between the doorways
+	-- for posters only (the outer back wall faces the hedge; spec 2026-11-23-shop-rooms-design)
 	ORDER = { "Square", "Wide", "Arched", "Porthole", "Stained", "PosterOneMore", "PosterWallet", "PosterBeware", "PosterWanted", "PosterEmployee" },
 	STYLES = {
 		Square = { name = "Square Window", width = 4, height = 4, price = 300, level = 3, points = 2 },

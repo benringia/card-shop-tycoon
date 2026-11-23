@@ -22,9 +22,15 @@ local DecorRules = require(Shared:WaitForChild("Util"):WaitForChild("DecorRules"
 local Windows = require(Config:WaitForChild("Windows"))
 local WindowRules = require(Shared:WaitForChild("Util"):WaitForChild("WindowRules"))
 local WindowLooks = require(Shared:WaitForChild("Util"):WaitForChild("WindowLooks"))
+local RoomsConfig = require(Config:WaitForChild("ShopRooms"))
+local PlacementConfig = require(Config:WaitForChild("Placement"))
+local ShopRooms = require(Shared:WaitForChild("Util"):WaitForChild("ShopRooms"))
 local RegisterBuild = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("RegisterBuild"))
 
 local COMPUTER_FIXTURE_ID = "OrderComputer"
+-- The shop's cells (Config/ShopRooms counts in them) and the hall's back wall's middle plane, where back posters hang
+local GRID = ShopRooms.grid(PlotConfig.WIDTH, PlotConfig.DEPTH, PlacementConfig.GRID_SIZE)
+local BACK_Z = ShopRooms.innerWalls(RoomsConfig, GRID)[1].at
 
 export type Plot = {
 	id: number,
@@ -40,6 +46,7 @@ export type Plot = {
 	owner: Player?,
 	look: DecorRules.Look?, -- the shop look drawn (SetLook)
 	windows: { WindowRules.Window }?, -- the windows cut into its walls (SetWindows)
+	rooms: { [string]: boolean }, -- its open shop rooms (SetRooms; Config/ShopRooms)
 }
 
 type PlotCallback = (player: Player, plot: Plot) -> ()
@@ -579,6 +586,7 @@ local function buildPlot(id: number, folder: Folder): Plot
 		roof = buildShell(id, plotCFrame, model),
 		shelvesFolder = shelvesFolder,
 		owner = nil,
+		rooms = {},
 	}
 	model.Parent = folder
 	return plot
@@ -769,7 +777,7 @@ function PlotService.SetWindows(plot: Plot, windows: { WindowRules.Window })
 			model:SetAttribute("Style", window.style)
 			model:SetAttribute("Side", window.side)
 			model:SetAttribute("At", window.at)
-			model:PivotTo(WindowLooks.cframe(plot.floor, window, Windows, PlotConfig.WIDTH, PlotConfig.DEPTH, Town.WALL_THICKNESS))
+			model:PivotTo(WindowLooks.cframe(plot.floor, window, Windows, PlotConfig.WIDTH, PlotConfig.DEPTH, Town.WALL_THICKNESS, BACK_Z))
 			model.Parent = folder
 		end
 	end

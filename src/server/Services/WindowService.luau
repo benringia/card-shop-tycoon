@@ -11,8 +11,12 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Windows = require(Config:WaitForChild("Windows"))
 local Shelves = require(Config:WaitForChild("Shelves"))
+local RoomsConfig = require(Config:WaitForChild("ShopRooms"))
+local PlotConfig = require(Config:WaitForChild("Plots"))
+local Placement = require(Config:WaitForChild("Placement"))
 local WindowRules = require(Shared:WaitForChild("Util"):WaitForChild("WindowRules"))
 local TitleRules = require(Shared:WaitForChild("Util"):WaitForChild("TitleRules"))
+local ShopRooms = require(Shared:WaitForChild("Util"):WaitForChild("ShopRooms"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
@@ -28,8 +32,16 @@ local WindowService = {}
 
 local NEAR = 60 -- studs from the shop floor's middle: placing, moving and selling only from in or by the shop
 
+local GRID = ShopRooms.grid(PlotConfig.WIDTH, PlotConfig.DEPTH, Placement.GRID_SIZE)
+
 local windowsOf: { [Player]: { WindowRules.Window } } = {}
 local limit = RateLimiter.new(0.4)
+
+-- The stretches of wall this player's windows may use: the hall's, and each shop room's once it's open
+local function spansFor(player: Player): WindowRules.Spans
+	local plot = PlotService.GetPlot(player)
+	return ShopRooms.windowSpans(RoomsConfig, GRID, if plot then plot.rooms else {})
+end
 
 local function apply(player: Player)
 	local plot = PlotService.GetPlot(player)
@@ -85,7 +97,7 @@ local function onPlace(player: Player, styleId: unknown, sideIn: unknown, atIn: 
 		return
 	end
 	local window: WindowRules.Window = { style = styleId, side = side, at = at }
-	local fits, where = WindowRules.canPlace(Windows, list, window)
+	local fits, where = WindowRules.canPlace(Windows, spansFor(player), list, window)
 	if not fits then
 		Blocked.tell(player, where or "That window doesn't fit there.")
 		return
@@ -120,7 +132,7 @@ local function onMove(player: Player, index: unknown, sideIn: unknown, atIn: unk
 		return
 	end
 	local moved: WindowRules.Window = { style = current.style, side = side, at = at }
-	local fits, where = WindowRules.canPlace(Windows, list, moved, index)
+	local fits, where = WindowRules.canPlace(Windows, spansFor(player), list, moved, index)
 	if not fits then
 		Blocked.tell(player, where or "That window doesn't fit there.")
 		return
@@ -169,7 +181,7 @@ function WindowService.DevPlace(player: Player, styleId: string, side: string, a
 		return false, "Not loaded."
 	end
 	local window: WindowRules.Window = { style = styleId, side = side, at = WindowRules.snap(Windows, at) }
-	local fits, where = WindowRules.canPlace(Windows, list, window)
+	local fits, where = WindowRules.canPlace(Windows, spansFor(player), list, window)
 	if not fits then
 		return false, where
 	end
@@ -182,7 +194,10 @@ function WindowService.Start()
 	DataService.Register({
 		name = "Windows",
 		load = function(player, data)
-			local kept, refunded = WindowRules.clean(Windows, data.windows)
+			-- the open rooms from the save itself: the plot may not have them applied yet (RoomService loads first, but
+			-- this never leans on the order)
+			local open = ShopRooms.openSet(ShopRooms.clean(RoomsConfig, data.rooms))
+			local kept, refunded = WindowRules.clean(Windows, ShopRooms.windowSpans(RoomsConfig, GRID, open), data.windows)
 			windowsOf[player] = kept
 			apply(player)
 			if refunded > 0 then
