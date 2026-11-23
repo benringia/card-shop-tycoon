@@ -37,6 +37,7 @@ local NAMES = {
 	"PlaceWindow", -- client → server: (style: string, side: string, at: number) buy a window into your shop's wall (WindowService)
 	"MoveWindow", -- client → server: (index: number, side: string, at: number) move one of your windows
 	"SellWindow", -- client → server: (index: number) sell one of your windows (half its price back)
+	"UnlockRoom", -- client → server: (roomId: string) unlock one of your shop's rooms at its door (RoomService; Config/ShopRooms)
 	"BuyLuck", -- client → server: (product: string) open the Robux purchase of a Config/Luck product from the Store (LuckService)
 	"BuyUnlock", -- client → server: (key: string) open the Robux purchase of a one-time unlock (Monetization UNLOCKS; MonetizationService)
 	"PrologueSeen", -- client → server: () the prologue is over (finished or skipped): saved as seen (WelcomeService)
@@ -204,6 +205,7 @@ return {
 	PlaceWindow = remotes.PlaceWindow,
 	MoveWindow = remotes.MoveWindow,
 	SellWindow = remotes.SellWindow,
+	UnlockRoom = remotes.UnlockRoom,
 	BuyLuck = remotes.BuyLuck,
 	BuyUnlock = remotes.BuyUnlock,
 	StoreWin = remotes.StoreWin,

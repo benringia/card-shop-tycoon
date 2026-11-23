@@ -139,6 +139,12 @@ function ShopRooms.shelfCap(cfg: any, base: number, open: Open): number
 	return base + openCount(cfg, open) * cfg.SHELVES_PER_ROOM
 end
 
+-- What a room costs, in words ("You need $5,000 to open the Back Room."): the cash check's, and a refused spend's
+function ShopRooms.priceWords(cfg: any, roomId: string): string
+	local room = cfg.ROOMS[roomId]
+	return `You need {money(room.price)} to open the {room.name}.`
+end
+
 -- Whether a shop at `level` with `cash` may open `roomId` now; why not
 function ShopRooms.canUnlock(cfg: any, roomId: unknown, open: Open, level: number, cash: number): (boolean, string?)
 	local room = if typeof(roomId) == "string" then cfg.ROOMS[roomId] else nil
@@ -152,7 +158,7 @@ function ShopRooms.canUnlock(cfg: any, roomId: unknown, open: Open, level: numbe
 		return false, `Reach shop level {room.level} to open the {room.name}.`
 	end
 	if cash < room.price then
-		return false, `You need {money(room.price)} to open the {room.name}.`
+		return false, ShopRooms.priceWords(cfg, roomId :: string)
 	end
 	return true, nil
 end

@@ -84,6 +84,7 @@ return {
 		expect.equal(select(2, ShopRooms.canUnlock(cfg, "backRoom", { backRoom = true }, 99, 1e9)), "The Back Room is open already.")
 		expect.equal(select(2, ShopRooms.canUnlock(cfg, "backRoom", {}, 14, 1e9)), "Reach shop level 15 to open the Back Room.")
 		expect.equal(select(2, ShopRooms.canUnlock(cfg, "gallery", {}, 30, 19999)), "You need $20,000 to open the Gallery.")
+		expect.equal(ShopRooms.priceWords(cfg, "backRoom"), "You need $5,000 to open the Back Room.", "the words a refused spend shows")
 	end,
 
 	["walls, door paths and locked rooms are never placeable; an open room's floor is"] = function()

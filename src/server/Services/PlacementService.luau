@@ -751,7 +751,7 @@ local function onPlace(player: Player, shelfId: unknown, gridX: unknown, gridZ: 
 			Blocked.tell(player, `Your shop has room for {PlacementConfig.MAX_DECOR_PER_PLOT} decorations. Sell one to make space.`)
 			return
 		end
-	elseif countShelves(layout) >= PlacementConfig.MAX_SHELVES_PER_PLOT then
+	elseif countShelves(layout) >= ShopRooms.shelfCap(RoomsConfig, PlacementConfig.MAX_SHELVES_PER_PLOT, plot.rooms) then
 		notify(player, "Your shop can't fit any more shelves.", true)
 		return
 	end
@@ -1091,6 +1091,27 @@ function PlacementService.GetShelf(player: Player, uid: string): PlacedShelf?
 	return if layout then layout[uid] else nil
 end
 
+-- Studio's room locking (RoomService.DevSet, spec 2026-11-23-shop-rooms-design): every shelf and the order computer
+-- standing on a cell that's blocked now (a room locked again) moves to the nearest free one
+function PlacementService.Refit(player: Player)
+	local plot = PlotService.GetPlot(player)
+	local layout = layouts[player]
+	if not plot or not layout then
+		return
+	end
+	for uid, shelf in layout do
+		if not canPlaceAt(plot, shelf.def.size, shelf.gridX, shelf.gridZ, shelf.rotation, uid) then
+			local x, z = nearestFreeCell(plot, shelf.def.size, shelf.gridX, shelf.gridZ, shelf.rotation, uid)
+			if x and z then
+				shelf.gridX, shelf.gridZ = x, z
+				positionShelf(plot, shelf)
+			end
+		end
+	end
+	local computer = plot.computer
+	restoreComputer(plot, { gridX = computer:GetAttribute("GridX") :: number, gridZ = computer:GetAttribute("GridZ") :: number, rotation = computer:GetAttribute("Rotation") :: number })
+end
+
 -- A shelf bought and placed (the tutorial's "build a rack" step)
 -- Studio's "/decor pieces" (DevService): one free copy of a shelf at the free cell nearest the shop's middle, within
 -- the caps. False when it doesn't fit or this isn't Studio.
@@ -1103,7 +1124,7 @@ function PlacementService.DevPlace(player: Player, shelfId: string): boolean
 	end
 	local full = if isDecor(def)
 		then not DecorRules.fitsCap(countDecor(layout), PlacementConfig.MAX_DECOR_PER_PLOT)
-		else countShelves(layout) >= PlacementConfig.MAX_SHELVES_PER_PLOT
+		else countShelves(layout) >= ShopRooms.shelfCap(RoomsConfig, PlacementConfig.MAX_SHELVES_PER_PLOT, plot.rooms)
 	if full then
 		return false
 	end

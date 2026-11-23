@@ -134,6 +134,11 @@ local function getPlotState(plot: Plot): PlotState
 	return state
 end
 
+-- How many customers this shop takes at once: the base and one more for each open shop room (Util/ShopRooms)
+local function capOf(plot: Plot): number
+	return ShopRooms.customerCap(RoomsConfig, CustomerConfig.MAX_PER_PLOT, plot.rooms)
+end
+
 local function floorTop(plot: Plot): number
 	return plot.floor.Position.Y + PlotConfig.FLOOR_THICKNESS / 2
 end
@@ -1127,7 +1132,7 @@ local function spawnTick()
 		end
 		if state.nextSpawnAt == 0 then
 			state.nextSpawnAt = now + CustomerConfig.FIRST_SPAWN_DELAY
-		elseif now >= state.nextSpawnAt and #state.customers < CustomerConfig.MAX_PER_PLOT then
+		elseif now >= state.nextSpawnAt and #state.customers < capOf(plot) then
 			-- Hype (Ember creature summoned): customers arrive more often
 			-- The shop rating (RatingService) shortens or stretches it
 			-- a new shop's customers come closer together (Config/Customers NEW_SHOP, owner 2026-11-19)
@@ -1255,7 +1260,7 @@ end
 -- owner's any more
 function CustomerService.Adopt(model: Model, plot: Plot, owner: Player, kind: string, wanted: string?): boolean
 	local state = getPlotState(plot)
-	if plot.owner ~= owner or not CustomerConfig.TYPES[kind] or #state.customers >= CustomerConfig.MAX_PER_PLOT then
+	if plot.owner ~= owner or not CustomerConfig.TYPES[kind] or #state.customers >= capOf(plot) then
 		return false
 	end
 	local card = if kind == "collector" then (wanted or pickWanted(owner)) else nil
@@ -1281,10 +1286,10 @@ function CustomerService.HeldProducts(owner: Player): { [string]: number }
 	return held
 end
 
--- Whether this owner's shop has room for one more customer (MAX_PER_PLOT), e.g. the one Pish sends
+-- Whether this owner's shop has room for one more customer (MAX_PER_PLOT and its open rooms), e.g. the one Pish sends
 function CustomerService.HasRoom(owner: Player): boolean
 	local plot = PlotService.GetPlot(owner)
-	return plot ~= nil and #getPlotState(plot).customers < CustomerConfig.MAX_PER_PLOT
+	return plot ~= nil and #getPlotState(plot).customers < capOf(plot)
 end
 
 -- A plain customer now, when the shop has room (Pish's tutorial sends one, once ever: TutorialService), who always

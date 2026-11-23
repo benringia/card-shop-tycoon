@@ -43,6 +43,17 @@ AdminPanel.SECTIONS = {
 		},
 	},
 	{
+		-- the shop rooms (spec 2026-11-23-shop-rooms-design): free, no lesson; their lessons are in the Pish section
+		title = "Shop rooms",
+		buttons = {
+			{ label = "Open Back Room", command = "/shoproom open backRoom" },
+			{ label = "Open Gallery", command = "/shoproom open gallery" },
+			{ label = "Open both", command = "/shoproom open all" },
+			{ label = "Lock both", command = "/shoproom lock all" },
+			{ label = "Fill with racks", command = "/shoproom fill" },
+		},
+	},
+	{
 		title = "Money and levels",
 		buttons = {
 			{ label = "+$1,000", command = "/cash 1000" },
