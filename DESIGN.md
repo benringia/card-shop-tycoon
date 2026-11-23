@@ -4885,6 +4885,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── ChallengeController.luau # PvP: Challenge prompt on players, bet popup, incoming challenge popup
     │   │   ├── FrontierController.luau  # Frontier portal menu (Explore, Join friend); home button in the Frontier
     │   │   ├── FrontierRevealController.luau # full-screen reveal when you find a Frontier card
+    │   │   ├── DepartureController.luau # a teleport's loading screen the moment it starts (Remotes.Departing)
     │   │   ├── RarityGuideController.luau # rarity guide panel (odds from the pack configs)
     │   │   ├── CardInspectorController.luau # the 3D card you tilt and flip from the binder
     │   │   ├── CreatureController.luau  # draws summoned creatures: model or placeholder, motion, glow, name tag
@@ -5371,7 +5372,14 @@ their saved data. v41 added `stats.bossKills` (the plaza's boss kills ranking), 
   Frontier and the Dungeon the monsters' and bosses' models; as a fight starts every fight picture is checked again
   (`CombatAssets.ensureFight`). Measured in Studio: the screen closes about 10 s in; a save still loading after 6 s gets a note ("Your save is
   still closing on another server, almost there!"); after 30 s it fades anyway. Tips cycle every 4 s. The same
-  screen is handed to `TeleportService:SetTeleportGui`, so teleports show it and the next place carries it on. The
+  screen is handed to `TeleportService:SetTeleportGui`, so teleports show it and the next place carries it on. A
+  teleport's screen goes up the moment it starts (owner 2026-11-23: "a few seconds delay before the loading screen to
+  frontier appears which caused the player confusions"): the server says `Remotes.Departing` (the place it goes to)
+  before the save's hand-off and `TeleportAsync`, which take a few seconds before Roblox shows its copy, and
+  `DepartureController` builds that place's binder at once and hands TeleportService the same look (so a Frontier to
+  Dungeon trip now shows the Dungeon's). A failed teleport sends nil: the screen fades and the reason shows; Studio,
+  which can't teleport, holds it `Places.DEPARTURE.STUDIO_HOLD` seconds first, and a teleport that never comes takes it
+  down after `MAX_SECONDS`. The
   first-visit welcome cinematic starts when it fades. The shop step preloads the menus' product pictures
   (`Config/ProductPictures`, uploaded images since round 5) with the other images.
 - **The Wild's loading screen** (owner 2026-11-05: "when entering wilds can we do a loading screen that make sure

@@ -82,9 +82,17 @@ local function teleport(players: { Player })
 		end
 		return
 	end
+	-- The Dungeon's loading screen goes up now (Places.DEPARTURE): the hand-offs and the teleport take a few seconds
+	for _, player in players do
+		Remotes.Departing:FireClient(player, "Dungeon")
+	end
 	if RunService:IsStudio() then
+		task.wait(Places.DEPARTURE.STUDIO_HOLD)
 		for _, player in players do
-			notify(player, "Teleports only work in the published game. Test the run in the Dungeon window.", false)
+			if player.Parent then
+				Remotes.Departing:FireClient(player, nil)
+				notify(player, "Teleports only work in the published game. Test the run in the Dungeon window.", false)
+			end
 		end
 		return
 	end
@@ -102,7 +110,10 @@ local function teleport(players: { Player })
 		warn(`[DungeonGateService] teleport failed: {err}`)
 		for _, player in players do
 			DataService.Reclaim(player)
-			notify(player, "The teleport didn't work. Try again in a moment.", true)
+			if player.Parent then
+				Remotes.Departing:FireClient(player, nil)
+				notify(player, Places.DEPARTURE.FAILED, true)
+			end
 		end
 	end
 end

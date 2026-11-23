@@ -121,6 +121,8 @@ local Remotes = require(game:GetService("ReplicatedStorage"):WaitForChild("Share
 LoadingController.Start() -- the loading screen's steps (ReplicatedFirst shows it from the first frame)
 -- What you can't do yet: a big locked card with the reason, locked prompts showing the level needed (every place)
 require(Controllers:WaitForChild("BlockedController")).Start()
+-- A teleport's loading screen the moment it starts, before Roblox shows its own copy (Remotes.Departing)
+require(Controllers:WaitForChild("DepartureController")).Start()
 require(Controllers:WaitForChild("KnockoutController")).Start() -- knocked out in the Wild: the countdown, Revive here
 -- Effects toned to the scene: on bright ground (snow) they blend their colours in instead of adding light (Util/FxTone)
 require(script:WaitForChild("Util"):WaitForChild("FxTone")).Start()

@@ -140,6 +140,7 @@ local NAMES = {
 	"LevelUpFx", -- server → clients: { kind = "shop", userId, from, to } or { kind = "creature", userId, beastId, element, from, to, fromFight }
 	"MovePreview", -- server → one client, Studio only: { move = "rain" | "vine" | "orbs" | "curse", grade = "C" | "B" | "A" | "S", big } (DevService /movefx), or { super = <Config/SuperFx look id>, grade } (/superfx)
 	"FrontierTravel", -- client → server: (where: "explore" | "friend" | "home", friendUserId?); server → client: { open = true } (portal menu) or { message }
+	"Departing", -- server → client: (kind: "Main" | "Frontier" | "Dungeon" | nil) a teleport is starting: that place's loading screen goes up now (DepartureController); nil: it stopped (failed, or Studio), take it down
 	"WelcomeSeen", -- client → server: () the welcome cinematic finished or was skipped
 	"SwordState", -- server → client: { sword: string?, popup: boolean } your sword and whether to show the first-sword popup; client → server: () ask
 	"SwordSeen", -- client → server: () the first-sword popup was closed
@@ -319,6 +320,7 @@ return {
 	LevelUpFx = remotes.LevelUpFx,
 	MovePreview = remotes.MovePreview,
 	FrontierTravel = remotes.FrontierTravel,
+	Departing = remotes.Departing,
 	WelcomeSeen = remotes.WelcomeSeen,
 	SwordState = remotes.SwordState,
 	SwordSeen = remotes.SwordSeen,

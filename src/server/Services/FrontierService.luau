@@ -31,9 +31,26 @@ local function tell(player: Player, message: string)
 	Remotes.FrontierTravel:FireClient(player, { message = message })
 end
 
+-- Which place's loading screen a teleport to `placeId` shows (Config/LoadingScreen LOOKS)
+local function placeKind(placeId: number): string
+	return if placeId == Places.FRONTIER_PLACE_ID then "Frontier" elseif placeId == Places.DUNGEON_PLACE_ID then "Dungeon" else "Main"
+end
+
+-- The teleport stopped: its loading screen comes down and the player is told why
+local function stopped(player: Player, message: string)
+	if player.Parent then
+		Remotes.Departing:FireClient(player, nil)
+		tell(player, message)
+	end
+end
+
 local function teleport(player: Player, placeId: number, options: TeleportOptions?)
+	-- The destination's loading screen goes up now (Places.DEPARTURE): the hand-off and the teleport take a few seconds
+	-- before Roblox shows its own copy of it
+	Remotes.Departing:FireClient(player, placeKind(placeId))
 	if RunService:IsStudio() then
-		tell(player, "Teleports only work in the published game.")
+		task.wait(Places.DEPARTURE.STUDIO_HOLD)
+		stopped(player, "Teleports only work in the published game.")
 		return
 	end
 	-- The save closes first, so the next place loads it at once (DataService.Reclaim reopens it if this fails)
@@ -44,7 +61,7 @@ local function teleport(player: Player, placeId: number, options: TeleportOption
 	if not ok then
 		DataService.Reclaim(player)
 		warn(`[FrontierService] teleport failed for {player.Name}: {err}`)
-		tell(player, "The teleport didn't work. Try again in a moment.")
+		stopped(player, Places.DEPARTURE.FAILED)
 	end
 end
 
@@ -149,8 +166,8 @@ function FrontierService.Start()
 	-- Failures Roblox reports after the teleport started (server full, shut down...): the player is still here
 	TeleportService.TeleportInitFailed:Connect(function(player, result, message)
 		warn(`[FrontierService] teleport failed for {player.Name}: {result} {message}`)
-		tell(player, if result == Enum.TeleportResult.GameFull then "That server is full. Try again or Explore instead."
-			else "The teleport didn't work. Try again in a moment.")
+		stopped(player, if result == Enum.TeleportResult.GameFull then "That server is full. Try again or Explore instead."
+			else Places.DEPARTURE.FAILED)
 	end)
 	if Place.isDungeon() then
 		WildService.SetHomeHandler(FrontierService.ReturnToFrontier)
