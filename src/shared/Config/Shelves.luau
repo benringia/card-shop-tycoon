@@ -135,7 +135,7 @@ local List: { Shelf } = {
 	},
 	{
 		id = "trophy_meadowWarden",
-		prop = "Trophy",
+		prop = "TrophyWarden",
 		name = "Meadow Warden Trophy",
 		kind = "Trophy",
 		category = "Trophies", -- Build menu tab
@@ -149,7 +149,7 @@ local List: { Shelf } = {
 	},
 	{
 		id = "trophy_caveBroodQueen",
-		prop = "Trophy",
+		prop = "TrophyBrood",
 		name = "Brood Queen Trophy",
 		kind = "Trophy",
 		category = "Trophies", -- Build menu tab
@@ -163,7 +163,7 @@ local List: { Shelf } = {
 	},
 	{
 		id = "trophy_emberColossus",
-		prop = "Trophy",
+		prop = "TrophyColossus",
 		name = "Ember Colossus Trophy",
 		kind = "Trophy",
 		category = "Trophies", -- Build menu tab
@@ -177,7 +177,7 @@ local List: { Shelf } = {
 	},
 	{
 		id = "trophy_frostTyrant",
-		prop = "Trophy",
+		prop = "TrophyFrost",
 		name = "Frost Tyrant Trophy",
 		kind = "Trophy",
 		category = "Trophies", -- Build menu tab
@@ -191,7 +191,7 @@ local List: { Shelf } = {
 	},
 	{
 		id = "trophy_stormSovereign",
-		prop = "Trophy",
+		prop = "TrophyStorm",
 		name = "Storm Sovereign Trophy",
 		kind = "Trophy",
 		category = "Trophies", -- Build menu tab
@@ -205,7 +205,7 @@ local List: { Shelf } = {
 	},
 	{
 		id = "trophy_riftDevourer",
-		prop = "Trophy",
+		prop = "TrophyRift",
 		name = "Rift Devourer Trophy",
 		kind = "Trophy",
 		category = "Trophies", -- Build menu tab
@@ -219,7 +219,7 @@ local List: { Shelf } = {
 	},
 	{
 		id = "trophy_prismHydra",
-		prop = "Trophy",
+		prop = "TrophyHydra",
 		name = "Prism Hydra Trophy",
 		kind = "Trophy",
 		category = "Trophies", -- Build menu tab

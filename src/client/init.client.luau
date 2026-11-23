@@ -216,6 +216,8 @@ else
 	RegisterController.Start()
 	RegisterStationController.Start() -- manning the register in first person: scan, Charge, the card machine, the drawer
 	CarryController.Start()
+	-- anyone carrying a box holds it in both arms (Config/CarryPose)
+	require(Controllers:WaitForChild("CarryPoseController")).Start()
 	PackOpeningController.Start()
 	BinderController.Start()
 	BinderPoseController.Start() -- anyone with their binder open holds it up, reading

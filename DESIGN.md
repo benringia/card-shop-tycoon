@@ -517,6 +517,13 @@ is over UI (`UIKit.pointerBlocked`).
   shrinks away (about a second). Everyone within 80 studs sees it (`Remotes.ShelfStocked`; client `Util/UnboxFx`).
   The shelf's stock is already there on the server; the plain "Stocked 24." toast went (a part-used box still says
   what's left in it).
+- **Carrying a box** (owner 2026-11-23: "We also need a better animation for player for holding boxes"): the box is
+  held in both arms at chest height, hands flat on its sides, the chest leaning back a touch under it. StockService
+  welds it to the UpperTorso (`Config/CarryPose` BOX: 0.32 down, 1.48 out in front; a Weld with that offset, the root
+  on a body without an UpperTorso) so it sways with the walk and every client poses the carrier's arms round it
+  (`CarryPoseController`: shoulders 48 degrees forward and 8 in, elbows 42, waist 6 back, set on the joints' Transform
+  after the walk or idle and eased in and out over 0.2 s). The hands stay on the box while walking (checked: no drift
+  over 95 frames). Before, the box floated in front of the root while the arms swung. More boxes stack on top.
 
 ### 4.3 Shelves & placement
 - Shelves are placed in the shop on a **grid** (placement mode: rotate, move, sell back for 50%).
@@ -2599,8 +2606,17 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   (`ItemRules.placesInShop`, `BuildController.PlaceTrophy`) that closes the Bag and starts placing it; away from town
   it reads "Place in town" with a lock and a tap shows the locked card (`BlockedController.Show`). The Shop's Build
   menu has no Trophies tab any more. Placing one takes its trophy item (no cash), selling gives it back; they don't
-  count toward the shop's shelf limit; a stone
-  plinth with a gold cup and a gem in the boss's colour (`Town.TROPHY_LOOK`). Visitors see them.
+  count toward the shop's shelf limit. Visitors see them. Each boss's trophy is its own Blender model after its Bag
+  picture (owner 2026-11-23: "we need a model for the trophies. draw from blender"; `tools/blender/build_trophies.py`,
+  docs/props.md "Trophies"; slots `Town.SLOTS` Trophy<Boss>): the same stone plinth with a gold cap and a gem lit in the
+  boss's colour, and on it the Meadow Warden's green cup wrapped in leafy vines with antlers and glowing water, the
+  Brood Queen's purple tulip cup with a web, a spider and four spider legs a side, the Ember Colossus' cup of dark
+  rock plates with glowing lava seams and fire leaping out, the Frost Tyrant's faceted ice cup under snow and
+  icicles with a glowing snowflake, the Storm Sovereign's gold cup with lightning cracks under a storm cloud, the
+  Rift Devourer's dark violet cup with a glowing rift swirling on its front, and the Prism Hydra's rainbow crystal cup
+  with three little dragon heads peeking out (1,800 to 2,500 triangles each). Their glowing parts turn Neon in
+  `Town.TROPHY_LOOK` GLOWS' colours (`Util/TrophyLooks`). Imported and split 2026-11-23 (`assets/props/Trophy<Boss>.rbxm`,
+  seen lit in Play); without a model the code stand-in (a stone plinth with a gold cup and the gem) stands in.
 - **UI:** the Bosses HUD tile (K, trophy icon) opens the Boss Ladder (style kit, lilac band; round 5, owner pick A
   "List and detail, like the Condenser", spec 2026-11-04-round5-design section 5). **Left:** the seven bosses top to
   bottom (270 px; phones 168 px, rows 48 px tall), one row each: a disc with the boss's icon (its element's; the Hydra
@@ -4773,6 +4789,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── CustomerController.luau # collectors' thought bubbles, kids' rip reveals
     │   │   ├── RatingController.luau   # the rating chip and its tips window
     │   │   ├── CarryController.luau    # drop carried box, To Bag (its packs into the Bag)
+    │   │   ├── CarryPoseController.luau # anyone carrying a box holds it in both arms (Config/CarryPose)
     │   │   ├── PackOpeningController.luau # the 3D pack opening: OpeningFlow, taps and swipes, server results, closes on fights
     │   │   ├── AnnouncementController.luau # big-pull chat messages
     │   │   ├── BinderController.luau   # the binder screen: collection data, the 3D binder's pages (cover, 2x2 pockets with chips), set tabs, Q/E page keys, page counter, Filters window (F), set progress card, tooltips, the Bag window
@@ -4965,6 +4982,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
         │   ├── SoftHud.luau    # the squircle HUD tiles: sizes, colours, the squishy hover (plain data)
         │   ├── EditBar.luau    # the Edit bar's hold, reach, tile colours and icons, sizes, highlight (plain data)
         │   ├── Delivery.luau   # the van's trip, street, look and sounds, the boxes' hop, the unboxing, the waiting chip (plain data)
+        │   ├── CarryPose.luau  # a carried box's place on the chest and the arms' pose round it (plain data)
         │   ├── PhoneForm.luau  # the Phone standing up or lying on its side on a short screen (plain data)
         │   ├── ShopTiles.luau  # the Shop window's tiles: the tall one, a phone's row tile, the window's chrome (plain data)
         │   ├── CardReveal.luau # how big each pull's reveal is: tease, rays, spotlight, sparks, banner (plain data)
@@ -5027,6 +5045,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── PlacementGrid.luau # grid maths shared by client preview + server validation
             ├── DecorRules.luau    # shop decor: buy / use a look, a save cleaned, the decor score, the piece cap (pure, Lune-tested)
             ├── DecorLooks.luau    # shop decor pieces' code-built stand-ins and their finish by part name
+            ├── TrophyLooks.luau   # a placed trophy's lights: its Gem in the boss's colour, its Glow parts Neon
             ├── WindowLooks.luau   # the shop windows' code-built models and where one sits on its wall
             ├── WindowRules.luau   # shop windows: fit on a wall, buying, cap, saved list cleaned, a wall cut round holes
             ├── PriceRules.luau    # price clamping and buy bands

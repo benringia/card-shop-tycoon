@@ -31,7 +31,15 @@ return {
 		Condenser = { height = 0, collide = false, built = true }, -- the Card Condenser (CONDENSER_LOOK)
 		GradingStation = { height = 0, collide = false, built = true }, -- the Grading Station (GRADING_LOOK)
 		Forge = { height = 0, collide = false, built = true }, -- the Forge (FORGE_LOOK), until its model is made
-		Trophy = { height = 0, collide = false, built = true }, -- a boss trophy (TROPHY_LOOK; its Gem in the boss's colour)
+		-- the boss trophies, one look each (owner 2026-11-23: "we need a model for the trophies. draw from blender";
+		-- tools/blender/build_trophies.py, docs/props.md "Trophies"): the code stand-in (TROPHY_LOOK) until the model's in
+		TrophyWarden = { height = 0, collide = false, standIn = true },
+		TrophyBrood = { height = 0, collide = false, standIn = true },
+		TrophyColossus = { height = 0, collide = false, standIn = true },
+		TrophyFrost = { height = 0, collide = false, standIn = true },
+		TrophyStorm = { height = 0, collide = false, standIn = true },
+		TrophyRift = { height = 0, collide = false, standIn = true },
+		TrophyHydra = { height = 0, collide = false, standIn = true },
 		BulkBin = { height = 0, collide = false, built = true }, -- the Bulk Bin: a wooden crate with a sign (Config/Bulk LOOK)
 		Recycler = { height = 0, collide = false, built = true }, -- the Recycler: a white pod with a hopper of cards (Config/Recycler LOOK)
 		-- shop decor pieces (Config/Shelves kind "Decor"): their model once the Blender pack is imported (docs/props.md
@@ -499,14 +507,26 @@ return {
 		HOLO_TEXT = "S", -- the top grade
 	},
 
-	-- A boss trophy (Props, code-built): a dark stone plinth with a gold band and a gem in the boss's element colour
-	-- (Config/Shelves propColors Gem), a gold cup with handles on top. No lights. Studs; colours { r, g, b }.
+	-- A boss trophy. Its Blender model (slots Trophy<Boss>, tools/blender/build_trophies.py): the cup after its Bag
+	-- picture on a stone plinth, the plinth's Gem lit Neon in the boss's colour (Config/Shelves propColors Gem) and its
+	-- glowing bits (parts Glow, GlowCore) Neon in GLOWS' colours (Util/TrophyLooks). Until the model's in, the code
+	-- stand-in (Props): a dark stone plinth with a gold band and the gem, a gold cup with handles. Studs; colours
+	-- { r, g, b }.
 	TROPHY_LOOK = {
 		PLINTH_WIDTH = 2.6,
 		PLINTH_HEIGHT = 2.2,
 		STONE = { 52, 54, 64 },
 		GOLD = { 232, 186, 70 },
 		GEM = { 255, 255, 255 }, -- recoloured per boss
+		GLOWS = {
+			TrophyWarden = { Glow = { 90, 226, 200 } }, -- the magic water in the cup
+			TrophyBrood = { Glow = { 226, 170, 255 } }, -- the gem on the spider's back
+			TrophyColossus = { Glow = { 255, 140, 40 }, GlowCore = { 255, 222, 90 } }, -- lava seams and fire, yellow cores
+			TrophyFrost = { Glow = { 195, 240, 255 } }, -- the snowflake
+			TrophyStorm = { Glow = { 175, 235, 255 } }, -- the lightning
+			TrophyRift = { Glow = { 200, 112, 255 } }, -- the rift's swirl and sparks
+			TrophyHydra = {},
+		},
 	},
 
 	-- Code-built product shelves (Util/ShelfLayout places the parts, Util/ShelfLooks draws them): charcoal posts and

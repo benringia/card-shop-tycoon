@@ -80,6 +80,24 @@ return {
 		assert(trophies == #Bosses.LADDER, `expected one trophy per boss ({#Bosses.LADDER}), found {trophies}`)
 	end,
 
+	-- Owner 2026-11-23: "we need a model for the trophies. draw from blender": each boss's trophy its own Blender model
+	["each boss trophy draws its own model slot, a stand-in until it's imported, with its glow colours"] = function()
+		local town = fs.readFile("src/shared/Config/Town.luau")
+		local seen: { [string]: boolean } = {}
+		for _, entry in entries() do
+			if string.match(entry.body, 'kind = "Trophy"') then
+				local prop = string.match(entry.body, 'prop = "([%w_]+)"')
+				assert(prop and string.match(prop, "^Trophy%u%a+$"), `{entry.id} draws a Trophy<Boss> slot, not {prop}`)
+				assert(not seen[prop :: string], `{entry.id} shares {prop} with another trophy`)
+				seen[prop :: string] = true
+				assert(string.find(town, "%s" .. prop .. " = { height = 0, collide = false, standIn = true }"), `Town.SLOTS.{prop}: a stand-in until its model is in`)
+				assert(string.find(town, "%s" .. prop .. " = {[^\n]*}"), `TROPHY_LOOK.GLOWS has {prop}`)
+				assert(string.match(entry.body, "propColors = { Gem = "), `{entry.id} lights its Gem in the boss's colour`)
+			end
+		end
+		assert(not string.find(town, "%sTrophy = {"), "no shared Trophy slot left (its files would be every trophy's variants)")
+	end,
+
 	["each shelf type has its own look"] = function()
 		local props: { [string]: string } = {}
 		for _, entry in entries() do

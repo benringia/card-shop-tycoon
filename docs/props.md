@@ -344,6 +344,28 @@ loads as a picture but never on a mesh (black box): its palette was uploaded aga
 `assets/props/BoxDecks.rbxm` (`TextureContent`, Lune); check after a re-import. Until they're split in, the boxes are
 branded cases (`Util/BrandBox`).
 
+## Trophies
+
+The seven boss trophies (owner 2026-11-23: "we need a model for the trophies. draw from blender"; DESIGN "Trophies")
+come from `tools/blender/build_trophies.py` as ONE pack the owner imports once:
+
+1. `blender -b --factory-startup --python tools/blender/build_trophies.py` writes
+   `assets/blender/Trophies/Trophies.{blend,fbx}` and each trophy's palette (`assets/blender/Trophy<Boss>/`).
+   `PREVIEW_DIR=<folder>` also renders a lineup and a close look at each (backface culling on), `PROPS="TrophyRift"`
+   builds only some, `EXPORT=0` builds without saving.
+2. Import the FBX in Studio (default settings) and save the imported model as `assets/props-import/Trophies.rbxm`.
+3. `lune run tools/props/split_pack assets/props-import/Trophies.rbxm` writes `assets/props/Trophy<Boss>.rbxm`.
+
+Each trophy is an Empty named for its slot (`TrophyWarden`, `TrophyBrood`, `TrophyColossus`, `TrophyFrost`,
+`TrophyStorm`, `TrophyRift`, `TrophyHydra`; Config/Shelves `prop`) holding `<Name>__Frame` (the plinth and the cup),
+`<Name>__Gem` (the plinth's gem: `Util/TrophyLooks` takes its texture off and lights it Neon in the boss's colour,
+Shelves `propColors.Gem`) and its glowing bits, `<Name>__Glow` and the Colossus' `__GlowCore` (Neon in
+`Town.TROPHY_LOOK` GLOWS). Each stands inside the shelf's 4 x 4 x 5 (the build checks), the cups drawn round a 1.48 base
+then grown 1.12 times onto the 1.04 plinth (`cup_space`, voxel_kit's Builder `xform`). The decorations follow the cup's
+outside (`Surface`: the bowl's radius at a height): vines and leaves, the web, lava seams, lightning, the rift's spiral.
+Until a model's split in, `Util/Props` builds the code stand-in for any `Trophy*` slot. Imported and split 2026-11-23;
+`Props.fit` scales each to touch its 4 x 4 x 5 box (1.00 to 1.06 times), so their plinths stay one size.
+
 ## The delivery van
 
 The packenship.co van that brings every order (owner 2026-11-23: "make the van in blender"; DESIGN 4.2 "The

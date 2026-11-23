@@ -82,6 +82,10 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - The four delivery boxes (Products `boxProp`): one pack from `tools/blender/build_delivery_props.py`
   (`assets/blender/Delivery/`), imported once as `assets/props-import/DeliveryProps.rbxm` and split by
   `lune run tools/props/split_pack` (docs/props.md "Delivery boxes"); `Util/BrandBox` cases until then.
+- The seven boss trophies (`assets/props/Trophy<Boss>.rbxm`, slots `Town.SLOTS` Trophy<Boss>): one pack from
+  `tools/blender/build_trophies.py` (`assets/blender/Trophies/`), imported once as `assets/props-import/Trophies.rbxm`
+  and split by `lune run tools/props/split_pack` (docs/props.md "Trophies"); their Gem and Glow parts lit Neon by
+  `Util/TrophyLooks`; the code stand-in (`Util/Props`) until then.
 - The packenship.co delivery van (`assets/props/DeliveryVan.rbxm`, client-only, the orderer's alone): a pack of one from
   `tools/blender/build_delivery_van.py` (`assets/blender/DeliveryVan/`), imported once as
   `assets/props-import/DeliveryVan.rbxm` and split by `lune run tools/props/split_pack` (docs/props.md "The delivery

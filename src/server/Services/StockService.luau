@@ -20,6 +20,7 @@ local ItemRules = require(Shared:WaitForChild("Util"):WaitForChild("ItemRules"))
 local TutorialRules = require(Shared:WaitForChild("Util"):WaitForChild("TutorialRules"))
 local OrderRules = require(Shared:WaitForChild("Util"):WaitForChild("OrderRules"))
 local StockConfig = require(Config:WaitForChild("Stock"))
+local CarryPose = require(Config:WaitForChild("CarryPose"))
 local Delivery = require(Config:WaitForChild("Delivery"))
 local DeliveryRules = require(Shared:WaitForChild("Util"):WaitForChild("DeliveryRules"))
 local Offline = require(Config:WaitForChild("Offline"))
@@ -136,11 +137,21 @@ local function layoutWaiting(shop: Shop)
 	end
 end
 
+-- A box in the carrier's arms (Config/CarryPose; owner 2026-11-23): in front of the belly and chest, welded to the
+-- UpperTorso so it sways with the walk and the arms every client poses round it (CarryPoseController) stay on it; to the
+-- root on a body without an UpperTorso. A Weld, not a WeldConstraint: its offset is exact whatever pose the body is in.
+-- More boxes stack on top.
 local function attachToCharacter(box: Part, root: BasePart, stackIndex: number)
-	box.CFrame = root.CFrame * StockConfig.CARRY_OFFSET * CFrame.new(0, StockConfig.BOX_SIZE.Y * (stackIndex - 1), 0)
-	local weld = Instance.new("WeldConstraint")
-	weld.Part0 = box
-	weld.Part1 = root
+	local stack = CFrame.new(0, StockConfig.BOX_SIZE.Y * (stackIndex - 1), 0)
+	local torso = if root.Parent then root.Parent:FindFirstChild("UpperTorso") else nil
+	local holder: BasePart = if torso and torso:IsA("BasePart") then torso else root
+	local offset = if holder == root then StockConfig.CARRY_OFFSET * stack else CFrame.new(0, -CarryPose.BOX.down, -CarryPose.BOX.forward) * stack
+	box.CFrame = holder.CFrame * offset
+	local weld = Instance.new("Weld")
+	weld.Name = "CarryWeld"
+	weld.Part0 = holder
+	weld.Part1 = box
+	weld.C0 = offset
 	weld.Parent = box
 	box.CanCollide = false
 	box.Massless = true
@@ -148,7 +159,7 @@ local function attachToCharacter(box: Part, root: BasePart, stackIndex: number)
 end
 
 local function detachFromCharacter(box: Part)
-	local weld = box:FindFirstChildOfClass("WeldConstraint")
+	local weld = box:FindFirstChild("CarryWeld") or box:FindFirstChildOfClass("WeldConstraint")
 	if weld then
 		weld:Destroy()
 	end

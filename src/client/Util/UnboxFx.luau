@@ -15,6 +15,7 @@ local Delivery = require(Config:WaitForChild("Delivery"))
 local Products = require(Config:WaitForChild("Products"))
 local Packs = require(Config:WaitForChild("Packs"))
 local StockConfig = require(Config:WaitForChild("Stock"))
+local CarryPose = require(Config:WaitForChild("CarryPose"))
 local Util = Shared:WaitForChild("Util")
 local DeliveryRules = require(Util:WaitForChild("DeliveryRules"))
 local PropFit = require(Util:WaitForChild("PropFit"))
@@ -214,7 +215,12 @@ function UnboxFx.play(shelf: BasePart, root: BasePart, productId: string, added:
 	if #shares == 0 then
 		return
 	end
-	local at = root.CFrame * StockConfig.CARRY_OFFSET
+	-- where the box was in their arms (Config/CarryPose: from the UpperTorso; the root on a body without one)
+	local character = root.Parent
+	local torso = if character then character:FindFirstChild("UpperTorso") else nil
+	local at = if torso and torso:IsA("BasePart")
+		then torso.CFrame * CFrame.new(0, -CarryPose.BOX.down, -CarryPose.BOX.forward)
+		else root.CFrame * StockConfig.CARRY_OFFSET
 	local box, flaps = openBox(at)
 	playSound(at.Position, Delivery.SOUNDS.flap)
 	for _, flap in flaps do

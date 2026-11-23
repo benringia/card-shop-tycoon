@@ -35,6 +35,7 @@ local Bulk = require(Config:WaitForChild("Bulk"))
 local ShowcaseLayout = require(Shared:WaitForChild("Util"):WaitForChild("ShowcaseLayout"))
 local DecorRules = require(Shared:WaitForChild("Util"):WaitForChild("DecorRules"))
 local DecorLooks = require(Shared:WaitForChild("Util"):WaitForChild("DecorLooks"))
+local TrophyLooks = require(Shared:WaitForChild("Util"):WaitForChild("TrophyLooks"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Blocked = require((script.Parent :: Instance).Parent:WaitForChild("Util"):WaitForChild("Blocked"))
 
@@ -681,6 +682,8 @@ local function createShelf(
 		end
 		if isDecor(def) then
 			DecorLooks.finish(visual, def.prop)
+		elseif def.kind == "Trophy" then
+			TrophyLooks.finish(visual, def.prop, def.propColors and def.propColors.Gem)
 		end
 		shelf.visual = visual
 	end

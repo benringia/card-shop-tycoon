@@ -456,8 +456,8 @@ local function buildGradingStation(model: Model)
 	cardRing(model, columnMid + look.ORBIT_RISE, look.ORBIT_CARDS, look.ORBIT_RADIUS, look.ORBIT_CARD, cardColor, look.ORBIT_SPIN, 1.4)
 end
 
--- A boss trophy (Town.TROPHY_LOOK), bottom centre at the origin, front -Z: a stone plinth with a gold band and a
--- gem (named Gem, recoloured per boss) on its front, a gold cup with two handles on top
+-- A boss trophy's stand-in until its Blender model is in (Town.TROPHY_LOOK), bottom centre at the origin, front -Z: a
+-- stone plinth with a gold band and a gem (named Gem, recoloured per boss) on its front, a gold cup with two handles
 local function buildTrophy(model: Model)
 	local look = Town.TROPHY_LOOK
 	local block, cylinder, ball = Enum.PartType.Block, Enum.PartType.Cylinder, Enum.PartType.Ball
@@ -540,8 +540,8 @@ local function buildFallback(slot: string, height: number, size: Vector3?, varia
 		buildBulkBin(model, size or Vector3.new(4, 3, 4))
 	elseif slot == "Recycler" then
 		buildRecycler(model)
-	elseif slot == "Trophy" then
-		buildTrophy(model)
+	elseif string.sub(slot, 1, 6) == "Trophy" then
+		buildTrophy(model) -- any boss's trophy until its model is in (Town.SLOTS Trophy<Boss>)
 	elseif DecorLooks.isDecor(slot) then
 		DecorLooks.draw(model, slot, size or Vector3.new(2, math.max(height, 2), 2))
 	elseif slot == "Computer" then
