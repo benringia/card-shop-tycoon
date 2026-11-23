@@ -94,7 +94,7 @@ return {
 		expect.isNil(by.sword.on, "the sword is handed over at its level: taught then")
 		expect.equal(by.jobs.level, Jobs.UNLOCK_LEVEL, "jobs at their unlock (nothing to place)")
 		assert(by.trophy.trigger == "trophy" and by.titles.trigger == "title" and by.prices.trigger == "tourDone", "the event lessons as before")
-		expect.equal(#Pish.LESSONS, 13, "thirteen lessons, not eighteen (the healing spring's came on launch day, the Recycler's the day after)")
+		expect.equal(#Pish.LESSONS, 15, "fifteen lessons, not eighteen (the healing spring's came on launch day, the Recycler's the day after, the two shop rooms' with the rooms)")
 	end,
 
 	["due: a level-up only brings what's taught at its level, never a first-use lesson"] = function()
@@ -102,8 +102,9 @@ return {
 		same(LessonRules.due(Pish.LESSONS, 3, 4, {}), { "sword" }, "the sword, with the sword")
 		same(LessonRules.due(Pish.LESSONS, 4, 7, {}), {}, "the condenser and the forge wait to be placed")
 		same(LessonRules.due(Pish.LESSONS, 7, 8, {}), { "jobs" })
-		same(LessonRules.due(Pish.LESSONS, 1, 20, {}), { "sword", "jobs", "recycler" }, "the whole way up: three visits by level")
-		same(LessonRules.due(Pish.LESSONS, 1, 20, { sword = true, jobs = false, recycler = true }), {}, "seen or waiting already")
+		same(LessonRules.due(Pish.LESSONS, 1, 20, {}), { "sword", "jobs", "recycler", "backRoom" }, "the whole way up: four visits by level")
+		same(LessonRules.due(Pish.LESSONS, 1, 20, { sword = true, jobs = false, recycler = true, backRoom = true }), {}, "seen or waiting already")
+		same(LessonRules.due(Pish.LESSONS, 20, 30, {}), { "gallery" }, "the Gallery at its level")
 		same(LessonRules.due(Pish.LESSONS, 20, 20, {}), {}, "an old save loading at 20 gets none")
 	end,
 
@@ -167,11 +168,12 @@ return {
 		local recycler = lessonWhere("shelf", "Recycler")
 		assert(recycler and recycler.late == true, "the Recycler's lesson is a late one")
 		expect.equal(recycler.id, "recycler")
-		same(LessonRules.late(Pish.LESSONS, 30, {}), { "recycler" }, "an old save at Lv 30")
+		same(LessonRules.late(Pish.LESSONS, 30, {}), { "recycler", "backRoom", "gallery" }, "an old save at Lv 30")
+		same(LessonRules.late(Pish.LESSONS, 15, { recycler = true }), { "backRoom" }, "an old save at Lv 15 that met the Recycler")
 		same(LessonRules.late(Pish.LESSONS, 12, {}), { "recycler" }, "at its level")
 		same(LessonRules.late(Pish.LESSONS, 11, {}), {}, "not unlocked yet: the level-up brings it")
-		same(LessonRules.late(Pish.LESSONS, 30, { recycler = true }), {}, "seen")
-		same(LessonRules.late(Pish.LESSONS, 30, { recycler = false }), {}, "waiting already")
+		same(LessonRules.late(Pish.LESSONS, 30, { recycler = true, backRoom = true, gallery = true }), {}, "seen")
+		same(LessonRules.late(Pish.LESSONS, 30, { recycler = false, backRoom = false, gallery = false }), {}, "waiting already")
 		-- a new player: the level-up brings it, and Pish walks them to it (a lesson that has them buy it)
 		same(LessonRules.due(Pish.LESSONS, 11, 12, {}), { "recycler" })
 		expect.equal(LessonRules.buys(recycler), true)

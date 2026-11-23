@@ -76,6 +76,11 @@ return {
 		-- so a new player gets it on reaching Lv 12; `late`: a save already past its level gets it at its next join,
 		-- once (LessonRules.late, TutorialService)
 		{ id = "recycler", level = 12, icon = "Copies", shelf = "Recycler", late = true },
+		-- The shop rooms came after launch too (spec 2026-11-23-shop-rooms-design): at a room's level his paws lead to its
+		-- locked door (TutorialController POINT_AT); `late` brings it once to saves already past the level; opening the
+		-- room first marks it seen (RoomService). Levels match Config/ShopRooms (tests/ShopRooms)
+		{ id = "backRoom", level = 15, icon = "Shop", late = true },
+		{ id = "gallery", level = 30, icon = "Shop", late = true },
 		{ id = "grading", level = 14, icon = "GradingSeal", shelf = "GradingStation", on = "placed" },
 		{ id = "trophy", icon = "Trophy", trigger = "trophy" },
 		{ id = "titles", icon = "Trophy", trigger = "title" }, -- the first title earned: how to equip it (owner 2026-11-13)

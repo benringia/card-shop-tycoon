@@ -98,6 +98,8 @@ return {
 		forge = "The Forge is here! Make and upgrade weapons.",
 		bulkBin = "The Bulk Bin is here! Sell your extra Commons.",
 		recycler = "New machine: the Recycler! It eats extra cards.",
+		backRoom = "The Back Room can open now! More floor, more customers.",
+		gallery = "The Gallery can open now! More floor, more customers.",
 		grading = "The Grading Station is here! Grade your cards.",
 		jobs = "Your cards can work now! Tap Jobs on your Phone.",
 		trophy = "You won a trophy! Show it off in your shop.",
