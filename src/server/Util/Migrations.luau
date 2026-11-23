@@ -48,7 +48,11 @@ local function lowerStars(entry: any)
 	end
 end
 
-local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
+-- A placed thing's cells along x at its rotation (v42; DataService passes one built from Config/Shelves and the order
+-- computer's size; nil when unknown)
+type Footprint = (id: string, rotation: number) -> number?
+
+local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string, footprint: Footprint?) -> () } = {
 	-- v2: displayed cards live on each saved shelf; the old top-level showcase list was never used
 	[1] = function(data)
 		data.showcase = nil
@@ -461,14 +465,71 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string) -> () } = {
 		end
 		stats.bossKills = kills
 	end,
+	-- v42 (spec 2026-11-23-shop-rooms-design): every shop became one 50 x 60 building: its hall 5 studs wider each side
+	-- (20 -> 25 cells across), the floor's middle 10 studs further back, nothing moved away from the street (gridZ and
+	-- the hall's depth are the same). Rooms start closed. A thing by a side wall (its edge within 2 cells, 4 studs) stays
+	-- by it; the rest keep their place from the middle line to the whole cell (+3: half a cell right of centred, away
+	-- from the register by the left wall). Side windows keep their spot (`at` counts from the wall's middle, now 10
+	-- further back); front posters stay on the same pane of the wider front (outer +-18.5 -> +-(6 + 2.5 * 20 / 3), inner
+	-- +-13.5 -> +-16); back pieces are left for the load (WindowRules.clean moves what no longer fits). `footprint`
+	-- gives a thing's cells along x, 1 when unknown. Numbers frozen here, as every step's.
+	[41] = function(data, _rollGrade, footprint)
+		if typeof(data.rooms) ~= "table" then
+			data.rooms = {}
+		end
+		local OLD_CELLS, NEAR, RIGHT, MIDDLE = 20, 2, 5, 3
+		local function remap(entry: any, id: string)
+			if typeof(entry) ~= "table" or typeof(entry.gridX) ~= "number" or entry.gridX ~= math.floor(entry.gridX) then
+				return
+			end
+			local rotation = if typeof(entry.rotation) == "number" then entry.rotation else 0
+			local w = (if footprint then footprint(id, rotation) else nil) or 1
+			if entry.gridX <= NEAR then
+				return
+			elseif entry.gridX + w >= OLD_CELLS - NEAR then
+				entry.gridX += RIGHT
+			else
+				entry.gridX += MIDDLE
+			end
+		end
+		if typeof(data.layout) == "table" then
+			for _, entry in data.layout do
+				if typeof(entry) == "table" and typeof(entry.shelfId) == "string" then
+					remap(entry, entry.shelfId)
+				end
+			end
+		end
+		if typeof(data.fixtures) == "table" then
+			remap(data.fixtures.OrderComputer, "OrderComputer")
+		end
+		if typeof(data.windows) == "table" then
+			local OUTER_OLD, INNER_OLD = 18.5, 13.5
+			local OUTER_NEW, INNER_NEW = 6 + 2.5 * 20 / 3, 16
+			for _, window in data.windows do
+				if typeof(window) == "table" and typeof(window.at) == "number" then
+					if window.side == "left" or window.side == "right" then
+						window.at -= 10
+					elseif window.side == "front" then
+						local sign = if window.at < 0 then -1 else 1
+						if math.abs(math.abs(window.at) - OUTER_OLD) < 1e-3 then
+							window.at = sign * OUTER_NEW
+						elseif math.abs(math.abs(window.at) - INNER_OLD) < 1e-3 then
+							window.at = sign * INNER_NEW
+						end
+					end
+				end
+			end
+		end
+	end,
 }
 
 local function lowestGrade(): string
 	return LOWEST_GRADE
 end
 
--- rollGrade gives each copy its grade in v5 (the server passes a random roll; tests pass a fixed one)
-function Migrations.run(data: any, targetVersion: number, rollGrade: (() -> string)?)
+-- rollGrade gives each copy its grade in v5 (the server passes a random roll; tests pass a fixed one); footprint gives a
+-- placed thing's cells along x in v42 (DataService builds it from the shelf sizes)
+function Migrations.run(data: any, targetVersion: number, rollGrade: (() -> string)?, footprint: Footprint?)
 	local version = if typeof(data.version) == "number" then data.version else 1
 	-- A save written by newer code (e.g. an old server still running during an update) keeps its
 	-- version, so the newer code never runs the same migration on it twice
@@ -478,7 +539,7 @@ function Migrations.run(data: any, targetVersion: number, rollGrade: (() -> stri
 	while version < targetVersion do
 		local step = MIGRATIONS[version]
 		if step then
-			step(data, rollGrade or lowestGrade)
+			step(data, rollGrade or lowestGrade, footprint)
 		end
 		version += 1
 	end

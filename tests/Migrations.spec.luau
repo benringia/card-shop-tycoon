@@ -10,6 +10,18 @@ local function sequence(grades: { string }): () -> string
 	end
 end
 
+-- v42 (the shop rooms): a save at v41, and the cells wide along x of a few shelves (unturned, turned) the way
+-- DataService's footprint function gives them
+local function v41(data: any): any
+	data.version = 41
+	return data
+end
+local WIDTHS: { [string]: { number } } = { WallShelf = { 1, 4 }, Shelf = { 2, 1 }, DisplayRack = { 4, 2 }, OrderComputer = { 5, 3 } }
+local function footprint(id: string, rotation: number): number?
+	local w = WIDTHS[id]
+	return if w then w[rotation % 2 + 1] else nil
+end
+
 return {
 	["v4: lowers saved beast stars by one, not below 0"] = function()
 		local data: any = { version = 3, beasts = { a = { stars = 1 }, b = { stars = 3 }, c = { stars = 0 } } }
@@ -685,5 +697,84 @@ return {
 		local data: any = { version = 4, cards = { FS01 = { S = { normal = 2, foil = 0 } } } }
 		Migrations.run(data, 5, sequence({ "C" }))
 		expect.equal(data.cards.FS01.S.normal, 2, "kept")
+	end,
+
+	-- v42 (spec 2026-11-23-shop-rooms-design): the shop became 50 x 60 with its hall 5 studs wider each side and the
+	-- floor's middle 10 studs further back; nothing moves away from the street
+	["v42: rooms start closed; a junk value replaced"] = function()
+		local data = v41({ rooms = "x" })
+		Migrations.run(data, 42, nil, footprint)
+		expect.equal(typeof(data.rooms), "table")
+		expect.equal(#data.rooms, 0)
+		local fresh = v41({})
+		Migrations.run(fresh, 42, nil, footprint)
+		expect.equal(typeof(fresh.rooms), "table")
+	end,
+
+	["v42: things by a side wall stay by it, the rest stay centred"] = function()
+		local data = v41({
+			layout = {
+				{ shelfId = "WallShelf", gridX = 0, gridZ = 5, rotation = 0 }, -- by the left wall
+				{ shelfId = "Shelf", gridX = 2, gridZ = 6, rotation = 0 }, -- within 4 studs of it
+				{ shelfId = "Shelf", gridX = 3, gridZ = 7, rotation = 0 }, -- the middle: +3
+				{ shelfId = "DisplayRack", gridX = 8, gridZ = 8, rotation = 0 },
+				{ shelfId = "Shelf", gridX = 16, gridZ = 9, rotation = 0 }, -- its right edge within 4 studs of the right wall: +5
+				{ shelfId = "Shelf", gridX = 18, gridZ = 10, rotation = 0 },
+			},
+			fixtures = { OrderComputer = { gridX = 15, gridZ = 17, rotation = 0 } },
+		})
+		Migrations.run(data, 42, nil, footprint)
+		local xs = {}
+		for index, entry in data.layout do
+			xs[index] = entry.gridX
+		end
+		expect.equal(table.concat(xs, ","), "0,2,6,11,21,23")
+		expect.equal(data.layout[4].gridZ, 8, "the distance from the street never changes")
+		expect.equal(data.fixtures.OrderComputer.gridX, 20)
+		expect.equal(data.fixtures.OrderComputer.gridZ, 17)
+	end,
+
+	["v42: a turned rack uses its turned width"] = function()
+		local data = v41({ layout = { { shelfId = "DisplayRack", gridX = 16, gridZ = 3, rotation = 1 } } }) -- 2 wide turned: 16..18
+		Migrations.run(data, 42, nil, footprint)
+		expect.equal(data.layout[1].gridX, 21)
+	end,
+
+	["v42: side windows keep their spot; front posters stay on their pane"] = function()
+		local data = v41({
+			windows = {
+				{ style = "Square", side = "left", at = 0 },
+				{ style = "PosterBeware", side = "right", at = 12 },
+				{ style = "PosterWanted", side = "front", at = 18.5 },
+				{ style = "PosterOneMore", side = "front", at = -13.5 },
+				{ style = "Wide", side = "back", at = 4 },
+			},
+		})
+		Migrations.run(data, 42, nil, footprint)
+		expect.equal(data.windows[1].at, -10)
+		expect.equal(data.windows[2].at, 2)
+		expect.near(data.windows[3].at, 6 + 2.5 * 20 / 3, 1e-6)
+		expect.equal(data.windows[4].at, -16)
+		expect.equal(data.windows[5].side, "back")
+		expect.equal(data.windows[5].at, 4, "the load's clean moves it")
+	end,
+
+	["v42: junk and unknown things are left for the loader"] = function()
+		local data = v41({ layout = { "junk", { shelfId = "Gone", gridX = 19, gridZ = 1, rotation = 0 }, { shelfId = "Shelf", gridX = "x" } }, fixtures = "x", windows = 5 })
+		Migrations.run(data, 42, nil, footprint)
+		expect.equal(data.layout[1], "junk")
+		expect.equal(data.layout[2].gridX, 24, "1 wide when unknown: by the right wall")
+		expect.equal(data.layout[3].gridX, "x")
+		expect.equal(data.fixtures, "x")
+		expect.equal(data.windows, 5)
+	end,
+
+	["v42: a save from before v41 runs every step up to it (the footprint reaches step 41)"] = function()
+		local data = v41({ layout = { { shelfId = "Shelf", gridX = 18, gridZ = 0, rotation = 0 } } })
+		data.version = 40
+		data.stats = { packsOpened = 0, customersServed = 0, totalEarned = 0 }
+		Migrations.run(data, 42, nil, footprint)
+		expect.equal(data.layout[1].gridX, 23)
+		expect.equal(data.version, 42)
 	end,
 }

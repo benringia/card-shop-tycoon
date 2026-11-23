@@ -15,6 +15,9 @@ local Config = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config")
 local DataConfig = require(Config:WaitForChild("Data"))
 local EconomyConfig = require(Config:WaitForChild("Economy"))
 local BeastRules = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("BeastRules"))
+local PlacementGrid = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("PlacementGrid"))
+local Shelves = require(Config:WaitForChild("Shelves"))
+local PlotConfig = require(Config:WaitForChild("Plots"))
 local ProfileStore = require(ServerStorage:WaitForChild("ServerPackages"):WaitForChild("ProfileStore"))
 
 local Services = script.Parent :: Instance
@@ -107,6 +110,7 @@ export type PlayerData = {
 	lastSeen: number, -- os.time this save was last written in the main game (OfflineService: welcome-back earnings)
 	events: { luckDay: number }, -- weekly events: the UTC day Lucky Sunday's free luck was last given (EventService; EventRules.clean)
 	codes: { string }, -- the codes this player has used (CodeService; CodeRules.clean)
+	rooms: { string }, -- the shop rooms unlocked, Config/ShopRooms ids (RoomService; ShopRooms.clean)
 	-- daily, weekly and monthly gifts: the round, today's play time, the week's and month's bars (GiftService; GiftRules.State)
 	gifts: {
 		streak: number,
@@ -179,6 +183,7 @@ local TEMPLATE: PlayerData = {
 	lastSeen = 0,
 	events = { luckDay = -1 },
 	codes = {},
+	rooms = {},
 }
 
 local DataService = {}
@@ -187,6 +192,19 @@ local DataService = {}
 local gradeRng = Random.new()
 local function rollGrade(): string
 	return BeastRules.rollGrade(gradeRng:NextNumber())
+end
+
+-- A placed thing's cells along x at its rotation, for moving old layouts into the wider shop (schema v42): a shelf's
+-- from Config/Shelves, the order computer's from Config/Plots; nil for anything else
+local function footprintCells(id: string, rotation: number): number?
+	local size = if id == PlotService.COMPUTER_FIXTURE_ID
+		then PlotConfig.COMPUTER_SIZE
+		else (if Shelves.ById[id] then Shelves.ById[id].size else nil)
+	if not size then
+		return nil
+	end
+	local w = PlacementGrid.getFootprint(size, rotation)
+	return w
 end
 
 local store = ProfileStore.New(DataConfig.STORE_NAME, TEMPLATE)
@@ -298,7 +316,7 @@ local function onPlayerAdded(player: Player)
 	end
 
 	profile:AddUserId(player.UserId) -- GDPR: links the data to this user for deletion requests
-	Migrations.run(profile.Data, DataConfig.SCHEMA_VERSION, rollGrade)
+	Migrations.run(profile.Data, DataConfig.SCHEMA_VERSION, rollGrade, footprintCells)
 	profile:Reconcile() -- fills in fields added to TEMPLATE since this profile was created
 
 	attach(player, profile)

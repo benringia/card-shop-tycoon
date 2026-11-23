@@ -4,7 +4,7 @@ return {
 	STORE_NAME = "PlayerData",
 	KEY_PREFIX = "Player_",
 	SLOT_STORE = "OwnerSaveSlot", -- the game's owner's chosen save ("/slot test | main | reset": SaveSlotService)
-	SCHEMA_VERSION = 41, -- bump and add a migration in server/Util/Migrations when the data shape changes
+	SCHEMA_VERSION = 42, -- bump and add a migration in server/Util/Migrations when the data shape changes (42: shop rooms)
 	LOAD_FAILED_MESSAGE = "Your shop data couldn't be loaded. Please rejoin in a moment.",
 	SESSION_ENDED_MESSAGE = "Your shop was opened on another server.",
 }
