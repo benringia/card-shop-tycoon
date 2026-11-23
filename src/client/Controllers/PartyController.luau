@@ -47,8 +47,8 @@ local GAP = 8
 local CHIP_HEIGHT = 28
 -- The card's parts (px): its painting's height (a computer, a short window, a phone), a stat line's height and the
 -- room for its name and number, the perk box, the XP bar's colour and the shade under the painting's stars
-local ART_HEIGHT = { full = 112, slim = 70, phone = 54 }
-local STAT_HEIGHT = { full = 18, slim = 15 }
+local ART_HEIGHT = { full = 112, slim = 70, phone = 50 }
+local STAT_HEIGHT = { full = 18, slim = 15, phone = 13 }
 local STAT_NAME_WIDTH = 46
 local STAT_NUMBER_WIDTH = 34
 local STAT_NAMES: { [string]: string } = { Hp = "Health", Atk = "Attack", Spd = "Speed" }
@@ -349,20 +349,25 @@ local function buildCardColumn(slot: number, beastId: string, summoned: boolean)
 	end
 	UIKit.outline(column, if summoned then palette.good else palette.rowEdge, if summoned then 4 else 2)
 	local phone = slim()
-	-- A real phone's column is too short for everything (a Galaxy A06 leaves 96 px over the buttons, an iPhone 17 Pro
-	-- 120; the slim card needs 150): the HP / ATK / SPD bars go (Power sums them up; the card view has them) so the
-	-- perk reads in full over the buttons instead of hiding under them (found 2026-11-19)
 	local tiny = UIKit.isPhone()
+	local gap = if phone then 3 else 6
 	local stack = Instance.new("Frame")
 	stack.BackgroundTransparency = 1
 	stack.Size = UDim2.new(1, 0, 1, -56)
 	stack.ZIndex = column.ZIndex
 	stack.Parent = column
-	list(stack, false, if phone then 3 else 6)
+	list(stack, false, gap)
+	local artHeight = if tiny then ART_HEIGHT.phone elseif phone then ART_HEIGHT.slim else ART_HEIGHT.full
+	local nameSize = UIKit.textSize(if phone then "body" else "name")
+	local statHeight = if tiny then STAT_HEIGHT.phone elseif phone then STAT_HEIGHT.slim else STAT_HEIGHT.full
+	local perkHeight = if phone then PERK_HEIGHT.slim else PERK_HEIGHT.full
+	-- A phone's card shows the stat lines only where they fit over the buttons (found 2026-11-19: a Galaxy A06's column
+	-- leaves 96 px there, and the perk hid under the buttons; checked 2026-11-23: an iPhone 17 Pro's has room for them,
+	-- and without them a band stood empty). Power sums them up and the card view has them either way.
+	local statsFit = not tiny or stack.AbsoluteSize.Y >= artHeight + (nameSize + 6) + 3 * statHeight + perkHeight + 5 * gap
 
 	-- The painting with its grade, level, stars and element, then the name and Power
-	artBanner(stack, card, beast, if tiny then ART_HEIGHT.phone elseif phone then ART_HEIGHT.slim else ART_HEIGHT.full, tiny)
-	local nameSize = UIKit.textSize(if phone then "body" else "name")
+	artBanner(stack, card, beast, artHeight, tiny)
 	local nameRow = Instance.new("Frame")
 	nameRow.Name = "NameRow"
 	nameRow.LayoutOrder = 2
@@ -389,19 +394,18 @@ local function buildCardColumn(slot: number, beastId: string, summoned: boolean)
 	name.Size = UDim2.new(1, -(nameSize * 4 + 12), 1, 0)
 	name.TextTruncate = Enum.TextTruncate.AtEnd
 
-	-- Health, Attack, Speed: each named, a bar against the strongest card's, and its number. A real phone's column is
-	-- too short for them (a Galaxy A06 leaves 96 px over the buttons): Power sums them up and the card view has them
+	-- Health, Attack, Speed: each named, a bar against the strongest card's, and its number
 	local stats = BeastRules.getStats(card, beast.foil, beast.level, beast.stars, beast.grade)
 	local reference = CardTips.reference()
-	local bars: { { any } } = if tiny then {} else { { "Hp", stats.hp, reference.hp }, { "Atk", stats.atk, reference.atk }, { "Spd", stats.spd, reference.spd } }
+	local bars: { { any } } = if statsFit then { { "Hp", stats.hp, reference.hp }, { "Atk", stats.atk, reference.atk }, { "Spd", stats.spd, reference.spd } } else {}
 	for index, stat in bars do
-		statLine(stack, 2 + index, stat[1] :: string, stat[2] :: number, CompareRules.share(stat[2] :: number, stat[3] :: number), if phone then STAT_HEIGHT.slim else STAT_HEIGHT.full)
+		statLine(stack, 2 + index, stat[1] :: string, stat[2] :: number, CompareRules.share(stat[2] :: number, stat[3] :: number), statHeight)
 	end
 
 	-- The perks it gives, in town while summoned and in fights; the resting line (filled by updateRest); its next level
 	local perk = PartyRules.getPerk(Party, card.element, card.rarity, beast.stars)
 	local fightPerk = PartyRules.getFightPerk(Party, card.element, card.rarity, beast.stars)
-	perkBox(stack, 6, card, perk, fightPerk, if phone then PERK_HEIGHT.slim else PERK_HEIGHT.full)
+	perkBox(stack, 6, card, perk, fightPerk, perkHeight)
 	if not phone then
 		xpLine(stack, 8, beast)
 	end

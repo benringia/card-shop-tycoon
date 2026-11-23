@@ -1785,7 +1785,9 @@ owner 2026-11-03, so the mockup's white Remove is sky). The summoned column glow
 shows the party's Power ("Party Power 3,328") and your PvP record; an empty slot has "Add a card" (opens the binder).
 The stats are named on each card, so the legend that named the icons along the bottom went; every icon has a word
 tooltip (`Util/Tooltip`; Remove says "Remove from party"). A short computer window gets a lower painting and slimmer
-stat lines and no XP line, a phone's card a strip of painting and no stat lines, so every column fits. One creature is summoned at a time: the server moves
+stat lines and no XP line; a phone's card a strip of painting, with its stat lines only where they fit over the buttons
+(checked in the Device Simulator 2026-11-23: an iPhone 17 Pro's column has room, a Galaxy A06's doesn't), so every
+column fits with no empty band. One creature is summoned at a time: the server moves
 an invisible marker behind you on the ground (`workspace.Creatures`, 20 Hz, teleports when 40+ studs away) and every
 client draws the creature on it with walking, breathing and a rarity glow (`docs/creatures.md`), under a name tag
 like a gacha title (owner 2026-11-14, after looking at how Palworld, Pokemon, gacha and pet games do it, option B of
