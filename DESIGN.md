@@ -441,7 +441,7 @@ is over UI (`UIKit.pointerBlocked`).
 ### 4.1 Plots
 - Claim on join. Release on leave. Shop layout loads from saved data.
 - Plot owner name + shop name shown on a sign out front. Shop name is player-chosen (filtered with TextService).
-- **Shop rooms** (built 2026-11-24; spec `docs/superpowers/specs/2026-11-23-shop-rooms-design.md`, owner: "a big shop
+- **Shop rooms** (built and merged 2026-11-24 after the owner's check; spec `docs/superpowers/specs/2026-11-23-shop-rooms-design.md`, owner: "a big shop
   with rooms, the rooms then become the extension. so all the players have same sized shops"): every plot is one
   50 x 60 building (`Config/Plots`), the same from the street. The main hall (50 x 40, the front 20 cell rows) is open
   from the start. Its back wall (a 2-stud cell row) has a doorway (8 wide, 10 high) into each of two rooms behind it,
@@ -7069,6 +7069,13 @@ boss models; the ranch and Heroic tiers come after those.
   super stays locked that long.
 - [ ] Weapons round 3 part 2: the Widow's Reaper's Eight Legs and the Storm Reaper's Storm Cyclone (spec 5.3); the
   final review's deferred minors (Chain Lightning per foe, the capped harvest shake, the light version's cracks).
+- Shop rooms' deferred minors (final review 2026-11-24, 4.1): the Unlock prompt stays pressable during the door's
+  1.2 s slide (a second press says the room is open already; the client could disable a prompt whose door is renamed
+  "...Opening"); moving a shelf into a locked room says "That spot is blocked." (a room-named reason would be
+  clearer); alley pieces cloned by Lune keep their source's pivot (Studio's move gizmo sits where the source stood);
+  an early "Infinite yield possible on Plot1:WaitForChild(OrderComputer)" at join (streaming, it resolves); rooms
+  opened by `/shoproom` don't mark Pish's room lesson seen (test saves only); Config/Decor's comment still says "the
+  back wall (FeatureWall)". Prices are placeholders until table card battles.
 - Not reproduced (2026-11-06): pack models on a freshly stocked shelf "slow to render" after joining (the server
   builds them at once, the client had them in 0.05 s, assets preloaded); waiting on how long and which restock.
 - Boss cash pays on every win with no cooldown (only items wait LOOT_COOLDOWN): a strong party farming the Meadow
