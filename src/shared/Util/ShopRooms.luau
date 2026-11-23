@@ -18,7 +18,11 @@ export type Wall = { name: string, axis: "x" | "z", at: number, from: number, to
 -- One face of a wall inside open floor: `at` is the face itself, `inward` the way into the room (+1 or -1 on the other
 -- axis); `side`: "left" | "right" (the outer side walls), "back" (the hall's back wall), "inner", "outerBack"
 export type Run = { side: string, axis: "x" | "z", at: number, from: number, to: number, inward: number, holes: { Hole } }
-export type Door = { room: string, part: string, x: number, z: number, width: number, height: number, slide: number }
+export type Door = { room: string, part: string, x: number, z: number, width: number, height: number }
+-- One leaf of a locked room's double door: its middle along the wall, its width, and how far it slides to open
+export type Leaf = { x: number, width: number, slide: number }
+-- A piece of a door frame: floor-local across the wall (x) and over the floor's top (y)
+export type Piece = { x0: number, x1: number, y0: number, y1: number }
 -- A stretch of wall a window or poster may use (Util/WindowRules): `posters` takes posters only; `room`, `name` and
 -- `locked` mark a room's stretch (closed while the room is locked)
 export type Span = { from: number, to: number, posters: boolean?, room: string?, name: string?, locked: boolean? }
@@ -218,10 +222,37 @@ function ShopRooms.doors(cfg: any, grid: Grid): { Door }
 			z = wallZ(cfg, grid),
 			width = hole.to - hole.from,
 			height = cfg.DOOR_HEIGHT,
-			slide = room.slide,
 		})
 	end
 	return doors
+end
+
+-- A locked room's double door (the locked-room mockup; owner 2026-11-24: "add a door for the locked rooms"): two
+-- leaves meeting in the middle, each sliding its own width outward into the wall beside the doorway to open
+function ShopRooms.leaves(door: Door): { Leaf }
+	local width = door.width / 2
+	return {
+		{ x = door.x - width / 2, width = width, slide = -width },
+		{ x = door.x + width / 2, width = width, slide = width },
+	}
+end
+
+-- A doorway's wooden frame (Config/ShopRooms DOOR; on both faces of the wall, kept once the room is open): two jambs
+-- and a head over them. It reaches FRAME_LIP into the doorway, so none of its faces lies on the wall's (no flicker)
+function ShopRooms.frame(cfg: any, door: Door): { Piece }
+	local d = cfg.DOOR
+	local left, right = door.x - door.width / 2, door.x + door.width / 2
+	local top = door.height - d.FRAME_LIP
+	return {
+		{ x0 = left - d.FRAME_WIDTH, x1 = left + d.FRAME_LIP, y0 = 0, y1 = top },
+		{ x0 = right - d.FRAME_LIP, x1 = right + d.FRAME_WIDTH, y0 = 0, y1 = top },
+		{ x0 = left - d.FRAME_WIDTH, x1 = right + d.FRAME_WIDTH, y0 = top, y1 = door.height + d.FRAME_WIDTH },
+	}
+end
+
+-- The middle of a doorway's name plate over the floor's top: SIGN.gap over the frame's head
+function ShopRooms.signHeight(cfg: any, door: Door): number
+	return door.height + cfg.DOOR.FRAME_WIDTH + cfg.SIGN.gap + cfg.SIGN.height / 2
 end
 
 -- The inner walls: the hall's back wall with a doorway into each room, and the wall between the rooms

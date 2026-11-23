@@ -449,14 +449,23 @@ is over UI (`UIKit.pointerBlocked`).
   All of it is `Config/ShopRooms` (cells, doors, levels, prices) and `Util/ShopRooms` (Lune-tested: the cells nothing
   may be placed on, the doors and inner walls, the wall faces inside open floor, the window stretches, the caps, the
   unlock checks).
-  - A locked room: a black door in the doorway with a white lock badge, its name on a dark plate above it, no lights;
-    its floor, the inner walls' rows and an 8 x 4 clear path each side of every door are invisible `BlocksPlacement`
-    parts (`RoomBlocks`, `PlacementMargin` 0), so nothing is placed there and customers' paths never lead in.
+  - Every doorway has a dark wooden frame (`DOOR` FRAME, two jambs and a head 0.5 wide on both faces of the wall,
+    standing 0.25 off it past the look's liner, band and crystals, reaching 0.1 into the doorway so no face lies on the
+    wall's: `ShopRooms.frame`); it stays once the room is open. The name plate hangs 0.3 over the frame's head
+    (`ShopRooms.signHeight`).
+  - A locked room (owner 2026-11-24: "add a door for the locked rooms", as the locked-room mockup drew it): a double
+    door of two frosted lilac leaves meeting in the middle, each with a darker inner edge (together the seam) and a
+    wooden handle on the hall side (the handles are not in the mockup), and the white lock badge over the seam on an
+    invisible holder that carries the door's name (the owner's prompt, Pish's paws); its name on a dark plate above,
+    no lights. Its floor, the inner walls' rows and an 8 x 4 clear path each side of every door are invisible
+    `BlocksPlacement` parts (`RoomBlocks`, `PlacementMargin` 0), so nothing is placed there and customers' paths never
+    lead in.
   - The owner's prompt on the door (made on the owner's client, `ShopRoomController`): "Unlock · Back Room · $5,000"
     with `RequireLevel`, so below the level it shows the lock and the level first. The server (`RoomService`, remote
     `UnlockRoom`) checks the owner, the distance to the door (`DOOR_REACH` 14), the rate limit, the level and the cash,
     and every refusal is a big locked card ("Reach shop level 30 to open the Gallery.", "You need $5,000 to open the
-    Back Room."). Paid: the door slides into the wall beside it (`OPEN_SECONDS` 1.2), the plate lights in the shop's
+    Back Room."). Paid: the badge goes and the two leaves slide apart into the wall each side (`ShopRooms.leaves`,
+    `OPEN_SECONDS` 1.2), the plate lights in the shop's
     accent colour (Neon), the room's two ceiling panels fade up, sparkles and a chime for anyone near, and the owner's
     toast "Back Room unlocked! More floor and one more customer." The room stays open for good (saved `rooms`).
   - An open room is plain floor for anything: customers and workers walk in through the door by pathfinding, the

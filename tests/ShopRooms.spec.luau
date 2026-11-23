@@ -114,7 +114,7 @@ return {
 		expect.equal(find(open, "DoorPathRoom", "backRoom") ~= nil, true, "its door path stays clear")
 	end,
 
-	["the doors: 8 wide, 10 high, in the hall's back wall, sliding into the wall beside them"] = function()
+	["the doors: 8 wide, 10 high, in the hall's back wall"] = function()
 		local doors = ShopRooms.doors(cfg, GRID)
 		expect.equal(#doors, 2)
 		expect.equal(doors[1].room, "backRoom")
@@ -123,12 +123,71 @@ return {
 		expect.equal(doors[1].z, 11)
 		expect.equal(doors[1].width, 8)
 		expect.equal(doors[1].height, 10)
-		expect.equal(doors[1].slide, -1)
 		expect.equal(doors[2].x, 9)
-		expect.equal(doors[2].slide, 1)
-		-- each door's slide side has at least a door's width of wall to hide in
-		expect.equal((doors[1].x - 4) - -25 >= 8, true)
-		expect.equal(25 - (doors[2].x + 4) >= 8, true)
+	end,
+
+	-- owner 2026-11-24: "add a door for the locked rooms": a framed double door, as the locked-room mockup drew it
+	["a door is two leaves that slide apart into the wall beside it"] = function()
+		local leaves = ShopRooms.leaves(ShopRooms.doors(cfg, GRID)[1])
+		expect.equal(#leaves, 2)
+		expect.equal(leaves[1].x, -11)
+		expect.equal(leaves[1].width, 4)
+		expect.equal(leaves[1].slide, -4)
+		expect.equal(leaves[2].x, -7)
+		expect.equal(leaves[2].slide, 4)
+	end,
+
+	["no open leaf meets another door's or leaves the wall"] = function()
+		local walls = ShopRooms.innerWalls(cfg, GRID)[1]
+		local solid = ShopRooms.gaps(walls.from, walls.to, walls.holes, 0, cfg.DOOR_HEIGHT)
+		local spans = {}
+		for _, door in ShopRooms.doors(cfg, GRID) do
+			for _, leaf in ShopRooms.leaves(door) do
+				local from, to = leaf.x + leaf.slide - leaf.width / 2, leaf.x + leaf.slide + leaf.width / 2
+				local inWall = false
+				for _, piece in solid do
+					inWall = inWall or (from >= piece.from - 1e-6 and to <= piece.to + 1e-6)
+				end
+				expect.equal(inWall, true, `a {door.room} leaf hides in the wall`)
+				for _, other in spans do
+					expect.equal(from >= other.to - 1e-6 or to <= other.from + 1e-6, true, "two open leaves never overlap")
+				end
+				table.insert(spans, { from = from, to = to })
+			end
+		end
+	end,
+
+	["a doorway's frame: two jambs and a head round it, reaching a lip into the doorway"] = function()
+		local door = ShopRooms.doors(cfg, GRID)[1] -- the Back Room's: x -13 to -5, 10 high
+		local d = cfg.DOOR
+		local pieces = ShopRooms.frame(cfg, door)
+		expect.equal(#pieces, 3)
+		local left, right, head = pieces[1], pieces[2], pieces[3]
+		expect.near(left.x0, -13 - d.FRAME_WIDTH, 1e-6)
+		expect.near(left.x1, -13 + d.FRAME_LIP, 1e-6, "no face of the frame lies on the wall's end")
+		expect.near(left.y0, 0, 1e-6)
+		expect.near(left.y1, 10 - d.FRAME_LIP, 1e-6, "a jamb stops under the head")
+		expect.near(right.x0, -5 - d.FRAME_LIP, 1e-6)
+		expect.near(right.x1, -5 + d.FRAME_WIDTH, 1e-6)
+		expect.near(head.x0, -13 - d.FRAME_WIDTH, 1e-6)
+		expect.near(head.x1, -5 + d.FRAME_WIDTH, 1e-6)
+		expect.near(head.y0, 10 - d.FRAME_LIP, 1e-6, "nor on the wall's face over the doorway")
+		expect.near(head.y1, 10 + d.FRAME_WIDTH, 1e-6)
+	end,
+
+	["a doorway's frame stands out past the look's pieces on the wall"] = function()
+		local shell = require("../src/shared/Config/Decor").SHELL
+		local deepest = shell.LINER + math.max(shell.BAND_DEEP, shell.TRIM_DEEP, shell.CRYSTAL.deep)
+		expect.equal(cfg.DOOR.FRAME_OUT > deepest, true, "the liner, band, trim and crystals stay behind the frame")
+	end,
+
+	["a doorway's name plate hangs over its frame, under the look's top strip"] = function()
+		local shell = require("../src/shared/Config/Decor").SHELL
+		local door = ShopRooms.doors(cfg, GRID)[1]
+		local head = ShopRooms.frame(cfg, door)[3]
+		local middle = ShopRooms.signHeight(cfg, door)
+		expect.equal(middle - cfg.SIGN.height / 2 > head.y1, true, "the plate clears the frame's head")
+		expect.equal(middle + cfg.SIGN.height / 2 < shell.TOP_STRIP - shell.TRIM / 2, true, "and the top strip")
 	end,
 
 	["the inner walls: the hall's back wall with two doorways and the wall between the rooms"] = function()

@@ -3,6 +3,7 @@
 -- roof; main town spec).
 -- DataService claims one per player on join and releases it on leave.
 -- Other services ask PlotService.GetPlot(player) to find a player's plot.
+local Debris = game:GetService("Debris")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
@@ -333,6 +334,21 @@ local function buildInnerWalls(plotCFrame: CFrame, parent: Instance)
 	end
 end
 
+-- Each doorway's wooden frame (Util/ShopRooms.frame; Config/ShopRooms DOOR), kept once its room is open: every piece
+-- one part through the wall, standing FRAME_OUT off both faces, past the look's liner, band and crystals
+local function buildDoorFrames(plotCFrame: CFrame, parent: Instance)
+	local floorTop = PlotConfig.FLOOR_THICKNESS / 2
+	local d = RoomsConfig.DOOR
+	local deep = RoomsConfig.WALL_THICK + 2 * d.FRAME_OUT
+	for _, door in ShopRooms.doors(RoomsConfig, GRID) do
+		for _, piece in ShopRooms.frame(RoomsConfig, door) do
+			local size = Vector3.new(piece.x1 - piece.x0, piece.y1 - piece.y0, deep)
+			local at = CFrame.new((piece.x0 + piece.x1) / 2, floorTop + (piece.y0 + piece.y1) / 2, door.z)
+			shellPart(parent, "DoorFrame", size, plotCFrame * at, Props.color(d.FRAME), Enum.Material.Wood)
+		end
+	end
+end
+
 -- The modern shell: white walls with a charcoal foot, a glass shop front with sliding doors, a charcoal sign
 -- band with a strip in the shop's accent colour, a flat roof with a slim edge, the inner walls and LED panels (the
 -- feature wall and the look's liners are drawn on the walls by drawWalls). Walls sit outside the floor edges.
@@ -350,6 +366,7 @@ local function buildShell(id: number, plotCFrame: CFrame, parent: Instance): Par
 		buildWall(parent, plotCFrame, Vector3.new(thickness, 0, PlotConfig.DEPTH), Vector3.new(side * (halfWidth + thickness / 2), 0, 0), Vector3.new(side, 0, 0))
 	end
 	buildInnerWalls(plotCFrame, parent)
+	buildDoorFrames(plotCFrame, parent)
 
 	buildStorefront(parent, plotCFrame, outerWidth)
 	-- Sign band: charcoal from the top of the glass to the roof edge, with a glowing accent strip under it
@@ -912,7 +929,7 @@ end
 
 -- The shop rooms (spec 2026-11-23-shop-rooms-design; Config/ShopRooms, Util/ShopRooms) --------------------------------
 
-local DOOR_THICK = 0.4 -- a locked door stands inside its doorway (the wall is Config/ShopRooms WALL_THICK)
+local PROUD = 0.02 -- studs a door's detail stands past the face under it, so the two never flicker
 
 -- The invisible cells nothing may be placed on (Util/ShopRooms.blockers): the inner walls' rows, each door's clear
 -- path and every locked room's floor. PlacementMargin 0: each blocks exactly its cells (Util/PlacementGrid)
@@ -944,19 +961,41 @@ local function buildBlocks(plot: Plot)
 	folder.Parent = plot.model
 end
 
--- A locked room's door: a solid panel in the doorway in the shop front's black, a white lock badge on its hall side.
--- Its name is the room's door part (Pish's lesson points at it; the owner's Unlock prompt sits on it, ShopRoomController)
+-- A locked room's door, as the locked-room mockup drew it (Config/ShopRooms DOOR), in its doorway's frame
+-- (buildDoorFrames): two frosted lilac leaves meeting in the middle, each with a darker inner edge (the two make the
+-- seam) and a handle on the hall side, every piece carrying its Slide (studs along the wall, openDoor). An invisible
+-- holder over the leaves carries the door's name (Pish's lesson points at it; the owner's Unlock prompt sits on it,
+-- ShopRoomController), its RoomId and the white lock badge on its hall side
 local function buildDoor(plot: Plot, door: ShopRooms.Door, parent: Instance)
+	local d = RoomsConfig.DOOR
+	local floorTop = PlotConfig.FLOOR_THICKNESS / 2
+	local leaves = Instance.new("Folder")
+	leaves.Name = "DoorLeaves"
+	local function piece(name: string, size: Vector3, x: number, y: number, z: number, color: { number }, slide: number)
+		local part = shellPart(leaves, name, size, plot.floor.CFrame * CFrame.new(x, floorTop + y, z), Props.color(color))
+		part:SetAttribute("Slide", slide)
+	end
+	local handle = Vector3.new(d.HANDLE_SIZE[1], d.HANDLE_SIZE[2], d.HANDLE_SIZE[3])
+	for _, leaf in ShopRooms.leaves(door) do
+		local toSeam = if leaf.slide < 0 then 1 else -1
+		local seam = leaf.x + toSeam * leaf.width / 2
+		piece("Leaf", Vector3.new(leaf.width, door.height, d.LEAF_THICK), leaf.x, door.height / 2, door.z, d.LEAF, leaf.slide)
+		-- the edge reaches PROUD past the leaf's inner face (into the other leaf's edge) and off both its faces
+		local edge = Vector3.new(d.SEAM_WIDTH + PROUD, door.height, d.LEAF_THICK + 2 * PROUD)
+		piece("LeafEdge", edge, seam + toSeam * (PROUD - d.SEAM_WIDTH) / 2, door.height / 2, door.z, d.SEAM, leaf.slide)
+		piece("Handle", handle, seam - toSeam * d.HANDLE_FROM_SEAM, d.HANDLE_HEIGHT, door.z - d.LEAF_THICK / 2 - handle.Z / 2, d.HANDLE, leaf.slide)
+	end
+	leaves.Parent = parent
+
 	local part = Instance.new("Part")
 	part.Name = door.part
 	part.Anchored = true
+	part.CanCollide = false -- the leaves are the door you bump into
+	part.CanQuery = false
 	part.CanTouch = false
-	part.Size = Vector3.new(door.width, door.height, DOOR_THICK)
-	part.CFrame = plot.floor.CFrame * CFrame.new(door.x, PlotConfig.FLOOR_THICKNESS / 2 + door.height / 2, door.z)
-	part.Color = Props.color(Town.SHOP.FRAME)
-	part.Material = Enum.Material.SmoothPlastic
-	part.TopSurface = Enum.SurfaceType.Smooth
-	part.BottomSurface = Enum.SurfaceType.Smooth
+	part.Transparency = 1
+	part.Size = Vector3.new(door.width, door.height, d.HOLDER_THICK)
+	part.CFrame = plot.floor.CFrame * CFrame.new(door.x, floorTop + door.height / 2, door.z)
 	part:SetAttribute("RoomId", door.room)
 	local gui = Instance.new("SurfaceGui")
 	gui.Face = Enum.NormalId.Front -- the hall side, toward the street
@@ -996,9 +1035,9 @@ local function setSign(plot: Plot, door: ShopRooms.Door, parent: Instance, lit: 
 		made.CanCollide = false
 		made.CanQuery = false
 		made.CanTouch = false
-		made.Size = Vector3.new(door.width, 1.6, 0.2)
+		made.Size = Vector3.new(door.width, RoomsConfig.SIGN.height, 0.2)
 		local face = door.z - RoomsConfig.WALL_THICK / 2 - Decor.SHELL.LINER - 0.1 -- in front of the feature wall
-		made.CFrame = plot.floor.CFrame * CFrame.new(door.x, PlotConfig.FLOOR_THICKNESS / 2 + door.height + 1.2, face)
+		made.CFrame = plot.floor.CFrame * CFrame.new(door.x, PlotConfig.FLOOR_THICKNESS / 2 + ShopRooms.signHeight(RoomsConfig, door), face)
 		local label = addSurfaceLabel(made, RoomsConfig.ROOMS[door.room].sign)
 		local gui = label.Parent :: SurfaceGui
 		gui.MaxDistance = ShopDetail.SCREEN_DISTANCE
@@ -1042,17 +1081,30 @@ local function buildRoomLights(plot: Plot, roomId: string, parent: Instance, fad
 	folder.Parent = parent
 end
 
--- The door sliding into the wall beside its doorway, then gone. Its name changes at once, so the owner's prompt and
+-- The door opening: its lock badge gone and its leaves sliding apart into the wall beside the doorway, then all of it
+-- gone. The holder's name changes at once ("<door>Opening": ShopRoomController's sparkles), so the owner's prompt and
 -- Pish's paws let go of it and nothing finds a locked door in an open room
-local function slideAway(part: BasePart, door: ShopRooms.Door)
-	part.Name = door.part .. "Opening"
-	part.CanCollide = false
-	local info = TweenInfo.new(RoomsConfig.OPEN_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
-	local tween = TweenService:Create(part, info, { CFrame = part.CFrame * CFrame.new(door.slide * door.width, 0, 0) })
-	tween.Completed:Connect(function()
-		part:Destroy()
-	end)
-	tween:Play()
+local function openDoor(holder: Instance?, leaves: Instance?, door: ShopRooms.Door)
+	if holder then
+		holder.Name = door.part .. "Opening"
+		local badge = holder:FindFirstChildWhichIsA("SurfaceGui")
+		if badge then
+			badge:Destroy()
+		end
+		Debris:AddItem(holder, RoomsConfig.OPEN_SECONDS)
+	end
+	if leaves then
+		leaves.Name = "DoorLeavesOpening"
+		local info = TweenInfo.new(RoomsConfig.OPEN_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
+		for _, piece in leaves:GetChildren() do
+			if piece:IsA("BasePart") then
+				piece.CanCollide = false
+				local slide = (piece:GetAttribute("Slide") :: number?) or 0
+				TweenService:Create(piece, info, { CFrame = piece.CFrame * CFrame.new(slide, 0, 0) }):Play()
+			end
+		end
+		Debris:AddItem(leaves, RoomsConfig.OPEN_SECONDS)
+	end
 end
 
 -- A shop's rooms open or locked (RoomService; a released plot locks them all): the placement blockers, each room's door
@@ -1084,14 +1136,18 @@ function PlotService.SetRooms(plot: Plot, open: ShopRooms.Open, animate: boolean
 			folder = made
 		end
 		local isOpen = open[door.room] == true
-		local part = (folder :: Instance):FindFirstChild(door.part)
+		local holder = (folder :: Instance):FindFirstChild(door.part)
+		local leaves = (folder :: Instance):FindFirstChild("DoorLeaves")
 		local lights = (folder :: Instance):FindFirstChild("Lights")
 		if isOpen then
-			if part and part:IsA("BasePart") then
-				if animate then
-					slideAway(part, door)
-				else
-					part:Destroy()
+			if animate then
+				openDoor(holder, leaves, door)
+			else
+				if holder then
+					holder:Destroy()
+				end
+				if leaves then
+					leaves:Destroy()
 				end
 			end
 			if not lights then
@@ -1101,7 +1157,10 @@ function PlotService.SetRooms(plot: Plot, open: ShopRooms.Open, animate: boolean
 			if lights then
 				lights:Destroy()
 			end
-			if not part then
+			if not holder then
+				if leaves then
+					leaves:Destroy()
+				end
 				buildDoor(plot, door, folder :: Instance)
 			end
 		end

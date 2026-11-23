@@ -74,6 +74,9 @@ also where the coming card-battle tables can go.
 ## A locked room
 - A solid door fills the doorway: the shop's frame colour, a big lock badge, the room's name on an unlit sign above
   ("BACK ROOM", "GALLERY"). Nobody walks through it; customers' paths never lead there.
+  Built (owner 2026-11-24: "add a door for the locked rooms"): the locked-room mockup's double door instead, two frosted
+  lilac leaves with a seam, handles and the lock badge in a wooden frame that stays round the doorway; the leaves slide
+  apart into the wall to open (DESIGN 4.1).
 - The owner sees a prompt on it (made on the owner's client, like every owner-only prompt): "Unlock · $5,000" with the
   `RequireLevel` attribute, so below the level it shows the lock and "Shop Lv 15" before it's pressed.
 - Pressing it below the level or without the cash shows the big locked card (`Util/Blocked`): "Reach shop level 15" or
