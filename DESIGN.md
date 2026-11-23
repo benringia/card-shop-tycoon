@@ -4970,6 +4970,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── CaseSpinController.luau # case cards float, turn and bob over a pad and beam in their rarity colour, a spiral light and sparkles (within range)
     │   │   ├── DecorSpinController.luau # the Card Pedestals' floating cards turn (shop decor, within range)
     │   │   ├── ShopRoomController.luau # the owner's Unlock prompt on each locked room door; a room's opening sparkles
+    │   │   ├── ShopLodController.luau # other players' shop screens drawn from closer, far shops' shelf stock hidden (10.5)
     │   │   └── WindowController.luau # the Decor tab's window tiles, placing a window on a wall, its Edit prompt
     │   └── Util/
     │       ├── UIKit.luau              # shared UI building helpers and the style (header, close, lip buttons)
@@ -5154,7 +5155,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
         │   ├── Places.luau     # place ids, Frontier portal spot
         │   ├── CardList.luau   # every card row (Set 1 and Frontier), plain data
         │   ├── CardEffects.luau # per-rarity effects on displayed cards (client)
-        │   ├── ShopDetail.luau # how far each client draws shop screens and full card faces (plain data)
+        │   ├── ShopDetail.luau # how far each client draws shop screens (yours, others'), full card faces, far shops' stock (plain data)
         │   ├── Announcements.luau # which pulls get a server-wide chat message
         │   ├── Data.luau       # DataStore name, schema version, kick messages
         │   ├── Beasts.luau     # beast stats, value and XP numbers
@@ -5183,6 +5184,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── Place.luau         # which place this is; its wild-map config
             ├── TownLayout.luau    # where every town decoration goes (pure, Lune-tested)
             ├── ShopRooms.luau     # shop rooms: cells, doors, inner walls, wall faces, window stretches, caps, unlocks
+            ├── ShopLod.luau       # other shops' detail on your screen: their screens' distance, far stock hidden (no flicker)
             ├── PortalTrails.luau  # portal trails, the walkable edge, portal reach (pure, Lune-tested)
             ├── TownTerrain.luau   # the town's terrain as fills; ground height (pure, Lune-tested)
             ├── DayCycle.luau      # the day cycle's phases and blended looks (pure, Lune-tested)
@@ -5804,14 +5806,24 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
 - Shop screens (SurfaceGuis and BillboardGuis on shop items: card faces and backs, price tags, shelf headers, machine
   screens, box prints) always get a draw distance (`Config/ShopDetail`: 66 studs since the shop rooms (60 before: the
   50 x 40 hall's diagonal and the front door to a room's back corner, not the whole 78-stud building, which would draw
-  the neighbours' screens too), full card faces 30; a Lune test fails a new one without it). Shop rooms, measured
+  the neighbours' screens too), full card faces 30; a Lune test fails a new one without it). On each client another
+  player's shop (or a free plot) draws those 66-stud screens from 33 instead (`VISITOR_SCREEN_DISTANCE`: from the
+  hall's middle that still reaches its farthest corner, 32), and every shop's shelf stock (whatever stands in its
+  shelves' StockBox places, decals too) hides while the camera is more than 80 studs from the shop's floor and shows
+  again within 72 (`STOCK_HIDE` / `STOCK_SHOW`, after its screens, which stop at 66; client `ShopLodController`,
+  `Util/ShopLod`, tests/ShopLod; owner 2026-11-24: "add the two fixes"). Measured that day with the owner's Lv 27
+  shop (31 stocked racks, about 110k triangles of stock) copied into all six plots, the same session and camera, full
+  detail -> both fixes: in front of a full neighbour 948 -> 499 draw calls, from the plaza 1,377k -> 842k triangles,
+  down the street 948k -> 737k (draw calls the same). Six full shops against one before the fixes: about 20 more draw
+  calls down the street and from the plaza, 355 more in front of a neighbour, 150k-350k more triangles. Shop rooms, measured
   2026-11-24 in solo Play (Studio unfocused, so only within the session): a shop with both rooms open and 41 placed
   things (40 stocked racks' worth, 213 screens on the plot, 194 within draw distance from the street) drew the same
   render CPU as the same shop with 12 (15.6 vs 15.4 ms from the street, 15.0 inside); a 6-player full server with
   room-filled shops is still to be measured (a 30-item shop had about 99 screens in the 2026-10-30 test). Measured 2026-10-30 in a Play-mode stress test (6 shops x 30 items, 24 customers, 12 workers,
   6 summoned pets, 6 players), PC render CPU from the street: 14.7-17.5 ms and 45-53 fps before, 10.2-12.3 ms and 60 fps
   after; an empty town is 6.5-7.2 ms. Customers, workers, players and shop lights cost about 0.5 ms each; hiding far
-  shops' small parts saved only about 0.5 ms, so it isn't done. The server stays light (heartbeat 0.4 ms, physics 0.8 ms).
+  shops' small parts saved only about 0.5 ms of PC render CPU, so it wasn't done then (since 2026-11-24 far shops'
+  shelf stock hides for phones' triangle budget, above). The server stays light (heartbeat 0.4 ms, physics 0.8 ms).
 - Portal Worlds (measured 2026-10-30, same full-server stress test, all in one Studio session): from the street, none of
   the new pieces 11.9 ms (level 1) / 12.8-13.1 ms (level 10), everything on 12.5-13.0 / 13.2-14.2 ms, so the whole pass
   costs about +0.8 / +1.0 ms (budget +1.5 ms); the day cycle's lighting updates about 0.4 ms, the terrain about 0.4 ms,
