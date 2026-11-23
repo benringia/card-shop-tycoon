@@ -29,6 +29,13 @@ local RevealRules = {}
 
 local RANK = { Common = 1, Rare = 2, ["Very Rare"] = 3, Epic = 4, Legendary = 5 }
 
+-- Whether a card gets the Frontier show (Config/CardReveal FRONTIER, Legendary-sized): a Frontier card turning up
+-- outside its own pack. A Frontier Pack (owner 2026-11-23, pick B; Config/Packs `set`, none = First Spark) holds only
+-- Frontier cards, so there each reveals by its rarity
+function RevealRules.frontierShow(cardSet: string?, packSet: string?): boolean
+	return cardSet == "Frontier" and packSet ~= "Frontier"
+end
+
 -- Whether a pulled card stands out among many (Open 10's best pulls, owner 2026-11-17): `from` or better
 function RevealRules.standsOut(rarity: string, from: string): boolean
 	local rank = RANK[rarity]

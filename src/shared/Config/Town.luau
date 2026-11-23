@@ -68,6 +68,7 @@ return {
 		BoxSleeves = { height = 0, collide = false },
 		BoxDecks = { height = 0, collide = false },
 		BoxBooster = { height = 0, collide = false },
+		BoxFrontier = { height = 0, collide = false }, -- the Frontier Pack's: Util/BrandBox's branded case (owner 2026-11-23: no model)
 	},
 	-- Decor layout (TownLayout). Distances in studs.
 	LAYOUT = {

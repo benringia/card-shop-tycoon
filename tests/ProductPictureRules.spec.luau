@@ -31,12 +31,12 @@ return {
 		expect.equal(ProductPictureRules.forProduct(ProductPictures, "FirstSparkPack", "FirstSpark", "Pack"), ProductPictures.LOOKS.FirstSpark.Pack, "a pack: its look's")
 		expect.equal(ProductPictureRules.forProduct(ProductPictures, "DeckBox", "FirstSpark", "Deck"), ProductPictures.LOOKS.FirstSpark.Deck)
 		expect.isNil(ProductPictureRules.forProduct(ProductPictures, "Mystery", nil, nil), "none yet: the drawn icon")
-		expect.isNil(ProductPictureRules.forProduct(ProductPictures, "Mystery", "Frontier", "Pack"))
+		expect.isNil(ProductPictureRules.forProduct(ProductPictures, "Mystery", "Nowhere", "Pack"), "a look with no pictures")
 		-- everything Order Stock sells has one
 		local Products = require("../src/shared/Config/Products")
 		for _, product in Products.List do
 			if not product.bulk then
-				local look = if product.id == "FirstSparkPack" then "FirstSpark" elseif product.id == "DeckBox" then "FirstSpark" else nil
+				local look = if product.id == "FirstSparkPack" or product.id == "DeckBox" then "FirstSpark" elseif product.id == "FrontierPack" then "Frontier" else nil
 				local kind = if product.id == "DeckBox" then "Deck" elseif look then "Pack" else nil
 				assert(isAsset(ProductPictureRules.forProduct(ProductPictures, product.id, look, kind)), `{product.name} has a picture`)
 			end
@@ -44,12 +44,19 @@ return {
 	end,
 
 	["a look with no picture yet shows the drawn icon"] = function()
-		local pack, packIcon = ProductPictureRules.pick(ProductPictures, "Frontier", "Pack")
+		local pack, packIcon = ProductPictureRules.pick(ProductPictures, "Nowhere", "Pack")
 		expect.isNil(pack)
 		expect.equal(packIcon, "BoosterPack")
 		local deck, deckIcon = ProductPictureRules.pick(ProductPictures, "Frontier", "Deck")
-		expect.isNil(deck)
+		expect.isNil(deck, "the Frontier set has no deck box")
 		expect.equal(deckIcon, "DeckBox")
+	end,
+
+	-- Owner 2026-11-23, pick B: the Frontier Pack's own picture, its 3D pack in the Frontier look
+	["the Frontier Pack has its own picture"] = function()
+		local pack = ProductPictureRules.pick(ProductPictures, "Frontier", "Pack")
+		assert(isAsset(pack), "the Frontier pack's picture uploaded")
+		assert(pack ~= ProductPictures.LOOKS.FirstSpark.Pack, "not the First Spark one")
 	end,
 
 	["the drawn icon shows until the picture has loaded (still processing, or rejected)"] = function()

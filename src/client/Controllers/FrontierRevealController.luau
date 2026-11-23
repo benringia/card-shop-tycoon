@@ -111,7 +111,7 @@ local function reveal(card: typeof(Cards.List[1]), foil: boolean, grade: string?
 	banner.TextXAlignment = Enum.TextXAlignment.Center
 	banner.TextStrokeTransparency = 0.2
 	banner.ZIndex = 53
-	local subtitle = UIKit.label(overlay, `{card.name} · {card.rarity} · only found in the Frontier`, Enum.Font.GothamBold, 18, UIKit.Colors.Text)
+	local subtitle = UIKit.label(overlay, `{card.name} · {card.rarity} · found in the Frontier`, Enum.Font.GothamBold, 18, UIKit.Colors.Text)
 	subtitle.AnchorPoint = Vector2.new(0.5, 1)
 	subtitle.Position = UDim2.new(0.5, 0, 0.94, 0)
 	subtitle.Size = UDim2.new(0.9, 0, 0, 26)

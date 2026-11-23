@@ -166,4 +166,6 @@ return {
 	-- models' pictures the Order Stock and Prices menus show (Config/ProductPictures, assets/ui/product-pictures)
 	FirstSparkPack = "rbxassetid://95761911403820",
 	FirstSparkDeck = "rbxassetid://87594315794918",
+	FrontierPack = "rbxassetid://103500260670101", -- the Frontier Pack's (owner 2026-11-23), its product picture
+
 } :: { [string]: string }

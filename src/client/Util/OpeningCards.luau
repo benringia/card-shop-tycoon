@@ -33,7 +33,8 @@ local OpeningRift = require(ClientUtil:WaitForChild("OpeningRift"))
 local CardReveal = require(Config:WaitForChild("CardReveal"))
 
 type Card = typeof(Cards.List[1])
-export type Pull = { card: Card, foil: boolean, grade: string, isNew: boolean, plan: RevealRules.Plan }
+-- frontierShow: a Frontier card outside a Frontier Pack, revealed like a Legendary (RevealRules.frontierShow)
+export type Pull = { card: Card, foil: boolean, grade: string, isNew: boolean, plan: RevealRules.Plan, frontierShow: boolean }
 type Shown = {
 	pull: Pull,
 	model: Model,
@@ -450,7 +451,7 @@ function OpeningCards.flip(index: number)
 	local card = shown.pull.card
 	local raised = shown.at * CFrame.new(0, FLIP.LIFT, 0)
 	local mine = session
-	local stack = RevealSoundRules.stack(RevealSounds, card.rarity, shown.pull.foil, CardFace.isFrontier(card))
+	local stack = RevealSoundRules.stack(RevealSounds, card.rarity, shown.pull.foil, shown.pull.frontierShow)
 	-- a Legendary tears the sky: the rift cracks open through the tease (owner 2026-11-18, pick C)
 	local riftAt: Vector3? = nil
 	if plan.tease > 0 then
@@ -571,7 +572,7 @@ function OpeningCards.flip(index: number)
 	end
 	-- an Epic, a Legendary, a Frontier card or one you never had: its creature bursts out of it (Util/OpeningCreature),
 	-- unless it already came through the sky
-	if not creatureCame and RevealRules.comesAlive(card.rarity, shown.pull.isNew == true, CardFace.isFrontier(card), creatureReady, CardReveal.CREATURE.on) then
+	if not creatureCame and RevealRules.comesAlive(card.rarity, shown.pull.isNew == true, shown.pull.frontierShow, creatureReady, CardReveal.CREATURE.on) then
 		OpeningCreature.play(card.name, card.rarity, landing, color)
 	end
 end
@@ -609,7 +610,7 @@ end
 local function land(shown: Shown)
 	local pull = shown.pull
 	play(shown.shine, RESULTS.SHINE_SECONDS, 0)
-	local rarity = if CardFace.isFrontier(pull.card) then "Legendary" else pull.card.rarity
+	local rarity = if pull.frontierShow then "Legendary" else pull.card.rarity
 	local tinted = if pull.plan.tease > 0 then shown.color else nil -- Commons sparkle white
 	glintsAround(shown, (RESULTS.SPARKLES :: any)[rarity] or 3, tinted, 0.32)
 	if pull.plan.goldShards then

@@ -72,6 +72,12 @@ local function rollRarity(slot: { Weighted }): string
 	return slot[#slot].rarity
 end
 
+-- The pack's set's cards of a rarity (Config/Cards BySetRarity; a pack with no set opens First Spark cards)
+local function poolOf(pack: Pack, rarity: string): { Cards.Card }
+	local pools = Cards.BySetRarity[pack.set or "First Spark"] or Cards.ByRarity
+	return pools[rarity] or Cards.ByRarity[rarity]
+end
+
 -- A player's own pack: the hit (last) slot floored (Pish's gift) and raised while they have Pish's Luck, luck bought
 -- with Robux (Config/Luck) on top; a customer's (no player) rolls the plain odds
 local function rollPack(pack: Pack, player: Player?, floor: string?): { PullResult }
@@ -88,7 +94,7 @@ local function rollPack(pack: Pack, player: Player?, floor: string?): { PullResu
 				odds = LuckRules.boost(odds, Packs.RANK, Pish.LUCK.fromRarity, luck) :: any
 			end
 		end
-		local pool = Cards.ByRarity[rollRarity(odds)]
+		local pool = poolOf(pack, rollRarity(odds))
 		local card = pool[rng:NextInteger(1, #pool)]
 		table.insert(results, { cardId = card.id, foil = rng:NextNumber() < Rarities.FOIL_CHANCE, grade = BeastRules.rollGrade(rng:NextNumber(), card.rarity) })
 	end
@@ -171,9 +177,9 @@ local function deliverPack(player: Player, productId: string, results: { PullRes
 	end
 end
 
--- Counts this pack towards the player's pity and, when a guarantee is due, raises its hit slot: a pity Legendary
--- rolls its grade from the stingy PITY.LEGENDARY_GRADES, a pity Epic like any Epic
-local function applyPity(player: Player, results: { PullResult })
+-- Counts this pack towards the player's pity and, when a guarantee is due, raises its hit slot (from the pack's own
+-- set): a pity Legendary rolls its grade from the stingy PITY.LEGENDARY_GRADES, a pity Epic like any Epic
+local function applyPity(player: Player, results: { PullResult }, pack: Pack)
 	local state = pityStates[player]
 	if not state or #results == 0 then
 		return -- not loaded yet: no pity, and nothing counted that could be lost
@@ -189,7 +195,7 @@ local function applyPity(player: Player, results: { PullResult })
 	local forced, after = PityRules.open(Packs.PITY, Packs.RANK, state, best)
 	pityStates[player] = after
 	if forced then
-		local pool = Cards.ByRarity[forced]
+		local pool = poolOf(pack, forced)
 		local grade = if forced == "Legendary"
 			then BeastRules.rollGradeFrom(rng:NextNumber(), Packs.PITY.LEGENDARY_GRADES)
 			else BeastRules.rollGrade(rng:NextNumber(), forced)
@@ -231,7 +237,7 @@ local function onRip(player: Player)
 
 	DataService.AddStat(player, "packsOpened", 1)
 	local results = rollPack(pack, player)
-	applyPity(player, results)
+	applyPity(player, results, pack)
 	deliverPack(player, productId, results)
 	-- a pack ripped from your stock grows your shop as selling it would (owner 2026-11-16): its market price in XP,
 	-- two thirds of it from shop Lv 30 (Levels.OPEN_XP)
@@ -252,7 +258,7 @@ function PackService.OpenItemPack(player: Player, productId: string, floor: stri
 	end
 	DataService.AddStat(player, "packsOpened", 1)
 	local results = rollPack(pack, player, floor)
-	applyPity(player, results)
+	applyPity(player, results, pack)
 	if stingy then
 		local hit = results[#results]
 		hit.grade = BeastRules.rollGradeFrom(rng:NextNumber(), Packs.PITY.LEGENDARY_GRADES)
@@ -273,7 +279,7 @@ function PackService.OpenItemPacks(player: Player, productId: string, count: num
 	for _ = 1, count do
 		DataService.AddStat(player, "packsOpened", 1)
 		local results = rollPack(pack, player, floor)
-		applyPity(player, results)
+		applyPity(player, results, pack)
 		if stingy then
 			local hit = results[#results]
 			hit.grade = BeastRules.rollGradeFrom(rng:NextNumber(), Packs.PITY.LEGENDARY_GRADES)

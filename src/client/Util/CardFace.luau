@@ -465,9 +465,9 @@ function CardFace.renderMissing(frame: Frame, stroke: UIStroke, card: Card)
 		markEdge.Transparency = 1 -- soft grey on the light slot, no dark outline
 	end
 	if CardFace.isFrontier(card) then
-		-- A mystery from the Frontier: the aurora rim and where to look
+		-- A mystery from the Frontier: the aurora rim and where to look (Frontier Packs since 2026-11-23, and its monsters)
 		spinRim(rim, CardFace.getAuroraSequence(), CardEffects.FRONTIER.AURORA_SECONDS)
-		local hint = text(art, "Found in the Frontier", { x = 0.08, y = 0.72, w = 0.84, h = 0.1 }, AURORA[1], 4)
+		local hint = text(art, "Frontier packs & monsters", { x = 0.08, y = 0.7, w = 0.84, h = 0.14 }, AURORA[1], 4)
 		hint.TextXAlignment = Enum.TextXAlignment.Center
 	else
 		local number = text(art, string.format("#%02d", card.number), { x = 0.25, y = 0.72, w = 0.5, h = 0.12 }, look.MARK, 4)

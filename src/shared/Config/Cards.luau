@@ -25,8 +25,10 @@ local CardList = require((script.Parent :: Instance):WaitForChild("CardList"))
 
 local List: { Card } = {}
 local ById: { [string]: Card } = {}
-local ByRarity: { [string]: { Card } } = {} -- pack pools: First Spark only
+local ByRarity: { [string]: { Card } } = {} -- the First Spark packs' pools
 local BySet: { [string]: { Card } } = { ["First Spark"] = {}, Frontier = {} }
+-- Each set's cards by rarity: a pack's pools (Config/Packs `set`; the Frontier Pack's, owner 2026-11-23, pick B)
+local BySetRarity: { [string]: { [string]: { Card } } } = { ["First Spark"] = ByRarity, Frontier = {} }
 
 local function addSet(rows: { any }, set: string, prefix: string)
 	for index, row in rows do
@@ -42,10 +44,9 @@ local function addSet(rows: { any }, set: string, prefix: string)
 		table.insert(List, card)
 		ById[card.id] = card
 		table.insert(BySet[set], card)
-		if set == "First Spark" then
-			ByRarity[card.rarity] = ByRarity[card.rarity] or {}
-			table.insert(ByRarity[card.rarity], card)
-		end
+		local pools = BySetRarity[set]
+		pools[card.rarity] = pools[card.rarity] or {}
+		table.insert(pools[card.rarity], card)
 	end
 end
 addSet(CardList.SET1, "First Spark", "FS")
@@ -71,5 +72,6 @@ return {
 	ById = ById,
 	ByRarity = ByRarity,
 	BySet = BySet,
+	BySetRarity = BySetRarity,
 	ELEMENTS = ELEMENTS,
 }

@@ -12,6 +12,11 @@ return {
 			Pack = "rbxassetid://95761911403820",
 			Deck = "rbxassetid://87594315794918",
 		},
+		-- the Frontier Pack (owner 2026-11-23, pick B): its 3D pack in the Frontier look, shot the same way
+		-- (assets/ui/product-pictures/FrontierPack.png)
+		Frontier = {
+			Pack = "rbxassetid://103500260670101",
+		},
 	},
 	-- Products that aren't a pack or deck box, by id (owner 2026-11-20: "also change the Icons and the box icons of the
 	-- other products"): the sleeve packets and the sealed booster box, shot in Studio on magenta and cut out the same

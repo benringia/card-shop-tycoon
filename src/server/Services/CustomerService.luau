@@ -15,6 +15,7 @@ local Pricing = require(Config:WaitForChild("Pricing"))
 local UIIcons = require(Config:WaitForChild("UIIcons"))
 local PlotConfig = require(Config:WaitForChild("Plots"))
 local Products = require(Config:WaitForChild("Products"))
+local OrderRules = require(Shared:WaitForChild("Util"):WaitForChild("OrderRules"))
 local Bulk = require(Config:WaitForChild("Bulk"))
 local ShowcaseConfig = require(Config:WaitForChild("Showcase"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
@@ -482,11 +483,16 @@ local function leaveShop(customer: Customer)
 	despawn(customer, true)
 end
 
+-- What the shop's owner can stock: its shop level, and for a boss's product (the Frontier Pack) that boss beaten
+local function canStock(owner: Player, product: any, level: number): boolean
+	return OrderRules.isOpen(product, level, OrderRules.clearedSet(owner:GetAttribute("BossesCleared")))
+end
+
 -- The cheapest pack (a product that opens into cards, Config/Packs) this shop has unlocked
-local function cheapestPack(level: number): string?
+local function cheapestPack(owner: Player, level: number): string?
 	local best: any = nil
 	for _, product in Products.List do
-		if product.unlockLevel <= level and Packs.ById[product.id] and (not best or product.marketPrice < best.marketPrice) then
+		if canStock(owner, product, level) and Packs.ById[product.id] and (not best or product.marketPrice < best.marketPrice) then
 			best = product
 		end
 	end
@@ -523,7 +529,7 @@ local function pickShoppingList(owner: Player, kind: string, sure: boolean?): { 
 			list[box] = 1
 			return list
 		end
-		local pack = cheapestPack(level)
+		local pack = cheapestPack(owner, level)
 		if pack then
 			local packs = CustomerConfig.BIG_SPENDER.packs
 			list[pack] = if kind == "kid" then CustomerTypes.kidUnits(CustomerConfig, rng:NextNumber(), level) else rng:NextInteger(packs[1], packs[2])
@@ -533,7 +539,7 @@ local function pickShoppingList(owner: Player, kind: string, sure: boolean?): { 
 	end
 	local unlocked = {}
 	for _, product in Products.List do
-		if product.unlockLevel <= level and not product.bulk then
+		if canStock(owner, product, level) and not product.bulk then
 			table.insert(unlocked, product.id)
 		end
 	end

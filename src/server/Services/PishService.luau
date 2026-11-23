@@ -127,7 +127,10 @@ local function onPet(player: Player)
 		player:SetAttribute("PishLuckUntil", untilTime)
 		PackService.SetLuck(player, untilTime)
 	end
-	Remotes.PishPetted:FireAllClients(player.UserId, lucky)
+	-- hearts for everyone; the petter's screen shows his card, or how long until he gives luck again (owner
+	-- 2026-11-23, Client/Util/PetReward)
+	local left = if lucky then 0 else math.max(0, (luckAt[player] or now) + Pish.LUCK.cooldown - now)
+	Remotes.PishPetted:FireAllClients(player.UserId, lucky, left)
 	pcall(function()
 		AnalyticsService:LogCustomEvent(player, "PishPetted", if lucky then 1 else 0)
 	end)

@@ -95,7 +95,10 @@ local function onPet(player: Player)
 		courageAt[player] = now
 		player:SetAttribute("ChikinCourageUntil", now + courage.seconds)
 	end
-	Remotes.ChikinPetted:FireAllClients(player.UserId, granted)
+	-- hearts for everyone; the petter's screen shows his card, or how long until his Courage comes again (owner
+	-- 2026-11-23, Client/Util/PetReward)
+	local left = if granted then 0 else math.max(0, (courageAt[player] or now) + courage.cooldown - now)
+	Remotes.ChikinPetted:FireAllClients(player.UserId, granted, left)
 	pcall(function()
 		AnalyticsService:LogCustomEvent(player, "ChikinPetted", if granted then 1 else 0)
 	end)

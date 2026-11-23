@@ -183,7 +183,7 @@ return {
 	["every shop product lies on the counter as itself, never a plain block"] = function()
 		local Products = require("../src/shared/Config/Products")
 		local PackOdds = require("../src/shared/Config/PackOdds")
-		local expected = { FirstSparkPack = "pack", DeckBox = "deck", CardSleeves = "sleeves", FirstSparkBox = "booster", BulkCards = "bulk" }
+		local expected = { FirstSparkPack = "pack", DeckBox = "deck", CardSleeves = "sleeves", FirstSparkBox = "booster", BulkCards = "bulk", FrontierPack = "pack" }
 		for _, product in Products.List do
 			local look = PropFit.counterLook(product.stockLook, PackOdds.SLOTS[product.id] ~= nil)
 			assert(look ~= "block", `{product.id} is a plain block on the counter`)

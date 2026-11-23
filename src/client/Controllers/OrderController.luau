@@ -147,6 +147,11 @@ local function room(): number
 	return MAX_BOXES - used()
 end
 
+-- The bosses this player has beaten (BossService's BossesCleared): the Frontier Pack opens with the Frost Tyrant
+local function cleared(): { [string]: boolean }
+	return OrderRules.clearedSet(player:GetAttribute("BossesCleared"))
+end
+
 -- Building blocks ---------------------------------------------------------------------------------------------
 
 local function box(parent: Instance, name: string, color: Color3?, corner: number?): Frame
@@ -371,7 +376,7 @@ end
 
 -- What a card does when tapped: one more box of it in the cart, or why not (never silent)
 local function addOne(product: Product)
-	local look = OrderRules.addLook(product, level(), cash(), cart, byId, room(), phone())
+	local look = OrderRules.addLook(product, level(), cash(), cart, byId, room(), phone(), cleared())
 	if look.state ~= "ready" then
 		UIController.Notify(look.why or "You can't add that now.", true)
 		return
@@ -1095,18 +1100,18 @@ local function refreshTags()
 	local shelves = myShelves()
 	local lv = level()
 	for _, card in cards do
-		local tag = if lv >= card.product.unlockLevel then OrderRules.shelfTag(shelves, card.product.id, OrderComputer.LOW_SHARE) else nil
+		local tag = if OrderRules.isOpen(card.product, lv, cleared()) then OrderRules.shelfTag(shelves, card.product.id, OrderComputer.LOW_SHARE) else nil
 		card.tag.Visible = tag ~= nil
 		card.tag.Text = tag or ""
 	end
 end
 
 local function refreshCards()
-	local lv, money, space, short = level(), cash(), room(), phone()
+	local lv, money, space, short, beaten = level(), cash(), room(), phone(), cleared()
 	for _, card in cards do
 		local product = card.product
 		local count = cart[product.id] or 0
-		local look = OrderRules.addLook(product, lv, money, cart, byId, space, short)
+		local look = OrderRules.addLook(product, lv, money, cart, byId, space, short, beaten)
 		local locked = look.state == "locked"
 		local ready = look.state == "ready"
 		card.frame:SetAttribute("InCart", count)
@@ -1550,6 +1555,13 @@ function OrderController.Start()
 			end
 		end)
 	end
+	-- a boss beaten (BossService's BossesCleared): the products it opens unlock on a tablet already open
+	player:GetAttributeChangedSignal("BossesCleared"):Connect(function()
+		if panel.Visible then
+			OrderController.Refresh()
+			refreshTags()
+		end
+	end)
 	-- a window resized (or a phone turned): the computer fits again, a phone's layout if it's short now; a frame later,
 	-- once the HUD's tiles have their new size
 	local gui = UIController.GetScreenGui()

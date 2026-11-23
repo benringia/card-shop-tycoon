@@ -29,6 +29,18 @@ return {
 			{ { rarity = "Rare", weight = 0.75 }, { rarity = "Very Rare", weight = 0.25 } },
 			{ { rarity = "Very Rare", weight = 0.6 }, { rarity = "Epic", weight = 0.37 }, { rarity = "Legendary", weight = 0.03 } },
 		},
+		-- The Frontier Pack (owner 2026-11-23, pick B: Frontier cards "take ages to find it and upgrade it"): 5 of the
+		-- Frontier set's cards (Rare, Epic, Legendary: two of each), opened once the Frost Tyrant is beaten. Three Rares,
+		-- an Epic one time in five, and its hit an Epic a third of the time and a Legendary one time in twenty: about one
+		-- Epic in two packs. A Legendary per dollar like a First Spark pack's (5% at $15 against 1% at $3), and the
+		-- Frontier has only two, so a chosen one comes far sooner than by drops alone
+		FrontierPack = {
+			{ { rarity = "Rare", weight = 1 } },
+			{ { rarity = "Rare", weight = 1 } },
+			{ { rarity = "Rare", weight = 1 } },
+			{ { rarity = "Rare", weight = 0.8 }, { rarity = "Epic", weight = 0.2 } },
+			{ { rarity = "Rare", weight = 0.62 }, { rarity = "Epic", weight = 0.33 }, { rarity = "Legendary", weight = 0.05 } },
+		},
 	} :: { [string]: { { Weighted } } },
 
 	-- Bad-luck protection, counted per player across every pack and Deck Box they open (saved: data.pity). Without an

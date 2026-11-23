@@ -12,6 +12,7 @@ local Products = require(Config:WaitForChild("Products"))
 local PricingConfig = require(Config:WaitForChild("Pricing"))
 local PriceRules = require(Shared:WaitForChild("Util"):WaitForChild("PriceRules"))
 local PriceTaps = require(Shared:WaitForChild("Util"):WaitForChild("PriceTaps"))
+local OrderRules = require(Shared:WaitForChild("Util"):WaitForChild("OrderRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -78,7 +79,8 @@ end
 
 local function refreshRow(row: Row)
 	local product = row.product
-	row.frame.Visible = getLevel() >= product.unlockLevel
+	-- what the shop can stock: its level, and a boss's product (the Frontier Pack) once that boss is beaten
+	row.frame.Visible = OrderRules.isOpen(product, getLevel(), OrderRules.clearedSet(player:GetAttribute("BossesCleared")))
 	local price = getShownPrice(product)
 	local hint, color = getBandInfo(price, product.marketPrice)
 	row.market.Text = string.format("Market $%.2f", product.marketPrice)
@@ -248,6 +250,8 @@ function PricingController.Start()
 	buildButton()
 
 	player:GetAttributeChangedSignal("Level"):Connect(refreshAll)
+	-- the Frontier Pack's row shows once its boss is beaten (BossService's BossesCleared)
+	player:GetAttributeChangedSignal("BossesCleared"):Connect(refreshAll)
 	for _, product in Products.List do
 		player:GetAttributeChangedSignal("Price_" .. product.id):Connect(refreshAll)
 	end

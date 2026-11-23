@@ -143,6 +143,17 @@ return {
 			stock = "DeckBox",
 			shop = "To shop",
 		},
+		-- The Frontier Pack (owner 2026-11-23, pick B): 5 Frontier cards, stocked once the Frost Tyrant is beaten
+		frontierPack = {
+			name = "Frontier Pack",
+			icon = "FrontierPack",
+			description = "A pack of 5 Frontier cards. Every card is Rare or better!",
+			source = "Your shop's stock, once you beat the Frost Tyrant (carry a box, tap To Bag)",
+			use = "Open your Bag and tap Open",
+			open = "FrontierPack",
+			stock = "FrontierPack",
+			shop = "To shop",
+		},
 		-- Pish's present at the start of the first visit (spec 2026-11-09-tutorial-pish-design 15): a First Spark pack with
 		-- his picture (owner: "we need an icon for pish's gift. that will make players excited")
 		pishPresent = {

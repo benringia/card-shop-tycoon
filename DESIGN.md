@@ -933,6 +933,14 @@ Epic-or-better chance, 40%, and its Legendary chance, 3%, are a little over thre
 still give three times the cards. tests/DeckBox). Slot odds and pity live in
 `Config/PackOdds` (plain data, so the Lune tests and the economy simulator use the real numbers).
 
+The Frontier Booster Pack (section 6; owner 2026-11-23) rolls only Frontier cards, which come in Rare, Epic and
+Legendary: slots 1-3 Rare; slot 4 Rare 80% / Epic 20%; slot 5 Rare 62% / Epic 33% / Legendary 5%. About one pack in
+two holds an Epic and one in twenty a Legendary (tests/FrontierPack). It counts for pity like any pack (a pity Epic
+comes from its own set: `PackService.poolOf`), and luck raises its hit slot the same way. In the opening its cards
+reveal by rarity: the FRONTIER show (Legendary-sized) stays for a Frontier card turning up anywhere else
+(`RevealRules.frontierShow`). The rarity guide lists each Frontier rarity's chance in a Frontier pack beside the
+Frontier monsters' drops.
+
 **Pity** (bad-luck protection, `PackOdds.PITY`, `Util/PityRules`, Lune-tested): counted per player over every pack
 and Deck Box they open (saved, `data.pity`). The 40th pack without an Epic or better has an Epic. No number of packs guarantees a Legendary (owner 2026-11-20:
 "remove the 140 cards to get legendary. My friend already has 1200 packs and spamming open 10 cards"; the first was
@@ -1150,7 +1158,8 @@ the same, shared by more cards.
   - **The hit:** the rip burst in the rarity colour, foil shards (Rare 10 · Very Rare 16 · Epic 24 · Legendary 30,
     gold for Legendary and Frontier), and a banner under the card ("RARE!", "VERY RARE!"); Epic and up add turning
     light rays and an aura far behind the card and a pop (taps are ignored 0.6s so a double tap can't skip it);
-    Legendary adds a white flash. Frontier cards get the Legendary show ("FRONTIER!").
+    Legendary adds a white flash. Frontier cards get the Legendary show ("FRONTIER!"), except in a Frontier Booster
+    Pack, where every card is one and each reveals by its rarity (`RevealRules.frontierShow`; owner 2026-11-23).
   - **Alive:** a shown Rare-or-better card floats and tilts, a holo shine sweeps its face (gold on Legendary),
     glints twinkle round it (about 4 a second on Rare, 7.5 gold ones on Legendary), motes rise past it, the aura
     breathes, the rays turn and the banner pulses (`PackOpening.ALIVE`).
@@ -1290,9 +1299,10 @@ when you come back. Open to everyone ("Recommended Lv 15+"). Same combat as the 
 (Tide, Shade), Stormpeak 25–35 (Volt, Ember), The Rift 35–50 (all five, everything chases); elites 1 in 6; a healing
 spring in the camp and the Dungeon portal at the far end of the Rift (5.10, the final boss); the place is a valley like
 the Wild's (below, "The Frontier valley"). Frontier-only drops: Star Shards (3% normal / 10% elite)
-and Frontier cards (3% / 10%; Frostfang, Gale Sprite, Riftwalker, Cinder Titan, Tideborne Kirin, Stormking, never in
-packs). Frontier cards look special everywhere: an aurora border and rarity, a FRONTIER chip, a constant
-shimmer, an aurora glow in shop cases, a mystery "?" slot ("Found in the Frontier") in the binder until owned; finding
+and Frontier cards (3% / 10%; Frostfang, Gale Sprite, Riftwalker, Cinder Titan, Tideborne Kirin, Stormking; also in
+the Frontier Booster Pack since 2026-11-23, section 6). Frontier cards look special everywhere: an aurora border and
+rarity, a FRONTIER chip, a constant shimmer, an aurora glow in shop cases, a mystery "?" slot ("Frontier packs &
+monsters") in the binder until owned; finding
 an Epic or Legendary one plays a full-screen reveal and announces it to the server ("✨ Ben found a Frontier card: Stormking!").
 Items: `items = { [itemId] = count }`, listed in `Config/Items` (name, icon, description, where to get, how to use)
 and changed only by ItemService. The binder has two tabs, Cards and Bag (icon tabs; key I opens the Bag). The Bag
@@ -3558,14 +3568,32 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
 | Deck Box | $60 / box | 10 | $9.00 | Lv 7 |
 | First Spark Booster Box (sealed) | $90 each | 1 | $120 | Lv 11 |
 | Bulk Cards (a handful of 5 Commons) | never ordered: a Bulk Bin is filled from your binder (7.14) | 1 | $1.00 | Lv 10 |
+| Frontier Booster Pack | $120 / box | 12 | $15.00 | beat the Frost Tyrant |
 | Set 2 Booster Pack | TBD | 24 | TBD | Lv 20 |
 
 Player can also open their own stock instead of selling it: packs and deck boxes (5 cards each, flipped one at a
 time on the 3D stage, section 5.7). Trade-off: sell for safe profit, or gamble on a big pull.
 
+**The Frontier Booster Pack** (owner 2026-11-23: Frontier cards were "as strong as the first sparks legendary. but it
+take ages to find it and upgrade it"; pick B of three: their own pack, boss drops stay). Five Frontier cards and
+nothing else (`Config/Packs` `set = "Frontier"`, its pools `Cards.BySetRarity`; slots in 5.3). It opens by beating the
+Frost Tyrant rather than a shop level (`Products` `unlockBoss`): until then the order tablet shows it locked with
+"Beat the Frost Tyrant first" and the server refuses an order with that reason (Util/Blocked); customers only ask for it
+in shops that can stock it (CustomerService `canStock`), the Prices window shows its row once open, and the shop
+level's unlock line leaves it out. The beaten bosses reach clients as the player attribute `BossesCleared` (BossService,
+sorted ids, comma-joined; `OrderRules.clearedSet`), and an open tablet or Prices window updates when it changes.
+Priced like a First Spark pack: $10 a pack to stock, $15 to sell (the same share), a Legendary per dollar within 5% of
+a First Spark pack's, and its cards' value per dollar the same (about $30 a pack against $6.21 for First Spark's $3;
+tests/FrontierPack). Its own Bag item (`frontierPack`), picture (`ProductPictures` LOOKS.Frontier), 3D look
+(`Looks/Frontier` baked into `Pack.rbxm` and `DisplayBox.rbxm` by `tools/packs/add_look.luau`) and art
+(`assets/ui/packs/Frontier.jpg`, `tools/ui-art/make_frontier_pack_art.py`). Its delivery box is the `Util/BrandBox`
+branded case (`BoxFrontier`; owner 2026-11-23: no Blender box). Option C, Star Shards filling a whole star on Frontier
+cards, was turned down the same day.
+
 Packs and deck boxes are 3D models everywhere (`Util/PackModels`, `Config/Packs` `model` and `look`): on shelves
 (packs in open display boxes), on the opening stage and in the menus. Each pack type has a look (`look =
-"FirstSpark"`: the model's SurfaceAppearance textures), so Set 2 is a new texture on the same meshes (docs/packs.md).
+"FirstSpark"`, `"Frontier"`: the model's SurfaceAppearance textures), so Set 2 is a new texture on the same meshes
+(docs/packs.md).
 
 ---
 
@@ -3816,6 +3844,13 @@ All numbers in `Config/Pish`.
   and Legendary weights +25% (`Util/LuckRules`, `PackService.SetLuck`), shown as a "🍀 m:ss" chip beside the creature's
   perk chip (`BuffController`), hearts for everyone nearby. Petting holds him still at most 8 s in one place (`TOWN.petHoldMax`,
   `PishPath.holdEnd`), so one owner can't keep him at their door.
+  **The pet reward** (owner 2026-11-23: "when players pet pish and chikin they should get a noticeable popup", pick A
+  of the mockups): for the one who petted, his card pops up in the middle of the screen (`Util/PetReward`,
+  `Config/PetReward` DOGS): the screen dims a little, a glow and slow rays turn behind his tilted card, a chime, the
+  title ("Pish's Luck!"), what it does for how long ("Better pulls for 3 minutes") and a chip ("Very Rare and up: +25%
+  chance"); after 2.2 s it shrinks and flies into the buff chips, which bump. Petted too soon, a bubble over him says
+  "Lucky again in m:ss!" (`GreetBubble.say`). The words come from `Util/PetRewardRules` (Lune-tested); the server's
+  `PishPetted` / `ChikinPetted` say `(userId, granted, left)`, `left` the seconds to wait when not granted.
 - [ ] **Lesson visits** (round 4, owner 2026-11-10: "pish teaches everything town/shop related. when a player unlocks
   something for the first time, pish will visit and teach them"): every town and shop unlock has one (`Pish.LESSONS`;
   `tests/LessonRules` fails for a Products or Shelves unlock without one): Glass Showcase 2, Card Sleeves 3, Collector
@@ -3942,7 +3977,9 @@ his card for a face.
   done: attribute CombatDone; "pet me for courage!" under his tag then) gives **Chikin's Courage** for 5 minutes, once
   per 15 minutes per player: their creatures hit 10% harder (`BattleSim.setBoost`; `BattleService` follows the
   player's ChikinCourageUntil each step, so it stops mid-fight when its time is up; the sword and PvP are untouched),
-  shown as a "💪 m:ss" chip beside Pish's Luck (`BuffController`), hearts for everyone nearby. Its last time is saved
+  shown as a "💪 m:ss" chip beside Pish's Luck (`BuffController`), hearts for everyone nearby, and his card's pop-up
+  for the one who petted ("Chikin's Courage!", "+10% damage in every fight"; too soon: "Brave again in m:ss!"; the pet
+  reward under Town Pish above). Its last time is saved
   in data.combat's spare pishLuckAt (the table shares Pish's shape, so no new schema), so a Courage still running
   carries into the Frontier and the Dungeon and a rejoin can't reset the wait. Hidden on your screen while your own
   Chikin leads your combat tour. **He greets** anyone who comes within 16 studs (the owner 2026-11-11: "make chikin
@@ -4689,6 +4726,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
 ├── tools/blender/              # Blender build scripts: creatures, bosses, the pack models and effects (pack_kit.py), the plaza fountain, the town portals (portal_kit.py), the Wild boss arenas' props (build_arena_props.py), the Dungeon's ruins and puzzle pieces (build_dungeon_props.py), the starter sword (build_starter_sword.py), the weapons' cleanup (weapon_kit.py, build_weapon_<id>.py; spears: build_spear), the sword moves (anim_kit.py, anim_starter_sword.py; run_sword_moves.py exports them in a background Blender, `--sword <name>` for a round 1 sword's skill: anim_forge_sword.py, anim_verdant_blade.py, anim_sunforged_blade.py, anim_prism_blade.py; `--sword spear` for the spear moveset, anim_spear.py)
 ├── tools/anim/                 # build_kfs.luau: exported sword moves (JSON) → KeyframeSequence .rbxm; build_bone_clips.luau: monster/boss clips (Lune)
 ├── tools/weapons/              # finish_sword.luau: colours, pivots and PrimaryPart for an imported sword model; forge_variants.luau: the Forge Sword's five element copies (Lune)
+├── tools/packs/                # add_look.luau: a new pack look (Looks/<look>) baked into Pack.rbxm and DisplayBox.rbxm from uploaded textures (Lune; docs/packs.md)
 ├── tools/textures/             # pack textures and flipbook sheets, the HUD's slanted buttons and the rings, the sword effects (make_sword_fx.py) (Pillow)
 └── src/
     ├── server/                 # → ServerScriptService
@@ -4868,6 +4906,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │       ├── Hud.luau                # HUD layout: the phone (its apps and pages), bottom tiles, context tiles, top bar; the calm HUD
     │       ├── DeliveryVan.luau        # the packenship.co van (PropModels.DeliveryVan, else code-built): placed, its wheels turned and door slid each frame, faded at the street's ends
     │       ├── UnboxFx.luau            # the unboxing onto a shelf: the box opening in your hands, products hopping on, the rolling "+n"
+    │       ├── PetReward.luau          # petting Pish or Chikin: his card's pop-up in the middle of the screen, flying into the buff chips
     │       ├── Icon.luau               # draws a UIIcons icon (or an emoji) into a holder
     │       ├── CardTips.luau           # card tooltips in the style kit: binder card summary, party copy (bars, perk, rest)
     │       ├── CopyCompare.luau        # the kid swap comparison: verdict badge and sentence, IN -> OUT cards, paired stat bars, perk line
@@ -5028,6 +5067,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
         │   ├── Soundscape.luau # the worlds' spot sounds per area, the night bed, gusts (plain data)
         │   ├── Pish.luau       # the tutorial: steps and pictures, gifts, luck, lessons, stuck helper, Town Pish, sounds
         │   ├── PishTalk.luau   # what Pish says: each step's intro and now lines, lessons, nudges, the Skip and tour card labels
+        │   ├── PetReward.luau  # petting Pish or Chikin: each dog's card, words, colours, the pop-up's sizes and times (plain data)
         │   ├── Game.luau       # the game's name (a placeholder until it's decided)
         │   ├── Plaza.luau      # the Card Festival Square plaza (plain data)
         │   ├── Places.luau     # place ids, Frontier portal spot
@@ -5075,6 +5115,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── LuckRules.luau     # Pish's Luck: the hit slot's boost, the gift's floor, cooldown, badge text (pure, Lune-tested)
             ├── LessonRules.luau   # lessons due at a level-up or an event and waiting, what placing or ordering completes, the stuck helper's nudge, never while busy and the pacing (pure, Lune-tested)
             ├── PishPath.luau      # Town Pish's walk round the fountain, a town dog's next stop (pure, Lune-tested)
+            ├── PetRewardRules.luau # the pet reward's words: how long, what it does, "Lucky again in m:ss!" (pure, Lune-tested)
             ├── TalkRules.luau     # which of Pish's lines shows: intro with Next, then the line for now (pure, Lune-tested)
             ├── PlazaLayout.luau   # the Card Festival Square's placements, giant cards, string lights, lotus petals, chairs, planter plants (pure, Lune-tested)
             ├── ModelPreload.luau  # which creature models a client downloads in the background, and in what order (pure, Lune-tested)
@@ -5133,7 +5174,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── SquishRules.luau   # the HUD tiles' hover: length, widest, fits the gap (pure, Lune-tested)
             ├── CreatureMotion.luau # breathing, hop, waddle, hover poses (pure, Lune-tested)
             ├── CardRules.luau     # card market value and price limits
-            ├── RevealRules.luau   # a card's reveal plan from rarity, foil and set (pure, Lune-tested)
+            ├── RevealRules.luau   # a card's reveal plan from rarity, foil and set; the Frontier show outside a Frontier Pack (pure, Lune-tested)
             ├── AvatarRules.luau   # avatar cosmetics: a weapon worn on the back taken off (pure, Lune-tested)
             ├── RevealSoundRules.luau  # a card's reveal sounds and its riser's timing (pure, Lune-tested)
             ├── BinderSpreads.luau # binder spreads, card ranges, which page a card is on, the page counter (pure, Lune-tested)
@@ -5587,8 +5628,9 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
 - **Rarity guide** (`RarityGuideController`, `Util/OddsRules`), from the binder's bottom-left button: each rarity
   with a sample card (no spoilers: a card of that rarity you've collected, else the binder's "?" card; redrawn on
   every open; binder tooltips stay off while it's open), its chance per card pulled from a First Spark pack (from `Config/Packs`: Common 74%, Rare
-  19.6%, Very Rare 3%, Epic 2.8%, Legendary 0.6%) and "about 1 in N cards"; Frontier cards (drop chances from
-  `Config/Frontier`); foil chance and value; grade chances and their stat bonus.
+  19.6%, Very Rare 3%, Epic 2.8%, Legendary 0.6%) and "about 1 in N cards"; Frontier cards (each rarity's chance in a
+  Frontier Booster Pack: Rare 88.4%, Epic 10.6%, Legendary 1%; and the drop chances from `Config/Frontier`); foil
+  chance and value; grade chances and their stat bonus.
 - **Card view** (`CardDetailController` with `CardInspectorController`, `Config/Inspector`): tapping a binder card
   shows it as a real 3D card (about 60% of the screen's height) close in front of the camera (front: the card face;
   back: the card back). While it's up the camera waits at an empty spot right above the player (`Util/StageSpot`;

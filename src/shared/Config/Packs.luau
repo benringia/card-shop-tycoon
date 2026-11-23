@@ -14,6 +14,7 @@ export type Pack = {
 	kind: string?,
 	model: string, -- its 3D model in ReplicatedStorage.PackModels (assets/packs): "Pack" or "DeckBox" (Util/PackModels)
 	look: string, -- which of the model's Looks it wears (one per set)
+	set: string?, -- the card set it opens into (Config/Cards BySetRarity); nil = "First Spark"
 	slots: { { Weighted } },
 }
 
@@ -38,6 +39,20 @@ local ById: { [string]: Pack } = {
 		model = "DeckBox",
 		look = "FirstSpark",
 		slots = PackOdds.SLOTS.DeckBox,
+	},
+	-- The Frontier Pack (owner 2026-11-23, pick B): only Frontier cards, stocked once the Frost Tyrant is beaten
+	-- (Config/Products unlockBoss). Its art: an aurora sky over the Stormking card's storm
+	-- (tools/ui-art/make_frontier_pack_art.py, assets/ui/packs/Frontier.jpg); its 3D look baked into the pack models
+	-- (tools/packs/add_look, docs/packs.md)
+	FrontierPack = {
+		productId = "FrontierPack",
+		name = "Frontier",
+		color = Color3.fromRGB(130, 90, 230),
+		art = "rbxassetid://101498596854793",
+		model = "Pack",
+		look = "Frontier",
+		set = "Frontier",
+		slots = PackOdds.SLOTS.FrontierPack,
 	},
 }
 

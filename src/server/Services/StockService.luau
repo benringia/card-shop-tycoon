@@ -333,9 +333,16 @@ local function onOrderCart(player: Player, raw: unknown)
 		return
 	end
 	local level = EconomyService.GetLevel(player)
+	-- the bosses beaten (BossService's BossesCleared, set by the server): the Frontier Pack needs the Frost Tyrant
+	local beaten = OrderRules.clearedSet(player:GetAttribute("BossesCleared"))
 	for _, product in Products.List do
 		if cart[product.id] and level < product.unlockLevel then
 			refuse(`{product.name} unlocks at shop level {product.unlockLevel}.`)
+			return
+		end
+		local boss = product.unlockBoss
+		if cart[product.id] and boss and not OrderRules.isOpen(product, level, beaten) then
+			refuse(`Beat the {boss.name} to stock {product.name}s.`)
 			return
 		end
 	end

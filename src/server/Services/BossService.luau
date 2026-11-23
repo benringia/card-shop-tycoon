@@ -262,9 +262,17 @@ local function progressOf(player: Player): { cleared: { [string]: boolean }, sec
 	return { cleared = cleared, secret = secretFound[player] == true }
 end
 
--- Tells TitleService (the title over the name is its: Config/Titles; owner 2026-11-12) what changed
+-- Tells TitleService (the title over the name is its: Config/Titles; owner 2026-11-12) what changed, and the player's
+-- clients which bosses they've beaten (attribute BossesCleared, "frostTyrant,meadowWarden": the order computer's
+-- Frontier Pack opens with the Frost Tyrant, Config/Products unlockBoss)
 local function setTitle(player: Player)
 	local progress = progressOf(player)
+	local ids = {}
+	for bossId in progress.cleared do
+		table.insert(ids, bossId)
+	end
+	table.sort(ids)
+	player:SetAttribute("BossesCleared", table.concat(ids, ","))
 	for _, hook in progressHooks do
 		task.spawn(hook, player, progress)
 	end
@@ -436,6 +444,7 @@ function BossService.DevSetBeaten(player: Player, index: number, beaten: boolean
 		record.unlocked = if before then before.unlocked else Bosses.BOSSES[bossId].unlock == nil
 	end
 	sendBosses(player)
+	setTitle(player) -- (BossesCleared: what it opens, the Frontier Pack, follows)
 	return true
 end
 

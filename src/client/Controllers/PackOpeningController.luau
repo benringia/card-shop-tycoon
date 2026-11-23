@@ -367,12 +367,15 @@ local function onPackOpened(productId: string, results: { PullResult }, newFlags
 		if card then
 			local foil = result.foil == true
 			local grade = if BeastRules.isGrade(result.grade) then result.grade else BeastRules.DEFAULT_GRADE
+			-- a Frontier card's big show, unless it's in a Frontier Pack, where every card is one
+			local frontierShow = RevealRules.frontierShow(card.set, pack.set)
 			table.insert(pulls, {
 				card = card,
 				foil = foil,
 				grade = grade,
 				isNew = flags[index] == true,
-				plan = RevealRules.plan(CardReveal, card.rarity, foil, card.set == "Frontier"),
+				plan = RevealRules.plan(CardReveal, card.rarity, foil, frontierShow),
+				frontierShow = frontierShow,
 			})
 		end
 	end

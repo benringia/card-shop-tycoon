@@ -33,7 +33,8 @@ return {
 			shards = 30, goldShards = true, cinematic = true, alive = true, glintRate = 7.5, moteRate = 18, tilt = 8 },
 	} :: { [string]: Tier },
 
-	-- Frontier cards only drop in the Frontier, but they get the biggest show wherever they're revealed
+	-- A Frontier card turning up outside a Frontier Pack gets the biggest show; in its own pack (owner 2026-11-23, pick
+	-- B: nothing but Frontier cards) each reveals by its rarity (RevealRules.frontierShow)
 	FRONTIER = { tease = 2, shake = 8, dim = 0.6, rays = true, flash = true, spotlight = true, burst = 36, banner = "FRONTIER!",
 		shards = 30, goldShards = true, cinematic = true, alive = true, glintRate = 7.5, moteRate = 18, tilt = 8 } :: Tier,
 

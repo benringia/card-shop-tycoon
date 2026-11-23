@@ -14,6 +14,7 @@ export type Product = {
 	marketPrice: number,
 	unlockLevel: number,
 	bulk: boolean?,
+	unlockBoss: { id: string, name: string }?,
 }
 
 -- Boxes of each product: { FirstSparkPack = 2 }
@@ -127,15 +128,41 @@ function OrderRules.roomLine(room: number): string
 	return `Your delivery pad has room for {OrderRules.boxes(room)}.`
 end
 
--- A card's Add button (and its + while some are in the cart): "ready", "locked" below its shop level, "full" when the
--- pad has no room for one more, "short" when the cash doesn't cover one more on top of the cart. `why` says what's
--- wrong when it's tapped anyway (never silent).
-function OrderRules.addLook(product: Product, level: number, cash: number, cart: Cart, byId: { [string]: Product }, room: number, short: boolean?): Look
+-- Whether the shop's owner may order `product`: its shop level reached and, for one that needs a boss beaten (the
+-- Frontier Pack: the Frost Tyrant), that boss among `cleared`
+function OrderRules.isOpen(product: Product, level: number, cleared: { [string]: boolean }?): boolean
+	local boss = product.unlockBoss
+	return level >= product.unlockLevel and (boss == nil or (cleared ~= nil and cleared[boss.id] == true))
+end
+
+-- The bosses a player has beaten, from their BossesCleared attribute ("frostTyrant,meadowWarden")
+function OrderRules.clearedSet(attribute: unknown): { [string]: boolean }
+	local set: { [string]: boolean } = {}
+	if typeof(attribute) == "string" then
+		for id in string.gmatch(attribute, "[^,]+") do
+			set[id] = true
+		end
+	end
+	return set
+end
+
+-- A card's Add button (and its + while some are in the cart): "ready", "locked" below its shop level or before its
+-- boss is beaten, "full" when the pad has no room for one more, "short" when the cash doesn't cover one more on top
+-- of the cart. `why` says what's wrong when it's tapped anyway (never silent).
+function OrderRules.addLook(product: Product, level: number, cash: number, cart: Cart, byId: { [string]: Product }, room: number, short: boolean?, cleared: { [string]: boolean }?): Look
 	if level < product.unlockLevel then
 		return {
 			state = "locked",
 			text = if short then `Shop level {product.unlockLevel}` else `Unlocks at shop level {product.unlockLevel}`,
 			why = `Unlocks at shop level {product.unlockLevel}.`,
+		}
+	end
+	local boss = product.unlockBoss
+	if boss and not OrderRules.isOpen(product, level, cleared) then
+		return {
+			state = "locked",
+			text = if short then `Beat {boss.name}` else `Beat the {boss.name} first`,
+			why = `Beat the {boss.name} to stock {product.name}s.`,
 		}
 	end
 	local count = OrderRules.cartCount(cart)

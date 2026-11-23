@@ -4,6 +4,19 @@ local RevealRules = require("../src/shared/Util/RevealRules")
 local expect = require("./lib/expect")
 
 return {
+	-- The Frontier Pack (owner 2026-11-23, pick B) holds nothing but Frontier cards: there they reveal by rarity, and
+	-- the FRONTIER show (Legendary-sized, every card) stays for a Frontier card turning up anywhere else
+	["a Frontier card's big show only outside its own pack"] = function()
+		expect.equal(RevealRules.frontierShow("Frontier", "First Spark"), true, "a Frontier card in a First Spark pack")
+		expect.equal(RevealRules.frontierShow("Frontier", nil), true, "a pack with no set is a First Spark pack")
+		expect.equal(RevealRules.frontierShow("Frontier", "Frontier"), false, "in a Frontier pack")
+		expect.equal(RevealRules.frontierShow("First Spark", nil), false)
+		expect.equal(RevealRules.frontierShow(nil, "Frontier"), false)
+		local rare = RevealRules.plan(CardReveal, "Rare", false, RevealRules.frontierShow("Frontier", "Frontier"))
+		expect.equal(rare.banner, "RARE!", "a Frontier Rare from its pack shows as a Rare")
+		expect.equal(rare.cinematic, false)
+	end,
+
 	-- Owner 2026-11-17 ("do all": the creature comes alive; Pokemon TCG Pocket's immersive cards): an Epic, a Legendary,
 	-- a Frontier card or a card you never had bursts out of its card on the stage
 	["the creature comes alive for big and new cards"] = function()

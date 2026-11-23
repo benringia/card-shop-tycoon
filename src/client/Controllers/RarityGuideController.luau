@@ -1,6 +1,7 @@
 --!strict
 -- Rarity guide: every rarity from most common to rarest with a sample card, its pull chance from a First
--- Spark pack and "about 1 in N cards", then foil and grade odds, and where Frontier cards come from.
+-- Spark pack and "about 1 in N cards", then foil and grade odds, and the Frontier cards' chances in a Frontier Pack
+-- and from Frontier monsters.
 -- The numbers come from the real configs (Util/OddsRules), so the guide can't drift from the rolls.
 -- No spoilers: each sample is a card of that rarity you have collected, or the binder's "?" card until you have one
 -- (the binder lends SetCollected). Opened from the binder or the pack results; built the first time it opens.
@@ -10,6 +11,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Cards = require(Config:WaitForChild("Cards"))
 local Packs = require(Config:WaitForChild("Packs"))
+local Products = require(Config:WaitForChild("Products"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local Beasts = require(Config:WaitForChild("Beasts"))
 local CardEffects = require(Config:WaitForChild("CardEffects"))
@@ -28,6 +30,8 @@ local UIController = require(Controllers:WaitForChild("UIController"))
 type Card = typeof(Cards.List[1])
 
 local PACK_ID = "FirstSparkPack"
+local FRONTIER_PACK_ID = "FrontierPack"
+local FRONTIER_RARITIES = { "Rare", "Epic", "Legendary" }
 local GROUPS = {
 	{ title = "Common", note = "The cards you find the most", rarities = { "Common" } },
 	{ title = "Rare finds", note = "One in most packs", rarities = { "Rare", "Very Rare" } },
@@ -174,8 +178,20 @@ local function build(): Frame
 		end
 	end
 
-	local frontierGrid = addGroup(list, 10, "Frontier", "Found in the Frontier, never in packs")
-	addEntry(frontierGrid, 1, Cards.BySet.Frontier or {}, "Frontier cards", CardEffects.FRONTIER.AURORA[1], "Wild drops", string.format("From Frontier monsters: %s, elites %s", percent(Frontier.CARD_CHANCE), percent(Frontier.ELITE_CARD_CHANCE)))
+	-- Frontier cards: each one's chance in a Frontier Pack (owner 2026-11-23, pick B; stocked once its boss is beaten),
+	-- then the Frontier monsters' drops
+	local frontierPack = Packs.ById[FRONTIER_PACK_ID]
+	local boss = Products.ById[FRONTIER_PACK_ID] and Products.ById[FRONTIER_PACK_ID].unlockBoss
+	local where = if boss then `Frontier packs (beat the {boss.name} to stock them) and Frontier monsters` else "Frontier packs and Frontier monsters"
+	local frontierGrid = addGroup(list, 10, "Frontier", where)
+	local frontierOdds = if frontierPack then OddsRules.perCard(frontierPack) else {}
+	local frontierPools = Cards.BySetRarity.Frontier or {}
+	for order, rarity in FRONTIER_RARITIES do
+		local chance = frontierOdds[rarity] or 0
+		local tier = Rarities.Tiers[rarity]
+		addEntry(frontierGrid, order, frontierPools[rarity] or {}, `Frontier {rarity}`, if tier then tier.color else UIKit.Colors.Accent, percent(chance), `{howOften(chance)} in a Frontier pack`)
+	end
+	addEntry(frontierGrid, #FRONTIER_RARITIES + 1, Cards.BySet.Frontier or {}, "Frontier cards", CardEffects.FRONTIER.AURORA[1], "Wild drops", string.format("From Frontier monsters: %s, elites %s", percent(Frontier.CARD_CHANCE), percent(Frontier.ELITE_CARD_CHANCE)))
 
 	addLine(list, 20, string.format("✨ Foil: any card can be foil, %s of cards, worth %dx.", percent(Rarities.FOIL_CHANCE), Rarities.FOIL_MULTIPLIER))
 	local gradeParts = {}

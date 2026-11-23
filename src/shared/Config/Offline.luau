@@ -10,5 +10,5 @@ return {
 	UNITS_PER_MINUTE = 2,
 	XP_PER_CASH = 1,
 	-- what the welcome-back card calls each product's units ("18 packs")
-	PLURALS = { FirstSparkPack = "packs", CardSleeves = "sleeves", DeckBox = "deck boxes", FirstSparkBox = "booster boxes", BulkCards = "bulk handfuls" },
+	PLURALS = { FirstSparkPack = "packs", CardSleeves = "sleeves", DeckBox = "deck boxes", FirstSparkBox = "booster boxes", BulkCards = "bulk handfuls", FrontierPack = "Frontier packs" },
 }

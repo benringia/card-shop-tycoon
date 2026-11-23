@@ -28,7 +28,8 @@ end
 function LevelRules.getUnlocks(level: number): { string }
 	local names: { string } = {}
 	for _, product in Products.List do
-		if product.unlockLevel == level and not product.bulk then -- bulk cards come with the Bulk Bin, named below
+		-- bulk cards come with the Bulk Bin, named below; a boss's product (the Frontier Pack) opens with its boss
+		if product.unlockLevel == level and not product.bulk and not product.unlockBoss then
 			table.insert(names, product.name)
 		end
 	end

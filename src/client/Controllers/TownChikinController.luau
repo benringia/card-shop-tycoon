@@ -13,12 +13,16 @@ local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ChikinTalk = require(Shared:WaitForChild("Config"):WaitForChild("ChikinTalk"))
+local PetRewardConfig = require(Shared:WaitForChild("Config"):WaitForChild("PetReward"))
+local PetRewardRules = require(Shared:WaitForChild("Util"):WaitForChild("PetRewardRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local PishVisual = require(ClientUtil:WaitForChild("PishVisual"))
 local GreetBubble = require(ClientUtil:WaitForChild("GreetBubble"))
+local PetReward = require(ClientUtil:WaitForChild("PetReward"))
+local BuffController = require(Controllers:WaitForChild("BuffController"))
 
 local TownChikinController = {}
 
@@ -129,9 +133,23 @@ function TownChikinController.Start()
 			attach(found)
 		end
 		player:GetAttributeChangedSignal("CombatDone"):Connect(applyHidden)
-		Remotes.ChikinPetted.OnClientEvent:Connect(function()
+		Remotes.ChikinPetted.OnClientEvent:Connect(function(userId: unknown, granted: unknown, left: unknown)
 			if visual and not hidden then
 				PishVisual.hearts(visual)
+			end
+			if userId ~= player.UserId then
+				return
+			end
+			-- the petter's own screen (owner 2026-11-23, mockup A): his card pops up and flies into the buffs, or, petted
+			-- again too soon, his bubble says when he can give it again (never silent)
+			if granted == true then
+				PetReward.show("Chikin", BuffController.GetStack())
+				return
+			end
+			local text = PetRewardRules.again("Chikin", PetRewardConfig, if typeof(left) == "number" then left else 0)
+			local current = marker
+			if text and current and visual and not hidden then
+				GreetBubble.say(current, visual, text, BUBBLE_UP, BUBBLE_EDGE)
 			end
 		end)
 		RunService.RenderStepped:Connect(function(dt)

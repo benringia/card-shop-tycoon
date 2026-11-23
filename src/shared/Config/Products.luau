@@ -18,6 +18,9 @@ export type Product = {
 	-- Bulk Cards (Config/Bulk): never ordered or delivered; a Bulk Bin is filled from the binder's extra Commons, so it
 	-- stays out of Order Stock, the unlock lines (the bin is the unlock) and customers' lists until a bin has some
 	bulk: boolean?,
+	-- A boss the shop's owner must have beaten before it can be ordered (and before customers ask for it): its
+	-- Config/Bosses id and name (Util/OrderRules.addLook, StockService, CustomerService)
+	unlockBoss: { id: string, name: string }?,
 }
 
 local List: { Product } = {
@@ -27,6 +30,9 @@ local List: { Product } = {
 	-- a handful of 5 extra Commons from a Bulk Bin (Config/Bulk); its box fields are never used (never delivered)
 	{ id = "BulkCards", name = "Bulk Cards", boxCost = 0, unitsPerBox = 1, marketPrice = 1, unlockLevel = 10, color = { 196, 140, 86 }, boxProp = "BoxPacks", icon = "Copies", stockLook = "Bulk", bulk = true },
 	{ id = "FirstSparkBox", name = "First Spark Booster Box", boxCost = 90, unitsPerBox = 1, marketPrice = 120, unlockLevel = 11, color = { 240, 200, 60 }, boxProp = "BoxBooster", icon = "BoosterBox", stockLook = "Booster", art = "rbxassetid://81309929146607" },
+	-- The Frontier Pack (owner 2026-11-23, pick B): only Frontier cards (Config/Packs, PackOdds), opened by beating
+	-- the Frost Tyrant rather than a shop level. $10 a pack to stock, $15 to sell: the same share as a First Spark pack
+	{ id = "FrontierPack", name = "Frontier Booster Pack", boxCost = 120, unitsPerBox = 12, marketPrice = 15, unlockLevel = 1, color = { 130, 90, 230 }, boxProp = "BoxFrontier", icon = "BoosterPack", unlockBoss = { id = "frostTyrant", name = "Frost Tyrant" } },
 }
 
 local ById: { [string]: Product } = {}

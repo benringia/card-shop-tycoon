@@ -161,8 +161,8 @@ local NAMES = {
 	"BossChests", -- server → owner: { id, bossId, seconds } a boss win's three chests to pick from (no contents yet)
 	"OpenBossChest", -- client → server: (id: string, index: number) the chest tapped (1-3)
 	"BossChestOpened", -- server → owner: { id, index, contents = { { kind = "weapon"|"material"|"mystery", weaponId?, item?, count? } x3 } }
-	"PishPetted", -- server → all clients: (userId, lucky: boolean) Town Pish was petted: his hearts, and the luck it gave
-	"ChikinPetted", -- server → all clients: (userId, granted: boolean) Town Chikin was petted: his hearts, and the Courage it gave
+	"PishPetted", -- server → all clients: (userId, lucky: boolean, left: number) Town Pish was petted: his hearts; the petter's luck card, or the seconds until he gives luck again
+	"ChikinPetted", -- server → all clients: (userId, granted: boolean, left: number) Town Chikin was petted: his hearts; the petter's Courage card, or the seconds until it comes again
 	"TutorialAction", -- client → server: (action: "skip" | "replay" | "bye" | "lessonDone", lessonId: string?) the tutorial
 	"CombatTutorialAction", -- client → server: (action: "next" | "skip" | "replay") Chikin's combat tutorial; gives nothing
 	"TutorialState", -- server → client: { firstVisit, step, giftClaimed, lesson: string? } the tutorial's state, a lesson visit

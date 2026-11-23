@@ -17,7 +17,8 @@ centre, with its front facing -Z.
 | `DisplayBox` | `Tray` (lid folded back), `Packs1` .. `Packs6` (that many packs standing in it) | `PackModels.displayBox(id, packs)` |
 
 Each model also holds `Looks/<look>/<MeshPart name>`: one SurfaceAppearance per MeshPart for each pack type. A pack's
-`look` in `Config/Packs` (today `"FirstSpark"`) picks which one each clone gets. Scripts can't swap a
+`look` in `Config/Packs` (today `"FirstSpark"`, and `"Frontier"` for the Frontier Booster Pack in `Pack` and
+`DisplayBox`) picks which one each clone gets. Scripts can't swap a
 SurfaceAppearance's maps, so a new set means a new `Looks` folder, not new code. Packs with `model = "DeckBox"` use
 the deck box.
 
@@ -65,6 +66,20 @@ models.
 Run the texture script with the new set's art and name, upload the maps, and add `Looks/<SetLook>` to each model with
 the new SurfaceAppearances. In `Config/Packs`, give the new pack `look = "<SetLook>"` (and `model = "DeckBox"` for a
 deck box). The meshes stay the same.
+
+A pack's look can be added without Studio (the Frontier Booster Pack's, 2026-11-23):
+
+1. Art: `assets/ui/packs/<Set>.jpg` (the Frontier's: `python tools/ui-art/make_frontier_pack_art.py`, an aurora sky
+   over the Stormking painting).
+2. Textures: `python tools/textures/make_pack_textures.py assets/ui/packs/<Set>.jpg tools/ui-art/fonts/Fredoka.ttf
+   assets/blender/Pack/<Set> "<SET NAME>"` (the Frontier's in `assets/blender/Pack/Frontier`).
+3. Upload `Pack_1024.png` and `DisplayBox.png` (Studio MCP `upload_image` from a local `python -m http.server`), and
+   the pack art for `Config/Packs` `art`.
+4. `lune run tools/packs/add_look <SetLook> <pack texture id> <display box texture id>`: copies `Looks/FirstSpark` in
+   `assets/packs/Pack.rbxm` and `DisplayBox.rbxm` as `Looks/<SetLook>` with the new colour maps (the seals' metal and
+   roughness maps are shared). Running it again replaces that look.
+5. The menus' picture: the pack rendered in a ViewportFrame on magenta, cut out by
+   `tools/ui-art/cut_product_picture.py`, uploaded, its id in `Config/ProductPictures` LOOKS.<SetLook>.Pack.
 
 ## The opening's effects
 
