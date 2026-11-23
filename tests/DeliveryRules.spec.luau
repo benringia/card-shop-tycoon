@@ -116,4 +116,16 @@ return {
 		expect.equal(DeliveryRules.waitingWords(1), "1 box waiting")
 		expect.equal(DeliveryRules.waitingWords(3), "3 boxes waiting")
 	end,
+
+	-- owner 2026-11-24: "make this pill visible only when a player is near it"
+	["the waiting chip shows only while you stand near your pad, with no flicker at the edge"] = function()
+		local CHIP = Delivery.CHIP
+		expect.equal(CHIP.near < CHIP.far, true, "it hides a little farther out than it shows")
+		expect.equal(DeliveryRules.chipShows(3, CHIP.near - 1, false, CHIP), true, "walking up to the pad")
+		expect.equal(DeliveryRules.chipShows(3, CHIP.near + 1, false, CHIP), false, "not yet near")
+		expect.equal(DeliveryRules.chipShows(3, CHIP.near + 1, true, CHIP), true, "shown: stays until past `far`")
+		expect.equal(DeliveryRules.chipShows(3, CHIP.far + 1, true, CHIP), false, "walked away")
+		expect.equal(DeliveryRules.chipShows(0, 2, true, CHIP), false, "no boxes waiting")
+		expect.equal(DeliveryRules.chipShows(3, nil, true, CHIP), false, "no character or pad")
+	end,
 }

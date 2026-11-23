@@ -105,4 +105,13 @@ function DeliveryRules.waitingWords(count: number): string
 	return if count == 1 then "1 box waiting" else `{count} boxes waiting`
 end
 
+-- Whether the chip shows: boxes wait and you stand `distance` studs from your pad (nil: no character or pad). It shows
+-- within `chip.near` and, once `shown`, stays until you're past `chip.far`, so it never flickers at the edge
+function DeliveryRules.chipShows(count: number, distance: number?, shown: boolean, chip: { near: number, far: number }): boolean
+	if count <= 0 or distance == nil then
+		return false
+	end
+	return distance <= (if shown then chip.far else chip.near)
+end
+
 return DeliveryRules

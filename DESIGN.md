@@ -515,8 +515,10 @@ is over UI (`UIKit.pointerBlocked`).
   writes the name on `BandLeft` / `BandRight` and lights `Headlights` / `Taillights` Neon), and builds a stand-in from
   parts until then (or when the model lacks a part it moves).
 - **The waiting chip** (pick 3, with the bell): over your own pad while boxes wait on it, a white pill with the box
-  icon, "3 boxes waiting" (`DeliveryRules.waitingWords`), popping each time one lands; your own only, seen from 120
-  studs (the player's `BoxesWaiting`).
+  icon, "3 boxes waiting" (`DeliveryRules.waitingWords`), popping each time one lands; your own only (the player's
+  `BoxesWaiting`). Only while you stand near your pad (owner 2026-11-24: "make this pill visible only when a player is
+  near it", seen from the shop's door 14 studs away): it pops in within 10 studs of your character and hides past 12
+  (`Delivery.CHIP` near / far, `DeliveryRules.chipShows`); the Phone's Order app still says how many wait.
 - **The order computer** (owner 2026-11-21: "COMPUTER: in this window, redesign it to be fully immersive computer
   shopping layout", pick A of three mockups): the window is a cotton candy tablet (even bezels, a camera dot on the
   top one, its edge showing under it; a monitor on a stand with "PACK·PC" and a green light until 2026-11-22, when the

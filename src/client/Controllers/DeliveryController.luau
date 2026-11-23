@@ -8,7 +8,7 @@
 --   your van (owner 2026-11-23: the server sends it to the orderer alone); where it is comes from the server's clock
 --   (DeliveryRules.offset), so it stops as the server's boxes leave its door. Others just see the boxes on your pad.
 --   The unboxing: a shelf stocked near you plays Util/UnboxFx.
---   The waiting chip: over your own pad while boxes wait on it ("3 boxes waiting").
+--   The waiting chip: over your own pad while boxes wait on it ("3 boxes waiting"), only while you stand near it.
 local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -338,22 +338,41 @@ local function watchPlots()
 	plots.ChildAdded:Connect(watch)
 end
 
+local spotFound: BasePart? = nil
+
+-- Your pad (kept between looks; found again when its plot changes or it streams out)
 local function ownSpot(): BasePart?
+	if spotFound and spotFound.Parent and isOwnPlot(spotFound.Parent) then
+		return spotFound
+	end
 	local plotId = player:GetAttribute("PlotId")
 	local plots = workspace:FindFirstChild("Plots")
 	local plot = if typeof(plotId) == "number" and plots then plots:FindFirstChild("Plot" .. plotId) else nil
 	local spot = if plot then plot:FindFirstChild("DeliverySpot", true) else nil
-	return if spot and spot:IsA("BasePart") then spot else nil
+	spotFound = if spot and spot:IsA("BasePart") then spot else nil
+	return spotFound
 end
 
--- The chip over your pad: how many boxes wait there, popping when one more lands
+-- How far your character stands from your pad; nil with no character or pad
+local function padDistance(spot: BasePart?): number?
+	local character = player.Character
+	local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
+	if not spot or not root or not root:IsA("BasePart") then
+		return nil
+	end
+	return (root.Position - spot.Position).Magnitude
+end
+
+-- The chip over your pad while you stand near it (DeliveryRules.chipShows): how many boxes wait there, popping in as
+-- you come near and when one more lands
 local function refreshChip()
 	local count = tonumber(player:GetAttribute("BoxesWaiting")) or 0
 	local spot = ownSpot()
+	local was = chip.Enabled
 	chip.Adornee = spot
-	chip.Enabled = spot ~= nil and count > 0
+	chip.Enabled = DeliveryRules.chipShows(count, padDistance(spot), was, CHIP)
 	chipText.Text = DeliveryRules.waitingWords(count)
-	if count > shownCount and chip.Enabled then
+	if chip.Enabled and (not was or count > shownCount) then
 		local scale = chipPill:FindFirstChildOfClass("UIScale")
 		if scale then
 			scale.Scale = 1.25
@@ -432,6 +451,12 @@ function DeliveryController.Start()
 	player:GetAttributeChangedSignal("BoxesWaiting"):Connect(refreshChip)
 	player:GetAttributeChangedSignal("PlotId"):Connect(refreshChip)
 	refreshChip()
+	task.spawn(function() -- walking up to the pad or away from it
+		while true do
+			task.wait(CHIP.check)
+			refreshChip()
+		end
+	end)
 end
 
 return DeliveryController

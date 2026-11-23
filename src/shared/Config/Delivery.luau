@@ -43,8 +43,11 @@ return {
 	-- onto the shelf `gap` s apart, `flight` s each, an arc `peak` studs over the higher end, each pop `pitchStep`
 	-- higher, the count rolling up over the shelf; played for players within `reach` studs
 	UNBOX = { items = 6, gap = 0.09, flight = 0.32, peak = 2.4, pitchStep = 0.08, open = 0.14, reach = 80 },
-	-- The chip over your own pad while boxes wait on it: `up` studs over the pad, `height` px, seen from `maxDistance`
-	CHIP = { up = 5.2, height = 40, maxDistance = 120 },
+	-- The chip over your own pad while boxes wait on it: `up` studs over the pad, `height` px, seen from `maxDistance`.
+	-- Only while you stand near the pad (owner 2026-11-24: "make this pill visible only when a player is near it", seen
+	-- from the shop's door 14 studs away): it shows within `near` studs of your character and hides past `far`, looked
+	-- at every `check` s (the boxes' prompts reach 8)
+	CHIP = { up = 5.2, height = 40, maxDistance = 120, near = 10, far = 12, check = 0.2 },
 	-- Licensed sounds (Pro Sound Effects), each at its own volume
 	SOUNDS = {
 		arrive = { id = "rbxassetid://9114239952", volume = 0.3 }, -- Electric Car Pass By Airy Whirring 12: rolling in
