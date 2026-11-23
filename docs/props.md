@@ -343,3 +343,26 @@ world, after it was moved onto the pad, and left the model behind). The importer
 loads as a picture but never on a mesh (black box): its palette was uploaded again and written into
 `assets/props/BoxDecks.rbxm` (`TextureContent`, Lune); check after a re-import. Until they're split in, the boxes are
 branded cases (`Util/BrandBox`).
+
+## The delivery van
+
+The packenship.co van that brings every order (owner 2026-11-23: "make the van in blender"; DESIGN 4.2 "The
+packenship.co van") comes from `tools/blender/build_delivery_van.py` as a pack of one the owner imports once:
+
+1. `blender -b --factory-startup --python tools/blender/build_delivery_van.py` writes
+   `assets/blender/DeliveryVan/DeliveryVan.{blend,fbx}` (`PREVIEW_DIR=<folder>` also renders five views, the door shut
+   and open, with backface culling on as Roblox draws; `EXPORT=0` builds without saving). One Empty, `DeliveryVan`,
+   holding `DeliveryVan__Frame` (body, glass, bumpers, mirrors, wheel wells, the roof parcel), `__Door`,
+   `__WheelFL` / `FR` / `RL` / `RR`, `__BandLeft` / `__BandRight` and `__Headlights` / `__Taillights`; 2,876 triangles,
+   one palette texture.
+2. Import the FBX in Studio (default settings) and save the imported model as `assets/props-import/DeliveryVan.rbxm`.
+3. `lune run tools/props/split_pack assets/props-import/DeliveryVan.rbxm` writes `assets/props/DeliveryVan.rbxm`.
+
+Every moving piece is its own part so the game can move it (`Util/DeliveryVan`, client-only): each wheel turns about
+the van's X axis through its own middle (its box is centred on its axle; the build checks), the door slides out 0.16
+and back its own length, the bands get the name as a SurfaceGui (`BandLeft` its Left face, `BandRight` its Right) and
+the lamps turn Neon in Config/Delivery's colours. Blender's -Y is the van's front (Roblox -Z) and Blender's +X lands on
+Roblox's -X (the delivery boxes' stickers show it), so the van's right, the door's side, is Blender -X. Only the big
+flat faces shade flat and the rounded edges smooth (smoothed together the sides looked crumpled); the nose is its own
+rounded block (one profile with the hood in it rounded into a dent at the windscreen's foot). Until the model is
+saved, or if it lacks a part the van moves, `Util/DeliveryVan` builds a stand-in from parts.

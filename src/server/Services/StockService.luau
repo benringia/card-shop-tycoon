@@ -20,6 +20,8 @@ local ItemRules = require(Shared:WaitForChild("Util"):WaitForChild("ItemRules"))
 local TutorialRules = require(Shared:WaitForChild("Util"):WaitForChild("TutorialRules"))
 local OrderRules = require(Shared:WaitForChild("Util"):WaitForChild("OrderRules"))
 local StockConfig = require(Config:WaitForChild("Stock"))
+local Delivery = require(Config:WaitForChild("Delivery"))
+local DeliveryRules = require(Shared:WaitForChild("Util"):WaitForChild("DeliveryRules"))
 local Offline = require(Config:WaitForChild("Offline"))
 local Tips = require(Config:WaitForChild("Tips"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -238,8 +240,9 @@ local function onPickup(player: Player, shop: Shop, box: Part)
 	syncCarry(shop)
 end
 
--- Puts a box on the delivery pad
-local function createBox(shop: Shop, productId: string, units: number)
+-- Puts a box on the delivery pad. `fromVan`: it hops out of the packenship.co van (DeliveryController flies it from the
+-- van's door; its VanHop attribute says when, on the server's clock)
+local function createBox(shop: Shop, productId: string, units: number, fromVan: boolean?)
 	local product = Products.ById[productId]
 	local box = Instance.new("Part")
 	box.Name = "StockBox"
@@ -249,6 +252,9 @@ local function createBox(shop: Shop, productId: string, units: number)
 	box.Anchored = true
 	box:SetAttribute("ProductId", productId)
 	box:SetAttribute("Units", units)
+	if fromVan then
+		box:SetAttribute("VanHop", workspace:GetServerTimeNow())
+	end
 	-- The product's own box model, welded on, when assets/props has it; the part stays as the hitbox
 	local model = Props.weldFit(product.boxProp, box)
 	if model then
@@ -357,20 +363,26 @@ local function onOrderCart(player: Player, raw: unknown)
 	notify(player, OrderRules.orderedLine(count, name, seconds), false)
 	Remotes.OrderPlaced:FireClient(player, orderInfo(player, count))
 
-	task.delay(seconds, function()
-		if not shop.active then
-			return
-		end
-		local arrived = 0
-		for _, order in batch do
-			local index = table.find(shop.incoming, order)
-			if index then -- (gone: cleared for testing)
-				table.remove(shop.incoming, index)
-				createBox(shop, order.productId, Products.ById[order.productId].unitsPerBox)
-				arrived += 1
+	-- The packenship.co van (owner 2026-11-23, pick A): it comes down the street and stops by this shop's pad when the
+	-- trip ends (DeliveryController), on the orderer's screen only ("only you should see the van"); the boxes hop out of
+	-- it one by one, each made as it leaves the door (everyone else sees them appear on the pad)
+	Remotes.DeliveryVan:FireClient(player, shop.plot.model, workspace:GetServerTimeNow() + seconds, #batch)
+	local hops = DeliveryRules.hopTimes(#batch, Delivery.TRIP)
+	local arrived = 0
+	for index, order in batch do
+		task.delay(seconds + hops[index], function()
+			local at = table.find(shop.incoming, order)
+			if not shop.active or not at then -- (gone: cleared for testing)
+				return
 			end
-		end
-		if arrived > 0 then
+			table.remove(shop.incoming, at)
+			createBox(shop, order.productId, Products.ById[order.productId].unitsPerBox, true)
+			arrived += 1
+		end)
+	end
+	-- once the last box has landed
+	task.delay(seconds + hops[#hops] + Delivery.TRIP.hopTime, function()
+		if shop.active and arrived > 0 then
 			notify(player, OrderRules.arrivedLine(arrived, name), false)
 		end
 	end)
@@ -410,6 +422,10 @@ local function onStockShelf(player: Player, uid: unknown)
 		return
 	end
 
+	-- The unboxing (owner 2026-11-23, pick 1): the box opens in the stocker's hands and the packs hop onto the shelf,
+	-- the count rolling up over it, for everyone near (DeliveryController); it says how many went on, so a box that
+	-- emptied needs no toast
+	Remotes.ShelfStocked:FireAllClients(shelf.part, player, productId, added)
 	local left = units - added
 	if left > 0 then
 		box:SetAttribute("Units", left)
@@ -417,7 +433,6 @@ local function onStockShelf(player: Player, uid: unknown)
 	else
 		table.remove(shop.carried)
 		box:Destroy()
-		notify(player, `Stocked {added}.`, false)
 	end
 	syncCarry(shop)
 	fire(stockedHandlers, player, productId)

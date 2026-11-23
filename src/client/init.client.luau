@@ -210,6 +210,8 @@ else
 	task.spawn(CaseSpinController.Start) -- waits for the Plots folder
 	DecorSpinController.Start() -- the Card Pedestals' turning cards (shop decor)
 	WindowController.Start() -- placing shop windows on the walls, and their Edit prompts
+	-- the packenship.co vans down the street, the boxes hopping onto pads, the unboxing onto shelves, the waiting chip
+	require(Controllers:WaitForChild("DeliveryController")).Start()
 	task.spawn(WorkerVisualController.Start) -- waits for the Workers folder
 	RegisterController.Start()
 	RegisterStationController.Start() -- manning the register in first person: scan, Charge, the card machine, the drawer

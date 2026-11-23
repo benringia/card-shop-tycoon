@@ -75,6 +75,8 @@ local NAMES = {
 	"BagBox", -- client → server: the packs in your carried boxes go in your Bag (To Bag)
 	"ShopBagStock", -- client → server: (itemId: string) a box of that Bag item (packs, deck boxes) onto your delivery pad
 	"RemoveStock", -- client → server: (shelfUid: string) box up a product shelf's stock onto the delivery pad
+	"DeliveryVan", -- server → the orderer only: (plot: Model, arrive: number, boxes: number) a packenship.co van stops by their shop's pad at `arrive` (server clock) and unloads (DeliveryController)
+	"ShelfStocked", -- server → all clients: (shelf: BasePart, by: Player, productId: string, added: number) a carried box unboxed onto a shelf (DeliveryController's unboxing)
 	"RipPack", -- client → server: open one pack from the carried box
 	"PackOpened", -- server → client: (productId: string, results: { { cardId, foil, grade } }, newFlags: { boolean }, itemId: string?) itemId: the Bag item it came from (Open another)
 	"CollectionChanged", -- server → client: ({ [cardId: string]: { normal: number, foil: number } })
@@ -252,6 +254,8 @@ return {
 	BagBox = remotes.BagBox,
 	ShopBagStock = remotes.ShopBagStock,
 	RemoveStock = remotes.RemoveStock,
+	DeliveryVan = remotes.DeliveryVan,
+	ShelfStocked = remotes.ShelfStocked,
 	RipPack = remotes.RipPack,
 	PackOpened = remotes.PackOpened,
 	CollectionChanged = remotes.CollectionChanged,

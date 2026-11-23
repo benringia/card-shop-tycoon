@@ -443,6 +443,37 @@ is over UI (`UIKit.pointerBlocked`).
   built in code (Computer slot, `built`): a white desk on black panel legs, a slim widescreen showing "ORDER STOCK",
   keyboard, mouse, a small plant, a drawer unit and an office chair.
 - Ordering costs cash immediately. Delivery arrives after a short delay (10s at start, upgradable) as boxes at the delivery spot.
+- **The packenship.co van** (owner 2026-11-23: "how can we make this deliveries system more immersive/better", three
+  arrival mockups on a shot of the pad (the supplier's van, a sky drop on parachutes, Turts with a wagon) and three
+  handling ones; "go A with 1 and 3"). Every order comes in the van of the supplier you order from on the computer.
+  Only you see your van (owner 2026-11-23: "make sure other players cant see your van"): when the trip starts the
+  server tells the orderer alone (`Remotes.DeliveryVan`: the shop, the arrival on the server's clock, the boxes), and
+  their screen draws the van from that clock (`Util/DeliveryRules.offset`), so it stops as the server's boxes leave
+  its door; everyone else just sees the boxes appear on your pad. It fades
+  in at the street's far end (the end behind it: vans keep to the right along each row's curb, so the sliding door
+  faces the pad), drives the lane at 30 studs a second, slows into a stop 6.75 studs out from the pad's middle
+  (`DeliveryRules.laneOffset`: past the sidewalk, 0.6 off the curb), slides its door open, and the boxes hop out one
+  by one, 0.16 s apart, each on a quick arc from the door to its place on the pad (0.3 s, 2.2 studs high, a spin, a
+  thud and a puff of dust; owner 2026-11-23: "make the boxes animation from the van to the delivery pad faster", was
+  0.3 s apart and 0.5 s each).
+  The server makes each box as it leaves the door (StockService: the `VanHop` attribute, the server's time; the
+  orderer's screen flies the real box from the door, so it is never in two places), and the "arrived" toast waits for
+  the last.
+  Then the shop's door bell rings (Store Entry Bell), the van beeps twice and drives off, fading out at the street's
+  other end. A quick trip (Pish's 1 s, a new shop's 3 s) still arrives on time: the van appears partway down the
+  street with a short fade. Sounds (licensed PSE): an airy electric whirr in and out, an SUV honk twice, the van door,
+  a cardboard set-down, the bell. Numbers: `Config/Delivery` TRIP / STREET / VAN / HOP; drawn by `DeliveryController`.
+  The van is a Blender model (owner 2026-11-23: "make the van in blender"; `tools/blender/build_delivery_van.py`,
+  docs/props.md "The delivery van"): a rounded cartoon van 11 x 5.5 x 6.2 studs, white over a lilac skirt with a mint
+  pinstripe, a cab with a sloped windscreen and a short nose (round headlights round a little mint parcel badge), a
+  cardboard parcel taped mint on the roof, mint "packenship.co" panels on both sides, a sliding door on its right with
+  parcels stacked inside, four wheels with white caps; 2,876 triangles. `Util/DeliveryVan` uses it from
+  `assets/props/DeliveryVan.rbxm` (imported and split 2026-11-23; `PropModels.DeliveryVan`: it turns the four `Wheel` parts, slides the `Door`,
+  writes the name on `BandLeft` / `BandRight` and lights `Headlights` / `Taillights` Neon), and builds a stand-in from
+  parts until then (or when the model lacks a part it moves).
+- **The waiting chip** (pick 3, with the bell): over your own pad while boxes wait on it, a white pill with the box
+  icon, "3 boxes waiting" (`DeliveryRules.waitingWords`), popping each time one lands; your own only, seen from 120
+  studs (the player's `BoxesWaiting`).
 - **The order computer** (owner 2026-11-21: "COMPUTER: in this window, redesign it to be fully immersive computer
   shopping layout", pick A of three mockups): the window is a cotton candy tablet (even bezels, a camera dot on the
   top one, its edge showing under it; a monitor on a stand with "PACK·PC" and a green light until 2026-11-22, when the
@@ -479,6 +510,13 @@ is over UI (`UIKit.pointerBlocked`).
     ones, Express) and the boxes on the way. The player's `BoxesUsed` attribute counts the pad's spots in use. Rules
     and words: `Util/OrderRules` (Lune-tested), look: `Config/OrderComputer`, client `OrderController`.
 - Player picks up a box (carry it, one at a time at start) and places it on a shelf to stock it.
+- **Unboxing** (owner 2026-11-23, pick 1): stocking a shelf opens the box in your hands (its flaps swing up) and up to
+  six of its products hop onto the shelf one after another (the real pack, deck box, sleeve packet, booster box or
+  handful of cards, as on the register's counter: `PropFit.counterLook`), each landing with a pop a little higher in
+  pitch while a green "+4 ... +24" over the shelf rolls up to what went on (`DeliveryRules.shares`), then the empty box
+  shrinks away (about a second). Everyone within 80 studs sees it (`Remotes.ShelfStocked`; client `Util/UnboxFx`).
+  The shelf's stock is already there on the server; the plain "Stocked 24." toast went (a part-used box still says
+  what's left in it).
 
 ### 4.3 Shelves & placement
 - Shelves are placed in the shop on a **grid** (placement mode: rotate, move, sell back for 50%).
@@ -4723,6 +4761,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── OrderController.luau
     │   │   ├── BuildController.luau    # Build menu (category tabs, 3D model tiles), shelf prompts, what a placed thing is for its Edit bar
     │   │   ├── EditBarController.luau  # the Edit bar (4.3): the thing lit up, its name, chip, hint and candy tiles in the bottom row's place, held Sell
+    │   │   ├── DeliveryController.luau # the packenship.co vans down the street (4.2), boxes hopping onto pads, the door bell, the waiting chip, the unboxing
     │   │   ├── PlacementController.luau
     │   │   ├── PricingController.luau
     │   │   ├── RegisterController.luau # checkout panel; the offer panel (kid offer, haggle, counter)
@@ -4810,6 +4849,8 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │       ├── Motion.luau             # pop in/out, press squash, bumps
     │       ├── FontStyle.luau          # switches Gotham text to the game fonts (FredokaOne, Montserrat)
     │       ├── Hud.luau                # HUD layout: the phone (its apps and pages), bottom tiles, context tiles, top bar; the calm HUD
+    │       ├── DeliveryVan.luau        # the packenship.co van (PropModels.DeliveryVan, else code-built): placed, its wheels turned and door slid each frame, faded at the street's ends
+    │       ├── UnboxFx.luau            # the unboxing onto a shelf: the box opening in your hands, products hopping on, the rolling "+n"
     │       ├── Icon.luau               # draws a UIIcons icon (or an emoji) into a holder
     │       ├── CardTips.luau           # card tooltips in the style kit: binder card summary, party copy (bars, perk, rest)
     │       ├── CopyCompare.luau        # the kid swap comparison: verdict badge and sentence, IN -> OUT cards, paired stat bars, perk line
@@ -4923,6 +4964,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
         │   ├── BabyColors.luau # the cotton candy baby colours, roles, element rims, the soft glow, soft buttons (plain data)
         │   ├── SoftHud.luau    # the squircle HUD tiles: sizes, colours, the squishy hover (plain data)
         │   ├── EditBar.luau    # the Edit bar's hold, reach, tile colours and icons, sizes, highlight (plain data)
+        │   ├── Delivery.luau   # the van's trip, street, look and sounds, the boxes' hop, the unboxing, the waiting chip (plain data)
         │   ├── PhoneForm.luau  # the Phone standing up or lying on its side on a short screen (plain data)
         │   ├── ShopTiles.luau  # the Shop window's tiles: the tall one, a phone's row tile, the window's chrome (plain data)
         │   ├── CardReveal.luau # how big each pull's reveal is: tease, rays, spotlight, sparks, banner (plain data)
@@ -5033,6 +5075,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── ShopTileRules.luau # the Shop window's list height and a phone's row tile (pure, Lune-tested)
             ├── ShelfStock.luau    # stock boxes, display box fill and price tags on shelves (pure, Lune-tested)
             ├── EditBarRules.luau  # what a placed thing's Edit bar offers: name, chip, hint, tiles, locks, holds (pure, Lune-tested)
+            ├── DeliveryRules.luau # the van's place by the server's clock, its lane and stop, the boxes' times and arcs, unboxing shares (pure, Lune-tested)
             ├── PackModels.luau    # the 3D pack, deck box and display box (assets/packs, or stand-ins), dressed in a pack's look
             ├── ProductPictureRules.luau # a menu row's pack / deck box picture, else its icon (pure, Lune-tested)
             ├── CaseLook.luau      # the code-built CardCase prop, the museum vitrine: pedestal, glow strip, plate, plaque, glass
