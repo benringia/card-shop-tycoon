@@ -23,6 +23,7 @@ local Windows = require(Config:WaitForChild("Windows"))
 local WindowRules = require(Shared:WaitForChild("Util"):WaitForChild("WindowRules"))
 local WindowLooks = require(Shared:WaitForChild("Util"):WaitForChild("WindowLooks"))
 local RoomsConfig = require(Config:WaitForChild("ShopRooms"))
+local ShopDetail = require(Config:WaitForChild("ShopDetail"))
 local PlacementConfig = require(Config:WaitForChild("Placement"))
 local ShopRooms = require(Shared:WaitForChild("Util"):WaitForChild("ShopRooms"))
 local RegisterBuild = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("RegisterBuild"))
@@ -126,14 +127,17 @@ local function trimPart(parent: Instance, name: string, size: Vector3, cframe: C
 	return part
 end
 
--- A smooth white wall with the charcoal band along its outside foot; WallSide (left, right, back) says which wall it is
--- (shop windows are cut into it, SetWindows)
+-- A smooth white wall with the charcoal band along its outside foot; WallSide (left, right) says which side wall it is
+-- (shop windows are cut into it, SetWindows). The outer back wall has none: it faces the hedge, and back posters hang on
+-- the hall's back wall inside (buildInnerWalls)
 local function buildWall(parent: Instance, plotCFrame: CFrame, size: Vector3, offset: Vector3, outward: Vector3)
 	local look = Town.SHOP
 	local bottom = -PlotConfig.FLOOR_THICKNESS / 2
 	local height = wallTop() - bottom
 	local wall = shellPart(parent, "Wall", Vector3.new(size.X, height, size.Z), plotCFrame * CFrame.new(offset.X, bottom + height / 2, offset.Z), Props.color(look.WALL))
-	wall:SetAttribute("WallSide", if outward.Z > 0 then "back" elseif outward.X < 0 then "left" else "right")
+	if outward.Z == 0 then
+		wall:SetAttribute("WallSide", if outward.X < 0 then "left" else "right")
+	end
 	local band = Vector3.new(size.X + math.abs(outward.X) * 0.1, look.BASE_HEIGHT, size.Z + math.abs(outward.Z) * 0.1)
 	trimPart(parent, "BaseBand", band, plotCFrame * CFrame.new(offset + outward * 0.05 + Vector3.new(0, bottom + look.BASE_HEIGHT / 2 - offset.Y, 0)), Props.color(look.CHARCOAL))
 end
@@ -279,13 +283,15 @@ local function buildEntrance(parent: Instance, plotCFrame: CFrame)
 	end
 end
 
--- Modern LED ceiling panels in rows, so the shop is evenly bright
+-- Modern LED ceiling panels in rows over the hall (from its middle), so the shop is evenly bright; the middle row lights
+-- it. A room's own come with it when it opens (SetRooms)
 local function buildCeilingLights(plotCFrame: CFrame, parent: Instance)
 	local look = Town.SHOP
 	local color = Props.color(look.PANEL)
+	local hallX, hallZ = ShopRooms.toLocal(GRID, ShopRooms.hallRect(RoomsConfig, GRID))
 	for _, z in look.PANEL_ROWS do
 		for _, x in look.PANEL_COLS do
-			local panel = trimPart(parent, "CeilingLight", Vector3.new(look.PANEL_SIZE[1], 0.15, look.PANEL_SIZE[2]), plotCFrame * CFrame.new(x, wallTop() - 0.08, z), color, Enum.Material.Neon)
+			local panel = trimPart(parent, "CeilingLight", Vector3.new(look.PANEL_SIZE[1], 0.15, look.PANEL_SIZE[2]), plotCFrame * CFrame.new(hallX + x, wallTop() - 0.08, hallZ + z), color, Enum.Material.Neon)
 			if z == 0 then
 				local light = Instance.new("SurfaceLight")
 				light.Face = Enum.NormalId.Bottom
@@ -299,9 +305,37 @@ local function buildCeilingLights(plotCFrame: CFrame, parent: Instance)
 	end
 end
 
+-- The walls inside the shop (Util/ShopRooms.innerWalls): the hall's back wall with a doorway into each room and the
+-- wall between the rooms, solid and white like the outer walls from the floor to the roof, each standing in the middle
+-- of its blocked cell row or column. The hall's back wall pieces carry WallSide "back": posters hang on it
+-- (WindowController finds walls by it)
+local function buildInnerWalls(plotCFrame: CFrame, parent: Instance)
+	local floorTop = PlotConfig.FLOOR_THICKNESS / 2
+	local height = wallTop() - floorTop
+	local thick = RoomsConfig.WALL_THICK
+	for _, wall in ShopRooms.innerWalls(RoomsConfig, GRID) do
+		local middle = (wall.from + wall.to) / 2
+		local holes: { WindowRules.Rect } = {}
+		for _, hole in wall.holes do
+			table.insert(holes, { x0 = hole.from - middle, x1 = hole.to - middle, y0 = 0, y1 = hole.top })
+		end
+		for _, piece in WindowRules.pieces(wall.to - wall.from, height, holes) do
+			local along, up = middle + (piece.x0 + piece.x1) / 2, floorTop + (piece.y0 + piece.y1) / 2
+			local size = if wall.axis == "x"
+				then Vector3.new(piece.x1 - piece.x0, piece.y1 - piece.y0, thick)
+				else Vector3.new(thick, piece.y1 - piece.y0, piece.x1 - piece.x0)
+			local at = if wall.axis == "x" then CFrame.new(along, up, wall.at) else CFrame.new(wall.at, up, along)
+			local part = shellPart(parent, "InnerWall", size, plotCFrame * at, Props.color(Town.SHOP.WALL))
+			if wall.name == "HallBackWall" then
+				part:SetAttribute("WallSide", "back")
+			end
+		end
+	end
+end
+
 -- The modern shell: white walls with a charcoal foot, a glass shop front with sliding doors, a charcoal sign
--- band with a strip in the shop's accent colour, a flat roof with a slim edge, a greige feature wall and LED panels.
--- Walls sit outside the floor edges, so the placement grid and saved layouts are unchanged.
+-- band with a strip in the shop's accent colour, a flat roof with a slim edge, the inner walls and LED panels (the
+-- feature wall and the look's liners are drawn on the walls by drawWalls). Walls sit outside the floor edges.
 local function buildShell(id: number, plotCFrame: CFrame, parent: Instance): Part
 	local look = Town.SHOP
 	local theme = getTheme(id)
@@ -310,14 +344,12 @@ local function buildShell(id: number, plotCFrame: CFrame, parent: Instance): Par
 	local thickness = Town.WALL_THICKNESS
 	local halfWidth, halfDepth = PlotConfig.WIDTH / 2, PlotConfig.DEPTH / 2
 	local outerWidth = PlotConfig.WIDTH + thickness * 2
-	local floorTop = PlotConfig.FLOOR_THICKNESS / 2
 
 	buildWall(parent, plotCFrame, Vector3.new(outerWidth, 0, thickness), Vector3.new(0, 0, halfDepth + thickness / 2), Vector3.new(0, 0, 1))
 	for _, side in { -1, 1 } do
 		buildWall(parent, plotCFrame, Vector3.new(thickness, 0, PlotConfig.DEPTH), Vector3.new(side * (halfWidth + thickness / 2), 0, 0), Vector3.new(side, 0, 0))
 	end
-	-- Feature wall: the back wall's inside face in a warm greige (the same in every shop)
-	trimPart(parent, "FeatureWall", Vector3.new(PlotConfig.WIDTH, Town.WALL_HEIGHT - 1, Decor.SHELL.LINER), plotCFrame * CFrame.new(0, floorTop + (Town.WALL_HEIGHT - 1) / 2, halfDepth - Decor.SHELL.LINER / 2), Props.color(look.FEATURE_WALL))
+	buildInnerWalls(plotCFrame, parent)
 
 	buildStorefront(parent, plotCFrame, outerWidth)
 	-- Sign band: charcoal from the top of the glass to the roof edge, with a glowing accent strip under it
@@ -499,11 +531,12 @@ local function buildRegister(id: number, plotCFrame: CFrame, parent: Instance): 
 	register.Name = "Register"
 	register.Anchored = true
 	register.Size = size
+	-- by the left wall near the hall's back (the shop rooms lie behind it)
 	register.CFrame = plotCFrame
 		* CFrame.new(
 			-PlotConfig.WIDTH / 2 + PlotConfig.REGISTER_SIDE_INSET,
 			(PlotConfig.FLOOR_THICKNESS + size.Y) / 2,
-			PlotConfig.DEPTH / 2 - PlotConfig.REGISTER_BACK_INSET
+			ShopRooms.hallBack(RoomsConfig, GRID) - PlotConfig.REGISTER_BACK_INSET
 		)
 	register:SetAttribute("BlocksPlacement", true)
 	register.Parent = parent
@@ -588,6 +621,7 @@ local function buildPlot(id: number, folder: Folder): Plot
 		owner = nil,
 		rooms = {},
 	}
+	PlotService.SetRooms(plot, {}, false) -- the rooms' locked doors, name plates and blockers, the feature wall
 	model.Parent = folder
 	return plot
 end
@@ -668,9 +702,20 @@ local function wallPieces(folder: Folder, name: string, length: number, height: 
 	return made
 end
 
--- The shop's walls as they show with its windows and look: a wall with windows is drawn as pieces round their holes
--- (the whole wall stays as the invisible solid one), the back's feature wall the same, and the look's wallpapered
--- liners along the side walls cut round theirs. Redrawn whenever the windows or the look change.
+-- A wall face's room side (Util/ShopRooms Run): the part face it is, and whether the wall's left edge, as you look at
+-- it from inside, is at its larger coordinate along the run (the wallpaper carries on from there)
+local function runFace(run: ShopRooms.Run): (Enum.NormalId, boolean)
+	if run.axis == "x" then
+		return if run.inward < 0 then Enum.NormalId.Front else Enum.NormalId.Back, run.inward < 0
+	end
+	return if run.inward > 0 then Enum.NormalId.Right else Enum.NormalId.Left, run.inward > 0
+end
+
+-- The shop's walls as they show with its windows, rooms and look: an outer side wall with windows is drawn as pieces
+-- round their holes (the whole wall stays as the invisible solid one); then every wall face inside open floor
+-- (Util/ShopRooms.runs) gets its finish round its doorways and windows: the hall's back wall always wears the feature
+-- wall (the look's wall colour and wallpaper, else the shop's greige), and with a look every other face a wallpapered
+-- liner. Redrawn whenever the windows, the rooms or the look change.
 local function drawWalls(plot: Plot)
 	local old = plot.model:FindFirstChild("WallFinish")
 	if old then
@@ -678,7 +723,7 @@ local function drawWalls(plot: Plot)
 	end
 	local folder = Instance.new("Folder")
 	folder.Name = "WallFinish"
-	local holes: { [string]: { WindowRules.Rect } } = { left = {}, right = {}, back = {} }
+	local holes: { [string]: { WindowRules.Rect } } = { left = {}, right = {} }
 	for _, window in plot.windows or {} do
 		if holes[window.side] and WindowRules.cuts(Windows, window) then -- a poster hangs on the wall: no hole
 			table.insert(holes[window.side], WindowRules.hole(Windows, window))
@@ -686,8 +731,7 @@ local function drawWalls(plot: Plot)
 	end
 	local base = plot.floor.CFrame
 	local floorTop = plot.floor.Size.Y / 2
-	local halfWidth, halfDepth = PlotConfig.WIDTH / 2, PlotConfig.DEPTH / 2
-	-- the outer walls (heights from the wall's foot, under the floor)
+	-- the outer side walls (heights from the wall's foot, under the floor)
 	for _, wall in plot.model:GetChildren() do
 		local side = wall:GetAttribute("WallSide")
 		if not wall:IsA("BasePart") or typeof(side) ~= "string" or not holes[side] then
@@ -713,46 +757,38 @@ local function drawWalls(plot: Plot)
 			return if alongX then Vector3.new(along, up, thick) else Vector3.new(thick, up, along)
 		end, wall.Color, wall.Material)
 	end
-	-- the back's feature wall (its look's colour and wallpaper on the room side)
-	local feature = plot.model:FindFirstChild("FeatureWall")
-	if feature and feature:IsA("BasePart") then
-		local cut = #holes.back > 0
-		feature.Transparency = if cut then 1 else 0
-		for _, child in feature:GetChildren() do
-			if child:IsA("Texture") then
-				child.Transparency = if cut then 1 else 0
-			end
-		end
-		if cut then
-			local bottom = feature.Size.Y / 2
-			for _, made in wallPieces(folder, "FeatureWallPiece", feature.Size.X, feature.Size.Y, holes.back, function(along, up)
-				return feature.CFrame * CFrame.new(along, up - bottom, 0)
-			end, function(along, up)
-				return Vector3.new(along, up, feature.Size.Z)
-			end, feature.Color, feature.Material) do
-				if plot.look then
-					-- the room side faces -Z (toward the street): its left edge is the wall's +X end
-					wallpaper(made.part, plot.look, Enum.NormalId.Front, feature.Size.X / 2 - made.piece.x1, feature.Size.Y - made.piece.y1)
-				end
-			end
-		end
-	end
-	-- the look's liners along the side walls, cut round their windows
+	-- every wall face inside open floor: the feature wall on the hall's back wall, the look's liners on the rest
 	local look = plot.look
-	if look then
-		local height = Decor.SHELL.HEIGHT
-		for _, sign in { -1, 1 } do
-			local side = if sign < 0 then "left" else "right"
-			local x = sign * (halfWidth - Decor.SHELL.LINER / 2)
-			for _, made in wallPieces(folder, "Liner", PlotConfig.DEPTH, height, holes[side], function(along, up)
-				return base * CFrame.new(x, floorTop + up, along)
-			end, function(along, up)
-				return Vector3.new(Decor.SHELL.LINER, up, along)
-			end, Props.color(look.wall), Enum.Material.SmoothPlastic) do
-				made.part.CastShadow = false
-				-- the left liner's room side faces +X: its left edge is the back (+Z) end; the right liner's the front
-				local u = if sign < 0 then halfDepth - made.piece.x1 else made.piece.x0 + halfDepth
-				wallpaper(made.part, look, if sign < 0 then Enum.NormalId.Right else Enum.NormalId.Left, u, height - made.piece.y1)
+	local liner = Decor.SHELL.LINER
+	for _, run in ShopRooms.runs(RoomsConfig, GRID, plot.rooms) do
+		local feature = run.side == "back"
+		if not feature and not look then
+			continue
+		end
+		local middle = (run.from + run.to) / 2
+		local cut: { WindowRules.Rect } = {}
+		for _, hole in run.holes do
+			table.insert(cut, { x0 = hole.from - middle, x1 = hole.to - middle, y0 = 0, y1 = hole.top })
+		end
+		for _, hole in holes[run.side] or {} do -- a side wall's windows (along it: the floor's z, like the run)
+			if hole.x1 > run.from and hole.x0 < run.to then
+				table.insert(cut, { x0 = hole.x0 - middle, x1 = hole.x1 - middle, y0 = hole.y0, y1 = hole.y1 })
+			end
+		end
+		local height = if feature then Town.WALL_HEIGHT - 1 else Decor.SHELL.HEIGHT
+		local color = if look then Props.color(look.wall) else Props.color(Town.SHOP.FEATURE_WALL)
+		local face = run.at + run.inward * liner / 2 -- the finish's middle plane, just off the wall's face
+		local normal, leftAtTo = runFace(run)
+		for _, made in wallPieces(folder, if feature then "FeatureWall" else "Liner", run.to - run.from, height, cut, function(along, up)
+			local at = middle + along
+			return base * (if run.axis == "x" then CFrame.new(at, floorTop + up, face) else CFrame.new(face, floorTop + up, at))
+		end, function(along, up)
+			return if run.axis == "x" then Vector3.new(along, up, liner) else Vector3.new(liner, up, along)
+		end, color, Enum.Material.SmoothPlastic) do
+			made.part.CastShadow = false
+			if look then
+				local u = if leftAtTo then run.to - (middle + made.piece.x1) else (middle + made.piece.x0) - run.from
+				wallpaper(made.part, look, normal, u, height - made.piece.y1)
 			end
 		end
 	end
@@ -785,31 +821,20 @@ function PlotService.SetWindows(plot: Plot, windows: { WindowRules.Window })
 	drawWalls(plot)
 end
 
--- A shop's look inside (shop decor, spec 2026-11-14-shop-decor-design; DecorService): the floor, a liner along each
--- side wall and the back wall (FeatureWall) recoloured, all three wearing the wallpaper, a panel band along their
--- bottoms with a glowing trim, and the look's extra. Everything sits inside the walls, so the placement grid is
--- unchanged; nothing collides or casts shadows. Nil takes the look off (today's oak floor and greige back wall).
+-- A shop's look inside (shop decor, spec 2026-11-14-shop-decor-design; DecorService): the floor, and on every wall face
+-- inside open floor (the hall's, and each open room's: Util/ShopRooms.runs) the wallpapered liner or feature wall
+-- (drawWalls), a panel band along its bottom with a glowing trim, and the look's extra, all cut where a doorway reaches
+-- them. Everything sits inside the walls, so the placement grid is unchanged; nothing collides or casts shadows. Nil
+-- takes the look off (today's oak floor and greige back wall).
 function PlotService.SetLook(plot: Plot, look: DecorRules.Look?)
 	plot.look = look
 	local old = plot.model:FindFirstChild("ShopLook")
 	if old then
 		old:Destroy()
 	end
-	local feature = plot.model:FindFirstChild("FeatureWall")
-	local back = if feature and feature:IsA("BasePart") then feature else nil
-	if back then
-		for _, child in back:GetChildren() do
-			if child.Name == "LookWallpaper" then
-				child:Destroy()
-			end
-		end
-	end
 	if not look then
 		plot.floor.Material = Enum.Material.WoodPlanks
 		plot.floor.Color = Props.color(Town.SHOP.FLOOR)
-		if back then
-			back.Color = Props.color(Town.SHOP.FEATURE_WALL)
-		end
 		drawWalls(plot)
 		return
 	end
@@ -817,7 +842,7 @@ function PlotService.SetLook(plot: Plot, look: DecorRules.Look?)
 	local shell = Decor.SHELL
 	local base = plot.floor.CFrame
 	local floorTop = plot.floor.Size.Y / 2
-	local halfWidth, halfDepth = PlotConfig.WIDTH / 2, PlotConfig.DEPTH / 2
+	local runs = ShopRooms.runs(RoomsConfig, GRID, plot.rooms)
 	local folder = Instance.new("Folder")
 	folder.Name = "ShopLook"
 	local function part(name: string, size: Vector3, at: CFrame, color: { number }, material: Enum.Material?): Part
@@ -835,32 +860,24 @@ function PlotService.SetLook(plot: Plot, look: DecorRules.Look?)
 		piece.Parent = folder
 		return piece
 	end
-	local function paper(target: BasePart, face: Enum.NormalId)
-		if look.wallpaper == "" then
-			return
-		end
-		local texture = Instance.new("Texture")
-		texture.Name = "LookWallpaper"
-		texture.Texture = look.wallpaper
-		texture.Face = face
-		texture.StudsPerTileU = look.tile
-		texture.StudsPerTileV = look.tile
-		texture.Parent = target
-	end
-	-- A strip along the three walls at `height` above the floor (`thick` tall, `deep` out from the liner)
+	-- A strip along every wall face at `height` above the floor (`thick` tall, `deep` out from the liner), cut where a
+	-- doorway reaches up to it
 	local function alongWalls(name: string, height: number, thick: number, deep: number, color: { number }, material: Enum.Material)
-		for _, side in { -1, 1 } do
-			part(name, Vector3.new(deep, thick, PlotConfig.DEPTH), CFrame.new(side * (halfWidth - shell.LINER - deep / 2), floorTop + height, 0), color, material)
+		for _, run in runs do
+			local out = run.at + run.inward * (shell.LINER + deep / 2)
+			for _, gap in ShopRooms.gaps(run.from, run.to, run.holes, height - thick / 2, height + thick / 2) do
+				local length, along = gap.to - gap.from, (gap.from + gap.to) / 2
+				if run.axis == "x" then
+					part(name, Vector3.new(length, thick, deep), CFrame.new(along, floorTop + height, out), color, material)
+				else
+					part(name, Vector3.new(deep, thick, length), CFrame.new(out, floorTop + height, along), color, material)
+				end
+			end
 		end
-		part(name, Vector3.new(PlotConfig.WIDTH, thick, deep), CFrame.new(0, floorTop + height, halfDepth - shell.LINER - deep / 2), color, material)
 	end
 
 	plot.floor.Color = Props.color(look.floor)
 	plot.floor.Material = (Enum.Material :: any)[look.floorMaterial] or Enum.Material.SmoothPlastic
-	if back then
-		back.Color = Props.color(look.wall)
-		paper(back, Enum.NormalId.Front) -- its room side faces -Z, toward the street
-	end
 	local bandMaterial = (Enum.Material :: any)[look.bandMaterial] or Enum.Material.SmoothPlastic
 	alongWalls("Band", shell.BAND / 2, shell.BAND, shell.BAND_DEEP, look.band, bandMaterial)
 	alongWalls("Trim", shell.BAND + shell.TRIM / 2, shell.TRIM, shell.TRIM_DEEP, look.trim, Enum.Material.Neon)
@@ -869,21 +886,228 @@ function PlotService.SetLook(plot: Plot, look: DecorRules.Look?)
 		alongWalls("TopStrip", shell.TOP_STRIP, shell.TRIM, shell.TRIM_DEEP, extraColor, Enum.Material.Neon)
 	elseif look.extra == "crystals" then
 		local rng = Random.new(7)
+		local crystalSize = shell.CRYSTAL
 		for _ = 1, shell.CRYSTALS do
-			local wall = rng:NextInteger(1, 3)
-			local along = rng:NextNumber(-halfWidth + 1, halfWidth - 1)
+			local run = runs[rng:NextInteger(1, #runs)]
+			local along = rng:NextNumber(run.from + 1, run.to - 1)
 			local height = rng:NextNumber(1.5, 3.5)
-			-- flat on the liner (a shelf against the wall hides it), leaning a little within the wall
-			local crystalSize, out = shell.CRYSTAL, shell.LINER + shell.CRYSTAL.deep / 2
 			local lean = math.rad(rng:NextNumber(-12, 12))
-			local crystal = if wall == 3
-				then part("Crystal", Vector3.new(crystalSize.width, height, crystalSize.deep), CFrame.new(along, floorTop + height / 2, halfDepth - out) * CFrame.Angles(0, 0, lean), extraColor, Enum.Material.Neon)
-				else part("Crystal", Vector3.new(crystalSize.deep, height, crystalSize.width), CFrame.new((if wall == 1 then -1 else 1) * (halfWidth - out), floorTop + height / 2, along) * CFrame.Angles(lean, 0, 0), extraColor, Enum.Material.Neon)
-			crystal.Transparency = 0.25
+			local inDoorway = false
+			for _, hole in run.holes do
+				inDoorway = inDoorway or (along > hole.from - crystalSize.width and along < hole.to + crystalSize.width)
+			end
+			if not inDoorway then
+				-- flat on the liner (a shelf against the wall hides it), leaning a little within the wall
+				local out = run.at + run.inward * (shell.LINER + crystalSize.deep / 2)
+				local crystal = if run.axis == "x"
+					then part("Crystal", Vector3.new(crystalSize.width, height, crystalSize.deep), CFrame.new(along, floorTop + height / 2, out) * CFrame.Angles(0, 0, lean), extraColor, Enum.Material.Neon)
+					else part("Crystal", Vector3.new(crystalSize.deep, height, crystalSize.width), CFrame.new(out, floorTop + height / 2, along) * CFrame.Angles(lean, 0, 0), extraColor, Enum.Material.Neon)
+				crystal.Transparency = 0.25
+			end
 		end
 	end
 	folder.Parent = plot.model
-	drawWalls(plot) -- the feature wall's colour and wallpaper are in: the walls round the windows follow
+	drawWalls(plot) -- the feature wall and the liners take the look's colour and wallpaper
+end
+
+-- The shop rooms (spec 2026-11-23-shop-rooms-design; Config/ShopRooms, Util/ShopRooms) --------------------------------
+
+local DOOR_THICK = 0.4 -- a locked door stands inside its doorway (the wall is Config/ShopRooms WALL_THICK)
+
+-- The invisible cells nothing may be placed on (Util/ShopRooms.blockers): the inner walls' rows, each door's clear
+-- path and every locked room's floor. PlacementMargin 0: each blocks exactly its cells (Util/PlacementGrid)
+local function buildBlocks(plot: Plot)
+	local old = plot.model:FindFirstChild("RoomBlocks")
+	if old then
+		old:Destroy()
+	end
+	local folder = Instance.new("Folder")
+	folder.Name = "RoomBlocks"
+	for _, blocker in ShopRooms.blockers(RoomsConfig, GRID, plot.rooms) do
+		local x, z, w, d = ShopRooms.toLocal(GRID, blocker.rect)
+		local part = Instance.new("Part")
+		part.Name = blocker.name
+		part.Anchored = true
+		part.CanCollide = false
+		part.CanQuery = false
+		part.CanTouch = false
+		part.Transparency = 1
+		part.Size = Vector3.new(w, 0.2, d)
+		part.CFrame = plot.floor.CFrame * CFrame.new(x, PlotConfig.FLOOR_THICKNESS / 2, z)
+		part:SetAttribute("BlocksPlacement", true)
+		part:SetAttribute("PlacementMargin", 0)
+		if blocker.room then
+			part:SetAttribute("RoomId", blocker.room)
+		end
+		part.Parent = folder
+	end
+	folder.Parent = plot.model
+end
+
+-- A locked room's door: a solid panel in the doorway in the shop front's black, a white lock badge on its hall side.
+-- Its name is the room's door part (Pish's lesson points at it; the owner's Unlock prompt sits on it, ShopRoomController)
+local function buildDoor(plot: Plot, door: ShopRooms.Door, parent: Instance)
+	local part = Instance.new("Part")
+	part.Name = door.part
+	part.Anchored = true
+	part.CanTouch = false
+	part.Size = Vector3.new(door.width, door.height, DOOR_THICK)
+	part.CFrame = plot.floor.CFrame * CFrame.new(door.x, PlotConfig.FLOOR_THICKNESS / 2 + door.height / 2, door.z)
+	part.Color = Props.color(Town.SHOP.FRAME)
+	part.Material = Enum.Material.SmoothPlastic
+	part.TopSurface = Enum.SurfaceType.Smooth
+	part.BottomSurface = Enum.SurfaceType.Smooth
+	part:SetAttribute("RoomId", door.room)
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front -- the hall side, toward the street
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 30
+	gui.LightInfluence = 0
+	gui.MaxDistance = ShopDetail.SCREEN_DISTANCE
+	gui.Parent = part
+	local badge = Instance.new("Frame")
+	badge.Name = "Lock"
+	badge.AnchorPoint = Vector2.new(0.5, 0.5)
+	badge.Position = UDim2.fromScale(0.5, 0.36)
+	badge.Size = UDim2.fromScale(0.46, 0.46 * door.width / door.height) -- round on the door's face
+	badge.BackgroundColor3 = Color3.new(1, 1, 1)
+	badge.Parent = gui
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0.5, 0)
+	corner.Parent = badge
+	local icon = Instance.new("ImageLabel")
+	icon.AnchorPoint = Vector2.new(0.5, 0.5)
+	icon.Position = UDim2.fromScale(0.5, 0.5)
+	icon.Size = UDim2.fromScale(0.62, 0.62)
+	icon.BackgroundTransparency = 1
+	icon.Image = UIIcons.Lock
+	icon.ScaleType = Enum.ScaleType.Fit
+	icon.Parent = badge
+	part.Parent = parent
+end
+
+-- The name plate over a doorway on its hall side: dark while the room is locked, lit in the shop's accent once open
+local function setSign(plot: Plot, door: ShopRooms.Door, parent: Instance, lit: boolean)
+	local sign = parent:FindFirstChild("Sign")
+	if not sign then
+		local made = Instance.new("Part")
+		made.Name = "Sign"
+		made.Anchored = true
+		made.CanCollide = false
+		made.CanQuery = false
+		made.CanTouch = false
+		made.Size = Vector3.new(door.width, 1.6, 0.2)
+		local face = door.z - RoomsConfig.WALL_THICK / 2 - Decor.SHELL.LINER - 0.1 -- in front of the feature wall
+		made.CFrame = plot.floor.CFrame * CFrame.new(door.x, PlotConfig.FLOOR_THICKNESS / 2 + door.height + 1.2, face)
+		local label = addSurfaceLabel(made, RoomsConfig.ROOMS[door.room].sign)
+		local gui = label.Parent :: SurfaceGui
+		gui.MaxDistance = ShopDetail.SCREEN_DISTANCE
+		made.Parent = parent
+		sign = made
+	end
+	local plate = sign :: Part
+	local gui = plate:FindFirstChildWhichIsA("SurfaceGui")
+	local label = if gui then gui:FindFirstChildWhichIsA("TextLabel") else nil
+	local colors = RoomsConfig.SIGN
+	plate.Color = if lit then Props.color(getTheme(plot.id).accent) else Props.color(colors.unlit)
+	plate.Material = if lit then Enum.Material.Neon else Enum.Material.SmoothPlastic
+	if label then
+		label.TextColor3 = Props.color(if lit then colors.litText else colors.unlitText)
+	end
+end
+
+-- An open room's ceiling panels (Config/ShopRooms PANEL_OFFSETS from its middle), the first lighting it; faded up
+-- when the room has just opened
+local function buildRoomLights(plot: Plot, roomId: string, parent: Instance, fade: boolean)
+	local look = Town.SHOP
+	local color = Props.color(look.PANEL)
+	local folder = Instance.new("Folder")
+	folder.Name = "Lights"
+	local x, z = ShopRooms.toLocal(GRID, ShopRooms.roomRect(RoomsConfig, GRID, roomId))
+	for index, offset in RoomsConfig.PANEL_OFFSETS do
+		local panel = trimPart(folder, "CeilingLight", Vector3.new(look.PANEL_SIZE[1], 0.15, look.PANEL_SIZE[2]), plot.floor.CFrame * CFrame.new(x + offset, wallTop() - 0.08, z), color, Enum.Material.Neon)
+		if index == 1 then
+			local light = Instance.new("SurfaceLight")
+			light.Face = Enum.NormalId.Bottom
+			light.Color = color
+			light.Range = look.PANEL_RANGE
+			light.Angle = 110
+			light.Brightness = if fade then 0 else look.PANEL_BRIGHTNESS
+			light.Parent = panel
+			if fade then
+				TweenService:Create(light, TweenInfo.new(RoomsConfig.OPEN_SECONDS), { Brightness = look.PANEL_BRIGHTNESS }):Play()
+			end
+		end
+	end
+	folder.Parent = parent
+end
+
+-- The door sliding into the wall beside its doorway, then gone. Its name changes at once, so the owner's prompt and
+-- Pish's paws let go of it and nothing finds a locked door in an open room
+local function slideAway(part: BasePart, door: ShopRooms.Door)
+	part.Name = door.part .. "Opening"
+	part.CanCollide = false
+	local info = TweenInfo.new(RoomsConfig.OPEN_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
+	local tween = TweenService:Create(part, info, { CFrame = part.CFrame * CFrame.new(door.slide * door.width, 0, 0) })
+	tween.Completed:Connect(function()
+		part:Destroy()
+	end)
+	tween:Play()
+end
+
+-- A shop's rooms open or locked (RoomService; a released plot locks them all): the placement blockers, each room's door
+-- (sliding away with `animate`), its name plate and lights, and the shop's look over its walls. The plot model's
+-- OpenRooms attribute tells clients which (Util/ShopRooms.format)
+function PlotService.SetRooms(plot: Plot, open: ShopRooms.Open, animate: boolean?)
+	plot.rooms = open
+	local list = {}
+	for _, id in RoomsConfig.ORDER do
+		if open[id] then
+			table.insert(list, id)
+		end
+	end
+	plot.model:SetAttribute("OpenRooms", ShopRooms.format(list))
+	buildBlocks(plot)
+	local rooms = plot.model:FindFirstChild("Rooms")
+	if not rooms then
+		local made = Instance.new("Folder")
+		made.Name = "Rooms"
+		made.Parent = plot.model
+		rooms = made
+	end
+	for _, door in ShopRooms.doors(RoomsConfig, GRID) do
+		local folder = (rooms :: Instance):FindFirstChild(door.room)
+		if not folder then
+			local made = Instance.new("Folder")
+			made.Name = door.room
+			made.Parent = rooms
+			folder = made
+		end
+		local isOpen = open[door.room] == true
+		local part = (folder :: Instance):FindFirstChild(door.part)
+		local lights = (folder :: Instance):FindFirstChild("Lights")
+		if isOpen then
+			if part and part:IsA("BasePart") then
+				if animate then
+					slideAway(part, door)
+				else
+					part:Destroy()
+				end
+			end
+			if not lights then
+				buildRoomLights(plot, door.room, folder :: Instance, animate == true)
+			end
+		else
+			if lights then
+				lights:Destroy()
+			end
+			if not part then
+				buildDoor(plot, door, folder :: Instance)
+			end
+		end
+		setSign(plot, door, folder :: Instance, isOpen)
+	end
+	PlotService.SetLook(plot, plot.look)
 end
 
 -- Called by DataService after the player's data has been saved
@@ -897,6 +1121,7 @@ function PlotService.Release(player: Player)
 	plot.owner = nil
 	plot.model:SetAttribute("OwnerUserId", 0)
 	PlotService.SetWindows(plot, {}) -- nor its windows
+	PlotService.SetRooms(plot, {}, false) -- the next owner starts with the rooms locked
 	PlotService.SetLook(plot, nil) -- the next owner never sees this one's look
 	plot.floor.Color = PlotConfig.FREE_COLOR
 	plot.signLabel.Text = PlotConfig.FREE_SIGN_TEXT

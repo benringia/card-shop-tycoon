@@ -14,6 +14,9 @@ local Packs = require(Config:WaitForChild("Packs"))
 local Pricing = require(Config:WaitForChild("Pricing"))
 local UIIcons = require(Config:WaitForChild("UIIcons"))
 local PlotConfig = require(Config:WaitForChild("Plots"))
+local RoomsConfig = require(Config:WaitForChild("ShopRooms"))
+local PlacementConfig = require(Config:WaitForChild("Placement"))
+local ShopRooms = require(Shared:WaitForChild("Util"):WaitForChild("ShopRooms"))
 local Products = require(Config:WaitForChild("Products"))
 local OrderRules = require(Shared:WaitForChild("Util"):WaitForChild("OrderRules"))
 local Bulk = require(Config:WaitForChild("Bulk"))
@@ -844,8 +847,11 @@ local function searchShelves(customer: Customer, visited: { [string]: boolean })
 		return rng:NextInteger(1, count)
 	end)
 	if toMiddle then
-		local floor = customer.plot.floor.Position
-		walkTo(customer, Vector3.new(floor.X, floorTop(customer.plot), floor.Z))
+		-- the middle of the hall (the floor's middle is near its back wall since the shop rooms)
+		local grid = ShopRooms.grid(PlotConfig.WIDTH, PlotConfig.DEPTH, PlacementConfig.GRID_SIZE)
+		local x, z = ShopRooms.toLocal(grid, ShopRooms.hallRect(RoomsConfig, grid))
+		local middle = (customer.plot.floor.CFrame * CFrame.new(x, 0, z)).Position
+		walkTo(customer, Vector3.new(middle.X, floorTop(customer.plot), middle.Z))
 		if not customer.alive then
 			return
 		end

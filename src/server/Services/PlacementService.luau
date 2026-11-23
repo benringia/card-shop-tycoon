@@ -14,6 +14,8 @@ local Shelves = require(Config:WaitForChild("Shelves"))
 local Products = require(Config:WaitForChild("Products"))
 local Packs = require(Config:WaitForChild("Packs"))
 local PlacementConfig = require(Config:WaitForChild("Placement"))
+local RoomsConfig = require(Config:WaitForChild("ShopRooms"))
+local ShopRooms = require(Shared:WaitForChild("Util"):WaitForChild("ShopRooms"))
 local Broke = require(Config:WaitForChild("Broke"))
 local BrokeRules = require(Shared:WaitForChild("Util"):WaitForChild("BrokeRules"))
 local ShowcaseConfig = require(Config:WaitForChild("Showcase"))
@@ -1105,8 +1107,9 @@ function PlacementService.DevPlace(player: Player, shelfId: string): boolean
 	if full then
 		return false
 	end
-	local grid = PlacementConfig.GRID_SIZE
-	local gridX, gridZ = nearestFreeCell(plot, def.size, PlotConfig.WIDTH // grid // 2, PlotConfig.DEPTH // grid // 2, 0, nil)
+	-- from the hall's middle (the floor's middle is near its back wall since the shop rooms)
+	local startX, startZ = ShopRooms.hallMiddleCell(RoomsConfig, ShopRooms.grid(PlotConfig.WIDTH, PlotConfig.DEPTH, PlacementConfig.GRID_SIZE))
+	local gridX, gridZ = nearestFreeCell(plot, def.size, startX, startZ, 0, nil)
 	if not gridX or not gridZ then
 		return false
 	end
