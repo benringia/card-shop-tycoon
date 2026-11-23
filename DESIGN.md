@@ -66,7 +66,8 @@ Order stock (computer) → Restock shelves → Set prices
 - One server = **6 shop plots** around a central street/plaza.
 - Players spawn in the plaza, claim a free plot (or auto-assign on join).
 - Plaza has: leaderboard (richest shops), a "featured shop" sign, later a tournament hall.
-- Plots are fixed size but have **expansion zones** that unlock (walls move back / second room opens).
+- Every plot is the same 50 x 60 building (spec 2026-11-23-shop-rooms-design): a 50 x 40 main hall open from the start
+  and two rooms at the back, the Back Room and the Gallery, behind locked doors the owner unlocks (4.1 "Shop rooms").
 - Other players can walk into your shop and see your shelves and display cases.
 
 **Main town (world pass 1; spec `2026-10-25-main-town-design.md`; done).** A cozy stylized
@@ -229,8 +230,10 @@ words in a tooltip on a hover or a held finger, owner: "remove 'return to town' 
 mobile and desktop version. put it somewhere in an icon with tooltip"; a pill at the top centre before, owner
 2026-11-03; `Combat.HOME_BUTTON`; it hides in fights and with the HUD while the binder or a pack opening fills the
 screen, owner 2026-11-05, `Hud.hideWith`), and the Frontier menu's choices only count
-within `Town.PORTAL_REACH` (16 studs) of the Frontier portal. Plots stand 24 studs apart. The island is x ±130,
-z ±110 (`Town.BOUNDS`): the Baseplate is cut to it and hidden under terrain grass (pavement-type terrain under the street
+within `Town.PORTAL_REACH` (16 studs) of the Frontier portal. Plots stand 14 studs apart (since the shop rooms: 12 studs of open ground between the walls, each gap a garden alley:
+flower rows along both walls, a bench by the street, a small tree and two bushes at the back, placed by
+`tools/town/fit_town_decor place`). The island is x ±130,
+z ±112 (`Town.BOUNDS`; the hedge stands right behind the 60-deep shops, too close to walk into): the Baseplate is cut to it and hidden under terrain grass (pavement-type terrain under the street
 and plain ground under and 5 studs round each shop, so no blades poke through; Roblox draws terrain 2 studs above its
 fill, `TownTerrain.SURFACE_LIFT`). **Day cycle** (`Config/DayCycle`, `Util/DayCycle`, `DayCycleController`): a 19.5-minute
 loop, the same for everyone in town in a server: morning 7 min (the longest), afternoon 5, sunset 4, a 2-minute blue night
@@ -353,7 +356,8 @@ when any player or customer comes within 9 studs, and never collide so paths are
 are the solid wall); a charcoal sign band above the glass carrying the shop sign, with a glowing strip in the shop's
 accent colour under it; a slim flat canopy over the doors with three down-lights; a planter each side of the doorway;
 a flat roof with a slim charcoal parapet (the camera stays under it inside); inside, a light oak floor (grey while for
-rent), a warm greige back feature wall (the same in every shop) and 3 x 3 LED ceiling panels. Each plot has a fixed
+rent), a warm greige feature wall on the hall's back wall (the same in every shop) and 3 x 3 LED ceiling panels over
+the hall (an open room gets its own two). Each plot has a fixed
 accent for the glowing strip under its sign (Mint, Coral, Violet, Gold, Azure, Rose). The checkout counter (6 x 2.5 x 2, low so small cashier pets show) is built in code to match the
 shell (`Town.COUNTER`): a white body on a charcoal plinth, a dark quartz top overhanging the customers' side, a thin
 LED strip in the shop's accent colour under it, and two black pendant lights with warm bulbs hanging from the
@@ -437,6 +441,36 @@ is over UI (`UIKit.pointerBlocked`).
 ### 4.1 Plots
 - Claim on join. Release on leave. Shop layout loads from saved data.
 - Plot owner name + shop name shown on a sign out front. Shop name is player-chosen (filtered with TextService).
+- **Shop rooms** (built 2026-11-24; spec `docs/superpowers/specs/2026-11-23-shop-rooms-design.md`, owner: "a big shop
+  with rooms, the rooms then become the extension. so all the players have same sized shops"): every plot is one
+  50 x 60 building (`Config/Plots`), the same from the street. The main hall (50 x 40, the front 20 cell rows) is open
+  from the start. Its back wall (a 2-stud cell row) has a doorway (8 wide, 10 high) into each of two rooms behind it,
+  the **Back Room** (left as you face the back) and the **Gallery**, 24 x 18 of floor each with a wall between them.
+  All of it is `Config/ShopRooms` (cells, doors, levels, prices) and `Util/ShopRooms` (Lune-tested: the cells nothing
+  may be placed on, the doors and inner walls, the wall faces inside open floor, the window stretches, the caps, the
+  unlock checks).
+  - A locked room: a black door in the doorway with a white lock badge, its name on a dark plate above it, no lights;
+    its floor, the inner walls' rows and an 8 x 4 clear path each side of every door are invisible `BlocksPlacement`
+    parts (`RoomBlocks`, `PlacementMargin` 0), so nothing is placed there and customers' paths never lead in.
+  - The owner's prompt on the door (made on the owner's client, `ShopRoomController`): "Unlock · Back Room · $5,000"
+    with `RequireLevel`, so below the level it shows the lock and the level first. The server (`RoomService`, remote
+    `UnlockRoom`) checks the owner, the distance to the door (`DOOR_REACH` 14), the rate limit, the level and the cash,
+    and every refusal is a big locked card ("Reach shop level 30 to open the Gallery.", "You need $5,000 to open the
+    Back Room."). Paid: the door slides into the wall beside it (`OPEN_SECONDS` 1.2), the plate lights in the shop's
+    accent colour (Neon), the room's two ceiling panels fade up, sparkles and a chime for anyone near, and the owner's
+    toast "Back Room unlocked! More floor and one more customer." The room stays open for good (saved `rooms`).
+  - An open room is plain floor for anything: customers and workers walk in through the door by pathfinding, the
+    shop's look dresses its walls, windows may go in its side wall. Each open room lets **one more customer** in at
+    once (`Customers.MAX_PER_PLOT` 4 is the base: 4, 5, 6) and adds **5 to the shelf cap** (30, 35, 40); the decor cap
+    stays 20.
+  - Levels and prices are placeholders (Back Room shop Lv 15, $5,000; Gallery Lv 30, $20,000) until table card
+    battles (owner 2026-11-23: "we'll figure out the prices later"). The economy simulator's `ROOMS=<0-2>` shows a
+    room's worth: with visits measured at 59 s (street to leaving), 4 customers at once cap a 4-star shop at 4.1 a
+    minute ($441 an hour on First Spark packs), one room 5.1 ($551), both 6.1 ($661), against 6.5 arriving.
+  - Pish teaches each room at its level (lessons `backRoom`, `gallery`, `late` for saves already past it): his paws lead
+    to its door. Opening it first marks the lesson seen. Studio: `/shoproom <open|lock|fill> [backRoom|gallery|all]`
+    (free; locking moves what stood inside out, `PlacementService.Refit`; fill places Small Pack Racks to the cap),
+    the admin panel's "Shop rooms" section.
 
 ### 4.2 Ordering stock
 - Computer in the back room opens the **Order UI** (catalog of products unlocked so far). It is a modern workstation
@@ -535,7 +569,11 @@ is over UI (`UIKit.pointerBlocked`).
   the side or back wall stands `Decor.SHELL.WALL_GAP` (0.2 studs) off it (`DecorRules.offWalls`, used by
   `PlacementGrid.getLocalCFrame` for the server, the ghost and the order computer); the shop look's band, trim and
   crystals lie flat on the wall (`LINER`, `BAND_DEEP`, `TRIM_DEEP`, `CRYSTAL`), so nothing on a wall reaches a shelf
-  (tests/DecorRules). They used to stand 0.3 to 0.8 studs out and cut through a back-row shelf.
+  (tests/DecorRules). They used to stand 0.3 to 0.8 studs out and cut through a back-row shelf. Since the shop rooms
+  the grid is 25 x 30 cells (50 x 60); the inner walls stand in the middle of blocked cell rows, 0.5 studs from the
+  nearest placeable cell, so `offWalls` needs nothing more for them (tests/ShopRooms). Locked rooms, the inner walls'
+  rows and the door paths are blockers with `PlacementMargin` 0 (4.1 "Shop rooms"); a shelf a load finds on one moves
+  to the nearest free cell.
 - **Remove stock** (the shelf's Edit bar): boxes a product shelf's stock back onto the delivery pad, as many boxes as
   the pad has room for.
 - **Editing what you placed: the Edit bar** (owner 2026-11-23, mockup C "Action bar" of three: an object card window,
@@ -695,8 +733,14 @@ is over UI (`UIKit.pointerBlocked`).
   1 s is being stuck: that walk is given up (a walker picks another stop) instead of walking in place.
 - Customer spawn rate scales with **shop rating** (4.7).
 - Keep NPC count capped per plot (start 4 max at once) for performance. Use simple rigs, no fancy animations at first.
+  Since the shop rooms the cap is 4 + 1 for each open room (`Util/ShopRooms.customerCap`; CustomerService's spawns and
+  Pish's sent customer; Studio's `/customer` ignores it). Measured 2026-11-24: a visit holds its place about 59 s from
+  arriving on the street to leaving (26 s inside), so the cap, not the arrivals, sets a busy shop's flow. The register's
+  queue strip is 18 studs (`Plots.QUEUE_ZONE_LENGTH`: 6 customers x 3).
 
 ### 4.6 Register / checkout
+- The counter stands by the left wall (5 studs in) near the hall's back (6 in front of its back wall); since the shop
+  rooms it keeps that spot measured from the hall, not the 60-deep floor's back.
 - Player stands at register, customer puts items on counter, player clicks/taps each item to scan, then confirms payment.
   Sounds at the register (heard nearby, the owner's and a cashier's alike; licensed PSE, owner 2026-11-16): a checkout
   beep on every scan (`Register.SCAN_SOUND_ID`), the drawer opening under a bright ding on every sale (`SALE_SOUNDS`).
@@ -855,14 +899,15 @@ for launch, plushies after). Cash only, no Robux.
   insides, bought once in the Decor tab and switched free after (remote `ShopLook` "buy" / "use"; every refusal a
   Blocked card): Cozy Wood (free, every shop's default), Candy Pastel ($500, Lv 3), Enchanted Forest ($1,000, Lv 5),
   Neon Arcade ($2,000, Lv 8, a pink strip near the ceiling), Crystal Cave ($3,500, Lv 12, glowing crystals along the
-  walls), Starry Night ($5,000, Lv 16). A look recolours the floor and back wall, lines the side walls, lays a tiling
-  wallpaper on all three (Figma-generated, made seamless by `tools/textures/make_seamless.py`,
+  walls), Starry Night ($5,000, Lv 16). A look recolours the floor and every wall face inside open floor
+  (`Util/ShopRooms.runs`: the hall's side walls, its back wall's feature wall cut round the doorways, each open room's
+  four faces; a locked room stays bare), lays a tiling wallpaper on them (Figma-generated, made seamless by `tools/textures/make_seamless.py`,
   `assets/ui/decor-wallpapers`, 16 studs a repeat) and runs a panel band with a glowing trim along their bottoms;
   the outside never changes. Visitors see it; a released plot goes back to plain. The owner's client reads the
   attributes `ShopLook` and `ShopLooksOwned`; the Decor tab's look tiles (`Util/LookTiles`) show a swatch and
   "Using" / "Use" / the price / "Lv N". Saved as `decor` (v25).
 - [x] **Decor pieces** (`Config/Shelves` kind "Decor"): twelve, placed, moved and sold (half back) like shelves, up
-  to 20 a shop (`Placement.MAX_DECOR_PER_PLOT`, apart from the 30 shelves; at the cap a Blocked card): Potted Plant
+  to 20 a shop (`Placement.MAX_DECOR_PER_PLOT`, apart from the 30 shelves, +5 a shop room; at the cap a Blocked card): Potted Plant
   ($80, Lv 1, 1 point), Star Rug ($150, Lv 1, 1, walked over), Floor Lamp ($120, Lv 2, 1, a small shadowless light),
   Beanbag ($200, Lv 2, 1), Balloon Bunch ($250, Lv 3, 1), Booster Box Tower ($400, Lv 4, 2, a glowing star on top),
   Element Pennants ($500, Lv 5, 2), Play Table ($900, Lv 7, 2: a play mat with cards and two stools), Card Frame
@@ -881,7 +926,7 @@ for launch, plushies after). Cash only, no Robux.
 - [x] **Windows** (spec `docs/superpowers/specs/2026-11-14-shop-windows-design.md`; owner: "I want an actual window
   player can put on their walls not a painting"): real see-through windows cut into the shop's side and back walls (the
   town shows through, people outside see in), bought from the Decor tab (after the looks) and placed on a wall: a
-  see-through ghost window slides along the side or back wall under the pointer, snapping every 2 studs, green where it
+  see-through ghost window slides along a side wall (since the shop rooms; posters also on the hall's back wall) under the pointer, snapping every 2 studs, green where it
   fits, red with the reason where it doesn't (`WindowController`); the bottom always 4.7 studs up (1 over the decor
   band), never on the glass front, 1 stud from the corners and between windows; shelves may stand in front of them.
   Five styles (`Config/Windows`, code-built by `Util/WindowLooks`, round and arched tops filled round the curve so every
@@ -4396,8 +4441,11 @@ styles in `Config/Windows` (a `poster` picture), in the Decor tab after the wind
   "Asleep since Monday"). Scenes from Figma's image generator with no text (`assets/ui/posters/art`; Figma file nodes
   189:2-189:6); the jokes are put on by `tools/ui-art/make_posters.py` (Fredoka), so they're easy to reword; uploaded
   as images (512 x 768).
-- **Where** (`WindowRules.canPlace`): on a side or back wall inside (the windows' grid; never overlapping a window or
-  another poster), or on the shop front's glass: the two outer panes each side of the door (`WindowRules.frontSpots`,
+- **Where** (`WindowRules.canPlace` over the shop's wall stretches, `Util/ShopRooms.windowSpans`; spec
+  2026-11-23-shop-rooms-design): a window on a side wall's hall stretch, or a room's stretch once that room is open
+  ("Open the Back Room first."); a poster also on the hall's back wall between the doorways (the windows' grid; never
+  overlapping a window or another poster; 1 stud from a stretch's ends), or on the shop front's glass (52 wide since the
+  rooms: its poster panes moved to +-16 and +-22.7): the two outer panes each side of the door (`WindowRules.frontSpots`,
   one poster a pane). Never on the doors or the inner pane a door leaf rests on when open; windows still can't go on
   the front. The front's panes carry `WallSide = "front"` so the placing ghost finds them.
 - **How**: a Decor tab tile ("Free") starts placing: the ghost follows the pointer along the walls and the front
@@ -4484,8 +4532,8 @@ materials. make sure the costs are fair", layout A of two mockups (artifact Ujbn
   walks you to it in the Shop once you can pay for it, then says what it's for beside it ("Walk up and press
   Recycle.", "Extra cards turn into upgrade stuff or coins!", "Cards you still need always stay safe."). A new
   player gets it on reaching Lv 12; a save already past Lv 12 gets it at its next join, once (`LessonRules.late`,
-  TutorialService's load: the only lesson that comes for an old unlock). It is a main quest too ("Build the
-  Recycler", +80 shop XP). Studio: `/tutorial lesson recycler`.
+  TutorialService's load; the shop rooms' `backRoom` and `gallery` lessons came the same way, 4.1 "Shop rooms"). It is
+  a main quest too ("Build the Recycler", +80 shop XP). Studio: `/tutorial lesson recycler`.
 
 ### 7.20 Boss keys catch up (built 2026-11-21)
 Owner 2026-11-21: "my tester is already level 50 and he hasnt been to the rift boss yet which unlocks at level 43",
@@ -4768,6 +4816,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── RatingService.luau    # shop rating: parts, smoothing, the sign's stars, RatingUpdate, the spawn gap
     │   │   ├── DecorService.luau     # shop looks: the look in use and bought (saved `decor`), ShopLook buy/use, PlotService.SetLook
     │   │   ├── WindowService.luau    # shop windows: saved `windows`, PlaceWindow / MoveWindow / SellWindow, DecorAchieved
+    │   │   ├── RoomService.luau      # shop rooms: saved `rooms`, UnlockRoom (level, cash, Blocked), Studio /shoproom
     │   │   ├── PackService.luau      # server-side pack rolls (one, or a stack at once for Open 10)
     │   │   ├── BulkService.luau      # the Bulk Bin's Add extras: the binder's extra Commons in, 5 to a handful
     │   │   ├── RecyclerService.luau  # the Recycler: extra Rares to Legendaries into upgrade materials (DESIGN 7.19)
@@ -4909,6 +4958,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── CardEffectsController.luau # displayed cards: card face with price, halo, glows, sparkles, listing bursts
     │   │   ├── CaseSpinController.luau # case cards float, turn and bob over a pad and beam in their rarity colour, a spiral light and sparkles (within range)
     │   │   ├── DecorSpinController.luau # the Card Pedestals' floating cards turn (shop decor, within range)
+    │   │   ├── ShopRoomController.luau # the owner's Unlock prompt on each locked room door; a room's opening sparkles
     │   │   └── WindowController.luau # the Decor tab's window tiles, placing a window on a wall, its Edit prompt
     │   └── Util/
     │       ├── UIKit.luau              # shared UI building helpers and the style (header, close, lip buttons)
@@ -5004,7 +5054,8 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
         │   ├── Products.luau   # stock catalog
         │   ├── Shelves.luau
         │   ├── Decor.luau      # shop decor: the six looks, decor points, wallpapers, the pieces' glow colours and pictures (plain data)
-        │   ├── Plots.luau      # plot layout and fixtures
+        │   ├── Plots.luau      # plot layout and fixtures (the 50 x 60 building)
+        │   ├── ShopRooms.luau  # the hall and its two rooms: cells, doors, levels, prices, caps per room
         │   ├── Economy.luau    # starting cash/level
         │   ├── Stock.luau      # delivery, carrying
         │   ├── OrderComputer.luau # the order computer's store: its name and words, sizes, colours (plain data)
@@ -5120,6 +5171,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── ItemRules.luau     # item inventory rules (pure, Lune-tested)
             ├── Place.luau         # which place this is; its wild-map config
             ├── TownLayout.luau    # where every town decoration goes (pure, Lune-tested)
+            ├── ShopRooms.luau     # shop rooms: cells, doors, inner walls, wall faces, window stretches, caps, unlocks
             ├── PortalTrails.luau  # portal trails, the walkable edge, portal reach (pure, Lune-tested)
             ├── TownTerrain.luau   # the town's terrain as fills; ground height (pure, Lune-tested)
             ├── DayCycle.luau      # the day cycle's phases and blended looks (pure, Lune-tested)
@@ -5253,7 +5305,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v39)
+### 10.4 Player data schema (v42)
 ```lua
 {
     version = 21,
@@ -5340,6 +5392,13 @@ Anyone else's `/slot` does nothing. (`SaveSlotService`, pure `Server/Util/SaveSl
 
 Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; v17 added `tutorial` (the first visit with Pish; existing saves "done" with their first pack given and his gift still to come, so only new players go through it); each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity); `tutorial` gained `customerSent` (read as false when missing, true for v17's existing shops; no bump: an older server dropping it allows one more of Pish's customers). v18 added `combat` (Chikin's combat tutorial, the same shape; done for every shop past Pish's tour, still to do for a player mid-way through it). v19 added `dungeon` (`secretFound` and `seenIntro` false for everyone; a junk value is replaced). v20 added `title` ("" for everyone: automatic, the same title as before; a saved string kept, junk replaced). v21 added `upgrades`, `skipTokens` and `purchases` (empty for everyone; a good skip count kept, junk replaced). v22 added `support` (no gifts for everyone; good counts kept). v23 added `titles` (`known`, `fresh` empty, `seeded` false: the first load counts the titles a player already has without telling). v24 added `turts` (nothing bought for everyone; good ids kept, a broken "restock now" roll dropped). v25 added `decor` (Cozy Wood in use and no looks bought for everyone; good ids kept, cleaned against Config/Decor on load). v26 added `windows` (none for everyone; a saved list kept and cleaned on load by `WindowRules.clean`, which pays back any window that no longer fits). v27 added `luck` (no bought luck for everyone). v28 added `unlocks` (none for everyone). v29 added `seenPrologue` (true for every save from before it, so the prologue only greets new players). v30 added `gifts` (the round at day 1, nothing played or earned, for everyone; a saved table kept and cleaned on load by `GiftRules.clean`). v31 kept `combat`'s shape but reordered Chikin's steps (the sword and a fight with it in his first visit): a tour in progress keeps its place by step name. v32 added `tips` (none seen for everyone; a saved table kept and cleaned on load by `TipRules.clean`). v33 added `quests` and `lastSeen`; v34 added `weekly`. v35 kept `tutorial`'s shape but put Pish's "summonPal" step second (owner 2026-11-17): a saved step from 2 on moves one along, so a tour in progress keeps its place. v36 added `mainQuests` (none paid for everyone; the items standing in the shop at load count as paid). v37 added `events` (Lucky Sunday's luck never given, for everyone; a saved table kept and cleaned on load by `EventRules.clean`). v38 added `codes` (none used, for everyone; a saved list kept and cleaned on load by `CodeRules.clean`). v40 changed no shape: it moves `xp` onto the harder curve past Lv 20 at the same level and progress (owner 2026-11-20, 7.2). v39 changed no shape: it drops `posters`, a field built and removed the same day and never released (posters are decor in `windows` now, as `Config/Windows` poster styles). A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data. v41 added `stats.bossKills` (the plaza's boss kills ranking), starting at the number of bosses the save has cleared.
+v42 (the shop rooms) added `rooms` (the unlocked Config/ShopRooms ids, none at first) and moved every layout into the
+wider 50 x 60 building: nothing moves away from the street; a thing whose edge stood within 4 studs of a side wall stays
+by that wall, the rest keep their place from the middle line (+3 cells), using each thing's turned width (DataService
+passes a footprint function to `Migrations.run`; the order computer too); side windows keep their spot (`at` -10: the
+wall's middle moved back), front posters stay on their pane of the wider front, and a back window is moved by the load
+(`WindowRules.clean`: to the hall's side walls nearest the back, else its price back). Release with "Migrate to latest
+update" so no old server lays a v42 save out on the old floor.
 
 ### 10.6 UI style and HUD
 - **Loading screen: the binder** (owner 2026-11-13, spec `docs/superpowers/specs/2026-11-13-loading-screen-binder-design.md`;
@@ -5732,8 +5791,13 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   stand-in. Landmark exception: the three portal models up to 4k each (`portal_kit.MAX_TRIANGLES`; root arch 3,472,
   ice ring 2,168, obsidian arch 856), one portal in view at a time. About 120 props (107 outdoors, 2 per register), all anchored, none with scripts.
 - Shop screens (SurfaceGuis and BillboardGuis on shop items: card faces and backs, price tags, shelf headers, machine
-  screens, box prints) always get a draw distance (`Config/ShopDetail`: 60 studs, full card faces 30; a Lune test fails
-  a new one without it). Measured 2026-10-30 in a Play-mode stress test (6 shops x 30 items, 24 customers, 12 workers,
+  screens, box prints) always get a draw distance (`Config/ShopDetail`: 66 studs since the shop rooms (60 before: the
+  50 x 40 hall's diagonal and the front door to a room's back corner, not the whole 78-stud building, which would draw
+  the neighbours' screens too), full card faces 30; a Lune test fails a new one without it). Shop rooms, measured
+  2026-11-24 in solo Play (Studio unfocused, so only within the session): a shop with both rooms open and 41 placed
+  things (40 stocked racks' worth, 213 screens on the plot, 194 within draw distance from the street) drew the same
+  render CPU as the same shop with 12 (15.6 vs 15.4 ms from the street, 15.0 inside); a 6-player full server with
+  room-filled shops is still to be measured (a 30-item shop had about 99 screens in the 2026-10-30 test). Measured 2026-10-30 in a Play-mode stress test (6 shops x 30 items, 24 customers, 12 workers,
   6 summoned pets, 6 players), PC render CPU from the street: 14.7-17.5 ms and 45-53 fps before, 10.2-12.3 ms and 60 fps
   after; an empty town is 6.5-7.2 ms. Customers, workers, players and shop lights cost about 0.5 ms each; hiding far
   shops' small parts saved only about 0.5 ms, so it isn't done. The server stays light (heartbeat 0.4 ms, physics 0.8 ms).

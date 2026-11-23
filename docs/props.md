@@ -294,6 +294,13 @@ for it.
   ends (Portal Worlds: `Town.PORTAL_AREAS`; five pieces were moved clear of them on 2026-10-30) and the space round
   the arches and signposts. Anchor everything; no scripts (the Lune test checks `assets/town` too, and the server
   strips them at start).
+- The shop rooms (2026-11-24) made the plots 50 x 60 with 12-stud gaps: `lune run tools/town/fit_town_decor` lists any
+  piece under the roofline that reaches into a shop, `apply` removes them (row-end corner pieces and signposts move
+  clear instead), `place <before.rbxm>` dresses the four gaps as the owner's Garden alley (flower rows, a bench, a
+  small tree, two bushes) from the old gap groups. `tests/TownDecorFit` fails on any piece in a shop and on any tree
+  the game would take away (TownService.clearTrees: a tree that can't keep `Town.LAYOUT.TREE_CLEARANCE` from both
+  walls; Studio boxes a tree in its pivot's frame, which Lune can't read, so the test boxes trees as squares). A piece
+  cloned by Lune keeps its source's pivot, so its move gizmo in Studio sits where the source stood.
 - The scenery outside the island (the portal areas, the hills, the grove between the east trails) is code-built from
   `Config/Scenery` by `SceneryService`, not hand-placed: giant trees and pines are scaled copies of the pieces in
   `assets/props` (a single-mesh piece is wrapped in a Model), standing on the drawn terrain.
