@@ -82,6 +82,18 @@ function TownLayout.clearOf(box: Rect, rects: { Rect }, margin: number): (number
 	return dx, dz, false
 end
 
+-- Whether `box` reaches into any of `rects` grown by `margin` (the hand-placed decor check, tools/town/decor_fit)
+function TownLayout.touches(box: Rect, rects: { Rect }, margin: number): boolean
+	for _, rect in rects do
+		local ox = math.min(box.maxX, rect.maxX + margin) - math.max(box.minX, rect.minX - margin)
+		local oz = math.min(box.maxZ, rect.maxZ + margin) - math.max(box.minZ, rect.minZ - margin)
+		if ox > 0 and oz > 0 then
+			return true
+		end
+	end
+	return false
+end
+
 local function matches(slot: string, name: string): boolean
 	if string.sub(name, 1, #slot) ~= slot then
 		return false

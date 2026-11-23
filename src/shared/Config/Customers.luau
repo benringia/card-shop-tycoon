@@ -9,7 +9,7 @@ local SHORT_HAIR = { 9244021842, 7193386173, 9243992729, 9243987340, 9174354743,
 local LONG_HAIR = { 9244095135, 7193442167, 9244097555, 7193444640, 7193448258, 9244111257, 9244089488, 6993754725, 7193448988, 7193449810, 62724852, 451220849, 2956239660, 3814476174 }
 
 return {
-	MAX_PER_PLOT = 4,
+	MAX_PER_PLOT = 4, -- the base: each open shop room lets one more in (Util/ShopRooms.customerCap, Config/ShopRooms)
 	FIRST_SPAWN_DELAY = 5, -- seconds after a shop is claimed
 	-- A new player's shop: none come until Pish sends his own customer (TutorialRules.holdsCustomers), then the shop's
 	-- own wait this long, so his first sale has the counter to itself (owner 2026-11-16)

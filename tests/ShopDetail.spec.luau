@@ -42,11 +42,17 @@ return {
 		end
 	end,
 
-	["from anywhere in your own shop, every screen in it still draws"] = function()
+	-- The shop rooms (spec 2026-11-23-shop-rooms-design) made the building 50 x 60 behind walls: from anywhere in the
+	-- hall every screen in the hall draws, and from the front door every screen in a room (the whole 78-stud diagonal
+	-- would draw the neighbours' screens too, the cost this file exists to cut)
+	["from anywhere in your shop's hall every screen in it still draws, and a room's from the front door"] = function()
 		local width = number("src/shared/Config/Plots.luau", "WIDTH")
 		local depth = number("src/shared/Config/Plots.luau", "DEPTH")
-		local across = math.sqrt(width * width + depth * depth)
-		assert(ShopDetail.SCREEN_DISTANCE >= across, `SCREEN_DISTANCE {ShopDetail.SCREEN_DISTANCE} is shorter than the shop's diagonal {across}`)
+		local hallDepth = require("../src/shared/Config/ShopRooms").HALL_ROWS * number("src/shared/Config/Placement.luau", "GRID_SIZE")
+		local hallAcross = math.sqrt(width * width + hallDepth * hallDepth)
+		local doorToBack = math.sqrt((width / 2) ^ 2 + depth * depth)
+		assert(ShopDetail.SCREEN_DISTANCE >= hallAcross, `SCREEN_DISTANCE {ShopDetail.SCREEN_DISTANCE} is shorter than the hall's diagonal {hallAcross}`)
+		assert(ShopDetail.SCREEN_DISTANCE >= doorToBack, `SCREEN_DISTANCE {ShopDetail.SCREEN_DISTANCE} is shorter than the door to a room's back corner {doorToBack}`)
 	end,
 
 	["cards show their full face as far as a shelf can be tapped for info"] = function()

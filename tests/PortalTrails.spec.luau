@@ -14,9 +14,9 @@ local expect = require("./lib/expect")
 local WORLD = {
 	plotCount = 6,
 	perRow = 3,
-	plotWidth = 40,
-	plotDepth = 40,
-	gap = 24,
+	plotWidth = 50,
+	plotDepth = 60,
+	gap = 14,
 	streetWidth = 96,
 	portals = {},
 	spring = { x = wild.SPRING.x, z = wild.SPRING.z },

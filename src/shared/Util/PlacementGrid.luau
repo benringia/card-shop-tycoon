@@ -91,8 +91,10 @@ function PlacementGrid.getBlockedRects(plotModel: Model, plotCFrame: CFrame, ign
 		if id ~= nil and id == ignoreId then
 			continue
 		end
-		-- Shelves may sit side by side; fixed fixtures keep a walking gap
-		local margin = if uid ~= nil then 0 else PlacementConfig.RESERVED_MARGIN
+		-- Shelves may sit side by side; fixed fixtures keep a walking gap; a blocker may set its own (the shop rooms'
+		-- walls, door paths and locked floors: PlacementMargin 0, Util/ShopRooms.blockers)
+		local own = instance:GetAttribute("PlacementMargin")
+		local margin = if uid ~= nil then 0 elseif typeof(own) == "number" then own else PlacementConfig.RESERVED_MARGIN
 		table.insert(rects, PlacementGrid.partToRect(plotCFrame, instance, margin))
 	end
 	return rects

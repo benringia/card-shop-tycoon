@@ -19,9 +19,9 @@ end
 local WORLD: TownLayout.World = {
 	plotCount = 6,
 	perRow = 3,
-	plotWidth = 40,
-	plotDepth = 40,
-	gap = 24,
+	plotWidth = 50,
+	plotDepth = 60,
+	gap = 14,
 	streetWidth = 96,
 	portals = {
 		{ x = wild.PLAZA_PORTAL.x, z = wild.PLAZA_PORTAL.z, y = wild.PLAZA_PORTAL.y },
@@ -52,17 +52,31 @@ local function count(placements: { TownLayout.Placement }, slot: string): number
 end
 
 return {
+	-- Shop rooms (spec 2026-11-23-shop-rooms-design): the 60-deep shops reach the hedge; nothing walkable is left behind
+	["the hedge stands right behind the shops: no gap a player fits in"] = function()
+		local backWall = 96 / 2 + 60 + town.WALL_THICKNESS -- Config/Plots STREET_WIDTH 96, DEPTH 60 (Lune can't load Plots)
+		local curb = town.BOUNDS.HALF_Z - town.LAYOUT.EDGE_FENCE_INSET - 0.9 -- the hedge's curb is 1.8 deep (Util/Props)
+		expect.equal(curb - backWall >= 0, true, "the hedge clears the wall")
+		expect.equal(curb - backWall < 1, true, "too narrow to walk into")
+	end,
+
+	["touches: a box against a shop's wall, and one clear of it"] = function()
+		local rects = { { minX = -25, maxX = 25, minZ = 48, maxZ = 108 } }
+		expect.equal(TownLayout.touches({ minX = 25.5, maxX = 27, minZ = 60, maxZ = 62 }, rects, 1), true)
+		expect.equal(TownLayout.touches({ minX = 26.5, maxX = 30, minZ = 60, maxZ = 62 }, rects, 1), false)
+	end,
+
 	["plot rects match the plot grid"] = function()
 		local rects = TownLayout.plotRects(WORLD)
 		expect.equal(#rects, 6, "rect count")
-		expect.equal(rects[1].minX, -84, "rect 1 minX")
-		expect.equal(rects[1].maxX, -44, "rect 1 maxX")
-		expect.equal(rects[1].minZ, -88, "rect 1 minZ")
+		expect.equal(rects[1].minX, -89, "rect 1 minX")
+		expect.equal(rects[1].maxX, -39, "rect 1 maxX")
+		expect.equal(rects[1].minZ, -108, "rect 1 minZ")
 		expect.equal(rects[1].maxZ, -48, "rect 1 maxZ")
-		expect.equal(rects[6].minX, 44, "rect 6 minX")
-		expect.equal(rects[6].maxX, 84, "rect 6 maxX")
+		expect.equal(rects[6].minX, 39, "rect 6 minX")
+		expect.equal(rects[6].maxX, 89, "rect 6 maxX")
 		expect.equal(rects[6].minZ, 48, "rect 6 minZ")
-		expect.equal(rects[6].maxZ, 88, "rect 6 maxZ")
+		expect.equal(rects[6].maxZ, 108, "rect 6 maxZ")
 	end,
 
 	["nothing inside a plot footprint"] = function()
@@ -331,21 +345,21 @@ return {
 	-- any tree whose footprint reaches into a shop out of it, the short way, with a little air
 	["a tree whose canopy reaches into a shop is moved out of it the short way"] = function()
 		local rects = TownLayout.plotRects(WORLD)
-		local shop = rects[1] -- x -84..-44, z -88..-48
-		expect.equal(shop.minZ, -88)
+		local shop = rects[1] -- x -89..-39, z -108..-48 (50 x 60 since the shop rooms)
+		expect.equal(shop.minZ, -108)
 		-- behind the shop: its canopy 2.5 studs through the back wall
-		local dx, dz = TownLayout.clearOf({ minX = -71, maxX = -51, minZ = -106, maxZ = -85.5 }, rects, 2)
+		local dx, dz = TownLayout.clearOf({ minX = -76, maxX = -56, minZ = -126, maxZ = -105.5 }, rects, 2)
 		expect.equal(dx, 0)
 		expect.near(dz, -(2.5 + 2), 1e-6, "back out of the wall, plus the air")
 		-- beside the shop: 3 studs through the side wall
-		dx, dz = TownLayout.clearOf({ minX = -100, maxX = -81, minZ = -60, maxZ = -42 }, rects, 2)
+		dx, dz = TownLayout.clearOf({ minX = -105, maxX = -86, minZ = -60, maxZ = -42 }, rects, 2)
 		expect.near(dx, -(3 + 2), 1e-6, "sideways, away from the shop")
 		expect.equal(dz, 0)
-		-- a tree in the gap between two shops, wider than the gap: it can't clear both, so it's left for removal
-		local _, _, stuck = TownLayout.clearOf({ minX = -46, maxX = -18, minZ = -80, maxZ = -60 }, rects, 2)
+		-- a tree in the gap between two shops, wider than the gap (14): it can't clear both, so it's left for removal
+		local _, _, stuck = TownLayout.clearOf({ minX = -41, maxX = -23, minZ = -80, maxZ = -60 }, rects, 2)
 		expect.equal(stuck, true, "no room: the caller takes it away")
-		-- a tree well away from every shop stays
-		dx, dz, stuck = TownLayout.clearOf({ minX = -10, maxX = 10, minZ = -120, maxZ = -100 }, rects, 2)
+		-- a tree well away from every shop (in the street) stays
+		dx, dz, stuck = TownLayout.clearOf({ minX = -10, maxX = 10, minZ = -20, maxZ = 0 }, rects, 2)
 		expect.equal(dx, 0)
 		expect.equal(dz, 0)
 		expect.equal(stuck, false)

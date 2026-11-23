@@ -11,9 +11,9 @@ local expect = require("./lib/expect")
 -- Plot numbers copied from Config/Plots (it holds Color3 and Vector3 values, so Lune can't load it)
 local WORLD: WalkerRules.World = {
 	perRow = 3,
-	plotWidth = 40,
-	plotDepth = 40,
-	gap = 24,
+	plotWidth = 50,
+	plotDepth = 60,
+	gap = 14,
 	streetWidth = 96,
 	spring = { x = Wild.SPRING.x, z = Wild.SPRING.z },
 }

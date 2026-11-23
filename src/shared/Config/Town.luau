@@ -103,8 +103,10 @@ return {
 		COLORS = { { 255, 150, 210 }, { 140, 210, 255 }, { 255, 230, 120 }, { 190, 150, 255 }, { 150, 240, 190 } },
 	},
 
-	-- The island inside the hedge (the Baseplate is cut to this size); the invisible walls follow WALK_EDGE
-	BOUNDS = { HALF_X = 130, HALF_Z = 110, WALL_HEIGHT = 60 },
+	-- The island inside the hedge (the Baseplate is cut to this size); the invisible walls follow WALK_EDGE. HALF_Z 112
+	-- (110 until the shop rooms, spec 2026-11-23-shop-rooms-design): the 60-deep shops' back walls end at 109 and the
+	-- hedge's curb stands right behind them, too close to walk into
+	BOUNDS = { HALF_X = 130, HALF_Z = 112, WALL_HEIGHT = 60 },
 	-- Portal Worlds (spec 2026-10-30-town-portal-worlds-design): each portal stands in its own area at the end of a
 	-- trail from the street's end (Util/PortalTrails). Order matches TownService's portals (Wild, Frontier, Arena);
 	-- each trail's last point is that portal's spot (Wild.PLAZA_PORTAL, Places.FRONTIER_PORTAL, Pvp.ARENA_PORTAL).
@@ -138,11 +140,11 @@ return {
 	},
 	-- Where players can walk: the island plus the three trails and clearings (the invisible walls run along it)
 	WALK_EDGE = {
-		{ x = -130, z = -110 }, { x = 130, z = -110 }, { x = 130, z = -45 }, { x = 140, z = -60 }, { x = 150, z = -90 },
+		{ x = -130, z = -112 }, { x = 130, z = -112 }, { x = 130, z = -45 }, { x = 140, z = -60 }, { x = 150, z = -90 },
 		{ x = 150, z = -165 }, { x = 230, z = -165 }, { x = 230, z = -85 }, { x = 178, z = -80 }, { x = 158, z = -45 },
 		{ x = 140, z = -15 }, { x = 140, z = 15 }, { x = 160, z = 48 }, { x = 180, z = 85 }, { x = 235, z = 90 },
 		{ x = 235, z = 170 }, { x = 150, z = 170 }, { x = 150, z = 98 }, { x = 140, z = 62 }, { x = 130, z = 45 },
-		{ x = 130, z = 110 }, { x = -130, z = 110 }, { x = -130, z = 24 }, { x = -225, z = 24 }, { x = -225, z = -24 },
+		{ x = 130, z = 112 }, { x = -130, z = 112 }, { x = -130, z = 24 }, { x = -225, z = 24 }, { x = -225, z = -24 },
 		{ x = -130, z = -24 },
 	},
 	-- Trails: width, the hedge gap round each exit, walk lengths the user chose (studs; 16 studs/s walking)
@@ -584,8 +586,10 @@ return {
 		LEAVES = { 70, 140, 85 },
 		CEILING = { 250, 250, 252 },
 		PANEL = { 255, 252, 245 }, -- LED ceiling panels
+		-- the hall's panels, studs from the hall's middle (Util/ShopRooms; the rooms' own come from Config/ShopRooms
+		-- PANEL_OFFSETS once open); the middle row carries the SurfaceLights
 		PANEL_ROWS = { -12, 0, 12 },
-		PANEL_COLS = { -13, 0, 13 },
+		PANEL_COLS = { -16, 0, 16 },
 		PANEL_SIZE = { 6, 3 },
 		PANEL_RANGE = 20,
 		PANEL_BRIGHTNESS = 0.45,

@@ -3,7 +3,10 @@
 -- street full of shops stays light on phones: a full server's 594 shop screens cost 5.4 ms a frame on a PC before.
 -- Plain data, read by Lune tests.
 return {
-	SCREEN_DISTANCE = 60, -- studs: price tags, shelf headers, machine screens and box prints stop drawing beyond this
+	-- studs: price tags, shelf headers, machine screens and box prints stop drawing beyond this. 66 (60 until the shop
+	-- rooms): the 50 x 40 hall's diagonal (64) and the front door to a room's back corner (65), not the whole building's
+	-- 78, which would draw the neighbours' screens too
+	SCREEN_DISTANCE = 66,
 	FULL_CARD_DISTANCE = 30, -- studs: closer, a displayed card shows its full face; further, a flat picture of its art
 	FLAT_BACK_COLOR = { 75, 45, 165 }, -- a displayed card's back and edges from afar (the card back's violet)
 }

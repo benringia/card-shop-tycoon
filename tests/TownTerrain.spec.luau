@@ -13,9 +13,9 @@ local expect = require("./lib/expect")
 local PLOTS = TownLayout.plotRects({
 	plotCount = 6,
 	perRow = 3,
-	plotWidth = 40,
-	plotDepth = 40,
-	gap = 24,
+	plotWidth = 50,
+	plotDepth = 60,
+	gap = 14,
 	streetWidth = 96,
 } :: any)
 local OPS = TownTerrain.ops(scenery, town, PLOTS)

@@ -18,7 +18,7 @@ local function places(): { any }
 	return list
 end
 
-local BOUNDS = { HALF_X = 130, HALF_Z = 110 }
+local BOUNDS = { HALF_X = 130, HALF_Z = 112 }
 
 return {
 	-- The Frontier valley (spec 2026-11-10-frontier-valley-design, plan Task 6): its areas' and arenas' own music
@@ -109,7 +109,7 @@ return {
 		expect.equal(MusicRules.inTown(0, 0, BOUNDS, 40), true, "the plaza")
 		expect.equal(MusicRules.inTown(-165, 140, BOUNDS, 40), true, "just past the hedge")
 		expect.equal(MusicRules.inTown(171, 0, BOUNDS, 40), false, "past the margin east")
-		expect.equal(MusicRules.inTown(0, -151, BOUNDS, 40), false, "past the margin south")
+		expect.equal(MusicRules.inTown(0, -153, BOUNDS, 40), false, "past the margin south")
 		expect.equal(MusicRules.inTown(900, 400, BOUNDS, 40), false, "the Wild valley")
 	end,
 
