@@ -200,7 +200,7 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - `wally install` — fetch packages after cloning or changing `wally.toml`
 - `lune run tools/economy/sim [players]` — economy simulator: hours to first Epic, first Legendary and a Grade S
   Legendary with 1 star, from the real odds, pity, grading costs and shop profit (Monte Carlo); kid offers bought and a
-  4-star shop's customer flow by default (`NO_KIDS=1` without the offers, `RATING=3` at today's flow; `LEVEL=<n>` the shop level for the customers, default past a new shop's boost)
+  4-star shop's customer flow by default (`NO_KIDS=1` without the offers, `RATING=3` at today's flow; `LEVEL=<n>` the shop level for the customers, default past a new shop's boost; `ROOMS=<0-2>` the shop rooms open: the flow then capped by the 4 + ROOMS customers that fit inside at `VISIT=<seconds>` a visit, default 59, measured)
 - `lune run tools/balance/bosses [fights] [players] [boss]` — boss balance: win rates per boss for parties at 0.8x / 1x /
   1.3x the recommended Power, a typical party (best card at it, two at 60%) and one maxed Legendary with two Lv 1 cards,
   each for a player who stands still and one who fights well with the sword (targets: well 85% at 1x / 50% at 0.8x,

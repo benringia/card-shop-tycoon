@@ -5,7 +5,8 @@
 --   NO_KIDS=1 in front: no kid offers (spec 2026-11-06-customers-design); RATING=<1-5>: the shop rating (default 4, a
 --   well-run shop; 3 is the customer flow before the rating existed); WEAPONS=1: the weapons' cash sink first (an
 --   Ember Forge Sword, the Verdant Blade and its upgrades to +5, Config/Weapons through WeaponRules), paid from the
---   shop's profit before the packs (weapons round 1, spec 4.6)
+--   shop's profit before the packs (weapons round 1, spec 4.6); ROOMS=<0-2>: that many shop rooms open, the flow then
+--   capped by the customers that fit inside at VISIT=<seconds> a visit (spec 2026-11-23-shop-rooms-design)
 --
 -- The player modelled (an early-game shop, DESIGN.md 7.5): stocks only First Spark packs at market price, so customers
 -- buy them; the shop earns while the player opens packs with the profit, one every OPEN_SECONDS. No monsters, no card
@@ -55,9 +56,23 @@ local function weaponSink(): number
 end
 local WEAPON_SINK = if process.env.WEAPONS == "1" then weaponSink() else 0
 
--- Customer timing from Config/Customers, the gap scaled by the shop rating (RatingRules)
+-- The shop rooms (spec 2026-11-23-shop-rooms-design): ROOMS=<0-2> open rooms let Customers.MAX_PER_PLOT + ROOMS
+-- customers in at once, so with ROOMS set the flow is also capped by how many fit: that many every VISIT seconds (a
+-- customer's place held from arriving on the street to leaving; VISIT=<seconds>, the default measured in Studio).
+-- Unset: today's model, arrivals only
+local ROOMS = tonumber(process.env.ROOMS or "")
+-- measured 2026-11-24 in Studio: 55-64 s from arriving on the street to leaving (26 s of it inside), a 4-star Lv 27 shop
+-- with a Cashier at work
+local VISIT = tonumber(process.env.VISIT or "") or 59
+
+-- Customer timing from Config/Customers, the gap scaled by the shop rating (RatingRules), capped by the room inside
 local function customersAt(level: number): number
-	return 60 / ((Customers.SPAWN_INTERVAL_MIN + Customers.SPAWN_INTERVAL_MAX) / 2) / RatingRules.spawnScale(Customers, RATING) / CustomerTypes.newShopGap(Customers, level)
+	local arrivals = 60 / ((Customers.SPAWN_INTERVAL_MIN + Customers.SPAWN_INTERVAL_MAX) / 2) / RatingRules.spawnScale(Customers, RATING) / CustomerTypes.newShopGap(Customers, level)
+	if ROOMS == nil then
+		return arrivals
+	end
+	local inside = Customers.MAX_PER_PLOT + math.clamp(math.floor(ROOMS), 0, 2)
+	return math.min(arrivals, inside * 60 / VISIT)
 end
 local kidShare = if KIDS then Customers.TYPES.kid.weight else 0
 local function itemsAt(level: number): number
@@ -304,6 +319,10 @@ end
 
 print(`Economy simulator: {PLAYERS} players, {PACK_ID} only, opening one every {OPEN_SECONDS}s`)
 print(string.format("Shop rating %.1f (customer gap x%.2f), kid offers %s", RATING, RatingRules.spawnScale(Customers, RATING), if KIDS then "on" else "off"))
+if ROOMS ~= nil then
+	local inside = Customers.MAX_PER_PLOT + math.clamp(math.floor(ROOMS), 0, 2)
+	print(string.format("Shop rooms open: %d, up to %d customers in the shop at %ds a visit (at most %.1f a minute)", math.clamp(math.floor(ROOMS), 0, 2), inside, VISIT, inside * 60 / VISIT))
+end
 if WEAPON_SINK > 0 then
 	print(string.format("Weapons' cash first: $%d (%.1f h of shop profit)", WEAPON_SINK, WEAPON_SINK / (profitPerMinute * 60)))
 end
