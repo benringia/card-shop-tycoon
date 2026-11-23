@@ -96,6 +96,9 @@ local POINT_AT: { [string]: Target } = {
 	prices = { hud = "Prices", tray = true },
 	-- a creature's first faint: his paws lead to the healing spring in the plaza
 	spring = { spot = Vector3.new(Wild.SPRING.x, Wild.SPRING.y + SPOT_HEIGHT, Wild.SPRING.z) },
+	-- a shop room's level: his paws lead to its locked door (Config/ShopRooms ROOMS part; spec 2026-11-23-shop-rooms)
+	backRoom = { part = "BackRoomDoor" },
+	gallery = { part = "GalleryDoor" },
 }
 -- The stuck helper's two nudges (Util/LessonRules.nudge)
 local NUDGES: { [string]: { target: Target, icon: string } } = {
