@@ -32,6 +32,7 @@ local HudGrowConfig = require(Shared:WaitForChild("Config"):WaitForChild("HudGro
 local HudGrow = require(Shared:WaitForChild("Util"):WaitForChild("HudGrow"))
 
 local SoftHud = require(Shared:WaitForChild("Config"):WaitForChild("SoftHud"))
+local BabyColors = require(Shared:WaitForChild("Config"):WaitForChild("BabyColors"))
 
 local Util = script.Parent :: Instance
 local PhoneNotice = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("PhoneNotice"))
@@ -368,6 +369,55 @@ local PHONE = HudLayout.PHONE
 
 local function rgbOf(values: { number }): Color3
 	return Color3.fromRGB(values[1], values[2], values[3])
+end
+
+-- A Config/BabyColors colour by name as a tile's candy (grey-lilac for a name it doesn't know)
+local function candyNamed(name: string): Candy
+	local shades = BabyColors.COLORS[name] or BabyColors.COLORS.greyLilac
+	return { top = rgbOf(shades.light), bottom = rgbOf(shades.fill), deep = rgbOf(shades.deep) }
+end
+
+-- A tile in the HUD's own look for a bar of its own (the Edit bar, EditBarController), outside the HUD's rows. Made
+-- once and repainted (Hud.paintTile): each tile keeps its motion's connections for good
+function Hud.candyTile(parent: Instance, id: string, order: number, onClick: () -> ()): TextButton
+	return makeTile(parent, { id = id, icon = "Box", label = "", group = "Bottom", order = order, onClick = onClick }, candyNamed("greyLilac"))
+end
+
+-- A candy tile's picture, words and colour (a Config/BabyColors name) again; `fade` makes its picture that see-through
+-- (a tile with nothing to do)
+function Hud.paintTile(tile: GuiObject, icon: string, label: string, color: string, fade: number?)
+	local candy = candyNamed(color)
+	setTileIcon(tile, icon)
+	local body = tile:FindFirstChild("Body")
+	local picture = body and body:FindFirstChild("Icon")
+	if picture then
+		for _, image in picture:GetDescendants() do
+			if image:IsA("ImageLabel") then
+				image.ImageTransparency = fade or 0
+			end
+		end
+	end
+	local shadow = body and body:FindFirstChild("IconShadow")
+	if shadow and shadow:IsA("GuiObject") and (fade or 0) > 0 then
+		shadow.Visible = false -- no shadow under a faded picture (setTileIcon puts it back for a full one)
+	end
+	local face = body and body:FindFirstChild("Face")
+	local fill = face and face:FindFirstChild("Fill")
+	if fill and fill:IsA("UIGradient") then
+		fill.Color = gradientOf(candy, 0)
+	end
+	local words = body and body:FindFirstChild("Label")
+	if words and words:IsA("TextLabel") then
+		words.Text = label
+		local edge = words:FindFirstChildOfClass("UIStroke")
+		if edge then
+			edge.Color = candy.deep
+		end
+	end
+	local glow = tile:FindFirstChild("Glow")
+	if glow and glow:IsA("ImageLabel") then
+		glow.ImageColor3 = candy.bottom
+	end
 end
 
 local function spotOf(entry: Entry): CompactHud.Spot
@@ -1202,11 +1252,13 @@ end
 -- / To Bag) hides under it; a short screen's window or Phone reached down over it (owner 2026-11-17: "make sure nothing
 -- is cutoff/overlapping")
 local panelOpen = false
+-- The bottom-centre row alone hidden, by reason (the Edit bar takes its place: EditBarController)
+local bottomHiddenBy: { [string]: boolean } = {}
 
 local function apply(show: boolean)
 	local showTiles = show and next(keepOnlyBy) == nil
 	side.Visible = showTiles
-	bottom.Visible = showTiles and not (compact and (panelOpen or fanOpen))
+	bottom.Visible = showTiles and not (compact and (panelOpen or fanOpen)) and next(bottomHiddenBy) == nil
 	for _, object in hideWithHud do
 		object.Visible = show and not hides(calmPieces[object]) and keptOnly(keepNames[object] or calmPieces[object])
 	end
@@ -1299,6 +1351,12 @@ function Hud.refreshTiles()
 	if side and bottom then
 		apply(next(hiddenBy) == nil)
 	end
+end
+
+-- `reason` hides the bottom-centre row (Cards, Bag, the carry tiles) while something takes its place; false lets go
+function Hud.setBottomHidden(reason: string, hidden: boolean)
+	bottomHiddenBy[reason] = if hidden then true else nil
+	Hud.refreshTiles()
 end
 
 UIKit.onPanelsChanged(function(open: boolean)

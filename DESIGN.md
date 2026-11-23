@@ -491,8 +491,28 @@ is over UI (`UIKit.pointerBlocked`).
   `PlacementGrid.getLocalCFrame` for the server, the ghost and the order computer); the shop look's band, trim and
   crystals lie flat on the wall (`LINER`, `BAND_DEEP`, `TRIM_DEEP`, `CRYSTAL`), so nothing on a wall reaches a shelf
   (tests/DecorRules). They used to stand 0.3 to 0.8 studs out and cut through a back-row shelf.
-- **Remove stock** (shelf Edit menu): boxes a product shelf's stock back onto the delivery pad, as many boxes as
+- **Remove stock** (the shelf's Edit bar): boxes a product shelf's stock back onto the delivery pad, as many boxes as
   the pad has room for.
+- **Editing what you placed: the Edit bar** (owner 2026-11-23, mockup C "Action bar" of three: an object card window,
+  buttons round the object, the action bar; "there should be no normal lists left on the game", then "go C. but change
+  the MOVE icon. For Recycler: change RECYCLE to USE"). Edit (F) on anything in your shop (shelves, cases, machines,
+  trophies, decor, windows, posters) used to open a window of plain rows (title, grey line, button). Now the thing lights
+  up (a mint Highlight on its model) and the bottom-centre tiles (Cards, Bag, the carry tiles) make way for its bar,
+  sliding up in their place: its name, a status chip and one hint line on the left, then up to three candy tiles in the
+  HUD's own look (`Hud.candyTile`, repainted per thing: `Hud.paintTile`) with a short line under each, and the round
+  close button. It isn't a window: the world stays in view, the thumbstick stays, and walking more than 18 studs away
+  closes it, as do its X, a window opening, the thing going, and any tile that hands over (Move, Cards, Use). What a
+  thing offers (`Util/EditBarRules`, tests/EditBarRules): its own use first (a product shelf's Remove, a case's Cards,
+  a machine's Use, the Recycler's too), then Move (a new four-arrow icon, `UIIcons.Move`, one Figma sheet of four takes
+  with three spares kept), then its way out: Sell for half its price, **held down** for 0.8 s (the tile fills from the
+  bottom; a quick tap says "Hold to sell"), a trophy's To Bag, a poster's Take down (both free, no hold). Chips: a
+  shelf's "18 / 24" or "Empty · 0 / 24", a case's "2 / 6 cards", a machine's "Ready to use", "Working · 1:28" or
+  "Done! Open it" (`Util/StationJobs`), a decor piece's points. A tile with nothing to do rests in grey-lilac with its
+  picture faded (Remove on an empty shelf: a tap says so); Sell on a shelf with stock or a case with cards is locked (a padlock, "Empty it
+  first"), and a tap shows the locked card with what to do; the server refuses it the same way (`Blocked.tell`, a
+  toast before). Numbers and colours: `Config/EditBar`; drawn by `EditBarController` (opened by BuildController and
+  WindowController); the shelf hover outline leaves the edited thing alone (its local Editing attribute), and guides
+  wait while it's up (`Util/PlayerBusy`). Phones: the same bar, the hint line dropped and the name column narrower.
 - **Tooltips in the Shop window** (owner 2026-11-17: "add tooltips to the items in shop to explain what Items they hold
   and what they do"): hover a tile (hold a finger on a phone) for its name and two lines, what it holds and what it does
   (`Util/ShopTips`, tests/ShopTips; `Tooltip.rich`): a rack "Holds 24 of your stock: packs, sleeves, deck boxes or booster
@@ -815,7 +835,7 @@ for launch, plushies after). Cash only, no Robux.
   and a flower box on the sill), Arched (4 x 7, $900, Lv 9, wooden), Porthole (4 x 4, $1,200, "Beat the Frost Tyrant",
   a brass plate with rivets), Stained glass (4 x 7, $2,500, "Beat the Prism Hydra", purple, blue, teal and gold panes in
   lead). At most 6 a shop; each 2 decor points toward the rating (stained glass 3). An owner-only Edit prompt on each:
-  Move, or Sell for half its price. Saved `windows` (`{ style, side, at }`, schema 26); `WindowRules.clean` on load pays
+  its Edit bar (4.3) with Move, and Sell for half its price (a poster: Take down). Saved `windows` (`{ style, side, at }`, schema 26); `WindowRules.clean` on load pays
   back any that no longer fit. The walls are drawn round the holes (`PlotService.SetWindows`, `drawWalls`: the white
   wall, the back's feature wall and the look's side liners in pieces, their wallpaper carried on across the pieces;
   each wall part has `WallSide`). Server checks every place, move and sale (`WindowService`, remotes PlaceWindow,
@@ -4701,7 +4721,8 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── WildLoadingController.luau # the Wild's loading screen (the binder): holds you still until the valley round you is in
     │   │   ├── UIController.luau       # main ScreenGui, status corner (cash, level + XP), the toasts' speech bubbles over the cash
     │   │   ├── OrderController.luau
-    │   │   ├── BuildController.luau    # Build menu (category tabs, 3D model tiles), shelf prompts, shelf edit menu
+    │   │   ├── BuildController.luau    # Build menu (category tabs, 3D model tiles), shelf prompts, what a placed thing is for its Edit bar
+    │   │   ├── EditBarController.luau  # the Edit bar (4.3): the thing lit up, its name, chip, hint and candy tiles in the bottom row's place, held Sell
     │   │   ├── PlacementController.luau
     │   │   ├── PricingController.luau
     │   │   ├── RegisterController.luau # checkout panel; the offer panel (kid offer, haggle, counter)
@@ -4901,6 +4922,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
         │   ├── CreamTheme.luau # the windows' colours (cotton candy now), outlines, corners, header bands (plain data)
         │   ├── BabyColors.luau # the cotton candy baby colours, roles, element rims, the soft glow, soft buttons (plain data)
         │   ├── SoftHud.luau    # the squircle HUD tiles: sizes, colours, the squishy hover (plain data)
+        │   ├── EditBar.luau    # the Edit bar's hold, reach, tile colours and icons, sizes, highlight (plain data)
         │   ├── PhoneForm.luau  # the Phone standing up or lying on its side on a short screen (plain data)
         │   ├── ShopTiles.luau  # the Shop window's tiles: the tall one, a phone's row tile, the window's chrome (plain data)
         │   ├── CardReveal.luau # how big each pull's reveal is: tease, rays, spotlight, sparks, banner (plain data)
@@ -5010,6 +5032,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── ShopTips.luau      # what each Shop window item holds and does, for its tooltip (pure)
             ├── ShopTileRules.luau # the Shop window's list height and a phone's row tile (pure, Lune-tested)
             ├── ShelfStock.luau    # stock boxes, display box fill and price tags on shelves (pure, Lune-tested)
+            ├── EditBarRules.luau  # what a placed thing's Edit bar offers: name, chip, hint, tiles, locks, holds (pure, Lune-tested)
             ├── PackModels.luau    # the 3D pack, deck box and display box (assets/packs, or stand-ins), dressed in a pack's look
             ├── ProductPictureRules.luau # a menu row's pack / deck box picture, else its icon (pure, Lune-tested)
             ├── CaseLook.luau      # the code-built CardCase prop, the museum vitrine: pedestal, glow strip, plate, plaque, glass

@@ -181,6 +181,8 @@ else
 	UIController.Start()
 	OrderController.Start()
 	PlacementController.Start()
+	-- the Edit bar on what you placed (before the controllers that open it: Build, Window)
+	require(Controllers:WaitForChild("EditBarController")).Start()
 	BuildController.Start()
 	PricingController.Start()
 	PriceTagController.Start()

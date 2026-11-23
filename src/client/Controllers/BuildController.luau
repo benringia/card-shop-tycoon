@@ -19,6 +19,10 @@ local StockConfig = require(Config:WaitForChild("Stock"))
 local UIStyle = require(Config:WaitForChild("UIStyle"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Props = require(Shared:WaitForChild("Util"):WaitForChild("Props"))
+local EditBarConfig = require(Config:WaitForChild("EditBar"))
+local Upgrades = require(Config:WaitForChild("Upgrades"))
+local EditBarRules = require(Shared:WaitForChild("Util"):WaitForChild("EditBarRules"))
+local UpgradeRules = require(Shared:WaitForChild("Util"):WaitForChild("UpgradeRules"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
@@ -35,8 +39,12 @@ local ShowcaseController = require(Controllers:WaitForChild("ShowcaseController"
 local CondenserController = require(Controllers:WaitForChild("CondenserController"))
 local ForgeController = require(Controllers:WaitForChild("ForgeController"))
 local GradingController = require(Controllers:WaitForChild("GradingController"))
+local EditBarController = require(Controllers:WaitForChild("EditBarController"))
 
 type ShelfDef = typeof(Shelves.List[1])
+
+-- A machine's part name -> its station (Util/StationJobs), for its Edit bar's chip
+local MACHINE_STATIONS: { [string]: string } = { Condenser = "condenser", GradingStation = "grading", Forge = "forge", Recycler = "recycler" }
 
 local CASE_BUYERS = {
 	CustomerCards = "customers buy",
@@ -73,15 +81,6 @@ local BuildController = {}
 local shopPanel: Frame
 local palette: UIKit.Palette -- the cream windows' colours (UIKit.colorsFor), set when the Shop is built
 local shopRows: { ShopRow } = {}
-local editPanel: Frame
-local editTitle: TextLabel
-local sellDetail: TextLabel
-local cardsRow: Frame
-local removeStockRow: Frame
-local condenseRow: Frame
-local gradeRow: Frame
-local moveDetail: TextLabel
-local editingPart: BasePart? = nil
 local shelvesConnection: RBXScriptConnection? = nil
 local computerPrompt: ProximityPrompt? = nil
 local promptsByShelf: { [BasePart]: ShelfPrompts } = {}
@@ -392,69 +391,29 @@ local function buildShopPanel(parent: Instance)
 	player:GetAttributeChangedSignal("DecorAchieved"):Connect(refreshShopRows)
 end
 
-local function openEditPanel(part: BasePart)
+-- A machine's own window (its E prompt, and Use on its Edit bar)
+local function openMachine(part: BasePart)
 	local def = Shelves.ById[part.Name]
-	if not def then
+	if not def or PlacementController.IsActive() then
 		return
 	end
-	local isCase = def.kind == "CustomerCards" or def.kind == "PlayerCards"
-	editingPart = part
-	editTitle.Text = def.name
-	cardsRow.Visible = isCase
-	condenseRow.Visible = def.kind == "Condenser"
-	gradeRow.Visible = def.kind == "Grading"
-	removeStockRow.Visible = def.kind == "Products"
-	moveDetail.Text = if isCase
-		then "Pick a new spot. Cards stay in it."
-		elseif def.kind == "Condenser" or def.kind == "Grading" or def.kind == "Forge" or def.kind == "Recycler" or def.kind == "Trophy" or def.kind == "Decor" then "Pick a new spot."
-		else "Pick a new spot. Stock stays on it."
-	sellDetail.Text = if def.requiresItem
-		then "Put it back in your bag."
-		elseif def.kind == "Decor" then string.format("Get back $%.2f.", getNumberAttribute(part, "Refund", 0))
-		else string.format("Get back $%.2f. Must be empty.", getNumberAttribute(part, "Refund", 0))
-	shopPanel.Visible = false
-	editPanel.Visible = true
-end
-
-local function onCards()
-	local part = editingPart
-	editPanel.Visible = false
-	if part then
-		ShowcaseController.Open(part)
-	end
-end
-
-local function onCondense()
-	local part = editingPart
-	editPanel.Visible = false
-	if part then
+	if def.kind == "Condenser" then
 		CondenserController.Open(part)
-	end
-end
-
-local function onGrade()
-	local part = editingPart
-	editPanel.Visible = false
-	if part then
+	elseif def.kind == "Grading" then
 		GradingController.Open(part)
+	elseif def.kind == "Forge" then
+		ForgeController.Open(part)
+	elseif def.kind == "Recycler" then
+		-- (required here: this file's top level is near Luau's 200 locals)
+		local RecyclerController = require(Controllers:WaitForChild("RecyclerController")) :: any
+		RecyclerController.Open(part)
 	end
 end
 
-local function onRemoveStock()
-	local part = editingPart
-	local uid = part and part:GetAttribute("ShelfUid")
-	editPanel.Visible = false
-	if typeof(uid) == "string" then
-		Remotes.RemoveStock:FireServer(uid)
-	end
-end
-
-local function onMove()
-	local part = editingPart
-	local def = part and Shelves.ById[part.Name]
-	local uid = part and part:GetAttribute("ShelfUid")
-	editPanel.Visible = false
-	if not part or not def or typeof(uid) ~= "string" then
+local function moveShelf(part: BasePart)
+	local def = Shelves.ById[part.Name]
+	local uid = part:GetAttribute("ShelfUid")
+	if not def or typeof(uid) ~= "string" then
 		return
 	end
 	PlacementController.Begin(def.size, {
@@ -469,50 +428,89 @@ local function onMove()
 	})
 end
 
-local function onSell()
-	local part = editingPart
-	local uid = part and part:GetAttribute("ShelfUid")
-	editPanel.Visible = false
-	if typeof(uid) == "string" then
-		Remotes.SellShelf:FireServer(uid)
+-- A machine's job for its Edit bar's chip: running (its time left) or finished and waiting (Util/StationJobs, the
+-- stations' "Ready!" attributes); nil for anything that isn't a machine
+local function machineJob(name: string): EditBarRules.Machine?
+	local station = MACHINE_STATIONS[name]
+	if not station then
+		return nil
 	end
+	local StationJobs = require(ClientUtil:WaitForChild("StationJobs")) :: any
+	local job = StationJobs.get(station)
+	if job then
+		return { working = job.left }
+	end
+	local attribute = Upgrades.READY_ATTRIBUTES[station]
+	return { done = attribute ~= nil and UpgradeRules.showsReady(false, player:GetAttribute(attribute)) }
 end
 
-local function buildEditPanel(parent: Instance)
-	local list: ScrollingFrame
-	editPanel, list = UIKit.panel(parent, "ShelfMenu", "Shelf", "Shop")
-	editTitle = editPanel:FindFirstChild("Title") :: TextLabel
+-- What a placed shelf, case, machine, trophy or decor piece is now, for its Edit bar (Util/EditBarRules); nil once gone
+local function describeShelf(part: BasePart): EditBarRules.Thing?
+	local def = Shelves.ById[part.Name]
+	if not def or not part:IsDescendantOf(workspace) then
+		return nil
+	end
+	local cards = 0
+	for _, child in part:GetChildren() do
+		if child:GetAttribute("CardId") ~= nil then
+			cards += 1
+		end
+	end
+	local productId = part:GetAttribute("ProductId")
+	local product = if typeof(productId) == "string" then Products.ById[productId] else nil
+	return {
+		kind = if def.id == Bulk.SHELF then "Bin" else def.kind :: any,
+		name = def.name,
+		capacity = def.capacity,
+		units = getNumberAttribute(part, "Units", 0),
+		product = if product then product.name else nil,
+		cards = cards,
+		refund = getNumberAttribute(part, "Refund", 0),
+		decor = def.decor,
+		machine = machineJob(part.Name),
+	}
+end
 
-	local cardsButton: TextButton
-	cardsRow, cardsButton = UIKit.row(list, 1, "Cards", "Put cards on display and set prices.")
-	cardsButton.Text = "Cards"
-	cardsButton.Activated:Connect(onCards)
-
-	local condenseButton: TextButton
-	condenseRow, condenseButton = UIKit.row(list, 2, "Condense", "Combine duplicates for +1 star.")
-	condenseButton.Text = "Open"
-	condenseButton.Activated:Connect(onCondense)
-
-	local gradeButton: TextButton
-	gradeRow, gradeButton = UIKit.row(list, 2, "Grade up", "Raise a card's grade with duplicates and cash.")
-	gradeButton.Text = "Open"
-	gradeButton.Activated:Connect(onGrade)
-
-	local removeStockButton: TextButton
-	removeStockRow, removeStockButton = UIKit.row(list, 3, "Remove stock", "Box it up onto the delivery pad.")
-	removeStockButton.Text = "Remove"
-	removeStockButton.Activated:Connect(onRemoveStock)
-
-	local _, moveButton, moveLabel = UIKit.row(list, 4, "Move", "")
-	moveDetail = moveLabel
-	moveButton.Text = "Move"
-	moveButton.Activated:Connect(onMove)
-
-	local _, sellButton, detail = UIKit.row(list, 5, "Sell", "")
-	sellDetail = detail
-	sellButton.Text = "Sell"
-	sellButton.BackgroundColor3 = UIKit.Colors.Danger
-	sellButton.Activated:Connect(onSell)
+-- Edit on a placed thing: its Edit bar (EditBarController, owner 2026-11-23 mockup C) with its own use, Move and Sell
+local function openEdit(part: BasePart)
+	local def = Shelves.ById[part.Name]
+	if not def then
+		return
+	end
+	local function send(remote: RemoteEvent)
+		local uid = part:GetAttribute("ShelfUid")
+		if typeof(uid) == "string" then
+			remote:FireServer(uid)
+		end
+	end
+	EditBarController.Open({
+		target = part:FindFirstChildOfClass("Model") or part, -- the prop drawn on the invisible hitbox part
+		at = part,
+		describe = function()
+			return describeShelf(part)
+		end,
+		icons = { use = (EditBarConfig.ICONS.use :: any)[def.kind] },
+		actions = {
+			use = function()
+				openMachine(part)
+			end,
+			cards = function()
+				ShowcaseController.Open(part)
+			end,
+			unstock = function()
+				send(Remotes.RemoveStock)
+			end,
+			move = function()
+				moveShelf(part)
+			end,
+			sell = function()
+				send(Remotes.SellShelf)
+			end,
+			bag = function()
+				send(Remotes.SellShelf) -- a trophy goes back to the Bag (PlacementService: requiresItem)
+			end,
+		},
+	})
 end
 
 local function makePrompt(part: BasePart, actionText: string, objectText: string, key: Enum.KeyCode): ProximityPrompt
@@ -578,24 +576,8 @@ local function addShelfPrompts(child: Instance)
 			end
 			return
 		end
-		if isRecycler then
-			if not PlacementController.IsActive() then
-				-- (required here: this file's top level is near Luau's 200 locals)
-				local RecyclerController = require(Controllers:WaitForChild("RecyclerController")) :: any
-				RecyclerController.Open(child)
-			end
-			return
-		end
-		if isCondenser or isGrading or isForge then
-			if not PlacementController.IsActive() then
-				if isCondenser then
-					CondenserController.Open(child)
-				elseif isForge then
-					ForgeController.Open(child)
-				else
-					GradingController.Open(child)
-				end
-			end
+		if isCondenser or isGrading or isForge or isRecycler then
+			openMachine(child)
 			return
 		end
 		local uid = child:GetAttribute("ShelfUid")
@@ -611,7 +593,7 @@ local function addShelfPrompts(child: Instance)
 	end
 	edit.Triggered:Connect(function()
 		if not PlacementController.IsActive() then
-			openEditPanel(child)
+			openEdit(child)
 		end
 	end)
 
@@ -680,7 +662,6 @@ local function buildButton()
 			if PlacementController.IsActive() then
 				return
 			end
-			editPanel.Visible = false
 			refreshShopRows()
 			shopPanel.Visible = not shopPanel.Visible
 		end,
@@ -713,7 +694,6 @@ end
 function BuildController.Start()
 	local screenGui = UIController.GetScreenGui()
 	buildShopPanel(screenGui)
-	buildEditPanel(screenGui)
 	buildButton()
 
 	player:GetAttributeChangedSignal("Level"):Connect(refreshShopRows)

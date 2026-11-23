@@ -74,6 +74,10 @@ return {
 	GradingSeal = "rbxassetid://76519908973343",
 	GoldSeal = "rbxassetid://96924262888584",
 	Travel = "rbxassetid://93470751784969",
+	-- The Edit bar's Move (owner 2026-11-23: "change the MOVE icon", Travel's map pin before): four arrows, one Figma
+	-- sheet of four takes (assets/ui/icons Move, MoveBox, MoveGrab, MoveShelf; slice_icons.py single). The spares'
+	-- ids, for a swap: MoveBox 104808580067700, MoveGrab 93677759781414, MoveShelf 74571796286042
+	Move = "rbxassetid://135305958007297",
 	Best = "rbxassetid://114401539679923",
 	Pvp = "rbxassetid://127011684535220",
 	-- Sheet 5: white line icons for the boss-fight HUD's slanted panels (Config/CombatHud), and spares for heals and

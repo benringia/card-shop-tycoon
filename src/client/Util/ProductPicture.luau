@@ -1,5 +1,5 @@
 --!strict
--- A product's picture on the left of a UIKit.row (Set Price, Prices, Order Stock): packs and deck boxes show a sharp
+-- A product's picture on the left of a menu row (Set Price, Prices, Order Stock): packs and deck boxes show a sharp
 -- picture of the real model (round 5, spec 2026-11-04-round5-design section 6: Config/ProductPictures, rendered once
 -- and uploaded), fitted with air around it; a look with no picture yet, and other products, show their icon. The row's
 -- text moves over to make room.

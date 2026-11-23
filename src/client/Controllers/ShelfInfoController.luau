@@ -97,9 +97,11 @@ local function shelfAt(screen: Vector2): BasePart?
 	return shelf
 end
 
--- The outline goes on the model drawn on the part (shelves with props have an invisible hitbox part)
+-- The outline goes on the model drawn on the part (shelves with props have an invisible hitbox part); none on the one
+-- whose Edit bar is up (EditBarController lights it up itself: its Editing attribute)
 local function outline(shelf: BasePart?)
-	local target: Instance? = shelf and (shelf:FindFirstChildOfClass("Model") or shelf)
+	local hovered = if shelf and shelf:GetAttribute("Editing") ~= true then shelf else nil
+	local target: Instance? = hovered and (hovered:FindFirstChildOfClass("Model") or hovered)
 	if highlight.Adornee ~= target then
 		highlight.Adornee = target
 	end

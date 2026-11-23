@@ -1068,32 +1068,6 @@ function UIKit.panel(
 	return frame, list
 end
 
--- List row: a white card with a title and detail line, plus an action button on the right
-function UIKit.row(parent: Instance, order: number, title: string, detail: string): (Frame, TextButton, TextLabel)
-	local frame = Instance.new("Frame")
-	frame.LayoutOrder = order
-	frame.Size = UDim2.new(1, 0, 0, 76)
-	frame.BackgroundColor3 = UIKit.colorsFor(parent).row
-	frame.Parent = parent
-	UIKit.corner(frame, 12)
-	UIKit.outline(frame)
-
-	local titleLabel = UIKit.label(frame, title, Enum.Font.GothamBold, 18, UIKit.Colors.Text)
-	titleLabel.Position = UDim2.fromOffset(12, 8)
-	titleLabel.Size = UDim2.new(1, -130, 0, 30)
-
-	local detailLabel = UIKit.label(frame, detail, Enum.Font.Gotham, 14, UIKit.Colors.Subtext)
-	detailLabel.Position = UDim2.fromOffset(12, 40)
-	detailLabel.Size = UDim2.new(1, -130, 0, 28)
-
-	local button = UIKit.button(frame, "", UIKit.Colors.Accent)
-	button.AnchorPoint = Vector2.new(1, 0.5)
-	button.Position = UDim2.new(1, -10, 0.5, 0)
-	button.Size = UDim2.fromOffset(104, 52)
-
-	return frame, button, detailLabel
-end
-
 -- A candy button with an icon (Config/UIIcons name) before its text; with no text, just the icon, centred.
 -- The picture is the "Icon" child (callers may resize it); .Text still works.
 function UIKit.iconButton(parent: Instance, text: string, icon: string, color: Color3): TextButton

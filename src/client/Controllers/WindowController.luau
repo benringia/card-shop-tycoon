@@ -49,10 +49,6 @@ local pointer: Vector2? = nil
 local bar: Frame
 local placeButton: TextButton
 local renderConnection: RBXScriptConnection? = nil
-local editPanel: Frame
-local editTitle: TextLabel
-local sellButton: TextButton
-local editing: number? = nil
 
 local function ownPlot(): Model?
 	local plots = workspace:FindFirstChild("Plots")
@@ -349,52 +345,39 @@ local function buildBar(parent: Instance): Frame
 	return frame
 end
 
--- The owner's small Edit window for one placed window: Move it, or Sell it for half its price
-local function buildEditPanel(parent: Instance)
-	local list
-	editPanel, list = UIKit.panel(parent, "WindowEdit", "Window")
-	editPanel.Size = UDim2.fromOffset(320, 230)
-	editTitle = editPanel:FindFirstChild("Title", true) :: TextLabel
-	local layout = Instance.new("UIListLayout")
-	layout.Padding = UDim.new(0, 10)
-	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	layout.Parent = list
-	local move = UIKit.button(list, "↔️ Move", UIKit.Colors.Secondary)
-	move.LayoutOrder = 1
-	move.Size = UDim2.new(1, -20, 0, 52)
-	move.Activated:Connect(function()
-		local plot = ownPlot()
-		local index = editing
-		local window = if plot and index then placedWindows(plot)[index] else nil
-		UIKit.closePanel(editPanel)
-		if window and index then
-			WindowController.Begin(window.style, index)
-		end
-	end)
-	sellButton = UIKit.button(list, "", UIKit.Colors.Danger)
-	sellButton.LayoutOrder = 2
-	sellButton.Size = UDim2.new(1, -20, 0, 52)
-	sellButton.Activated:Connect(function()
-		if editing then
-			Remotes.SellWindow:FireServer(editing)
-		end
-		UIKit.closePanel(editPanel)
-	end)
-end
-
-local function openEdit(index: number, style: string)
+-- Edit on a placed window: the Edit bar (EditBarController, owner 2026-11-23 mockup C) lights it up with Move and Sell
+-- for half its price (a poster is free: Take down)
+local function openEdit(model: Model, root: BasePart, index: number, style: string)
 	local info = Windows.STYLES[style]
-	if not info then
+	if not info or WindowController.IsActive() then
 		return
 	end
-	editing = index
-	if editTitle then
-		editTitle.Text = info.name
-	end
-	-- a poster is free: it's taken down, not sold
-	sellButton.Text = if info.poster then "Take down" else `💰 Sell · +{money(math.floor(info.price * Windows.SELL_REFUND))}`
-	editPanel.Visible = true
+	local EditBarController = require(Controllers:WaitForChild("EditBarController")) :: any
+	EditBarController.Open({
+		target = model,
+		at = root,
+		describe = function()
+			if not model:IsDescendantOf(workspace) then
+				return nil
+			end
+			return {
+				kind = if info.poster then "Poster" else "Window",
+				name = info.name,
+				refund = math.floor(info.price * Windows.SELL_REFUND),
+			}
+		end,
+		actions = {
+			move = function()
+				WindowController.Begin(style, index)
+			end,
+			sell = function()
+				Remotes.SellWindow:FireServer(index)
+			end,
+			takeDown = function()
+				Remotes.SellWindow:FireServer(index)
+			end,
+		},
+	})
 end
 
 -- An owner-only Edit prompt on each window of the owner's shop (made here, so visitors never see it)
@@ -413,7 +396,7 @@ local function watchWindows()
 				prompt.RequiresLineOfSight = false
 				prompt.Parent = root
 				prompt.Triggered:Connect(function()
-					openEdit(index, style)
+					openEdit(model :: Model, root :: BasePart, index :: number, style :: string)
 				end)
 			end
 		end
@@ -434,7 +417,6 @@ end
 function WindowController.Start()
 	local gui = UIController.GetScreenGui()
 	bar = buildBar(gui)
-	buildEditPanel(gui)
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		if not session or gameProcessed then
 			return

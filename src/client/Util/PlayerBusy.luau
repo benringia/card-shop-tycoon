@@ -19,6 +19,7 @@ local RegisterController = require(Controllers:WaitForChild("RegisterController"
 local RegisterStationController = require(Controllers:WaitForChild("RegisterStationController"))
 local WeaponRevealController = require(Controllers:WaitForChild("WeaponRevealController"))
 local WindowController = require(Controllers:WaitForChild("WindowController"))
+local EditBarController = require(Controllers:WaitForChild("EditBarController"))
 
 local PlayerBusy = {}
 
@@ -55,7 +56,8 @@ function PlayerBusy.facts(): LessonRules.Busy
 			or player:GetAttribute("ManningRegister") == true,
 		carrying = (tonumber(player:GetAttribute("CarryCount")) or 0) > 0,
 		building = PlacementController.IsActive() or WindowController.IsActive(),
-		window = UIKit.anyPanelOpen() or Hud.isTrayOpen() or player:GetAttribute("ReadingBinder") == true,
+		-- an Edit bar up counts as a window: you're busy with that shelf
+		window = UIKit.anyPanelOpen() or Hud.isTrayOpen() or player:GetAttribute("ReadingBinder") == true or EditBarController.IsOpen(),
 	}
 end
 

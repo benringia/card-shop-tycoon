@@ -852,12 +852,13 @@ local function onSell(player: Player, uid: unknown)
 	if not shelf then
 		return
 	end
+	-- never only a toast: the locked card says what to do first (the Edit bar shows the lock before you ask)
 	if shelf.units > 0 then
-		notify(player, "Sell the stock on this shelf first.", true)
+		Blocked.tell(player, "Take the stock off this shelf first: Remove boxes it up.")
 		return
 	end
 	if countCards(shelf) > 0 then
-		notify(player, "Take the cards out of this case first.", true)
+		Blocked.tell(player, "Take the cards out of this case first.")
 		return
 	end
 
