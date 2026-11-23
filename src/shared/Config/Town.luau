@@ -84,6 +84,9 @@ return {
 		PLAZA_RADIUS = 26, -- round stone pad around the spring; open room for event NPCs and stalls
 		SIDEWALK = 8, -- the paved strip along each shop row's front
 		PLOT_MARGIN = 1, -- decor stays this far outside every plot footprint (walls sit in it)
+		-- a hand-placed tree's canopy keeps this far from a shop's plot (its wall and a little air): TownService moves one
+		-- that doesn't, or takes it away when it can't (tests/TownDecorFit keeps assets/town clear of that)
+		TREE_CLEARANCE = 2,
 	},
 	PORTAL_CLEARANCE = 10, -- nothing but the portal frame this close to a portal
 	-- Butterflies (ButterflyController, client only): a flock round the healing spring and more at Forest Falls and the

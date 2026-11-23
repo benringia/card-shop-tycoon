@@ -21,4 +21,18 @@ return {
 		end
 		expect.equal(#hits, 0, `pieces in a shop: {table.concat(names, ", ")}`)
 	end,
+
+	-- TownService moves any tree nearer a shop than Town.LAYOUT.TREE_CLEARANCE out of the way at runtime, and takes away
+	-- one that can't clear (canopies poked through walls, owner 2026-11-19). Studio boxes a tree in its pivot's frame,
+	-- which Lune can't read, so the check boxes each tree as a square as wide as its longest side: no hand-placed tree
+	-- vanishes in the game (the Garden alley's first tree did, 2026-11-24)
+	["no hand-placed tree is taken away at runtime"] = function()
+		local root = roblox.deserializeModel(fs.readFile("assets/town/TownDecor.rbxm"))[1]
+		local hits = DecorFit.treesStuck(root, TownLayout.plotRects(WORLD :: any), town.LAYOUT.TREE_CLEARANCE)
+		local names = {}
+		for _, hit in hits do
+			table.insert(names, `{hit.group}/{hit.piece}`)
+		end
+		expect.equal(#hits, 0, `trees the game would take away: {table.concat(names, ", ")}`)
+	end,
 }

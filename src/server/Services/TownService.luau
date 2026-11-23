@@ -40,7 +40,7 @@ local PORTAL_LABELS = {
 	{ spot = Pvp.ARENA_PORTAL, text = "⚔️ PvP Arena", detail = "Watch battles", ring = "Arena", effect = "Arena" },
 }
 local PORTAL_MATCH_DISTANCE = 1 -- a Portal prop at this spot belongs to that portal
-local TREE_CLEARANCE = 2 -- studs a hand-placed tree's canopy keeps from a shop's plot: its wall and a little air
+local TREE_CLEARANCE = Town.LAYOUT.TREE_CLEARANCE -- a hand-placed tree's canopy keeps this far from a shop's plot
 
 local function point(spot: { x: number, z: number, y: number? }): TownLayout.Point
 	return { x = spot.x, z = spot.z, y = spot.y }

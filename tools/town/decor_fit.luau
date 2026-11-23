@@ -38,6 +38,27 @@ function DecorFit.box(piece: any): TownLayout.Rect
 	return box
 end
 
+-- The trees (a "tree" in the piece's name, as TownService.clearTrees finds them) the game would take away: ones that
+-- can't move clear of every shop by `clearance` (TownLayout.clearOf). Studio boxes a tree in its pivot's frame, which
+-- Lune can't read, so each is boxed as a square as wide as its longer side, round its middle
+function DecorFit.treesStuck(root: any, rects: { TownLayout.Rect }, clearance: number): { Hit }
+	local hits: { Hit } = {}
+	for _, group in root:GetChildren() do
+		for _, piece in group:GetChildren() do
+			if string.find(string.lower(piece.Name), "tree", 1, true) then
+				local box = DecorFit.box(piece)
+				local half = math.max(box.maxX - box.minX, box.maxZ - box.minZ) / 2
+				local x, z = (box.minX + box.maxX) / 2, (box.minZ + box.maxZ) / 2
+				local _, _, stuck = TownLayout.clearOf({ minX = x - half, maxX = x + half, minZ = z - half, maxZ = z + half }, rects, clearance)
+				if stuck then
+					table.insert(hits, { group = group.Name, piece = piece.Name, instance = piece })
+				end
+			end
+		end
+	end
+	return hits
+end
+
 function DecorFit.inTheWay(root: any, rects: { TownLayout.Rect }, margin: number, roofline: number): { Hit }
 	local hits: { Hit } = {}
 	for _, group in root:GetChildren() do
