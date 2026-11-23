@@ -84,7 +84,9 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   code-built stand-ins (`Util/DecorLooks`) until then.
 - The four delivery boxes (Products `boxProp`): one pack from `tools/blender/build_delivery_props.py`
   (`assets/blender/Delivery/`), imported once as `assets/props-import/DeliveryProps.rbxm` and split by
-  `lune run tools/props/split_pack` (docs/props.md "Delivery boxes"); `Util/BrandBox` cases until then.
+  `lune run tools/props/split_pack` (docs/props.md "Delivery boxes"); `Util/BrandBox` cases until then. The Frontier
+  Pack's snow-capped `BoxFrontier` comes from the same script as its own pack (`PROPS=BoxFrontier PACK=DeliveryFrontier`,
+  `assets/props-import/DeliveryFrontier.rbxm`), so the first four aren't imported again.
 - The seven boss trophies (`assets/props/Trophy<Boss>.rbxm`, slots `Town.SLOTS` Trophy<Boss>): one pack from
   `tools/blender/build_trophies.py` (`assets/blender/Trophies/`), imported once as `assets/props-import/Trophies.rbxm`
   and split by `lune run tools/props/split_pack` (docs/props.md "Trophies"); their Gem and Glow parts lit Neon by

@@ -335,6 +335,15 @@ pack the owner imports once:
 2. Import the FBX in Studio (default settings) and save the imported model as `assets/props-import/DeliveryProps.rbxm`.
 3. `lune run tools/props/split_pack assets/props-import/DeliveryProps.rbxm` writes `assets/props/<Name>.rbxm`.
 
+The Frontier Pack's box (`BoxFrontier`, owner 2026-11-23) comes from the same script as a pack of its own, so the four
+above aren't imported again (BoxDecks' palette fix would be lost): the same cardboard box with the pack's purple tape
+and an aurora stripe, under a cap of snow dripping over every edge (`snow_cap`, 828 triangles, its own cap of 900).
+
+1. `PROPS=BoxFrontier PACK=DeliveryFrontier blender -b --factory-startup --python tools/blender/build_delivery_props.py`
+   writes `assets/blender/Delivery/DeliveryFrontier.{blend,fbx}` (`PREVIEW_DIR=<folder>` renders it first).
+2. Import the FBX in Studio (default settings) and save the imported model as `assets/props-import/DeliveryFrontier.rbxm`.
+3. `lune run tools/props/split_pack assets/props-import/DeliveryFrontier.rbxm` writes `assets/props/BoxFrontier.rbxm`.
+
 The stickers (`<Name>__Picture`, `__PictureBack`) wear the product's picture from `Config/ProductPictures`
 (`DeliveryLooks.finishBox`: a SurfaceGui with the picture fitted whole, since 2026-11-20; the drawn UI icon before).
 

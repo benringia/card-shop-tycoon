@@ -3586,9 +3586,11 @@ Priced like a First Spark pack: $10 a pack to stock, $15 to sell (the same share
 a First Spark pack's, and its cards' value per dollar the same (about $30 a pack against $6.21 for First Spark's $3;
 tests/FrontierPack). Its own Bag item (`frontierPack`), picture (`ProductPictures` LOOKS.Frontier), 3D look
 (`Looks/Frontier` baked into `Pack.rbxm` and `DisplayBox.rbxm` by `tools/packs/add_look.luau`) and art
-(`assets/ui/packs/Frontier.jpg`, `tools/ui-art/make_frontier_pack_art.py`). Its delivery box is the `Util/BrandBox`
-branded case (`BoxFrontier`; owner 2026-11-23: no Blender box). Option C, Star Shards filling a whole star on Frontier
-cards, was turned down the same day.
+(`assets/ui/packs/Frontier.jpg`, `tools/ui-art/make_frontier_pack_art.py`). Its delivery box (`BoxFrontier`, owner
+2026-11-23: "do the blender box") is the other boxes' cardboard with the pack's purple tape and an aurora stripe, under
+a cap of snow dripping over every edge (`tools/blender/build_delivery_props.py`, its own pack DeliveryFrontier,
+docs/props.md "Delivery boxes"); the `Util/BrandBox` case until it's imported. Option C, Star Shards filling a whole
+star on Frontier cards, was turned down the same day.
 
 Packs and deck boxes are 3D models everywhere (`Util/PackModels`, `Config/Packs` `model` and `look`): on shelves
 (packs in open display boxes), on the opening stage and in the menus. Each pack type has a look (`look =
