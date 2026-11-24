@@ -617,7 +617,8 @@ is over UI (`UIKit.pointerBlocked`).
   - **Restockers** use racks (7.4). Pish explains the rack beside the first one placed (lesson `storageRack`). Studio:
     `/storage place | fill [product id] | clear` and the admin panel's "Storage" section; `/broke` empties racks too.
   - **Reasons to fill them** (owner 2026-11-24: "make the player have the reason to store it in storage racks", picks B
-    and 2; spec `docs/superpowers/specs/2026-11-24-shop-variety-design.md`): the **pallet deal** on the order computer
+    and 2; spec `docs/superpowers/specs/2026-11-24-shop-variety-design.md`; built and merged 2026-11-24, owner: "merge
+    and push"; deferred minors in 13): the **pallet deal** on the order computer
     (above: 6+ boxes of a product 10% off, more than a pad's worth over a few orders) and **away selling** (7.12): with
     a card working as Restocker, the racks' boxes refill the shelves while you're away and each rack holding boxes adds
     30 minutes of selling (to 4 hours), only what's still in the racks. Customers never buy from racks. The stock
@@ -734,7 +735,8 @@ is over UI (`UIKit.pointerBlocked`).
   look there (owner 2026-11-16: "customers walk in and stand to the center of the store, make them walk in go
   directly to where the cards are"; `Util/ShelfSearch`, Lune-tested); only a shop with no shelves sends them to the
   middle of the floor. In the queue they face the register.
-- **What they missed** (owner 2026-11-24, spec `2026-11-24-shop-variety-design`): after that search the first product
+- **What they missed** (owner 2026-11-24, spec `2026-11-24-shop-variety-design`, merged the same day): after that
+  search the first product
   on their list no shelf had shows over them for a few seconds in the collector's thought bubble, its picture with a
   pink "?" (the model's `Missing` attribute, client `CustomerController`, `Customers.MISSED_BUBBLE`), and their line
   names it ("No sleeves? Aww.", "Where are the deck boxes?", kids "Nooo, no packs?"; `Offline.PLURALS`). The visit is
@@ -7214,6 +7216,10 @@ boss models; the ranch and Heroic tiers come after those.
   an early "Infinite yield possible on Plot1:WaitForChild(OrderComputer)" at join (streaming, it resolves); rooms
   opened by `/shoproom` don't mark Pish's room lesson seen (test saves only); Config/Decor's comment still says "the
   back wall (FeatureWall)". Prices are placeholders until table card battles.
+- Shop variety's deferred minors (self-review 2026-11-24, 4.2, 4.5, 7.12): the taller Welcome back card (the
+  Restocker's report or the racks hint) scrolls to Collect on a short screen; "Customers want this!" shows on the First
+  Spark card before a new shop has any shelf. Not checked in Studio before the merge: the pallet meter on a phone (device
+  simulator) and "Found it all!" end to end (the test shop stocks one product; the rule is Lune-tested).
 - Not reproduced (2026-11-06): pack models on a freshly stocked shelf "slow to render" after joining (the server
   builds them at once, the client had them in 0.05 s, assets preloaded); waiting on how long and which restock.
 - Boss cash pays on every win with no cooldown (only items wait LOOT_COOLDOWN): a strong party farming the Meadow
