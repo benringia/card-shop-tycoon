@@ -176,11 +176,17 @@ local function sendJobs(player: Player)
 	end
 	-- A list, not a slot-keyed table: remotes mangle tables with gaps in their number keys
 	local slots = {}
+	local restockers = 0
 	for slot, worker in state.slots do
 		-- tiredUntil: server time its tired spell ends (the panel counts down), nil while rested
 		local tiredUntil = if isTired(worker) then workspace:GetServerTimeNow() + worker.tired.tiredLeft else nil
 		table.insert(slots, { slot = slot, beastId = worker.beastId, job = worker.job, status = worker.status, tiredUntil = tiredUntil })
+		if worker.job == "Restocker" then
+			restockers += 1
+		end
 	end
+	-- the rack clipboard's away-selling stamp reads it (StorageController; spec 2026-11-24-shop-variety-design)
+	player:SetAttribute("Restockers", restockers)
 	local used = #slots
 	local hasPass = MonetizationService.HasPass(player, PASS_KEY) -- one check per update
 	local slotCount = getSlotCount(player, hasPass)
@@ -942,6 +948,29 @@ local function tiredLoop()
 end
 
 -- Studio's /jobtired: every working card of this player tires now, or is rested again when it already is
+-- The first card working as Restocker (its card's name and id), nil with none: away selling refills the shelves from
+-- the racks only with one (OfflineService; spec 2026-11-24-shop-variety-design)
+function JobService.GetRestocker(player: Player): { name: string, cardId: string }?
+	local state = states[player]
+	if not state then
+		return nil
+	end
+	local slots: { number } = {}
+	for slot, worker in state.slots do
+		if worker.job == "Restocker" then
+			table.insert(slots, slot)
+		end
+	end
+	table.sort(slots)
+	for _, slot in slots do
+		local profile = getProfile(player, state.slots[slot])
+		if profile then
+			return { name = profile.card.name, cardId = profile.card.id }
+		end
+	end
+	return nil
+end
+
 function JobService.ToggleTiredForTest(player: Player)
 	local state = states[player]
 	if not state then

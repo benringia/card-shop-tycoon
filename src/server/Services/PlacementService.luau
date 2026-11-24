@@ -1310,6 +1310,23 @@ function PlacementService.TakeFromRack(shelf: PlacedShelf, productId: string): (
 	return box, slot
 end
 
+-- Up to `units` taken out of the box on spot `slot` (away selling: the Restocker refilled the shelves from it); an
+-- emptied box leaves the rack. Returns the units taken
+function PlacementService.TakeRackUnits(shelf: PlacedShelf, slot: number, units: number): number
+	local box = shelf.stored[slot]
+	if not isStorage(shelf.def) or not box or units <= 0 then
+		return 0
+	end
+	local taken = math.min(math.floor(units), box.units)
+	box.units -= taken
+	if box.units <= 0 then
+		shelf.stored[slot] = nil
+	end
+	drawRack(shelf)
+	syncRack(shelf)
+	return taken
+end
+
 -- The restocker that last stored or took a box here: the stock clipboard's "counted by" (StorageController)
 function PlacementService.SetRackWorker(shelf: PlacedShelf, name: string)
 	shelf.part:SetAttribute("LastWorker", name)

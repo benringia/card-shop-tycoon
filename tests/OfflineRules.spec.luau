@@ -17,6 +17,59 @@ return {
 		expect.equal(OfflineRules.minutesAway(NOW - 30 * 3600, NOW, Offline), Offline.MAX_MINUTES, "capped")
 	end,
 
+	["away time: racks add 30 minutes each with a restocker"] = function()
+		expect.equal(Offline.RACK_MINUTES, 30)
+		expect.equal(Offline.MAX_EXTRA_MINUTES, 120)
+		local base, extra = OfflineRules.split(240, 3, true, Offline)
+		expect.equal(base, 120)
+		expect.equal(extra, 90, "3 racks: an hour and a half more")
+		base, extra = OfflineRules.split(240, 3, false, Offline)
+		expect.equal(extra, 0, "no restocker: no extra time")
+		base, extra = OfflineRules.split(100, 3, true, Offline)
+		expect.equal(base, 100)
+		expect.equal(extra, 0, "home before the shelves' time ran out")
+		base, extra = OfflineRules.split(240, 5, true, Offline)
+		expect.equal(extra, 120, "never past MAX_EXTRA_MINUTES")
+		base, extra = OfflineRules.split(240, 0, true, Offline)
+		expect.equal(extra, 0, "no rack holds boxes")
+	end,
+
+	["minutesAway's cap"] = function()
+		expect.equal(OfflineRules.minutesAway(NOW - 300 * 60, NOW, Offline, 240), 240)
+		expect.equal(OfflineRules.minutesAway(NOW - 300 * 60, NOW, Offline), Offline.MAX_MINUTES, "no cap given: today's")
+	end,
+
+	["planRacks: shelves first, racks refill, extra time sells racks only"] = function()
+		local stock = { { productId = "FirstSparkPack", shelf = 10, rack = 48, price = 3, chance = 1 } }
+		local plan = OfflineRules.planRacks(stock, 120, 0, Offline)
+		expect.equal(plan.fromShelves[1], 10)
+		expect.equal(plan.fromRacks[1], 48, "the restocker refilled the shelf from the rack")
+		expect.equal(plan.units, 58)
+		expect.equal(plan.cash, 174)
+		local slow = OfflineRules.planRacks(stock, 10, 30, Offline)
+		expect.equal(slow.fromShelves[1], 10, "the shelf first")
+		expect.equal(slow.fromRacks[1], 48, "10 refilled in the first 10 minutes, 38 in the rack's extra time")
+		local short = OfflineRules.planRacks({ { productId = "DeckBox", shelf = 0, rack = 10, price = 9, chance = 1 } }, 0, 30, Offline)
+		expect.equal(short.fromRacks[1], 10, "the extra time sells what's in the racks, never more")
+		local none = OfflineRules.planRacks({ { productId = "DeckBox", shelf = 5, rack = 0, price = 9, chance = 1 } }, 0, 120, Offline)
+		expect.equal(none.units, 0, "extra time with nothing in the racks sells nothing")
+		local picky = OfflineRules.planRacks({ { productId = "CardSleeves", shelf = 20, rack = 20, price = 9, chance = 0 } }, 120, 120, Offline)
+		expect.equal(picky.units, 0, "a price nobody pays sells nothing")
+	end,
+
+	["boxTakes: half-used box first, boxes touched"] = function()
+		local takes, touched = OfflineRules.boxTakes({ 24, 10, 24 }, 30)
+		expect.equal(takes[1], 20)
+		expect.equal(takes[2], 10, "the half-used box first")
+		expect.equal(takes[3], 0)
+		expect.equal(touched, 2)
+		local all, count = OfflineRules.boxTakes({ 5, 5 }, 99)
+		expect.equal(all[1] + all[2], 10, "never more than the boxes hold")
+		expect.equal(count, 2)
+		local _, zero = OfflineRules.boxTakes({ 24 }, 0)
+		expect.equal(zero, 0)
+	end,
+
 	["the shop sells its shelves' stock at their prices, by buy chance, never more than it holds"] = function()
 		local shelves = {
 			{ units = 10, price = 3, chance = 1 },

@@ -5,12 +5,17 @@ local OfflineRules = {}
 
 export type Shelf = { units: number, price: number, chance: number } -- units on it, its price, the buy chance there
 export type Plan = { sold: { number }, units: number, cash: number } -- units sold per shelf (in order), in all, the cash
+-- A product the Restocker can refill (it has a shelf): units on its shelves and in the racks, its price and buy chance
+export type Stock = { productId: string, shelf: number, rack: number, price: number, chance: number }
+-- Units sold per product (in order) from its shelves and from the racks, in all, the cash
+export type RackPlan = { fromShelves: { number }, fromRacks: { number }, units: number, cash: number }
 
-type Config = { MIN_AWAY_MINUTES: number, MAX_MINUTES: number, UNITS_PER_MINUTE: number }
+type Config = { MIN_AWAY_MINUTES: number, MAX_MINUTES: number, UNITS_PER_MINUTE: number, RACK_MINUTES: number?, MAX_EXTRA_MINUTES: number? }
 
 -- Whole minutes away that earn, from the last time the save was written (`lastSeen`, os.time) to `now`: none for a
--- save never written (0), a clock in the future or less than MIN_AWAY_MINUTES; at most MAX_MINUTES
-function OfflineRules.minutesAway(lastSeen: number, now: number, cfg: Config): number
+-- save never written (0), a clock in the future or less than MIN_AWAY_MINUTES; at most `cap` (MAX_MINUTES when not
+-- given; the racks' extra time raises it)
+function OfflineRules.minutesAway(lastSeen: number, now: number, cfg: Config, cap: number?): number
 	if typeof(lastSeen) ~= "number" or lastSeen <= 0 or lastSeen ~= lastSeen then
 		return 0
 	end
@@ -18,7 +23,98 @@ function OfflineRules.minutesAway(lastSeen: number, now: number, cfg: Config): n
 	if minutes < cfg.MIN_AWAY_MINUTES then
 		return 0
 	end
-	return math.min(minutes, cfg.MAX_MINUTES)
+	return math.min(minutes, cap or cfg.MAX_MINUTES)
+end
+
+-- The time away split in two (spec 2026-11-24-shop-variety-design): the shelves' MAX_MINUTES, then with a Restocker
+-- RACK_MINUTES for each of `racks` racks holding boxes, at most MAX_EXTRA_MINUTES, selling only what's in the racks
+function OfflineRules.split(minutes: number, racks: number, restocker: boolean, cfg: Config): (number, number)
+	local base = math.min(math.max(0, minutes), cfg.MAX_MINUTES)
+	if not restocker or racks <= 0 then
+		return base, 0
+	end
+	local extra = math.min(minutes - base, racks * (cfg.RACK_MINUTES or 0), cfg.MAX_EXTRA_MINUTES or 0)
+	return base, math.max(0, extra)
+end
+
+-- What sells with a Restocker refilling the shelves from the racks: in the `base` minutes UNITS_PER_MINUTE customers'
+-- worth a minute, shared by how much of each product there is (shelves and racks), each bought at its chance, from
+-- the shelves first then the racks; in the `extra` minutes the same pace, but only what's left in the racks
+function OfflineRules.planRacks(stock: { Stock }, base: number, extra: number, cfg: Config): RackPlan
+	local plan: RackPlan = { fromShelves = {}, fromRacks = {}, units = 0, cash = 0 }
+	local pool = 0
+	for index, item in stock do
+		plan.fromShelves[index] = 0
+		plan.fromRacks[index] = 0
+		if item.chance > 0 then
+			pool += item.shelf + item.rack
+		end
+	end
+	local budget = math.max(0, base) * cfg.UNITS_PER_MINUTE
+	if pool > 0 and budget > 0 then
+		for index, item in stock do
+			local have = item.shelf + item.rack
+			if have > 0 and item.chance > 0 then
+				local sold = math.min(have, math.floor(budget * have / pool * math.min(item.chance, 1)))
+				local fromShelf = math.min(item.shelf, sold)
+				plan.fromShelves[index] = fromShelf
+				plan.fromRacks[index] = sold - fromShelf
+			end
+		end
+	end
+	local left = 0
+	for index, item in stock do
+		if item.chance > 0 then
+			left += item.rack - plan.fromRacks[index]
+		end
+	end
+	local more = math.max(0, extra) * cfg.UNITS_PER_MINUTE
+	if left > 0 and more > 0 then
+		for index, item in stock do
+			local rack = item.rack - plan.fromRacks[index]
+			if rack > 0 and item.chance > 0 then
+				plan.fromRacks[index] += math.min(rack, math.floor(more * rack / left * math.min(item.chance, 1)))
+			end
+		end
+	end
+	local cents = 0
+	for index, item in stock do
+		local units = plan.fromShelves[index] + plan.fromRacks[index]
+		plan.units += units
+		cents += math.round(units * item.price * 100)
+	end
+	plan.cash = cents / 100
+	return plan
+end
+
+-- `units` taken from boxes holding `boxes` units each: the half-used (fewest) first, then in order. Returns what's
+-- taken from each box (in the boxes' order) and how many boxes were touched
+function OfflineRules.boxTakes(boxes: { number }, units: number): ({ number }, number)
+	local order: { number } = {}
+	local takes: { number } = {}
+	for index in boxes do
+		table.insert(order, index)
+		takes[index] = 0
+	end
+	table.sort(order, function(a: number, b: number): boolean
+		if boxes[a] ~= boxes[b] then
+			return boxes[a] < boxes[b]
+		end
+		return a < b
+	end)
+	local need, touched = math.max(0, math.floor(units)), 0
+	for _, index in order do
+		if need <= 0 then
+			break
+		end
+		local take = math.min(need, boxes[index])
+		if take > 0 then
+			takes[index] = take
+			need -= take
+			touched += 1
+		end
+	end
+	return takes, touched
 end
 
 -- What the shelves sell in `minutes`: UNITS_PER_MINUTE customers' worth a minute, shared between the stocked shelves by
