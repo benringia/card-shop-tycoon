@@ -622,17 +622,23 @@ function DevService.Start()
 			end
 			local stored = 0
 			for _, rack in PlacementService.GetRacks(player) do
-				local index = 0
-				while true do
-					index += 1
-					local kind = kinds[(index - 1) % #kinds + 1]
-					if not PlacementService.StoreInRack(rack, kind, Products.ById[kind].unitsPerBox) then
+				-- kind by kind, a few each, so each kind sits together as stored boxes do
+				local each = math.ceil(rack.def.capacity / #kinds)
+				local full = false
+				for _, kind in kinds do
+					for _ = 1, each do
+						if not PlacementService.StoreInRack(rack, kind, Products.ById[kind].unitsPerBox) then
+							full = true
+							break
+						end
+						stored += 1
+					end
+					if full then
 						break
 					end
-					stored += 1
 				end
 			end
-			Remotes.Notify:FireClient(player, `Storage: {stored} boxes stored.`, false)
+			Remotes.Notify:FireClient(player, `Storage: {stored} {if stored == 1 then "box" else "boxes"} stored.`, false)
 			return
 		end
 		if action == "clear" then
