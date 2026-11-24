@@ -22,6 +22,8 @@ local PlotConfig = require(Config:WaitForChild("Plots"))
 local Products = require(Config:WaitForChild("Products"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local JobRules = require(Shared:WaitForChild("Util"):WaitForChild("JobRules"))
+local StorageRules = require(Shared:WaitForChild("Util"):WaitForChild("StorageRules"))
+local StorageConfig = require(Config:WaitForChild("Storage"))
 local TiredRules = require(Shared:WaitForChild("Util"):WaitForChild("TiredRules"))
 local CreatureFlight = require(Shared:WaitForChild("Util"):WaitForChild("CreatureFlight"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -376,11 +378,151 @@ local function putBack(player: Player, worker: Worker)
 	end
 end
 
+-- Storage racks (spec 2026-11-24-storage-racks-design) -------------------------------------------------------------
+
+-- The worker's card name: the stock clipboard's "counted by" (PlacementService.SetRackWorker)
+local function workerName(player: Player, worker: Worker): string
+	local profile = getProfile(player, worker)
+	return if profile then profile.card.name else worker.job
+end
+
+-- The nearest storage rack with a free spot, nil when every rack is full (or there are none)
+local function nearestRack(player: Player, worker: Worker): PlacedShelf?
+	local root = worker.root
+	local views = {}
+	local byUid: { [string]: PlacedShelf } = {}
+	for _, rack in PlacementService.GetRacks(player) do
+		byUid[rack.uid] = rack
+		table.insert(views, {
+			uid = rack.uid,
+			free = rack.def.capacity - StorageRules.count(rack.stored),
+			distance = if root then (rack.part.Position - root.Position).Magnitude else 0,
+		})
+	end
+	local uid = StorageRules.pickRack(views)
+	return if uid then byUid[uid] else nil
+end
+
+-- The box in the worker's arms set on the nearest rack with room, hopping there (a second rack when the first filled or
+-- went while it walked); false when no rack takes it
+local function storeInRack(player: Player, state: PlayerJobs, worker: Worker, box: Part, productId: string): boolean
+	for _ = 1, 2 do
+		local rack = nearestRack(player, worker)
+		if not rack then
+			return false
+		end
+		walk(worker, getShelfPoint(state.plot, rack))
+		if not worker.alive or worker.carrying ~= box then
+			return false
+		end
+		local units = box:GetAttribute("Units")
+		local slot = if PlacementService.GetShelf(player, rack.uid) == rack and typeof(units) == "number"
+			then PlacementService.StoreInRack(rack, productId, units)
+			else nil
+		if slot then
+			StockService.ConsumeUnits(player, box, units :: number) -- the whole box: it's on the rack now
+			worker.carrying = nil
+			PlacementService.SetRackWorker(rack, workerName(player, worker))
+			Remotes.RackBoxHop:FireAllClients(rack.part, slot, productId, true, worker.model)
+			return true
+		end
+	end
+	return false
+end
+
+-- Stocks shelf after shelf from the box in the worker's arms until it's used up or no shelf takes the rest. "dropped":
+-- a mistake on the way (the box is still in its arms; the caller puts it back); "stopped": it stopped working
+local function stockFromHands(player: Player, state: PlayerJobs, worker: Worker, box: Part, productId: string, status: string): string
+	while worker.alive and worker.carrying == box and box.Parent do
+		local shelf = findShelfFor(player, productId)
+		if not shelf then
+			return "left"
+		end
+		setStatus(player, worker, status)
+		walk(worker, getShelfPoint(state.plot, shelf))
+		if not worker.alive then
+			return "stopped"
+		end
+		if rollMistake(player, worker) then
+			return "dropped"
+		end
+		setStatus(player, worker, "Stocking")
+		if not waitWork(player, worker, Jobs.STOCK_SECONDS) then
+			return "stopped"
+		end
+		local units = box:GetAttribute("Units")
+		if typeof(units) ~= "number" then
+			return "left"
+		end
+		-- (the owner may have sold it on the way: then the next shelf)
+		if PlacementService.GetShelf(player, shelf.uid) == shelf then
+			local added = PlacementService.AddStock(shelf, productId, units)
+			if added > 0 then
+				StockService.ConsumeUnits(player, box, added)
+			end
+		end
+		if not box.Parent then
+			worker.carrying = nil -- used up
+			return "done"
+		end
+	end
+	return if worker.alive then "left" else "stopped"
+end
+
+-- The selling shelves and the racks as StorageRules sees them (a rack-to-shelf trip: StorageRules.restockPick)
+local function shelfViews(player: Player): { StorageRules.ShelfView }
+	local views: { StorageRules.ShelfView } = {}
+	for _, shelf in PlacementService.GetShelves(player) do
+		if shelf.def.kind == "Products" then
+			table.insert(views, {
+				uid = shelf.uid,
+				units = shelf.units,
+				capacity = shelf.def.capacity,
+				productId = if shelf.units > 0 then shelf.productId else nil,
+				accepts = shelf.def.accepts,
+			})
+		end
+	end
+	return views
+end
+
+local function rackViews(player: Player): { StorageRules.RackView }
+	local views: { StorageRules.RackView } = {}
+	for _, rack in PlacementService.GetRacks(player) do
+		table.insert(views, { uid = rack.uid, stored = rack.stored })
+	end
+	return views
+end
+
+-- What's left of a rack's box (no shelf took the rest, or dropped): back on a rack with room, else the pad
+local function stowLeftover(player: Player, state: PlayerJobs, worker: Worker, box: Part, productId: string)
+	if worker.carrying == box and box.Parent and not storeInRack(player, state, worker, box, productId) then
+		putBack(player, worker)
+	end
+end
+
+-- What an idle restocker says: the pad's boxes waiting with every shelf and rack full, the shelves stocked enough, or
+-- nothing to carry
+local function idleWords(player: Player, waiting: number): string
+	local racks = PlacementService.GetRacks(player)
+	if waiting > 0 then
+		return if #racks > 0 then StorageConfig.WORDS.idleFull else "Idle: shelves full"
+	end
+	for _, rack in racks do
+		if next(rack.stored) ~= nil then
+			return "Idle: shelves full"
+		end
+	end
+	return "Idle: no boxes"
+end
+
+-- A restocker's trips, the first that applies each time (spec 2026-11-24-storage-racks-design): 1. a pad box some shelf
+-- takes, to the shelves (as before racks); 2. a pad box no shelf takes, to a rack with room, so the pad stays clear for
+-- the van; 3. with nothing for the pad, a rack's box (its half-used one first) to a selling shelf half full or less
 local function runRestocker(player: Player, state: PlayerJobs, worker: Worker)
 	while worker.alive do
-		-- Pick a box some shelf can take
-		local box: Part? = nil
 		local waiting = StockService.GetWaitingBoxes(player)
+		local box: Part? = nil
 		for _, candidate in waiting do
 			local productId = candidate:GetAttribute("ProductId")
 			if typeof(productId) == "string" and findShelfFor(player, productId) then
@@ -388,67 +530,94 @@ local function runRestocker(player: Player, state: PlayerJobs, worker: Worker)
 				break
 			end
 		end
-		if not box then
-			setStatus(player, worker, if #waiting == 0 then "Idle: no boxes" else "Idle: shelves full")
-			walk(worker, getPadPoint(state.plot))
-			task.wait(Jobs.IDLE_RECHECK_SECONDS)
-			continue
+		local toRack = box == nil and #waiting > 0 and nearestRack(player, worker) ~= nil
+		if toRack then
+			box = waiting[1]
 		end
 
-		setStatus(player, worker, "Going to the delivery pad")
-		if not walk(worker, getPadPoint(state.plot)) and not worker.alive then
-			break
-		end
-		local chosen = box :: Part
-		if not StockService.TakeWaitingBox(player, chosen) then
-			continue -- the owner picked it up first
-		end
-		carry(worker, chosen)
-		if worker.carrying ~= chosen then
-			StockService.ReturnBox(player, chosen) -- no creature to hold it
-			task.wait(Jobs.IDLE_RECHECK_SECONDS)
-			continue
-		end
-		local productId = chosen:GetAttribute("ProductId") :: string
-		local product = Products.ById[productId]
-
-		-- Stock shelf after shelf until the box is empty or nothing takes the rest
-		while worker.alive and worker.carrying == chosen and chosen.Parent do
-			local shelf = findShelfFor(player, productId)
-			if not shelf then
+		if box then
+			setStatus(player, worker, "Going to the delivery pad")
+			if not walk(worker, getPadPoint(state.plot)) and not worker.alive then
 				break
 			end
-			setStatus(player, worker, `Carrying {if product then product.name else "a box"}`)
-			walk(worker, getShelfPoint(state.plot, shelf))
-			if not worker.alive then
-				break
+			local chosen = box :: Part
+			if not StockService.TakeWaitingBox(player, chosen) then
+				continue -- the owner picked it up first
 			end
-			if rollMistake(player, worker) then
+			carry(worker, chosen)
+			if worker.carrying ~= chosen then
+				StockService.ReturnBox(player, chosen) -- no creature to hold it
+				task.wait(Jobs.IDLE_RECHECK_SECONDS)
+				continue
+			end
+			local productId = chosen:GetAttribute("ProductId") :: string
+			local product = Products.ById[productId]
+			local name = if product then product.name else "box"
+			if toRack then
+				setStatus(player, worker, string.format(StorageConfig.WORDS.storing, name))
+				if rollMistake(player, worker) then
+					setStatus(player, worker, "Dropped a box! Back to the pad")
+					putBack(player, worker)
+					task.wait(1)
+				elseif not storeInRack(player, state, worker, chosen, productId) then
+					putBack(player, worker) -- every rack filled on the way
+				end
+				continue
+			end
+			if stockFromHands(player, state, worker, chosen, productId, `Carrying {name}`) == "dropped" then
 				setStatus(player, worker, "Dropped a box! Back to the pad")
 				putBack(player, worker)
 				task.wait(1)
-				break
 			end
-			setStatus(player, worker, "Stocking")
-			if not waitWork(player, worker, Jobs.STOCK_SECONDS) then
-				break
-			end
-			local units = chosen:GetAttribute("Units")
-			if typeof(units) ~= "number" then
-				break
-			end
-			if PlacementService.GetShelf(player, shelf.uid) ~= shelf then
-				continue -- the owner sold it on the way; pick another shelf (or put the box back)
-			end
-			local added = PlacementService.AddStock(shelf, productId, units)
-			if added > 0 then
-				StockService.ConsumeUnits(player, chosen, added)
-			end
-			if not chosen.Parent then
-				worker.carrying = nil -- used up
-			end
+			putBack(player, worker) -- leftovers back on the pad (no-op if used up or dropped)
+			continue
 		end
-		putBack(player, worker) -- leftovers back on the pad (no-op if used up or dropped)
+
+		local pick = if StockService.HasRoom(player)
+			then StorageRules.restockPick(shelfViews(player), rackViews(player), StorageConfig.LOW_SHARE)
+			else nil
+		local rack = if pick then PlacementService.GetShelf(player, pick.rack) else nil
+		if pick and rack then
+			setStatus(player, worker, StorageConfig.WORDS.restocking)
+			walk(worker, getShelfPoint(state.plot, rack))
+			if not worker.alive then
+				break
+			end
+			if PlacementService.GetShelf(player, rack.uid) ~= rack then
+				continue -- sold on the way: plan again
+			end
+			local taken, slot = PlacementService.TakeFromRack(rack, pick.productId)
+			if not taken or not slot then
+				continue -- the owner took it first
+			end
+			local carried = StockService.MakeWorkerBox(player, taken.productId, taken.units)
+			if not carried then
+				PlacementService.StoreInRack(rack, taken.productId, taken.units) -- the pad filled meanwhile: it stays
+				task.wait(Jobs.IDLE_RECHECK_SECONDS)
+				continue
+			end
+			PlacementService.SetRackWorker(rack, workerName(player, worker))
+			Remotes.RackBoxHop:FireAllClients(rack.part, slot, taken.productId, false, worker.model)
+			carry(worker, carried)
+			if worker.carrying ~= carried then
+				StockService.ReturnBox(player, carried) -- no creature to hold it: onto the pad
+				task.wait(Jobs.IDLE_RECHECK_SECONDS)
+				continue
+			end
+			local result = stockFromHands(player, state, worker, carried, taken.productId, StorageConfig.WORDS.restocking)
+			if result == "dropped" then
+				setStatus(player, worker, "Dropped a box! Back to storage")
+				task.wait(1)
+			end
+			if result ~= "stopped" then
+				stowLeftover(player, state, worker, carried, taken.productId)
+			end
+			continue
+		end
+
+		setStatus(player, worker, idleWords(player, #waiting))
+		walk(worker, getPadPoint(state.plot))
+		task.wait(Jobs.IDLE_RECHECK_SECONDS)
 	end
 end
 
