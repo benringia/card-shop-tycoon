@@ -59,9 +59,18 @@ type Card = {
 	lockLine: Frame,
 	lockText: TextLabel,
 	tag: TextLabel,
+	meter: Meter, -- the pallet deal's 6 box slots (and its words on a computer)
+	struck: TextLabel?, -- the full price struck through over the deal's (a computer)
+	profitText: string?, -- the profit pill's words at the full price
+	locked: boolean,
+	wanted: boolean, -- tagged "Customers want this!": its edge goes pink
 }
 
-type CartLine = { frame: Frame, label: TextLabel, count: TextLabel, cost: TextLabel }
+-- A card's pallet meter: the slots' holder (gold when full), its box slots, the wooden strip under a full pallet and
+-- its words (none on a phone)
+type Meter = { holder: Frame, tray: Frame, slots: { Frame }, strip: Frame, text: TextLabel? }
+
+type CartLine = { frame: Frame, label: TextLabel, count: TextLabel, cost: TextLabel, chip: TextLabel, sub: TextLabel, struck: TextLabel }
 type ComingRow = { text: TextLabel, fill: Frame, item: Coming }
 
 type Ui = {
@@ -90,11 +99,14 @@ type Ui = {
 	padCart: Frame?,
 	summary: TextLabel?,
 	summarySub: TextLabel?,
+	savings: Frame?, -- the cart's "Pallet savings" row (a computer)
+	savingsAmount: TextLabel?,
 }
 
 local WORDS = OrderComputer.WORDS
 local DESK = OrderComputer.DESKTOP
 local PHONE = OrderComputer.PHONE
+local PALLET = OrderComputer.PALLET
 local WHITE = Color3.new(1, 1, 1)
 local MAX_BOXES = StockConfig.MAX_BOXES_PER_PLOT
 local TICK = 0.25 -- seconds between the open window's countdown updates
@@ -376,7 +388,7 @@ end
 
 -- What a card does when tapped: one more box of it in the cart, or why not (never silent)
 local function addOne(product: Product)
-	local look = OrderRules.addLook(product, level(), cash(), cart, byId, room(), phone(), cleared())
+	local look = OrderRules.addLook(product, level(), cash(), cart, byId, room(), phone(), cleared(), PALLET)
 	if look.state ~= "ready" then
 		UIController.Notify(look.why or "You can't add that now.", true)
 		return
@@ -472,6 +484,58 @@ local function shelfTag(parent: Instance, textSize: number): TextLabel
 	return tag
 end
 
+-- The pallet meter (Config/OrderComputer PALLET, mockup pick B): a tray of box slots that fill as boxes go in the cart,
+-- gold on a wooden strip once there's a pallet; `textSize` > 0 adds its words beside the tray (a computer)
+local function palletMeter(parent: Instance, spec: { height: number, slot: { number }, gap: number, pad: number, strip: number, text: number }): Meter
+	local holder = box(parent, "PalletMeter")
+	holder.Size = UDim2.new(1, 0, 0, spec.height)
+	row(holder, 6)
+	local trayWidth = PALLET.boxes * spec.slot[1] + (PALLET.boxes - 1) * spec.gap + spec.pad * 2
+	local tray = box(holder, "Tray", rgb("STEPPER"), 6)
+	tray.LayoutOrder = 1
+	tray.Size = UDim2.fromOffset(trayWidth, spec.slot[2] + spec.pad * 2)
+	local slots: { Frame } = {}
+	for index = 1, PALLET.boxes do
+		local slot = box(tray, `Slot{index}`, rgb("SLOT_BOX"), 3)
+		at(slot, spec.pad + (index - 1) * (spec.slot[1] + spec.gap), spec.pad, spec.slot[1], spec.slot[2])
+		slot.BackgroundTransparency = 1
+		edge(slot, rgb("SLOT_EDGE"), 2)
+		table.insert(slots, slot)
+	end
+	-- the pallet's wooden strip, under the tray once it's full
+	local strip = box(tray, "Strip", rgb("PALLET_WOOD"), 2)
+	strip.Position = UDim2.new(0, 2, 1, 0)
+	strip.Size = UDim2.new(1, -4, 0, spec.strip)
+	strip.Visible = false
+	local text: TextLabel? = nil
+	if spec.text > 0 then
+		local label = words(holder, "", Enum.Font.FredokaOne, spec.text, rgb("PALLET_INK"))
+		label.LayoutOrder = 2
+		label.Size = UDim2.new(1, -(trayWidth + 6), 1, 0)
+		text = label
+	end
+	return { holder = holder, tray = tray, slots = slots, strip = strip, text = text }
+end
+
+-- The meter for `boxes` of it in the cart (OrderRules.meter)
+local function showMeter(meter: Meter, boxes: number)
+	local look = OrderRules.meter(boxes, PALLET, WORDS)
+	for index, slot in meter.slots do
+		local filled = index <= look.filled
+		slot.BackgroundTransparency = if filled then 0 else 1
+		local outline = slot:FindFirstChildOfClass("UIStroke")
+		if outline then
+			outline.Enabled = not filled
+		end
+	end
+	meter.tray.BackgroundColor3 = if look.done then rgb("PALLET_GOLD") else rgb("STEPPER")
+	meter.strip.Visible = look.done
+	if meter.text then
+		meter.text.Text = look.text
+		meter.text.TextColor3 = if look.done then rgb("PROFIT") else rgb("PALLET_INK")
+	end
+end
+
 -- A card's shell: its cell (named by the product id), a lip under it and its white face
 local function cardShell(parent: Instance, product: Product, order: number, corner: number, padding: number): (Frame, Frame, UIStroke)
 	local frame = box(parent, product.id)
@@ -517,20 +581,29 @@ local function buildDesktopCard(parent: Instance, product: Product, order: numbe
 		pill.TextSize = text.PILL
 		profit = pill
 	end
+	local meter = palletMeter(stack, DESK.METER)
+	meter.holder.LayoutOrder = 4
 
 	local bottom = box(side, "Bottom")
 	bottom.AnchorPoint = Vector2.new(0, 1)
 	bottom.Position = UDim2.fromScale(0, 1)
 	bottom.Size = UDim2.new(1, 0, 0, DESK.ADD_HEIGHT)
 	local price = words(bottom, OrderRules.money(product.boxCost), Enum.Font.FredokaOne, text.PRICE, rgb("INK"))
-	price.Size = UDim2.new(0, 60, 1, 0)
+	price.Size = UDim2.new(0, 64, 1, 0)
+	-- at the pallet deal: the full price struck through, small, over the deal's
+	local struck = words(bottom, "", Enum.Font.FredokaOne, DESK.STRUCK, rgb("STRUCK"))
+	struck.Name = "Struck"
+	struck.RichText = true
+	struck.Position = UDim2.fromOffset(0, -7)
+	struck.Size = UDim2.fromOffset(64, DESK.STRUCK + 2)
+	struck.Visible = false
 	local add = UIKit.button(bottom, "", UIKit.Colors.Success)
 	add.Name = "Add"
 	add.Font = Enum.Font.FredokaOne
 	add.TextSize = text.BUTTON - 2
 	add.AnchorPoint = Vector2.new(1, 0.5)
 	add.Position = UDim2.new(1, 0, 0.5, 0)
-	add.Size = UDim2.new(1, -66, 0, DESK.ADD_HEIGHT)
+	add.Size = UDim2.new(1, -70, 0, DESK.ADD_HEIGHT)
 	add.Activated:Connect(function()
 		addOne(product)
 	end)
@@ -556,6 +629,11 @@ local function buildDesktopCard(parent: Instance, product: Product, order: numbe
 		lockLine = line,
 		lockText = lockText,
 		tag = shelfTag(frame, text.PILL - 1),
+		meter = meter,
+		struck = struck,
+		profitText = profitText,
+		locked = false,
+		wanted = false,
 	}
 end
 
@@ -564,6 +642,13 @@ local function buildPhoneCard(parent: Instance, product: Product, order: number)
 	local frame, face, faceEdge = cardShell(parent, product, order, 14, 7)
 	local picture, shown, pictureLock = cardPicture(face, product, 18, true)
 	picture.Size = UDim2.new(1, 0, 0, PHONE.PICTURE_HEIGHT)
+	-- the pallet meter's slots over the picture's bottom-left (its box chip sits bottom-right)
+	local meter = palletMeter(picture, PHONE.METER)
+	meter.holder.AnchorPoint = Vector2.new(0, 1)
+	meter.holder.Position = UDim2.new(0, 3, 1, -4)
+	meter.holder.Size = UDim2.new(0.6, 0, 0, PHONE.METER.height)
+	meter.holder.ZIndex = picture.ZIndex + 5
+	meter.tray.ZIndex = picture.ZIndex + 5
 	local y = PHONE.PICTURE_HEIGHT + 4
 	-- the name in up to two lines, smaller when it's long
 	local name = UIKit.label(face, product.name, Enum.Font.FredokaOne, text.NAME, rgb("INK"))
@@ -623,6 +708,10 @@ local function buildPhoneCard(parent: Instance, product: Product, order: number)
 		lockLine = line,
 		lockText = lockText,
 		tag = shelfTag(frame, text.PILL),
+		meter = meter,
+		profitText = profitText,
+		locked = false,
+		wanted = false,
 	}
 end
 
@@ -828,6 +917,19 @@ local function cartAside(parent: Instance, height: number): Ui
 	empty.Name = "Empty"
 	empty.LayoutOrder = 999
 	empty.Size = UDim2.new(1, -6, 0, 40)
+	-- what the pallet deal takes off, under the lines while a line is at the deal
+	local savings = box(lines, "Savings", rgb("SAVINGS"), 10)
+	savings.LayoutOrder = 998
+	savings.Size = UDim2.new(1, -6, 0, 28)
+	savings.Visible = false
+	inset(savings, 10, 0, 10, 0)
+	local savingsWord = words(savings, WORDS.PALLET_SAVINGS, Enum.Font.FredokaOne, text.LINE, rgb("PROFIT"))
+	savingsWord.Size = UDim2.fromScale(0.6, 1)
+	local savingsAmount = words(savings, "", Enum.Font.FredokaOne, text.LINE, rgb("PROFIT"))
+	savingsAmount.AnchorPoint = Vector2.new(1, 0)
+	savingsAmount.Position = UDim2.fromScale(1, 0)
+	savingsAmount.Size = UDim2.fromScale(0.4, 1)
+	savingsAmount.TextXAlignment = Enum.TextXAlignment.Right
 
 	return {
 		checkout = checkout,
@@ -840,6 +942,8 @@ local function cartAside(parent: Instance, height: number): Ui
 		padLine = padLine,
 		padFill = padFill,
 		padCart = padCart,
+		savings = savings,
+		savingsAmount = savingsAmount,
 	} :: any
 end
 
@@ -1096,6 +1200,12 @@ local function myShelves(): { OrderRules.ShelfInfo }
 	return shelves
 end
 
+-- A card's edge: grey while locked, pink while customers want it and no shelf holds it, else its lilac
+local function paintEdge(card: Card)
+	card.faceEdge.Color = if card.locked then rgb("LOCKED_EDGE") elseif card.wanted then rgb("TAG") else rgb("CARD_EDGE")
+	card.faceEdge.Thickness = if card.wanted and not card.locked then 3 else 2
+end
+
 local function refreshTags()
 	local shelves = myShelves()
 	local lv = level()
@@ -1103,6 +1213,33 @@ local function refreshTags()
 		local tag = if OrderRules.isOpen(card.product, lv, cleared()) then OrderRules.shelfTag(shelves, card.product.id, OrderComputer.LOW_SHARE) else nil
 		card.tag.Visible = tag ~= nil
 		card.tag.Text = tag or ""
+		card.wanted = tag == OrderRules.WANTED
+		paintEdge(card)
+	end
+end
+
+-- A card's price, profit pill and pallet meter for `count` boxes of it in the cart: at the deal, the full price struck
+-- through over the deal's in green and the profit pill gold with the deal's profit
+local function showDeal(card: Card, count: number, locked: boolean)
+	local product = card.product
+	local deal = count >= PALLET.boxes
+	local short = phone()
+	card.meter.holder.Visible = not locked
+	showMeter(card.meter, count)
+	card.price.Text = OrderRules.money(if deal then OrderRules.dealPrice(product, PALLET) else product.boxCost)
+	card.price.TextColor3 = if deal then rgb("PROFIT") else rgb("INK")
+	card.price.TextSize = if short then PHONE.TEXT.PRICE elseif deal then DESK.TEXT.PRICE - 4 else DESK.TEXT.PRICE
+	local struck = card.struck
+	if struck then
+		struck.Visible = deal and not locked
+		struck.Text = `<s>{OrderRules.money(product.boxCost)}</s>`
+	end
+	local profit = card.profit
+	if profit then
+		local dealText = if deal then OrderRules.dealProfitText(product, PALLET, short) else nil
+		profit.Text = dealText or card.profitText or ""
+		profit.BackgroundColor3 = if dealText then rgb("PALLET_GOLD") else rgb("PROFIT")
+		profit.TextColor3 = if dealText then rgb("COIN_INK") else WHITE
 	end
 end
 
@@ -1111,12 +1248,14 @@ local function refreshCards()
 	for _, card in cards do
 		local product = card.product
 		local count = cart[product.id] or 0
-		local look = OrderRules.addLook(product, lv, money, cart, byId, space, short, beaten)
+		local look = OrderRules.addLook(product, lv, money, cart, byId, space, short, beaten, PALLET)
 		local locked = look.state == "locked"
 		local ready = look.state == "ready"
 		card.frame:SetAttribute("InCart", count)
 		card.face.BackgroundColor3 = if locked then rgb("LOCKED_CARD") else rgb("CARD")
-		card.faceEdge.Color = if locked then rgb("LOCKED_EDGE") else rgb("CARD_EDGE")
+		card.locked = locked
+		paintEdge(card)
+		showDeal(card, count, locked)
 		card.picture.BackgroundColor3 = if locked then rgb("LOCKED_PICTURE") else tint(product)
 		card.pictureLock.Visible = locked
 		if card.shown:IsA("ImageLabel") then
@@ -1168,14 +1307,44 @@ local function refreshCartLines(current: Ui)
 			cost.Position = UDim2.fromScale(1, 0)
 			cost.Size = UDim2.new(0, 54, 1, 0)
 			cost.TextXAlignment = Enum.TextXAlignment.Right
-			line = { frame = frame, label = label, count = countLabel, cost = cost }
+			-- at the pallet deal: the full cost struck through over the deal's, and a second row with the PALLET chip and
+			-- "6 boxes · 10% off"
+			local struck = words(frame, "", Enum.Font.FredokaOne, DESK.STRUCK, rgb("STRUCK"))
+			struck.RichText = true
+			struck.AnchorPoint = Vector2.new(1, 0)
+			struck.Position = UDim2.fromScale(1, 0)
+			struck.Size = UDim2.new(0, 60, 0, 18)
+			struck.TextXAlignment = Enum.TextXAlignment.Right
+			struck.Visible = false
+			local chip = UIKit.pill(frame, WORDS.PALLET_CHIP, rgb("PALLET_GOLD"), rgb("COIN_INK"))
+			chip.Position = UDim2.fromOffset(32, 23)
+			chip.Size = UDim2.fromOffset(0, 16)
+			chip.TextSize = DESK.STRUCK
+			chip.Visible = false
+			local sub = words(frame, "", Enum.Font.GothamBold, DESK.TEXT.SMALL - 2, rgb("PROFIT"))
+			sub.Position = UDim2.fromOffset(32 + 52, 22)
+			sub.Size = UDim2.new(1, -(32 + 52 + 64), 0, 18)
+			sub.Visible = false
+			line = { frame = frame, label = label, count = countLabel, cost = cost, chip = chip, sub = sub, struck = struck }
 			cartLines[product.id] = line
 		end
 		if line then
 			line.frame.Visible = count ~= nil
 			if count then
+				local deal = count >= PALLET.boxes
+				line.frame.Size = UDim2.new(1, -6, 0, if deal then 44 else 30)
+				line.label.Size = UDim2.new(1, -(32 + 30 + 54), 0, if deal then 22 else 30)
+				line.count.Visible = not deal
 				line.count.Text = `x{count}`
-				line.cost.Text = OrderRules.money(product.boxCost * count)
+				line.chip.Visible = deal
+				line.sub.Visible = deal
+				line.sub.Text = string.format(WORDS.PALLET_LINE, `x{count}`, math.round(PALLET.off * 100))
+				line.struck.Visible = deal
+				line.struck.Text = `<s>{OrderRules.money(OrderRules.lineCost(product, count))}</s>`
+				line.cost.Position = if deal then UDim2.new(1, 0, 0, 18) else UDim2.fromScale(1, 0)
+				line.cost.Size = if deal then UDim2.fromOffset(64, 24) else UDim2.fromOffset(54, 30)
+				line.cost.TextColor3 = if deal then rgb("PROFIT") else rgb("INK")
+				line.cost.Text = OrderRules.money(OrderRules.lineCost(product, count, PALLET))
 			end
 		end
 		any = any or count ~= nil
@@ -1192,8 +1361,13 @@ local function refreshCart()
 	end
 	local short = phone()
 	local count = OrderRules.cartCount(cart)
-	local cost = OrderRules.cartCost(cart, byId)
-	local look = OrderRules.checkout(cart, byId, cash(), room(), short)
+	local cost = OrderRules.cartCost(cart, byId, PALLET)
+	local look = OrderRules.checkout(cart, byId, cash(), room(), short, PALLET)
+	local saved = OrderRules.palletSavings(cart, byId, PALLET)
+	if current.savings and current.savingsAmount then
+		current.savings.Visible = saved > 0
+		current.savingsAmount.Text = `-{OrderRules.money(saved)}`
+	end
 	current.checkout.Text = if sending then WORDS.SENDING else look.text
 	current.checkout.BackgroundColor3 = if look.state == "ready" and not sending then UIKit.Colors.Success else UIKit.Colors.Locked
 	local spots = used()
@@ -1219,7 +1393,7 @@ local function refreshCart()
 		current.padCart.Size = UDim2.fromScale(math.clamp((spots + math.min(count, room())) / MAX_BOXES, 0, 1), 1)
 	end
 	if current.summary and current.summarySub then
-		current.summary.Text = OrderRules.phoneSummary(cart, byId)
+		current.summary.Text = OrderRules.phoneSummary(cart, byId, PALLET)
 		current.summarySub.Text = `{OrderRules.arriveLine(tripSeconds, true)} · {OrderRules.padLine(spots, MAX_BOXES, true)}`
 	end
 	refreshCartLines(current)
@@ -1426,7 +1600,7 @@ function OrderController.Checkout()
 	if sending then
 		return
 	end
-	local look = OrderRules.checkout(cart, byId, cash(), room(), phone())
+	local look = OrderRules.checkout(cart, byId, cash(), room(), phone(), PALLET)
 	if look.state ~= "ready" then
 		UIController.Notify(look.why or "You can't order that now.", true)
 		return

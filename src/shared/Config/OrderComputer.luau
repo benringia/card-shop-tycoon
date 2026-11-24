@@ -24,15 +24,13 @@ return {
 		SENDING = "Sending...",
 		ORDERED = "Ordered!",
 		-- The pallet deal (PALLET): the meter under a card's profit pill (%d: boxes still to add, the percent off), the
-		-- cart's chip and line, and the savings row above the total
+		-- cart's chip and line ("x6 · 10% off"), and the savings row above the total
 		PALLET_NONE = "%d for -%d%%",
 		PALLET_MORE = "%d more: -%d%%",
 		PALLET_DONE = "PALLET -%d%%!",
 		PALLET_CHIP = "PALLET",
 		PALLET_LINE = "%s · %d%% off",
 		PALLET_SAVINGS = "Pallet savings",
-		-- The pink tag on a product no shelf holds (OrderRules.shelfTag; spec 2026-11-24-shop-variety-design)
-		WANTED = "Customers want this!",
 	} :: { [string]: string },
 
 	-- The pallet deal (owner 2026-11-24, pick B at "just 10% off"; spec 2026-11-24-shop-variety-design): `boxes` or more
@@ -51,7 +49,9 @@ return {
 	FIT = 0.96,
 
 	DESKTOP = {
-		MONITOR = { 960, 600 }, -- the tablet, its edge under it included
+		-- the tablet, its edge under it included (640 tall since the pallet meter, 2026-11-24: each card's row of 6 box
+		-- slots fits and two rows of cards still show whole)
+		MONITOR = { 960, 640 },
 		BEZEL = 20, -- px of bezel round the screen, even all round like a tablet's
 		LIP = 8, -- px of the tablet's edge showing under it
 		CORNER = 34, -- the tablet's rounded corners, px
@@ -68,6 +68,10 @@ return {
 		STEP = 36, -- a stepper button
 		ADD_HEIGHT = 40,
 		CHECKOUT_HEIGHT = 52,
+		-- The pallet meter under a card's profit pill: its row's height, each box slot, the gap between, the pallet's
+		-- wooden strip under a full one; a struck-through full price over the deal's
+		METER = { height = 18, slot = { 11, 10 }, gap = 2, pad = 3, strip = 4, text = 12 },
+		STRUCK = 11,
 		TEXT = { NAME = 18, META = 13, PILL = 12, PRICE = 24, COUNT = 19, SMALL = 13, LINE = 14, TOTAL = 24, BUTTON = 18, LOGO = 20, NAV = 13, URL = 13, CLOCK = 14 },
 	},
 
@@ -85,6 +89,8 @@ return {
 		ADD_HEIGHT = 44,
 		CHECKOUT = { 156, 44 },
 		NAV_HEIGHT = 30,
+		-- the pallet meter's 6 slots over the bottom-left of a card's picture
+		METER = { height = 14, slot = { 10, 8 }, gap = 2, pad = 3, strip = 3, text = 0 },
 		TEXT = { NAME = 14, PILL = 12, PRICE = 18, COUNT = 17, LOGO = 17, NAV = 12, SUMMARY = 16, SMALL = 11, BUTTON = 18 },
 	},
 
@@ -131,6 +137,15 @@ return {
 		TASKBAR = { 255, 255, 255 },
 		COIN = { 255, 201, 63 },
 		COIN_INK = { 122, 79, 0 },
+		-- the pallet meter: an empty slot's lilac edge, a box in it, the gold of a full pallet and its wooden strip,
+		-- the meter's words, a struck-through price, the savings row
+		SLOT_EDGE = { 196, 170, 255 },
+		SLOT_BOX = { 214, 170, 112 },
+		PALLET_GOLD = { 255, 201, 63 },
+		PALLET_WOOD = { 168, 105, 58 },
+		PALLET_INK = { 138, 90, 0 },
+		STRUCK = { 160, 137, 176 },
+		SAVINGS = { 223, 245, 232 },
 	} :: { [string]: { number } },
 	-- A card's picture panel: the product's colour this far toward white
 	PICTURE_TINT = 0.82,

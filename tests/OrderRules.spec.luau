@@ -204,15 +204,22 @@ return {
 		expect.equal(OrderRules.roomLine(1), "Your delivery pad has room for 1 box.")
 	end,
 
-	["the shelves tag: low when its shelves hold a quarter or less, empty when only an empty shelf could take it"] = function()
+	["the shelves tag: low when its shelves hold a quarter or less, empty when its shelf ran out"] = function()
 		local low = { shelf(5, "FirstSparkPack"), shelf(0) }
 		expect.equal(OrderRules.shelfTag(low, "FirstSparkPack", 0.25), "Shelves low", "5 of 24")
 		expect.isNil(OrderRules.shelfTag({ shelf(20, "FirstSparkPack") }, "FirstSparkPack", 0.25), "well stocked")
 		expect.equal(OrderRules.shelfTag({ shelf(6, "FirstSparkPack"), shelf(0, nil, 24) }, "FirstSparkPack", 0.25), "Shelves low", "6 of 24 exactly a quarter")
-		expect.equal(OrderRules.shelfTag({ shelf(20, "FirstSparkPack"), shelf(0) }, "CardSleeves", 0.25), "Shelf empty", "an empty shelf could hold sleeves")
-		expect.isNil(OrderRules.shelfTag({ shelf(20, "FirstSparkPack"), shelf(0, nil, 24, { "BulkCards" }) }, "CardSleeves", 0.25), "no shelf takes sleeves: nothing to say")
-		expect.isNil(OrderRules.shelfTag({ { kind = "Cases", capacity = 6, units = 0 } }, "FirstSparkPack", 0.25), "a card case holds no stock")
-		expect.isNil(OrderRules.shelfTag({}, "FirstSparkPack", 0.25), "no shelves yet")
+		expect.equal(OrderRules.shelfTag({ shelf(20, "FirstSparkPack"), shelf(0, "CardSleeves") }, "CardSleeves", 0.25), "Shelf empty", "its sleeves shelf ran out")
+	end,
+
+	["shelf tag: customers want what no shelf holds"] = function()
+		local wanted = "Customers want this!"
+		expect.equal(OrderRules.WANTED, wanted, "the client checks the tag against it (the pink edge)")
+		expect.equal(OrderRules.shelfTag({ shelf(20, "FirstSparkPack"), shelf(0) }, "CardSleeves", 0.25), wanted, "an empty shelf of nothing: no shelf holds sleeves")
+		expect.equal(OrderRules.shelfTag({ shelf(20, "FirstSparkPack"), shelf(0, "FirstSparkPack") }, "CardSleeves", 0.25), wanted, "an empty pack shelf isn't a sleeves shelf")
+		expect.equal(OrderRules.shelfTag({ shelf(20, "FirstSparkPack"), shelf(0, nil, 24, { "BulkCards" }) }, "CardSleeves", 0.25), wanted, "no shelf takes sleeves: still wanted")
+		expect.equal(OrderRules.shelfTag({ { kind = "Cases", capacity = 6, units = 0 } }, "FirstSparkPack", 0.25), wanted, "a card case holds no stock")
+		expect.equal(OrderRules.shelfTag({}, "FirstSparkPack", 0.25), wanted, "no shelves yet")
 	end,
 
 	["the server reads a cart: known products in whole boxes, never bulk, never more than the pad"] = function()

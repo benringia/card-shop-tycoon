@@ -280,25 +280,29 @@ local function takes(shelf: ShelfInfo, productId: string): boolean
 	return shelf.kind == "Products" and (shelf.accepts == nil or table.find(shelf.accepts, productId) ~= nil)
 end
 
+-- The tag on a product no shelf holds (spec 2026-11-24-shop-variety-design): customers ask for every unlocked product
+OrderRules.WANTED = "Customers want this!"
+
 -- The pink tag on a card: "Shelves low" when the shelves holding it are at `lowShare` full or less; "Shelf empty"
--- when none holds it but an empty shelf could; nil otherwise
+-- when a shelf of it ran out (an empty shelf keeps its product); "Customers want this!" when no shelf has it as its
+-- product (OrderRules.WANTED); nil when well stocked
 function OrderRules.shelfTag(shelves: { ShelfInfo }, productId: string, lowShare: number): string?
 	local units, capacity = 0, 0
-	local emptyTakes = false
+	local ranOut = false
 	for _, shelf in shelves do
-		if takes(shelf, productId) then
-			if shelf.units > 0 and shelf.productId == productId then
+		if takes(shelf, productId) and shelf.productId == productId then
+			if shelf.units > 0 then
 				units += shelf.units
 				capacity += shelf.capacity
-			elseif shelf.units <= 0 then
-				emptyTakes = true
+			else
+				ranOut = true
 			end
 		end
 	end
 	if capacity > 0 then
 		return if units / capacity <= lowShare then "Shelves low" else nil
 	end
-	return if emptyTakes then "Shelf empty" else nil
+	return if ranOut then "Shelf empty" else OrderRules.WANTED
 end
 
 -- A cart a client sent, checked (StockService): known, orderable products (never bulk: a Bulk Bin is filled from the
