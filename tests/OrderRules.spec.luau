@@ -59,6 +59,59 @@ return {
 		end
 	end,
 
+	["pallet deal: 6 boxes of one product 10% off"] = function()
+		local pallet = OrderComputer.PALLET
+		expect.equal(pallet.boxes, 6)
+		expect.equal(pallet.off, 0.10)
+		expect.equal(OrderRules.lineCost(PACK, 6, pallet), 259.2, "$288 at 10% off")
+		expect.equal(OrderRules.lineCost(PACK, 5, pallet), 240, "5 boxes: full price")
+		expect.equal(OrderRules.lineCost(PACK, 6), 288, "no deal given: full price")
+		local cart = { FirstSparkPack = 6, CardSleeves = 2 }
+		expect.equal(OrderRules.cartCost(cart, BY_ID, pallet), 319.2, "the pallet line at the deal, the short one at full price")
+		expect.equal(OrderRules.cartCost(cart, BY_ID), 348, "no deal given")
+		expect.equal(OrderRules.palletSavings(cart, BY_ID, pallet), 28.8)
+		expect.equal(OrderRules.palletSavings({ FirstSparkPack = 5 }, BY_ID, pallet), 0)
+		expect.equal(OrderRules.lineCost(SLEEVES, 7, pallet), 189, "7 x $30 at 10% off")
+	end,
+
+	["pallet meter words"] = function()
+		local pallet, words = OrderComputer.PALLET, OrderComputer.WORDS
+		local none = OrderRules.meter(0, pallet, words)
+		expect.equal(none.filled, 0)
+		expect.equal(none.done, false)
+		expect.equal(none.text, "6 for -10%")
+		local some = OrderRules.meter(2, pallet, words)
+		expect.equal(some.filled, 2)
+		expect.equal(some.text, "4 more: -10%")
+		local done = OrderRules.meter(6, pallet, words)
+		expect.equal(done.filled, 6)
+		expect.equal(done.done, true)
+		expect.equal(done.text, "PALLET -10%!")
+		local over = OrderRules.meter(9, pallet, words)
+		expect.equal(over.filled, 6, "never more slots than a pallet")
+		expect.equal(over.done, true)
+	end,
+
+	["deal price and profit"] = function()
+		local pallet = OrderComputer.PALLET
+		expect.equal(OrderRules.dealPrice(PACK, pallet), 43.2)
+		expect.equal(OrderRules.dealProfitText(PACK, pallet), "+$28.80 profit a box")
+		expect.equal(OrderRules.dealProfitText(PACK, pallet, true), "+$28.80 profit")
+		expect.equal(OrderRules.dealPrice(BOOSTER, pallet), 81)
+	end,
+
+	["checkout total uses the pallet"] = function()
+		local pallet = OrderComputer.PALLET
+		local look = OrderRules.checkout({ FirstSparkPack = 6 }, BY_ID, 1000, 12, false, pallet)
+		expect.equal(look.state, "ready")
+		expect.equal(look.text, "Order now · $259.20")
+		local short = OrderRules.checkout({ FirstSparkPack = 6 }, BY_ID, 270, 12, false, pallet)
+		expect.equal(short.state, "ready", "$270 covers the deal's $259.20")
+		expect.equal(OrderRules.phoneSummary({ FirstSparkPack = 6 }, BY_ID, pallet), "6 boxes · $259.20")
+		local add = OrderRules.addLook(PACK, 5, 300, { FirstSparkPack = 5 }, BY_ID, 12, false, nil, pallet)
+		expect.equal(add.state, "ready", "the 6th box brings the deal: $259.20 fits in $300")
+	end,
+
 	["the cart: boxes counted, cost added up to the cent"] = function()
 		local cart = { FirstSparkPack = 2, CardSleeves = 1 }
 		expect.equal(OrderRules.cartCount(cart), 3)

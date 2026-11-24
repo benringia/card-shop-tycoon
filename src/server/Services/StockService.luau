@@ -17,6 +17,7 @@ local Items = require(Config:WaitForChild("Items"))
 local ItemRules = require(Shared:WaitForChild("Util"):WaitForChild("ItemRules"))
 local TutorialRules = require(Shared:WaitForChild("Util"):WaitForChild("TutorialRules"))
 local OrderRules = require(Shared:WaitForChild("Util"):WaitForChild("OrderRules"))
+local OrderComputer = require(Config:WaitForChild("OrderComputer"))
 local StockConfig = require(Config:WaitForChild("Stock"))
 local CarryPose = require(Config:WaitForChild("CarryPose"))
 local Delivery = require(Config:WaitForChild("Delivery"))
@@ -347,7 +348,8 @@ local function onOrderCart(player: Player, raw: unknown)
 		refuse(OrderRules.roomLine(room))
 		return
 	end
-	local cost = OrderRules.cartCost(cart, Products.ById)
+	-- each product's line at the pallet deal from 6 boxes (the same sum the order computer shows)
+	local cost = OrderRules.cartCost(cart, Products.ById, OrderComputer.PALLET)
 	local paid, kept = EconomyService.TrySpend(player, cost, "stock")
 	if not paid then
 		-- kept: the shop keeps that cash for a rack and a box, and BrokeService said so

@@ -23,7 +23,22 @@ return {
 		PAD_HINT = "Boxes land on your delivery pad. Carry them to your shelves!",
 		SENDING = "Sending...",
 		ORDERED = "Ordered!",
+		-- The pallet deal (PALLET): the meter under a card's profit pill (%d: boxes still to add, the percent off), the
+		-- cart's chip and line, and the savings row above the total
+		PALLET_NONE = "%d for -%d%%",
+		PALLET_MORE = "%d more: -%d%%",
+		PALLET_DONE = "PALLET -%d%%!",
+		PALLET_CHIP = "PALLET",
+		PALLET_LINE = "%s · %d%% off",
+		PALLET_SAVINGS = "Pallet savings",
+		-- The pink tag on a product no shelf holds (OrderRules.shelfTag; spec 2026-11-24-shop-variety-design)
+		WANTED = "Customers want this!",
 	} :: { [string]: string },
+
+	-- The pallet deal (owner 2026-11-24, pick B at "just 10% off"; spec 2026-11-24-shop-variety-design): `boxes` or more
+	-- boxes of one product in one order cost `off` less (OrderRules.lineCost; the server charges the same). They land on
+	-- the delivery pad like any order; you or a Restocker carry them to the racks
+	PALLET = { boxes = 6, off = 0.10 },
 
 	-- A product's shelves this full or less get the "Shelves low" tag
 	LOW_SHARE = 0.25,

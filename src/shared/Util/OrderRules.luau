@@ -20,6 +20,12 @@ export type Product = {
 -- Boxes of each product: { FirstSparkPack = 2 }
 export type Cart = { [string]: number }
 
+-- The pallet deal (Config/OrderComputer PALLET): `boxes` or more of one product in one order cost `off` less
+export type Pallet = { boxes: number, off: number }
+
+-- A card's pallet meter: its slots filled (at most a pallet's), whether the deal is on, and its words
+export type Meter = { filled: number, done: boolean, text: string }
+
 export type Look = { state: string, text: string, why: string? }
 
 -- A shelf as the client sees it (its part's attributes and Config/Shelves)
@@ -95,16 +101,57 @@ function OrderRules.cartCount(cart: Cart): number
 	return count
 end
 
--- What the cart costs; a product that isn't sold costs nothing
-function OrderRules.cartCost(cart: Cart, byId: { [string]: Product }): number
+-- What `boxes` boxes of one product cost: at the pallet deal from its box count up (to the cent)
+function OrderRules.lineCost(product: Product, boxes: number, pallet: Pallet?): number
+	local full = product.boxCost * boxes
+	if pallet and boxes >= pallet.boxes then
+		return cents(full * (1 - pallet.off))
+	end
+	return cents(full)
+end
+
+-- What the cart costs, each line at the pallet deal when it has enough boxes; a product that isn't sold costs nothing
+function OrderRules.cartCost(cart: Cart, byId: { [string]: Product }, pallet: Pallet?): number
 	local cost = 0
 	for productId, boxes in cart do
 		local product = byId[productId]
 		if product then
-			cost += product.boxCost * boxes
+			cost += OrderRules.lineCost(product, boxes, pallet)
 		end
 	end
 	return cents(cost)
+end
+
+-- What the pallet deal takes off the cart (0 when no line has enough boxes)
+function OrderRules.palletSavings(cart: Cart, byId: { [string]: Product }, pallet: Pallet?): number
+	return cents(OrderRules.cartCost(cart, byId) - OrderRules.cartCost(cart, byId, pallet))
+end
+
+-- One box at the pallet deal
+function OrderRules.dealPrice(product: Product, pallet: Pallet): number
+	return cents(product.boxCost * (1 - pallet.off))
+end
+
+-- "+$28.80 profit a box" at the deal (a phone: "+$28.80 profit"); nil when a box makes nothing
+function OrderRules.dealProfitText(product: Product, pallet: Pallet, short: boolean?): string?
+	local profit = cents(product.unitsPerBox * product.marketPrice - OrderRules.dealPrice(product, pallet))
+	if profit <= 0 then
+		return nil
+	end
+	return if short then `+{OrderRules.money(profit)} profit` else `+{OrderRules.money(profit)} profit a box`
+end
+
+-- A card's pallet meter with `boxes` of it in the cart: "6 for -10%", "4 more: -10%", "PALLET -10%!"
+function OrderRules.meter(boxes: number, pallet: Pallet, words: { [string]: string }): Meter
+	local percent = math.round(pallet.off * 100)
+	local filled = math.clamp(math.floor(boxes), 0, pallet.boxes)
+	if filled >= pallet.boxes then
+		return { filled = filled, done = true, text = string.format(words.PALLET_DONE, percent) }
+	end
+	if filled == 0 then
+		return { filled = 0, done = false, text = string.format(words.PALLET_NONE, pallet.boxes, percent) }
+	end
+	return { filled = filled, done = false, text = string.format(words.PALLET_MORE, pallet.boxes - filled, percent) }
 end
 
 -- A copy of the cart with this product's count moved by `delta`, never under zero (a zero leaves the cart)
@@ -148,8 +195,8 @@ end
 
 -- A card's Add button (and its + while some are in the cart): "ready", "locked" below its shop level or before its
 -- boss is beaten, "full" when the pad has no room for one more, "short" when the cash doesn't cover one more on top
--- of the cart. `why` says what's wrong when it's tapped anyway (never silent).
-function OrderRules.addLook(product: Product, level: number, cash: number, cart: Cart, byId: { [string]: Product }, room: number, short: boolean?, cleared: { [string]: boolean }?): Look
+-- of the cart (each line at the pallet deal when given). `why` says what's wrong when it's tapped anyway (never silent).
+function OrderRules.addLook(product: Product, level: number, cash: number, cart: Cart, byId: { [string]: Product }, room: number, short: boolean?, cleared: { [string]: boolean }?, pallet: Pallet?): Look
 	if level < product.unlockLevel then
 		return {
 			state = "locked",
@@ -170,7 +217,7 @@ function OrderRules.addLook(product: Product, level: number, cash: number, cart:
 		return { state = "full", text = "Pad full", why = OrderRules.roomLine(room) }
 	end
 	local add = if short then "Add" else "Add to cart"
-	if cash < OrderRules.cartCost(cart, byId) + product.boxCost then
+	if cash < OrderRules.cartCost(OrderRules.changeCount(cart, product.id, 1), byId, pallet) then
 		if count == 0 then
 			return { state = "short", text = `Need {OrderRules.money(product.boxCost)}`, why = `You need {OrderRules.money(product.boxCost)} for a box.` }
 		end
@@ -180,8 +227,8 @@ function OrderRules.addLook(product: Product, level: number, cash: number, cart:
 end
 
 -- The cart's Order now button: "empty", "full" when the pad filled up meanwhile, "short" of cash, or "ready" with the
--- total on it (a phone shows the total beside the button)
-function OrderRules.checkout(cart: Cart, byId: { [string]: Product }, cash: number, room: number, short: boolean?): Look
+-- total on it (a phone shows the total beside the button); each line at the pallet deal when given
+function OrderRules.checkout(cart: Cart, byId: { [string]: Product }, cash: number, room: number, short: boolean?, pallet: Pallet?): Look
 	local count = OrderRules.cartCount(cart)
 	if count == 0 then
 		return { state = "empty", text = if short then "Order now" else "Add boxes to order", why = "Add some boxes to your cart first." }
@@ -189,7 +236,7 @@ function OrderRules.checkout(cart: Cart, byId: { [string]: Product }, cash: numb
 	if count > room then
 		return { state = "full", text = `Room for {math.max(0, room)}`, why = OrderRules.roomLine(room) }
 	end
-	local cost = OrderRules.cartCost(cart, byId)
+	local cost = OrderRules.cartCost(cart, byId, pallet)
 	if cash < cost then
 		return { state = "short", text = `Need {OrderRules.money(cost)}`, why = `You need {OrderRules.money(cost)} for this order.` }
 	end
@@ -210,13 +257,13 @@ function OrderRules.cashAfter(cash: number, cost: number): string
 	return `Cash after: {OrderRules.money(cash - cost)}`
 end
 
--- A phone's bottom bar: "3 boxes · $126"
-function OrderRules.phoneSummary(cart: Cart, byId: { [string]: Product }): string
+-- A phone's bottom bar: "3 boxes · $126" (at the pallet deal when given)
+function OrderRules.phoneSummary(cart: Cart, byId: { [string]: Product }, pallet: Pallet?): string
 	local count = OrderRules.cartCount(cart)
 	if count == 0 then
 		return "Your cart is empty"
 	end
-	return `{OrderRules.boxes(count)} · {OrderRules.money(OrderRules.cartCost(cart, byId))}`
+	return `{OrderRules.boxes(count)} · {OrderRules.money(OrderRules.cartCost(cart, byId, pallet))}`
 end
 
 -- "Arrives at your door in 10 s" (a phone: "At your door in 10 s")
