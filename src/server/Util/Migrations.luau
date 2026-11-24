@@ -521,6 +521,10 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string, footprint: Fo
 			end
 		end
 	end,
+	-- v43 (spec 2026-11-24-storage-racks-design): a storage rack's boxes ride on its layout entry (`boxes`: spot,
+	-- productId, units; PlacementService cleans them on load with StorageRules.clean). A save from before has no racks,
+	-- so nothing changes but the version.
+	[42] = function(_data) end,
 }
 
 local function lowestGrade(): string

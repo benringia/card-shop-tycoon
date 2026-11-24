@@ -53,7 +53,9 @@ export type SavedShelf = {
 	units: number,
 	paid: number,
 	cards: { SavedCard }?, -- card cases only: what's on display
+	boxes: { SavedRackBox }?, -- storage racks only (v43): the boxes on it, by spot
 }
+export type SavedRackBox = { slot: number, productId: string, units: number }
 export type SavedBox = { productId: string, units: number }
 export type SavedCell = { gridX: number, gridZ: number, rotation: number }
 

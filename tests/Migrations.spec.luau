@@ -769,6 +769,33 @@ return {
 		expect.equal(data.windows, 5)
 	end,
 
+	-- v43 (spec 2026-11-24-storage-racks-design): a storage rack's boxes ride on its layout entry (`boxes`); a save from
+	-- before has no racks, so nothing moves
+	["v43 (storage racks): nothing moves; a v42 layout comes through as it was"] = function()
+		local Data = require("../src/shared/Config/Data")
+		expect.equal(Data.SCHEMA_VERSION >= 43, true, "the schema is at v43: saves carry racks' boxes")
+		local data = v41({
+			layout = {
+				{ shelfId = "Shelf", gridX = 8, gridZ = 3, rotation = 0, units = 12, productId = "FirstSparkPack", paid = 100 },
+				{ shelfId = "WallShelf", gridX = 1, gridZ = 9, rotation = 1, units = 0, paid = 350 },
+			},
+		})
+		Migrations.run(data, 42, nil, footprint)
+		local before = table.clone(data.layout)
+		local first, second = table.clone(data.layout[1]), table.clone(data.layout[2])
+		Migrations.run(data, 43, nil, footprint)
+		expect.equal(data.version, 43)
+		expect.equal(#data.layout, #before)
+		for key, value in first do
+			expect.equal(data.layout[1][key], value, `first entry's {key}`)
+		end
+		for key, value in second do
+			expect.equal(data.layout[2][key], value, `second entry's {key}`)
+		end
+		expect.isNil(data.layout[1].boxes, "no boxes added")
+		expect.isNil(data.layout[2].boxes, "no boxes added")
+	end,
+
 	["v42: a save from before v41 runs every step up to it (the footprint reaches step 41)"] = function()
 		local data = v41({ layout = { { shelfId = "Shelf", gridX = 18, gridZ = 0, rotation = 0 } } })
 		data.version = 40
