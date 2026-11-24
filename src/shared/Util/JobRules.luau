@@ -15,6 +15,7 @@ type Config = {
 	UNLOCK_LEVEL: number,
 	FREE_SLOTS: number,
 	PASS_SLOTS: number,
+	WALK: { min: number, max: number },
 }
 
 -- 1 = base speed; faster cards finish sooner and walk quicker
@@ -23,6 +24,14 @@ function JobRules.getSpeedFactor(config: Config, spd: number): number
 		return 1
 	end
 	return math.clamp((spd / config.REFERENCE_SPD) ^ config.SPEED_EXPONENT, config.SPEED_MIN, config.SPEED_MAX)
+end
+
+-- Studs a second a worker walks: from WALK.min for the slowest card to WALK.max for the fastest, along the work speed
+-- factor, so faster cards still walk quicker but none outpaces the player (owner 2026-11-24)
+function JobRules.walkSpeed(config: Config, spd: number): number
+	local factor = JobRules.getSpeedFactor(config, spd)
+	local share = (factor - config.SPEED_MIN) / (config.SPEED_MAX - config.SPEED_MIN)
+	return config.WALK.min + (config.WALK.max - config.WALK.min) * share
 end
 
 function JobRules.getDuration(config: Config, baseSeconds: number, spd: number): number

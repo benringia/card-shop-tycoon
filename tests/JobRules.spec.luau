@@ -97,4 +97,20 @@ return {
 		expect.equal(tiles[1].word, word)
 		expect.equal(tiles[1].tone, tone)
 	end,
+
+	-- Owner 2026-11-24: "adjust the restocker walking speed to be slower than normal walking speed, fastest will still be
+	-- a little bit slower than when its summoned from party" (a summoned pet keeps the player's 16)
+	["walk speed: 8 for the slowest card up to 14 for the fastest, always under the player's 16"] = function()
+		expect.near(JobRules.walkSpeed(config, 1), 8, 1e-9, "slowest (factor clamped to 0.4)")
+		expect.near(JobRules.walkSpeed(config, 1000), 14, 1e-9, "fastest (factor clamped to 2.5)")
+		expect.near(JobRules.walkSpeed(config, 14), 8 + 6 * 0.6 / 2.1, 1e-9, "a fresh Very Rare ~9.7")
+		expect.near(JobRules.walkSpeed(config, 20), 8 + 6 * ((20 / 14) ^ 1.5 - 0.4) / 2.1, 1e-9, "a fresh Legendary ~11.7")
+		local last = 0
+		for spd = 1, 200 do
+			local walk = JobRules.walkSpeed(config, spd)
+			assert(walk < 16, `SPD {spd}: {walk} is under the player's 16`)
+			assert(walk >= last, `SPD {spd}: never slower than a weaker card`)
+			last = walk
+		end
+	end,
 }

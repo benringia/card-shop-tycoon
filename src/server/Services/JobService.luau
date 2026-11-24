@@ -240,7 +240,7 @@ local function spawnCreature(player: Player, state: PlayerJobs, worker: Worker)
 	local model = NpcMotion.createRig(description, `Worker_{worker.job}`, getEntryCFrame(state.plot))
 	local humanoid = model:FindFirstChildOfClass("Humanoid") :: Humanoid
 	local root = model:FindFirstChild("HumanoidRootPart") :: BasePart
-	humanoid.WalkSpeed = Jobs.WALK_SPEED * JobRules.getSpeedFactor(Jobs, profile.spd) * TiredRules.speed(Jobs.TIRED, isTired(worker))
+	humanoid.WalkSpeed = JobRules.walkSpeed(Jobs, profile.spd) * TiredRules.speed(Jobs.TIRED, isTired(worker))
 	humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
 	humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
 
@@ -744,7 +744,7 @@ local function onTiredTurn(player: Player, worker: Worker, event: string)
 	end
 	local humanoid = worker.humanoid
 	if humanoid and profile then
-		humanoid.WalkSpeed = Jobs.WALK_SPEED * JobRules.getSpeedFactor(Jobs, profile.spd) * TiredRules.speed(Jobs.TIRED, isTired(worker))
+		humanoid.WalkSpeed = JobRules.walkSpeed(Jobs, profile.spd) * TiredRules.speed(Jobs.TIRED, isTired(worker))
 	end
 	updateLabel(player, worker)
 	local state = states[player]

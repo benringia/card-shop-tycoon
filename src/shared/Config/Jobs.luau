@@ -34,7 +34,10 @@ return {
 	SPEED_EXPONENT = 1.5,
 	SPEED_MIN = 0.4,
 	SPEED_MAX = 2.5,
-	WALK_SPEED = 12, -- studs per second at base speed
+	-- Studs a second a worker walks, from the slowest card to the fastest along its work speed (Util/JobRules.walkSpeed).
+	-- Owner 2026-11-24: "slower than normal walking speed, fastest will still be a little bit slower than when its
+	-- summoned from party": the player and a summoned pet walk 16 (was 12 x the work speed, 4.8 to 30)
+	WALK = { min = 8, max = 14 },
 	STOCK_SECONDS = 2, -- stocking one box at base speed
 	SCAN_SECONDS = 1.2, -- one counter item at base speed
 	MISTAKE_MAX = 0.20, -- at Power <= MISTAKE_POWER_LOW
