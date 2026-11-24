@@ -571,8 +571,9 @@ is over UI (`UIKit.pointerBlocked`).
   over 95 frames). Before, the box floated in front of the root while the arms swung. More boxes stack on top.
 - **Storage racks** (owner 2026-11-24: "storage system where box can be put to storage racks. also pets can also carry
   boxes to the storage racks"; spec `docs/superpowers/specs/2026-11-24-storage-racks-design.md`; picks: rack look A,
-  taking 3 "a small window", the window C "Stock clipboard", "numbers OK"). Built 2026-11-24, waiting on the owner's
-  check.
+  taking 3 "a small window", the window C "Stock clipboard", "numbers OK"). Built and merged 2026-11-24 (owner: "merge
+  and push"). Deferred minors: "counted by" isn't saved (gone after a rejoin until a restocker next uses the rack); a
+  restocker walking to a rack the owner moves still stores into it; hops past 60 studs aren't drawn.
   - **The rack** (4.3): placed anywhere in your shop like a shelf, 9 boxes on 3 decks of 3 (`Config/Storage` SPOTS;
     spot 1 on your left as you face it). Its boxes are plain data on the placed rack (PlacementService `stored`),
     drawn as the real delivery boxes (server `Util/BoxLook`: only the front sticker, its SurfaceGui at the shop
