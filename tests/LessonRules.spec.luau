@@ -94,7 +94,7 @@ return {
 		expect.isNil(by.sword.on, "the sword is handed over at its level: taught then")
 		expect.equal(by.jobs.level, Jobs.UNLOCK_LEVEL, "jobs at their unlock (nothing to place)")
 		assert(by.trophy.trigger == "trophy" and by.titles.trigger == "title" and by.prices.trigger == "tourDone", "the event lessons as before")
-		expect.equal(#Pish.LESSONS, 15, "fifteen lessons, not eighteen (the healing spring's came on launch day, the Recycler's the day after, the two shop rooms' with the rooms)")
+		expect.equal(#Pish.LESSONS, 16, "sixteen lessons (the healing spring's came on launch day, the Recycler's the day after, the two shop rooms' with the rooms, the storage rack's with racks)")
 	end,
 
 	["due: a level-up only brings what's taught at its level, never a first-use lesson"] = function()
@@ -115,6 +115,8 @@ return {
 		expect.isNil(LessonRules.onPlaced(Pish.LESSONS, "Forge", "Forge", { forge = false }), "waiting already: a second one changes nothing")
 		expect.isNil(LessonRules.onPlaced(Pish.LESSONS, "WallShelf", "Products", {}), "a plain shelf: no visit")
 		expect.isNil(LessonRules.onPlaced(Pish.LESSONS, "trophy_meadowWarden", "Trophy", {}), "the trophy keeps its own lesson")
+		-- storage racks (spec 2026-11-24-storage-racks-design): explained beside the first one placed, old saves too
+		expect.equal(LessonRules.onPlaced(Pish.LESSONS, "StorageRack", "Storage", {}), "storageRack")
 	end,
 
 	["a first-use lesson never waits for cash (it's bought already); the others as before"] = function()

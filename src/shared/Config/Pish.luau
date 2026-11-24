@@ -65,6 +65,9 @@ return {
 		{ id = "collectorCase", level = 3, icon = "Cases", shelf = "CollectorCase", on = "placed" },
 		{ id = "sword", level = 4, icon = "Sword" },
 		{ id = "condenser", level = 5, icon = "Condenser", shelf = "Condenser", on = "placed" },
+		-- Storage racks (spec 2026-11-24-storage-racks-design): explained beside the first one placed, so a save already
+		-- past level 5 gets it then too (no `late` needed)
+		{ id = "storageRack", level = 5, icon = "Box", shelf = "StorageRack", on = "placed" },
 		{ id = "forge", level = 6, icon = "Forge", shelf = "Forge", on = "placed" },
 		-- `rush` (owner 2026-11-21: "The moment player unlock jobs. pish will introduce it to them"): first in line
 		-- and no breather after his last visit (PACE.gap); he still waits for a free moment (LessonRules.rushFirst,

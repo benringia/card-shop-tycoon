@@ -54,6 +54,16 @@ AdminPanel.SECTIONS = {
 		},
 	},
 	{
+		-- storage racks (spec 2026-11-24-storage-racks-design): free, in your shop; filled or emptied for testing
+		title = "Storage",
+		buttons = {
+			{ label = "Place a rack", command = "/storage place" },
+			{ label = "Fill my racks", command = "/storage fill" },
+			{ label = "Fill with packs", command = "/storage fill FirstSparkPack" },
+			{ label = "Empty my racks", command = "/storage clear" },
+		},
+	},
+	{
 		title = "Money and levels",
 		buttons = {
 			{ label = "+$1,000", command = "/cash 1000" },
@@ -293,6 +303,7 @@ AdminPanel.SECTIONS = {
 			{ label = "Lesson: first sword (Lv 4)", command = "/tutorial lesson sword" },
 			{ label = "Lesson: Wall Shelf (Lv 4)", command = "/tutorial lesson wallShelf" },
 			{ label = "Lesson: Card Condenser (Lv 5)", command = "/tutorial lesson condenser" },
+			{ label = "Lesson: Storage Rack (Lv 5)", command = "/tutorial lesson storageRack" },
 			{ label = "Lesson: Forge (Lv 6)", command = "/tutorial lesson forge" },
 			{ label = "Lesson: Deck Boxes (Lv 7)", command = "/tutorial lesson expand" },
 			{ label = "Lesson: Accessory Hook (Lv 7)", command = "/tutorial lesson accessoryHook" },

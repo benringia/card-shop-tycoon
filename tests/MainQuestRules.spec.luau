@@ -73,7 +73,7 @@ local function required(level: number): number
 	return LevelMath.getRequiredXp(Levels, level)
 end
 
-local ALL = { "GlassShowcase", "CollectorCase", "WallShelf", "Condenser", "Forge", "AccessoryHook", "BigDisplayRack", "BulkBin", "Recycler", "GradingStation" }
+local ALL = { "GlassShowcase", "CollectorCase", "WallShelf", "Condenser", "StorageRack", "Forge", "AccessoryHook", "BigDisplayRack", "BulkBin", "Recycler", "GradingStation" }
 
 local function state(over: { [string]: any }): MainQuestRules.State
 	local base: any = {
@@ -131,7 +131,7 @@ return {
 
 	["open: unlocked at the shop's level, with none in the shop"] = function()
 		same(ids(MainQuestRules.open(items(), 1, {})), { "GlassShowcase", "CollectorCase" }, "a new shop")
-		same(ids(MainQuestRules.open(items(), 6, set({ "GlassShowcase", "CollectorCase", "WallShelf" }))), { "Condenser", "Forge" }, "level 6")
+		same(ids(MainQuestRules.open(items(), 6, set({ "GlassShowcase", "CollectorCase", "WallShelf" }))), { "Condenser", "StorageRack", "Forge" }, "level 6")
 		same(ids(MainQuestRules.open(items(), 20, set(ALL))), {}, "everything built")
 	end,
 
@@ -139,7 +139,7 @@ return {
 		local saving = MainQuestRules.open(items(), 6, set({ "GlassShowcase", "CollectorCase", "WallShelf" }))
 		expect.equal((MainQuestRules.pick(saving, 820) :: any).id, "Condenser", "the Condenser is paid for")
 		expect.equal((MainQuestRules.pick(saving, 300) :: any).id, "Condenser", "neither: the oldest")
-		local hook = MainQuestRules.open(items(), 7, set({ "GlassShowcase", "CollectorCase", "WallShelf", "Condenser" }))
+		local hook = MainQuestRules.open(items(), 7, set({ "GlassShowcase", "CollectorCase", "WallShelf", "Condenser", "StorageRack" }))
 		same(ids(hook), { "Forge", "AccessoryHook" }, "level 7")
 		expect.equal((MainQuestRules.pick(hook, 820) :: any).id, "AccessoryHook", "a quick win first")
 		expect.equal((MainQuestRules.pick(hook, 100) :: any).id, "Forge", "saving: the oldest")
@@ -166,7 +166,7 @@ return {
 	end,
 
 	["while any is open the goal is to build one"] = function()
-		local goal = MainQuestRules.goal(state({ cash = 820, built = set({ "GlassShowcase", "CollectorCase", "WallShelf", "Condenser", "AccessoryHook", "BigDisplayRack" }) })) :: MainQuestRules.Goal
+		local goal = MainQuestRules.goal(state({ cash = 820, built = set({ "GlassShowcase", "CollectorCase", "WallShelf", "Condenser", "StorageRack", "AccessoryHook", "BigDisplayRack" }) })) :: MainQuestRules.Goal
 		expect.equal(goal.kind, "build")
 		expect.equal(goal.id, "Forge")
 	end,

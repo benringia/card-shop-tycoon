@@ -11,6 +11,7 @@ return {
 		{ id = "CollectorCase", icon = "Cases" },
 		{ id = "WallShelf", icon = "Shelves" },
 		{ id = "Condenser", icon = "Condenser" },
+		{ id = "StorageRack", icon = "Box" }, -- spec 2026-11-24-storage-racks-design: Pish explains it once placed
 		{ id = "Forge", icon = "Forge" },
 		{ id = "AccessoryHook", icon = "Shelves" },
 		{ id = "BigDisplayRack", icon = "Shelves" },

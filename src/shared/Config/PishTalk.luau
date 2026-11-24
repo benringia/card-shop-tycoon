@@ -95,6 +95,7 @@ return {
 		collectorCase = "Sell cards to other players in a Collector Case!",
 		sword = "You got a sword! Try it in the Wild!",
 		condenser = "The Card Condenser is here! It powers up cards.",
+		storageRack = "Storage racks are here! Keep extra boxes in them.",
 		forge = "The Forge is here! Make and upgrade weapons.",
 		bulkBin = "The Bulk Bin is here! Sell your extra Commons.",
 		recycler = "New machine: the Recycler! It eats extra cards.",
@@ -134,6 +135,11 @@ return {
 		condenser = {
 			"Put spare copies of a card in here.",
 			"They give that card more stars and Power!",
+		},
+		storageRack = {
+			"Carry a box over and press Store.",
+			"Press Open to see the sheet and take one back.",
+			"Restockers fill racks when your shelves are full!",
 		},
 		forge = {
 			"Make weapons here with Wild Ore and cash.",

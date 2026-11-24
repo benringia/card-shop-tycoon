@@ -391,6 +391,7 @@ function DevService.Start()
 		end
 		local StockService = require(script.Parent:WaitForChild("StockService")) :: any
 		StockService.ClearForTesting(player)
+		PlacementService.ClearRacksForTesting(player) -- stored boxes are stock too (StockService.GetBoxStock)
 		EconomyService.SetCashForTesting(player, cash)
 		Remotes.Notify:FireClient(player, string.format("No stock left, cash $%.2f (Studio)", cash), false)
 	end)
@@ -597,6 +598,49 @@ function DevService.Start()
 			return
 		end
 		Remotes.Notify:FireClient(player, "Usage: /shoproom <open|lock|fill> [backRoom|gallery|all]", true)
+	end)
+	-- "/storage <place|fill [product id]|clear>" (spec 2026-11-24-storage-racks-design): a free storage rack in your shop,
+	-- your racks filled with full boxes (that product, else a mix of the orderable ones) or emptied
+	addCommand(folder, "storage", function(player, text)
+		local action, productId = string.match(text, "^/%w+%s+(%a+)%s*([%w_]*)")
+		if action == "place" then
+			local ok = PlacementService.DevPlace(player, "StorageRack")
+			Remotes.Notify:FireClient(player, if ok then "Storage: a rack placed." else "Storage: no room, or 4 racks already.", not ok)
+			return
+		end
+		if action == "fill" then
+			local Products = require(Shared:WaitForChild("Config"):WaitForChild("Products")) :: any
+			local kinds: { string } = {}
+			if productId and Products.ById[productId] then
+				kinds = { productId }
+			else
+				for _, product in Products.List do
+					if not product.bulk and not product.unlockBoss then
+						table.insert(kinds, product.id)
+					end
+				end
+			end
+			local stored = 0
+			for _, rack in PlacementService.GetRacks(player) do
+				local index = 0
+				while true do
+					index += 1
+					local kind = kinds[(index - 1) % #kinds + 1]
+					if not PlacementService.StoreInRack(rack, kind, Products.ById[kind].unitsPerBox) then
+						break
+					end
+					stored += 1
+				end
+			end
+			Remotes.Notify:FireClient(player, `Storage: {stored} boxes stored.`, false)
+			return
+		end
+		if action == "clear" then
+			PlacementService.ClearRacksForTesting(player)
+			Remotes.Notify:FireClient(player, "Storage: racks emptied.", false)
+			return
+		end
+		Remotes.Notify:FireClient(player, "Usage: /storage <place|fill [product id]|clear>", true)
 	end)
 	-- "/loading <main|wild|frontier|dungeon>": that place's loading screen played on your screen (LoadingController)
 	addCommand(folder, "loading", function(player, text)
@@ -1089,7 +1133,7 @@ function DevService.Start()
 			run(player, text)
 		end
 	end)
-	print("[DevService] Studio commands enabled: /cash <amount>, /broke [cash], /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /bulk [cards], /item <id> <amount>, /weapon <id> [grade] [level], /material <boss id> <amount>, /weapondrop <boss id>, /chests <boss id> [drop|miss], /bossreset, /event <bossRush|luckySunday|off|auto|luck>, /codes reset, /boss <n> [fight|group], /jobslot, /luck <x2|x3> [minutes] | clear, /prologue [reset], /jobtired, /wild, /rest, /tire, /bosshp <1-100>, /townchikin, /turts <restock|move|offer <id>>, /gift <ready|day n|week n|month n|reset|tutorial|win kind>, /elite, /knockout, /support <0-3>, /titles forget, /review <outcome>, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /decor <look id|pieces>, /window <style> <side> <at>, /shoproom <open|lock|fill> [room|all], /loading <main|wild|frontier|dungeon>, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-4> [volume], /victorysound <1-3>, /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S], /skillfx <sword> [cut1|cut2|cut3|skill] [level], /room <2-4>, /winroom, /puzzle <solve|beams|plates|lock>, /tap <piece>, /dungeonfx <intro|introshort|roar|glimpse>")
+	print("[DevService] Studio commands enabled: /cash <amount>, /broke [cash], /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /bulk [cards], /item <id> <amount>, /weapon <id> [grade] [level], /material <boss id> <amount>, /weapondrop <boss id>, /chests <boss id> [drop|miss], /bossreset, /event <bossRush|luckySunday|off|auto|luck>, /codes reset, /boss <n> [fight|group], /jobslot, /luck <x2|x3> [minutes] | clear, /prologue [reset], /jobtired, /wild, /rest, /tire, /bosshp <1-100>, /townchikin, /turts <restock|move|offer <id>>, /gift <ready|day n|week n|month n|reset|tutorial|win kind>, /elite, /knockout, /support <0-3>, /titles forget, /review <outcome>, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /decor <look id|pieces>, /window <style> <side> <at>, /shoproom <open|lock|fill> [room|all], /storage <place|fill [product]|clear>, /loading <main|wild|frontier|dungeon>, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-4> [volume], /victorysound <1-3>, /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S], /skillfx <sword> [cut1|cut2|cut3|skill] [level], /room <2-4>, /winroom, /puzzle <solve|beams|plates|lock>, /tap <piece>, /dungeonfx <intro|introshort|roar|glimpse>")
 end
 
 return DevService
