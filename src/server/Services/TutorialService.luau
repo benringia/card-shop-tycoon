@@ -449,6 +449,16 @@ function TutorialService.Start()
 	end)
 	ItemService.OnGiven(onItemGiven)
 	TitleService.OnUnlocked(onTitle)
+	-- a customer missed a product the shop could stock: Customers love choice, once (spec 2026-11-24-shop-variety-design);
+	-- MissedProduct names it in his first line
+	CustomerService.OnMissed(function(owner: Player, productId: string)
+		local state = states[owner]
+		if not state or state.lessons.variety ~= nil then
+			return -- not loaded, already waiting or already seen
+		end
+		owner:SetAttribute("MissedProduct", productId)
+		queueEvent(owner, "missing", inTown)
+	end)
 	task.spawn(function()
 		while true do
 			task.wait(STUCK_CHECK)

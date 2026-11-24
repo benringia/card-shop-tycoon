@@ -136,7 +136,8 @@ local function buildSheet(host: Frame, layout: Layout): Sheet
 	local lineWidth = if layout.columns > 1 then (width - 12 * (layout.columns - 1)) / layout.columns else width
 	-- the away-selling stamp, tilted at the paper's top right (shown by render)
 	local stampLook = LOOK.away
-	local away = write(paper, "AwayStamp", "", Enum.Font.FredokaOne, stampLook.textSize, stampLook.on.ink, Vector2.new(paperSize.X - LOOK.inner.right - stampLook.width, layout.titleY - 4), Vector2.new(stampLook.width, stampLook.height), Enum.TextXAlignment.Center)
+	-- (clear of the close button over the board's corner)
+	local away = write(paper, "AwayStamp", "", Enum.Font.FredokaOne, stampLook.textSize, stampLook.on.ink, Vector2.new(paperSize.X - LOOK.inner.right - stampLook.width - 18, layout.titleY), Vector2.new(stampLook.width, stampLook.height), Enum.TextXAlignment.Center)
 	away.TextWrapped = true
 	away.TextTruncate = Enum.TextTruncate.None
 	away.Rotation = stampLook.tilt

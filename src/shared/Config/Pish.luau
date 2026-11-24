@@ -94,7 +94,11 @@ return {
 		-- pish should appear and talk to them about the healing spring. with an option to skip it ofcourse"): one line,
 		-- his paws to the spring, Got it! to send him off (BattleService.OnFainted, CombatTutorialService)
 		{ id = "spring", icon = "Heart", trigger = "faint" },
-	} :: { { id: string, level: number?, icon: string, shelf: string?, product: string?, trigger: string?, on: string?, rush: boolean?, late: boolean? } },
+		-- "Customers love choice" (spec 2026-11-24-shop-variety-design): the first time a customer misses a product the
+		-- shop could stock (from Config/Customers VARIETY.lessonLevel, CustomerService.OnMissed), his paws at the order
+		-- computer; `talk`: he goes straight to his lines (PishTalk.AFTER.variety, "{product}" the one they missed)
+		{ id = "variety", icon = "Order", trigger = "missing", talk = true },
+	} :: { { id: string, level: number?, icon: string, shelf: string?, product: string?, trigger: string?, on: string?, rush: boolean?, late: boolean?, talk: boolean? } },
 	-- The stuck helper: in a player's first `firstSeconds` of play, after `quiet` seconds without progress, at most
 	-- once per `gap` seconds
 	STUCK = { firstSeconds = 3600, quiet = 60, gap = 120 },

@@ -94,7 +94,7 @@ return {
 		expect.isNil(by.sword.on, "the sword is handed over at its level: taught then")
 		expect.equal(by.jobs.level, Jobs.UNLOCK_LEVEL, "jobs at their unlock (nothing to place)")
 		assert(by.trophy.trigger == "trophy" and by.titles.trigger == "title" and by.prices.trigger == "tourDone", "the event lessons as before")
-		expect.equal(#Pish.LESSONS, 16, "sixteen lessons (the healing spring's came on launch day, the Recycler's the day after, the two shop rooms' with the rooms, the storage rack's with racks)")
+		expect.equal(#Pish.LESSONS, 17, "seventeen lessons (the healing spring's came on launch day, the Recycler's the day after, the two shop rooms' with the rooms, the storage rack's with racks, Customers love choice with shop variety)")
 	end,
 
 	["due: a level-up only brings what's taught at its level, never a first-use lesson"] = function()
@@ -232,6 +232,21 @@ return {
 		local line = PishTalk.LESSONS.spring
 		assert(line and string.find(line, "spring", 1, true), "his line names the spring")
 		assert(not PishTalk.AFTER.spring, "one line and Got it!: no walkthrough")
+	end,
+
+	["the variety lesson comes from a missed product"] = function()
+		same(LessonRules.byEvent(Pish.LESSONS, "missing", {}), { "variety" }, "the first missed product")
+		same(LessonRules.byEvent(Pish.LESSONS, "missing", { variety = false }), {}, "already waiting")
+		same(LessonRules.byEvent(Pish.LESSONS, "missing", { variety = true }), {}, "seen: never again")
+		local variety
+		for _, lesson in Pish.LESSONS do
+			if lesson.id == "variety" then
+				variety = lesson
+			end
+		end
+		assert(variety and variety.level == nil and variety.shelf == nil and variety.on == nil, "an event's lesson: never by level, nothing to place")
+		expect.equal((variety :: any).talk, true, "he talks through its lines")
+		same(LessonRules.due(Pish.LESSONS, 1, 100, {}), LessonRules.due(Pish.LESSONS, 1, 100, { variety = true }), "never due by level")
 	end,
 
 	["byEvent: the trophy lesson until it's been seen or is waiting; never due by level"] = function()

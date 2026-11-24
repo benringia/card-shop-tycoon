@@ -107,6 +107,8 @@ return {
 		titles = "You earned a title! Tap your face to equip it.",
 		prices = "Set your own prices! Tap Prices on your Phone.",
 		spring = "Your pal fainted! The healing spring wakes it up fast.",
+		-- {product}: the product the customer missed (TalkRules.product; Config/Customers VARIETY.names)
+		variety = "That customer wanted {product}!",
 	} :: { [string]: string },
 
 	-- Once it's placed or ordered, Pish runs to it and says what it's for, one line at a time with Next (the last one
@@ -142,6 +144,13 @@ return {
 			"Restockers fill racks when your shelves are full!",
 			-- away selling with racks (spec 2026-11-24-shop-variety-design)
 			"Full racks keep your shop selling while you're away!",
+		},
+		-- "Customers love choice" (spec 2026-11-24-shop-variety-design), his paws at the order computer
+		variety = {
+			"That customer wanted {product}!",
+			"Shops with every product get more customers!",
+			"Customers who find it all pay 10% extra!",
+			"Order some here. Bye!",
 		},
 		forge = {
 			"Make weapons here with Wild Ore and cash.",

@@ -86,4 +86,11 @@ function TalkRules.fill(text: string, gameName: string): string
 	end))
 end
 
+-- A line with the product a customer missed in place of "{product}" ("That customer wanted Card Sleeves!")
+function TalkRules.product(text: string, name: string): string
+	return (string.gsub(text, "{product}", function()
+		return name
+	end))
+end
+
 return TalkRules

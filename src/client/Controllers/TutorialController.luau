@@ -20,6 +20,7 @@ local Game = require(Config:WaitForChild("Game"))
 local Music = require(Config:WaitForChild("Music"))
 local Pish = require(Config:WaitForChild("Pish"))
 local PishTalk = require(Config:WaitForChild("PishTalk"))
+local CustomersConfig = require(Config:WaitForChild("Customers"))
 local ChikinTalk = require(Config:WaitForChild("ChikinTalk"))
 local Chikin = require(Config:WaitForChild("Chikin"))
 local Products = require(Config:WaitForChild("Products"))
@@ -84,7 +85,7 @@ type Target = {
 
 -- Each lesson (Config/Pish LESSONS) by id. One with a shelf, a product or the trophy is taught step by step
 -- (lessonSituation); the others point at one place: the first sword's way is the Wild portal, jobs their tile
-type Lesson = { id: string, level: number?, icon: string, shelf: string?, product: string?, trigger: string?, on: string?, rush: boolean? }
+type Lesson = { id: string, level: number?, icon: string, shelf: string?, product: string?, trigger: string?, on: string?, rush: boolean?, talk: boolean? }
 local PORTAL = Wild.PLAZA_PORTAL
 local LESSONS: { [string]: Lesson } = {}
 for _, lesson in Pish.LESSONS do
@@ -98,6 +99,8 @@ local POINT_AT: { [string]: Target } = {
 	spring = { spot = Vector3.new(Wild.SPRING.x, Wild.SPRING.y + SPOT_HEIGHT, Wild.SPRING.z) },
 	-- a shop room's level: his paws lead to its locked door (Config/ShopRooms ROOMS part; spec 2026-11-23-shop-rooms)
 	backRoom = { part = "BackRoomDoor" },
+	-- Customers love choice (spec 2026-11-24-shop-variety-design): his paws at the order computer
+	variety = { part = "OrderComputer" },
 	gallery = { part = "GalleryDoor" },
 }
 -- The stuck helper's two nudges (Util/LessonRules.nudge)
@@ -889,7 +892,10 @@ local function updateLessonTalk()
 	if afterIndex then
 		local lines = PishTalk.AFTER[now.id] or {}
 		local last = afterIndex >= #lines
-		say(lines[afterIndex] or "", focusIcon, if last then PishTalk.BYE else PishTalk.NEXT, function()
+		-- "{product}": the product a customer missed (the server's MissedProduct; Customers love choice)
+		local missed = player:GetAttribute("MissedProduct")
+		local productName = if typeof(missed) == "string" then CustomersConfig.VARIETY.names[missed] else nil
+		say(TalkRules.product(lines[afterIndex] or "", productName or "something new"), focusIcon, if last then PishTalk.BYE else PishTalk.NEXT, function()
 			now.after = afterIndex + 1 -- past the last line updateVisit ends the visit
 			now.started = os.clock()
 			updateLessonTalk()
@@ -915,7 +921,8 @@ local function startVisit(kind: "lesson" | "nudge", id: string)
 	visit = { kind = kind, id = id, started = os.clock() }
 	-- a first-use lesson (a machine or a case just placed): he goes straight to it and says what it's for
 	local firstUse = if kind == "lesson" then LESSONS[id] else nil
-	if firstUse and firstUse.on == "placed" and PishTalk.AFTER[id] then
+	-- `talk` (Customers love choice): no thing to show, straight to its lines too
+	if firstUse and (firstUse.on == "placed" or firstUse.talk) and PishTalk.AFTER[id] then
 		(visit :: Visit).after = 1
 	end
 	pointedAt = ""
@@ -925,7 +932,7 @@ local function startVisit(kind: "lesson" | "nudge", id: string)
 	refreshFocus()
 	local now = visit :: Visit
 	now.firstKey = focusKey
-	if teaching(now) then
+	if teaching(now) or now.after then
 		updateLessonTalk()
 	else
 		local line = if kind == "lesson" then PishTalk.LESSONS[id] else PishTalk.NUDGES[id]

@@ -1009,6 +1009,9 @@ function DevService.Start()
 		elseif word == "step" and tonumber(value) then
 			TutorialService.SetStep(player, tonumber(value) :: number)
 		elseif word == "lesson" and lessonId then
+			if lessonId == "variety" and player:GetAttribute("MissedProduct") == nil then
+				player:SetAttribute("MissedProduct", "CardSleeves") -- his first line names a product
+			end
 			TutorialService.QueueLesson(player, lessonId)
 		else
 			Remotes.Notify:FireClient(player, "Usage: /tutorial reset | /tutorial step <1-9> | /tutorial lesson <id>", true)

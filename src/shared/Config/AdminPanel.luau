@@ -308,6 +308,7 @@ AdminPanel.SECTIONS = {
 			{ label = "Lesson: Wall Shelf (Lv 4)", command = "/tutorial lesson wallShelf" },
 			{ label = "Lesson: Card Condenser (Lv 5)", command = "/tutorial lesson condenser" },
 			{ label = "Lesson: Storage Rack (Lv 5)", command = "/tutorial lesson storageRack" },
+			{ label = "Lesson: Customers love choice (a missed product)", command = "/tutorial lesson variety" },
 			{ label = "Lesson: Forge (Lv 6)", command = "/tutorial lesson forge" },
 			{ label = "Lesson: Deck Boxes (Lv 7)", command = "/tutorial lesson expand" },
 			{ label = "Lesson: Accessory Hook (Lv 7)", command = "/tutorial lesson accessoryHook" },

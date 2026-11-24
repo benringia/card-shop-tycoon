@@ -68,6 +68,18 @@ return {
 		expect.equal(next(PishTalk.STEPS.bye.now), nil, "the goodbye is only intro lines (its last Next ends the visit)")
 	end,
 
+	["Customers love choice: Pish names the product, then why variety pays"] = function()
+		local lines = PishTalk.AFTER.variety
+		assert(lines and #lines == 4, "four lines")
+		expect.equal(TalkRules.product(lines[1], "Card Sleeves"), "That customer wanted Card Sleeves!")
+		expect.equal(TalkRules.product("No {product}", "100%"), "No 100%", "a name is never read as a pattern")
+		for _, text in lines do
+			assert(utf8.len(TalkRules.product(text, "Frontier Packs")) :: number <= MAX_LENGTH, text)
+		end
+		assert(string.find(lines[3], "10%", 1, true), "the bonus")
+		expect.equal(TalkRules.product(PishTalk.LESSONS.variety, "Deck Boxes"), "That customer wanted Deck Boxes!")
+	end,
+
 	["every lesson and nudge has its line"] = function()
 		for _, lesson in Pish.LESSONS do
 			assert(PishTalk.LESSONS[lesson.id], `lesson {lesson.id}`)
