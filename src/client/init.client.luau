@@ -233,6 +233,7 @@ else
 	GradingController.Start()
 	StationTimerController.Start() -- countdowns over your stations while they hold a job
 	StockHintController.Start() -- the shelves that glow while you carry a box of their product
+	require(Controllers:WaitForChild("StorageController")).Start() -- storage racks: the stock clipboard, the box hop
 	JobsController.Start()
 	PartyController.Start()
 	ReviewsController.Start() -- the phone's Reviews app (after the other apps: it's the last icon)

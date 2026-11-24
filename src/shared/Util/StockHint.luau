@@ -36,4 +36,19 @@ function StockHint.pick(shelves: { Shelf }, carrying: string?): { string }
 	return if #same > 0 then same else empty
 end
 
+-- Storage racks (spec 2026-11-24-storage-racks-design): your racks with room light up for the box in your hands when
+-- no selling shelf takes it (`shelvesLit`: what StockHint.pick lit)
+function StockHint.racks(racks: { { uid: string, count: number, capacity: number } }, shelvesLit: { string }, carrying: string?): { string }
+	local list: { string } = {}
+	if not carrying or #shelvesLit > 0 then
+		return list
+	end
+	for _, rack in racks do
+		if rack.count < rack.capacity then
+			table.insert(list, rack.uid)
+		end
+	end
+	return list
+end
+
 return StockHint

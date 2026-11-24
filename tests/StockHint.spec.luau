@@ -51,6 +51,14 @@ return {
 		expect.equal(picked({}, "FirstSparkPack"), "")
 	end,
 
+	-- Storage racks (spec 2026-11-24-storage-racks-design): a box no selling shelf takes lights your racks with room
+	["racks with room glow only when no shelf takes the box"] = function()
+		local racks = { { uid = "r1", count = 9, capacity = 9 }, { uid = "r2", count = 3, capacity = 9 } }
+		expect.equal(table.concat(StockHint.racks(racks, { "s1" }, "FirstSparkPack"), ","), "", "a shelf takes it: the shelf glows, not the racks")
+		expect.equal(table.concat(StockHint.racks(racks, {}, "FirstSparkPack"), ","), "r2", "no shelf takes it: the racks with room")
+		expect.equal(table.concat(StockHint.racks(racks, {}, nil), ","), "", "empty hands: nothing glows")
+	end,
+
 	["a shelf that can't hold the product never glows, even holding it by an old rule"] = function()
 		local shelves = { shelf("a", "Products", 100, 3, "BulkCards", { "BulkCards" }), shelf("b", "Products", 20, 2, "FirstSparkPack", { "CardSleeves" }) }
 		expect.equal(picked(shelves, "FirstSparkPack"), "")

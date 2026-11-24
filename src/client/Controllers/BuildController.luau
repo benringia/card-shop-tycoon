@@ -441,6 +441,10 @@ local function openMachine(part: BasePart)
 		-- (required here: this file's top level is near Luau's 200 locals)
 		local RecyclerController = require(Controllers:WaitForChild("RecyclerController")) :: any
 		RecyclerController.Open(part)
+	elseif def.kind == "Storage" then
+		-- a storage rack's stock clipboard (spec 2026-11-24-storage-racks-design)
+		local StorageController = require(Controllers:WaitForChild("StorageController")) :: any
+		StorageController.Open(part)
 	end
 end
 
@@ -563,6 +567,21 @@ end
 -- Card cases never take stock, so they always show Edit.
 local function applyPromptMode(part: BasePart, prompts: ShelfPrompts)
 	local def = Shelves.ById[part.Name]
+	if def and def.kind == "Storage" then
+		-- a storage rack (spec 2026-11-24-storage-racks-design): E stores the box in your hands, else opens its stock
+		-- clipboard, its words said before you press (a full rack too); Edit (F) beside it. Required here: this file's top
+		-- level is near Luau's 200 locals
+		local StorageRules = require(Shared:WaitForChild("Util"):WaitForChild("StorageRules")) :: any
+		local StorageConfig = require(Config:WaitForChild("Storage")) :: any
+		local productId = player:GetAttribute("CarryProductId")
+		local carried = if getNumberAttribute(player, "CarryCount", 0) > 0 and typeof(productId) == "string" then Products.ById[productId] else nil
+		local action, object = StorageRules.prompt(getNumberAttribute(part, "StoredCount", 0), def.capacity, if carried then carried.name else nil, StorageConfig.WORDS)
+		prompts.stock.ActionText = action
+		prompts.stock.ObjectText = object
+		prompts.stock.Enabled = true
+		prompts.edit.Enabled = true
+		return
+	end
 	if def and (def.kind == "Condenser" or def.kind == "Grading" or def.kind == "Forge" or def.kind == "Recycler" or def.id == Bulk.SHELF) then
 		-- A machine's (or a Bulk Bin's) use prompt (E) and Edit (F) both show; Edit is offset so they don't overlap
 		prompts.stock.Enabled = true
@@ -600,10 +619,24 @@ local function addShelfPrompts(child: Instance)
 	local isForge = def.kind == "Forge"
 	local isBin = def.id == Bulk.SHELF
 	local isRecycler = def.kind == "Recycler"
-	-- E: stock a product shelf, open a machine's window, or put your extra Commons in a Bulk Bin
+	local isRack = def.kind == "Storage"
+	-- E: stock a product shelf, open a machine's window, put your extra Commons in a Bulk Bin, or store a box on a rack
+	-- (a rack's words follow what you carry: applyPromptMode)
 	local action = if isCondenser then "Condense" elseif isGrading then "Grade" elseif isForge then "Forge" elseif isRecycler then "Recycle" elseif isBin then "Add extras" else "Stock shelf"
 	local stock = makePrompt(child, action, def.name, Enum.KeyCode.E)
 	stock.Triggered:Connect(function()
+		if isRack then
+			local rackUid = child:GetAttribute("ShelfUid")
+			if typeof(rackUid) ~= "string" or PlacementController.IsActive() then
+				return
+			end
+			if getNumberAttribute(player, "CarryCount", 0) > 0 then
+				Remotes.StoreBox:FireServer(rackUid) -- StockService: onto the rack, or the locked card says why not
+			else
+				openMachine(child) -- its stock clipboard
+			end
+			return
+		end
 		if isBin then
 			local binUid = child:GetAttribute("ShelfUid")
 			if typeof(binUid) == "string" and not PlacementController.IsActive() then
@@ -623,7 +656,7 @@ local function addShelfPrompts(child: Instance)
 
 	local edit = makePrompt(child, "Edit", def.name, Enum.KeyCode.F)
 	edit.GamepadKeyCode = Enum.KeyCode.ButtonY
-	if isCondenser or isGrading or isForge or isRecycler or isBin then
+	if isCondenser or isGrading or isForge or isRecycler or isBin or isRack then
 		edit.UIOffset = Vector2.new(0, CONDENSER_EDIT_OFFSET)
 	end
 	edit.Triggered:Connect(function()
@@ -635,6 +668,12 @@ local function addShelfPrompts(child: Instance)
 	local prompts: ShelfPrompts = { stock = stock, edit = edit }
 	promptsByShelf[child] = prompts
 	applyPromptMode(child, prompts)
+	if isRack then
+		-- its count on the prompt follows the rack (you, a restocker)
+		child:GetAttributeChangedSignal("StoredCount"):Connect(function()
+			applyPromptMode(child, prompts)
+		end)
+	end
 	child.Destroying:Connect(function()
 		promptsByShelf[child] = nil
 	end)
@@ -734,6 +773,7 @@ function BuildController.Start()
 	player:GetAttributeChangedSignal("Level"):Connect(refreshShopRows)
 	player:GetAttributeChangedSignal("PlotId"):Connect(watchOwnPlot)
 	player:GetAttributeChangedSignal("CarryCount"):Connect(refreshAllPrompts)
+	player:GetAttributeChangedSignal("CarryProductId"):Connect(refreshAllPrompts) -- a rack's Store names the box
 	-- The bag: trophies are placed from it
 	Remotes.ItemsChanged.OnClientEvent:Connect(function(payload)
 		items = if typeof(payload) == "table" then payload else {}

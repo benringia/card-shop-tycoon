@@ -1,7 +1,8 @@
 --!strict
 -- The shelves that glow while you carry a box (owner 2026-11-20: "When your carrying a box. highlight the shelf with
 -- the same product as you are carrying"; Util/StockHint picks them): the ones in your own shop already holding that
--- product with room left, or, when there are none, the empty ones that can take it. A gold outline that breathes
+-- product with room left, or, when there are none, the empty ones that can take it; when no shelf takes it, your storage
+-- racks with room (their StoredCount attribute, spec 2026-11-24-storage-racks-design). A gold outline that breathes
 -- (Config/Stock HINT), gone the moment your hands are empty. The box in your hands is the player's CarryProductId
 -- attribute (StockService); a shelf's stock is its part's ProductId and Units attributes (PlacementService).
 local Players = game:GetService("Players")
@@ -47,6 +48,7 @@ local function refresh()
 	end
 	local parts: { [string]: BasePart } = {}
 	local shelves: { StockHint.Shelf } = {}
+	local racks: { { uid: string, count: number, capacity: number } } = {}
 	for _, part in folder:GetChildren() do
 		local uid = part:GetAttribute("ShelfUid")
 		local def = Shelves.ById[part.Name]
@@ -61,10 +63,19 @@ local function refresh()
 				productId = if typeof(productId) == "string" then productId else nil,
 				accepts = def.accepts,
 			})
+			if def.kind == "Storage" then
+				local count = part:GetAttribute("StoredCount")
+				table.insert(racks, { uid = uid, count = if typeof(count) == "number" then count else 0, capacity = def.capacity })
+			end
 		end
 	end
 	local wanted: { [BasePart]: boolean } = {}
-	for _, uid in StockHint.pick(shelves, carrying :: string) do
+	local shelvesLit = StockHint.pick(shelves, carrying :: string)
+	for _, uid in shelvesLit do
+		wanted[parts[uid]] = true
+	end
+	-- a box no shelf takes: your storage racks with room (spec 2026-11-24-storage-racks-design)
+	for _, uid in StockHint.racks(racks, shelvesLit, carrying :: string) do
 		wanted[parts[uid]] = true
 	end
 	for part, highlight in lit do
