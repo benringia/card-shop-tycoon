@@ -85,7 +85,9 @@ export type Customer = {
 	list: { string }, -- the products on its shopping list (repeats for more than one)
 	missed: string?, -- the first product on its list no shelf had (said and reviewed by name)
 	foundAll: boolean, -- found every product on a list of two or more: pays Config/Customers FOUND_ALL
-	wantsAll: boolean?, -- Studio's /customer plain all: wants one of every product the shop can stock
+	-- Studio's /customer plain all | stocked: wants one of every product the shop can stock ("all") or of every product
+	-- on its shelves now ("stocked": finds it all)
+	wants: string?,
 }
 
 type CustomerCallback = (customer: Customer) -> ()
@@ -527,13 +529,15 @@ end
 
 -- Products this shop has unlocked, so customers only ask for things the owner could stock. A kid wants a pack or two,
 -- a big spender a booster box when one is stocked (else a stack of packs); bulk cards only as maybeBulk adds them.
--- `all` (Studio's /customer plain all): one of every product the shop can stock
-local function pickShoppingList(owner: Player, kind: string, sure: boolean?, all: boolean?): { [string]: number }
+-- `wants` (Studio's /customer plain all | stocked): one of every product the shop can stock, or of every product on its
+-- shelves now
+local function pickShoppingList(owner: Player, kind: string, sure: boolean?, wants: string?): { [string]: number }
 	local level = EconomyService.GetLevel(owner)
-	if all then
+	if wants == "all" or wants == "stocked" then
 		local everything: { [string]: number } = {}
 		for _, product in Products.List do
-			if canStock(owner, product, level) and not product.bulk then
+			local onShelf = findStockedShelf(owner, product.id) ~= nil
+			if canStock(owner, product, level) and not product.bulk and (wants == "all" or onShelf) then
 				everything[product.id] = 1
 			end
 		end
@@ -1015,7 +1019,7 @@ local function run(customer: Customer)
 		end
 		return
 	end
-	for productId, wanted in pickShoppingList(customer.owner, customer.kind, customer.sure, customer.wantsAll) do
+	for productId, wanted in pickShoppingList(customer.owner, customer.kind, customer.sure, customer.wants) do
 		table.insert(customer.list, productId)
 		if not shopFor(customer, productId, wanted, visited) then
 			missing = true
@@ -1103,13 +1107,14 @@ local function spawnCustomer(plot: Plot, owner: Player, state: PlotState, forced
 		or CustomerTypes.pick(CustomerConfig, { hasShowcase = showsCards(owner), shopLevel = EconomyService.GetLevel(owner) }, rng:NextNumber())
 	local model = createModel(entry, kind)
 	local wanted = if kind == "collector" then forcedWanted or pickWanted(owner) else nil
-	-- Studio's /customer plain all: one of every product the shop can stock (to see "Found it all!" and a missed one)
-	local wantsAll = kind == "plain" and forcedWanted == "all"
-	startCustomer(plot, owner, state, model, kind, wanted, inHand, sure, wantsAll)
+	-- Studio's /customer plain all | stocked: one of every product the shop can stock (a missed one) or of every product
+	-- on its shelves (finds it all)
+	local wants = if kind == "plain" and (forcedWanted == "all" or forcedWanted == "stocked") then forcedWanted else nil
+	startCustomer(plot, owner, state, model, kind, wanted, inHand, sure, wants)
 end
 
 -- Makes `model` (a fresh rig or a town walker) a customer of this shop and starts its visit
-startCustomer = function(plot: Plot, owner: Player, state: PlotState, model: Model, kind: string, wanted: string?, inHand: boolean?, sure: boolean?, wantsAll: boolean?)
+startCustomer = function(plot: Plot, owner: Player, state: PlotState, model: Model, kind: string, wanted: string?, inHand: boolean?, sure: boolean?, wants: string?)
 	if wanted then
 		model:SetAttribute("WantedCard", wanted)
 	end
@@ -1138,7 +1143,7 @@ startCustomer = function(plot: Plot, owner: Player, state: PlotState, model: Mod
 		lastScanAt = nil,
 		list = {},
 		foundAll = false,
-		wantsAll = wantsAll,
+		wants = wants,
 	}
 	table.insert(state.customers, customer)
 

@@ -215,8 +215,10 @@ AdminPanel.SECTIONS = {
 			{ label = "Titles: unlock again (new card, dot)", command = "/titles forget" },
 			{ label = "Review: happy customer", command = "/review happyMoment" },
 			{ label = "Review: empty shelves", command = "/review noStock" },
-			-- shop variety (spec 2026-11-24-shop-variety-design): a customer wanting one of everything
+			-- shop variety (spec 2026-11-24-shop-variety-design): a customer wanting one of everything (misses what you
+			-- don't stock), one wanting one of each product on your shelves (finds it all)
 			{ label = "Customer wanting one of everything", command = "/customer plain all" },
+			{ label = "Customer who finds it all", command = "/customer plain stocked" },
 			{ label = "Go to the Wild", command = "/wild" },
 			{ label = "Go to the arena", command = "/arena" },
 			{ label = "Toggle Extra Job Slot", command = "/jobslot" },

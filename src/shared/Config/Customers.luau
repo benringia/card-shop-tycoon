@@ -265,6 +265,9 @@ return {
 	-- `types` whose list holds `minProducts` or more different products and who takes some of every one pays `share` of
 	-- their products' total on top (to the cent), with `toast` beside your cash like a tip
 	FOUND_ALL = { share = 0.10, minProducts = 2, types = { plain = true } :: { [string]: boolean }, toast = "Found it all! +$%.2f" },
+	-- A missed product's thought bubble (the model's Missing attribute, CustomerController; mockup 2026-11-24): the
+	-- collector's bubble holding the product's picture with a pink "?" at its corner, px and studs
+	MISSED_BUBBLE = { size = 84, picture = 70, badge = 28, corner = 14, offsetY = 3.2, maxDistance = 70, badgeColor = { 255, 127, 184 } },
 	-- Town walkers (Util/WalkerRules, TownWalkerService): up to `max` in town, one more every spawnEvery s while a player
 	-- is in town; they walk in from a street end and stroll the whole street for linger s (sitting on a free bench
 	-- sitChance of the time), then pick an open shop weighted by rating^ratingPower (x wantedBonus for a collector's card

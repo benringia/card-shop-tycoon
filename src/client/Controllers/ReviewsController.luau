@@ -221,7 +221,9 @@ function ReviewsController.Start()
 			-- a missing product always makes Stocked a tip, even while its score is good
 			local weakPart = typeof(part.score) == "number" and (part.score < Customers.RATING.goodFrom or (part.name == "stocked" and #missing > 0))
 			if words and part.known ~= false and weakPart then
-				table.insert(weak, { score = part.score, text = if part.name == "stocked" then RatingRules.stockedFix(words, missing) else words.fix })
+				-- what's missing comes first: it's the tip that says exactly what to do
+				local naming = part.name == "stocked" and #missing > 0
+				table.insert(weak, { score = if naming then -1 else part.score, text = if part.name == "stocked" then RatingRules.stockedFix(words, missing) else words.fix })
 			end
 		end
 		table.sort(weak, function(a, b)

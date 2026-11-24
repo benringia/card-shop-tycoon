@@ -984,11 +984,12 @@ function DevService.Start()
 			OfferService.ForceNextKidRip(player, rip)
 		end
 		local card = if kind == "collector" and extra and extra ~= "" then (Cards.ById[extra] or Cards.List[tonumber(extra) or 0]) else nil
-		-- /customer plain all: wants one of every product the shop can stock ("Found it all!" or a missed product)
-		local all = kind == "plain" and extra and string.lower(extra) == "all"
-		local wanted = if card then card.id elseif all then "all" else nil
+		-- /customer plain all | stocked: wants one of every product the shop can stock (a missed product) or of every
+		-- product on its shelves now ("Found it all!")
+		local wants = if kind == "plain" and extra then string.lower(extra) else nil
+		local wanted = if card then card.id elseif wants == "all" or wants == "stocked" then wants else nil
 		if not kind or not CustomerService.SpawnForTest(player, kind, wanted, inHand) then
-			Remotes.Notify:FireClient(player, "Usage: /customer <plain|kid|collector|bargain|bigSpender> [card for a collector, rarity for a kid, all for plain]", true)
+			Remotes.Notify:FireClient(player, "Usage: /customer <plain|kid|collector|bargain|bigSpender> [card for a collector, rarity for a kid, all or stocked for plain]", true)
 		end
 	end)
 	-- The tutorial with Pish (spec 2026-11-09-tutorial-pish-design): /tutorial reset (a new player's first visit, gifts

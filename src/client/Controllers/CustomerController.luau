@@ -20,9 +20,11 @@ local ChatRules = require(Shared:WaitForChild("Util"):WaitForChild("ChatRules"))
 local RevealSounds = require(Config:WaitForChild("RevealSounds"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
+local Products = require(Config:WaitForChild("Products"))
 local ClientUtil = ((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util")
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
+local ProductPicture = require(ClientUtil:WaitForChild("ProductPicture"))
 
 local CustomerController = {}
 
@@ -93,6 +95,64 @@ local function showWanted(model: Model)
 
 	addDot(gui, 9, -6, -13)
 	addDot(gui, 6, -11, -4)
+	gui.Parent = head
+end
+
+-- A product they wanted and no shelf had (attribute Missing, a product id, for a few seconds; spec
+-- 2026-11-24-shop-variety-design): the collector's thought bubble holding its picture, a pink "?" at the corner
+local function showMissing(model: Model)
+	local head = model:FindFirstChild("Head")
+	local old = if head then head:FindFirstChild("MissingBubble") else nil
+	if old then
+		old:Destroy()
+	end
+	local productId = model:GetAttribute("Missing")
+	local product = if typeof(productId) == "string" then Products.ById[productId] else nil
+	if not product or not head then
+		return
+	end
+	local look = Customers.MISSED_BUBBLE
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "MissingBubble"
+	gui.Size = UDim2.fromOffset(look.size + 8, look.size + 26)
+	gui.StudsOffset = Vector3.new(0, look.offsetY, 0)
+	gui.MaxDistance = look.maxDistance
+	gui.LightInfluence = 0
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+	local bubble = Instance.new("Frame")
+	bubble.Size = UDim2.fromOffset(look.size, look.size)
+	bubble.Position = UDim2.fromOffset(4, 4)
+	bubble.BackgroundColor3 = rgb(CreamTheme.row)
+	round(bubble, UDim.new(0, look.corner))
+	outline(bubble)
+	bubble.Parent = gui
+	local art = Instance.new("Frame")
+	art.BackgroundTransparency = 1
+	art.Size = UDim2.fromOffset(look.picture, look.picture)
+	art.AnchorPoint = Vector2.new(0.5, 0.5)
+	art.Position = UDim2.fromScale(0.5, 0.5)
+	art.Parent = bubble
+	ProductPicture.fill(art, product.id, product.icon)
+
+	local ask = UIKit.label(bubble, "?", Enum.Font.FredokaOne, 20, Color3.new(1, 1, 1))
+	ask.Name = "Ask"
+	ask.Size = UDim2.fromOffset(look.badge, look.badge)
+	ask.AnchorPoint = Vector2.new(0.5, 0.5)
+	ask.Position = UDim2.new(1, -6, 0, 6)
+	ask.TextXAlignment = Enum.TextXAlignment.Center
+	ask.BackgroundTransparency = 0
+	ask.BackgroundColor3 = rgb(look.badgeColor)
+	ask.ZIndex = 3
+	round(ask, UDim.new(1, 0))
+	local askEdge = Instance.new("UIStroke")
+	askEdge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	askEdge.Color = Color3.new(1, 1, 1)
+	askEdge.Thickness = 2
+	askEdge.Parent = ask
+
+	addDot(gui, 11, -6, -13)
+	addDot(gui, 7, -12, -4)
 	gui.Parent = head
 end
 
@@ -224,7 +284,7 @@ local function showChat(model: Model)
 	if old then
 		old:Destroy()
 	end
-	local high = head:FindFirstChild("WantedBubble") ~= nil or head:FindFirstChild("PullReveal") ~= nil
+	local high = head:FindFirstChild("WantedBubble") ~= nil or head:FindFirstChild("PullReveal") ~= nil or head:FindFirstChild("MissingBubble") ~= nil
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "ChatBubble"
 	gui.Size = UDim2.fromOffset(CustomerChat.WIDTH, CustomerChat.HEIGHT + 14)
@@ -302,6 +362,10 @@ local function watch(model: Instance)
 	if not model:IsA("Model") then
 		return
 	end
+	-- a missed product's bubble first, so the line said with it sits above it
+	model:GetAttributeChangedSignal("Missing"):Connect(function()
+		showMissing(model)
+	end)
 	model:GetAttributeChangedSignal("Say"):Connect(function()
 		showChat(model)
 	end)
