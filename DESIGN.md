@@ -532,8 +532,19 @@ is over UI (`UIKit.pointerBlocked`).
     each", a green "+$24 profit a box" pill (a whole box sold at the market price, less the box), the box price and
     **Add to cart**, which turns into a - n + stepper once one is in the cart. Greyed "Need $48" when the cash can't
     cover it, "Pad full" when the delivery pad has no room; a locked product is a pale card with a lock and "Unlocks
-    at shop level 11". A pink tag over a card: **Shelves low** (the shelves holding it at a quarter full or less) or
-    **Shelf empty** (none holds it, an empty shelf could). Tapping a greyed button says why (never silent).
+    at shop level 11". A pink tag over a card: **Shelves low** (the shelves holding it at a quarter full or less),
+    **Shelf empty** (a shelf of it ran out: an empty shelf keeps its product) or **Customers want this!** (no shelf has
+    it as its product; its card's edge turns pink too; spec `2026-11-24-shop-variety-design`, `OrderRules.WANTED`).
+    Tapping a greyed button says why (never silent).
+  - **The pallet deal** (owner 2026-11-24, pick B "just 10% off"; `Config/OrderComputer` PALLET `{ boxes = 6,
+    off = 0.10 }`): 6 or more boxes of one product in one order cost 10% less (`OrderRules.lineCost`, the server
+    charges the same `cartCost`). Each card has a meter of 6 little box slots under its profit pill filling as boxes go
+    in the cart ("6 for -10%", "4 more: -10%"); at 6 the slots turn gold on a wooden pallet ("PALLET -10%!"), the box
+    price shows struck through over the deal's in green and the profit pill turns gold with the deal's profit. A
+    phone's card has the 6 slots over its picture's bottom-left and the deal price in green. In the cart a line at the
+    deal reads "PALLET x6 · 10% off" with its full cost struck over the deal's, and a green "Pallet savings -$28.80"
+    row sits under the lines. The boxes still land on the delivery pad (its 12 spots cap an order); you or a
+    Restocker carry them to the racks.
   - **The cart** beside them: a line per product (its count and cost kept visible), the total, "Cash after: $x",
     "Arrives at your door in 10 s", "Delivery pad: 3 of 12 spots used" with a bar (the boxes there, then the cart's
     share in a lighter blue), and **Order now · $126**. Every box is paid at once and they all arrive together; the
@@ -541,7 +552,8 @@ is over UI (`UIKit.pointerBlocked`).
     pad, and a box picture with "Order stock" when nothing is coming.
   - **A phone** (a short screen, `UIKit.isShort`) gets the same store on a thin screen: four cards in a row (no sell
     line), the cart as a bar along the bottom ("3 boxes · $126", "At your door in 10 s · pad 3 of 12", Order now).
-  - The computer is drawn at a fixed size (960 x 600, a phone's 760 x 300) and scaled to fit (`OrderRules.fit`,
+  - The computer is drawn at a fixed size (960 x 640 since the pallet meter, 600 before; a phone's 760 x 300) and
+    scaled to fit (`OrderRules.fit`,
     Lune-tested): `FIT` 0.96 of the room under Roblox's top bar, the room ending at the bottom tiles' icons while
     they show (client `Hud.bottomTop`; a phone's slim HUD hides them under any window), centred in that room. It
     grows on a big screen like the HUD (`Config/HudGrow`) as far as that room allows; the window's own growth is off
@@ -604,6 +616,14 @@ is over UI (`UIKit.pointerBlocked`).
     at their share of the box price with a toast; never lost.
   - **Restockers** use racks (7.4). Pish explains the rack beside the first one placed (lesson `storageRack`). Studio:
     `/storage place | fill [product id] | clear` and the admin panel's "Storage" section; `/broke` empties racks too.
+  - **Reasons to fill them** (owner 2026-11-24: "make the player have the reason to store it in storage racks", picks B
+    and 2; spec `docs/superpowers/specs/2026-11-24-shop-variety-design.md`): the **pallet deal** on the order computer
+    (above: 6+ boxes of a product 10% off, more than a pad's worth over a few orders) and **away selling** (7.12): with
+    a card working as Restocker, the racks' boxes refill the shelves while you're away and each rack holding boxes adds
+    30 minutes of selling (to 4 hours), only what's still in the racks. Customers never buy from racks. The stock
+    clipboard shows a tilted stamp at its top right while the rack holds boxes: green "+30 MIN / AWAY SELLING" with a
+    Restocker (JobService's `Restockers` player attribute), grey "NEEDS A / RESTOCKER" without one
+    (`StorageRules.awayStamp`). Pish's rack lesson ends with "Full racks keep your shop selling while you're away!".
 
 ### 4.3 Shelves & placement
 - Shelves are placed in the shop on a **grid** (placement mode: rotate, move, sell back for 50%).
@@ -714,6 +734,20 @@ is over UI (`UIKit.pointerBlocked`).
   look there (owner 2026-11-16: "customers walk in and stand to the center of the store, make them walk in go
   directly to where the cards are"; `Util/ShelfSearch`, Lune-tested); only a shop with no shelves sends them to the
   middle of the floor. In the queue they face the register.
+- **What they missed** (owner 2026-11-24, spec `2026-11-24-shop-variety-design`): after that search the first product
+  on their list no shelf had shows over them for a few seconds in the collector's thought bubble, its picture with a
+  pink "?" (the model's `Missing` attribute, client `CustomerController`, `Customers.MISSED_BUBBLE`), and their line
+  names it ("No sleeves? Aww.", "Where are the deck boxes?", kids "Nooo, no packs?"; `Offline.PLURALS`). The visit is
+  "partial" when they still bought something (a 3-star review "No sleeves here 😕"), "noStock" when they found nothing
+  ("No deck boxes at all 😢"); both count as a bad visit for the rating, as a missed product always did. A missed
+  product the shop could stock, from shop level 3, brings Pish's "Customers love choice" lesson (7.6).
+- **Found it all!** (`Customers.FOUND_ALL`, `Util/VarietyRules`): a plain customer whose list holds 2 or more
+  different products and who takes some of every one pays 10% of their products' total on top, to the cent, with the
+  tips' side toast "Found it all! +$4.20", says "Found it all!" (or "Everything I wanted!", "This shop has it all!")
+  instead of goodbye, and the visit is "foundAll" (good for the rating; a 5-star "Found everything! 🛍️" half the
+  time). Kids, collectors, bargain hunters and big spenders never do; a one-product (packs-only) shop never pays it, so
+  the economy sim's shop is unchanged. Studio: `/customer plain all` (wants one of every product the shop can stock)
+  and `/customer plain stocked` (one of each product on its shelves: finds it all); admin buttons beside the reviews.
 - **The shop bag** (owner 2026-11-16: "customers that bought something should carry a shopping bag on their way out.
   shopping bag should have pish and chikin design on them"): once they've paid, a customer carries a paper bag out in
   the left hand (the right holds a kid's pack or a coupon), down the street as a town walker; a walker who shops again
@@ -928,7 +962,9 @@ is over UI (`UIKit.pointerBlocked`).
   the Build menu's shelves, cases and fixtures (not trophies or decor), the first sword, shop jobs and the bosses
   (client `Util/NextUnlock`, `LevelUpRules.nextUnlockText`, tests/LevelUpRules); empty past the last one.
 - **Shop rating** (1-5 stars, `RatingService`, `Util/RatingRules`, `Config/Customers` RATING): every 5 s each open
-  shop is scored on weighted 0-1 parts: product shelves stocked 35%, fair prices 25% (each stocked product's buy chance
+  shop is scored on weighted 0-1 parts: stocked 35% (since 2026-11-24 half product shelves with stock, half the shop's
+  unlocked products with stock on a shelf, `RATING.productShare`; spec `2026-11-24-shop-variety-design`: a box-only
+  shop loses about half a star here, its unhappy customers about another half), fair prices 25% (each stocked product's buy chance
   at its price against the best band's; neutral with nothing stocked), cards on display 15% (Epic 1, Legendary 3, foil
   +1 point, full at 6), happy customers 25% (paid and happy moments against annoyed, gave up and no stock over the
   last 20 visits; neutral with none) and decor 10% (since 2026-11-14, Shop decor below: a bought look 2 points, each
@@ -1445,7 +1481,10 @@ inside it. **Reviews** (the small version for the testers; Config/Reviews, Util/
 ReviewsController): every customer visit's outcome may post (a sale 35% of the time, a happy moment 60%, a failed
 haggle, a long wait at the register or empty shelves always): a name, a coloured face, ⭐ stars in its range, a short
 line, how long ago; the newest 20 this session, not saved. On top: the rating and its two weakest parts as tips
-(Customers.RATING_TIPS). Studio: `/review <paid|happyMoment|annoyed|gaveUp|noStock>`, admin "Review: ...".
+(Customers.RATING_TIPS); since 2026-11-24 the Stocked tip names the unlocked products on no shelf ("Stock Card Sleeves
+and Deck Boxes", `RatingRules.stockedFix`, `RatingUpdate.missing`) and comes first whenever one is missing. A missed
+product's visit names it ("No sleeves here 😕" 3 stars when they bought something, "No deck boxes at all 😢" 1 star
+when not), a found-it-all visit posts 5 stars half the time (4.5). Studio: `/review <paid|happyMoment|annoyed|gaveUp|noStock|partial|foundAll>`, admin "Review: ...".
 On phones (owner 2026-11-13, a phone screenshot): the cash, rating and XP column hangs from the top right with the
 party bar under it, as before, but the weapon switch now keeps clear of it (UiLayout.weaponSwitch `clear`: just under
 it on a short phone), and the corner's touch or PC arrangement is applied again whenever it changes mid-play (Studio's
@@ -4013,6 +4052,13 @@ All numbers in `Config/Pish`.
   paw on the Prices tile, then inside the window "Tap + or - to change a price.", "At market price, customers almost
   always buy!", "Higher earns more, but fewer will buy." and Bye (a pointing lesson with `PishTalk.AFTER` lines says
   them once its window opens). His goodbye now says "Sell and rip packs to grow your shop level!".
+- **Customers love choice** (lesson `variety`, owner 2026-11-24; spec `2026-11-24-shop-variety-design`): the first time
+  a customer misses a product the shop could stock, from shop level 3 (`Customers.VARIETY.lessonLevel`,
+  `CustomerService.OnMissed`; older saves get it the first time it happens), the event `missing` queues it and sets the
+  player's `MissedProduct`. A `talk` lesson: his paws at the order computer and straight to his lines with Next: "That
+  customer wanted Card Sleeves!" (`{product}`, `TalkRules.product`, `VARIETY.names`), "Shops with every product get
+  more customers!", "Customers who find it all pay 10% extra!", "Order some here. Bye!". Studio: `/tutorial lesson
+  variety` (names Card Sleeves when no product was missed yet), admin "Lesson: Customers love choice".
 - [ ] **Stuck helper**: a new player's first hour (first visit not done when they joined), a quiet minute (no order,
   restock, sale or pack) with a box waiting brings Pish to point at it, with empty shelves at the order computer (only
   when the cash covers the cheapest box, `LessonRules.cheapestBox`; owner 2026-11-18: "Pish is forcing players to buy
@@ -4373,6 +4419,17 @@ the always-on tracker B, the money card A).
   XP, and "Your shelves are empty. Restock them!" (or a tip to stock up); Collect sends coins into the cash pill. Time in
   the Frontier or the Dungeon counts as away. `lastSeen` (schema v33) is written at every main-game save. Studio:
   `/away <minutes>`.
+  - **With storage racks** (owner 2026-11-24, pick 2; spec `2026-11-24-shop-variety-design`): while a card works as
+    Restocker (`JobService.GetRestocker`) and racks hold boxes, every product with a shelf (even an empty one) sells
+    from its shelves and from the racks' boxes of it in the first 2 hours (`OfflineRules.planRacks`, the same 2 a
+    minute), and each rack holding boxes adds 30 minutes (`RACK_MINUTES`, at most `MAX_EXTRA_MINUTES` 120: 4 hours in
+    all, `OfflineRules.split`) selling only what's left in the racks. Units come off shelves first, then rack boxes,
+    half-used first (`OfflineRules.boxTakes`, `PlacementService.TakeRackUnits`; an emptied box leaves the rack). A
+    product with no shelf never sells from a rack. Without a Restocker nothing changes. The window then shows the
+    Restocker's report under the cash: its card's round picture, "<Card> kept your shelves full", "9 boxes from your
+    storage racks", a bar of the time selling (blue: shelves, green: storage) with "2h from shelves" and "+1h 30m from
+    storage", and "More racks of boxes: up to 4 hours of selling while you're away." Racks holding boxes with no
+    Restocker: "Give a card the Restocker job: your racks keep your shop selling up to 4 hours while you're away."
 - **The playtest funnel** (`Config/Funnel`, server `Util/Funnel`; tests/Funnel): one Roblox onboarding funnel
   (Creator Hub, Analytics, Funnels), each step once per player: Joined, the prologue's start, fight, taking and end,
   the welcome flight, Pish's eight tour steps in order, the first wild win, Lv 3, the first quest claimed, Lv 5, Lv 8
