@@ -39,6 +39,7 @@ local DecorRules = require(Shared:WaitForChild("Util"):WaitForChild("DecorRules"
 local DecorLooks = require(Shared:WaitForChild("Util"):WaitForChild("DecorLooks"))
 local TrophyLooks = require(Shared:WaitForChild("Util"):WaitForChild("TrophyLooks"))
 local StorageConfig = require(Config:WaitForChild("Storage"))
+local StorageRules = require(Shared:WaitForChild("Util"):WaitForChild("StorageRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Blocked = require((script.Parent :: Instance).Parent:WaitForChild("Util"):WaitForChild("Blocked"))
 
@@ -52,11 +53,13 @@ local ItemService = require(Services:WaitForChild("ItemService"))
 local PlotService = require(Services:WaitForChild("PlotService"))
 local PricingService = require(Services:WaitForChild("PricingService"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
+local BoxLook = require(Util:WaitForChild("BoxLook"))
 
 type Plot = typeof(PlotService.GetPlots()[1])
 type ShelfDef = typeof(Shelves.List[1])
 type PlayerData = DataService.PlayerData
 type SavedShelf = DataService.SavedShelf
+type SavedRackBox = DataService.SavedRackBox
 type SavedCard = DataService.SavedCard
 type SavedCell = DataService.SavedCell
 
@@ -81,6 +84,8 @@ export type PlacedShelf = {
 	visual: Model?, -- shelves with a prop (Shelves def.prop): the prop drawn on the invisible hitbox part
 	stockBoxes: { Part }, -- Products shelves: boxes (or stacks of packs) showing how full it is (ShelfStock)
 	priceTags: { Part }, -- Products shelves: an orange price tag on each stocked level
+	stored: StorageRules.Stored, -- storage racks: the delivery boxes on it, by spot (spec 2026-11-24-storage-racks-design)
+	rackBoxes: { Part }, -- storage racks: those boxes drawn on their spots (Util/BoxLook)
 }
 
 local KIND_LABELS = {
@@ -94,6 +99,13 @@ local layouts: { [Player]: { [string]: PlacedShelf } } = {}
 local placedHandlers: { (player: Player, shelfId: string) -> () } = {} -- PlacementService.OnPlaced
 local soldHandlers: { (player: Player, shelfId: string) -> () } = {} -- PlacementService.OnSold
 local allowAction = RateLimiter.new(PlacementConfig.ACTION_COOLDOWN)
+-- Storage racks' boxes that found no spot on load (a rack past its cap, with no room, or a box past its spots): kept
+-- until StockService's load puts them on the pad or pays them back (PlacementService.TakeLoadExtras), never lost
+local pendingExtras: { [Player]: { StorageRules.Box } } = {}
+local UNITS_PER_BOX: { [string]: number } = {}
+for _, product in Products.List do
+	UNITS_PER_BOX[product.id] = product.unitsPerBox
+end
 
 local function notify(player: Player, message: string, isError: boolean)
 	Remotes.Notify:FireClient(player, message, isError)
@@ -172,6 +184,10 @@ end
 
 local function isDecor(def: ShelfDef): boolean
 	return def.kind == "Decor"
+end
+
+local function isStorage(def: ShelfDef): boolean
+	return def.kind == "Storage"
 end
 
 local function countCards(shelf: PlacedShelf): number
@@ -625,6 +641,32 @@ local function renderCardSlot(shelf: PlacedShelf, slot: number)
 	end
 end
 
+-- A storage rack's boxes drawn on their spots (Config/Storage SPOTS), named StockBox under the rack so a far shop's
+-- stock LOD hides them too; walked through and never in the way of a click
+local function drawRack(shelf: PlacedShelf)
+	for _, box in shelf.rackBoxes do
+		box:Destroy()
+	end
+	table.clear(shelf.rackBoxes)
+	for slot, stored in shelf.stored do
+		local x, y = StorageRules.spot(slot, StorageConfig.SPOTS, shelf.def.size.Y)
+		local box = BoxLook.build(stored.productId, stored.units, true)
+		box.CanCollide = false
+		box.CanQuery = false
+		box.CanTouch = false
+		box.CFrame = shelf.part.CFrame * CFrame.new(x, y, 0)
+		box:SetAttribute("Slot", slot)
+		box.Parent = shelf.part
+		table.insert(shelf.rackBoxes, box)
+	end
+end
+
+-- What clients read off a rack: its box count (the prompt, the Edit bar) and its boxes (the stock clipboard)
+local function syncRack(shelf: PlacedShelf)
+	shelf.part:SetAttribute("StoredCount", StorageRules.count(shelf.stored))
+	shelf.part:SetAttribute("Stored", StorageRules.encode(shelf.stored))
+end
+
 local function positionShelf(plot: Plot, shelf: PlacedShelf)
 	shelf.part.CFrame = plot.floor.CFrame
 		* PlacementGrid.getLocalCFrame(shelf.def.size, shelf.gridX, shelf.gridZ, shelf.rotation)
@@ -636,6 +678,9 @@ local function positionShelf(plot: Plot, shelf: PlacedShelf)
 	end
 	if shelf.visual then
 		shelf.visual:PivotTo(shelf.part.CFrame * CFrame.new(0, -shelf.def.size.Y / 2, 0))
+	end
+	if isStorage(shelf.def) then
+		drawRack(shelf) -- its boxes move with it
 	end
 	updateInfo(shelf)
 end
@@ -679,9 +724,14 @@ local function createShelf(
 		cardParts = {},
 		stockBoxes = {},
 		priceTags = {},
+		stored = {},
+		rackBoxes = {},
 		paid = paid,
 		part = part,
 	}
+	if isStorage(def) then
+		syncRack(shelf)
+	end
 	part:SetAttribute("Refund", getRefund(shelf))
 	positionShelf(plot, shelf)
 	if def.prop and Props.hasLook(def.prop) then
@@ -883,6 +933,10 @@ local function onSell(player: Player, uid: unknown)
 		Blocked.tell(player, "Take the cards out of this case first.")
 		return
 	end
+	if StorageRules.count(shelf.stored) > 0 then
+		Blocked.tell(player, StorageConfig.WORDS.sellLocked) -- the Edit bar shows the lock first (EditBarRules)
+		return
+	end
 
 	local refund = getRefund(shelf)
 	-- a shop's last rack stays (BrokeService: it tells the player itself)
@@ -1005,6 +1059,7 @@ local function restoreShelf(player: Player, plot: Plot, saved: SavedShelf, lefto
 	-- a storage rack over its cap (the cap shrank), or with no room: its price back, like a decor piece's
 	local isRack = def ~= nil and def.kind == "Storage"
 	local storageFull = isRack and countStorage(layouts[player]) >= PlacementConfig.MAX_STORAGE_PER_PLOT
+	local extras = pendingExtras[player]
 	if not def or not gridX or not gridZ or decorFull or storageFull then
 		readSavedCards(nil, saved.cards, leftovers)
 		if def and def.requiresItem then
@@ -1013,10 +1068,29 @@ local function restoreShelf(player: Player, plot: Plot, saved: SavedShelf, lefto
 		if def and (isDecor(def) or isRack) and paid > 0 then
 			EconomyService.AddCash(player, paid)
 		end
+		if def and isRack and extras then
+			-- its boxes wait for StockService: the pad, else their price back
+			local stored, over = StorageRules.clean(saved.boxes, def.capacity, UNITS_PER_BOX)
+			for _, box in stored do
+				table.insert(extras, box)
+			end
+			for _, box in over do
+				table.insert(extras, box)
+			end
+		end
 		return
 	end
 
 	local shelf = createShelf(player, plot, def, gridX, gridZ, saved.rotation, paid)
+	if isRack then
+		local stored, over = StorageRules.clean(saved.boxes, def.capacity, UNITS_PER_BOX)
+		shelf.stored = stored
+		drawRack(shelf)
+		syncRack(shelf)
+		for _, box in over do
+			table.insert(extras, box)
+		end
+	end
 	local units = if typeof(saved.units) == "number" then math.floor(saved.units) else 0
 	if typeof(saved.productId) == "string" and Products.ById[saved.productId] and units > 0 then
 		PlacementService.AddStock(shelf, saved.productId, units)
@@ -1040,6 +1114,7 @@ local function load(player: Player, data: PlayerData)
 		return -- no free plot this session; leave the saved layout untouched
 	end
 	layouts[player] = {}
+	pendingExtras[player] = {}
 	local leftovers: { DisplayedCard } = {}
 	for _, saved in data.layout do
 		restoreShelf(player, plot, saved, leftovers)
@@ -1074,6 +1149,10 @@ local function save(player: Player, data: PlayerData)
 				stars = if beast then beast.stars else nil,
 			})
 		end
+		local savedBoxes: { SavedRackBox } = {}
+		for slot, stored in shelf.stored do
+			table.insert(savedBoxes, { slot = slot, productId = stored.productId, units = stored.units })
+		end
 		table.insert(savedLayout, {
 			shelfId = shelf.def.id,
 			gridX = shelf.gridX,
@@ -1083,6 +1162,7 @@ local function save(player: Player, data: PlayerData)
 			units = shelf.units,
 			paid = shelf.paid,
 			cards = if #savedCards > 0 then savedCards else nil,
+			boxes = if #savedBoxes > 0 then savedBoxes else nil, -- storage racks (v43)
 		})
 	end
 	data.layout = savedLayout
@@ -1104,6 +1184,7 @@ local function unload(player: Player)
 		shelf.part:Destroy()
 	end
 	layouts[player] = nil
+	pendingExtras[player] = nil
 end
 
 function PlacementService.GetShelf(player: Player, uid: string): PlacedShelf?
@@ -1144,6 +1225,7 @@ function PlacementService.DevPlace(player: Player, shelfId: string): boolean
 	end
 	local full = if isDecor(def)
 		then not DecorRules.fitsCap(countDecor(layout), PlacementConfig.MAX_DECOR_PER_PLOT)
+		elseif isStorage(def) then countStorage(layout) >= PlacementConfig.MAX_STORAGE_PER_PLOT
 		else countShelves(layout) >= ShopRooms.shelfCap(RoomsConfig, PlacementConfig.MAX_SHELVES_PER_PLOT, plot.rooms)
 	if full then
 		return false
@@ -1176,6 +1258,77 @@ function PlacementService.GetShelves(player: Player): { PlacedShelf }
 		end
 	end
 	return list
+end
+
+-- Storage racks (spec 2026-11-24-storage-racks-design) ------------------------------------------------------------
+
+function PlacementService.IsStorage(shelf: PlacedShelf): boolean
+	return isStorage(shelf.def)
+end
+
+function PlacementService.GetRacks(player: Player): { PlacedShelf }
+	local racks: { PlacedShelf } = {}
+	local layout = layouts[player]
+	if layout then
+		for _, shelf in layout do
+			if isStorage(shelf.def) then
+				table.insert(racks, shelf)
+			end
+		end
+	end
+	return racks
+end
+
+-- A box set on the rack, next to its own kind (StorageRules.slotFor). Returns the spot it took, nil when the rack is full
+-- or the box is no box
+function PlacementService.StoreInRack(shelf: PlacedShelf, productId: string, units: number): number?
+	local most = UNITS_PER_BOX[productId]
+	if not isStorage(shelf.def) or not most or units < 1 then
+		return nil
+	end
+	local slot = StorageRules.slotFor(shelf.stored, shelf.def.capacity, productId)
+	if not slot then
+		return nil
+	end
+	shelf.stored[slot] = { productId = productId, units = math.min(math.floor(units), most) }
+	drawRack(shelf)
+	syncRack(shelf)
+	return slot
+end
+
+-- A box of `productId` taken off the rack: its half-used one first (StorageRules.takeSlot). Returns the box and the
+-- spot it stood on, nil when the rack holds none of that kind
+function PlacementService.TakeFromRack(shelf: PlacedShelf, productId: string): (StorageRules.Box?, number?)
+	local slot = StorageRules.takeSlot(shelf.stored, productId)
+	if not slot then
+		return nil, nil
+	end
+	local box = shelf.stored[slot]
+	shelf.stored[slot] = nil
+	drawRack(shelf)
+	syncRack(shelf)
+	return box, slot
+end
+
+-- The restocker that last stored or took a box here: the stock clipboard's "counted by" (StorageController)
+function PlacementService.SetRackWorker(shelf: PlacedShelf, name: string)
+	shelf.part:SetAttribute("LastWorker", name)
+end
+
+-- The boxes no rack could hold on load, once: StockService's load puts them on the pad or pays them back
+function PlacementService.TakeLoadExtras(player: Player): { StorageRules.Box }
+	local extras = pendingExtras[player] or {}
+	pendingExtras[player] = {}
+	return extras
+end
+
+-- Studio testing (DevService /storage, /broke): every rack emptied
+function PlacementService.ClearRacksForTesting(player: Player)
+	for _, shelf in PlacementService.GetRacks(player) do
+		table.clear(shelf.stored)
+		drawRack(shelf)
+		syncRack(shelf)
+	end
 end
 
 -- Removes up to `units` from the shelf (a customer picking them up). Returns units taken.

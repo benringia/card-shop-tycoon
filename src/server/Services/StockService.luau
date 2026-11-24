@@ -7,11 +7,9 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local Props = require(Shared:WaitForChild("Util"):WaitForChild("Props"))
-local BrandBox = require(Shared:WaitForChild("Util"):WaitForChild("BrandBox"))
 local PadRules = require(Shared:WaitForChild("Util"):WaitForChild("PadRules"))
-local DeliveryLooks = require(Shared:WaitForChild("Util"):WaitForChild("DeliveryLooks"))
 local Config = Shared:WaitForChild("Config")
+local StorageConfig = require(Config:WaitForChild("Storage"))
 local Early = require(Config:WaitForChild("Early"))
 local EarlyRules = require(Shared:WaitForChild("Util"):WaitForChild("EarlyRules"))
 local Products = require(Config:WaitForChild("Products"))
@@ -30,6 +28,7 @@ local Blocked = require((script.Parent :: Instance).Parent:WaitForChild("Util"):
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
+local BoxLook = require(Util:WaitForChild("BoxLook"))
 local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local ItemService = require(Services:WaitForChild("ItemService"))
@@ -180,6 +179,12 @@ local function boxCount(shop: Shop): number
 	return #shop.incoming + #shop.waiting + #shop.carried + #shop.workerBoxes
 end
 
+-- One more box fits in the shop's shared spots: a box off a storage rack goes into hands, and from hands it can always
+-- go back on the pad (spec 2026-11-24-storage-racks-design)
+local function hasRoom(shop: Shop): boolean
+	return boxCount(shop) < StockConfig.MAX_BOXES_PER_PLOT
+end
+
 -- Boxes on their way and boxes on the pad (Pish's stock line: "on the way" while a delivery hasn't come yet), and the
 -- pad's spots used (the order computer: how many more boxes fit)
 local function syncPad(shop: Shop)
@@ -251,34 +256,24 @@ local function onPickup(player: Player, shop: Shop, box: Part)
 	syncCarry(shop)
 end
 
--- Puts a box on the delivery pad. `fromVan`: it hops out of the packenship.co van (DeliveryController flies it from the
--- van's door; its VanHop attribute says when, on the server's clock)
-local function createBox(shop: Shop, productId: string, units: number, fromVan: boolean?)
+-- A box of this shop's (Util/BoxLook) with its Pick up prompt, which only works while it waits on the pad (onPickup)
+local function makeBox(shop: Shop, productId: string, units: number): Part
 	local product = Products.ById[productId]
-	local box = Instance.new("Part")
-	box.Name = "StockBox"
-	box.Size = StockConfig.BOX_SIZE
-	box.Color = StockConfig.BOX_COLOR
-	box.Material = Enum.Material.Cardboard
-	box.Anchored = true
-	box:SetAttribute("ProductId", productId)
-	box:SetAttribute("Units", units)
-	if fromVan then
-		box:SetAttribute("VanHop", workspace:GetServerTimeNow())
-	end
-	-- The product's own box model, welded on, when assets/props has it; the part stays as the hitbox
-	local model = Props.weldFit(product.boxProp, box)
-	if model then
-		box.Transparency = 1
-		DeliveryLooks.finishBox(model, product.id, product.icon)
-	else
-		BrandBox.draw(box, product, `x{units}`)
-	end
-
+	local box = BoxLook.build(productId, units)
 	local prompt = makePrompt(box, "Pick up", product.name)
 	prompt.Triggered:Connect(function(triggeringPlayer)
 		onPickup(triggeringPlayer, shop, box)
 	end)
+	return box
+end
+
+-- Puts a box on the delivery pad. `fromVan`: it hops out of the packenship.co van (DeliveryController flies it from the
+-- van's door; its VanHop attribute says when, on the server's clock)
+local function createBox(shop: Shop, productId: string, units: number, fromVan: boolean?)
+	local box = makeBox(shop, productId, units)
+	if fromVan then
+		box:SetAttribute("VanHop", workspace:GetServerTimeNow())
+	end
 
 	table.insert(shop.waiting, box)
 	layoutWaiting(shop)
@@ -513,6 +508,89 @@ local function onDropBox(player: Player)
 	notify(player, "Box put back on the delivery pad.", false)
 end
 
+-- Storage racks (spec 2026-11-24-storage-racks-design) ------------------------------------------------------------
+
+-- Your own storage rack within reach, else nil (a toast says to get closer)
+local function nearRack(player: Player, uid: unknown): (Shop?, any)
+	if typeof(uid) ~= "string" then
+		return nil, nil
+	end
+	local shop = shops[player]
+	local rack = PlacementService.GetShelf(player, uid)
+	if not shop or not rack or not PlacementService.IsStorage(rack) then
+		return nil, nil
+	end
+	if not isNear(player, rack.part) then
+		notify(player, "Get closer to the rack.", true)
+		return nil, nil
+	end
+	return shop, rack
+end
+
+-- The box in your arms goes on the rack, next to its own kind, hopping there (StorageController)
+local function onStoreBox(player: Player, uid: unknown)
+	if not allowStock(player) then
+		return
+	end
+	local shop, rack = nearRack(player, uid)
+	if not shop or not rack then
+		return
+	end
+	local box = shop.carried[#shop.carried]
+	if not box then
+		Blocked.tell(player, "Carry a box here to store it.")
+		return
+	end
+	local productId, units = box:GetAttribute("ProductId"), box:GetAttribute("Units")
+	if typeof(productId) ~= "string" or typeof(units) ~= "number" then
+		return
+	end
+	local slot = PlacementService.StoreInRack(rack, productId, units)
+	if not slot then
+		Blocked.tell(player, StorageConfig.WORDS.fullRack)
+		return
+	end
+	table.remove(shop.carried)
+	box:Destroy()
+	syncCarry(shop)
+	Remotes.RackBoxHop:FireAllClients(rack.part, slot, productId, true, player.Character)
+end
+
+-- A box of `productId` off the rack (its half-used one first) into your arms. It needs empty hands and a free spot in
+-- the shop's shared 12 (from your arms it can always go back on the pad)
+local function onTakeStoredBox(player: Player, uid: unknown, productId: unknown)
+	if not allowStock(player) or typeof(productId) ~= "string" then
+		return
+	end
+	local shop, rack = nearRack(player, uid)
+	if not shop or not rack then
+		return
+	end
+	if #shop.carried >= StockConfig.MAX_CARRY then
+		Blocked.tell(player, StorageConfig.WORDS.handsFull)
+		return
+	end
+	if not hasRoom(shop) then
+		Blocked.tell(player, StorageConfig.WORDS.padFull)
+		return
+	end
+	local root = getRoot(player)
+	if not root then
+		return
+	end
+	local taken, slot = PlacementService.TakeFromRack(rack, productId)
+	if not taken or not slot then
+		return -- gone already (a restocker took it): the clipboard follows the rack
+	end
+	local box = makeBox(shop, taken.productId, taken.units)
+	setPromptEnabled(box, false)
+	box.Parent = shop.plot.model
+	table.insert(shop.carried, box)
+	attachToCharacter(box, root, #shop.carried)
+	syncCarry(shop)
+	Remotes.RackBoxHop:FireAllClients(rack.part, slot, taken.productId, false, player.Character)
+end
+
 -- The packs in your carried boxes go in your Bag, to open anywhere (owner 2026-11-17: "on pack boxes. add an option
 -- that player can put all the cardpacks inside the box to their inventory or drop to the delivery box. that way. they
 -- will never have to go back to the delivery to pickup packs to rip"). A pack or deck box becomes its Bag item
@@ -648,6 +726,26 @@ local function load(player: Player, data: PlayerData)
 			createBox(shop, saved.productId, math.floor(saved.units))
 		end
 	end
+	-- Storage racks' boxes no rack could hold (PlacementService loads first): onto the pad while it has room, the rest
+	-- paid back at their share of the box price, never lost (spec 2026-11-24-storage-racks-design)
+	local refund = 0
+	for _, extra in PlacementService.TakeLoadExtras(player) do
+		local product = Products.ById[extra.productId]
+		if product and hasRoom(shop) then
+			createBox(shop, extra.productId, extra.units)
+		elseif product then
+			refund += product.boxCost * extra.units / product.unitsPerBox
+		end
+	end
+	if refund > 0 then
+		local cash = math.floor(refund * 100 + 0.5) / 100
+		EconomyService.AddCash(player, cash)
+		task.delay(StockConfig.LOAD_TOAST_DELAY, function()
+			if player.Parent then
+				notify(player, string.format(StorageConfig.WORDS.refunded, OrderRules.money(cash)), false)
+			end
+		end)
+	end
 	syncCarry(shop)
 end
 
@@ -756,7 +854,34 @@ function StockService.GetBoxStock(player: Player): { [string]: number }?
 			stock[order.productId] = (stock[order.productId] or 0) + product.unitsPerBox
 		end
 	end
+	-- and on its storage racks: stock the shop still has (BrokeService: a shop with stored boxes isn't stuck)
+	for _, rack in PlacementService.GetRacks(player) do
+		for _, stored in rack.stored do
+			stock[stored.productId] = (stock[stored.productId] or 0) + stored.units
+		end
+	end
 	return stock
+end
+
+-- One more box fits in the shop's shared spots (restockers taking a box off a storage rack: JobService)
+function StockService.HasRoom(player: Player): boolean
+	local shop = shops[player]
+	return shop ~= nil and hasRoom(shop)
+end
+
+-- A box for a restocker's arms, made from one it took off a storage rack: it counts in the shop's shared spots like any
+-- box in a worker's hands. Nil without room (check HasRoom before taking it off the rack)
+function StockService.MakeWorkerBox(player: Player, productId: string, units: number): Part?
+	local shop = shops[player]
+	if not shop or not hasRoom(shop) or not Products.ById[productId] then
+		return nil
+	end
+	local box = makeBox(shop, productId, units)
+	setPromptEnabled(box, false)
+	box.Parent = shop.plot.model
+	table.insert(shop.workerBoxes, box)
+	syncPad(shop)
+	return box
 end
 
 -- Studio testing only (DevService /broke): every box gone, the ones on order too
@@ -870,6 +995,8 @@ function StockService.Start()
 	Remotes.BagBox.OnServerEvent:Connect(onBagBox)
 	Remotes.ShopBagStock.OnServerEvent:Connect(onShopBagStock)
 	Remotes.RemoveStock.OnServerEvent:Connect(onRemoveStock)
+	Remotes.StoreBox.OnServerEvent:Connect(onStoreBox)
+	Remotes.TakeStoredBox.OnServerEvent:Connect(onTakeStoredBox)
 	DataService.Register({ name = "StockService", load = load, save = save, unload = unload })
 	Players.PlayerAdded:Connect(onPlayerAdded)
 	for _, player in Players:GetPlayers() do

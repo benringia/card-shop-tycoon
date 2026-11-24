@@ -78,6 +78,9 @@ local NAMES = {
 	"RemoveStock", -- client → server: (shelfUid: string) box up a product shelf's stock onto the delivery pad
 	"DeliveryVan", -- server → the orderer only: (plot: Model, arrive: number, boxes: number) a packenship.co van stops by their shop's pad at `arrive` (server clock) and unloads (DeliveryController)
 	"ShelfStocked", -- server → all clients: (shelf: BasePart, by: Player, productId: string, added: number) a carried box unboxed onto a shelf (DeliveryController's unboxing)
+	"StoreBox", -- client → server: (uid: string) your carried box onto this storage rack (StockService; spec 2026-11-24-storage-racks-design)
+	"TakeStoredBox", -- client → server: (uid: string, productId: string) a box of that kind off this storage rack into your arms
+	"RackBoxHop", -- server → all clients: (rack: BasePart, slot: number, productId: string, toRack: boolean, carrier: Model?) a box hopping between arms and a rack's spot (StorageController)
 	"RipPack", -- client → server: open one pack from the carried box
 	"PackOpened", -- server → client: (productId: string, results: { { cardId, foil, grade } }, newFlags: { boolean }, itemId: string?) itemId: the Bag item it came from (Open another)
 	"CollectionChanged", -- server → client: ({ [cardId: string]: { normal: number, foil: number } })
@@ -259,6 +262,9 @@ return {
 	RemoveStock = remotes.RemoveStock,
 	DeliveryVan = remotes.DeliveryVan,
 	ShelfStocked = remotes.ShelfStocked,
+	StoreBox = remotes.StoreBox,
+	TakeStoredBox = remotes.TakeStoredBox,
+	RackBoxHop = remotes.RackBoxHop,
 	RipPack = remotes.RipPack,
 	PackOpened = remotes.PackOpened,
 	CollectionChanged = remotes.CollectionChanged,

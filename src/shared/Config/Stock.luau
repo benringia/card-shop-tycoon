@@ -10,6 +10,7 @@ return {
 	-- `beat` s; the shelves are looked at again every `check` s
 	HINT = { color = Color3.fromRGB(255, 207, 74), fill = 0.6, outline = { 0, 0.55 }, beat = 1.1, check = 0.3 },
 	MAX_BOXES_PER_PLOT = 12, -- incoming + waiting + carried, stops order spam filling the shop
+	LOAD_TOAST_DELAY = 6, -- seconds after a load before a toast about it shows (the screen is still loading before)
 
 	ORDER_COOLDOWN = 0.3, -- seconds between order requests per player
 	STOCK_COOLDOWN = 0.3, -- seconds between shelf stocking requests per player
