@@ -19,12 +19,22 @@ return {
 	MAX_EXTRA_MINUTES = 120,
 	-- The Welcome back card's Restocker report (WelcomeBackController; %d h: the longest away selling, in hours)
 	REPORT = {
+		-- the panel's look: its height, the card's round picture and ring, the time bar (blue: shelves, green: storage)
+		height = 108,
+		portrait = 56,
+		ring = { 255, 148, 104 },
+		bar = 14,
+		shelvesColor = { 79, 180, 255 },
+		shelvesInk = { 28, 120, 200 },
+		storageColor = { 63, 214, 160 },
+		storageInk = { 20, 102, 58 },
+		track = { 243, 230, 248 },
 		title = "%s kept your shelves full",
 		boxes = "%d boxes from your storage racks",
 		box = "1 box from your storage racks",
 		shelves = "%s from shelves",
 		storage = "+%s from storage",
-		more = "More racks of boxes: up to %d h of selling while you're away.",
-		needs = "Give a card the Restocker job: your racks keep your shop selling up to %d h while you're away.",
+		more = "More racks of boxes: up to %d hours of selling while you're away.",
+		needs = "Give a card the Restocker job: your racks keep your shop selling up to %d hours while you're away.",
 	},
 }

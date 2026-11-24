@@ -12,6 +12,8 @@ local Config = Shared:WaitForChild("Config")
 local Offline = require(Config:WaitForChild("Offline"))
 local Products = require(Config:WaitForChild("Products"))
 local UIStyle = require(Config:WaitForChild("UIStyle"))
+local CardArtConfig = require(Config:WaitForChild("CardArt"))
+local CardArt = require(Shared:WaitForChild("Util"):WaitForChild("CardArt"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -24,7 +26,24 @@ local UIController = require(Controllers:WaitForChild("UIController"))
 
 local WelcomeBackController = {}
 
-type Summary = { minutes: number, units: number, cash: number, xp: number, sold: { [string]: number }, empty: boolean }
+-- restocker / boxes / base / extra / needsRestocker: away selling with storage racks (OfflineService; spec
+-- 2026-11-24-shop-variety-design)
+type Summary = {
+	minutes: number,
+	units: number,
+	cash: number,
+	xp: number,
+	sold: { [string]: number },
+	empty: boolean,
+	restocker: { name: string, cardId: string }?,
+	boxes: number?,
+	base: number?,
+	extra: number?,
+	needsRestocker: boolean?,
+}
+
+local REPORT = Offline.REPORT
+local MOST_HOURS = (Offline.MAX_MINUTES + Offline.MAX_EXTRA_MINUTES) // 60
 
 local player = Players.LocalPlayer
 local READY_CHECK = 0.5 -- seconds between checks that the screen is free
@@ -76,6 +95,82 @@ local function soldChip(parent: Instance, productId: string, count: number, orde
 	words.TextWrapped = false
 end
 
+local function rgb(values: { number }): Color3
+	return Color3.fromRGB(values[1], values[2], values[3])
+end
+
+-- The Restocker's report (mockup pick 2): its card's picture, what it carried out of the racks, and a bar of the time
+-- selling (blue: from the shelves, green: from storage) with both times under it
+local function restockerReport(parent: Instance, summary: Summary, order: number)
+	local restocker = summary.restocker :: { name: string, cardId: string }
+	local base, extra, boxes = summary.base or summary.minutes, summary.extra or 0, summary.boxes or 0
+	local panel = Instance.new("Frame")
+	panel.Name = "Restocker"
+	panel.LayoutOrder = order
+	panel.Size = UDim2.new(1, -16, 0, REPORT.height)
+	panel.BackgroundColor3 = UIStyle.CREAM.ROW
+	panel.Parent = parent
+	UIKit.corner(panel, 16)
+	UIKit.outline(panel, UIStyle.CREAM.ROW_EDGE, 2)
+	local pad = Instance.new("UIPadding")
+	pad.PaddingLeft = UDim.new(0, 12)
+	pad.PaddingRight = UDim.new(0, 12)
+	pad.PaddingTop = UDim.new(0, 10)
+	pad.PaddingBottom = UDim.new(0, 10)
+	pad.Parent = panel
+
+	local size = REPORT.portrait
+	local portrait = Instance.new("ImageLabel")
+	portrait.Name = "Portrait"
+	portrait.Size = UDim2.fromOffset(size, size)
+	portrait.BackgroundColor3 = UIStyle.CREAM.ROW_EDGE
+	portrait.Image = CardArt.pick(restocker.name, size, CardArtConfig) or ""
+	portrait.ScaleType = Enum.ScaleType.Crop
+	portrait.Parent = panel
+	UIKit.corner(portrait, size)
+	UIKit.outline(portrait, rgb(REPORT.ring), 3)
+
+	local title = UIKit.label(panel, string.format(REPORT.title, restocker.name), Enum.Font.FredokaOne, 16, UIStyle.CREAM.INK)
+	title.Position = UDim2.fromOffset(size + 12, 6)
+	title.Size = UDim2.new(1, -(size + 12), 0, 20)
+	title.TextWrapped = false
+	local boxLine = UIKit.label(panel, if boxes == 1 then REPORT.box else string.format(REPORT.boxes, boxes), Enum.Font.GothamBold, 13, UIStyle.CREAM.INK_SOFT)
+	boxLine.Position = UDim2.fromOffset(size + 12, 28)
+	boxLine.Size = UDim2.new(1, -(size + 12), 0, 16)
+
+	-- the bar: shelves' share, then storage's
+	local total = math.max(1, base + extra)
+	local track = Instance.new("Frame")
+	track.Name = "Time"
+	track.Position = UDim2.fromOffset(0, size + 6)
+	track.Size = UDim2.new(1, 0, 0, REPORT.bar)
+	track.BackgroundColor3 = rgb(REPORT.track)
+	track.ClipsDescendants = true
+	track.Parent = panel
+	UIKit.corner(track, REPORT.bar)
+	local shelves = Instance.new("Frame")
+	shelves.Size = UDim2.fromScale(base / total, 1)
+	shelves.BackgroundColor3 = rgb(REPORT.shelvesColor)
+	shelves.BorderSizePixel = 0
+	shelves.Parent = track
+	local storage = Instance.new("Frame")
+	storage.Position = UDim2.fromScale(base / total, 0)
+	storage.Size = UDim2.fromScale(extra / total, 1)
+	storage.BackgroundColor3 = rgb(REPORT.storageColor)
+	storage.BorderSizePixel = 0
+	storage.Parent = track
+	local legendY = size + 6 + REPORT.bar + 3
+	local fromShelves = UIKit.label(panel, string.format(REPORT.shelves, awayText(base)), Enum.Font.GothamBold, 12, rgb(REPORT.shelvesInk))
+	fromShelves.Position = UDim2.fromOffset(0, legendY)
+	fromShelves.Size = UDim2.new(0.5, 0, 0, 14)
+	local fromStorage = UIKit.label(panel, string.format(REPORT.storage, awayText(extra)), Enum.Font.GothamBold, 12, rgb(REPORT.storageInk))
+	fromStorage.AnchorPoint = Vector2.new(1, 0)
+	fromStorage.Position = UDim2.new(1, 0, 0, legendY)
+	fromStorage.Size = UDim2.new(0.5, 0, 0, 14)
+	fromStorage.TextXAlignment = Enum.TextXAlignment.Right
+	fromStorage.Visible = extra > 0
+end
+
 local function show(summary: Summary)
 	while UIKit.anyPanelOpen() do -- one window at a time: after the one that's up
 		task.wait(READY_CHECK)
@@ -85,7 +180,8 @@ local function show(summary: Summary)
 	Icon.header(panel, "Cash", UIKit.HEADER_HEIGHT)
 	local limit = panel:FindFirstChildOfClass("UISizeConstraint")
 	if limit then
-		limit.MaxSize = Vector2.new(460, 340)
+		-- taller with the Restocker's report, a little with the two-line racks hint
+		limit.MaxSize = Vector2.new(460, if summary.restocker then 340 + REPORT.height + 22 elseif summary.needsRestocker then 362 else 340)
 	end
 	local palette = UIKit.colorsFor(panel)
 	local layout = list:FindFirstChildOfClass("UIListLayout")
@@ -122,13 +218,22 @@ local function show(summary: Summary)
 	earned.LayoutOrder = 3
 	earned.Size = UDim2.new(1, -16, 0, 34)
 	earned.TextXAlignment = Enum.TextXAlignment.Center
-	local tip = UIKit.label(list, if summary.empty then "Your shelves are empty. Restock them!" else "Stock up before you leave and it keeps selling!", Enum.Font.GothamBold, 14, palette.hint)
-	tip.LayoutOrder = 4
-	tip.Size = UDim2.new(1, -16, 0, 20)
+	if summary.restocker then
+		restockerReport(list, summary, 4)
+	end
+	-- the hint: storage's when racks are in play (more racks, or a Restocker to run them), else the shelves'
+	local hint = if summary.needsRestocker then string.format(REPORT.needs, MOST_HOURS)
+		elseif summary.restocker then string.format(REPORT.more, MOST_HOURS)
+		elseif summary.empty then "Your shelves are empty. Restock them!"
+		else "Stock up before you leave and it keeps selling!"
+	local tip = UIKit.label(list, hint, Enum.Font.GothamBold, 14, palette.hint)
+	tip.LayoutOrder = 5
+	tip.Size = UDim2.new(1, -16, 0, if summary.needsRestocker then 40 else 20)
+	tip.TextWrapped = true
 	tip.TextXAlignment = Enum.TextXAlignment.Center
 	local collect = UIKit.button(list, "Collect", UIKit.Colors.Accent)
 	collect.Name = "Collect"
-	collect.LayoutOrder = 5
+	collect.LayoutOrder = 6
 	collect.Size = UDim2.fromOffset(180, 52)
 	collect.Activated:Connect(function()
 		CoinBurst.fly(screen, collect.AbsolutePosition + collect.AbsoluteSize / 2, UIController.GetCashPill(), 8)
