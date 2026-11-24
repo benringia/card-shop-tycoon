@@ -53,6 +53,12 @@ return {
 		near(RatingRules.displays(Customers, { { rarity = "Rare", foil = false } }), 0)
 	end,
 
+	["found it all is a good visit, partial a bad one"] = function()
+		near(RatingRules.happy({ "foundAll" }), 1)
+		near(RatingRules.happy({ "partial" }), 0, "missed a product: a bad visit, as noStock was")
+		near(RatingRules.happy({ "foundAll", "partial", "paid", "noStock" }), 0.5)
+	end,
+
 	["stocked counts products half"] = function()
 		local share = Customers.RATING.productShare
 		expect.equal(share, 0.5)

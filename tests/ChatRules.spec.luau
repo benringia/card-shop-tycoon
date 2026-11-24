@@ -7,9 +7,9 @@ local Customers = require("../src/shared/Config/Customers")
 local expect = require("./lib/expect")
 
 -- every moment the server speaks at (CustomerService.Say callers)
-local MOMENTS = { "enter", "found", "pricey", "missing", "queue", "gaveUp", "paid", "tip", "haggle", "deal", "noDeal", "admire", "pet", "pull", "sell", "sold" }
--- moments only one type lives through
-local ONLY = { haggle = "bargain", pull = "kid", sell = "kid", sold = "kid" }
+local MOMENTS = { "enter", "found", "pricey", "missing", "queue", "gaveUp", "paid", "tip", "foundAll", "haggle", "deal", "noDeal", "admire", "pet", "pull", "sell", "sold" }
+-- moments only one type lives through ("Found it all!" pays plain customers only: Config/Customers FOUND_ALL)
+local ONLY = { haggle = "bargain", pull = "kid", sell = "kid", sold = "kid", foundAll = "plain" }
 
 return {
 	["every customer type has something to say at every moment of its visit"] = function()
@@ -42,6 +42,27 @@ return {
 		expect.equal(ChatRules.lines(CustomerChat, "collector", "gaveUp"), plain.gaveUp, "a moment without its own: the plain customer's")
 		expect.equal(ChatRules.lines(CustomerChat, "nobody", "enter"), plain.enter, "an unknown type too")
 		expect.isNil(ChatRules.lines(CustomerChat, "plain", "nothing"))
+	end,
+
+	["missing lines name the product"] = function()
+		expect.equal(ChatRules.text(CustomerChat, "plain", "missing", 1, "sleeves"), "No sleeves? Aww.")
+		expect.equal(ChatRules.text(CustomerChat, "kid", "missing", 1, "packs"), "Nooo, no packs?")
+		for kind, moments in CustomerChat.LINES do
+			for index in moments.missing or {} do
+				local text = ChatRules.text(CustomerChat, kind, "missing", index, "Frontier packs") :: string
+				assert(#text <= CustomerChat.MAX_CHARS + 4, `{kind} missing {index}: "{text}" fits with the longest product word`)
+			end
+		end
+		for index, line in CustomerChat.LINES.plain.missing do
+			assert(string.find(line, "%s", 1, true), `plain missing {index} names the product`)
+		end
+	end,
+
+	["found it all lines"] = function()
+		local lines = CustomerChat.LINES.plain.foundAll
+		assert(lines and #lines >= 2, "a few ways to cheer")
+		expect.equal(lines[1], "Found it all!")
+		expect.equal(CustomerChat.CHANCE.foundAll, 1, "always said: it explains the bonus")
 	end,
 
 	["lines are short, plain ASCII and never show a raw %s"] = function()

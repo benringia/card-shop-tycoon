@@ -34,10 +34,27 @@ return {
 			stars = { 1, 2 },
 			lines = { "Waited ages at the register...", "Nobody at the counter 😴" },
 		},
+		-- Found nothing they wanted. `named`: when the customer knows what they missed (spec
+		-- 2026-11-24-shop-variety-design), `%s` its plural (Config/Offline PLURALS); `lines` when not (a collector, an
+		-- empty shop)
 		noStock = {
 			chance = 1,
 			stars = { 1, 1 },
 			lines = { "Shelves were empty 😢", "Nothing left to buy..." },
+			named = { "No %s at all 😢", "Couldn't find any %s 😢" },
+		},
+		-- Bought something but missed a product on their list
+		partial = {
+			chance = 1,
+			stars = { 3, 3 },
+			lines = { "Couldn't find everything 😕", "Almost had it all 😕" },
+			named = { "No %s here 😕", "Wanted %s too 😕" },
+		},
+		-- Found everything on their list ("Found it all!", Config/Customers FOUND_ALL)
+		foundAll = {
+			chance = 0.5,
+			stars = { 5, 5 },
+			lines = { "Found everything! 🛍️", "Had all I wanted! ✨" },
 		},
 	},
 	TITLE = "Reviews",

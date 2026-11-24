@@ -23,7 +23,8 @@ local feeds: { [Player]: { ReviewRules.Post } } = {}
 local rng = Random.new()
 local allowAsk = RateLimiter.new(1)
 
-local function onOutcome(owner: Player, outcome: string)
+-- `word`: the product a partial or noStock visit missed, named in its post ("No sleeves here")
+local function onOutcome(owner: Player, outcome: string, word: string?)
 	if not owner.Parent then
 		return
 	end
@@ -33,7 +34,7 @@ local function onOutcome(owner: Player, outcome: string)
 		line = rng:NextNumber(),
 		stars = rng:NextNumber(),
 		color = rng:NextNumber(),
-	}, os.time())
+	}, os.time(), word)
 	if not post then
 		return
 	end

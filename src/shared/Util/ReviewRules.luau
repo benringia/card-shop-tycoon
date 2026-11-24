@@ -10,17 +10,24 @@ local function pick<T>(list: { T }, roll: number): T
 	return list[math.floor(math.clamp(roll, 0, 0.999999) * #list) + 1]
 end
 
--- The post for a visit's `outcome` at time `now`, or nil (an outcome with no posts, or this one doesn't post)
-function ReviewRules.make(cfg: any, outcome: string, rolls: Rolls, now: number): Post?
+-- The post for a visit's `outcome` at time `now`, or nil (an outcome with no posts, or this one doesn't post). With a
+-- `word` (the product they missed) an outcome's `named` lines say it in place of `%s`
+function ReviewRules.make(cfg: any, outcome: string, rolls: Rolls, now: number, word: string?): Post?
 	local look = cfg.OUTCOMES[outcome]
 	if not look or rolls.chance >= look.chance then
 		return nil
 	end
 	local low, high = look.stars[1], look.stars[2]
+	local line = pick(look.lines, rolls.line)
+	if word and look.named then
+		line = string.gsub(pick(look.named, rolls.line), "%%s", function()
+			return word
+		end)
+	end
 	return {
 		name = pick(cfg.NAMES, rolls.name),
 		stars = low + math.floor(math.clamp(rolls.stars, 0, 0.999999) * (high - low + 1)),
-		line = pick(look.lines, rolls.line),
+		line = line,
 		at = now,
 		color = math.floor(math.clamp(rolls.color, 0, 0.999999) * #cfg.COLORS) + 1,
 	}

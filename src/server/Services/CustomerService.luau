@@ -32,6 +32,8 @@ local ChatRules = require(Shared:WaitForChild("Util"):WaitForChild("ChatRules"))
 local CustomerChat = require(Config:WaitForChild("CustomerChat"))
 local ShelfSearch = require(Shared:WaitForChild("Util"):WaitForChild("ShelfSearch"))
 local PriceRules = require(Shared:WaitForChild("Util"):WaitForChild("PriceRules"))
+local VarietyRules = require(Shared:WaitForChild("Util"):WaitForChild("VarietyRules"))
+local Offline = require(Config:WaitForChild("Offline"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
@@ -80,6 +82,10 @@ export type Customer = {
 	petted: boolean, -- already had their one chance to pet the owner's creature
 	reacting: boolean, -- stopped for a reaction right now
 	handedOff: boolean?, -- its model left with the street (departures), so despawn keeps it
+	list: { string }, -- the products on its shopping list (repeats for more than one)
+	missed: string?, -- the first product on its list no shelf had (said and reviewed by name)
+	foundAll: boolean, -- found every product on a list of two or more: pays Config/Customers FOUND_ALL
+	wantsAll: boolean?, -- Studio's /customer plain all: wants one of every product the shop can stock
 }
 
 type CustomerCallback = (customer: Customer) -> ()
@@ -98,8 +104,11 @@ local rng = Random.new()
 local customersFolder: Folder
 local reachedCounterCallbacks: { CustomerCallback } = {}
 local leftQueueCallbacks: { CustomerCallback } = {}
--- How each visit went, for the shop rating (RatingService): "paid", "annoyed", "gaveUp", "noStock", "happyMoment"
-local outcomeCallbacks: { (owner: Player, outcome: string) -> () } = {}
+-- How each visit went, for the shop rating (RatingService) and the Reviews (ReviewService): "paid", "foundAll",
+-- "annoyed", "gaveUp", "noStock", "partial", "happyMoment"; `word`: the product a partial or noStock visit missed
+local outcomeCallbacks: { (owner: Player, outcome: string, word: string?) -> () } = {}
+-- A customer missed a product the shop could stock (TutorialService: Pish's "Customers love choice" lesson)
+local missedCallbacks: { (owner: Player, productId: string) -> () } = {}
 -- The spawn gap's multiplier per shop: RatingService plugs in the rating's (CustomerService can't require it: it
 -- listens to OnOutcome here)
 local spawnScale: (owner: Player) -> number = function()
@@ -113,9 +122,9 @@ local arrivals: ((plot: Plot, owner: Player, kind: string, wanted: string?) -> b
 local arrivalHold: ((owner: Player) -> boolean)? = nil
 local departures: ((model: Model) -> boolean)? = nil
 
-local function fireOutcome(owner: Player, outcome: string)
+local function fireOutcome(owner: Player, outcome: string, word: string?)
 	for _, callback in outcomeCallbacks do
-		task.spawn(callback, owner, outcome)
+		task.spawn(callback, owner, outcome, word)
 	end
 end
 
@@ -517,9 +526,19 @@ local function maybeBulk(owner: Player, kind: string, list: { [string]: number }
 end
 
 -- Products this shop has unlocked, so customers only ask for things the owner could stock. A kid wants a pack or two,
--- a big spender a booster box when one is stocked (else a stack of packs); bulk cards only as maybeBulk adds them
-local function pickShoppingList(owner: Player, kind: string, sure: boolean?): { [string]: number }
+-- a big spender a booster box when one is stocked (else a stack of packs); bulk cards only as maybeBulk adds them.
+-- `all` (Studio's /customer plain all): one of every product the shop can stock
+local function pickShoppingList(owner: Player, kind: string, sure: boolean?, all: boolean?): { [string]: number }
 	local level = EconomyService.GetLevel(owner)
+	if all then
+		local everything: { [string]: number } = {}
+		for _, product in Products.List do
+			if canStock(owner, product, level) and not product.bulk then
+				everything[product.id] = 1
+			end
+		end
+		return everything
+	end
 	if sure then
 		-- Pish's customer wants something that is there: the first stocked shelf's product
 		for _, shelf in PlacementService.GetShelves(owner) do
@@ -838,9 +857,23 @@ local function huntCard(customer: Customer, visited: { [string]: boolean })
 	task.wait(CustomerConfig.BUBBLE_SECONDS)
 end
 
+-- A product the shop can stock was missed (never Bulk Cards, which come from the binder): TutorialService's lesson from
+-- Config/Customers VARIETY.lessonLevel
+local function reportMissed(owner: Player, productId: string)
+	local product = Products.ById[productId]
+	local level = EconomyService.GetLevel(owner)
+	if not product or product.bulk or level < CustomerConfig.VARIETY.lessonLevel or not canStock(owner, product, level) then
+		return
+	end
+	for _, callback in missedCallbacks do
+		task.spawn(callback, owner, productId)
+	end
+end
+
 -- Something they wanted wasn't on the shelves: look at a few more shelves they haven't checked yet (in an empty shop,
--- its empty racks; Util/ShelfSearch), then show the "no stock" bubble so the owner sees the lost sale. Only a shop with
--- no shelves sends them to the middle of the floor.
+-- its empty racks; Util/ShelfSearch), then show what they missed so the owner sees the lost sale: the product's
+-- picture in a thought bubble (the Missing attribute, CustomerController) and a line naming it. Only a shop with no
+-- shelves sends them to the middle of the floor.
 local function searchShelves(customer: Customer, visited: { [string]: boolean })
 	local byUid: { [string]: PlacedShelf } = {}
 	local shelves: { ShelfSearch.Shelf } = {}
@@ -872,9 +905,23 @@ local function searchShelves(customer: Customer, visited: { [string]: boolean })
 		end
 		task.wait(CustomerConfig.BROWSE_SECONDS)
 	end
-	showBubble(customer, CustomerConfig.BUBBLE_NO_STOCK)
-	say(customer, "missing")
-	fireOutcome(customer.owner, "noStock")
+	local missed = customer.missed
+	if missed then
+		local model = customer.model
+		model:SetAttribute("Missing", missed)
+		task.delay(CustomerConfig.BUBBLE_SECONDS, function()
+			if model.Parent and model:GetAttribute("Missing") == missed then
+				model:SetAttribute("Missing", nil)
+			end
+		end)
+		reportMissed(customer.owner, missed)
+	else
+		showBubble(customer, CustomerConfig.BUBBLE_NO_STOCK)
+	end
+	local word = VarietyRules.word(Offline.PLURALS, missed or "")
+	say(customer, "missing", word)
+	-- partial: they still take something home (a bad visit for the rating, as a missed product always was)
+	fireOutcome(customer.owner, if #customer.items > 0 then "partial" else "noStock", if missed then word else nil)
 	task.wait(CustomerConfig.BUBBLE_SECONDS)
 end
 
@@ -968,14 +1015,24 @@ local function run(customer: Customer)
 		end
 		return
 	end
-	for productId, wanted in pickShoppingList(customer.owner, customer.kind, customer.sure) do
+	for productId, wanted in pickShoppingList(customer.owner, customer.kind, customer.sure, customer.wantsAll) do
+		table.insert(customer.list, productId)
 		if not shopFor(customer, productId, wanted, visited) then
 			missing = true
+			customer.missed = customer.missed or productId
 		end
 		if not customer.alive then
 			return
 		end
 	end
+	-- "Found it all!" (Config/Customers FOUND_ALL): some of every product on a list of two or more
+	local bought: { [string]: boolean } = {}
+	for _, item in customer.items do
+		if item.productId then
+			bought[item.productId] = true
+		end
+	end
+	customer.foundAll = VarietyRules.foundAll(CustomerConfig, customer.kind, customer.list, bought)
 	-- A collector hunts the card they want; of the rest only some care about singles
 	if customer.wanted then
 		huntCard(customer, visited)
@@ -1046,11 +1103,13 @@ local function spawnCustomer(plot: Plot, owner: Player, state: PlotState, forced
 		or CustomerTypes.pick(CustomerConfig, { hasShowcase = showsCards(owner), shopLevel = EconomyService.GetLevel(owner) }, rng:NextNumber())
 	local model = createModel(entry, kind)
 	local wanted = if kind == "collector" then forcedWanted or pickWanted(owner) else nil
-	startCustomer(plot, owner, state, model, kind, wanted, inHand, sure)
+	-- Studio's /customer plain all: one of every product the shop can stock (to see "Found it all!" and a missed one)
+	local wantsAll = kind == "plain" and forcedWanted == "all"
+	startCustomer(plot, owner, state, model, kind, wanted, inHand, sure, wantsAll)
 end
 
 -- Makes `model` (a fresh rig or a town walker) a customer of this shop and starts its visit
-startCustomer = function(plot: Plot, owner: Player, state: PlotState, model: Model, kind: string, wanted: string?, inHand: boolean?, sure: boolean?)
+startCustomer = function(plot: Plot, owner: Player, state: PlotState, model: Model, kind: string, wanted: string?, inHand: boolean?, sure: boolean?, wantsAll: boolean?)
 	if wanted then
 		model:SetAttribute("WantedCard", wanted)
 	end
@@ -1077,6 +1136,9 @@ startCustomer = function(plot: Plot, owner: Player, state: PlotState, model: Mod
 		alive = true,
 		thread = nil,
 		lastScanAt = nil,
+		list = {},
+		foundAll = false,
+		wantsAll = wantsAll,
 	}
 	table.insert(state.customers, customer)
 
@@ -1188,6 +1250,21 @@ function CustomerService.CompletePurchase(customer: Customer)
 		EconomyService.AddCash(customer.owner, tip)
 		Remotes.Notify:FireClient(customer.owner, string.format("Tip! +$%.2f", tip), false, "side")
 	end
+	-- "Found it all!" (Config/Customers FOUND_ALL): a share of what their products came to, like a tip
+	local bonus = 0
+	if customer.foundAll then
+		local total = 0
+		for _, item in customer.items do
+			if item.productId then
+				total += item.unitPrice * item.units
+			end
+		end
+		bonus = VarietyRules.bonus(CustomerConfig, total)
+		if bonus > 0 then
+			EconomyService.AddCash(customer.owner, bonus)
+			Remotes.Notify:FireClient(customer.owner, VarietyRules.toast(CustomerConfig, bonus), false, "side")
+		end
+	end
 	table.clear(customer.items)
 	-- They carry their shopping out in the shop's bag (Config/Customers BAG)
 	ShopBag.give(customer.model, (CustomerConfig.TYPES[customer.kind] or {}).scale or 1)
@@ -1198,8 +1275,8 @@ function CustomerService.CompletePurchase(customer: Customer)
 		removeFromQueue(customer)
 	end
 	showBubble(customer, CustomerConfig.BUBBLE_HAPPY)
-	say(customer, if tip > 0 then "tip" else "paid")
-	fireOutcome(customer.owner, "paid")
+	say(customer, if bonus > 0 then "foundAll" elseif tip > 0 then "tip" else "paid")
+	fireOutcome(customer.owner, if bonus > 0 then "foundAll" else "paid")
 end
 
 -- Keeps a customer who's still at the counter there for `seconds` more (a kid's open offer)
@@ -1326,9 +1403,15 @@ function CustomerService.UseStreet(arrive: (plot: Plot, owner: Player, kind: str
 	departures = depart
 end
 
--- Each visit's outcome ("paid", "annoyed", "gaveUp", "noStock", "happyMoment"), for the shop rating
-function CustomerService.OnOutcome(callback: (owner: Player, outcome: string) -> ())
+-- Each visit's outcome ("paid", "foundAll", "annoyed", "gaveUp", "noStock", "partial", "happyMoment"), for the shop
+-- rating and the Reviews; `word`: the product a partial or noStock visit missed ("sleeves")
+function CustomerService.OnOutcome(callback: (owner: Player, outcome: string, word: string?) -> ())
 	table.insert(outcomeCallbacks, callback)
+end
+
+-- A customer missed a product the shop can stock, from Config/Customers VARIETY.lessonLevel (TutorialService)
+function CustomerService.OnMissed(callback: (owner: Player, productId: string) -> ())
+	table.insert(missedCallbacks, callback)
 end
 
 function CustomerService.Start()

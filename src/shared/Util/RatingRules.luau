@@ -7,8 +7,10 @@ local RatingRules = {}
 
 export type Tip = { name: string, good: boolean }
 
-local GOOD = { paid = true, happyMoment = true }
-local BAD = { annoyed = true, gaveUp = true, noStock = true }
+-- foundAll: found everything on their list (in place of paid); partial: bought something but missed a product (in
+-- place of noStock, which now means found nothing they wanted; spec 2026-11-24-shop-variety-design)
+local GOOD = { paid = true, happyMoment = true, foundAll = true }
+local BAD = { annoyed = true, gaveUp = true, noStock = true, partial = true }
 local DEFAULT_GOOD_FROM = 0.7
 
 -- 1 + 4 x the weighted mean of the parts with a weight above 0 (a part missing from `parts` scores 0)

@@ -23,6 +23,7 @@ return {
 		gaveUp = 1, -- waited too long
 		paid = 0.85, -- paid at the register
 		tip = 1, -- ...and left a tip (in place of the goodbye)
+		foundAll = 1, -- ...and found everything on their list: the bonus (in place of the goodbye; Config/Customers FOUND_ALL)
 		haggle = 1, -- a bargain hunter's offer
 		deal = 1, -- you took it (or your counter was fine)
 		noDeal = 1, -- no deal: they put it all back
@@ -37,11 +38,13 @@ return {
 			enter = { "Ooh, a card shop!", "Just looking around.", "Hello there!", "What's new today?" },
 			found = { "Found it!", "I'll take this one.", "This looks good!" },
 			pricey = { "That's too much!", "Too pricey for me." },
-			missing = { "Aw, they don't have it.", "Sold out?", "Maybe next time." },
+			-- `%s`: the product they missed, its plural (Config/Offline PLURALS; spec 2026-11-24-shop-variety-design)
+			missing = { "No %s? Aww.", "Where are the %s?", "I came for %s..." },
 			queue = { "Nice shop!", "Is this the line?", "Hmm hmm hmm..." },
 			gaveUp = { "This takes too long!", "I can't wait any more." },
 			paid = { "Thank you!", "Thanks! Bye!", "See you again!" },
 			tip = { "Keep the change!", "A little extra for you!", "Great shop! Here's a tip!" },
+			foundAll = { "Found it all!", "Everything I wanted!", "This shop has it all!" },
 			deal = { "Deal!" },
 			noDeal = { "No deal? Okay, bye." },
 			admire = { "Whoa! Look at that!", "What a card!" },
@@ -51,7 +54,7 @@ return {
 			enter = { "Packs! Packs! Packs!", "I saved my pocket money!", "Wow, so many cards!" },
 			found = { "I want this one!", "Yesss!", "This one looks lucky!" },
 			pricey = { "I don't have that much!", "Aww, too much..." },
-			missing = { "Nooo, no packs?", "Aww..." },
+			missing = { "Nooo, no %s?", "Aww, no %s..." },
 			queue = { "Hurry, hurry!", "I can't wait to open it!", "Are we there yet?" },
 			gaveUp = { "I'm bored!", "Too slow!" },
 			paid = { "Time to rip it open!", "Please be a Legendary!", "Thanks a lot!" },
