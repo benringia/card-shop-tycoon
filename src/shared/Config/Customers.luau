@@ -261,6 +261,10 @@ return {
 		names = { FirstSparkPack = "Booster Packs", CardSleeves = "Card Sleeves", DeckBox = "Deck Boxes", FirstSparkBox = "Booster Boxes", FrontierPack = "Frontier Packs" },
 		lessonLevel = 3,
 	},
+	-- "Found it all!" (owner 2026-11-24, spec 2026-11-24-shop-variety-design; Util/VarietyRules): a customer of these
+	-- `types` whose list holds `minProducts` or more different products and who takes some of every one pays `share` of
+	-- their products' total on top (to the cent), with `toast` beside your cash like a tip
+	FOUND_ALL = { share = 0.10, minProducts = 2, types = { plain = true } :: { [string]: boolean }, toast = "Found it all! +$%.2f" },
 	-- Town walkers (Util/WalkerRules, TownWalkerService): up to `max` in town, one more every spawnEvery s while a player
 	-- is in town; they walk in from a street end and stroll the whole street for linger s (sitting on a free bench
 	-- sitChance of the time), then pick an open shop weighted by rating^ratingPower (x wantedBonus for a collector's card

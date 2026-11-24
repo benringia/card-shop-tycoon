@@ -154,6 +154,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	ShopRooms = require("./ShopRooms.spec"),
 	ShopLod = require("./ShopLod.spec"),
 	StorageRules = require("./StorageRules.spec"),
+	VarietyRules = require("./VarietyRules.spec"),
 	TownDecorFit = require("./TownDecorFit.spec"),
 	WalkerRules = require("./WalkerRules.spec"),
 	StageRules = require("./StageRules.spec"),
