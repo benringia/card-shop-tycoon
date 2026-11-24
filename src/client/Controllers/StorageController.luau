@@ -21,6 +21,7 @@ local Shelves = require(Config:WaitForChild("Shelves"))
 local Products = require(Config:WaitForChild("Products"))
 local Storage = require(Config:WaitForChild("Storage"))
 local StockConfig = require(Config:WaitForChild("Stock"))
+local Offline = require(Config:WaitForChild("Offline"))
 local CarryPose = require(Config:WaitForChild("CarryPose"))
 local HudGrowConfig = require(Config:WaitForChild("HudGrow"))
 local StorageRules = require(SharedUtil:WaitForChild("StorageRules"))
@@ -39,7 +40,8 @@ local UIController = require(Controllers:WaitForChild("UIController"))
 local StorageController = {}
 
 type Layout = { size: { number }, columns: number, lineHeight: number, linesTop: number, titleY: number, subY: number }
-type Sheet = { root: Frame, scale: UIScale, lines: Frame, subtitle: TextLabel, layout: Layout, lineWidth: number }
+-- away: the away-selling stamp at the paper's top right (StorageRules.awayStamp)
+type Sheet = { root: Frame, scale: UIScale, lines: Frame, subtitle: TextLabel, layout: Layout, lineWidth: number, away: TextLabel }
 
 local LOOK = Storage.CLIPBOARD
 local WORDS = Storage.WORDS
@@ -132,7 +134,22 @@ local function buildSheet(host: Frame, layout: Layout): Sheet
 	grid.Parent = lines
 	write(paper, "Footer", WORDS.footer, Enum.Font.GothamBold, LOOK.smallSize, LOOK.inkSoft, Vector2.new(LOOK.inner.left, paperSize.Y - LOOK.inner.bottom - 16), Vector2.new(width, 16), Enum.TextXAlignment.Right)
 	local lineWidth = if layout.columns > 1 then (width - 12 * (layout.columns - 1)) / layout.columns else width
-	return { root = root, scale = scale, lines = lines, subtitle = subtitle, layout = layout, lineWidth = lineWidth }
+	-- the away-selling stamp, tilted at the paper's top right (shown by render)
+	local stampLook = LOOK.away
+	local away = write(paper, "AwayStamp", "", Enum.Font.FredokaOne, stampLook.textSize, stampLook.on.ink, Vector2.new(paperSize.X - LOOK.inner.right - stampLook.width, layout.titleY - 4), Vector2.new(stampLook.width, stampLook.height), Enum.TextXAlignment.Center)
+	away.TextWrapped = true
+	away.TextTruncate = Enum.TextTruncate.None
+	away.Rotation = stampLook.tilt
+	away.BackgroundTransparency = stampLook.fillTransparency
+	away.Visible = false
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 10)
+	corner.Parent = away
+	local stampEdge = Instance.new("UIStroke")
+	stampEdge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stampEdge.Thickness = stampLook.stroke
+	stampEdge.Parent = away
+	return { root = root, scale = scale, lines = lines, subtitle = subtitle, layout = layout, lineWidth = lineWidth, away = away }
 end
 
 -- The sheet as big as fits: under Roblox's top bar, above the bottom tiles while they show, growing on a big screen
@@ -247,6 +264,18 @@ local function render()
 	local stored = StorageRules.decode(rack:GetAttribute("Stored"), capacity)
 	local worker = rack:GetAttribute("LastWorker")
 	made.subtitle.Text = StorageRules.subtitle(StorageRules.count(stored), capacity, if typeof(worker) == "string" then worker else nil, WORDS)
+	-- the away-selling stamp: green while a Restocker works (JobService's Restockers attribute), grey without one
+	local restockers = player:GetAttribute("Restockers")
+	local stampText, active = StorageRules.awayStamp(StorageRules.count(stored), if typeof(restockers) == "number" then restockers else 0, Offline.RACK_MINUTES, WORDS)
+	local stampLook = if active then LOOK.away.on else LOOK.away.off
+	made.away.Visible = stampText ~= nil
+	made.away.Text = stampText or ""
+	made.away.TextColor3 = rgb(stampLook.ink)
+	made.away.BackgroundColor3 = rgb(stampLook.fill)
+	local stampEdge = made.away:FindFirstChildOfClass("UIStroke")
+	if stampEdge then
+		stampEdge.Color = rgb(stampLook.stroke)
+	end
 	for _, child in made.lines:GetChildren() do
 		if child:IsA("GuiObject") then
 			child:Destroy()
@@ -460,6 +489,12 @@ function StorageController.Start()
 		return -- shops are in the main game
 	end
 	Remotes.RackBoxHop.OnClientEvent:Connect(onHop)
+	-- a card took or left the Restocker job: the open sheet's away-selling stamp turns green or grey
+	player:GetAttributeChangedSignal("Restockers"):Connect(function()
+		if panel and panel.Visible then
+			render()
+		end
+	end)
 	-- a window resized (or a phone turned): the sheet fits again, a phone's layout if it's short now
 	UIController.GetScreenGui():GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
 		task.defer(function()

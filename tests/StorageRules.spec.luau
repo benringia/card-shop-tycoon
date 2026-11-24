@@ -12,11 +12,26 @@ local function box(productId: string, units: number?): StorageRules.Box
 	return { productId = productId, units = units or 1 }
 end
 
+local Offline = require("../src/shared/Config/Offline")
+
 local function shelf(uid: string, units: number, capacity: number, productId: string?, accepts: { string }?): StorageRules.ShelfView
 	return { uid = uid, units = units, capacity = capacity, productId = productId, accepts = accepts }
 end
 
 return {
+	["the away-selling stamp"] = function()
+		local minutes = Offline.RACK_MINUTES
+		local text, active = StorageRules.awayStamp(0, 1, minutes, Storage.WORDS)
+		expect.isNil(text, "an empty rack: no stamp")
+		expect.equal(active, false)
+		text, active = StorageRules.awayStamp(3, 1, minutes, Storage.WORDS)
+		expect.equal(text, "+30 MIN\nAWAY SELLING")
+		expect.equal(active, true)
+		text, active = StorageRules.awayStamp(3, 0, minutes, Storage.WORDS)
+		expect.equal(text, "NEEDS A\nRESTOCKER", "boxes but no Restocker")
+		expect.equal(active, false)
+	end,
+
 	["a stored box goes next to its own kind, else the first free spot"] = function()
 		expect.equal(StorageRules.slotFor({}, 9, "A"), 1, "an empty rack")
 		expect.equal(StorageRules.slotFor({ [1] = box("A"), [2] = box("A"), [3] = box("D") }, 9, "A"), 4, "after its kind")

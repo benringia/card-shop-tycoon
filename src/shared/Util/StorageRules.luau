@@ -176,6 +176,18 @@ function StorageRules.prompt(count: number, capacity: number, carrying: string?,
 end
 
 -- The sheet's line under its title: the spots used, and the restocker that last stocked the rack
+-- The clipboard's away-selling stamp for a rack holding `count` boxes (spec 2026-11-24-shop-variety-design): with a
+-- Restocker working, "+30 MIN / AWAY SELLING" (active), else "NEEDS A / RESTOCKER"; nil for an empty rack
+function StorageRules.awayStamp(count: number, restockers: number, minutes: number, words: any): (string?, boolean)
+	if count <= 0 then
+		return nil, false
+	end
+	if restockers > 0 then
+		return string.format(words.awayStamp, minutes), true
+	end
+	return words.needsStamp, false
+end
+
 function StorageRules.subtitle(count: number, capacity: number, worker: string?, words: any): string
 	local text = string.format(words.spots, count, capacity)
 	if worker and worker ~= "" then

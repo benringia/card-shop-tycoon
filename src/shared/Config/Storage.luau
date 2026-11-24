@@ -54,6 +54,10 @@ return {
 		storing = "Storing a %s",
 		restocking = "Restocking from storage",
 		idleFull = "Idle: shelves and storage full",
+		-- The clipboard's stamp while the rack holds boxes (spec 2026-11-24-shop-variety-design; StorageRules.awayStamp):
+		-- green with a Restocker working (%d: Config/Offline RACK_MINUTES), grey without one
+		awayStamp = "+%d MIN\nAWAY SELLING",
+		needsStamp = "NEEDS A\nRESTOCKER",
 	},
 	-- Look A (the mockup the owner picked): navy steel posts, orange beams, plywood decks, a yellow STORAGE sign
 	-- (Util/StorageRackLook). Studs; colours as RGB
@@ -92,6 +96,17 @@ return {
 		smallSize = 12,
 		sticker = { size = 36, image = 30, tilt = -4, tape = { 255, 225, 150 } },
 		stamp = { color = { 212, 60, 130 }, fill = { 255, 127, 184 }, fillTransparency = 0.88, tilt = -4, stroke = 3, textSize = 15, width = 68, height = 28 },
+		-- the away-selling stamp at the paper's top right (WORDS.awayStamp): green with a Restocker, grey without
+		away = {
+			width = 118,
+			height = 40,
+			tilt = 6,
+			textSize = 13,
+			stroke = 3,
+			fillTransparency = 0.86,
+			on = { ink = { 20, 102, 58 }, stroke = { 24, 160, 102 }, fill = { 63, 214, 160 } },
+			off = { ink = { 112, 118, 134 }, stroke = { 150, 156, 170 }, fill = { 200, 204, 214 } },
+		},
 		close = { size = 40, color = { 255, 127, 184 }, drop = { 212, 60, 130 } },
 	},
 }

@@ -140,6 +140,8 @@ return {
 			"Carry a box over and press Store.",
 			"Press Open to see the sheet and take one back.",
 			"Restockers fill racks when your shelves are full!",
+			-- away selling with racks (spec 2026-11-24-shop-variety-design)
+			"Full racks keep your shop selling while you're away!",
 		},
 		forge = {
 			"Make weapons here with Wild Ore and cash.",
