@@ -569,6 +569,40 @@ is over UI (`UIKit.pointerBlocked`).
   (`CarryPoseController`: shoulders 48 degrees forward and 8 in, elbows 42, waist 6 back, set on the joints' Transform
   after the walk or idle and eased in and out over 0.2 s). The hands stay on the box while walking (checked: no drift
   over 95 frames). Before, the box floated in front of the root while the arms swung. More boxes stack on top.
+- **Storage racks** (owner 2026-11-24: "storage system where box can be put to storage racks. also pets can also carry
+  boxes to the storage racks"; spec `docs/superpowers/specs/2026-11-24-storage-racks-design.md`; picks: rack look A,
+  taking 3 "a small window", the window C "Stock clipboard", "numbers OK"). Built 2026-11-24, waiting on the owner's
+  check.
+  - **The rack** (4.3): placed anywhere in your shop like a shelf, 9 boxes on 3 decks of 3 (`Config/Storage` SPOTS;
+    spot 1 on your left as you face it). Its boxes are plain data on the placed rack (PlacementService `stored`),
+    drawn as the real delivery boxes (server `Util/BoxLook`: only the front sticker, its SurfaceGui at the shop
+    screens' draw distance) named `StockBox`, so a far shop's stock LOD hides them too (10.5). The rack part carries
+    `StoredCount`, `Stored` ("slot:productId:units;...", `StorageRules.encode`) and `LastWorker`.
+  - **Storing:** carrying a box, the rack's E prompt says **Store · <product>** ("Rack full · 9 / 9" when it's full,
+    before you press; pressing then shows the locked card). The box leaves your arms and hops onto the first free spot
+    after the last box of its kind (`StorageRules.slotFor`). While you carry a box no selling shelf takes, your racks
+    with room glow with the shelves' gold hint (`StockHint.racks`).
+  - **Taking: the stock clipboard** (`StorageController`): with empty hands the E prompt says **Open · Storage Rack ·
+    8 boxes** (Edit on F beside it). A see-through `UIKit.panel` with a clipboard drawn in it and scaled to fit like
+    the order computer (`OrderRules.fit`): a wooden board, a metal clip, ruled paper with a red margin, "STORAGE
+    RACK", "8 of 9 spots · counted by Cindercub" (the restocker that last used it; not saved), one line per kind in
+    shelf order (its picture as a taped sticker, its short name, a tally mark a box, the units inside: "III · 62
+    packs") with a pink TAKE stamp, and "Carry a box here to add it to the sheet." A phone's (a short screen) lies on
+    its side in two columns of 64 px lines, so a line (its whole width is the button) stays a 48 px tap (checked on a
+    Galaxy A06: 198 x 49). TAKE (`Remotes.TakeStoredBox`) takes that kind's box with the fewest units first
+    (`StorageRules.takeSlot`) into your arms and closes the sheet; it needs empty hands ("Your hands are full.") and a
+    free spot in the pad's 12 shared spots, since a box in your arms counts like a pad box ("Your delivery pad is full.
+    Put a pad box on a shelf or a rack first."). While open the sheet follows the rack; a sold rack closes it.
+  - **The hop** (`Remotes.RackBoxHop`): the box flies between the carrier's arms and its spot in 0.3 s on a 2.2-stud
+    arc for everyone within 60 studs (`Storage.HOP`; under the stock LOD's 72), the real box hidden meanwhile.
+  - **Box room:** rack boxes don't count in the pad's 12, so racks hold stock beyond it; they count as the shop's stock
+    for Pish's stuck-shop help (`StockService.GetBoxStock`).
+  - **Saving** (10.4, v43): each rack's boxes ride on its layout entry and are cleaned on load
+    (`StorageRules.clean`: unknown products dropped, units capped to a box, a bad or taken spot moved). Boxes no rack
+    can hold (past its spots, a rack with no room left anywhere) go onto the pad while it has room, the rest paid back
+    at their share of the box price with a toast; never lost.
+  - **Restockers** use racks (7.4). Pish explains the rack beside the first one placed (lesson `storageRack`). Studio:
+    `/storage place | fill [product id] | clear` and the admin panel's "Storage" section; `/broke` empties racks too.
 
 ### 4.3 Shelves & placement
 - Shelves are placed in the shop on a **grid** (placement mode: rotate, move, sell back for 50%).
@@ -587,6 +621,13 @@ is over UI (`UIKit.pointerBlocked`).
   to the nearest free cell.
 - **Remove stock** (the shelf's Edit bar): boxes a product shelf's stock back onto the delivery pad, as many boxes as
   the pad has room for.
+- **The Storage Rack** (4.2 "Storage racks"; `Config/Shelves` kind `"Storage"`, the Build menu's Shelves tab, "Holds 9
+  boxes"): $400 at shop level 5, 10 x 2 studs, 7 tall. Look A, built from parts like the selling racks
+  (`Util/StorageRackLook`, `Town.SLOTS` StorageRack `built`): navy steel posts, orange beams front and back under three
+  plywood decks, braced ends, a yellow STORAGE sign. Up to 4 a shop (`Placement.MAX_STORAGE_PER_PLOT`), counted apart
+  from the selling shelves (the locked card: "Your shop has room for 4 storage racks."). Customers never use it. Its Edit
+  bar: Open (the stock clipboard), Move (its boxes go with it), Sell locked until it's empty ("Take the boxes off this
+  rack first."; chip "8 / 9 boxes"). It's a main quest from level 5.
 - **Editing what you placed: the Edit bar** (owner 2026-11-23, mockup C "Action bar" of three: an object card window,
   buttons round the object, the action bar; "there should be no normal lists left on the game", then "go C. but change
   the MOVE icon. For Recycler: change RECYCLE to USE"). Edit (F) on anything in your shop (shelves, cases, machines,
@@ -3799,10 +3840,24 @@ Hired staff became **shop jobs**: your levelled cards do the work (spec `2026-10
   `JobRules.nextJob`) and Stop working. A free slot shows "+" and Pick a card (opens the binder); a locked one says
   when it opens or offers the pass. The window is only as tall as its rows.
 - **Restocker:** carries delivered boxes from the pad to shelves that hold (or accept) that product and stocks them.
+  With storage racks (4.2, owner 2026-11-24: "pets can also carry boxes to the storage racks") each trip is the first
+  of: 1. a pad box some shelf takes, to the shelves; 2. a pad box no shelf takes, to the nearest rack with room ("Storing
+  a <product>"), so the pad stays clear for the van; 3. with nothing for the pad, a rack's box (its half-used one first)
+  to a selling shelf half full or less, or an empty one that takes it (`StorageRules.restockPick`, `Storage.LOW_SHARE`;
+  "Restocking from storage"), what's left back on a rack, else the pad. A rack or shelf that changed on the way is
+  checked again on arrival. Idle: "Idle: no boxes", "Idle: shelves full" (shelves stocked, maybe boxes on racks), or
+  "Idle: shelves and storage full" (pad boxes no shelf or rack takes). A box off a rack counts in the pad's 12 shared
+  spots while it's carried, so step 3 waits when they're all used. The rack's `LastWorker` names it on the clipboard.
 - **Cashier:** scans and charges customers like you do; steps aside while you're at the register.
 - **SPD = speed**: (SPD / 14)^1.5, clamped ×0.4 to ×2.5, so a fresh Grade C Common scans in ~2.0 s and a fresh
   Legendary in ~0.7 s (base 1.2 s); levelling raises SPD. **Power = fewer mistakes** (20% for a fresh Common down to 3%):
-  a dropped box goes back to the pad, a mis-scan is scanned again. Mistakes cost time only.
+  a dropped box goes back to where it came from (the pad, or a rack box to a rack), a mis-scan is scanned again.
+  Mistakes cost time only.
+- **Walking** (owner 2026-11-24: "slower than normal walking speed, fastest will still be a little bit slower than when
+  its summoned from party"): every worker walks 8 studs a second for the slowest card up to 14 for the fastest, along
+  its work speed (`Jobs.WALK`, `JobRules.walkSpeed`: 8 + 6 x (factor - 0.4) / 2.1; a fresh Common 8.6, a fresh Very Rare
+  9.7, a fresh Legendary 11.7). The player and a summoned pet, which keeps their pace, walk 16. It was 12 x the work
+  speed (4.8 to 30).
 - **Tired spells** (owner 2026-11-06; `Util/TiredRules`, `Jobs.TIRED`): after 10-15 minutes of work (random) a worker
   is tired for 5 minutes: it works and walks at x0.6 and its mistake chance is x1.5 (at most 30%), never stopping;
   then it's rested and works a new stretch. A toast tells the owner ("Nightowl is tired: scanning slower for 5 min.
@@ -4818,7 +4873,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── TownChikinService.luau # Town Chikin: the portal side of town, petting him for Courage (times kept for CombatTutorialService)
     │   │   ├── TutorialService.luau  # the first visit with Pish: steps, gifts, customer, funnel; lesson queue and the stuck helper
     │   │   ├── EconomyService.luau   # cash, XP, levels (ONLY place cash changes)
-    │   │   ├── StockService.luau     # orders, deliveries, carrying, stocking shelves
+    │   │   ├── StockService.luau     # orders, deliveries, carrying, stocking shelves; storing and taking boxes on storage racks
     │   │   ├── PlacementService.luau # validate + place/move/sell shelves, shelf contents
     │   │   ├── PricingService.luau   # player sell prices per product
     │   │   ├── CustomerService.luau  # NPC spawn, types and props, pathing, buying, collectors, reactions, queue
@@ -4880,6 +4935,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │       ├── ScenePieces.luau      # anchored parts and scaled prop copies for the code-built scenery
     │       ├── TownDog.luau          # a town dog's marker, walk round the fountain, clips and petting hold (Town Pish, Town Chikin)
     │       ├── Funnel.luau           # the new player's onboarding funnel steps to Roblox Analytics (Config/Funnel)
+    │       ├── BoxLook.luau          # a delivery box's look: on the pad, in hands, on a storage rack (front sticker only)
     │       └── RateLimiter.luau      # per-player remote cooldowns
     ├── first/                  # → ReplicatedFirst.LoadingScreen (runs before anything else loads)
     │   ├── Show.client.luau    # the loading screen from the first frame (or the one a teleport brought), fades when done
@@ -4971,6 +5027,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── DecorSpinController.luau # the Card Pedestals' floating cards turn (shop decor, within range)
     │   │   ├── ShopRoomController.luau # the owner's Unlock prompt on each locked room door; a room's opening sparkles
     │   │   ├── ShopLodController.luau # other players' shop screens drawn from closer, far shops' shelf stock hidden (10.5)
+    │   │   ├── StorageController.luau # a storage rack's stock clipboard (a computer's and a phone's layout) and the box hop (4.2)
     │   │   └── WindowController.luau # the Decor tab's window tiles, placing a window on a wall, its Edit prompt
     │   └── Util/
     │       ├── UIKit.luau              # shared UI building helpers and the style (header, close, lip buttons)
@@ -5070,6 +5127,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
         │   ├── ShopRooms.luau  # the hall and its two rooms: cells, doors, levels, prices, caps per room
         │   ├── Economy.luau    # starting cash/level
         │   ├── Stock.luau      # delivery, carrying
+        │   ├── Storage.luau    # storage racks: box spots, the low share, the hop, the clipboard's words and look, rack A's colours
         │   ├── OrderComputer.luau # the order computer's store: its name and words, sizes, colours (plain data)
         │   ├── Bulk.luau       # the Bulk Bin: handful size, cards kept, who asks for bulk, the crate's look (plain data)
         │   ├── Recycler.luau   # the Recycler: its recipes, what a card keeps, its words, the machine's look (plain data)
@@ -5219,6 +5277,8 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── ShopTileRules.luau # the Shop window's list height, a phone's row tile, a tile's chips, coin and owned badge (pure, Lune-tested)
             ├── ShelfStock.luau    # stock boxes, display box fill and price tags on shelves (pure, Lune-tested)
             ├── EditBarRules.luau  # what a placed thing's Edit bar offers: name, chip, hint, tiles, locks, holds (pure, Lune-tested)
+            ├── StorageRules.luau  # storage racks: a box's spot, which comes out, the attribute, load cleaning, clipboard lines, prompt words, restocker picks (pure, Lune-tested)
+            ├── StorageRackLook.luau # the Storage Rack drawn from parts (look A)
             ├── DeliveryRules.luau # the van's place by the server's clock, its lane and stop, the boxes' times and arcs, unboxing shares (pure, Lune-tested)
             ├── PackModels.luau    # the 3D pack, deck box and display box (assets/packs, or stand-ins), dressed in a pack's look
             ├── ProductPictureRules.luau # a menu row's pack / deck box picture, else its icon (pure, Lune-tested)
@@ -5318,7 +5378,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v42)
+### 10.4 Player data schema (v43)
 ```lua
 {
     version = 21,
@@ -5328,8 +5388,9 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     shopName = "",
     upgrades = {},          -- { [upgradeId] = true }
     prices = {},            -- { [productId] = price }
-    layout = {},            -- { { shelfId, gridX, gridZ, rotation, productId?, units, paid, cards? } }
+    layout = {},            -- { { shelfId, gridX, gridZ, rotation, productId?, units, paid, cards?, boxes? } }
                             --   cards (card cases): { { slot, cardId, foil, price, grade, beastId?, level?, xp?, stars? } } (stars 0-5)
+                            --   boxes (storage racks, v43): { { slot, productId, units } } the boxes on it, by spot
     fixtures = {},          -- { [fixtureId] = { gridX, gridZ, rotation } } e.g. the moved order computer (a 10x6 desk;
                             -- restored after the shelves, to the nearest free spot if its own is taken).
                             -- Saved shelves that no longer fit their spot (a shelf grew) move to the nearest free one.
@@ -5412,6 +5473,10 @@ passes a footprint function to `Migrations.run`; the order computer too); side w
 wall's middle moved back), front posters stay on their pane of the wider front, and a back window is moved by the load
 (`WindowRules.clean`: to the hall's side walls nearest the back, else its price back). Release with "Migrate to latest
 update" so no old server lays a v42 save out on the old floor.
+v43 (storage racks, spec 2026-11-24-storage-racks-design) added `boxes` on a storage rack's layout entry; saves from
+before have no racks, so its step changes nothing but the version. The load cleans them (`StorageRules.clean`) and
+puts the boxes no rack holds onto the pad, else pays them back (4.2). Release with "Migrate to latest update": an old
+server would drop a rack it doesn't know, with its boxes.
 
 ### 10.6 UI style and HUD
 - **Loading screen: the binder** (owner 2026-11-13, spec `docs/superpowers/specs/2026-11-13-loading-screen-binder-design.md`;
@@ -5809,7 +5874,7 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   the neighbours' screens too), full card faces 30; a Lune test fails a new one without it). On each client another
   player's shop (or a free plot) draws those 66-stud screens from 33 instead (`VISITOR_SCREEN_DISTANCE`: from the
   hall's middle that still reaches its farthest corner, 32), and every shop's shelf stock (whatever stands in its
-  shelves' StockBox places, decals too) hides while the camera is more than 80 studs from the shop's floor and shows
+  shelves' StockBox places, decals too; storage racks' boxes, named StockBox, too) hides while the camera is more than 80 studs from the shop's floor and shows
   again within 72 (`STOCK_HIDE` / `STOCK_SHOW`, after its screens, which stop at 66; client `ShopLodController`,
   `Util/ShopLod`, tests/ShopLod; owner 2026-11-24: "add the two fixes"). Measured that day with the owner's Lv 27
   shop (31 stocked racks, about 110k triangles of stock) copied into all six plots, the same session and camera, full
