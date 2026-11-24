@@ -1,6 +1,7 @@
 --!strict
 -- Config/Shelves holds Vector3 and Color3 values, so Lune can't load it; these checks read its text instead.
 local fs = require("@lune/fs")
+local expect = require("./lib/expect")
 local Bosses = require("../src/shared/Config/Bosses")
 
 local SOURCE = fs.readFile("src/shared/Config/Shelves.luau")
@@ -31,13 +32,35 @@ return {
 	end,
 
 	["every shelf sits in a Build menu category that matches its kind"] = function()
-		local byKind = { Products = "Shelves", CustomerCards = "Cases", PlayerCards = "Cases", Condenser = "Fixtures", Grading = "Fixtures", Forge = "Fixtures", Recycler = "Fixtures", Trophy = "Trophies", Decor = "Decor" }
+		local byKind = { Products = "Shelves", CustomerCards = "Cases", PlayerCards = "Cases", Condenser = "Fixtures", Grading = "Fixtures", Forge = "Fixtures", Recycler = "Fixtures", Trophy = "Trophies", Decor = "Decor", Storage = "Shelves" }
 		for _, entry in entries() do
 			local kind = string.match(entry.body, 'kind = "([%w_]+)"')
 			local category = string.match(entry.body, 'category = "([%w_]+)"')
 			assert(category, `{entry.id} has no category`)
 			assert(category == byKind[kind], `{entry.id} ({kind}) is in {category}, expected {byKind[kind]}`)
 		end
+	end,
+
+	-- Storage racks (spec 2026-11-24-storage-racks-design; owner 2026-11-24: "numbers OK"): 9 boxes on Config/Storage's
+	-- spots, $400 at shop level 5, 10 x 2 studs, drawn by code (Town.SLOTS StorageRack built)
+	["the storage rack: 9 boxes on its spots, $400 at level 5, 10 x 2 studs, its code-built look"] = function()
+		local Storage = require("../src/shared/Config/Storage")
+		local rack: string? = nil
+		for _, entry in entries() do
+			if entry.id == "StorageRack" then
+				rack = entry.body
+			end
+		end
+		assert(rack, "a StorageRack entry")
+		local body = rack :: string
+		assert(string.match(body, 'kind = "Storage"'), "kind Storage")
+		expect.equal(tonumber(string.match(body, "capacity = (%d+)")), #Storage.SPOTS.x * #Storage.SPOTS.decks, "a box on every spot")
+		expect.equal(tonumber(string.match(body, "cost = (%d+)")), 400)
+		expect.equal(tonumber(string.match(body, "unlockLevel = (%d+)")), 5)
+		assert(string.match(body, "size = Vector3.new%(10, 7, 2%)"), "10 x 7 x 2")
+		assert(string.match(body, 'prop = "StorageRack"'), "its own prop slot")
+		local town = fs.readFile("src/shared/Config/Town.luau")
+		assert(string.find(town, "StorageRack = { height = 0, collide = false, built = true }", 1, true), "drawn by code")
 	end,
 
 	-- Shop decor (spec 2026-11-14-shop-decor-design): the twelve placeable pieces

@@ -6,6 +6,7 @@ return {
 	SELL_REFUND = 0.5, -- fraction of the price paid you get back
 	MAX_SHELVES_PER_PLOT = 30,
 	MAX_DECOR_PER_PLOT = 20, -- decor pieces (Config/Shelves kind "Decor"), counted apart from the shelves
+	MAX_STORAGE_PER_PLOT = 4, -- storage racks (kind "Storage"), counted apart from the shelves (spec 2026-11-24-storage-racks-design)
 	RESERVED_MARGIN = 1, -- free cells kept around the computer, delivery pad and spawn
 
 	ACTION_COOLDOWN = 0.3, -- seconds between place/move/sell requests per player

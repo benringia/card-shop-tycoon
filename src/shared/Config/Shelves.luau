@@ -11,7 +11,9 @@
 --   kind "Trophy":        a boss trophy (holds nothing): placing it takes its trophy item, selling gives it back
 --   kind "Decor":         a shop decoration (holds nothing; spec 2026-11-14-shop-decor-design): its own cap
 --                         (Placement.MAX_DECOR_PER_PLOT), `decor` points toward the rating (Config/Decor)
-export type ShelfKind = "Products" | "CustomerCards" | "PlayerCards" | "Condenser" | "Grading" | "Forge" | "Recycler" | "Trophy" | "Decor"
+--   kind "Storage":       a storage rack (spec 2026-11-24-storage-racks-design): holds delivery boxes, `capacity` of
+--                         them, not stock customers buy; its own cap (Placement.MAX_STORAGE_PER_PLOT); Config/Storage
+export type ShelfKind = "Products" | "CustomerCards" | "PlayerCards" | "Condenser" | "Grading" | "Forge" | "Recycler" | "Trophy" | "Decor" | "Storage"
 
 export type Shelf = {
 	id: string,
@@ -242,6 +244,21 @@ local List: { Shelf } = {
 		unlockLevel = 4,
 		size = Vector3.new(8, 7, 2), -- as tall as the other racks, so plates and headers line up
 		color = Color3.fromRGB(140, 95, 60),
+	},
+	{
+		-- Storage racks (spec docs/superpowers/specs/2026-11-24-storage-racks-design.md; owner 2026-11-24: "storage
+		-- system where box can be put to storage racks", look A, "numbers OK"): delivery boxes stored for later, by you
+		-- or a restocker; its boxes are drawn by PlacementService on Config/Storage SPOTS
+		id = "StorageRack",
+		prop = "StorageRack",
+		name = "Storage Rack",
+		kind = "Storage",
+		category = "Shelves", -- Build menu tab
+		capacity = 9, -- boxes: 3 decks of 3 (Config/Storage SPOTS)
+		cost = 400,
+		unlockLevel = 5,
+		size = Vector3.new(10, 7, 2),
+		color = Color3.fromRGB(44, 56, 92),
 	},
 	{
 		id = "AccessoryHook",

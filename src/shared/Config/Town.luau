@@ -61,6 +61,7 @@ return {
 		WallShelf = { height = 0, collide = false, built = true },
 		HookRack = { height = 0, collide = false, built = true }, -- Accessory Hook: a pegboard with hooks
 		DisplayRack = { height = 0, collide = false, built = true }, -- Big Display Rack: double-sided
+		StorageRack = { height = 0, collide = false, built = true }, -- Storage Rack: a warehouse rack (Util/StorageRackLook)
 		-- stretch = fill the box on every axis (plain straight parts only); roll stands a model up (degrees about Z)
 		CardCase = { height = 0, collide = false, built = true }, -- Glass Showcase / Collector Case: a tall glass case (CASE_LOOK)
 		-- delivery boxes, one per product (Products boxProp); welded to the box part, so they travel when carried

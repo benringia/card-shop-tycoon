@@ -254,6 +254,7 @@ local function buildTile(parent: Instance, order: number, def: ShelfDef)
 		elseif def.kind == "Grading" then "Duplicates to grades"
 		elseif def.kind == "Forge" then "Make and upgrade weapons"
 		elseif def.kind == "Recycler" then "Extra cards to materials"
+		elseif def.kind == "Storage" then `Holds {def.capacity} boxes`
 		elseif def.kind == "Decor" then `Decor +{def.decor or 0}`
 		else `{def.capacity} cards · {CASE_BUYERS[def.kind]}`
 	local info = UIKit.label(tile, detail, Enum.Font.GothamBold, 13, UIKit.Colors.Subtext)
@@ -495,7 +496,8 @@ local function describeShelf(part: BasePart): EditBarRules.Thing?
 		kind = if def.id == Bulk.SHELF then "Bin" else def.kind :: any,
 		name = def.name,
 		capacity = def.capacity,
-		units = getNumberAttribute(part, "Units", 0),
+		-- a storage rack's boxes (PlacementService's StoredCount), a shelf's stock
+		units = getNumberAttribute(part, if def.kind == "Storage" then "StoredCount" else "Units", 0),
 		product = if product then product.name else nil,
 		cards = cards,
 		refund = getNumberAttribute(part, "Refund", 0),

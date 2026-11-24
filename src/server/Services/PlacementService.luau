@@ -38,6 +38,7 @@ local ShowcaseLayout = require(Shared:WaitForChild("Util"):WaitForChild("Showcas
 local DecorRules = require(Shared:WaitForChild("Util"):WaitForChild("DecorRules"))
 local DecorLooks = require(Shared:WaitForChild("Util"):WaitForChild("DecorLooks"))
 local TrophyLooks = require(Shared:WaitForChild("Util"):WaitForChild("TrophyLooks"))
+local StorageConfig = require(Config:WaitForChild("Storage"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Blocked = require((script.Parent :: Instance).Parent:WaitForChild("Util"):WaitForChild("Blocked"))
 
@@ -106,11 +107,22 @@ local function isValidRotation(value: unknown): boolean
 	return isGridInteger(value) and (value :: number) >= 0 and (value :: number) < PlacementConfig.ROTATION_STEPS
 end
 
--- Shelves toward the plot's limit (trophies are decorations and don't count)
+-- Shelves toward the plot's limit (trophies are decorations and don't count; storage racks have their own cap)
 local function countShelves(layout: { [string]: PlacedShelf }): number
 	local count = 0
 	for _, shelf in layout do
-		if shelf.def.kind ~= "Trophy" and shelf.def.kind ~= "Decor" then
+		if shelf.def.kind ~= "Trophy" and shelf.def.kind ~= "Decor" and shelf.def.kind ~= "Storage" then
+			count += 1
+		end
+	end
+	return count
+end
+
+-- Storage racks (spec 2026-11-24-storage-racks-design): their own cap, apart from the shelves
+local function countStorage(layout: { [string]: PlacedShelf }): number
+	local count = 0
+	for _, shelf in layout do
+		if shelf.def.kind == "Storage" then
 			count += 1
 		end
 	end
@@ -751,6 +763,11 @@ local function onPlace(player: Player, shelfId: unknown, gridX: unknown, gridZ: 
 			Blocked.tell(player, `Your shop has room for {PlacementConfig.MAX_DECOR_PER_PLOT} decorations. Sell one to make space.`)
 			return
 		end
+	elseif def.kind == "Storage" then
+		if countStorage(layout) >= PlacementConfig.MAX_STORAGE_PER_PLOT then
+			Blocked.tell(player, string.format(StorageConfig.WORDS.cap, PlacementConfig.MAX_STORAGE_PER_PLOT))
+			return
+		end
 	elseif countShelves(layout) >= ShopRooms.shelfCap(RoomsConfig, PlacementConfig.MAX_SHELVES_PER_PLOT, plot.rooms) then
 		notify(player, "Your shop can't fit any more shelves.", true)
 		return
@@ -985,12 +1002,15 @@ local function restoreShelf(player: Player, plot: Plot, saved: SavedShelf, lefto
 	local paid = if def and typeof(saved.paid) == "number" then math.clamp(saved.paid, 0, def.cost) else 0
 	-- A decor piece over the cap (the cap shrank) or with no room: its price back, never lost
 	local decorFull = def ~= nil and isDecor(def) and not DecorRules.fitsCap(countDecor(layouts[player]), PlacementConfig.MAX_DECOR_PER_PLOT)
-	if not def or not gridX or not gridZ or decorFull then
+	-- a storage rack over its cap (the cap shrank), or with no room: its price back, like a decor piece's
+	local isRack = def ~= nil and def.kind == "Storage"
+	local storageFull = isRack and countStorage(layouts[player]) >= PlacementConfig.MAX_STORAGE_PER_PLOT
+	if not def or not gridX or not gridZ or decorFull or storageFull then
 		readSavedCards(nil, saved.cards, leftovers)
 		if def and def.requiresItem then
 			ItemService.GiveItem(player, def.requiresItem, 1) -- no room for the trophy: back to the bag, never lost
 		end
-		if def and isDecor(def) and paid > 0 then
+		if def and (isDecor(def) or isRack) and paid > 0 then
 			EconomyService.AddCash(player, paid)
 		end
 		return

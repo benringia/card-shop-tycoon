@@ -17,6 +17,7 @@ export type Kind =
 	| "Grading"
 	| "Forge"
 	| "Recycler"
+	| "Storage"
 	| "Trophy"
 	| "Decor"
 	| "Window"
@@ -142,6 +143,26 @@ local function caseBar(thing: Thing): Bar
 	}
 end
 
+-- A storage rack (spec 2026-11-24-storage-racks-design): its boxes on the chip (`units`); Open its stock clipboard,
+-- Move it with its boxes, Sell it once it's empty (the server's locked card says the same words: Config/Storage
+-- WORDS.sellLocked, tests/EditBarRules)
+local function storageBar(thing: Thing): Bar
+	local boxes = thing.units or 0
+	local capacity = thing.capacity or 0
+	return {
+		name = thing.name,
+		chip = if boxes > 0
+			then { text = `{boxes} / {capacity} boxes`, tone = "full" }
+			else { text = `Empty · 0 / {capacity}`, tone = "empty" },
+		hint = if boxes > 0 then "Boxes waiting for your shelves." else "Carry a box here to store it.",
+		tiles = {
+			{ id = "use", label = "Open", sub = "See the sheet", state = "ready", hold = false },
+			move("Boxes stay on"),
+			sell(thing, if boxes > 0 then "Take the boxes off this rack first." else nil),
+		},
+	}
+end
+
 local function machineBar(thing: Thing): Bar
 	local job = thing.machine
 	local chip: Chip = if job and job.working
@@ -166,6 +187,8 @@ function EditBarRules.bar(thing: Thing): Bar
 		return stockBar(thing, kind == "Bin")
 	elseif kind == "CustomerCards" or kind == "PlayerCards" then
 		return caseBar(thing)
+	elseif kind == "Storage" then
+		return storageBar(thing)
 	elseif MACHINE_HINTS[kind] then
 		return machineBar(thing)
 	elseif kind == "Trophy" then

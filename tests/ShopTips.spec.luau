@@ -26,6 +26,13 @@ return {
 		shortAndPlain(hook, "hook")
 	end,
 
+	["a storage rack: how many boxes it holds, and that restockers use it too"] = function()
+		local rack = ShopTips.lines({ kind = "Storage", capacity = 9 }, STOCK)
+		expect.equal(rack[1], "Holds 9 delivery boxes.")
+		expect.equal(rack[2], "Store boxes here for later. Restockers use it too.")
+		shortAndPlain(rack, "storage rack")
+	end,
+
 	["the Bulk Bin: handfuls of extra Commons, filled from the binder"] = function()
 		local bin = ShopTips.lines({ kind = "Products", capacity = 100, bulk = true }, STOCK)
 		assert(string.find(bin[1], "100 handfuls of 5 extra Commons", 1, true), bin[1])

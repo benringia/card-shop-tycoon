@@ -30,7 +30,7 @@ return {
 		bag = "Bag",
 		takeDown = "Remove",
 		lock = "Lock",
-		use = { Condenser = "Condenser", Grading = "GradingSeal", Forge = "Anvil", Recycler = "Copies" },
+		use = { Condenser = "Condenser", Grading = "GradingSeal", Forge = "Anvil", Recycler = "Copies", Storage = "Box" },
 	},
 	-- The status chip's colour by EditBarRules tone
 	CHIP = { empty = "greyLilac", full = "sky", good = "mint", busy = "butter", ready = "butter", plain = "lilac" },

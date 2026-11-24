@@ -32,6 +32,7 @@ local EVERY: { EditBarRules.Thing } = {
 	{ kind = "Grading", name = "Grading Station", refund = 2500, machine = { working = 28 } },
 	{ kind = "Forge", name = "Forge", refund = 750, machine = { done = true } },
 	{ kind = "Recycler", name = "Recycler", refund = 400 },
+	{ kind = "Storage", name = "Storage Rack", capacity = 9, units = 8, refund = 200 },
 	{ kind = "Trophy", name = "Meadow Warden Trophy" },
 	{ kind = "Decor", name = "Potted Plant", decor = 2, refund = 30 },
 	{ kind = "Window", name = "Arched Window", refund = 120 },
@@ -51,6 +52,25 @@ return {
 		expect.equal(sell.state, "ready")
 		expect.equal(sell.hold, true, "selling is held down")
 		expect.equal(sell.sub, "+$50")
+	end,
+
+	-- Storage racks (spec 2026-11-24-storage-racks-design): Open the stock clipboard, Move with its boxes, Sell once empty
+	["a storage rack: its boxes on the chip, Open first, Sell locked until it's empty"] = function()
+		local Storage = require("../src/shared/Config/Storage")
+		local full = EditBarRules.bar({ kind = "Storage", name = "Storage Rack", capacity = 9, units = 8, refund = 200 })
+		expect.equal(full.chip.text, "8 / 9 boxes")
+		expect.equal(full.chip.tone, "full")
+		expect.equal(ids(full), "use,move,sell", "its own use first, Move, then Sell")
+		expect.equal(tile(full, "use").label, "Open")
+		expect.equal(tile(full, "use").sub, "See the sheet")
+		expect.equal(tile(full, "sell").state, "locked")
+		expect.equal(tile(full, "sell").why, Storage.WORDS.sellLocked, "the same words the server's locked card says")
+		expect.equal(full.hint, "Boxes waiting for your shelves.")
+		local empty = EditBarRules.bar({ kind = "Storage", name = "Storage Rack", capacity = 9, units = 0, refund = 200 })
+		expect.equal(empty.chip.text, "Empty · 0 / 9")
+		expect.equal(empty.chip.tone, "empty")
+		expect.equal(tile(empty, "sell").state, "ready")
+		expect.equal(empty.hint, "Carry a box here to store it.")
 	end,
 
 	["a stocked rack: Sell locked until the stock comes off, and says how"] = function()
