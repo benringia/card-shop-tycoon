@@ -239,14 +239,27 @@ return {
 		-- rating stays on the Phone (its status bar, Reviews) and on the shop's sign
 		chip = { height = 36, hit = 48, star = 18, text = 18, hud = false },
 		tipsHeight = 250, -- the tips window's height in pixels
+		-- Variety (owner 2026-11-24, spec 2026-11-24-shop-variety-design): the Stocked part is this share "products
+		-- stocked" (the shop's unlocked products with stock on a shelf, over all of them) and the rest "shelves stocked"
+		-- (RatingRules.stocked)
+		productShare = 0.5,
 	},
-	-- The tips window's lines per rating part: good when it scores RATING.goodFrom or more, else the fix
+	-- The tips window's lines per rating part: good when it scores RATING.goodFrom or more, else the fix. Stocked's fix
+	-- names the unlocked products on no shelf (RatingRules.stockedFix; VARIETY.names): "Stock Card Sleeves", "... and
+	-- Deck Boxes", "... and 2 more"; with none missing, `fix`
 	RATING_TIPS = {
-		stocked = { good = "Shelves stocked", fix = "Restock empty shelves" },
+		stocked = { good = "Shelves stocked", fix = "Restock empty shelves", stock = "Stock %s", two = "%s and %s", more = "%s and %d more" },
 		prices = { good = "Fair prices", fix = "Lower the prices customers find too high" },
 		displays = { good = "Great cards on display", fix = "Put a rare card in a Glass Showcase to draw collectors" },
 		happy = { good = "Happy customers", fix = "Keep stock in and serve the queue quickly" },
 		decor = { good = "A cosy shop", fix = "Decorate your shop" },
+	},
+	-- Shop variety (spec 2026-11-24-shop-variety-design): each product's name in the Stocked tip and Pish's "Customers
+	-- love choice" lesson ("That customer wanted Card Sleeves!"); that lesson comes from shop level `lessonLevel` (Card
+	-- Sleeves, the second product, unlock there)
+	VARIETY = {
+		names = { FirstSparkPack = "Booster Packs", CardSleeves = "Card Sleeves", DeckBox = "Deck Boxes", FirstSparkBox = "Booster Boxes", FrontierPack = "Frontier Packs" },
+		lessonLevel = 3,
 	},
 	-- Town walkers (Util/WalkerRules, TownWalkerService): up to `max` in town, one more every spawnEvery s while a player
 	-- is in town; they walk in from a street end and stroll the whole street for linger s (sitting on a free bench

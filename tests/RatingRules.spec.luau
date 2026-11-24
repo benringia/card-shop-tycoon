@@ -53,6 +53,31 @@ return {
 		near(RatingRules.displays(Customers, { { rarity = "Rare", foil = false } }), 0)
 	end,
 
+	["stocked counts products half"] = function()
+		local share = Customers.RATING.productShare
+		expect.equal(share, 0.5)
+		near(RatingRules.stocked(4, 4, 1, 4, share), 0.625, "every shelf full of booster boxes, 1 of 4 products")
+		near(RatingRules.stocked(4, 4, 4, 4, share), 1, "every shelf and every product")
+		near(RatingRules.stocked(2, 4, 4, 4, share), 0.75, "every product, half the shelves empty")
+		near(RatingRules.stocked(4, 4), 1, "today's two numbers: shelves only")
+		near(RatingRules.stocked(3, 4, 0, 0, share), 0.75, "no product open: shelves only")
+		near(RatingRules.stocked(0, 0, 0, 2, share), 0, "no shelves, no stock")
+	end,
+
+	["stocked tip names what's missing"] = function()
+		local words = Customers.RATING_TIPS.stocked
+		expect.equal(RatingRules.stockedFix(words, {}), "Restock empty shelves")
+		expect.equal(RatingRules.stockedFix(words, { "Card Sleeves" }), "Stock Card Sleeves")
+		expect.equal(RatingRules.stockedFix(words, { "Card Sleeves", "Deck Boxes" }), "Stock Card Sleeves and Deck Boxes")
+		expect.equal(RatingRules.stockedFix(words, { "Card Sleeves", "Deck Boxes", "Booster Boxes" }), "Stock Card Sleeves and 2 more")
+		for _, name in Customers.VARIETY.names do
+			for _, other in Customers.VARIETY.names do
+				local line = RatingRules.stockedFix(words, { name, other })
+				assert(#line <= 40, `"{line}" fits the Reviews header`)
+			end
+		end
+	end,
+
 	["tips list each part that counts"] = function()
 		local tips = RatingRules.tips({ stocked = 1, prices = 0.4, displays = 0.7, happy = 0.69, decor = 0 }, WEIGHTS)
 		local byName = {}

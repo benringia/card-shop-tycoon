@@ -11,6 +11,7 @@ local Config = Shared:WaitForChild("Config")
 local Reviews = require(Config:WaitForChild("Reviews"))
 local Customers = require(Config:WaitForChild("Customers"))
 local ReviewRules = require(Shared:WaitForChild("Util"):WaitForChild("ReviewRules"))
+local RatingRules = require(Shared:WaitForChild("Util"):WaitForChild("RatingRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -208,10 +209,19 @@ function ReviewsController.Start()
 		rating = data.rating
 		Hud.setPhoneStatus(`⭐ {string.format("%.1f", rating)}`)
 		local weak = {}
+		-- the unlocked products on no shelf, by name: the Stocked tip names them ("Stock Card Sleeves")
+		local missing: { string } = {}
+		for _, name in (if typeof(data.missing) == "table" then data.missing else {}) do
+			if typeof(name) == "string" then
+				table.insert(missing, name)
+			end
+		end
 		for _, part in (if typeof(data.parts) == "table" then data.parts else {}) do
 			local words = Customers.RATING_TIPS[part.name]
-			if words and part.known ~= false and typeof(part.score) == "number" and part.score < Customers.RATING.goodFrom then
-				table.insert(weak, { score = part.score, text = words.fix })
+			-- a missing product always makes Stocked a tip, even while its score is good
+			local weakPart = typeof(part.score) == "number" and (part.score < Customers.RATING.goodFrom or (part.name == "stocked" and #missing > 0))
+			if words and part.known ~= false and weakPart then
+				table.insert(weak, { score = part.score, text = if part.name == "stocked" then RatingRules.stockedFix(words, missing) else words.fix })
 			end
 		end
 		table.sort(weak, function(a, b)

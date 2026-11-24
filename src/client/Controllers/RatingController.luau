@@ -19,7 +19,8 @@ local Tooltip = require((Controllers.Parent :: Instance):WaitForChild("Util"):Wa
 local UIController = require(Controllers:WaitForChild("UIController"))
 
 type Part = { name: string, score: number, weight: number, known: boolean? }
-type Update = { rating: number, parts: { Part } }
+-- missing: the unlocked products on no shelf, by name (the Stocked tip names them)
+type Update = { rating: number, parts: { Part }, missing: { string }? }
 
 local RatingController = {}
 
@@ -144,10 +145,20 @@ local function fillWindow()
 			weights[part.name] = part.weight
 		end
 	end
+	local missing: { string } = {}
+	for _, name in (if typeof(update.missing) == "table" then update.missing else {}) do
+		if typeof(name) == "string" then
+			table.insert(missing, name)
+		end
+	end
 	for index, tip in RatingRules.tips(parts, weights, Customers.RATING.goodFrom) do
 		local words = Customers.RATING_TIPS[tip.name]
 		if words then
-			addLine(index + 1, if tip.good then `✅ {words.good}` else `⚠️ {words.fix}`, if tip.good then colors.good else colors.inkSoft)
+			-- Stocked names what's missing, and a missing product makes it a fix even while its score is good
+			local stocked = tip.name == "stocked"
+			local good = tip.good and not (stocked and #missing > 0)
+			local fix = if stocked then RatingRules.stockedFix(words, missing) else words.fix
+			addLine(index + 1, if good then `✅ {words.good}` else `⚠️ {fix}`, if good then colors.good else colors.inkSoft)
 		end
 	end
 end

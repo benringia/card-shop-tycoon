@@ -43,9 +43,29 @@ function RatingRules.spawnScale(cfg: any, rating: number): number
 	return 1 + (cfg.RATING.spawnAt5 - 1) * (clamped - 3) / 2
 end
 
--- Share of product shelves with stock on them
-function RatingRules.stocked(stocked: number, shelves: number): number
-	return if shelves > 0 then math.clamp(stocked / shelves, 0, 1) else 0
+-- Share of product shelves with stock on them; with `products` of the shop's `open` (unlocked) products in stock and a
+-- `share` (Config/Customers RATING.productShare), that share is products in stock and the rest shelves (spec
+-- 2026-11-24-shop-variety-design). No open products: shelves only
+function RatingRules.stocked(stocked: number, shelves: number, products: number?, open: number?, share: number?): number
+	local shelfScore = if shelves > 0 then math.clamp(stocked / shelves, 0, 1) else 0
+	if not products or not open or open <= 0 or not share then
+		return shelfScore
+	end
+	local productScore = math.clamp(products / open, 0, 1)
+	return (1 - share) * shelfScore + share * productScore
+end
+
+-- The Stocked part's fix naming what's missing (Config/Customers RATING_TIPS.stocked, VARIETY.names): "Stock Card
+-- Sleeves", "Stock Card Sleeves and Deck Boxes", "Stock Card Sleeves and 2 more"; nothing missing: its plain fix
+function RatingRules.stockedFix(words: { [string]: string }, missing: { string }): string
+	if #missing == 0 then
+		return words.fix
+	elseif #missing == 1 then
+		return string.format(words.stock, missing[1])
+	elseif #missing == 2 then
+		return string.format(words.stock, string.format(words.two, missing[1], missing[2]))
+	end
+	return string.format(words.stock, string.format(words.more, missing[1], #missing - 1))
 end
 
 -- Fair prices: the mean of each stocked product's buy chance at its price (Pricing.BUY_BANDS) against the best band's

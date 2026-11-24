@@ -18,6 +18,7 @@ local Bulk = require(Config:WaitForChild("Bulk"))
 local PriceRules = require(Shared:WaitForChild("Util"):WaitForChild("PriceRules"))
 local RatingRules = require(Shared:WaitForChild("Util"):WaitForChild("RatingRules"))
 local DecorRules = require(Shared:WaitForChild("Util"):WaitForChild("DecorRules"))
+local OrderRules = require(Shared:WaitForChild("Util"):WaitForChild("OrderRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
@@ -34,6 +35,7 @@ type State = {
 	history: { string }, -- the last visits' outcomes, newest last
 	parts: { [string]: number },
 	unknown: { [string]: boolean }, -- parts scored neutral for want of anything to score (no tip for them)
+	missing: { string }, -- unlocked products on no shelf, by name (Config/Customers VARIETY.names): the Stocked tip
 	lastSent: number?,
 }
 
@@ -45,10 +47,30 @@ local loaded: { [Player]: boolean } = {} -- shops whose shelves and cases have l
 local function stateOf(owner: Player): State
 	local state = states[owner]
 	if not state then
-		state = { history = {}, parts = {}, unknown = {} }
+		state = { history = {}, parts = {}, unknown = {}, missing = {} }
 		states[owner] = state
 	end
 	return state
+end
+
+-- The shop's unlocked products (its level and, for the Frontier Pack, its boss; never Bulk Cards): how many there are,
+-- how many have stock on a shelf, and the names of those on none (Products.List order)
+local function variety(owner: Player, stockedProducts: { [string]: boolean }): (number, number, { string })
+	local level = owner:GetAttribute("Level")
+	local cleared = OrderRules.clearedSet(owner:GetAttribute("BossesCleared"))
+	local open, stocked = 0, 0
+	local missing: { string } = {}
+	for _, product in Products.List do
+		if not product.bulk and OrderRules.isOpen(product, if typeof(level) == "number" then level else 1, cleared) then
+			open += 1
+			if stockedProducts[product.id] then
+				stocked += 1
+			else
+				table.insert(missing, CustomerConfig.VARIETY.names[product.id] or product.name)
+			end
+		end
+	end
+	return open, stocked, missing
 end
 
 -- Each part's 0-1 score for this owner's shop right now
@@ -89,8 +111,10 @@ local function partsFor(owner: Player, state: State): { [string]: number }
 		end
 	end
 	state.unknown.prices = #chances == 0
+	local open, productsStocked, missing = variety(owner, stockedProducts)
+	state.missing = missing
 	return {
-		stocked = RatingRules.stocked(stocked, productShelves),
+		stocked = RatingRules.stocked(stocked, productShelves, productsStocked, open, CustomerConfig.RATING.productShare),
 		prices = RatingRules.prices(chances, Pricing.BUY_BANDS[1].chance),
 		displays = RatingRules.displays(CustomerConfig, shown),
 		happy = RatingRules.happy(state.history),
@@ -104,7 +128,7 @@ local function send(owner: Player, state: State)
 	for _, tip in RatingRules.tips(state.parts, weights, CustomerConfig.RATING.goodFrom) do
 		table.insert(parts, { name = tip.name, score = state.parts[tip.name] or 0, weight = weights[tip.name], known = not state.unknown[tip.name] })
 	end
-	Remotes.RatingUpdate:FireClient(owner, { rating = state.rating, parts = parts })
+	Remotes.RatingUpdate:FireClient(owner, { rating = state.rating, parts = parts, missing = state.missing })
 end
 
 local function tick()
