@@ -2489,8 +2489,9 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   Crab a pincer snap (splash, two slashes), Cave Bat a dive (claw slashes, dark burst), Spark Beetle a horn charge
   (a bolt from its pincers), Ash Wolf a lunging bite (fang slashes, embers), Magma Golem a ground punch (fiery burst,
   rock dust, a ground ring).
-- [ ] **Hit feel** (owner 2026-11-25: "the hits feel weak and monsters just stand there"; picked "stay near their spot
-  but feel alive", felt a throwaway test: "strong feels good", "stepping feels good now"; spec
+- [x] **Hit feel** (owner 2026-11-25: "the hits feel weak and monsters just stand there"; picked "stay near their spot
+  but feel alive", felt a throwaway test: "strong feels good", "stepping feels good now"; merged 2026-11-25 on "merge
+  and push"; spec
   `2026-11-25-hit-feel-design`; numbers `Config/HitFeel`, rules `Util/HitFeel`, tests/HitFeel). Every hit on a monster
   reacts (`MonsterController.React`): your and your group's sword hits, every creature attack landing (each combo hit,
   the finishing one big) and supers (big). It flashes white (one reused Highlight per monster, fill 0.05 fading over
