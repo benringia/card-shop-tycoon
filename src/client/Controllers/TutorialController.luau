@@ -247,10 +247,14 @@ local function scrolledAway(item: GuiObject): ScrollingFrame?
 end
 
 -- An item in the Bag (Pish's present or gift, a trophy): the Bag button, then its slot, then its `button` (Open, Place)
--- once it's the one showing
+-- once it's the one showing. On a phone the Bag is an app in the Phone: "phone" while it's shut, "trayOpen" once it's
+-- open (spec 2026-11-25-pish-first-steps-design 3)
 local function bagSituation(item: string, button: string): (string, Target)
 	local bag = inMainGui("Bag")
 	if not bag then
+		if Hud.inPhone("Bag") then
+			return if Hud.isTrayOpen() then "trayOpen" else "phone", { hud = "Bag" }
+		end
 		return "default", { hud = "Bag" }
 	end
 	local details = bag:FindFirstChild("Details", true)
@@ -402,7 +406,11 @@ local function lessonSituation(lesson: Lesson): (string, Target, string)
 			return "bag", { hud = "Bag" }, "" -- none in the Bag (a replayed lesson): nothing to point at past the Bag
 		end
 		local situation, target = bagSituation(trophy, "Place")
-		local teach = if situation == "default" then "bag" elseif situation == "picked" then "bagPlace" else "tile"
+		local teach = if situation == "default" then "bag"
+			elseif situation == "phone" then "default"
+			elseif situation == "trayOpen" then "bagApp"
+			elseif situation == "picked" then "bagPlace"
+			else "tile"
 		return teach, target, def.name
 	end
 	local inTheWay = windowInTheWay("lesson:build")

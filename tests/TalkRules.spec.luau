@@ -242,6 +242,18 @@ return {
 		expect.equal(TalkRules.cardPlace(spots(true), nil, nil, false, false), "top", "nothing pointed at")
 	end,
 
+	-- 2026-11-25: on a phone the Bag is an app in the Phone, and "Open your Bag!" pointed at the Phone (spec
+	-- 2026-11-25-pish-first-steps-design 3); a computer's Bag is its own tile and keeps its line
+	["on a phone his Bag lines go through the Phone, then Bag"] = function()
+		local present, gift = PishTalk.STEPS.giftPack, PishTalk.STEPS.gift
+		expect.equal(TalkRules.show(present, #present.intro + 1, "phone").text, "I brought you a present! Tap the Phone.")
+		expect.equal(TalkRules.show(present, #present.intro + 1, "trayOpen").text, "Tap Bag.")
+		expect.equal(TalkRules.show(gift, #gift.intro + 1, "phone").text, "Open it in your Bag! Tap the Phone.")
+		expect.equal(TalkRules.show(gift, #gift.intro + 1, "trayOpen").text, "Tap Bag.")
+		expect.equal(PishTalk.TEACH.bagApp, "Tap Bag.")
+		expect.equal(TalkRules.show(present, #present.intro + 1, "default").text, "I brought you a present. Open your Bag!", "a computer keeps its line")
+	end,
+
 	-- the 1377 x 625 laptop window: the card hid most of the $100 button from its bottom spot
 	["the talk card on a laptop window and a computer's bottom tile"] = function()
 		local spots = {

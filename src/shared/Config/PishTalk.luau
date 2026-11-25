@@ -12,6 +12,9 @@ return {
 			intro = { "Hi! I'm Pish!", "Welcome to {game}!", "This is your very own card shop!" },
 			now = {
 				default = "I brought you a present. Open your Bag!",
+				-- a phone's Bag is an app in the Phone (spec 2026-11-25-pish-first-steps-design 3): shut, then open
+				phone = "I brought you a present! Tap the Phone.",
+				trayOpen = "Tap Bag.",
 				bagOpen = "Tap my present!",
 				picked = "Now tap Open!",
 			},
@@ -70,6 +73,8 @@ return {
 			intro = { "You made your first sale! Here's my gift: a special pack!" },
 			now = {
 				default = "Open it in your Bag!",
+				phone = "Open it in your Bag! Tap the Phone.",
+				trayOpen = "Tap Bag.",
 				bagOpen = "Tap my gift!",
 				picked = "Now tap Open!",
 			},
@@ -195,6 +200,7 @@ return {
 		leaveRegister = "Tap Leave to step off the register.",
 		-- the trophy lesson (trophies are placed from the Bag, owner 2026-11-17): the Bag, the trophy's slot (`tile`), Place
 		bag = "Tap your Bag.",
+		bagApp = "Tap Bag.", -- a phone's Bag, an app in the open Phone
 		bagPlace = "Tap Place!",
 	} :: { [string]: string },
 
