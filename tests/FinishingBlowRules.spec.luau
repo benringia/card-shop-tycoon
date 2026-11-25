@@ -78,6 +78,26 @@ return {
 		near(shake, 0.6 * MonsterKO.elite.shake, "kick")
 	end,
 
+	["a track something else already holds is left to it"] = function()
+		assert(not Rules.freezes(0), "paused by its owner (the sword's hit-stop, a kneel): not the beat's")
+		assert(Rules.freezes(1), "a playing track holds")
+		assert(Rules.freezes(1.25), "a quickened one too")
+	end,
+
+	["a held track goes back to its own speed"] = function()
+		near(Rules.release(1, 0) :: number, 1, "plain")
+		near(Rules.release(1.25, 0) :: number, 1.25, "quickened")
+	end,
+
+	["never put back to a stop (the swing stuck after a boss)"] = function()
+		expect.isNil(Rules.release(0, 0), "a track already paused when the beat began")
+	end,
+
+	["a track its owner changed during the beat is left alone"] = function()
+		expect.isNil(Rules.release(1, 1), "going again")
+		expect.isNil(Rules.release(1, 0.5), "slowed by its owner")
+	end,
+
 	["the knockout's length"] = function()
 		local plain = Rules.knockoutSeconds(MonsterKO, MonsterKO.hitStop)
 		near(plain, MonsterKO.hitStop + MonsterKO.maxFlight + MonsterKO.settleSeconds + MonsterKO.holdSeconds + MonsterKO.poofSeconds, "sum")

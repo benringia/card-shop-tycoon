@@ -33,6 +33,22 @@ function FinishingBlowRules.mine(fighting: boolean, isFightMonster: boolean): bo
 	return fighting and isFightMonster
 end
 
+-- The beat holds one of your character's playing animations only while it moves: one already paused (the sword's own
+-- hit-stop, a kneel) stays its owner's to let go
+function FinishingBlowRules.freezes(speed: number): boolean
+	return speed > 0
+end
+
+-- The speed a held animation goes back to once the beat is over: its own from before, only while it's still paused
+-- (its owner didn't change it meanwhile); nil: leave it. Never back to a stop (owner 2026-11-25: "character has no
+-- animation after the boss fight": a cut paused by its own hit-stop as the boss fell was put back to 0 for good)
+function FinishingBlowRules.release(before: number, current: number): number?
+	if before <= 0 or current ~= 0 then
+		return nil
+	end
+	return before
+end
+
 -- A knockout's beat (seconds), launch (times a plain one's) and camera kick: a moment's when there is one, an elite's
 -- extra launch and kick on top either way
 function FinishingBlowRules.knockout(ko: Knockout, elite: boolean, moment: Moment?): (number, number, number)

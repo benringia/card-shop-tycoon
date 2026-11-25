@@ -361,4 +361,16 @@ return {
 		expect.equal(SwordRules.cutReaches(scythe.combo[2], 0, 0, 0, -1, behind), false, "Back Sweep's damage lands in front")
 		expect.equal(SwordRules.cutReaches(scythe.combo[3], 0, 0, 0, -1, behind), true, "Whirlwind: all round")
 	end,
+
+	-- The finishing blow (owner 2026-11-25: "character has no animation after the boss fight"): a cut in its own
+	-- 0.08 s hit-stop when the boss fell was let go mid-beat by its release, then frozen for good by the beat's
+	["a longer hit-stop isn't cut short by an earlier one's release"] = function()
+		local held = SwordRules.holdUntil(nil, 10, 0.08)
+		expect.near(held, 10.08, 1e-9)
+		held = SwordRules.holdUntil(held, 10.01, 0.4) -- the finishing blow's beat
+		expect.near(held, 10.41, 1e-9)
+		expect.equal(SwordRules.released(10.08, held), false, "the cut's own release comes mid-beat: still held")
+		expect.equal(SwordRules.released(10.41, held), true, "the beat's end lets it go")
+		expect.near(SwordRules.holdUntil(held, 10.1, 0.05), 10.41, 1e-9, "a shorter one never shortens it")
+	end,
 }

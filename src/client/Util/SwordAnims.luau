@@ -10,6 +10,7 @@ local RunService = game:GetService("RunService")
 local Config = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config")
 local Swords = require(Config:WaitForChild("Swords"))
 local SwordFx = require(Config:WaitForChild("SwordFx"))
+local SwordRules = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("SwordRules"))
 
 local SwordAnims = {}
 
@@ -91,14 +92,18 @@ function SwordAnims.load(humanoid: Humanoid, swordId: string): Set
 		return loaded
 	end
 
-	-- Every playing strike freezes for `seconds`, then carries on
+	-- Every playing strike freezes for `seconds`, then carries on; a longer hold already on it (the finishing blow's
+	-- beat) isn't cut short by a shorter one's release (SwordRules.holdUntil)
+	local heldUntil: { [string]: number } = {}
 	local function hitStop(seconds: number)
+		local now = os.clock()
 		for _, key in STRIKES do
 			local loaded = tracks[key]
 			if loaded and loaded.IsPlaying then
+				heldUntil[key] = SwordRules.holdUntil(heldUntil[key], now, seconds)
 				loaded:AdjustSpeed(0)
 				task.delay(seconds, function()
-					if loaded.IsPlaying then
+					if loaded.IsPlaying and SwordRules.released(os.clock(), heldUntil[key] or 0) then
 						loaded:AdjustSpeed(1)
 					end
 				end)

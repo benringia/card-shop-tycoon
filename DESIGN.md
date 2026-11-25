@@ -2511,8 +2511,11 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   good, freeze the creature too"; spec `2026-11-25-finishing-blow-design`; numbers `Config/FinishingBlow`, rules
   `Util/FinishingBlowRules`, client `Util/FinishingBlow`, tests/FinishingBlowRules). Your own fight's last hit, a win,
   while that fight is running on your screen (every member of a group fight gets it; anyone else nearby sees the plain
-  knockout): everything holds a beat: the monster (white, swelling), your character's animations (their speed 0, then
-  back) and every creature in the fight (`CreatureController.Freeze`). A wild monster holds 0.16 s (a plain knockout
+  knockout): everything holds a beat: the monster (white, swelling), your character's animations (the moving ones at
+  speed 0, then back at their own speed if nothing else changed them; your cuts held through their own hit-stop,
+  `SwordController.HoldSwing`: a cut paused by its 0.08 s hit-stop as the boss fell was once put back to 0 for good,
+  owner 2026-11-25 "character has no animation after the boss fight") and every creature in the fight
+  (`CreatureController.Freeze`). A wild monster holds 0.16 s (a plain knockout
   0.07), your camera punches in 8 degrees in 0.05 s and eases back over 0.35 s after the hold, a deep thud plays (Pick
   Impacts 1, 0.7), then its knockout launches 1.25 times as hard with a 0.6 kick (an elite's 1.3 and 1.6 on top). A
   boss holds 0.4 s, its whole body (clip, tip-over, the Hydra's heads wait) flashed white (fill 0.7 fading over the

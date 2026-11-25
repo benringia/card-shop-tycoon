@@ -13,6 +13,16 @@ export type LastCut = { index: number, startedAt: number }
 -- `fx`: how big a hit's effects are on it (its model's size, client HitFx.scaleFor); unset: 1
 export type Target = { id: string, x: number, z: number, radius: number, fx: number? }
 
+-- A hit-stop's hold on a cut (client Util/SwordAnims): the time it's held until, never shortened by a shorter one, and
+-- whether a release at `now` lets it go (a cut's own 0.08 s release mid-way through the finishing blow's beat doesn't)
+function SwordRules.holdUntil(current: number?, now: number, seconds: number): number
+	return math.max(current or 0, now + seconds)
+end
+
+function SwordRules.released(now: number, holdUntil: number): boolean
+	return now >= holdUntil - 1e-3
+end
+
 -- The cut a tap at `now` starts and when it starts, or nil (the tap is ignored). A tap before the current cut's strike
 -- does nothing; from the strike until `comboReset` after the cut ends it queues the next cut (after cut 3 comes cut 1)
 -- to start at this one's cancel point (`cancelAt`, the end of its follow-through; the cut's end when it has none) or at

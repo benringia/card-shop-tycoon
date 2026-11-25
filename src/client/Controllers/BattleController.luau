@@ -2344,6 +2344,7 @@ function BattleController.Start()
 			return finishingBlowRules.mine(fighting, marker == markerFor(MONSTER_ID))
 		end,
 		punch = SwordController.PunchZoom,
+		holdSwing = SwordController.HoldSwing,
 		holdCreatures = function(seconds: number)
 			for _, marker in markers do
 				CreatureController.Freeze(marker, seconds) -- a monster's marker draws no creature: nothing happens

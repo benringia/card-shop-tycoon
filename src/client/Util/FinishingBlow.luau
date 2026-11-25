@@ -25,11 +25,14 @@ export type Hooks = {
 	isFoe: (marker: BasePart) -> boolean,
 	-- SwordController.PunchZoom
 	punch: (degrees: number, inSeconds: number, holdSeconds: number, backSeconds: number) -> (),
+	-- SwordController.HoldSwing: your cuts held this long, through their own hit-stop
+	holdSwing: (seconds: number) -> (),
 	-- the fight's creatures held still this long (CreatureController.Freeze on each)
 	holdCreatures: (seconds: number) -> (),
 }
 
--- Your character's playing animations held still `seconds`, then on at the speed each had
+-- Your character's moving animations held still `seconds`, then back at their own speed; one already paused (a cut in
+-- its hit-stop, which holdSwing holds; a kneel) is left to its owner (FinishingBlowRules.freezes / release)
 local function holdCharacter(seconds: number)
 	local character = Players.LocalPlayer.Character
 	local humanoid = if character then character:FindFirstChildOfClass("Humanoid") else nil
@@ -39,12 +42,15 @@ local function holdCharacter(seconds: number)
 	end
 	local held: { [AnimationTrack]: number } = {}
 	for _, track in animator:GetPlayingAnimationTracks() do
-		held[track] = track.Speed
-		track:AdjustSpeed(0)
+		if FinishingBlowRules.freezes(track.Speed) then
+			held[track] = track.Speed
+			track:AdjustSpeed(0)
+		end
 	end
 	task.delay(seconds, function()
-		for track, speed in held do
-			if track.IsPlaying then
+		for track, before in held do
+			local speed = if track.IsPlaying then FinishingBlowRules.release(before, track.Speed) else nil
+			if speed then
 				track:AdjustSpeed(speed)
 			end
 		end
@@ -68,6 +74,7 @@ function FinishingBlow.attach(hooks: Hooks)
 			return nil
 		end
 		local moment: FinishingBlowRules.Moment = if boss then Config.BOSS else Config.WILD
+		hooks.holdSwing(moment.hold) -- first: your cuts are then paused, the sword's to let go
 		holdCharacter(moment.hold)
 		hooks.holdCreatures(moment.hold)
 		hooks.punch(moment.zoom, moment.zoomIn, moment.hold, moment.back)

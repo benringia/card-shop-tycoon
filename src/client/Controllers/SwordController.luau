@@ -1016,6 +1016,13 @@ function SwordController.PunchZoom(degrees: number, inSeconds: number, holdSecon
 	zoomTo(degrees, inSeconds, holdSeconds, backSeconds)
 end
 
+-- The finishing blow's beat on your swing: every cut playing holds `seconds`, through its own hit-stop, then carries on
+function SwordController.HoldSwing(seconds: number)
+	if mine then
+		mine.hitStop(seconds)
+	end
+end
+
 -- Is this swing still the one playing (no newer cut, skill or dodge, still in the fight, still standing)?
 local function stillSwinging(token: number): boolean
 	return SwingGate.live(gate, token) and combatTargets ~= nil and not kneeling
