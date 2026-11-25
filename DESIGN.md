@@ -3981,7 +3981,8 @@ All numbers in `Config/Pish`.
   windows: his present in the Bag, then Open; Manage, Shop, the Small Pack Rack, "tap to place"; the computer, then
   First Spark's Order; the box, then the rack; behind the counter, then Charge. A window the step doesn't use makes
   the line "Tap the X to close this window." with the paw on its X. **The card never covers what he points at**
-  (2026-11-25, owner's look A, spec `2026-11-25-pish-first-steps-design`: fresh-save runs on a phone found it on the
+  (2026-11-25, owner's look A, spec `2026-11-25-pish-first-steps-design`, merged the same day on "merge and push":
+  fresh-save runs on a phone found it on the
   Bag app, the Phone's second row, and on the Small Pack Rack's $100 button, and a tap there hit the card, so nothing
   happened; on a laptop window it hid most of the $100 button; the funnel lost 7 of 17 in his first three steps): each
   spot, top then bottom (above the HUD tiles), is the card plus Skip's docked 84 x 48 tap area while it shows
