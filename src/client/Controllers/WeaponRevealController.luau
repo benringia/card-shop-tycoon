@@ -199,6 +199,16 @@ local function words(reveal: Reveal, color: Color3): (ScreenGui, TextButton, () 
 	grade.TextXAlignment = Enum.TextXAlignment.Center
 	grade.TextStrokeTransparency = 0.2
 	grade.Visible = false
+	if reveal.offer then
+		-- a mutation's line is long ("Epic · Thorns · 12% of the damage you take hits back"): the screen's width, smaller
+		-- on a phone rather than cut
+		grade.Size = UDim2.new(0.94, 0, 0, 34)
+		grade.TextScaled = true
+		local fit = Instance.new("UITextSizeConstraint")
+		fit.MaxTextSize = 26
+		fit.MinTextSize = 12
+		fit.Parent = grade
+	end
 	local line = UIKit.label(gui, reveal.line or "", Enum.Font.GothamBold, 18, WHITE)
 	line.AnchorPoint = Vector2.new(0.5, 1)
 	line.Position = UDim2.fromScale(0.5, 0.86)
@@ -247,12 +257,14 @@ end
 -- until `show`; `onChoice(take)` when a button is pressed (once).
 local function choicePanel(gui: ScreenGui, offer: any, color: Color3, onChoice: (take: boolean) -> ()): () -> ()
 	local spec = Mutations.CHOICE
+	-- a phone: tighter, so the blade above it still shows (its buttons keep the 48 px tap size, the Essence on them)
+	local phone = UIKit.isPhone()
 	local view = (workspace.CurrentCamera :: Camera).ViewportSize
 	local width = math.min(spec.width, view.X * spec.widthShare)
 	local frame = Instance.new("Frame")
 	frame.Name = "MutationChoice"
 	frame.AnchorPoint = Vector2.new(0.5, 1)
-	frame.Position = UDim2.new(0.5, 0, 1, -18)
+	frame.Position = UDim2.new(0.5, 0, 1, if phone then -6 else -18)
 	frame.Size = UDim2.fromOffset(width, 0)
 	frame.AutomaticSize = Enum.AutomaticSize.Y
 	frame.BackgroundColor3 = Color3.fromRGB(24, 16, 34)
@@ -262,28 +274,29 @@ local function choicePanel(gui: ScreenGui, offer: any, color: Color3, onChoice: 
 	frame.Parent = gui
 	UIKit.corner(frame, 16)
 	UIKit.outline(frame, color, 2.5)
+	local edge = if phone then 6 else 12
 	local pad = Instance.new("UIPadding")
-	pad.PaddingTop = UDim.new(0, 12)
-	pad.PaddingBottom = UDim.new(0, 12)
+	pad.PaddingTop = UDim.new(0, edge)
+	pad.PaddingBottom = UDim.new(0, edge)
 	pad.PaddingLeft = UDim.new(0, 14)
 	pad.PaddingRight = UDim.new(0, 14)
 	pad.Parent = frame
 	local list = Instance.new("UIListLayout")
 	list.SortOrder = Enum.SortOrder.LayoutOrder
 	list.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	list.Padding = UDim.new(0, 8)
+	list.Padding = UDim.new(0, if phone then 4 else 8)
 	list.Parent = frame
 	local have = if offer.applied then nil else offer.have
 	local head = if have then `Yours now: {MutationRules.words(Mutations, have).yours}` else "Your first mutation on this weapon!"
-	local line = UIKit.label(frame, head, Enum.Font.GothamBold, 15, WHITE)
+	local line = UIKit.label(frame, head, Enum.Font.GothamBold, if phone then 13 else 15, WHITE)
 	line.LayoutOrder = 1
-	line.Size = UDim2.new(1, 0, 0, 22)
+	line.Size = UDim2.new(1, 0, 0, if phone then 18 else 22)
 	line.TextXAlignment = Enum.TextXAlignment.Center
 	line.TextWrapped = true
 	local row = Instance.new("Frame")
 	row.LayoutOrder = 2
 	row.BackgroundTransparency = 1
-	row.Size = UDim2.new(1, 0, 0, spec.button)
+	row.Size = UDim2.new(1, 0, 0, if phone then 48 else spec.button)
 	row.Parent = frame
 	local rowList = Instance.new("UIListLayout")
 	rowList.FillDirection = Enum.FillDirection.Horizontal
@@ -307,10 +320,12 @@ local function choicePanel(gui: ScreenGui, offer: any, color: Color3, onChoice: 
 		choiceButton(row, 2, "Keep mine", `+{offer.essence.keep} Essence`, keepColor, UDim.new(0.5, -7)).Activated:Connect(function()
 			pick(false)
 		end)
-		local note = UIKit.label(frame, "The one you don't keep turns into Mutation Essence", Enum.Font.GothamBold, 12, Color3.fromRGB(215, 205, 230))
-		note.LayoutOrder = 3
-		note.Size = UDim2.new(1, 0, 0, 16)
-		note.TextXAlignment = Enum.TextXAlignment.Center
+		if not phone then -- (a phone's buttons say the Essence each gives; its blade needs the room)
+			local note = UIKit.label(frame, "The one you don't keep turns into Mutation Essence", Enum.Font.GothamBold, 12, Color3.fromRGB(215, 205, 230))
+			note.LayoutOrder = 3
+			note.Size = UDim2.new(1, 0, 0, 16)
+			note.TextXAlignment = Enum.TextXAlignment.Center
+		end
 	else
 		choiceButton(row, 1, "Nice!", nil, color, UDim.new(0.5, 0)).Activated:Connect(function()
 			pick(true)

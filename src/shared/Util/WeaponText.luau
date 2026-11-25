@@ -344,7 +344,7 @@ end
 -- `mutation`: a Mutate's weapon's mutation now, in words (MutationRules words.yours)
 function WeaponText.outcome(action: "forge" | "upgrade" | "reforge" | "mutate", view: { level: number?, step: string?, max: boolean?, grade: string?, done: boolean?, mutation: string? }): (string, string?)
 	if action == "mutate" then
-		return "Common to Legendary", if view.mutation then `Yours now: {view.mutation}` else "Its first mutation!"
+		return "Any rarity", if view.mutation then `Yours now: {view.mutation}` else "Its first mutation!"
 	elseif action == "upgrade" then
 		return `+{view.level or 0}`, if view.max then "Awakened!" else view.step
 	elseif action == "reforge" then

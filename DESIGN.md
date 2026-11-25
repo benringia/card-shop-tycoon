@@ -3839,9 +3839,10 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
     - **The reveal** (the owner's mockup; `WeaponRevealController.Mutation`): "MUTATION! <weapon>" and the column in the
       mutation's card rarity colour (Config/Rarities: Epic purple, not the mockup's pink), "Epic · Sharp · sword hits
       +12%", the blade with its new rim, then a panel: "Yours now: Rare · Tough (your HP +5%)", Take new and Keep mine,
-      each over the Essence it gives, "The one you don't keep turns into Mutation Essence". No skip until chosen. Reveals
-      wait until no window is open (the stage is 3D: a window over it hid the blade). A choice left waiting (they left)
-      is saved and asked again after the next join.
+      each over the Essence it gives, "The one you don't keep turns into Mutation Essence" (not on a phone: a tighter
+      panel so the blade shows; the long line under the banner shrinks to fit rather than cut). No skip until chosen.
+      Reveals wait until no window is open (the stage is 3D: a window over it hid the blade). A choice left waiting (they
+      left) is saved and asked again after the next join.
     - **The look**: the held blade (and the reveal's) gets a rim in the card rarity colour (a Highlight on the model,
       `Mutations.LOOK.rim`), Legendary also sparkles (`WeaponLook.mutation`, the character's `SwordMutation`).
     - **The weapon window** (layout A): its last row is the mutation, tinted (a pale fill, its edge and title in the
@@ -3850,8 +3851,9 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
       switch tip adds "Mutation: Epic · Sharp · sword hits +12%" in the colour.
     - **The Forge's Mutate** (a fourth tab on the picture recipe): 30 Mutation Essence for a new roll on any weapon you
       have (not the Steel Sword, not one in the Forge's job, not while a choice waits), instant: "Use 30 Mutation Essence
-      to give your Verdant Blade a new mutation!", the Essence spot, "Common to Legendary" and the one it has now under the
-      card, "Mutate it!" over "instant". The window steps aside for the reveal and comes back.
+      to give your Verdant Blade a new mutation!", the Essence spot, "Any rarity" (short: a phone cut "Common to
+      Legendary") and the one it has now under the card, "Mutate it!" over "instant". The window steps aside for the
+      reveal and comes back; the four tabs fit a phone's header band.
     - **Balance** (`MUTATION="<id>:<rarity>"` in tools/balance/bosses; 150 fights, fighting well): the Prism Hydra with a
       +10 S Prism Blade at 0.8x: none 59%, Rare Sharp 60%, Legendary Sharp 61%, Epic Critical 62%, Legendary Tough 59%,
       Pet Boost at 5% 65%, 8% 71%, 16% 95% (best+2: 20% -> 57%), so Pet Boost went to half size; the Brood Queen with a

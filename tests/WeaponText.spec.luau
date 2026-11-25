@@ -412,7 +412,7 @@ return {
 		expect.equal(text, "Choose its new mutation first")
 		expect.equal(ready, false)
 		local pill, line = WeaponText.outcome("mutate", { mutation = "Epic · Sharp (sword hits +12%)" })
-		expect.equal(pill, "Common to Legendary")
+		expect.equal(pill, "Any rarity", "short like the other tabs' pills (a phone cut a longer one)")
 		expect.equal(line, "Yours now: Epic · Sharp (sword hits +12%)")
 		expect.equal(select(2, WeaponText.outcome("mutate", {})), "Its first mutation!")
 		expect.equal(WeaponText.tabLine("Mutate"), "Roll a new mutation on a weapon you have, for Mutation Essence. Take the new one or keep yours: the other turns into Essence.")
