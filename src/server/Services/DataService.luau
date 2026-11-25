@@ -84,7 +84,8 @@ export type PlayerData = {
 	seenPrologue: boolean, -- saw the prologue (the Hydra takes it all; WelcomeService, PrologueController)
 	seenSword: boolean, -- closed the "You got your first sword!" popup (SwordService)
 	swordFights: number, -- boss fights fought with the sword HUD; its buttons show names for the first few (SwordService)
-	weapons: { [string]: { grade: string, level: number } }, -- weaponId -> its grade and upgrade level (WeaponService)
+	-- weaponId -> its grade, upgrade level, mutation and a mutation waiting for the player's choice (WeaponService; v44)
+	weapons: { [string]: { grade: string, level: number, mutation: { id: string, rarity: string }?, pending: { id: string, rarity: string }? } },
 	equippedWeapon: string, -- the weapon in hand (Config/Weapons id; the Steel Sword until another is equipped)
 	tutorial: any, -- the first visit with Pish, his lessons and luck (TutorialService; Util/TutorialRules.Saved)
 	combat: any, -- Chikin's combat tutorial (CombatTutorialService; the same shape, Config/Chikin STEPS)

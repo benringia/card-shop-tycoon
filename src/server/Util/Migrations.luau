@@ -525,6 +525,10 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string, footprint: Fo
 	-- productId, units; PlacementService cleans them on load with StorageRules.clean). A save from before has no racks,
 	-- so nothing changes but the version.
 	[42] = function(_data) end,
+	-- v44 (weapons round 4 part 2, spec 2026-11-25-weapons-round4-design): a weapon's record may carry its `mutation`
+	-- and a `pending` one waiting for the player's choice (WeaponService; WeaponRules.read cleans them on load). A save
+	-- from before has none, so nothing changes but the version.
+	[43] = function(_data) end,
 }
 
 local function lowestGrade(): string

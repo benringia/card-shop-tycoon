@@ -315,22 +315,52 @@ return {
 		expect.equal((WeaponRules.pay(cost, 100, { a = 2, b = 1 })), true)
 	end,
 
-	["a drop you already own becomes 10 material; a reforge keeps the better grade and the level"] = function()
+	-- Weapons round 4 part 2 (owner 2026-11-25): a drop you already own is a mutation roll (the caller's: BossService
+	-- and WeaponService.Offer), so it gives nothing by itself; the 10 material it gave before would flood the upgrades
+	-- now that boss weapons drop almost every win
+	["a drop you already own gives nothing by itself; a reforge keeps the better grade, the level and the mutation"] = function()
 		local owned = { verdantBlade = { grade = "S", level = 4 } }
 		local rec, refund = WeaponRules.give(owned, "verdantBlade", "C", "drop", W)
 		expect.isNil(rec)
-		expect.equal(refund, 10)
+		expect.equal(refund, 0, "its mutation roll instead of material")
+		expect.isNil((W :: any).DUPLICATE_MATERIAL, "no duplicate material any more")
 		rec = WeaponRules.give(owned, "verdantBlade", "B", "reforge", W)
 		expect.isNil(rec)
-		rec = WeaponRules.give({ verdantBlade = { grade = "B", level = 4 } }, "verdantBlade", "S", "reforge", W)
+		local sharp = { id = "sharp", rarity = "Epic" }
+		local guard = { id = "guard", rarity = "Rare" }
+		rec = WeaponRules.give({ verdantBlade = { grade = "B", level = 4, mutation = sharp, pending = guard } }, "verdantBlade", "S", "reforge", W)
 		assert(rec, "a better reforge")
 		expect.equal(rec.grade, "S")
 		expect.equal(rec.level, 4)
+		expect.equal(rec.mutation and rec.mutation.id, "sharp", "a reforge keeps the mutation")
+		expect.equal(rec.pending and rec.pending.id, "guard", "and the one waiting")
 		local fresh, none = WeaponRules.give({}, "verdantBlade", "A", "drop", W)
 		assert(fresh, "a new drop")
 		expect.equal(fresh.grade, "A")
 		expect.equal(fresh.level, 0)
+		expect.isNil(fresh.mutation, "a new weapon comes plain (the owner's mockup: today's reveal)")
 		expect.equal(none, 0)
+	end,
+
+	["loading keeps a known mutation and a waiting one, and drops unknown ones"] = function()
+		local MutationRules = require("../src/shared/Util/MutationRules")
+		local Mutations = require("../src/shared/Config/Mutations")
+		local function readMutation(value: unknown)
+			return MutationRules.read(Mutations, value)
+		end
+		local owned = WeaponRules.read(W, {
+			verdantBlade = { grade = "A", level = 2, mutation = { id = "sharp", rarity = "Epic" }, pending = { id = "guard", rarity = "Rare" } },
+			sunforgedBlade = { grade = "B", level = 0, mutation = { id = "nope", rarity = "Epic" }, pending = "junk" },
+		}, nil, readMutation)
+		local verdant = owned.verdantBlade
+		expect.equal(verdant.mutation and verdant.mutation.id, "sharp")
+		expect.equal(verdant.mutation and verdant.mutation.rarity, "Epic")
+		expect.equal(verdant.pending and verdant.pending.id, "guard")
+		expect.equal(owned.sunforgedBlade.grade, "B", "the weapon itself stays")
+		expect.isNil(owned.sunforgedBlade.mutation, "an unknown mutation is dropped")
+		expect.isNil(owned.sunforgedBlade.pending, "and junk")
+		local plain = WeaponRules.read(W, { verdantBlade = { grade = "A", level = 2, mutation = { id = "sharp", rarity = "Epic" } } }, nil)
+		expect.isNil(plain.verdantBlade.mutation, "no reader given: no mutation read")
 	end,
 
 	["drop chance by rarity: a Rare 20% plus 2.5% a kill without one, a Legendary 6% plus 0.08%"] = function()

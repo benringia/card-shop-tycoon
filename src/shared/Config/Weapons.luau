@@ -298,7 +298,6 @@ return {
 		Legendary = { material = 60, cash = 18000 },
 	},
 	REFORGE_SHARE = 0.5, -- a reforge (a new grade roll, the better kept) costs this share of making it, rounded up
-	DUPLICATE_MATERIAL = 10, -- a boss dropping a weapon you own gives this many of its material instead
 	-- A boss's own weapon dropping outright on a full-loot kill: `base`, plus `step` for every full-loot kill since without
 	-- one (pity). By rarity (owner 2026-11-06), median loot wins: Rare 15, Very Rare 25, Epic 50, Legendary 79 (set for 6
 	-- a day; since 2026-11-19 there's no daily limit, one every LOOT_COOLDOWN: about 2 / 3 / 6 / 9 hours on its boss)

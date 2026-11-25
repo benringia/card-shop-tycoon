@@ -796,6 +796,25 @@ return {
 		expect.isNil(data.layout[2].boxes, "no boxes added")
 	end,
 
+	-- v44 (weapons round 4 part 2, spec 2026-11-25-weapons-round4-design): a weapon's record may carry its mutation and
+	-- one waiting for the player's choice; a save from before has none, so its weapons come through as they were
+	["v44 (mutations): weapons come through as they were"] = function()
+		local Data = require("../src/shared/Config/Data")
+		expect.equal(Data.SCHEMA_VERSION >= 44, true, "the schema is at v44: weapons carry mutations")
+		local data = {
+			version = 43,
+			weapons = { verdantBlade = { grade = "A", level = 5 }, forgeSword_Ember = { grade = "C", level = 0 } },
+			equippedWeapon = "verdantBlade",
+		}
+		Migrations.run(data, 44, nil, footprint)
+		expect.equal(data.version, 44)
+		expect.equal(data.weapons.verdantBlade.grade, "A")
+		expect.equal(data.weapons.verdantBlade.level, 5)
+		expect.isNil(data.weapons.verdantBlade.mutation, "no mutation added")
+		expect.equal(data.weapons.forgeSword_Ember.grade, "C")
+		expect.equal(data.equippedWeapon, "verdantBlade")
+	end,
+
 	["v42: a save from before v41 runs every step up to it (the footprint reaches step 41)"] = function()
 		local data = v41({ layout = { { shelfId = "Shelf", gridX = 18, gridZ = 0, rotation = 0 } } })
 		data.version = 40

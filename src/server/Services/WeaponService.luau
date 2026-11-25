@@ -1,14 +1,19 @@
 --!strict
 -- The weapons a player owns and the one in hand (spec 2026-11-06-weapons-round1-design). Saved as
--- weapons = { [weaponId] = { grade, level } } and equippedWeapon; the Steel Sword is everyone's and never saved.
--- From shop level Swords.UNLOCK_SHOP_LEVEL the character carries the equipped weapon: attributes Sword (the weapon
--- id), SwordGrade and SwordLevel, which clients draw from. The client gets WeaponsChanged on load and every change.
--- Forging, upgrading and drops call Give / SetLevel; only this service changes the table.
+-- weapons = { [weaponId] = { grade, level, mutation?, pending? } } and equippedWeapon; the Steel Sword is everyone's
+-- and never saved. From shop level Swords.UNLOCK_SHOP_LEVEL the character carries the equipped weapon: attributes Sword
+-- (the weapon id), SwordGrade, SwordLevel and SwordMutation (its mutation's rarity), which clients draw from. The
+-- client gets WeaponsChanged on load and every change. Forging, upgrading and drops call Give / SetLevel; mutations
+-- come through Offer (a boss's drop of a weapon you have, the Forge's Mutate: weapons round 4 part 2) and the player's
+-- ChooseMutation; only this service changes the table.
+local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Weapons = require(Shared:WaitForChild("Config"):WaitForChild("Weapons"))
+local Mutations = require(Shared:WaitForChild("Config"):WaitForChild("Mutations"))
 local Swords = require(Shared:WaitForChild("Config"):WaitForChild("Swords"))
+local MutationRules = require(Shared:WaitForChild("Util"):WaitForChild("MutationRules"))
 local WeaponRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponRules"))
 local SkillText = require(Shared:WaitForChild("Util"):WaitForChild("SkillText"))
 local ElementNames = require(Shared:WaitForChild("Util"):WaitForChild("ElementNames"))
@@ -26,11 +31,26 @@ local Blocked = require(Util:WaitForChild("Blocked"))
 
 type PlayerData = DataService.PlayerData
 export type Owned = WeaponRules.Owned
+type Mutation = MutationRules.Mutation
+-- A mutation offered on a weapon (a boss drop of one you have, the Forge's Mutate): `applied` when the weapon had
+-- none (it's on at once), else it waits as the record's `pending` until ChooseMutation with this `id`. `essence`: what
+-- the one you don't keep turns into either way (take: the old one's, keep: the new one's)
+export type Offer = {
+	id: string,
+	weaponId: string,
+	mutation: Mutation,
+	have: Mutation?,
+	applied: boolean,
+	essence: { take: number, keep: number },
+	source: string,
+}
 
 local WeaponService = {}
 
 local owned: { [Player]: { [string]: Owned } } = {} -- loaded players only
 local equipped: { [Player]: string } = {}
+-- the id of each weapon's waiting offer (fresh every session; the waiting mutation itself is saved on the record)
+local offerIds: { [Player]: { [string]: string } } = {}
 -- weapons in the Forge (UpgradeJobService): out of the switch and not equippable till their job is done (spec
 -- 2026-11-12-timed-upgrades-revive-design)
 local locked: { [Player]: { [string]: boolean } } = {}
@@ -42,6 +62,7 @@ end
 local onSwap: (Player) -> () = function() end
 local allowEquip = RateLimiter.new(Weapons.EQUIP_COOLDOWN)
 local allowRequest = RateLimiter.new(Weapons.REQUEST_COOLDOWN)
+local allowChoose = RateLimiter.new(Weapons.REQUEST_COOLDOWN)
 
 -- BattleService hands its check in (it requires this service, so this one can't require it)
 function WeaponService.SetFightCheck(check: (Player) -> boolean)
@@ -117,7 +138,16 @@ function WeaponService.SuperScale(player: Player, cardName: string, element: str
 	return WeaponRules.superScale(Weapons, weaponId, if record then record.grade else "C", if record then record.level else 0)
 end
 
--- The character's Sword, SwordGrade and SwordLevel attributes from the weapon in hand
+-- What the weapon in hand's mutation does in a fight (MutationRules.Stats; neutral without one, and for the prologue's
+-- lent weapon). BattleService asks at a fight's start and on a switch; never for the arena.
+function WeaponService.MutationStats(player: Player): MutationRules.Stats
+	local weaponId = WeaponService.GetEquipped(player)
+	local record = if weaponId and not lent[player] then WeaponService.GetOwned(player, weaponId) else nil
+	return MutationRules.stats(Mutations, if record then record.mutation else nil)
+end
+
+-- The character's Sword, SwordGrade, SwordLevel and SwordMutation (its mutation's rarity: the blade's rim) attributes
+-- from the weapon in hand
 function WeaponService.ApplyAttributes(player: Player)
 	local character = player.Character
 	if not character then
@@ -125,17 +155,30 @@ function WeaponService.ApplyAttributes(player: Player)
 	end
 	local weaponId = WeaponService.GetEquipped(player)
 	local record = if weaponId then WeaponService.GetOwned(player, weaponId) else nil
+	local mutation = if record and not lent[player] then record.mutation else nil
 	character:SetAttribute("Sword", weaponId)
 	character:SetAttribute("SwordGrade", if record then record.grade else nil)
 	character:SetAttribute("SwordLevel", if record then record.level else nil)
+	character:SetAttribute("SwordMutation", if mutation then mutation.rarity else nil)
 end
 
+local function copyMutation(mutation: Mutation?): Mutation?
+	return if mutation then { id = mutation.id, rarity = mutation.rarity } else nil
+end
+
+-- Every owned weapon as plain data (the save and the client)
 local function snapshot(player: Player): { [string]: Owned }
 	local copy = {}
 	for id, record in owned[player] or {} do
-		copy[id] = { grade = record.grade, level = record.level }
+		copy[id] = { grade = record.grade, level = record.level, mutation = copyMutation(record.mutation), pending = copyMutation(record.pending) }
 	end
 	return copy
+end
+
+local function giveEssence(player: Player, amount: number)
+	if amount > 0 then
+		ItemService.GiveItem(player, Mutations.ESSENCE_ITEM, amount)
+	end
 end
 
 -- The prologue: `weaponId` at `record` in hand until EndLend (the character's attributes follow; nothing is saved)
@@ -163,8 +206,109 @@ function WeaponService.Changed(player: Player)
 	if not owned[player] then
 		return
 	end
-	Remotes.WeaponsChanged:FireClient(player, { owned = snapshot(player), equipped = equipped[player] or Weapons.STARTER, locked = locked[player] or {} })
+	-- offers: each waiting mutation's offer id, so the client can ask the player (WeaponRevealController)
+	Remotes.WeaponsChanged:FireClient(player, {
+		owned = snapshot(player),
+		equipped = equipped[player] or Weapons.STARTER,
+		locked = locked[player] or {},
+		offers = table.clone(offerIds[player] or {}),
+	})
 	WeaponService.ApplyAttributes(player)
+end
+
+-- What `offer` shows the player (WeaponRevealController.Mutation)
+local function offerOf(weaponId: string, record: Owned, id: string, mutation: Mutation, applied: boolean, source: string): Offer
+	return {
+		id = id,
+		weaponId = weaponId,
+		mutation = { id = mutation.id, rarity = mutation.rarity },
+		have = if applied then nil else copyMutation(record.mutation),
+		applied = applied,
+		essence = {
+			take = if applied then 0 else MutationRules.essence(Mutations, record.mutation),
+			keep = if applied then 0 else MutationRules.essence(Mutations, mutation),
+		},
+		source = source,
+	}
+end
+
+-- A mutation offered on an owned weapon (a boss's drop of one you have, the Forge's Mutate; not the Steel Sword): on at
+-- once when the weapon has none, else it waits (saved) for ChooseMutation. A choice still waiting on the same weapon
+-- is settled as Keep mine first (its Essence given). Nil when the weapon isn't owned.
+function WeaponService.Offer(player: Player, weaponId: string, mutation: Mutation, source: "drop" | "forge"): Offer?
+	local mine = owned[player]
+	local record = if mine then mine[weaponId] else nil
+	if not record or weaponId == Weapons.STARTER then
+		return nil
+	end
+	local ids = offerIds[player] or {}
+	offerIds[player] = ids
+	if record.pending then
+		local kept, essence = MutationRules.resolve(Mutations, record.mutation, record.pending, false)
+		record.mutation = kept
+		record.pending = nil
+		ids[weaponId] = nil
+		giveEssence(player, essence)
+	end
+	local id = HttpService:GenerateGUID(false)
+	local applied = record.mutation == nil
+	local offer = offerOf(weaponId, record, id, mutation, applied, source)
+	if applied then
+		record.mutation = { id = mutation.id, rarity = mutation.rarity }
+	else
+		record.pending = { id = mutation.id, rarity = mutation.rarity }
+		ids[weaponId] = id
+	end
+	WeaponService.Changed(player)
+	return offer
+end
+
+-- Every choice still waiting, as offers (the client asks them after a join)
+function WeaponService.Pending(player: Player): { Offer }
+	local list = {}
+	for weaponId, id in offerIds[player] or {} do
+		local record = WeaponService.GetOwned(player, weaponId)
+		if record and record.pending then
+			table.insert(list, offerOf(weaponId, record, id, record.pending, false, "waiting"))
+		end
+	end
+	return list
+end
+
+-- Studio's /mutation: this weapon's mutation set (nil clears it and any choice waiting)
+function WeaponService.SetMutation(player: Player, weaponId: string, mutation: Mutation?)
+	local record = WeaponService.GetOwned(player, weaponId)
+	if not record or lent[player] then
+		return
+	end
+	record.mutation = copyMutation(mutation)
+	if not mutation then
+		record.pending = nil
+		local ids = offerIds[player]
+		if ids then
+			ids[weaponId] = nil
+		end
+	end
+	WeaponService.Changed(player)
+end
+
+-- Take new or Keep mine (owner's mockup): only for the offer waiting on that weapon now; the other turns into Essence
+local function onChoose(player: Player, weaponId: unknown, offerId: unknown, take: unknown)
+	if not allowChoose(player) or typeof(weaponId) ~= "string" or typeof(offerId) ~= "string" or typeof(take) ~= "boolean" then
+		return
+	end
+	local mine = owned[player]
+	local record = if mine then mine[weaponId] else nil
+	local ids = offerIds[player]
+	if not record or not record.pending or not ids or ids[weaponId] ~= offerId then
+		return -- answered already or not theirs: nothing changes
+	end
+	local kept, essence = MutationRules.resolve(Mutations, record.mutation, record.pending, take)
+	record.mutation = kept
+	record.pending = nil
+	ids[weaponId] = nil
+	giveEssence(player, essence)
+	WeaponService.Changed(player)
 end
 
 -- Gives a weapon (forged, reforged or dropped): the new record (nil when nothing changed) and the material refund,
@@ -196,7 +340,13 @@ function WeaponService.SetForTesting(player: Player, weaponId: string, grade: st
 	if not mine or not Weapons.ById[weaponId] then
 		return
 	end
-	mine[weaponId] = { grade = grade, level = math.clamp(math.floor(level), 0, Weapons.MAX_LEVEL) }
+	local old = mine[weaponId]
+	mine[weaponId] = {
+		grade = grade,
+		level = math.clamp(math.floor(level), 0, Weapons.MAX_LEVEL),
+		mutation = if old then old.mutation else nil,
+		pending = if old then old.pending else nil,
+	}
 	WeaponService.Changed(player)
 end
 
@@ -243,13 +393,25 @@ local function onEquip(player: Player, weaponId: unknown)
 	end
 end
 
+local function readMutation(value: unknown): Mutation?
+	return MutationRules.read(Mutations, value)
+end
+
 local function load(player: Player, data: PlayerData)
-	local mine, equip, dropped = WeaponRules.read(Weapons, data.weapons, data.equippedWeapon)
+	local mine, equip, dropped = WeaponRules.read(Weapons, data.weapons, data.equippedWeapon, readMutation)
 	if #dropped > 0 then
 		warn(`[WeaponService] {player.Name}: unknown weapons dropped: {table.concat(dropped, ", ")}`)
 	end
 	owned[player] = mine
 	equipped[player] = equip
+	-- a choice left waiting last time (they left before answering) is asked again: a fresh offer id for it
+	local ids = {}
+	for weaponId, record in mine do
+		if record.pending then
+			ids[weaponId] = HttpService:GenerateGUID(false)
+		end
+	end
+	offerIds[player] = ids
 	WeaponService.Changed(player)
 end
 
@@ -267,6 +429,7 @@ local function unload(player: Player)
 	equipped[player] = nil
 	locked[player] = nil
 	lent[player] = nil
+	offerIds[player] = nil
 end
 
 -- A weapon going into the Forge (or back out): while locked it can't be equipped and leaves the switch; the one in hand
@@ -289,6 +452,7 @@ end
 function WeaponService.Start()
 	DataService.Register({ name = "WeaponService", load = load, save = save, unload = unload })
 	Remotes.EquipWeapon.OnServerEvent:Connect(onEquip)
+	Remotes.ChooseMutation.OnServerEvent:Connect(onChoose)
 	Remotes.WeaponsChanged.OnServerEvent:Connect(function(player)
 		if allowRequest(player) then
 			WeaponService.Changed(player)

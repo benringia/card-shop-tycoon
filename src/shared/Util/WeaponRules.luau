@@ -7,7 +7,10 @@ export type Cost = { cash: number, items: { [string]: number }, unlockLevel: num
 -- `spread` (chain: the arcs' share), `below` (execute: the HP share under which it applies), `look` (burn: "venom"
 -- poisons rather than burns)
 export type Perk = { kind: string, every: number?, share: number?, seconds: number?, spread: number?, below: number?, look: string? }
-export type Owned = { grade: string, level: number }
+-- mutation: its mutation (weapons round 4 part 2, Util/MutationRules); pending: a newer one waiting for the player's
+-- Take new or Keep mine
+export type Mutation = { id: string, rarity: string }
+export type Owned = { grade: string, level: number, mutation: Mutation?, pending: Mutation? }
 
 local WeaponRules = {}
 
@@ -306,8 +309,9 @@ function WeaponRules.pay(cost: Cost, cash: number, items: { [string]: number }):
 	return true, nil
 end
 
--- Getting a weapon: the new record (nil when nothing changes) and the material refund. A drop you already own gives
--- DUPLICATE_MATERIAL of its material instead; a forge or reforge of an owned one keeps the better grade and the level.
+-- Getting a weapon: the new record (nil when nothing changes) and the material refund (none since weapons round 4
+-- part 2: a drop you already own is a mutation roll, WeaponService.Offer, made by the caller). A forge or reforge of an
+-- owned one keeps the better grade, the level and its mutations. A new weapon comes plain.
 function WeaponRules.give(
 	owned: { [string]: Owned },
 	weaponId: string,
@@ -320,10 +324,10 @@ function WeaponRules.give(
 		return { grade = grade, level = 0 }, 0
 	end
 	if how == "drop" then
-		return nil, cfg.DUPLICATE_MATERIAL
+		return nil, 0
 	end
 	if (cfg.GRADE_POWER[grade] or 0) > (cfg.GRADE_POWER[have.grade] or 0) then
-		return { grade = grade, level = have.level }, 0
+		return { grade = grade, level = have.level, mutation = have.mutation, pending = have.pending }, 0
 	end
 	return nil, 0
 end
@@ -344,9 +348,10 @@ function WeaponRules.dropChance(cfg: any, weaponId: string, pity: number): numbe
 	return math.min(1, chance)
 end
 
--- Cleans a saved weapons table: unknown ids dropped (and named, to log), bad grades to C, levels whole and in range;
--- the equipped id kept only if it's owned and built, otherwise the Steel Sword
-function WeaponRules.read(cfg: any, saved: unknown, equipped: unknown): ({ [string]: Owned }, string, { string })
+-- Cleans a saved weapons table: unknown ids dropped (and named, to log), bad grades to C, levels whole and in range,
+-- a mutation and a waiting one kept when `readMutation` (MutationRules.read with Config/Mutations) knows them; the
+-- equipped id kept only if it's owned and built, otherwise the Steel Sword
+function WeaponRules.read(cfg: any, saved: unknown, equipped: unknown, readMutation: ((unknown) -> Mutation?)?): ({ [string]: Owned }, string, { string })
 	local owned: { [string]: Owned } = {}
 	local dropped: { string } = {}
 	if typeof(saved) == "table" then
@@ -357,7 +362,12 @@ function WeaponRules.read(cfg: any, saved: unknown, equipped: unknown): ({ [stri
 			end
 			local grade = if typeof(record.grade) == "string" and cfg.GRADE_POWER[record.grade] then record.grade else "C"
 			local level = if typeof(record.level) == "number" and record.level == record.level then record.level else 0
-			owned[id] = { grade = grade, level = math.clamp(math.floor(level), 0, cfg.MAX_LEVEL) }
+			owned[id] = {
+				grade = grade,
+				level = math.clamp(math.floor(level), 0, cfg.MAX_LEVEL),
+				mutation = if readMutation then readMutation(record.mutation) else nil,
+				pending = if readMutation then readMutation(record.pending) else nil,
+			}
 		end
 	end
 	table.sort(dropped)

@@ -155,7 +155,10 @@ local NAMES = {
 	"SwordCast", -- server → all clients: (userId, move, x, z) a round 1 sword's cut ("cut1"-"cut3") or "skill" starts there: its effects for others
 	"Dodge", -- client → server: () a dodge in a boss fight (the dash is the client's; the server makes you untouchable)
 	"EquipWeapon", -- client → server: (weaponId: string) hold an owned weapon (WeaponService; not in a fight)
-	"WeaponsChanged", -- server → client: { owned = { [weaponId]: { grade, level } }, equipped = weaponId }; client → server: () ask
+	"WeaponsChanged", -- server → client: { owned = { [weaponId]: { grade, level, mutation?, pending? } }, equipped = weaponId, locked, offers = { [weaponId]: offerId } }; client → server: () ask
+	"ChooseMutation", -- client → server: (weaponId: string, offerId: string, take: boolean) Take new or Keep mine on a waiting mutation (WeaponService)
+	"MutateWeapon", -- client → server: (shelfUid: string, weaponId: string) the Forge's Mutate: Mutation Essence for a new mutation roll (ForgeService)
+	"MutationOffered", -- server → client: WeaponService.Offer (the Forge's Mutate, Studio's /mutation offer): its reveal and choice
 	"ForgeWeapon", -- client → server: (shelfUid: string, weaponId: string) make a weapon at your Forge (ForgeService)
 	"UpgradeWeapon", -- client → server: (shelfUid: string, weaponId: string) one more upgrade level on an owned weapon
 	"ReforgeWeapon", -- client → server: (shelfUid: string, weaponId: string) a new grade roll on an owned weapon, the better kept
@@ -340,6 +343,9 @@ return {
 	Dodge = remotes.Dodge,
 	EquipWeapon = remotes.EquipWeapon,
 	WeaponsChanged = remotes.WeaponsChanged,
+	ChooseMutation = remotes.ChooseMutation,
+	MutateWeapon = remotes.MutateWeapon,
+	MutationOffered = remotes.MutationOffered,
 	ForgeWeapon = remotes.ForgeWeapon,
 	UpgradeWeapon = remotes.UpgradeWeapon,
 	ReforgeWeapon = remotes.ReforgeWeapon,
