@@ -3995,7 +3995,8 @@ All numbers in `Config/Pish`.
   sidewalk, so the rack step, with nothing open and not placing, first leads a player outside the shop (`Pish.INSIDE`:
   inside is 3 studs past the front edge, `TutorialRules.insideShop`) along his paw trail to a spot 12 studs in; no new
   step, so the funnel stays comparable. Placing the rack his paw hangs over its preview (which starts in view, 4.3):
-  "Tap Place!", or "Tap an empty spot on the floor, then Place!" while it's red. Cues: gold paw prints to the place along the walking route (Roblox's pathfinding round walls and shops, about one
+  "Tap Place!", one line whether it's green or red (a new line pops and chimes, and a dragged preview flips colour
+  many times a second; red, the preview's own "Can't place here" and the greyed Place button say it). Cues: gold paw prints to the place along the walking route (Roblox's pathfinding round walls and shops, about one
   every 3 studs up to 48, `Util/TrailRules`; owner 2026-11-16: "chikin paws are passes through things"; a straight line
   only when no route is found) and a bouncing gold paw over a thing in the shop, drawn on the screen
   so walls and closed doors don't hide them (none while a window is open, so they never sit on it); a bouncing gold

@@ -380,11 +380,6 @@ function PlacementController.GhostPart(): BasePart?
 	return if session then session.box else nil
 end
 
--- Whether the preview stands where it can go
-function PlacementController.IsValid(): boolean
-	return session ~= nil and session.valid
-end
-
 local function buildBar(parent: Instance): Frame
 	local frame = Instance.new("Frame")
 	frame.Name = "PlacementBar"

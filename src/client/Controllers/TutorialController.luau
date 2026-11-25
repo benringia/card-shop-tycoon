@@ -341,8 +341,9 @@ local function stepSituation(stepId: string): (string, Target)
 		return bagSituation(Pish.GIFT_ITEM, "Open")
 	elseif stepId == "buildRack" then
 		if PlacementController.IsActive() then
-			-- its preview starts in view; his paw over it (spec 2026-11-25-pish-first-steps-design 5)
-			return if PlacementController.IsValid() then "placing" else "placingMove", { ghost = true }
+			-- its preview starts in view; his paw over it (spec 2026-11-25-pish-first-steps-design 5). One situation red
+			-- or green: a new line chimes, and a dragged preview flips many times a second
+			return "placing", { ghost = true }
 		end
 		local shop = inMainGui("BuildMenu")
 		if shop then

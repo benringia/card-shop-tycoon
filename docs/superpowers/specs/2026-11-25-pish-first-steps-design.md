@@ -53,7 +53,8 @@ Goal: every first-visit step can be done by tapping what Pish points at, on a ph
    half height (`Placement.START.anchors`, tried in order) to the shop floor and takes the nearest free cell within
    `START.reach` cells (`CellSearch.nearest`); none: the free cell nearest you; then today's corner. The preview
    stays there until you tap the floor or move the mouse. In the tour Pish's paw hangs over it with "Tap Place!"
-   (no trail), and "Tap an empty spot on the floor, then Place!" while it's red.
+   (no trail), one line red or green (final review: a new line chimes, and a dragged preview flips colour many
+   times a second).
 6. **Studio's fresh switch** (built for this check): `Config/Data.STUDIO_FRESH` true in Studio loads a brand-new save
    in memory (ProfileStore's Mock) on every Play, never written; off by default, refused outside Studio
    (`SaveSlots.fresh`).

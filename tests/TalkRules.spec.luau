@@ -259,11 +259,13 @@ return {
 		expect.equal(TalkRules.show(rack, #rack.intro + 1, "outside").text, "Let's go inside!")
 	end,
 
-	-- the rack's preview now starts in view on a free spot, his paw over it (spec 2026-11-25-pish-first-steps-design 5)
-	["placing the tour's rack: Tap Place, or an empty spot while it can't go there"] = function()
+	-- the rack's preview now starts in view on a free spot, his paw over it (spec 2026-11-25-pish-first-steps-design 5).
+	-- One line whatever its colour: a new line pops, flashes and chimes, and a preview dragged over the shop flips
+	-- red and green many times a second (final review 2026-11-25)
+	["placing the tour's rack: one Tap Place line, red or green"] = function()
 		local rack = PishTalk.STEPS.buildRack
 		expect.equal(TalkRules.show(rack, #rack.intro + 1, "placing").text, "Tap Place!")
-		expect.equal(TalkRules.show(rack, #rack.intro + 1, "placingMove").text, "Tap an empty spot on the floor, then Place!")
+		expect.equal(rack.now.placingMove, nil, "no line of its own while it's red")
 	end,
 
 	-- the 1377 x 625 laptop window: the card hid most of the $100 button from its bottom spot

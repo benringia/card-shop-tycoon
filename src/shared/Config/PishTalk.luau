@@ -34,9 +34,8 @@ return {
 				trayOpen = "Tap Shop.",
 				shopOpen = "Pick the Small Pack Rack.",
 				-- its preview starts in view on a free spot, his paw over it (spec 2026-11-25-pish-first-steps-design 5);
-				-- red where it can't go: placingMove
+				-- one line red or green (a new line chimes, and a dragged preview flips many times a second)
 				placing = "Tap Place!",
-				placingMove = "Tap an empty spot on the floor, then Place!",
 			},
 		},
 		orderStock = {
