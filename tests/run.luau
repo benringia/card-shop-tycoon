@@ -62,6 +62,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	AmbienceRules = require("./AmbienceRules.spec"),
 	AbyssLayout = require("./AbyssLayout.spec"),
 	ItemRules = require("./ItemRules.spec"),
+	MutationRules = require("./MutationRules.spec"),
 	TownLayout = require("./TownLayout.spec"),
 	PropFit = require("./PropFit.spec"),
 	ShelfStock = require("./ShelfStock.spec"),

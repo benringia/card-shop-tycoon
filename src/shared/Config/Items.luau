@@ -116,6 +116,14 @@ return {
 			source = "Wild and Frontier monsters · 15% (elites 60%) · shop level gifts",
 			use = "Bring it to the Forge in your shop",
 		},
+		-- Weapon mutations (weapons round 4 part 2, Config/Mutations): the mutation you don't keep turns into it
+		mutationEssence = {
+			name = "Mutation Essence",
+			icon = "Potion",
+			description = "Rolls a new mutation on a weapon.",
+			source = "Boss drops of a weapon you have: the mutation you don't keep",
+			use = "At the Forge in your shop, open Mutate",
+		},
 		-- Shop level gifts (Config/Levels GIFTS) and your own stock: opened from the Bag (remote OpenBagPack,
 		-- LevelUpService). `stock`: the shop product it is. A carried box of it goes in the Bag (the To Bag tile, remote
 		-- BagBox, StockService; owner 2026-11-17: "put all the cardpacks inside the box to their inventory ... they will
