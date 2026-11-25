@@ -2506,9 +2506,9 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   steps and lunge never take them more than 3 studs from their server spot (where sword hits are judged), a hit's jolt
   on top. Measured in Studio: an elite Ash Wolf fight flashed 7 times in 15 s and stayed within the cap but for 14
   frames of knock-back.
-- [ ] **Finishing blow** (owner 2026-11-25: picked it from five combat ideas "but no KO popout" (elite ring moves,
+- [x] **Finishing blow** (owner 2026-11-25: picked it from five combat ideas "but no KO popout" (elite ring moves,
   bigger element callouts and keyed flinch clips later; sword crits not picked), felt a throwaway test: "strong feels
-  good, freeze the creature too"; spec `2026-11-25-finishing-blow-design`; numbers `Config/FinishingBlow`, rules
+  good, freeze the creature too"; merged 2026-11-25 on "merge and push"; spec `2026-11-25-finishing-blow-design`; numbers `Config/FinishingBlow`, rules
   `Util/FinishingBlowRules`, client `Util/FinishingBlow`, tests/FinishingBlowRules). Your own fight's last hit, a win,
   while that fight is running on your screen (every member of a group fight gets it; anyone else nearby sees the plain
   knockout): everything holds a beat: the monster (white, swelling), your character's animations (the moving ones at
