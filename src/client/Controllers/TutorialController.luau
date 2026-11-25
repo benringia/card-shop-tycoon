@@ -74,6 +74,7 @@ local BYE_IDLE_SECONDS = 20 -- the goodbye's last line left this long: the first
 -- player's shop (the Pack Rack instead while a box is carried: `carryRack`), or a spot in town
 -- `placed`: a shelf the player has placed (its Config/Shelves id; "trophy": any trophy), the nearest one
 -- `ring`: what the gold ring goes round when it isn't `gui` itself (a whole Shop tile, the paw on its Buy button)
+-- `ghost`: the preview of what the player is placing (his paw over it, no trail)
 type Target = {
 	hud: string?,
 	tray: boolean?,
@@ -83,6 +84,7 @@ type Target = {
 	gui: GuiObject?,
 	ring: GuiObject?,
 	placed: string?,
+	ghost: boolean?,
 }
 
 -- Each lesson (Config/Pish LESSONS) by id. One with a shelf, a product or the trophy is taught step by step
@@ -315,11 +317,11 @@ local function outsideSpot(): Vector3?
 	end
 	outward = outward.Unit
 	local offset = at.Position - floor.Position
-	local inside = Pish.INSIDE
-	if TutorialRules.insideShop(offset:Dot(outward), offset:Dot(outward:Cross(Vector3.yAxis)), floor.Size.X, floor.Size.Z, inside.margin) then
+	local lead = Pish.INSIDE
+	if TutorialRules.insideShop(offset:Dot(outward), offset:Dot(outward:Cross(Vector3.yAxis)), floor.Size.X, floor.Size.Z, lead.margin) then
 		return nil
 	end
-	return floor.Position + outward * (floor.Size.Z / 2 - inside.spot) + Vector3.new(0, inside.height, 0)
+	return floor.Position + outward * (floor.Size.Z / 2 - lead.spot) + Vector3.new(0, lead.height, 0)
 end
 
 -- What the player is at in this step (Config/PishTalk `now` lines) and where Pish points for it; first of all, a
@@ -339,7 +341,8 @@ local function stepSituation(stepId: string): (string, Target)
 		return bagSituation(Pish.GIFT_ITEM, "Open")
 	elseif stepId == "buildRack" then
 		if PlacementController.IsActive() then
-			return "placing", {}
+			-- its preview starts in view; his paw over it (spec 2026-11-25-pish-first-steps-design 5)
+			return if PlacementController.IsValid() then "placing" else "placingMove", { ghost = true }
 		end
 		local shop = inMainGui("BuildMenu")
 		if shop then
@@ -352,9 +355,9 @@ local function stepSituation(stepId: string): (string, Target)
 			return "trayOpen", { hud = "Build" }
 		end
 		-- outside your shop: his paw trail leads you in first
-		local inside = outsideSpot()
-		if inside then
-			return "outside", { spot = inside }
+		local spot = outsideSpot()
+		if spot then
+			return "outside", { spot = spot }
 		end
 		return "default", { hud = "Manage" }
 	elseif stepId == "orderStock" then
@@ -571,6 +574,9 @@ local function partFor(spec: Target?): BasePart?
 	if not spec then
 		return nil
 	end
+	if spec.ghost then
+		return PlacementController.GhostPart()
+	end
 	if spec.spot then
 		return anchorAt(spec.spot)
 	end
@@ -763,9 +769,10 @@ local function updateTalk()
 	end)
 end
 
--- The paw trail from the player to the place, redrawn as they walk
+-- The paw trail from the player to the place, redrawn as they walk (none to a preview: it's right there)
 local function updateTrail()
-	local part = targetPart()
+	local _, spec = focus()
+	local part = if spec and spec.ghost then nil else targetPart()
 	local at = root()
 	if not part or not at then
 		if trailRemover then

@@ -21,6 +21,11 @@ return {
 	FOOTPRINT_TRANSPARENCY = 0.55, -- the cells it covers, drawn on the floor
 	GHOST_LABEL_HEIGHT = 1.5, -- the name label floats this far above the ghost
 	INVALID_TEXT = "Can't place here",
+	-- Where a new shelf's preview starts (spec 2026-11-25-pish-first-steps-design 5; it started under the screen's
+	-- centre: under you, behind the Place buttons on a phone, or off screen from the sidewalk): the free cell nearest
+	-- where the floor shows at these screen spots (shares of the view: left and right of you at half height, then a
+	-- little higher in the middle), within `reach` cells; none: the free cell nearest you
+	START = { anchors = { { x = 0.3, y = 0.5 }, { x = 0.7, y = 0.5 }, { x = 0.5, y = 0.4 } }, reach = 3 },
 
 	-- Your own shelves and order computer (ShelfInfoController): point at one (or tap it) and it lights up, with a
 	-- tooltip saying what it holds; an empty

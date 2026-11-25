@@ -38,4 +38,20 @@ return {
 		expect.equal(cells[1].x, 10, "clamped x")
 		expect.equal(cells[1].z, 0, "clamped z")
 	end,
+
+	-- a new shelf's preview starts on the free cell nearest a spot in view (spec 2026-11-25-pish-first-steps-design 5)
+	["the nearest free cell within reach"] = function()
+		local onlyOne = function(x: number, z: number): boolean
+			return x == 7 and z == 5
+		end
+		local found = CellSearch.nearest(5, 5, 10, 10, 3, onlyOne)
+		expect.equal(found and found.x, 7)
+		expect.equal(found and found.z, 5)
+		expect.equal(CellSearch.nearest(5, 5, 10, 10, 1, onlyOne), nil, "nothing within reach")
+		local any = CellSearch.nearest(-3, 20, 10, 10, 2, function(): boolean
+			return true
+		end)
+		expect.equal(any and any.x, 0, "start clamped into range")
+		expect.equal(any and any.z, 10)
+	end,
 }

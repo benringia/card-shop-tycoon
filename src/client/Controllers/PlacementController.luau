@@ -13,6 +13,8 @@ local UserInputService = game:GetService("UserInputService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local PlacementConfig = require(Config:WaitForChild("Placement"))
+local PlotConfig = require(Config:WaitForChild("Plots"))
+local CellSearch = require(Shared:WaitForChild("Util"):WaitForChild("CellSearch"))
 local PlacementGrid = require(Shared:WaitForChild("Util"):WaitForChild("PlacementGrid"))
 local Props = require(Shared:WaitForChild("Util"):WaitForChild("Props"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -44,6 +46,8 @@ type Session = {
 }
 
 local RAY_LENGTH = 500
+local CELLS_X = PlotConfig.WIDTH // PlacementConfig.GRID_SIZE
+local CELLS_Z = PlotConfig.DEPTH // PlacementConfig.GRID_SIZE
 
 local player = Players.LocalPlayer
 
@@ -272,6 +276,43 @@ local function confirm()
 	PlacementController.Cancel()
 end
 
+-- A new shelf's first cell (Config/Placement START): the free cell nearest where the floor shows at a screen spot beside
+-- you, else the free cell nearest you; nil keeps the plot's corner
+local function startCell(current: Session): (number?, number?)
+	local w, d = PlacementGrid.getFootprint(current.size, current.rotation)
+	local maxX, maxZ = CELLS_X - w, CELLS_Z - d
+	local function free(x: number, z: number): boolean
+		return PlacementGrid.isFree(current.blocked, current.size, x, z, current.rotation)
+	end
+	local camera = workspace.CurrentCamera
+	if camera then
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Include
+		params.FilterDescendantsInstances = { current.floor }
+		for _, anchor in PlacementConfig.START.anchors do
+			local ray = camera:ViewportPointToRay(camera.ViewportSize.X * anchor.x, camera.ViewportSize.Y * anchor.y)
+			local hit = workspace:Raycast(ray.Origin, ray.Direction * RAY_LENGTH, params)
+			if hit then
+				local gx, gz = PlacementGrid.worldToCell(current.floor.CFrame, hit.Position, w, d)
+				local cell = CellSearch.nearest(gx, gz, maxX, maxZ, PlacementConfig.START.reach, free)
+				if cell then
+					return cell.x, cell.z
+				end
+			end
+		end
+	end
+	local character = player.Character
+	local root = if character then character:FindFirstChild("HumanoidRootPart") :: BasePart? else nil
+	if root then
+		local gx, gz = PlacementGrid.worldToCell(current.floor.CFrame, root.Position, w, d)
+		local cell = CellSearch.nearest(gx, gz, maxX, maxZ, math.huge, free)
+		if cell then
+			return cell.x, cell.z
+		end
+	end
+	return nil, nil
+end
+
 export type BeginOptions = {
 	kind: PlacementKind,
 	id: string,
@@ -294,13 +335,14 @@ function PlacementController.Begin(size: Vector3, opts: BeginOptions)
 		return
 	end
 
-	local camera = workspace.CurrentCamera
-	-- New shelves start under the screen centre; moved things start where they are
-	pointer = if opts.gridX == nil and camera then camera.ViewportSize / 2 else nil
+	-- New shelves start in view beside you (startCell), moved things where they are; it stays put until a tap or a mouse
+	-- move (spec 2026-11-25-pish-first-steps-design 5: under the screen's centre it was under you, behind the Place
+	-- buttons on a phone, or off screen from the sidewalk)
+	pointer = nil
 	local ignoreId = if opts.kind == "NewShelf" then nil else opts.id
 
 	local ghost, box, tinted, status = makeGhost(size, opts)
-	session = {
+	local current: Session = {
 		kind = opts.kind,
 		id = opts.id,
 		size = size,
@@ -316,6 +358,13 @@ function PlacementController.Begin(size: Vector3, opts: BeginOptions)
 		status = status,
 		shown = nil,
 	}
+	if opts.gridX == nil then
+		local x, z = startCell(current)
+		if x and z then
+			current.gridX, current.gridZ = x, z
+		end
+	end
+	session = current
 	bar.Visible = true
 	ProximityPromptService.Enabled = false -- shop prompts would cover the ghost
 	update(0)
@@ -324,6 +373,16 @@ end
 
 function PlacementController.IsActive(): boolean
 	return session ~= nil
+end
+
+-- The preview's centre part while placing (Pish's paw hangs over it in his tour); nil when not placing
+function PlacementController.GhostPart(): BasePart?
+	return if session then session.box else nil
+end
+
+-- Whether the preview stands where it can go
+function PlacementController.IsValid(): boolean
+	return session ~= nil and session.valid
 end
 
 local function buildBar(parent: Instance): Frame

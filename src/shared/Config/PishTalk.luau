@@ -33,7 +33,10 @@ return {
 				default = "Shops need shelves! Tap the Phone.",
 				trayOpen = "Tap Shop.",
 				shopOpen = "Pick the Small Pack Rack.",
-				placing = "Put it on the floor and tap to place!",
+				-- its preview starts in view on a free spot, his paw over it (spec 2026-11-25-pish-first-steps-design 5);
+				-- red where it can't go: placingMove
+				placing = "Tap Place!",
+				placingMove = "Tap an empty spot on the floor, then Place!",
 			},
 		},
 		orderStock = {

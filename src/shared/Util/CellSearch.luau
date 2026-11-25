@@ -29,4 +29,19 @@ function CellSearch.byDistance(startX: number, startZ: number, maxX: number, max
 	return cells
 end
 
+-- The nearest cell to (startX, startZ) (clamped into range) that `free` accepts, no further than `reach` cells away;
+-- nil when none is (a new shelf's start spot: spec 2026-11-25-pish-first-steps-design 5)
+function CellSearch.nearest(startX: number, startZ: number, maxX: number, maxZ: number, reach: number, free: (x: number, z: number) -> boolean): Cell?
+	local sx, sz = math.clamp(startX, 0, maxX), math.clamp(startZ, 0, maxZ)
+	for _, cell in CellSearch.byDistance(sx, sz, maxX, maxZ) do
+		if (cell.x - sx) ^ 2 + (cell.z - sz) ^ 2 > reach * reach then
+			return nil
+		end
+		if free(cell.x, cell.z) then
+			return cell
+		end
+	end
+	return nil
+end
+
 return CellSearch
