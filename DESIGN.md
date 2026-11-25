@@ -3345,13 +3345,13 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
   monsters, 60% from elites, shown in the fight toast).
 - **In fights** (`BattleSim.swordHit`'s weapon, `WeaponService.HitInfo`): sword damage = the creature's ATK x the cut x
   the weapon's Power; the weapon's element goes on the wheel (x1.5 strong / x0.75 weak; the Prism Blade always strong),
-  a bond with the creature fighting (same element; the Prism Blade any) adds x1.15 damage and x1.5 super meter from
-  sword hits; perks: the Verdant Blade heals the creature 2% every 4th hit (a green "+N"), the Sunforged Blade burns
+  a bond with the creature fighting (same element; no weapon bonds with every creature since round 4) adds x1.15
+  damage and x1.5 super meter from sword hits; perks: the Verdant Blade heals the creature 2% every 4th hit (a green "+N"), the Sunforged Blade burns
   3% of the creature's ATK a second for 3 s (refreshed, never stacked; its own clock beside Inferno's). Grade S perks
   are x1.2.
 - **Supers need a weapon** (owner 2026-11-19: "only epics and legendary super skills locked until you have same element
   weapon", "weapon strength: OK"): an Epic or Legendary creature's super fires only while you hold a weapon of its
-  element (sword, spear or scythe; the Prism Blade unlocks every one; the Steel Sword none), and it fires stronger with
+  element (sword, spear or scythe; no exceptions since round 4, the Prism Blade included; the Steel Sword none), and it fires stronger with
   a stronger weapon: x(1 + 0.5 x (the weapon's Power - 1)) on its kind's strength numbers (`Weapons.SUPER`,
   `Combat.SUPER_SCALES`: Inferno's burn, Tidal Shield's ward, Stampede's, Supernova's, Devour's and Rift Step's hits,
   Eclipse's seconds, Tidal Blessing's heal and revive; stuns and timing stay), so a new Forge Sword x1.08, one at +10
@@ -3366,8 +3366,9 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
   (`WEAPON=match:0:C`) 82 / 100 / 93 / 82%; at +10 S 98 / 100 / 100 / 100%, the Hydra fight 132 s (Steel 185 s:
   never halved). `FREE_SUPERS=1` runs the old rule.
 - **Power** = rarity base x grade (C 1, B 1.05, A 1.1, S 1.15) x (1 + 0.05 a level, +10 = x1.5). Since 2026-11-21
-  the bases are Common 1.05, Rare 1.1, Very Rare 1.22, Epic 1.39, Legendary 1.56 (Prism Blade 0.87, Titan's Lance
-  1.04, Rift Reaper 1.21): the Power moved into the upgrades, +10 as it was (the round's note below). Before: 0.03 a
+  the bases are Common 1.05, Rare 1.1, Very Rare 1.22, Epic 1.39, Legendary 1.56 (Prism Blade 1.0 since round 4,
+  0.87 before; Titan's Lance 1.04, Rift Reaper 1.21): the Power moved into the upgrades, +10 as it was (the round's
+  note below). Players read it as **Attack** (round 4, below), the multiplier x 100. Before: 0.03 a
   level, +10 = x1.3, bases tuned
   2026-11-06 against the spec's limits (no weapon lets a 0.8x party win more than 85% fighting well on its tier
   boss; +10 Grade S never more than halves a 1x fight): Common 1.15, Rare 1.25, Very Rare 1.4, Epic 1.6, Legendary
@@ -3384,14 +3385,15 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
   +0); the chosen one on the right as a picture recipe (owner 2026-11-20: "redesign it like the condenser to be
   easily understood ... do the same with forge"; client `Util/Recipe`, words in `Util/WeaponText`): one sentence
   (`WeaponText.say`: "Use 20 Wild Ore and $1,500 to make the Fire Forge Sword!", "Use 5 Wild Ore and $600 to make it
-  +4: more Power!", "Use 10 Wild Ore and $750 to roll a new grade. You keep the better one!"; more than two kinds of
+  +4: more Attack!", "Use 10 Wild Ore and $750 to roll a new grade. You keep the better one!"; more than two kinds of
   material are counted, "these 4 materials"; short of something: "Get 6 more Warden Heartwood to make the Verdant
   Blade.", "Save up $500 more to make it +4."); a Forge weapon's element buttons (48 px; the picked one bigger, the
   owned ones greyed); then a spot for each material with what you have of what it takes ("9 / 15") and one for the
   cash ("$2,000"), red-edged when short (`WeaponText.spots`; one row up to three, then two rows, `spotColumns`), the
   kit's blue arrow, and the weapon's card (tap it for its stats: the weapon card view, `WeaponDetailController`,
   which sinks taps so none reach the window under it) with a gold pill under it saying what it comes out with
-  (`WeaponText.outcome`: "Grade C to S", a beating "+4", "Grade B"); an upgrade's green "+0.04 Power" chip and a small
+  (`WeaponText.outcome`: "Grade C to S", a beating "+4", "Grade B"); an upgrade's green "+4 Attack" chip ("Attack 259"
+  at +10) and a small
   line ("Its aura appears!", "A new roll, C to S. It never gets worse!"). A Grade S reforge and a +10 weapon show the
   card alone. One pinned button (`WeaponText.recipeButton`) says what it does over how long it takes ("Forge it!",
   "Make it +4!", "Roll a new grade!" over "takes 2 minutes") or what's missing first over what you have ("Opens at
@@ -3404,17 +3406,13 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
 - **The Armory** (the binder's fourth set, `Collection.SETS`; cover `Config/BinderCovers` Armory): every weapon in
   catalogue order as a card in the creature cards' shape (`Util/WeaponFace` on `CardFace.parts`). Card art (owner's
   picks 2026-11-09, Armory UI): owned ones show their portrait over the Armory cover painting, dimmed, with soft rays
-  and a glow in the weapon's colour (1B), Power, grade and +level, "Owned" / "Equipped"; ones you don't have the same
+  and a glow in the weapon's colour (1B), Attack ("Attack 151"), grade and +level, "Owned" / "Equipped"; ones you don't have the same
   painting under a slate veil, the portrait as a black shadow under a gold lock (2B), where they come from and the
   progress toward them ("Forge: Wild Ore 15/20"); unbuilt ones "Coming soon" (`Config/WeaponLooks` CARD). Tapping a
-  card opens its card view (`WeaponDetailController`, owner's pick 3A: the creature card view's twin): the card on
-  the left (where it came from under it), rarity / family / element pills, then for yours a gold "Your weapon" box
-  (Power with how it compares to the one you hold, "+0.15 vs Rift Reaper"; grade badge; level +n / 10 with a bar),
-  for one you don't have "How to get it" (the boss and where it lives, "Beat the Rift Devourer in the Frontier: it
-  can drop.", then its forge materials and cash as bars); its sword skill (icon, name, what it does), then its perk
-  and its bond side by side (a weapon you don't have: its Power range "x1.40 to x2.09" too), icons by
-  `WeaponLookRules.familyIcon` / `perkIcon`. Yours get a bar under the facts: Equip and the Forge hint (words:
-  `WeaponText.versus`, `powerRange`, `howToGet`, `progress`, `skill`, `bond`; tests/WeaponText, WeaponLookRules).
+  card opens its card view (`WeaponDetailController`, owner's pick 3A: the creature card view's twin; its right side
+  layout A since round 4, below): the card on the left (where it came from under it), then the right side. Yours get a
+  bar under it: Equip and the Forge hint (words: `WeaponText.versus`, `powerRange`, `howToGet`, `progress`, `skill`,
+  `rows`; tests/WeaponText, WeaponLookRules).
 - **The Boss Board**: each boss with a weapon shows its card under the drops, "Drop chance now: 1.0%" (with the
   pity) and its material's chance.
 - **Models** (`assets/weapons`, docs/weapons.md): Figma concepts picked by the owner, Meshy image-to-3D, cleaned in
@@ -3757,7 +3755,8 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
   switch rolls the dial: each weapon slides along the track from where it was, the new one in hand slides into the
   medallion from its spot, one that wasn't showing fades in (`WeaponSwitch.roll`, `arcPoint`). The name in its rarity's
   colour with its line ("+4 · Nature", `WeaponText.switchLine`) shows left of the track for 1.5 s after a switch only
-  (owner: "only briefly"); the stats tip under a mouse on the medallion. Phones: the medallion alone (64 px, "2/6" on
+  (owner: "only briefly"); the stats tip under a mouse on the medallion (its foot level with the medallion's, growing
+  upward, so it never runs off the bottom of a computer's screen). Phones: the medallion alone (64 px, "2/6" on
   its corner, tap for the next, swipe back). Shown with two weapons or more,
   never over a window or while placing (`WeaponSwitchController`, sizes in `Config/HudLayout` WEAPON_SWITCH). In a fight a
   switch is allowed but costs `Weapons.SWAP_SECONDS` (1 s) with no cut or skill (the dodge still works), the combo
@@ -3769,6 +3768,40 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
   (`UiLayout.weaponSwitch`, Lune-tested on phones, tablets and desktops) and never scales its arrows under 48 px. Quick
   steps send only the weapon they land on (the server drops equips inside `Weapons.EQUIP_COOLDOWN`, so the chip waits
   the cooldown plus `EQUIP_SEND_SLACK`: `WeaponSwitch.sendAt`).
+- **Weapons round 4** (owner 2026-11-25: "Prism blade unlocks all the Supers? ... whats the point of other weapon?",
+  "later on the game there will be a new map and new weapons", "which one is future proof?"; spec
+  `2026-11-25-weapons-round4-design.md`, plan `2026-11-25-weapons-round4-part1.md`; part 1 here, mutations and the
+  boss pass next). **Rules for every world:** (1) a creature's super needs a weapon of its element, no exceptions;
+  (2) no weapon bonds with every creature; (3) "always strong" is the Prism Blade's alone; (4) each world's weapons
+  start above the last world's top Attack (the new map's weapons come from difficult quests, owner).
+  - **Attack** (owner: "better numbers for kids ... rather than x1.30"): a weapon's Power shown as a whole number, x 100
+    rounded, never truncated (`WeaponText.attack`): the Steel Sword 100, a +5 Grade A Verdant Blade 151, a +10 Grade S
+    Prism Blade 259. On the card ("Attack 151"), the weapon window, the Forge ("+4 Attack", "Attack 259" maxed), the
+    versus line ("+79 vs Steel Sword", "Same Attack as ..."), an unowned weapon's range ("Attack 121 to 209"), the
+    character window's Attack tile and the weapon switch's tip; the Forge's words say "more Attack". Sims, saves and
+    rules keep the multiplier.
+  - **The Prism Blade** keeps always strong (its hits count as the element strong against the foe) and loses every
+    super and the bond with every creature (`WeaponRules.superUnlocked`, `bond`); its own Power 0.87 -> 1.0, so its
+    sword hits stay (0.87 x 1.5 x 1.15 = 1.50 before, 1.0 x 1.5 now) and its shown Attack is Power x 1.5. Its tip on
+    the weapon switch says "Element: Always strong against every element" in gold and "Supers: Use your creature's
+    element weapon"; its dial line "+10 · Always strong". Boss sim (`WEAPON=prismBlade:10:S`, 200 fights, the Hydra
+    after its rooms, fighting well), the old rule -> the new: 0.8x 69% -> 59%, 1x 100% -> 100% (121 s -> 116 s),
+    best+2 59% -> 20% (its supers no longer fire), avg x1 100% -> 93%, maxed+2 20% -> 20%: inside the limits (0.8x
+    under 85%; a 1x fight never halved, the Steel Sword's 185 s). Part 3 retunes the bosses with mutations.
+  - **The weapon window, layout A** (owner's pick of two mockups in the real window, "attack, mutation and super has
+    the same icon. make them look different"): the right side is the pills (rarity, family, the element's plain name;
+    the Prism Blade's lavender "Always strong"), then for a weapon you have one gold box 70 px (fill 255,248,228, gold
+    edge): the Power fist, "ATTACK" over the number (36 px) and, unless it's the one in your hand, the versus line
+    under it in green or red; the grade on its round badge with "Grade"; "Level +5 / 10" over a gold bar (the Steel
+    Sword: the Attack alone). For one you don't have, "How to get it" as before. Then one row each (48 px, 5 px
+    apart: an icon 30 px, a bold title 15 px, one short line 12 px; `WeaponText.rows`): an unowned weapon's Attack
+    range ("Attack 110 to 190", "Grade C at +0 to Grade S at +10"); the skill (its own icon and name, its short line:
+    `CombatHud.SKILLS` / `BUTTONS.skill` `short`); the perk ("Heals your creature: Every 4th hit heals it 2%.",
+    "Burns the foe", "Poisons the foe", "Erupts", "Chills the foe", "Chain lightning", "Finishes foes"; icons
+    `WeaponLooks.ICONS.perk`); the bond (the element's icon, "Best with Nature creatures", "Unlocks their supers. Hits
+    +15%, supers fill 50% faster."); the Prism Blade's instead: "ALWAYS STRONG" on a gold row (Elements icon, "Every
+    hit is strong (1.5x) against any foe.") and "Supers" (Lock icon, "Doesn't unlock supers: use your creature's
+    element weapon."). Distinct icons: Attack the Power fist, Supers the Lock, mutations (part 2) their group's.
 
 ---
 
@@ -6390,6 +6423,9 @@ boss models; the ranch and Heroic tiers come after those.
   `2026-11-09-weapons-round3-scythes-design.md`): models, moveset, Reaping Cyclone, perks, portraits, balance (5.11
   "Scythes"), the Rift Reaper's Thousand Cuts with the Grim Reaper (5.11 "Thousand Cuts"), the forward-facing hold;
   owner approved and merged 2026-11-09. The Forge machine's own model: later (owner 2026-11-09).
+- [ ] Weapons round 4 (5.11 "Weapons round 4", spec `2026-11-25-weapons-round4-design.md`): part 1 (Attack numbers,
+  the weapon window's layout A, the Prism Blade's rule) built on branch `weapons-round4`, waiting for the owner's
+  check; part 2 mutations and part 3 the boss pass next.
 - [x] Shop round 2026-11-17 (owner approved): the Glass Showcase list's border, shop levels 4x faster (then 6x: Lv 20
   at about 6,000 XP, $2 x level), Roblox's Robux glyph on every price (`Util/RobuxPrice`), a new case card waits for its price
   (`Util/ListingHold`), To Bag with its own icon (pick B) and Pish's tip bubble (`Util/TileTip`, schema v32 `tips`),

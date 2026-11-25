@@ -201,10 +201,11 @@ local function showTip()
 		line.AutomaticSize = Enum.AutomaticSize.Y
 		line.TextWrapped = true
 	end
-	-- left of the dial, its middle level with the medallion
+	-- left of the dial, its foot level with the medallion's, growing upward (the desktop HUD put the dial at the
+	-- screen's foot, where a tip centred on it ran off the bottom)
 	local at = holder.AbsolutePosition
-	local middle = if compact then LOOK.compactChip / 2 else CENTER.Y
-	tip.Position = UDim2.fromOffset(at.X - LOOK.gap, at.Y + middle * holderScale.Scale)
+	local foot = if compact then LOOK.compactChip else CENTER.Y + LOOK.chip / 2
+	tip.Position = UDim2.fromOffset(at.X - LOOK.gap, at.Y + foot * holderScale.Scale)
 	tip.Visible = true
 end
 
@@ -575,7 +576,7 @@ local function build()
 	-- the tip: a small panel left of the dial while a mouse is on the medallion
 	tip = Instance.new("Frame")
 	tip.Name = "WeaponTip"
-	tip.AnchorPoint = Vector2.new(1, 0.5)
+	tip.AnchorPoint = Vector2.new(1, 1)
 	tip.Size = UDim2.fromOffset(220, 0)
 	tip.AutomaticSize = Enum.AutomaticSize.Y
 	tip.BackgroundColor3 = UIStyle.PANEL
