@@ -6424,8 +6424,8 @@ boss models; the ranch and Heroic tiers come after those.
   "Scythes"), the Rift Reaper's Thousand Cuts with the Grim Reaper (5.11 "Thousand Cuts"), the forward-facing hold;
   owner approved and merged 2026-11-09. The Forge machine's own model: later (owner 2026-11-09).
 - [ ] Weapons round 4 (5.11 "Weapons round 4", spec `2026-11-25-weapons-round4-design.md`): part 1 (Attack numbers,
-  the weapon window's layout A, the Prism Blade's rule) built on branch `weapons-round4`, waiting for the owner's
-  check; part 2 mutations and part 3 the boss pass next.
+  the weapon window's layout A, the Prism Blade's rule) owner approved and merged 2026-11-26; part 2 mutations and
+  part 3 the boss pass next.
 - [x] Shop round 2026-11-17 (owner approved): the Glass Showcase list's border, shop levels 4x faster (then 6x: Lv 20
   at about 6,000 XP, $2 x level), Roblox's Robux glyph on every price (`Util/RobuxPrice`), a new case card waits for its price
   (`Util/ListingHold`), To Bag with its own icon (pick B) and Pish's tip bubble (`Util/TileTip`, schema v32 `tips`),
