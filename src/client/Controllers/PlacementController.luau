@@ -375,9 +375,11 @@ function PlacementController.IsActive(): boolean
 	return session ~= nil
 end
 
--- The preview's centre part while placing (Pish's paw hangs over it in his tour); nil when not placing
-function PlacementController.GhostPart(): BasePart?
-	return if session then session.box else nil
+-- The preview's footprint on the floor while placing; nil when not placing. Pish's paw sits on it in his tour: over the
+-- preview's top it hid behind his talk card on a phone (Studio check 2026-11-25)
+function PlacementController.GhostFootprint(): BasePart?
+	local footprint = if session then session.ghost:FindFirstChild("Footprint") else nil
+	return if footprint and footprint:IsA("BasePart") then footprint else nil
 end
 
 local function buildBar(parent: Instance): Frame

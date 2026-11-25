@@ -576,7 +576,7 @@ local function partFor(spec: Target?): BasePart?
 		return nil
 	end
 	if spec.ghost then
-		return PlacementController.GhostPart()
+		return PlacementController.GhostFootprint()
 	end
 	if spec.spot then
 		return anchorAt(spec.spot)

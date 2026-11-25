@@ -23,9 +23,11 @@ return {
 	INVALID_TEXT = "Can't place here",
 	-- Where a new shelf's preview starts (spec 2026-11-25-pish-first-steps-design 5; it started under the screen's
 	-- centre: under you, behind the Place buttons on a phone, or off screen from the sidewalk): the free cell nearest
-	-- where the floor shows at these screen spots (shares of the view: left and right of you at half height, then a
-	-- little higher in the middle), within `reach` cells; none: the free cell nearest you
-	START = { anchors = { { x = 0.3, y = 0.5 }, { x = 0.7, y = 0.5 }, { x = 0.5, y = 0.4 } }, reach = 3 },
+	-- where the floor shows at these screen spots (shares of the view: left and right of you just above a phone's
+	-- Rotate / Place / Cancel bar, then higher in the middle), within `reach` cells; none: the free cell nearest you.
+	-- At half height a phone's camera reached 30 studs into the shop and the preview hid under Pish's card (Studio
+	-- check 2026-11-25: 0.6 is about 17 studs)
+	START = { anchors = { { x = 0.3, y = 0.6 }, { x = 0.7, y = 0.6 }, { x = 0.5, y = 0.5 } }, reach = 3 },
 
 	-- Your own shelves and order computer (ShelfInfoController): point at one (or tap it) and it lights up, with a
 	-- tooltip saying what it holds; an empty

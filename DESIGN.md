@@ -642,8 +642,9 @@ is over UI (`UIKit.pointerBlocked`).
   rows and the door paths are blockers with `PlacementMargin` 0 (4.1 "Shop rooms"); a shelf a load finds on one moves
   to the nearest free cell.
 - **Where a new shelf's preview starts** (2026-11-25, spec `2026-11-25-pish-first-steps-design` 5): on the free cell
-  nearest where the shop floor shows at a screen spot left or right of you at half height, then a little higher in the
-  middle (`Placement.START`, `CellSearch.nearest`, within 3 cells); none in view: the free cell nearest you. It stays
+  nearest where the shop floor shows at a screen spot left or right of you at 60% down the screen (just above a phone's
+  Rotate / Place / Cancel bar; at half height a phone's camera reached 30 studs into the shop), then at half height in
+  the middle (`Placement.START`, `CellSearch.nearest`, within 3 cells); none in view: the free cell nearest you. It stays
   there until a tap on the floor or a mouse move. It used to start under the screen's centre: under you, behind the
   Rotate / Place / Cancel bar on a phone, and from the sidewalk (no floor under the centre) at the floor's corner cell,
   off screen. Moving a placed thing still starts where it stands.
@@ -3994,7 +3995,8 @@ All numbers in `Config/Pish`.
   Phone." / "Tap Bag."); a computer keeps "Open your Bag!". **"Let's go inside!"**: you wake at your door on the
   sidewalk, so the rack step, with nothing open and not placing, first leads a player outside the shop (`Pish.INSIDE`:
   inside is 3 studs past the front edge, `TutorialRules.insideShop`) along his paw trail to a spot 12 studs in; no new
-  step, so the funnel stays comparable. Placing the rack his paw hangs over its preview (which starts in view, 4.3):
+  step, so the funnel stays comparable. Placing the rack his paw sits on its preview's green footprint (which starts in
+  view, 4.3; over the preview's top it hid behind his card on a phone, `PlacementController.GhostFootprint`):
   "Tap Place!", one line whether it's green or red (a new line pops and chimes, and a dragged preview flips colour
   many times a second; red, the preview's own "Can't place here" and the greyed Place button say it). Cues: gold paw prints to the place along the walking route (Roblox's pathfinding round walls and shops, about one
   every 3 studs up to 48, `Util/TrailRules`; owner 2026-11-16: "chikin paws are passes through things"; a straight line

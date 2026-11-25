@@ -50,7 +50,8 @@ Goal: every first-visit step can be done by tapping what Pish points at, on a ph
    numbers stay comparable.
 5. **A new shelf's preview starts in view beside you** (every new shelf, not only the tour's: the same problem hits
    anyone placing from a phone). `PlacementController.Begin` casts from screen points left and right of centre at
-   half height (`Placement.START.anchors`, tried in order) to the shop floor and takes the nearest free cell within
+   60% down (Studio check: half height reached 30 studs in; `Placement.START.anchors`, tried in order; Pish's paw on
+   the preview's footprint, since over its top it hid behind his card) to the shop floor and takes the nearest free cell within
    `START.reach` cells (`CellSearch.nearest`); none: the free cell nearest you; then today's corner. The preview
    stays there until you tap the floor or move the mouse. In the tour Pish's paw hangs over it with "Tap Place!"
    (no trail), one line red or green (final review: a new line chimes, and a dragged preview flips colour many
