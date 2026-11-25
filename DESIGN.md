@@ -2524,6 +2524,19 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   the sword's zoom (`SwordController.PunchZoom`: the latest zoom owns the view from the same base, a finisher cut's
   hang included) and is skipped while a skill's or a super's camera moment owns the view. The server keeps a beaten
   wild monster 2.7 s (was 2.6) so the longer knockout (2.59 s) still ends 0.1 s before it goes.
+- [ ] **Element callouts** (owner 2026-11-25: picked D of the combat ideas, then "A" of three mockups in real fight
+  frames (not card badges with a switch tip, not a start banner), then "bigger" strong hits; spec
+  `2026-11-25-element-callouts-design`; rules `Util/MatchupRules`, `DamagePop.burstRays`; client `Util/MatchupChip`,
+  `Util/StrongBurst`; looks `Config/CombatHud` MATCHUP, `Config/AttackFx` NUMBERS.STRONG_BURST; tests/MatchupRules,
+  tests/DamagePop). Why: matchups are a kid's biggest lever and a fight only said "-N STRONG!"; Bramblequake (Nature)
+  lost to Fire twice while the mockups were made. Your creature's status row (the perk chip, a computer's Shift key)
+  gets a matchup chip, your creature's element against the monster's the way your hits land: weak, a soft red pill with
+  the foe element's icon, "Weak vs Fire" and a red "0.75x" tag; strong, soft green, "Strong vs Water", a green "1.5x";
+  nothing in an even fight. Electric and Dark beat each other, so both show green. It pops in like the perk chip when
+  it shows or changes (a swap, a boss changing element); the arena has none. A strong hit's "-N STRONG!" pops at a
+  crit's size (a 2.1 peak, was 1.75) over a gold burst (12 rays long and short in turn, fading to their tips, over a
+  see-through disc) that scales and fades with it; a boss's hit on your creature stays the biggest (2.2), and a Dungeon
+  pylon's hit keeps the old pop (style "pylon").
 - **The Frost Tyrant's ice** (the owner 2026-11-10, his picks: shield look A, spikes on you and one pet): his ring is
   ice spikes (`playerAttacks.shape` "spikes", `pets` 1, `petFreeze` 2, `petHit` 0.5): a giant ice spike forms 45 studs
   over each player's ring and over one random pet's (the pet can't step out), hangs glowing, drops the last 0.75 s
@@ -5226,6 +5239,8 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │       ├── FightToast.luau         # a normal monster fight's end: a small toast with cash and XP
     │       ├── MonsterKO.luau          # a beaten monster's knockout: the hit beat, the tumble and bounces, dizzy stars, the poof, your coins
     │       ├── FinishingBlow.luau      # your own fight's last hit: everything holds a beat, the camera punch, the thud, a boss's white flash
+    │       ├── MatchupChip.luau        # the matchup chip in your creature's status row: weak red, strong green, none when even
+    │       ├── StrongBurst.luau        # the gold burst behind a strong hit's number, popping and fading with it
     │       ├── CardLoot.luau           # a dropped card under its loot beam: lands, floats, picked up or comes to you, flies into Cards
     │       ├── FightFx.luau            # fight events into attack pictures: charges, element attacks landing with the hit
     │       ├── ElementFx.luau          # the pieces of fight effects (textured light): charge glow, comet, burst, bolt, slash, eruption, pillar, sound
@@ -5417,6 +5432,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── FightMotion.luau   # a creature's moving about in a fight, its motion clock (pure, Lune-tested)
             ├── HitFeel.luau       # a monster's hit reaction and its curve, the clip freeze, a wild monster's lunge, steps and drift cap (pure, Lune-tested)
             ├── FinishingBlowRules.luau # whose last hit gets the finishing blow, a knockout's beat, launch and kick with it, its length (pure, Lune-tested)
+            ├── MatchupRules.luau  # the matchup chip a fight shows: words, strength tag, colour, none when even (pure, Lune-tested)
             ├── MonsterMoves.luau  # which attack clip a boss or monster plays for each fight event, one move at a time (pure, Lune-tested)
             ├── FightFxRules.luau  # the fight effects' budget and each element's attack kind (pure, Lune-tested)
             ├── FxToneRules.luau   # how bright the scene is and what that does to an effect (pure, Lune-tested)
