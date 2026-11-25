@@ -2489,6 +2489,22 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   Crab a pincer snap (splash, two slashes), Cave Bat a dive (claw slashes, dark burst), Spark Beetle a horn charge
   (a bolt from its pincers), Ash Wolf a lunging bite (fang slashes, embers), Magma Golem a ground punch (fiery burst,
   rock dust, a ground ring).
+- [ ] **Hit feel** (owner 2026-11-25: "the hits feel weak and monsters just stand there"; picked "stay near their spot
+  but feel alive", felt a throwaway test: "strong feels good", "stepping feels good now"; spec
+  `2026-11-25-hit-feel-design`; numbers `Config/HitFeel`, rules `Util/HitFeel`, tests/HitFeel). Every hit on a monster
+  reacts (`MonsterController.React`): your and your group's sword hits, every creature attack landing (each combo hit,
+  the finishing one big) and supers (big). It flashes white (one reused Highlight per monster, fill 0.05 fading over
+  0.2 s; the sword's old flash was 0.35 for 0.12 s and creature hits showed nothing), jolts 1.1 studs away from the
+  hitter and leans back 15 degrees (out in 0.05 s, back over 0.32 s), pops to 1.08 of its size, and its own clip
+  freezes 0.07 s; a big hit (your finisher, the dash slash, a creature's finishing hit, a super) knocks 2.6 studs,
+  leans 1.4 times as far, comes back 1.6 times as slow and freezes 1.5 times as long. A boss takes 0.35 of the jolt and
+  never pops. Your sword hits shake the camera 2.5 times as hard (`SwordFx.SHAKE` cut 0.3, skill 0.75 studs). Wild
+  monsters (valley and Frontier, not bosses or the Dungeon's packs, which keep theirs) step round their spot between
+  attacks like the packs, calmly (a step every 1.6 to 3.2 s at 4 studs a second within 2.2 studs, turning only 30% so
+  they keep facing the fight; the test's quicker steps were "a bit twitchy") and lunge 2.6 studs into each strike; their
+  steps and lunge never take them more than 3 studs from their server spot (where sword hits are judged), a hit's jolt
+  on top. Measured in Studio: an elite Ash Wolf fight flashed 7 times in 15 s and stayed within the cap but for 14
+  frames of knock-back.
 - **The Frost Tyrant's ice** (the owner 2026-11-10, his picks: shield look A, spikes on you and one pet): his ring is
   ice spikes (`playerAttacks.shape` "spikes", `pets` 1, `petFreeze` 2, `petHit` 0.5): a giant ice spike forms 45 studs
   over each player's ring and over one random pet's (the pet can't step out), hangs glowing, drops the last 0.75 s
@@ -5216,6 +5232,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
         │   ├── Bulk.luau       # the Bulk Bin: handful size, cards kept, who asks for bulk, the crate's look (plain data)
         │   ├── Recycler.luau   # the Recycler: its recipes, what a card keeps, its words, the machine's look (plain data)
         │   ├── Placement.luau  # grid, placement rules
+        │   ├── HitFeel.luau    # a monster's reaction to a hit, a wild monster's steps, lunge and drift cap (plain data)
         │   ├── Pricing.luau    # price limits, customer buy bands
         │   ├── ProductPictures.luau # the menus' pack / deck box pictures by look, their fit, the fallback icons
         │   ├── Customers.luau  # NPC spawn, patience, bubbles
@@ -5376,6 +5393,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── SuperFxRules.luau # a super's grade, cinematic beats and camera framing (pure, Lune-tested)
             ├── AttackTiming.luau  # when an attack effect releases and lands, charge expiry, combo hit times (pure, Lune-tested)
             ├── FightMotion.luau   # a creature's moving about in a fight, its motion clock (pure, Lune-tested)
+            ├── HitFeel.luau       # a monster's hit reaction and its curve, the clip freeze, a wild monster's lunge, steps and drift cap (pure, Lune-tested)
             ├── MonsterMoves.luau  # which attack clip a boss or monster plays for each fight event, one move at a time (pure, Lune-tested)
             ├── FightFxRules.luau  # the fight effects' budget and each element's attack kind (pure, Lune-tested)
             ├── FxToneRules.luau   # how bright the scene is and what that does to an effect (pure, Lune-tested)
