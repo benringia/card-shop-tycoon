@@ -42,12 +42,14 @@ return {
 		expect.equal(valueOf(WeaponText.stats(Weapons, "sunforgedBlade", nil, Combat), "Perk"), "Sets the foe burning for 3 s")
 		local prism = WeaponText.stats(Weapons, "prismBlade", nil, Combat)
 		expect.equal(valueOf(prism, "Attack"), "150", "always strong (1.0 x 1.5), no bond")
-		expect.equal(valueOf(prism, "Element"), "Always strong against every element")
+		-- owner 2026-11-26: "Always strong" becomes the game keyword Super Effective; supers are called Ultimate
+		expect.equal(valueOf(prism, "Element"), "Super effective against every element")
 		expect.equal(valueOf(prism, "Perk"), nil, "its Element line says it once")
-		expect.equal(valueOf(prism, "Supers"), "Use your creature's element weapon", "round 4: it unlocks none")
+		expect.equal(valueOf(prism, "Ultimate"), "Use your creature's element weapon", "round 4: it unlocks none")
+		expect.equal(valueOf(prism, "Supers"), nil, "no row calls it a super any more")
 		-- the owner's "highlight that stat inside prism blade tooltip": its one edge stands out on the weapon switch's tip
 		for _, row in prism do
-			expect.equal(row.highlight == true, row.label == "Element", `{row.label} highlighted only when it's always strong`)
+			expect.equal(row.highlight == true, row.label == "Element", `{row.label} highlighted only when it's super effective`)
 		end
 		for _, row in WeaponText.stats(Weapons, "verdantBlade", nil, Combat) do
 			expect.equal(row.highlight, nil, "a plain weapon's rows aren't highlighted")
@@ -294,7 +296,7 @@ return {
 	["the weapon switch's line: upgrade level and element"] = function()
 		expect.equal(WeaponText.switchLine(Weapons, "verdantBlade", { grade = "A", level = 4 }), "+4 · Nature")
 		expect.equal(WeaponText.switchLine(Weapons, "forgeSword_Ember", { grade = "C", level = 0 }), "Fire", "+0 is left out")
-		expect.equal(WeaponText.switchLine(Weapons, "prismBlade", { grade = "S", level = 10 }), "+10 · Always strong", "round 4: its one edge, not every element")
+		expect.equal(WeaponText.switchLine(Weapons, "prismBlade", { grade = "S", level = 10 }), "+10 · Super effective", "round 4: its one edge, not every element")
 		expect.equal(WeaponText.switchLine(Weapons, "starterSword", nil), "", "no element, not upgraded: nothing")
 		expect.equal(WeaponText.switchLine(Weapons, "nope", nil), "")
 	end,
@@ -334,22 +336,23 @@ return {
 		expect.equal(rows[3].kind, "bond")
 		expect.equal(rows[3].icon, "Bloom")
 		expect.equal(rows[3].title, "Best with Nature creatures")
-		expect.equal(rows[3].words, "Unlocks their supers. Hits +15%, supers fill 50% faster.")
+		expect.equal(rows[3].words, "Unlocks their ultimates. Hits +15%, ultimates charge 50% faster.")
 	end,
 
-	["the Prism Blade's rows: ALWAYS STRONG highlighted, no supers, no bond"] = function()
+	-- owner 2026-11-26: "change SUPERS to Ultimate", and the Prism's "Always strong" becomes Super Effective
+	["the Prism Blade's rows: SUPER EFFECTIVE highlighted, no ultimates, no bond"] = function()
 		local rows = WeaponText.rows(Weapons, CombatHud, WeaponLooks, Combat, "prismBlade", { grade = "S", level = 10 })
 		expect.equal(#rows, 3)
 		expect.equal(rows[1].kind, "skill")
 		expect.equal(rows[1].title, "Prism Judgment")
 		expect.equal(rows[2].kind, "strong")
 		expect.equal(rows[2].icon, "Elements")
-		expect.equal(rows[2].title, "ALWAYS STRONG")
-		expect.equal(rows[2].words, "Every hit is strong (1.5x) against any foe.")
-		expect.equal(rows[3].kind, "supers")
+		expect.equal(rows[2].title, "SUPER EFFECTIVE")
+		expect.equal(rows[2].words, "Every hit is super effective (1.5x), whatever the foe's element.")
+		expect.equal(rows[3].kind, "ultimate")
 		expect.equal(rows[3].icon, "Lock", "not the Attack fist (owner: they had the same icon)")
-		expect.equal(rows[3].title, "Supers")
-		expect.equal(rows[3].words, "Doesn't unlock supers: use your creature's element weapon.")
+		expect.equal(rows[3].title, "Ultimate")
+		expect.equal(rows[3].words, "Doesn't unlock ultimates: use your creature's element weapon.")
 	end,
 
 	["the Steel Sword's rows: its dash alone, no empty rows"] = function()

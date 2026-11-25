@@ -19,8 +19,8 @@ local function elementName(key: string): string
 	return if typeof(name) == "string" then name else key
 end
 
--- `highlight`: the Prism Blade's always strong, gold on the weapon switch's tip (owner 2026-11-25: "highlight that stat
--- inside prism blade tooltip")
+-- `highlight`: the Prism Blade's Super effective, gold on the weapon switch's tip (owner 2026-11-25: "highlight that
+-- stat inside prism blade tooltip"; "Always strong" until the owner's keyword pick, 2026-11-26)
 export type Row = { label: string, value: string, highlight: boolean? }
 
 local WeaponText = {}
@@ -95,8 +95,8 @@ function WeaponText.stats(cfg: any, weaponId: string, owned: { grade: string, le
 		{ label = "Attack", value = tostring(WeaponText.attack(WeaponRules.shownPower(cfg, combat, weaponId, grade, level))) },
 	}
 	if weapon.prism then
-		table.insert(rows, { label = "Element", value = "Always strong against every element", highlight = true })
-		table.insert(rows, { label = "Supers", value = "Use your creature's element weapon" })
+		table.insert(rows, { label = "Element", value = "Super effective against every element", highlight = true })
+		table.insert(rows, { label = "Ultimate", value = "Use your creature's element weapon" })
 	else
 		local element = if weapon.element then `{elementName(weapon.element)} · bonds with {elementName(weapon.element)} creatures` else "None"
 		table.insert(rows, { label = "Element", value = element })
@@ -150,7 +150,7 @@ function WeaponText.pickup(name: string, gained: number, have: number, need: num
 end
 
 -- The weapon switch's line under the name (owner 2026-11-14 pick C): the upgrade level (none at +0) and the element in
--- plain words ("+4 · Nature", "Fire"; the Prism Blade's one edge: "+10 · Always strong"); empty for the Steel Sword or
+-- plain words ("+4 · Nature", "Fire"; the Prism Blade's one edge: "+10 · Super effective"); empty for the Steel Sword or
 -- an unknown weapon
 function WeaponText.switchLine(cfg: any, weaponId: string, owned: { grade: string, level: number }?): string
 	local weapon = cfg.ById[weaponId]
@@ -162,7 +162,7 @@ function WeaponText.switchLine(cfg: any, weaponId: string, owned: { grade: strin
 		table.insert(parts, `+{owned.level}`)
 	end
 	if weapon.prism then
-		table.insert(parts, "Always strong")
+		table.insert(parts, "Super effective")
 	elseif weapon.element then
 		table.insert(parts, elementName(weapon.element))
 	end
@@ -481,7 +481,7 @@ function WeaponText.skill(hud: any, cfg: any, weaponId: string): Skill
 end
 
 -- A perk's row in the weapon window: a title and one short line ("Heals your creature", "Every 4th hit heals it 2%.");
--- nil for a perk with no row (the Prism Blade's, its ALWAYS STRONG row instead)
+-- nil for a perk with no row (the Prism Blade's, its SUPER EFFECTIVE row instead)
 local function perkRow(perk: any): (string?, string?)
 	if perk.kind == "heal" and perk.every and perk.share then
 		local which = if perk.every == 1 then "Every hit" else `Every {ordinal(perk.every)} hit`
@@ -504,10 +504,10 @@ end
 
 -- The weapon window's rows (weapons round 4, layout A; owner 2026-11-25: "rearrange this UI to be easily understood"):
 -- each an icon (a Config/UIIcons name), a bold title and one short line, in window order. A weapon you don't have:
--- its Attack range first. Then its skill, its perk, its bond; the Prism Blade's ALWAYS STRONG and Supers instead of a
--- bond (distinct icons, owner: "attack, mutation and super has the same icon"). `looks` is Config/WeaponLooks (the
--- perks' icons). Empty for an unknown weapon.
-export type WindowRow = { kind: "range" | "skill" | "perk" | "bond" | "strong" | "supers", icon: string, title: string, words: string }
+-- its Attack range first. Then its skill, its perk, its bond; the Prism Blade's SUPER EFFECTIVE and Ultimate instead of
+-- a bond (distinct icons, owner: "attack, mutation and super has the same icon"; supers are called Ultimate in the
+-- game's words, owner 2026-11-26). `looks` is Config/WeaponLooks (the perks' icons). Empty for an unknown weapon.
+export type WindowRow = { kind: "range" | "skill" | "perk" | "bond" | "strong" | "ultimate", icon: string, title: string, words: string }
 function WeaponText.rows(cfg: any, hud: any, looks: any, combat: any, weaponId: string, owned: { grade: string, level: number }?): { WindowRow }
 	local weapon = cfg.ById[weaponId]
 	if not weapon then
@@ -527,15 +527,15 @@ function WeaponText.rows(cfg: any, hud: any, looks: any, combat: any, weaponId: 
 		end
 	end
 	if weapon.prism then
-		table.insert(rows, { kind = "strong", icon = "Elements", title = "ALWAYS STRONG", words = `Every hit is strong ({combat.STRONG}x) against any foe.` })
-		table.insert(rows, { kind = "supers", icon = "Lock", title = "Supers", words = "Doesn't unlock supers: use your creature's element weapon." })
+		table.insert(rows, { kind = "strong", icon = "Elements", title = "SUPER EFFECTIVE", words = `Every hit is super effective ({combat.STRONG}x), whatever the foe's element.` })
+		table.insert(rows, { kind = "ultimate", icon = "Lock", title = "Ultimate", words = "Doesn't unlock ultimates: use your creature's element weapon." })
 	elseif weapon.element then
 		local name = elementName(weapon.element)
 		table.insert(rows, {
 			kind = "bond",
 			icon = weapon.element,
 			title = `Best with {name} creatures`,
-			words = `Unlocks their supers. Hits +{percent(cfg.BOND.damage - 1)}, supers fill {percent(cfg.BOND.meter - 1)} faster.`,
+			words = `Unlocks their ultimates. Hits +{percent(cfg.BOND.damage - 1)}, ultimates charge {percent(cfg.BOND.meter - 1)} faster.`,
 		})
 	end
 	return rows

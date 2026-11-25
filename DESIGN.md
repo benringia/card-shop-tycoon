@@ -3356,8 +3356,9 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
   `Combat.SUPER_SCALES`: Inferno's burn, Tidal Shield's ward, Stampede's, Supernova's, Devour's and Rift Step's hits,
   Eclipse's seconds, Tidal Blessing's heal and revive; stuns and timing stay), so a new Forge Sword x1.08, one at +10
   Grade S x1.36, the Rift Reaper +10 S x1.55 (`WeaponRules.superUnlocked` / `superScale`, `BattleSim.scaledSuper`).
-  The server refuses a locked super with the locked card ("Infernox's super needs a Fire weapon. Switch to one, or make
-  a Fire Forge Sword at the Forge."; `WeaponService.SuperScale`, also in the arena); the prologue's lent party fires
+  The server refuses a locked super with the locked card ("Infernox's ultimate needs a Fire weapon. Switch to one, or
+  make a Fire Forge Sword at the Forge."; players call supers Ultimate since 2026-11-26, 5.11 "Weapons round 4";
+  `WeaponService.SuperScale`, also in the arena); the prologue's lent party fires
   freely. The meter still fills while locked, so a quick switch to the right weapon makes it ready at once. The combat
   HUD shows the lock (`Util/SuperLock`, from the character's Sword attribute) and the card view's super line starts
   with the weapon it needs (`SkillText.forCard`). Boss sim (`tools/balance/bosses`, 60 fights, fighting well, three
@@ -3783,14 +3784,14 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
   - **The Prism Blade** keeps always strong (its hits count as the element strong against the foe) and loses every
     super and the bond with every creature (`WeaponRules.superUnlocked`, `bond`); its own Power 0.87 -> 1.0, so its
     sword hits stay (0.87 x 1.5 x 1.15 = 1.50 before, 1.0 x 1.5 now) and its shown Attack is Power x 1.5. Its tip on
-    the weapon switch says "Element: Always strong against every element" in gold and "Supers: Use your creature's
-    element weapon"; its dial line "+10 · Always strong". Boss sim (`WEAPON=prismBlade:10:S`, 200 fights, the Hydra
+    the weapon switch says "Element: Super effective against every element" in gold and "Ultimate: Use your
+    creature's element weapon"; its dial line "+10 · Super effective". Boss sim (`WEAPON=prismBlade:10:S`, 200 fights, the Hydra
     after its rooms, fighting well), the old rule -> the new: 0.8x 69% -> 59%, 1x 100% -> 100% (121 s -> 116 s),
     best+2 59% -> 20% (its supers no longer fire), avg x1 100% -> 93%, maxed+2 20% -> 20%: inside the limits (0.8x
     under 85%; a 1x fight never halved, the Steel Sword's 185 s). Part 3 retunes the bosses with mutations.
   - **The weapon window, layout A** (owner's pick of two mockups in the real window, "attack, mutation and super has
     the same icon. make them look different"): the right side is the pills (rarity, family, the element's plain name;
-    the Prism Blade's lavender "Always strong"), then for a weapon you have one gold box 70 px (fill 255,248,228, gold
+    the Prism Blade's lavender "Super effective"), then for a weapon you have one gold box 70 px (fill 255,248,228, gold
     edge): the Power fist, "ATTACK" over the number (36 px) and, unless it's the one in your hand, the versus line
     under it in green or red; the grade on its round badge with "Grade"; "Level +5 / 10" over a gold bar (the Steel
     Sword: the Attack alone). For one you don't have, "How to get it" as before. Then one row each (48 px, 5 px
@@ -3798,10 +3799,20 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
     range ("Attack 110 to 190", "Grade C at +0 to Grade S at +10"); the skill (its own icon and name, its short line:
     `CombatHud.SKILLS` / `BUTTONS.skill` `short`); the perk ("Heals your creature: Every 4th hit heals it 2%.",
     "Burns the foe", "Poisons the foe", "Erupts", "Chills the foe", "Chain lightning", "Finishes foes"; icons
-    `WeaponLooks.ICONS.perk`); the bond (the element's icon, "Best with Nature creatures", "Unlocks their supers. Hits
-    +15%, supers fill 50% faster."); the Prism Blade's instead: "ALWAYS STRONG" on a gold row (Elements icon, "Every
-    hit is strong (1.5x) against any foe.") and "Supers" (Lock icon, "Doesn't unlock supers: use your creature's
-    element weapon."). Distinct icons: Attack the Power fist, Supers the Lock, mutations (part 2) their group's.
+    `WeaponLooks.ICONS.perk`); the bond (the element's icon, "Best with Nature creatures", "Unlocks their ultimates.
+    Hits +15%, ultimates charge 50% faster."); the Prism Blade's instead: "SUPER EFFECTIVE" on a gold row (Elements
+    icon, "Every hit is super effective (1.5x), whatever the foe's element.") and "Ultimate" (Lock icon, "Doesn't
+    unlock ultimates: use your creature's element weapon."). Distinct icons: Attack the Power fist, Ultimate the Lock,
+    mutations (part 2) their group's.
+  - **Ultimate and Super effective** (owner 2026-11-26: "change SUPERS to Ultimate", "change "Always Strong" and it's
+    description to some keyword used in alot of games", picked Super Effective of four): the players' word for a
+    creature's super is Ultimate everywhere (the fight button "ULTIMATE", tip "Your creature's ultimate."; the card
+    view's ULTIMATE chip; the locked card "Ultimate locked", "Infernox's ultimate needs a Fire weapon. ..."; the
+    weapon window and the switch tip). Code, configs and this document keep "super" (`SUPER_METER`, `Weapons.SUPER`,
+    `superUnlocked`, `/superfx`; the admin panel's section is "Ultimates"). The Prism Blade's edge reads Super
+    effective (the pill, the gold row, the dial line, the tip). `tests/SkillText` fails on any string in `src` calling
+    it a super (Super Luck, the bought luck, and Super effective are other things). The fight's strong-hit pop still
+    says "STRONG!".
 
 ---
 

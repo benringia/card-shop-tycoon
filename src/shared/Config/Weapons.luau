@@ -285,7 +285,7 @@ return {
 	-- weapon", "weapon strength: OK"; WeaponRules.superUnlocked / superScale): a weapon of the creature's element (no
 	-- exceptions since weapons round 4) unlocks its super, and the super fires `share` of the way from the Steel Sword's Power to the
 	-- weapon's (Config/Combat SUPER_SCALES: which of its numbers grow). Tuned with tools/balance/bosses.
-	SUPER = { share = 0.5, lockedTitle = "Super locked" },
+	SUPER = { share = 0.5, lockedTitle = "Ultimate locked" }, -- players call supers Ultimate (owner 2026-11-26)
 	PERK_S = 1.2, -- a Grade S weapon's perk number x this
 	-- A boss weapon: its boss's material and cash by rarity. The top costs came down 40% on 2026-11-20 (owner: "lower
 	-- the forging cost a bit. 60k in our current economy takes too long to achieve", his pick of three options): Epic

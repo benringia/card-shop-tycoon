@@ -33,8 +33,10 @@ return {
 			tip = "Your creature's special move.", -- what the creature's move does instead, when it has one (SkillText)
 		},
 		signature = {
-			color = rgb(250, 204, 21), icon = "Sparkle", emoji = "✨", key = "F", name = "SUPER MOVE", -- F (owner 2026-11-20: "add hotkey to super skills")
-			tip = "Your creature's super move.", -- likewise
+			-- F (owner 2026-11-20: "add hotkey to super skills"); called Ultimate since 2026-11-26 (owner: "change
+			-- SUPERS to Ultimate")
+			color = rgb(250, 204, 21), icon = "Sparkle", emoji = "✨", key = "F", name = "ULTIMATE",
+			tip = "Your creature's ultimate.", -- likewise
 		},
 		swap = {
 			color = rgb(200, 205, 220), icon = "Swap", emoji = "🔄", key = "1 / 3", name = "SWAP",

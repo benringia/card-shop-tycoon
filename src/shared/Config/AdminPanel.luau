@@ -141,7 +141,7 @@ AdminPanel.SECTIONS = {
 	{
 		-- The super moves at grade C and S (spec 2026-11-05-super-moves-design): played on your summoned creature against a
 		-- dummy in front of it, with the caster's cinematic (MovePreviewController)
-		title = "Super moves",
+		title = "Ultimates", -- "Super moves" until the owner's rename (2026-11-26); its commands keep /superfx
 		buttons = {
 			{ label = "Inferno C", command = "/superfx inferno C" },
 			{ label = "Inferno S", command = "/superfx inferno S" },

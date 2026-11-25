@@ -163,12 +163,76 @@ return {
 	["a locked super names the weapon it needs"] = function()
 		expect.equal(SkillText.weaponNeed("Fire"), "a Fire weapon")
 		expect.equal(SkillText.weaponNeed("Electric"), "an Electric weapon")
-		expect.equal(SkillText.superLocked("Infernox", "Fire"), "Infernox's super needs a Fire weapon. Switch to one, or make a Fire Forge Sword at the Forge.")
-		expect.equal(SkillText.superLocked("Stormking", "Electric"), "Stormking's super needs an Electric weapon. Switch to one, or make an Electric Forge Sword at the Forge.")
+		-- owner 2026-11-26: "change SUPERS to Ultimate"
+		expect.equal(SkillText.superLocked("Infernox", "Fire"), "Infernox's ultimate needs a Fire weapon. Switch to one, or make a Fire Forge Sword at the Forge.")
+		expect.equal(SkillText.superLocked("Stormking", "Electric"), "Stormking's ultimate needs an Electric weapon. Switch to one, or make an Electric Forge Sword at the Forge.")
 		-- the card view says it first (a narrow row cuts the end)
 		local legend = SkillText.forCard(Combat, "Ember", "Solarion", "Fire")
 		expect.equal(legend.super and legend.super.text, "Needs a Fire weapon · A huge 4x hit")
 		expect.equal(SkillText.forCard(Combat, "Ember", "Solarion").super.text, "A huge 4x hit", "no element name: as before")
 		expect.equal(SkillText.forCard(Combat, "Tide", "Puffpuddle", "Water").super, nil, "a Common has no super")
+	end,
+
+	-- Owner 2026-11-26: "change SUPERS to Ultimate". No string in the game's code calls a creature's ultimate a super
+	-- again (Super Luck, the luck bought with Robux, and the Prism Blade's Super effective are other things; a warn or
+	-- print is for us; "super" alone is an effect style's key). Comments are code's own words and stay.
+	["no player word calls an ultimate a super"] = function()
+		expect.equal(CombatHud.BUTTONS.signature.name, "ULTIMATE")
+		expect.equal(CombatHud.BUTTONS.signature.tip, "Your creature's ultimate.")
+		local fs = require("@lune/fs")
+		local function codeOf(line: string): string -- the line before its comment
+			local quote: string? = nil
+			local i = 1
+			while i <= #line do
+				local char = string.sub(line, i, i)
+				if quote then
+					if char == "\\" then
+						i += 1
+					elseif char == quote then
+						quote = nil
+					end
+				elseif char == '"' or char == "'" or char == "`" then
+					quote = char
+				elseif char == "-" and string.sub(line, i + 1, i + 1) == "-" then
+					return string.sub(line, 1, i - 1)
+				end
+				i += 1
+			end
+			return line
+		end
+		local files = {}
+		local function walk(dir: string)
+			for _, name in fs.readDir(dir) do
+				local path = `{dir}/{name}`
+				if fs.isDir(path) then
+					walk(path)
+				elseif string.match(name, "%.luau$") then
+					table.insert(files, path)
+				end
+			end
+		end
+		walk("src")
+		local found = {}
+		for _, path in files do
+			local number = 0
+			for line in string.gmatch(fs.readFile(path) .. "\n", "([^\n]*)\n") do
+				number += 1
+				local code = codeOf(line)
+				if not string.find(code, "warn%(") and not string.find(code, "print%(") then
+					for _, quote in { '"', "`" } do
+						for literal in string.gmatch(code, `{quote}([^{quote}]*){quote}`) do
+							local lower = string.gsub(string.lower(literal), "{[^}]*}", "") -- an interpolation is code
+							for _, other in { "super luck", "super effective" } do
+								lower = string.gsub(lower, other, "")
+							end
+							if literal ~= "super" and string.find(lower, "%f[%a]supers?%f[%A]") then
+								table.insert(found, `{path}:{number}: {literal}`)
+							end
+						end
+					end
+				end
+			end
+		end
+		expect.equal(#found, 0, table.concat(found, "\n"))
 	end,
 }

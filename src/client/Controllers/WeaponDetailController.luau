@@ -5,7 +5,7 @@
 -- weapon you have, one gold box (its Attack, and against what you hold now; its grade; its level over a gold bar); for
 -- one you don't, "How to get it" (the boss that drops it, the forge materials as bars); then one short row each for
 -- what it does (WeaponText.rows: its Attack range when it isn't yours, its sword skill, its perk, its element bond; the
--- Prism Blade's ALWAYS STRONG in gold and its Supers instead of a bond). Equip sits in a bar under them
+-- Prism Blade's SUPER EFFECTIVE in gold and its Ultimate instead of a bond). Equip sits in a bar under them
 -- (Remotes.EquipWeapon; the server checks it's yours and you're not fighting) with a hint that upgrades are the Forge's.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -68,7 +68,7 @@ local ROW_TITLE = 15
 local ROW_WORDS = 12
 local ROW_GAP = 5
 local ROW_FILL_TRANSPARENCY = 0.6 -- the rows barely whiter than the window
-local STRONG_FILL = Color3.fromRGB(255, 244, 200) -- the Prism Blade's ALWAYS STRONG row
+local STRONG_FILL = Color3.fromRGB(255, 244, 200) -- the Prism Blade's SUPER EFFECTIVE row
 local STRONG_EDGE = 2.5
 local STRONG_INK = Color3.fromRGB(150, 98, 0) -- its title: dark gold, 4.5:1 on its fill
 local PRISM_PILL = Color3.fromRGB(150, 120, 225)
@@ -211,7 +211,7 @@ local function placed(parent: Instance, words: string, font: Enum.Font, size: nu
 end
 
 -- One thing the weapon does (WeaponText.rows): its icon, a bold title and one short line, in a soft-edged row; the
--- Prism Blade's ALWAYS STRONG in gold
+-- Prism Blade's SUPER EFFECTIVE in gold
 local function infoRow(parent: Instance, order: number, info: WeaponText.WindowRow)
 	local strong = info.kind == "strong"
 	local frame = Instance.new("Frame")
@@ -266,14 +266,14 @@ local function rarityColor(rarity: string): Color3
 	return if tier then tier.color else UIStyle.HINT
 end
 
--- The rarity, the family and the element (the Prism Blade's "Always strong"), plain words as in the mockup
+-- The rarity, the family and the element (the Prism Blade's "Super effective"), plain words as in the mockup
 local function pills(weapon: Weapons.Weapon)
 	local line = holder(rows, 1, "row", 26)
 	UIKit.pill(line, weapon.rarity, rarityColor(weapon.rarity)).LayoutOrder = 1
 	local family = string.upper(string.sub(weapon.family, 1, 1)) .. string.sub(weapon.family, 2)
 	UIKit.pill(line, family, palette.slotEmpty).LayoutOrder = 2
 	if weapon.prism then
-		UIKit.pill(line, "Always strong", PRISM_PILL).LayoutOrder = 3
+		UIKit.pill(line, "Super effective", PRISM_PILL).LayoutOrder = 3
 	elseif weapon.element then
 		UIKit.pill(line, ElementNames.display(weapon.element, ElementNamesConfig), Cards.ELEMENTS[weapon.element] or palette.slotEmpty).LayoutOrder = 3
 	end

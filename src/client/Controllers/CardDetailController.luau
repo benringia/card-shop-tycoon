@@ -450,7 +450,7 @@ local function skillRow(order: number, skill: SkillText.Skill?, element: string,
 			end
 		end
 	end
-	local name = text(row, if skill then skill.name else "Super move", UIKit.textSize("body"), if skill then palette.ink else palette.hint, true)
+	local name = text(row, if skill then skill.name else "Ultimate", UIKit.textSize("body"), if skill then palette.ink else palette.hint, true)
 	name.Position = UDim2.fromOffset(44, 0)
 	name.Size = UDim2.new(1, -170, 0, 20)
 	name.TextXAlignment = Enum.TextXAlignment.Left
@@ -480,7 +480,7 @@ local function renderSkills(card: Card)
 	-- Only cards with a super move get its row (a greyed "Epic and Legendary only" row cost the copies list its room
 	-- on short screens)
 	if skills.super then
-		skillRow(2, skills.super, card.element, UIStyle.GOLD, "SUPER MOVE")
+		skillRow(2, skills.super, card.element, UIStyle.GOLD, "ULTIMATE") -- "SUPER MOVE" until 2026-11-26 (owner)
 	end
 end
 

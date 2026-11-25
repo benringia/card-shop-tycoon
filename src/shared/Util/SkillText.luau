@@ -75,7 +75,7 @@ end
 -- of their creature's element; the Forge makes one of every element)
 function SkillText.superLocked(cardName: string, plain: string): string
 	local forge = string.gsub(SkillText.weaponNeed(plain), " weapon$", ` Forge Sword`)
-	return `{cardName}'s super needs {SkillText.weaponNeed(plain)}. Switch to one, or make {forge} at the Forge.`
+	return `{cardName}'s ultimate needs {SkillText.weaponNeed(plain)}. Switch to one, or make {forge} at the Forge.`
 end
 
 -- The skill button for a sword's moveset (Config/CombatHud SKILLS; the Steel Sword and anything unknown: the dash
