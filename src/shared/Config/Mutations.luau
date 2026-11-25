@@ -19,6 +19,12 @@ return {
 	-- The Forge's Mutate: a new roll on any weapon you have (quest weapons too), for this much Essence
 	MUTATE = { essence = 30 },
 	CRIT = 2, -- a Critical sword hit's damage x this
+	-- A choice left waiting (they left before answering) is asked again this long after the weapons arrive on a join
+	ASK_AFTER_JOIN = 8,
+	-- The reveal's choice panel (WeaponRevealController; the owner's mockup): its width (at most, and of the screen),
+	-- the buttons' height, the Keep mine button's light blue
+	-- (closeAfter: the stage closes this long after the pick)
+	CHOICE = { width = 520, widthShare = 0.92, button = 52, keepColor = { 140, 205, 255 }, closeAfter = 0.4 },
 	-- Each group's icon (Config/UIIcons white glyphs, so the window tints them in the mutation's rarity colour: the
 	-- spec's heart is the Heal glyph, the glossy Heart can't take a tint)
 	GROUPS = {

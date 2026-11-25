@@ -559,7 +559,8 @@ function WeaponText.rows(cfg: any, hud: any, looks: any, combat: any, weaponId: 
 		table.insert(rows, { kind = "mutation", icon = words.icon, title = words.title, words = words.line, rarity = words.rarity })
 	end
 	if mutations and owned and owned.pending then
-		table.insert(rows, { kind = "pending", icon = "Sparkle", title = "New mutation waiting!", words = "Tap here to choose: take it or keep yours." })
+		-- the reveal plays once no window is open (its stage is 3D: WeaponRevealController)
+		table.insert(rows, { kind = "pending", icon = "Sparkle", title = "New mutation waiting!", words = "Close your windows to choose: take it or keep yours." })
 	end
 	return rows
 end

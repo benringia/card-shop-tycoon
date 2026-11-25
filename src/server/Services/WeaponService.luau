@@ -38,6 +38,8 @@ type Mutation = MutationRules.Mutation
 export type Offer = {
 	id: string,
 	weaponId: string,
+	grade: string, -- the weapon as it is (the reveal draws it so)
+	level: number,
 	mutation: Mutation,
 	have: Mutation?,
 	applied: boolean,
@@ -221,6 +223,8 @@ local function offerOf(weaponId: string, record: Owned, id: string, mutation: Mu
 	return {
 		id = id,
 		weaponId = weaponId,
+		grade = record.grade,
+		level = record.level,
 		mutation = { id = mutation.id, rarity = mutation.rarity },
 		have = if applied then nil else copyMutation(record.mutation),
 		applied = applied,

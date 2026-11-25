@@ -16,6 +16,8 @@ local TweenService = game:GetService("TweenService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Items = require(Config:WaitForChild("Items"))
+local Mutations = require(Config:WaitForChild("Mutations"))
+local MutationRules = require(Shared:WaitForChild("Util"):WaitForChild("MutationRules"))
 local LevelUpConfig = require(Config:WaitForChild("LevelUpFx"))
 local PackOpening = require(Config:WaitForChild("PackOpening"))
 local Rarities = require(Config:WaitForChild("Rarities"))
@@ -53,6 +55,9 @@ export type Reveal = {
 	card: boolean?, -- a new drop: its card flips over beside it
 	hit: { string }?,
 	flash: number?,
+	-- a mutation (weapons round 4 part 2; WeaponService.Offer: id, weaponId, mutation, have, applied, essence): the
+	-- column, banner and rim in its rarity colour, then Take new or Keep mine (or Nice! when it had none)
+	offer: any?,
 }
 
 local WeaponRevealController = {}
@@ -60,6 +65,8 @@ local WeaponRevealController = {}
 local queue: { Reveal } = {}
 local playing = false
 local handedOver = false -- the boss chests left the stage shown for the next reveal (HandOver)
+local queuedOffers: { [string]: boolean } = {} -- offer ids queued or playing (asked once at a time)
+local weaponsNow: any = nil -- the latest WeaponsChanged (owned, offers): what AskPending reads
 
 local function rarityColor(rarity: string): Color3
 	local tier = (Rarities.Tiers :: any)[rarity]
@@ -210,6 +217,110 @@ local function words(reveal: Reveal, color: Color3): (ScreenGui, TextButton, () 
 	return gui, skip, popBanner, showLine
 end
 
+-- A two-line button: what it does over what you get (the game's button rule)
+local function choiceButton(parent: Instance, order: number, label: string, sub: string?, fill: Color3, width: UDim): TextButton
+	local button = Instance.new("TextButton")
+	button.Name = label
+	button.LayoutOrder = order
+	button.AutoButtonColor = true
+	button.BackgroundColor3 = fill
+	button.Text = ""
+	button.Size = UDim2.new(width, UDim.new(0, Mutations.CHOICE.button))
+	button.Parent = parent
+	UIKit.corner(button, 12)
+	local main = UIKit.label(button, label, Enum.Font.FredokaOne, 20, WHITE)
+	main.Size = UDim2.new(1, 0, if sub then 0.6 else 1, 0)
+	main.TextXAlignment = Enum.TextXAlignment.Center
+	UIKit.outlined(main)
+	if sub then
+		local small = UIKit.label(button, sub, Enum.Font.GothamBold, 13, WHITE)
+		small.Position = UDim2.fromScale(0, 0.55)
+		small.Size = UDim2.fromScale(1, 0.4)
+		small.TextXAlignment = Enum.TextXAlignment.Center
+		UIKit.outlined(small)
+	end
+	return button
+end
+
+-- The mutation's choice under the blade (the owner's mockup): "Yours now: Rare · Tough (your HP +5%)", Take new or
+-- Keep mine with the Essence each gives, and what happens to the other; one it had none of: a Nice! button. Hidden
+-- until `show`; `onChoice(take)` when a button is pressed (once).
+local function choicePanel(gui: ScreenGui, offer: any, color: Color3, onChoice: (take: boolean) -> ()): () -> ()
+	local spec = Mutations.CHOICE
+	local view = (workspace.CurrentCamera :: Camera).ViewportSize
+	local width = math.min(spec.width, view.X * spec.widthShare)
+	local frame = Instance.new("Frame")
+	frame.Name = "MutationChoice"
+	frame.AnchorPoint = Vector2.new(0.5, 1)
+	frame.Position = UDim2.new(0.5, 0, 1, -18)
+	frame.Size = UDim2.fromOffset(width, 0)
+	frame.AutomaticSize = Enum.AutomaticSize.Y
+	frame.BackgroundColor3 = Color3.fromRGB(24, 16, 34)
+	frame.BackgroundTransparency = 0.1
+	frame.Visible = false
+	frame.ZIndex = 5
+	frame.Parent = gui
+	UIKit.corner(frame, 16)
+	UIKit.outline(frame, color, 2.5)
+	local pad = Instance.new("UIPadding")
+	pad.PaddingTop = UDim.new(0, 12)
+	pad.PaddingBottom = UDim.new(0, 12)
+	pad.PaddingLeft = UDim.new(0, 14)
+	pad.PaddingRight = UDim.new(0, 14)
+	pad.Parent = frame
+	local list = Instance.new("UIListLayout")
+	list.SortOrder = Enum.SortOrder.LayoutOrder
+	list.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	list.Padding = UDim.new(0, 8)
+	list.Parent = frame
+	local have = if offer.applied then nil else offer.have
+	local head = if have then `Yours now: {MutationRules.words(Mutations, have).yours}` else "Your first mutation on this weapon!"
+	local line = UIKit.label(frame, head, Enum.Font.GothamBold, 15, WHITE)
+	line.LayoutOrder = 1
+	line.Size = UDim2.new(1, 0, 0, 22)
+	line.TextXAlignment = Enum.TextXAlignment.Center
+	line.TextWrapped = true
+	local row = Instance.new("Frame")
+	row.LayoutOrder = 2
+	row.BackgroundTransparency = 1
+	row.Size = UDim2.new(1, 0, 0, spec.button)
+	row.Parent = frame
+	local rowList = Instance.new("UIListLayout")
+	rowList.FillDirection = Enum.FillDirection.Horizontal
+	rowList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	rowList.SortOrder = Enum.SortOrder.LayoutOrder
+	rowList.Padding = UDim.new(0, 14)
+	rowList.Parent = row
+	local chosen = false
+	local function pick(take: boolean)
+		if chosen then
+			return
+		end
+		chosen = true
+		onChoice(take)
+	end
+	if have then
+		local keepColor = Color3.fromRGB(spec.keepColor[1], spec.keepColor[2], spec.keepColor[3])
+		choiceButton(row, 1, "Take new", `+{offer.essence.take} Essence`, color, UDim.new(0.5, -7)).Activated:Connect(function()
+			pick(true)
+		end)
+		choiceButton(row, 2, "Keep mine", `+{offer.essence.keep} Essence`, keepColor, UDim.new(0.5, -7)).Activated:Connect(function()
+			pick(false)
+		end)
+		local note = UIKit.label(frame, "The one you don't keep turns into Mutation Essence", Enum.Font.GothamBold, 12, Color3.fromRGB(215, 205, 230))
+		note.LayoutOrder = 3
+		note.Size = UDim2.new(1, 0, 0, 16)
+		note.TextXAlignment = Enum.TextXAlignment.Center
+	else
+		choiceButton(row, 1, "Nice!", nil, color, UDim.new(0.5, 0)).Activated:Connect(function()
+			pick(true)
+		end)
+	end
+	return function()
+		frame.Visible = true
+	end
+end
+
 -- The Forge's pedestal: the Forge's anvil (Town.FORGE_LOOK sizes) on a glowing disc, its face at `top`; returns the
 -- disc to pulse
 local function anvil(top: Vector3, parent: Instance): Part
@@ -306,7 +417,8 @@ local function play(reveal: Reveal)
 	if not weapon then
 		return
 	end
-	local color = rarityColor(weapon.rarity)
+	local offer = reveal.offer
+	local color = if offer then rarityColor(offer.mutation.rarity) else rarityColor(weapon.rarity)
 	OpeningStage.show()
 	OpeningStage.bars(true, 0.4)
 	OpeningStage.dim(REVEAL.dim, 0.5)
@@ -330,6 +442,9 @@ local function play(reveal: Reveal)
 	local glow = lightBeam(a0, a1, color, stage)
 	local core = lightBeam(a0, a1, WHITE, stage)
 	local model = weaponModel(weapon.id, reveal.grade, reveal.level or 0)
+	if offer then
+		WeaponLook.mutation(model, offer.mutation.rarity) -- the new one's rim on the blade
+	end
 	-- Fitted to the stage: REVEAL.length studs along its blade (its pivot's up: the grip, blade up)
 	local low, high = alongBlade(model)
 	local fit = REVEAL.length / math.max(high - low, 0.1)
@@ -341,6 +456,17 @@ local function play(reveal: Reveal)
 	if reveal.card then
 		showCard, turnCard = gradeCard(gui, reveal)
 	end
+	-- A mutation waits on the stage for its choice (no skip, no end), then closes a moment after it
+	local chosenAt: number? = if offer then nil else 0
+	local showChoice = if offer
+		then choicePanel(gui, offer, color, function(take: boolean)
+			if not offer.applied then
+				Remotes.ChooseMutation:FireServer(offer.weaponId, offer.id, take)
+			end
+			OpeningStage.play(REVEAL.drop.card)
+			chosenAt = os.clock()
+		end)
+		else nil
 	local cardShown, cardTurned = false, false
 	if reveal.forge then
 		-- The forge flares up, then hammer strikes, each a little higher, until the hit
@@ -375,13 +501,18 @@ local function play(reveal: Reveal)
 		OpeningStage.hide()
 	end
 	skip.Activated:Connect(function()
-		if os.clock() - started >= REVEAL.skipAfter then
+		if os.clock() - started >= REVEAL.skipAfter and (offer == nil or chosenAt ~= nil) then
 			finish()
 		end
 	end)
 	connection = RunService.RenderStepped:Connect(function()
 		local t = os.clock() - started
-		if t >= seconds then
+		local picked = chosenAt
+		if offer and picked and os.clock() - picked >= Mutations.CHOICE.closeAfter then
+			finish()
+			return
+		end
+		if t >= seconds and offer == nil then
 			finish()
 			return
 		end
@@ -423,7 +554,7 @@ local function play(reveal: Reveal)
 			flashed = true
 			OpeningStage.flash(0.7, 0.5)
 			OpeningStage.shake(0.06, 0.35)
-			for _, name in dropSounds.arrive[weapon.rarity] or dropSounds.arrive.Rare do
+			for _, name in dropSounds.arrive[if offer then offer.mutation.rarity else weapon.rarity] or dropSounds.arrive.Rare do
 				OpeningStage.play(name)
 			end
 			OpeningStage.play(dropSounds.ring)
@@ -451,6 +582,9 @@ local function play(reveal: Reveal)
 		if not lined and t >= lineAt then
 			lined = true
 			showLine()
+			if showChoice then
+				showChoice()
+			end
 		end
 	end)
 	while not done do
@@ -465,7 +599,8 @@ local function drain()
 	end
 	playing = true
 	while #queue > 0 do
-		while OpeningStage.isShown() and not handedOver do
+		-- the stage is 3D: a window over it would hide the blade, so the binder, the Forge and other windows close first
+		while (OpeningStage.isShown() and not handedOver) or UIKit.anyPanelOpen() do
 			task.wait(0.25)
 		end
 		ScreenClear.wait() -- a purchase dialog or the Roblox menu first (owner 2026-11-13)
@@ -475,6 +610,9 @@ local function drain()
 		if not ok then
 			warn(`[WeaponRevealController] {reveal.weaponId}: {err}`)
 			OpeningStage.hide()
+		end
+		if reveal.offer then
+			queuedOffers[reveal.offer.id] = nil -- answered (or failed: the window's waiting row asks it again)
 		end
 	end
 	playing = false
@@ -498,9 +636,59 @@ function WeaponRevealController.Show(reveal: Reveal)
 	task.spawn(drain)
 end
 
--- A boss's drop: a new weapon, or the material one you had turned into
+-- A mutation's reveal (weapons round 4 part 2; WeaponService.Offer from a boss drop of a weapon you have, the Forge's
+-- Mutate, a choice left waiting): "MUTATION! Verdant Blade" in its rarity colour, "Epic · Sharp · sword hits +12%",
+-- the blade with its rim, then the choice. An offer already queued isn't queued twice.
+function WeaponRevealController.Mutation(offer: any)
+	if typeof(offer) ~= "table" or typeof(offer.id) ~= "string" or typeof(offer.weaponId) ~= "string" then
+		return
+	end
+	local mutation = MutationRules.read(Mutations, offer.mutation)
+	local weapon = Weapons.ById[offer.weaponId]
+	if not mutation or not weapon or queuedOffers[offer.id] then
+		return
+	end
+	queuedOffers[offer.id] = true
+	WeaponRevealController.Show({
+		weaponId = offer.weaponId,
+		grade = if typeof(offer.grade) == "string" then offer.grade else "C",
+		level = if typeof(offer.level) == "number" then offer.level else 0,
+		banner = `MUTATION! {weapon.name}`,
+		gradeText = MutationRules.words(Mutations, mutation).short,
+		offer = offer,
+	})
+end
+
+-- The choice still waiting on this weapon (the Armory's "New mutation waiting!" row, a join), from the latest weapons
+function WeaponRevealController.AskPending(weaponId: string)
+	local now = weaponsNow
+	local record = if now and now.owned then now.owned[weaponId] else nil
+	local offerId = if now and now.offers then now.offers[weaponId] else nil
+	if typeof(record) ~= "table" or not record.pending or typeof(offerId) ~= "string" then
+		return
+	end
+	WeaponRevealController.Mutation({
+		id = offerId,
+		weaponId = weaponId,
+		grade = record.grade,
+		level = record.level,
+		mutation = record.pending,
+		have = record.mutation,
+		applied = record.mutation == nil,
+		essence = {
+			take = MutationRules.essence(Mutations, MutationRules.read(Mutations, record.mutation)),
+			keep = MutationRules.essence(Mutations, MutationRules.read(Mutations, record.pending)),
+		},
+	})
+end
+
+-- A boss's drop: a new weapon, or the mutation roll a weapon you had became (weapons round 4 part 2)
 function WeaponRevealController.Drop(payload: any)
 	if typeof(payload) ~= "table" or typeof(payload.weaponId) ~= "string" or typeof(payload.grade) ~= "string" then
+		return
+	end
+	if typeof(payload.offer) == "table" then
+		WeaponRevealController.Mutation(payload.offer)
 		return
 	end
 	local refund = tonumber(payload.refund) or 0
@@ -625,6 +813,25 @@ function WeaponRevealController.Start()
 		pcall(ContentProvider.PreloadAsync, ContentProvider, sounds)
 	end)
 	Remotes.WeaponDropped.OnClientEvent:Connect(WeaponRevealController.Drop)
+	Remotes.MutationOffered.OnClientEvent:Connect(WeaponRevealController.Mutation)
+	-- The weapons as they are (AskPending reads them); the first ones after a join ask any choice left waiting
+	local joined = false
+	Remotes.WeaponsChanged.OnClientEvent:Connect(function(data: any)
+		if typeof(data) ~= "table" then
+			return
+		end
+		weaponsNow = data
+		if joined then
+			return
+		end
+		joined = true
+		task.delay(Mutations.ASK_AFTER_JOIN, function()
+			local offers = if weaponsNow and typeof(weaponsNow.offers) == "table" then weaponsNow.offers else {}
+			for weaponId in offers do
+				WeaponRevealController.AskPending(weaponId)
+			end
+		end)
+	end)
 	Remotes.ForgeResult.OnClientEvent:Connect(function(result: any)
 		if typeof(result) == "table" and result.finished ~= true then
 			WeaponRevealController.Forge(result)

@@ -58,6 +58,7 @@ type View = {
 	swordId: string,
 	grade: string,
 	level: number,
+	mutation: string?, -- its mutation's rarity (the rim; weapons round 4 part 2)
 	model: Model,
 	handle: BasePart,
 	weld: Weld,
@@ -298,7 +299,7 @@ end
 
 -- A fresh copy of a weapon's model (a stand-in in its colours while WeaponModels has none) with its glow ladder,
 -- every part welded to its handle and taking no part in physics
-local function makeModel(weaponId: string, grade: string, level: number): (Model, BasePart, CFrame)
+local function makeModel(weaponId: string, grade: string, level: number, mutation: string?): (Model, BasePart, CFrame)
 	local folder = ReplicatedStorage:FindFirstChild("WeaponModels")
 	local modelName = (Weapons.ById[weaponId] :: Weapons.Weapon).model
 	local template = if folder and modelName then folder:FindFirstChild(modelName) else nil
@@ -309,6 +310,7 @@ local function makeModel(weaponId: string, grade: string, level: number): (Model
 		end
 	end
 	WeaponLook.apply(model, weaponId, grade, level)
+	WeaponLook.mutation(model, mutation)
 	local handle = model.PrimaryPart or model:FindFirstChild("Handle") or model:FindFirstChild("Grip") or model:FindFirstChildWhichIsA("BasePart", true)
 	assert(handle and handle:IsA("BasePart"), "a sword model needs a part")
 	-- Where the hand holds it: its Grip attachment, else the model's pivot (an imported model's: the grip's centre,
@@ -392,17 +394,19 @@ local function refresh(character: Model)
 		return
 	end
 	local grade, level = gradeAndLevel(character)
+	local rawMutation = character:GetAttribute("SwordMutation")
+	local mutation = if typeof(rawMutation) == "string" then rawMutation else nil
 	local view = views[character]
 	local own = character == player.Character
 	local drawn = character:GetAttribute("SwordDrawn") == true or (own and os.clock() < predictedUntil)
 	-- your weapon switched in hand (the quick switch): the new one starts on the back and the draw move brings it out
 	local switched = own and view ~= nil and SwordRules.switchDraw(view.swordId, swordId, drawn)
-	if view and (view.swordId ~= swordId or view.grade ~= grade or view.level ~= level) then
+	if view and (view.swordId ~= swordId or view.grade ~= grade or view.level ~= level or view.mutation ~= mutation) then
 		drop(character)
 		view = nil
 	end
 	if not view then
-		local model, handle, grip = makeModel(swordId, grade, level)
+		local model, handle, grip = makeModel(swordId, grade, level, mutation)
 		local weld = Instance.new("Weld")
 		weld.Part1 = handle
 		weld.Parent = handle
@@ -410,6 +414,7 @@ local function refresh(character: Model)
 			swordId = swordId,
 			grade = grade,
 			level = level,
+			mutation = mutation,
 			model = model,
 			handle = handle,
 			weld = weld,
@@ -564,6 +569,9 @@ local function watchCharacter(character: Model)
 		refresh(character)
 	end)
 	character:GetAttributeChangedSignal("SwordLevel"):Connect(function()
+		refresh(character)
+	end)
+	character:GetAttributeChangedSignal("SwordMutation"):Connect(function()
 		refresh(character)
 	end)
 	character.AncestryChanged:Connect(function(_, parent)

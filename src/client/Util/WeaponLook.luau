@@ -15,6 +15,8 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local AttackFx = require(Config:WaitForChild("AttackFx"))
 local Combat = require(Config:WaitForChild("Combat"))
+local Mutations = require(Config:WaitForChild("Mutations"))
+local Rarities = require(Config:WaitForChild("Rarities"))
 local WeaponLooks = require(Config:WaitForChild("WeaponLooks"))
 local Weapons = require(Config:WaitForChild("Weapons"))
 local WeaponLookRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponLookRules"))
@@ -385,6 +387,65 @@ function WeaponLook.setDetail(model: Model, full: boolean, share: number)
 	model:SetAttribute("FullAura", full)
 	model:SetAttribute("AuraShare", share)
 	refresh(model)
+end
+
+-- A mutation's glow over the upgrade glow (weapons round 4 part 2; the owner's mockups: "Epic mutation · pink rim",
+-- "Legendary mutation · gold rim and sparkles"; Config/Mutations LOOK): a rim in the card rarity colour on this model
+-- only (a Highlight adorning it, never the character), and a Legendary's sparkles on the blade. `rarity` nil takes it
+-- off. Any model: the held weapon (SwordController) and the reveals' stage models.
+function WeaponLook.mutation(model: Model, rarity: string?)
+	for _, name in { "MutationRim", "MutationSparkles" } do
+		local old = model:FindFirstChild(name, true)
+		if old then
+			old:Destroy()
+		end
+	end
+	local tier = if rarity then (Rarities.Tiers :: any)[rarity] else nil
+	if not rarity or not tier then
+		return
+	end
+	local color: Color3 = tier.color
+	local rim = Instance.new("Highlight")
+	rim.Name = "MutationRim"
+	rim.Adornee = model
+	rim.DepthMode = Enum.HighlightDepthMode.Occluded
+	rim.FillTransparency = 1
+	rim.OutlineColor = color
+	rim.OutlineTransparency = Mutations.LOOK.rim[rarity] or 0.5
+	rim.Parent = model
+	if rarity ~= "Legendary" then
+		return
+	end
+	local blade: BasePart? = nil
+	for _, item in model:GetDescendants() do
+		if item:IsA("BasePart") and (item.Name == "Blade" or item.Name == "Head") then
+			blade = item
+			break
+		end
+	end
+	blade = blade or model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart", true)
+	if not blade then
+		return
+	end
+	local spec = Mutations.LOOK.sparkles
+	local sparkles = Instance.new("ParticleEmitter")
+	sparkles.Name = "MutationSparkles"
+	sparkles.Texture = texture(WeaponLooks.SPARKLE_LOOK.texture)
+	sparkles.Shape = Enum.ParticleEmitterShape.Box
+	sparkles.Color = ColorSequence.new(WHITE, color)
+	sparkles.LightEmission = 1
+	sparkles.LightInfluence = 0
+	sparkles.Lifetime = NumberRange.new(spec.lifetime[1], spec.lifetime[2])
+	sparkles.Speed = NumberRange.new(spec.speed[1], spec.speed[2])
+	sparkles.SpreadAngle = Vector2.new(180, 180)
+	sparkles.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.3, spec.size),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	sparkles.Rate = spec.rate
+	sparkles.LockedToPart = true
+	sparkles.Parent = blade :: BasePart
 end
 
 return WeaponLook

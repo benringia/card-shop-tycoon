@@ -381,7 +381,7 @@ return {
 		expect.equal(waiting[#waiting].kind, "pending")
 		expect.equal(waiting[#waiting].icon, "Sparkle")
 		expect.equal(waiting[#waiting].title, "New mutation waiting!")
-		expect.equal(waiting[#waiting].words, "Tap here to choose: take it or keep yours.")
+		expect.equal(waiting[#waiting].words, "Close your windows to choose: take it or keep yours.", "the reveal waits for windows (its stage is 3D)")
 		expect.equal(waiting[#waiting - 1].kind, "mutation", "the one you have still shows")
 	end,
 

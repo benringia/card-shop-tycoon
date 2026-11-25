@@ -245,6 +245,54 @@ local function giveWeapon(player: Player, text: string)
 	Remotes.Notify:FireClient(player, `Gave the {weapon.name}, Grade {grade} +{level}`, false)
 end
 
+-- Weapons round 4 part 2: "/mutation offer [rarity] [id]": a mutation offered on the weapon in hand now, its reveal
+-- and choice (a rarity word: common, rare, veryrare, epic, legendary; a Config/Mutations id; else rolled); "/mutation
+-- set [rarity] [id]": put on it at once; "/mutation clear": taken off with any choice waiting. Mutation Essence:
+-- "/item mutationEssence <n>"
+local function devMutation(player: Player, text: string)
+	local Mutations = require(Config:WaitForChild("Mutations")) :: any
+	local MutationRules = require(Shared:WaitForChild("Util"):WaitForChild("MutationRules")) :: any
+	local rarities = { common = "Common", rare = "Rare", veryrare = "Very Rare", epic = "Epic", legendary = "Legendary" }
+	local words = string.split(string.lower(text), " ")
+	local action = words[2]
+	local weaponId = WeaponService.GetEquipped(player)
+	if not weaponId or weaponId == Weapons.STARTER or not WeaponService.GetAll(player)[weaponId] then
+		Remotes.Notify:FireClient(player, "Hold a weapon you own (not the Steel Sword) first.", true)
+		return
+	end
+	if action == "clear" then
+		WeaponService.SetMutation(player, weaponId, nil)
+		Remotes.Notify:FireClient(player, "Mutation taken off", false)
+		return
+	end
+	local rarity, id = nil, nil
+	for index = 3, #words do
+		local word = words[index]
+		if rarities[word] then
+			rarity = rarities[word]
+		end
+		for _, entry in Mutations.LIST do
+			if string.lower(entry.id) == word then
+				id = entry.id
+			end
+		end
+	end
+	local rng = Random.new()
+	local rolled = MutationRules.roll(Mutations, rng:NextNumber(), rng:NextNumber())
+	local mutation = { id = id or rolled.id, rarity = rarity or rolled.rarity }
+	if action == "set" then
+		WeaponService.SetMutation(player, weaponId, mutation)
+		Remotes.Notify:FireClient(player, `Mutation: {MutationRules.words(Mutations, mutation).short}`, false)
+	elseif action == "offer" then
+		local offer = WeaponService.Offer(player, weaponId, mutation, "drop")
+		if offer then
+			Remotes.MutationOffered:FireClient(player, offer)
+		end
+	else
+		Remotes.Notify:FireClient(player, "Usage: /mutation <offer|set|clear> [common|rare|veryrare|epic|legendary] [mutation id]", true)
+	end
+end
+
 -- "/weapondrop meadowWarden": that boss's weapon drops for you now, through the real drop (the cinematic, a refund
 -- when you have it). "/weapondrop meadowWarden preview [grade]": only the cinematic of a new drop (its card turning
 -- over), nothing given, to see it when you already own the weapon. "/weapondrop meadowWarden beacon": the light
@@ -440,6 +488,7 @@ function DevService.Start()
 	addCommand(folder, "weapon", giveWeapon)
 	addCommand(folder, "material", giveMaterial)
 	addCommand(folder, "weapondrop", forceWeaponDrop)
+	addCommand(folder, "mutation", devMutation)
 	addCommand(folder, "chests", previewChests)
 	-- "/event <bossRush|luckySunday|off|auto|luck>": that weekly event on now for everyone here (off: none, auto: the
 	-- calendar again), with its toast; luck: Lucky Sunday's free luck can be given again today (Config/Events)
