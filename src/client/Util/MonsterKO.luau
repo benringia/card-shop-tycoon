@@ -16,6 +16,7 @@ local AttackFx = require(Config:WaitForChild("AttackFx"))
 local KO = require(Config:WaitForChild("MonsterKO"))
 local UIIcons = require(Config:WaitForChild("UIIcons"))
 local MonsterKOMotion = require(Shared:WaitForChild("Util"):WaitForChild("MonsterKOMotion"))
+local FinishingBlowRules = require(Shared:WaitForChild("Util"):WaitForChild("FinishingBlowRules"))
 
 local ClientUtil = script.Parent :: Instance
 local HitFx = require(ClientUtil:WaitForChild("HitFx"))
@@ -154,8 +155,9 @@ local function backIn(x: number): number
 end
 
 -- The knockout of `model` (a monster's, now this module's), flying along `away` (flat, from the winner); an `elite`
--- is hit harder
-function MonsterKO.play(model: Model, away: Vector3, elite: boolean): Handle
+-- is hit harder; your own fight's last hit (`moment`, Config/FinishingBlow WILD) holds the beat longer and launches
+-- and kicks harder (Util/FinishingBlowRules.knockout)
+function MonsterKO.play(model: Model, away: Vector3, elite: boolean, moment: FinishingBlowRules.Moment?): Handle
 	local poofWaiting: { (Vector3) -> () } = {}
 	local doneWaiting: { () -> () } = {}
 	local poofedAt: Vector3? = nil
@@ -175,7 +177,7 @@ function MonsterKO.play(model: Model, away: Vector3, elite: boolean): Handle
 	-- its height and its length along the flight, for where its middle sits over the ground as it turns
 	local height = size.Y
 	local depth = math.abs(dir:Dot(box.LookVector)) * size.Z + math.abs(dir:Dot(box.RightVector)) * size.X
-	local power = if elite then KO.elite.power else 1
+	local hitStop, power, kick = FinishingBlowRules.knockout(KO, elite, moment)
 
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
@@ -238,7 +240,7 @@ function MonsterKO.play(model: Model, away: Vector3, elite: boolean): Handle
 
 	-- The hit: a white flash, a swell and a camera kick, held a beat
 	HitFx.flash(model, Color3.new(1, 1, 1), 0.3, 0.1)
-	ScreenFx.shakeAt(KO.shake * (if elite then KO.elite.shake else 1), start)
+	ScreenFx.shakeAt(kick, start)
 
 	local state = MonsterKOMotion.launch(start.X, start.Y, start.Z, dir.X, dir.Z, KO, power)
 	local phase = "hit"
@@ -262,9 +264,9 @@ function MonsterKO.play(model: Model, away: Vector3, elite: boolean): Handle
 		end
 		clock += dt
 		if phase == "hit" then
-			local beat = math.clamp(clock / KO.hitStop, 0, 1)
+			local beat = math.clamp(clock / hitStop, 0, 1)
 			pose(start, 0, 1 + (KO.pop - 1) * math.sin(beat * math.pi))
-			if clock >= KO.hitStop then
+			if clock >= hitStop then
 				pose(start, 0, 1)
 				model:ScaleTo(baseScale)
 				phase, phaseAt = "fly", clock

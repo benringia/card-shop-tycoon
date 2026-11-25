@@ -2335,6 +2335,21 @@ end
 
 function BattleController.Start()
 	build()
+	-- The finishing blow (Util/FinishingBlow, Config/FinishingBlow): your own running fight's monster, beaten, holds
+	-- everything a beat, punches your camera in and lands; anyone else's fight looks as it did
+	local finishingBlowRules = require(Shared:WaitForChild("Util"):WaitForChild("FinishingBlowRules"))
+	require(ClientUtil:WaitForChild("FinishingBlow")).attach({
+		onBeaten = MonsterController.SetFinishingBlow,
+		isFoe = function(marker: BasePart): boolean
+			return finishingBlowRules.mine(fighting, marker == markerFor(MONSTER_ID))
+		end,
+		punch = SwordController.PunchZoom,
+		holdCreatures = function(seconds: number)
+			for _, marker in markers do
+				CreatureController.Freeze(marker, seconds) -- a monster's marker draws no creature: nothing happens
+			end
+		end,
+	})
 	UserInputService.InputBegan:Connect(onClick)
 	Remotes.BattleStarted.OnClientEvent:Connect(onStarted)
 	Remotes.BattleEvent.OnClientEvent:Connect(function(payload)

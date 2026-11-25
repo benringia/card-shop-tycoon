@@ -41,6 +41,8 @@ local MonsterKO = require(((script.Parent :: Instance).Parent :: Instance):WaitF
 local MonsterKOConfig = require(Config:WaitForChild("MonsterKO"))
 local HitFeel = require(Shared:WaitForChild("Util"):WaitForChild("HitFeel"))
 local HitFeelConfig = require(Config:WaitForChild("HitFeel"))
+local FinishingBlowRules = require(Shared:WaitForChild("Util"):WaitForChild("FinishingBlowRules"))
+local FinishingBlowConfig = require(Config:WaitForChild("FinishingBlow"))
 
 local ELITE_TAG_COLOR = Color3.fromRGB(255, 205, 60)
 local TAG_COLOR = Color3.fromRGB(235, 235, 235)
@@ -82,6 +84,9 @@ type Monster = {
 	react: HitFeel.Reaction?,
 	lunge: { at: number, length: number }?,
 	flash: Highlight?,
+	-- The finishing blow (Config/FinishingBlow): a boss's beaten mark seen (asked once), and it held still until then
+	beaten: boolean?,
+	heldUntil: number?,
 }
 
 local TRAIL_SPEED = 3 -- studs a second: a summon running faster than this trails its wisps
@@ -634,6 +639,14 @@ end
 -- Beaten monsters flying off (Config/MonsterKO, owner 2026-11-18 pick A: "make it smooth"), by marker, while it plays
 local knockouts: { [BasePart]: MonsterKO.Handle } = {}
 
+-- The finishing blow (client Util/FinishingBlow): asked once a monster is beaten, it plays the moment and gives its
+-- numbers back when the monster is your own fight's (nil: anyone else's)
+local finishingBlow: ((marker: BasePart, boss: boolean) -> FinishingBlowRules.Moment?)? = nil
+
+function MonsterController.SetFinishingBlow(callback: (marker: BasePart, boss: boolean) -> FinishingBlowRules.Moment?)
+	finishingBlow = callback
+end
+
 -- A beaten monster (not a boss: its own death scene) is knocked out: its model leaves its marker and flies off away from
 -- the winner (the marker's KODir; else away from you), Util/MonsterKO's from now on. Further away than the knockout's
 -- range it simply goes with its marker
@@ -673,7 +686,8 @@ local function knockOut(monster: Monster)
 		local from = if root and root:IsA("BasePart") then root.Position else camera.CFrame.Position
 		direction = monster.body.cframe.Position - from
 	end
-	local handle = MonsterKO.play(monster.body.model, direction, marker:GetAttribute("Elite") == true)
+	local moment = if finishingBlow then finishingBlow(marker, false) else nil
+	local handle = MonsterKO.play(monster.body.model, direction, marker:GetAttribute("Elite") == true, moment)
 	knockouts[marker] = handle
 	handle.onDone(function()
 		knockouts[marker] = nil
@@ -878,6 +892,19 @@ local function add(marker: BasePart)
 			knockOut(monster) -- beaten: it flies off (its tag and this connection go with it)
 			return
 		end
+		if marker:GetAttribute("Fainted") == true and not monster.beaten then
+			-- a boss beaten in your own fight holds still and white a beat, then its death scene (Config/FinishingBlow)
+			monster.beaten = true
+			local moment = if finishingBlow then finishingBlow(marker, true) else nil
+			if moment then
+				local now = os.clock()
+				monster.heldUntil = now + moment.hold
+				HitFx.flash(monster.body.model, Color3.new(1, 1, 1), moment.hold + FinishingBlowConfig.BODY_FLASH.tail, FinishingBlowConfig.BODY_FLASH.fill)
+				if #monster.heads > 0 or monster.aura then
+					monster.fallenAt = now + moment.hold -- the Hydra's heads drop once the beat is over
+				end
+			end
+		end
 		updateTag(monster)
 		if #monster.heads > 0 or monster.aura then
 			if marker:GetAttribute("Fainted") == true and not monster.fallenAt then
@@ -1004,6 +1031,9 @@ function MonsterController.Start()
 		local origin = if camera then camera.CFrame.Position else Vector3.zero
 		local extras = Extras.enabled()
 		for _, monster in monsters do
+			if monster.heldUntil and now < monster.heldUntil then
+				continue -- the finishing blow's beat: everything about it holds (its tip-over starts after)
+			end
 			if monster.idle then
 				stepIdle(monster, monster.idle, now)
 			end

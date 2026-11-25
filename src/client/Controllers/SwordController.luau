@@ -950,9 +950,12 @@ end
 -- 2026-11-07: a camera moment starting mid-zoom saved and restored a narrowed view, and it drifted)
 local hangBase: number? = nil
 local hangTweens: { Tween } = {}
+-- The latest zoom's (a hang or the finishing blow's punch): an older one's ease back never cuts a newer one short
+local hangToken = 0
 
 -- Any hang zoom running cut short, the camera back to its view's width (a skill's camera moment starting)
 local function cancelHang()
+	hangToken += 1
 	for _, tween in hangTweens do
 		tween:Cancel()
 	end
@@ -964,32 +967,53 @@ local function cancelHang()
 	end
 end
 
-local function hangZoom(seconds: number)
+-- Your camera eases in `degrees` over `inSeconds`, holds `holdSeconds`, then back over `backSeconds` to the width it
+-- had before any zoom still running (a zoom taking over keeps that base)
+local function zoomTo(degrees: number, inSeconds: number, holdSeconds: number, backSeconds: number)
 	if SkillCinematic.isPlaying() then
 		return -- a skill's camera moment owns the view
 	end
 	local camera = workspace.CurrentCamera
-	local zoom = SwordFx.HANG_ZOOM
+	for _, tween in hangTweens do
+		tween:Cancel()
+	end
+	table.clear(hangTweens)
+	hangToken += 1
+	local token = hangToken
 	local before = hangBase or camera.FieldOfView
 	hangBase = before
-	local easeIn = TweenService:Create(camera, TweenInfo.new(seconds, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), { FieldOfView = before - zoom.degrees })
+	local easeIn = TweenService:Create(camera, TweenInfo.new(inSeconds, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), { FieldOfView = before - degrees })
 	table.insert(hangTweens, easeIn)
 	easeIn:Play()
-	task.delay(seconds, function()
-		if hangBase ~= before then
-			return -- cut short
+	task.delay(inSeconds + holdSeconds, function()
+		if hangToken ~= token then
+			return -- cut short, or a newer zoom took over
 		end
 		easeIn:Cancel()
-		local easeOut = TweenService:Create(camera, TweenInfo.new(zoom.back, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { FieldOfView = before })
+		local easeOut = TweenService:Create(camera, TweenInfo.new(backSeconds, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { FieldOfView = before })
 		table.insert(hangTweens, easeOut)
 		easeOut.Completed:Once(function()
-			if hangBase == before then
+			if hangToken == token then
 				hangBase = nil
 				table.clear(hangTweens)
 			end
 		end)
 		easeOut:Play()
 	end)
+end
+
+local function hangZoom(seconds: number)
+	zoomTo(SwordFx.HANG_ZOOM.degrees, seconds, 0, SwordFx.HANG_ZOOM.back)
+end
+
+-- The finishing blow's camera punch (Config/FinishingBlow, client Util/FinishingBlow): in, hold, back; not while a
+-- cinematic owns the view (a super's or a skill's moment, or the camera not the player's)
+function SwordController.PunchZoom(degrees: number, inSeconds: number, holdSeconds: number, backSeconds: number)
+	local superCinematic = require(ClientUtil:WaitForChild("SuperCinematic"))
+	if workspace.CurrentCamera.CameraType ~= Enum.CameraType.Custom or superCinematic.isPlaying() then
+		return
+	end
+	zoomTo(degrees, inSeconds, holdSeconds, backSeconds)
 end
 
 -- Is this swing still the one playing (no newer cut, skill or dodge, still in the fight, still standing)?
