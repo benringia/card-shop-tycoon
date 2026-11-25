@@ -47,9 +47,10 @@ return {
 		expect.equal(WeaponRules.canReforge({ grade = "C", level = 10 }), true)
 	end,
 
-	["shown Power: the Prism Blade's counts its always-on strong hit and bond; the others are their Power"] = function()
-		expect.near(WeaponRules.shownPower(W, Combat, "prismBlade", "C", 0), 0.87 * Combat.STRONG * W.BOND.damage, 1e-9)
-		expect.near(WeaponRules.shownPower(W, Combat, "prismBlade", "S", 10), 0.87 * 1.15 * 1.5 * Combat.STRONG * W.BOND.damage, 1e-9)
+	-- Weapons round 4 (owner 2026-11-25, the future-proof rule): the Prism Blade keeps only "always strong", no bond
+	["shown Power: the Prism Blade's counts its always-on strong hit; the others are their Power"] = function()
+		expect.near(WeaponRules.shownPower(W, Combat, "prismBlade", "C", 0), 1.0 * Combat.STRONG, 1e-9)
+		expect.near(WeaponRules.shownPower(W, Combat, "prismBlade", "S", 10), 1.0 * 1.15 * 1.5 * Combat.STRONG, 1e-9)
 		assert(WeaponRules.shownPower(W, Combat, "prismBlade", "C", 0) > WeaponRules.shownPower(W, Combat, "sunforgedBlade", "C", 0), "the Legendary reads strongest")
 		expect.equal(WeaponRules.shownPower(W, Combat, "verdantBlade", "A", 3), WeaponRules.power(W, "verdantBlade", "A", 3))
 		expect.equal(WeaponRules.shownPower(W, Combat, "starterSword", "C", 0), 1)
@@ -71,9 +72,11 @@ return {
 		expect.equal(WeaponRules.power(W, "nope", "S", 3), 1, "an unknown weapon hits like the Steel Sword")
 	end,
 
-	["the Prism Blade's own base replaces its rarity's (always strong and bonded is its edge)"] = function()
-		expect.near(WeaponRules.power(W, "prismBlade", "C", 0), 0.87, 1e-9)
-		expect.near(WeaponRules.power(W, "prismBlade", "S", 10), 0.87 * 1.15 * 1.5, 1e-9)
+	["the Prism Blade's own base replaces its rarity's (always strong is its edge; 1.0 keeps its hits as they were bonded)"] = function()
+		expect.near(WeaponRules.power(W, "prismBlade", "C", 0), 1.0, 1e-9)
+		expect.near(WeaponRules.power(W, "prismBlade", "S", 10), 1.0 * 1.15 * 1.5, 1e-9)
+		-- its sword hits at +0: 0.87 x 1.5 x 1.15 bonded before, 1.0 x 1.5 now
+		expect.near(WeaponRules.power(W, "prismBlade", "C", 0) * Combat.STRONG, 0.87 * Combat.STRONG * 1.15, 0.01)
 	end,
 
 	["a hit's weapon info is the weapon it's given (a skill's caster weapon), not whatever is equipped by then"] = function()
@@ -95,15 +98,16 @@ return {
 		expect.equal(steel.bond, 1)
 	end,
 
-	["bond: same element x1.15 damage and x1.5 meter; prism bonds with any; Steel never"] = function()
+	["bond: same element x1.15 damage and x1.5 meter; the Prism and the Steel Sword never"] = function()
 		local d, m = WeaponRules.bond(W, "forgeSword_Ember", "Ember")
 		expect.equal(d, 1.15)
 		expect.equal(m, 1.5)
 		d, m = WeaponRules.bond(W, "forgeSword_Ember", "Tide")
 		expect.equal(d, 1)
 		expect.equal(m, 1)
-		d = WeaponRules.bond(W, "prismBlade", "Shade")
-		expect.equal(d, 1.15)
+		d, m = WeaponRules.bond(W, "prismBlade", "Shade")
+		expect.equal(d, 1, "no weapon bonds with every creature")
+		expect.equal(m, 1)
 		d = WeaponRules.bond(W, "starterSword", "Ember")
 		expect.equal(d, 1)
 		d = WeaponRules.bond(W, "prismBlade", nil)
@@ -403,8 +407,8 @@ return {
 		expect.equal(WeaponRules.superUnlocked(W, "forgeSword_Ember", "Ember"), true)
 		expect.equal(WeaponRules.superUnlocked(W, "magmaHalberd", "Ember"), true, "a spear counts")
 		expect.equal(WeaponRules.superUnlocked(W, "riftReaper", "Shade"), true, "a scythe counts")
-		expect.equal(WeaponRules.superUnlocked(W, "prismBlade", "Volt"), true, "the Prism Blade: every element")
-		expect.equal(WeaponRules.superUnlocked(W, "prismBlade", "Bloom"), true)
+		expect.equal(WeaponRules.superUnlocked(W, "prismBlade", "Volt"), false, "the Prism Blade unlocks none: a super needs its element's weapon")
+		expect.equal(WeaponRules.superUnlocked(W, "prismBlade", "Bloom"), false)
 		expect.equal(WeaponRules.superUnlocked(W, "forgeSword_Ember", "Tide"), false, "another element")
 		expect.equal(WeaponRules.superUnlocked(W, "starterSword", "Ember"), false, "the Steel Sword has no element")
 		expect.equal(WeaponRules.superUnlocked(W, nil, "Ember"), false, "no sword yet")
@@ -474,7 +478,9 @@ return {
 		end
 		-- every level adds 5%: +10 is where it was (the old base x 1.3), within 6%
 		expect.equal(W.UPGRADE_STEP, 0.05)
-		local before = { forgeSword_Ember = 1.15, verdantBlade = 1.25, magmaHalberd = 1.4, sunforgedBlade = 1.6, riftReaper = 1.4, titansLance = 1.2, prismBlade = 1 }
+		-- (the Prism Blade left this list in weapons round 4: its Power took in its old bond, its hits pinned by "the
+		-- Prism Blade's own base replaces its rarity's")
+		local before = { forgeSword_Ember = 1.15, verdantBlade = 1.25, magmaHalberd = 1.4, sunforgedBlade = 1.6, riftReaper = 1.4, titansLance = 1.2 }
 		for id, base in before do
 			local was, now = base * 1.3, at(id, 10)
 			assert(math.abs(now / was - 1) <= 0.06, `{id} at +10: {now}, {was} before`)

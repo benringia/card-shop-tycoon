@@ -6,6 +6,10 @@
 local WeaponRules = if game ~= nil
 	then require((script.Parent :: Instance):WaitForChild("WeaponRules")) :: any
 	else require("./WeaponRules") :: any
+-- the perks' icons, the same the Armory has always used
+local WeaponLookRules = if game ~= nil
+	then require((script.Parent :: Instance):WaitForChild("WeaponLookRules")) :: any
+	else require("./WeaponLookRules") :: any
 -- the elements' plain names (Config/ElementNames, owner 2026-11-12)
 local Names = if game ~= nil
 	then require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Config"):WaitForChild("ElementNames")) :: any
@@ -68,7 +72,18 @@ local function perkWords(perk: any): string?
 	return nil
 end
 
--- Power, element and bond, the perk; grade and level when owned. Empty for an unknown weapon.
+-- A weapon's Power as its Attack (weapons round 4, owner 2026-11-25: "better numbers for kids ... rather than x1.30"):
+-- the multiplier x 100, rounded, never truncated (1.505 x 100 is 150.4999... in floating point: the epsilon)
+function WeaponText.attack(power: number): number
+	return math.floor(power * 100 + 0.5 + 1e-9)
+end
+
+-- The card face's line: "Attack 151"
+function WeaponText.attackLine(power: number): string
+	return `Attack {WeaponText.attack(power)}`
+end
+
+-- Attack, element and bond, the perk; grade and level when owned. Empty for an unknown weapon.
 function WeaponText.stats(cfg: any, weaponId: string, owned: { grade: string, level: number }?, combat: any): { Row }
 	local weapon = cfg.ById[weaponId]
 	if not weapon then
@@ -77,9 +92,9 @@ function WeaponText.stats(cfg: any, weaponId: string, owned: { grade: string, le
 	local grade = if owned then owned.grade else "C"
 	local level = if owned then owned.level else 0
 	local rows: { Row } = {
-		{ label = "Power", value = string.format("x%.2f", WeaponRules.shownPower(cfg, combat, weaponId, grade, level)) },
+		{ label = "Attack", value = tostring(WeaponText.attack(WeaponRules.shownPower(cfg, combat, weaponId, grade, level))) },
 	}
-	local element = if weapon.prism then "Every element · bonds with every creature"
+	local element = if weapon.prism then "Always strong against every element"
 		elseif weapon.element then `{elementName(weapon.element)} · bonds with {elementName(weapon.element)} creatures`
 		else "None"
 	table.insert(rows, { label = "Element", value = element })
@@ -132,7 +147,8 @@ function WeaponText.pickup(name: string, gained: number, have: number, need: num
 end
 
 -- The weapon switch's line under the name (owner 2026-11-14 pick C): the upgrade level (none at +0) and the element in
--- plain words ("+4 · Nature", "Fire", "+10 · Every element"); empty for the Steel Sword or an unknown weapon
+-- plain words ("+4 · Nature", "Fire"; the Prism Blade's one edge: "+10 · Always strong"); empty for the Steel Sword or
+-- an unknown weapon
 function WeaponText.switchLine(cfg: any, weaponId: string, owned: { grade: string, level: number }?): string
 	local weapon = cfg.ById[weaponId]
 	if not weapon then
@@ -143,7 +159,7 @@ function WeaponText.switchLine(cfg: any, weaponId: string, owned: { grade: strin
 		table.insert(parts, `+{owned.level}`)
 	end
 	if weapon.prism then
-		table.insert(parts, "Every element")
+		table.insert(parts, "Always strong")
 	elseif weapon.element then
 		table.insert(parts, elementName(weapon.element))
 	end
@@ -269,7 +285,7 @@ function WeaponText.say(action: "forge" | "upgrade" | "reforge", cost: Cost?, ha
 	local last = table.remove(parts) or "nothing"
 	local list = if #parts > 0 then `{table.concat(parts, ", ")} and {last}` else last
 	if action == "upgrade" then
-		return `Use {list} to {what}: more Power!`
+		return `Use {list} to {what}: more Attack!`
 	elseif action == "reforge" then
 		return `Use {list} to {what}. You keep the better one!`
 	end
@@ -313,9 +329,9 @@ function WeaponText.outcome(action: "forge" | "upgrade" | "reforge", view: { lev
 	return "Grade C to S", "It comes out at a random grade, like a card. S is the best!"
 end
 
--- How much Power an upgrade adds, as the cards show Power (2 decimals)
+-- How much Attack an upgrade adds (two Powers), in the whole numbers the cards show
 function WeaponText.powerGain(now: number, after: number): string
-	return string.format("+%.2f Power", math.max(0, after - now))
+	return `+{math.max(0, WeaponText.attack(after) - WeaponText.attack(now))} Attack`
 end
 
 -- What reaching this upgrade level adds to the weapon's glow (Config/WeaponLooks LADDER; the aura starts earlier for
@@ -340,7 +356,7 @@ end
 -- The Forge window's line under its tabs: what the tab does (owner's pick A, 2026-11-08)
 local TAB_LINES = {
 	Forge = "Make a weapon you don't have yet. You pay its materials and cash; it comes out at a random grade, C to S (like a card).",
-	Upgrade = "Level a weapon you own up, +0 to +10: more Power and a brighter glow each level. Never fails. +5 and +10 also need Star Shards.",
+	Upgrade = "Level a weapon you own up, +0 to +10: more Attack and a brighter glow each level. Never fails. +5 and +10 also need Star Shards.",
 	Reforge = "Roll a new grade for half the making cost. You keep the better grade, so it never gets worse. Grade S can't be reforged.",
 }
 function WeaponText.tabLine(tab: string): string
@@ -349,15 +365,15 @@ end
 
 -- The weapon window (Armory UI, owner's pick A 2026-11-09) ----------------------------------------------------------
 
--- A Power as the cards show it (2 decimals), read back as a number so differences match what's on screen
-local function shown(cfg: any, combat: any, weaponId: string, owned: { grade: string, level: number }?): number
+-- A weapon's Attack as the cards show it (a record nil: Grade C at +0), so differences match what's on screen
+local function shownAttack(cfg: any, combat: any, weaponId: string, owned: { grade: string, level: number }?): number
 	local grade = if owned then owned.grade else "C"
 	local level = if owned then owned.level else 0
-	return tonumber(string.format("%.2f", WeaponRules.shownPower(cfg, combat, weaponId, grade, level))) :: number
+	return WeaponText.attack(WeaponRules.shownPower(cfg, combat, weaponId, grade, level))
 end
 
--- This weapon's Power against the equipped one's: "+0.79 vs Steel Sword" (sign 1), "-0.20 vs Rift Reaper" (-1),
--- "Same Power as ..." or "Equipped now" (0). A record nil: Grade C at +0. nil when either weapon is unknown.
+-- This weapon's Attack against the equipped one's: "+79 vs Steel Sword" (sign 1), "-20 vs Rift Reaper" (-1),
+-- "Same Attack as ..." or "Equipped now" (0). A record nil: Grade C at +0. nil when either weapon is unknown.
 export type Versus = { text: string, sign: number }
 function WeaponText.versus(
 	cfg: any,
@@ -374,22 +390,22 @@ function WeaponText.versus(
 	if weaponId == equippedId then
 		return { text = "Equipped now", sign = 0 }
 	end
-	local difference = shown(cfg, combat, weaponId, owned) - shown(cfg, combat, equippedId, equipped)
-	if math.abs(difference) < 0.005 then
-		return { text = `Same Power as {held.name}`, sign = 0 }
+	local difference = shownAttack(cfg, combat, weaponId, owned) - shownAttack(cfg, combat, equippedId, equipped)
+	if difference == 0 then
+		return { text = `Same Attack as {held.name}`, sign = 0 }
 	end
 	local sign = if difference > 0 then 1 else -1
-	return { text = `{if sign > 0 then "+" else "-"}{string.format("%.2f", math.abs(difference))} vs {held.name}`, sign = sign }
+	return { text = `{if sign > 0 then "+" else "-"}{math.abs(difference)} vs {held.name}`, sign = sign }
 end
 
--- A weapon's Power from Grade C at +0 to Grade S at the top level ("x1.40 to x2.09"; one number when they match)
+-- A weapon's Attack from Grade C at +0 to Grade S at the top level ("Attack 140 to 209"; one number when they match)
 function WeaponText.powerRange(cfg: any, combat: any, weaponId: string): string
 	if not cfg.ById[weaponId] then
 		return ""
 	end
-	local low = string.format("x%.2f", shown(cfg, combat, weaponId, nil))
-	local high = string.format("x%.2f", shown(cfg, combat, weaponId, { grade = "S", level = cfg.MAX_LEVEL }))
-	return if low == high then low else `{low} to {high}`
+	local low = shownAttack(cfg, combat, weaponId, nil)
+	local high = shownAttack(cfg, combat, weaponId, { grade = "S", level = cfg.MAX_LEVEL })
+	return if low == high then `Attack {low}` else `Attack {low} to {high}`
 end
 
 -- Where a boss lives, after its name (Config/Bosses place)
@@ -449,8 +465,8 @@ function WeaponText.progress(cost: { cash: number, items: { [string]: number } }
 end
 
 -- A weapon's sword skill (Config/CombatHud SKILLS by its moveset, else the dash slash's BUTTONS.skill): its icon, its
--- name in words ("DASH" -> "Dash") and what it does
-export type Skill = { icon: string, name: string, text: string }
+-- name in words ("DASH" -> "Dash"), what it does and that in one short line (the weapon window's row)
+export type Skill = { icon: string, name: string, text: string, short: string }
 function WeaponText.skill(hud: any, cfg: any, weaponId: string): Skill
 	local weapon = cfg.ById[weaponId]
 	local spec = (if weapon and weapon.moveset then hud.SKILLS[weapon.moveset] else nil) or hud.BUTTONS.skill
@@ -458,18 +474,78 @@ function WeaponText.skill(hud: any, cfg: any, weaponId: string): Skill
 	if name == string.upper(name) then
 		name = string.upper(string.sub(name, 1, 1)) .. string.lower(string.sub(name, 2))
 	end
-	return { icon = spec.icon, name = name, text = spec.tip }
+	return { icon = spec.icon, name = name, text = spec.tip, short = spec.short or spec.tip }
 end
 
--- What sharing the weapon's element with your summoned creature gives (Config/Weapons BOND; the Prism Blade: every
--- creature). nil for a weapon with no element.
+-- What sharing the weapon's element with your summoned creature gives (Config/Weapons BOND). nil for a weapon with no
+-- element (the Prism Blade bonds with nobody since weapons round 4).
 function WeaponText.bond(cfg: any, weaponId: string): string?
 	local weapon = cfg.ById[weaponId]
-	if not weapon or (not weapon.prism and not weapon.element) then
+	if not weapon or not weapon.element then
 		return nil
 	end
-	local who = if weapon.prism then "every creature" else `{elementName(weapon.element)} creatures`
-	return `+{percent(cfg.BOND.damage - 1)} hits and a {percent(cfg.BOND.meter - 1)} faster super with {who}`
+	return `+{percent(cfg.BOND.damage - 1)} hits and a {percent(cfg.BOND.meter - 1)} faster super with {elementName(weapon.element)} creatures`
+end
+
+-- A perk's row in the weapon window: a title and one short line ("Heals your creature", "Every 4th hit heals it 2%.");
+-- nil for a perk with no row (the Prism Blade's, its ALWAYS STRONG row instead)
+local function perkRow(perk: any): (string?, string?)
+	if perk.kind == "heal" and perk.every and perk.share then
+		local which = if perk.every == 1 then "Every hit" else `Every {ordinal(perk.every)} hit`
+		return "Heals your creature", `{which} heals it {percent(perk.share)}.`
+	elseif perk.kind == "erupt" and perk.every and perk.share then
+		return "Erupts", `Every {ordinal(perk.every)} hit bursts for {percent(perk.share)} more.`
+	elseif perk.kind == "chill" and perk.share and perk.seconds then
+		return "Chills the foe", `Its attacks slow {percent(perk.share)} for {perk.seconds} s.`
+	elseif perk.kind == "burn" and perk.seconds and perk.look == "venom" then
+		return "Poisons the foe", `Hits poison it for {perk.seconds} s.`
+	elseif perk.kind == "burn" and perk.seconds then
+		return "Burns the foe", `Hits set it burning for {perk.seconds} s.`
+	elseif perk.kind == "chain" and perk.every and perk.share then
+		return "Chain lightning", `Every {ordinal(perk.every)} hit strikes {percent(perk.share)} harder and arcs to other foes.`
+	elseif perk.kind == "execute" and perk.share and perk.below then
+		return "Finishes foes", `Hits deal {percent(perk.share)} more to foes under {percent(perk.below)} HP.`
+	end
+	return nil, nil
+end
+
+-- The weapon window's rows (weapons round 4, layout A; owner 2026-11-25: "rearrange this UI to be easily understood"):
+-- each an icon (a Config/UIIcons name), a bold title and one short line, in window order. A weapon you don't have:
+-- its Attack range first. Then its skill, its perk, its bond; the Prism Blade's ALWAYS STRONG and Supers instead of a
+-- bond (distinct icons, owner: "attack, mutation and super has the same icon"). `looks` is Config/WeaponLooks (the
+-- perks' icons). Empty for an unknown weapon.
+export type WindowRow = { kind: "range" | "skill" | "perk" | "bond" | "strong" | "supers", icon: string, title: string, words: string }
+function WeaponText.rows(cfg: any, hud: any, looks: any, combat: any, weaponId: string, owned: { grade: string, level: number }?): { WindowRow }
+	local weapon = cfg.ById[weaponId]
+	if not weapon then
+		return {}
+	end
+	local rows: { WindowRow } = {}
+	if not owned then
+		table.insert(rows, { kind = "range", icon = "Power", title = WeaponText.powerRange(cfg, combat, weaponId), words = `Grade C at +0 to Grade S at +{cfg.MAX_LEVEL}` })
+	end
+	local skill = WeaponText.skill(hud, cfg, weaponId)
+	table.insert(rows, { kind = "skill", icon = skill.icon, title = skill.name, words = skill.short })
+	local perk = WeaponRules.perk(cfg, weaponId, if owned then owned.grade else "C")
+	if perk then
+		local title, words = perkRow(perk)
+		if title and words then
+			table.insert(rows, { kind = "perk", icon = WeaponLookRules.perkIcon(looks, perk), title = title, words = words })
+		end
+	end
+	if weapon.prism then
+		table.insert(rows, { kind = "strong", icon = "Elements", title = "ALWAYS STRONG", words = `Every hit is strong ({combat.STRONG}x) against any foe.` })
+		table.insert(rows, { kind = "supers", icon = "Lock", title = "Supers", words = "Doesn't unlock supers: use your creature's element weapon." })
+	elseif weapon.element then
+		local name = elementName(weapon.element)
+		table.insert(rows, {
+			kind = "bond",
+			icon = weapon.element,
+			title = `Best with {name} creatures`,
+			words = `Unlocks their supers. Hits +{percent(cfg.BOND.damage - 1)}, supers fill {percent(cfg.BOND.meter - 1)} faster.`,
+		})
+	end
+	return rows
 end
 
 -- A boss material toward its weapon (the chest card, the pick-up card), in simple words (owner 2026-11-20; it said

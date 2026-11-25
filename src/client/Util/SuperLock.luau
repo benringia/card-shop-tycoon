@@ -1,6 +1,6 @@
 --!strict
 -- Whether your creature's super is locked (owner 2026-11-19: "only epics and legendary super skills locked until you
--- have same element weapon"; the Prism Blade unlocks every one): the plain name of the element it needs ("Fire"), or nil
+-- have same element weapon"; the Prism Blade too since weapons round 4): the plain name of the element it needs ("Fire"), or nil
 -- when the weapon in hand fits. The server decides (WeaponService.SuperScale refuses with the locked card); this only
 -- draws the combat HUD's lock (Util/CombatHud) from the character's Sword attribute (WeaponService.ApplyAttributes).
 local Players = game:GetService("Players")

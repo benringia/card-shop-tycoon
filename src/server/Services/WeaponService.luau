@@ -103,8 +103,8 @@ function WeaponService.HitInfo(player: Player, creatureElement: string?, weaponI
 	return WeaponRules.hitInfo(Weapons, id, if record then record.grade else "C", creatureElement)
 end
 
--- A super pressed (owner 2026-11-19: Epic and Legendary supers need a weapon of the creature's element; the Prism Blade
--- unlocks every one): the scale the weapon in hand fires it at (WeaponRules.superScale), or nil after the locked card
+-- A super pressed (owner 2026-11-19: Epic and Legendary supers need a weapon of the creature's element; no exceptions
+-- since weapons round 4, the Prism Blade included): the scale the weapon in hand fires it at (WeaponRules.superScale), or nil after the locked card
 -- saying which weapon it needs. `cardName`: the creature's card, `element`: its element key.
 function WeaponService.SuperScale(player: Player, cardName: string, element: string): number?
 	local weaponId = WeaponService.GetEquipped(player)

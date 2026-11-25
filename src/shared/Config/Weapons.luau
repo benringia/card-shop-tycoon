@@ -114,9 +114,10 @@ local REST: { Weapon } = {
 		moveset = "prismBlade",
 		model = "PrismBlade",
 		source = { kind = "boss", boss = "prismHydra" },
-		-- Always strong (x1.5) and bonded with any creature (x1.15) makes it about 1.7 against every foe at +0; its own
-		-- base keeps +10 Grade S inside the Hydra's balance limit (spec 4.6; DESIGN.md weapons balance rows)
-		power = 0.87, -- 1 until 2026-11-21 (the Power moved into the upgrades: RARITY_POWER below)
+		-- Always strong (x1.5) against every foe, its one edge since weapons round 4 (owner 2026-11-25: no bond, no
+		-- supers, spec 2026-11-25-weapons-round4-design): 1.0 x 1.5 hits as 0.87 x 1.5 x 1.15 did with its old bond, so
+		-- +10 Grade S stays inside the Hydra's balance limit (spec 4.6; DESIGN.md weapons balance rows)
+		power = 1.0, -- 1 until 2026-11-21, 0.87 until 2026-11-25
 		perk = { kind = "prism" }, -- always strong against the foe's element
 	},
 }
@@ -277,12 +278,12 @@ return {
 	GRADE_POWER = { C = 1, B = 1.05, A = 1.1, S = 1.15 },
 	UPGRADE_STEP = 0.05,
 	MAX_LEVEL = 10,
-	-- Your summoned creature shares the weapon's element (the Prism Blade: any): weapon hits x damage, the super meter's
-	-- fill from sword hits x meter
+	-- Your summoned creature shares the weapon's element (no weapon bonds with every creature, weapons round 4): weapon
+	-- hits x damage, the super meter's fill from sword hits x meter
 	BOND = { damage = 1.15, meter = 1.5 },
 	-- Supers need a weapon (owner 2026-11-19: "only epics and legendary super skills locked until you have same element
-	-- weapon", "weapon strength: OK"; WeaponRules.superUnlocked / superScale): a weapon of the creature's element (the
-	-- Prism Blade: any) unlocks its super, and the super fires `share` of the way from the Steel Sword's Power to the
+	-- weapon", "weapon strength: OK"; WeaponRules.superUnlocked / superScale): a weapon of the creature's element (no
+	-- exceptions since weapons round 4) unlocks its super, and the super fires `share` of the way from the Steel Sword's Power to the
 	-- weapon's (Config/Combat SUPER_SCALES: which of its numbers grow). Tuned with tools/balance/bosses.
 	SUPER = { share = 0.5, lockedTitle = "Super locked" },
 	PERK_S = 1.2, -- a Grade S weapon's perk number x this

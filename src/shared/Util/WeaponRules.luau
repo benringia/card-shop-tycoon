@@ -66,12 +66,12 @@ function WeaponRules.power(cfg: any, weaponId: string, grade: string, level: num
 	return base * gradePower * (1 + cfg.UPGRADE_STEP * steps)
 end
 
--- The Power a card shows: its Power, and for the Prism Blade its always-on strong hit and bond too (they apply against
--- every foe with every creature, so its own base alone would read weaker than a Common)
+-- The Power a card shows: its Power, and for the Prism Blade its always-on strong hit too (it applies against every
+-- foe, so its own base alone would read weaker than it hits). No bond since weapons round 4: it bonds with nobody
 function WeaponRules.shownPower(cfg: any, combat: any, weaponId: string, grade: string, level: number): number
 	local power = WeaponRules.power(cfg, weaponId, grade, level)
 	local weapon = cfg.ById[weaponId]
-	return if weapon and weapon.prism then power * combat.STRONG * cfg.BOND.damage else power
+	return if weapon and weapon.prism then power * combat.STRONG else power
 end
 
 -- Why changing weapons isn't allowed now (nil: it is): in a fight, or before the shop level that gives the first sword
@@ -123,26 +123,28 @@ function WeaponRules.hitElement(cfg: any, weaponId: string, foeElement: string?,
 	return if weapon.prism then WeaponRules.strongAgainst(combat, foeElement) else weapon.element
 end
 
--- The summoned creature sharing the weapon's element (the Prism Blade: any): (damage, meter) multipliers
+-- The summoned creature sharing the weapon's element: (damage, meter) multipliers. No weapon bonds with every creature
+-- (weapons round 4, owner 2026-11-25: the Prism Blade neither, so a later world's element weapons still matter)
 function WeaponRules.bond(cfg: any, weaponId: string, creatureElement: string?): (number, number)
 	local weapon = cfg.ById[weaponId]
 	if not weapon or not creatureElement then
 		return 1, 1
 	end
-	if weapon.prism or (weapon.element ~= nil and weapon.element == creatureElement) then
+	if weapon.element ~= nil and weapon.element == creatureElement then
 		return cfg.BOND.damage, cfg.BOND.meter
 	end
 	return 1, 1
 end
 
 -- Whether a creature's super can fire with this weapon in hand (owner 2026-11-19: Epic and Legendary supers are locked
--- until you hold a weapon of the creature's element; the Prism Blade unlocks every one). `weaponId` nil: no sword yet.
+-- until you hold a weapon of the creature's element; no exceptions since weapons round 4, the Prism Blade included).
+-- `weaponId` nil: no sword yet.
 function WeaponRules.superUnlocked(cfg: any, weaponId: string?, creatureElement: string?): boolean
 	local weapon = if weaponId then cfg.ById[weaponId] else nil
 	if not weapon or not creatureElement then
 		return false
 	end
-	return weapon.prism == true or (weapon.element ~= nil and weapon.element == creatureElement)
+	return weapon.element ~= nil and weapon.element == creatureElement
 end
 
 -- How much stronger the weapon makes the super it unlocks (owner 2026-11-19, "weapon strength: OK"): SUPER.share of the

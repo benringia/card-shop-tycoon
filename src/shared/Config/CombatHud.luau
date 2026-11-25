@@ -26,6 +26,7 @@ return {
 		skill = {
 			color = rgb(167, 139, 250), icon = "DashSkill", emoji = "⚡", key = "E", name = "DASH",
 			tip = "Dash through and slash everything in your path.",
+			short = "Dash through and slash every foe in your path.", -- the weapon window's row (weapons round 4)
 		},
 		pet = {
 			color = rgb(74, 222, 128), icon = "Paw", emoji = "🐾", key = "R", name = "PET MOVE",
@@ -53,49 +54,59 @@ return {
 		forgeSword = {
 			icon = "SpinSkill", name = "Elemental Spin",
 			tip = "Spin twice and blast a ring of your sword's element into every foe around you.",
+			short = "Spin and blast your element at every foe near you.", -- the weapon window's row (weapons round 4)
 		},
 		verdantBlade = {
 			icon = "Thornline", name = "Thornline",
 			tip = "Plunge your blade into the ground: thorny vines race to the first foe and snap shut on it.",
+			short = "Vines snap shut on the first foe.", -- the weapon window's row (weapons round 4)
 		},
 		sunforgedBlade = {
 			icon = "Sunfall", name = "Sunfall Cleave",
 			tip = "Leap, charge in the sun, then cleave a fire crescent that bursts on the first foe it hits.",
+			short = "Leap and cleave a fire crescent at the first foe.", -- the weapon window's row (weapons round 4)
 		},
 		prismBlade = {
 			icon = "PrismJudgment", name = "Prism Judgment",
 			tip = "Five ghost swords circle your target and dive in one by one, then a rainbow pillar.",
+			short = "Five ghost swords dive in, then a rainbow pillar.", -- the weapon window's row (weapons round 4)
 		},
 		-- every spear (weapons round 2; the owner's pick C, 2026-11-07: a spear with its afterimages)
 		spear = {
 			icon = "PiercingRush", name = "Piercing Rush",
 			tip = "Rush forward tip-first and pierce every foe in a line.",
+			short = "Rush forward and pierce every foe in a line.", -- the weapon window's row (weapons round 4)
 		},
 		-- the Titan's Lance (weapons round 2.5; owner 2026-11-08: the lance wrapped in vines)
 		titansLance = {
 			icon = "LanceLeaves", name = "Titan's Wrath",
 			tip = "Charge in a low stance, then one huge thrust tears a fissure through every foe ahead.",
+			short = "One huge thrust tears through every foe ahead.", -- the weapon window's row (weapons round 4)
 		},
 		-- the Magma Halberd and the Tidal Trident (weapons round 2.5 part 2; spare glyphs, spec 5)
 		magmaHalberd = {
 			icon = "HalberdFlames", name = "Magma Cleave",
 			tip = "One huge flaming swipe hits every foe in front of you.",
+			short = "A huge flaming swipe at every foe in front.", -- the weapon window's row (weapons round 4)
 		},
 		tidalTrident = {
 			icon = "TridentWave", name = "Torrent Strike",
 			tip = "Slam the trident into the ground: torrents of water burst up round you, hitting every foe near you.",
+			short = "Torrents burst up round you, hitting every foe near.", -- the weapon window's row (weapons round 4)
 		},
 		-- every scythe (weapons round 3; a spare glyph: a crescent flung out with sparks)
 		scythe = {
 			icon = "CrescentSparks", name = "Reaping Cyclone",
 			tip = "Spin three times, throwing rings of blades that hit every foe round you.",
+			short = "Spin and throw rings of blades at every foe round you.", -- the weapon window's row (weapons round 4)
 		},
 		-- the Rift Reaper (spec 5.4: the Skull glyph for its summoned Grim Reaper)
 		riftReaper = {
 			icon = "Skull", name = "Thousand Cuts",
 			tip = "Summon the Grim Reaper: a thousand cuts, then it reaps every foe round you.",
+			short = "The Grim Reaper cuts every foe round you.", -- the weapon window's row (weapons round 4)
 		},
-	} :: { [string]: { icon: string, name: string, tip: string } },
+	} :: { [string]: { icon: string, name: string, tip: string, short: string } },
 	-- Under every skill's tooltip (a dodge before a skill's hit cancels its damage: SwordRules.skillDodged)
 	SKILL_DODGE_TIP = "Dodging before it lands cancels it.",
 	-- fights with the sword that show the buttons' names (saved per player: swordFights). Wild fights count too and

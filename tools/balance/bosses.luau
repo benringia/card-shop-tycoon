@@ -34,7 +34,7 @@
 -- Power on every cut and skill, its element on the wheel, the bond with the creature fighting for them and its perk;
 -- without it they hold the Steel Sword (Power 1, no element), as in today's game. WEAPON="match:<level>:<grade>": each
 -- player holds the Forge Sword of their party leader's element (the matching weapon a player makes for their best card).
--- Supers need a weapon of their creature's element (owner 2026-11-19; the Prism Blade unlocks every one) and fire
+-- Supers need a weapon of their creature's element (owner 2026-11-19; the Prism Blade too since weapons round 4) and fire
 -- stronger with a stronger one (WeaponRules.superScale): with the Steel Sword nobody's fires. FREE_SUPERS=1 runs the
 -- old rule (every super at its base strength, no weapon needed), to compare.
 -- WEAPON_SET="<path>=<number>,..." tries other Config/Weapons numbers (WEAPON_SET="RARITY_POWER.Legendary=1.6,UPGRADE_STEP=0.04").

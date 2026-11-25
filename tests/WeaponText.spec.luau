@@ -5,6 +5,7 @@ local Items = require("../src/shared/Config/Items")
 local Combat = require("../src/shared/Config/Combat")
 local Bosses = require("../src/shared/Config/Bosses")
 local CombatHud = require("../src/shared/Config/CombatHud")
+local WeaponLooks = require("../src/shared/Config/WeaponLooks")
 local expect = require("./lib/expect")
 
 local function valueOf(rows: { { label: string, value: string } }, label: string): string?
@@ -23,14 +24,15 @@ return {
 		expect.equal(valueOf(WeaponText.stats(Weapons, "titansLance", nil, Combat), "Perk"), "Every 4th hit heals your creature 1%")
 	end,
 
-	["stats: Power to 2 decimals, the element and its bond, the perk in words"] = function()
+	-- Weapons round 4 (owner 2026-11-25: "better numbers for kids ... rather than x1.30"): Attack, a whole number
+	["stats: Attack as a whole number, the element and its bond, the perk in words"] = function()
 		local rows = WeaponText.stats(Weapons, "verdantBlade", nil, Combat)
-		expect.equal(valueOf(rows, "Power"), "x1.10")
+		expect.equal(valueOf(rows, "Attack"), "110")
 		expect.equal(valueOf(rows, "Element"), "Nature · bonds with Nature creatures") -- plain element names (owner 2026-11-12)
 		expect.equal(valueOf(rows, "Perk"), "Every 4th hit heals your creature 2%")
 		expect.equal(valueOf(rows, "Grade"), nil, "not owned: no grade or level")
 		local owned = WeaponText.stats(Weapons, "verdantBlade", { grade = "S", level = 4 }, Combat)
-		expect.equal(valueOf(owned, "Power"), "x1.52") -- 1.1 x 1.15 x 1.2
+		expect.equal(valueOf(owned, "Attack"), "152") -- 1.1 x 1.15 x 1.2 = 1.518
 		expect.equal(valueOf(owned, "Perk"), "Every 4th hit heals your creature 2.4%", "Grade S perks are stronger")
 		expect.equal(valueOf(owned, "Grade"), "S")
 		expect.equal(valueOf(owned, "Level"), "+4")
@@ -39,11 +41,11 @@ return {
 	["stats: the burn, the prism and the plain Steel Sword"] = function()
 		expect.equal(valueOf(WeaponText.stats(Weapons, "sunforgedBlade", nil, Combat), "Perk"), "Sets the foe burning for 3 s")
 		local prism = WeaponText.stats(Weapons, "prismBlade", nil, Combat)
-		expect.equal(valueOf(prism, "Power"), "x1.50", "always strong and bonded (0.87 x 1.5 x 1.15)")
+		expect.equal(valueOf(prism, "Attack"), "150", "always strong (1.0 x 1.5), no bond")
 		expect.equal(valueOf(prism, "Perk"), "Always strong against the foe's element")
-		expect.equal(valueOf(prism, "Element"), "Every element · bonds with every creature")
+		expect.equal(valueOf(prism, "Element"), "Always strong against every element")
 		local steel = WeaponText.stats(Weapons, "starterSword", nil, Combat)
-		expect.equal(valueOf(steel, "Power"), "x1.00")
+		expect.equal(valueOf(steel, "Attack"), "100")
 		expect.equal(valueOf(steel, "Element"), "None")
 		expect.equal(valueOf(steel, "Perk"), nil)
 		expect.equal(#WeaponText.stats(Weapons, "nope", nil, Combat), 0)
@@ -112,8 +114,8 @@ return {
 		local all = { material_meadowWarden = 30, material_caveBroodQueen = 30, material_emberColossus = 30, starShard = 5 }
 		expect.equal(WeaponText.say("forge", many, all, 30000, Items, { name = "Sunforged Blade" }), "Use these 4 materials and $25,000 to make the Sunforged Blade!")
 		-- upgrading and reforging
-		expect.equal(WeaponText.say("upgrade", { cash = 600, items = { wildOre = 5 } }, { wildOre = 9 }, 9000, Items, { name = "Verdant Blade", level = 4 }), "Use 5 Wild Ore and $600 to make it +4: more Power!")
-		expect.equal(WeaponText.say("upgrade", { cash = 1200, items = {} }, {}, 9000, Items, { name = "Verdant Blade", level = 4 }), "Use $1,200 to make it +4: more Power!")
+		expect.equal(WeaponText.say("upgrade", { cash = 600, items = { wildOre = 5 } }, { wildOre = 9 }, 9000, Items, { name = "Verdant Blade", level = 4 }), "Use 5 Wild Ore and $600 to make it +4: more Attack!")
+		expect.equal(WeaponText.say("upgrade", { cash = 1200, items = {} }, {}, 9000, Items, { name = "Verdant Blade", level = 4 }), "Use $1,200 to make it +4: more Attack!")
 		expect.equal(WeaponText.say("upgrade", { cash = 600, items = { wildOre = 5 } }, { wildOre = 1 }, 9000, Items, { name = "Verdant Blade", level = 4 }), "Get 4 more Wild Ore to make it +4.")
 		expect.equal(WeaponText.say("upgrade", nil, {}, 9000, Items, { name = "Verdant Blade" }), "It is +10: fully upgraded!")
 		expect.equal(WeaponText.say("reforge", { cash = 750, items = { wildOre = 10 } }, { wildOre = 10 }, 9000, Items, { name = "Fire Forge Sword" }), "Use 10 Wild Ore and $750 to roll a new grade. You keep the better one!")
@@ -166,8 +168,8 @@ return {
 		pill, line = WeaponText.outcome("reforge", { grade = "S", done = true })
 		expect.equal(pill, "Grade S")
 		expect.equal(line, nil)
-		expect.equal(WeaponText.powerGain(1.4, 1.44), "+0.04 Power")
-		expect.equal(WeaponText.powerGain(1.25, 1.25), "+0.00 Power")
+		expect.equal(WeaponText.powerGain(1.4, 1.44), "+4 Attack")
+		expect.equal(WeaponText.powerGain(1.25, 1.25), "+0 Attack")
 	end,
 
 	["what each upgrade adds to the glow (the forge reveal's line), by rarity"] = function()
@@ -185,7 +187,7 @@ return {
 
 	["the Forge window's tab lines say what each tab does (owner's pick A, 2026-11-08)"] = function()
 		expect.equal(WeaponText.tabLine("Forge"), "Make a weapon you don't have yet. You pay its materials and cash; it comes out at a random grade, C to S (like a card).")
-		expect.equal(WeaponText.tabLine("Upgrade"), "Level a weapon you own up, +0 to +10: more Power and a brighter glow each level. Never fails. +5 and +10 also need Star Shards.")
+		expect.equal(WeaponText.tabLine("Upgrade"), "Level a weapon you own up, +0 to +10: more Attack and a brighter glow each level. Never fails. +5 and +10 also need Star Shards.")
 		expect.equal(WeaponText.tabLine("Reforge"), "Roll a new grade for half the making cost. You keep the better grade, so it never gets worse. Grade S can't be reforged.")
 	end,
 
@@ -197,15 +199,15 @@ return {
 	end,
 
 	-- The weapon window (Armory UI, owner's pick A 2026-11-09): Power against what you hold, signed
-	["versus: this weapon's Power against the equipped one's, signed, to 2 decimals"] = function()
+	["versus: this weapon's Attack against the equipped one's, signed, whole numbers"] = function()
 		local maxed = { grade = "S", level = 10 }
 		local better = WeaponText.versus(Weapons, Combat, "titansLance", maxed, "starterSword", nil)
 		assert(better, "a known pair compares")
-		expect.equal(better.text, "+0.79 vs Steel Sword")
+		expect.equal(better.text, "+79 vs Steel Sword")
 		expect.equal(better.sign, 1)
 		local worse = WeaponText.versus(Weapons, Combat, "starterSword", nil, "titansLance", maxed)
 		assert(worse)
-		expect.equal(worse.text, "-0.79 vs Titan's Lance")
+		expect.equal(worse.text, "-79 vs Titan's Lance")
 		expect.equal(worse.sign, -1)
 		local held = WeaponText.versus(Weapons, Combat, "titansLance", maxed, "titansLance", maxed)
 		assert(held)
@@ -213,14 +215,14 @@ return {
 		expect.equal(held.sign, 0)
 		local even = WeaponText.versus(Weapons, Combat, "forgeSword_Ember", nil, "forgeSword_Tide", nil)
 		assert(even)
-		expect.equal(even.text, "Same Power as Water Forge Sword")
+		expect.equal(even.text, "Same Attack as Water Forge Sword")
 		expect.equal(even.sign, 0)
 		expect.equal(WeaponText.versus(Weapons, Combat, "titansLance", maxed, "nope", nil), nil, "an unknown weapon compares to nothing")
 	end,
 
 	["powerRange: Grade C at +0 to Grade S at the top level, one number when they match"] = function()
-		expect.equal(WeaponText.powerRange(Weapons, Combat, "riftReaper"), "x1.21 to x2.09")
-		expect.equal(WeaponText.powerRange(Weapons, Combat, "starterSword"), "x1.00")
+		expect.equal(WeaponText.powerRange(Weapons, Combat, "riftReaper"), "Attack 121 to 209")
+		expect.equal(WeaponText.powerRange(Weapons, Combat, "starterSword"), "Attack 100")
 		expect.equal(WeaponText.powerRange(Weapons, Combat, "nope"), "")
 	end,
 
@@ -282,7 +284,7 @@ return {
 
 	["bond: what sharing its element with your creature gives, from Config/Weapons BOND"] = function()
 		expect.equal(WeaponText.bond(Weapons, "titansLance"), "+15% hits and a 50% faster super with Nature creatures")
-		expect.equal(WeaponText.bond(Weapons, "prismBlade"), "+15% hits and a 50% faster super with every creature")
+		expect.equal(WeaponText.bond(Weapons, "prismBlade"), nil, "round 4: no weapon bonds with every creature")
 		expect.equal(WeaponText.bond(Weapons, "starterSword"), nil, "no element, no bond")
 	end,
 
@@ -290,7 +292,7 @@ return {
 	["the weapon switch's line: upgrade level and element"] = function()
 		expect.equal(WeaponText.switchLine(Weapons, "verdantBlade", { grade = "A", level = 4 }), "+4 · Nature")
 		expect.equal(WeaponText.switchLine(Weapons, "forgeSword_Ember", { grade = "C", level = 0 }), "Fire", "+0 is left out")
-		expect.equal(WeaponText.switchLine(Weapons, "prismBlade", { grade = "S", level = 10 }), "+10 · Every element")
+		expect.equal(WeaponText.switchLine(Weapons, "prismBlade", { grade = "S", level = 10 }), "+10 · Always strong", "round 4: its one edge, not every element")
 		expect.equal(WeaponText.switchLine(Weapons, "starterSword", nil), "", "no element, not upgraded: nothing")
 		expect.equal(WeaponText.switchLine(Weapons, "nope", nil), "")
 	end,
@@ -304,6 +306,110 @@ return {
 		expect.equal(WeaponText.goalLine(84, 4, "Verdant Blade", true), "You can upgrade the Verdant Blade now!")
 		expect.equal(WeaponText.goalLine(15, 15, "Verdant Blade", false), "You can make the Verdant Blade now!")
 		expect.equal(WeaponText.goalLine(1, 1, "Sunforged Blade", false), "You can make the Sunforged Blade now!")
+	end,
+
+	-- Weapons round 4 ---------------------------------------------------------------------------------------------
+	["Attack rounds the multiplier x 100, never truncating"] = function()
+		expect.equal(WeaponText.attack(1), 100)
+		expect.equal(WeaponText.attack(1.505), 151, "150.4999... in floating point still rounds up")
+		expect.equal(WeaponText.attack(1.5125), 151)
+		expect.equal(WeaponText.attack(2.5875), 259)
+		expect.equal(WeaponText.attack(1.094), 109)
+		expect.equal(WeaponText.attackLine(1.5125), "Attack 151", "the card face's line")
+	end,
+
+	["the window's rows: an owned element weapon, the skill, the perk, the bond"] = function()
+		local rows = WeaponText.rows(Weapons, CombatHud, WeaponLooks, Combat, "verdantBlade", { grade = "A", level = 5 })
+		expect.equal(#rows, 3)
+		expect.equal(rows[1].kind, "skill")
+		expect.equal(rows[1].icon, "Thornline")
+		expect.equal(rows[1].title, "Thornline")
+		expect.equal(rows[1].words, "Vines snap shut on the first foe.")
+		expect.equal(rows[2].kind, "perk")
+		expect.equal(rows[2].icon, "Heal")
+		expect.equal(rows[2].title, "Heals your creature")
+		expect.equal(rows[2].words, "Every 4th hit heals it 2%.")
+		expect.equal(rows[3].kind, "bond")
+		expect.equal(rows[3].icon, "Bloom")
+		expect.equal(rows[3].title, "Best with Nature creatures")
+		expect.equal(rows[3].words, "Unlocks their supers. Hits +15%, supers fill 50% faster.")
+	end,
+
+	["the Prism Blade's rows: ALWAYS STRONG highlighted, no supers, no bond"] = function()
+		local rows = WeaponText.rows(Weapons, CombatHud, WeaponLooks, Combat, "prismBlade", { grade = "S", level = 10 })
+		expect.equal(#rows, 3)
+		expect.equal(rows[1].kind, "skill")
+		expect.equal(rows[1].title, "Prism Judgment")
+		expect.equal(rows[2].kind, "strong")
+		expect.equal(rows[2].icon, "Elements")
+		expect.equal(rows[2].title, "ALWAYS STRONG")
+		expect.equal(rows[2].words, "Every hit is strong (1.5x) against any foe.")
+		expect.equal(rows[3].kind, "supers")
+		expect.equal(rows[3].icon, "Lock", "not the Attack fist (owner: they had the same icon)")
+		expect.equal(rows[3].title, "Supers")
+		expect.equal(rows[3].words, "Doesn't unlock supers: use your creature's element weapon.")
+	end,
+
+	["the Steel Sword's rows: its dash alone, no empty rows"] = function()
+		local rows = WeaponText.rows(Weapons, CombatHud, WeaponLooks, Combat, "starterSword", { grade = "C", level = 0 })
+		expect.equal(#rows, 1)
+		expect.equal(rows[1].kind, "skill")
+		expect.equal(rows[1].title, "Dash")
+		expect.equal(rows[1].words, "Dash through and slash every foe in your path.")
+		expect.equal(#WeaponText.rows(Weapons, CombatHud, WeaponLooks, Combat, "nope", nil), 0)
+	end,
+
+	["a weapon you don't have: its Attack range first"] = function()
+		local rows = WeaponText.rows(Weapons, CombatHud, WeaponLooks, Combat, "verdantBlade", nil)
+		expect.equal(rows[1].kind, "range")
+		expect.equal(rows[1].icon, "Power")
+		expect.equal(rows[1].title, "Attack 110 to 190")
+		expect.equal(rows[1].words, "Grade C at +0 to Grade S at +10")
+		expect.equal(rows[2].kind, "skill")
+	end,
+
+	["every perk's row: a title and one short line"] = function()
+		local function perkRow(id: string): any
+			for _, row in WeaponText.rows(Weapons, CombatHud, WeaponLooks, Combat, id, { grade = "C", level = 0 }) do
+				if row.kind == "perk" then
+					return row
+				end
+			end
+			return nil
+		end
+		local burn = perkRow("sunforgedBlade")
+		expect.equal(burn.title, "Burns the foe")
+		expect.equal(burn.words, "Hits set it burning for 3 s.")
+		expect.equal(burn.icon, "Ember")
+		local venom = perkRow("widowsReaper")
+		expect.equal(venom.title, "Poisons the foe")
+		expect.equal(venom.words, "Hits poison it for 3 s.")
+		local erupt = perkRow("magmaHalberd")
+		expect.equal(erupt.title, "Erupts")
+		expect.equal(erupt.words, "Every 5th hit bursts for 60% more.")
+		local chill = perkRow("tidalTrident")
+		expect.equal(chill.title, "Chills the foe")
+		expect.equal(chill.words, "Its attacks slow 10% for 3 s.")
+		local chain = perkRow("stormReaper")
+		expect.equal(chain.title, "Chain lightning")
+		expect.equal(chain.words, "Every 4th hit strikes 40% harder and arcs to other foes.")
+		local execute = perkRow("riftReaper")
+		expect.equal(execute.title, "Finishes foes")
+		expect.equal(execute.words, "Hits deal 30% more to foes under 30% HP.")
+		local graded = WeaponText.rows(Weapons, CombatHud, WeaponLooks, Combat, "verdantBlade", { grade = "S", level = 0 })
+		expect.equal(graded[2].words, "Every 4th hit heals it 2.4%.", "Grade S perks are stronger")
+	end,
+
+	["every skill's short line fits one row"] = function()
+		local count = 0
+		for key, skill in CombatHud.SKILLS do
+			assert(typeof(skill.short) == "string" and skill.short ~= "", `{key} has a short line`)
+			assert(#skill.short <= 55, `{key}'s short line fits one row ({#skill.short} characters)`)
+			count += 1
+		end
+		assert(count >= 10, "every moveset's skill")
+		local dash = CombatHud.BUTTONS.skill
+		assert(typeof(dash.short) == "string" and #dash.short <= 55, "the Steel Sword's dash")
 	end,
 }
 
