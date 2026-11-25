@@ -187,6 +187,7 @@ export type RecipeOpts = {
 	shopLevel: number?,
 	wait: string?, -- how long the job takes, in words ("2 minutes")
 	done: boolean?, -- a reforge: it is Grade S already
+	waiting: boolean?, -- a Mutate: a mutation already waits for its choice on this weapon
 }
 
 local function sortedIds(cost: Cost): { string }
@@ -204,7 +205,7 @@ local function itemName(items: any, id: string): string
 end
 
 -- "15 Warden Heartwood", "2 Star Shards": a name that ends in a stuff word takes no s
-local STUFF = { "wood", "Silk", "Ore" }
+local STUFF = { "wood", "Silk", "Ore", "Essence" }
 local function counted(items: any, id: string, count: number): string
 	local name = itemName(items, id)
 	local plural = count ~= 1
@@ -253,12 +254,15 @@ function WeaponText.spotColumns(count: number): number
 	return if count <= 3 then math.max(1, count) else math.ceil(count / 2)
 end
 
--- What the action makes, after "to": "make the Verdant Blade", "make it +4", "roll a new grade"
+-- What the action makes, after "to": "make the Verdant Blade", "make it +4", "roll a new grade", "give your Verdant
+-- Blade a new mutation"
 local function goal(action: string, opts: RecipeOpts): string
 	if action == "upgrade" then
 		return `make it +{opts.level or 1}`
 	elseif action == "reforge" then
 		return "roll a new grade"
+	elseif action == "mutate" then
+		return `give your {opts.name or "weapon"} a new mutation`
 	end
 	return `make the {opts.name or "weapon"}`
 end
@@ -266,9 +270,11 @@ end
 -- The one sentence over the recipe: what goes in and what comes out ("Use 15 Warden Heartwood and $2,000 to make the
 -- Verdant Blade!"; more than two kinds of material are counted, the spots show them), or what to get first ("Get 6
 -- more Warden Heartwood to ...", "Save up $500 more to ..."). `cost` nil: an upgrade past the top level
-function WeaponText.say(action: "forge" | "upgrade" | "reforge", cost: Cost?, have: { [string]: number }, cashNow: number, items: any, opts: RecipeOpts): string
+function WeaponText.say(action: "forge" | "upgrade" | "reforge" | "mutate", cost: Cost?, have: { [string]: number }, cashNow: number, items: any, opts: RecipeOpts): string
 	if opts.done then
 		return "Grade S is the best grade: nothing to reforge!"
+	elseif opts.waiting then
+		return "A new mutation is waiting: close the Forge to choose it."
 	elseif not cost then
 		return if action == "upgrade" then "It is +10: fully upgraded!" else "The Forge can't make this yet."
 	elseif opts.unlockLevel and (opts.shopLevel or 0) < opts.unlockLevel then
@@ -306,9 +312,11 @@ end
 -- The Forge's one button: its words, the small line under them and whether it can be pressed. Ready: what it does
 -- ("Forge it!", "Make it +4!", "Roll a new grade!") over how long it takes; else what's missing first (the shop level,
 -- an item, then cash) over what you have
-function WeaponText.recipeButton(action: "forge" | "upgrade" | "reforge", cost: Cost?, have: { [string]: number }, cashNow: number, items: any, opts: RecipeOpts): (string, string?, boolean)
+function WeaponText.recipeButton(action: "forge" | "upgrade" | "reforge" | "mutate", cost: Cost?, have: { [string]: number }, cashNow: number, items: any, opts: RecipeOpts): (string, string?, boolean)
 	if opts.done then
 		return "Already Grade S", nil, false
+	elseif opts.waiting then
+		return "Choose its new mutation first", nil, false
 	elseif not cost then
 		return if action == "upgrade" then "Fully upgraded" else "Not available", nil, false
 	elseif opts.unlockLevel and (opts.shopLevel or 0) < opts.unlockLevel then
@@ -325,14 +333,19 @@ function WeaponText.recipeButton(action: "forge" | "upgrade" | "reforge", cost: 
 		return `Make it +{opts.level or 1}!`, sub, true
 	elseif action == "reforge" then
 		return "Roll a new grade!", sub, true
+	elseif action == "mutate" then
+		return "Mutate it!", "instant", true -- no job: the roll and its choice come at once
 	end
 	return "Forge it!", sub, true
 end
 
 -- Under the recipe's weapon: a pill (the grade or level it comes out with) and a line. `step`: an upgrade's
--- WeaponText.ladderStep; `max`: it is fully upgraded; `grade`: a reforge's grade now; `done`: Grade S already
-function WeaponText.outcome(action: "forge" | "upgrade" | "reforge", view: { level: number?, step: string?, max: boolean?, grade: string?, done: boolean? }): (string, string?)
-	if action == "upgrade" then
+-- WeaponText.ladderStep; `max`: it is fully upgraded; `grade`: a reforge's grade now; `done`: Grade S already;
+-- `mutation`: a Mutate's weapon's mutation now, in words (MutationRules words.yours)
+function WeaponText.outcome(action: "forge" | "upgrade" | "reforge" | "mutate", view: { level: number?, step: string?, max: boolean?, grade: string?, done: boolean?, mutation: string? }): (string, string?)
+	if action == "mutate" then
+		return "Common to Legendary", if view.mutation then `Yours now: {view.mutation}` else "Its first mutation!"
+	elseif action == "upgrade" then
 		return `+{view.level or 0}`, if view.max then "Awakened!" else view.step
 	elseif action == "reforge" then
 		return `Grade {view.grade or "C"}`, if view.done then nil else "A new roll, C to S. It never gets worse!"
@@ -369,6 +382,7 @@ local TAB_LINES = {
 	Forge = "Make a weapon you don't have yet. You pay its materials and cash; it comes out at a random grade, C to S (like a card).",
 	Upgrade = "Level a weapon you own up, +0 to +10: more Attack and a brighter glow each level. Never fails. +5 and +10 also need Star Shards.",
 	Reforge = "Roll a new grade for half the making cost. You keep the better grade, so it never gets worse. Grade S can't be reforged.",
+	Mutate = "Roll a new mutation on a weapon you have, for Mutation Essence. Take the new one or keep yours: the other turns into Essence.",
 }
 function WeaponText.tabLine(tab: string): string
 	return TAB_LINES[tab] or ""

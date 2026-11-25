@@ -392,6 +392,32 @@ return {
 		expect.equal(valueOf(WeaponText.stats(Weapons, "verdantBlade", { grade = "A", level = 5 }, Combat, Mutations), "Mutation"), nil)
 	end,
 
+	-- The Forge's Mutate (weapons round 4 part 2): its picture recipe's words, like the other tabs'
+	["the Forge's Mutate: its sentence, its button, what comes out, its tab line"] = function()
+		local Mutations = require("../src/shared/Config/Mutations")
+		local cost = { cash = 0, items = { [Mutations.ESSENCE_ITEM] = Mutations.MUTATE.essence } }
+		local opts = { name = "Verdant Blade" }
+		expect.equal(WeaponText.say("mutate", cost, { mutationEssence = 30 }, 0, Items, opts), "Use 30 Mutation Essence to give your Verdant Blade a new mutation!")
+		expect.equal(WeaponText.say("mutate", cost, { mutationEssence = 18 }, 0, Items, opts), "Get 12 more Mutation Essence to give your Verdant Blade a new mutation.")
+		expect.equal(WeaponText.say("mutate", cost, { mutationEssence = 30 }, 0, Items, { name = "Verdant Blade", waiting = true }), "A new mutation is waiting: close the Forge to choose it.")
+		local text, sub, ready = WeaponText.recipeButton("mutate", cost, { mutationEssence = 40 }, 0, Items, opts)
+		expect.equal(text, "Mutate it!")
+		expect.equal(sub, "instant")
+		expect.equal(ready, true)
+		text, sub, ready = WeaponText.recipeButton("mutate", cost, { mutationEssence = 18 }, 0, Items, opts)
+		expect.equal(text, "Need 12 more Mutation Essence")
+		expect.equal(sub, "you have 18")
+		expect.equal(ready, false)
+		text, _, ready = WeaponText.recipeButton("mutate", cost, { mutationEssence = 40 }, 0, Items, { name = "Verdant Blade", waiting = true })
+		expect.equal(text, "Choose its new mutation first")
+		expect.equal(ready, false)
+		local pill, line = WeaponText.outcome("mutate", { mutation = "Epic · Sharp (sword hits +12%)" })
+		expect.equal(pill, "Common to Legendary")
+		expect.equal(line, "Yours now: Epic · Sharp (sword hits +12%)")
+		expect.equal(select(2, WeaponText.outcome("mutate", {})), "Its first mutation!")
+		expect.equal(WeaponText.tabLine("Mutate"), "Roll a new mutation on a weapon you have, for Mutation Essence. Take the new one or keep yours: the other turns into Essence.")
+	end,
+
 	["the Steel Sword's rows: its dash alone, no empty rows"] = function()
 		local rows = WeaponText.rows(Weapons, CombatHud, WeaponLooks, Combat, "starterSword", { grade = "C", level = 0 })
 		expect.equal(#rows, 1)

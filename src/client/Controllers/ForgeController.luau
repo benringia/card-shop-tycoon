@@ -24,6 +24,8 @@ local CardDesign = require(Config:WaitForChild("CardDesign"))
 local Combat = require(Config:WaitForChild("Combat"))
 local ForgeLayout = require(Config:WaitForChild("ForgeLayout"))
 local Items = require(Config:WaitForChild("Items"))
+local Mutations = require(Config:WaitForChild("Mutations"))
+local MutationRules = require(Shared:WaitForChild("Util"):WaitForChild("MutationRules"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local Weapons = require(Config:WaitForChild("Weapons"))
 local Upgrades = require(Config:WaitForChild("Upgrades"))
@@ -47,7 +49,7 @@ type Owned = WeaponRules.Owned
 -- A row in the list: one weapon, or the Forge Sword's five (ids in element order)
 type Entry = { key: string, name: string, rarity: string, ids: { string } }
 
-local FORGE, UPGRADE, REFORGE = "Forge", "Upgrade", "Reforge"
+local FORGE, UPGRADE, REFORGE, MUTATE = "Forge", "Upgrade", "Reforge", "Mutate" -- Mutate: weapons round 4 part 2
 local PANEL_MAX_SIZE = Vector2.new(820, 540)
 local LIST_WIDTH_SCALE = 0.42
 local ROW_HEIGHT = 66
@@ -179,13 +181,15 @@ local function costFor(weaponId: string): WeaponRules.Cost?
 		return WeaponRules.makeCost(Weapons, weaponId, owned) -- a first Forge weapon is cheap (Weapons.FIRST_FORGE)
 	elseif tab == REFORGE then
 		return WeaponRules.reforgeCost(Weapons, weaponId)
+	elseif tab == MUTATE then
+		return { cash = 0, items = { [Mutations.ESSENCE_ITEM] = Mutations.MUTATE.essence } }
 	end
 	local record = owned[weaponId]
 	return if record then WeaponRules.upgradeCost(Weapons, weaponId, record.level + 1) else nil
 end
 
-local function actionOf(): "forge" | "upgrade" | "reforge"
-	return if tab == FORGE then "forge" elseif tab == UPGRADE then "upgrade" else "reforge"
+local function actionOf(): "forge" | "upgrade" | "reforge" | "mutate"
+	return if tab == FORGE then "forge" elseif tab == UPGRADE then "upgrade" elseif tab == MUTATE then "mutate" else "reforge"
 end
 
 -- What the recipe's words need to know about this weapon (WeaponText.say, recipeButton)
@@ -196,11 +200,12 @@ local function optsFor(weapon: Weapons.Weapon, record: Owned?): WeaponText.Recip
 		else UpgradeRules.seconds(Upgrades, "level", if record then record.level + 1 else 1, weapon.rarity)
 	return {
 		name = weapon.name,
-		wait = CondenseRules.waitWords(EarlyRules.stationWait(seconds, shopLevel(), Early)),
+		wait = if tab == MUTATE then nil else CondenseRules.waitWords(EarlyRules.stationWait(seconds, shopLevel(), Early)),
 		level = if record then record.level + 1 else nil,
-		unlockLevel = if weapon.source.cost then weapon.source.cost.unlockLevel else nil,
+		unlockLevel = if weapon.source.cost and tab ~= MUTATE then weapon.source.cost.unlockLevel else nil,
 		shopLevel = shopLevel(),
 		done = tab == REFORGE and record ~= nil and not WeaponRules.canReforge(record),
+		waiting = tab == MUTATE and record ~= nil and record.pending ~= nil,
 	}
 end
 
@@ -434,12 +439,14 @@ local function renderPane(entry: Entry?)
 	end
 
 	-- The recipe, and under the weapon what it comes out with
+	local mutation = if record and record.mutation then MutationRules.read(Mutations, record.mutation) else nil
 	local pill, line = WeaponText.outcome(action, {
 		level = if maxed and record then record.level elseif record then record.level + 1 else nil,
 		step = if record and not maxed then WeaponText.ladderStep(WeaponLooks, record.level + 1, weapon.rarity) else nil,
 		max = maxed,
 		grade = if record then record.grade else nil,
 		done = done,
+		mutation = if mutation then MutationRules.words(Mutations, mutation).yours else nil,
 	})
 	local spots, card = recipeRow(5, weaponId, record, if done then nil else cost, cardSize, phone, if phone and hasElements then nil else pill, action == "upgrade" and not maxed)
 	if action == "upgrade" and record then
@@ -489,7 +496,10 @@ local function renderPane(entry: Entry?)
 				render()
 			end
 		end)
-		local remote = if tab == FORGE then Remotes.ForgeWeapon elseif tab == UPGRADE then Remotes.UpgradeWeapon else Remotes.ReforgeWeapon
+		local remote = if tab == FORGE then Remotes.ForgeWeapon
+			elseif tab == UPGRADE then Remotes.UpgradeWeapon
+			elseif tab == MUTATE then Remotes.MutateWeapon
+			else Remotes.ReforgeWeapon
 		remote:FireServer(part:GetAttribute("ShelfUid"), weaponId)
 		render()
 	end)
@@ -541,18 +551,8 @@ end
 local pending: { any } = {}
 
 -- The waiting reveals now: the window steps aside, they play, it comes back
-local function playReveals()
-	if #pending == 0 or not panel.Visible then
-		return
-	end
-	local queue = pending
-	pending = {}
-	player:SetAttribute("ForgeDone", nil) -- the "Ready!" over the Forge goes (StationTimerController)
-	reopenAfterReveal = true -- before hiding: the Visible handler keeps the machine for the reopen
-	panel.Visible = false
-	for _, result in queue do
-		WeaponRevealController.Forge(result)
-	end
+-- Back once the reveals are over (the window stepped aside for them; the machine kept for the reopen)
+local function reopenAfterReveals()
 	task.spawn(function()
 		task.wait(0.5)
 		while WeaponRevealController.IsPlaying() do
@@ -565,6 +565,33 @@ local function playReveals()
 			render()
 		end
 	end)
+end
+
+local function playReveals()
+	if #pending == 0 or not panel.Visible then
+		return
+	end
+	local queue = pending
+	pending = {}
+	player:SetAttribute("ForgeDone", nil) -- the "Ready!" over the Forge goes (StationTimerController)
+	reopenAfterReveal = true -- before hiding: the Visible handler keeps the machine for the reopen
+	panel.Visible = false
+	for _, result in queue do
+		WeaponRevealController.Forge(result)
+	end
+	reopenAfterReveals()
+end
+
+-- The Forge's Mutate answered (MutationOffered; WeaponRevealController plays it once no window is open): the window
+-- steps aside for the reveal and its choice, then comes back
+local function stepAsideForMutation()
+	inFlight = false
+	if not panel.Visible then
+		return
+	end
+	reopenAfterReveal = true
+	panel.Visible = false
+	reopenAfterReveals()
 end
 
 -- Opens the window for your own Forge
@@ -656,7 +683,7 @@ function ForgeController.Start()
 	switchHolder.BackgroundTransparency = 1
 	switchHolder.ZIndex = panel.ZIndex + 3 -- over the header band and its title on phones
 	switchHolder.Parent = panel
-	local _, pick = UIKit.segmented(switchHolder, { FORGE, UPGRADE, REFORGE }, function(value)
+	local _, pick = UIKit.segmented(switchHolder, { FORGE, UPGRADE, REFORGE, MUTATE }, function(value)
 		tab = value
 		selectedKey = nil
 		listToTop = true
@@ -706,6 +733,7 @@ function ForgeController.Start()
 	end)
 	Remotes.RequestItems:FireServer() -- our own copy of the Bag's counts, whatever order the controllers start in
 	Remotes.ForgeResult.OnClientEvent:Connect(onResult)
+	Remotes.MutationOffered.OnClientEvent:Connect(stepAsideForMutation)
 	player:GetAttributeChangedSignal("Cash"):Connect(function()
 		local current = shown
 		if panel.Visible and current and cashView(current.weaponId) ~= current.view then

@@ -12,7 +12,9 @@ local Config = Shared:WaitForChild("Config")
 local Early = require(Config:WaitForChild("Early"))
 local EarlyRules = require(Shared:WaitForChild("Util"):WaitForChild("EarlyRules"))
 local Items = require(Config:WaitForChild("Items"))
+local Mutations = require(Config:WaitForChild("Mutations"))
 local Weapons = require(Config:WaitForChild("Weapons"))
+local MutationRules = require(Shared:WaitForChild("Util"):WaitForChild("MutationRules"))
 local Upgrades = require(Config:WaitForChild("Upgrades"))
 local UpgradeRules = require(Shared:WaitForChild("Util"):WaitForChild("UpgradeRules"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
@@ -208,10 +210,55 @@ local function handle(action: Action)
 	end
 end
 
+-- The Forge's Mutate (weapons round 4 part 2): Mutation Essence for a new mutation roll on a weapon you have (quest
+-- weapons too, never the Steel Sword), shown at once with its choice (WeaponService.Offer, MutationOffered); no job,
+-- no wait, a weapon in the Forge's job can't. Nothing changed on the way: the Essence goes back.
+local function mutate(player: Player, shelfUid: unknown, weaponId: string)
+	if not WeaponService.IsLoaded(player) or not atForge(player, shelfUid) then
+		return
+	end
+	local weapon = Weapons.ById[weaponId]
+	if WeaponService.IsLocked(player, weaponId) then
+		Blocked.tell(player, `Your {weapon.name} is in the Forge.`)
+		return
+	end
+	local essence = ItemService.GetCount(player, Mutations.ESSENCE_ITEM)
+	local ok, why = MutationRules.canMutate(Mutations, Weapons, weaponId, WeaponService.GetAll(player)[weaponId], essence)
+	if not ok then
+		Blocked.tell(player, why or "This weapon can't mutate.", { title = "Can't mutate" })
+		return
+	end
+	if not ItemService.TakeItem(player, Mutations.ESSENCE_ITEM, Mutations.MUTATE.essence) then
+		Blocked.tell(player, `Need {Mutations.MUTATE.essence} Mutation Essence.`, { title = "Can't mutate" })
+		return
+	end
+	local offer = WeaponService.Offer(player, weaponId, MutationRules.roll(Mutations, rng:NextNumber(), rng:NextNumber()), "forge")
+	if not offer then
+		ItemService.GiveItem(player, Mutations.ESSENCE_ITEM, Mutations.MUTATE.essence)
+		return
+	end
+	Remotes.MutationOffered:FireClient(player, offer)
+end
+
 function ForgeService.Start()
 	Remotes.ForgeWeapon.OnServerEvent:Connect(handle("forge"))
 	Remotes.UpgradeWeapon.OnServerEvent:Connect(handle("upgrade"))
 	Remotes.ReforgeWeapon.OnServerEvent:Connect(handle("reforge"))
+	Remotes.MutateWeapon.OnServerEvent:Connect(function(player: Player, shelfUid: unknown, weaponId: unknown)
+		if not allowRequest(player) or busy[player] or typeof(weaponId) ~= "string" then
+			return
+		end
+		local weapon = Weapons.ById[weaponId]
+		if not weapon or not weapon.ready then
+			return
+		end
+		busy[player] = true
+		local ok, err = pcall(mutate, player, shelfUid, weaponId)
+		busy[player] = nil
+		if not ok then
+			warn(`[ForgeService] mutate {weaponId} for {player.Name} failed: {err}`)
+		end
+	end)
 	Players.PlayerRemoving:Connect(function(player)
 		busy[player] = nil
 	end)
