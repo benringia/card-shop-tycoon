@@ -130,15 +130,32 @@ return {
 		expect.isNil(chests.EMPTY, "no empty chest card")
 	end,
 
-	-- Boss Rush (Config/Events, owner 2026-11-19): one more of the material in every material chest, the two you
-	-- didn't pick too; a weapon's chest stays the weapon
-	["an event's bonus: more material in every material chest, never on the weapon"] = function()
+	-- Weapons round 4 part 2 (owner 2026-11-25: weapons "almost always drop on bosses"): the material comes every loot
+	-- win, the weapon's chest too, plus `everyWin` by the weapon's rarity (Config/Weapons MATERIAL_EVERY_WIN), so the
+	-- upgrades' grind stays as it was once a duplicate stopped giving 10
+	["your chest always holds the material, the weapon's too, plus every win's"] = function()
+		local weapon = ChestRules.mine("verdantBlade", true, "m", 0.5, WEIGHTS, 0, 2)
+		expect.equal(weapon.kind, "weapon")
+		expect.equal(weapon.weaponId, "verdantBlade")
+		expect.equal(weapon.item, "m")
+		expect.equal(weapon.count, 3, "1 rolled + 2 every win")
+		local material = ChestRules.mine("verdantBlade", false, "m", 0.97, WEIGHTS, 1, 2)
+		expect.equal(material.kind, "material")
+		expect.equal(material.count, 6, "3 rolled + 1 event + 2 every win")
+		local others = ChestRules.others(false, "verdantBlade", "m", { 0.9, 0.1, 0.3 }, WEIGHTS, 0, 2)
+		expect.equal(others[1].count, 4, "3 + 2: the others look alike")
+		expect.equal(others[2].count, 3)
+	end,
+
+	-- Boss Rush (Config/Events, owner 2026-11-19): one more of the material in every chest, the two you didn't pick too
+	-- (a weapon's chest holds its material too since weapons round 4 part 2)
+	["an event's bonus: more material in every chest"] = function()
 		local material = ChestRules.mine("verdantBlade", false, "m", 0.5, WEIGHTS, 1)
 		expect.equal(material.count, 2, "1 rolled + 1")
 		expect.equal(ChestRules.mine("verdantBlade", false, "m", 0.97, WEIGHTS, 1).count, 4, "3 rolled + 1")
 		local weapon = ChestRules.mine("verdantBlade", true, "m", 0.5, WEIGHTS, 1)
 		expect.equal(weapon.kind, "weapon")
-		expect.isNil(weapon.count)
+		expect.equal(weapon.count, 2, "its material, 1 rolled + 1")
 		local plain = ChestRules.others(false, "verdantBlade", "m", { 0.9, 0.1, 0.3 }, WEIGHTS, 1)
 		expect.equal(plain[1].count, 3)
 		expect.equal(plain[2].count, 2)

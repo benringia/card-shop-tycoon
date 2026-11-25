@@ -363,29 +363,36 @@ return {
 		expect.isNil(plain.verdantBlade.mutation, "no reader given: no mutation read")
 	end,
 
-	["drop chance by rarity: a Rare 20% plus 2.5% a kill without one, a Legendary 6% plus 0.08%"] = function()
-		local wild = W.DROP_WILD -- the Wild's bosses drop a little more often (owner 2026-11-20)
-		expect.near(WeaponRules.dropChance(W, "verdantBlade", 0), 0.2 * wild, 1e-9)
-		expect.near(WeaponRules.dropChance(W, "verdantBlade", 10), 0.45 * wild, 1e-9)
-		expect.equal(WeaponRules.dropChance(W, "verdantBlade", 500), 1)
-		-- a Legendary 6% plus 0.08% (0.5% until the evening of 2026-11-21, 0.1% plus 0.02% before: "it's almoost
-		-- imposible to get")
-		expect.near(WeaponRules.dropChance(W, "prismBlade", 0), 0.06, 1e-9)
-		expect.near(WeaponRules.dropChance(W, "prismBlade", 10), 0.068, 1e-9)
+	-- Weapons round 4 part 2 (owner 2026-11-25: "increase the weapons droprate to almost always drop on bosses. then
+	-- every weapon should have a chance for a mutation"): 95 / 92 / 88 / 85% by rarity, sure by the second loot win; a
+	-- drop of one you have is its mutation roll. (A Rare 20% plus 2.5% and a Legendary 6% plus 0.08% until then.)
+	["drops come almost every loot win, rarer a little less: 95 / 92 / 88 / 85%, sure by the second"] = function()
+		expect.equal(WeaponRules.dropChance(W, "verdantBlade", 0), 1, "a Wild boss's Rare: 95% x 1.3, capped")
+		expect.near(WeaponRules.dropChance(W, "prismBlade", 0), 0.85, 1e-9)
+		expect.equal(WeaponRules.dropChance(W, "prismBlade", 1), 1, "sure on the second")
 		expect.equal(WeaponRules.dropChance(W, "nope", 0), 0)
-		-- Median full-loot kills to a drop (6 a day at the daily soft cap): Rare ~15 (2.5 days), Legendary ~79 (13 days)
-		local function median(rarity: string): number
+		expect.near(W.DROP.Rare.base, 0.95, 1e-9)
+		expect.near(W.DROP["Very Rare"].base, 0.92, 1e-9)
+		expect.near(W.DROP.Epic.base, 0.88, 1e-9)
+		expect.near(W.DROP.Legendary.base, 0.85, 1e-9)
+		for _, rarity in { "Rare", "Very Rare", "Epic", "Legendary" } do
 			local odds = W.DROP[rarity]
-			local miss, kills = 1, 0
-			repeat
-				kills += 1
-				miss *= 1 - math.min(1, odds.base + odds.step * (kills - 1))
-			until miss <= 0.5
-			return kills
+			expect.equal(math.min(1, odds.base + odds.step), 1, `{rarity}: sure by the second loot win`)
 		end
-		expect.equal(median("Rare"), 3)
-		expect.equal(median("Legendary"), 11)
-		assert(median("Rare") < median("Very Rare") and median("Very Rare") < median("Epic") and median("Epic") < median("Legendary"), "rarer is slower")
+		assert(W.DROP.Rare.base > W.DROP["Very Rare"].base and W.DROP["Very Rare"].base > W.DROP.Epic.base and W.DROP.Epic.base > W.DROP.Legendary.base, "rarer a little less likely")
+	end,
+
+	-- The material comes every loot win (ChestRules.mine): the weights' 1-3 plus this by the weapon's rarity, so the
+	-- upgrades take about as long as when a duplicate gave 10 (an owner's old average a loot win: Rare 3.5, Very Rare
+	-- 2.8, Epic 2.4, Legendary 1.8; now 3.2, 3.2, 2.2, 2.2)
+	["the material every loot win by the weapon's rarity"] = function()
+		expect.equal(WeaponRules.materialEveryWin(W, "verdantBlade"), 2, "Rare")
+		expect.equal(WeaponRules.materialEveryWin(W, "tidalTrident"), 1, "Epic")
+		expect.equal(WeaponRules.materialEveryWin(W, "sunforgedBlade"), 0, "a masterwork: no boss drops it")
+		expect.equal(WeaponRules.materialEveryWin(W, "prismBlade"), 1, "Legendary")
+		expect.equal(WeaponRules.materialEveryWin(W, "forgeSword_Ember"), 0, "not a boss's weapon")
+		expect.equal(WeaponRules.materialEveryWin(W, "nope"), 0)
+		expect.equal(W.MATERIAL_EVERY_WIN["Very Rare"], 2)
 	end,
 
 	["loading: unknown weapons dropped and named, levels clamped, a missing equip falls back to the Steel Sword"] = function()
@@ -529,16 +536,14 @@ return {
 		-- "epic/legendary weapons should still be hard to get" kept them at 50 and 79 wins for a few hours; then the owner
 		-- on the Tidal Trident's 0.20%: "weapon drop chance for some weapons like this is too low. it's almoost imposible
 		-- to get make it more forgiving" (22 and 37); then, the same evening, "increase epic weapon drop rate to 12% then
-		-- legendaries to 6. if thats fair", with Rare and Very Rare raised so rarer is still slower (his pick). A weapon
-		-- is quick to get; the grind is its upgrade
-		expect.equal(W.DROP.Rare.base, 0.2)
-		expect.equal(W.DROP["Very Rare"].base, 0.15)
-		expect.equal(W.DROP.Epic.base, 0.12)
-		expect.equal(W.DROP.Legendary.base, 0.06)
-		expect.equal(median("Rare"), 3, "15, then 6 before")
-		expect.equal(median("Very Rare"), 4, "25, then 10 before")
-		expect.equal(median("Epic"), 6, "50, then 22 before")
-		expect.equal(median("Legendary"), 11, "79, then 37 before")
+		-- legendaries to 6. if thats fair" (3 / 4 / 6 / 11). Since weapons round 4 part 2 (2026-11-25: "almost always
+		-- drop on bosses") the first loot win, a duplicate being a mutation roll. A weapon is quick to get; the grind is
+		-- its upgrade
+		expect.near(W.DROP.Rare.base, 0.95, 1e-9)
+		expect.near(W.DROP.Legendary.base, 0.85, 1e-9)
+		for _, rarity in { "Rare", "Very Rare", "Epic", "Legendary" } do
+			expect.equal(median(rarity), 1, `{rarity}: the first loot win, most times`)
+		end
 		-- the boss board's "Drop chance now" goes down with rarity, on the first try and after any number of misses
 		for _, misses in { 0, 5, 20 } do
 			local function at(rarity: string): number

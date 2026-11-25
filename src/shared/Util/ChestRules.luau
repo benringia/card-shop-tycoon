@@ -19,13 +19,15 @@ function ChestRules.materialCount(roll: number, weights: Weights): number
 	return weights[#weights].count
 end
 
--- Your chest: the weapon if it dropped, otherwise its material (count by the weights, plus an event's `bonus`: Boss
--- Rush, Config/Events). Every loot win is full since the owner 2026-11-19, so it's never empty
-function ChestRules.mine(weaponId: string, dropped: boolean, material: string, countRoll: number, weights: Weights, bonus: number?): Content
+-- Your chest: the weapon if it dropped (a duplicate's mutation roll comes with it), and always its material (count by
+-- the weights, plus an event's `bonus`: Boss Rush, Config/Events, plus `everyWin` by the weapon's rarity:
+-- WeaponRules.materialEveryWin, since weapons round 4 part 2 made drops almost sure). Never empty
+function ChestRules.mine(weaponId: string, dropped: boolean, material: string, countRoll: number, weights: Weights, bonus: number?, everyWin: number?): Content
+	local count = ChestRules.materialCount(countRoll, weights) + (bonus or 0) + (everyWin or 0)
 	if dropped then
-		return { kind = "weapon", weaponId = weaponId }
+		return { kind = "weapon", weaponId = weaponId, item = material, count = count }
 	end
-	return { kind = "material", item = material, count = ChestRules.materialCount(countRoll, weights) + (bonus or 0) }
+	return { kind = "material", item = material, count = count }
 end
 
 -- Whether another chest shows the weapon under a "?": only when it didn't drop and you don't have it yet (the owner
@@ -35,9 +37,10 @@ function ChestRules.showsMystery(dropped: boolean, owned: boolean): boolean
 end
 
 -- The two chests you didn't pick (display only, never given): with `mystery` the weapon under a "?" and some material,
--- in an order by rolls[3]; otherwise two material amounts. rolls: three numbers in [0, 1); `bonus` as in `mine`
-function ChestRules.others(mystery: boolean, weaponId: string, material: string, rolls: { number }, weights: Weights, bonus: number?): { Content }
-	local extra = bonus or 0
+-- in an order by rolls[3]; otherwise two material amounts. rolls: three numbers in [0, 1); `bonus` and `everyWin` as
+-- in `mine`
+function ChestRules.others(mystery: boolean, weaponId: string, material: string, rolls: { number }, weights: Weights, bonus: number?, everyWin: number?): { Content }
+	local extra = (bonus or 0) + (everyWin or 0)
 	local first: Content = { kind = "material", item = material, count = ChestRules.materialCount(rolls[1], weights) + extra }
 	if not mystery then
 		local second: Content = { kind = "material", item = material, count = ChestRules.materialCount(rolls[2], weights) + extra }

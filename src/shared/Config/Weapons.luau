@@ -308,14 +308,22 @@ return {
 	-- if thats fair"; his pick of three: those two as asked, and Rare and Very Rare raised so rarer is still slower and
 	-- the boss board's "Drop chance now" goes down with rarity): median 3 / 4 / 6 / 11 loot wins, about 20, 30, 40 and
 	-- 80 minutes on that boss (6 / 10 / 22 / 37 before: 6% + 2.5%, 3% + 1%, 1% + 0.2%, 0.5% + 0.08%). A weapon is quick
-	-- to get; the grind is its upgrade (UPGRADE.material). A duplicate's 10 materials come more often too: about 2.6,
+	-- to get; the grind is its upgrade (UPGRADE.material). A duplicate's 10 materials came more often too: about 2.6,
 	-- 1.9, 1.3 and 0.7 a loot win on top of the loot's own 1.2
+	-- Then almost every loot win (weapons round 4 part 2, owner 2026-11-25: "increase the weapons droprate to almost
+	-- always drop on bosses. then every weapon should have a chance for a mutation"): 95 / 92 / 88 / 85%, sure on the
+	-- second; a drop of one you have is a mutation roll (WeaponService.Offer), no longer 10 material
 	DROP = {
-		Rare = { base = 0.2, step = 0.025 },
-		["Very Rare"] = { base = 0.15, step = 0.01 },
-		Epic = { base = 0.12, step = 0.002 },
-		Legendary = { base = 0.06, step = 0.0008 },
+		Rare = { base = 0.95, step = 0.15 },
+		["Very Rare"] = { base = 0.92, step = 0.15 },
+		Epic = { base = 0.88, step = 0.15 },
+		Legendary = { base = 0.85, step = 0.15 },
 	},
+	-- The material in your chest every loot win on top of its 1-3 (Config/BossChests MATERIAL), by the boss weapon's
+	-- rarity (ChestRules.mine): with drops almost sure, a duplicate's 10 became a mutation roll, so this keeps the
+	-- upgrades' grind about where it was (an owner's average a loot win: Rare 3.5, Very Rare 2.8, Epic 2.4, Legendary
+	-- 1.8 before; 3.2 / 3.2 / 2.2 / 2.2 now)
+	MATERIAL_EVERY_WIN = { Rare = 2, ["Very Rare"] = 2, Epic = 1, Legendary = 1 },
 	-- The Wild's three bosses drop their weapons a little more often (owner 2026-11-20: "slightly increase weapon
 	-- droprate on wild bosses only"): their chance times DROP_WILD (median loot wins about 12 / 19 / 39 instead of
 	-- 15 / 25 / 50). The Frontier's and the Dungeon's are as above (tests/WeaponRules checks the list against

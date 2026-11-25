@@ -259,6 +259,11 @@ local function card(show: Show, index: number, content: ChestRules.Content, mine
 	name.TextXAlignment = Enum.TextXAlignment.Center
 	name.TextScaled = true
 	local goal = if mine and content.kind == "material" and content.item then LootController.GoalLine(content.item) else nil
+	-- a weapon's chest holds its material too since weapons round 4 part 2 (drops almost every win): "+3 Verdant Seed"
+	local item = if content.item then Items.ITEMS[content.item] else nil
+	if mine and content.kind == "weapon" and item and content.count and content.count > 0 then
+		goal = `+{content.count} {item.name}`
+	end
 	if goal then
 		local note = UIKit.label(frame, goal, Enum.Font.GothamBold, 14, TEXT)
 		note.Position = UDim2.fromScale(0.05, 0.85)

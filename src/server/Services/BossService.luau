@@ -29,6 +29,8 @@ local EventNow = require(Shared:WaitForChild("Util"):WaitForChild("EventNow"))
 local EventRules = require(Shared:WaitForChild("Util"):WaitForChild("EventRules"))
 local PaidRandomRules = require(Shared:WaitForChild("Util"):WaitForChild("PaidRandomRules"))
 local WeaponRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponRules"))
+local MutationRules = require(Shared:WaitForChild("Util"):WaitForChild("MutationRules"))
+local Mutations = require(Config:WaitForChild("Mutations"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Blocked = require((script.Parent :: Instance).Parent:WaitForChild("Util"):WaitForChild("Blocked"))
 local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
@@ -308,10 +310,9 @@ for _, weapon in Weapons.WEAPONS do
 	end
 end
 
-type WeaponPayload = { weaponId: string, grade: string, refund: number, material: string? }
+-- offer: a weapon you had already: its mutation roll (WeaponService.Offer), shown by its reveal with the choice
+type WeaponPayload = { weaponId: string, grade: string, refund: number, material: string?, offer: WeaponService.Offer? }
 
--- A boss's weapon is given to this player (weapons round 1): its grade rolled like a card's (one already owned turns
--- into DUPLICATE_MATERIAL of its material). Nothing shows yet: AnnounceWeapon does that. nil: it couldn't be given.
 -- The Dungeon's secret chest found (DungeonPuzzleService): true the first time ever (saved; the title Crystal Seeker
 -- shows unless Dungeon Conqueror outranks it), false after or for a player whose data isn't loaded
 function BossService.MarkSecretFound(player: Player): boolean
@@ -341,28 +342,34 @@ function BossService.HasFoundSecret(player: Player): boolean
 	return secretFound[player] == true
 end
 
+-- A boss's weapon is given to this player (weapons round 1): its grade rolled like a card's. One you have already is a
+-- mutation roll instead (weapons round 4 part 2: on at once when it has none, else Take new or Keep mine). Nothing
+-- shows yet: AnnounceWeapon does that. nil: it couldn't be given.
 function BossService.GiveWeapon(player: Player, weaponId: string): WeaponPayload?
 	local weapon = Weapons.ById[weaponId]
 	if not weapon or not WeaponService.IsLoaded(player) then
 		return nil
 	end
+	local had = WeaponService.GetAll(player)[weaponId] ~= nil
 	local grade = BeastRules.rollGrade(rng:NextNumber(), weapon.rarity)
 	local _, refund = WeaponService.Give(player, weaponId, grade, "drop")
-	return { weaponId = weaponId, grade = grade, refund = refund, material = WeaponRules.material(Weapons, weaponId) }
+	local offer = if had then WeaponService.Offer(player, weaponId, MutationRules.roll(Mutations, rng:NextNumber(), rng:NextNumber()), "drop") else nil
+	return { weaponId = weaponId, grade = grade, refund = refund, material = WeaponRules.material(Weapons, weaponId), offer = offer }
 end
 
--- A given weapon's moment: the drop cinematic on their screen, a new one's light column for everyone near (each client
--- checks the distance, WeaponLookRules.seesBeacon) and, for an Epic or Legendary, the whole server hears (even when
--- they've just left: `here` false)
+-- A given weapon's moment: the drop cinematic on their screen (a mutation's reveal for one they had), a new one's light
+-- column for everyone near (each client checks the distance, WeaponLookRules.seesBeacon) and, for a new Epic or
+-- Legendary, the whole server hears (even when they've just left: `here` false)
 function BossService.AnnounceWeapon(player: Player, payload: WeaponPayload, here: boolean?)
+	local fresh = payload.offer == nil and payload.refund <= 0
 	if here ~= false and player.Parent then
 		Remotes.WeaponDropped:FireClient(player, payload)
 		local root = if player.Character then player.Character:FindFirstChild("HumanoidRootPart") else nil
-		if payload.refund <= 0 and root and root:IsA("BasePart") then
+		if fresh and root and root:IsA("BasePart") then
 			Remotes.WeaponBeacon:FireAllClients(player.UserId, payload.weaponId, root.Position)
 		end
 	end
-	if WeaponRules.announces(Weapons, payload.weaponId, payload.refund) then
+	if fresh and WeaponRules.announces(Weapons, payload.weaponId, payload.refund) then
 		Remotes.WeaponAnnouncement:FireAllClients(player.DisplayName, payload.weaponId, payload.grade, player.UserId)
 	end
 end

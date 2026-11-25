@@ -348,6 +348,16 @@ function WeaponRules.dropChance(cfg: any, weaponId: string, pity: number): numbe
 	return math.min(1, chance)
 end
 
+-- The material a boss's chest holds every loot win on top of its roll, by its weapon's rarity (Config/Weapons
+-- MATERIAL_EVERY_WIN; 0 for a weapon no boss drops)
+function WeaponRules.materialEveryWin(cfg: any, weaponId: string): number
+	local weapon = cfg.ById[weaponId]
+	if not weapon or weapon.source.kind ~= "boss" then
+		return 0
+	end
+	return (cfg.MATERIAL_EVERY_WIN or {})[weapon.rarity] or 0
+end
+
 -- Cleans a saved weapons table: unknown ids dropped (and named, to log), bad grades to C, levels whole and in range,
 -- a mutation and a waiting one kept when `readMutation` (MutationRules.read with Config/Mutations) knows them; the
 -- equipped id kept only if it's owned and built, otherwise the Steel Sword
