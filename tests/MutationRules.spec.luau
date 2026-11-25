@@ -42,7 +42,7 @@ return {
 		expect.equal(count.support, 5)
 		expect.equal(Mutations.GROUPS.offense.icon, "Sword")
 		expect.equal(Mutations.GROUPS.defense.icon, "Shield")
-		expect.equal(Mutations.GROUPS.support.icon, "Heart")
+		expect.equal(Mutations.GROUPS.support.icon, "Heal", "the heart glyph: white, so it takes the rarity colour")
 	end,
 
 	["every mutation has words a child reads"] = function()

@@ -19,6 +19,7 @@ local UserInputService = game:GetService("UserInputService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Weapons = require(Config:WaitForChild("Weapons"))
+local Mutations = require(Config:WaitForChild("Mutations"))
 local Cards = require(Config:WaitForChild("Cards"))
 local WeaponLooks = require(Config:WaitForChild("WeaponLooks"))
 local Swords = require(Config:WaitForChild("Swords"))
@@ -193,9 +194,15 @@ local function showTip()
 	title.Size = UDim2.new(1, 0, 0, 20)
 	title.LayoutOrder = 0
 	UIKit.outlined(title)
-	for index, row in WeaponText.stats(Weapons, id, owned[id], Combat) do
-		-- the Prism Blade's always strong in gold (owner 2026-11-25: "highlight that stat inside prism blade tooltip")
-		local line = UIKit.label(tip, `{row.label}: {row.value}`, if row.highlight then Enum.Font.FredokaOne else Enum.Font.GothamBold, 12, if row.highlight then UIStyle.GOLD else Color3.new(1, 1, 1))
+	local record = owned[id]
+	local mutation = if record then record.mutation else nil
+	for index, row in WeaponText.stats(Weapons, id, record, Combat, Mutations) do
+		-- the Prism Blade's super effective in gold (owner 2026-11-25: "highlight that stat inside prism blade tooltip");
+		-- a mutation in its rarity's colour (weapons round 4 part 2)
+		local color = if row.highlight then UIStyle.GOLD
+			elseif row.label == "Mutation" and mutation then CardFace.getRarityColor(mutation.rarity)
+			else Color3.new(1, 1, 1)
+		local line = UIKit.label(tip, `{row.label}: {row.value}`, if row.highlight then Enum.Font.FredokaOne else Enum.Font.GothamBold, 12, color)
 		line.LayoutOrder = index
 		line.Size = UDim2.new(1, 0, 0, 0)
 		line.AutomaticSize = Enum.AutomaticSize.Y

@@ -19,6 +19,7 @@ local CombatHud = require(Config:WaitForChild("CombatHud"))
 local ElementNamesConfig = require(Config:WaitForChild("ElementNames"))
 local Swords = require(Config:WaitForChild("Swords"))
 local Items = require(Config:WaitForChild("Items"))
+local Mutations = require(Config:WaitForChild("Mutations"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local UIStyle = require(Config:WaitForChild("UIStyle"))
 local WeaponLooks = require(Config:WaitForChild("WeaponLooks"))
@@ -35,6 +36,7 @@ local Icon = require(ClientUtil:WaitForChild("Icon"))
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local WeaponFace = require(ClientUtil:WaitForChild("WeaponFace"))
 local UIController = require(Controllers:WaitForChild("UIController"))
+local WeaponRevealController = require(Controllers:WaitForChild("WeaponRevealController"))
 
 export type State = { owned: { [string]: WeaponRules.Owned }, equipped: string, items: { [string]: number } }
 
@@ -70,6 +72,9 @@ local ROW_GAP = 5
 local ROW_FILL_TRANSPARENCY = 0.6 -- the rows barely whiter than the window
 local STRONG_FILL = Color3.fromRGB(255, 244, 200) -- the Prism Blade's SUPER EFFECTIVE row
 local STRONG_EDGE = 2.5
+local BLACK = Color3.new(0, 0, 0)
+local MUTATION_FILL = 0.86 -- a mutation row's fill: its rarity colour this far toward white (the mockup's pale tint)
+local MUTATION_INK = 0.3 -- its title: the rarity colour this far toward black, to read on that fill
 local STRONG_INK = Color3.fromRGB(150, 98, 0) -- its title: dark gold, 4.5:1 on its fill
 local PRISM_PILL = Color3.fromRGB(150, 120, 225)
 
@@ -211,25 +216,54 @@ local function placed(parent: Instance, words: string, font: Enum.Font, size: nu
 end
 
 -- One thing the weapon does (WeaponText.rows): its icon, a bold title and one short line, in a soft-edged row; the
--- Prism Blade's SUPER EFFECTIVE in gold
-local function infoRow(parent: Instance, order: number, info: WeaponText.WindowRow)
+-- Prism Blade's SUPER EFFECTIVE in gold; a mutation in its rarity's colour (the owner's mockup: a pale fill, its edge
+-- and title in the colour, its group's icon tinted); one waiting for the choice with a gold edge, a tap asks it again
+local function rarityColor(rarity: string): Color3
+	local tier = (Rarities.Tiers :: any)[rarity]
+	return if tier then tier.color else UIStyle.HINT
+end
+
+local function infoRow(parent: Instance, order: number, info: WeaponText.WindowRow, weaponId: string)
 	local strong = info.kind == "strong"
+	local waiting = info.kind == "pending"
+	local tint = if info.kind == "mutation" and info.rarity then rarityColor(info.rarity) else nil
 	local frame = Instance.new("Frame")
 	frame.Name = `Row_{info.kind}`
 	frame.LayoutOrder = order
-	frame.BackgroundColor3 = if strong then STRONG_FILL else palette.row
-	frame.BackgroundTransparency = if strong then 0 else ROW_FILL_TRANSPARENCY
+	frame.BackgroundColor3 = if strong then STRONG_FILL elseif tint then tint:Lerp(WHITE, MUTATION_FILL) else palette.row
+	frame.BackgroundTransparency = if strong or tint then 0 else ROW_FILL_TRANSPARENCY
 	frame.Size = UDim2.new(1, 0, 0, ROW_HEIGHT)
 	frame.Parent = parent
 	UIKit.corner(frame, 10)
-	UIKit.outline(frame, if strong then UIStyle.GOLD else palette.rowEdge, if strong then STRONG_EDGE else 2)
+	local edge = if strong or waiting then UIStyle.GOLD elseif tint then tint else palette.rowEdge
+	UIKit.outline(frame, edge, if strong or waiting or tint then STRONG_EDGE else 2)
 	local picture = Icon.make(frame, info.icon, UDim2.fromOffset(ROW_ICON, ROW_ICON))
 	picture.AnchorPoint = Vector2.new(0, 0.5)
 	picture.Position = UDim2.new(0, 12, 0.5, 0)
+	if tint then
+		for _, image in picture:GetDescendants() do
+			if image:IsA("ImageLabel") then
+				image.ImageColor3 = tint
+			end
+		end
+	end
 	local left = 12 + ROW_ICON + 10
 	local width = UDim.new(1, -(left + 8))
-	placed(frame, info.title, Enum.Font.FredokaOne, ROW_TITLE, if strong then STRONG_INK else palette.ink, UDim2.fromOffset(left, 5), width)
+	local ink = if strong then STRONG_INK elseif tint then tint:Lerp(BLACK, MUTATION_INK) else palette.ink
+	placed(frame, info.title, Enum.Font.FredokaOne, ROW_TITLE, ink, UDim2.fromOffset(left, 5), width)
 	placed(frame, info.words, Enum.Font.GothamBold, ROW_WORDS, palette.inkSoft, UDim2.fromOffset(left, 26), width)
+	if waiting then
+		local tap = Instance.new("TextButton")
+		tap.Name = "Choose"
+		tap.BackgroundTransparency = 1
+		tap.Text = ""
+		tap.Size = UDim2.fromScale(1, 1)
+		tap.Parent = frame
+		tap.Activated:Connect(function()
+			WeaponDetailController.Close()
+			WeaponRevealController.AskPending(weaponId)
+		end)
+	end
 end
 
 -- A material's (or the cash's) progress: icon, name, a bar, have/need
@@ -259,11 +293,6 @@ local function progressRow(parent: Instance, order: number, line: WeaponText.Pro
 	count.Position = UDim2.new(1, 0, 0.5, 0)
 	count.Size = UDim2.new(0, 72, 1, 0)
 	count.TextXAlignment = Enum.TextXAlignment.Right
-end
-
-local function rarityColor(rarity: string): Color3
-	local tier = (Rarities.Tiers :: any)[rarity]
-	return if tier then tier.color else UIStyle.HINT
 end
 
 -- The rarity, the family and the element (the Prism Blade's "Super effective"), plain words as in the mockup
@@ -472,8 +501,8 @@ function WeaponDetailController.Refresh()
 	else
 		howToGet(weapon, state)
 	end
-	for index, info in WeaponText.rows(Weapons, CombatHud, WeaponLooks, Combat, weaponId, record) do
-		infoRow(rows, 2 + index, info)
+	for index, info in WeaponText.rows(Weapons, CombatHud, WeaponLooks, Combat, weaponId, record, Mutations) do
+		infoRow(rows, 2 + index, info, weaponId)
 	end
 	renderBar(weapon, mine, state.equipped == weaponId)
 end

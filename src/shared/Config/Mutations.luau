@@ -19,10 +19,12 @@ return {
 	-- The Forge's Mutate: a new roll on any weapon you have (quest weapons too), for this much Essence
 	MUTATE = { essence = 30 },
 	CRIT = 2, -- a Critical sword hit's damage x this
+	-- Each group's icon (Config/UIIcons white glyphs, so the window tints them in the mutation's rarity colour: the
+	-- spec's heart is the Heal glyph, the glossy Heart can't take a tint)
 	GROUPS = {
 		offense = { name = "Offense", icon = "Sword" },
 		defense = { name = "Defense", icon = "Shield" },
-		support = { name = "Support", icon = "Heart" },
+		support = { name = "Support", icon = "Heal" },
 	},
 	-- stat: what it changes (Util/MutationRules Stats; "pet" is the creatures' ATK and HP); how: "more" (x 1 + size),
 	-- "less" (x 1 - size), "add" (the size itself: a chance or a share); words: one short line, {n} the size in %;

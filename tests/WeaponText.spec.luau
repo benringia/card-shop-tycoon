@@ -355,6 +355,43 @@ return {
 		expect.equal(rows[3].words, "Doesn't unlock ultimates: use your creature's element weapon.")
 	end,
 
+	-- Weapons round 4 part 2: the weapon's mutation in its window (the owner's mockup: "Sharp · Epic mutation" over
+	-- "Sword hits +12%." in its rarity colour, its group's icon: "attack, mutation and super has the same icon") and on
+	-- the weapon switch's tip
+	["the mutation row: its group's icon, its name and rarity, what it does"] = function()
+		local Mutations = require("../src/shared/Config/Mutations")
+		local owned = { grade = "A", level = 5, mutation = { id = "sharp", rarity = "Epic" } }
+		local rows = WeaponText.rows(Weapons, CombatHud, WeaponLooks, Combat, "verdantBlade", owned, Mutations)
+		expect.equal(#rows, 4, "skill, perk, bond, mutation")
+		local last = rows[#rows]
+		expect.equal(last.kind, "mutation")
+		expect.equal(last.icon, "Sword", "not the Attack fist")
+		expect.equal(last.title, "Sharp · Epic mutation")
+		expect.equal(last.words, "Sword hits +12%.")
+		expect.equal(last.rarity, "Epic")
+		local guard = WeaponText.rows(Weapons, CombatHud, WeaponLooks, Combat, "verdantBlade", { grade = "A", level = 5, mutation = { id = "guard", rarity = "Rare" } }, Mutations)
+		expect.equal(guard[#guard].icon, "Shield")
+		expect.equal(#WeaponText.rows(Weapons, CombatHud, WeaponLooks, Combat, "verdantBlade", { grade = "A", level = 5 }, Mutations), 3, "none: no row")
+		local waiting = WeaponText.rows(Weapons, CombatHud, WeaponLooks, Combat, "verdantBlade", {
+			grade = "A",
+			level = 5,
+			mutation = { id = "guard", rarity = "Rare" },
+			pending = { id = "sharp", rarity = "Epic" },
+		}, Mutations)
+		expect.equal(waiting[#waiting].kind, "pending")
+		expect.equal(waiting[#waiting].icon, "Sparkle")
+		expect.equal(waiting[#waiting].title, "New mutation waiting!")
+		expect.equal(waiting[#waiting].words, "Tap here to choose: take it or keep yours.")
+		expect.equal(waiting[#waiting - 1].kind, "mutation", "the one you have still shows")
+	end,
+
+	["the weapon switch's tip names the mutation"] = function()
+		local Mutations = require("../src/shared/Config/Mutations")
+		local rows = WeaponText.stats(Weapons, "verdantBlade", { grade = "A", level = 5, mutation = { id = "sharp", rarity = "Epic" } }, Combat, Mutations)
+		expect.equal(valueOf(rows, "Mutation"), "Epic · Sharp · sword hits +12%")
+		expect.equal(valueOf(WeaponText.stats(Weapons, "verdantBlade", { grade = "A", level = 5 }, Combat, Mutations), "Mutation"), nil)
+	end,
+
 	["the Steel Sword's rows: its dash alone, no empty rows"] = function()
 		local rows = WeaponText.rows(Weapons, CombatHud, WeaponLooks, Combat, "starterSword", { grade = "C", level = 0 })
 		expect.equal(#rows, 1)

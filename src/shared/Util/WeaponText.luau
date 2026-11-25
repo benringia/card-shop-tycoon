@@ -10,6 +10,10 @@ local WeaponRules = if game ~= nil
 local WeaponLookRules = if game ~= nil
 	then require((script.Parent :: Instance):WaitForChild("WeaponLookRules")) :: any
 	else require("./WeaponLookRules") :: any
+-- a weapon's mutation in words (weapons round 4 part 2)
+local MutationRules = if game ~= nil
+	then require((script.Parent :: Instance):WaitForChild("MutationRules")) :: any
+	else require("./MutationRules") :: any
 -- the elements' plain names (Config/ElementNames, owner 2026-11-12)
 local Names = if game ~= nil
 	then require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Config"):WaitForChild("ElementNames")) :: any
@@ -84,7 +88,8 @@ function WeaponText.attackLine(power: number): string
 end
 
 -- Attack, element and bond, the perk; grade and level when owned. Empty for an unknown weapon.
-function WeaponText.stats(cfg: any, weaponId: string, owned: { grade: string, level: number }?, combat: any): { Row }
+-- `mutations` (Config/Mutations): given, an owned weapon's mutation gets its line ("Epic · Sharp · sword hits +12%")
+function WeaponText.stats(cfg: any, weaponId: string, owned: { grade: string, level: number, mutation: any? }?, combat: any, mutations: any?): { Row }
 	local weapon = cfg.ById[weaponId]
 	if not weapon then
 		return {}
@@ -109,6 +114,9 @@ function WeaponText.stats(cfg: any, weaponId: string, owned: { grade: string, le
 	if owned then
 		table.insert(rows, { label = "Grade", value = owned.grade })
 		table.insert(rows, { label = "Level", value = `+{owned.level}` })
+		if mutations and owned.mutation then
+			table.insert(rows, { label = "Mutation", value = MutationRules.words(mutations, owned.mutation).short })
+		end
 	end
 	return rows
 end
@@ -506,9 +514,17 @@ end
 -- each an icon (a Config/UIIcons name), a bold title and one short line, in window order. A weapon you don't have:
 -- its Attack range first. Then its skill, its perk, its bond; the Prism Blade's SUPER EFFECTIVE and Ultimate instead of
 -- a bond (distinct icons, owner: "attack, mutation and super has the same icon"; supers are called Ultimate in the
--- game's words, owner 2026-11-26). `looks` is Config/WeaponLooks (the perks' icons). Empty for an unknown weapon.
-export type WindowRow = { kind: "range" | "skill" | "perk" | "bond" | "strong" | "ultimate", icon: string, title: string, words: string }
-function WeaponText.rows(cfg: any, hud: any, looks: any, combat: any, weaponId: string, owned: { grade: string, level: number }?): { WindowRow }
+-- game's words, owner 2026-11-26). Last, its mutation (weapons round 4 part 2; `mutations` is Config/Mutations: its
+-- group's icon, drawn in its `rarity` colour) and one waiting for the player's choice. `looks` is Config/WeaponLooks
+-- (the perks' icons). Empty for an unknown weapon.
+export type WindowRow = {
+	kind: "range" | "skill" | "perk" | "bond" | "strong" | "ultimate" | "mutation" | "pending",
+	icon: string,
+	title: string,
+	words: string,
+	rarity: string?,
+}
+function WeaponText.rows(cfg: any, hud: any, looks: any, combat: any, weaponId: string, owned: { grade: string, level: number, mutation: any?, pending: any? }?, mutations: any?): { WindowRow }
 	local weapon = cfg.ById[weaponId]
 	if not weapon then
 		return {}
@@ -537,6 +553,13 @@ function WeaponText.rows(cfg: any, hud: any, looks: any, combat: any, weaponId: 
 			title = `Best with {name} creatures`,
 			words = `Unlocks their ultimates. Hits +{percent(cfg.BOND.damage - 1)}, ultimates charge {percent(cfg.BOND.meter - 1)} faster.`,
 		})
+	end
+	if mutations and owned and owned.mutation then
+		local words = MutationRules.words(mutations, owned.mutation)
+		table.insert(rows, { kind = "mutation", icon = words.icon, title = words.title, words = words.line, rarity = words.rarity })
+	end
+	if mutations and owned and owned.pending then
+		table.insert(rows, { kind = "pending", icon = "Sparkle", title = "New mutation waiting!", words = "Tap here to choose: take it or keep yours." })
 	end
 	return rows
 end
