@@ -412,8 +412,8 @@ local function stepNumbers()
 	floating = keep
 end
 
--- A number that pops over a fighter (style: "normal" | "crit" | "strong" | "weak" | "heal" | "tick" | "pylon"; big: a
--- crit)
+-- A number that pops over a fighter (style: "normal" | "crit" | "strong" | "strongPlain" | "weak" | "heal" | "tick";
+-- big: a crit)
 local function floatText(id: string, text: string, color: Color3, big: boolean?, style: string?)
 	local marker = markerFor(id)
 	if not marker then
@@ -1224,7 +1224,7 @@ local function onEvents(events: { any })
 		elseif event.type == "out" and event.to == me then
 			banner("You're out: watching", UIKit.Colors.Danger)
 		elseif event.type == "pylonHit" and event.to then
-			floatText(event.to, `-{event.damage}`, STRONG_COLOR, false, "pylon") -- the old strong pop, no burst
+			floatText(event.to, `-{event.damage}`, STRONG_COLOR, false, "strongPlain") -- the old strong pop, no burst
 		elseif event.type == "pylonBroken" and event.to then
 			floatText(event.to, "Broken!", CRIT_COLOR, true)
 			local prompt = pylonUi.prompts[event.to]
@@ -1251,7 +1251,8 @@ local function onEvents(events: { any })
 			elseif event.crit then
 				floatText(event.to, `CRIT -{event.damage}`, CRIT_COLOR, true)
 			elseif event.strength == "strong" then
-				floatText(event.to, `-{event.damage} STRONG!`, STRONG_COLOR, false, "strong")
+				-- big over a gold burst when you land it, the old pop when your side takes it (DamagePop.strongStyle)
+				floatText(event.to, `-{event.damage} STRONG!`, STRONG_COLOR, false, DamagePop.strongStyle(event.to, mySide))
 			elseif event.strength == "weak" then
 				floatText(event.to, `-{event.damage}`, WEAK_COLOR, false, "weak")
 			else

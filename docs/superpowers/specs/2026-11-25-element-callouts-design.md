@@ -32,7 +32,8 @@ monsters twice in a row.
    from each side, 6 px gaps. The numbers come from Combat.STRONG / WEAK, the names from ElementNames. It pops in like
    the perk chip whenever it appears or changes: a swap, a boss changing element. No chip without a monster foe (the
    arena).
-2. **Bigger strong hits**: "-N STRONG!" pops at a crit's size (a 220 x 58 billboard to a 2.1 peak, outline 3; was 150 x
+2. **Bigger strong hits** (the ones you land on a foe; a strong hit your own side takes keeps the old pop, style
+   "strongPlain": the gold burst is a celebration, found in the build's review): "-N STRONG!" pops at a crit's size (a 220 x 58 billboard to a 2.1 peak, outline 3; was 150 x
    40 to 1.75) over a gold burst: 12 rays, long and short in turn (64 x 11 and 44 x 7 px before the pop's scale),
    starting 18 px out from the middle and fading toward their tips, over a disc 70 px wide at 45% see-through, colour
    255,196,64. It scales and fades with the number (a second). A boss's hit on your creature stays the biggest (2.2).

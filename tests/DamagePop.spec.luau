@@ -55,11 +55,21 @@ return {
 		expect.equal(cfg.bossHit.peak > cfg.strong.peak, true, "a boss's hit stays the biggest")
 	end,
 
-	["a Dungeon pylon's hit keeps the old strong pop"] = function()
-		local pylon = cfg.pylon
-		expect.equal(pylon ~= nil, true, "the pylon style exists")
-		expect.near(pylon.peak, 1.75, 1e-9, "the strong peak before element callouts")
-		expect.near(DamagePop.life("pylon", cfg), DamagePop.life("strong", cfg), 1e-9, "as long as a strong hit")
+	["the plain strong pop (a pylon's hit, a strong hit on your side) keeps the old size"] = function()
+		local plain = cfg.strongPlain
+		expect.equal(plain ~= nil, true, "the strongPlain style exists")
+		expect.near(plain.peak, 1.75, 1e-9, "the strong peak before element callouts")
+		expect.near(DamagePop.life("strongPlain", cfg), DamagePop.life("strong", cfg), 1e-9, "as long as a strong hit")
+	end,
+
+	-- The gold burst celebrates your strong hits; one on your own side is bad news, not a party
+	["only a strong hit on your foes gets the big pop and burst"] = function()
+		expect.equal(DamagePop.strongStyle("b:m", "a"), "strong", "your creature on the monster")
+		expect.equal(DamagePop.strongStyle("b:add1", "a"), "strong", "on a boss's add")
+		expect.equal(DamagePop.strongStyle("a:@123", "a"), "strongPlain", "the monster on you")
+		expect.equal(DamagePop.strongStyle("a:beast", "a"), "strongPlain", "the monster on your creature")
+		expect.equal(DamagePop.strongStyle("a:beast", "b"), "strong", "the arena: you on side b hit side a")
+		expect.equal(DamagePop.strongStyle("b:beast", "b"), "strongPlain", "the arena: hit on your side b")
 	end,
 
 	["the strong burst's numbers"] = function()

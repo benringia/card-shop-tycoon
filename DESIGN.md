@@ -2533,10 +2533,11 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   gets a matchup chip, your creature's element against the monster's the way your hits land: weak, a soft red pill with
   the foe element's icon, "Weak vs Fire" and a red "0.75x" tag; strong, soft green, "Strong vs Water", a green "1.5x";
   nothing in an even fight. Electric and Dark beat each other, so both show green. It pops in like the perk chip when
-  it shows or changes (a swap, a boss changing element); the arena has none. A strong hit's "-N STRONG!" pops at a
-  crit's size (a 2.1 peak, was 1.75) over a gold burst (12 rays long and short in turn, fading to their tips, over a
-  see-through disc) that scales and fades with it; a boss's hit on your creature stays the biggest (2.2), and a Dungeon
-  pylon's hit keeps the old pop (style "pylon").
+  it shows or changes (a swap, a boss changing element); the arena has none. A strong hit you land on a foe pops its
+  "-N STRONG!" at a crit's size (a 2.1 peak, was 1.75) over a gold burst (12 rays long and short in turn, fading to
+  their tips, over a see-through disc) that scales and fades with it; a strong hit your own side takes keeps the old
+  pop (style "strongPlain", `DamagePop.strongStyle`: gold is a celebration), as does a Dungeon pylon's hit, and a
+  boss's hit on your creature stays the biggest (2.2).
 - **The Frost Tyrant's ice** (the owner 2026-11-10, his picks: shield look A, spikes on you and one pet): his ring is
   ice spikes (`playerAttacks.shape` "spikes", `pets` 1, `petFreeze` 2, `petHit` 0.5): a giant ice spike forms 45 studs
   over each player's ring and over one random pet's (the pet can't step out), hangs glowing, drops the last 0.75 s

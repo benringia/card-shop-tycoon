@@ -37,6 +37,12 @@ function DamagePop.at(t: number, style: string, cfg: any): Pose
 	return { scale = scale, rise = s.rise * easeOut(progress), alpha = alpha, rotation = rotation }
 end
 
+-- Which pop a strong hit gets: "strong" (a crit's size over the gold burst) when it lands on your foes, "strongPlain"
+-- (the old pop) when it lands on your own side; `to` the hit fighter's id ("a:..." / "b:..."), `mySide` "a" or "b"
+function DamagePop.strongStyle(to: string, mySide: string): string
+	return if string.sub(to, 1, 2) == mySide .. ":" then "strongPlain" else "strong"
+end
+
 export type Ray = { x: number, y: number, width: number, length: number, rotation: number }
 
 -- The gold burst behind a strong hit's number (Config/AttackFx NUMBERS.STRONG_BURST, drawn by client Util/StrongBurst):
