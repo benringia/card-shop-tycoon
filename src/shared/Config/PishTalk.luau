@@ -28,6 +28,8 @@ return {
 		buildRack = {
 			intro = { "Your pal follows you everywhere now!" },
 			now = {
+				-- outside your shop: his trail leads you in first (spec 2026-11-25-pish-first-steps-design 4)
+				outside = "Let's go inside!",
 				default = "Shops need shelves! Tap the Phone.",
 				trayOpen = "Tap Shop.",
 				shopOpen = "Pick the Small Pack Rack.",

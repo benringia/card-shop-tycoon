@@ -229,4 +229,18 @@ return {
 		expect.equal(TutorialRules.tipWaits("ringUp"), true, "nor anywhere else in the tour")
 		expect.equal(TutorialRules.tipWaits(""), false, "after the tour: the tip's three shows, none spent")
 	end,
+
+	-- 2026-11-25 (spec 2026-11-25-pish-first-steps-design 4): the tour talked to you on the sidewalk and the rack's
+	-- preview started off screen; outside, the rack step leads you in first. `out`: studs from the floor's centre toward
+	-- the street; a 50 x 60 shop, its front edge 30 studs out; the wake spot stood 38 out
+	["inside the shop: within its sides and back, 3 studs past the front edge"] = function()
+		local W, D, M = 50, 60, Pish.INSIDE.margin
+		expect.equal(M, 3)
+		expect.equal(TutorialRules.insideShop(38, 0, W, D, M), false, "the wake spot on the sidewalk")
+		expect.equal(TutorialRules.insideShop(28, 0, W, D, M), false, "in the doorway")
+		expect.equal(TutorialRules.insideShop(27, 0, W, D, M), true, "3 studs in")
+		expect.equal(TutorialRules.insideShop(0, 26, W, D, M), false, "past the side wall")
+		expect.equal(TutorialRules.insideShop(-31, 0, W, D, M), false, "behind the back wall")
+		expect.equal(TutorialRules.insideShop(-20, -20, W, D, M), true, "the back corner")
+	end,
 }

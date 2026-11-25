@@ -298,6 +298,30 @@ local function windowInTheWay(stepId: string): GuiObject?
 	return nil
 end
 
+-- The spot inside your shop the rack step leads you to while you stand outside it; nil inside, or with no shop to lead
+-- to (spec 2026-11-25-pish-first-steps-design 4: the tour talked to you on the sidewalk and the rack's preview started
+-- off screen)
+local function outsideSpot(): Vector3?
+	local plot = ownPlot()
+	local floor = if plot then plot:FindFirstChild("Floor") else nil
+	local at = root()
+	if not floor or not floor:IsA("BasePart") or not at then
+		return nil
+	end
+	local look = floor.CFrame.LookVector -- toward the street
+	local outward = Vector3.new(look.X, 0, look.Z)
+	if outward.Magnitude < 0.01 then
+		return nil
+	end
+	outward = outward.Unit
+	local offset = at.Position - floor.Position
+	local inside = Pish.INSIDE
+	if TutorialRules.insideShop(offset:Dot(outward), offset:Dot(outward:Cross(Vector3.yAxis)), floor.Size.X, floor.Size.Z, inside.margin) then
+		return nil
+	end
+	return floor.Position + outward * (floor.Size.Z / 2 - inside.spot) + Vector3.new(0, inside.height, 0)
+end
+
 -- What the player is at in this step (Config/PishTalk `now` lines) and where Pish points for it; first of all, a
 -- window in the way to close
 local function stepSituation(stepId: string): (string, Target)
@@ -326,6 +350,11 @@ local function stepSituation(stepId: string): (string, Target)
 		end
 		if Hud.isTrayOpen() then
 			return "trayOpen", { hud = "Build" }
+		end
+		-- outside your shop: his paw trail leads you in first
+		local inside = outsideSpot()
+		if inside then
+			return "outside", { spot = inside }
 		end
 		return "default", { hud = "Manage" }
 	elseif stepId == "orderStock" then

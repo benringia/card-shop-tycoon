@@ -199,6 +199,13 @@ function TutorialRules.tourLeading(pishStep: string, combatStep: string, waitSte
 	return pishStep ~= "" or (combatStep ~= "" and combatStep ~= waitStep)
 end
 
+-- Whether a player stands inside their shop (spec 2026-11-25-pish-first-steps-design 4): `out` studs from the floor's
+-- centre toward the street, `side` across it; inside within its sides and back and `margin` studs past its front edge
+-- (so standing in the doorway doesn't flip it every frame)
+function TutorialRules.insideShop(out: number, side: number, width: number, depth: number, margin: number): boolean
+	return math.abs(side) <= width / 2 and out >= -depth / 2 and out <= depth / 2 - margin
+end
+
 -- The tour's step where its first box of packs goes on the rack (Config/Pish STEPS)
 TutorialRules.STOCK_STEP = "stockRack"
 

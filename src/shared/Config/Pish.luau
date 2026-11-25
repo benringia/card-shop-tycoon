@@ -27,6 +27,11 @@ return {
 	FIRST_ITEM = "pishPresent", -- his present at the start: a First Spark pack with his picture (Config/Items)
 	GIFT_ITEM = "pishGift", -- his gift at the end: a pack whose hit card is Very Rare or better
 	RACK = "SmallPackRack", -- the rack the first visit builds (Config/Shelves)
+	-- Outside your shop when the rack step needs you in (spec 2026-11-25-pish-first-steps-design 4: the tour talked to
+	-- you on the sidewalk and the rack's preview started off screen): "Let's go inside!" and his trail to a spot `spot`
+	-- studs in from the front, his paw over it `height` studs up; inside means `margin` studs past the front edge
+	-- (TutorialRules.insideShop). Studs.
+	INSIDE = { margin = 3, spot = 12, height = 5 },
 	ORDER_PRODUCT = "FirstSparkPack", -- the stock it orders (Config/Products)
 
 	-- Petting Town Pish: luck for `seconds`, at most once per `cooldown` (seconds) per player, raising the hit slot's

@@ -254,6 +254,11 @@ return {
 		expect.equal(TalkRules.show(present, #present.intro + 1, "default").text, "I brought you a present. Open your Bag!", "a computer keeps its line")
 	end,
 
+	["the rack step leads an outside player in"] = function()
+		local rack = PishTalk.STEPS.buildRack
+		expect.equal(TalkRules.show(rack, #rack.intro + 1, "outside").text, "Let's go inside!")
+	end,
+
 	-- the 1377 x 625 laptop window: the card hid most of the $100 button from its bottom spot
 	["the talk card on a laptop window and a computer's bottom tile"] = function()
 		local spots = {
