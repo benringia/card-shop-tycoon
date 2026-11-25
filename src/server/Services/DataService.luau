@@ -292,7 +292,9 @@ local function startSession(player: Player): any
 		key = SaveSlots.key(DataConfig.KEY_PREFIX, player.UserId, DataService.SlotOf(player), RunService:IsStudio())
 		slotKeys[player] = key
 	end
-	return store:StartSessionAsync(key, {
+	-- Studio's fresh switch: a brand-new save in memory (ProfileStore's Mock), never written
+	local from = if SaveSlots.fresh(RunService:IsStudio(), DataConfig.STUDIO_FRESH) then store.Mock else store
+	return from:StartSessionAsync(key, {
 		Cancel = function()
 			return not isInGame(player)
 		end,

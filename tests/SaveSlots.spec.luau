@@ -20,6 +20,15 @@ return {
 		expect.equal(SaveSlots.key("Player_", 42, { test = false, run = 3 }, true), "Player_42", "main in Studio: the real save")
 	end,
 
+	-- 2026-11-25: a new player's first minutes played again and again (Pish's first steps): Studio's switch loads a
+	-- brand-new save kept in memory and never written (ProfileStore's Mock); never outside Studio
+	["Studio's fresh switch: a brand-new unsaved save, in Studio only"] = function()
+		expect.equal(SaveSlots.fresh(true, true), true)
+		expect.equal(SaveSlots.fresh(false, true), false, "never in the live game")
+		expect.equal(SaveSlots.fresh(true, false), false)
+		expect.equal(SaveSlots.fresh(true, nil), false)
+	end,
+
 	["a stored choice is checked"] = function()
 		local none = SaveSlots.clean(nil)
 		expect.equal(none.test, false)

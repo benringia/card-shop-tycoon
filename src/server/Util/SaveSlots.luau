@@ -26,6 +26,12 @@ function SaveSlots.key(prefix: string, userId: number, state: State, studio: boo
 	return `{prefix}{userId}`
 end
 
+-- Studio's fresh switch (Config/Data STUDIO_FRESH, 2026-11-25: a new player's first minutes played again and again): a
+-- brand-new save kept in memory and never written, whoever plays; never outside Studio
+function SaveSlots.fresh(studio: boolean, flag: boolean?): boolean
+	return studio and flag == true
+end
+
 -- "test" (the test save), "main" (the real one), "reset" (a fresh test save); false for anything else
 function SaveSlots.apply(state: State, command: string): (State, boolean)
 	if command == "test" then
