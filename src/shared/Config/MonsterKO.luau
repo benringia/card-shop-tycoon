@@ -44,5 +44,7 @@ return {
 		poof = { id = "rbxassetid://9117841516", volume = 0.55 }, -- Pop Airy 2
 		coins = { id = "rbxassetid://9113849492", volume = 0.35 }, -- Coins Or Keys Jingle 6
 	},
-	SERVER_SECONDS = 2.6, -- the server keeps a beaten monster (locked, Fainted) this long, then it goes
+	-- the server keeps a beaten monster (locked, Fainted) this long, then it goes; 2.6 until the finishing blow's longer
+	-- beat (Config/FinishingBlow WILD.hold): its knockout must still end MARGIN before this
+	SERVER_SECONDS = 2.7,
 }
