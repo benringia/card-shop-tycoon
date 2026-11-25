@@ -38,6 +38,9 @@
 -- stronger with a stronger one (WeaponRules.superScale): with the Steel Sword nobody's fires. FREE_SUPERS=1 runs the
 -- old rule (every super at its base strength, no weapon needed), to compare.
 -- WEAPON_SET="<path>=<number>,..." tries other Config/Weapons numbers (WEAPON_SET="RARITY_POWER.Legendary=1.6,UPGRADE_STEP=0.04").
+-- MUTATION="<id>:<rarity>" (MUTATION="sharp:Epic", rarity VeryRare for Very Rare) gives every player's weapon that
+-- mutation (weapons round 4 part 2, Config/Mutations): Tough on their HP, Pet Boost on their creatures, a teammate's
+-- Rally, the rest in the sim (BattleSim.setMutation); without it nobody has one.
 -- The Dungeon's boss (Config/Dungeon.BOSS) is fought after its three rooms of elite packs, with the HP each creature
 -- has left (fainted ones stay out), as in a real run; its rows also print the party's HP share left before the boss.
 local process = require("@lune/process")
@@ -137,6 +140,19 @@ local function superScaleFor(creature: any): number?
 end
 if WEAPON then
 	print(string.format("WEAPON %s +%d Grade %s: Power %.3f", WEAPON.id, WEAPON.level, WEAPON.grade, WEAPON_POWER))
+end
+
+-- Every player's weapon's mutation (MUTATION env): its fight stats (MutationRules.Stats), neutral without one
+local Mutations = require("../../src/shared/Config/Mutations")
+local MutationRules = require("../../src/shared/Util/MutationRules")
+local MUTATION_STATS: MutationRules.Stats = MutationRules.stats(Mutations, nil)
+if process.env.MUTATION then
+	local id, rarityText = string.match(process.env.MUTATION, "^([%w]+):(%a+)$")
+	local rarity = if rarityText == "VeryRare" then "Very Rare" else rarityText
+	local mutation = MutationRules.read(Mutations, { id = id, rarity = rarity })
+	assert(mutation, `MUTATION="<id>:<Common|Rare|VeryRare|Epic|Legendary>" with a Config/Mutations id, got {process.env.MUTATION}`)
+	MUTATION_STATS = MutationRules.stats(Mutations, mutation)
+	print(`MUTATION {MutationRules.words(Mutations, mutation).short}`)
 end
 
 local function weaponHit(state: any, owner: string): any
@@ -247,12 +263,16 @@ local playerScale: number? = nil
 -- `pylons` (its room 3, spec 2026-11-11-dungeon-puzzles): they also swing at the pylons until the shield falls
 local function battle(players: { { any } }, foes: { any }, hpLeft: { [string]: number }, seed: number, mode: string?, pylons: { any }?, inRoom: boolean?): (boolean, number, { [string]: number })
 	local leaders, reserves = {}, {}
+	-- every player has the MUTATION: Pet Boost on their creatures, a teammate's Rally (one, not stacked) in a group
+	local rally = if #players > 1 then MUTATION_STATS.rally else 0
 	for _, own in players do
 		local led = false
 		for _, input in own do
 			if DungeonRules.canFight(hpLeft, input.id) then
 				local copy = table.clone(input)
 				copy.hpNow = hpLeft[input.id]
+				copy.atk *= MUTATION_STATS.petAtk * (1 + rally)
+				copy.hp = math.max(1, math.round(copy.hp * MUTATION_STATS.petHp))
 				table.insert(if led then reserves else leaders, copy)
 				led = true
 			end
@@ -266,7 +286,8 @@ local function battle(players: { { any } }, foes: { any }, hpLeft: { [string]: n
 		for index = 1, #players do
 			local owner = tostring(index)
 			table.insert(owners, owner)
-			table.insert(leaders, { id = `@{owner}`, player = true, owner = owner, element = "None", hp = Combat.PLAYER_HP, atk = 0, spd = 10, defenseScale = if inRoom == true or pylons ~= nil then nil else playerScale })
+			local hp = math.round(Combat.PLAYER_HP * MUTATION_STATS.hp) -- a Tough mutation
+			table.insert(leaders, { id = `@{owner}`, player = true, owner = owner, element = "None", hp = hp, atk = 0, spd = 10, defenseScale = if inRoom == true or pylons ~= nil then nil else playerScale })
 		end
 	end
 	local room = inRoom == true or pylons ~= nil -- a Dungeon room: call-ins on even with the players in it
@@ -278,6 +299,9 @@ local function battle(players: { { any } }, foes: { any }, hpLeft: { [string]: n
 		pylons = pylons,
 	}, seed)
 	state.maxSeconds = Combat.BOSS_MAX_FIGHT_SECONDS
+	for index = 1, #players do
+		BattleSim.setMutation(state, tostring(index), MUTATION_STATS)
+	end
 	dice = seed
 	local function skill(range: { number }): number
 		return range[1] + (range[2] - range[1]) * roll()

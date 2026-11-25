@@ -10,7 +10,7 @@ return {
 	-- A roll's rarity (they add up to 1)
 	ODDS = { Common = 0.45, Rare = 0.30, ["Very Rare"] = 0.15, Epic = 0.08, Legendary = 0.02 },
 	-- A mutation's number by its rarity, a share (placeholders until the boss pass's sims, part 3); `half` entries
-	-- (Treasure, Scholar: fights only, owner's guardrail) take HALF_SIZE
+	-- (Treasure, Scholar: fights only, owner's guardrail; Pet Boost: the sims) take HALF_SIZE
 	SIZE = { Common = 0.03, Rare = 0.05, ["Very Rare"] = 0.08, Epic = 0.12, Legendary = 0.16 },
 	HALF_SIZE = { Common = 0.02, Rare = 0.03, ["Very Rare"] = 0.04, Epic = 0.06, Legendary = 0.08 },
 	-- The mutation you don't keep turns into this much Mutation Essence (a Config/Items item)
@@ -54,11 +54,14 @@ return {
 		{ id = "thorns", name = "Thorns", group = "defense", stat = "thorns", how = "add", words = "{n}% of the damage you take hits back" },
 		{ id = "lifesteal", name = "Lifesteal", group = "support", stat = "lifesteal", how = "add", words = "Heal {n}% of your sword damage" },
 		{
+			-- at half size (the boss sim 2026-11-26: +16% on every creature took the Prism Hydra at 0.8x from 59% to 95%,
+			-- a Legendary Sharp to 61%; the creatures do most of a fight's damage)
 			id = "petBoost",
 			name = "Pet Boost",
 			group = "support",
 			stat = "pet",
 			how = "more",
+			half = true,
 			words = "Your creatures' ATK and HP +{n}%",
 			twist = { stat = "rally", value = 0.05, words = "Rally: teammates' creatures +5% ATK" },
 		},

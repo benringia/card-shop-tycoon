@@ -112,6 +112,20 @@ AdminPanel.SECTIONS = {
 		},
 	},
 	{
+		-- Weapon mutations (weapons round 4 part 2, Config/Mutations): on the weapon in hand; an offer plays its reveal
+		-- and choice
+		title = "Mutations",
+		buttons = {
+			{ label = "Mutation offer (rolled)", command = "/mutation offer" },
+			{ label = "Offer: Common", command = "/mutation offer common" },
+			{ label = "Offer: Epic", command = "/mutation offer epic" },
+			{ label = "Offer: Legendary", command = "/mutation offer legendary" },
+			{ label = "Set a mutation", command = "/mutation set %s", placeholder = "rarity id (epic sharp, legendary tough)" },
+			{ label = "Take it off", command = "/mutation clear" },
+			{ label = "+100 Mutation Essence", command = "/item mutationEssence 100" },
+		},
+	},
+	{
 		-- The Pet button moves at each grade (spec 2026-11-05-pet-moves-design): played on your summoned creature against a
 		-- dummy in front of it (MovePreviewController); "big" against a 14-stud dummy
 		title = "Pet moves",

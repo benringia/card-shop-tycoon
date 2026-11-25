@@ -3813,6 +3813,50 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
     effective (the pill, the gold row, the dial line, the tip). `tests/SkillText` fails on any string in `src` calling
     it a super (Super Luck, the bought luck, and Super effective are other things). The fight's strong-hit pop still
     says "STRONG!".
+  - **Mutations** (part 2, plan `2026-11-26-weapons-round4-part2.md`; owner 2026-11-25: "every weapon should have a
+    chance for a mutation (common to legendary) mutations now add glow on top of the upgrades glow", grouped
+    "Offensive / Defensive / supportive"; `Config/Mutations`, `Util/MutationRules`). One per weapon, saved on its
+    record (v44); only the weapon in your hand counts, never in the arena (it builds its own fights).
+    - **Drops**: a boss's weapon drops on 95 / 92 / 88 / 85% of loot wins by rarity, sure on the second (`Weapons.DROP`;
+      Wild bosses x1.3, so always). A new one comes plain; one you have is a mutation roll (`WeaponService.Offer`): on at
+      once when it has none ("Your first mutation on this weapon!", Nice!), else Take new or Keep mine, the other turning
+      into Mutation Essence (2 / 4 / 8 / 12 / 20 by rarity; a Bag item). A duplicate no longer gives 10 material, so the
+      chest holds the boss's material every loot win, the weapon's chest too, plus 2 / 2 / 1 / 1 by the weapon's rarity
+      (`Weapons.MATERIAL_EVERY_WIN`): an owner's material a loot win stays about as it was (3.5 / 2.8 / 2.4 / 1.8 before,
+      3.2 / 3.2 / 2.2 / 2.2 now). Only new weapons get the light column and the server announcement.
+    - **The roll**: rarity Common 45%, Rare 30%, Very Rare 15%, Epic 8%, Legendary 2%; then one of thirteen. Offense
+      (Sword icon) on your sword hits: Sharp (+n%), Critical (n% chance to deal double), Element Edge (strong hits +n%),
+      Boss Hunter (on a boss +n%). Defense (Shield): Tough (your HP +n%; Legendary adds Second Wind: once a fight, heal
+      30% when under 30%), Guard (n% less damage), Quick Step (dodge n% sooner), Thorns (n% of what you take hits back).
+      Support (Heal heart): Lifesteal (heal n% of your sword damage: the player, never the creature, which the Verdant
+      Blade's perk heals), Pet Boost (creatures' ATK and HP; Legendary adds Rally: teammates' creatures +5% ATK, the best
+      one, not stacked), Ultimate Charge (the meter fills n% faster), Treasure (fight cash, its shop XP from the cash
+      before it), Scholar (creature XP from fights). Sizes 3 / 5 / 8 / 12 / 16% by rarity; Treasure, Scholar and Pet Boost
+      at half (2 / 3 / 4 / 6 / 8%). Placeholders until part 3's boss pass.
+    - **In fights** (`BattleSim.setMutation`, per owner like Chikin's Courage): set at a fight's start and on a weapon
+      switch; Tough's HP, Pet Boost and Rally are fixed at the start. No mutation draws the same randoms as before (a crit
+      rolls only when there's a chance). Thorns and Second Wind and Lifesteal send events (`thorns`, `regen` with kind).
+    - **The reveal** (the owner's mockup; `WeaponRevealController.Mutation`): "MUTATION! <weapon>" and the column in the
+      mutation's card rarity colour (Config/Rarities: Epic purple, not the mockup's pink), "Epic · Sharp · sword hits
+      +12%", the blade with its new rim, then a panel: "Yours now: Rare · Tough (your HP +5%)", Take new and Keep mine,
+      each over the Essence it gives, "The one you don't keep turns into Mutation Essence". No skip until chosen. Reveals
+      wait until no window is open (the stage is 3D: a window over it hid the blade). A choice left waiting (they left)
+      is saved and asked again after the next join.
+    - **The look**: the held blade (and the reveal's) gets a rim in the card rarity colour (a Highlight on the model,
+      `Mutations.LOOK.rim`), Legendary also sparkles (`WeaponLook.mutation`, the character's `SwordMutation`).
+    - **The weapon window** (layout A): its last row is the mutation, tinted (a pale fill, its edge and title in the
+      colour, its group's icon tinted: "Sharp · Epic mutation" / "Sword hits +12%."); a gold "New mutation waiting!"
+      row while a choice waits. Rows 46 px since then (48 before), so four rows and the gold box fit a short window. The
+      switch tip adds "Mutation: Epic · Sharp · sword hits +12%" in the colour.
+    - **The Forge's Mutate** (a fourth tab on the picture recipe): 30 Mutation Essence for a new roll on any weapon you
+      have (not the Steel Sword, not one in the Forge's job, not while a choice waits), instant: "Use 30 Mutation Essence
+      to give your Verdant Blade a new mutation!", the Essence spot, "Common to Legendary" and the one it has now under the
+      card, "Mutate it!" over "instant". The window steps aside for the reveal and comes back.
+    - **Balance** (`MUTATION="<id>:<rarity>"` in tools/balance/bosses; 150 fights, fighting well): the Prism Hydra with a
+      +10 S Prism Blade at 0.8x: none 59%, Rare Sharp 60%, Legendary Sharp 61%, Epic Critical 62%, Legendary Tough 59%,
+      Pet Boost at 5% 65%, 8% 71%, 16% 95% (best+2: 20% -> 57%), so Pet Boost went to half size; the Brood Queen with a
+      +5 A Verdant Blade at 0.8x: none 85%, Legendary Sharp 93%, Legendary Pet Boost (16%) 100%. The sword's mutations
+      move little (the creatures do most of a fight's damage); part 3 sets the sizes and the bosses.
 
 ---
 
@@ -5566,7 +5610,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v43)
+### 10.4 Player data schema (v44)
 ```lua
 {
     version = 21,
@@ -5596,7 +5640,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     seenWelcome = false,    -- saw the first-visit welcome cinematic (WelcomeService)
     seenSword = false,      -- closed the "You got your first sword!" popup (SwordService)
     swordFights = 0,        -- boss fights fought with the sword HUD; its buttons show names for the first 3 (SwordService)
-    weapons = {},           -- weaponId -> { grade, level } (WeaponService; the Steel Sword is everyone's, never saved)
+    weapons = {},           -- weaponId -> { grade, level, mutation?, pending? } (WeaponService; the Steel Sword is everyone's, never saved; mutation and pending = { id, rarity }: its mutation and one waiting for Take new or Keep mine, v44)
     equippedWeapon = "starterSword", -- the weapon in hand (Config/Weapons id)
     tutorial = { firstVisit = "todo", step = 1, early = {}, firstGiven = false, giftClaimed = false, customerSent = false, lessons = {},
                  pishLuckAt = 0 }, -- the first visit with Pish ("todo" | "done" | "skipped"), its step and steps done
@@ -5669,6 +5713,10 @@ v43 (storage racks, spec 2026-11-24-storage-racks-design) added `boxes` on a sto
 before have no racks, so its step changes nothing but the version. The load cleans them (`StorageRules.clean`) and
 puts the boxes no rack holds onto the pad, else pays them back (4.2). Release with "Migrate to latest update": an old
 server would drop a rack it doesn't know, with its boxes.
+v44 (weapon mutations, spec 2026-11-25-weapons-round4-design part 2) lets a weapon's record carry `mutation` and
+`pending` ({ id, rarity }); saves from before have none, so its step changes nothing but the version. The load keeps
+only known ones (`WeaponRules.read` with `MutationRules.read`); a choice still `pending` is asked again on the next join.
+Release with "Migrate to latest update": an old server's read drops both.
 
 ### 10.6 UI style and HUD
 - **Loading screen: the binder** (owner 2026-11-13, spec `docs/superpowers/specs/2026-11-13-loading-screen-binder-design.md`;
@@ -6435,8 +6483,9 @@ boss models; the ranch and Heroic tiers come after those.
   "Scythes"), the Rift Reaper's Thousand Cuts with the Grim Reaper (5.11 "Thousand Cuts"), the forward-facing hold;
   owner approved and merged 2026-11-09. The Forge machine's own model: later (owner 2026-11-09).
 - [ ] Weapons round 4 (5.11 "Weapons round 4", spec `2026-11-25-weapons-round4-design.md`): part 1 (Attack numbers,
-  the weapon window's layout A, the Prism Blade's rule) owner approved and merged 2026-11-26; part 2 mutations and
-  part 3 the boss pass next.
+  the weapon window's layout A, the Prism Blade's rule) owner approved and merged 2026-11-26; Ultimate and Super
+  effective (the words) and part 2 mutations (5.11 "Mutations") built on branch `weapons-round4-part2`, waiting for the
+  owner's check; part 3 the boss pass next.
 - [x] Shop round 2026-11-17 (owner approved): the Glass Showcase list's border, shop levels 4x faster (then 6x: Lv 20
   at about 6,000 XP, $2 x level), Roblox's Robux glyph on every price (`Util/RobuxPrice`), a new case card waits for its price
   (`Util/ListingHold`), To Bag with its own icon (pick B) and Pish's tip bubble (`Util/TileTip`, schema v32 `tips`),
