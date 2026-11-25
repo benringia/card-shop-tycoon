@@ -78,6 +78,7 @@ export type View = {
 	perkText: string?, -- its fight perk working now ("Hype: hits 23% harder"), for the chip under its bar
 	perkElement: string?, -- its element: the chip's icon (Util/ElementBadge)
 	perkColor: Color3?, -- its element's colour
+	foeElement: string?, -- the monster's element (a boss's changes with its phase): the matchup chip (Util/MatchupChip)
 	creatureHp: number,
 	creatureMax: number,
 	hasSignature: boolean,
@@ -843,6 +844,8 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 		line.Parent = cap
 		dodgeIcon, dodgeText, dodgeLine = icon, text, line
 	end
+	-- The matchup chip after them (owner 2026-11-25 picked "A"): weak red, strong green, nothing when even
+	local matchupChip = require((script.Parent :: Instance):WaitForChild("MatchupChip")).new(chipRow, 3)
 	local chipEdge = Instance.new("UIStroke")
 	chipEdge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	chipEdge.Thickness = 1.5
@@ -1490,6 +1493,7 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 
 	local function update(view: View)
 		latest = view
+		matchupChip.show(view.creatureElement, view.foeElement)
 		if runTip then
 			local look = CombatHudConfig.MOUSE_RUN
 			runTip.Text = if wild and view.runChance then string.format(look.chanceTip, math.round(view.runChance * 100)) else look.tip

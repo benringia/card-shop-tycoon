@@ -55,6 +55,13 @@ return {
 		expect.equal(cfg.bossHit.peak > cfg.strong.peak, true, "a boss's hit stays the biggest")
 	end,
 
+	["a Dungeon pylon's hit keeps the old strong pop"] = function()
+		local pylon = cfg.pylon
+		expect.equal(pylon ~= nil, true, "the pylon style exists")
+		expect.near(pylon.peak, 1.75, 1e-9, "the strong peak before element callouts")
+		expect.near(DamagePop.life("pylon", cfg), DamagePop.life("strong", cfg), 1e-9, "as long as a strong hit")
+	end,
+
 	["the strong burst's numbers"] = function()
 		local burst = cfg.STRONG_BURST
 		expect.equal(burst.rays, 12)

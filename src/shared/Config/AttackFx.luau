@@ -424,6 +424,7 @@ return {
 		crit = { start = 0.4, peak = 2.1, pop = 0.1, life = 1.25, rise = 3.6, wiggle = 14 },
 		-- a strong hit pops like a crit over a gold burst (owner 2026-11-25: "bigger"; was a 1.75 peak at a normal's size)
 		strong = { start = 0.4, peak = 2.1, pop = 0.09, life = 1, rise = 3.3 },
+		pylon = { start = 0.4, peak = 1.75, pop = 0.09, life = 1, rise = 3.3 }, -- a Dungeon pylon's hit: the old strong pop
 		weak = { start = 0.5, peak = 1.2, pop = 0.08, life = 0.75, rise = 2.4 },
 		heal = { start = 0.4, peak = 1.4, pop = 0.1, life = 1, rise = 3.2 },
 		tick = { start = 0.6, peak = 1.15, pop = 0.06, life = 0.7, rise = 2 },

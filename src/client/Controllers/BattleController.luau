@@ -383,7 +383,8 @@ end
 
 -- Damage numbers pop (Util/DamagePop, AttackFx.NUMBERS): each bursts in big and settles, rises, drifts a little to one
 -- side so numbers landing together don't sit on each other, and fades; one loop moves them all
-type FloatingNumber = { gui: BillboardGui, label: TextLabel, stroke: UIStroke, scale: UIScale, style: string, born: number, drift: number }
+-- burst: a strong hit's gold burst behind the number (Util/StrongBurst), popping and fading with it
+type FloatingNumber = { gui: BillboardGui, label: TextLabel, stroke: UIStroke, scale: UIScale, style: string, born: number, drift: number, burst: { step: (number, number) -> () }? }
 local floating: { FloatingNumber } = {}
 local floatingBound = false
 
@@ -403,20 +404,26 @@ local function stepNumbers()
 		number.label.Rotation = pose.rotation
 		number.label.TextTransparency = 1 - pose.alpha
 		number.stroke.Transparency = 1 - pose.alpha
+		if number.burst then
+			number.burst.step(pose.scale, pose.alpha)
+		end
 		table.insert(keep, number)
 	end
 	floating = keep
 end
 
--- A number that pops over a fighter (style: "normal" | "crit" | "strong" | "weak" | "heal" | "tick"; big: a crit)
+-- A number that pops over a fighter (style: "normal" | "crit" | "strong" | "weak" | "heal" | "tick" | "pylon"; big: a
+-- crit)
 local function floatText(id: string, text: string, color: Color3, big: boolean?, style: string?)
 	local marker = markerFor(id)
 	if not marker then
 		return
 	end
 	local kind = style or (if big then "crit" else "normal")
+	-- a strong hit pops like a crit over a gold burst (owner 2026-11-25: "bigger"; Config/AttackFx NUMBERS.STRONG_BURST)
+	local large = kind == "crit" or kind == "strong"
 	local gui = Instance.new("BillboardGui")
-	gui.Size = if kind == "crit" then UDim2.fromOffset(220, 58) else UDim2.fromOffset(150, 40)
+	gui.Size = if large then UDim2.fromOffset(220, 58) else UDim2.fromOffset(150, 40)
 	gui.StudsOffset = Vector3.new(0, NUMBER_LIFT, 0)
 	gui.AlwaysOnTop = true
 	gui.LightInfluence = 0
@@ -437,7 +444,7 @@ local function floatText(id: string, text: string, color: Color3, big: boolean?,
 	gradient.Rotation = 90
 	gradient.Parent = label
 	local stroke = Instance.new("UIStroke")
-	stroke.Thickness = if kind == "crit" then 3 else 2.2
+	stroke.Thickness = if large then 3 else 2.2
 	stroke.Color = color:Lerp(Color3.new(0, 0, 0), 0.8)
 	stroke.Parent = label
 	local scale = Instance.new("UIScale")
@@ -445,7 +452,16 @@ local function floatText(id: string, text: string, color: Color3, big: boolean?,
 	scale.Parent = label
 	gui.Parent = player:WaitForChild("PlayerGui") -- a BillboardGui inside another ScreenGui never draws
 	local drift = AttackFx.NUMBERS.DRIFT
-	table.insert(floating, { gui = gui, label = label, stroke = stroke, scale = scale, style = kind, born = os.clock(), drift = (math.random() * 2 - 1) * drift })
+	table.insert(floating, {
+		gui = gui,
+		label = label,
+		stroke = stroke,
+		scale = scale,
+		style = kind,
+		born = os.clock(),
+		drift = (math.random() * 2 - 1) * drift,
+		burst = if kind == "strong" then require(ClientUtil:WaitForChild("StrongBurst")).make(gui) else nil,
+	})
 	if not floatingBound then
 		floatingBound = true
 		RunService.RenderStepped:Connect(stepNumbers)
@@ -756,6 +772,8 @@ local function updateHud(hud: CombatHud.Hud, snapshot: Snapshot)
 			then `{creature.perk.kind}: {PartyRules.describeFight(creature.perk)}`
 			else nil,
 		perkColor = if creature then Cards.ELEMENTS[creature.element] else nil,
+		-- the monster's element (a boss's follows its phase): the matchup chip; the arena has no monster
+		foeElement = if mode ~= "pvp" and snapshot.monster then snapshot.monster.element else nil,
 		petMove = if creature and Combat.ABILITIES[creature.element] then Combat.ABILITIES[creature.element].name else "Pet move",
 		signatureMove = if creature and creature.signature and Combat.SIGNATURES[creature.signature]
 			then Combat.SIGNATURES[creature.signature].name
@@ -1206,7 +1224,7 @@ local function onEvents(events: { any })
 		elseif event.type == "out" and event.to == me then
 			banner("You're out: watching", UIKit.Colors.Danger)
 		elseif event.type == "pylonHit" and event.to then
-			floatText(event.to, `-{event.damage}`, STRONG_COLOR, false, "strong")
+			floatText(event.to, `-{event.damage}`, STRONG_COLOR, false, "pylon") -- the old strong pop, no burst
 		elseif event.type == "pylonBroken" and event.to then
 			floatText(event.to, "Broken!", CRIT_COLOR, true)
 			local prompt = pylonUi.prompts[event.to]
