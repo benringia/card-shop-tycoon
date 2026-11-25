@@ -17,6 +17,7 @@ local TrailRules = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild
 local ScreenEdges = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("ScreenEdges"))
 local Cues = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Cues"))
 local CueShape = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("CueShape"))
+local TalkRules = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("TalkRules"))
 
 local ClientUtil = script.Parent :: Instance
 local Icon = require(ClientUtil:WaitForChild("Icon"))
@@ -546,6 +547,18 @@ function TutorialCues.skipButton(shown: boolean, onTap: () -> ())
 	onSkipTap = onTap
 	skipWanted = shown
 	;(button :: TextButton).Visible = shown and not UIKit.anyPanelOpen()
+end
+
+-- Where Skip's tap area would sit docked to a talk card at `talk` (hanging under it when `below`, else over its top),
+-- the same as skipButton docks it; nil while Skip is hidden (not wanted, or a window open). The card's spot keeps it
+-- off what Pish points at too (TalkRules.cardPlace; spec 2026-11-25-pish-first-steps-design 1)
+function TutorialCues.skipBox(talk: TalkRules.Box, below: boolean): TalkRules.Box?
+	if not skipWanted or UIKit.anyPanelOpen() then
+		return nil
+	end
+	local right = talk.x + talk.w - SKIP_DOCKED.inset
+	local y = if below then talk.y + talk.h - SKIP_DOCKED.overlap else talk.y + SKIP_DOCKED.overlap - SKIP_SIZE.Y
+	return { x = right - SKIP_SIZE.X, y = y, w = SKIP_SIZE.X, h = SKIP_SIZE.Y }
 end
 
 -- The tour card (Skip tapped): "Pish's Tour · 3 of 8", the paw row, his gift and what you'd miss, a big green Keep

@@ -217,30 +217,86 @@ return {
 		end
 	end,
 
-	-- The owner 2026-11-11: "move the dialogue at the center top so that pish model can be seen"
-	["the talk card sits at the top, unless it would cover what Pish points at there"] = function()
-		local TOP, HEIGHT, PAW = 66, 112, 82
-		expect.equal(TalkRules.cardAtTop(TOP, HEIGHT, PAW, nil, false), true, "nothing pointed at: the top")
-		local tile = { top = 520, low = 580, across = true }
-		expect.equal(TalkRules.cardAtTop(TOP, HEIGHT, PAW, tile, false), true, "a HUD tile at the bottom: still the top")
-		local high = { top = 120, low = 170, across = true }
-		expect.equal(TalkRules.cardAtTop(TOP, HEIGHT, PAW, high, false), false, "a button under the top card: the bottom")
-		local paw = { top = 230, low = 280, across = true }
-		expect.equal(TalkRules.cardAtTop(TOP, HEIGHT, PAW, paw, false), false, "the paw over it would hit the card")
-		local aside = { top = 120, low = 170, across = false }
-		expect.equal(TalkRules.cardAtTop(TOP, HEIGHT, PAW, aside, false), true, "beside the card: the top")
-		expect.equal(TalkRules.cardAtTop(TOP, HEIGHT, PAW, high, true), true, "a fight keeps it at the top")
+	-- The owner 2026-11-11: "move the dialogue at the center top so that pish model can be seen"; 2026-11-25 (look A,
+	-- spec 2026-11-25-pish-first-steps-design): never on what he points at. Measured on the iPhone 17 Pro sim (HUD
+	-- 750 x 323): the card 420 x 76 at x 97, top y 8, bottom y 146; Skip's 84 x 48 tap area at x 421, under the top card
+	-- at y 78, over the bottom one at y 104. The old rule put the card on the Bag (the Phone's second row) and on the
+	-- Small Pack Rack's $100 button, and a tap there hit the card
+	["the talk card takes the spot that leaves Pish's target clear (phone)"] = function()
+		local function spots(skip: boolean): { TalkRules.Spot }
+			local top = { { x = 97, y = 8, w = 420, h = 76 } }
+			local bottom = { { x = 97, y = 146, w = 420, h = 76 } }
+			if skip then
+				table.insert(top, { x = 421, y = 78, w = 84, h = 48 })
+				table.insert(bottom, { x = 421, y = 104, w = 84, h = 48 })
+			end
+			return { { name = "top", boxes = top }, { name = "bottom", boxes = bottom } }
+		end
+		local bag = { x = 286, y = 163, w = 64, h = 64 } -- the Phone's second row
+		expect.equal(TalkRules.cardPlace(spots(true), bag, TalkRules.pawBox(bag, 82), false, false), "top", "the Bag: top (its paw may touch the card)")
+		local shop = { x = 286, y = 75, w = 64, h = 64 } -- the Phone's first row
+		expect.equal(TalkRules.cardPlace(spots(true), shop, TalkRules.pawBox(shop, 82), false, false), "bottom", "the Shop app: bottom")
+		local tile = { x = 27, y = 122, w = 340, h = 100 } -- the Small Pack Rack tile, the paw on its $100 button
+		local buy = { x = 127, y = 170, w = 232, h = 44 }
+		expect.equal(TalkRules.cardPlace(spots(true), tile, TalkRules.pawBox(buy, 82), false, false), "top", "the rack: top")
+		expect.equal(TalkRules.cardPlace(spots(true), nil, nil, false, false), "top", "nothing pointed at")
+	end,
+
+	-- the 1377 x 625 laptop window: the card hid most of the $100 button from its bottom spot
+	["the talk card on a laptop window and a computer's bottom tile"] = function()
+		local spots = {
+			{ name = "top", boxes = { { x = 553, y = 8, w = 552, h = 100 } } },
+			{ name = "bottom", boxes = { { x = 553, y = 343, w = 552, h = 100 } } },
+		}
+		local tile = { x = 478, y = 169, w = 222, h = 214 }
+		local buy = { x = 486, y = 327, w = 206, h = 48 }
+		expect.equal(TalkRules.cardPlace(spots, tile, TalkRules.pawBox(buy, 82), false, false), "top", "the rack's $100 clear")
+		local bag = { x = 840, y = 478, w = 72, h = 72 }
+		expect.equal(TalkRules.cardPlace(spots, bag, TalkRules.pawBox(bag, 82), false, false), "top", "a bottom tile: top as before")
+	end,
+
+	["both spots on the target: the one covering less of it"] = function()
+		local spots = {
+			{ name = "top", boxes = { { x = 0, y = 0, w = 100, h = 60 } } },
+			{ name = "bottom", boxes = { { x = 0, y = 40, w = 100, h = 60 } } },
+		}
+		-- the target spans y 50..90: the top card covers 10 x 20 of it, the bottom one 40 x 20
+		expect.equal(TalkRules.pickSpot(spots, { x = 10, y = 50, w = 20, h = 40 }, nil), "top", "the one covering less")
+	end,
+
+	["Skip counts only while it shows"] = function()
+		local target = { x = 430, y = 100, w = 60, h = 20 } -- under the top card's Skip, clear of both cards
+		local card = { x = 97, y = 8, w = 420, h = 76 }
+		local low = { x = 97, y = 146, w = 420, h = 76 }
+		local withSkip = { { name = "top", boxes = { card, { x = 421, y = 78, w = 84, h = 48 } } }, { name = "bottom", boxes = { low } } }
+		local noSkip = { { name = "top", boxes = { card } }, { name = "bottom", boxes = { low } } }
+		expect.equal(TalkRules.pickSpot(withSkip, target, nil), "bottom", "Skip under the top card would cover it")
+		expect.equal(TalkRules.pickSpot(noSkip, target, nil), "top", "Skip hidden: the top again")
+	end,
+
+	["boxes touching edges don't overlap; the paw's room sits over the button's middle"] = function()
+		expect.equal(TalkRules.overlap({ x = 0, y = 0, w = 10, h = 10 }, { x = 10, y = 0, w = 10, h = 10 }), 0, "side by side")
+		expect.equal(TalkRules.overlap({ x = 0, y = 0, w = 10, h = 10 }, { x = 5, y = 5, w = 10, h = 10 }), 25)
+		local paw = TalkRules.pawBox({ x = 100, y = 200, w = 40, h = 20 }, 82)
+		expect.equal(paw.x, 79)
+		expect.equal(paw.y, 118)
+		expect.equal(paw.w, 82)
+		expect.equal(paw.h, 82)
 	end,
 
 	-- seen 2026-11-20 on Pish's first sale: at the top centre his card lay on the register's screen (what to give
 	-- back), and at the bottom it would lie on the cash drawer. At the register it stands at the left side
-	["at the register the talk card stands aside: the screen and the drawer stay clear"] = function()
-		local TOP, HEIGHT, PAW = 66, 112, 82
-		expect.equal(TalkRules.cardPlace(TOP, HEIGHT, PAW, nil, false, true), "side", "manning the register")
-		expect.equal(TalkRules.cardPlace(TOP, HEIGHT, PAW, { top = 120, low = 170, across = true }, false, true), "side")
-		expect.equal(TalkRules.cardPlace(TOP, HEIGHT, PAW, nil, false, false), "top", "anywhere else: as before")
-		expect.equal(TalkRules.cardPlace(TOP, HEIGHT, PAW, { top = 120, low = 170, across = true }, false, false), "bottom")
-		expect.equal(TalkRules.cardPlace(TOP, HEIGHT, PAW, nil, true, false), "top", "a fight")
+	["at the register the talk card stands aside; a fight keeps it at the top"] = function()
+		local spots = {
+			{ name = "top", boxes = { { x = 0, y = 0, w = 100, h = 60 } } },
+			{ name = "bottom", boxes = { { x = 0, y = 200, w = 100, h = 60 } } },
+		}
+		local high = { x = 10, y = 20, w = 20, h = 20 }
+		expect.equal(TalkRules.cardPlace(spots, nil, nil, false, true), "side", "manning the register")
+		expect.equal(TalkRules.cardPlace(spots, high, nil, false, true), "side")
+		expect.equal(TalkRules.cardPlace(spots, high, nil, true, false), "top", "a fight")
+		expect.equal(TalkRules.cardPlace(spots, high, nil, true, true), "top", "a fight on the register")
+		expect.equal(TalkRules.cardPlace(spots, high, nil, false, false), "bottom", "a button under the top card")
 	end,
 
 	-- owner 2026-11-20: "My friend says tutorial is hard to notice. fix it too. and people hardly press next on

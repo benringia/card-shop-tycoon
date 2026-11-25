@@ -1,7 +1,7 @@
 --!strict
 -- Pish's talk card (spec 2026-11-09-tutorial-pish-design 14, the owner's pick A): at the top centre (the owner
--- 2026-11-11: "so that pish model can be seen"; down above the HUD tiles only when it would cover what he points at,
--- Util/TalkRules.cardAtTop), a cotton candy card with Pish's face (his model in a little window), his name, one short line in big
+-- 2026-11-11: "so that pish model can be seen"; down above the HUD tiles when the top would cover what he points at,
+-- and never on it: Util/TalkRules.cardPlace, spec 2026-11-25-pish-first-steps-design), a cotton candy card with Pish's face (his model in a little window), his name, one short line in big
 -- text, the picture of the thing to use, and a big Next while he has more to say. A new line types itself in; a tap on
 -- the card (or Next) shows the rest, then moves on. Lines come from Config/PishTalk through Util/TalkRules.
 -- Easy to notice and never waiting on a press (owner 2026-11-20: "tutorial is hard to notice ... people hardly press
@@ -78,6 +78,15 @@ local COVER_CHECK = 0.2 -- seconds between looks for something over the card
 local coverCheck = 0
 local covered = false -- a button or window of a screen above the tutorial's lies over the card (isCovered)
 local lineLimit: UITextSizeConstraint? = nil -- the line's text size limits (in screen px: they don't follow the UIScale)
+local avoidPaw: GuiObject? = nil -- the button his paw bounces on (`avoid` is what the ring goes round: a whole tile)
+
+-- A button's box on screen; nil when there's none (or it's gone)
+local function boxOf(gui: GuiObject?): TalkRules.Box?
+	if not gui or not gui.Parent then
+		return nil
+	end
+	return { x = gui.AbsolutePosition.X, y = gui.AbsolutePosition.Y, w = gui.AbsoluteSize.X, h = gui.AbsoluteSize.Y }
+end
 
 -- The card's widest, in px: as designed on a phone, bigger on a computer (TalkRules.cardGrow)
 local function widest(screenSize: Vector2): number
@@ -340,22 +349,23 @@ local function build(): Frame
 			scale.Scale = scale:GetAttribute("Popping") and scale.Scale or fit
 		end
 		height = HEIGHT * fit
-		local target = avoid
-		local pointed: TalkRules.Target? = nil
-		if target and target.Parent then
-			local top, low = target.AbsolutePosition.Y, target.AbsolutePosition.Y + target.AbsoluteSize.Y
-			local left, right = target.AbsolutePosition.X, target.AbsolutePosition.X + target.AbsoluteSize.X
-			local cardLeft, cardRight = centre - width / 2, centre + width / 2
-			local across = right > cardLeft and left < cardRight
-			if across and top >= bottom and top - PAW_ROOM < bottom then
-				-- A HUD tile under the card when it's down: up enough to show the paw bouncing on it
-				bottom = top - PAW_ROOM
-			end
-			pointed = { top = top, low = low, across = across }
+		local target, paw = boxOf(avoid), boxOf(avoidPaw or avoid)
+		local cardLeft = centre - width / 2
+		if paw and paw.x + paw.w > cardLeft and paw.x < cardLeft + width and paw.y >= bottom and paw.y - PAW_ROOM < bottom then
+			-- A HUD tile under the card when it's down: up enough to show the paw bouncing on it
+			bottom = paw.y - PAW_ROOM
 		end
 		local top = if forceTop then FIGHT_TOP else TOP
 		local manning = Players.LocalPlayer:GetAttribute("ManningRegister") == true
-		local where = TalkRules.cardPlace(top, height, PAW_ROOM, pointed, forceTop, manning)
+		-- The card's two spots with Skip's tap area docked to each (spec 2026-11-25-pish-first-steps-design 1)
+		local topCard: TalkRules.Box = { x = cardLeft, y = top, w = width, h = height }
+		local lowCard: TalkRules.Box = { x = cardLeft, y = bottom - height, w = width, h = height }
+		local topSkip, lowSkip = TutorialCues.skipBox(topCard, true), TutorialCues.skipBox(lowCard, false)
+		local spots: { TalkRules.Spot } = {
+			{ name = "top", boxes = if topSkip then { topCard, topSkip } else { topCard } },
+			{ name = "bottom", boxes = if lowSkip then { lowCard, lowSkip } else { lowCard } },
+		}
+		local where = TalkRules.cardPlace(spots, target, if paw then TalkRules.pawBox(paw, PAW_ROOM) else nil, forceTop, manning)
 		if where == "side" then
 			-- at the register: left of its screen and drawer, half way down (under the Leave pill)
 			made.AnchorPoint = Vector2.new(0, 0.5)
@@ -512,9 +522,11 @@ function TutorialTalk.atTop(on: boolean)
 	forceTop = on
 end
 
--- What Pish points at in a window now (nil: nothing to keep clear)
-function TutorialTalk.keepClear(target: GuiObject?)
+-- What Pish points at now, kept clear of the card (nil: nothing): `target` what his ring goes round, `paw` the button
+-- his paw bounces on (the same one unless the ring takes a whole tile: the rack's Buy)
+function TutorialTalk.keepClear(target: GuiObject?, paw: GuiObject?)
 	avoid = target
+	avoidPaw = paw
 end
 
 function TutorialTalk.hide()

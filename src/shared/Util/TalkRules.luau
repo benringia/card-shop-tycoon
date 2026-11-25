@@ -21,27 +21,70 @@ function TalkRules.show(talk: StepTalk, introIndex: number, situation: string): 
 	return { text = talk.now[situation] or talk.now.default or "", next = false, finish = false }
 end
 
--- Whether Pish's talk card sits at the top centre (the owner 2026-11-11: "move the dialogue at the center top so that
--- pish model can be seen"): yes, unless it would cover what he points at there (`target`: its top and bottom on
--- screen and whether it lies across the card's width), his paw `pawRoom` px over it included; then it goes down above
--- the HUD. `forceTop`: a fight keeps it at the top, clear of the combat buttons
-export type Target = { top: number, low: number, across: boolean }
-function TalkRules.cardAtTop(top: number, height: number, pawRoom: number, target: Target?, forceTop: boolean): boolean
-	if forceTop or not target or not target.across then
-		return true
-	end
-	local covered = target.low > top and target.top - pawRoom < top + height
-	return not covered
+-- A box on screen (px): the talk card, its Skip pill, what Pish points at, his paw's room
+export type Box = { x: number, y: number, w: number, h: number }
+-- A place the card can stand: its name and the boxes it fills there (the card, and Skip's tap area while it shows)
+export type Spot = { name: string, boxes: { Box } }
+
+-- The area two boxes share (0 when apart; touching edges share none)
+function TalkRules.overlap(a: Box, b: Box): number
+	local w = math.min(a.x + a.w, b.x + b.w) - math.max(a.x, b.x)
+	local h = math.min(a.y + a.h, b.y + b.h) - math.max(a.y, b.y)
+	return if w > 0 and h > 0 then w * h else 0
 end
 
--- Where the card goes: "top", "bottom" (cardAtTop), or "side" while you man the register in first person (seen
--- 2026-11-20 on Pish's first sale: the register's screen is at the top centre and its cash drawer at the bottom, and
--- the card lay on the amount to give back): at the left edge, half way down
-function TalkRules.cardPlace(top: number, height: number, pawRoom: number, target: Target?, forceTop: boolean, manning: boolean): string
+-- The room Pish's paw bounces in over a button: `room` px square over its middle, its bottom on the button's top
+function TalkRules.pawBox(target: Box, room: number): Box
+	return { x = target.x + target.w / 2 - room / 2, y = target.y - room, w = room, h = room }
+end
+
+local function covered(spot: Spot, box: Box): number
+	local area = 0
+	for _, part in spot.boxes do
+		area += TalkRules.overlap(part, box)
+	end
+	return area
+end
+
+-- Where Pish's talk card stands (the owner 2026-11-11: at the top centre "so that pish model can be seen";
+-- 2026-11-25, look A: never on what he points at, seen covering the Bag and the rack's $100 on a phone): the first of
+-- `spots` (top, then bottom) leaving both the target (what the ring goes round) and the paw's room clear; else the
+-- first leaving the target clear (the paw may touch the card); else the one covering least of the target
+function TalkRules.pickSpot(spots: { Spot }, target: Box?, paw: Box?): string
+	if not target then
+		return spots[1].name
+	end
+	for _, spot in spots do
+		if covered(spot, target) == 0 and (not paw or covered(spot, paw) == 0) then
+			return spot.name
+		end
+	end
+	for _, spot in spots do
+		if covered(spot, target) == 0 then
+			return spot.name
+		end
+	end
+	local best, least = spots[1].name, math.huge
+	for _, spot in spots do
+		local area = covered(spot, target)
+		if area < least then
+			best, least = spot.name, area
+		end
+	end
+	return best
+end
+
+-- Where the card goes: "side" while you man the register in first person (seen 2026-11-20 on Pish's first sale: the
+-- register's screen is at the top centre and its cash drawer at the bottom, and the card lay on the amount to give
+-- back: at the left edge, half way down); "top" in a fight (`forceTop`: clear of the combat buttons); else pickSpot
+function TalkRules.cardPlace(spots: { Spot }, target: Box?, paw: Box?, forceTop: boolean, manning: boolean): string
 	if manning and not forceTop then
 		return "side"
 	end
-	return if TalkRules.cardAtTop(top, height, pawRoom, target, forceTop) then "top" else "bottom"
+	if forceTop then
+		return "top"
+	end
+	return TalkRules.pickSpot(spots, target, paw)
 end
 
 -- How long a typed line stays before its Next presses itself (Config/PishTalk AUTO_NEXT; owner 2026-11-20: "people
