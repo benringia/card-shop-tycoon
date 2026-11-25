@@ -2524,8 +2524,9 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   the sword's zoom (`SwordController.PunchZoom`: the latest zoom owns the view from the same base, a finisher cut's
   hang included) and is skipped while a skill's or a super's camera moment owns the view. The server keeps a beaten
   wild monster 2.7 s (was 2.6) so the longer knockout (2.59 s) still ends 0.1 s before it goes.
-- [ ] **Element callouts** (owner 2026-11-25: picked D of the combat ideas, then "A" of three mockups in real fight
-  frames (not card badges with a switch tip, not a start banner), then "bigger" strong hits; spec
+- [x] **Element callouts** (owner 2026-11-25: picked D of the combat ideas, then "A" of three mockups in real fight
+  frames (not card badges with a switch tip, not a start banner), then "bigger" strong hits; merged 2026-11-25 on
+  "merge and push"; spec
   `2026-11-25-element-callouts-design`; rules `Util/MatchupRules`, `DamagePop.burstRays`; client `Util/MatchupChip`,
   `Util/StrongBurst`; looks `Config/CombatHud` MATCHUP, `Config/AttackFx` NUMBERS.STRONG_BURST; tests/MatchupRules,
   tests/DamagePop). Why: matchups are a kid's biggest lever and a fight only said "-N STRONG!"; Bramblequake (Nature)
