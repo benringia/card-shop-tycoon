@@ -73,6 +73,7 @@ local BYE_IDLE_SECONDS = 20 -- the goodbye's last line left this long: the first
 -- Where Pish points: a HUD button (in the Manage tray: `tray`), a button inside a window (`gui`), a part of the
 -- player's shop (the Pack Rack instead while a box is carried: `carryRack`), or a spot in town
 -- `placed`: a shelf the player has placed (its Config/Shelves id; "trophy": any trophy), the nearest one
+-- `ring`: what the gold ring goes round when it isn't `gui` itself (a whole Shop tile, the paw on its Buy button)
 type Target = {
 	hud: string?,
 	tray: boolean?,
@@ -80,6 +81,7 @@ type Target = {
 	carryRack: boolean?,
 	spot: Vector3?,
 	gui: GuiObject?,
+	ring: GuiObject?,
 	placed: string?,
 }
 
@@ -313,7 +315,10 @@ local function stepSituation(stepId: string): (string, Target)
 		end
 		local shop = inMainGui("BuildMenu")
 		if shop then
-			return "shopOpen", { gui = inside(shop, Pish.RACK) }
+			-- the paw on its Buy button, the ring round the whole tile (spec 2026-11-25-pish-first-steps-design 2)
+			local tile = inside(shop, Pish.RACK)
+			local buy = if tile then inside(tile, "Buy") else nil
+			return "shopOpen", { gui = buy or tile, ring = if buy then tile else nil }
 		end
 		if Hud.isTrayOpen() then
 			return "trayOpen", { hud = "Build" }
@@ -417,7 +422,8 @@ local function lessonSituation(lesson: Lesson): (string, Target, string)
 			if list then
 				return "scroll", { gui = list }, def.name
 			end
-			return "tile", { gui = tile }, def.name
+			local buy = inside(tile, "Buy")
+			return "tile", { gui = buy or tile, ring = if buy then tile else nil }, def.name
 		end
 		local category = if def then def.category else "Shelves"
 		return "tab", { gui = inside(shop, "Tab" .. category) }, category
@@ -590,6 +596,12 @@ local function targetButton(): GuiObject?
 	return Hud.find(spec.hud)
 end
 
+-- What the gold ring goes round: the target's `ring` (a whole Shop tile), else the paw's button
+local function targetRing(): GuiObject?
+	local _, spec = focus()
+	return if spec and spec.ring then spec.ring else targetButton()
+end
+
 local function clearCues()
 	for _, remove in cues do
 		remove()
@@ -651,9 +663,11 @@ end
 local function pointPaw()
 	local key, _ = focus()
 	local button = targetButton()
+	local ring = if button then targetRing() else nil
+	local around = if ring ~= button then ring else nil -- the ring round a whole tile, the paw on its Buy
 	local part = if button then nil else targetPart()
 	local target: Instance? = button or part
-	local drawn = key .. "|" .. (if target then target:GetFullName() else "")
+	local drawn = key .. "|" .. (if target then target:GetFullName() else "") .. "|" .. (if around then around:GetFullName() else "")
 	-- The same place by name is not enough: a window that rebuilds its buttons (the Bag after a tap) makes new ones
 	-- under the same names, and the paw on the old one would vanish (final review I2)
 	if drawn == shownKey and target == shownTarget then
@@ -668,7 +682,7 @@ local function pointPaw()
 	if button and focusSituation == "scroll" then
 		table.insert(cues, TutorialCues.scrollPaw(button))
 	elseif button then
-		table.insert(cues, TutorialCues.pawOn(button))
+		table.insert(cues, TutorialCues.pawOn(button, around))
 	elseif part then
 		table.insert(cues, TutorialCues.pawOn(part))
 	end
@@ -1341,7 +1355,7 @@ function TutorialController.Start()
 		end
 		resumeVisit()
 		refreshFocus()
-		TutorialTalk.keepClear(if focusTarget then targetButton() else nil)
+		TutorialTalk.keepClear(if focusTarget then targetRing() else nil, if focusTarget then targetButton() else nil)
 		if step ~= "" then
 			updateTalk()
 			byeIdle()

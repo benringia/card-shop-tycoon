@@ -329,11 +329,30 @@ function TutorialCues.scrollPaw(list: GuiObject): () -> ()
 	end
 end
 
+-- What of a button shows on screen: its face as drawn (shapeOf), and only the part its scrolling list shows when it's
+-- half scrolled out (so the ring and paw stay inside the list); `clipped` when its top is cut off
+local function showing(gui: GuiObject): (Vector2, Vector2, boolean, CueShape.Corner?, number, number)
+	local piece, pieceCorner, pieceScale, pad = shapeOf(gui)
+	local at, size = piece.AbsolutePosition, piece.AbsoluteSize
+	local list = gui:FindFirstAncestorWhichIsA("ScrollingFrame")
+	local clipped = false
+	if list then
+		local top = math.max(at.Y, list.AbsolutePosition.Y)
+		local bottom = math.min(at.Y + size.Y, list.AbsolutePosition.Y + list.AbsoluteSize.Y)
+		clipped = top > at.Y
+		at, size = Vector2.new(at.X, top), Vector2.new(size.X, math.max(0, bottom - top))
+	end
+	return at, size, clipped, pieceCorner, pieceScale, pad
+end
+
 -- A bouncing paw pointing down at a HUD button, a button in a window or a thing in the shop; a button also gets a
--- pulsing gold ring round it (in a window full of items the paw alone could pass for one of them)
-function TutorialCues.pawOn(target: GuiObject | BasePart): () -> ()
+-- pulsing gold ring round it (in a window full of items the paw alone could pass for one of them). `around`: what the
+-- ring goes round instead, the paw staying on `target` (the rack's whole Shop tile, its paw on Buy: spec
+-- 2026-11-25-pish-first-steps-design 2)
+function TutorialCues.pawOn(target: GuiObject | BasePart, around: GuiObject?): () -> ()
 	local started = os.clock()
 	if typeof(target) == "Instance" and target:IsA("GuiObject") then
+		local ringOn = around or target
 		local holder = Instance.new("Frame")
 		holder.Name = "PawPointer"
 		holder.BackgroundTransparency = 1
@@ -350,20 +369,12 @@ function TutorialCues.pawOn(target: GuiObject | BasePart): () -> ()
 		local connection = RunService.RenderStepped:Connect(function()
 			local elapsed = os.clock() - started
 			local beat = math.abs(math.sin(elapsed * BOUNCE_SPEED))
-			-- the piece that holds its shape (a tile's face), its corner as drawn, and the ring's place just outside its
-			-- own outline
-			local piece, pieceCorner, pieceScale, pad = shapeOf(target)
-			local at, size = piece.AbsolutePosition, piece.AbsoluteSize
-			-- a tile half scrolled out of its list: only the part showing, so the ring and paw stay inside the list
-			local list = target:FindFirstAncestorWhichIsA("ScrollingFrame")
-			local clipped = false
-			if list then
-				local top = math.max(at.Y, list.AbsolutePosition.Y)
-				local bottom = math.min(at.Y + size.Y, list.AbsolutePosition.Y + list.AbsoluteSize.Y)
-				clipped = top > at.Y
-				at, size = Vector2.new(at.X, top), Vector2.new(size.X, math.max(0, bottom - top))
-			end
+			-- the paw's button as it shows, and the ring's: the piece that holds its shape (a tile's face), its corner as
+			-- drawn, and the ring's place just outside its own outline
+			local at, size, clipped = showing(target)
+			local ringAt, ringSize, _, pieceCorner, pieceScale, pad = showing(ringOn)
 			local shown = target.Parent ~= nil and target.Visible and size.X > 0 and size.Y > 0
+				and ringOn.Parent ~= nil and ringSize.X > 0 and ringSize.Y > 0
 			local pawSize = math.clamp(size.Y * 0.9, PAW_MIN, PAW_SIZE)
 			holder.Visible = shown
 			holder.Size = UDim2.fromOffset(pawSize, pawSize)
@@ -386,23 +397,23 @@ function TutorialCues.pawOn(target: GuiObject | BasePart): () -> ()
 				holder.Position = UDim2.fromOffset(at.X + size.X / 2, pawBottom - beat * BOUNCE)
 			end
 			-- the ring: the button's own corner (a tile half out of its list keeps the list's square edge there)
-			local radius = CueShape.radius({ w = size.X, h = size.Y }, pieceCorner, pad, Cues.RING.fallback, pieceScale)
+			local radius = CueShape.radius({ w = ringSize.X, h = ringSize.Y }, pieceCorner, pad, Cues.RING.fallback, pieceScale)
 			local pulse = Cues.RING.pulse
 			ring.Visible = shown
-			ring.Position = UDim2.fromOffset(at.X - pad, at.Y - pad)
-			ring.Size = UDim2.fromOffset(size.X + pad * 2, size.Y + pad * 2)
+			ring.Position = UDim2.fromOffset(ringAt.X - pad, ringAt.Y - pad)
+			ring.Size = UDim2.fromOffset(ringSize.X + pad * 2, ringSize.Y + pad * 2)
 			corner.CornerRadius = UDim.new(0, radius)
 			stroke.Transparency = pulse[1] + beat * (pulse[2] - pulse[1])
 			local out = pad + RING_THICKNESS
 			edge.Visible = shown
-			edge.Position = UDim2.fromOffset(at.X - out, at.Y - out)
-			edge.Size = UDim2.fromOffset(size.X + out * 2, size.Y + out * 2)
+			edge.Position = UDim2.fromOffset(ringAt.X - out, ringAt.Y - out)
+			edge.Size = UDim2.fromOffset(ringSize.X + out * 2, ringSize.Y + out * 2)
 			edgeCorner.CornerRadius = UDim.new(0, radius + RING_THICKNESS)
 			local grow, gone = CueShape.ping(elapsed, Cues.PING)
 			local far = out + grow
 			ping.Visible = shown
-			ping.Position = UDim2.fromOffset(at.X - far, at.Y - far)
-			ping.Size = UDim2.fromOffset(size.X + far * 2, size.Y + far * 2)
+			ping.Position = UDim2.fromOffset(ringAt.X - far, ringAt.Y - far)
+			ping.Size = UDim2.fromOffset(ringSize.X + far * 2, ringSize.Y + far * 2)
 			pingCorner.CornerRadius = UDim.new(0, radius + RING_THICKNESS + grow)
 			pingStroke.Transparency = gone
 		end)
