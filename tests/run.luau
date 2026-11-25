@@ -71,6 +71,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	BeastFxRules = require("./BeastFxRules.spec"),
 	RigGuess = require("./RigGuess.spec"),
 	CellSearch = require("./CellSearch.spec"),
+	HitFeel = require("./HitFeel.spec"),
 	ShelvesConfig = require("./ShelvesConfig.spec"),
 	RevealRules = require("./RevealRules.spec"),
 	ElementFxRules = require("./ElementFxRules.spec"),
