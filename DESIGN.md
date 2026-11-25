@@ -2506,6 +2506,21 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   steps and lunge never take them more than 3 studs from their server spot (where sword hits are judged), a hit's jolt
   on top. Measured in Studio: an elite Ash Wolf fight flashed 7 times in 15 s and stayed within the cap but for 14
   frames of knock-back.
+- [ ] **Finishing blow** (owner 2026-11-25: picked it from five combat ideas "but no KO popout" (elite ring moves,
+  bigger element callouts and keyed flinch clips later; sword crits not picked), felt a throwaway test: "strong feels
+  good, freeze the creature too"; spec `2026-11-25-finishing-blow-design`; numbers `Config/FinishingBlow`, rules
+  `Util/FinishingBlowRules`, client `Util/FinishingBlow`, tests/FinishingBlowRules). Your own fight's last hit, a win,
+  while that fight is running on your screen (every member of a group fight gets it; anyone else nearby sees the plain
+  knockout): everything holds a beat: the monster (white, swelling), your character's animations (their speed 0, then
+  back) and every creature in the fight (`CreatureController.Freeze`). A wild monster holds 0.16 s (a plain knockout
+  0.07), your camera punches in 8 degrees in 0.05 s and eases back over 0.35 s after the hold, a deep thud plays (Pick
+  Impacts 1, 0.7), then its knockout launches 1.25 times as hard with a 0.6 kick (an elite's 1.3 and 1.6 on top). A
+  boss holds 0.4 s, its whole body (clip, tip-over, the Hydra's heads wait) flashed white (fill 0.7 fading over the
+  hold and 0.25 s), the camera punches in 11 degrees, a deep boom (Deep Hits Big Reverberant Booms 2, 0.7), your screen
+  flashes white at 30% fading over the hold and 0.2 s, a 1.2 kick; then its death scene. No "KO" text. The punch shares
+  the sword's zoom (`SwordController.PunchZoom`: the latest zoom owns the view from the same base, a finisher cut's
+  hang included) and is skipped while a skill's or a super's camera moment owns the view. The server keeps a beaten
+  wild monster 2.7 s (was 2.6) so the longer knockout (2.59 s) still ends 0.1 s before it goes.
 - **The Frost Tyrant's ice** (the owner 2026-11-10, his picks: shield look A, spikes on you and one pet): his ring is
   ice spikes (`playerAttacks.shape` "spikes", `pets` 1, `petFreeze` 2, `petHit` 0.5): a giant ice spike forms 45 studs
   over each player's ring and over one random pet's (the pet can't step out), hangs glowing, drops the last 0.75 s
@@ -2654,7 +2669,8 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   round puff) with gold sparkles and a pop as it shrinks away. Elites are hit 1.3x harder, kick 1.6x and give twice the
   coins. Your coins pop out of the poof into your cash, and the fight toast and the XP sparks come then too, from
   there (BattleController waits for `MonsterController.OnKnockoutPoof`; a knockout off screen or past 160 studs shows
-  them at once). The server marks it (`WildService.KnockOut`: marker `KODir`, then `Fainted`) and keeps it 2.6 s, locked
+  them at once). The server marks it (`WildService.KnockOut`: marker `KODir`, then `Fainted`) and keeps it 2.7 s (2.6
+  until the finishing blow's longer beat), locked
   to its fight so nobody starts another with it, so everyone near sees it fly; bosses keep their own death scenes.
   Licensed Pro Sound Effects in use elsewhere (a whoosh, a muted ground thud, Pop Airy 2, a coin jingle). Checked in
   Studio: in a real fight the knockout starts with the fight's end and the toast and coins come at the poof (about
@@ -5206,6 +5222,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │       ├── VictoryScreen.luau      # the boss fight end screen: glowing title, reward tiles, notes, party XP bars
     │       ├── FightToast.luau         # a normal monster fight's end: a small toast with cash and XP
     │       ├── MonsterKO.luau          # a beaten monster's knockout: the hit beat, the tumble and bounces, dizzy stars, the poof, your coins
+    │       ├── FinishingBlow.luau      # your own fight's last hit: everything holds a beat, the camera punch, the thud, a boss's white flash
     │       ├── CardLoot.luau           # a dropped card under its loot beam: lands, floats, picked up or comes to you, flies into Cards
     │       ├── FightFx.luau            # fight events into attack pictures: charges, element attacks landing with the hit
     │       ├── ElementFx.luau          # the pieces of fight effects (textured light): charge glow, comet, burst, bolt, slash, eruption, pillar, sound
@@ -5234,6 +5251,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
         │   ├── Recycler.luau   # the Recycler: its recipes, what a card keeps, its words, the machine's look (plain data)
         │   ├── Placement.luau  # grid, placement rules
         │   ├── HitFeel.luau    # a monster's reaction to a hit, a wild monster's steps, lunge and drift cap (plain data)
+        │   ├── FinishingBlow.luau # the finishing blow's wild and boss moments: hold, launch, kick, camera punch, sound, flash (plain data)
         │   ├── Pricing.luau    # price limits, customer buy bands
         │   ├── ProductPictures.luau # the menus' pack / deck box pictures by look, their fit, the fallback icons
         │   ├── Customers.luau  # NPC spawn, patience, bubbles
@@ -5395,6 +5413,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── AttackTiming.luau  # when an attack effect releases and lands, charge expiry, combo hit times (pure, Lune-tested)
             ├── FightMotion.luau   # a creature's moving about in a fight, its motion clock (pure, Lune-tested)
             ├── HitFeel.luau       # a monster's hit reaction and its curve, the clip freeze, a wild monster's lunge, steps and drift cap (pure, Lune-tested)
+            ├── FinishingBlowRules.luau # whose last hit gets the finishing blow, a knockout's beat, launch and kick with it, its length (pure, Lune-tested)
             ├── MonsterMoves.luau  # which attack clip a boss or monster plays for each fight event, one move at a time (pure, Lune-tested)
             ├── FightFxRules.luau  # the fight effects' budget and each element's attack kind (pure, Lune-tested)
             ├── FxToneRules.luau   # how bright the scene is and what that does to an effect (pure, Lune-tested)
