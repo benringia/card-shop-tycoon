@@ -73,6 +73,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	CellSearch = require("./CellSearch.spec"),
 	HitFeel = require("./HitFeel.spec"),
 	FinishingBlowRules = require("./FinishingBlowRules.spec"),
+	MatchupRules = require("./MatchupRules.spec"),
 	ShelvesConfig = require("./ShelvesConfig.spec"),
 	RevealRules = require("./RevealRules.spec"),
 	ElementFxRules = require("./ElementFxRules.spec"),

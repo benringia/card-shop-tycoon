@@ -422,12 +422,26 @@ return {
 		fade = 0.35,
 		normal = { start = 0.4, peak = 1.5, pop = 0.09, life = 0.9, rise = 3 },
 		crit = { start = 0.4, peak = 2.1, pop = 0.1, life = 1.25, rise = 3.6, wiggle = 14 },
-		strong = { start = 0.4, peak = 1.75, pop = 0.09, life = 1, rise = 3.3 },
+		-- a strong hit pops like a crit over a gold burst (owner 2026-11-25: "bigger"; was a 1.75 peak at a normal's size)
+		strong = { start = 0.4, peak = 2.1, pop = 0.09, life = 1, rise = 3.3 },
 		weak = { start = 0.5, peak = 1.2, pop = 0.08, life = 0.75, rise = 2.4 },
 		heal = { start = 0.4, peak = 1.4, pop = 0.1, life = 1, rise = 3.2 },
 		tick = { start = 0.6, peak = 1.15, pop = 0.06, life = 0.7, rise = 2 },
 		bossHit = { start = 0.4, peak = 2.2, pop = 0.09, life = 1.1, rise = 3.6, wiggle = 10 }, -- a boss's hit on a creature (BOSS_HIT)
 		DRIFT = 1.2, -- studs a number drifts sideways (random each way), so numbers landing together don't overlap
+		-- The gold burst behind a strong hit's number (spec 2026-11-25-element-callouts-design; client Util/StrongBurst,
+		-- layout DamagePop.burstRays): rays long and short in turn from `inner` px out, fading toward their tips (`fade`:
+		-- transparency at the tip, the middle and the root), over a see-through disc; pixels before the pop's scale
+		STRONG_BURST = {
+			rays = 12,
+			long = { length = 64, width = 11 },
+			short = { length = 44, width = 7 },
+			inner = 18,
+			disc = 70,
+			discTransparency = 0.45,
+			color = { 255, 196, 64 },
+			fade = { 1, 0.35, 0.05 },
+		},
 	},
 	-- A boss's normal hit on a creature (owner 2026-11-18: "bosses normal attacks arent visible", pick A + C of artifact
 	-- G67X6HmoKnXNe9NRM9cm2q; Util/FightFx, ElementFx.bossThrow, FightFxRules.bossThrow): A, it travels: over the end of

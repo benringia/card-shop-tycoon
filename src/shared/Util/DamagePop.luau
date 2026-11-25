@@ -37,4 +37,27 @@ function DamagePop.at(t: number, style: string, cfg: any): Pose
 	return { scale = scale, rise = s.rise * easeOut(progress), alpha = alpha, rotation = rotation }
 end
 
+export type Ray = { x: number, y: number, width: number, length: number, rotation: number }
+
+-- The gold burst behind a strong hit's number (Config/AttackFx NUMBERS.STRONG_BURST, drawn by client Util/StrongBurst):
+-- its rays round the centre, long and short in turn, the first straight up. A GUI turns about its own middle, so each
+-- ray's middle (x, y in px from the centre, y down) sits out along its angle and the ray runs from `inner` outward
+function DamagePop.burstRays(burst: any): { Ray }
+	local rays: { Ray } = {}
+	for index = 1, burst.rays do
+		local spec = if index % 2 == 1 then burst.long else burst.short
+		local rotation = (index - 1) * 360 / burst.rays
+		local angle = math.rad(rotation)
+		local reach = burst.inner + spec.length / 2
+		table.insert(rays, {
+			x = math.sin(angle) * reach,
+			y = -math.cos(angle) * reach,
+			width = spec.width,
+			length = spec.length,
+			rotation = rotation,
+		})
+	end
+	return rays
+end
+
 return DamagePop

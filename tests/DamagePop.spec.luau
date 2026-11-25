@@ -46,4 +46,49 @@ return {
 		expect.equal(DamagePop.life("bossHit", cfg) >= DamagePop.life("normal", cfg), true, "stays as long")
 		expect.near(DamagePop.at(boss.pop, "bossHit", cfg).scale, boss.peak, 1e-6, "it bursts to its peak")
 	end,
+
+	-- Element callouts (spec 2026-11-25-element-callouts-design; owner: "bigger"): a strong hit pops like a crit over a
+	-- gold burst
+	["a strong hit pops to a crit's peak, still under a boss's hit"] = function()
+		expect.near(cfg.strong.peak, 2.1, 1e-9, "the felt size")
+		expect.near(cfg.strong.peak, cfg.crit.peak, 1e-9, "a crit's")
+		expect.equal(cfg.bossHit.peak > cfg.strong.peak, true, "a boss's hit stays the biggest")
+	end,
+
+	["the strong burst's numbers"] = function()
+		local burst = cfg.STRONG_BURST
+		expect.equal(burst.rays, 12)
+		expect.equal(burst.long.length, 64)
+		expect.equal(burst.long.width, 11)
+		expect.equal(burst.short.length, 44)
+		expect.equal(burst.short.width, 7)
+		expect.equal(burst.inner, 18)
+		expect.equal(burst.disc, 70)
+		expect.near(burst.discTransparency, 0.45, 1e-9)
+		expect.equal(burst.color[1] == 255 and burst.color[2] == 196 and burst.color[3] == 64, true, "gold")
+		expect.equal(#burst.fade, 3, "tip, middle, root")
+	end,
+
+	-- A GUI turns about its own middle: a ray anchored at the centre and turned bunched up on one side (the mockup's
+	-- first try), so each ray's middle sits out along its angle
+	["the burst's rays fan all the way round, long and short in turn"] = function()
+		local burst = cfg.STRONG_BURST
+		local rays = DamagePop.burstRays(burst)
+		expect.equal(#rays, burst.rays)
+		for index, ray in rays do
+			local long = index % 2 == 1
+			local spec = if long then burst.long else burst.short
+			expect.equal(ray.length, spec.length, `ray {index} length`)
+			expect.equal(ray.width, spec.width, `ray {index} width`)
+			expect.near(ray.rotation, (index - 1) * 360 / burst.rays, 1e-9, `ray {index} turned`)
+			local reach = burst.inner + spec.length / 2
+			local angle = math.rad(ray.rotation)
+			expect.near(ray.x, math.sin(angle) * reach, 1e-9, `ray {index} x`)
+			expect.near(ray.y, -math.cos(angle) * reach, 1e-9, `ray {index} y (up is negative)`)
+		end
+		-- the first points straight up, the seventh straight down: round the whole centre
+		expect.near(rays[1].x, 0, 1e-9)
+		expect.equal(rays[1].y < 0, true, "up")
+		expect.equal(rays[7].y > 0, true, "down")
+	end,
 }

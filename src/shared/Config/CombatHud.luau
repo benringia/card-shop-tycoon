@@ -132,6 +132,21 @@ return {
 	},
 	READY_FLASH = 0.25, -- seconds a button glows when it's ready again
 	PERK_CHIP_HEIGHT = 20, -- pixels: the fight perk chip under your creature's bar
+	-- The matchup chip beside it (owner 2026-11-25 picked "A"; spec 2026-11-25-element-callouts-design; client
+	-- Util/MatchupChip, words Util/MatchupRules): a soft pill in the binder's matchup colours, the foe's element icon, the
+	-- words, a strength tag; weak red, strong green. Pixels as the approved mockup
+	MATCHUP = {
+		HEIGHT = 26,
+		GOOD = { fill = rgb(220, 252, 231), edge = rgb(147, 224, 168), tag = rgb(46, 160, 90) },
+		BAD = { fill = rgb(254, 226, 226), edge = rgb(243, 176, 176), tag = rgb(214, 72, 72) },
+		INK = rgb(68, 48, 40),
+		EDGE = 2,
+		PAD = { left = 8, right = 10 },
+		GAP = 6,
+		TAG_PAD = { left = 7, right = 9 },
+		WORDS = 0.44, -- the words' size, of the chip's height
+		TAG_TEXT = 0.7, -- the tag's text size, of the tag's height (the chip's height less 12)
+	},
 	-- The chip is the element's icon alone (owner 2026-11-20, the combat HUD tidy: "buff sentence becomes a small icon
 	-- with a tooltip"); it opens into the perk's words PERK_OPEN_SECONDS when a creature comes in, PERK_TAP_SECONDS
 	-- after a tap, and while the pointer rests on it
