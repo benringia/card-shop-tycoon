@@ -974,7 +974,9 @@ local function swordHit(event: any)
 		if event.kind == "Skill" and not SwordController.SkillLook(character) then
 			HitFx.cutLines(at, size, tint) -- the dash slash's; a round 1 sword's skill draws its own (SwordSkillFx)
 		end
-		if model then
+		-- a monster reacts: a white flash, a jolt and lean away, a pop (spec 2026-11-25-hit-feel-design 1); anything else
+		-- flashes as before
+		if model and not MonsterController.React(marker, if root then root.Position else marker.Position, big) then
 			HitFx.flash(model, Color3.new(1, 1, 1), SwordFx.FLASH_SECONDS, 0.35)
 		end
 	end
@@ -1007,6 +1009,7 @@ local function newFightFx(): FightFx.Dispatcher
 		blink = CreatureController.Blink,
 		monster = MonsterController.GetFightView,
 		playClip = MonsterController.PlayClip,
+		react = MonsterController.React, -- a monster hit by a creature reacts too (spec 2026-11-25-hit-feel-design 1)
 	})
 end
 

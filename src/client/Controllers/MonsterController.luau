@@ -39,6 +39,8 @@ local Combat = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared
 local ScreenFx = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("ScreenFx"))
 local MonsterKO = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("MonsterKO"))
 local MonsterKOConfig = require(Config:WaitForChild("MonsterKO"))
+local HitFeel = require(Shared:WaitForChild("Util"):WaitForChild("HitFeel"))
+local HitFeelConfig = require(Config:WaitForChild("HitFeel"))
 
 local ELITE_TAG_COLOR = Color3.fromRGB(255, 205, 60)
 local TAG_COLOR = Color3.fromRGB(235, 235, 235)
@@ -69,11 +71,17 @@ type Monster = {
 	clips: { [string]: ClipPlayer.Clip }, -- its attack clips (ReplicatedStorage.MonsterAnimations/<key>), if any
 	lengths: { [string]: number }, -- each clip's length in seconds
 	clipPlayer: ClipPlayer.Player?,
-	idle: Idle?, -- a boss's life between its moves
+	idle: Idle?, -- a boss's life between its moves (a Dungeon pack's and a wild monster's steps too)
 	-- A boss's summon (marker Size, Emerge, EmergeAt; the Rift Devourer's): climbing out of its rift until `at` +
 	-- `seconds` (the server's clock), and the void wisps it trails while it runs
 	emerge: { at: number, seconds: number }?,
 	trail: ParticleEmitter?,
+	-- Hit feel (spec 2026-11-25-hit-feel-design): a wild monster (not a boss or a Dungeon pack), its reaction to its last
+	-- hit, its lunge into a strike (os.clock start, seconds) and its reused white flash
+	wild: boolean?,
+	react: HitFeel.Reaction?,
+	lunge: { at: number, length: number }?,
+	flash: Highlight?,
 }
 
 local TRAIL_SPEED = 3 -- studs a second: a summon running faster than this trails its wisps
@@ -467,6 +475,9 @@ local function stepIdle(monster: Monster, idle: Idle, now: number)
 	end
 	if walk then
 		local x, z, yaw, done = BossIdleRules.walk(now - walk.start, walk.ax, walk.az, walk.bx, walk.bz, cfg.wander.speed * scale)
+		if monster.wild then
+			yaw *= HitFeelConfig.STEP.turn -- a wild monster mostly keeps facing the fight as it steps (Config/HitFeel)
+		end
 		body.offset = CFrame.new(x, 0, z) * CFrame.Angles(0, yaw, 0)
 		if done then
 			idle.x, idle.z, idle.walk = x, z, nil
@@ -496,6 +507,82 @@ local function stepIdle(monster: Monster, idle: Idle, now: number)
 	elseif body.pet and action == "stomp" then
 		PetAnimator.play(body.pet, "stomp", now)
 		ScreenFx.shakeAt(cfg.stompShake, body.root.Position)
+	end
+end
+
+-- A hit's white flash (spec 2026-11-25-hit-feel-design 1): one Highlight per monster, made on its first hit and reused
+-- (Roblox draws only so many at once), switched off once it has faded
+local function flashWhite(monster: Monster)
+	local react = HitFeelConfig.REACT
+	local highlight = monster.flash
+	if not highlight or not highlight.Parent then
+		local made = Instance.new("Highlight")
+		made.Name = "HitFlash"
+		made.FillColor = Color3.new(1, 1, 1)
+		made.OutlineTransparency = 1
+		made.DepthMode = Enum.HighlightDepthMode.Occluded
+		made.Adornee = monster.body.model
+		made.Parent = monster.body.model
+		monster.flash = made
+		highlight = made
+	end
+	local shown = highlight :: Highlight
+	shown.Enabled = true
+	shown.FillTransparency = react.flash
+	local fade = TweenService:Create(shown, TweenInfo.new(react.flashSeconds), { FillTransparency = 1 })
+	fade.Completed:Once(function(state)
+		if state == Enum.PlaybackState.Completed and shown.FillTransparency >= 1 then
+			shown.Enabled = false
+		end
+	end)
+	fade:Play()
+end
+
+-- A wild monster's offset off its server spot this frame (its own space: x right, z behind): its steps, its lunge
+-- forward into a strike, and no further than MAX_DRIFT, so a sword swung at it still lands (spec
+-- 2026-11-25-hit-feel-design 3, 4)
+local function wildOffset(monster: Monster, now: number): CFrame
+	local idle = monster.idle
+	-- walking, the steps set this frame's offset (with its slight turn); else where its last step left it
+	local base = if idle and idle.walk then monster.body.offset or CFrame.identity
+		else CFrame.new(if idle then idle.x else 0, 0, if idle then idle.z else 0)
+	local forward = 0
+	local lunge = monster.lunge
+	if lunge then
+		local share = HitFeel.lunge(now - lunge.at, lunge.length, HitFeelConfig.LUNGE)
+		if share then
+			forward = share * HitFeelConfig.LUNGE.studs
+		else
+			monster.lunge = nil
+		end
+	end
+	local at = base * CFrame.new(0, 0, -forward)
+	local x, z = HitFeel.clampDrift(at.X, at.Z, HitFeelConfig.MAX_DRIFT)
+	return CFrame.new(x, at.Y, z) * base.Rotation
+end
+
+-- A hit's jolt and lean away from the hitter and its pop, on top of where the monster is drawn (no smoothing: it snaps)
+local function stepReaction(monster: Monster, now: number)
+	local react = monster.react
+	if not react then
+		return
+	end
+	local amount = if monster.marker:GetAttribute("Fainted") == true then nil else HitFeel.amount(react, now)
+	if not amount then
+		monster.react = nil
+		if not monster.emerge then
+			monster.body.grow = nil
+		end
+		return
+	end
+	local pivot = monster.body.model:GetPivot()
+	local away = Vector3.new(react.dx, 0, react.dz)
+	-- leaning back: turned round the line across the push, so its top follows the push
+	local across = Vector3.yAxis:Cross(away)
+	local lean = if across.Magnitude > 0.01 then CFrame.fromAxisAngle(across.Unit, react.tilt * amount) else CFrame.identity
+	monster.body.model:PivotTo(CFrame.new(pivot.Position + away * react.knock * amount) * lean * pivot.Rotation)
+	if react.pop > 1 and not monster.emerge then
+		monster.body.grow = 1 + (react.pop - 1) * amount
 	end
 end
 
@@ -715,6 +802,12 @@ local function add(marker: BasePart)
 		-- a Dungeon room's monsters move round the arena between their hits too (owner 2026-11-12; Bosses.IDLE_PACK)
 		local now = os.clock()
 		monster.idle = { x = 0, z = 0, walk = nil, nextAt = now + 1, busyUntil = 0, introEnd = now, roar = nil, cfg = Bosses.IDLE_PACK, scale = 1 }
+	else
+		-- a wild monster steps round its spot between its attacks too, calmly (owner 2026-11-25: "monsters just stand
+		-- there"; spec 2026-11-25-hit-feel-design 3, Config/HitFeel STEP)
+		local now = os.clock()
+		monster.wild = true
+		monster.idle = { x = 0, z = 0, walk = nil, nextAt = now + 1, busyUntil = 0, introEnd = now, roar = nil, cfg = HitFeel.stepIdle(Bosses.IDLE_PACK, HitFeelConfig.STEP), scale = 1 }
 	end
 	if monster.aura and boss and boss.auroraFlame then
 		monster.aura.flames = makeFlames(model, body.root)
@@ -857,7 +950,25 @@ function MonsterController.PlayClip(marker: BasePart, name: string, speed: numbe
 		if monster.idle then
 			monster.idle.busyUntil = math.max(monster.idle.busyUntil, os.clock() + clip.length / math.max(speed, 0.05) + hold + monster.idle.cfg.after)
 		end
+		-- a wild monster lunges forward into its strike (spec 2026-11-25-hit-feel-design 3)
+		if monster.wild and name == "strike" then
+			monster.lunge = { at = os.clock(), length = clip.length / math.max(speed, 0.05) + hold }
+		end
 	end
+end
+
+-- A hit on a monster from `from` (the hitter's position); `big` your finisher or dash slash, a creature's finishing hit
+-- or a super (spec 2026-11-25-hit-feel-design 1): a white flash, a jolt and lean away from the hitter, a pop and its
+-- clip frozen a moment; a boss takes a share of the jolt and never pops. false: not a monster drawn here, or fainted
+function MonsterController.React(marker: BasePart, from: Vector3, big: boolean): boolean
+	local monster = monsters[marker]
+	if not monster or marker:GetAttribute("Fainted") == true then
+		return false
+	end
+	local at = monster.body.root.Position
+	monster.react = HitFeel.reaction(os.clock(), at.X, at.Z, from.X, from.Z, big, marker:GetAttribute("Boss") ~= nil, HitFeelConfig.REACT)
+	flashWhite(monster)
+	return true
 end
 
 function MonsterController.Start()
@@ -896,6 +1007,9 @@ function MonsterController.Start()
 			if monster.idle then
 				stepIdle(monster, monster.idle, now)
 			end
+			if monster.wild then
+				monster.body.offset = wildOffset(monster, now)
+			end
 			local emerge = monster.emerge
 			if emerge then
 				-- climbing out of its rift: up through the ground, growing (Util/SummonRules)
@@ -911,6 +1025,7 @@ function MonsterController.Start()
 				monster.body.grow = nil
 			end
 			CreatureVisuals.step(monster.body, dt, now, origin, Party.MOTION)
+			stepReaction(monster, now)
 			local trail = monster.trail
 			if trail then
 				local running = monster.body.speed > TRAIL_SPEED and monster.marker:GetAttribute("Fainted") ~= true and extras
@@ -919,7 +1034,9 @@ function MonsterController.Start()
 				end
 			end
 			local clipPlayer = monster.clipPlayer
-			if clipPlayer and clipPlayer.playing and (monster.body.cframe.Position - origin).Magnitude <= Party.PET_ANIM.DISTANCE then
+			-- a hit holds its own animation still a moment (its hit-stop, Config/HitFeel)
+			local frozen = monster.react ~= nil and HitFeel.frozen(monster.react :: HitFeel.Reaction, now)
+			if clipPlayer and clipPlayer.playing and not frozen and (monster.body.cframe.Position - origin).Magnitude <= Party.PET_ANIM.DISTANCE then
 				ClipPlayer.step(clipPlayer, dt, monster.body.model:GetScale())
 			end
 			if monster.fallenAt then

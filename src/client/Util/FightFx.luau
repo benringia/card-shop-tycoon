@@ -53,6 +53,8 @@ export type Resolve = {
 	-- The boss or monster drawn on a marker, and playing its clips (nil: no monsters here, PvP)
 	monster: ((marker: BasePart) -> MonsterView?)?,
 	playClip: ((marker: BasePart, name: string, speed: number, hold: number) -> ())?,
+	-- A monster hit by a creature reacts (spec 2026-11-25-hit-feel-design 1; true: it did, nil: no monsters here)
+	react: ((marker: BasePart, from: Vector3, big: boolean) -> boolean)?,
 }
 -- key: its boss id or species; lengths: its attack clips (name -> seconds)
 export type MonsterView = { root: BasePart, height: number, key: string, lengths: { [string]: number } }
@@ -149,10 +151,21 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		ElementFx.sound(if sounds then sounds.hit else nil, at)
 	end
 
+	-- The fighter `id`, hit by a creature standing at `from`, reacts if it's a monster (spec 2026-11-25-hit-feel-design
+	-- 1); `big` a finishing hit or a super
+	local function reactTo(id: string?, from: Vector3, big: boolean)
+		local react = resolve.react
+		local marker = if id and react then resolve.marker(id) else nil
+		if marker and react then
+			react(marker, from, big)
+		end
+	end
+
 	-- A creature's hit landing at `at` on a foe `foe` times the usual size (foeScale): the hit picture at its grade's
 	-- size, its sound, shake on your own creature's hits, and at grade S the boom layer, a flash on your screen and the
-	-- element's big extra
-	local function impact(view: View, tier: Tier, at: Vector3, tint: Color3, finisher: boolean, foe: number)
+	-- element's big extra; the foe `to` reacts (a finisher big)
+	local function impact(view: View, tier: Tier, at: Vector3, tint: Color3, finisher: boolean, foe: number, to: string?)
+		reactTo(to, view.root.Position, finisher)
 		if Spotlight.active() then
 			hitSound(view.element, at) -- heard, not drawn, while a special plays
 			return
@@ -275,7 +288,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 						end, tint, math.max(0.1, flight - wait), (AttackFx.ARC[view.element] or 0) + (shot - 1) * 2, function(at)
 							if shot == 1 then
 								whenAttacked(entry, function()
-									impact(view, tier, at, tint, false, foeScale(entry.to))
+									impact(view, tier, at, tint, false, foeScale(entry.to), entry.to)
 								end)
 							elseif not Spotlight.active() then
 								ElementFx.burst(at, tint, s * 0.6 * foeScale(entry.to))
@@ -304,6 +317,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 						local function slash()
 							local spot = targetPosition(entry.to, toward)
 							if index < #times then
+								reactTo(entry.to, view.root.Position, false) -- each combo hit jolts it
 								hitPicture(view.element, spot, s * foeScale(entry.to) * AttackFx.LIGHT_HIT.size, tint, AttackFx.LIGHT_HIT.share)
 								hitSound(view.element, spot)
 								if view.mine then
@@ -311,7 +325,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 								end
 								return
 							end
-							impact(view, tier, spot, tint, true, foeScale(entry.to))
+							impact(view, tier, spot, tint, true, foeScale(entry.to), entry.to)
 							if tier.extra >= 2 and not Spotlight.active() then
 								-- The finishing X
 								ElementFx.slash(spot, view.root.Position, Color3.new(1, 1, 1), "vine", 1, s * 1.5, 45)
@@ -358,7 +372,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 						end, tint, math.max(0.1, flight - wait), function(at)
 							if shot == 1 then
 								whenAttacked(entry, function()
-									impact(view, tier, at, tint, false, foeScale(entry.to))
+									impact(view, tier, at, tint, false, foeScale(entry.to), entry.to)
 								end)
 							else
 								hitPicture(view.element, at, s * foeScale(entry.to) * AttackFx.LIGHT_HIT.size, tint, AttackFx.LIGHT_HIT.share)
@@ -388,7 +402,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 						local up = Vector3.new(0, if fork == 1 then 2.5 else -1.5, 0) * s
 						ElementFx.bolt(from + up * 0.5, spot + up, tint:Lerp(Color3.new(1, 1, 1), 0.4), AttackFx.BOLT.seconds, s * 0.65)
 					end
-					impact(view, tier, spot, tint, false, foeScale(entry.to))
+					impact(view, tier, spot, tint, false, foeScale(entry.to), entry.to)
 				end)
 			end)
 		end
@@ -416,6 +430,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		local spot = targetPosition(event.to, view.root.Position)
 		resolve.pose(marker, "strike")
 		local tier = tierOf(view)
+		reactTo(event.to, view.root.Position, false)
 		hitPicture(view.element, spot, 0.7 * tier.scale * foeScale(event.to), tint, 1)
 		hitSound(view.element, spot)
 	end
@@ -636,6 +651,7 @@ function FightFx.new(resolve: Resolve): Dispatcher
 		local caster = view.root.Position + Vector3.new(0, view.height * 0.4, 0)
 		local target = targetPosition(event.to, caster)
 		local body, height = targetBody(event.to)
+		reactTo(if typeof(event.to) == "string" then event.to else nil, view.root.Position, true) -- a super: the big knock
 		stopSuperLinger(event.from)
 		-- The allies a super names: Tidal Shield's warded ones (a bubble round each), Tidal Blessing's healed and stood-up
 		-- ones on the field (a creature at its middle, a player at its root)

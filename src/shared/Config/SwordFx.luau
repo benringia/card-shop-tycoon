@@ -38,7 +38,9 @@ return {
 	FLASH_SECONDS = 0.12, -- what you hit flashes white this long
 	SPARKS = 14, -- sparks per sword hit
 	SPARK_COLOR = rgb(255, 236, 170),
-	SHAKE = { cut = { seconds = 0.08, studs = 0.12 }, skill = { seconds = 0.18, studs = 0.3 }, hurt = { seconds = 0.15, studs = 0.25 } },
+	-- cut and skill 2.5 times the old 0.12 / 0.3 studs (owner 2026-11-25, felt in a test: "strong feels good"; spec
+	-- 2026-11-25-hit-feel-design 2)
+	SHAKE = { cut = { seconds = 0.08, studs = 0.3 }, skill = { seconds = 0.18, studs = 0.75 }, hurt = { seconds = 0.15, studs = 0.25 } },
 
 	-- The candy sparkle arc on every swing (Util/HitFx.swingArc; sword-moves round), in the sword's slash colour
 	-- (Config/Swords slash) with a white core: a circle of `radius` studs in the swing's plane, centred `up` and `ahead`
