@@ -190,6 +190,7 @@ type Fighter = {
 	swordBurnBy: Fighter?,
 	swordBurnKind: string, -- "Burn", or "Poison" for the Widow's Reaper's venom (its ticks' event kind)
 	swordHits: number, -- player fighter: sword hits landed (a heal perk's every Nth)
+	secondWindUsed: boolean, -- player fighter: its mutation's Second Wind has healed it this fight
 	player: boolean, -- a player fighter
 	down: boolean, -- player fighter: at 0 HP, kneeling (not targeted, can't act)
 	downUntil: number, -- player fighter: when it gets back up (if one of its owner's creatures stands)
@@ -241,6 +242,23 @@ export type State = {
 	-- Town Chikin's Courage (2026-11-11): by owner, the share harder that owner's creatures hit while it holds
 	-- (BattleService sets and clears it from the player's ChikinCourageUntil)
 	boosts: { [string]: number },
+	-- By owner, the weapon in hand's mutation (weapons round 4 part 2, Util/MutationRules Stats; setMutation, never in
+	-- the arena): their sword hits (sword, strong, boss, crit, lifesteal), the hits on their player fighter (taken,
+	-- thorns, secondWind), their dodge and their ultimate meter
+	mutations: { [string]: MutationStats },
+}
+-- The fight half of Util/MutationRules.Stats (BattleSim stays free of it so Lune and the balance tool pass it in)
+export type MutationStats = {
+	sword: number,
+	crit: number,
+	strong: number,
+	boss: number,
+	taken: number,
+	dodge: number,
+	thorns: number,
+	lifesteal: number,
+	meter: number,
+	secondWind: number,
 }
 
 -- A boss's hit on a player, warned of and landing at `at`
@@ -322,6 +340,7 @@ local function makeFighter(combat: any, input: FighterInput, side: string, time:
 		swordBurnBy = nil,
 		swordBurnKind = "Burn",
 		swordHits = 0,
+		secondWindUsed = false,
 		player = input.player == true,
 		down = false,
 		downUntil = 0,
@@ -388,6 +407,7 @@ function BattleSim.new(combat: any, sideA: SideInput, sideB: SideInput, seed: nu
 		casts = {},
 		ringCount = 0,
 		boosts = {},
+		mutations = {},
 	}
 end
 
@@ -503,7 +523,7 @@ local function perkOf(state: State, fighter: Fighter, kind: string): number
 end
 
 -- The super meter (owner 2026-11-06, option A "Super meter": supers are earned, not pressed every 15 s): `amount` more
--- for `fighter`'s owner, its Express perk filling it faster, never past full
+-- for `fighter`'s owner, its Express perk and an Ultimate Charge mutation filling it faster, never past full
 local function fillMeter(state: State, fighter: Fighter, amount: number)
 	if amount <= 0 then
 		return
@@ -511,7 +531,9 @@ local function fillMeter(state: State, fighter: Fighter, amount: number)
 	local side = (state.sides :: any)[fighter.side] :: Side
 	local key = ownerKey(fighter)
 	local spec = state.combat.SUPER_METER
-	side.meters[key] = math.min(spec.full, (side.meters[key] or spec.start) + amount * (1 + perkOf(state, fighter, "Express")))
+	local mutation = state.mutations[key]
+	local charge = if mutation then mutation.meter else 1
+	side.meters[key] = math.min(spec.full, (side.meters[key] or spec.start) + amount * (1 + perkOf(state, fighter, "Express")) * charge)
 end
 
 -- Whether `kind` is a super move's (their own hits don't fill the meter)
@@ -602,12 +624,35 @@ local function autoSwap(state: State, side: Side, key: string, events: { Event }
 	return true
 end
 
--- A player fighter at 0 HP goes down (never fainted); with nobody left standing its side loses
-local function hurtPlayer(state: State, target: Fighter, amount: number, events: { Event })
+-- Defined after hurtPlayer, which hits back with it (a Thorns mutation)
+local takeDamage: (state: State, target: Fighter, amount: number, events: { Event }, from: Fighter?) -> ()
+
+-- A player fighter at 0 HP goes down (never fainted); with nobody left standing its side loses. The weapon in hand's
+-- mutation (state.mutations): Guard takes less, Thorns strikes `from` (the hitter) back for its share of what landed,
+-- Second Wind heals its share once a fight when the HP drops under that same share
+local function hurtPlayer(state: State, target: Fighter, amount: number, events: { Event }, from: Fighter?)
+	local mutation = state.mutations[ownerKey(target)]
 	amount *= target.defenseScale -- their party's Defense (owner 2026-11-12: "party strength for defense")
+	if mutation then
+		amount *= mutation.taken
+	end
 	fillMeter(state, target, state.combat.SUPER_METER.hurt * amount / target.maxHp)
 	target.taken += math.min(amount, target.hp)
 	target.hp = math.max(0, target.hp - amount)
+	if mutation and mutation.thorns > 0 and from and not from.player and not from.fainted and not from.left then
+		local back = math.round(amount * mutation.thorns)
+		if back > 0 then
+			table.insert(events, { type = "thorns", from = target.id, to = from.id, damage = back })
+			target.dealt += math.min(back, from.hp)
+			takeDamage(state, from, back, events)
+		end
+	end
+	if mutation and mutation.secondWind > 0 and not target.secondWindUsed and target.hp > 0 and target.hp < target.maxHp * mutation.secondWind then
+		target.secondWindUsed = true
+		local before = target.hp
+		target.hp = math.min(target.maxHp, target.hp + math.round(target.maxHp * mutation.secondWind))
+		table.insert(events, { type = "regen", kind = "SecondWind", to = target.id, heal = target.hp - before })
+	end
 	if target.hp > 0 or target.down then
 		return
 	end
@@ -690,9 +735,10 @@ local function tickDebuff(state: State, fighter: Fighter, events: { Event })
 	end
 end
 
-local function takeDamage(state: State, target: Fighter, amount: number, events: { Event })
+-- `from`: the hitter (a hit on a player: its Thorns mutation strikes it back)
+takeDamage = function(state: State, target: Fighter, amount: number, events: { Event }, from: Fighter?)
 	if target.player then
-		hurtPlayer(state, target, amount, events)
+		hurtPlayer(state, target, amount, events, from)
 		return
 	end
 	if pylonsUp((state.sides :: any)[target.side]) then
@@ -784,11 +830,17 @@ local function hit(
 	local boost = if from.player then 0 else state.boosts[ownerKey(from)] or 0 -- Chikin's Courage: creatures only
 	local atk = from.atk * multiplier * (if state.time < from.curseUntil then 1 - from.curse else 1) * (1 + perkOf(state, from, "Hype")) * (1 + boost)
 	local elementMult, strength = CombatMath.getElementMultiplier(state.combat, element or from.element, target.element)
+	-- A player's sword hit and the weapon in hand's mutation: Sharp, Element Edge (strong hits), Boss Hunter (a boss)
+	local mutation = if from.player then state.mutations[ownerKey(from)] else nil
+	if mutation then
+		atk *= mutation.sword * (if strength == "strong" then mutation.strong else 1) * (if target.boss then mutation.boss else 1)
+	end
 	local side = (state.sides :: any)[target.side] :: Side
 	local shielded = not target.player and pylonsUp(side)
 	local raw = CombatMath.getDamage(state.combat, atk, elementMult, random(state)) * guarded(side, target)
-	-- Haggle rolls only when there's a chance, so fights without it draw the same randoms as before
-	local critChance = perkOf(state, from, "Haggle")
+	-- Haggle (and a Critical mutation) rolls only when there's a chance, so fights without it draw the same randoms as
+	-- before
+	local critChance = perkOf(state, from, "Haggle") + (if mutation then mutation.crit else 0)
 	local crit = critChance > 0 and random(state) < critChance
 	if crit then
 		raw *= 2
@@ -820,7 +872,15 @@ local function hit(
 		pylonShield = if shielded then true else nil, -- its pylons' shield took it all ("Shielded!")
 	})
 	from.dealt += math.min(taken, target.hp)
-	takeDamage(state, target, taken, events)
+	takeDamage(state, target, taken, events, from)
+	-- Lifesteal: the player heals its share of what the sword hit took
+	if mutation and mutation.lifesteal > 0 and taken > 0 and not from.down and from.hp < from.maxHp then
+		local before = from.hp
+		from.hp = math.min(from.maxHp, from.hp + math.round(taken * mutation.lifesteal))
+		if from.hp > before then
+			table.insert(events, { type = "regen", kind = "Lifesteal", to = from.id, heal = from.hp - before })
+		end
+	end
 	return taken
 end
 
@@ -1063,7 +1123,7 @@ local function landPending(state: State, events: { Event })
 				absorbed = if warded > 0 then warded else nil,
 			})
 			pending.from.dealt += math.min(damage, target.hp)
-			hurtPlayer(state, target, damage, events)
+			hurtPlayer(state, target, damage, events, pending.from)
 			if pending.ring then
 				giveDebuff(state, pending.from, target, events, pending.debuff)
 			end
@@ -2054,18 +2114,28 @@ function BattleSim.dodge(state: State, owner: string): ({ Event }?, string?)
 		return nil, "stunned"
 	end
 	fighter.dodgeUntil = state.time + state.combat.DODGE_SECONDS
-	fighter.dodgeReady = state.time + state.combat.DODGE_COOLDOWN * (if spec and spec.dodgeCooldown then spec.dodgeCooldown else 1)
+	local mutation = state.mutations[owner]
+	local quick = if mutation then mutation.dodge else 1 -- a Quick Step mutation
+	fighter.dodgeReady = state.time + state.combat.DODGE_COOLDOWN * (if spec and spec.dodgeCooldown then spec.dodgeCooldown else 1) * quick
 	return { { type = "dodge", from = fighter.id } }, nil
 end
 
--- Lune tests and the balance tool only: damage a player fighter directly (the path a boss's hits on players take)
-function BattleSim._hurtPlayer(state: State, id: string, amount: number): { Event }
+-- Lune tests and the balance tool only: damage a player fighter directly (the path a boss's hits on players take);
+-- `fromId`: the hitter (a Thorns mutation strikes it back)
+function BattleSim._hurtPlayer(state: State, id: string, amount: number, fromId: string?): { Event }
 	local events: { Event } = {}
 	local fighter = find(state, id)
+	local from = if fromId then find(state, fromId) else nil
 	if fighter and fighter.player and not fighter.down and not fighter.left and not state.result then
-		hurtPlayer(state, fighter, amount, events)
+		hurtPlayer(state, fighter, amount, events, from)
 	end
 	return events
+end
+
+-- The weapon in hand's mutation for `owner` (weapons round 4 part 2; BattleService at a fight's start and on a weapon
+-- switch, never in the arena); nil clears it
+function BattleSim.setMutation(state: State, owner: string, stats: MutationStats?)
+	state.mutations[owner] = stats
 end
 
 function BattleSim.getRunChance(state: State, sideName: string): number

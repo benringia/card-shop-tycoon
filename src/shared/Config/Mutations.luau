@@ -58,7 +58,7 @@ return {
 		{ id = "treasure", name = "Treasure", group = "support", stat = "cash", how = "more", half = true, words = "Fight cash +{n}%" },
 		{ id = "scholar", name = "Scholar", group = "support", stat = "xp", how = "more", half = true, words = "Creature XP from fights +{n}%" },
 	},
-	SECOND_WIND_BELOW = 0.3, -- Second Wind heals once the player drops under this share of their HP
+	-- (Second Wind heals its share once the player drops under that same share of their HP: BattleSim's hurtPlayer)
 	-- The blade's look (owner's mockups: "Epic mutation · pink rim", "Legendary mutation · gold rim and sparkles"): a rim
 	-- in the card rarity colour on the weapon model only (a Highlight; Roblox draws up to 31 at once), this transparent
 	-- by rarity, over its upgrade glow; Legendary also sparkles

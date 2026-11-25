@@ -202,6 +202,31 @@ local function bossFightWithPlayer(seed: number, foeAtk: number, mechanics: any?
 	}, seed)
 end
 
+-- A player beside their creature against a huge Bloom foe that hardly hits (a boss or a monster), for the mutations
+local function mutationFight(seed: number, boss: boolean): any
+	if boss then
+		return bossFightWithPlayer(seed, 1)
+	end
+	return BattleSim.new(combat, {
+		fighters = { owned("p1", "1"), playerInput("1") },
+		reserves = {},
+		abilities = true,
+		canRun = true,
+		callIn = false,
+	}, { fighters = { { id = "m", element = "Bloom", hp = 100000, atk = 1, spd = 10 } }, abilities = false, canRun = false }, seed)
+end
+
+-- A mutation's fight stats (Util/MutationRules): neutral, with these set
+local function mutationStats(over: { [string]: number }): any
+	local MutationRules = require("../src/shared/Util/MutationRules")
+	local Mutations = require("../src/shared/Config/Mutations")
+	local stats: any = MutationRules.stats(Mutations, nil)
+	for key, value in over do
+		stats[key] = value
+	end
+	return stats
+end
+
 -- Steps the fight for this long (0.1 s steps); returns every event
 local function runFor(state: any, seconds: number): { any }
 	local all = {}
@@ -3470,5 +3495,111 @@ return {
 		pet.stunUntil = state.time -- thawed
 		local after = BattleSim.useAbility(state, "a:t", "element")
 		assert(after ~= nil, "it casts once it can move again")
+	end,
+
+	-- Weapon mutations (weapons round 4 part 2; Util/MutationRules Stats): the weapon in hand's, set per owner like
+	-- Chikin's Courage. Each compared with the same fight (same seed) without it
+	["mutations: Sharp makes a sword hit bigger, Boss Hunter only on a boss"] = function()
+		local function hitOn(boss: boolean, over: { [string]: number }?): number
+			local state = mutationFight(41, boss)
+			if over then
+				BattleSim.setMutation(state, "1", mutationStats(over))
+			end
+			local events = BattleSim.swordHit(state, "1", "b:m", 1, "Sword") :: { any }
+			return events[1].damage
+		end
+		local plain = hitOn(true)
+		expect.near(hitOn(true, { sword = 1.5 }), plain * 1.5, 1, "Sharp")
+		expect.near(hitOn(true, { boss = 1.5 }), plain * 1.5, 1, "Boss Hunter on a boss")
+		expect.equal(hitOn(false, { boss = 1.5 }), hitOn(false), "Boss Hunter: not on a monster")
+	end,
+
+	["mutations: Critical doubles a hit and marks it; Element Edge only on strong hits"] = function()
+		local function hit(over: { [string]: number }?, element: string?): any
+			local state = mutationFight(42, true)
+			if over then
+				BattleSim.setMutation(state, "1", mutationStats(over))
+			end
+			local weapon = if element then { element = element, prism = false, bond = 1, meter = 1 } else nil
+			return (BattleSim.swordHit(state, "1", "b:m", 1, "Sword", weapon) :: { any })[1]
+		end
+		local plain = hit()
+		local crit = hit({ crit = 1 })
+		expect.equal(crit.crit, true, "marked: it pops like a crit")
+		expect.near(crit.damage, plain.damage * 2, 1, "double")
+		expect.isNil(plain.crit)
+		local strong = hit(nil, "Ember") -- Ember beats Bloom, the boss's element
+		expect.equal(strong.strength, "strong")
+		expect.near(hit({ strong = 1.5 }, "Ember").damage, strong.damage * 1.5, 1, "Element Edge on a strong hit")
+		expect.equal(hit({ strong = 1.5 }, "Volt").damage, hit(nil, "Volt").damage, "not on an even one")
+	end,
+
+	["mutations: Guard takes less, Thorns hits back, Second Wind heals once"] = function()
+		local state = mutationFight(43, true)
+		BattleSim.setMutation(state, "1", mutationStats({ taken = 0.5, thorns = 0.5 }))
+		local events = BattleSim._hurtPlayer(state, "a:@1", 40, "b:m")
+		expect.equal(viewOf(state, "a:@1").hp, combat.PLAYER_HP - 20, "Guard halves it")
+		local back = nil
+		for _, event in events do
+			if event.type == "thorns" then
+				back = event
+			end
+		end
+		assert(back, "a thorns event")
+		expect.equal(back.from, "a:@1")
+		expect.equal(back.to, "b:m")
+		expect.equal(back.damage, 10, "half of the 20 it took")
+		local wind = mutationFight(44, true)
+		BattleSim.setMutation(wind, "1", mutationStats({ secondWind = 0.3 }))
+		local first = BattleSim._hurtPlayer(wind, "a:@1", 75)
+		expect.equal(viewOf(wind, "a:@1").hp, 25 + 30, "under 30%: 30% back")
+		expect.equal(count(first, function(e)
+			return e.type == "regen" and e.kind == "SecondWind"
+		end), 1)
+		BattleSim._hurtPlayer(wind, "a:@1", 40)
+		expect.equal(viewOf(wind, "a:@1").hp, 15, "once a fight")
+	end,
+
+	["mutations: Lifesteal heals the player, Quick Step's dodge comes back sooner, Ultimate Charge fills faster"] = function()
+		local state = mutationFight(45, true)
+		BattleSim.setMutation(state, "1", mutationStats({ lifesteal = 0.5, dodge = 0.5, meter = 2 }))
+		BattleSim._hurtPlayer(state, "a:@1", 50)
+		local events = BattleSim.swordHit(state, "1", "b:m", 1, "Sword") :: { any }
+		local dealt = events[1].damage
+		expect.equal(viewOf(state, "a:@1").hp, math.min(combat.PLAYER_HP, 50 + math.round(dealt * 0.5)), "half the hit back")
+		local plain = mutationFight(45, true)
+		BattleSim._hurtPlayer(plain, "a:@1", 50)
+		BattleSim.swordHit(plain, "1", "b:m", 1, "Sword")
+		expect.near(state.sides.a.meters["1"], plain.sides.a.meters["1"] * 2, 1e-6, "twice the meter")
+		BattleSim.dodge(state, "1")
+		runFor(state, combat.DODGE_COOLDOWN * 0.5 + 0.1)
+		expect.equal(BattleSim.dodge(state, "1") ~= nil, true, "half the cooldown")
+	end,
+
+	["mutations: none, or a neutral one, is the same fight as before"] = function()
+		local function play(set: boolean): { any }
+			local state = mutationFight(46, true)
+			if set then
+				BattleSim.setMutation(state, "1", mutationStats({}))
+			end
+			local all = {}
+			for step = 1, 40 do
+				if step % 5 == 0 then
+					for _, event in BattleSim.swordHit(state, "1", "b:m", 0.8, "Sword") or {} do
+						table.insert(all, event)
+					end
+				end
+				for _, event in BattleSim.step(state, 0.1) do
+					table.insert(all, event)
+				end
+			end
+			return all
+		end
+		local before, after = play(false), play(true)
+		expect.equal(#after, #before)
+		for index, event in before do
+			expect.equal(after[index].type, event.type, `event {index}`)
+			expect.equal(after[index].damage, event.damage, `event {index}'s damage`)
+		end
 	end,
 }

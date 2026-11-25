@@ -56,6 +56,7 @@ local RingRules = require(Shared:WaitForChild("Util"):WaitForChild("RingRules"))
 local SwordRules = require(Shared:WaitForChild("Util"):WaitForChild("SwordRules"))
 local SummonRules = require(Shared:WaitForChild("Util"):WaitForChild("SummonRules"))
 local MonsterLooks = require(Shared:WaitForChild("Util"):WaitForChild("MonsterLooks"))
+local MutationRules = require(Shared:WaitForChild("Util"):WaitForChild("MutationRules"))
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
@@ -921,24 +922,34 @@ local function giveXp(player: Player, partyIds: { string }, each: number): { any
 	return party
 end
 
--- One member's win: their own party's XP and cash; a boss's items through BossService (their contribution decides)
+-- One member's win: their own party's XP and cash; a boss's items through BossService (their contribution decides).
+-- The weapon in hand's mutation: Treasure more cash, Scholar more creature XP (fights only, at half size: Config/
+-- Mutations); the shop XP follows the cash before Treasure
 local function payOut(fight: Fight, member: Member): any
 	local player, monster = member.player, fight.monster
 	local bossId = monster.boss
+	local mutation = WeaponService.MutationStats(player)
+	local function treasure(cash: number): number
+		return math.floor(cash * mutation.cash * 100 + 0.5) / 100
+	end
+	local function scholar(xp: number): number
+		return math.round(xp * mutation.xp)
+	end
 	if bossId then
 		-- Bosses: their own creature XP every win; items only through BossService's farm-protected rules, and the cash
 		-- (with the shop XP that follows it) in full on a loot win, a share before the loot timer ends (BossRules.pay;
 		-- owner 2026-11-19: full cash on every win paid many times the shop's income)
 		local boss = Bosses.BOSSES[bossId]
-		local xpEach = CombatMath.splitXp(boss.xp, #member.partyIds)
+		local xpEach = CombatMath.splitXp(scholar(boss.xp), #member.partyIds)
 		local party = giveXp(player, member.partyIds, xpEach)
 		local share = BattleSim.contribution(fight.sim, member.owner)
 		local contributed = BossRules.contributed(Bosses, share.dealt, share.taken, share.totalDealt, share.totalTaken)
 		local loot = if bossRewards then bossRewards(player, monster, { contributed = contributed }) else nil
 		-- no loot answer (no boss record on this server): the full cash, as before
-		local cash = BossRules.pay(Bosses, boss.cash, loot == nil or loot.fullPay == true)
+		local paid = BossRules.pay(Bosses, boss.cash, loot == nil or loot.fullPay == true)
+		local cash = treasure(paid)
 		EconomyService.AddCash(player, cash)
-		local shopXp = LevelMath.fightXp(BossRules.shopXpCash(Bosses, cash), Levels)
+		local shopXp = LevelMath.fightXp(BossRules.shopXpCash(Bosses, paid), Levels)
 		EconomyService.AddXP(player, shopXp)
 		-- `card`: the boss's Frontier card (BossService; the victory screen's gold tile, then its big reveal)
 		return { xpEach = xpEach, cash = cash, shopXp = shopXp, shards = 0, boss = loot, party = party, card = if loot then loot.card else nil }
@@ -951,23 +962,24 @@ local function payOut(fight: Fight, member: Member): any
 			xp += paid.xp
 			cash += paid.cash
 		end
-		local xpEach = CombatMath.splitXp(xp, #member.partyIds)
+		local xpEach = CombatMath.splitXp(scholar(xp), #member.partyIds)
 		local party = giveXp(player, member.partyIds, xpEach)
-		EconomyService.AddCash(player, cash)
+		EconomyService.AddCash(player, treasure(cash))
 		local shopXp = LevelMath.fightXp(cash, Levels)
 		EconomyService.AddXP(player, shopXp)
-		return { xpEach = xpEach, cash = cash, shopXp = shopXp, shards = 0, party = party }
+		return { xpEach = xpEach, cash = treasure(cash), shopXp = shopXp, shards = 0, party = party }
 	end
 	local rewards = CombatMath.getRewards(Wild, monster.level, monster.elite)
 	Funnel.step(player, "FirstWildWin")
 	-- your own win only, plus the hunting bonus for teammates near you (spec 2026-11-15-teams-design)
 	local team = TeamService.HuntBonus(player)
-	local cash = TeamRules.boostCash(rewards.cash, team)
-	local each = CombatMath.splitXp(TeamRules.boostXp(rewards.xp, team), #member.partyIds)
+	local earned = TeamRules.boostCash(rewards.cash, team)
+	local cash = treasure(earned)
+	local each = CombatMath.splitXp(scholar(TeamRules.boostXp(rewards.xp, team)), #member.partyIds)
 	local party = giveXp(player, member.partyIds, each)
 	EconomyService.AddCash(player, cash)
 	-- a small shop XP from the win (owner 2026-11-17: "combat exp for pets stays the same"): half its cash
-	local shopXp = LevelMath.fightXp(cash, Levels)
+	local shopXp = LevelMath.fightXp(earned, Levels)
 	EconomyService.AddXP(player, shopXp)
 	local dropped = nil
 	local forced = forcedDrops[player] -- Studio's /carddrop: this win drops a card
@@ -1351,6 +1363,24 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 
 	local members: { Member } = {}
 	local leaders, reserves = {}, {}
+	-- The weapon in hand's mutation for each player (weapons round 4 part 2; never in the arena, which builds its own
+	-- fights): Tough on their player fighter's HP, Pet Boost on their creatures' ATK and HP, a teammate's Rally (the
+	-- best one, not stacked) on their creatures' ATK; the rest lives in the sim (BattleSim.setMutation below)
+	local mutationOf: { [Player]: MutationRules.Stats } = {}
+	for _, player in players do
+		mutationOf[player] = WeaponService.MutationStats(player)
+	end
+	local function boosted(input: BattleSim.FighterInput, player: Player)
+		local mine = mutationOf[player]
+		local rally = 0
+		for other, stats in mutationOf do
+			if other ~= player then
+				rally = math.max(rally, stats.rally)
+			end
+		end
+		input.atk *= mine.petAtk * (1 + rally)
+		input.hp = math.max(1, math.round(input.hp * mine.petHp))
+	end
 	for _, player in players do
 		local party = PartyService.GetParty(player) :: { slots: { [number]: string }, summoned: number? }
 		local leaderId = party.slots[party.summoned :: number]
@@ -1360,6 +1390,7 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 		local leaderInput = fighterInput(CardService.GetBeast(player, leaderId) :: Beast, true)
 		leaderInput.owner = owner
 		leaderInput.hpNow = left[leaderId]
+		boosted(leaderInput, player)
 		-- Chikin's tutorial fights (owner 2026-11-17: "make sure pets doesnt die in the first tutorial"): a new player's
 		-- creatures stop at 1 HP and never faint there, so nothing has to rest 5 minutes after its first fight
 		-- only against the Meadow's normal monsters his fights are for (ChikinRules.guards): never an elite or a
@@ -1375,7 +1406,9 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 		end
 		if fightsWithSword(player, boss ~= nil, run, swords) then
 			-- The player fights beside their creature (never a creature's target; down instead of fainting)
-			table.insert(leaders, { id = `@{owner}`, player = true, owner = owner, element = "None", hp = Combat.PLAYER_HP, atk = 0, spd = 10, defenseScale = defenseScaleFor(player, boss, monster) })
+			-- (a Tough mutation: more HP)
+			local hp = math.round(Combat.PLAYER_HP * mutationOf[player].hp)
+			table.insert(leaders, { id = `@{owner}`, player = true, owner = owner, element = "None", hp = hp, atk = 0, spd = 10, defenseScale = defenseScaleFor(player, boss, monster) })
 		end
 		for _, beastId in partyIds do
 			local beast = CardService.GetBeast(player, beastId)
@@ -1385,6 +1418,7 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 				input.owner = owner
 				input.hpNow = left[beastId]
 				input.guarded = guarded
+				boosted(input, player)
 				table.insert(reserves, input)
 			end
 		end
@@ -1417,6 +1451,9 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 	local sim = BattleSim.new(Combat, sideA, { fighters = foes, abilities = false, canRun = false, pylons = pylonInputs }, rng:NextInteger(1, 2 ^ 30))
 	if boss or run then
 		sim.maxSeconds = Combat.BOSS_MAX_FIGHT_SECONDS
+	end
+	for _, member in members do
+		BattleSim.setMutation(sim, member.owner, mutationOf[member.player])
 	end
 
 	-- The ring: the monster where it stands, facing the leader; the leaders on an arc between, each extra beside its own
@@ -1924,9 +1961,11 @@ end
 local function onSwap(player: Player)
 	local fight = fights[player]
 	local member = if fight then fight.members[player] else nil
-	if member then
+	if member and fight then
 		member.swappedAt = os.clock()
 		member.lastCut = nil
+		-- the new weapon's mutation from now on (its HP and creature boosts stay the fight's start's)
+		BattleSim.setMutation(fight.sim, member.owner, WeaponService.MutationStats(player))
 	end
 end
 
