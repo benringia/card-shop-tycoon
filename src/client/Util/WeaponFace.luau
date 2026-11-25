@@ -121,7 +121,7 @@ local function owned(frame: Frame, weapon: Weapons.Weapon, record: Owned)
 		P.chip(face, "Level", `+{record.level}`, layout.LEVEL, CardDesign.LEVEL_CHIP, CardDesign.LEVEL_CHIP_TRANSPARENCY)
 	end
 	local power = WeaponRules.shownPower(Weapons, Combat, weapon.id, record.grade, record.level)
-	centered(P.text(face, string.format("Power x%.2f", power), layout.VALUE, CardDesign.VALUE_TEXT, 7)).Name = "Power"
+	centered(P.text(face, WeaponText.attackLine(power), layout.VALUE, CardDesign.VALUE_TEXT, 7)).Name = "Power" -- "Attack 151" (weapons round 4)
 	P.lift(frame, face)
 end
 

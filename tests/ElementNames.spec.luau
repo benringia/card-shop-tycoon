@@ -44,8 +44,16 @@ return {
 			end
 		end
 		expect.equal(element, "Fire · bonds with Fire creatures")
-		local bond = WeaponText.bond(Weapons, "forgeSword_Volt") :: string
-		expect.equal(string.find(bond, "Electric creatures", 1, true) ~= nil, true, "the bond line")
+		-- the weapon window's bond row (weapons round 4, layout A)
+		local CombatHud = require("../src/shared/Config/CombatHud")
+		local WeaponLooks = require("../src/shared/Config/WeaponLooks")
+		local bond = nil
+		for _, row in WeaponText.rows(Weapons, CombatHud, WeaponLooks, Combat, "forgeSword_Volt", { grade = "C", level = 0 }) do
+			if row.kind == "bond" then
+				bond = row.title
+			end
+		end
+		expect.equal(bond, "Best with Electric creatures", "the bond row")
 	end,
 
 	-- every place that prints an element goes through ElementNames, and the fight UI uses image icons, not emoji

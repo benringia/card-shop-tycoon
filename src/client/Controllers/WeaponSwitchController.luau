@@ -177,7 +177,7 @@ local function render()
 	end
 end
 
--- The tip under a mouse on the weapon in hand: its name in its rarity's colour, then Power, element, perk, grade, level
+-- The tip under a mouse on the weapon in hand: its name in its rarity's colour, then Attack, element, perk, grade, level
 local function showTip()
 	local id = current()
 	local weapon = if id then Weapons.ById[id] else nil
@@ -194,7 +194,8 @@ local function showTip()
 	title.LayoutOrder = 0
 	UIKit.outlined(title)
 	for index, row in WeaponText.stats(Weapons, id, owned[id], Combat) do
-		local line = UIKit.label(tip, `{row.label}: {row.value}`, Enum.Font.GothamBold, 12, Color3.new(1, 1, 1))
+		-- the Prism Blade's always strong in gold (owner 2026-11-25: "highlight that stat inside prism blade tooltip")
+		local line = UIKit.label(tip, `{row.label}: {row.value}`, if row.highlight then Enum.Font.FredokaOne else Enum.Font.GothamBold, 12, if row.highlight then UIStyle.GOLD else Color3.new(1, 1, 1))
 		line.LayoutOrder = index
 		line.Size = UDim2.new(1, 0, 0, 0)
 		line.AutomaticSize = Enum.AutomaticSize.Y

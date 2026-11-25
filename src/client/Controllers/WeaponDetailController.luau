@@ -1,9 +1,11 @@
 --!strict
 -- A weapon's card view (weapons round 1, Task 10; relaid out 2026-11-09, the owner's pick A: the creature card view's
--- twin), over the binder's Armory or the Forge: its card (Util/WeaponFace) on the left, and beside it its rarity /
--- family / element pills; for a weapon you have, a gold "Your weapon" box (Power against what you hold now, grade,
--- level); for one you don't, "How to get it" (the boss that drops it, the forge materials as bars); then its sword
--- skill, its perk and its element bond (or its Power range) with their icons. Equip sits in a bar under them
+-- twin; layout A of weapons round 4, owner 2026-11-25: "rearrange this UI to be easily understood"), over the binder's
+-- Armory or the Forge: its card (Util/WeaponFace) on the left, and beside it its rarity / family / element pills; for a
+-- weapon you have, one gold box (its Attack, and against what you hold now; its grade; its level over a gold bar); for
+-- one you don't, "How to get it" (the boss that drops it, the forge materials as bars); then one short row each for
+-- what it does (WeaponText.rows: its Attack range when it isn't yours, its sword skill, its perk, its element bond; the
+-- Prism Blade's ALWAYS STRONG in gold and its Supers instead of a bond). Equip sits in a bar under them
 -- (Remotes.EquipWeapon; the server checks it's yours and you're not fighting) with a hint that upgrades are the Forge's.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -14,12 +16,14 @@ local Bosses = require(Config:WaitForChild("Bosses"))
 local Cards = require(Config:WaitForChild("Cards"))
 local Combat = require(Config:WaitForChild("Combat"))
 local CombatHud = require(Config:WaitForChild("CombatHud"))
+local ElementNamesConfig = require(Config:WaitForChild("ElementNames"))
 local Swords = require(Config:WaitForChild("Swords"))
 local Items = require(Config:WaitForChild("Items"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local UIStyle = require(Config:WaitForChild("UIStyle"))
 local WeaponLooks = require(Config:WaitForChild("WeaponLooks"))
 local Weapons = require(Config:WaitForChild("Weapons"))
+local ElementNames = require(Shared:WaitForChild("Util"):WaitForChild("ElementNames"))
 local WeaponLookRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponLookRules"))
 local WeaponRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponRules"))
 local WeaponText = require(Shared:WaitForChild("Util"):WaitForChild("WeaponText"))
@@ -44,17 +48,30 @@ local NOTE_HEIGHT = 34 -- under the card: where it came from
 local MAX_SIZE = Vector2.new(760, 460)
 local DESKTOP_SCALE, PHONE_SCALE = Vector2.new(0.86, 0.82), Vector2.new(0.97, 0.96)
 local BAR_HEIGHT = 54 -- Equip and the Forge hint, under the scrolling side
-local GAP = 8
 local BADGE = 36 -- an icon's coloured square
-local TILE_HEIGHT = 58
-local FACT_HEIGHT = 62
 local PROGRESS_ROW = 24
 local HOW_TO_GET_EDGE = Color3.fromRGB(196, 176, 238)
-local SKILL_BADGE = Color3.fromRGB(122, 92, 200)
-local PERK_BADGE = Color3.fromRGB(255, 132, 170)
 local DROP_BADGE = Color3.fromRGB(90, 62, 150)
-local POWER_BADGE = Color3.fromRGB(255, 205, 96)
 local WHITE = Color3.new(1, 1, 1)
+-- Layout A's sizes and colours (the owner's pick from the mockup, 2026-11-25)
+local GOLD_BOX = 70 -- your copy: its Attack, grade and level
+local GOLD_FILL = Color3.fromRGB(255, 248, 228)
+local ATTACK_ICON = 38
+local ATTACK_NUMBER = 36
+local GRADE_BADGE = 34
+local GRADE_AT = 0.4 -- the grade badge's middle across the gold box
+local LEVEL_AT = 0.59 -- where the level and its bar start
+local LEVEL_BAR = 9
+local ROW_HEIGHT = 48 -- each thing the weapon does
+local ROW_ICON = 30
+local ROW_TITLE = 15
+local ROW_WORDS = 12
+local ROW_GAP = 5
+local ROW_FILL_TRANSPARENCY = 0.6 -- the rows barely whiter than the window
+local STRONG_FILL = Color3.fromRGB(255, 244, 200) -- the Prism Blade's ALWAYS STRONG row
+local STRONG_EDGE = 2.5
+local STRONG_INK = Color3.fromRGB(150, 98, 0) -- its title: dark gold, 4.5:1 on its fill
+local PRISM_PILL = Color3.fromRGB(150, 120, 225)
 
 local panel: Frame? = nil
 local row: Frame
@@ -163,21 +180,19 @@ local function ability(parent: Instance, order: number, icon: string, color: Col
 	return line
 end
 
--- A round badge in a colour with a letter on it (the grade)
-local function letterBadge(parent: Instance, letter: string, color: Color3): Frame
+-- A round badge `size` px in a colour with a letter on it (the grade)
+local function letterBadge(parent: Instance, letter: string, color: Color3, size: number): Frame
 	local circle = Instance.new("Frame")
 	circle.Name = "Badge"
-	circle.AnchorPoint = Vector2.new(0, 0.5)
-	circle.Position = UDim2.new(0, 7, 0.5, 0)
-	circle.Size = UDim2.fromOffset(28, 28)
+	circle.Size = UDim2.fromOffset(size, size)
 	circle.BackgroundColor3 = color
 	circle.Parent = parent
-	UIKit.corner(circle, 14)
+	UIKit.corner(circle, size // 2)
 	local label = Instance.new("TextLabel")
 	label.BackgroundTransparency = 1
 	label.Size = UDim2.fromScale(1, 1)
 	label.Font = Enum.Font.FredokaOne
-	label.TextSize = 18
+	label.TextSize = math.floor(size * 0.6)
 	label.TextColor3 = WHITE
 	label.Text = letter
 	label.Parent = circle
@@ -185,41 +200,36 @@ local function letterBadge(parent: Instance, letter: string, color: Color3): Fra
 	return circle
 end
 
--- One stat tile in the gold box: an icon (or `letter` on a round badge of `badgeColor`), a small heading, the value,
--- and an optional line under it
-local function tile(parent: Instance, order: number, grow: number, icon: string?, title: string, value: string, under: string?, underColor: Color3?, badgeColor: Color3?): Frame
-	local cell = Instance.new("Frame")
-	cell.LayoutOrder = order
-	cell.BackgroundColor3 = palette.slotEmpty
-	cell.Size = UDim2.new(grow, -6, 0, TILE_HEIGHT)
-	cell.Parent = parent
-	UIKit.corner(cell, 10)
-	UIKit.outline(cell, palette.rowEdge, 2)
-	local left = 8
-	if badgeColor then
-		letterBadge(cell, value, badgeColor)
-		left = 41
-	elseif icon then
-		local picture = Icon.make(cell, icon, UDim2.fromOffset(28, 28))
-		picture.AnchorPoint = Vector2.new(0, 0.5)
-		picture.Position = UDim2.new(0, 7, 0.5, 0)
-		left = 41
-	end
-	local column = holder(cell, 0, "column")
-	column.Position = UDim2.fromOffset(left, 5)
-	column.Size = UDim2.new(1, -(left + 6), 0, 0)
-	local list = column:FindFirstChildOfClass("UIListLayout") :: UIListLayout
-	list.Padding = UDim.new(0, 0)
-	heading(column, 1, title)
-	local big = text(column, value, UIKit.textSize("name") - 2, palette.ink, true)
-	big.LayoutOrder = 2
-	big.TextTruncate = Enum.TextTruncate.AtEnd
-	if under then
-		local small = text(column, under, UIKit.textSize("small") - 2, underColor or palette.hint, true)
-		small.LayoutOrder = 3
-		small.TextTruncate = Enum.TextTruncate.AtEnd
-	end
-	return cell
+-- A line of words placed at (x, y) in `parent`, `width` across (a UDim), cut short with "..." when it doesn't fit
+local function placed(parent: Instance, words: string, font: Enum.Font, size: number, color: Color3, position: UDim2, width: UDim): TextLabel
+	local label = UIKit.label(parent, words, font, size, color)
+	label.Position = position
+	label.Size = UDim2.new(width, UDim.new(0, size + 4))
+	label.TextWrapped = false
+	label.TextTruncate = Enum.TextTruncate.AtEnd
+	return label
+end
+
+-- One thing the weapon does (WeaponText.rows): its icon, a bold title and one short line, in a soft-edged row; the
+-- Prism Blade's ALWAYS STRONG in gold
+local function infoRow(parent: Instance, order: number, info: WeaponText.WindowRow)
+	local strong = info.kind == "strong"
+	local frame = Instance.new("Frame")
+	frame.Name = `Row_{info.kind}`
+	frame.LayoutOrder = order
+	frame.BackgroundColor3 = if strong then STRONG_FILL else palette.row
+	frame.BackgroundTransparency = if strong then 0 else ROW_FILL_TRANSPARENCY
+	frame.Size = UDim2.new(1, 0, 0, ROW_HEIGHT)
+	frame.Parent = parent
+	UIKit.corner(frame, 10)
+	UIKit.outline(frame, if strong then UIStyle.GOLD else palette.rowEdge, if strong then STRONG_EDGE else 2)
+	local picture = Icon.make(frame, info.icon, UDim2.fromOffset(ROW_ICON, ROW_ICON))
+	picture.AnchorPoint = Vector2.new(0, 0.5)
+	picture.Position = UDim2.new(0, 12, 0.5, 0)
+	local left = 12 + ROW_ICON + 10
+	local width = UDim.new(1, -(left + 8))
+	placed(frame, info.title, Enum.Font.FredokaOne, ROW_TITLE, if strong then STRONG_INK else palette.ink, UDim2.fromOffset(left, 5), width)
+	placed(frame, info.words, Enum.Font.GothamBold, ROW_WORDS, palette.inkSoft, UDim2.fromOffset(left, 26), width)
 end
 
 -- A material's (or the cash's) progress: icon, name, a bar, have/need
@@ -251,66 +261,65 @@ local function progressRow(parent: Instance, order: number, line: WeaponText.Pro
 	count.TextXAlignment = Enum.TextXAlignment.Right
 end
 
--- Small facts side by side (the perk, the bond; the Power range for a weapon you don't have)
-local function facts(parent: Instance, order: number, list: { { icon: string, color: Color3, title: string, words: string } })
-	if #list == 0 then
-		return
-	end
-	local frame = Instance.new("Frame")
-	frame.LayoutOrder = order
-	frame.BackgroundTransparency = 1
-	frame.Size = UDim2.new(1, 0, 0, 0)
-	frame.AutomaticSize = Enum.AutomaticSize.Y
-	frame.Parent = parent
-	local grid = Instance.new("UIGridLayout")
-	grid.CellSize = UDim2.new(if #list == 1 then 1 else 0.5, if #list == 1 then 0 else -4, 0, FACT_HEIGHT)
-	grid.CellPadding = UDim2.fromOffset(8, 8)
-	grid.SortOrder = Enum.SortOrder.LayoutOrder
-	grid.Parent = frame
-	for index, fact in list do
-		local cell = box(frame, index, palette.rowEdge)
-		cell.AutomaticSize = Enum.AutomaticSize.None
-		local line = ability(cell, 1, fact.icon, fact.color, fact.title, nil, fact.words)
-		line.AutomaticSize = Enum.AutomaticSize.None
-		line.Size = UDim2.fromScale(1, 1)
-	end
-end
-
 local function rarityColor(rarity: string): Color3
 	local tier = (Rarities.Tiers :: any)[rarity]
 	return if tier then tier.color else UIStyle.HINT
 end
 
+-- The rarity, the family and the element (the Prism Blade's "Always strong"), plain words as in the mockup
 local function pills(weapon: Weapons.Weapon)
 	local line = holder(rows, 1, "row", 26)
-	UIKit.pill(line, weapon.rarity, rarityColor(weapon.rarity), nil, "Crown").LayoutOrder = 1
+	UIKit.pill(line, weapon.rarity, rarityColor(weapon.rarity)).LayoutOrder = 1
 	local family = string.upper(string.sub(weapon.family, 1, 1)) .. string.sub(weapon.family, 2)
-	UIKit.pill(line, family, palette.slotEmpty, nil, WeaponLookRules.familyIcon(WeaponLooks, weapon.family)).LayoutOrder = 2
+	UIKit.pill(line, family, palette.slotEmpty).LayoutOrder = 2
 	if weapon.prism then
-		UIKit.pill(line, "Every element", palette.slotEmpty, nil, "Elements").LayoutOrder = 3
+		UIKit.pill(line, "Always strong", PRISM_PILL).LayoutOrder = 3
 	elseif weapon.element then
-		UIKit.pill(line, weapon.element, Cards.ELEMENTS[weapon.element] or palette.slotEmpty, nil, weapon.element).LayoutOrder = 3
+		UIKit.pill(line, ElementNames.display(weapon.element, ElementNamesConfig), Cards.ELEMENTS[weapon.element] or palette.slotEmpty).LayoutOrder = 3
 	end
 end
 
--- Yours: Power (against what you hold now), grade, level with a bar to +10
+-- Yours, one gold box (layout A): the Power fist with ATTACK over the number and, unless it's the one in your hand, how
+-- it compares with that one under it; the grade on its round badge; the level over a gold bar to +10. The Steel Sword:
+-- its Attack alone (no grade roll, no upgrades)
 local function yourWeapon(weapon: Weapons.Weapon, record: WeaponRules.Owned, state: State)
-	local section = box(rows, 2, UIStyle.GOLD)
-	heading(section, 0, "Your weapon")
-	local tiles = holder(section, 1, "row", TILE_HEIGHT)
+	local section = Instance.new("Frame")
+	section.Name = "YourWeapon"
+	section.LayoutOrder = 2
+	section.BackgroundColor3 = GOLD_FILL
+	section.Size = UDim2.new(1, 0, 0, GOLD_BOX)
+	section.Parent = rows
+	UIKit.corner(section, 12)
+	UIKit.outline(section, UIStyle.GOLD, 2)
+	local fist = Icon.make(section, "Power", UDim2.fromOffset(ATTACK_ICON, ATTACK_ICON))
+	fist.AnchorPoint = Vector2.new(0, 0.5)
+	fist.Position = UDim2.new(0, 14, 0.5, 0)
+	local left = 14 + ATTACK_ICON + 10
+	-- the words stop short of the grade badge
+	local width = UDim.new(GRADE_AT, -(left + GRADE_BADGE // 2 + 6))
 	local power = WeaponRules.shownPower(Weapons, Combat, weapon.id, record.grade, record.level)
 	local versus = WeaponText.versus(Weapons, Combat, weapon.id, record, state.equipped, state.owned[state.equipped])
-	local underColor = if versus and versus.sign > 0 then palette.good elseif versus and versus.sign < 0 then palette.bad else palette.hint
-	tile(tiles, 1, 0.44, "Power", "Power", string.format("x%.2f", power), if versus then versus.text else nil, underColor)
-	if weapon.id == Weapons.STARTER then
-		return -- everyone's sword: no grade roll, no upgrades
+	local compares = versus ~= nil and weapon.id ~= state.equipped
+	-- the number sits lower when nothing goes under it (the mockup's spacing)
+	placed(section, "ATTACK", Enum.Font.GothamBold, 11, palette.inkSoft, UDim2.fromOffset(left, if compares then 4 else 9), width)
+	placed(section, tostring(WeaponText.attack(power)), Enum.Font.FredokaOne, ATTACK_NUMBER, palette.ink, UDim2.fromOffset(left, if compares then 15 else 25), width)
+	if versus and compares then
+		local color = if versus.sign > 0 then palette.good elseif versus.sign < 0 then palette.bad else palette.hint
+		placed(section, versus.text, Enum.Font.GothamBold, 11, color, UDim2.fromOffset(left, 51), width)
 	end
-	tile(tiles, 2, 0.22, nil, "Grade", record.grade, nil, nil, UIStyle.GRADES[record.grade] or UIStyle.GRADES.C)
-	local levelTile = tile(tiles, 3, 0.34, "Upgrade", "Level", `+{record.level} / {Weapons.MAX_LEVEL}`)
-	local track = UIKit.bar(levelTile, record.level / Weapons.MAX_LEVEL, UIStyle.GOLD)
-	track.AnchorPoint = Vector2.new(0, 1)
-	track.Position = UDim2.new(0, 41, 1, -7)
-	track.Size = UDim2.new(1, -49, 0, 8)
+	if weapon.id == Weapons.STARTER then
+		return
+	end
+	local gradeBadge = letterBadge(section, record.grade, UIStyle.GRADES[record.grade] or UIStyle.GRADES.C, GRADE_BADGE)
+	gradeBadge.AnchorPoint = Vector2.new(0.5, 0.5)
+	gradeBadge.Position = UDim2.fromScale(GRADE_AT, 0.5)
+	local grade = placed(section, "Grade", Enum.Font.GothamBold, 12, palette.inkSoft, UDim2.new(GRADE_AT, GRADE_BADGE // 2 + 7, 0.5, 0), UDim.new(LEVEL_AT - GRADE_AT, -(GRADE_BADGE // 2 + 12)))
+	grade.AnchorPoint = Vector2.new(0, 0.5)
+	local levelWidth = UDim.new(1 - LEVEL_AT, -34)
+	placed(section, `Level +{record.level} / {Weapons.MAX_LEVEL}`, Enum.Font.FredokaOne, ROW_TITLE, palette.ink, UDim2.new(LEVEL_AT, 0, 0, 14), levelWidth)
+	local track = UIKit.bar(section, record.level / Weapons.MAX_LEVEL, UIStyle.GOLD)
+	track.Position = UDim2.new(LEVEL_AT, 0, 0, 40)
+	track.Size = UDim2.new(levelWidth, UDim.new(0, LEVEL_BAR))
 end
 
 -- Not yours: the boss that drops it, then its forge materials as bars
@@ -384,7 +393,7 @@ local function build(): Frame
 	rows.Parent = side
 	local layout = Instance.new("UIListLayout")
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Padding = UDim.new(0, GAP)
+	layout.Padding = UDim.new(0, ROW_GAP)
 	layout.Parent = rows
 	local padding = Instance.new("UIPadding")
 	padding.PaddingTop, padding.PaddingBottom = UDim.new(0, 3), UDim.new(0, 3)
@@ -463,28 +472,9 @@ function WeaponDetailController.Refresh()
 	else
 		howToGet(weapon, state)
 	end
-	local skill = WeaponText.skill(CombatHud, Weapons, weaponId)
-	local skillBox = box(rows, 3, palette.rowEdge)
-	ability(skillBox, 1, skill.icon, SKILL_BADGE, "Skill", skill.name, skill.text)
-	local list = {}
-	if not record then
-		table.insert(list, { icon = "Power", color = POWER_BADGE, title = "Power", words = WeaponText.powerRange(Weapons, Combat, weaponId) })
+	for index, info in WeaponText.rows(Weapons, CombatHud, WeaponLooks, Combat, weaponId, record) do
+		infoRow(rows, 2 + index, info)
 	end
-	local perk = WeaponRules.perk(Weapons, weaponId, if record then record.grade else "C")
-	if perk then
-		local words = WeaponText.stats(Weapons, weaponId, record, Combat)
-		for _, stat in words do
-			if stat.label == "Perk" then
-				table.insert(list, { icon = WeaponLookRules.perkIcon(WeaponLooks, perk), color = PERK_BADGE, title = "Perk", words = stat.value })
-			end
-		end
-	end
-	local bond = WeaponText.bond(Weapons, weaponId)
-	if bond then
-		local tint = if weapon.element then (Cards.ELEMENTS[weapon.element] or palette.slotEmpty):Lerp(WHITE, 0.6) else palette.slotEmpty
-		table.insert(list, { icon = if weapon.prism then "Elements" else weapon.element :: string, color = tint, title = "Bond", words = bond })
-	end
-	facts(rows, 4, list)
 	renderBar(weapon, mine, state.equipped == weaponId)
 end
 

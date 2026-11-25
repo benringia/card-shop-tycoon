@@ -19,7 +19,9 @@ local function elementName(key: string): string
 	return if typeof(name) == "string" then name else key
 end
 
-export type Row = { label: string, value: string }
+-- `highlight`: the Prism Blade's always strong, gold on the weapon switch's tip (owner 2026-11-25: "highlight that stat
+-- inside prism blade tooltip")
+export type Row = { label: string, value: string, highlight: boolean? }
 
 local WeaponText = {}
 
@@ -66,10 +68,8 @@ local function perkWords(perk: any): string?
 		return `Every {ordinal(perk.every)} hit strikes for {percent(perk.share)} more and arcs to other foes for {percent(perk.spread)}`
 	elseif perk.kind == "execute" and perk.share and perk.below then
 		return `Hits deal {percent(perk.share)} more to foes under {percent(perk.below)} HP`
-	elseif perk.kind == "prism" then
-		return "Always strong against the foe's element"
 	end
-	return nil
+	return nil -- the Prism Blade's too: its Element line says it
 end
 
 -- A weapon's Power as its Attack (weapons round 4, owner 2026-11-25: "better numbers for kids ... rather than x1.30"):
@@ -94,10 +94,13 @@ function WeaponText.stats(cfg: any, weaponId: string, owned: { grade: string, le
 	local rows: { Row } = {
 		{ label = "Attack", value = tostring(WeaponText.attack(WeaponRules.shownPower(cfg, combat, weaponId, grade, level))) },
 	}
-	local element = if weapon.prism then "Always strong against every element"
-		elseif weapon.element then `{elementName(weapon.element)} · bonds with {elementName(weapon.element)} creatures`
-		else "None"
-	table.insert(rows, { label = "Element", value = element })
+	if weapon.prism then
+		table.insert(rows, { label = "Element", value = "Always strong against every element", highlight = true })
+		table.insert(rows, { label = "Supers", value = "Use your creature's element weapon" })
+	else
+		local element = if weapon.element then `{elementName(weapon.element)} · bonds with {elementName(weapon.element)} creatures` else "None"
+		table.insert(rows, { label = "Element", value = element })
+	end
 	local perk = WeaponRules.perk(cfg, weaponId, grade)
 	local words = if perk then perkWords(perk) else nil
 	if words then
@@ -475,16 +478,6 @@ function WeaponText.skill(hud: any, cfg: any, weaponId: string): Skill
 		name = string.upper(string.sub(name, 1, 1)) .. string.lower(string.sub(name, 2))
 	end
 	return { icon = spec.icon, name = name, text = spec.tip, short = spec.short or spec.tip }
-end
-
--- What sharing the weapon's element with your summoned creature gives (Config/Weapons BOND). nil for a weapon with no
--- element (the Prism Blade bonds with nobody since weapons round 4).
-function WeaponText.bond(cfg: any, weaponId: string): string?
-	local weapon = cfg.ById[weaponId]
-	if not weapon or not weapon.element then
-		return nil
-	end
-	return `+{percent(cfg.BOND.damage - 1)} hits and a {percent(cfg.BOND.meter - 1)} faster super with {elementName(weapon.element)} creatures`
 end
 
 -- A perk's row in the weapon window: a title and one short line ("Heals your creature", "Every 4th hit heals it 2%.");

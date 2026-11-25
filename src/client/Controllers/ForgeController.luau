@@ -443,9 +443,9 @@ local function renderPane(entry: Entry?)
 	})
 	local spots, card = recipeRow(5, weaponId, record, if done then nil else cost, cardSize, phone, if phone and hasElements then nil else pill, action == "upgrade" and not maxed)
 	if action == "upgrade" and record then
-		-- how much stronger it gets (fully upgraded: its Power)
+		-- how much stronger it gets (fully upgraded: its Attack)
 		local now = WeaponRules.shownPower(Weapons, Combat, weaponId, record.grade, record.level)
-		local words = if maxed then string.format("Power x%.2f", now) else WeaponText.powerGain(now, WeaponRules.shownPower(Weapons, Combat, weaponId, record.grade, record.level + 1))
+		local words = if maxed then WeaponText.attackLine(now) else WeaponText.powerGain(now, WeaponRules.shownPower(Weapons, Combat, weaponId, record.grade, record.level + 1))
 		local chip = UIKit.pill(pane, words, palette.good, Color3.new(1, 1, 1))
 		chip.Name = "Power"
 		chip.LayoutOrder = 8

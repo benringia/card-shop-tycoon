@@ -42,8 +42,16 @@ return {
 		expect.equal(valueOf(WeaponText.stats(Weapons, "sunforgedBlade", nil, Combat), "Perk"), "Sets the foe burning for 3 s")
 		local prism = WeaponText.stats(Weapons, "prismBlade", nil, Combat)
 		expect.equal(valueOf(prism, "Attack"), "150", "always strong (1.0 x 1.5), no bond")
-		expect.equal(valueOf(prism, "Perk"), "Always strong against the foe's element")
 		expect.equal(valueOf(prism, "Element"), "Always strong against every element")
+		expect.equal(valueOf(prism, "Perk"), nil, "its Element line says it once")
+		expect.equal(valueOf(prism, "Supers"), "Use your creature's element weapon", "round 4: it unlocks none")
+		-- the owner's "highlight that stat inside prism blade tooltip": its one edge stands out on the weapon switch's tip
+		for _, row in prism do
+			expect.equal(row.highlight == true, row.label == "Element", `{row.label} highlighted only when it's always strong`)
+		end
+		for _, row in WeaponText.stats(Weapons, "verdantBlade", nil, Combat) do
+			expect.equal(row.highlight, nil, "a plain weapon's rows aren't highlighted")
+		end
 		local steel = WeaponText.stats(Weapons, "starterSword", nil, Combat)
 		expect.equal(valueOf(steel, "Attack"), "100")
 		expect.equal(valueOf(steel, "Element"), "None")
@@ -280,12 +288,6 @@ return {
 			local skill = WeaponText.skill(CombatHud, Weapons, weapon.id)
 			assert(skill.name ~= "" and skill.text ~= "", `{weapon.id} has a skill in words`)
 		end
-	end,
-
-	["bond: what sharing its element with your creature gives, from Config/Weapons BOND"] = function()
-		expect.equal(WeaponText.bond(Weapons, "titansLance"), "+15% hits and a 50% faster super with Nature creatures")
-		expect.equal(WeaponText.bond(Weapons, "prismBlade"), nil, "round 4: no weapon bonds with every creature")
-		expect.equal(WeaponText.bond(Weapons, "starterSword"), nil, "no element, no bond")
 	end,
 
 	-- the dial's name under its title (owner 2026-11-14 pick C): the upgrade level and the element, in plain words
