@@ -641,6 +641,12 @@ is over UI (`UIKit.pointerBlocked`).
   nearest placeable cell, so `offWalls` needs nothing more for them (tests/ShopRooms). Locked rooms, the inner walls'
   rows and the door paths are blockers with `PlacementMargin` 0 (4.1 "Shop rooms"); a shelf a load finds on one moves
   to the nearest free cell.
+- **Where a new shelf's preview starts** (2026-11-25, spec `2026-11-25-pish-first-steps-design` 5): on the free cell
+  nearest where the shop floor shows at a screen spot left or right of you at half height, then a little higher in the
+  middle (`Placement.START`, `CellSearch.nearest`, within 3 cells); none in view: the free cell nearest you. It stays
+  there until a tap on the floor or a mouse move. It used to start under the screen's centre: under you, behind the
+  Rotate / Place / Cancel bar on a phone, and from the sidewalk (no floor under the centre) at the floor's corner cell,
+  off screen. Moving a placed thing still starts where it stands.
 - **Remove stock** (the shelf's Edit bar): boxes a product shelf's stock back onto the delivery pad, as many boxes as
   the pad has room for.
 - **The Storage Rack** (4.2 "Storage racks"; `Config/Shelves` kind `"Storage"`, the Build menu's Shelves tab, "Holds 9
@@ -3973,9 +3979,23 @@ All numbers in `Config/Pish`.
   ("Hi! I'm Pish!", "Welcome to <game>!"...), then the line for what to do now, which follows the player inside
   windows: his present in the Bag, then Open; Manage, Shop, the Small Pack Rack, "tap to place"; the computer, then
   First Spark's Order; the box, then the rack; behind the counter, then Charge. A window the step doesn't use makes
-  the line "Tap the X to close this window." with the paw on its X. The card moves down above the HUD tiles only when
-  at the top it would cover what he points at, his paw included (`TalkRules.cardAtTop`); down there it rises above a
-  HUD tile he points at so his paw shows, and keeps clear of the HUD's side columns on phones. Cues: gold paw prints to the place along the walking route (Roblox's pathfinding round walls and shops, about one
+  the line "Tap the X to close this window." with the paw on its X. **The card never covers what he points at**
+  (2026-11-25, owner's look A, spec `2026-11-25-pish-first-steps-design`: fresh-save runs on a phone found it on the
+  Bag app, the Phone's second row, and on the Small Pack Rack's $100 button, and a tap there hit the card, so nothing
+  happened; on a laptop window it hid most of the $100 button; the funnel lost 7 of 17 in his first three steps): each
+  spot, top then bottom (above the HUD tiles), is the card plus Skip's docked 84 x 48 tap area while it shows
+  (`TutorialCues.skipBox`); the card takes the first spot leaving both the target (what the ring goes round) and the
+  paw's 82 px room clear, else the first leaving the target clear, else the one covering least of it
+  (`TalkRules.pickSpot` / `cardPlace`; the register's side spot and a fight's top as before). Down there it rises above
+  a HUD tile he points at so his paw shows, and keeps clear of the HUD's side columns on phones. In the Shop his paw
+  is on a tile's `Buy` button while the ring goes round the whole tile (`TutorialCues.pawOn(target, around)`; the rack
+  step and his shop lessons). **On a phone** the Bag is an app in the Phone, so his present step says "I brought you a
+  present! Tap the Phone." then "Tap Bag." (his gift "Open it in your Bag! Tap the Phone."; the trophy lesson "Tap the
+  Phone." / "Tap Bag."); a computer keeps "Open your Bag!". **"Let's go inside!"**: you wake at your door on the
+  sidewalk, so the rack step, with nothing open and not placing, first leads a player outside the shop (`Pish.INSIDE`:
+  inside is 3 studs past the front edge, `TutorialRules.insideShop`) along his paw trail to a spot 12 studs in; no new
+  step, so the funnel stays comparable. Placing the rack his paw hangs over its preview (which starts in view, 4.3):
+  "Tap Place!", or "Tap an empty spot on the floor, then Place!" while it's red. Cues: gold paw prints to the place along the walking route (Roblox's pathfinding round walls and shops, about one
   every 3 studs up to 48, `Util/TrailRules`; owner 2026-11-16: "chikin paws are passes through things"; a straight line
   only when no route is found) and a bouncing gold paw over a thing in the shop, drawn on the screen
   so walls and closed doors don't hide them (none while a window is open, so they never sit on it); a bouncing gold
@@ -5524,6 +5544,10 @@ loading: key `Player_<id>_test<n>`); a reminder shows on joining the test save, 
 Studio on the test slot plays its own save, `Player_<id>_studio` (2026-11-16: Studio checks were landing on the owner's
 live playthrough), so Studio and the live game never share one.
 Anyone else's `/slot` does nothing. (`SaveSlotService`, pure `Server/Util/SaveSlots`, Lune-tested.)
+**Studio's fresh switch** (2026-11-25, built to play a new player's first minutes on a phone): `Config/Data.STUDIO_FRESH`
+true makes every Studio Play load a brand-new save from ProfileStore's Mock, kept in memory and never written, whoever
+plays (`SaveSlots.fresh`: never outside Studio); the real and test saves aren't touched. Off in the repo; flip it on
+locally for a check and back off after.
 
 Schema history: v1 first release; v2 moved displayed cards onto `layout` entries and dropped the unused `showcase` list; v3 added the `beasts` table; v4 made stars start at 0 (old star counts drop by one); v5 gave every copy a grade (rolled per copy on upgrade); v6 added `jobs`; v7 added `party`; v8 added `resting`; v9 added `pvp`; v10 added `items`; v11 added `pity`; v12 added `bosses`; v13 added `seenWelcome` (true for everyone who played before it, so the cinematic only greets new players); v14 added `seenSword` (false for everyone, so old players see the first-sword popup once too); v15 added `swordFights` (0 for everyone, so everyone sees the button names for 3 boss fights); v16 added `weapons` (empty) and `equippedWeapon` (the Steel Sword) for weapons round 1; v17 added `tutorial` (the first visit with Pish; existing saves "done" with their first pack given and his gift still to come, so only new players go through it); each `bosses` record gained `weaponPity` (read as 0 when missing, no bump: an older server dropping it only resets the pity); `tutorial` gained `customerSent` (read as false when missing, true for v17's existing shops; no bump: an older server dropping it allows one more of Pish's customers). v18 added `combat` (Chikin's combat tutorial, the same shape; done for every shop past Pish's tour, still to do for a player mid-way through it). v19 added `dungeon` (`secretFound` and `seenIntro` false for everyone; a junk value is replaced). v20 added `title` ("" for everyone: automatic, the same title as before; a saved string kept, junk replaced). v21 added `upgrades`, `skipTokens` and `purchases` (empty for everyone; a good skip count kept, junk replaced). v22 added `support` (no gifts for everyone; good counts kept). v23 added `titles` (`known`, `fresh` empty, `seeded` false: the first load counts the titles a player already has without telling). v24 added `turts` (nothing bought for everyone; good ids kept, a broken "restock now" roll dropped). v25 added `decor` (Cozy Wood in use and no looks bought for everyone; good ids kept, cleaned against Config/Decor on load). v26 added `windows` (none for everyone; a saved list kept and cleaned on load by `WindowRules.clean`, which pays back any window that no longer fits). v27 added `luck` (no bought luck for everyone). v28 added `unlocks` (none for everyone). v29 added `seenPrologue` (true for every save from before it, so the prologue only greets new players). v30 added `gifts` (the round at day 1, nothing played or earned, for everyone; a saved table kept and cleaned on load by `GiftRules.clean`). v31 kept `combat`'s shape but reordered Chikin's steps (the sword and a fight with it in his first visit): a tour in progress keeps its place by step name. v32 added `tips` (none seen for everyone; a saved table kept and cleaned on load by `TipRules.clean`). v33 added `quests` and `lastSeen`; v34 added `weekly`. v35 kept `tutorial`'s shape but put Pish's "summonPal" step second (owner 2026-11-17): a saved step from 2 on moves one along, so a tour in progress keeps its place. v36 added `mainQuests` (none paid for everyone; the items standing in the shop at load count as paid). v37 added `events` (Lucky Sunday's luck never given, for everyone; a saved table kept and cleaned on load by `EventRules.clean`). v38 added `codes` (none used, for everyone; a saved list kept and cleaned on load by `CodeRules.clean`). v40 changed no shape: it moves `xp` onto the harder curve past Lv 20 at the same level and progress (owner 2026-11-20, 7.2). v39 changed no shape: it drops `posters`, a field built and removed the same day and never released (posters are decor in `windows` now, as `Config/Windows` poster styles). A service that didn't load for a player (e.g. no free plot) never overwrites
 their saved data. v41 added `stats.bossKills` (the plaza's boss kills ranking), starting at the number of bosses the save has cleared.
@@ -7220,6 +7244,11 @@ boss models; the ranch and Heroic tiers come after those.
   Restocker's report or the racks hint) scrolls to Collect on a short screen; "Customers want this!" shows on the First
   Spark card before a new shop has any shelf. Not checked in Studio before the merge: the pallet meter on a phone (device
   simulator) and "Found it all!" end to end (the test shop stocks one product; the rule is Lune-tested).
+- Pish's first steps, left out (spec 2026-11-25-pish-first-steps-design): the results screen's set bar ("First Spark
+  set 4/37") sits on the card names on a short phone; keeping the lineup under it (`PackOpeningLayout.LAYOUT.topReserve`
+  96 -> 156) shrinks the cards up to 30% on an 800 x 360 phone (134 -> 93 px tall), so it needs a layout pick with a
+  mockup (smaller cards, a slimmer bar, or the bar elsewhere). The whole Bag window draws at about half size on a short
+  phone (its 160 x 48 Open button is 79 x 24 on screen): a phone pass over its scale.
 - Not reproduced (2026-11-06): pack models on a freshly stocked shelf "slow to render" after joining (the server
   builds them at once, the client had them in 0.05 s, assets preloaded); waiting on how long and which restock.
 - Boss cash pays on every win with no cooldown (only items wait LOOT_COOLDOWN): a strong party farming the Meadow
