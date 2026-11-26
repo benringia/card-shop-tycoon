@@ -16,6 +16,7 @@ local BinderCovers = require(Config:WaitForChild("BinderCovers"))
 local Bosses = require(Config:WaitForChild("Bosses"))
 local CardDesign = require(Config:WaitForChild("CardDesign"))
 local Combat = require(Config:WaitForChild("Combat"))
+local Mutations = require(Config:WaitForChild("Mutations"))
 local PackFx = require(Config:WaitForChild("PackFx"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local UIIcons = require(Config:WaitForChild("UIIcons"))
@@ -23,6 +24,7 @@ local WeaponLooks = require(Config:WaitForChild("WeaponLooks"))
 local Weapons = require(Config:WaitForChild("Weapons"))
 local WeaponRules = require(Shared:WaitForChild("Util"):WaitForChild("WeaponRules"))
 local WeaponText = require(Shared:WaitForChild("Util"):WaitForChild("WeaponText"))
+local MutationRules = require(Shared:WaitForChild("Util"):WaitForChild("MutationRules"))
 
 local ClientUtil = script.Parent :: Instance
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
@@ -99,6 +101,69 @@ local function picture(art: Frame, weaponId: string)
 	centered(P.text(art, SWORD, { x = 0.15, y = 0.24, w = 0.7, h = 0.42 }, WHITE, 4))
 end
 
+-- A mutated weapon's mark (owner 2026-11-26, pick A; WeaponLooks.CARD.mutation): a bright line and a soft glow round
+-- the card's edge in the mutation's card rarity colour (as the blade's rim), and its group's icon on a disc over the
+-- art's bottom left; thinner on a small card, no disc on a tiny one
+local function mutationMark(face: Frame, mutation: MutationRules.Mutation)
+	local look = CARD.mutation
+	local tint = CardFace.getRarityColor(mutation.rarity)
+	local function ring(name: string, transparency: number, zIndex: number): UIStroke
+		local edge = Instance.new("Frame")
+		edge.Name = name
+		edge.Size = UDim2.fromScale(1, 1)
+		edge.BackgroundTransparency = 1
+		edge.ZIndex = zIndex
+		edge.Parent = face
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(CardDesign.CORNER, 0)
+		corner.Parent = edge
+		local stroke = Instance.new("UIStroke")
+		stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		stroke.Color = tint
+		stroke.Transparency = transparency
+		stroke.Parent = edge
+		return stroke
+	end
+	local halo = ring("MutationGlow", look.haloTransparency, 1)
+	local line = ring("MutationEdge", 0, 9)
+	local disc = Instance.new("Frame")
+	disc.Name = "MutationBadge"
+	disc.Position = UDim2.fromScale(look.badgeX, look.badgeY)
+	disc.Size = UDim2.fromScale(look.badge, look.badge)
+	disc.SizeConstraint = Enum.SizeConstraint.RelativeXX
+	disc.BackgroundColor3 = tint
+	disc.ZIndex = 9
+	disc.Parent = face
+	local round = Instance.new("UICorner")
+	round.CornerRadius = UDim.new(0.5, 0)
+	round.Parent = disc
+	local rim = Instance.new("UIStroke")
+	rim.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	rim.Color = WHITE
+	rim.Thickness = 1.5
+	rim.Parent = disc
+	local glyph = Instance.new("ImageLabel")
+	glyph.Name = "Group"
+	glyph.BackgroundTransparency = 1
+	glyph.AnchorPoint = Vector2.new(0.5, 0.5)
+	glyph.Position = UDim2.fromScale(0.5, 0.5)
+	glyph.Size = UDim2.fromScale(look.glyph, look.glyph)
+	glyph.Image = UIIcons[MutationRules.words(Mutations, mutation).icon] or UIIcons.Sparkle or ""
+	glyph.ZIndex = 10
+	glyph.Parent = disc
+	local function fit()
+		local width = face.AbsoluteSize.X
+		if width <= 0 then
+			return
+		end
+		line.Thickness = math.clamp(width * look.perPixel.edge, look.edge[1], look.edge[2])
+		halo.Thickness = math.clamp(width * look.perPixel.halo, look.halo[1], look.halo[2])
+		disc.Visible = width >= look.hideBadgeUnder
+	end
+	face:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
+	fit()
+end
+
 local function owned(frame: Frame, weapon: Weapons.Weapon, record: Owned)
 	local face = P.newFace(frame)
 	P.addRim(face, CardDesign.RIMS[weapon.rarity] or CardDesign.RIMS.Common)
@@ -122,6 +187,10 @@ local function owned(frame: Frame, weapon: Weapons.Weapon, record: Owned)
 	end
 	local power = WeaponRules.shownPower(Weapons, Combat, weapon.id, record.grade, record.level)
 	centered(P.text(face, WeaponText.attackLine(power), layout.VALUE, CardDesign.VALUE_TEXT, 7)).Name = "Power" -- "Attack 151" (weapons round 4)
+	local mutation = MutationRules.read(Mutations, record.mutation)
+	if mutation then
+		mutationMark(face, mutation)
+	end
 	P.lift(frame, face)
 end
 
@@ -208,7 +277,8 @@ end
 -- What a weapon's card shows now, as a key: redraw only when it changes (faces are costly to build)
 function WeaponFace.key(weaponId: string, record: Owned?, progress: Progress?): string
 	if record then
-		return `{weaponId}:{record.grade}:{record.level}`
+		local mutation = record.mutation -- (a new mutation redraws it: its mark)
+		return `{weaponId}:{record.grade}:{record.level}:{if mutation then `{mutation.id}/{mutation.rarity}` else ""}`
 	end
 	return `{weaponId}:locked:{if progress then progress.have else 0}`
 end

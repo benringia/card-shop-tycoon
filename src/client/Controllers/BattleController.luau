@@ -384,7 +384,7 @@ end
 -- Damage numbers pop (Util/DamagePop, AttackFx.NUMBERS): each bursts in big and settles, rises, drifts a little to one
 -- side so numbers landing together don't sit on each other, and fades; one loop moves them all
 -- burst: a strong hit's gold burst behind the number (Util/StrongBurst), popping and fading with it
-type FloatingNumber = { gui: BillboardGui, label: TextLabel, stroke: UIStroke, scale: UIScale, style: string, born: number, drift: number, burst: { step: (number, number) -> () }? }
+type FloatingNumber = { gui: BillboardGui, label: TextLabel, stroke: UIStroke, scale: UIScale, style: string, born: number, drift: number, burst: { step: (number, number) -> () }?, tag: TextLabel?, tagStroke: UIStroke? }
 local floating: { FloatingNumber } = {}
 local floatingBound = false
 
@@ -404,6 +404,11 @@ local function stepNumbers()
 		number.label.Rotation = pose.rotation
 		number.label.TextTransparency = 1 - pose.alpha
 		number.stroke.Transparency = 1 - pose.alpha
+		local tag, tagStroke = number.tag, number.tagStroke
+		if tag and tagStroke then
+			tag.TextTransparency = 1 - pose.alpha
+			tagStroke.Transparency = 1 - pose.alpha
+		end
 		if number.burst then
 			number.burst.step(pose.scale, pose.alpha)
 		end
@@ -413,8 +418,8 @@ local function stepNumbers()
 end
 
 -- A number that pops over a fighter (style: "normal" | "crit" | "strong" | "strongPlain" | "weak" | "heal" | "tick";
--- big: a crit)
-local function floatText(id: string, text: string, color: Color3, big: boolean?, style: string?)
+-- big: a crit); `tag`: a small word over it that pops and fades with it (a Thorns reflect's "THORNS")
+local function floatText(id: string, text: string, color: Color3, big: boolean?, style: string?, tag: string?)
 	local marker = markerFor(id)
 	if not marker then
 		return
@@ -422,16 +427,17 @@ local function floatText(id: string, text: string, color: Color3, big: boolean?,
 	local kind = style or (if big then "crit" else "normal")
 	-- a strong hit pops like a crit over a gold burst (owner 2026-11-25: "bigger"; Config/AttackFx NUMBERS.STRONG_BURST)
 	local large = kind == "crit" or kind == "strong"
+	local tagRoom = if tag then 16 else 0
 	local gui = Instance.new("BillboardGui")
-	gui.Size = if large then UDim2.fromOffset(220, 58) else UDim2.fromOffset(150, 40)
+	gui.Size = (if large then UDim2.fromOffset(220, 58) else UDim2.fromOffset(150, 40)) + UDim2.fromOffset(0, tagRoom)
 	gui.StudsOffset = Vector3.new(0, NUMBER_LIFT, 0)
 	gui.AlwaysOnTop = true
 	gui.LightInfluence = 0
 	gui.Adornee = marker
 	local label = Instance.new("TextLabel")
-	label.Size = UDim2.fromScale(1, 1)
+	label.Size = UDim2.new(1, 0, 1, -tagRoom)
 	label.AnchorPoint = Vector2.new(0.5, 0.5) -- pops from its middle
-	label.Position = UDim2.fromScale(0.5, 0.5)
+	label.Position = UDim2.new(0.5, 0, 0.5, tagRoom / 2)
 	label.BackgroundTransparency = 1
 	label.Font = Enum.Font.FredokaOne
 	label.TextScaled = true
@@ -450,6 +456,27 @@ local function floatText(id: string, text: string, color: Color3, big: boolean?,
 	local scale = Instance.new("UIScale")
 	scale.Scale = 0
 	scale.Parent = label
+	-- the tag rides on the number (its child: the same pop and turn), just over it
+	local tagLabel: TextLabel? = nil
+	local tagStroke: UIStroke? = nil
+	if tag then
+		local small = Instance.new("TextLabel")
+		small.Name = "Tag"
+		small.AnchorPoint = Vector2.new(0.5, 1)
+		small.Position = UDim2.fromScale(0.5, 0)
+		small.Size = UDim2.new(0.6, 0, 0, tagRoom)
+		small.BackgroundTransparency = 1
+		small.Font = Enum.Font.FredokaOne
+		small.TextScaled = true
+		small.TextColor3 = Color3.new(1, 1, 1)
+		small.Text = tag
+		small.Parent = label
+		local edge = Instance.new("UIStroke")
+		edge.Thickness = 1.5
+		edge.Color = stroke.Color
+		edge.Parent = small
+		tagLabel, tagStroke = small, edge
+	end
 	gui.Parent = player:WaitForChild("PlayerGui") -- a BillboardGui inside another ScreenGui never draws
 	local drift = AttackFx.NUMBERS.DRIFT
 	table.insert(floating, {
@@ -461,6 +488,8 @@ local function floatText(id: string, text: string, color: Color3, big: boolean?,
 		born = os.clock(),
 		drift = (math.random() * 2 - 1) * drift,
 		burst = if kind == "strong" then require(ClientUtil:WaitForChild("StrongBurst")).make(gui) else nil,
+		tag = tagLabel,
+		tagStroke = tagStroke,
 	})
 	if not floatingBound then
 		floatingBound = true
@@ -1275,6 +1304,10 @@ local function onEvents(events: { any })
 			if event.heal and event.from then
 				floatText(event.from, `+{event.heal}`, HEAL_COLOR, false, "heal")
 			end
+		elseif event.type == "thorns" and typeof(event.to) == "string" and typeof(event.damage) == "number" then
+			-- a Thorns mutation reflecting part of a hit (owner 2026-11-26): a green number tagged THORNS over the foe
+			local thorns = AttackFx.THORNS
+			floatText(event.to, `-{event.damage}`, Color3.fromRGB(thorns.color[1], thorns.color[2], thorns.color[3]), false, thorns.number, thorns.tag)
 		elseif event.type == "regen" and typeof(event.to) == "string" and string.sub(event.to, 1, 3) == "a:@" and event.heal then
 			-- A Grade S Healing Rain tick on a player (creatures' ticks show through FightFx)
 			floatText(event.to, `+{event.heal}`, HEAL_COLOR, false, "heal")

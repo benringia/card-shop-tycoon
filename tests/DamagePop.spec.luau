@@ -4,6 +4,19 @@ local cfg = require("../src/shared/Config/AttackFx").NUMBERS
 local expect = require("./lib/expect")
 
 return {
+	-- owner 2026-11-26 (pick B, "make the thorns subtle"): a Thorns reflect pops a normal-sized green number tagged
+	-- THORNS over the foe, and fewer, smaller thorns than a Bloom attack's landing come out of the ground under it
+	["a Thorns reflect: a green number tagged THORNS, subtle thorns under the foe"] = function()
+		local AttackFx = require("../src/shared/Config/AttackFx")
+		local thorns = AttackFx.THORNS
+		expect.equal(thorns.tag, "THORNS")
+		expect.equal(thorns.number, "normal", "never a crit-sized pop")
+		expect.equal(#thorns.color, 3)
+		expect.equal(thorns.spikes < AttackFx.THROW.ELEMENT.Bloom.count, true, "fewer thorns than a Bloom hit's")
+		expect.equal(thorns.scale < 1, true, "and smaller")
+		expect.equal(thorns.minScale <= thorns.maxScale, true)
+	end,
+
 	["a number bursts in big, then settles"] = function()
 		local start = DamagePop.at(0, "normal", cfg)
 		expect.equal(start.scale < 1, true, "starts small")

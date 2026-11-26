@@ -1080,6 +1080,20 @@ function FightFx.new(resolve: Resolve): Dispatcher
 					end
 				end
 			end
+			-- A Thorns mutation reflecting a hit back at the foe (owner 2026-11-26, pick B, subtle; AttackFx.THORNS): a few
+			-- thin thorns out of the ground under it, sized to it (its number pops in BattleController)
+			if typeof(event) == "table" and event.type == "thorns" and typeof(event.to) == "string" then
+				local _, foeView = monsterOf(event.to)
+				if foeView and not Spotlight.active() then
+					local look = AttackFx.THORNS
+					local at = foeView.root.Position
+					local ground = Vector3.new(at.X, RingFx.groundY(at.X, at.Y, at.Z), at.Z)
+					local size = math.clamp(foeView.height / look.height, look.minScale, look.maxScale)
+					local color = Color3.fromRGB(look.color[1], look.color[2], look.color[3])
+					ElementFx.thornsBack(ground, color, look.scale * size, look.spikes, foeView.height * look.spread)
+				end
+				continue
+			end
 			-- A boss's heal (no sender: its target is the boss): its clip, its pillar of light (Util/BossSkillFx)
 			if typeof(event) == "table" and event.type == "heal" and event.from == nil and typeof(event.to) == "string" then
 				local boss, bossView = monsterOf(event.to)

@@ -252,6 +252,22 @@ return {
 		lockSize = 0.26, -- of the art's width
 		lockedName = { 201, 207, 230 },
 		lockedText = { 213, 219, 240 },
+		-- A mutated weapon's card (owner 2026-11-26, pick A: "add an indication for mutations on weapon cards";
+		-- WeaponFace): a bright line and a soft glow round its edge in the mutation's card rarity colour (as the blade's
+		-- rim), `perPixel` of the card's width between the [min, max] px; its group's icon on a disc `badge` of the
+		-- card's width at (badgeX, badgeY), over the art's bottom left above the Attack line, the glyph `glyph` of the
+		-- disc; no badge on a card under `hideBadgeUnder` px wide (the Forge list's thumbnails keep the edge)
+		mutation = {
+			edge = { 1.5, 3 },
+			halo = { 3, 7 },
+			perPixel = { edge = 0.02, halo = 0.05 },
+			haloTransparency = 0.55,
+			badge = 0.2,
+			badgeX = 0.05,
+			badgeY = 0.6,
+			glyph = 0.66,
+			hideBadgeUnder = 70,
+		},
 	},
 	-- The weapon window's icons (Config/UIIcons names; WeaponLookRules.familyIcon / perkIcon): a family's, a perk's by
 	-- kind (a venom burn by its look)

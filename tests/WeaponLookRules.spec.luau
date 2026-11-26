@@ -9,6 +9,19 @@ local UIIcons = require("../src/shared/Config/UIIcons")
 local expect = require("./lib/expect")
 
 return {
+	-- owner 2026-11-26 (pick A of the mockups: "Binder: add an indication for mutations on weapon cards"): a mutated
+	-- weapon's card glows at its edge in the mutation's rarity colour with its group's icon on a badge; thin lines and
+	-- no badge on a small card (the Forge list's thumbnails)
+	["a mutated weapon's card: a glowing edge and a badge, none on a tiny card"] = function()
+		local mark = Looks.CARD.mutation
+		expect.equal(mark.edge[1] < mark.edge[2] and mark.halo[1] < mark.halo[2], true, "line widths grow with the card")
+		expect.equal(mark.edge[2] < mark.halo[2], true, "the bright line inside the soft glow")
+		expect.equal(mark.haloTransparency > 0 and mark.haloTransparency < 1, true, "the glow see-through")
+		expect.equal(mark.badge > 0 and mark.badge <= 0.25, true, "the badge a corner piece of the card")
+		expect.equal(mark.badgeY + mark.badge <= 0.83, true, "above the Attack line")
+		expect.equal(mark.hideBadgeUnder > 40, true, "not on the Forge list's 40 px thumbnails")
+	end,
+
 	["+0: the rarity's resting inner glow, no aura"] = function()
 		local layers = WeaponLookRules.layers(Looks, "Common", 0, "C", "hand")
 		expect.near(layers.edge, Looks.REST.Common, 1e-9)

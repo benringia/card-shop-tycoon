@@ -496,19 +496,7 @@ local function recipeRow(order: number, weaponId: string, record: Owned?, cost: 
 	card.Parent = row
 	-- The Forge tab shows what it will look like (Grade C, +0); the others, yours
 	WeaponFace.render(card, nil, weaponId, record or (if tab == FORGE then { grade = "C", level = 0 } else nil), nil)
-	-- the Mutate tab: the card's edge in its mutation's colour, as the blade glows (owner 2026-11-26)
-	local mutation = if tab == MUTATE and record and record.mutation then MutationRules.read(Mutations, record.mutation) else nil
-	if mutation then
-		local rim = Instance.new("UIStroke")
-		rim.Name = "MutationRim"
-		rim.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-		rim.Color = Rarities.Tiers[mutation.rarity].color
-		rim.Thickness = ForgeLayout.MUTATION_ROW.rim
-		rim.Parent = card
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(CardDesign.CORNER, 0)
-		corner.Parent = card
-	end
+	-- (a mutated weapon's card carries its own glowing edge and badge: WeaponFace)
 	local openCard = Instance.new("TextButton")
 	openCard.Name = "OpenCard"
 	openCard.Text = ""

@@ -380,6 +380,27 @@ function ElementFx.throwLand(style: string, ground: Vector3, at: Vector3, from: 
 	end
 end
 
+-- A Thorns mutation reflecting a hit (owner 2026-11-26, pick B, "make the thorns subtle"; AttackFx.THORNS): `count`
+-- thin thorns out of the ground round `ground` within `radius`, one after another, short-lived; the thorns of a Bloom
+-- landing without its ring, shard burst or light
+function ElementFx.thornsBack(ground: Vector3, color: Color3, scale: number, count: number, radius: number)
+	local s = scale
+	for index = 1, detail(count) do
+		local spot = scatter(ground, radius)
+		local height = (1.6 + math.random() * 1.2) * s
+		task.delay(index * 0.05, function()
+			local anchor = holder(spot + Vector3.new(0, height * 0.4, 0), 0.8)
+			local thorn = { size = { 0.35 * s, height }, life = 0.45, rotation = { -12, 12 }, orientation = Enum.ParticleOrientation.FacingCameraWorldUp, fade = 0.5 }
+			emitter(anchor, "shard", color, thorn):Emit(1)
+			local core = table.clone(thorn)
+			core.size = { 0.15 * s, height * 0.5 }
+			core.brightness = 1.6
+			core.life = 0.3
+			emitter(anchor, "shard", WHITE, core):Emit(1)
+		end)
+	end
+end
+
 -- A comet from `from` to wherever `target()` is, rising `arc` studs at its middle, taking `seconds`; then
 -- `onArrive(position)`. o: scale, flames (fire licking off it), rings (water rings spiralling round it, how many
 -- layers), sparkle (gold sparkles: a grade S trail), trail (its element's own: throwTrail; with it a longer ribbon)

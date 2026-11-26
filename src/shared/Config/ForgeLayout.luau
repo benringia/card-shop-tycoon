@@ -22,8 +22,8 @@ return {
 	ELEMENT = 52, -- the element buttons' row (48 px buttons)
 	-- The Mutate tab's current mutation (owner 2026-11-26: "make sure the mutation on this window is noticeable", the
 	-- mockup's row): a row in the rarity colour under the recipe (`fill`: its colour this far to white; `ink`, `labelInk`:
-	-- its words this far to black), `height` on a computer; on a phone a slim `phone` row takes the pill's place so it
-	-- stays above the fold. `rim`: the weapon card's edge in the same colour. `chip`: a list row's mutation
+	-- its words this far to black), `height` on a computer; on a phone a slim `phone` row comes first, over the recipe,
+	-- so it stays above the fold. `chip`: a list row's mutation (the card's own glowing edge: WeaponLooks.CARD.mutation)
 	MUTATION_ROW = {
 		width = 420,
 		height = 44,
@@ -39,7 +39,6 @@ return {
 		ink = 0.38,
 		labelInk = 0.45,
 		none = { 201, 169, 220 }, -- no mutation yet: lilac
-		rim = 3,
 		chip = { height = 18, text = 11, icon = 14 },
 	},
 }

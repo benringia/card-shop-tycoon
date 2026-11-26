@@ -49,6 +49,22 @@ return {
 			Shade = { trail = "wisps", land = "cross", count = 8 },
 		} :: { [string]: { trail: string, land: string, count: number } },
 	},
+	-- A Thorns mutation reflecting a hit (owner 2026-11-26, pick B of the mockups, "make the thorns subtle"): a green
+	-- number tagged THORNS over the foe (BattleController) and a few thin thorns out of the ground under it
+	-- (ElementFx.thornsBack from FightFx): `spikes` of them, `scale` x the foe's size (its height / `height`, between
+	-- `minScale` and `maxScale`), spread over `spread` x its height round its feet; fewer and smaller than a Bloom
+	-- attack's landing, no ring, burst or light
+	THORNS = {
+		color = { 123, 224, 90 },
+		tag = "THORNS",
+		number = "normal",
+		spikes = 3,
+		scale = 0.6,
+		height = 10,
+		minScale = 0.8,
+		maxScale = 1.6,
+		spread = 0.15,
+	},
 	MAX_ACTIVE = 12, -- effects playing at once (more are skipped; the damage numbers still show)
 	MAX_ACTIVE_LOW = 4, -- with the low-graphics switch off (Util/Extras)
 	-- Roblox-licensed Pro Sound Effects. A basic attack's hit (and a monster's strike) is a list of clips from one series:
