@@ -158,12 +158,9 @@ return {
 		expect.equal(CondenseRules.copyLabel({ beast = true, level = 12, count = 1 }), "Lv 12")
 		-- the line about better copies left out, only when there are some
 		expect.isNil(CondenseRules.safeWords(0))
-		expect.equal(CondenseRules.safeWords(1), "Your 1 better copy stays safe: it is never squished.")
-		expect.equal(CondenseRules.safeWords(3), "Your 3 better copies stay safe: they are never squished.")
-		-- how many copies stand in a row of the picker
-		expect.equal(CondenseRules.pickColumns(370, 88, 6), 4)
-		expect.equal(CondenseRules.pickColumns(369, 88, 6), 3)
-		expect.equal(CondenseRules.pickColumns(40, 88, 6), 1)
+		-- (owner 2026-11-26: "change "Squish" to "Combine"": no squishing in the words)
+		expect.equal(CondenseRules.safeWords(1), "Your 1 better copy stays safe: it is never used up.")
+		expect.equal(CondenseRules.safeWords(3), "Your 3 better copies stay safe: they are never used up.")
 	end,
 
 	["finds the card a plain main became"] = function()
@@ -344,10 +341,11 @@ return {
 		local function say(copies: number, shards: number, missing: number, max: boolean?): string
 			return CondenseRules.say({ name = "Reefray", copies = copies, shards = shards, missing = missing, max = max == true, maxStars = 5 })
 		end
-		expect.equal(say(4, 0, 0), "Squish 4 extra Reefray into this one. It gets a star!")
-		expect.equal(say(1, 0, 0), "Squish 1 extra Reefray into this one. It gets a star!")
-		expect.equal(say(2, 2, 0), "Squish 2 extra Reefray and 2 Star Shards into this one. It gets a star!")
-		expect.equal(say(3, 1, 0), "Squish 3 extra Reefray and 1 Star Shard into this one. It gets a star!")
+		-- owner 2026-11-26: "change "Squish" to "Combine""
+		expect.equal(say(4, 0, 0), "Combine 4 extra Reefray into this one. It gets a star!")
+		expect.equal(say(1, 0, 0), "Combine 1 extra Reefray into this one. It gets a star!")
+		expect.equal(say(2, 2, 0), "Combine 2 extra Reefray and 2 Star Shards into this one. It gets a star!")
+		expect.equal(say(3, 1, 0), "Combine 3 extra Reefray and 1 Star Shard into this one. It gets a star!")
 		expect.equal(say(2, 0, 2), "Find 2 more Reefray to add a star.")
 		expect.equal(say(3, 0, 1), "Find 1 more Reefray to add a star.")
 		expect.equal(say(0, 0, 0, true), "Reefray has all 5 stars!")

@@ -3,14 +3,16 @@
 -- The first tab is now "Condense" or something where the players put the card they want to condense. the condenser
 -- then autofills the extra cards(weakest)"; the mockups of artifact 72BD8xZJT75xL5ityfY621; Util/StationPick builds the
 -- shape, Config/Condenser WINDOW its words). Tabs: Condense and Ready (a gold count). Condense: a slot on the left ("Put
--- a card in"); a tap opens the card picker over the window (your cards with extra copies as tiles, Ready ones first),
--- and the card picked sits in the slot with Change card. On the right its picture recipe (since 2026-11-20, owner: "a
--- kid wouldnt understand this"; words and spots in Util/CondenseRules): one sentence ("Squish 4 extra Reefray into this
--- one. It gets a star!"), "Filled in for you: your 4 weakest extras" (the copies the server would take, never one
--- better than the card), the copies as little cards, an arrow, the card with its stars (the new one beating), "+40
--- Power" and "Pick other copies" (which copy gets the star: Recipe.copyPicker, the best grade first), and the big "Add a
--- star!" pinned at the box's bottom with how long it takes. Star Shards are tapped into empty spots (and out again).
--- Ready: the cards that can take a star now; a tap puts one in. On Add a star the copies fly into the card. Condense
+-- a card in"); a tap opens the card picker over the window (your cards with extra copies as tiles, Ready ones first);
+-- a card picked shows its copies (owner 2026-11-26: "when I click on a card, it then should let me pick which copy of
+-- that card would I want to use"; a card with one copy goes straight in), and the copy picked sits in the slot with
+-- Change card. On the right its picture recipe (since 2026-11-20, owner: "a kid wouldnt understand this"; words and
+-- spots in Util/CondenseRules): one sentence ("Combine 4 extra Reefray into this one. It gets a star!"), "Filled in for
+-- you: your 4 weakest extras" (the copies the server would take, never one better than the card), the copies as little
+-- cards, the arrow in the middle, the card with its stars (the new one beating), "+40 Power" and "Pick other copies"
+-- (the same copies step), and the big "Add a star!" pinned at the box's bottom with how long it takes. Star Shards are
+-- tapped into empty spots (and out again). Ready: the cards that can take a star now; a tap shows its copies the same
+-- way. On Add a star the copies fly into the card. Condense
 -- asks the server, which re-checks everything; the binder sync redraws the window. Opened from your own Condenser's
 -- prompt with the slot empty; closes when you walk away. A finished star waits here (the player's CondenserDone
 -- attribute): opening the window shows the card with its new star popping in and Take it out.
@@ -76,10 +78,15 @@ local window: StationPick.Window
 local palette: UIKit.Palette -- the cream window's colours (UIKit.colorsFor), set in Start
 local machine: BasePart? = nil
 local tab = CONDENSE_TAB
-local picking = false -- the card picker shows over the window
+-- The picker over the window: "cards" (pick a card) or "copies" (that card's copies: which one gets the star; owner
+-- 2026-11-26: "when I click on a card, it then should let me pick which copy of that card would I want to use"); nil:
+-- none. `copiesBack`: where Back goes from the copies ("cards", or out of the picker after the Ready tab or Pick other
+-- copies)
+local picking: string? = nil
+local pickCard: string? = nil
+local copiesBack = "cards"
 local selectedCardId: string? = nil -- the card in the slot
-local mainKey: string? = nil -- chosen main copy (Candidate.key); nil = the default choice
-local choosingMain = false -- Pick other copies: the copies show in place of the recipe
+local mainKey: string? = nil -- the copy in the slot (Candidate.key); nil = the default choice
 local inFlight = false -- a Condense request is waiting for the server; the button stays locked
 local useShards = false -- Star Shards fill missing duplicates (up to half a star's cost)
 local shardCount = 0 -- from ItemsChanged
@@ -193,6 +200,7 @@ local function chosenMain(card: Card): (Candidate?, { Candidate })
 end
 
 local render: () -> ()
+local showCopies: (cardId: string, back: string) -> () -- the picker's copies step for a card (below)
 
 -- Right side ------------------------------------------------------------------------------------------------------
 
@@ -270,15 +278,16 @@ local function otherCopiesChip(parent: Instance, order: number)
 	UIKit.corner(chip, 16)
 	UIKit.outline(chip, StationPick.rgb(StationLook.BOX), 2)
 	hit.Activated:Connect(function()
-		choosingMain = true
-		render()
+		local cardId = selectedCardId
+		if cardId then
+			showCopies(cardId, "close")
+		end
 	end)
 end
 
 local function renderPane(card: Card, chosen: Candidate, candidates: { Candidate })
 	local pane = window.pane
 	StationPick.clear(pane)
-	StationPick.fullPane(window, choosingMain) -- the copy picker takes the whole box (its own Back, no big button)
 	local phone = UIKit.isShort()
 	local face = if phone then PHONE_FACE else DETAIL_FACE_SIZE
 	local paneWide = StationPick.width(window, pane)
@@ -301,14 +310,13 @@ local function renderPane(card: Card, chosen: Candidate, candidates: { Candidate
 	local could = not useShards and takes == nil and not atMax and (CondenseRules.plan(Beasts, byGrade, asMain(chosen), shardCount)) ~= nil
 	local nextStars = math.min(chosen.stars + 1, BeastRules.MAX_STARS)
 	-- a phone: the recipe on the left of the box, what goes with it in a column on the right
-	local leftWide = if phone and not choosingMain then math.floor(paneWide * PHONE_LEFT) else paneWide
+	local leftWide = if phone then math.floor(paneWide * PHONE_LEFT) else paneWide
 
 	-- one sentence: what will happen
-	local pickSay, pickSub = CondenseRules.pickSay(card.name, "star")
-	local sentence = if choosingMain then pickSay else CondenseRules.say({ name = card.name, copies = copiesIn, shards = shardsIn, missing = missing, max = atMax, maxStars = BeastRules.MAX_STARS })
+	local sentence = CondenseRules.say({ name = card.name, copies = copiesIn, shards = shardsIn, missing = missing, max = atMax, maxStars = BeastRules.MAX_STARS })
 	-- (one line or two: the recipe moves up under a short one, so the whole box fits over the button; a phone's short
 	-- box puts it at the top of the side column and the recipe at the very top)
-	local sideSay = phone and not choosingMain
+	local sideSay = phone
 	local saySize = if phone then 13 else 19
 	local say = UIKit.label(pane, sentence, Enum.Font.FredokaOne, saySize, palette.ink)
 	say.Name = "Say"
@@ -322,51 +330,6 @@ local function renderPane(card: Card, chosen: Candidate, candidates: { Candidate
 		y = sayTall + 14
 	end
 	local under = if phone then PHONE_UNDER else RECIPE.under
-
-	-- Pick other copies: every copy that could get the star as a picture, in place of the recipe
-	if choosingMain then
-		local tiles: { Recipe.CopyTile } = {}
-		for _, candidate in candidates do
-			local full = candidate.stars >= BeastRules.MAX_STARS
-			local cost = if full then 0 else BeastRules.getCondenseCost(candidate.stars) or 0
-			local tagText, tagKind = CondenseRules.rowTag(CondenseRules.countDuplicates(byGrade, asMain(candidate), Beasts), cost, (getPlan(card, candidate)) ~= nil)
-			table.insert(tiles, {
-				key = candidate.key,
-				grade = BeastRules.describeGrade(candidate.grade),
-				gradeColor = CardDesign.GRADE_COLORS[candidate.grade] or CardDesign.GRADE_COLORS.C,
-				foil = candidate.foil,
-				label = CondenseRules.copyLabel({ beast = candidate.beast ~= nil, level = candidate.level, count = candidate.count }),
-				stars = candidate.stars,
-				tag = tagText,
-				gold = tagKind == "ready",
-				chosen = candidate.key == chosen.key,
-				draw = function(holder: Frame)
-					makeFace(holder, card, candidate.foil, false, { level = candidate.level, stars = candidate.stars, grade = candidate.grade })
-				end,
-			})
-		end
-		Recipe.copyPicker(pane, {
-			panel = panel,
-			y = y,
-			edge = EDGE,
-			face = PHONE_FACE,
-			maxStars = BeastRules.MAX_STARS,
-			palette = palette,
-			sub = pickSub,
-			tiles = tiles,
-			columnsFor = CondenseRules.pickColumns,
-			onPick = function(key: string)
-				mainKey = key
-				choosingMain = false
-				render()
-			end,
-			onBack = function()
-				choosingMain = false
-				render()
-			end,
-		})
-		return
-	end
 
 	-- "Filled in for you: your 4 weakest extras" (a computer's over the recipe; a phone's in the side column)
 	local fill = CondenseRules.fillChip(copiesIn)
@@ -395,13 +358,12 @@ local function renderPane(card: Card, chosen: Candidate, candidates: { Candidate
 	local faceTall = math.clamp(StationPick.height(window, pane) - y - under - 4, if phone then 56 else 96, face.Y)
 	face = Vector2.new(math.floor(faceTall * face.X / face.Y), faceTall)
 	local slotsWide = math.clamp(leftWide - 2 * EDGE - RECIPE.arrow - face.X - 8, if phone then 90 else 110, 300)
-	local wide = if atMax then face.X else slotsWide + RECIPE.arrow + face.X
 	local recipe = Instance.new("Frame")
 	recipe.Name = "Recipe"
 	recipe.BackgroundTransparency = 1
 	recipe.AnchorPoint = Vector2.new(0.5, 0)
 	recipe.Position = UDim2.fromOffset(leftWide / 2, y)
-	recipe.Size = UDim2.fromOffset(wide, face.Y + under)
+	recipe.Size = UDim2.fromOffset(face.X, face.Y + under) -- widened once the spots are in
 	recipe.Parent = pane
 	local faceHolder = Instance.new("Frame")
 	faceHolder.Name = "Keeps"
@@ -417,8 +379,10 @@ local function renderPane(card: Card, chosen: Candidate, candidates: { Candidate
 	stars.Position = UDim2.new(1, -face.X / 2, 0, face.Y + (if phone then 4 else 6))
 
 	local spots: { GuiObject } = {}
+	local spotsWide = 0
 	if not atMax then
-		local grid = Recipe.grid(recipe, need, CondenseRules.slotColumns(need), Vector2.new(slotsWide, face.Y), StationLook.RECIPE_SPOT_TALL)
+		local grid, used = Recipe.grid(recipe, need, CondenseRules.slotColumns(need), Vector2.new(slotsWide, face.Y), StationLook.RECIPE_SPOT_TALL)
+		spotsWide = used
 		-- the copies going in, one by one, in the order they're used
 		local copies: { CondenseRules.Take } = {}
 		for _, take in takes or CondenseRules.pick(Beasts.GRADES, byGrade, asMain(chosen), copiesIn) do
@@ -432,7 +396,9 @@ local function renderPane(card: Card, chosen: Candidate, candidates: { Candidate
 				table.insert(spots, spot)
 			end
 		end
-		Recipe.arrow(recipe, slotsWide + RECIPE.arrow / 2, face.Y / 2)
+		-- the spots, the arrow in the middle of its room, the card: the whole row centred
+		recipe.Size = UDim2.fromOffset(used + RECIPE.arrow + face.X, face.Y + under)
+		Recipe.arrow(recipe, used + RECIPE.arrow / 2, face.Y / 2)
 	end
 	y += face.Y + under + 6
 
@@ -471,7 +437,7 @@ local function renderPane(card: Card, chosen: Candidate, candidates: { Candidate
 		y += ROW_TALL
 	else
 		side.Position = UDim2.fromOffset(0, face.Y + 2)
-		side.Size = UDim2.fromOffset(slotsWide, RECIPE.under)
+		side.Size = UDim2.fromOffset(spotsWide, RECIPE.under)
 		side.Parent = recipe
 	end
 	if not atMax then
@@ -549,28 +515,44 @@ end
 
 -- The slot and the picker ---------------------------------------------------------------------------------------------
 
--- A card goes in the slot (from the picker or the Ready tab): the Condense tab shows it with its recipe
-local function putIn(cardId: string)
-	if selectedCardId ~= cardId then
-		mainKey = nil
-		choosingMain = false
+-- A copy goes in the slot (from the picker's copies step, or a card with one copy from the picker or the Ready tab):
+-- the Condense tab shows it with its recipe. `key` nil: the card's default copy
+local function putIn(cardId: string, key: string?)
+	if selectedCardId ~= cardId or mainKey ~= key then
 		awaitingNewCard = nil
 		useShards = false
 	end
 	selectedCardId = cardId
-	picking = false
+	mainKey = key
+	picking = nil
 	tab = CONDENSE_TAB
 	render()
 end
 
 local function openPicker()
-	picking = true
+	picking = "cards"
 	render()
 end
 
+-- A card picked: its copies to choose from (Back goes to `back`: "cards" or "close"), or with one copy straight in
+local function pickCardCopies(cardId: string, back: string)
+	local card = Cards.ById[cardId]
+	local candidates = if card then getCandidates(card) else {}
+	if #candidates <= 1 then
+		putIn(cardId, if candidates[1] then candidates[1].key else nil)
+		return
+	end
+	picking = "copies"
+	pickCard = cardId
+	copiesBack = back
+	render()
+end
+showCopies = pickCardCopies
+
 -- The cards as tiles: each one's tag from its default copy (a gold Ready!, "3 more" or All stars; no Ready! while the
--- machine counts a job down: owner 2026-11-20, "it says Ready when it's still counting down")
-local function tilesFor(cards: { Card }, ready: { [string]: boolean }, busy: boolean): { StationPick.Tile }
+-- machine counts a job down: owner 2026-11-20, "it says Ready when it's still counting down"). A tap shows its copies
+-- (`back`: where their Back goes)
+local function tilesFor(cards: { Card }, ready: { [string]: boolean }, busy: boolean, back: string): { StationPick.Tile }
 	local tiles: { StationPick.Tile } = {}
 	for _, card in cards do
 		local strongest = getCandidates(card)[1]
@@ -582,7 +564,43 @@ local function tilesFor(cards: { Card }, ready: { [string]: boolean }, busy: boo
 			tag = if tagKind == "ready" and busy then nil else tagText,
 			gold = tagKind == "ready",
 			onTap = function()
-				putIn(card.id)
+				pickCardCopies(card.id, back)
+			end,
+		})
+	end
+	return tiles
+end
+
+-- The picker's copies step: every copy of the card that could get the star, the best grade first, each with its stars,
+-- "You have 2" or "Lv 12" and a gold Ready! or "3 more"; the one in the slot lit. Nil: no copies left
+local function copyTilesFor(card: Card, busy: boolean): { StationPick.CopyTile }?
+	local candidates = getCandidates(card)
+	if #candidates == 0 then
+		return nil
+	end
+	local byGrade = BinderController.GetGradedStacks()[card.id] or {}
+	local inSlot = if card.id == selectedCardId then (chosenMain(card)) else nil
+	local tiles: { StationPick.CopyTile } = {}
+	for _, candidate in candidates do
+		local full = candidate.stars >= BeastRules.MAX_STARS
+		local cost = if full then 0 else BeastRules.getCondenseCost(candidate.stars) or 0
+		local tagText, tagKind = CondenseRules.rowTag(CondenseRules.countDuplicates(byGrade, asMain(candidate), Beasts), cost, (getPlan(card, candidate)) ~= nil)
+		table.insert(tiles, {
+			key = candidate.key,
+			grade = BeastRules.describeGrade(candidate.grade),
+			gradeColor = CardDesign.GRADE_COLORS[candidate.grade] or CardDesign.GRADE_COLORS.C,
+			foil = candidate.foil,
+			label = CondenseRules.copyLabel({ beast = candidate.beast ~= nil, level = candidate.level, count = candidate.count }),
+			stars = candidate.stars,
+			maxStars = BeastRules.MAX_STARS,
+			tag = if tagKind == "ready" and busy then nil else tagText,
+			gold = tagKind == "ready",
+			chosen = inSlot ~= nil and inSlot.key == candidate.key,
+			draw = function(holder: Frame)
+				makeFace(holder, card, candidate.foil, false, { level = candidate.level, stars = candidate.stars, grade = candidate.grade })
+			end,
+			onTap = function()
+				putIn(card.id, candidate.key)
 			end,
 		})
 	end
@@ -618,7 +636,18 @@ render = function()
 		end
 	end
 	window.setTabs(tab, if busy then nil else #readyCards)
-	if picking then
+	if picking == "copies" then
+		local card = if pickCard then Cards.ById[pickCard] else nil
+		local copies = if card then copyTilesFor(card, busy) else nil
+		if card and copies then
+			local title, line = CondenseRules.pickSay(card.name, "star")
+			StationPick.show(window, "copies", title, line)
+			StationPick.copyTiles(window, copies)
+			return
+		end
+		picking = "cards" -- its copies are gone: back to the cards
+	end
+	if picking == "cards" then
 		-- Ready cards first, keeping rarest-first order inside each group
 		local sorted: { Card } = table.clone(readyCards)
 		for _, card in all do
@@ -627,11 +656,11 @@ render = function()
 			end
 		end
 		StationPick.show(window, "picking")
-		StationPick.tiles(window, window.pickerGrid, tilesFor(sorted, ready, busy), WORDS.PICK_NONE)
+		StationPick.tiles(window, window.pickerGrid, tilesFor(sorted, ready, busy, "cards"), WORDS.PICK_NONE)
 		return
 	elseif tab == READY_TAB then
 		StationPick.show(window, "ready")
-		StationPick.tiles(window, window.readyGrid, tilesFor(readyCards, ready, busy), WORDS.READY_NONE)
+		StationPick.tiles(window, window.readyGrid, tilesFor(readyCards, ready, busy, "close"), WORDS.READY_NONE)
 		return
 	end
 	StationPick.show(window, "tab")
@@ -667,10 +696,10 @@ function CondenserController.Open(part: BasePart)
 	machine = part
 	StationPick.layout(window)
 	tab = CONDENSE_TAB
-	picking = false
+	picking = nil
+	pickCard = nil
 	selectedCardId = nil
 	mainKey = nil
-	choosingMain = false
 	awaitingNewCard = nil
 	inFlight = false
 	panel.Visible = true
@@ -708,11 +737,11 @@ function CondenserController.Start()
 	window = StationPick.build(panel, list, StationLook.CONDENSER, WORDS, function(value: string)
 		if tab ~= value then
 			tab = value
-			choosingMain = false
 			render()
 		end
 	end, function()
-		picking = false
+		-- Back: from a card's copies to the cards (or out, after the Ready tab or Pick other copies); from the cards out
+		picking = if picking == "copies" and copiesBack == "cards" then "cards" else nil
 		render()
 	end, icon)
 

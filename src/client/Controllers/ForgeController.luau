@@ -518,11 +518,14 @@ local function recipeRow(order: number, weaponId: string, record: Owned?, cost: 
 	end
 	local spots: { GuiObject } = {}
 	if need > 0 then
-		local grid = Recipe.grid(row, need, if phone then need else WeaponText.spotColumns(need), slots, if phone then cardSize.Y else look.tall)
+		local grid, used = Recipe.grid(row, need, if phone then need else WeaponText.spotColumns(need), slots, if phone then cardSize.Y else look.tall)
 		for index, spot in data do
 			table.insert(spots, Recipe.spot(grid, "copy", { order = index, palette = palette, icon = if spot.icon ~= "" then spot.icon else nil, count = spot.count, short = not spot.enough }))
 		end
-		Recipe.arrow(row, slots.X + RECIPE.arrow / 2, cardSize.Y / 2)
+		-- the spots, the arrow in the middle of its room, the weapon: the row as wide as that, centred (owner 2026-11-26:
+		-- "Center arrow")
+		row.Size = UDim2.fromOffset(used + RECIPE.arrow + cardSize.X, cardSize.Y + under)
+		Recipe.arrow(row, used + RECIPE.arrow / 2, cardSize.Y / 2)
 	end
 	return spots, card
 end

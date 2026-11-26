@@ -4,7 +4,10 @@
 -- Grading Station and the Forge): what goes in as little spots in a grid, an arrow, the thing that comes out, and one
 -- big button with a small line under its words. The spots a stand-in item could fill are tapped (Star Shards, Grading
 -- Seals). On the button's press the spots fly into the thing. Pixels are before the window's own scale.
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+
+local ARROW = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("StationLook")).ARROW
 
 local ClientUtil = script.Parent :: Instance
 local Icon = require(ClientUtil:WaitForChild("Icon"))
@@ -18,7 +21,7 @@ Recipe.LOOK = {
 	gap = 5, -- between spots
 	spotTall = 62, -- a spot's height at the most
 	spotShape = 0.69, -- a spot's width for its height (a card's)
-	arrow = 36,
+	arrow = ARROW.room, -- the arrow's room between what goes in and what comes out (it sits in its middle)
 	under = 30, -- the row under them (a chip, the stars)
 	fly = 0.32, -- seconds the spots take to fly in
 	button = 58, -- the big button's height
@@ -35,19 +38,23 @@ export type SpotView = {
 	onTap: (() -> ())?, -- "item" / "offer": a tap
 }
 
--- The grid the spots sit in, `columns` across for `need` of them: sized LOOK.slots (or `size`), its cells as big as
--- fit, LOOK.spotTall (or `spotTall`) tall at the most
-function Recipe.grid(parent: Instance, need: number, columns: number, size: Vector2?, spotTall: number?): Frame
+-- The grid the spots sit in, `columns` across for `need` of them, in an area LOOK.slots (or `size`) big: its cells as
+-- big as fit, LOOK.spotTall (or `spotTall`) tall at the most. The grid is only as wide as its spots (the area's height),
+-- so the arrow after it sits in the middle between them and what comes out (owner 2026-11-26: "put the arrow on the
+-- center"); that width is the second result
+function Recipe.grid(parent: Instance, need: number, columns: number, size: Vector2?, spotTall: number?): (Frame, number)
 	local look = Recipe.LOOK
 	local area = size or look.slots
 	local rows = math.max(1, math.ceil(need / columns))
 	local tall = math.min(spotTall or look.spotTall, math.floor((area.Y - (rows - 1) * look.gap) / rows))
 	local across = math.min(math.floor(tall * look.spotShape), math.floor((area.X - (columns - 1) * look.gap) / columns))
 	tall = math.floor(across / look.spotShape)
+	local used = math.min(columns, math.max(1, need))
+	local wide = used * across + (used - 1) * look.gap
 	local grid = Instance.new("Frame")
 	grid.Name = "Spots"
 	grid.BackgroundTransparency = 1
-	grid.Size = UDim2.fromOffset(area.X, area.Y)
+	grid.Size = UDim2.fromOffset(wide, area.Y)
 	grid.Parent = parent
 	local layout = Instance.new("UIGridLayout")
 	layout.CellSize = UDim2.fromOffset(across, tall)
@@ -57,7 +64,7 @@ function Recipe.grid(parent: Instance, need: number, columns: number, size: Vect
 	layout.VerticalAlignment = Enum.VerticalAlignment.Center
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = grid
-	return grid
+	return grid, wide
 end
 
 -- One spot. `kind`: "copy" (something going in: its picture or icon), "item" (a stand-in item in a spot: a tap takes
@@ -111,12 +118,40 @@ function Recipe.spot(parent: Instance, kind: string, view: SpotView): GuiObject
 	return spot
 end
 
--- The arrow between what goes in and what comes out, its middle at (x, y)
-function Recipe.arrow(parent: Instance, x: number, y: number): Frame
-	local arrow = Icon.make(parent, "Next", UDim2.fromOffset(26, 26))
+-- The arrow between what goes in and what comes out, its middle at (x, y) (put it in the middle of LOOK.arrow's room):
+-- drawn as a line with a chevron head, the mockups' arrow (owner 2026-11-26: "use a different arrow, not an emoji
+-- arrow"; Config/StationLook ARROW). `color`: another colour (the empty recipe's pale one)
+function Recipe.arrow(parent: Instance, x: number, y: number, color: Color3?): Frame
+	local arrow = Instance.new("Frame")
+	arrow.Name = "Arrow"
+	arrow.BackgroundTransparency = 1
 	arrow.AnchorPoint = Vector2.new(0.5, 0.5)
 	arrow.Position = UDim2.fromOffset(x, y)
-	Icon.set(arrow, "Next")
+	arrow.Size = UDim2.fromOffset(ARROW.wide, ARROW.tall)
+	arrow.Parent = parent
+	local tint = color or Color3.fromRGB(ARROW.color[1], ARROW.color[2], ARROW.color[3])
+	local thick = ARROW.thick
+	local function stroke(name: string, centre: Vector2, length: number, rotation: number)
+		local bar = Instance.new("Frame")
+		bar.Name = name
+		bar.BorderSizePixel = 0
+		bar.BackgroundColor3 = tint
+		bar.AnchorPoint = Vector2.new(0.5, 0.5)
+		bar.Position = UDim2.fromOffset(centre.X, centre.Y)
+		bar.Size = UDim2.fromOffset(length, thick)
+		bar.Rotation = rotation
+		bar.Parent = arrow
+		UIKit.corner(bar, thick / 2)
+	end
+	-- the tip on the right, the head's two strokes reaching back to the top and the bottom (each turned 45 degrees about
+	-- its middle, its end on the tip), the shaft from the left to the tip
+	local middle = ARROW.tall / 2
+	local tip = ARROW.wide - thick / 2
+	local head = (middle - thick / 2) * math.sqrt(2)
+	local back = head / (2 * math.sqrt(2))
+	stroke("Shaft", Vector2.new((thick / 2 + tip) / 2, middle), tip - thick / 2, 0)
+	stroke("HeadTop", Vector2.new(tip - back, middle - back), head, 45)
+	stroke("HeadBottom", Vector2.new(tip - back, middle + back), head, -45)
 	return arrow
 end
 
@@ -162,131 +197,6 @@ function Recipe.flyIn(panel: Frame, spots: { GuiObject }, target: GuiObject)
 		end)
 		tween:Play()
 	end
-end
-
--- The copy picker (owner 2026-11-21: "Keep a different card is so confusing. can we change wording or anything to make
--- it more understandable. also the next window make it more understandable"; words in Util/CondenseRules): the copies
--- as pictures in place of the recipe. Since 2026-11-26 the Condenser's "Pick other copies" opens it.
-
-export type CopyTile = {
-	key: string,
-	grade: string, -- "Grade A"
-	gradeColor: Color3,
-	foil: boolean, -- a gold Foil tag on its picture
-	label: string, -- "You have 2", "Lv 12"
-	stars: number,
-	tag: string, -- "Ready!", "3 more"
-	gold: boolean, -- its tag is the gold Ready!
-	chosen: boolean, -- the one in use now: ringed and lit
-	draw: (holder: Frame) -> (), -- draws its card's face into `holder`
-}
-
--- The copies as tiles from `y` down (a small line, then each copy's picture, its grade, its stars, a few words and
--- whether it is ready; a tap picks it), then Back. Returns the y under Back
-function Recipe.copyPicker(pane: GuiObject, view: {
-	panel: Frame,
-	y: number,
-	edge: number,
-	face: Vector2,
-	maxStars: number,
-	palette: UIKit.Palette,
-	sub: string,
-	tiles: { CopyTile },
-	columnsFor: (width: number, tile: number, gap: number) -> number,
-	onPick: (key: string) -> (),
-	onBack: () -> (),
-}): number
-	local palette, face = view.palette, view.face
-	local gap = 6
-	local tileWide, tileTall = face.X + 8, face.Y + 90
-	local scaler = view.panel:FindFirstChildOfClass("UIScale")
-	local scale = if scaler and scaler.Scale > 0 then scaler.Scale else 1
-	local room = pane.AbsoluteSize.X / scale - 2 * view.edge
-	local columns = math.min(math.max(1, #view.tiles), view.columnsFor(room, tileWide, gap))
-	local rowWide = columns * tileWide + (columns - 1) * gap
-	local y = view.y
-
-	local small = UIKit.label(pane, view.sub, Enum.Font.GothamBold, 12, palette.inkSoft)
-	small.Name = "PickSub"
-	small.Position = UDim2.fromOffset(view.edge, y)
-	small.Size = UDim2.new(1, -2 * view.edge, 0, 16)
-	small.TextXAlignment = Enum.TextXAlignment.Center
-	y += 22
-
-	for index, tile in view.tiles do
-		local column, row = (index - 1) % columns, (index - 1) // columns
-		local button = Instance.new("TextButton")
-		button.Name = "Copy_" .. tile.key
-		button.Text = ""
-		button.Position = UDim2.new(0.5, -rowWide / 2 + column * (tileWide + gap), 0, y + row * (tileTall + gap))
-		button.Size = UDim2.fromOffset(tileWide, tileTall)
-		button.BackgroundColor3 = if tile.chosen then Color3.fromRGB(255, 240, 196) else palette.row
-		button.Parent = pane
-		UIKit.corner(button, 10)
-		UIKit.outline(button, if tile.chosen then UIKit.Colors.Accent else palette.rowEdge, if tile.chosen then 3 else 2)
-		local holder = Instance.new("Frame")
-		holder.Name = "Face"
-		holder.BackgroundTransparency = 1
-		holder.Position = UDim2.fromOffset(4, 4)
-		holder.Size = UDim2.fromOffset(face.X, face.Y)
-		holder.Parent = button
-		tile.draw(holder)
-		if tile.foil then
-			local foil = UIKit.pill(button, "Foil", UIKit.Colors.Accent, UIKit.Colors.Ink)
-			foil.Name = "Foil"
-			foil.Position = UDim2.fromOffset(0, math.floor(face.Y * 0.2)) -- on the picture, clear of the card's name
-			foil.Size = UDim2.fromOffset(0, 18)
-			foil.TextSize = 11
-			foil.ZIndex = holder.ZIndex + 10
-		end
-		local grade = UIKit.pill(button, tile.grade, tile.gradeColor, Color3.new(1, 1, 1))
-		grade.Name = "Grade"
-		grade.AnchorPoint = Vector2.new(0.5, 0)
-		grade.Position = UDim2.new(0.5, 0, 0, face.Y + 8)
-		grade.Size = UDim2.fromOffset(0, 20)
-		grade.TextSize = 12
-		local starSize = 11
-		local stars = Instance.new("Frame")
-		stars.Name = "Stars"
-		stars.BackgroundTransparency = 1
-		stars.AnchorPoint = Vector2.new(0.5, 0)
-		stars.Position = UDim2.new(0.5, 0, 0, face.Y + 32)
-		stars.Size = UDim2.fromOffset(view.maxStars * (starSize + 2) - 2, starSize)
-		stars.Parent = button
-		for star = 1, view.maxStars do
-			local icon = Icon.make(stars, "Star", UDim2.fromOffset(starSize, starSize))
-			icon.Position = UDim2.fromOffset((star - 1) * (starSize + 2), 0)
-			Icon.set(icon, "Star")
-			local glyph = icon:FindFirstChild("Glyph")
-			if glyph and glyph:IsA("ImageLabel") then
-				glyph.ImageTransparency = if star <= tile.stars then 0 else 0.8
-			end
-		end
-		local label = UIKit.label(button, tile.label, Enum.Font.GothamBold, 11, palette.inkSoft)
-		label.Name = "Has"
-		label.Position = UDim2.fromOffset(2, face.Y + 46)
-		label.Size = UDim2.new(1, -4, 0, 14)
-		label.TextXAlignment = Enum.TextXAlignment.Center
-		local tag = UIKit.pill(button, tile.tag, if tile.gold then UIKit.Colors.Accent else palette.track, if tile.gold then UIKit.Colors.Ink else palette.inkSoft)
-		tag.Name = "Tag"
-		tag.AnchorPoint = Vector2.new(0.5, 1)
-		tag.Position = UDim2.new(0.5, 0, 1, -6)
-		tag.Size = UDim2.fromOffset(0, 20)
-		tag.TextSize = 11
-		button.Activated:Connect(function()
-			view.onPick(tile.key)
-		end)
-	end
-	local rows = math.ceil(#view.tiles / columns)
-	y += rows * (tileTall + gap) + 2
-
-	local back = UIKit.button(pane, "Back", UIKit.Colors.Secondary)
-	back.Name = "Back"
-	back.AnchorPoint = Vector2.new(0.5, 0)
-	back.Position = UDim2.new(0.5, 0, 0, y)
-	back.Size = UDim2.fromOffset(160, 48)
-	back.Activated:Connect(view.onBack)
-	return y + 48
 end
 
 return Recipe

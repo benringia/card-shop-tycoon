@@ -5,8 +5,10 @@
 -- then the cost. remove the cost anywhere else", and the grade swap and "Keep a different copy" dropped; the mockups of
 -- artifact 72BD8xZJT75xL5ityfY621; Util/StationPick builds the shape, Config/Grading WINDOW its words). Tabs: Upgrade
 -- and Ready (a gold count). Upgrade: a slot on the left ("Put a card in"); a tap opens the card picker over the window
--- (your cards with extra copies as tiles, Ready ones first), and the card picked sits in the slot with Change card (its
--- copy that can still go up, the best grade first). On the right its picture recipe (Util/Recipe, words in
+-- (your cards with extra copies as tiles, Ready ones first); a card picked shows its copies that can still go up
+-- (owner 2026-11-26: "when I click on a card, it then should let me pick which copy ... do the same in grading"; one
+-- such copy goes straight in), and the copy picked sits in the slot with Change card. On the right its picture recipe
+-- (the arrow in the middle; Util/Recipe, words in
 -- Util/CondenseRules): one sentence ("Use 2 extra Voidmaw to make it Grade A!"), the copies that go in as little cards,
 -- an arrow, the card with its new grade beating under it and how much Power it adds; then the USE row's three tiles:
 -- the extra copies (your weakest, picked for you), Grading Seals (a tap puts them in the empty spots, or takes them
@@ -24,6 +26,7 @@ local Early = require(Config:WaitForChild("Early"))
 local EarlyRules = require(Shared:WaitForChild("Util"):WaitForChild("EarlyRules"))
 local Beasts = require(Config:WaitForChild("Beasts"))
 local Cards = require(Config:WaitForChild("Cards"))
+local CardDesign = require(Config:WaitForChild("CardDesign"))
 local GradingConfig = require(Config:WaitForChild("Grading"))
 local StationLook = require(Config:WaitForChild("StationLook"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
@@ -75,9 +78,14 @@ local window: StationPick.Window
 local palette: UIKit.Palette -- the cream window's colours (UIKit.colorsFor), set in Start
 local machine: BasePart? = nil
 local tab = UPGRADE_TAB
-local picking = false -- the card picker shows over the window
+-- The picker over the window: "cards" (pick a card) or "copies" (that card's copies that can still go up: which one is
+-- graded; owner 2026-11-26: "when I click on a card, it then should let me pick which copy of that card would I want to
+-- use. do the same in grading"); nil: none. `copiesBack`: where Back goes from the copies
+local picking: string? = nil
+local pickCard: string? = nil
+local copiesBack = "cards"
 local selectedCardId: string? = nil -- the card in the slot
-local mainKey: string? = nil -- the copy being graded, followed after a plain copy moves up a grade; nil = the default
+local mainKey: string? = nil -- the copy in the slot, followed after a plain copy moves up a grade; nil = the default
 local inFlight = false -- an Upgrade request is waiting for the server; the button stays locked
 local inFlightToken = 0
 local useSeals = false -- Grading Seals fill missing duplicates (up to half a step)
@@ -244,7 +252,6 @@ end
 local function renderPane(card: Card, chosen: Candidate)
 	local pane = window.pane
 	StationPick.clear(pane)
-	StationPick.fullPane(window, false)
 	local phone = UIKit.isShort()
 	local face = if phone then PHONE_FACE else DETAIL_FACE_SIZE
 	local paneWide = StationPick.width(window, pane)
@@ -297,13 +304,12 @@ local function renderPane(card: Card, chosen: Candidate)
 	face = Vector2.new(math.floor(faceTall * face.X / face.Y), faceTall)
 	local powerBeside = not phone and nextGrade ~= nil
 	local slotsWide = math.clamp(leftWide - 2 * EDGE - RECIPE.arrow - face.X - (if powerBeside then POWER_ROOM else 0) - 8, 100, 280)
-	local wide = if nextGrade then slotsWide + RECIPE.arrow + face.X else face.X
 	local recipe = Instance.new("Frame")
 	recipe.Name = "Recipe"
 	recipe.BackgroundTransparency = 1
 	recipe.AnchorPoint = Vector2.new(0.5, 0)
 	recipe.Position = UDim2.fromOffset(leftWide / 2 - (if powerBeside then POWER_ROOM / 2 else 0), y)
-	recipe.Size = UDim2.fromOffset(wide, face.Y + under)
+	recipe.Size = UDim2.fromOffset(face.X, face.Y + under) -- widened once the spots are in
 	recipe.Parent = pane
 	local faceHolder = Instance.new("Frame")
 	faceHolder.Name = "Keeps"
@@ -324,7 +330,9 @@ local function renderPane(card: Card, chosen: Candidate)
 
 	local spots: { GuiObject } = {}
 	if nextGrade then
-		local grid = Recipe.grid(recipe, need, CondenseRules.slotColumns(need), Vector2.new(slotsWide, face.Y), StationLook.RECIPE_SPOT_TALL)
+		local grid, used = Recipe.grid(recipe, need, CondenseRules.slotColumns(need), Vector2.new(slotsWide, face.Y), StationLook.RECIPE_SPOT_TALL)
+		-- the spots, the arrow in the middle of its room, the card: the whole row centred
+		recipe.Size = UDim2.fromOffset(used + RECIPE.arrow + face.X, face.Y + under)
 		local copies: { CondenseRules.Take } = {}
 		for _, take in if plan then plan.takes else CondenseRules.pick(Beasts.GRADES, byGrade, main, copiesIn) do
 			for _ = 1, take.count do
@@ -348,7 +356,7 @@ local function renderPane(card: Card, chosen: Candidate)
 				table.insert(spots, spot)
 			end
 		end
-		Recipe.arrow(recipe, slotsWide + RECIPE.arrow / 2, face.Y / 2)
+		Recipe.arrow(recipe, used + RECIPE.arrow / 2, face.Y / 2)
 		-- how much stronger the card gets
 		local powerAfter = BeastRules.getPower(card, chosen.foil, chosen.level, chosen.stars, nextGrade)
 		local power = UIKit.pill(recipe, `+{math.max(0, powerAfter - chosen.power)} Power`, palette.good, Color3.new(1, 1, 1))
@@ -358,7 +366,7 @@ local function renderPane(card: Card, chosen: Candidate)
 			power.Position = UDim2.new(1, 10, 0, face.Y / 2)
 		else
 			power.AnchorPoint = Vector2.new(0.5, 0)
-			power.Position = UDim2.fromOffset(slotsWide / 2, face.Y + 4)
+			power.Position = UDim2.fromOffset(used / 2, face.Y + 4)
 		end
 	end
 	y += face.Y + under + 4
@@ -434,27 +442,92 @@ end
 
 -- The slot and the picker ---------------------------------------------------------------------------------------------
 
--- A card goes in the slot (from the picker or the Ready tab): the Upgrade tab shows it with its recipe
-local function putIn(cardId: string)
-	if selectedCardId ~= cardId then
-		mainKey = nil
+-- A copy goes in the slot (from the picker's copies step, or a card with one copy to grade from the picker or the
+-- Ready tab): the Upgrade tab shows it with its recipe. `key` nil: the card's default copy
+local function putIn(cardId: string, key: string?)
+	if selectedCardId ~= cardId or mainKey ~= key then
 		useSeals = false
 		useGold = false
 	end
 	selectedCardId = cardId
-	picking = false
+	mainKey = key
+	picking = nil
 	tab = UPGRADE_TAB
 	render()
 end
 
 local function openPicker()
-	picking = true
+	picking = "cards"
 	render()
 end
 
+-- The copies of a card that can still go up a grade, the best grade first
+local function gradeable(card: Card): { Candidate }
+	local copies: { Candidate } = {}
+	for _, candidate in getCandidates(card) do
+		if CondenseRules.nextGrade(Beasts.GRADES, candidate.grade) then
+			table.insert(copies, candidate)
+		end
+	end
+	return copies
+end
+
+-- A card picked: its copies to choose from (Back goes to `back`: "cards" or "close"), or with one copy straight in
+local function pickCardCopies(cardId: string, back: string)
+	local card = Cards.ById[cardId]
+	local copies = if card then gradeable(card) else {}
+	if #copies <= 1 then
+		putIn(cardId, if copies[1] then copies[1].key else nil)
+		return
+	end
+	picking = "copies"
+	pickCard = cardId
+	copiesBack = back
+	render()
+end
+
+-- The picker's copies step: every copy of the card that can still go up a grade, each with its stars, "You have 2" or
+-- "Lv 12" and a gold Ready!, "2 more" or "Need cash"; the one in the slot lit. Nil: none left
+local function copyTilesFor(card: Card, busy: boolean): { StationPick.CopyTile }?
+	local copies = gradeable(card)
+	if #copies == 0 then
+		return nil
+	end
+	local byGrade = BinderController.GetGradedStacks()[card.id] or {}
+	local inSlot = if card.id == selectedCardId then chosenMain(card) else nil
+	local cash = getCash()
+	local tiles: { StationPick.CopyTile } = {}
+	for _, candidate in copies do
+		local upTo = CondenseRules.nextGrade(Beasts.GRADES, candidate.grade)
+		local cost = if upTo then CondenseRules.gradeStepCost(GradingConfig, card.rarity, upTo) else nil
+		local owned = CondenseRules.gradeHave(Beasts, byGrade, asMain(candidate))
+		local cashOk = cost == nil or cash >= cost.cash
+		local tagText, tagKind = CondenseRules.gradeRowTag(owned, if cost then cost.copies else 0, upTo, (getPlan(card, candidate)) ~= nil and cashOk, cashOk)
+		table.insert(tiles, {
+			key = candidate.key,
+			grade = BeastRules.describeGrade(candidate.grade),
+			gradeColor = CardDesign.GRADE_COLORS[candidate.grade] or CardDesign.GRADE_COLORS.C,
+			foil = candidate.foil,
+			label = CondenseRules.copyLabel({ beast = candidate.beast ~= nil, level = candidate.level, count = candidate.count }),
+			stars = candidate.stars,
+			maxStars = BeastRules.MAX_STARS,
+			tag = if tagKind == "ready" and busy then nil else tagText,
+			gold = tagKind == "ready",
+			chosen = inSlot ~= nil and inSlot.key == candidate.key,
+			draw = function(holder: Frame)
+				makeFace(holder, card, candidate.foil, false, { level = candidate.level, stars = candidate.stars, grade = candidate.grade })
+			end,
+			onTap = function()
+				putIn(card.id, candidate.key)
+			end,
+		})
+	end
+	return tiles
+end
+
 -- The cards as tiles: each one's tag from its default copy (a gold Ready!, "2 more", Need cash or Top grade; no Ready!
--- while the station counts a job down)
-local function tilesFor(cards: { Card }, ready: { [string]: boolean }, busy: boolean): { StationPick.Tile }
+-- while the station counts a job down). A tap shows its copies (`back`: where their Back goes)
+local function tilesFor(cards: { Card }, ready: { [string]: boolean }, busy: boolean, back: string): { StationPick.Tile }
 	local tiles: { StationPick.Tile } = {}
 	local cash = getCash()
 	for _, card in cards do
@@ -469,7 +542,7 @@ local function tilesFor(cards: { Card }, ready: { [string]: boolean }, busy: boo
 			tag = if tagKind == "ready" and busy then nil else tagText,
 			gold = tagKind == "ready",
 			onTap = function()
-				putIn(card.id)
+				pickCardCopies(card.id, back)
 			end,
 		})
 	end
@@ -505,7 +578,18 @@ render = function()
 		end
 	end
 	window.setTabs(tab, if busy then nil else #readyCards)
-	if picking then
+	if picking == "copies" then
+		local card = if pickCard then Cards.ById[pickCard] else nil
+		local copies = if card then copyTilesFor(card, busy) else nil
+		if card and copies then
+			local title, line = CondenseRules.pickSay(card.name, "grade")
+			StationPick.show(window, "copies", title, line)
+			StationPick.copyTiles(window, copies)
+			return
+		end
+		picking = "cards" -- its copies are gone: back to the cards
+	end
+	if picking == "cards" then
 		-- Ready cards first, keeping rarest-first order inside each group
 		local sorted: { Card } = table.clone(readyCards)
 		for _, card in all do
@@ -514,11 +598,11 @@ render = function()
 			end
 		end
 		StationPick.show(window, "picking")
-		StationPick.tiles(window, window.pickerGrid, tilesFor(sorted, ready, busy), WORDS.PICK_NONE)
+		StationPick.tiles(window, window.pickerGrid, tilesFor(sorted, ready, busy, "cards"), WORDS.PICK_NONE)
 		return
 	elseif tab == READY_TAB then
 		StationPick.show(window, "ready")
-		StationPick.tiles(window, window.readyGrid, tilesFor(readyCards, ready, busy), WORDS.READY_NONE)
+		StationPick.tiles(window, window.readyGrid, tilesFor(readyCards, ready, busy, "close"), WORDS.READY_NONE)
 		return
 	end
 	StationPick.show(window, "tab")
@@ -545,7 +629,8 @@ function GradingController.Open(part: BasePart)
 	machine = part
 	StationPick.layout(window)
 	tab = UPGRADE_TAB
-	picking = false
+	picking = nil
+	pickCard = nil
 	selectedCardId = nil
 	mainKey = nil
 	inFlight = false
@@ -588,7 +673,8 @@ function GradingController.Start()
 			render()
 		end
 	end, function()
-		picking = false
+		-- Back: from a card's copies to the cards (or out, after the Ready tab); from the cards out
+		picking = if picking == "copies" and copiesBack == "cards" then "cards" else nil
 		render()
 	end, nil)
 

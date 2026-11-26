@@ -310,8 +310,9 @@ function WeaponText.say(action: "forge" | "upgrade" | "reforge" | "mutate", cost
 end
 
 -- The Forge's one button: its words, the small line under them and whether it can be pressed. Ready: what it does
--- ("Forge it!", "Make it +4!", "Roll a new grade!") over how long it takes; else what's missing first (the shop level,
--- an item, then cash) over what you have
+-- ("Upgrade", "Enhance", "Roll a new grade!", "Mutate"; owner 2026-11-26: "Forge it" = "Upgrade", "Make it +2" =
+-- "Enhance", "Mutate it" = "Mutate") over how long it takes; else what's missing first (the shop level, an item, then
+-- cash) over what you have
 function WeaponText.recipeButton(action: "forge" | "upgrade" | "reforge" | "mutate", cost: Cost?, have: { [string]: number }, cashNow: number, items: any, opts: RecipeOpts): (string, string?, boolean)
 	if opts.done then
 		return "Already Grade S", nil, false
@@ -330,13 +331,13 @@ function WeaponText.recipeButton(action: "forge" | "upgrade" | "reforge" | "muta
 	end
 	local sub = if opts.wait then `takes {opts.wait}` else nil
 	if action == "upgrade" then
-		return `Make it +{opts.level or 1}!`, sub, true
+		return "Enhance", sub, true
 	elseif action == "reforge" then
 		return "Roll a new grade!", sub, true
 	elseif action == "mutate" then
-		return "Mutate it!", "instant", true -- no job: the roll and its choice come at once
+		return "Mutate", "instant", true -- no job: the roll and its choice come at once
 	end
-	return "Forge it!", sub, true
+	return "Upgrade", sub, true
 end
 
 -- Under the recipe's weapon: a pill (the grade or level it comes out with) and a line. `step`: an upgrade's

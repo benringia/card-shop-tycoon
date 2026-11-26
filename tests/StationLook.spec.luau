@@ -48,4 +48,17 @@ return {
 		assert(StationLook.TAB.hit >= 48, "a tab")
 		assert(StationLook.BUTTON >= 48, "Change card, Not now")
 	end,
+
+	-- owner 2026-11-26: "put the arrow on the center and use a different arrow, not an emoji arrow"
+	["the recipe's arrow is drawn in the middle of its room, with space each side"] = function()
+		local arrow = StationLook.ARROW
+		assert(arrow.room >= arrow.wide + 16, "at least 8 px either side of the arrow")
+		assert(arrow.thick >= 3 and arrow.thick * 4 <= arrow.tall, "a bold line, its head taller than the line")
+		expect.equal(#arrow.color, 3)
+		for _, size in { StationLook.COPY_TILE.desktop, StationLook.COPY_TILE.phone } do
+			assert(size[1] >= 48 and size[2] >= 48, "a copy tile is a finger-sized tap")
+		end
+		assert(StationLook.COPY_TILE.face.desktop[1] < StationLook.COPY_TILE.desktop[1], "the face fits its tile")
+		assert(StationLook.COPY_TILE.face.phone[1] < StationLook.COPY_TILE.phone[1], "the face fits its tile")
+	end,
 }

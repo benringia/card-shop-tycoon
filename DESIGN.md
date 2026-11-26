@@ -2128,17 +2128,28 @@ words `Config/Condenser` / `Config/Grading` WINDOW and `Util/CondenseRules`; loo
   button locked ("Add a star!", "Upgrade").
 - **Putting a card in**: a tap on the slot opens the card picker over the window: Back and "Pick a card to condense"
   ("Pick a card to grade up") in the band, "Your cards with extra copies. Ready ones first: ...", and a tile for each
-  card (its painting, its name, a gold "Ready!" or "3 more", "All stars", "Need cash", "Top grade"). A tap puts that
-  card in the slot: its face, as big as the slot, and Change card (the card itself opens the picker too). The Ready
-  tab shows the ready cards as the same tiles; a tap puts one in. The copy in the slot is the one shown first
-  (`sortMainChoices`): levelled before plain, the best grade first; the Grading Station's the first that can still go
-  up.
-- **The Condenser's recipe**: the sentence ("Squish 4 extra Reefray into this one. It gets a star!"), a green chip
+  card (its painting, its name, a gold "Ready!" or "3 more", "All stars", "Need cash", "Top grade"). A tap on a card
+  shows its copies (owner, the same evening: "when I click on a card, it then should let me pick which copy of that
+  card would I want to use. do the same in grading"): "Which Tidecaller gets the star?" ("...gets the grade?") in the
+  band, "Tap the one you want. Better ones are never used up.", and a tile for each copy (`StationPick.copyTiles`: its
+  card face with level, stars and grade, a gold Foil tag, its grade in the grade's colour, its stars, "You have 15" or
+  "Lv 1", a gold Ready! or "3 more"; the one in the slot lit), the best grade first (`sortMainChoices`: levelled
+  before plain); the Grading Station's only the copies that can still go up (a Grade S one can't). A card with one such
+  copy goes straight in. Back goes from the copies to the cards, from the cards out. The copy picked sits in the slot:
+  its face, as big as the slot, and Change card (the card itself opens the picker too). The Ready tab shows the ready
+  cards as the same tiles; a tap shows their copies the same way (Back returns to the Ready tab).
+- **The Condenser's recipe**: the sentence ("Combine 4 extra Reefray into this one. It gets a star!"; owner: "change
+  "Squish" to "Combine"", and the safe line's copies are "never used up"), a green chip
   "Filled in for you: your 4 weakest extras" (`CondenseRules.fillChip`: the copies the server takes, never one better
   than the card), the copies as little cards in one wide row (up to 4 in a row, up to 16 in two, more in three:
   `CondenseRules.slotColumns`), the arrow, the card with its stars (the new one beating), and under the copies "+40
-  Power" and a small "Pick other copies" (the copy picker of 2026-11-21: which copy gets the star). Star Shards are
-  tapped into empty spots as before. A short window's card shrinks to fit over the button.
+  Power" and a small "Pick other copies" (the picker's copies step for the card in the slot; Back returns to the
+  slot). Star Shards are tapped into empty spots as before. A short window's card shrinks to fit over the button.
+- **The arrow** (owner, the same evening: "put the arrow on the center and use a different arrow, not an emoji
+  arrow"; `Recipe.arrow`, `StationLook.ARROW`): a blue line with a chevron head, drawn from three rounded strokes (no
+  icon), in the middle of a 56 px room between what goes in and what comes out: `Recipe.grid` is only as wide as its
+  spots and gives that width, so the row (spots, arrow, card) is laid out from it and centred. The same arrow in the
+  Condenser, the Grading Station, the empty recipe (pale) and the Forge.
 - **The Grading Station's recipe**: the sentence without the cash ("Use 2 extra Voidmaw to make it Grade A!",
   `CondenseRules.gradeSay`), the copies, the arrow, the card with the grade it becomes beating under it and "+11
   Power" beside it; then the **USE** row of three tiles (`CondenseRules.copiesTile`, `sealTile`, `goldTile`): "2 extra
@@ -2152,11 +2163,14 @@ words `Config/Condenser` / `Config/Grading` WINDOW and `Util/CondenseRules`; loo
   button slimmer (48), and the recipe takes the left of its box with what goes with it in a column on the right (the
   Condenser's sentence, fill chip, +Power and Pick other copies; the Grading Station's USE tiles, the third a short
   scroll away).
-- Seen live (2026-11-26): both windows empty, the pickers, Tidecaller in the Condenser ("Squish 4 extra Tidecaller
+- Seen live (2026-11-26): both windows empty, the pickers, Tidecaller in the Condenser ("Combine 4 extra Tidecaller
   ... Filled in for you: your 4 weakest extras", "+55 Power"), Pick other copies to its Grade B copy, Add a star (the
   job veil, 0:29), Take it out keeping the raised card in the slot for its next star (8 copies in two rows); Voidmaw in
   the Grading Station ("Use 2 extra Voidmaw to make it Grade A!", three USE tiles, "Upgrade $2,500 / takes 1 hour",
-  the Gold Seal tile turning it to "Upgrade with a Gold Seal"); all three windows on the Galaxy A06.
+  the Gold Seal tile turning it to "Upgrade with a Gold Seal"); all three windows on the Galaxy A06. Then the copies
+  step: Tidecaller's six copies in the Condenser (its Grade A copy put in: "Combine 4 extra Tidecaller", the arrow in
+  the middle), five in the Grading Station (no Grade S; its Grade B copy: "Use 3 extra Tidecaller to make it Grade A!",
+  "Upgrade $1,000"), the Ready tab's copies and Back to Ready.
 
 ### 5.10 Boss ladder (phases 1-4: Wild bosses 1-3, groups, Frontier bosses 4-6, the Dungeon and the Prism Hydra)
 
@@ -3473,8 +3487,9 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
   (`WeaponText.outcome`: "Grade C to S", a beating "+4", "Grade B"); an upgrade's green "+4 Attack" chip ("Attack 259"
   at +10) and a small
   line ("Its aura appears!", "A new roll, C to S. It never gets worse!"). A Grade S reforge and a +10 weapon show the
-  card alone. One pinned button (`WeaponText.recipeButton`) says what it does over how long it takes ("Forge it!",
-  "Make it +4!", "Roll a new grade!" over "takes 2 minutes") or what's missing first over what you have ("Opens at
+  card alone. One pinned button (`WeaponText.recipeButton`) says what it does over how long it takes ("Upgrade",
+  "Enhance", "Roll a new grade!", "Mutate" over "takes 2 minutes"; owner 2026-11-26: "Forge it" = "Upgrade", "Make it
+  +2" = "Enhance", "Mutate it" = "Mutate"; the arrow centred like the stations') or what's missing first over what you have ("Opens at
   shop level 6"; "Need 5 more Wild Ore" over "you have 15"; "Need $500 more" over "you have $1,500"). On its press the
   spots fly into the card. The window steps aside for the forge reveal and comes back after it; it closes when you
   walk away. Phones (short screens): 0.97 x 0.96 of the screen, the tabs up in the header band; the pane shows the
@@ -3964,7 +3979,7 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
     - **The Forge's Mutate** (a fourth tab on the picture recipe): 30 Mutation Essence for a new roll on any weapon you
       have (not the Steel Sword, not one in the Forge's job, not while a choice waits), instant: "Use 30 Mutation Essence
       to give your Verdant Blade a new mutation!", the Essence spot, "Any rarity" (short: a phone cut "Common to
-      Legendary") under the card, "Mutate it!" over "instant". The window steps aside for the reveal and comes back; the
+      Legendary") under the card, "Mutate" over "instant" ("Mutate it!" until 2026-11-26). The window steps aside for the reveal and comes back; the
       four tabs fit a phone's header band. Its choice gives no Essence (above). Since part 3 (owner 2026-11-26: "make
       sure the mutation on this window is noticeable", the mockup): a "CURRENT MUTATION" row under the recipe in the
       rarity colour (its group's icon on a disc, "Scholar · creature XP from fights +3%", the rarity pill; none yet in
@@ -5436,8 +5451,8 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │       ├── LookTiles.luau          # the Decor tab's six shop look tiles (swatch, Using / Use / price / Lv N)
     │       ├── StationJobs.luau        # the stations' jobs on this client, counted down (remote UpgradeJobs)
     │       ├── JobPanel.luau           # a station window's job card: countdown, bar, Finish now
-    │       ├── Recipe.luau             # the station windows' picture recipe: spots in a grid, the arrow, a two-line button, the fly-in
-    │       ├── StationPick.luau        # the put-a-card-in windows' shape: tabs, card slot, card picker tiles, recipe box, dashed edges (5.9)
+    │       ├── Recipe.luau             # the station windows' picture recipe: spots in a grid (its used width), the drawn arrow, a two-line button, the fly-in
+    │       ├── StationPick.luau        # the put-a-card-in windows' shape: tabs, card slot, card picker (cards, then a card's copies), recipe box, dashed edges (5.9)
     │       ├── ProductPrice.luau       # developer products' Robux prices, asked once each
     │       ├── RobuxPrice.luau         # a Robux price on a button: Roblox's Robux glyph, never "R$" (tests/RobuxIcon)
     │       ├── TileTip.luau            # a tip bubble with Pish's face pointing at a HUD tile, a gold ring round it (Config/Tips)

@@ -46,7 +46,13 @@ return {
 	SLOT = { desktop = { 176, 246 }, phone = { 104, 146 } },
 	-- the card picker's and the Ready tab's tiles (a computer's, a phone's), the art's share of a tile's height
 	TILE = { desktop = { 138, 178 }, phone = { 108, 140 }, gap = 12, art = 0.58 },
+	-- the picker's second step, a card's copies (owner 2026-11-26: "when I click on a card, it then should let me pick
+	-- which copy of that card would I want to use"): a tile's size and the card face in it (a computer's, a phone's)
+	COPY_TILE = { desktop = { 116, 240 }, phone = { 88, 184 }, face = { desktop = { 104, 148 }, phone = { 76, 108 } } },
 	-- the Bulk Bin window's tiles
 	BULK_TILE = { desktop = { 116, 140 }, phone = { 96, 118 }, gap = 10, art = 0.6 },
 	RECIPE_SPOT_TALL = 80, -- a recipe spot's height at the most (the mockup's 56 x 78 copies)
+	-- the recipe's arrow (Util/Recipe.arrow; owner 2026-11-26: "put the arrow on the center and use a different arrow,
+	-- not an emoji arrow"): a line with a chevron head, `wide` x `tall`, strokes `thick`, in the middle of `room`
+	ARROW = { color = { 90, 169, 255 }, wide = 34, tall = 24, thick = 4, room = 56 },
 }

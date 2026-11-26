@@ -67,9 +67,26 @@ export type Window = {
 	readyView: Frame,
 	readyGrid: ScrollingFrame,
 	picker: Frame,
+	pickerLine: TextLabel,
 	pickerGrid: ScrollingFrame,
 }
 export type Tile = { card: any, tag: string?, gold: boolean, onTap: () -> () }
+-- One copy of a card in the picker's second step (owner 2026-11-21's copy picker, since 2026-11-26 a step of the
+-- picker: "when I click on a card, it then should let me pick which copy of that card would I want to use")
+export type CopyTile = {
+	key: string,
+	grade: string, -- "Grade A"
+	gradeColor: Color3,
+	foil: boolean, -- a gold Foil tag on its picture
+	label: string, -- "You have 2", "Lv 12"
+	stars: number,
+	maxStars: number,
+	tag: string?, -- "Ready!", "3 more"
+	gold: boolean, -- its tag is the gold Ready!
+	chosen: boolean, -- the one in the slot now: ringed and lit
+	draw: (holder: Frame) -> (), -- draws its card's face into `holder`
+	onTap: () -> (),
+}
 
 local function clear(container: Instance)
 	for _, child in container:GetChildren() do
@@ -356,6 +373,7 @@ function StationPick.build(panel: Frame, list: ScrollingFrame, look: { [string]:
 		readyView = readyView,
 		readyGrid = readyGrid,
 		picker = picker,
+		pickerLine = pickerLine,
 		pickerGrid = pickerGrid,
 	}
 end
@@ -366,12 +384,6 @@ local function buttonTall(): number
 end
 local function barTall(): number
 	return buttonTall() + (if UIKit.isShort() then 12 else 20)
-end
-
--- The recipe box's scrolling part over its big button, or (`full`: the copy picker, no button) the whole box
-function StationPick.fullPane(window: Window, full: boolean)
-	window.pane.Size = UDim2.new(1, 0, 1, -(if full then 8 else barTall() + 4))
-	window.actionBar.Visible = not full
 end
 
 -- Places the pieces for this screen: a computer's tabs under the band, or a phone's in the band beside the title
@@ -403,20 +415,22 @@ function StationPick.layout(window: Window)
 	window.rightBox.Position = UDim2.fromOffset(slotWide + gap, 0)
 	window.rightBox.Size = UDim2.new(1, -(slotWide + gap), 1, 0)
 	window.pane.Position = UDim2.fromOffset(0, 4)
-	StationPick.fullPane(window, false)
+	window.pane.Size = UDim2.new(1, 0, 1, -(barTall() + 4))
 	window.actionBar.Size = UDim2.new(1, 0, 0, barTall())
-	local tile = if phone then LOOK.TILE.phone else LOOK.TILE.desktop
-	for _, grid in { window.readyGrid, window.pickerGrid } do
-		local layout = grid:FindFirstChildOfClass("UIGridLayout") :: UIGridLayout
-		layout.CellSize = UDim2.fromOffset(tile[1], tile[2])
-		layout.CellPadding = UDim2.fromOffset(LOOK.TILE.gap, LOOK.TILE.gap)
-	end
 end
 
--- Which part shows: "tab" (the slot and the recipe), "ready" (the Ready tab's cards) or "picking" (the card picker,
--- its words in the band with Back)
-function StationPick.show(window: Window, view: "tab" | "ready" | "picking")
-	local picking = view == "picking"
+-- A grid's cells: `size` px each (a card tile's or a copy tile's), LOOK.TILE.gap apart
+local function cells(grid: ScrollingFrame, size: { number })
+	local layout = grid:FindFirstChildOfClass("UIGridLayout") :: UIGridLayout
+	layout.CellSize = UDim2.fromOffset(size[1], size[2])
+	layout.CellPadding = UDim2.fromOffset(LOOK.TILE.gap, LOOK.TILE.gap)
+end
+
+-- Which part shows: "tab" (the slot and the recipe), "ready" (the Ready tab's cards), "picking" (the card picker, its
+-- words in the band with Back) or "copies" (the picker's second step: one card's copies, `title` in the band and
+-- `line` over them)
+function StationPick.show(window: Window, view: "tab" | "ready" | "picking" | "copies", title: string?, line: string?)
+	local picking = view == "picking" or view == "copies"
 	window.picker.Visible = picking
 	window.tabs.Visible = not picking
 	window.body.Visible = view == "tab"
@@ -425,7 +439,8 @@ function StationPick.show(window: Window, view: "tab" | "ready" | "picking")
 	if window.icon then
 		window.icon.Visible = not picking
 	end
-	window.title.Text = if picking then window.words.PICK_TITLE else window.titleText
+	window.title.Text = if view == "copies" then title or "" elseif picking then window.words.PICK_TITLE else window.titleText
+	window.pickerLine.Text = if view == "copies" then line or "" else window.words.PICK_SUB
 	window.title.Position = UDim2.new(0, if picking then 12 + BACK_SIZE + 10 else window.titleX, window.title.Position.Y.Scale, window.title.Position.Y.Offset)
 end
 
@@ -533,6 +548,7 @@ function StationPick.tiles(window: Window, grid: ScrollingFrame, tiles: { Tile }
 	end
 	local phone = UIKit.isShort()
 	local size = if phone then LOOK.TILE.phone else LOOK.TILE.desktop
+	cells(grid, size)
 	if #tiles == 0 then
 		-- the words alone, over the empty grid (a grid cell would squeeze them)
 		local empty = UIKit.label(area, none, Enum.Font.GothamBold, 15, palette.inkSoft)
@@ -583,6 +599,90 @@ function StationPick.tiles(window: Window, grid: ScrollingFrame, tiles: { Tile }
 	end
 end
 
+-- The picker's second step: a card's copies as tiles in its grid (each copy's face with its level, stars and grade, a
+-- gold Foil tag, its grade in the grade's colour, its stars, "You have 2" or "Lv 12", and a tag); the one in the slot
+-- ringed and lit; a tap picks it
+function StationPick.copyTiles(window: Window, tiles: { CopyTile })
+	local palette, grid = window.palette, window.pickerGrid
+	clear(grid)
+	local old = window.picker:FindFirstChild("None")
+	if old then
+		old:Destroy()
+	end
+	local phone = UIKit.isShort()
+	cells(grid, if phone then LOOK.COPY_TILE.phone else LOOK.COPY_TILE.desktop)
+	local face = if phone then LOOK.COPY_TILE.face.phone else LOOK.COPY_TILE.face.desktop
+	local small = if phone then 10 else 12
+	for order, tile in tiles do
+		local button = Instance.new("TextButton")
+		button.Name = "Copy_" .. tile.key
+		button.LayoutOrder = order
+		button.Text = ""
+		button.AutoButtonColor = false
+		button.BackgroundColor3 = if tile.chosen then rgb(LOOK.USE_ON.fill) else palette.row
+		button.Parent = grid
+		UIKit.corner(button, 12)
+		UIKit.outline(button, if tile.chosen then rgb(LOOK.USE_ON.edge) else rgb(LOOK.BOX), if tile.chosen then 3 else 2)
+		local holder = Instance.new("Frame")
+		holder.Name = "Face"
+		holder.BackgroundTransparency = 1
+		holder.AnchorPoint = Vector2.new(0.5, 0)
+		holder.Position = UDim2.new(0.5, 0, 0, 5)
+		holder.Size = UDim2.fromOffset(face[1], face[2])
+		holder.Parent = button
+		tile.draw(holder)
+		if tile.foil then
+			local foil = UIKit.pill(button, "Foil", rgb(LOOK.BADGE.fill), rgb(LOOK.BADGE.ink))
+			foil.Name = "Foil"
+			foil.Position = UDim2.fromOffset(2, math.floor(face[2] * 0.22)) -- on the picture, clear of the card's name
+			foil.Size = UDim2.fromOffset(0, 18)
+			foil.TextSize = 11
+			foil.ZIndex = holder.ZIndex + 10
+		end
+		local y = face[2] + 9
+		local grade = UIKit.pill(button, tile.grade, tile.gradeColor, Color3.new(1, 1, 1))
+		grade.Name = "Grade"
+		grade.AnchorPoint = Vector2.new(0.5, 0)
+		grade.Position = UDim2.new(0.5, 0, 0, y)
+		grade.Size = UDim2.fromOffset(0, if phone then 18 else 20)
+		grade.TextSize = small
+		y += if phone then 21 else 24
+		local starSize = if phone then 9 else 11
+		local stars = Instance.new("Frame")
+		stars.Name = "Stars"
+		stars.BackgroundTransparency = 1
+		stars.AnchorPoint = Vector2.new(0.5, 0)
+		stars.Position = UDim2.new(0.5, 0, 0, y)
+		stars.Size = UDim2.fromOffset(tile.maxStars * (starSize + 2) - 2, starSize)
+		stars.Parent = button
+		for index = 1, tile.maxStars do
+			local icon = Icon.make(stars, "Star", UDim2.fromOffset(starSize, starSize))
+			icon.Position = UDim2.fromOffset((index - 1) * (starSize + 2), 0)
+			Icon.set(icon, "Star")
+			local glyph = icon:FindFirstChild("Glyph")
+			if glyph and glyph:IsA("ImageLabel") then
+				glyph.ImageTransparency = if index <= tile.stars then 0 else 0.8
+			end
+		end
+		y += starSize + 4
+		local has = UIKit.label(button, tile.label, Enum.Font.GothamBold, small - 1, palette.inkSoft)
+		has.Name = "Has"
+		has.Position = UDim2.fromOffset(2, y)
+		has.Size = UDim2.new(1, -4, 0, 14)
+		has.TextXAlignment = Enum.TextXAlignment.Center
+		if tile.tag then
+			local fill = if tile.gold then rgb(LOOK.BADGE.fill) else palette.track
+			local tag = UIKit.pill(button, tile.tag, fill, if tile.gold then rgb(LOOK.BADGE.ink) else palette.inkSoft)
+			tag.Name = "Tag"
+			tag.AnchorPoint = Vector2.new(0.5, 1)
+			tag.Position = UDim2.new(0.5, 0, 1, -6)
+			tag.Size = UDim2.fromOffset(0, if phone then 18 else 20)
+			tag.TextSize = small - 1
+		end
+		button.Activated:Connect(tile.onTap)
+	end
+end
+
 -- The big button pinned at the recipe box's bottom: its words, the small line under them, gold when it works
 function StationPick.bigButton(window: Window, text: string, sub: string?, enabled: boolean): TextButton
 	clear(window.actionBar)
@@ -601,7 +701,6 @@ end
 function StationPick.emptyPane(window: Window, spots: number)
 	local pane, palette, words = window.pane, window.palette, window.words
 	clear(pane)
-	StationPick.fullPane(window, false)
 	local phone = UIKit.isShort()
 	local say = UIKit.label(pane, words.EMPTY_SAY, Enum.Font.FredokaOne, if phone then 15 else 20, palette.ink)
 	say.Name = "Say"
@@ -626,8 +725,8 @@ function StationPick.emptyPane(window: Window, spots: number)
 	end
 	local spot = Vector2.new(math.floor(56 * fit), math.floor(78 * fit))
 	local card = Vector2.new(math.floor(92 * fit), math.floor(128 * fit))
-	local gap, arrowWide = math.floor(10 * fit), 34
-	local wide = spots * spot.X + (spots - 1) * gap + gap + arrowWide + gap + card.X
+	local gap, room = math.floor(10 * fit), Recipe.LOOK.arrow
+	local wide = spots * spot.X + (spots - 1) * gap + room + card.X
 	local row = Instance.new("Frame")
 	row.Name = "Ghost"
 	row.BackgroundTransparency = 1
@@ -644,12 +743,8 @@ function StationPick.emptyPane(window: Window, spots: number)
 		cell.Parent = row
 		StationPick.dashed(cell, spot, ghost, 6)
 	end
-	local arrowX = spots * (spot.X + gap) + arrowWide / 2
-	local arrow = Recipe.arrow(row, arrowX, card.Y / 2)
-	local glyph = arrow:FindFirstChild("Glyph", true)
-	if glyph and glyph:IsA("ImageLabel") then
-		glyph.ImageColor3 = ghost
-	end
+	-- the arrow in the middle of its room, between the spots and the card
+	Recipe.arrow(row, spots * spot.X + (spots - 1) * gap + room / 2, card.Y / 2, ghost)
 	local after = Instance.new("Frame")
 	after.Name = "Card"
 	after.BackgroundTransparency = 1

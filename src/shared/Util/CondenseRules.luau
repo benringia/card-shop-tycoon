@@ -131,7 +131,8 @@ end
 
 -- The copy picker (owner 2026-11-21: "Keep a different card is so confusing. can we change wording or anything to make
 -- it more understandable. also the next window make it more understandable"): the copies as pictures with a few plain
--- words. Since 2026-11-26 the Condenser's "Pick other copies" (Config/Condenser WINDOW.OTHER) opens it.
+-- words. Since 2026-11-26 the stations' card picker's second step (owner: "when I click on a card, it then should let
+-- me pick which copy of that card would I want to use"), and the Condenser's "Pick other copies" opens it too.
 
 -- The picker's sentence and its small line; `what`: "star" (the Condenser) or "grade" (the Grading Station)
 function CondenseRules.pickSay(name: string, what: string): (string, string)
@@ -148,12 +149,7 @@ function CondenseRules.safeWords(better: number): string?
 	if better <= 0 then
 		return nil
 	end
-	return if better == 1 then "Your 1 better copy stays safe: it is never squished." else `Your {better} better copies stay safe: they are never squished.`
-end
-
--- How many copies stand in a row of the picker: `tile` wide each, `gap` apart, in `width`
-function CondenseRules.pickColumns(width: number, tile: number, gap: number): number
-	return math.max(1, math.floor((width + gap) / (tile + gap)))
+	return if better == 1 then "Your 1 better copy stays safe: it is never used up." else `Your {better} better copies stay safe: they are never used up.`
 end
 
 -- After condensing a plain main: the levelled card it became (an ID that wasn't there before, same card,
@@ -287,7 +283,7 @@ function CondenseRules.say(view: { name: string, copies: number, shards: number,
 		return `Find {view.missing} more {view.name} to add a star.`
 	end
 	local shards = if view.shards > 0 then ` and {view.shards} Star Shard{if view.shards == 1 then "" else "s"}` else ""
-	return `Squish {view.copies} extra {view.name}{shards} into this one. It gets a star!`
+	return `Combine {view.copies} extra {view.name}{shards} into this one. It gets a star!` -- (owner 2026-11-26: not "Squish")
 end
 
 -- The chip over the recipe once a card is in (owner 2026-11-26: "the condenser then autofills the extra
