@@ -372,5 +372,6 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   `Config/Monetization` PRODUCTS (0 shows "Coming soon").
   PurchaseService holds the one ProcessReceipt; a new product registers with `PurchaseService.OnProduct(key, grant)`.
 - After I confirm a system works: tick it in DESIGN.md, commit, and push.
-- Keep the Obsidian vault `C:/Users/Ben/Documents/obsidian/card-shop-tycoon` up to date as we go (Home.md is the
-  index): creature roster, decisions log, lessons learned and the topic notes, written for reuse on future projects.
+- Keep this game's Obsidian notes, `C:/Users/Ben/Documents/obsidian/Ben/Game dev/One More Pack`, up to date
+  as we go (`One More Pack.md` is the index): creature roster, decisions log, lessons learned and the topic notes,
+  written for reuse on future projects. Lessons for any game go in `Game dev/Roblox playbook`.
