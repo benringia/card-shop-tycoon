@@ -55,8 +55,8 @@ return {
 		expect.equal(sharp.icon, "Sword")
 		expect.equal(sharp.group, "offense")
 		expect.equal(sharp.rarity, "Epic")
-		expect.equal(MutationRules.words(Mutations, m("tough", "Rare")).yours, "Rare · Tough (you and your creatures: HP +5%)", "the mockup's line, creatures too (option C)")
-		expect.equal(MutationRules.words(Mutations, m("tough", "Legendary")).line, "You and your creatures: HP +16%. Second Wind: once a fight, heal 30% when low.")
+		expect.equal(MutationRules.words(Mutations, m("tough", "Rare")).yours, "Rare · Tough (you and your creatures: HP +4%)", "the mockup's line, creatures too (option C)")
+		expect.equal(MutationRules.words(Mutations, m("tough", "Legendary")).line, "You and your creatures: HP +12%. Second Wind: once a fight, heal 30% when low.")
 		expect.equal(MutationRules.words(Mutations, m("petBoost", "Legendary")).line, "Your creatures' ATK and HP +6%. Rally: teammates' creatures +5% ATK.")
 		-- the part 3 boss pass (2026-11-26): Lifesteal heals a share of your own HP a landed sword hit, small numbers with
 		-- one decimal
@@ -64,10 +64,10 @@ return {
 		expect.equal(MutationRules.words(Mutations, m("lifesteal", "Legendary")).line, "Each sword hit heals 1.6% of your HP.")
 		expect.equal(MutationRules.words(Mutations, m("treasure", "Common")).line, "Fight cash +2%.", "Treasure at half")
 		-- the defensive ones protect your creatures too (owner 2026-11-26, option C)
-		expect.equal(MutationRules.words(Mutations, m("guard", "Very Rare")).line, "You and your creatures take 8% less damage.")
-		expect.equal(MutationRules.words(Mutations, m("thorns", "Rare")).line, "5% of the damage you and your creatures take hits back.")
-		expect.equal(MutationRules.words(Mutations, m("quickStep", "Epic")).line, "Dodge ready 12% sooner; your creatures dodge 12% of hits.")
-		expect.equal(MutationRules.words(Mutations, m("tough", "Rare")).line, "You and your creatures: HP +5%.")
+		expect.equal(MutationRules.words(Mutations, m("guard", "Very Rare")).line, "You and your creatures take 6% less damage.")
+		expect.equal(MutationRules.words(Mutations, m("thorns", "Rare")).line, "30% of the damage you and your creatures take hits back.")
+		expect.equal(MutationRules.words(Mutations, m("quickStep", "Epic")).line, "Dodge ready 9% sooner; your creatures dodge 9% of hits.")
+		expect.equal(MutationRules.words(Mutations, m("tough", "Rare")).line, "You and your creatures: HP +4%.")
 		expect.equal(MutationRules.words(Mutations, m("critical", "Rare")).line, "5% chance a sword hit deals double.")
 		for _, entry in Mutations.LIST do
 			for _, rarityName in Mutations.RARITIES do
@@ -91,12 +91,13 @@ return {
 			expect.equal((none :: any)[key], 0, `{key} none`)
 		end
 		expect.near(MutationRules.stats(Mutations, m("sharp", "Epic")).sword, 1.12, 1e-9)
-		expect.near(MutationRules.stats(Mutations, m("guard", "Rare")).taken, 0.95, 1e-9)
-		expect.near(MutationRules.stats(Mutations, m("quickStep", "Epic")).dodge, 0.88, 1e-9)
+		-- the defensive ones by their own sizes since option C (the part 3 sims: on creatures too, 16% was twice a Sharp)
+		expect.near(MutationRules.stats(Mutations, m("guard", "Rare")).taken, 0.96, 1e-9)
+		expect.near(MutationRules.stats(Mutations, m("quickStep", "Epic")).dodge, 0.91, 1e-9)
 		expect.near(MutationRules.stats(Mutations, m("critical", "Rare")).crit, 0.05, 1e-9)
 		expect.near(MutationRules.stats(Mutations, m("elementEdge", "Common")).strong, 1.03, 1e-9)
 		expect.near(MutationRules.stats(Mutations, m("bossHunter", "Very Rare")).boss, 1.08, 1e-9)
-		expect.near(MutationRules.stats(Mutations, m("thorns", "Epic")).thorns, 0.12, 1e-9)
+		expect.near(MutationRules.stats(Mutations, m("thorns", "Epic")).thorns, 0.75, 1e-9)
 		expect.near(MutationRules.stats(Mutations, m("lifesteal", "Rare")).lifesteal, 0.005, 1e-9, "a share of your HP a hit")
 		expect.near(MutationRules.stats(Mutations, m("ultimateCharge", "Epic")).meter, 1.12, 1e-9)
 		-- Pet Boost at half size (the boss sim, 2026-11-26: +16% on every creature took the Prism Hydra at 0.8x from 59%
@@ -109,7 +110,7 @@ return {
 		expect.near(pet.rally, 0.05, 1e-9, "Legendary's twist")
 		expect.equal(MutationRules.stats(Mutations, m("petBoost", "Epic")).rally, 0, "no twist below Legendary")
 		local tough = MutationRules.stats(Mutations, m("tough", "Legendary"))
-		expect.near(tough.hp, 1.16, 1e-9)
+		expect.near(tough.hp, 1.12, 1e-9)
 		expect.near(tough.secondWind, 0.3, 1e-9)
 		expect.near(MutationRules.stats(Mutations, m("scholar", "Epic")).xp, 1.06, 1e-9, "Scholar at half")
 		expect.near(MutationRules.stats(Mutations, m("treasure", "Legendary")).cash, 1.08, 1e-9, "Treasure at half")

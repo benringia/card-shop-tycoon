@@ -3832,9 +3832,12 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
       (Sword icon) on your sword hits: Sharp (+n%), Critical (n% chance to deal double), Element Edge (strong hits +n%),
       Boss Hunter (on a boss +n%). Defense (Shield), for you and your creatures since part 3 (owner 2026-11-26 "go with
       C": on the player alone a Legendary Thorns added nothing to a boss fight, players who fight well are rarely hit):
-      Tough (HP +n%; Legendary adds Second Wind: once a fight, heal 30% when under 30%, each fighter once), Guard (n%
-      less damage), Quick Step (your dodge n% sooner; each hit on your creatures dodged n% of the time, rolled only with
-      a chance), Thorns (n% of what you or they take hits back).
+      Tough (HP +n%; Legendary adds Second Wind: once a fight, heal 30% when under 30%, the player's alone: on every
+      creature it added up to 68 points), Guard (n% less damage), Quick Step (your dodge n% sooner; each hit on your
+      creatures dodged n% of the time, rolled only with a chance), Thorns (n% of what you or they take hits back). Their
+      own sizes from the sims: Tough, Guard and Quick Step 2 / 4 / 6 / 9 / 12%, Thorns 20 / 30 / 50 / 75 / 100% (the
+      damage creatures take is small beside a boss's HP); each Legendary then adds about what a Legendary Sharp does
+      (Tough 12% +17 to +20 on the hardest bosses).
       Support (Heal heart): Lifesteal (each sword hit that lands heals n% of your own HP: the player, never the creature,
       which the Verdant Blade's perk heals; a share of the hit's damage until the part 3 sims showed late bosses' hits of
       hundreds made a 100 HP player unkillable; the pop shows each whole point), Pet Boost (creatures' ATK and HP;

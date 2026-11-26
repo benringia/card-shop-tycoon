@@ -61,21 +61,49 @@ return {
 		{ id = "critical", name = "Critical", group = "offense", stat = "crit", how = "add", words = "{n}% chance a sword hit deals double" },
 		{ id = "elementEdge", name = "Element Edge", group = "offense", stat = "strong", how = "more", words = "Strong sword hits +{n}%" },
 		{ id = "bossHunter", name = "Boss Hunter", group = "offense", stat = "boss", how = "more", words = "Sword hits on bosses +{n}%" },
+		-- The defensive ones protect your creatures too (owner 2026-11-26, option C: on the player alone a Legendary
+		-- Thorns added nothing to a boss fight, players who fight well are rarely hit): Tough their HP (BattleService),
+		-- Guard and Thorns on their hits, Quick Step a chance to dodge each (BattleSim); Tough's Second Wind stays the
+		-- player's. Their own sizes from the part 3 sims (each Legendary about a Legendary Sharp's 4-16 points at 0.8x:
+		-- on creatures too, 16% Guard or Tough was about twice that; Thorns needs big shares, the damage creatures take
+		-- is small beside a boss's HP)
 		{
 			id = "tough",
 			name = "Tough",
 			group = "defense",
 			stat = "hp",
 			how = "more",
+			sizes = { Common = 0.02, Rare = 0.04, ["Very Rare"] = 0.06, Epic = 0.09, Legendary = 0.12 },
 			words = "You and your creatures: HP +{n}%",
 			twist = { stat = "secondWind", value = 0.3, words = "Second Wind: once a fight, heal 30% when low" },
 		},
-		-- The defensive ones protect your creatures too (owner 2026-11-26, option C: on the player alone a Legendary
-		-- Thorns added nothing to a boss fight, players who fight well are rarely hit): Tough their HP (BattleService),
-		-- Guard, Thorns and Second Wind on their hits, Quick Step a chance to dodge each (BattleSim)
-		{ id = "guard", name = "Guard", group = "defense", stat = "taken", how = "less", words = "You and your creatures take {n}% less damage" },
-		{ id = "quickStep", name = "Quick Step", group = "defense", stat = "dodge", how = "less", words = "Dodge ready {n}% sooner; your creatures dodge {n}% of hits" },
-		{ id = "thorns", name = "Thorns", group = "defense", stat = "thorns", how = "add", words = "{n}% of the damage you and your creatures take hits back" },
+		{
+			id = "guard",
+			name = "Guard",
+			group = "defense",
+			stat = "taken",
+			how = "less",
+			sizes = { Common = 0.02, Rare = 0.04, ["Very Rare"] = 0.06, Epic = 0.09, Legendary = 0.12 },
+			words = "You and your creatures take {n}% less damage",
+		},
+		{
+			id = "quickStep",
+			name = "Quick Step",
+			group = "defense",
+			stat = "dodge",
+			how = "less",
+			sizes = { Common = 0.02, Rare = 0.04, ["Very Rare"] = 0.06, Epic = 0.09, Legendary = 0.12 },
+			words = "Dodge ready {n}% sooner; your creatures dodge {n}% of hits",
+		},
+		{
+			id = "thorns",
+			name = "Thorns",
+			group = "defense",
+			stat = "thorns",
+			how = "add",
+			sizes = { Common = 0.2, Rare = 0.3, ["Very Rare"] = 0.5, Epic = 0.75, Legendary = 1.0 },
+			words = "{n}% of the damage you and your creatures take hits back",
+		},
 		{
 			-- a share of the player's own HP for every sword hit that lands (the part 3 boss pass, 2026-11-26: a share of the
 			-- hit's damage made a 100 HP player unkillable on late bosses, whose hits are hundreds); a Legendary's 1.6% adds
