@@ -576,7 +576,9 @@ local function renderPane(entry: Entry?)
 
 	-- One sentence: what goes in and what comes out, or what to get first. A Forge weapon on a phone: under its
 	-- element buttons and its recipe (a short pane: Config/ForgeLayout)
-	local say = addLabel(pane, WeaponText.say(action, cost, items, cash(), Items, opts), Enum.Font.FredokaOne, if phone then 13 else 16, palette.ink, if phone and hasElements then 6 else 1)
+	-- (a phone's Mutate tab: its mutation row first, the sentence under the recipe, so the row shows above the fold)
+	local sayOrder = if phone and hasElements then 6 elseif phone and tab == MUTATE then 7 else 1
+	local say = addLabel(pane, WeaponText.say(action, cost, items, cash(), Items, opts), Enum.Font.FredokaOne, if phone then 13 else 16, palette.ink, sayOrder)
 	say.Name = "Say"
 	say.TextXAlignment = Enum.TextXAlignment.Center
 	if tab == FORGE and weapon.source.kind == "forge" and WeaponRules.firstForge(Weapons, owned) then
@@ -604,7 +606,7 @@ local function renderPane(entry: Entry?)
 	local noPill = phone and (hasElements or tab == MUTATE)
 	local spots, card = recipeRow(5, weaponId, record, if done then nil else cost, cardSize, phone, if noPill then nil else pill, action == "upgrade" and not maxed)
 	if tab == MUTATE then
-		mutationRow(pane, if record then record.mutation else nil, phone, 6)
+		mutationRow(pane, if record then record.mutation else nil, phone, if phone then 0 else 6)
 	end
 	if action == "upgrade" and record then
 		-- how much stronger it gets (fully upgraded: its Attack)

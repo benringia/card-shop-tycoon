@@ -194,8 +194,8 @@ end
 function UiLayout.forgePhoneContent(look: ForgeLook, tab: string): number
 	local plain = look.SAY + look.GAP + look.CARD.h + look.UNDER
 	local family = look.ELEMENT + look.GAP + look.CARD.h -- a Forge weapon (the Forge tab's first rows)
-	-- the Mutate tab: the slim mutation row in the pill's place
-	local mutate = look.SAY + look.GAP + look.CARD.h + look.GAP + (if look.MUTATION_ROW then look.MUTATION_ROW.phone else look.UNDER)
+	-- the Mutate tab: the slim mutation row first, over the recipe (no pill; its sentence goes under the fold)
+	local mutate = (if look.MUTATION_ROW then look.MUTATION_ROW.phone else look.SAY) + look.GAP + look.CARD.h
 	return look.PAD * 2 + (if tab == "Forge" then math.max(plain, family) elseif tab == "Mutate" then mutate else plain)
 end
 

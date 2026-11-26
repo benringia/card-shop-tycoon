@@ -12,6 +12,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local TextService = game:GetService("TextService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
@@ -269,7 +270,7 @@ local function choiceButton(parent: Instance, card: WeaponText.ChoiceCard, fill:
 		row.Size = UDim2.fromScale(1, 0.42)
 		row.Parent = button
 		rowLayout(row, 4, true)
-		local function words(text: string, order: number)
+		local function getsLabel(text: string, order: number)
 			local label = UIKit.label(row, text, Enum.Font.GothamBold, sizes.gets, WHITE)
 			label.LayoutOrder = order
 			label.TextWrapped = false
@@ -277,7 +278,7 @@ local function choiceButton(parent: Instance, card: WeaponText.ChoiceCard, fill:
 			label.Size = UDim2.fromScale(0, 1)
 			UIKit.outlined(label)
 		end
-		words("You get", 1)
+		getsLabel("You get", 1)
 		local side = if phone then spec.phoneGetsIcon else spec.getsIcon
 		local icon = Instance.new("ImageLabel")
 		icon.Name = "Essence"
@@ -286,7 +287,7 @@ local function choiceButton(parent: Instance, card: WeaponText.ChoiceCard, fill:
 		icon.Image = UIIcons.Essence
 		icon.Size = UDim2.fromOffset(side, side)
 		icon.Parent = row
-		words(`+{gets}`, 3)
+		getsLabel(`+{gets}`, 3)
 	end
 	return button
 end
@@ -350,20 +351,22 @@ local function choiceCard(parent: Instance, card: WeaponText.ChoiceCard, width: 
 	icon.ImageColor3 = tint
 	icon.Size = UDim2.fromOffset(iconSide, iconSide)
 	icon.Parent = nameRow
-	-- the name takes what's left of the row and shrinks to fit it ("Ultimate Charge" beside "Legendary")
+	-- the name as wide as its words with the rarity pill right after it (the mockup), shrinking to fit a long one
+	-- ("Ultimate Charge" beside "Legendary")
 	local name = UIKit.label(nameRow, card.name, Enum.Font.FredokaOne, sizes.name, tint)
 	name.Name = "Name"
 	name.LayoutOrder = 2
 	name.TextWrapped = false
 	name.TextScaled = true
-	name.Size = UDim2.fromScale(0, 1)
+	local natural = TextService:GetTextSize(card.name, sizes.name, Enum.Font.FredokaOne, Vector2.new(1000, 100)).X + 4
+	name.Size = UDim2.new(0, natural, 1, 0)
 	local fit = Instance.new("UITextSizeConstraint")
 	fit.MaxTextSize = sizes.name
 	fit.MinTextSize = 9
 	fit.Parent = name
-	local grow = Instance.new("UIFlexItem")
-	grow.FlexMode = Enum.UIFlexMode.Fill
-	grow.Parent = name
+	local shrink = Instance.new("UIFlexItem")
+	shrink.FlexMode = Enum.UIFlexMode.Shrink
+	shrink.Parent = name
 	local pill = UIKit.label(nameRow, card.rarity, Enum.Font.FredokaOne, sizes.pill, WHITE)
 	pill.Name = "Rarity"
 	pill.LayoutOrder = 3
