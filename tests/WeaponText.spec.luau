@@ -413,9 +413,91 @@ return {
 		expect.equal(ready, false)
 		local pill, line = WeaponText.outcome("mutate", { mutation = "Epic · Sharp (sword hits +12%)" })
 		expect.equal(pill, "Any rarity", "short like the other tabs' pills (a phone cut a longer one)")
-		expect.equal(line, "Yours now: Epic · Sharp (sword hits +12%)")
-		expect.equal(select(2, WeaponText.outcome("mutate", {})), "Its first mutation!")
-		expect.equal(WeaponText.tabLine("Mutate"), "Roll a new mutation on a weapon you have, for Mutation Essence. Take the new one or keep yours: the other turns into Essence.")
+		expect.isNil(line, "the current mutation has its own row now (WeaponText.mutationRow)")
+		expect.equal(WeaponText.tabLine("Mutate"), "Roll a new mutation on a weapon you have, for Mutation Essence. Then keep your current one or take the new one.")
+	end,
+
+	-- owner 2026-11-26: "make sure the mutation on this window is noticeable" (the mockup's coloured row)
+	["the Forge's current mutation row: its name and effect, its rarity; none yet"] = function()
+		local Mutations = require("../src/shared/Config/Mutations")
+		local row = WeaponText.mutationRow(Mutations, { id = "scholar", rarity = "Rare" })
+		expect.equal(row.label, "CURRENT MUTATION")
+		expect.equal(row.title, "Scholar · creature XP from fights +3%")
+		expect.equal(row.rarity, "Rare")
+		expect.equal(row.icon, "Heal")
+		expect.equal(row.phone, "Current: Scholar · creature XP from fights +3%", "a phone's one slim line")
+		local none = WeaponText.mutationRow(Mutations, nil)
+		expect.equal(none.label, "CURRENT MUTATION")
+		expect.equal(none.title, "None yet: this roll gives its first!")
+		expect.equal(none.phone, "None yet: this roll gives its first!")
+		expect.isNil(none.rarity)
+		expect.equal(none.icon, "Sparkle")
+		local chip = WeaponText.mutationChip(Mutations, { id = "ultimateCharge", rarity = "Legendary" })
+		expect.equal(chip, "Legendary · Ultimate Charge", "the list row's chip")
+	end,
+
+	-- The reveal's choice, R1 of the owner's mockups (2026-11-26: "do I have to pay another 4 essence or receive +4
+	-- essence"): CURRENT and NEW! cards with their buttons, a reward said as "You get" on the button that gives it
+	["the mutation choice: CURRENT and NEW! cards, each button with what you get"] = function()
+		local Mutations = require("../src/shared/Config/Mutations")
+		local choice = WeaponText.choice(Mutations, {
+			mutation = { id = "lifesteal", rarity = "Epic" },
+			have = { id = "scholar", rarity = "Rare" },
+			applied = false,
+			essence = { take = 4, keep = 12 },
+			source = "drop",
+		})
+		expect.equal(choice.top, "Pick one. The other one turns into Essence.")
+		expect.equal(#choice.cards, 2)
+		local current, new = choice.cards[1], choice.cards[2]
+		expect.equal(current.tag, "CURRENT")
+		expect.equal(current.name, "Scholar")
+		expect.equal(current.rarity, "Rare")
+		expect.equal(current.icon, "Heal")
+		expect.equal(current.effect, "Creature XP from fights +3%")
+		expect.equal(current.button, "Keep current")
+		expect.equal(current.take, false)
+		expect.equal(current.gets, 12, "keeping yours turns the new Epic into 12")
+		expect.equal(new.tag, "NEW!")
+		expect.equal(new.name, "Lifesteal")
+		expect.equal(new.rarity, "Epic")
+		expect.equal(new.effect, "Heal 12% of your sword damage")
+		expect.equal(new.button, "Take new")
+		expect.equal(new.take, true)
+		expect.equal(new.gets, 4, "taking the new one turns your Rare into 4")
+	end,
+
+	-- owner 2026-11-26: "player should only get essence in drops. not in the forge mutations"
+	["a Forge roll's choice: the same cards, nothing to get"] = function()
+		local Mutations = require("../src/shared/Config/Mutations")
+		local choice = WeaponText.choice(Mutations, {
+			mutation = { id = "sharp", rarity = "Rare" },
+			have = { id = "scholar", rarity = "Rare" },
+			applied = false,
+			essence = { take = 0, keep = 0 },
+			source = "forge",
+		})
+		expect.equal(choice.top, "Keep your current mutation or take the new one.")
+		expect.equal(choice.cards[1].button, "Keep current")
+		expect.isNil(choice.cards[1].gets, "no Essence from the Forge")
+		expect.isNil(choice.cards[2].gets)
+	end,
+
+	["a weapon's first mutation: one NEW! card and Nice!, and a Legendary's twist in its words"] = function()
+		local Mutations = require("../src/shared/Config/Mutations")
+		local choice = WeaponText.choice(Mutations, {
+			mutation = { id = "tough", rarity = "Legendary" },
+			applied = true,
+			essence = { take = 0, keep = 0 },
+			source = "drop",
+		})
+		expect.equal(choice.top, "Its first mutation!")
+		expect.equal(#choice.cards, 1)
+		expect.equal(choice.cards[1].tag, "NEW!")
+		expect.equal(choice.cards[1].button, "Nice!")
+		expect.equal(choice.cards[1].take, true)
+		expect.isNil(choice.cards[1].gets)
+		expect.equal(choice.cards[1].effect, "Your HP +16%. Second Wind: once a fight, heal 30% when low")
 	end,
 
 	["the Steel Sword's rows: its dash alone, no empty rows"] = function()

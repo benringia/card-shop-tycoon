@@ -342,9 +342,9 @@ end
 -- Under the recipe's weapon: a pill (the grade or level it comes out with) and a line. `step`: an upgrade's
 -- WeaponText.ladderStep; `max`: it is fully upgraded; `grade`: a reforge's grade now; `done`: Grade S already;
 -- `mutation`: a Mutate's weapon's mutation now, in words (MutationRules words.yours)
-function WeaponText.outcome(action: "forge" | "upgrade" | "reforge" | "mutate", view: { level: number?, step: string?, max: boolean?, grade: string?, done: boolean?, mutation: string? }): (string, string?)
+function WeaponText.outcome(action: "forge" | "upgrade" | "reforge" | "mutate", view: { level: number?, step: string?, max: boolean?, grade: string?, done: boolean? }): (string, string?)
 	if action == "mutate" then
-		return "Any rarity", if view.mutation then `Yours now: {view.mutation}` else "Its first mutation!"
+		return "Any rarity", nil -- the current mutation has its own row (WeaponText.mutationRow)
 	elseif action == "upgrade" then
 		return `+{view.level or 0}`, if view.max then "Awakened!" else view.step
 	elseif action == "reforge" then
@@ -382,7 +382,8 @@ local TAB_LINES = {
 	Forge = "Make a weapon you don't have yet. You pay its materials and cash; it comes out at a random grade, C to S (like a card).",
 	Upgrade = "Level a weapon you own up, +0 to +10: more Attack and a brighter glow each level. Never fails. +5 and +10 also need Star Shards.",
 	Reforge = "Roll a new grade for half the making cost. You keep the better grade, so it never gets worse. Grade S can't be reforged.",
-	Mutate = "Roll a new mutation on a weapon you have, for Mutation Essence. Take the new one or keep yours: the other turns into Essence.",
+	-- (a Forge roll's choice gives no Essence: only boss drops do, owner 2026-11-26)
+	Mutate = "Roll a new mutation on a weapon you have, for Mutation Essence. Then keep your current one or take the new one.",
 }
 function WeaponText.tabLine(tab: string): string
 	return TAB_LINES[tab] or ""
@@ -589,6 +590,73 @@ function WeaponText.goalLine(have: number, need: number, weaponName: string, own
 		return `You can {verb} the {weaponName} now!`
 	end
 	return `Get {need - have} more to {verb} the {weaponName}`
+end
+
+-- The reveal's mutation choice (R1 of the owner's mockups, 2026-11-26, words players know from reroll screens): a
+-- CURRENT card and a NEW! card, each with its button; `gets` the Essence that button gives (nil when none: a Forge
+-- roll's choice gives none, only boss drops do). A weapon's first mutation: the NEW! card alone with Nice!
+export type ChoiceCard = {
+	tag: string,
+	name: string,
+	rarity: string,
+	icon: string,
+	effect: string,
+	button: string,
+	take: boolean,
+	gets: number?,
+}
+export type Choice = { top: string, cards: { ChoiceCard } }
+
+local function choiceCard(mutations: any, mutation: any, tag: string, button: string, take: boolean, gets: number): ChoiceCard
+	local words = MutationRules.words(mutations, mutation)
+	return {
+		tag = tag,
+		name = words.name,
+		rarity = words.rarity,
+		icon = words.icon,
+		effect = (string.gsub(words.line, "%.$", "")),
+		button = button,
+		take = take,
+		gets = if gets > 0 then gets else nil,
+	}
+end
+
+-- The Forge's Mutate tab: the weapon's current mutation as its own coloured row (owner 2026-11-26: "make sure the
+-- mutation on this window is noticeable"): "CURRENT MUTATION" over "Scholar · creature XP from fights +3%", its rarity
+-- (the row's colour and pill) and group icon; none yet: a Sparkle and what the roll will be. `phone`: a phone's one
+-- slim line in the pill's place
+export type MutationRow = { label: string, title: string, phone: string, rarity: string?, icon: string }
+
+function WeaponText.mutationRow(mutations: any, mutation: any?): MutationRow
+	if not mutation then
+		local none = "None yet: this roll gives its first!"
+		return { label = "CURRENT MUTATION", title = none, phone = none, icon = "Sparkle" }
+	end
+	local words = MutationRules.words(mutations, mutation)
+	local effect = string.gsub(words.line, "%.$", "")
+	local title = `{words.name} · {string.lower(string.sub(effect, 1, 1))}{string.sub(effect, 2)}`
+	return { label = "CURRENT MUTATION", title = title, phone = `Current: {title}`, rarity = words.rarity, icon = words.icon }
+end
+
+-- A weapon's mutation on its Forge list row: "Legendary · Ultimate Charge"
+function WeaponText.mutationChip(mutations: any, mutation: any): string
+	local words = MutationRules.words(mutations, mutation)
+	return `{words.rarity} · {words.name}`
+end
+
+function WeaponText.choice(mutations: any, offer: any): Choice
+	local essence = offer.essence or {}
+	if offer.applied or not offer.have then
+		return { top = "Its first mutation!", cards = { choiceCard(mutations, offer.mutation, "NEW!", "Nice!", true, 0) } }
+	end
+	local forge = offer.source == "forge"
+	return {
+		top = if forge then "Keep your current mutation or take the new one." else "Pick one. The other one turns into Essence.",
+		cards = {
+			choiceCard(mutations, offer.have, "CURRENT", "Keep current", false, if forge then 0 else tonumber(essence.keep) or 0),
+			choiceCard(mutations, offer.mutation, "NEW!", "Take new", true, if forge then 0 else tonumber(essence.take) or 0),
+		},
+	}
 end
 
 return WeaponText

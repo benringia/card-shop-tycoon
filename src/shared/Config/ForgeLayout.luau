@@ -20,4 +20,26 @@ return {
 	-- `max`; phones, all in one row: up to `phoneMax`) and a spot's height at the most
 	SLOTS = { min = 130, max = 200, phoneMax = 230, tall = 88 },
 	ELEMENT = 52, -- the element buttons' row (48 px buttons)
+	-- The Mutate tab's current mutation (owner 2026-11-26: "make sure the mutation on this window is noticeable", the
+	-- mockup's row): a row in the rarity colour under the recipe (`fill`: its colour this far to white; `ink`, `labelInk`:
+	-- its words this far to black), `height` on a computer; on a phone a slim `phone` row takes the pill's place so it
+	-- stays above the fold. `rim`: the weapon card's edge in the same colour. `chip`: a list row's mutation
+	MUTATION_ROW = {
+		width = 420,
+		height = 44,
+		phone = 24,
+		icon = 32,
+		phoneIcon = 20,
+		glyph = 22,
+		label = 10,
+		title = 15,
+		phoneTitle = 12,
+		pill = 11,
+		fill = 0.86,
+		ink = 0.38,
+		labelInk = 0.45,
+		none = { 201, 169, 220 }, -- no mutation yet: lilac
+		rim = 3,
+		chip = { height = 18, text = 11, icon = 14 },
+	},
 }

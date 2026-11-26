@@ -21,10 +21,30 @@ return {
 	CRIT = 2, -- a Critical sword hit's damage x this
 	-- A choice left waiting (they left before answering) is asked again this long after the weapons arrive on a join
 	ASK_AFTER_JOIN = 8,
-	-- The reveal's choice panel (WeaponRevealController; the owner's mockup): its width (at most, and of the screen),
-	-- the buttons' height, the Keep mine button's light blue
-	-- (closeAfter: the stage closes this long after the pick)
-	CHOICE = { width = 520, widthShare = 0.92, button = 52, keepColor = { 140, 205, 255 }, closeAfter = 0.4 },
+	-- The reveal's choice panel (WeaponRevealController, R1 of the owner's mockups 2026-11-26: a CURRENT and a NEW!
+	-- card, each with its button in its rarity colour, "You get [Essence] +N" on a drop's): its width (at most, and of
+	-- the screen), the gap between the cards, the buttons' height (a phone's keeps the 48 px tap size), text sizes, the
+	-- effect line's box (it shrinks to fit), the icons, the tag colours (closeAfter: the stage closes this long after
+	-- the pick). A phone drops the top line and puts the tag in the name row.
+	CHOICE = {
+		width = 520,
+		widthShare = 0.92,
+		gap = 14,
+		button = 52,
+		phoneButton = 48,
+		text = { top = 15, tag = 11, name = 18, pill = 11, effect = 13, button = 20, gets = 13 },
+		phoneText = { tag = 11, name = 15, pill = 11, effect = 12, button = 17, gets = 12 },
+		effectHeight = 34,
+		phoneEffectHeight = 28,
+		icon = 22,
+		phoneIcon = 18,
+		getsIcon = 20,
+		phoneGetsIcon = 16,
+		tagColor = { 215, 205, 230 },
+		newColor = { 255, 213, 74 },
+		effectColor = { 241, 234, 250 },
+		closeAfter = 0.4,
+	},
 	-- Each group's icon (Config/UIIcons white glyphs, so the window tints them in the mutation's rarity colour: the
 	-- spec's heart is the Heal glyph, the glossy Heart can't take a tint)
 	GROUPS = {

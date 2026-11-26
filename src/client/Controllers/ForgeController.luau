@@ -27,6 +27,7 @@ local Items = require(Config:WaitForChild("Items"))
 local Mutations = require(Config:WaitForChild("Mutations"))
 local MutationRules = require(Shared:WaitForChild("Util"):WaitForChild("MutationRules"))
 local Rarities = require(Config:WaitForChild("Rarities"))
+local UIIcons = require(Config:WaitForChild("UIIcons"))
 local Weapons = require(Config:WaitForChild("Weapons"))
 local Upgrades = require(Config:WaitForChild("Upgrades"))
 local UpgradeRules = require(Shared:WaitForChild("Util"):WaitForChild("UpgradeRules"))
@@ -246,6 +247,141 @@ local function addLabel(parent: Instance, text: string, font: Enum.Font, size: n
 	return label
 end
 
+local WHITE = Color3.new(1, 1, 1)
+local BLACK = Color3.new(0, 0, 0)
+
+-- A row of pieces side by side, centred up and down
+local function sideBySide(parent: Instance, padding: number)
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.VerticalAlignment = Enum.VerticalAlignment.Center
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Padding = UDim.new(0, padding)
+	layout.Parent = parent
+end
+
+local function padded(parent: Instance, left: number, right: number)
+	local padding = Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0, left)
+	padding.PaddingRight = UDim.new(0, right)
+	padding.Parent = parent
+end
+
+-- A mutation's rarity pill: the rarity in white on its colour
+local function rarityPill(parent: Instance, rarity: string, size: number, order: number)
+	local pill = UIKit.label(parent, rarity, Enum.Font.FredokaOne, size, WHITE)
+	pill.Name = "Rarity"
+	pill.LayoutOrder = order
+	pill.TextWrapped = false
+	pill.TextXAlignment = Enum.TextXAlignment.Center
+	pill.BackgroundColor3 = Rarities.Tiers[rarity].color
+	pill.BackgroundTransparency = 0
+	pill.AutomaticSize = Enum.AutomaticSize.X
+	pill.Size = UDim2.fromOffset(0, size + 6)
+	UIKit.corner(pill, 99)
+	UIKit.outlined(pill, 1.5)
+	padded(pill, 7, 7)
+end
+
+-- A weapon's mutation on its list row (every tab but Forge): "[icon] Legendary · Ultimate Charge" in its colour
+local function mutationChip(row: Instance, mutation: any, x: number, y: number)
+	local look = ForgeLayout.MUTATION_ROW
+	local tint = Rarities.Tiers[mutation.rarity].color
+	local words = MutationRules.words(Mutations, mutation)
+	local chip = Instance.new("Frame")
+	chip.Name = "MutationChip"
+	chip.Position = UDim2.fromOffset(x, y)
+	chip.Size = UDim2.fromOffset(0, look.chip.height)
+	chip.AutomaticSize = Enum.AutomaticSize.X
+	chip.BackgroundColor3 = tint:Lerp(WHITE, look.fill)
+	chip.Parent = row
+	UIKit.corner(chip, 99)
+	UIKit.outline(chip, tint, 1.5)
+	padded(chip, 4, 8)
+	sideBySide(chip, 4)
+	local icon = Instance.new("ImageLabel")
+	icon.LayoutOrder = 1
+	icon.BackgroundTransparency = 1
+	icon.Image = UIIcons[words.icon] or UIIcons.Sparkle
+	icon.ImageColor3 = tint
+	icon.Size = UDim2.fromOffset(look.chip.icon, look.chip.icon)
+	icon.Parent = chip
+	local text = UIKit.label(chip, WeaponText.mutationChip(Mutations, mutation), Enum.Font.GothamBold, look.chip.text, tint:Lerp(BLACK, look.ink))
+	text.LayoutOrder = 2
+	text.TextWrapped = false
+	text.AutomaticSize = Enum.AutomaticSize.X
+	text.Size = UDim2.fromScale(0, 1)
+end
+
+-- The Mutate tab's current mutation (owner 2026-11-26: "make sure the mutation on this window is noticeable", the
+-- mockup's row): its group's icon on a disc in its rarity colour, "CURRENT MUTATION" over its name and what it does,
+-- its rarity's pill; none yet in lilac. A phone's is one slim line in the pill's place (above the fold)
+local function mutationRow(parent: Instance, saved: any, phone: boolean, order: number)
+	local look = ForgeLayout.MUTATION_ROW
+	local mutation = if saved then MutationRules.read(Mutations, saved) else nil
+	local words = WeaponText.mutationRow(Mutations, mutation)
+	local rarity = words.rarity
+	local tint = if rarity then Rarities.Tiers[rarity].color else Color3.fromRGB(look.none[1], look.none[2], look.none[3])
+	local ink = tint:Lerp(BLACK, look.ink)
+	local row = Instance.new("Frame")
+	row.Name = "Mutation"
+	row.LayoutOrder = order
+	row.BackgroundColor3 = tint:Lerp(WHITE, look.fill)
+	row.Size = UDim2.new(1, 0, 0, if phone then look.phone else look.height)
+	row.Parent = parent
+	local most = Instance.new("UISizeConstraint")
+	most.MaxSize = Vector2.new(look.width, math.huge)
+	most.Parent = row
+	UIKit.corner(row, if phone then 8 else 12)
+	UIKit.outline(row, tint, 2)
+	padded(row, if phone then 3 else 6, if phone then 6 else 10)
+	sideBySide(row, if phone then 6 else 8)
+	local discSide = if phone then look.phoneIcon else look.icon
+	local disc = Instance.new("Frame")
+	disc.Name = "Icon"
+	disc.LayoutOrder = 1
+	disc.BackgroundColor3 = tint
+	disc.Size = UDim2.fromOffset(discSide, discSide)
+	disc.Parent = row
+	UIKit.corner(disc, 99)
+	local glyph = Instance.new("ImageLabel")
+	glyph.BackgroundTransparency = 1
+	glyph.AnchorPoint = Vector2.new(0.5, 0.5)
+	glyph.Position = UDim2.fromScale(0.5, 0.5)
+	glyph.Size = UDim2.fromScale(look.glyph / look.icon, look.glyph / look.icon)
+	glyph.Image = UIIcons[words.icon] or UIIcons.Sparkle
+	glyph.Parent = disc
+	local text = Instance.new("Frame")
+	text.Name = "Words"
+	text.LayoutOrder = 2
+	text.BackgroundTransparency = 1
+	text.Size = UDim2.fromScale(0, 1)
+	text.Parent = row
+	local fill = Instance.new("UIFlexItem")
+	fill.FlexMode = Enum.UIFlexMode.Fill
+	fill.Parent = text
+	local function line(said: string, font: Enum.Font, size: number, color: Color3, y: number, height: number)
+		local label = UIKit.label(text, said, font, size, color)
+		label.TextWrapped = false
+		label.TextScaled = true
+		label.Position = UDim2.fromScale(0, y)
+		label.Size = UDim2.fromScale(1, height)
+		local fit = Instance.new("UITextSizeConstraint")
+		fit.MaxTextSize = size
+		fit.MinTextSize = 8
+		fit.Parent = label
+	end
+	if phone then
+		line(words.phone, Enum.Font.FredokaOne, look.phoneTitle, ink, 0.1, 0.8)
+	else
+		line(words.label, Enum.Font.GothamBold, look.label, tint:Lerp(BLACK, look.labelInk), 0.1, 0.3)
+		line(words.title, Enum.Font.FredokaOne, look.title, ink, 0.42, 0.5)
+	end
+	if rarity then
+		rarityPill(row, rarity, look.pill, 3)
+	end
+end
+
 local function buildRow(entry: Entry, order: number)
 	local weaponId = weaponOf(entry)
 	local record = owned[weaponId]
@@ -279,6 +415,12 @@ local function buildRow(entry: Entry, order: number)
 	line.TextXAlignment = Enum.TextXAlignment.Left
 	line.TextYAlignment = Enum.TextYAlignment.Top
 	line.TextWrapped = true
+	-- its mutation under the grade line (owner 2026-11-26: the mutation noticeable)
+	local mutation = if tab ~= FORGE and record and record.mutation then MutationRules.read(Mutations, record.mutation) else nil
+	if mutation then
+		line.Size = UDim2.new(1, -(textX + 10), 0, 14)
+		mutationChip(row, mutation, textX, 46)
+	end
 	row.Activated:Connect(function()
 		selectedKey = entry.key
 		render()
@@ -354,6 +496,19 @@ local function recipeRow(order: number, weaponId: string, record: Owned?, cost: 
 	card.Parent = row
 	-- The Forge tab shows what it will look like (Grade C, +0); the others, yours
 	WeaponFace.render(card, nil, weaponId, record or (if tab == FORGE then { grade = "C", level = 0 } else nil), nil)
+	-- the Mutate tab: the card's edge in its mutation's colour, as the blade glows (owner 2026-11-26)
+	local mutation = if tab == MUTATE and record and record.mutation then MutationRules.read(Mutations, record.mutation) else nil
+	if mutation then
+		local rim = Instance.new("UIStroke")
+		rim.Name = "MutationRim"
+		rim.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		rim.Color = Rarities.Tiers[mutation.rarity].color
+		rim.Thickness = ForgeLayout.MUTATION_ROW.rim
+		rim.Parent = card
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(CardDesign.CORNER, 0)
+		corner.Parent = card
+	end
 	local openCard = Instance.new("TextButton")
 	openCard.Name = "OpenCard"
 	openCard.Text = ""
@@ -438,17 +593,19 @@ local function renderPane(entry: Entry?)
 		end
 	end
 
-	-- The recipe, and under the weapon what it comes out with
-	local mutation = if record and record.mutation then MutationRules.read(Mutations, record.mutation) else nil
+	-- The recipe, and under the weapon what it comes out with (a phone's Mutate tab: its mutation row in the pill's place)
 	local pill, line = WeaponText.outcome(action, {
 		level = if maxed and record then record.level elseif record then record.level + 1 else nil,
 		step = if record and not maxed then WeaponText.ladderStep(WeaponLooks, record.level + 1, weapon.rarity) else nil,
 		max = maxed,
 		grade = if record then record.grade else nil,
 		done = done,
-		mutation = if mutation then MutationRules.words(Mutations, mutation).yours else nil,
 	})
-	local spots, card = recipeRow(5, weaponId, record, if done then nil else cost, cardSize, phone, if phone and hasElements then nil else pill, action == "upgrade" and not maxed)
+	local noPill = phone and (hasElements or tab == MUTATE)
+	local spots, card = recipeRow(5, weaponId, record, if done then nil else cost, cardSize, phone, if noPill then nil else pill, action == "upgrade" and not maxed)
+	if tab == MUTATE then
+		mutationRow(pane, if record then record.mutation else nil, phone, 6)
+	end
 	if action == "upgrade" and record then
 		-- how much stronger it gets (fully upgraded: its Attack)
 		local now = WeaponRules.shownPower(Weapons, Combat, weaponId, record.grade, record.level)

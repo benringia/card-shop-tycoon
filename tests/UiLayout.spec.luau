@@ -288,11 +288,19 @@ return {
 		local look = require("../src/shared/Config/ForgeLayout")
 		for _, view in { { w = 667, h = 375 }, { w = 740, h = 360 }, { w = 844, h = 390 } } do
 			local pane = UiLayout.forgePhonePane(look, view.h)
-			for _, tab in { "Forge", "Upgrade", "Reforge" } do
+			for _, tab in { "Forge", "Upgrade", "Reforge", "Mutate" } do
 				local content = UiLayout.forgePhoneContent(look, tab)
 				expect.equal(content <= pane, true, `{tab} at {view.w}x{view.h}: {content} px in a {pane} px pane`)
 			end
 		end
+	end,
+
+	-- owner 2026-11-26 ("make sure the mutation on this window is noticeable"): on a phone the Mutate tab's slim
+	-- mutation row takes the pill's place under the recipe, so it shows above the fold
+	["the Forge's Mutate tab on a phone: the mutation row instead of the pill"] = function()
+		local look = require("../src/shared/Config/ForgeLayout")
+		local content = UiLayout.forgePhoneContent(look, "Mutate")
+		expect.equal(content, look.PAD * 2 + look.SAY + look.GAP + look.CARD.h + look.GAP + look.MUTATION_ROW.phone)
 	end,
 
 	["the binder's Filters window fits its content, and the screen"] = function()

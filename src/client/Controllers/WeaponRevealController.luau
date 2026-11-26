@@ -22,6 +22,7 @@ local LevelUpConfig = require(Config:WaitForChild("LevelUpFx"))
 local PackOpening = require(Config:WaitForChild("PackOpening"))
 local Rarities = require(Config:WaitForChild("Rarities"))
 local Town = require(Config:WaitForChild("Town"))
+local UIIcons = require(Config:WaitForChild("UIIcons"))
 local WeaponLooks = require(Config:WaitForChild("WeaponLooks"))
 local Weapons = require(Config:WaitForChild("Weapons"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -227,38 +228,179 @@ local function words(reveal: Reveal, color: Color3): (ScreenGui, TextButton, () 
 	return gui, skip, popBanner, showLine
 end
 
--- A two-line button: what it does over what you get (the game's button rule)
-local function choiceButton(parent: Instance, order: number, label: string, sub: string?, fill: Color3, width: UDim): TextButton
+local function rgb(values: { number }): Color3
+	return Color3.fromRGB(values[1], values[2], values[3])
+end
+
+-- A horizontal row that centres its pieces vertically
+local function rowLayout(parent: Instance, padding: number, centred: boolean)
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.HorizontalAlignment = if centred then Enum.HorizontalAlignment.Center else Enum.HorizontalAlignment.Left
+	layout.VerticalAlignment = Enum.VerticalAlignment.Center
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Padding = UDim.new(0, padding)
+	layout.Parent = parent
+end
+
+-- A card's button (R1): what it does, and under it what you get ("You get [Essence] +12"; nothing when it gives none)
+local function choiceButton(parent: Instance, card: WeaponText.ChoiceCard, fill: Color3, phone: boolean): TextButton
+	local spec = Mutations.CHOICE
+	local sizes = if phone then spec.phoneText else spec.text
 	local button = Instance.new("TextButton")
-	button.Name = label
-	button.LayoutOrder = order
+	button.Name = card.button
+	button.LayoutOrder = 4
 	button.AutoButtonColor = true
 	button.BackgroundColor3 = fill
 	button.Text = ""
-	button.Size = UDim2.new(width, UDim.new(0, Mutations.CHOICE.button))
+	button.Size = UDim2.new(1, 0, 0, if phone then spec.phoneButton else spec.button)
 	button.Parent = parent
 	UIKit.corner(button, 12)
-	local main = UIKit.label(button, label, Enum.Font.FredokaOne, 20, WHITE)
-	main.Size = UDim2.new(1, 0, if sub then 0.6 else 1, 0)
+	local main = UIKit.label(button, card.button, Enum.Font.FredokaOne, sizes.button, WHITE)
+	main.Size = UDim2.fromScale(1, if card.gets then 0.58 else 1)
 	main.TextXAlignment = Enum.TextXAlignment.Center
 	UIKit.outlined(main)
-	if sub then
-		local small = UIKit.label(button, sub, Enum.Font.GothamBold, 13, WHITE)
-		small.Position = UDim2.fromScale(0, 0.55)
-		small.Size = UDim2.fromScale(1, 0.4)
-		small.TextXAlignment = Enum.TextXAlignment.Center
-		UIKit.outlined(small)
+	local gets = card.gets
+	if gets then
+		local row = Instance.new("Frame")
+		row.Name = "Gets"
+		row.BackgroundTransparency = 1
+		row.Position = UDim2.fromScale(0, 0.52)
+		row.Size = UDim2.fromScale(1, 0.42)
+		row.Parent = button
+		rowLayout(row, 4, true)
+		local function words(text: string, order: number)
+			local label = UIKit.label(row, text, Enum.Font.GothamBold, sizes.gets, WHITE)
+			label.LayoutOrder = order
+			label.TextWrapped = false
+			label.AutomaticSize = Enum.AutomaticSize.X
+			label.Size = UDim2.fromScale(0, 1)
+			UIKit.outlined(label)
+		end
+		words("You get", 1)
+		local side = if phone then spec.phoneGetsIcon else spec.getsIcon
+		local icon = Instance.new("ImageLabel")
+		icon.Name = "Essence"
+		icon.LayoutOrder = 2
+		icon.BackgroundTransparency = 1
+		icon.Image = UIIcons.Essence
+		icon.Size = UDim2.fromOffset(side, side)
+		icon.Parent = row
+		words(`+{gets}`, 3)
 	end
 	return button
 end
 
--- The mutation's choice under the blade (the owner's mockup): "Yours now: Rare · Tough (your HP +5%)", Take new or
--- Keep mine with the Essence each gives, and what happens to the other; one it had none of: a Nice! button. Hidden
--- until `show`; `onChoice(take)` when a button is pressed (once).
+-- One mutation's card (R1): its tag (CURRENT or NEW!), its group's icon, name and rarity in the rarity colour, what it
+-- does, and its button. A phone puts the tag in the name row.
+local function choiceCard(parent: Instance, card: WeaponText.ChoiceCard, width: UDim, order: number, phone: boolean): TextButton
+	local spec = Mutations.CHOICE
+	local sizes = if phone then spec.phoneText else spec.text
+	local tint = CardFace.getRarityColor(card.rarity)
+	local tagColor = if card.tag == "NEW!" then rgb(spec.newColor) else rgb(spec.tagColor)
+	local frame = Instance.new("Frame")
+	frame.Name = card.tag
+	frame.LayoutOrder = order
+	frame.BackgroundColor3 = WHITE
+	frame.BackgroundTransparency = 0.94
+	frame.Size = UDim2.new(width, UDim.new(0, 0))
+	frame.AutomaticSize = Enum.AutomaticSize.Y
+	frame.Parent = parent
+	UIKit.corner(frame, 12)
+	UIKit.outline(frame, tint, 2)
+	local pad = Instance.new("UIPadding")
+	pad.PaddingTop = UDim.new(0, if phone then 5 else 8)
+	pad.PaddingBottom = UDim.new(0, if phone then 6 else 10)
+	pad.PaddingLeft = UDim.new(0, if phone then 8 else 10)
+	pad.PaddingRight = UDim.new(0, if phone then 8 else 10)
+	pad.Parent = frame
+	local list = Instance.new("UIListLayout")
+	list.SortOrder = Enum.SortOrder.LayoutOrder
+	list.Padding = UDim.new(0, if phone then 2 else 4)
+	list.Parent = frame
+	local function tagLabel(holder: Instance, layoutOrder: number): TextLabel
+		local tag = UIKit.label(holder, card.tag, Enum.Font.FredokaOne, sizes.tag, tagColor)
+		tag.Name = "Tag"
+		tag.LayoutOrder = layoutOrder
+		tag.TextWrapped = false
+		return tag
+	end
+	if not phone then
+		local tag = tagLabel(frame, 1)
+		tag.Size = UDim2.new(1, 0, 0, sizes.tag + 2)
+	end
+	local iconSide = if phone then spec.phoneIcon else spec.icon
+	local nameRow = Instance.new("Frame")
+	nameRow.Name = "NameRow"
+	nameRow.LayoutOrder = 2
+	nameRow.BackgroundTransparency = 1
+	nameRow.Size = UDim2.new(1, 0, 0, iconSide)
+	nameRow.Parent = frame
+	rowLayout(nameRow, if phone then 5 else 6, false)
+	if phone then
+		local tag = tagLabel(nameRow, 0)
+		tag.AutomaticSize = Enum.AutomaticSize.X
+		tag.Size = UDim2.fromScale(0, 1)
+	end
+	local icon = Instance.new("ImageLabel")
+	icon.Name = "Group"
+	icon.LayoutOrder = 1
+	icon.BackgroundTransparency = 1
+	icon.Image = UIIcons[card.icon] or UIIcons.Sparkle
+	icon.ImageColor3 = tint
+	icon.Size = UDim2.fromOffset(iconSide, iconSide)
+	icon.Parent = nameRow
+	-- the name takes what's left of the row and shrinks to fit it ("Ultimate Charge" beside "Legendary")
+	local name = UIKit.label(nameRow, card.name, Enum.Font.FredokaOne, sizes.name, tint)
+	name.Name = "Name"
+	name.LayoutOrder = 2
+	name.TextWrapped = false
+	name.TextScaled = true
+	name.Size = UDim2.fromScale(0, 1)
+	local fit = Instance.new("UITextSizeConstraint")
+	fit.MaxTextSize = sizes.name
+	fit.MinTextSize = 9
+	fit.Parent = name
+	local grow = Instance.new("UIFlexItem")
+	grow.FlexMode = Enum.UIFlexMode.Fill
+	grow.Parent = name
+	local pill = UIKit.label(nameRow, card.rarity, Enum.Font.FredokaOne, sizes.pill, WHITE)
+	pill.Name = "Rarity"
+	pill.LayoutOrder = 3
+	pill.TextWrapped = false
+	pill.TextXAlignment = Enum.TextXAlignment.Center
+	pill.BackgroundColor3 = tint
+	pill.BackgroundTransparency = 0
+	pill.AutomaticSize = Enum.AutomaticSize.X
+	pill.Size = UDim2.fromOffset(0, sizes.pill + 6)
+	UIKit.corner(pill, 99)
+	UIKit.outlined(pill, 1.5)
+	local pillPad = Instance.new("UIPadding")
+	pillPad.PaddingLeft = UDim.new(0, 7)
+	pillPad.PaddingRight = UDim.new(0, 7)
+	pillPad.Parent = pill
+	-- what it does: one box tall enough for two lines, its words shrinking to fit a Legendary's twist
+	local effect = UIKit.label(frame, card.effect, Enum.Font.GothamBold, sizes.effect, rgb(spec.effectColor))
+	effect.Name = "Effect"
+	effect.LayoutOrder = 3
+	effect.TextScaled = true
+	effect.TextYAlignment = Enum.TextYAlignment.Top
+	effect.Size = UDim2.new(1, 0, 0, if phone then spec.phoneEffectHeight else spec.effectHeight)
+	local effectFit = Instance.new("UITextSizeConstraint")
+	effectFit.MaxTextSize = sizes.effect
+	effectFit.MinTextSize = 9
+	effectFit.Parent = effect
+	return choiceButton(frame, card, tint, phone)
+end
+
+-- The mutation's choice under the blade (R1 of the owner's mockups, 2026-11-26): "Pick one. The other one turns into
+-- Essence." over a CURRENT and a NEW! card, each with its button ("Keep current" / "Take new") saying what it gives;
+-- a Forge roll's gives nothing (only boss drops do); a weapon's first: the NEW! card alone with Nice!. A phone drops
+-- the top line so the blade above still shows. Hidden until `show`; `onChoice(take)` when a button is pressed (once).
 local function choicePanel(gui: ScreenGui, offer: any, color: Color3, onChoice: (take: boolean) -> ()): () -> ()
 	local spec = Mutations.CHOICE
-	-- a phone: tighter, so the blade above it still shows (its buttons keep the 48 px tap size, the Essence on them)
 	local phone = UIKit.isPhone()
+	local choice = WeaponText.choice(Mutations, offer)
 	local view = (workspace.CurrentCamera :: Camera).ViewportSize
 	local width = math.min(spec.width, view.X * spec.widthShare)
 	local frame = Instance.new("Frame")
@@ -286,23 +428,25 @@ local function choicePanel(gui: ScreenGui, offer: any, color: Color3, onChoice: 
 	list.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	list.Padding = UDim.new(0, if phone then 4 else 8)
 	list.Parent = frame
-	local have = if offer.applied then nil else offer.have
-	local head = if have then `Yours now: {MutationRules.words(Mutations, have).yours}` else "Your first mutation on this weapon!"
-	local line = UIKit.label(frame, head, Enum.Font.GothamBold, if phone then 13 else 15, WHITE)
-	line.LayoutOrder = 1
-	line.Size = UDim2.new(1, 0, 0, if phone then 18 else 22)
-	line.TextXAlignment = Enum.TextXAlignment.Center
-	line.TextWrapped = true
+	if not phone then
+		local top = UIKit.label(frame, choice.top, Enum.Font.GothamBold, spec.text.top, WHITE)
+		top.Name = "Top"
+		top.LayoutOrder = 1
+		top.Size = UDim2.new(1, 0, 0, spec.text.top + 5)
+		top.TextXAlignment = Enum.TextXAlignment.Center
+	end
 	local row = Instance.new("Frame")
+	row.Name = "Cards"
 	row.LayoutOrder = 2
 	row.BackgroundTransparency = 1
-	row.Size = UDim2.new(1, 0, 0, if phone then 48 else spec.button)
+	row.Size = UDim2.fromScale(1, 0)
+	row.AutomaticSize = Enum.AutomaticSize.Y
 	row.Parent = frame
 	local rowList = Instance.new("UIListLayout")
 	rowList.FillDirection = Enum.FillDirection.Horizontal
 	rowList.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	rowList.SortOrder = Enum.SortOrder.LayoutOrder
-	rowList.Padding = UDim.new(0, 14)
+	rowList.Padding = UDim.new(0, spec.gap)
 	rowList.Parent = row
 	local chosen = false
 	local function pick(take: boolean)
@@ -312,23 +456,11 @@ local function choicePanel(gui: ScreenGui, offer: any, color: Color3, onChoice: 
 		chosen = true
 		onChoice(take)
 	end
-	if have then
-		local keepColor = Color3.fromRGB(spec.keepColor[1], spec.keepColor[2], spec.keepColor[3])
-		choiceButton(row, 1, "Take new", `+{offer.essence.take} Essence`, color, UDim.new(0.5, -7)).Activated:Connect(function()
-			pick(true)
-		end)
-		choiceButton(row, 2, "Keep mine", `+{offer.essence.keep} Essence`, keepColor, UDim.new(0.5, -7)).Activated:Connect(function()
-			pick(false)
-		end)
-		if not phone then -- (a phone's buttons say the Essence each gives; its blade needs the room)
-			local note = UIKit.label(frame, "The one you don't keep turns into Mutation Essence", Enum.Font.GothamBold, 12, Color3.fromRGB(215, 205, 230))
-			note.LayoutOrder = 3
-			note.Size = UDim2.new(1, 0, 0, 16)
-			note.TextXAlignment = Enum.TextXAlignment.Center
-		end
-	else
-		choiceButton(row, 1, "Nice!", nil, color, UDim.new(0.5, 0)).Activated:Connect(function()
-			pick(true)
+	local alone = #choice.cards == 1
+	for index, card in choice.cards do
+		local cardWidth = if alone then UDim.new(if phone then 0.6 else 0.5, 0) else UDim.new(0.5, -spec.gap / 2)
+		choiceCard(row, card, cardWidth, index, phone).Activated:Connect(function()
+			pick(card.take)
 		end)
 	end
 	return function()
