@@ -6543,10 +6543,14 @@ boss models; the ranch and Heroic tiers come after those.
   `2026-11-09-weapons-round3-scythes-design.md`): models, moveset, Reaping Cyclone, perks, portraits, balance (5.11
   "Scythes"), the Rift Reaper's Thousand Cuts with the Grim Reaper (5.11 "Thousand Cuts"), the forward-facing hold;
   owner approved and merged 2026-11-09. The Forge machine's own model: later (owner 2026-11-09).
-- [ ] Weapons round 4 (5.11 "Weapons round 4", spec `2026-11-25-weapons-round4-design.md`): part 1 (Attack numbers,
-  the weapon window's layout A, the Prism Blade's rule) owner approved and merged 2026-11-26; Ultimate and Super
-  effective (the words) and part 2 mutations (5.11 "Mutations") built on branch `weapons-round4-part2`, waiting for the
-  owner's check; part 3 the boss pass next.
+- [x] Weapons round 4 (5.11 "Weapons round 4", spec `2026-11-25-weapons-round4-design.md`), owner approved and merged
+  2026-11-26: part 1 (Attack numbers, the weapon window's layout A, the Prism Blade's rule); Ultimate and Super
+  effective (the words); part 2 mutations (5.11 "Mutations"); part 3 the boss pass (the choice as CURRENT and NEW!
+  cards, the Forge's mutation row, the Essence icon, Essence only from drops (v45), Lifesteal and Pet Boost sizes,
+  Rift Devourer and Prism Hydra ATK, defensive mutations protecting creatures (option C)); then the polish round
+  (words that say what they change, Thorns reflects with subtle thorns, weapon cards glowing with their mutation).
+  Deferred minors: on a Galaxy A06 every Forge tab's pill sits below the fold; Second Wind and Lifesteal heals use the
+  Healing Rain look; the server's WeaponService.Pending is unused; /mutation offers only as a drop.
 - [x] Shop round 2026-11-17 (owner approved): the Glass Showcase list's border, shop levels 4x faster (then 6x: Lv 20
   at about 6,000 XP, $2 x level), Roblox's Robux glyph on every price (`Util/RobuxPrice`), a new case card waits for its price
   (`Util/ListingHold`), To Bag with its own icon (pick B) and Pish's tip bubble (`Util/TileTip`, schema v32 `tips`),
