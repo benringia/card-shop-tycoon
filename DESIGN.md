@@ -2102,8 +2102,8 @@ and rewards in `BossService`.
 | 3 | Ember Colossus | Ember Ridge | Ember | 16 | 6300 / 29 / 9 | 650 | enrages below half HP (ATK x1.5) | 14 | 5 Colossus Key Fragments |
 | 4 | Frost Tyrant | Frontier, Frostwood | Tide | 22 | 13000 / 38 / 9 | 1100 | ice shield (6% HP) every 20 s; breaking it stuns it 3 s; ice spikes freeze | 26 | 5 Frost Tyrant Key Fragments |
 | 5 | Storm Sovereign | Frontier, Stormpeak | Volt | 32 | 28000 / 44 / 14 | 1500 | thunderclap every 14 s: rears up 2 s with a 28-stud storm circle, then claps: your creatures stunned (2.5 s base, shorter on fast ones), you Electrocuted unless you ran out or dodged | 34 | 8 Sovereign Key Fragments |
-| 6 | Rift Devourer | Frontier, The Rift | Shade | 45 | 34000 / 66 / 10 | 1900 | summons 2 Rift Horrors (twice an elite's size, 5% HP, 30% ATK each) through rifts at 70% and 35% HP: out at the arena's corners, they run at your pets; hit first, boss takes half damage meanwhile | 43 | 8 Devourer Key Fragments |
-| 7 | Prism Hydra | the Dungeon (after 3 rooms) | by phase | 55 | 60000 / 38 / 11 | 2400 | five phases, one per element (below) | 57 | 10 Hydra Key Fragments |
+| 6 | Rift Devourer | Frontier, The Rift | Shade | 45 | 34000 / 60 / 10 | 1900 | summons 2 Rift Horrors (twice an elite's size, 5% HP, 30% ATK each) through rifts at 70% and 35% HP: out at the arena's corners, they run at your pets; hit first, boss takes half damage meanwhile | 43 | 8 Devourer Key Fragments |
+| 7 | Prism Hydra | the Dungeon (after 3 rooms) | by phase | 55 | 60000 / 44 / 11 | 2400 | five phases, one per element (below) | 57 | 10 Hydra Key Fragments |
 
 Shop Lv (`shopLevel`, `BossRules.levelReady`): the shop level every player needs to fight that boss, solo or in a
 group, checked before its fragments and every time (not only the first). Below it the board shows "Opens at shop level n".

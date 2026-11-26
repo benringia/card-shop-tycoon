@@ -302,7 +302,9 @@ local BOSSES: { [string]: Boss } = {
 		element = "Shade",
 		level = 45,
 		hp = 34000,
-		atk = 66, -- unchanged with the super meter (boss balance 2026-11-06)
+		-- 66 until weapons round 4 part 3 (2026-11-26): a 0.8x party with the Storm Reaper players bring (Volt, strong
+		-- against it) won 23% fighting well and 37% standing still at its Power; at 60: 46% and 60% (tools/balance/bosses)
+		atk = 60,
 		spd = 10,
 		recommended = 1900,
 		shopLevel = 43,
@@ -343,7 +345,10 @@ local BOSSES: { [string]: Boss } = {
 		element = "Tide", -- phase 1's
 		level = 55,
 		hp = 60000,
-		atk = 46, -- 33 before the super moves (2026-11-06), 38 until its player attacks went to every 10 s and Defense came (2026-11-12: well 83% at 1x)
+		-- 33 before the super moves (2026-11-06), 38 until its player attacks went to every 10 s and Defense came
+		-- (2026-11-12: well 83% at 1x), 46 until weapons round 4 part 3 (2026-11-26: a 0.8x party with the Rift Reaper
+		-- players bring won 36% fighting well; at 44: 46%, a +10 S one 83%)
+		atk = 44,
 		spd = 11,
 		recommended = 2400,
 		shopLevel = 57,
