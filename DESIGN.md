@@ -1634,7 +1634,7 @@ stars circle its head; hidden in a fight. **Resting creatures stay in their card
 one is refused with the locked card, "Bramblequake is resting: back in 3:53. Summon a rested one or visit the plaza
 spring." (the Frontier's "spring at the entrance", the Dungeon none; `PartyRules.restingWords` / `isResting`), and a
 summoned creature that fainted goes back to its card as its fight ends (`PartyService.RefreshRest`), so the hurt look
-above now shows only on a creature the spring is healing.
+above no longer shows (a resting creature is never out; `Util/HurtBadge` kept until the owner says).
 
 **PvP opens in the first update** (owner 2026-11-13: a week after launch, "I need to put on alot of planning to make
 the pvp good"): `Pvp.OPEN = false` till then. The plaza Arena portal shows "⚔️ Coming soon" and its card ("The Arena
