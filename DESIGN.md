@@ -873,7 +873,11 @@ is over UI (`UIKit.pointerBlocked`).
   hidden, movement held, the HUD down to the party dock with the SHOP bar and your cash: `Hud.keepOnly`, the status
   corner kept by its `Hud.keepName` "cash"; owner 2026-11-16: "money should be visible while I'm using cash register");
   Leave is a pill at the top
-  left (clear of the drawer and the card machine), and walking away or a knockout leaves too. **The screen is the
+  left (clear of the drawer and the card machine), and walking away or a knockout leaves too. **Look around** (testers
+  2026-11-26: "Make the player look around while in the cashier"): hold the right mouse button (the cursor holds still,
+  as Roblox's own camera does) or drag a finger over the view (past 12 px: a tap stays a tap) and the view turns up to 70
+  degrees either side, 25 up and 30 down (`RegisterStation.CAMERA.look`, `RegisterStationRules.look` / `isLookDrag`);
+  each step's camera (Charge, the card machine, the drawer) starts straight on from wherever you were looking. **The screen is the
   guide**: a lilac bar with "Register" and the town's clock and one big line of what to do (the step pills under the
   bar went: owner 2026-11-16 "remove these"). Idle: a cart, "Waiting for a customer...", "Today: 4
   sales · $14.51" (this visit, `RegisterSales` / `RegisterTaken`). 1 Scan: "Tap each card on the counter", the items
@@ -2610,8 +2614,13 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   something intimidating but not limiting its attack speed"; `Config/Bosses` IDLE, `Util/BossIdleRules`,
   `MonsterController`): after its intro, every 0.8-2.2 s a boss walks to a new spot near its own (up to 5 studs either
   side times its height over 17, a stud in front to 4 behind, 6 studs a second), roars (its roar at 0.45) or stomps
-  (a small shake). A move only stops its feet: it attacks from wherever it stands, facing the fight, so the server's
-  attack clock never waits; the walk stays small because sword hits are judged round its own spot. Client-side only.
+  (a small shake). A move only stops its feet: it attacks from wherever it stands, so the server's attack clock never
+  waits; the walk stays small because sword hits are judged round its own spot. Client-side only. **It turns to what it
+  goes for** (testers 2026-11-26: "Boss still face/attack dead pets": it faced the way its fight began, toward player
+  1's first creature, all fight; once that one fell and you fought on alone, or in a group, it swung at an empty spot):
+  each charge, warning, ring, hit or ability it aims at someone tells `MonsterController.FaceToward` (from FightFx) and
+  its body turns in place toward them (`BossIdleRules.faceYaw`, the walk's own yaw) while it stands or attacks, keeping
+  its last turn when that one is gone (fainted, left). Its spot (the server's marker) never turns.
 - **Boss debuffs** (same spec): a ring that lands on a player leaves its boss's debuff (`Config/Bosses` DEBUFFS,
   `playerAttacks.debuff`, `BattleSim`): Meadow Warden Entangled (2 s, walk 60% slower), Cave Brood Queen Poison (4 s,
   2% of max HP a second), Ember Colossus Burn (3 s, 3.5% a second), Frost Tyrant Frozen (1.5 s, frozen solid in a block of
@@ -2876,7 +2885,10 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   (`BossRules.nextStep` from `BossRules.lockReason`: level up the shop, beat the boss before for n more keys with a
   "See it" button, level up or change the party with a "Party" button, go fight it, or fight again for loot) and the
   travel button (`BossRules.travelChoice`): "Take me there" (gold) to its gate in this place (remote `BossTravel`: validated index,
-  `TRAVEL_COOLDOWN` 3 s, only a gate in this place, through the Wild's travel checks), "Go to the Frontier" / "Go home"
+  `TRAVEL_COOLDOWN` 3 s, only a gate in this place, through the Wild's travel checks), only once you've beaten it
+  (testers 2026-11-26: "Players should only be able to teleport to bosses they have already beaten once": before the
+  first win the footer says "Beat it once to unlock Take me there. Walk to its portal in the Wild's Caves: follow the
+  trail." with no button, and the server refuses with the locked card), "Go to the Frontier" / "Go home"
   (the normal Frontier travel), or for the Hydra "Enter the Dungeon portal in the Frontier". In a boss
   fight a wide HP bar sits at the top, "Healing!" / "Enraged!" banners pop up, and the end screen lists the loot.
 - **Groups (phase 2):** the gate's second prompt (F) "Start group" opens a group; others press "Join group (n/4)"
@@ -3864,8 +3876,9 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
       "Keep your current mutation or take the new one.", no "You get". A weapon's first: the NEW! card alone with Nice!.
       A phone drops the top line and puts the tag in the name row, buttons 48 px (`WeaponText.choice`,
       `Mutations.CHOICE`). The long line under the banner shrinks to fit rather than cut. No skip until chosen.
-      Reveals wait until no window is open (the stage is 3D: a window over it hid the blade). A choice left waiting (they
-      left) is saved and asked again after the next join.
+      Reveals wait until no window is open (the stage is 3D: a window over it hid the blade) and until the screen has a
+      size (a choice asked again right after a join was built 0 wide in the phone's layout; the panel is sized by scale
+      now, at most 520 wide). A choice left waiting (they left) is saved and asked again after the next join.
     - **The look**: the held blade (and the reveal's) gets a rim in the card rarity colour (a Highlight on the model,
       `Mutations.LOOK.rim`), Legendary also sparkles (`WeaponLook.mutation`, the character's `SwordMutation`). Its card
       too (owner 2026-11-26, pick A of artifact 6awW3fMBYRdEZ8mQp9pPHB: "Binder: add an indication for mutations on weapon
