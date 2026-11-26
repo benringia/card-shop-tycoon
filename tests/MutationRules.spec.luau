@@ -105,6 +105,23 @@ return {
 		expect.near(MutationRules.stats(Mutations, m("treasure", "Legendary")).cash, 1.08, 1e-9, "Treasure at half")
 	end,
 
+	-- owner 2026-11-26: "player should only get essence in drops. not in the forge mutations"
+	["a Forge roll's choice gives no Essence either way, and keeps a plain mutation"] = function()
+		local have = m("tough", "Rare")
+		local rolled = { id = "sharp", rarity = "Epic", forge = true }
+		local kept, essence = MutationRules.resolve(Mutations, have, rolled, true)
+		expect.equal(kept and kept.id, "sharp", "Take new")
+		expect.equal(essence, 0, "no Essence for the old one")
+		expect.isNil(kept and (kept :: any).forge, "the kept one is a plain mutation")
+		kept, essence = MutationRules.resolve(Mutations, have, rolled, false)
+		expect.equal(kept and kept.id, "tough", "Keep current")
+		expect.equal(essence, 0, "no Essence for the rolled one")
+		kept, essence = MutationRules.resolve(Mutations, nil, rolled, false)
+		expect.equal(kept and kept.id, "sharp", "its first: on at once")
+		expect.isNil(kept and (kept :: any).forge, "plain")
+		expect.equal(essence, 0)
+	end,
+
 	["Essence for the one you don't keep"] = function()
 		expect.equal(MutationRules.essence(Mutations, nil), 0)
 		expect.equal(MutationRules.essence(Mutations, m("sharp", "Epic")), 12, "the mockup's 12")

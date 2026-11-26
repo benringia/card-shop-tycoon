@@ -796,6 +796,25 @@ return {
 		expect.isNil(data.layout[2].boxes, "no boxes added")
 	end,
 
+	-- v45 (weapons round 4 part 3, owner 2026-11-26: Essence only from drops): a waiting mutation may carry `forge = true`
+	-- (a Forge roll's choice gives no Essence); one saved before has no mark and stays a drop's
+	["v45 (a Forge roll's mark): waiting mutations come through as they were"] = function()
+		local Data = require("../src/shared/Config/Data")
+		expect.equal(Data.SCHEMA_VERSION >= 45, true, "the schema is at v45: a waiting mutation can carry its Forge mark")
+		local data = {
+			version = 44,
+			weapons = { verdantBlade = { grade = "A", level = 5, mutation = { id = "tough", rarity = "Rare" }, pending = { id = "sharp", rarity = "Epic" } } },
+			equippedWeapon = "verdantBlade",
+		}
+		Migrations.run(data, 45, nil, footprint)
+		expect.equal(data.version, 45)
+		local record = data.weapons.verdantBlade
+		expect.equal(record.mutation.id, "tough")
+		expect.equal(record.pending.id, "sharp")
+		expect.isNil(record.pending.forge, "no mark added: it stays a drop's")
+		expect.equal(data.equippedWeapon, "verdantBlade")
+	end,
+
 	-- v44 (weapons round 4 part 2, spec 2026-11-25-weapons-round4-design): a weapon's record may carry its mutation and
 	-- one waiting for the player's choice; a save from before has none, so its weapons come through as they were
 	["v44 (mutations): weapons come through as they were"] = function()

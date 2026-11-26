@@ -363,6 +363,29 @@ return {
 		expect.isNil(plain.verdantBlade.mutation, "no reader given: no mutation read")
 	end,
 
+	-- owner 2026-11-26 (Essence only from drops): a Forge roll's waiting choice is saved with `forge = true`, so it
+	-- still gives none after a rejoin; anything else there is read as a drop's
+	["loading keeps a Forge roll's mark on its waiting mutation"] = function()
+		local MutationRules = require("../src/shared/Util/MutationRules")
+		local Mutations = require("../src/shared/Config/Mutations")
+		local function readMutation(value: unknown)
+			return MutationRules.read(Mutations, value)
+		end
+		local owned = WeaponRules.read(W, {
+			verdantBlade = { grade = "A", level = 2, pending = { id = "guard", rarity = "Rare", forge = true } },
+			sunforgedBlade = { grade = "B", level = 0, pending = { id = "sharp", rarity = "Epic", forge = "yes" } },
+			tidalTrident = { grade = "C", level = 0, mutation = { id = "sharp", rarity = "Epic", forge = true } },
+		}, nil, readMutation)
+		local verdant = owned.verdantBlade.pending
+		expect.equal(verdant and verdant.id, "guard")
+		expect.equal(verdant and verdant.forge, true, "a Forge roll's choice stays one")
+		local sunforged = owned.sunforgedBlade.pending
+		expect.equal(sunforged and sunforged.id, "sharp", "the mutation itself kept")
+		expect.isNil(sunforged and sunforged.forge, "only true marks it")
+		local trident = owned.tidalTrident.mutation
+		expect.isNil(trident and (trident :: any).forge, "a kept mutation never carries the mark")
+	end,
+
 	-- Weapons round 4 part 2 (owner 2026-11-25: "increase the weapons droprate to almost always drop on bosses. then
 	-- every weapon should have a chance for a mutation"): 95 / 92 / 88 / 85% by rarity, sure by the second loot win; a
 	-- drop of one you have is its mutation roll. (A Rare 20% plus 2.5% and a Legendary 6% plus 0.08% until then.)

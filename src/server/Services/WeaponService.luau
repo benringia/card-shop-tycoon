@@ -32,9 +32,11 @@ local Blocked = require(Util:WaitForChild("Blocked"))
 type PlayerData = DataService.PlayerData
 export type Owned = WeaponRules.Owned
 type Mutation = MutationRules.Mutation
+type Pending = MutationRules.Pending
 -- A mutation offered on a weapon (a boss drop of one you have, the Forge's Mutate): `applied` when the weapon had
 -- none (it's on at once), else it waits as the record's `pending` until ChooseMutation with this `id`. `essence`: what
--- the one you don't keep turns into either way (take: the old one's, keep: the new one's)
+-- the one you don't keep turns into either way (take: the old one's, keep: the new one's); none for a Forge roll
+-- (`source` "forge": Essence comes only from boss drops, owner 2026-11-26)
 export type Offer = {
 	id: string,
 	weaponId: string,
@@ -168,11 +170,16 @@ local function copyMutation(mutation: Mutation?): Mutation?
 	return if mutation then { id = mutation.id, rarity = mutation.rarity } else nil
 end
 
+-- A waiting mutation with its Forge mark (a Forge roll's choice gives no Essence, after a rejoin too)
+local function copyPending(pending: Pending?): Pending?
+	return if pending then { id = pending.id, rarity = pending.rarity, forge = if pending.forge then true else nil } else nil
+end
+
 -- Every owned weapon as plain data (the save and the client)
 local function snapshot(player: Player): { [string]: Owned }
 	local copy = {}
 	for id, record in owned[player] or {} do
-		copy[id] = { grade = record.grade, level = record.level, mutation = copyMutation(record.mutation), pending = copyMutation(record.pending) }
+		copy[id] = { grade = record.grade, level = record.level, mutation = copyMutation(record.mutation), pending = copyPending(record.pending) }
 	end
 	return copy
 end
@@ -220,6 +227,7 @@ end
 
 -- What `offer` shows the player (WeaponRevealController.Mutation)
 local function offerOf(weaponId: string, record: Owned, id: string, mutation: Mutation, applied: boolean, source: string): Offer
+	local none = applied or source == "forge"
 	return {
 		id = id,
 		weaponId = weaponId,
@@ -229,16 +237,17 @@ local function offerOf(weaponId: string, record: Owned, id: string, mutation: Mu
 		have = if applied then nil else copyMutation(record.mutation),
 		applied = applied,
 		essence = {
-			take = if applied then 0 else MutationRules.essence(Mutations, record.mutation),
-			keep = if applied then 0 else MutationRules.essence(Mutations, mutation),
+			take = if none then 0 else MutationRules.essence(Mutations, record.mutation),
+			keep = if none then 0 else MutationRules.essence(Mutations, mutation),
 		},
 		source = source,
 	}
 end
 
 -- A mutation offered on an owned weapon (a boss's drop of one you have, the Forge's Mutate; not the Steel Sword): on at
--- once when the weapon has none, else it waits (saved) for ChooseMutation. A choice still waiting on the same weapon
--- is settled as Keep mine first (its Essence given). Nil when the weapon isn't owned.
+-- once when the weapon has none, else it waits (saved, a Forge roll's marked) for ChooseMutation. A choice still
+-- waiting on the same weapon is settled as Keep current first (its Essence given, none for a Forge roll's). Nil when
+-- the weapon isn't owned.
 function WeaponService.Offer(player: Player, weaponId: string, mutation: Mutation, source: "drop" | "forge"): Offer?
 	local mine = owned[player]
 	local record = if mine then mine[weaponId] else nil
@@ -260,7 +269,7 @@ function WeaponService.Offer(player: Player, weaponId: string, mutation: Mutatio
 	if applied then
 		record.mutation = { id = mutation.id, rarity = mutation.rarity }
 	else
-		record.pending = { id = mutation.id, rarity = mutation.rarity }
+		record.pending = { id = mutation.id, rarity = mutation.rarity, forge = if source == "forge" then true else nil }
 		ids[weaponId] = id
 	end
 	WeaponService.Changed(player)
@@ -273,7 +282,7 @@ function WeaponService.Pending(player: Player): { Offer }
 	for weaponId, id in offerIds[player] or {} do
 		local record = WeaponService.GetOwned(player, weaponId)
 		if record and record.pending then
-			table.insert(list, offerOf(weaponId, record, id, record.pending, false, "waiting"))
+			table.insert(list, offerOf(weaponId, record, id, record.pending, false, if record.pending.forge then "forge" else "waiting"))
 		end
 	end
 	return list
@@ -296,7 +305,8 @@ function WeaponService.SetMutation(player: Player, weaponId: string, mutation: M
 	WeaponService.Changed(player)
 end
 
--- Take new or Keep mine (owner's mockup): only for the offer waiting on that weapon now; the other turns into Essence
+-- Take new or Keep current (owner's mockups): only for the offer waiting on that weapon now; the other turns into
+-- Essence after a boss's drop (a Forge roll's into nothing: MutationRules.resolve)
 local function onChoose(player: Player, weaponId: unknown, offerId: unknown, take: unknown)
 	if not allowChoose(player) or typeof(weaponId) ~= "string" or typeof(offerId) ~= "string" or typeof(take) ~= "boolean" then
 		return

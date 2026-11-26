@@ -529,6 +529,10 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string, footprint: Fo
 	-- and a `pending` one waiting for the player's choice (WeaponService; WeaponRules.read cleans them on load). A save
 	-- from before has none, so nothing changes but the version.
 	[43] = function(_data) end,
+	-- v45 (weapons round 4 part 3, owner 2026-11-26: Essence only from drops): a waiting mutation may carry `forge =
+	-- true`, a Forge roll's, whose choice gives no Essence (WeaponRules.read keeps the mark). One saved before has none
+	-- and stays a drop's, so nothing changes but the version.
+	[44] = function(_data) end,
 }
 
 local function lowestGrade(): string

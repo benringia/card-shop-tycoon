@@ -8,9 +8,10 @@ export type Cost = { cash: number, items: { [string]: number }, unlockLevel: num
 -- poisons rather than burns)
 export type Perk = { kind: string, every: number?, share: number?, seconds: number?, spread: number?, below: number?, look: string? }
 -- mutation: its mutation (weapons round 4 part 2, Util/MutationRules); pending: a newer one waiting for the player's
--- Take new or Keep mine
+-- Take new or Keep current, `forge` when the Forge's Mutate rolled it (its choice gives no Essence)
 export type Mutation = { id: string, rarity: string }
-export type Owned = { grade: string, level: number, mutation: Mutation?, pending: Mutation? }
+export type Pending = { id: string, rarity: string, forge: boolean? }
+export type Owned = { grade: string, level: number, mutation: Mutation?, pending: Pending? }
 
 local WeaponRules = {}
 
@@ -358,9 +359,19 @@ function WeaponRules.materialEveryWin(cfg: any, weaponId: string): number
 	return (cfg.MATERIAL_EVERY_WIN or {})[weapon.rarity] or 0
 end
 
+-- A saved waiting mutation: `readMutation`'s, with its Forge mark only when that is `true`
+local function readPending(saved: unknown, readMutation: ((unknown) -> Mutation?)?): Pending?
+	local mutation = if readMutation then readMutation(saved) else nil
+	if not mutation then
+		return nil
+	end
+	local forge = typeof(saved) == "table" and (saved :: any).forge == true
+	return { id = mutation.id, rarity = mutation.rarity, forge = if forge then true else nil }
+end
+
 -- Cleans a saved weapons table: unknown ids dropped (and named, to log), bad grades to C, levels whole and in range,
--- a mutation and a waiting one kept when `readMutation` (MutationRules.read with Config/Mutations) knows them; the
--- equipped id kept only if it's owned and built, otherwise the Steel Sword
+-- a mutation and a waiting one kept when `readMutation` (MutationRules.read with Config/Mutations) knows them (the
+-- waiting one's Forge mark too); the equipped id kept only if it's owned and built, otherwise the Steel Sword
 function WeaponRules.read(cfg: any, saved: unknown, equipped: unknown, readMutation: ((unknown) -> Mutation?)?): ({ [string]: Owned }, string, { string })
 	local owned: { [string]: Owned } = {}
 	local dropped: { string } = {}
@@ -376,7 +387,7 @@ function WeaponRules.read(cfg: any, saved: unknown, equipped: unknown, readMutat
 				grade = grade,
 				level = math.clamp(math.floor(level), 0, cfg.MAX_LEVEL),
 				mutation = if readMutation then readMutation(record.mutation) else nil,
-				pending = if readMutation then readMutation(record.pending) else nil,
+				pending = readPending(record.pending, readMutation),
 			}
 		end
 	end

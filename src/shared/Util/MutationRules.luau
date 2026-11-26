@@ -3,6 +3,8 @@
 -- fight (Stats), its words, the Mutation Essence for the one you don't keep and the Forge's Mutate check. Pure: the
 -- server rolls and enforces, the client shows. `cfg` is Config/Mutations (passed in so Lune can test it).
 export type Mutation = { id: string, rarity: string }
+-- One waiting for the player's choice: `forge` when the Forge's Mutate rolled it (no Essence either way)
+export type Pending = { id: string, rarity: string, forge: boolean? }
 -- What the weapon in hand's mutation does: multipliers 1 and shares 0 when it has none
 export type Stats = {
 	sword: number, -- sword hits x (Sharp)
@@ -112,15 +114,18 @@ function MutationRules.essence(cfg: any, mutation: Mutation?): number
 	return if mutation then cfg.ESSENCE[mutation.rarity] or 0 else 0
 end
 
--- The choice: which mutation stays and the Essence for the other (no old one: the new one stays, nothing to turn)
-function MutationRules.resolve(cfg: any, have: Mutation?, new: Mutation, take: boolean): (Mutation?, number)
+-- The choice: which mutation stays (a plain copy) and the Essence for the other (no old one: the new one stays,
+-- nothing to turn). A Forge roll's (`new.forge`) gives no Essence either way: only boss drops do (owner 2026-11-26).
+function MutationRules.resolve(cfg: any, have: Mutation?, new: Pending, take: boolean): (Mutation?, number)
+	local rolled = { id = new.id, rarity = new.rarity }
+	local free = new.forge == true
 	if not have then
-		return new, 0
+		return rolled, 0
 	end
 	if take then
-		return new, MutationRules.essence(cfg, have)
+		return rolled, if free then 0 else MutationRules.essence(cfg, have)
 	end
-	return have, MutationRules.essence(cfg, new)
+	return have, if free then 0 else MutationRules.essence(cfg, new)
 end
 
 local function lowerFirst(text: string): string

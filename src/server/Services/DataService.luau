@@ -85,7 +85,7 @@ export type PlayerData = {
 	seenSword: boolean, -- closed the "You got your first sword!" popup (SwordService)
 	swordFights: number, -- boss fights fought with the sword HUD; its buttons show names for the first few (SwordService)
 	-- weaponId -> its grade, upgrade level, mutation and a mutation waiting for the player's choice (WeaponService; v44)
-	weapons: { [string]: { grade: string, level: number, mutation: { id: string, rarity: string }?, pending: { id: string, rarity: string }? } },
+	weapons: { [string]: { grade: string, level: number, mutation: { id: string, rarity: string }?, pending: { id: string, rarity: string, forge: boolean? }? } },
 	equippedWeapon: string, -- the weapon in hand (Config/Weapons id; the Steel Sword until another is equipped)
 	tutorial: any, -- the first visit with Pish, his lessons and luck (TutorialService; Util/TutorialRules.Saved)
 	combat: any, -- Chikin's combat tutorial (CombatTutorialService; the same shape, Config/Chikin STEPS)

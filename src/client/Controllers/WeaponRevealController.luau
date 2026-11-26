@@ -679,9 +679,11 @@ function WeaponRevealController.AskPending(weaponId: string)
 	local now = weaponsNow
 	local record = if now and now.owned then now.owned[weaponId] else nil
 	local offerId = if now and now.offers then now.offers[weaponId] else nil
-	if typeof(record) ~= "table" or not record.pending or typeof(offerId) ~= "string" then
+	if typeof(record) ~= "table" or typeof(record.pending) ~= "table" or typeof(offerId) ~= "string" then
 		return
 	end
+	-- a Forge roll's choice gives no Essence (only boss drops do: owner 2026-11-26)
+	local forge = record.pending.forge == true
 	WeaponRevealController.Mutation({
 		id = offerId,
 		weaponId = weaponId,
@@ -691,9 +693,10 @@ function WeaponRevealController.AskPending(weaponId: string)
 		have = record.mutation,
 		applied = record.mutation == nil,
 		essence = {
-			take = MutationRules.essence(Mutations, MutationRules.read(Mutations, record.mutation)),
-			keep = MutationRules.essence(Mutations, MutationRules.read(Mutations, record.pending)),
+			take = if forge then 0 else MutationRules.essence(Mutations, MutationRules.read(Mutations, record.mutation)),
+			keep = if forge then 0 else MutationRules.essence(Mutations, MutationRules.read(Mutations, record.pending)),
 		},
+		source = if forge then "forge" else "waiting",
 	})
 end
 
