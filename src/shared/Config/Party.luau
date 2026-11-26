@@ -625,27 +625,6 @@ return {
 		INK = { 27, 20, 38 }, -- the name's outline, the pill and the grade chip's letter
 		PILL_TRANSPARENCY = 0.2,
 	},
-	-- A summoned creature hurt after fainting, while its card rests (owner 2026-11-15: "if the players summon fainted, add
-	-- noticeable indicator ON the pet that it's injured"; client Util/HurtBadge): a red pill (`fill`, words outlined
-	-- `ink`) "Hurt 4:41" with a heart beating `beatsPerSecond` (`beat` bigger), where the healing pill goes, and `stars`
-	-- dizzy stars circling its head (`spin` radians a second) in a ring `ringWidth` x its height wide (`ringMin` to
-	-- `ringMax` studs) at `ringHeight` x its height
-	HURT = {
-		text = "Hurt",
-		icon = "Hp",
-		width = 150,
-		fill = { 226, 62, 78 },
-		ink = { 110, 20, 30 },
-		beatsPerSecond = 1.2,
-		beat = 0.25,
-		stars = 3,
-		spin = 3,
-		ringWidth = 0.9,
-		ringMin = 2.2,
-		ringMax = 6,
-		ringHeight = 0.85,
-		starSize = 0.19, -- each star's share of the ring's width
-	},
 	-- A creature appearing, leaving and fainting (owner 2026-11-04; Util/SummonFx, Util/SummonMotion): a summon pops in
 	-- out of a ring and pillar of light over `pop` seconds when it was stamped (SummonedAt) at most `window` seconds ago;
 	-- an unsummon shrinks it away and a light flies back into its owner over `unsummon` seconds (the server waits that

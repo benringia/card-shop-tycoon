@@ -180,8 +180,6 @@ local function setMarkerAttributes(marker: BasePart, player: Player, beast: Card
 	marker:SetAttribute("Grade", beast.grade)
 	marker:SetAttribute("Level", beast.level)
 	marker:SetAttribute("Stars", beast.stars)
-	-- hurt after fainting: everyone sees it on the creature until it's rested (owner 2026-11-15; os.time)
-	marker:SetAttribute("RestUntil", if restUntil then restUntil(player, beast.id) else nil)
 end
 
 local function refreshMarker(player: Player)
@@ -484,15 +482,15 @@ function PartyService.SetChangeBlocker(blocker: (player: Player) -> string?)
 	changeBlocker = blocker
 end
 
--- BattleService: when each fainted card is rested (os.time, nil when it isn't resting), for the summoned creature's
--- hurt look
+-- BattleService: when each fainted card is rested (os.time, nil when it isn't resting): a resting card stays in its card
+-- (its summon refused, testers 2026-11-26)
 function PartyService.SetRestLookup(lookup: (player: Player, beastId: string) -> number?)
 	restUntil = lookup
 end
 
--- BattleService: a card's rest changed (it fainted, rested, or the spring healed it): the summoned creature shows it.
--- One that fainted goes back to its card once its fight is over (testers 2026-11-26: "Resting pets should not be
--- summoned"); a fight's locked party is left alone until then
+-- BattleService: a card's rest changed (it fainted, rested, or the spring healed it). The summoned one that fainted
+-- goes back to its card once its fight is over (testers 2026-11-26: "Resting pets should not be summoned"); a fight's
+-- locked party is left alone until then
 function PartyService.RefreshRest(player: Player)
 	local state = states[player]
 	local summoned = if state and state.summoned then state.slots[state.summoned] else nil
