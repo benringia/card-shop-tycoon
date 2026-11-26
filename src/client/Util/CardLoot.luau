@@ -4,7 +4,8 @@
 -- floating and turning slowly under a tall beam in its rarity colour, sparkles rising, a glow on the ground, a chime.
 -- Walk to it (or wait: it comes to you) and it pops up showing its face, then flies into your Cards button, which
 -- flashes a gold ring and a +1. Only the winner sees it (BattleController calls `drop`); the card is in the binder
--- already.
+-- already. A Grade A or S card's beam, glow, light and sparkles take its grade's colour, a tag over it saying so
+-- ("Voidmaw · Grade A!", owner 2026-11-26, pick A "Medal + glow"; Config/GradeLook).
 local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -16,7 +17,10 @@ local Config = Shared:WaitForChild("Config")
 local AttackFx = require(Config:WaitForChild("AttackFx"))
 local LOOT = require(Config:WaitForChild("CardLoot"))
 local Cards = require(Config:WaitForChild("Cards"))
+local GradeLookConfig = require(Config:WaitForChild("GradeLook"))
+local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CardLootRules = require(Shared:WaitForChild("Util"):WaitForChild("CardLootRules"))
+local GradeLook = require(Shared:WaitForChild("Util"):WaitForChild("GradeLook"))
 
 local ClientUtil = script.Parent :: Instance
 local CardFace = require(ClientUtil:WaitForChild("CardFace"))
@@ -84,8 +88,13 @@ local function part(name: string, size: Vector3, cframe: CFrame): Part
 	return made
 end
 
--- The card itself: its face on the front, its back on the back
-local function cardPart(card: any, foil: boolean): Part
+local function rgb(color: { number }): Color3
+	return Color3.fromRGB(color[1], color[2], color[3])
+end
+
+-- The card itself: its face on the front (a fresh copy's, as the pack opening draws it: its grade's medal), its back on
+-- the back
+local function cardPart(card: any, foil: boolean, grade: string): Part
 	local height = LOOT.cardHeight
 	local made = part("LootCard", Vector3.new(height / 1.4, height, 0.05), CFrame.new())
 	made.Color = Color3.new(1, 1, 1) -- its edge; the faces are drawn over both sides
@@ -112,12 +121,55 @@ local function cardPart(card: any, foil: boolean): Part
 		stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		stroke.Parent = frame
 		if face == Enum.NormalId.Front then
-			CardFace.render(frame, stroke, card, foil)
+			CardFace.render(frame, stroke, card, foil, nil, { level = 1, stars = BeastRules.START_STARS, grade = grade, fresh = true })
 		else
 			CardFace.renderBack(frame, stroke)
 		end
 	end
 	return made
+end
+
+-- A Grade A or S drop's tag over the card ("Voidmaw · Grade A!": white, edged in its grade's ring colour); nil for C
+-- and B
+local function gradeTag(card: any, grade: string, body: Part): BillboardGui?
+	local words = GradeLook.dropTag(GradeLookConfig, card.name, grade)
+	local glow = GradeLook.glow(GradeLookConfig, grade)
+	local ink = GradeLookConfig.DROP.ink[grade]
+	if not words or not glow or not ink then
+		return nil
+	end
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "GradeTag"
+	gui.Adornee = body
+	gui.Size = UDim2.fromOffset(320, 44)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, LOOT.cardHeight / 2 + GradeLookConfig.DROP.rise, 0)
+	gui.LightInfluence = 0
+	gui.MaxDistance = 120
+	gui.Parent = body
+	local pill = Instance.new("TextLabel")
+	pill.AnchorPoint = Vector2.new(0.5, 0.5)
+	pill.Position = UDim2.fromScale(0.5, 0.5)
+	pill.AutomaticSize = Enum.AutomaticSize.X
+	pill.Size = UDim2.fromOffset(0, 36)
+	pill.BackgroundColor3 = Color3.new(1, 1, 1)
+	pill.Font = Enum.Font.FredokaOne
+	pill.Text = words
+	pill.TextSize = 22
+	pill.TextColor3 = rgb(ink)
+	pill.Parent = gui
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0.5, 0)
+	corner.Parent = pill
+	local edge = Instance.new("UIStroke")
+	edge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	edge.Color = rgb(glow.ring)
+	edge.Thickness = 2.5
+	edge.Parent = pill
+	local pad = Instance.new("UIPadding")
+	pad.PaddingLeft = UDim.new(0, 16)
+	pad.PaddingRight = UDim.new(0, 16)
+	pad.Parent = pill
+	return gui
 end
 
 -- The Cards button takes the card: a gold ring flashes round it and a +1 rises over it
@@ -213,7 +265,10 @@ function CardLoot.drop(from: Vector3, dropped: { cardId: string, grade: string?,
 	if not card then
 		return
 	end
-	local color = CardFace.getRarityColor(card.rarity)
+	local grade = if BeastRules.isGrade(dropped.grade) then dropped.grade :: string else BeastRules.DEFAULT_GRADE
+	-- a Grade A or S card's light is its grade's colour, the rest their rarity's
+	local glow = GradeLook.glow(GradeLookConfig, grade)
+	local color = if glow then rgb(glow.color) else CardFace.getRarityColor(card.rarity)
 	local ground = groundUnder(from)
 	local folder = Instance.new("Folder")
 	folder.Name = "CardLoot"
@@ -279,8 +334,9 @@ function CardLoot.drop(from: Vector3, dropped: { cardId: string, grade: string?,
 	light.Shadows = false
 	light.Parent = base
 
-	local cardBody = cardPart(card, dropped.foil == true)
+	local cardBody = cardPart(card, dropped.foil == true, grade)
 	cardBody.Parent = folder
+	local tag = gradeTag(card, grade, cardBody)
 	sound(LOOT.sounds.land, ground, LOOT.landVolume[card.rarity] or 1)
 
 	local started = os.clock()
@@ -308,6 +364,9 @@ function CardLoot.drop(from: Vector3, dropped: { cardId: string, grade: string?,
 		TweenService:Create(disc, TweenInfo.new(LOOT.fade), { Transparency = 1 }):Play()
 		TweenService:Create(light, TweenInfo.new(LOOT.fade), { Brightness = 0 }):Play()
 		motes.Enabled = false
+		if tag then
+			tag.Enabled = false
+		end
 		if not keepCard then
 			for _, item in cardBody:GetChildren() do
 				if item:IsA("SurfaceGui") then

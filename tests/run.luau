@@ -236,6 +236,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	HudMascotRules = require("./HudMascotRules.spec"),
 	ContrastRules = require("./ContrastRules.spec"),
 	StationLook = require("./StationLook.spec"),
+	GradeLook = require("./GradeLook.spec"),
 	SoftColors = require("./SoftColors.spec"),
 	SquishRules = require("./SquishRules.spec"),
 	GiftRules = require("./GiftRules.spec"),

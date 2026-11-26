@@ -303,7 +303,8 @@ local function renderPane(card: Card, chosen: Candidate)
 	local faceTall = math.clamp(StationPick.height(window, pane) - y - under - useRoom - 2, if phone then 56 else 84, face.Y)
 	face = Vector2.new(math.floor(faceTall * face.X / face.Y), faceTall)
 	local powerBeside = not phone and nextGrade ~= nil
-	local slotsWide = math.clamp(leftWide - 2 * EDGE - RECIPE.arrow - face.X - (if powerBeside then POWER_ROOM else 0) - 8, 100, 280)
+	local room = Recipe.room()
+	local slotsWide = math.clamp(leftWide - 2 * EDGE - room - face.X - (if powerBeside then POWER_ROOM else 0) - 8, 100, 280)
 	local recipe = Instance.new("Frame")
 	recipe.Name = "Recipe"
 	recipe.BackgroundTransparency = 1
@@ -332,7 +333,7 @@ local function renderPane(card: Card, chosen: Candidate)
 	if nextGrade then
 		local grid, used = Recipe.grid(recipe, need, CondenseRules.slotColumns(need), Vector2.new(slotsWide, face.Y), StationLook.RECIPE_SPOT_TALL)
 		-- the spots, the arrow in the middle of its room, the card: the whole row centred
-		recipe.Size = UDim2.fromOffset(used + RECIPE.arrow + face.X, face.Y + under)
+		recipe.Size = UDim2.fromOffset(used + room + face.X, face.Y + under)
 		local copies: { CondenseRules.Take } = {}
 		for _, take in if plan then plan.takes else CondenseRules.pick(Beasts.GRADES, byGrade, main, copiesIn) do
 			for _ = 1, take.count do
@@ -356,7 +357,7 @@ local function renderPane(card: Card, chosen: Candidate)
 				table.insert(spots, spot)
 			end
 		end
-		Recipe.arrow(recipe, used + RECIPE.arrow / 2, face.Y / 2)
+		Recipe.arrow(recipe, used + room / 2, face.Y / 2)
 		-- how much stronger the card gets
 		local powerAfter = BeastRules.getPower(card, chosen.foil, chosen.level, chosen.stars, nextGrade)
 		local power = UIKit.pill(recipe, `+{math.max(0, powerAfter - chosen.power)} Power`, palette.good, Color3.new(1, 1, 1))

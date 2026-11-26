@@ -4,6 +4,7 @@
 local ContrastRules = require("../src/shared/Util/ContrastRules")
 local CreamTheme = require("../src/shared/Config/CreamTheme")
 local StationLook = require("../src/shared/Config/StationLook")
+local UIIcons = require("../src/shared/Config/UIIcons")
 local expect = require("./lib/expect")
 
 local WHITE = { 255, 255, 255 }
@@ -49,12 +50,16 @@ return {
 		assert(StationLook.BUTTON >= 48, "Change card, Not now")
 	end,
 
-	-- owner 2026-11-26: "put the arrow on the center and use a different arrow, not an emoji arrow"
-	["the recipe's arrow is drawn in the middle of its room, with space each side"] = function()
+	-- owner 2026-11-26: "put the arrow on the center and use a different arrow, not an emoji arrow", then "change the
+	-- arrow into a better icon arrow" (pick C, the gold sparkle arrow)
+	["the recipe's arrow is the gold sparkle icon, in the middle of its room, with space each side"] = function()
 		local arrow = StationLook.ARROW
-		assert(arrow.room >= arrow.wide + 16, "at least 8 px either side of the arrow")
-		assert(arrow.thick >= 3 and arrow.thick * 4 <= arrow.tall, "a bold line, its head taller than the line")
-		expect.equal(#arrow.color, 3)
+		assert(UIIcons[arrow.icon] ~= nil, "the arrow's picture is a UI icon")
+		expect.equal(arrow.icon, "ArrowGold")
+		assert(arrow.pad >= 12, "at least 6 px either side of the arrow")
+		assert(arrow.phone >= 40, "big enough to read on a phone")
+		assert(arrow.desktop > arrow.phone, "a computer's arrow bigger, beside its bigger card")
+		assert(arrow.ghost > 0 and arrow.ghost < 1, "the empty recipe's arrow faded, not gone")
 		for _, size in { StationLook.COPY_TILE.desktop, StationLook.COPY_TILE.phone } do
 			assert(size[1] >= 48 and size[2] >= 48, "a copy tile is a finger-sized tap")
 		end

@@ -21,7 +21,6 @@ Recipe.LOOK = {
 	gap = 5, -- between spots
 	spotTall = 62, -- a spot's height at the most
 	spotShape = 0.69, -- a spot's width for its height (a card's)
-	arrow = ARROW.room, -- the arrow's room between what goes in and what comes out (it sits in its middle)
 	under = 30, -- the row under them (a chip, the stars)
 	fly = 0.32, -- seconds the spots take to fly in
 	button = 58, -- the big button's height
@@ -118,40 +117,29 @@ function Recipe.spot(parent: Instance, kind: string, view: SpotView): GuiObject
 	return spot
 end
 
--- The arrow between what goes in and what comes out, its middle at (x, y) (put it in the middle of LOOK.arrow's room):
--- drawn as a line with a chevron head, the mockups' arrow (owner 2026-11-26: "use a different arrow, not an emoji
--- arrow"; Config/StationLook ARROW). `color`: another colour (the empty recipe's pale one)
-function Recipe.arrow(parent: Instance, x: number, y: number, color: Color3?): Frame
-	local arrow = Instance.new("Frame")
+-- The arrow's picture size (a phone's smaller, beside its smaller card)
+local function arrowSize(): number
+	return if UIKit.isShort() then ARROW.phone else ARROW.desktop
+end
+
+-- The room between what goes in and what comes out; the arrow sits in its middle
+function Recipe.room(): number
+	return arrowSize() + ARROW.pad
+end
+
+-- The arrow between what goes in and what comes out, its middle at (x, y) (put it in the middle of Recipe.room()): the
+-- gold sparkle arrow (owner 2026-11-26: "change the arrow into a better icon arrow", pick C; Config/StationLook ARROW).
+-- `ghost`: the empty recipe's, faded
+function Recipe.arrow(parent: Instance, x: number, y: number, ghost: boolean?): GuiObject
+	local size = arrowSize()
+	local arrow = Icon.make(parent, ARROW.icon, UDim2.fromOffset(size, size))
 	arrow.Name = "Arrow"
-	arrow.BackgroundTransparency = 1
 	arrow.AnchorPoint = Vector2.new(0.5, 0.5)
 	arrow.Position = UDim2.fromOffset(x, y)
-	arrow.Size = UDim2.fromOffset(ARROW.wide, ARROW.tall)
-	arrow.Parent = parent
-	local tint = color or Color3.fromRGB(ARROW.color[1], ARROW.color[2], ARROW.color[3])
-	local thick = ARROW.thick
-	local function stroke(name: string, centre: Vector2, length: number, rotation: number)
-		local bar = Instance.new("Frame")
-		bar.Name = name
-		bar.BorderSizePixel = 0
-		bar.BackgroundColor3 = tint
-		bar.AnchorPoint = Vector2.new(0.5, 0.5)
-		bar.Position = UDim2.fromOffset(centre.X, centre.Y)
-		bar.Size = UDim2.fromOffset(length, thick)
-		bar.Rotation = rotation
-		bar.Parent = arrow
-		UIKit.corner(bar, thick / 2)
+	local glyph = arrow:FindFirstChild("Glyph")
+	if ghost and glyph and glyph:IsA("ImageLabel") then
+		glyph.ImageTransparency = ARROW.ghost
 	end
-	-- the tip on the right, the head's two strokes reaching back to the top and the bottom (each turned 45 degrees about
-	-- its middle, its end on the tip), the shaft from the left to the tip
-	local middle = ARROW.tall / 2
-	local tip = ARROW.wide - thick / 2
-	local head = (middle - thick / 2) * math.sqrt(2)
-	local back = head / (2 * math.sqrt(2))
-	stroke("Shaft", Vector2.new((thick / 2 + tip) / 2, middle), tip - thick / 2, 0)
-	stroke("HeadTop", Vector2.new(tip - back, middle - back), head, 45)
-	stroke("HeadBottom", Vector2.new(tip - back, middle + back), head, -45)
 	return arrow
 end
 

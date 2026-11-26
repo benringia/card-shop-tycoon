@@ -473,11 +473,12 @@ local function recipeRow(order: number, weaponId: string, record: Owned?, cost: 
 	local need = #data
 	local look = ForgeLayout.SLOTS
 	local slots = Vector2.zero
+	local arrowRoom = Recipe.room()
 	if need > 0 then
 		-- as wide as the pane leaves beside the arrow and the card (the window's own scale taken out)
 		local scaler = panel:FindFirstChildOfClass("UIScale")
 		local scale = if scaler and scaler.Scale > 0 then scaler.Scale else 1
-		local room = pane.AbsoluteSize.X / scale - 2 * EDGE - 8 - RECIPE.arrow - cardSize.X
+		local room = pane.AbsoluteSize.X / scale - 2 * EDGE - 8 - arrowRoom - cardSize.X
 		slots = Vector2.new(math.clamp(room, look.min, if phone then look.phoneMax else look.max), cardSize.Y)
 	end
 	local under = if not pill then 0 elseif phone then ForgeLayout.UNDER else RECIPE.under
@@ -485,7 +486,7 @@ local function recipeRow(order: number, weaponId: string, record: Owned?, cost: 
 	row.Name = "Recipe"
 	row.LayoutOrder = order
 	row.BackgroundTransparency = 1
-	row.Size = UDim2.fromOffset(slots.X + (if need > 0 then RECIPE.arrow else 0) + cardSize.X, cardSize.Y + under)
+	row.Size = UDim2.fromOffset(slots.X + (if need > 0 then arrowRoom else 0) + cardSize.X, cardSize.Y + under)
 	row.Parent = pane
 	local card = Instance.new("Frame")
 	card.Name = "Keeps"
@@ -524,8 +525,8 @@ local function recipeRow(order: number, weaponId: string, record: Owned?, cost: 
 		end
 		-- the spots, the arrow in the middle of its room, the weapon: the row as wide as that, centred (owner 2026-11-26:
 		-- "Center arrow")
-		row.Size = UDim2.fromOffset(used + RECIPE.arrow + cardSize.X, cardSize.Y + under)
-		Recipe.arrow(row, used + RECIPE.arrow / 2, cardSize.Y / 2)
+		row.Size = UDim2.fromOffset(used + arrowRoom + cardSize.X, cardSize.Y + under)
+		Recipe.arrow(row, used + arrowRoom / 2, cardSize.Y / 2)
 	end
 	return spots, card
 end

@@ -56,6 +56,9 @@ return {
 	Lock = "rbxassetid://126931591650684",
 	Check = "rbxassetid://134111044278552",
 	Next = "rbxassetid://85219685038174",
+	-- the recipes' arrow (Condenser, Grading Station, Forge; owner 2026-11-26 pick C, "Gold sparkle arrow"): drawn by
+	-- tools/ui-icons/make_arrow.py, not cut from a sheet
+	ArrowGold = "rbxassetid://85109343937108",
 	Heart = "rbxassetid://81178736634418",
 	Star = "rbxassetid://109389918339627",
 	Gem = "rbxassetid://78526112614740",

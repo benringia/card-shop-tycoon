@@ -53,6 +53,8 @@ return {
 	BULK_TILE = { desktop = { 116, 140 }, phone = { 96, 118 }, gap = 10, art = 0.6 },
 	RECIPE_SPOT_TALL = 80, -- a recipe spot's height at the most (the mockup's 56 x 78 copies)
 	-- the recipe's arrow (Util/Recipe.arrow; owner 2026-11-26: "put the arrow on the center and use a different arrow,
-	-- not an emoji arrow"): a line with a chevron head, `wide` x `tall`, strokes `thick`, in the middle of `room`
-	ARROW = { color = { 90, 169, 255 }, wide = 34, tall = 24, thick = 4, room = 56 },
+	-- not an emoji arrow", then "change the arrow into a better icon arrow", pick C): the gold sparkle arrow `icon`
+	-- (Config/UIIcons, tools/ui-icons/make_arrow.py), a square picture `desktop` / `phone` px (the arrow fills its width,
+	-- about two thirds of its height) in the middle of a room `pad` px wider; the empty recipe's at `ghost` transparency
+	ARROW = { icon = "ArrowGold", desktop = 64, phone = 44, pad = 12, ghost = 0.55 },
 }

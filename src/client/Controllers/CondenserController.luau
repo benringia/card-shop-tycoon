@@ -357,7 +357,8 @@ local function renderPane(card: Card, chosen: Candidate, candidates: { Candidate
 	-- as the box has room for over the button (a short window's smaller)
 	local faceTall = math.clamp(StationPick.height(window, pane) - y - under - 4, if phone then 56 else 96, face.Y)
 	face = Vector2.new(math.floor(faceTall * face.X / face.Y), faceTall)
-	local slotsWide = math.clamp(leftWide - 2 * EDGE - RECIPE.arrow - face.X - 8, if phone then 90 else 110, 300)
+	local room = Recipe.room()
+	local slotsWide = math.clamp(leftWide - 2 * EDGE - room - face.X - 8, if phone then 90 else 110, 300)
 	local recipe = Instance.new("Frame")
 	recipe.Name = "Recipe"
 	recipe.BackgroundTransparency = 1
@@ -397,8 +398,8 @@ local function renderPane(card: Card, chosen: Candidate, candidates: { Candidate
 			end
 		end
 		-- the spots, the arrow in the middle of its room, the card: the whole row centred
-		recipe.Size = UDim2.fromOffset(used + RECIPE.arrow + face.X, face.Y + under)
-		Recipe.arrow(recipe, used + RECIPE.arrow / 2, face.Y / 2)
+		recipe.Size = UDim2.fromOffset(used + room + face.X, face.Y + under)
+		Recipe.arrow(recipe, used + room / 2, face.Y / 2)
 	end
 	y += face.Y + under + 6
 

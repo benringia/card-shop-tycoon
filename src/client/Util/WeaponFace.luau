@@ -179,12 +179,11 @@ local function owned(frame: Frame, weapon: Weapons.Weapon, record: Owned)
 		P.addSupremeRim(art)
 	end
 	local layout = CardDesign.TEXT
-	local name = P.text(face, `{emojiOf(weapon)}{weapon.name}`, layout.NAME, WHITE, 7)
+	local name = P.text(face, `{emojiOf(weapon)}{weapon.name}`, P.nameBox(record.grade), WHITE, 7)
 	name.Name = "Name"
-	P.chip(face, "Grade", record.grade, layout.GRADE, CardDesign.GRADE_COLORS[record.grade] or CardDesign.GRADE_COLORS.C, 0)
-	if weapon.id ~= Weapons.STARTER then
-		P.chip(face, "Level", `+{record.level}`, layout.LEVEL, CardDesign.LEVEL_CHIP, CardDesign.LEVEL_CHIP_TRANSPARENCY)
-	end
+	-- the grade's medal like a creature card's (Config/GradeLook), the +level under it; no glow: a weapon card's edge
+	-- shows its mutation
+	P.addGrade(face, record.grade, if weapon.id ~= Weapons.STARTER then `+{record.level}` else nil)
 	local power = WeaponRules.shownPower(Weapons, Combat, weapon.id, record.grade, record.level)
 	centered(P.text(face, WeaponText.attackLine(power), layout.VALUE, CardDesign.VALUE_TEXT, 7)).Name = "Power" -- "Attack 151" (weapons round 4)
 	local mutation = MutationRules.read(Mutations, record.mutation)

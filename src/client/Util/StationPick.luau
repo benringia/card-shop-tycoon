@@ -725,7 +725,7 @@ function StationPick.emptyPane(window: Window, spots: number)
 	end
 	local spot = Vector2.new(math.floor(56 * fit), math.floor(78 * fit))
 	local card = Vector2.new(math.floor(92 * fit), math.floor(128 * fit))
-	local gap, room = math.floor(10 * fit), Recipe.LOOK.arrow
+	local gap, room = math.floor(10 * fit), Recipe.room()
 	local wide = spots * spot.X + (spots - 1) * gap + room + card.X
 	local row = Instance.new("Frame")
 	row.Name = "Ghost"
@@ -744,7 +744,7 @@ function StationPick.emptyPane(window: Window, spots: number)
 		StationPick.dashed(cell, spot, ghost, 6)
 	end
 	-- the arrow in the middle of its room, between the spots and the card
-	Recipe.arrow(row, spots * spot.X + (spots - 1) * gap + room / 2, card.Y / 2, ghost)
+	Recipe.arrow(row, spots * spot.X + (spots - 1) * gap + room / 2, card.Y / 2, true)
 	local after = Instance.new("Frame")
 	after.Name = "Card"
 	after.BackgroundTransparency = 1

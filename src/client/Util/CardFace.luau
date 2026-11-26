@@ -1,10 +1,10 @@
 --!strict
 -- Draws card faces into a Frame: pack opening, binder, cases, the Condenser, jobs and the party.
 -- Full-art look: the art fills the card inside a thin rim in the rarity colour (rainbow on foil, aurora on
--- Frontier cards); the element and name sit top left, the grade top right, the value at the bottom, all in
--- outlined text. The frame should keep a ~0.7 width/height ratio and have a UIStroke (hidden on drawn
--- faces; the pack opening tweens it). Everything is drawn in a "Face" child, so callers keep their own
--- children. Layout, colours and art ids: Config/CardDesign.
+-- Frontier cards); the element and name sit top left, the grade's medal top right (Config/GradeLook: bigger the
+-- better the grade, A and S cards glowing), the value at the bottom, all in outlined text. The frame should keep a
+-- ~0.7 width/height ratio and have a UIStroke (hidden on drawn faces; the pack opening tweens it). Everything is
+-- drawn in a "Face" child, so callers keep their own children. Layout, colours and art ids: Config/CardDesign.
 local ContentProvider = game:GetService("ContentProvider")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -17,8 +17,10 @@ local CardArtConfig = require(Config:WaitForChild("CardArt"))
 local PackOpening = require(Config:WaitForChild("PackOpening"))
 local CardEffects = require(Config:WaitForChild("CardEffects"))
 local Rarities = require(Config:WaitForChild("Rarities"))
+local GradeLookConfig = require(Config:WaitForChild("GradeLook"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CardArt = require(Shared:WaitForChild("Util"):WaitForChild("CardArt"))
+local GradeLook = require(Shared:WaitForChild("Util"):WaitForChild("GradeLook"))
 
 type Card = typeof(Cards.List[1])
 type Box = CardDesign.Box
@@ -39,7 +41,10 @@ local CardFace = {}
 -- Fetch the art up front, so the first cards don't show without their picture: the small copies most faces draw
 -- (Config/CardArt) first, then the full paintings the big views draw
 task.spawn(function()
-	local images = { CardDesign.IMAGES.GLOW }
+	local images = { CardDesign.IMAGES.GLOW, GradeLookConfig.IMAGES.glow, GradeLookConfig.IMAGES.sparkle }
+	for _, id in GradeLookConfig.IMAGES.medal do
+		table.insert(images, id)
+	end
 	for _, id in CardDesign.SCENES do
 		table.insert(images, id)
 	end
@@ -425,6 +430,130 @@ local function addStars(parent: Instance, stars: number, area: Box)
 	end
 end
 
+local function rgb(color: { number }): Color3
+	return Color3.fromRGB(color[1], color[2], color[3])
+end
+
+-- The name's box: top left, stopping short of the grade's medal (Shared/Util/GradeLook)
+local function nameBox(grade: string): Box
+	local name = CardDesign.TEXT.NAME
+	return { x = GradeLookConfig.NAME.x, y = name.y, w = GradeLook.nameWidth(GradeLookConfig, grade), h = name.h }
+end
+
+-- The grade's medal in the card's top-right corner, bigger the better the grade, and the Level chip (`level`: its
+-- words; nil, none) hanging under it (owner 2026-11-26, pick A "Medal + glow"; Config/GradeLook). They sit in a square
+-- one card wide at the card's top, so across and down are both shares of the card's width there
+local function addGrade(face: Frame, grade: string, level: string?)
+	local square = Instance.new("Frame")
+	square.Name = "Top"
+	square.BackgroundTransparency = 1
+	square.Size = UDim2.fromScale(1, 1)
+	square.SizeConstraint = Enum.SizeConstraint.RelativeXX
+	square.ZIndex = 7
+	square.Parent = face
+	local box = GradeLook.picture(GradeLookConfig, grade)
+	local medal = Instance.new("ImageLabel")
+	medal.Name = "Grade"
+	medal.BackgroundTransparency = 1
+	medal.Image = GradeLookConfig.IMAGES.medal[grade] or GradeLookConfig.IMAGES.medal.C
+	medal.AnchorPoint = Vector2.new(0.5, 0.5) -- a pop grows it about its middle (a pulled A or S, Util/OpeningCards)
+	medal.Position = UDim2.fromScale(box.x + box.size / 2, box.y + box.size / 2)
+	medal.Size = UDim2.fromScale(box.size, box.size)
+	medal.ZIndex = 8
+	medal.Parent = square
+	if level then
+		chip(square, "Level", level, GradeLook.level(GradeLookConfig, grade), CardDesign.LEVEL_CHIP, CardDesign.LEVEL_CHIP_TRANSPARENCY)
+	end
+end
+
+-- An S card's two sparkles twinkling on its edges (Config/GradeLook SPARKLES); `inside`: on a card that is its own 3D
+-- surface, which can't draw past its edges
+local function addSparkles(face: Frame, inside: boolean)
+	local twinkle = GradeLookConfig.TWINKLE
+	for index, spot in GradeLookConfig.SPARKLES do
+		local at = GradeLook.sparkle(GradeLookConfig, index, inside)
+		local sparkle = Instance.new("ImageLabel")
+		sparkle.Name = "GradeSparkle"
+		sparkle.BackgroundTransparency = 1
+		sparkle.Image = GradeLookConfig.IMAGES.sparkle
+		sparkle.AnchorPoint = Vector2.new(0.5, 0.5)
+		sparkle.Position = UDim2.fromScale(at.x, at.y)
+		sparkle.Size = UDim2.fromScale(at.size, at.size)
+		sparkle.SizeConstraint = Enum.SizeConstraint.RelativeXX
+		sparkle.ZIndex = 9
+		sparkle.Parent = face
+		local scale = Instance.new("UIScale")
+		scale.Parent = sparkle
+		local info = TweenInfo.new(twinkle.seconds / 2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true, spot.delay)
+		TweenService:Create(scale, info, { Scale = twinkle.low }):Play()
+		TweenService:Create(sparkle, info, { Rotation = 45, ImageTransparency = 0.35 }):Play()
+	end
+end
+
+-- An A or S card glows (Config/GradeLook GLOW): on a screen, a ring round it and a soft glow past its edges, breathing
+-- on S; a card that is its own 3D surface (the pack opening's, a case's, a dropped one: nothing past its edges shows)
+-- gets the ring inside its rim instead, unless a Legendary S's electric rim is already there. S cards twinkle. Sizes
+-- are shares of the card, so a window's UIScale scales them once
+local function addGradeGlow(frame: Frame, face: Frame, art: Frame, grade: string, supreme: boolean)
+	local glow = GradeLook.glow(GradeLookConfig, grade)
+	if not glow then
+		return
+	end
+	local parent = frame.Parent
+	local own = parent ~= nil and (parent:IsA("SurfaceGui") or parent:IsA("BillboardGui"))
+	if own and not supreme then
+		local ring = Instance.new("UIStroke")
+		ring.Name = "GradeRing"
+		ring.Color = rgb(glow.ring)
+		ring.Parent = art
+		local function fit()
+			ring.Thickness = math.max(1, face.AbsoluteSize.X * glow.width)
+		end
+		face:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
+		fit()
+	elseif not own then
+		local halo = Instance.new("ImageLabel")
+		halo.Name = "GradeGlow"
+		halo.BackgroundTransparency = 1
+		halo.Image = GradeLookConfig.IMAGES.glow
+		halo.ImageColor3 = rgb(glow.color)
+		halo.ImageTransparency = glow.transparency
+		halo.AnchorPoint = Vector2.new(0.5, 0.5)
+		halo.Position = UDim2.fromScale(0.5, 0.5)
+		halo.ZIndex = 0
+		halo.Parent = face
+		local ring = Instance.new("Frame")
+		ring.Name = "GradeRing"
+		ring.BackgroundColor3 = rgb(glow.ring)
+		ring.BorderSizePixel = 0
+		ring.AnchorPoint = Vector2.new(0.5, 0.5)
+		ring.Position = UDim2.fromScale(0.5, 0.5)
+		ring.ZIndex = 0
+		ring.Parent = face
+		local corner = Instance.new("UICorner")
+		corner.Parent = ring
+		-- its shape follows the card's (its width over its height)
+		local function fit()
+			local size = face.AbsoluteSize
+			local aspect = if size.Y > 0 then size.X / size.Y else 1 / 1.4
+			local glowWide, glowTall = GradeLook.glowSize(GradeLookConfig, aspect)
+			halo.Size = UDim2.fromScale(glowWide, glowTall)
+			local ringWide, ringTall, cornerShare = GradeLook.ring(GradeLookConfig, grade, aspect, CardDesign.CORNER)
+			ring.Size = UDim2.fromScale(ringWide, ringTall)
+			corner.CornerRadius = UDim.new(cornerShare, 0)
+		end
+		face:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
+		fit()
+		if glow.pulse > 0 and glow.breath > 0 then
+			local info = TweenInfo.new(glow.pulse / 2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+			TweenService:Create(halo, info, { ImageTransparency = glow.transparency + glow.breath }):Play()
+		end
+	end
+	if glow.twinkle then
+		addSparkles(face, own)
+	end
+end
+
 -- Face-down card: Pish and Chikin's card back (Config/CardDesign BACK), the whole card one picture
 function CardFace.renderBack(frame: Frame, stroke: UIStroke)
 	clear(frame)
@@ -512,7 +641,8 @@ function CardFace.render(frame: Frame, stroke: UIStroke, card: Card, foil: boole
 		spinRim(rim, CardDesign.FOIL_RIM, CardDesign.FOIL_RIM_SECONDS)
 		addFoilHolo(art)
 	end
-	if not frontier and card.rarity == "Legendary" and grade == "S" then
+	local supreme = not frontier and card.rarity == "Legendary" and grade == "S"
+	if supreme then
 		addSupremeRim(art)
 	end
 	local shineFrom = Rarities.Tiers[CardDesign.SHINE_FROM]
@@ -520,12 +650,14 @@ function CardFace.render(frame: Frame, stroke: UIStroke, card: Card, foil: boole
 	if not frontier and tier and shineFrom and tier.order >= shineFrom.order then
 		addShine(art)
 	end
+	addGradeGlow(frame, face, art, grade, supreme)
 
 	local layout = CardDesign.TEXT
 	local emoji = CardDesign.EMOJI[card.element] or ""
-	local name = text(face, `{emoji}{card.name}`, layout.NAME, WHITE, 7)
+	local name = text(face, `{emoji}{card.name}`, nameBox(grade), WHITE, 7)
 	name.Name = "Name"
-	chip(face, "Grade", grade, layout.GRADE, CardDesign.GRADE_COLORS[grade] or CardDesign.GRADE_COLORS.C, 0)
+	local growing = detail ~= false and not (growth and growth.fresh)
+	addGrade(face, grade, if growing then `Lv {level}` else nil)
 
 	local value = BeastRules.getValue(card, foil, level, stars, grade)
 	local valueText = if price then string.format("$%.2f", price) else string.format("$%.2f", value)
@@ -534,9 +666,8 @@ function CardFace.render(frame: Frame, stroke: UIStroke, card: Card, foil: boole
 	valueLabel.TextXAlignment = Enum.TextXAlignment.Center
 
 	if detail ~= false then
-		if not (growth and growth.fresh) then
+		if growing then
 			addStars(face, stars, layout.STARS)
-			chip(face, "Level", `Lv {level}`, layout.LEVEL, CardDesign.LEVEL_CHIP, CardDesign.LEVEL_CHIP_TRANSPARENCY)
 		end
 		if foil or frontier then
 			local tag = chip(face, "Foil", if frontier then "FRONTIER" else "FOIL", layout.FOIL, BLACK, 0.4)
@@ -562,6 +693,8 @@ CardFace.parts = {
 	addTextShade = addTextShade,
 	addShine = addShine,
 	addSupremeRim = addSupremeRim,
+	addGrade = addGrade,
+	nameBox = nameBox,
 	lift = lift,
 }
 

@@ -3,8 +3,10 @@
 -- and the card back (back) and a glow behind it, built once while the pack tears. They stack up face down one by one
 -- out of the pack; each tap flips the top one (Rare and better tease first, then celebrate per its
 -- RevealRules plan; a shown Rare-or-better card stays alive until the next tap); the shown card zips into a row along
--- the bottom; at the end the row's cards fly one by one to the results lineup and sparkle as they land. Screen
--- places come from Util/OpeningLayout, turned into stage positions at the right distance. Numbers: Config/PackOpening.
+-- the bottom; at the end the row's cards fly one by one to the results lineup and sparkle as they land. A Grade A or S
+-- pull lights a glow behind it as it lands, its medal pops with a ding and a "GRADE S!" pill shows by the banner
+-- (Config/GradeLook). Screen places come from Util/OpeningLayout, turned into stage positions at the right distance.
+-- Numbers: Config/PackOpening.
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -18,6 +20,8 @@ local CardEffects = require(Config:WaitForChild("CardEffects"))
 local PackOpening = require(Config:WaitForChild("PackOpening"))
 local PackOpeningLayout = require(Config:WaitForChild("PackOpeningLayout"))
 local RevealSounds = require(Config:WaitForChild("RevealSounds"))
+local GradeLookConfig = require(Config:WaitForChild("GradeLook"))
+local GradeLook = require(Shared:WaitForChild("Util"):WaitForChild("GradeLook"))
 local RevealSoundRules = require(Shared:WaitForChild("Util"):WaitForChild("RevealSoundRules"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local OpeningLayout = require(Shared:WaitForChild("Util"):WaitForChild("OpeningLayout"))
@@ -44,6 +48,8 @@ type Shown = {
 	shine: UIGradient,
 	holo: UIGradient,
 	newTag: BillboardGui,
+	face: Frame, -- its drawn face (CardFace), for the medal's pop
+	gradeGlow: ImageLabel?, -- an A or S card's glow behind it (gradePlate)
 	color: Color3,
 	at: CFrame, -- where it rests now
 	stopAlive: (() -> ())?,
@@ -65,6 +71,11 @@ local banner: Frame -- a plate in the pull's colour (gradient) with the word on 
 local bannerText: TextLabel
 local bannerScale: UIScale
 local bannerPulse: Tween? = nil
+local gradeTag: Frame? = nil -- a pulled A or S card's "GRADE S!" pill, beside the banner (Config/GradeLook CALLOUT)
+local gradeText: TextLabel
+local gradeShade: UIGradient
+local gradeScale: UIScale
+local gradePulse: Tween? = nil
 local results: RBXScriptConnection? = nil
 -- Bumped by clear(): a yielding step (stack, flip, stow, lineup, build) that wakes to a new number stops, so an
 -- opening closed mid-animation (a fight, a death) leaves nothing behind
@@ -171,6 +182,39 @@ local function newTagFor(part: BasePart): BillboardGui
 	return gui
 end
 
+-- An A or S card's glow on the stage (Config/GradeLook): the card is its own surface and can't draw past its edges, so
+-- a plate just behind it, the glow picture's size, carries it. It faces the camera only once the card is face up, and
+-- lights as the card lands (landGrade)
+local function gradePlate(model: Model, grade: string): ImageLabel?
+	local glow = GradeLook.glow(GradeLookConfig, grade)
+	if not glow then
+		return nil
+	end
+	local wide, tall = GradeLook.glowSize(GradeLookConfig, CARD_W / SIZE.HEIGHT)
+	local plate = Instance.new("Part")
+	plate.Name = "GradeGlow"
+	plate.Size = Vector3.new(CARD_W * wide, SIZE.HEIGHT * tall, 0.01)
+	plate.CFrame = CFrame.new(0, 0, SIZE.THICKNESS * 2)
+	plate.Anchored, plate.CanCollide, plate.CanQuery, plate.CanTouch, plate.CastShadow = true, false, false, false, false
+	plate.Transparency = 1
+	plate.Parent = model
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = SIZE.PIXELS_PER_STUD / 4 -- a soft glow needs few
+	gui.LightInfluence = 0
+	gui.Parent = plate
+	local picture = Instance.new("ImageLabel")
+	picture.Name = "Glow"
+	picture.Size = UDim2.fromScale(1, 1)
+	picture.BackgroundTransparency = 1
+	picture.Image = GradeLookConfig.IMAGES.glow
+	picture.ImageColor3 = Color3.fromRGB(glow.color[1], glow.color[2], glow.color[3])
+	picture.ImageTransparency = 1
+	picture.Parent = gui
+	return picture
+end
+
 local function buildCard(pull: Pull, index: number): Shown
 	local model = Instance.new("Model")
 	model.Name = `Card{index}`
@@ -189,6 +233,7 @@ local function buildCard(pull: Pull, index: number): Shown
 	halo.Material = Enum.Material.Neon
 	halo.Transparency = 1
 	halo.Parent = model
+	local gradeGlow = gradePlate(model, pull.grade) -- placed beside the card before the model moves
 	model.PrimaryPart = part
 	local faceGui, faceFrame, faceStroke = surface(part, Enum.NormalId.Front)
 	CardFace.render(faceFrame, faceStroke, pull.card, pull.foil, true, { level = 1, stars = BeastRules.START_STARS, grade = pull.grade, fresh = true }, nil)
@@ -208,6 +253,8 @@ local function buildCard(pull: Pull, index: number): Shown
 		shine = sweepLayer(faceGui, "Shine", Color3.new(1, 1, 1), 0.75),
 		holo = sweepLayer(faceGui, "Holo", if gold then Color3.fromRGB(255, 220, 120) else color, 0.45),
 		newTag = newTagFor(part),
+		face = faceFrame,
+		gradeGlow = gradeGlow,
 		color = color,
 		at = parked,
 	}
@@ -286,9 +333,109 @@ local function showBanner(text: string, color: Color3)
 	bannerText.Text = text
 	local gradient = banner:FindFirstChildOfClass("UIGradient") :: UIGradient
 	gradient.Color = ColorSequence.new(color:Lerp(Color3.new(1, 1, 1), 0.35), color:Lerp(Color3.new(0, 0, 0), 0.15))
+	banner.Position = UDim2.fromScale(0.5, FLIP.BANNER_Y) -- in the middle (a GRADE pill beside it moves it over)
 	banner.Visible = true
 	bannerScale.Scale = 0
 	TweenService:Create(bannerScale, TweenInfo.new(FLIP.BANNER_SECONDS, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+end
+
+local function rgb(color: { number }): Color3
+	return Color3.fromRGB(color[1], color[2], color[3])
+end
+
+-- The "GRADE S!" pill (Config/GradeLook CALLOUT), in the banner's screen
+local function ensureGradeTag(): Frame
+	ensureBanner()
+	if gradeTag then
+		return gradeTag
+	end
+	local look = GradeLookConfig.CALLOUT
+	local pill = Instance.new("Frame")
+	pill.Name = "GradeCallout"
+	pill.AnchorPoint = Vector2.new(0.5, 0.5)
+	pill.Size = UDim2.fromScale(look.height * look.aspect, look.height)
+	pill.SizeConstraint = Enum.SizeConstraint.RelativeYY
+	pill.BackgroundColor3 = Color3.new(1, 1, 1)
+	pill.Visible = false
+	pill.Parent = bannerGui
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0.5, 0)
+	corner.Parent = pill
+	local edge = Instance.new("UIStroke")
+	edge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	edge.Color = Color3.new(1, 1, 1)
+	edge.Thickness = 3
+	edge.Parent = pill
+	gradeShade = Instance.new("UIGradient")
+	gradeShade.Rotation = 90
+	gradeShade.Parent = pill
+	local label = Instance.new("TextLabel")
+	label.AnchorPoint = Vector2.new(0.5, 0.5)
+	label.Position = UDim2.fromScale(0.5, 0.5)
+	label.Size = UDim2.fromScale(0.84, 0.7)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.Parent = pill
+	gradeScale = Instance.new("UIScale")
+	gradeScale.Scale = 0
+	gradeScale.Parent = pill
+	gradeText = label
+	gradeTag = pill
+	return pill
+end
+
+-- A pulled A or S card says so: its pill pops in beside the rarity's banner (the two centred together), or alone in the
+-- banner's place when there's none
+local function showGrade(grade: string, besideBanner: boolean)
+	local words = GradeLook.callout(GradeLookConfig, grade)
+	local colours = GradeLookConfig.CALLOUT.looks[grade]
+	if not words or not colours then
+		return
+	end
+	local look = GradeLookConfig.CALLOUT
+	local pill = ensureGradeTag()
+	gradeText.Text = words
+	gradeText.TextColor3 = rgb(colours.ink)
+	gradeShade.Color = ColorSequence.new(rgb(colours.top), rgb(colours.bottom))
+	pill.Position = UDim2.fromScale(0.5, FLIP.BANNER_Y)
+	if besideBanner and bannerGui then
+		local height = bannerGui.AbsoluteSize.Y
+		local bannerWide = FLIP.BANNER_HEIGHT * FLIP.BANNER_ASPECT * height
+		local pillWide = look.height * look.aspect * height
+		local total = bannerWide + look.gap * height + pillWide
+		banner.Position = UDim2.new(0.5, (bannerWide - total) / 2, FLIP.BANNER_Y, 0)
+		pill.Position = UDim2.new(0.5, (total - pillWide) / 2, FLIP.BANNER_Y, 0)
+	end
+	pill.Visible = true
+	gradeScale.Scale = 0
+	local pop = TweenService:Create(gradeScale, TweenInfo.new(look.pop, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 })
+	pop:Play()
+	if grade == "S" then
+		pop.Completed:Once(function(state)
+			if state == Enum.PlaybackState.Completed and gradeTag and gradeTag.Visible then
+				gradePulse = TweenService:Create(gradeScale, TweenInfo.new(ALIVE.BANNER_PULSE_SECONDS / 2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Scale = 1.07 })
+				gradePulse:Play()
+			end
+		end)
+	end
+end
+
+local function hideGrade()
+	if gradePulse then
+		gradePulse:Cancel()
+		gradePulse = nil
+	end
+	if gradeTag and gradeTag.Visible then
+		local pill = gradeTag
+		local t = TweenService:Create(gradeScale, TweenInfo.new(0.15), { Scale = 0 })
+		t.Completed:Once(function(state)
+			if state == Enum.PlaybackState.Completed then
+				pill.Visible = false
+			end
+		end)
+		t:Play()
+	end
 end
 
 local function hideBanner()
@@ -296,6 +443,7 @@ local function hideBanner()
 		bannerPulse:Cancel()
 		bannerPulse = nil
 	end
+	hideGrade()
 	if bannerGui and banner.Visible then
 		local t = TweenService:Create(bannerScale, TweenInfo.new(0.15), { Scale = 0 })
 		t.Completed:Once(function()
@@ -408,6 +556,39 @@ local function startAlive(shown: Shown)
 		OpeningFx.auraScale(1)
 		shown.model:PivotTo(shown.at)
 	end
+end
+
+-- A pulled A or S card lands (owner 2026-11-26, pick A "Medal + glow"; Config/GradeLook): its glow lights behind it
+-- (breathing on S), its medal pops with a ding, and it says so by the banner (`besideBanner`: a banner shows)
+local function landGrade(shown: Shown, besideBanner: boolean)
+	local grade = shown.pull.grade
+	local glow = GradeLook.glow(GradeLookConfig, grade)
+	if not glow then
+		return
+	end
+	local picture = shown.gradeGlow
+	if picture then
+		local light = TweenService:Create(picture, TweenInfo.new(0.3), { ImageTransparency = glow.transparency })
+		light:Play()
+		if glow.breath > 0 then
+			light.Completed:Once(function(state)
+				if state == Enum.PlaybackState.Completed and picture.Parent then
+					local info = TweenInfo.new(glow.pulse / 2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+					TweenService:Create(picture, info, { ImageTransparency = glow.transparency + glow.breath }):Play()
+				end
+			end)
+		end
+	end
+	local ding = GradeLookConfig.DING
+	local medal = shown.face:FindFirstChild("Grade", true)
+	if medal and medal:IsA("GuiObject") then
+		local scale = medal:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
+		scale.Scale = ding.pop
+		scale.Parent = medal
+		TweenService:Create(scale, TweenInfo.new(GradeLookConfig.CALLOUT.pop, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	end
+	OpeningStage.playId("ding", ding.id, ding.volume, nil, ding.pitch[grade])
+	showGrade(grade, besideBanner)
 end
 
 -- A reveal's hit (Config/RevealSounds): its layers, each `at` seconds after the landing
@@ -567,6 +748,7 @@ function OpeningCards.flip(index: number)
 		end
 		glintsAround(shown, math.max(2, math.ceil(plan.burst / 6)), color, 0.3)
 	end
+	landGrade(shown, plan.tease > 0 and plan.banner ~= nil)
 	if plan.alive or plan.holo then
 		startAlive(shown)
 	end
@@ -707,8 +889,15 @@ function OpeningCards.clear()
 		bannerPulse:Cancel()
 		bannerPulse = nil
 	end
+	if gradePulse then
+		gradePulse:Cancel()
+		gradePulse = nil
+	end
 	if bannerGui then
 		banner.Visible = false
+	end
+	if gradeTag then
+		gradeTag.Visible = false
 	end
 	OpeningFx.clear()
 end

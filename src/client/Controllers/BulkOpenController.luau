@@ -3,8 +3,9 @@
 -- server rolls every pack (PackService.OpenItemPacks) and sends their cards in order (Remotes.PacksOpened); this lays
 -- them out face down in a grid over a dim screen and turns them over quickly, pausing on Rare and better (an Epic or a
 -- Legendary flashes the screen and gets the chat shout-out). Very Rare and up light up as they turn (a halo, a turning
--- rim, a shine, their rarity's tag; CardReveal.BEST) and the rest dims once all are turned. A tap turns the rest over
--- at once. Then the totals (cards, NEW, worth), Continue and Open 10 more while the stack lasts.
+-- rim, a shine, their rarity's tag; CardReveal.BEST), a Grade A or S card glows with its medal and dings
+-- (Config/GradeLook), and the rest dims once all are turned. A tap turns the rest over at once. Then the totals (cards,
+-- NEW, worth), Continue and Open 10 more while the stack lasts.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -20,6 +21,7 @@ local CardReveal = require(Config:WaitForChild("CardReveal"))
 local PackOpening = require(Config:WaitForChild("PackOpening"))
 local PackFx = require(Config:WaitForChild("PackFx"))
 local CardDesign = require(Config:WaitForChild("CardDesign"))
+local GradeLookConfig = require(Config:WaitForChild("GradeLook"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
@@ -27,6 +29,7 @@ local ItemRules = require(Shared:WaitForChild("Util"):WaitForChild("ItemRules"))
 local RevealRules = require(Shared:WaitForChild("Util"):WaitForChild("RevealRules"))
 local OpeningLayout = require(Shared:WaitForChild("Util"):WaitForChild("OpeningLayout"))
 local CardArt = require(Shared:WaitForChild("Util"):WaitForChild("CardArt"))
+local GradeLook = require(Shared:WaitForChild("Util"):WaitForChild("GradeLook"))
 local CardArtConfig = require(Config:WaitForChild("CardArt"))
 local SuperFxConfig = require(Config:WaitForChild("SuperFx"))
 
@@ -62,10 +65,11 @@ local showing = 0 -- bumps per batch, so an old batch's turning stops
 local skipping = false
 local itemId: string? = nil
 
-local function playSound(id: string, volume: number)
+local function playSound(id: string, volume: number, speed: number?)
 	local sound = Instance.new("Sound")
 	sound.SoundId = id
 	sound.Volume = volume
+	sound.PlaybackSpeed = speed or 1
 	sound.Parent = SoundService
 	sound:Play()
 	task.delay(4, sound.Destroy, sound)
@@ -89,12 +93,25 @@ local function close()
 	end
 end
 
+-- A pulled card's face as the pack opening draws it: its grade's medal (and an A or S card's glow), no level or stars
+local function fresh(pull: Pull): { level: number, stars: number, grade: string, fresh: boolean? }
+	return { level = 1, stars = BeastRules.START_STARS, grade = pull.grade, fresh = true }
+end
+
+-- The best pulls stand out: Very Rare and up, and Grade A and S (Config/GradeLook: never dimmed, a ding as it turns)
+local function standsOut(pull: Pull): boolean
+	return RevealRules.standsOut(pull.card.rarity, BEST.from) or GradeLook.standsOut(GradeLookConfig, pull.grade)
+end
+
 -- One card turned over: a quick squash, its face, its rarity's pop
 local function turn(cell: Frame, pull: Pull)
 	local stroke = cell:FindFirstChildOfClass("UIStroke") :: UIStroke
 	local squash = cell:FindFirstChildOfClass("UIScale") :: UIScale
 	TweenService:Create(squash, TweenInfo.new(0.06), { Scale = 0.85 }):Play()
-	CardFace.render(cell, stroke, pull.card, pull.foil)
+	CardFace.render(cell, stroke, pull.card, pull.foil, nil, fresh(pull))
+	if GradeLook.standsOut(GradeLookConfig, pull.grade) then
+		cell.ZIndex = 2 -- its grade's glow over its neighbours
+	end
 	TweenService:Create(squash, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = if pull.card.rarity == "Common" then 1 else 1.08 }):Play()
 	if pull.isNew then
 		local ribbon = UIKit.label(cell, "NEW", Enum.Font.FredokaOne, 12, Color3.fromRGB(255, 205, 40))
@@ -206,11 +223,12 @@ local function lightUp(cell: Frame, pull: Pull)
 	TweenService:Create(pop, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 end
 
--- All turned: everything but the best pulls dims, so they're the first thing you see (nothing dims when there are none)
+-- All turned: everything but the best pulls (Very Rare and up, and Grade A and S) dims, so they're the first thing you
+-- see (nothing dims when there are none)
 local function dimRest(cells: { Frame }, pulls: { Pull })
 	local any = false
 	for _, pull in pulls do
-		if RevealRules.standsOut(pull.card.rarity, BEST.from) then
+		if standsOut(pull) then
 			any = true
 		end
 	end
@@ -218,7 +236,7 @@ local function dimRest(cells: { Frame }, pulls: { Pull })
 		return
 	end
 	for index, cell in cells do
-		if cell.Parent and not RevealRules.standsOut(pulls[index].card.rarity, BEST.from) then
+		if cell.Parent and not standsOut(pulls[index]) then
 			local shade = Instance.new("Frame")
 			shade.Name = "Dim"
 			shade.BackgroundColor3 = Color3.new(0, 0, 0)
@@ -371,7 +389,7 @@ local function skyTear(cell: Frame, pull: Pull, mine: number)
 	flier.Parent = layer
 	local edge = Instance.new("UIStroke")
 	edge.Parent = flier
-	CardFace.render(flier, edge, pull.card, pull.foil)
+	CardFace.render(flier, edge, pull.card, pull.foil, nil, fresh(pull))
 	local from = rift.AbsolutePosition + rift.AbsoluteSize / 2 - layer.AbsolutePosition
 	local to = cell.AbsolutePosition + cell.AbsoluteSize / 2 - layer.AbsolutePosition
 	flier.Position = UDim2.fromOffset(from.X, from.Y)
@@ -476,6 +494,10 @@ local function show(_productId: unknown, results: unknown, flags: unknown, fromI
 				lightUp(cells[index], pull)
 			end
 			if not skipping then
+				if GradeLook.standsOut(GradeLookConfig, pull.grade) then
+					local ding = GradeLookConfig.DING
+					playSound(ding.id, ding.volume, ding.pitch[pull.grade])
+				end
 				if BIG[pull.card.rarity] then
 					celebrate(pull)
 				elseif pull.card.rarity ~= "Common" then

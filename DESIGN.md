@@ -1419,10 +1419,26 @@ the same, shared by more cards.
 - Card faces (`Util/CardFace`, `Config/CardDesign`), clean full-art style (like the top Roblox card games),
   built in code with no frame images: the art fills the card inside a thin rounded rim in the rarity colour
   (white Common, blue Rare, teal Very Rare, purple Epic, gold Legendary; a turning rainbow on foil, aurora on
-  Frontier). Outlined text over soft dark bands: element emoji and name top left, a grade letter pill top right,
+  Frontier). Outlined text over soft dark bands: element emoji and name top left, the grade's medal top right,
   the value (or a case's asking price, in gold) big at the bottom. Detailed faces (binder, packs, inspector,
-  everywhere but shelves and small job/party tiles) add star slots under the name, a "Lv 3" chip under the grade
-  and a FOIL / FRONTIER chip. Art: every card has its own painting (`ART_IMAGES`, by name): its creature model
+  everywhere but shelves and small job/party tiles) add star slots under the name, a "Lv 3" chip hanging under the
+  medal and a FOIL / FRONTIER chip.
+  **The grade you notice** (owner 2026-11-26: "Make grade more noticeable in general. when pulling a card, drops, etc.
+  in the binder, highgrade cards should be highlighted too", pick A "Medal + glow" of three mockups; `Config/GradeLook`,
+  `Shared/Util/GradeLook`, `tests/GradeLook`): the grade is a round medal with a white ring in the card's top-right
+  corner, bigger the better the grade (24 / 28 / 32 / 36% of the card's width; flat grey C, flat green B, a blue A and
+  a gold S lit from the top left; pictures by `tools/ui-art/make_grade_look.py`, `assets/ui/grade`). It sits inside
+  the card (a card on its own 3D surface or in a scrolling list can't draw past its edges, so the mockup's overhang is
+  tucked in) and the name stops short of it. A cards glow blue and S cards glow gold, everywhere a card shows: on a
+  screen a ring round the card and a soft glow past it (S's brighter and breathing, two gold sparkles twinkling on its
+  edges); a card that is its own 3D surface (the pack opening's, a case's, a dropped one) has the ring inside its rim
+  (a Legendary S keeps its electric rim) and its sparkles inside. A pulled A or S lights a glow plate behind the card as
+  it lands, its medal pops with a ding (the opening's chime, higher for S) and a "GRADE A!" / "GRADE S!" pill shows
+  beside the rarity's banner (alone in its place when there's none; `OpeningCards.landGrade`). Open 10 draws pulls with
+  their grades (they were all C before), dings an A or S as it turns and never dims one. A dropped A or S card's beam,
+  ground glow, light and sparkles take its grade's colour, under a white tag "Voidmaw · Grade A!" (`CardLoot`). In the
+  binder an A or S pocket sits over its neighbours so its glow shows. Weapon cards get the medal (their edge shows
+  their mutation, so no glow). Art: every card has its own painting (`ART_IMAGES`, by name): its creature model
   described and painted into its element's scene with Figma's image generator (prompts in `docs/card-art.md`,
   JPEGs in `assets/ui/card-art`). A card without one falls back to its element's painted scene (`SCENES`:
   fireplace, coral reef, forest, stormy peak, moonlit graveyard; `assets/ui/card-scenes`) with the element emoji
@@ -2146,10 +2162,13 @@ words `Config/Condenser` / `Config/Grading` WINDOW and `Util/CondenseRules`; loo
   Power" and a small "Pick other copies" (the picker's copies step for the card in the slot; Back returns to the
   slot). Star Shards are tapped into empty spots as before. A short window's card shrinks to fit over the button.
 - **The arrow** (owner, the same evening: "put the arrow on the center and use a different arrow, not an emoji
-  arrow"; `Recipe.arrow`, `StationLook.ARROW`): a blue line with a chevron head, drawn from three rounded strokes (no
-  icon), in the middle of a 56 px room between what goes in and what comes out: `Recipe.grid` is only as wide as its
-  spots and gives that width, so the row (spots, arrow, card) is laid out from it and centred. The same arrow in the
-  Condenser, the Grading Station, the empty recipe (pale) and the Forge.
+  arrow", then "change the arrow into a better icon arrow", pick C of four mockups; `Recipe.arrow`,
+  `StationLook.ARROW`): the gold sparkle arrow, a chunky gold arrow with a white sticker border, a shine along its
+  shaft and two little sparkles (`UIIcons.ArrowGold`, drawn by `tools/ui-icons/make_arrow.py`), 64 px on a computer
+  and 44 on a phone (beside its smaller card), in the middle of a room 12 px wider (`Recipe.room()`) between what goes
+  in and what comes out: `Recipe.grid` is only as wide as its spots and gives that width, so the row (spots, arrow,
+  card) is laid out from it and centred. The same arrow in the Condenser, the Grading Station, the empty recipe
+  (faded) and the Forge.
 - **The Grading Station's recipe**: the sentence without the cash ("Use 2 extra Voidmaw to make it Grade A!",
   `CondenseRules.gradeSay`), the copies, the arrow, the card with the grade it becomes beating under it and "+11
   Power" beside it; then the **USE** row of three tiles (`CondenseRules.copiesTile`, `sealTile`, `goldTile`): "2 extra
@@ -5271,6 +5290,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
 ├── assets/weapons-source/     # ForgeSword.rbxm, the source of the Forge Sword's five element copies (tools/weapons/forge_variants); not synced
 ├── assets/ui/weapon-portraits/ # the swords cut out for their cards (tools/ui-art/cut_product_picture.py), uploaded as images (WeaponLooks portrait ids)
 ├── assets/ui/weapon-glow-maps/ # each weapon model's glow map (tools/textures/make_glow_maps.py), uploaded (WeaponLooks GLOW_MAPS), baked in by tools/weapons/add_glow_maps
+├── assets/ui/grade/            # the grade medals, the A and S glow and the S sparkle (tools/ui-art/make_grade_look.py), uploaded as images (Config/GradeLook IMAGES)
 ├── tools/blender/              # Blender build scripts: creatures, bosses, the pack models and effects (pack_kit.py), the plaza fountain, the town portals (portal_kit.py), the Wild boss arenas' props (build_arena_props.py), the Dungeon's ruins and puzzle pieces (build_dungeon_props.py), the starter sword (build_starter_sword.py), the weapons' cleanup (weapon_kit.py, build_weapon_<id>.py; spears: build_spear), the sword moves (anim_kit.py, anim_starter_sword.py; run_sword_moves.py exports them in a background Blender, `--sword <name>` for a round 1 sword's skill: anim_forge_sword.py, anim_verdant_blade.py, anim_sunforged_blade.py, anim_prism_blade.py; `--sword spear` for the spear moveset, anim_spear.py)
 ├── tools/anim/                 # build_kfs.luau: exported sword moves (JSON) → KeyframeSequence .rbxm; build_bone_clips.luau: monster/boss clips (Lune)
 ├── tools/weapons/              # finish_sword.luau: colours, pivots and PrimaryPart for an imported sword model; forge_variants.luau: the Forge Sword's five element copies (Lune)
@@ -5451,7 +5471,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │       ├── LookTiles.luau          # the Decor tab's six shop look tiles (swatch, Using / Use / price / Lv N)
     │       ├── StationJobs.luau        # the stations' jobs on this client, counted down (remote UpgradeJobs)
     │       ├── JobPanel.luau           # a station window's job card: countdown, bar, Finish now
-    │       ├── Recipe.luau             # the station windows' picture recipe: spots in a grid (its used width), the drawn arrow, a two-line button, the fly-in
+    │       ├── Recipe.luau             # the station windows' picture recipe: spots in a grid (its used width), the gold arrow icon in its room, a two-line button, the fly-in
     │       ├── StationPick.luau        # the put-a-card-in windows' shape: tabs, card slot, card picker (cards, then a card's copies), recipe box, dashed edges (5.9)
     │       ├── ProductPrice.luau       # developer products' Robux prices, asked once each
     │       ├── RobuxPrice.luau         # a Robux price on a button: Roblox's Robux glyph, never "R$" (tests/RobuxIcon)
@@ -5590,6 +5610,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
         │   ├── CardReveal.luau # how big each pull's reveal is: tease, rays, spotlight, sparks, banner (plain data)
         │   ├── RevealSounds.luau # each rarity's reveal riser and layered hit, with measured loudness (plain data)
         │   ├── CardDesign.luau # card face layout, colours and image ids (client)
+        │   ├── GradeLook.luau  # the grade you notice: medal sizes and pictures, the A and S glow and S sparkles, the pull's GRADE pill and ding, a drop's tag (plain data)
         │   ├── Collection.luau # binder request limits
         │   ├── BinderDesk.luau # the 3D binder: stage, camera, page and pocket sizes, tabs, desk colours, page turns, the lift
         │   ├── Showcase.luau   # card case prices, customer card chance, the cards' spin, pad and beam
@@ -5794,6 +5815,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── KnockoutRules.luau # the knockout countdown and its pause while the Revive prompt is open (pure, Lune-tested)
             ├── MonsterKOMotion.luau # a beaten monster's flight: launch, fixed-slice gravity and bounces, wall bumps, where it rests (pure, Lune-tested)
             ├── CardLootRules.luau  # a dropped card on the ground: picked up, comes to you or fades; its landing bounce (pure, Lune-tested)
+            ├── GradeLook.luau  # the grade's medal box on a card, the name's room and the Level chip under it, the A and S glow and ring sizes, the S sparkles, the pull's words and a drop's tag (pure, Lune-tested)
             └── LevelRules.luau    # XP → level maths and unlock lists
 ```
 

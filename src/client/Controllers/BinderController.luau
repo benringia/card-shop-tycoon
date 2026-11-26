@@ -381,6 +381,11 @@ local function renderTile(tile: Tile): boolean
 	if built then
 		CardFace.render(tile.inner, tile.stroke, tile.card, foil, true, growth)
 		tile.drawn = drawn
+		-- a Grade A or S card's glow over the pockets beside it (Config/GradeLook; required here: this file is at
+		-- Luau's 200-local limit)
+		local Shared = ReplicatedStorage:WaitForChild("Shared")
+		local glows = require(Shared:WaitForChild("Util"):WaitForChild("GradeLook")).standsOut(require(Shared:WaitForChild("Config"):WaitForChild("GradeLook")), growth.grade)
+		tile.root.ZIndex = if glows then 2 else 1
 	end
 	-- Total copies in the binder; the chip shows the best grade and best levelled one (details in the card view)
 	tile.countLabel.Visible = true

@@ -47,12 +47,12 @@ return {
 		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 120, 200)),
 	}),
 
-	-- Where things sit (fractions of the whole card). Stars, level and the foil tag show on detailed faces only.
+	-- Where things sit (fractions of the whole card). Stars, level and the foil tag show on detailed faces only. The
+	-- grade's medal top right and the Level chip under it: Config/GradeLook (the name's width stops short of the medal;
+	-- this NAME's is a locked weapon card's, which has none)
 	TEXT = {
 		NAME = { x = 0.07, y = 0.035, w = 0.64, h = 0.085 } :: Box, -- element emoji and name, top left
-		GRADE = { x = 0.75, y = 0.035, w = 0.18, h = 0.075 } :: Box, -- grade letter pill, top right
 		STARS = { x = 0.07, y = 0.125, w = 0.4, h = 0.05 } :: Box, -- under the name
-		LEVEL = { x = 0.73, y = 0.12, w = 0.22, h = 0.06 } :: Box, -- under the grade
 		FOIL = { x = 0.07, y = 0.765, w = 0.3, h = 0.055 } :: Box, -- above the value
 		VALUE = { x = 0.06, y = 0.83, w = 0.88, h = 0.115 } :: Box, -- bottom centre
 	},
