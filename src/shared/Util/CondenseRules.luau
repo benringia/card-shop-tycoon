@@ -130,13 +130,8 @@ function CondenseRules.sortMainChoices<T>(choices: { T & MainChoice })
 end
 
 -- The copy picker (owner 2026-11-21: "Keep a different card is so confusing. can we change wording or anything to make
--- it more understandable. also the next window make it more understandable"): a chip under the big button that says
--- what it does, and the copies as pictures with a few plain words.
-
--- The chip's words: `count` copies to choose from
-function CondenseRules.pickChip(count: number): (string, string)
-	return "Pick a different card", `you have {count} to choose from`
-end
+-- it more understandable. also the next window make it more understandable"): the copies as pictures with a few plain
+-- words. Since 2026-11-26 the Condenser's "Pick other copies" (Config/Condenser WINDOW.OTHER) opens it.
 
 -- The picker's sentence and its small line; `what`: "star" (the Condenser) or "grade" (the Grading Station)
 function CondenseRules.pickSay(name: string, what: string): (string, string)
@@ -233,53 +228,6 @@ function CondenseRules.gradePlan(grading: GradingConfig, config: Config, rarity:
 	}, nil
 end
 
--- The grade swap for this main copy (Config/Grading SWAP), or nil and a reason: "plain" (only a levelled or starred
--- card swaps: a plain one would just be the better copy), "max", "none" (no spare copy of a better grade) or "unknown"
--- (no costs for that rarity). The plan is a grade-up's, so it is taken the same way: the best spare's grade, that one
--- spare copy (a plain one before a foil), and SWAP.share of the grading cash for the steps in between.
-function CondenseRules.swapPlan(grading: GradingConfig & { SWAP: { share: number, round: number } }, config: Config, rarity: string, byGrade: { [string]: any }, main: Main): (GradePlan?, string?)
-	if not main.beast then
-		return nil, "plain"
-	end
-	local from = table.find(config.GRADES, main.grade)
-	if not from or from >= #config.GRADES then
-		return nil, "max"
-	end
-	for index = #config.GRADES, from + 1, -1 do
-		local grade = config.GRADES[index]
-		for _, foil in { false, true } do
-			if available(byGrade, grade, foil, main) > 0 then
-				local cash = 0
-				for step = from + 1, index do
-					local cost = CondenseRules.gradeStepCost(grading, rarity, config.GRADES[step])
-					if not cost then
-						return nil, "unknown"
-					end
-					cash += cost.cash
-				end
-				local round = math.max(1, grading.SWAP.round)
-				return { grade = grade, copies = 1, cash = math.round(cash * grading.SWAP.share / round) * round, takes = { { grade = grade, foil = foil, count = 1 } }, seals = 0 }, nil
-			end
-		end
-	end
-	return nil, "none"
-end
-
--- The swap button's words and the small line under them: what it uses, its price and its wait, or what's missing
-function CondenseRules.swapWords(view: { grade: string, cash: string, seconds: number, affordable: boolean, inFlight: boolean }): (string, string?)
-	if view.inFlight then
-		return "Putting it in...", nil
-	elseif not view.affordable then
-		return `Swap needs {view.cash}`, nil
-	end
-	return `Swap in your Grade {view.grade} copy`, `{view.cash} · takes {CondenseRules.waitWords(view.seconds)}`
-end
-
--- ...and the line over it: what a swap does
-function CondenseRules.swapLine(grade: string): string
-	return `Your spare Grade {grade} copy gives this card its grade and is used up. Its stars and level stay.`
-end
-
 -- Whether a Gold Seal may pay this step's cash: any step but a Legendary's last one (A to S stays the cash chase)
 function CondenseRules.goldSealAllowed(rarity: string, toGrade: string): boolean
 	return not (rarity == "Legendary" and toGrade == "S")
@@ -342,6 +290,15 @@ function CondenseRules.say(view: { name: string, copies: number, shards: number,
 	return `Squish {view.copies} extra {view.name}{shards} into this one. It gets a star!`
 end
 
+-- The chip over the recipe once a card is in (owner 2026-11-26: "the condenser then autofills the extra
+-- cards(weakest)"): the `copies` it put in for you; nil with none
+function CondenseRules.fillChip(copies: number): string?
+	if copies <= 0 then
+		return nil
+	end
+	return if copies == 1 then "Filled in for you: your weakest extra" else `Filled in for you: your {copies} weakest extras`
+end
+
 -- The big button's words and the small line under them: what it does and how long it takes (`seconds`), "Putting it
 -- in..." while the server answers, else what's missing
 function CondenseRules.buttonWords(view: { ready: boolean, inFlight: boolean, max: boolean, missing: number, seconds: number }): (string, string?)
@@ -379,9 +336,16 @@ function CondenseRules.shardOffers(need: number, have: number, owned: number, sh
 	return math.max(0, math.min(need - have, math.floor(need * share), math.floor(owned)))
 end
 
--- How many spots across: the star costs (4, 8, 12, 16, 24) fill whole rows, 4 rows at the most
+-- How many spots across in the put-a-card-in windows' wide recipe (owner 2026-11-26, the mockups: a first star's 4
+-- copies stand in one row): up to 4 in one row, up to 16 in two, more in three. The star costs (4, 8, 12, 16, 24) and
+-- the grade steps' copies (1, 2, 3, 4, 6, 8) fill whole rows
 function CondenseRules.slotColumns(need: number): number
-	return if need <= 4 then 2 elseif need <= 16 then 4 else 6
+	if need <= 4 then
+		return math.max(1, need)
+	elseif need <= 16 then
+		return math.ceil(need / 2)
+	end
+	return math.ceil(need / 3)
 end
 
 export type StandIn = { have: number, on: boolean, used: number, offers: number, could: boolean, missing: number, max: boolean }
@@ -411,16 +375,23 @@ function CondenseRules.shardWords(view: StandIn): string?
 	return standInWords(view, "Star Shard", "star")
 end
 
--- The Grading Station's two helper chips, over its button whenever you own some (owner 2026-11-20: "whats the use of
--- grading seals? I cant see it inside the grading station", "also the golden seall or something"): a title with how
--- many you have and a small line saying what a tap does. nil: no chip.
--- Grading Seals stand in for missing copies (as many as Config/Grading MAX_SEAL_SHARE lets):
-function CondenseRules.sealChip(view: StandIn): (string?, string?)
-	if view.have <= 0 or view.max then
-		return nil, nil
+-- The Grading Station's USE row (owner 2026-11-26, the redesign: "the option to use upgrade materialls will then show
+-- the user"): three tiles under the recipe, a title and a small line each. The first, the copies that go in, picked for
+-- you (the weakest: CondenseRules.pick):
+function CondenseRules.copiesTile(copies: number): (string, string)
+	if copies <= 0 then
+		return "No extra copies", "Find more of this card"
 	end
+	return `{copies} extra cop{if copies == 1 then "y" else "ies"}`, "Your weakest, picked for you"
+end
+
+-- Grading Seals stand in for missing copies (as many as Config/Grading MAX_SEAL_SHARE lets). The tile is there even
+-- with none (owner 2026-11-20: "whats the use of grading seals? I cant see it inside the grading station")
+function CondenseRules.sealTile(view: StandIn): (string, string)
 	local title = `Grading Seal{if view.have == 1 then "" else "s"} x{view.have}`
-	if view.on and view.used > 0 then
+	if view.have <= 0 then
+		return title, "You have none yet"
+	elseif view.on and view.used > 0 then
 		return title, `{view.used} in. Tap to take out`
 	elseif not view.on and view.offers > 0 then
 		return title, "Tap: fills a missing copy"
@@ -428,24 +399,24 @@ function CondenseRules.sealChip(view: StandIn): (string?, string?)
 	return title, "Fill in for missing copies"
 end
 
--- ...and a Gold Seal pays a step's cash (`allowed`: not a Legendary's last step; `max`: the card is Grade S)
-function CondenseRules.goldChip(have: number, on: boolean, allowed: boolean, max: boolean): (string?, string?)
-	if have <= 0 or max then
-		return nil, nil
-	end
+-- ...and a Gold Seal pays a step's cash (`allowed`: not a Legendary's last step), never naming it: the cost shows only
+-- on the button (owner 2026-11-26: "remove the cost anywhere else")
+function CondenseRules.goldTile(have: number, on: boolean, allowed: boolean): (string, string)
 	local title = `Gold Seal{if have == 1 then "" else "s"} x{have}`
-	if not allowed then
+	if have <= 0 then
+		return title, "You have none yet"
+	elseif not allowed then
 		return title, "Not for a Legendary's Grade S"
 	end
 	return title, if on then "Pays the cash! Tap to undo" else "Tap: pays the cash"
 end
 
 -- The Grading Station as a picture recipe (owner 2026-11-20: "redesign it like the condenser to be easily understood.
--- it's currently so confusing"): the copies and the cash that go in, an arrow, the card with its new grade.
+-- it's currently so confusing"): the copies that go in, an arrow, the card with its new grade.
 
--- The one sentence over the recipe: `copies` extra copies, `seals` Grading Seals and the `cash` (a Gold Seal when
--- `gold`) make it Grade `grade`; `missing` more copies are needed first; `grade` nil: it is Grade S
-function CondenseRules.gradeSay(view: { name: string, grade: string?, copies: number, seals: number, cash: string, missing: number, gold: boolean }): string
+-- The one sentence over the recipe: `copies` extra copies and `seals` Grading Seals make it Grade `grade`; `missing`
+-- more copies are needed first; `grade` nil: it is Grade S. Never the cash: that is the button's (owner 2026-11-26)
+function CondenseRules.gradeSay(view: { name: string, grade: string?, copies: number, seals: number, missing: number }): string
 	if not view.grade then
 		return `{view.name} is Grade S: the best!`
 	elseif view.missing > 0 then
@@ -458,9 +429,10 @@ function CondenseRules.gradeSay(view: { name: string, grade: string?, copies: nu
 	if view.seals > 0 then
 		table.insert(parts, `{view.seals} Grading Seal{if view.seals == 1 then "" else "s"}`)
 	end
-	local last = if view.gold then "a Gold Seal" else view.cash
-	local first = if #parts > 0 then table.concat(parts, ", ") .. " and " else ""
-	return `Use {first}{last} to make it Grade {view.grade}!`
+	if #parts == 0 then
+		return `Make it Grade {view.grade}!`
+	end
+	return `Use {table.concat(parts, " and ")} to make it Grade {view.grade}!`
 end
 
 -- A list row's tag, what it is ("ready", "wait", "cash", "max") and its bar's share: `have` usable copies, `need` for
@@ -478,24 +450,22 @@ function CondenseRules.gradeRowTag(have: number, need: number, grade: string?, r
 	return "Ready!", "ready", 1
 end
 
--- The big button's words and the small line under them
-function CondenseRules.gradeButton(view: { inFlight: boolean, grade: string?, cash: string, have: string, affordable: boolean, missing: number, seconds: number }): (string, string?)
+-- The big button's words and the small line under them (owner 2026-11-26: "change "Make it Grade A" to "Upgrade" then
+-- the cost. remove the cost anywhere else"): "Upgrade $2,500" (`gold`: a Gold Seal pays instead), and under it how long
+-- it takes, the copies still missing, or the cash you have when it isn't enough
+function CondenseRules.gradeButton(view: { inFlight: boolean, grade: string?, cash: string, have: string, affordable: boolean, missing: number, seconds: number, gold: boolean }): (string, string?)
 	if view.inFlight then
 		return "Putting it in...", nil
 	elseif not view.grade then
 		return "Top grade!", nil
-	elseif view.missing > 0 then
-		return `{view.missing} more {if view.missing == 1 then "copy" else "copies"} needed`, nil
-	elseif not view.affordable then
-		return `You need {view.cash}`, `you have {view.have}`
 	end
-	return `Make it Grade {view.grade}!`, `takes {CondenseRules.waitWords(view.seconds)}`
-end
-
--- Whether a card's row shows: it passes the search and the filter, or it is the card on the pane (turning the Star
--- Shards switch changes which cards are ready, and the one you were on left the list)
-function CondenseRules.keepsRow(passes: boolean, selected: boolean): boolean
-	return passes or selected
+	local text = if view.gold then "Upgrade with a Gold Seal" else `Upgrade {view.cash}`
+	if view.missing > 0 then
+		return text, `{view.missing} more {if view.missing == 1 then "copy" else "copies"} needed`
+	elseif not view.affordable then
+		return text, `you have {view.have}`
+	end
+	return text, `takes {CondenseRules.waitWords(view.seconds)}`
 end
 
 -- A finished star waiting to be shown (the player's CondenserDone attribute, set by CondenserService when the job ends

@@ -641,9 +641,11 @@ local function addShelfPrompts(child: Instance)
 			return
 		end
 		if isBin then
-			local binUid = child:GetAttribute("ShelfUid")
-			if typeof(binUid) == "string" and not PlacementController.IsActive() then
-				Remotes.FillBulkBin:FireServer(binUid) -- BulkService: the extras go in, or the locked card says why not
+			if not PlacementController.IsActive() then
+				-- its window: the extras that go in, a tap keeps a card out (owner 2026-11-26, pick B; required here:
+				-- this file's top level is near Luau's 200 locals)
+				local BulkBinController = require(Controllers:WaitForChild("BulkBinController")) :: any
+				BulkBinController.Open(child)
 			end
 			return
 		end

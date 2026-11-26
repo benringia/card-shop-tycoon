@@ -135,7 +135,7 @@ return {
 		},
 		bulkBin = {
 			"Walk up and press Add extras.",
-			"Your extra Commons go in, 5 to a handful.",
+			"See your extra Commons. Tap one to keep it out!",
 			"Customers buy them! You keep 2 of each card.",
 		},
 		recycler = {

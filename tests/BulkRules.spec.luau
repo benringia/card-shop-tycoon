@@ -82,4 +82,96 @@ return {
 		expect.equal(BulkRules.wants("kid", true, 0.99, Bulk.CHANCE), false, "not every kid")
 		expect.equal(Bulk.PER, 5, "5 to a handful, as the mockup's sign")
 	end,
+
+	-- owner 2026-11-26: "Bulkbin: Currently with one click all your commons are gone. make the player use it display a
+	-- window. so that they will know what they putting on it", pick B: the window lists the extras and a tap keeps a
+	-- card out
+	["extras: a card kept out gives nothing"] = function()
+		local stacks = {
+			c1 = { C = { normal = 10, foil = 0 } },
+			c2 = { C = { normal = 6, foil = 0 } },
+		}
+		local takes, total = BulkRules.extras(stacks, rarityOf, Bulk, { c1 = true })
+		expect.equal(count(takes, "c1", "C"), 0, "c1 is kept out")
+		expect.equal(count(takes, "c2", "C"), 4, "c2's extras still go")
+		expect.equal(total, 4)
+		local _, all = BulkRules.extras(stacks, rarityOf, Bulk)
+		expect.equal(all, 12, "nothing kept out: both cards' extras")
+	end,
+
+	["the window's tiles: each card's extras added up, the most first"] = function()
+		local takes = {
+			{ cardId = "c2", grade = "C", count = 3 },
+			{ cardId = "c1", grade = "C", count = 2 },
+			{ cardId = "c3", grade = "C", count = 3 },
+			{ cardId = "c1", grade = "B", count = 2 },
+		}
+		local tiles = BulkRules.byCard(takes)
+		expect.equal(#tiles, 3)
+		expect.equal(tiles[1].cardId, "c1", "c1's 2 C and 2 B: 4, the most")
+		expect.equal(tiles[1].count, 4)
+		expect.equal(tiles[2].cardId, "c2", "a tie goes by card id")
+		expect.equal(tiles[3].cardId, "c3")
+		expect.equal(#BulkRules.byCard({}), 0)
+	end,
+
+	-- what the client sends: the card ids it keeps out. Anything else is refused, never trusted
+	["the cards kept out, read from the client"] = function()
+		local function isCard(id: string): boolean
+			return RARITY[id] ~= nil
+		end
+		local set = BulkRules.readKeepOut({ "c1", "c2" }, isCard, 10)
+		assert(set, "a list of card ids")
+		expect.equal(set.c1, true)
+		expect.equal(set.c2, true)
+		expect.isNil(set.r9)
+		local empty = BulkRules.readKeepOut(nil, isCard, 10)
+		assert(empty and next(empty) == nil, "none kept out")
+		local unknown = BulkRules.readKeepOut({ "nope" }, isCard, 10)
+		assert(unknown and next(unknown) == nil, "an unknown id keeps nothing out")
+		expect.isNil(BulkRules.readKeepOut("c1", isCard, 10), "not a list")
+		expect.isNil(BulkRules.readKeepOut({ "c1", 5 }, isCard, 10), "a number in it")
+		expect.isNil(BulkRules.readKeepOut({ c1 = true }, isCard, 10), "not a list: named keys")
+		expect.isNil(BulkRules.readKeepOut({ "c1", "c1", "c1" }, isCard, 2), "too long")
+	end,
+
+	["the window's words: what goes in, what stays, and the button"] = function()
+		local function words(extras: number, kept: number, room: number): BulkRules.Words
+			return BulkRules.words({ extras = extras, kept = kept, room = room, per = Bulk.PER, keep = Bulk.KEEP })
+		end
+		local view = words(25, 2, 100)
+		expect.equal(view.title, "25 cards = 5 handfuls")
+		expect.equal(view.line, "2 kept out · customers buy them 5 at a time")
+		expect.equal(view.button, "Put 25 in")
+		expect.equal(view.ready, true)
+		expect.equal(view.cards, 25)
+		expect.equal(view.handfuls, 5)
+		view = words(27, 0, 100)
+		expect.equal(view.title, "25 cards = 5 handfuls", "whole handfuls only")
+		expect.equal(view.line, "2 stay in your binder · customers buy them 5 at a time")
+		view = words(5, 1, 100)
+		expect.equal(view.title, "5 cards = 1 handful")
+		view = words(30, 0, 2)
+		expect.equal(view.title, "10 cards = 2 handfuls", "the bin's room caps it")
+		expect.equal(view.line, "20 stay in your binder · customers buy them 5 at a time")
+		view = words(3, 0, 100)
+		expect.equal(view.title, "Not enough for a handful yet")
+		expect.equal(view.ready, false)
+		expect.equal(view.button, "Nothing to put in")
+		view = words(0, 0, 100)
+		expect.equal(view.title, "No extra Commons yet")
+		expect.equal(view.ready, false)
+		view = words(0, 3, 100)
+		expect.equal(view.title, "Every card is kept out")
+		expect.equal(view.ready, false)
+		view = words(25, 0, 0)
+		expect.equal(view.title, "This bin is full")
+		expect.equal(view.button, "Bin full")
+		expect.equal(view.ready, false)
+		for _, case in { words(25, 2, 100), words(27, 0, 100), words(3, 0, 100), words(0, 0, 100), words(0, 3, 100), words(25, 0, 0) } do
+			for _, text in { case.title, case.line, case.button } do
+				assert(#text <= 80 and not string.find(text, "[^\32-\126\194\183]"), `short and plain: {text}`)
+			end
+		end
+	end,
 }

@@ -15,16 +15,27 @@ local COSTS: { [string]: { [string]: Step } } = {
 return {
 	COSTS = COSTS,
 	MAX_SEAL_SHARE = 0.5, -- Grading Seals cover at most this share of a step's duplicates (like Star Shards)
-	-- The grade swap (owner 2026-11-20: a player raised a Grade C card to 5 stars and then pulled a Grade S copy; "okay
-	-- do the grade swap. but make it a little more expensive"): a levelled or starred card takes the grade of your best
-	-- spare copy of the same card. The spare is used up, and it costs `share` of the grading cash between the two
-	-- grades, rounded to `round` (Legendary C to S: $5,430 against $15,500 and 6 copies; a Common's $1,090). Stars and
-	-- levels never move. CondenseRules.swapPlan, CardService.GradeUp `swap`.
-	SWAP = { share = 0.35, round = 10 },
+	-- (The grade swap, 2026-11-20, left with the window's redesign: owner 2026-11-26, "drop both")
 	ACTION_COOLDOWN = 0.5, -- seconds between grade-up requests per player (server)
 	USE_DISTANCE = 12, -- studs: how close the owner must stand to use it (server check, panel closes past it)
 	IN_FLIGHT_TIMEOUT = 2, -- seconds the Grade Up button stays locked waiting for the server (client)
-	-- The window's words (owner 2026-11-20: "check the other machines ... for pain points/ confusing elements")
-	EXPLAIN = "Extra copies and cash raise a card's grade: more Power. Grade S is the best!",
+	-- The window's words (owner 2026-11-26: "there should be an "Upgrade" tab where the player put the specific card
+	-- they want to upgrade, then, the option to use upgrade materialls will then show the user. remove search"; the
+	-- recipe's own words: Util/CondenseRules gradeSay, gradeButton, copiesTile, sealTile, goldTile)
+	WINDOW = {
+		TABS = { "Upgrade", "Ready" },
+		SLOT = "Put a card in",
+		SLOT_SUB = "Tap to pick one",
+		CHANGE = "Change card",
+		EMPTY_SAY = "Put in the card you want to grade up.",
+		EMPTY_SUB = "Then pick what to use: its extra copies, Grading Seals or a Gold Seal.",
+		EMPTY_BUTTON = "Upgrade",
+		USE = "USE",
+		PICK_TITLE = "Pick a card to grade up",
+		PICK_SUB = "Your cards with extra copies. Ready ones first: they can go up a grade now.",
+		PICK_NONE = "Get two or more copies of a card to grade it up. Rip more packs!",
+		READY_SUB = "These can go up a grade now. Tap one to put it in.",
+		READY_NONE = "Nothing is ready yet. Find more copies, then come back!",
+	},
 	DONE_HEADING = "Fresh from the Grading Station!",
 }

@@ -37,6 +37,11 @@ return {
 		Prices = { top = { 255, 178, 146 }, bottom = { 255, 148, 104 } },
 		Jobs = { top = { 130, 202, 255 }, bottom = { 79, 180, 255 } },
 		Quests = { top = { 255, 214, 102 }, bottom = { 255, 184, 46 } }, -- butter gold: the daily quests (QuestController)
+		-- the put-a-card-in windows (owner 2026-11-26, the redesign mockups; Config/StationLook): the Card Condenser
+		-- pink, the Grading Station sky, the Bulk Bin mint
+		Condenser = { top = { 255, 163, 205 }, bottom = { 255, 127, 184 } },
+		Grading = { top = { 130, 202, 255 }, bottom = { 79, 180, 255 } },
+		BulkBin = { top = { 116, 228, 187 }, bottom = { 63, 214, 160 } },
 		Default = { top = { 130, 202, 255 }, bottom = { 79, 180, 255 } },
 	},
 }

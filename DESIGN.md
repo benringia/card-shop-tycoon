@@ -2056,13 +2056,13 @@ until it is repriced.
 
 XP from level L to L+1: `round(50 × L^1.5)`. Extra XP carries over; at Lv 30 XP stops (stored as 0).
 Stars come only from the **Card Condenser** (a machine bought in the build menu, shop Lv 5, $500; no level gate,
-levels raise stats only). Press E on it: the window is "tidy two panes" (owner's pick A, spec `2026-11-04-round4-design`
-section 3): a sky band with the Condenser icon and "N ready", one toolbar (search, then All / Ready / Raising; Raising
-is everything not ready), the cards as slim rows (a Ready tag, "x21 · 4 copies for the next star" or "3 of 4 copies"
-and a thin bar, `CondenseRules.rowLine`), and the chosen card on the right: its stars, Power and Value before -> after,
-"Keeps Grade S · Lv 14 · uses 4 Grade C" with Change (the copies to keep), one big Condense +1 star and a small Star
-Shards toggle (off: Ready counts copies only and Condense never spends shards). Buttons sit 12 px in from the pane's
-edges and centre-anchored; hover never grows anything (round 5), so nothing is cut off.
+levels raise stats only). Press E on it: since 2026-11-26 the put-a-card-in window (owner: "remove the "ALL" tabs and
+"Need Copies tap". The first tab is now "Condense" ... where the players put the card they want to condense. the
+condenser then autofills the extra cards(weakest)"; 5.9 "The put-a-card-in windows"): a pink
+band, the tabs Condense and Ready (a gold count of the cards ready now), a slot to put a card in, and its picture
+recipe with the copies filled in for you, the weakest first. (Before it: "tidy two panes", spec
+`2026-11-04-round4-design` section 3, then the picture recipe of 2026-11-20 beside a list with search and All / Ready /
+Need copies.)
 Duplicates used: plain copies of the same card only, all normal copies weakest grade first (C, B, A, S), then foils
 weakest grade first; levelled or starred copies are never used; a plain main copy is set aside first and becomes its
 own card. A copy better than the card that gets the star is never used (owner 2026-11-21: "condenser never uses
@@ -2088,9 +2088,10 @@ futuristic scan pod (the user's pick of six concepts, 2026-10-30, then made bigg
 with its hologram; `Town.GRADING_LOOK`): a dark plinth with a cyan rim, a white body with a light band, a slot and a
 GRADING strip, and on top a see-through column where a gold card floats in a beam of light, spinning and bobbing, with
 a ring of small cards below it and one above it circling the other way (Rotors moved on each client by
-`CondenserFxController`), under a cap with a hologram ring showing "S". Press E on it: pick a card and the
-copy to grade, see the next grade, its cost, which duplicates go, Power and value before -> after and the whole way to
-Grade S, then Grade Up. One step per press (C -> B -> A -> S). Duplicates are plain copies of the same card, used in
+`CondenserFxController`), under a cap with a hologram ring showing "S". Press E on it: since 2026-11-26 the
+put-a-card-in window, like the Condenser's (a sky band, the tabs Upgrade and Ready, a slot, the recipe with a USE row
+of the copies picked for you, Grading Seals and Gold Seals, and the big button "Upgrade $2,500": the only place the
+cost shows; "The put-a-card-in windows" below). One step per press (C -> B -> A -> S). Duplicates are plain copies of the same card, used in
 the Condenser's order (normals weakest grade first, then foils; never levelled or starred copies, never the plain main
 itself), so stars and grades compete for the same duplicates. A plain main moves up to the next grade's stack and
 stays plain; a levelled main keeps its level and stars. Working or fighting cards can't be graded. The server
@@ -2108,6 +2109,54 @@ Cost per step, duplicates + cash (`Config/Grading.COSTS`):
 
 Boss items at the station: Grading Seals stand in for missing duplicates (up to half a step); a Gold Seal pays one
 step's cash, any step except a Legendary's A -> S (`CondenseRules.goldSealAllowed`, checked on the server).
+
+**The put-a-card-in windows** (2026-11-26; owner: "Card condenser: can we redesign the window. remove the "ALL" tabs and
+"Need Copies tap". The first tab is now "Condense" or something where the players put the card they want to condense.
+the condenser then autofills the extra cards(weakest)", "Grading station is confusing too. same with the condenser,
+there should be an "Upgrade" tab where the player put the specific card they want to upgrade, then, the option to use
+upgrade materialls will then show the user. remove search", then of the mockups (artifact 72BD8xZJT75xL5ityfY621):
+"keep pick other copies, drop both, Ready is fine", "change "Make it Grade A" to "Upgrade" then the cost. remove the
+cost anywhere else". Client `Util/StationPick` builds the shape both share; CondenserController, GradingController;
+words `Config/Condenser` / `Config/Grading` WINDOW and `Util/CondenseRules`; look `Config/StationLook`, the bands
+`Condenser` pink and `Grading` sky in Config/CreamTheme; tests/StationLook checks every word reads on its colour.)
+- **The shape**: under the band two tabs, the machine's own (Condense, Upgrade) and Ready with a gold count of the cards
+  ready now (hidden while the machine counts a job down). No search, no All / Need copies. The first tab: a white slot
+  box on the left and the recipe box on the right, its big button pinned at its bottom. The window opens with the slot
+  empty: a dashed "+ Put a card in / Tap to pick one", and the recipe box "Put in the card you want to give a star." /
+  "The Condenser finds its extra copies for you, the weakest first." (the Grading Station's: "...grade up." / "Then
+  pick what to use: its extra copies, Grading Seals or a Gold Seal.") over the recipe drawn as dashed outlines and the
+  button locked ("Add a star!", "Upgrade").
+- **Putting a card in**: a tap on the slot opens the card picker over the window: Back and "Pick a card to condense"
+  ("Pick a card to grade up") in the band, "Your cards with extra copies. Ready ones first: ...", and a tile for each
+  card (its painting, its name, a gold "Ready!" or "3 more", "All stars", "Need cash", "Top grade"). A tap puts that
+  card in the slot: its face, as big as the slot, and Change card (the card itself opens the picker too). The Ready
+  tab shows the ready cards as the same tiles; a tap puts one in. The copy in the slot is the one shown first
+  (`sortMainChoices`): levelled before plain, the best grade first; the Grading Station's the first that can still go
+  up.
+- **The Condenser's recipe**: the sentence ("Squish 4 extra Reefray into this one. It gets a star!"), a green chip
+  "Filled in for you: your 4 weakest extras" (`CondenseRules.fillChip`: the copies the server takes, never one better
+  than the card), the copies as little cards in one wide row (up to 4 in a row, up to 16 in two, more in three:
+  `CondenseRules.slotColumns`), the arrow, the card with its stars (the new one beating), and under the copies "+40
+  Power" and a small "Pick other copies" (the copy picker of 2026-11-21: which copy gets the star). Star Shards are
+  tapped into empty spots as before. A short window's card shrinks to fit over the button.
+- **The Grading Station's recipe**: the sentence without the cash ("Use 2 extra Voidmaw to make it Grade A!",
+  `CondenseRules.gradeSay`), the copies, the arrow, the card with the grade it becomes beating under it and "+11
+  Power" beside it; then the **USE** row of three tiles (`CondenseRules.copiesTile`, `sealTile`, `goldTile`): "2 extra
+  copies / Your weakest, picked for you" (lit, always in), "Grading Seals x20 / Fill in for missing copies" (a tap
+  puts them in the empty spots or takes them out) and "Gold Seals x11 / Tap: pays the cash" (lit "Pays the cash! Tap to
+  undo"; "Not for a Legendary's Grade S"); the seal tiles show even with none ("You have none yet"). The big button is
+  "Upgrade $2,500" over "takes 1 hour" (`CondenseRules.gradeButton`): the cost shows nowhere else; with a Gold Seal in
+  "Upgrade with a Gold Seal"; short of copies its small line says "2 more copies needed", short of cash "you have
+  $900". The grade swap and "Keep a different copy" are gone (the swap's rules and its remote argument too).
+- **A phone** (the 705 x 338 Galaxy A06): the tabs sit in the band beside the title, the slot box is narrower, the big
+  button slimmer (48), and the recipe takes the left of its box with what goes with it in a column on the right (the
+  Condenser's sentence, fill chip, +Power and Pick other copies; the Grading Station's USE tiles, the third a short
+  scroll away).
+- Seen live (2026-11-26): both windows empty, the pickers, Tidecaller in the Condenser ("Squish 4 extra Tidecaller
+  ... Filled in for you: your 4 weakest extras", "+55 Power"), Pick other copies to its Grade B copy, Add a star (the
+  job veil, 0:29), Take it out keeping the raised card in the slot for its next star (8 copies in two rows); Voidmaw in
+  the Grading Station ("Use 2 extra Voidmaw to make it Grade A!", three USE tiles, "Upgrade $2,500 / takes 1 hour",
+  the Gold Seal tile turning it to "Upgrade with a Gold Seal"); all three windows on the Galaxy A06.
 
 ### 5.10 Boss ladder (phases 1-4: Wild bosses 1-3, groups, Frontier bosses 4-6, the Dungeon and the Prism Hydra)
 
@@ -4741,7 +4790,23 @@ all 15) and glass cases sold singles one at a time; past that, Commons piled up.
 - **Add extras** (the bin's E prompt, client BuildController; remote `FillBulkBin`, `BulkService`): your extra Commons go
   in, whole handfuls of 5 that fit (`BulkRules.extras`, `fill`, `trim`; `CardService.TakeFreshMany`, one save). Extras:
   copies past the **2 best** you keep of each card, never foils, Grade C and B only (an A or S stays in your binder),
-  the plainest first. Nothing to add or a full bin shows the big locked card with the rule.
+  the plainest first.
+- **The bin's window** (owner 2026-11-26: "Currently with one click all your commons are gone. make the player use it
+  display a window. so that they will know what they putting on it", pick B of the mockups in artifact
+  72BD8xZJT75xL5ityfY621; client `BulkBinController`, words `BulkRules.byCard` / `words`, look `Config/StationLook`):
+  Add extras opens it before anything goes in. A mint band "Bulk Bin", "These extra Commons go in. Tap a card to keep
+  it out." and "You keep 2 of each card. Foils and Grade A or S never go in.", then a tile for every card with extras
+  (its painting, its name, "x6"; the most first). A tap keeps that card out: the tile fades with a dashed edge and
+  "Kept"; a second tap puts it back. The footer says what goes in, "25 cards = 5 handfuls" over "2 kept out · 3 stay in
+  your binder · customers buy them 5 at a time", beside Not now and a gold "Put 25 in"; or why nothing can ("This bin is
+  full", "No extra Commons yet", "Every card is kept out", "Not enough for a handful yet", the button locked as
+  "Nothing to put in" / "Bin full"). Put in sends the cards kept out (`FillBulkBin(uid, keepOut)`, a plain list of card
+  ids, at most one a card: `BulkRules.readKeepOut`; anything else is refused); the server works the extras out again
+  from the binder as it is, the kept cards left out (`BulkRules.extras(..., keepOut)`), and the big locked card still
+  says why when nothing fits. The cards kept out stay kept out the next time the window opens that session. It
+  follows the binder while open, and closes when you walk away. Seen live: 3 cards (x9, x5, x4) read "15 cards = 3
+  handfuls · 3 stay in your binder"; Coalbit kept out made it "10 cards = 2 handfuls · 1 kept out"; Put 10 in filled 2
+  handfuls and Coalbit's 5 stayed. Pish's lesson says "See your extra Commons. Tap one to keep it out!".
 - **Selling**: customers buy handfuls like any product: at your price (the Prices window, market $1.00), through the
   register (a handful of card backs on the counter, `PropFit.counterLook` "bulk"), offline too (welcome-back earnings,
   "bulk handfuls"). Bulk only appears on a list while one of your bins has some (`BulkRules.wants`): a kid adds a
@@ -5303,8 +5368,9 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── BinderController.luau   # the binder screen: collection data, the 3D binder's pages (cover, 2x2 pockets with chips), set tabs, Q/E page keys, page counter, Filters window (F), set progress card, tooltips, the Bag window
     │   │   ├── CardDetailController.luau # the binder's card view: 3D card + copies panel (best first), stat tiles, XP and star bars, party / job buttons
     │   │   ├── ShowcaseController.luau # manage your own card case: its slots as big cards (grade across each, price tag, how it sells), one bar for the tapped card's price, tooltip, card picker
-    │   │   ├── CondenserController.luau # Card Condenser panel (tidy two panes): toolbar, slim rows, the card's before -> after, Condense
-    │   │   ├── GradingController.luau # Grading Station panel: pick card + copy, next grade, cost, Grade Up
+    │   │   ├── CondenserController.luau # Card Condenser window: Condense / Ready tabs, the card slot and picker, the recipe with its copies filled in
+    │   │   ├── GradingController.luau # Grading Station window: Upgrade / Ready tabs, the card slot and picker, the recipe, USE tiles, Upgrade $X
+    │   │   ├── BulkBinController.luau # the Bulk Bin's window: the extras as tiles, a tap keeps a card out, Put N in (7.14)
     │   │   ├── JobsController.luau      # Jobs window: rule chips, worker rows (card tip, status, XP, speed and mistake words, Switch job), free and locked slots
     │   │   ├── PartyController.luau     # Party HUD button and panel: three trading-card columns (painting, Power, named stats, perks, XP, rest), Summon, XP Tonic, Remove
     │   │   ├── BuffController.luau      # buff badge (bottom-right) and tooltip for the summoned creature's perk
@@ -5371,6 +5437,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │       ├── StationJobs.luau        # the stations' jobs on this client, counted down (remote UpgradeJobs)
     │       ├── JobPanel.luau           # a station window's job card: countdown, bar, Finish now
     │       ├── Recipe.luau             # the station windows' picture recipe: spots in a grid, the arrow, a two-line button, the fly-in
+    │       ├── StationPick.luau        # the put-a-card-in windows' shape: tabs, card slot, card picker tiles, recipe box, dashed edges (5.9)
     │       ├── ProductPrice.luau       # developer products' Robux prices, asked once each
     │       ├── RobuxPrice.luau         # a Robux price on a button: Roblox's Robux glyph, never "R$" (tests/RobuxIcon)
     │       ├── TileTip.luau            # a tip bubble with Pish's face pointing at a HUD tile, a gold ring round it (Config/Tips)
@@ -5512,8 +5579,9 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
         │   ├── BinderDesk.luau # the 3D binder: stage, camera, page and pocket sizes, tabs, desk colours, page turns, the lift
         │   ├── Showcase.luau   # card case prices, customer card chance, the cards' spin, pad and beam
         │   ├── CaseLayout.luau # upright case cards: size, columns, spacing, rows (plain data)
-        │   ├── Condenser.luau  # Card Condenser cooldown and use distance
-        │   ├── Grading.luau    # Grading Station costs by rarity and grade, cooldown, use distance
+        │   ├── Condenser.luau  # Card Condenser cooldown, use distance, the window's words
+        │   ├── Grading.luau    # Grading Station costs by rarity and grade, cooldown, use distance, the window's words
+        │   ├── StationLook.luau # the put-a-card-in windows' and the Bulk Bin window's colours and sizes (plain data)
         │   ├── Jobs.luau       # shop job slots, speeds, mistakes, work XP
         │   ├── Party.luau      # party size, perks, creature size, motion, glow
         │   ├── Combat.luau     # attack timing, charge lead, element wheel, abilities, run, rest, spring, the player in boss fights (HP, down, dodge)
@@ -5613,7 +5681,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── PropFit.luau       # prop fit sizes with YawOffset, register counter rows and looks (pure, Lune-tested)
             ├── SleevePacket.luau  # one retail packet of card sleeves (shelf stock, the register counter)
             ├── BulkHandful.luau   # a handful of card backs (the Bulk Bin's heaps, the register counter)
-            ├── BulkRules.luau     # the Bulk Bin's extras, whole handfuls, the cards going in, who asks (pure)
+            ├── BulkRules.luau     # the Bulk Bin's extras, whole handfuls, the cards going in, who asks, its window's tiles and words (pure)
             ├── RecycleRules.luau  # the Recycler's extras, what a pile makes, the copies going in, its words (pure)
             ├── ShopTips.luau      # what each Shop window item holds and does, for its tooltip (pure)
             ├── ShopTileRules.luau # the Shop window's list height, a phone's row tile, a tile's chips, coin and owned badge (pure, Lune-tested)
@@ -7198,7 +7266,8 @@ boss models; the ranch and Heroic tiers come after those.
     new job clears its station's note (UpgradeJobService.Begin), the reveal and the tag over the machine only show
     with nothing inside (`UpgradeRules.showsReady`), and the list's Ready tags and "N can get a star" hide while the
     machine counts down.
-  - *The Condenser as a picture recipe* (owner 2026-11-20: "when using starshard on a card. the card disappears.
+  - *The Condenser as a picture recipe* (its list, search, filters and "Pick a different card" chip gave way to the
+    put-a-card-in window on 2026-11-26, 5.9; `keepsRow` and `pickChip` went with them) (owner 2026-11-20: "when using starshard on a card. the card disappears.
     improve UIUX of using starshards", then of the whole window "make this window easier to understand and more
     immersive. a kid wouldnt understand this" and "clicking a card sends me back to the top of the window"; pick A
     of three mockups, artifact R2UZgNndUJZ4pENFTrc6T8; `CondenseRules.say` / `rowTag` / `buttonWords` / `waitWords` /
@@ -7268,7 +7337,8 @@ boss models; the ranch and Heroic tiers come after those.
     little bit more forgiving"; `Pricing.BUY_BANDS`): just over market 65% buy (50% before), +10% 48% (33%), +20% 30%
     (15%), +35% 15% (8%), past +50% nobody, market price and under 95% as before. Every step up still costs buyers and
     takes less per customer, so the last step of a band is still never free.
-  - *The grade swap* (owner 2026-11-20: "a player upgraded a C grade pet to a 5 star but later got S grade. should we
+  - *The grade swap* (removed 2026-11-26 with the window's redesign, owner: "drop both", the swap and "Keep a
+    different copy"; its rules, its remote argument and `Grading.SWAP` went too) (owner 2026-11-20: "a player upgraded a C grade pet to a 5 star but later got S grade. should we
     let him transfer the 5 star to an S grade pet at a cost?", then "okay do the grade swap. but make it a little more
     expensive"; `Grading.SWAP = { share = 0.35, round = 10 }`, `CondenseRules.swapPlan` / `swapWords` / `swapLine`,
     `CardService.GradeUp`'s `swap`, remote GradeUp's 8th argument, GradingController). Stars and levels never move:
@@ -7288,7 +7358,9 @@ boss models; the ranch and Heroic tiers come after those.
     `Upgrades.WAITS.grade = { B = 600, A = 1800, S = 3600 }`, times the rarity factor, 2 hours at most): to Grade B
     5 min Common, 10 min Very Rare, 20 min Legendary; to A 15 / 30 / 60 min; to S 30 min Common, 45 min Rare, 1 hour
     Very Rare, 1 h 30 Epic, 2 hours Legendary. A new shop's short waits and Finish now as before.
-  - *The Grading Station as a picture recipe* (owner 2026-11-20: "in grading station window. redesign it like the
+  - *The Grading Station as a picture recipe* (since 2026-11-26 the put-a-card-in window, 5.9: no cash in the
+    sentence or under the spots, the seal chips became the USE row's tiles `sealTile` / `goldTile`, the button "Upgrade
+    $2,500") (owner 2026-11-20: "in grading station window. redesign it like the
     condenser to be easily understood. it's currently so confusing"; GradingController on client `Util/Recipe`, words
     in `CondenseRules`: `gradeSay`, `gradeRowTag`, `gradeButton`, `sealWords`, `goldWords`). The right side: one
     sentence ("Use 2 extra Voidmaw and $2,500 to make it Grade A!"; short: "Find 1 more Voidmaw to make it Grade

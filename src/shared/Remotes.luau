@@ -14,7 +14,7 @@ local NAMES = {
 	"MoveFixture", -- client → server: (fixtureId: string, gridX: number, gridZ: number, rotation: number)
 	"SellShelf", -- client → server: (uid: string)
 	"StockShelf", -- client → server: (uid: string) put the carried box's units on this shelf
-	"FillBulkBin", -- client → server: (uid: string) put the binder's extra Commons in this Bulk Bin (BulkService)
+	"FillBulkBin", -- client → server: (uid: string, keepOut: { cardId }) put the binder's extra Commons in this Bulk Bin, but the cards kept out in its window (BulkService, BulkBinController)
 	"Recycle", -- client → server: (uid: string, rarity: string?, mode: "materials" | "coins") put this rarity's extra cards (nil: every rarity's) in this Recycler, for materials or for coins (RecyclerService)
 	"Recycled", -- server → client: ({ { item: string, count: number } }, cash: number) what a finished conversion made
 	"SetPrices", -- client → server: ({ [productId: string]: number })
@@ -95,7 +95,7 @@ local NAMES = {
 	"Condense", -- client → server: (shelfUid, cardId, mainBeastId?, mainFoil?, mainGrade?) +1 star from duplicates
 	"CondenserSeen", -- client → server: () the finished star was taken out in the Condenser's window (clears CondenserDone)
 	"GradingSeen", -- client → server: () the finished grade was taken out in the Grading Station's window (clears GradingDone)
-	"GradeUp", -- client → server: (shelfUid, cardId, mainBeastId?, mainFoil?, mainGrade?, useSeals, useGold, swap?) +1 grade from duplicates (and Grading Seals) and cash (or a Gold Seal); swap true: a levelled card takes its best spare copy's grade instead (Config/Grading SWAP)
+	"GradeUp", -- client → server: (shelfUid, cardId, mainBeastId?, mainFoil?, mainGrade?, useSeals, useGold) +1 grade from duplicates (and Grading Seals) and cash (or a Gold Seal)
 	"AssignJob", -- client → server: (target: beastId | { cardId, foil, grade }, job: string) card starts a shop job
 	"UnassignJob", -- client → server: (slot: number)
 	"SwitchJob", -- client → server: (slot: number) that slot's worker takes the next job (Restocker <-> Cashier)

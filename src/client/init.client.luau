@@ -231,6 +231,7 @@ else
 	CondenserController.Start()
 	ForgeController.Start() -- the Forge window (weapons): forge, upgrade, reforge at your own Forge
 	GradingController.Start()
+	require(Controllers:WaitForChild("BulkBinController")).Start() -- the Bulk Bin's window: the extras that go in
 	StationTimerController.Start() -- countdowns over your stations while they hold a job
 	StockHintController.Start() -- the shelves that glow while you carry a box of their product
 	require(Controllers:WaitForChild("StorageController")).Start() -- storage racks: the stock clipboard, the box hop

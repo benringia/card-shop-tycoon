@@ -147,9 +147,6 @@ return {
 	-- understandable. also the next window make it more understandable": a chip that says what it does, and the copies
 	-- as pictures with plain words
 	["the copy picker in plain words"] = function()
-		local title, sub = CondenseRules.pickChip(4)
-		expect.equal(title, "Pick a different card")
-		expect.equal(sub, "you have 4 to choose from")
 		local say, small = CondenseRules.pickSay("Tidecaller", "star")
 		expect.equal(say, "Which Tidecaller gets the star?")
 		expect.equal(small, "Tap the one you want. Better ones are never used up.")
@@ -320,23 +317,24 @@ return {
 			(CondenseRules.rowTag(3, 4, false)),
 			CondenseRules.say({ name = "Reefray", copies = 4, shards = 0, missing = 0, max = false, maxStars = 5 }),
 			CondenseRules.say({ name = "Reefray", copies = 2, shards = 0, missing = 2, max = false, maxStars = 5 }),
-			CondenseRules.gradeSay({ name = "Voidmaw", grade = "A", copies = 2, seals = 0, cash = "$2,500", missing = 0, gold = false }),
-			CondenseRules.gradeSay({ name = "Voidmaw", grade = nil, copies = 0, seals = 0, cash = "", missing = 0, gold = false }),
+			CondenseRules.gradeSay({ name = "Voidmaw", grade = "A", copies = 2, seals = 0, missing = 0 }),
+			CondenseRules.gradeSay({ name = "Voidmaw", grade = nil, copies = 0, seals = 0, missing = 0 }),
 			(CondenseRules.gradeRowTag(1, 3, "B", false, true)),
 			CondenseRules.gradeDoneLine("B"),
-			(CondenseRules.gradeButton({ inFlight = false, grade = "B", cash = "$5.00", have = "$2.00", affordable = true, missing = 0, seconds = 60 })),
-			(CondenseRules.swapWords({ grade = "S", cash = "$5,430", seconds = 3000, affordable = true, inFlight = false })),
+			(CondenseRules.gradeButton({ inFlight = false, grade = "B", cash = "$5", have = "$2", affordable = true, missing = 0, seconds = 60, gold = false })),
+			CondenseRules.fillChip(4) :: string,
 		}
 		for _, text in lines do
 			assert(not string.find(text, "->", 1, true) and not string.find(text, ">", 1, true), `no arrow in "{text}"`)
 		end
 	end,
 
-	["the card you are on stays in the list when the switch changes which cards are ready"] = function()
-		-- on "Need copies", turning the shards on makes it ready: it used to leave the list, and another card took the pane
-		expect.equal(CondenseRules.keepsRow(false, true), true, "the selected card, whatever the filter says")
-		expect.equal(CondenseRules.keepsRow(true, false), true)
-		expect.equal(CondenseRules.keepsRow(false, false), false)
+	-- owner 2026-11-26: "the first tab is now "Condense" or something where the players put the card they want to
+	-- condense. the condenser then autofills the extra cards(weakest)": a chip over the recipe says so
+	["the Condenser says it filled in your weakest extras for you"] = function()
+		expect.equal(CondenseRules.fillChip(4), "Filled in for you: your 4 weakest extras")
+		expect.equal(CondenseRules.fillChip(1), "Filled in for you: your weakest extra")
+		expect.isNil(CondenseRules.fillChip(0), "nothing filled in: no chip")
 	end,
 
 	-- owner 2026-11-20, of the Condenser's window: "make this window easier to understand and more immersive. a kid
@@ -421,15 +419,26 @@ return {
 		expect.equal(CondenseRules.shardOffers(4, 2, 0, 0.5, false), 0)
 	end,
 
-	["the spots sit in a neat grid whatever the star costs"] = function()
+	-- the wider recipe of the put-a-card-in windows (owner 2026-11-26): a few copies stand in one row, like the mockup
+	["the spots sit in a neat grid whatever the star or the grade costs"] = function()
 		local Beasts = require("../src/shared/Config/Beasts")
-		for _, cost in Beasts.STAR_COSTS do
-			local columns = CondenseRules.slotColumns(cost)
-			expect.equal(cost % columns, 0, `{cost} spots fill their rows`)
-			assert(cost / columns <= 4, `{cost} spots: no more than 4 rows`)
-			assert(columns <= 6, `{cost} spots: no more than 6 across`)
+		local Grading = require("../src/shared/Config/Grading")
+		local needs: { number } = table.clone(Beasts.STAR_COSTS)
+		for _, steps in Grading.COSTS do
+			for _, step in steps do
+				table.insert(needs, step.copies)
+			end
 		end
-		expect.equal(CondenseRules.slotColumns(4), 2)
+		for _, need in needs do
+			local columns = CondenseRules.slotColumns(need)
+			expect.equal(need % columns, 0, `{need} spots fill their rows`)
+			assert(need / columns <= 3, `{need} spots: no more than 3 rows`)
+			assert(columns <= 8, `{need} spots: no more than 8 across`)
+		end
+		expect.equal(CondenseRules.slotColumns(4), 4, "a first star's 4 copies in one row")
+		expect.equal(CondenseRules.slotColumns(2), 2)
+		expect.equal(CondenseRules.slotColumns(8), 4)
+		expect.equal(CondenseRules.slotColumns(24), 8)
 	end,
 
 	["under the spots: what a tap does with Star Shards"] = function()
@@ -447,67 +456,13 @@ return {
 		expect.isNil(words({ have = 5, on = true, used = 0, offers = 0, could = false, missing = 0, max = false }), "on, and none needed")
 	end,
 
-	-- owner 2026-11-20: "a player upgraded a C grade pet to a 5 star but later got S grade. should we let him transfer
-	-- the 5 star to an S grade pet at a cost?" -> "okay do the grade swap. but make it a little more expensive": at the
-	-- Grading Station a levelled or starred card takes the grade of a better spare copy of the same card. The spare is
-	-- used up, and it costs SWAP.share of the grading cash between the two grades. Stars and levels never move.
-	["grade swap: a raised card takes the grade of its best spare copy"] = function()
-		local Grading = require("../src/shared/Config/Grading")
-		local Beasts = require("../src/shared/Config/Beasts")
-		local raised = { beast = true, foil = false, grade = "C", stars = 5 }
-		local plan = CondenseRules.swapPlan(Grading, Beasts, "Legendary", { C = { normal = 2, foil = 0 }, S = { normal = 1, foil = 0 }, A = { normal = 1, foil = 0 } }, raised)
-		assert(plan, "a Grade S spare is there")
-		expect.equal(plan.grade, "S", "the best spare's grade, not the nearest")
-		expect.equal(plan.copies, 1)
-		expect.equal(#plan.takes, 1)
-		expect.equal(plan.takes[1].grade, "S")
-		expect.equal(plan.takes[1].count, 1)
-		expect.equal(plan.takes[1].foil, false)
-		expect.equal(plan.seals, 0)
-		local full = Grading.COSTS.Legendary.B.cash + Grading.COSTS.Legendary.A.cash + Grading.COSTS.Legendary.S.cash
-		expect.equal(plan.cash, math.round(full * Grading.SWAP.share / Grading.SWAP.round) * Grading.SWAP.round)
-		assert(plan.cash < full, "cheaper than grading all the way")
-		assert(Grading.SWAP.share > 0.25 and Grading.SWAP.share <= 0.5, "a little more than a quarter (owner: a little more expensive)")
-	end,
-
-	["grade swap: only the steps between the two grades are paid for"] = function()
-		local Grading = require("../src/shared/Config/Grading")
-		local Beasts = require("../src/shared/Config/Beasts")
-		local function cash(from: string, spare: string, rarity: string): number?
-			local plan = CondenseRules.swapPlan(Grading, Beasts, rarity, { [spare] = { normal = 1, foil = 0 } }, { beast = true, foil = false, grade = from, stars = 1 })
-			return if plan then plan.cash else nil
-		end
-		local toB, toS, aToS = cash("C", "B", "Epic") :: number, cash("C", "S", "Epic") :: number, cash("A", "S", "Epic") :: number
-		assert(toB < aToS and aToS < toS, `a bigger jump costs more ({toB}, {aToS}, {toS})`)
-		expect.equal(toB, math.round(Grading.COSTS.Epic.B.cash * Grading.SWAP.share / Grading.SWAP.round) * Grading.SWAP.round)
-		for rarity in Grading.COSTS do
-			local price = cash("C", "S", rarity) :: number
-			assert(price > 0 and price % Grading.SWAP.round == 0, `{rarity}: a round price ({price})`)
-		end
-	end,
-
-	["grade swap: when there is none"] = function()
-		local Grading = require("../src/shared/Config/Grading")
-		local Beasts = require("../src/shared/Config/Beasts")
-		local function why(byGrade: any, main: any): string?
-			local plan, reason = CondenseRules.swapPlan(Grading, Beasts, "Rare", byGrade, main)
-			expect.isNil(plan)
-			return reason
-		end
-		expect.equal(why({ S = { normal = 1, foil = 0 } }, { beast = false, foil = false, grade = "C", stars = 0 }), "plain", "a plain copy has nothing to keep: use the better copy")
-		expect.equal(why({ S = { normal = 3, foil = 0 } }, { beast = true, foil = false, grade = "S", stars = 2 }), "max")
-		expect.equal(why({ C = { normal = 5, foil = 0 }, B = { normal = 0, foil = 0 } }, { beast = true, foil = false, grade = "B", stars = 2 }), "none", "no spare of a better grade")
-		expect.equal(why({}, { beast = true, foil = false, grade = "C", stars = 2 }), "none")
-	end,
-
-	["grade swap: a plain spare goes before a foil one"] = function()
-		local Grading = require("../src/shared/Config/Grading")
-		local Beasts = require("../src/shared/Config/Beasts")
-		local main = { beast = true, foil = true, grade = "C", stars = 3 }
-		local both = CondenseRules.swapPlan(Grading, Beasts, "Rare", { A = { normal = 1, foil = 1 } }, main)
-		expect.equal(both and both.takes[1].foil, false, "the foil spare is kept")
-		local onlyFoil = CondenseRules.swapPlan(Grading, Beasts, "Rare", { A = { normal = 0, foil = 1 } }, main)
-		expect.equal(onlyFoil and onlyFoil.takes[1].foil, true)
+	-- owner 2026-11-26: the grade swap and "Keep a different copy" left the Grading Station with its redesign ("drop
+	-- both"): nothing in the rules offers a swap any more
+	["the grade swap is gone"] = function()
+		expect.isNil((CondenseRules :: any).swapPlan)
+		expect.isNil((CondenseRules :: any).swapWords)
+		expect.isNil((CondenseRules :: any).swapLine)
+		expect.isNil((require("../src/shared/Config/Grading") :: any).SWAP)
 	end,
 
 	-- owner 2026-11-20: "yes skip better copies": a grade-up listed the player's Grade S spare among the copies it
@@ -549,18 +504,20 @@ return {
 	-- owner 2026-11-20: "in grading station window. redesign it like the condenser to be easily understood. it's
 	-- currently so confusing": the same picture recipe (the copies and the cash that go in, an arrow, the card with its
 	-- new grade), one sentence, one button
+	-- owner 2026-11-26: "change "Make it Grade A" to "Upgrade" then the cost. remove the cost anywhere else": the
+	-- sentence says what goes in, never the cash
 	["grading: one plain sentence says what will happen"] = function()
-		local function say(grade: string?, copies: number, seals: number, missing: number, gold: boolean?): string
-			return CondenseRules.gradeSay({ name = "Voidmaw", grade = grade, copies = copies, seals = seals, cash = "$2,500", missing = missing, gold = gold == true })
+		local function say(grade: string?, copies: number, seals: number, missing: number): string
+			return CondenseRules.gradeSay({ name = "Voidmaw", grade = grade, copies = copies, seals = seals, missing = missing })
 		end
-		expect.equal(say("A", 2, 0, 0), "Use 2 extra Voidmaw and $2,500 to make it Grade A!")
-		expect.equal(say("A", 1, 1, 0), "Use 1 extra Voidmaw, 1 Grading Seal and $2,500 to make it Grade A!")
-		expect.equal(say("B", 0, 2, 0), "Use 2 Grading Seals and $2,500 to make it Grade B!")
-		expect.equal(say("A", 2, 0, 0, true), "Use 2 extra Voidmaw and a Gold Seal to make it Grade A!")
+		expect.equal(say("A", 2, 0, 0), "Use 2 extra Voidmaw to make it Grade A!")
+		expect.equal(say("A", 1, 1, 0), "Use 1 extra Voidmaw and 1 Grading Seal to make it Grade A!")
+		expect.equal(say("B", 0, 2, 0), "Use 2 Grading Seals to make it Grade B!")
 		expect.equal(say("A", 1, 0, 1), "Find 1 more Voidmaw to make it Grade A.")
 		expect.equal(say(nil, 0, 0, 0), "Voidmaw is Grade S: the best!")
-		for _, text in { say("A", 8, 4, 0), say("S", 1, 0, 7), say(nil, 0, 0, 0) } do
+		for _, text in { say("A", 8, 4, 0), say("S", 1, 0, 7), say(nil, 0, 0, 0), say("A", 2, 0, 0), say("B", 0, 2, 0) } do
 			assert(#text <= 90 and not string.find(text, "[^\32-\126]"), text)
+			assert(not string.find(text, "$", 1, true) and not string.find(text, "cash", 1, true), `no cost in the sentence: {text}`)
 		end
 	end,
 
@@ -579,19 +536,46 @@ return {
 		expect.equal(select(2, tag(0, 0, nil, false, true)), "max")
 	end,
 
+	-- the button is "Upgrade" then the cost, the only place the cost shows; its small line says how long, or what's
+	-- missing
 	["grading: the big button and the small line under it"] = function()
 		local function words(view: any): (string, string?)
 			return CondenseRules.gradeButton(view)
 		end
-		local text, sub = words({ inFlight = false, grade = "A", cash = "$2,500", have = "$9,000", affordable = true, missing = 0, seconds = 960 })
-		expect.equal(text, "Make it Grade A!")
-		expect.equal(sub, "takes 16 minutes")
-		expect.equal((words({ inFlight = true, grade = "A", cash = "$2,500", have = "$9,000", affordable = true, missing = 0, seconds = 960 })), "Putting it in...")
-		expect.equal((words({ inFlight = false, grade = nil, cash = "", have = "$9", affordable = true, missing = 0, seconds = 0 })), "Top grade!")
-		expect.equal((words({ inFlight = false, grade = "A", cash = "$2,500", have = "$9", affordable = true, missing = 2, seconds = 960 })), "2 more copies needed")
-		local need, have = words({ inFlight = false, grade = "A", cash = "$2,500", have = "$900", affordable = false, missing = 0, seconds = 960 })
-		expect.equal(need, "You need $2,500")
-		expect.equal(have, "you have $900")
+		local base = { inFlight = false, grade = "A", cash = "$2,500", have = "$9,000", affordable = true, missing = 0, seconds = 3600, gold = false }
+		local function with(changes: any): any
+			local view = table.clone(base)
+			for key, value in changes do
+				view[key] = value
+			end
+			return view
+		end
+		local text, sub = words(base)
+		expect.equal(text, "Upgrade $2,500")
+		expect.equal(sub, "takes 1 hour")
+		expect.equal((words(with({ inFlight = true }))), "Putting it in...")
+		expect.equal((words(with({ grade = false }))), "Top grade!")
+		text, sub = words(with({ missing = 2 }))
+		expect.equal(text, "Upgrade $2,500", "the cost stays on the button")
+		expect.equal(sub, "2 more copies needed")
+		expect.equal(select(2, words(with({ missing = 1 }))), "1 more copy needed")
+		text, sub = words(with({ affordable = false, have = "$900" }))
+		expect.equal(text, "Upgrade $2,500")
+		expect.equal(sub, "you have $900")
+		text, sub = words(with({ gold = true }))
+		expect.equal(text, "Upgrade with a Gold Seal", "a Gold Seal pays instead of the cash")
+		expect.equal(sub, "takes 1 hour")
+	end,
+
+	-- the USE row's first tile: the copies that go in, picked for you
+	["grading: the copies tile"] = function()
+		local title, sub = CondenseRules.copiesTile(2)
+		expect.equal(title, "2 extra copies")
+		expect.equal(sub, "Your weakest, picked for you")
+		expect.equal((CondenseRules.copiesTile(1)), "1 extra copy")
+		title, sub = CondenseRules.copiesTile(0)
+		expect.equal(title, "No extra copies")
+		expect.equal(sub, "Find more of this card")
 	end,
 
 	["the Condenser's line for Star Shards: a tap on an empty spot uses them"] = function()
@@ -599,21 +583,23 @@ return {
 		expect.isNil(CondenseRules.shardWords({ have = 0, on = false, used = 0, offers = 0, could = false, missing = 2, max = false }))
 	end,
 
-	["grade swap: its button and its line, in plain words"] = function()
-		local text, sub = CondenseRules.swapWords({ grade = "S", cash = "$5,430", seconds = 3000, affordable = true, inFlight = false })
-		expect.equal(text, "Swap in your Grade S copy")
-		expect.equal(sub, "$5,430 · takes 50 minutes")
-		expect.equal((CondenseRules.swapWords({ grade = "S", cash = "$5,430", seconds = 3000, affordable = false, inFlight = false })), "Swap needs $5,430")
-		expect.equal((CondenseRules.swapWords({ grade = "S", cash = "$5,430", seconds = 3000, affordable = true, inFlight = true })), "Putting it in...")
-		local line = CondenseRules.swapLine("S")
-		assert(string.find(line, "Grade S", 1, true) and string.find(line, "used up", 1, true), line)
-		assert(string.find(line, "stars", 1, true), "it says the stars stay")
-		assert(#line <= 100 and not string.find(line, "->", 1, true), line)
-	end,
-
-	["the Grading Station's words promise power"] = function()
+	-- owner 2026-11-26: the Condenser's tabs "Condense" and Ready, the Grading Station's "Upgrade" and Ready ("Ready is
+	-- fine"); every line short and plain
+	["the put-a-card-in windows' words"] = function()
 		local Grading = require("../src/shared/Config/Grading")
-		assert(string.find(Grading.EXPLAIN, "Grade S", 1, true) and #Grading.EXPLAIN <= 80, Grading.EXPLAIN)
+		local Condenser = require("../src/shared/Config/Condenser")
+		expect.equal(table.concat(Condenser.WINDOW.TABS, ","), "Condense,Ready")
+		expect.equal(table.concat(Grading.WINDOW.TABS, ","), "Upgrade,Ready")
+		expect.equal(Grading.WINDOW.EMPTY_BUTTON, "Upgrade", "the button says Upgrade, its cost once a card is in")
+		expect.equal(Condenser.WINDOW.OTHER, "Pick other copies")
+		for _, window in { Condenser.WINDOW, Grading.WINDOW } do
+			for key, text in window do
+				if typeof(text) == "string" then
+					assert(#text <= 90 and not string.find(text, "[^\32-\126]"), `{key}: {text}`)
+					assert(not string.find(text, "$", 1, true), `{key}: no cost in the window's words`)
+				end
+			end
+		end
 	end,
 
 	["grading: the copies it can use are the ones no better than the card"] = function()
@@ -624,11 +610,11 @@ return {
 		expect.equal(CondenseRules.gradeHave(config, { C = counts(3, 0) }, { beast = false, foil = false, grade = "C", stars = 0 }), 2)
 	end,
 	-- owner 2026-11-20: "whats the use of grading seals? I cant see it inside the grading station", then "also the
-	-- golden seall or something": both sit over the button as chips with their picture, how many you have and what a
-	-- tap does, whenever you own some
-	["the Grading Station shows your Grading Seals and Gold Seals as chips that say what they do"] = function()
-		local function seal(view): (string?, string?)
-			return CondenseRules.sealChip(view)
+	-- golden seall or something"; since 2026-11-26 (the redesign) they are the USE row's second and third tiles, there
+	-- even with none, so a player learns they exist, and the Gold Seal's never names the cash it pays
+	["the Grading Station's USE tiles say what Grading Seals and Gold Seals do"] = function()
+		local function seal(view): (string, string)
+			return CondenseRules.sealTile(view)
 		end
 		local title, sub = seal({ have = 15, on = false, used = 0, offers = 1, could = false, missing = 3, max = false })
 		expect.equal(title, "Grading Seals x15")
@@ -642,19 +628,27 @@ return {
 		expect.equal(sub, "Fill in for missing copies")
 		title, sub = seal({ have = 1, on = false, used = 0, offers = 0, could = false, missing = 0, max = false })
 		expect.equal(title, "Grading Seal x1")
-		expect.equal((seal({ have = 0, on = false, used = 0, offers = 0, could = false, missing = 2, max = false })), nil, "none: no chip")
-		expect.equal((seal({ have = 15, on = false, used = 0, offers = 0, could = false, missing = 0, max = true })), nil, "Grade S: nothing to grade")
+		title, sub = seal({ have = 0, on = false, used = 0, offers = 0, could = false, missing = 2, max = false })
+		expect.equal(title, "Grading Seals x0", "none: the tile still shows")
+		expect.equal(sub, "You have none yet")
 
-		title, sub = CondenseRules.goldChip(11, false, true, false)
+		title, sub = CondenseRules.goldTile(11, false, true)
 		expect.equal(title, "Gold Seals x11")
 		expect.equal(sub, "Tap: pays the cash")
-		title, sub = CondenseRules.goldChip(11, true, true, false)
+		title, sub = CondenseRules.goldTile(11, true, true)
 		expect.equal(sub, "Pays the cash! Tap to undo")
-		title, sub = CondenseRules.goldChip(1, false, false, false)
+		title, sub = CondenseRules.goldTile(1, false, false)
 		expect.equal(title, "Gold Seal x1")
 		expect.equal(sub, "Not for a Legendary's Grade S")
-		expect.equal((CondenseRules.goldChip(0, false, true, false)), nil)
-		expect.equal((CondenseRules.goldChip(11, false, true, true)), nil, "Grade S: nothing to grade")
+		title, sub = CondenseRules.goldTile(0, false, true)
+		expect.equal(title, "Gold Seals x0")
+		expect.equal(sub, "You have none yet")
+		for _, have in { 0, 1, 11 } do
+			for _, on in { false, true } do
+				local _, line = CondenseRules.goldTile(have, on, true)
+				assert(not string.find(line, "$", 1, true), `no cost on the Gold Seal tile: {line}`)
+			end
+		end
 
 		local Items = require("../src/shared/Config/Items")
 		expect.equal(Items.ITEMS.gradingSeal.use, "At the Grading Station, tap Grading Seals (or an empty spot) to put them in. They can fill up to half the copies a grade needs.")

@@ -165,32 +165,8 @@ function Recipe.flyIn(panel: Frame, spots: { GuiObject }, target: GuiObject)
 end
 
 -- The copy picker (owner 2026-11-21: "Keep a different card is so confusing. can we change wording or anything to make
--- it more understandable. also the next window make it more understandable"; words in Util/CondenseRules): a chip
--- under the big button that says what it does, and the copies as pictures in place of the recipe.
-
--- The chip: its words and a small line under them, 44 px tall, its top at `y`
-function Recipe.pickChip(parent: Instance, y: number, palette: UIKit.Palette, title: string, sub: string, onTap: () -> ()): TextButton
-	local chip = Instance.new("TextButton")
-	chip.Name = "Change"
-	chip.Text = ""
-	chip.AnchorPoint = Vector2.new(0.5, 0)
-	chip.Position = UDim2.new(0.5, 0, 0, y + 2)
-	chip.Size = UDim2.fromOffset(250, 40)
-	chip.BackgroundColor3 = palette.row
-	chip.Parent = parent
-	UIKit.corner(chip, 10)
-	UIKit.outline(chip, palette.rowEdge, 2)
-	local words = UIKit.label(chip, title, Enum.Font.FredokaOne, 14, palette.ink)
-	words.Position = UDim2.fromOffset(4, 4)
-	words.Size = UDim2.new(1, -8, 0, 17)
-	words.TextXAlignment = Enum.TextXAlignment.Center
-	local small = UIKit.label(chip, sub, Enum.Font.GothamBold, 11, palette.inkSoft)
-	small.Position = UDim2.fromOffset(4, 21)
-	small.Size = UDim2.new(1, -8, 0, 14)
-	small.TextXAlignment = Enum.TextXAlignment.Center
-	chip.Activated:Connect(onTap)
-	return chip
-end
+-- it more understandable. also the next window make it more understandable"; words in Util/CondenseRules): the copies
+-- as pictures in place of the recipe. Since 2026-11-26 the Condenser's "Pick other copies" opens it.
 
 export type CopyTile = {
 	key: string,
