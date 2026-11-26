@@ -220,7 +220,9 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
   fights with its fight perk; `NO_PERKS=1` in front runs without them, to compare (`NO_DEBUFFS=1`: without the
   bosses' ring debuffs). Epic and Legendary cards fire their supers when ready (`NO_SUPERS=1`: without,
   `ONLY_SUPER="<card>"`: that one alone); supers need a weapon of their creature's element: `WEAPON=match:<level>:<grade>` gives each player the Forge Sword of their leader's element, `FREE_SUPERS=1` the old rule (every super, no weapon); `SET="Voidmaw.healCap=0.05"` / `BOSS_SET="prismHydra.atk=40"` try numbers
-  without editing the configs
+  without editing the configs (`BOSS_SET` paths reach inside: `frostTyrant.mechanics.shield.fraction=0.04`);
+  `MUTATION="<id>:<rarity>"` gives every player that weapon mutation, `MUTATION_SIZE=<share>` another size for it;
+  `PARTY_RARITY=<rarity>` builds the parties from that rarity only (the closest Power can be a maxed Common)
 - `python tools/video/make_trailer.py <recording.mp4> <out.mp4> [--mute]` — the game page's 30 s gameplay video cut
   from one recording (its CLIPS list: start, end, caption; needs Pillow and imageio-ffmpeg; Roblox's video rules in its
   header)
