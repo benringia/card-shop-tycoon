@@ -120,6 +120,31 @@ return {
 	end,
 
 	-- owner 2026-11-26: "player should only get essence in drops. not in the forge mutations"
+	-- The mutation audit (owner 2026-11-26): Treasure and Scholar pay by the share of the fight their weapon was in hand,
+	-- so switching to a Treasure weapon for the last hit doesn't pay its whole share
+	["audit: Treasure and Scholar count the time their weapon was in hand"] = function()
+		local treasure = { cash = 1.08, xp = 1 }
+		local plain = { cash = 1, xp = 1 }
+		local held = MutationRules.holding(0, treasure)
+		held = MutationRules.switched(held, 10, plain)
+		local cash, xp = MutationRules.averaged(held, 40)
+		expect.near(cash, (1.08 * 10 + 1 * 30) / 40, 1e-9, "10 s of 40 with Treasure")
+		expect.near(xp, 1, 1e-9)
+		local late = MutationRules.switched(MutationRules.holding(0, plain), 39, treasure)
+		local lateCash = MutationRules.averaged(late, 40)
+		expect.near(lateCash, (1 * 39 + 1.08 * 1) / 40, 1e-9, "switched to it for the last second: a sliver")
+		local instant = MutationRules.holding(5, treasure)
+		expect.near((MutationRules.averaged(instant, 5)), 1.08, 1e-9, "a fight over at once: the weapon in hand")
+		-- a boss's intro: the clock starts when the fight does (held from 10), so the intro never counts for a weapon
+		local intro = MutationRules.switched(MutationRules.holding(10, treasure), 4, plain) -- switched during the intro
+		expect.near((MutationRules.averaged(intro, 40)), 1, 1e-9, "Treasure held only through the intro: nothing")
+		local introLate = MutationRules.switched(MutationRules.holding(10, plain), 4, treasure)
+		expect.near((MutationRules.averaged(introLate, 40)), 1.08, 1e-9, "switched to it before the start: the whole fight")
+		-- Treasure from the intro (4) to 20, plain to 40: 10 s of the fight's 30 with it, the intro's 6 s never counted
+		local twice = MutationRules.switched(MutationRules.switched(MutationRules.holding(10, plain), 4, treasure), 20, plain)
+		expect.near((MutationRules.averaged(twice, 40)), (1.08 * 10 + 1 * 20) / 30, 1e-9, "the intro's seconds don't count")
+	end,
+
 	["a Forge roll's choice gives no Essence either way, and keeps a plain mutation"] = function()
 		local have = m("tough", "Rare")
 		local rolled = { id = "sharp", rarity = "Epic", forge = true }

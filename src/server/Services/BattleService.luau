@@ -97,6 +97,7 @@ type Member = {
 	rings: number, -- big attacks aimed at them (the defeat screen)
 	dodged: number, -- of those, dodged or stepped out of
 	slow: number?, -- a boss's debuff slows their walking by this share (Config/Bosses DEBUFFS slow)
+	held: MutationRules.Held, -- Treasure and Scholar: each weapon's share of the fight in hand (MutationRules.averaged)
 }
 
 -- A big attack's ring as placed when it started (studs on the ground plane): a slam's centre, or a swipe's origin
@@ -923,17 +924,18 @@ local function giveXp(player: Player, partyIds: { string }, each: number): { any
 end
 
 -- One member's win: their own party's XP and cash; a boss's items through BossService (their contribution decides).
--- The weapon in hand's mutation: Treasure more cash, Scholar more creature XP (fights only, at half size: Config/
--- Mutations); the shop XP follows the cash before Treasure
+-- The weapons in hand's mutations: Treasure more cash, Scholar more creature XP (fights only, at half size: Config/
+-- Mutations), each weighted by how long its weapon was in hand this fight (the mutation audit 2026-11-26: switching to
+-- one for the last hit paid its whole share); the shop XP follows the cash before Treasure
 local function payOut(fight: Fight, member: Member): any
 	local player, monster = member.player, fight.monster
 	local bossId = monster.boss
-	local mutation = WeaponService.MutationStats(player)
+	local cashTimes, xpTimes = MutationRules.averaged(member.held, os.clock())
 	local function treasure(cash: number): number
-		return math.floor(cash * mutation.cash * 100 + 0.5) / 100
+		return math.floor(cash * cashTimes * 100 + 0.5) / 100
 	end
 	local function scholar(xp: number): number
-		return math.round(xp * mutation.xp)
+		return math.round(xp * xpTimes)
 	end
 	if bossId then
 		-- Bosses: their own creature XP every win; items only through BossService's farm-protected rules, and the cash
@@ -1364,24 +1366,16 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 	local members: { Member } = {}
 	local leaders, reserves = {}, {}
 	-- The weapon in hand's mutation for each player (weapons round 4 part 2; never in the arena, which builds its own
-	-- fights): Tough on their player fighter's HP and their creatures' (option C, owner 2026-11-26), Pet Boost on their
-	-- creatures' ATK and HP, a teammate's Rally (the best one, not stacked) on their creatures' ATK; the rest lives in
-	-- the sim (BattleSim.setMutation below)
+	-- fights), put on after the sim is built (BattleSim.setMutation below): Tough on their player fighter's HP and their
+	-- creatures' (option C, owner 2026-11-26), Pet Boost on their creatures' ATK and HP, a teammate's Rally (the best one,
+	-- not stacked) on their creatures' ATK, the rest in the sim's hits. The fighters start from their own numbers: the
+	-- sim scales them for the weapon in hand and back on a switch (the mutation audit 2026-11-26)
 	local mutationOf: { [Player]: MutationRules.Stats } = {}
 	for _, player in players do
 		mutationOf[player] = WeaponService.MutationStats(player)
 	end
-	local function boosted(input: BattleSim.FighterInput, player: Player)
-		local mine = mutationOf[player]
-		local rally = 0
-		for other, stats in mutationOf do
-			if other ~= player then
-				rally = math.max(rally, stats.rally)
-			end
-		end
-		input.atk *= mine.petAtk * (1 + rally)
-		input.hp = math.max(1, math.round(input.hp * mine.petHp * mine.hp))
-	end
+	-- boss fights hold still through the intro until then (Treasure and Scholar count from it)
+	local startsAt = if boss then os.clock() + Bosses.INTRO_SECONDS else 0
 	for _, player in players do
 		local party = PartyService.GetParty(player) :: { slots: { [number]: string }, summoned: number? }
 		local leaderId = party.slots[party.summoned :: number]
@@ -1391,7 +1385,6 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 		local leaderInput = fighterInput(CardService.GetBeast(player, leaderId) :: Beast, true)
 		leaderInput.owner = owner
 		leaderInput.hpNow = left[leaderId]
-		boosted(leaderInput, player)
 		-- Chikin's tutorial fights (owner 2026-11-17: "make sure pets doesnt die in the first tutorial"): a new player's
 		-- creatures stop at 1 HP and never faint there, so nothing has to rest 5 minutes after its first fight
 		-- only against the Meadow's normal monsters his fights are for (ChikinRules.guards): never an elite or a
@@ -1407,9 +1400,7 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 		end
 		if fightsWithSword(player, boss ~= nil, run, swords) then
 			-- The player fights beside their creature (never a creature's target; down instead of fainting)
-			-- (a Tough mutation: more HP)
-			local hp = math.round(Combat.PLAYER_HP * mutationOf[player].hp)
-			table.insert(leaders, { id = `@{owner}`, player = true, owner = owner, element = "None", hp = hp, atk = 0, spd = 10, defenseScale = defenseScaleFor(player, boss, monster) })
+			table.insert(leaders, { id = `@{owner}`, player = true, owner = owner, element = "None", hp = Combat.PLAYER_HP, atk = 0, spd = 10, defenseScale = defenseScaleFor(player, boss, monster) })
 		end
 		for _, beastId in partyIds do
 			local beast = CardService.GetBeast(player, beastId)
@@ -1419,7 +1410,6 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 				input.owner = owner
 				input.hpNow = left[beastId]
 				input.guarded = guarded
-				boosted(input, player)
 				table.insert(reserves, input)
 			end
 		end
@@ -1427,7 +1417,7 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 		local swordId = SwordService.GetSword(player)
 		local sword = if swordId then Swords.SWORDS[swordId] else nil
 		local skillReady = if sword then SwordRules.openingSkillReady(os.clock(), sword.skill) else 0
-		table.insert(members, { player = player, owner = owner, leaderId = leaderId, markers = {}, fought = if swordOnly then {} else { [leaderId] = true }, partyIds = partyIds, died = nil, leashWarnedAt = 0, lastCut = nil, skillReady = skillReady, down = false, slow = nil, rings = 0, dodged = 0 })
+		table.insert(members, { player = player, owner = owner, leaderId = leaderId, markers = {}, fought = if swordOnly then {} else { [leaderId] = true }, partyIds = partyIds, died = nil, leashWarnedAt = 0, lastCut = nil, skillReady = skillReady, down = false, slow = nil, rings = 0, dodged = 0, held = MutationRules.holding(math.max(os.clock(), startsAt), mutationOf[player]) })
 	end
 	-- Boss fights and Dungeon rooms allow swaps (and are tuned for them); in boss fights only one creature of yours fights.
 	-- Wild fights swap too (owner 2026-11-12: "replace summoned pets with another"), by hand only: a faint still loses
@@ -1487,7 +1477,7 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 		center = center,
 		sinceSnapshot = 0,
 		ended = false,
-		startsAt = if boss then os.clock() + Bosses.INTRO_SECONDS else 0,
+		startsAt = startsAt,
 		adds = {},
 		run = run,
 		endHp = {},
@@ -1965,8 +1955,11 @@ local function onSwap(player: Player)
 	if member and fight then
 		member.swappedAt = os.clock()
 		member.lastCut = nil
-		-- the new weapon's mutation from now on (its HP and creature boosts stay the fight's start's)
-		BattleSim.setMutation(fight.sim, member.owner, WeaponService.MutationStats(player))
+		-- the new weapon's mutation from now on: its hits, HP and creature boosts (the old one's come off), and its
+		-- Treasure and Scholar for the time it's in hand (the mutation audit 2026-11-26)
+		local stats = WeaponService.MutationStats(player)
+		BattleSim.setMutation(fight.sim, member.owner, stats)
+		member.held = MutationRules.switched(member.held, os.clock(), stats)
 	end
 end
 

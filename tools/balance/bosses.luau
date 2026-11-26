@@ -286,17 +286,14 @@ local playerScale: number? = nil
 -- `pylons` (its room 3, spec 2026-11-11-dungeon-puzzles): they also swing at the pylons until the shield falls
 local function battle(players: { { any } }, foes: { any }, hpLeft: { [string]: number }, seed: number, mode: string?, pylons: { any }?, inRoom: boolean?): (boolean, number, { [string]: number })
 	local leaders, reserves = {}, {}
-	-- every player has the MUTATION: Pet Boost and Tough on their creatures (as BattleService), a teammate's Rally (one,
-	-- not stacked) in a group
-	local rally = if #players > 1 then MUTATION_STATS.rally else 0
+	-- every player has the MUTATION, put on once the sim is built (BattleSim.setMutation, as BattleService): Pet Boost
+	-- and Tough on their creatures, Tough on them, a teammate's Rally (one, not stacked) in a group
 	for _, own in players do
 		local led = false
 		for _, input in own do
 			if DungeonRules.canFight(hpLeft, input.id) then
 				local copy = table.clone(input)
 				copy.hpNow = hpLeft[input.id]
-				copy.atk *= MUTATION_STATS.petAtk * (1 + rally)
-				copy.hp = math.max(1, math.round(copy.hp * MUTATION_STATS.petHp * MUTATION_STATS.hp))
 				table.insert(if led then reserves else leaders, copy)
 				led = true
 			end
@@ -310,8 +307,7 @@ local function battle(players: { { any } }, foes: { any }, hpLeft: { [string]: n
 		for index = 1, #players do
 			local owner = tostring(index)
 			table.insert(owners, owner)
-			local hp = math.round(Combat.PLAYER_HP * MUTATION_STATS.hp) -- a Tough mutation
-			table.insert(leaders, { id = `@{owner}`, player = true, owner = owner, element = "None", hp = hp, atk = 0, spd = 10, defenseScale = if inRoom == true or pylons ~= nil then nil else playerScale })
+			table.insert(leaders, { id = `@{owner}`, player = true, owner = owner, element = "None", hp = Combat.PLAYER_HP, atk = 0, spd = 10, defenseScale = if inRoom == true or pylons ~= nil then nil else playerScale })
 		end
 	end
 	local room = inRoom == true or pylons ~= nil -- a Dungeon room: call-ins on even with the players in it

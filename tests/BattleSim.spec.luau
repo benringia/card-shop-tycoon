@@ -3621,6 +3621,109 @@ return {
 		expect.equal(viewOf(plain, "a:p1").hp < before, true, "without it the same boss hurts it")
 	end,
 
+	-- The mutation audit (owner 2026-11-26: "do tests. for OP or broken mutations that could be abuses. fix everything")
+	["audit: a Thorns reflect goes through the boss's shield like any hit"] = function()
+		local state = mutationFight(49, true)
+		BattleSim.setMutation(state, "1", mutationStats({ thorns = 1 }))
+		state.sides.b.shield = 500 -- the boss's shield is up (the Frost Tyrant's ice)
+		local bossBefore = BattleSim._fighter(state, "b:m").hp
+		BattleSim._damage(state, "a:p1", 100, "b:m")
+		expect.equal(BattleSim._fighter(state, "b:m").hp, bossBefore, "the shield takes the reflect, not the boss")
+		expect.equal(state.sides.b.shield, 400, "100 off the shield")
+	end,
+
+	["audit: Thorns reflects what landed, never a hit's overkill"] = function()
+		local function reflected(events: { any }): number
+			local total = 0
+			for _, event in events do
+				if event.type == "thorns" then
+					total += event.damage
+				end
+			end
+			return total
+		end
+		local state = mutationFight(55, true)
+		BattleSim.setMutation(state, "1", mutationStats({ thorns = 1 }))
+		local creature = BattleSim._fighter(state, "a:p1")
+		BattleSim._damage(state, "a:p1", creature.hp - 10) -- 10 HP left
+		expect.equal(reflected(BattleSim._damage(state, "a:p1", 400, "b:m")), 10, "a 400 hit on 10 HP: 10 struck back")
+		local player = BattleSim._fighter(state, "a:@1")
+		BattleSim._hurtPlayer(state, "a:@1", player.hp - 5) -- 5 HP left
+		expect.equal(reflected(BattleSim._hurtPlayer(state, "a:@1", 60, "b:m")), 5, "the player's too")
+	end,
+
+	["audit: switching away from a Pet Boost weapon takes its boost off (no stacking)"] = function()
+		local state = mutationFight(50, true)
+		local creature = BattleSim._fighter(state, "a:p1")
+		local atk, maxHp = creature.atk, creature.maxHp
+		BattleSim.setMutation(state, "1", mutationStats({ petAtk = 1.5, petHp = 1.5 }))
+		expect.near(creature.atk, atk * 1.5, 1e-9, "Pet Boost on the creature's ATK")
+		expect.equal(creature.maxHp, math.round(maxHp * 1.5), "and its max HP")
+		BattleSim._damage(state, "a:p1", math.round(maxHp * 1.5 / 2)) -- half its HP gone
+		BattleSim.setMutation(state, "1", mutationStats({ sword = 1.2 })) -- switched to a Sharp weapon
+		expect.near(creature.atk, atk, 1e-9, "the boost goes with the weapon")
+		expect.equal(creature.maxHp, maxHp)
+		expect.equal(creature.hp, math.round(maxHp / 2), "the same share of its HP left")
+	end,
+
+	["audit: Tough follows the weapon in hand, on the player and the creatures"] = function()
+		local state = mutationFight(51, true)
+		local player, creature = BattleSim._fighter(state, "a:@1"), BattleSim._fighter(state, "a:p1")
+		local playerHp, creatureHp = player.maxHp, creature.maxHp
+		BattleSim.setMutation(state, "1", mutationStats({ hp = 1.2 }))
+		expect.equal(player.maxHp, math.round(playerHp * 1.2), "the player's HP")
+		expect.equal(creature.maxHp, math.round(creatureHp * 1.2), "the creature's too (option C)")
+		BattleSim.setMutation(state, "1", nil)
+		expect.equal(player.maxHp, playerHp, "gone with the weapon")
+		expect.equal(creature.maxHp, creatureHp)
+	end,
+
+	["audit: Rally comes from the best teammate's weapon in hand, and goes when they switch"] = function()
+		local state = BattleSim.new(combat, {
+			fighters = { owned("p1", "1"), owned("p2", "2"), playerInput("1"), playerInput("2") },
+			reserves = {},
+			abilities = true,
+			canRun = true,
+			callIn = false,
+		}, { fighters = { { id = "m", element = "Bloom", hp = 100000, atk = 1, spd = 10, boss = true, mechanics = {} } }, abilities = false, canRun = false }, 52)
+		local mine, theirs = BattleSim._fighter(state, "a:p1"), BattleSim._fighter(state, "a:p2")
+		local atk = mine.atk
+		BattleSim.setMutation(state, "2", mutationStats({ rally = 0.05 }))
+		expect.near(mine.atk, atk * 1.05, 1e-9, "a teammate's Rally on my creature")
+		expect.near(theirs.atk, atk, 1e-9, "never on their own")
+		BattleSim.setMutation(state, "1", mutationStats({ rally = 0.1 }))
+		expect.near(mine.atk, atk * 1.05, 1e-9, "my own Rally doesn't count for me")
+		expect.near(theirs.atk, atk * 1.1, 1e-9, "the best other one, not stacked")
+		BattleSim.setMutation(state, "2", nil)
+		expect.near(mine.atk, atk, 1e-9, "gone when they switch away")
+		BattleSim.setMutation(state, "2", mutationStats({ rally = 0.05 }))
+		BattleSim.withdraw(state, "2")
+		expect.near(mine.atk, atk, 1e-9, "and when they leave the fight")
+	end,
+
+	["audit: the Dungeon carries a boosted creature's HP as its own, so the boost never heals it between rooms"] = function()
+		local state = mutationFight(53, true)
+		local creature = BattleSim._fighter(state, "a:p1")
+		local base = creature.maxHp
+		BattleSim.setMutation(state, "1", mutationStats({ petHp = 1.5 }))
+		BattleSim._damage(state, "a:p1", math.round(creature.maxHp / 2)) -- half its boosted HP gone
+		local left = BattleSim.hpLeft(state, "a", "1")
+		expect.equal(left.p1, math.round(base / 2), "half of its own HP (the next room's boost scales it back up)")
+		-- the next room: it starts at that HP, then the weapon in hand's boost: half its boosted HP again, not more
+		local input = owned("p1", "1")
+		input.hpNow = left.p1
+		local nextRoom = BattleSim.new(combat, { fighters = { input, playerInput("1") }, reserves = {}, abilities = true, canRun = true, callIn = false }, {
+			fighters = { { id = "m", element = "Bloom", hp = 100000, atk = 1, spd = 10, boss = true, mechanics = {} } },
+			abilities = false,
+			canRun = false,
+		}, 54)
+		BattleSim.setMutation(nextRoom, "1", mutationStats({ petHp = 1.5 }))
+		expect.equal(BattleSim._fighter(nextRoom, "a:p1").hp, math.round(base * 1.5 / 2), "the same HP it left with")
+		-- a creature left on 1 HP stays in the fight (never rounded to fainted)
+		BattleSim._damage(state, "a:p1", creature.hp - 1)
+		expect.equal(BattleSim.hpLeft(state, "a", "1").p1, 1)
+	end,
+
 	["mutations: none, or a neutral one, is the same fight as before"] = function()
 		local function play(set: boolean): { any }
 			local state = mutationFight(46, true)

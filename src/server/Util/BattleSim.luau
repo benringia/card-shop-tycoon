@@ -191,6 +191,7 @@ type Fighter = {
 	swordBurnKind: string, -- "Burn", or "Poison" for the Widow's Reaper's venom (its ticks' event kind)
 	swordHits: number, -- player fighter: sword hits landed (a heal perk's every Nth)
 	secondWindUsed: boolean, -- player fighter: its mutation's Second Wind has healed it this fight
+	mutationBase: { atk: number, maxHp: number }?, -- its ATK and max HP before any mutation (setMutation scales from it)
 	player: boolean, -- a player fighter
 	down: boolean, -- player fighter: at 0 HP, kneeling (not targeted, can't act)
 	downUntil: number, -- player fighter: when it gets back up (if one of its owner's creatures stands)
@@ -259,6 +260,12 @@ export type MutationStats = {
 	lifesteal: number,
 	meter: number,
 	secondWind: number,
+	-- (on the owner's fighters themselves, put on and taken off by setMutation: Tough's HP, Pet Boost's creature ATK and
+	-- HP, the best teammate's Rally)
+	hp: number?,
+	petAtk: number?,
+	petHp: number?,
+	rally: number?,
 }
 
 -- A boss's hit on a player, warned of and landing at `at`
@@ -626,6 +633,8 @@ end
 
 -- Defined after hurtPlayer, which hits back with it (a Thorns mutation)
 local takeDamage: (state: State, target: Fighter, amount: number, events: { Event }, from: Fighter?) -> ()
+-- A Thorns mutation's share of a hit sent back at the hitter (defined after the shields it goes through)
+local reflect: (state: State, by: Fighter, at: Fighter, amount: number, events: { Event }) -> ()
 
 -- A player fighter at 0 HP goes down (never fainted); with nobody left standing its side loses. The weapon in hand's
 -- mutation (state.mutations): Guard takes less, Thorns strikes `from` (the hitter) back for its share of what landed,
@@ -637,15 +646,11 @@ local function hurtPlayer(state: State, target: Fighter, amount: number, events:
 		amount *= mutation.taken
 	end
 	fillMeter(state, target, state.combat.SUPER_METER.hurt * amount / target.maxHp)
-	target.taken += math.min(amount, target.hp)
+	local landed = math.min(amount, target.hp) -- a hit's overkill never counts (nor strikes back: the mutation audit)
+	target.taken += landed
 	target.hp = math.max(0, target.hp - amount)
 	if mutation and mutation.thorns > 0 and from and not from.player and not from.fainted and not from.left then
-		local back = math.round(amount * mutation.thorns)
-		if back > 0 then
-			table.insert(events, { type = "thorns", from = target.id, to = from.id, damage = back })
-			target.dealt += math.min(back, from.hp)
-			takeDamage(state, from, back, events)
-		end
+		reflect(state, target, from, landed * mutation.thorns, events)
 	end
 	if mutation and mutation.secondWind > 0 and not target.secondWindUsed and target.hp > 0 and target.hp < target.maxHp * mutation.secondWind then
 		target.secondWindUsed = true
@@ -753,15 +758,11 @@ takeDamage = function(state: State, target: Fighter, amount: number, events: { E
 	end
 	fillMeter(state, target, state.combat.SUPER_METER.hurt * amount / target.maxHp)
 	local floor = if target.guarded then 1 else 0 -- a guarded creature stops at 1 HP and never faints
-	target.taken += math.max(0, math.min(amount, target.hp - floor))
+	local landed = math.max(0, math.min(amount, target.hp - floor)) -- a hit's overkill never counts (nor strikes back)
+	target.taken += landed
 	target.hp = math.max(floor, target.hp - amount)
 	if mutation and mutation.thorns > 0 and from and from.side ~= target.side and not from.player and not from.fainted and not from.left then
-		local back = math.round(amount * mutation.thorns)
-		if back > 0 then
-			table.insert(events, { type = "thorns", from = target.id, to = from.id, damage = back })
-			target.dealt += math.min(back, from.hp)
-			takeDamage(state, from, back, events)
-		end
+		reflect(state, target, from, landed * mutation.thorns, events)
 	end
 	if target.hp <= 0 and not target.fainted then
 		target.fainted = true
@@ -821,6 +822,31 @@ local function soakWard(target: Fighter, damage: number, events: { Event }): num
 		table.insert(events, { type = "shieldGone", to = target.id })
 	end
 	return absorbed
+end
+
+-- A Thorns reflect goes through the hitter's side's defences like any hit (the mutation audit 2026-11-26: it skipped
+-- the Frost Tyrant's ice shield and the adds' guard): its adds' guard, its own ward, its side's shield (pylons take it
+-- all); what lands is its "thorns" event and comes off its HP (never reflected again: no `from`)
+reflect = function(state: State, by: Fighter, at: Fighter, amount: number, events: { Event })
+	local side = (state.sides :: any)[at.side] :: Side
+	local damage = math.round(amount * guarded(side, at))
+	if damage <= 0 then
+		return
+	end
+	local warded = soakWard(at, damage, events)
+	local hadShield = side.shield > 0
+	local absorbed = math.min(side.shield, damage - warded)
+	side.shield -= absorbed
+	if hadShield and side.shield <= 0 then
+		shieldBroke(state, side, events)
+	end
+	local landed = damage - warded - absorbed
+	if landed <= 0 then
+		return
+	end
+	table.insert(events, { type = "thorns", from = by.id, to = at.id, damage = landed })
+	by.dealt += math.min(landed, at.hp)
+	takeDamage(state, at, landed, events)
 end
 
 -- One hit from `from` on `target`: element, curse, dodge and the target side's shield all apply
@@ -1555,9 +1581,58 @@ function BattleSim.recall(state: State, owner: string): ({ Event }?, string?)
 	return events, nil
 end
 
+-- Tough's HP, Pet Boost's ATK and HP and a teammate's Rally live on the fighters themselves: put on for the weapon in
+-- hand (state.mutations) and taken off when it's switched away or its owner leaves (the mutation audit 2026-11-26:
+-- fixed at the fight's start they stacked with the next weapon's mutation), always from each fighter's own base,
+-- keeping its share of HP. Rally: the best one of the other owners still in the fight (not stacked)
+local function applyMutations(state: State)
+	local inFight: { [string]: boolean } = {}
+	local fighters: { Fighter } = {}
+	for _, side in { state.sides.a, state.sides.b } do
+		for _, list in { side.fighters, side.reserves } do
+			for _, fighter in list do
+				local key = ownerKey(fighter)
+				if key ~= "" then
+					inFight[key] = inFight[key] or not fighter.left
+					table.insert(fighters, fighter)
+				end
+			end
+		end
+	end
+	local function setMax(fighter: Fighter, maxHp: number)
+		local share = if fighter.maxHp > 0 then fighter.hp / fighter.maxHp else 1
+		fighter.maxHp = math.max(1, maxHp)
+		if fighter.hp > 0 then
+			fighter.hp = math.clamp(math.round(fighter.maxHp * share), 1, fighter.maxHp)
+		end
+	end
+	for _, fighter in fighters do
+		local key = ownerKey(fighter)
+		local mine = state.mutations[key]
+		local rally = 0
+		for other, theirs in state.mutations do
+			if other ~= key and inFight[other] then
+				rally = math.max(rally, theirs.rally or 0)
+			end
+		end
+		local base = fighter.mutationBase or { atk = fighter.atk, maxHp = fighter.maxHp }
+		fighter.mutationBase = base
+		if fighter.player then
+			setMax(fighter, math.round(base.maxHp * (if mine then mine.hp or 1 else 1)))
+		else
+			fighter.atk = base.atk * (if mine then mine.petAtk or 1 else 1) * (1 + rally)
+			setMax(fighter, math.round(base.maxHp * (if mine then (mine.petHp or 1) * (mine.hp or 1) else 1)))
+		end
+	end
+end
+
 -- A player left a group fight: their fighters step out (not fainted, never targeted) and their reserves go. The fight
--- ends as a run when nobody is left standing on that side.
+-- ends as a run when nobody is left standing on that side. Their weapon's mutation goes with them (its Rally too).
 function BattleSim.withdraw(state: State, owner: string): { Event }
+	if state.mutations[owner] then
+		state.mutations[owner] = nil
+		applyMutations(state)
+	end
 	local events: { Event } = {}
 	for _, side in { state.sides.a, state.sides.b } do
 		local had = false
@@ -2172,6 +2247,12 @@ end
 -- switch, never in the arena); nil clears it
 function BattleSim.setMutation(state: State, owner: string, stats: MutationStats?)
 	state.mutations[owner] = stats
+	applyMutations(state)
+end
+
+-- Lune tests only: a fighter by its id (its live table)
+function BattleSim._fighter(state: State, id: string): Fighter?
+	return find(state, id)
 end
 
 function BattleSim.getRunChance(state: State, sideName: string): number
@@ -2262,7 +2343,8 @@ function BattleSim.playerDebuff(state: State, owner: string): (string?, number?)
 end
 
 -- Every fighter's HP on a side, on the field or in reserve (fainted = 0), by unprefixed id; only `owner`'s when given
--- (the Dungeon carries these into the next room)
+-- (the Dungeon carries these into the next room). Out of its own max HP, before a mutation's boost (the mutation audit
+-- 2026-11-26: the boosted HP carried, then boosted again, healed it a little every room); a living one never under 1
 function BattleSim.hpLeft(state: State, sideName: string, owner: string?): { [string]: number }
 	local out = {}
 	local side = (state.sides :: any)[sideName] :: Side?
@@ -2272,7 +2354,9 @@ function BattleSim.hpLeft(state: State, sideName: string, owner: string?): { [st
 	for _, list in { side.fighters, side.reserves } do
 		for _, fighter in list do
 			if not fighter.player and (owner == nil or fighter.owner == owner) then
-				out[fighter.rawId] = if fighter.fainted then 0 else fighter.hp
+				local base = fighter.mutationBase
+				local hp = if base and fighter.maxHp > 0 then math.max(1, math.round(fighter.hp * base.maxHp / fighter.maxHp)) else fighter.hp
+				out[fighter.rawId] = if fighter.fainted or fighter.hp <= 0 then 0 else hp
 			end
 		end
 	end

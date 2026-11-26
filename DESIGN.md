@@ -3847,8 +3847,11 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
       1.6% a hit and Pet Boost 1 / 2 / 3 / 4 / 6% (each entry's own `sizes`; part 3's boss pass, below). Small shares read
       with one decimal ("0.3%").
     - **In fights** (`BattleSim.setMutation`, per owner like Chikin's Courage): set at a fight's start and on a weapon
-      switch; Tough's HP, Pet Boost and Rally are fixed at the start. No mutation draws the same randoms as before (a crit
-      rolls only when there's a chance). Thorns and Second Wind and Lifesteal send events (`thorns`, `regen` with kind).
+      switch. All of it follows the weapon in hand: Tough's HP, Pet Boost and a teammate's Rally are put on each fighter
+      from its own numbers and come off on a switch or when their player leaves, keeping its share of HP (the audit,
+      below); Treasure and Scholar pay each weapon's share of the fight it was in hand. No mutation draws the same
+      randoms as before (a crit rolls only when there's a chance). Thorns and Second Wind and Lifesteal send events
+      (`thorns`, `regen` with kind).
     - **The reveal** (the owner's mockup; `WeaponRevealController.Mutation`): "MUTATION! <weapon>" and the column in the
       mutation's card rarity colour (Config/Rarities: Epic purple, not the mockup's pink), "Epic · Sharp · sword hits
       +12%", the blade with its new rim, then the choice. Since part 3 (owner 2026-11-26: "this window is confusing ...
@@ -3914,6 +3917,30 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
       Sharp 10), the rest as they were; the defensive ones barely moved a boss fight (Thorns 0, Guard 1-4, Tough 2-8:
       players who fight well are rarely hit), so they protect your creatures too (option C, above). The tool gained `MUTATION_SIZE`, `PARTY_RARITY` and
       nested `BOSS_SET` paths (`frostTyrant.mechanics.shield.fraction=0.04`).
+    - **The audit** (owner 2026-11-26: "do tests. for OP or broken mutations that could be abuses. fix everything";
+      tests `BattleSim` "audit: ...", `MutationRules` "audit: ..."). What a player controls mid-fight (a switch, leaving,
+      the timing, a double tap) against every mutation; five breaks, all fixed, no number changed:
+      - A switch stacked two weapons: Tough's HP, Pet Boost and Rally were written onto the fighters at the start and
+        stayed when you switched to a Sharp weapon. Now they follow the weapon in hand (`BattleSim.setMutation`, from
+        each fighter's own numbers, keeping its share of HP; BattleService and the tool no longer put them on first).
+      - Treasure and Scholar paid the weapon in hand at the win: switching to a Treasure weapon for the last hit paid its
+        whole share. Now each weapon's share of the time in hand (`MutationRules.holding` / `switched` / `averaged`,
+        counted from the fight's start: a boss's intro never counts).
+      - A Thorns reflect skipped the boss's shield (the Frost Tyrant's ice) and the adds' guard, and reflected a hit's
+        overkill (a 400 hit on a creature with 10 HP struck back 400). Now it goes through both like any hit and
+        reflects only what landed.
+      - A teammate's Rally stayed on everyone's creatures after they left the fight: it goes with them
+        (`BattleSim.withdraw`).
+      - The Dungeon carried a boosted creature's HP into the next room and boosted it again (a little heal every room):
+        `BattleSim.hpLeft` gives the HP out of the creature's own max.
+      Checked and fine: a choice can't be answered twice (the waiting one is cleared before the Essence), Essence only
+      from boss drops, a reforge keeps the one record, Second Wind once a fight whatever the switches, Quick Step's
+      cooldown set when you dodge (a switch costs its lock), Lifesteal heals nothing on a hit the shield takes, a lent
+      weapon (the prologue) and the arena have none, Thorns can't farm the loot contribution. Sims after (200 fights,
+      +10 S tier weapon, 0.8x fighting well): no mutation and Pet Boost exactly as before (Ember Colossus 88 / 97%,
+      Storm Sovereign 68 / 87%), Thorns 100% a point lower (overkill no longer reflects), Legendary Tough 94 / 88%;
+      four players all with the same Legendary (worst case): every row already wins at +10 S, and the fight is a few
+      seconds shorter (Ember Colossus 44 s; Thorns 41, Pet Boost with Rally 39, Guard 44).
 
 ---
 

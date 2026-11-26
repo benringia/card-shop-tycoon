@@ -167,6 +167,36 @@ function MutationRules.words(cfg: any, mutation: Mutation): Words
 	}
 end
 
+-- Treasure and Scholar over a fight (the mutation audit 2026-11-26: switching to a Treasure weapon for the last hit
+-- paid its whole share): what the weapon in hand pays, weighted by how long each was in hand. `holding` with the time
+-- the fight starts (after a boss's intro: its seconds never count), `switched` on every weapon switch, `averaged` at
+-- the win (a fight over at once: the weapon in hand's)
+export type Held = { since: number, cash: number, xp: number, cashTime: number, xpTime: number, time: number }
+
+function MutationRules.holding(startsAt: number, stats: { cash: number, xp: number }): Held
+	return { since = startsAt, cash = stats.cash, xp = stats.xp, cashTime = 0, xpTime = 0, time = 0 }
+end
+
+function MutationRules.switched(held: Held, now: number, stats: { cash: number, xp: number }): Held
+	local spent = math.max(0, now - held.since)
+	return {
+		since = math.max(now, held.since),
+		cash = stats.cash,
+		xp = stats.xp,
+		cashTime = held.cashTime + held.cash * spent,
+		xpTime = held.xpTime + held.xp * spent,
+		time = held.time + spent,
+	}
+end
+
+function MutationRules.averaged(held: Held, now: number): (number, number)
+	local final = MutationRules.switched(held, now, held)
+	if final.time <= 0 then
+		return held.cash, held.xp
+	end
+	return final.cashTime / final.time, final.xpTime / final.time
+end
+
 -- Whether the Forge may roll a mutation on this weapon: yours (not the Steel Sword), no choice waiting on it, enough
 -- Essence. `weapons` is Config/Weapons; `owned` its record (nil: not yours). The reason in plain words otherwise.
 function MutationRules.canMutate(cfg: any, weapons: any, weaponId: string, owned: { mutation: Mutation?, pending: Mutation? }?, essence: number): (boolean, string?)
