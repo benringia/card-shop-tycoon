@@ -3830,8 +3830,11 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
       3.2 / 3.2 / 2.2 / 2.2 now). Only new weapons get the light column and the server announcement.
     - **The roll**: rarity Common 45%, Rare 30%, Very Rare 15%, Epic 8%, Legendary 2%; then one of thirteen. Offense
       (Sword icon) on your sword hits: Sharp (+n%), Critical (n% chance to deal double), Element Edge (strong hits +n%),
-      Boss Hunter (on a boss +n%). Defense (Shield): Tough (your HP +n%; Legendary adds Second Wind: once a fight, heal
-      30% when under 30%), Guard (n% less damage), Quick Step (dodge n% sooner), Thorns (n% of what you take hits back).
+      Boss Hunter (on a boss +n%). Defense (Shield), for you and your creatures since part 3 (owner 2026-11-26 "go with
+      C": on the player alone a Legendary Thorns added nothing to a boss fight, players who fight well are rarely hit):
+      Tough (HP +n%; Legendary adds Second Wind: once a fight, heal 30% when under 30%, each fighter once), Guard (n%
+      less damage), Quick Step (your dodge n% sooner; each hit on your creatures dodged n% of the time, rolled only with
+      a chance), Thorns (n% of what you or they take hits back).
       Support (Heal heart): Lifesteal (each sword hit that lands heals n% of your own HP: the player, never the creature,
       which the Verdant Blade's perk heals; a share of the hit's damage until the part 3 sims showed late bosses' hits of
       hundreds made a 100 HP player unkillable; the pop shows each whole point), Pet Boost (creatures' ATK and HP;
@@ -3891,11 +3894,11 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
       Sovereign +19, Hydra +17 to 100%). A 1x fight with +10 S and a Legendary mutation takes about 69% of the +0 C
       one's time (never halved). Every party at 1x fighting well wins 85-100%. Standing still at 1x wins 60% on four
       bosses and 0% on the Brood Queen, Frost Tyrant and Hydra: their parties' ultimates don't fire without an
-      element weapon (owner 2026-11-19), and easing them would make fighting players win nearly always at 0.8x (asked
-      the owner). Mutation sizes from the same sims: Lifesteal heals a share of your own HP a hit (0.3-1.6%; on sword
+      element weapon (owner 2026-11-19), and easing them would make fighting players win nearly always at 0.8x (the
+      owner: "leave them"). Mutation sizes from the same sims: Lifesteal heals a share of your own HP a hit (0.3-1.6%; on sword
       damage it made the player unkillable on late bosses), Pet Boost 1-6% (it added about 17 points at 8%, a Legendary
-      Sharp 10), the rest as they were; the defensive ones barely move a boss fight (Thorns 0, Guard 1-4, Tough 2-8:
-      players who fight well are rarely hit; asked the owner). The tool gained `MUTATION_SIZE`, `PARTY_RARITY` and
+      Sharp 10), the rest as they were; the defensive ones barely moved a boss fight (Thorns 0, Guard 1-4, Tough 2-8:
+      players who fight well are rarely hit), so they protect your creatures too (option C, above). The tool gained `MUTATION_SIZE`, `PARTY_RARITY` and
       nested `BOSS_SET` paths (`frostTyrant.mechanics.shield.fraction=0.04`).
 
 ---
