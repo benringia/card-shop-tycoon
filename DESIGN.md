@@ -1438,7 +1438,9 @@ the same, shared by more cards.
   their grades (they were all C before), dings an A or S as it turns and never dims one. A dropped A or S card's beam,
   ground glow, light and sparkles take its grade's colour, under a white tag "Voidmaw · Grade A!" (`CardLoot`). In the
   binder an A or S pocket sits over its neighbours so its glow shows. Weapon cards get the medal (their edge shows
-  their mutation, so no glow). Art: every card has its own painting (`ART_IMAGES`, by name): its creature model
+  their mutation, so no glow). The grade's pictures are kept drawn, tiny and nearly invisible, from the client's start
+  (`CardFace` GradeCache): Roblox only finishes loading a picture once something draws it, and a session's first pulled
+  A showed its medal and glow seconds after it landed (PreloadAsync alone didn't do it). Art: every card has its own painting (`ART_IMAGES`, by name): its creature model
   described and painted into its element's scene with Figma's image generator (prompts in `docs/card-art.md`,
   JPEGs in `assets/ui/card-art`). A card without one falls back to its element's painted scene (`SCENES`:
   fireplace, coral reef, forest, stormy peak, moonlit graveyard; `assets/ui/card-scenes`) with the element emoji

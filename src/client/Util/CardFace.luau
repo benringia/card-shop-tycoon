@@ -6,6 +6,7 @@
 -- ~0.7 width/height ratio and have a UIStroke (hidden on drawn faces; the pack opening tweens it). Everything is
 -- drawn in a "Face" child, so callers keep their own children. Layout, colours and art ids: Config/CardDesign.
 local ContentProvider = game:GetService("ContentProvider")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
@@ -38,13 +39,40 @@ local AURORA = CardEffects.FRONTIER.AURORA
 
 local CardFace = {}
 
--- Fetch the art up front, so the first cards don't show without their picture: the small copies most faces draw
--- (Config/CardArt) first, then the full paintings the big views draw
-task.spawn(function()
-	local images = { CardDesign.IMAGES.GLOW, GradeLookConfig.IMAGES.glow, GradeLookConfig.IMAGES.sparkle }
-	for _, id in GradeLookConfig.IMAGES.medal do
-		table.insert(images, id)
+-- The grade's pictures (Config/GradeLook), kept drawn, tiny and nearly invisible, in a corner: Roblox only finishes
+-- loading a picture once something draws it, so a session's first pulled A or S card showed its medal and glow seconds
+-- after it landed (Util/Icon keeps the UI icons drawn the same way)
+local function keepGradePictures(pictures: { string })
+	local player = Players.LocalPlayer
+	if not player then
+		return
 	end
+	local cache = Instance.new("ScreenGui")
+	cache.Name = "GradeCache"
+	cache.ResetOnSpawn = false
+	cache.DisplayOrder = -10
+	for index, id in pictures do
+		local keep = Instance.new("ImageLabel")
+		keep.Name = `Keep{index}`
+		keep.BackgroundTransparency = 1
+		keep.Size = UDim2.fromOffset(2, 2)
+		keep.Image = id
+		keep.ImageTransparency = 0.98
+		keep.Parent = cache
+	end
+	cache.Parent = player:WaitForChild("PlayerGui")
+end
+
+-- Fetch the art up front, so the first cards don't show without their picture: the grade's pictures and the small
+-- copies most faces draw (Config/CardArt) first, then the full paintings the big views draw
+task.spawn(function()
+	local grade = { GradeLookConfig.IMAGES.glow, GradeLookConfig.IMAGES.sparkle }
+	for _, id in GradeLookConfig.IMAGES.medal do
+		table.insert(grade, id)
+	end
+	keepGradePictures(grade)
+	local images = table.clone(grade)
+	table.insert(images, CardDesign.IMAGES.GLOW)
 	for _, id in CardDesign.SCENES do
 		table.insert(images, id)
 	end
