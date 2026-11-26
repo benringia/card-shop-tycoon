@@ -3880,6 +3880,23 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
       Pet Boost at 5% 65%, 8% 71%, 16% 95% (best+2: 20% -> 57%), so Pet Boost went to half size; the Brood Queen with a
       +5 A Verdant Blade at 0.8x: none 85%, Legendary Sharp 93%, Legendary Pet Boost (16%) 100%. The sword's mutations
       move little (the creatures do most of a fight's damage); part 3 sets the sizes and the bosses.
+    - **The boss pass** (part 3, 2026-11-26; `tools/balance/bosses`, 200 fights a row, solo, fighting well, a party at
+      0.8x the recommended Power; plan `2026-11-26-weapons-round4-part3.md`). The typical player brings the previous
+      boss's weapon (drops are near sure) at +0 C: Meadow Warden 100% (the first, easier on purpose), Cave Brood Queen
+      49%, Ember Colossus 46%, Frost Tyrant 0% with the Magma Halberd (Ember, weak to its Tide) but 29% / 58% with the
+      Verdant Blade (Bloom beats Tide) at +0 C / +5 B, so it stays as it was, Storm Sovereign 60%, Rift Devourer 46%
+      (ATK 66 -> 60: it was 23% even with the Volt Storm Reaper strong against it; standing still at its Power 37% ->
+      60%), Prism Hydra 46% (ATK 46 -> 44: 36%). The same weapon at +10 S: 100 / 95 / 88 / 4 / 68 / 99 / 83%, and a
+      Legendary Sharp, Lifesteal or Pet Boost on it adds 1-21 points (Pet Boost the most: Frost Tyrant +21, Storm
+      Sovereign +19, Hydra +17 to 100%). A 1x fight with +10 S and a Legendary mutation takes about 69% of the +0 C
+      one's time (never halved). Every party at 1x fighting well wins 85-100%. Standing still at 1x wins 60% on four
+      bosses and 0% on the Brood Queen, Frost Tyrant and Hydra: their parties' ultimates don't fire without an
+      element weapon (owner 2026-11-19), and easing them would make fighting players win nearly always at 0.8x (asked
+      the owner). Mutation sizes from the same sims: Lifesteal heals a share of your own HP a hit (0.3-1.6%; on sword
+      damage it made the player unkillable on late bosses), Pet Boost 1-6% (it added about 17 points at 8%, a Legendary
+      Sharp 10), the rest as they were; the defensive ones barely move a boss fight (Thorns 0, Guard 1-4, Tough 2-8:
+      players who fight well are rarely hit; asked the owner). The tool gained `MUTATION_SIZE`, `PARTY_RARITY` and
+      nested `BOSS_SET` paths (`frostTyrant.mechanics.shield.fraction=0.04`).
 
 ---
 
