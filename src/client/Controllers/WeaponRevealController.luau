@@ -404,14 +404,17 @@ local function choicePanel(gui: ScreenGui, offer: any, color: Color3, onChoice: 
 	local spec = Mutations.CHOICE
 	local phone = UIKit.isPhone()
 	local choice = WeaponText.choice(Mutations, offer)
-	local view = (workspace.CurrentCamera :: Camera).ViewportSize
-	local width = math.min(spec.width, view.X * spec.widthShare)
 	local frame = Instance.new("Frame")
 	frame.Name = "MutationChoice"
 	frame.AnchorPoint = Vector2.new(0.5, 1)
 	frame.Position = UDim2.new(0.5, 0, 1, if phone then -6 else -18)
-	frame.Size = UDim2.fromOffset(width, 0)
+	-- the screen's share, at most spec.width: by scale, not the viewport read once (a choice asked again right after a
+	-- join was built before the camera had a size, and came out 0 wide)
+	frame.Size = UDim2.fromScale(spec.widthShare, 0)
 	frame.AutomaticSize = Enum.AutomaticSize.Y
+	local widest = Instance.new("UISizeConstraint")
+	widest.MaxSize = Vector2.new(spec.width, math.huge)
+	widest.Parent = frame
 	frame.BackgroundColor3 = Color3.fromRGB(24, 16, 34)
 	frame.BackgroundTransparency = 0.1
 	frame.Visible = false
@@ -754,6 +757,13 @@ local function drain()
 			task.wait(0.25)
 		end
 		ScreenClear.wait() -- a purchase dialog or the Roblox menu first (owner 2026-11-13)
+		-- the layout reads the screen (phone or not, widths): a choice asked again right after a join came before the
+		-- camera had a size and was built 0 wide in the phone's layout
+		local camera = workspace.CurrentCamera
+		while not camera or camera.ViewportSize.X < 2 do
+			task.wait(0.1)
+			camera = workspace.CurrentCamera
+		end
 		handedOver = false
 		local reveal = table.remove(queue, 1) :: Reveal
 		local ok, err = pcall(play, reveal)
