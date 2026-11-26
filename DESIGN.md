@@ -6119,7 +6119,8 @@ Specs: `docs/superpowers/specs/2026-10-23-ui-restyle-design.md`, then look E in
   the search box, SHOW (All / Owned / Missing) and SORT BY (Set / Value / Copies / Rarity) as two segmented switches
   (`UIKit.segmented`), the rarities as small dot tags that fill with their colour when picked (`UIKit.dotTag`; both
   drawn smaller inside 48 px tap areas, `BabyColors.SEGMENTED` / `DOT_TAG` `hit`), and at the bottom how many of the
-  open set's cards match ("32 of 35 cards") and Clear all. It is as tall as its content (`UiLayout.filtersBody`):
+  open set's cards match ("32 of 35 cards") and Clear all. Closing the binder clears them (testers 2026-11-26:
+  "Closing the binder also clears the filter"): it opens on every card again; with none set it keeps its page. It is as tall as its content (`UiLayout.filtersBody`):
   under the close and Filters buttons where it fits above the progress card, else from near the top over them (its
   own close in their corner), the body scrolling on a landscape phone (`UiLayout.filtersFrame`). Bottom right: the set's progress card (owned / total with a bar, value
   of your copies). **The Bag** (round 3) is its own window over the town, opened by the Bag tile or I (one window at a

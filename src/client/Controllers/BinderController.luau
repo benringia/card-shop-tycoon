@@ -2104,6 +2104,11 @@ local function buildPanel(parent: Instance)
 			filtersPanel.Visible = false
 			layoutBook()
 		end
+		-- Closing it clears the filters (testers 2026-11-26: "Closing the binder also clears the filter"): it opens on
+		-- every card again; one with no filter set keeps its page
+		if not panel.Visible and (showFilter ~= ALL_FILTER or sortBy ~= "Set" or next(rarityPicks) ~= nil or searchText ~= "") then
+			clearFilters()
+		end
 	end)
 end
 
