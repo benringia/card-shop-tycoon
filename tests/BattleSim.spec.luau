@@ -3578,6 +3578,51 @@ return {
 		expect.equal(BattleSim.dodge(state, "1") ~= nil, true, "half the cooldown")
 	end,
 
+	-- owner 2026-11-26 ("go with C"): the defensive mutations protect your creatures too (the part 3 sims: in boss fights
+	-- a player who fights well is rarely hit, so on the player alone a Legendary Thorns added nothing)
+	["mutations: Guard, Thorns and Second Wind protect your creatures too"] = function()
+		local state = mutationFight(47, true)
+		BattleSim.setMutation(state, "1", mutationStats({ taken = 0.5, thorns = 0.5, secondWind = 0.3 }))
+		local before = viewOf(state, "a:p1").hp
+		local events = BattleSim._damage(state, "a:p1", 100, "b:m")
+		expect.equal(viewOf(state, "a:p1").hp, before - 50, "Guard: half of the hit")
+		local thorns = nil
+		for _, event in events do
+			if event.type == "thorns" then
+				thorns = event
+			end
+		end
+		expect.equal(thorns and thorns.from, "a:p1", "the creature strikes back")
+		expect.equal(thorns and thorns.to, "b:m")
+		expect.equal(thorns and thorns.damage, 25, "half of what landed")
+		-- Second Wind: once under 30% of its HP, 30% back, once a fight
+		BattleSim._damage(state, "a:p1", (before - 50 - 0.2 * before) * 2)
+		expect.equal(viewOf(state, "a:p1").hp, math.round(0.2 * before) + math.round(0.3 * before), "healed once under 30%")
+		local healed = viewOf(state, "a:p1").hp
+		BattleSim._damage(state, "a:p1", 400) -- 200 after Guard: under 30% again
+		expect.equal(viewOf(state, "a:p1").hp, healed - 200, "only once")
+		local plain = mutationFight(47, true)
+		BattleSim._damage(plain, "a:p1", 100, "b:m")
+		expect.equal(viewOf(plain, "a:p1").hp, before - 100, "no mutation: the whole hit")
+	end,
+
+	["mutations: Quick Step gives your creatures a chance to dodge each hit"] = function()
+		local state = bossFightWithPlayer(48, 30)
+		BattleSim.setMutation(state, "1", mutationStats({ dodge = 0 })) -- a chance of 1 - 0: every hit
+		local before = viewOf(state, "a:p1").hp
+		local dodged = 0
+		for _, event in runFor(state, 6) do
+			if event.to == "a:p1" and event.dodged then
+				dodged += 1
+			end
+		end
+		expect.equal(dodged > 0, true, "the boss's hits on it are dodged")
+		expect.equal(viewOf(state, "a:p1").hp, before, "and it takes nothing")
+		local plain = bossFightWithPlayer(48, 30)
+		runFor(plain, 6)
+		expect.equal(viewOf(plain, "a:p1").hp < before, true, "without it the same boss hurts it")
+	end,
+
 	["mutations: none, or a neutral one, is the same fight as before"] = function()
 		local function play(set: boolean): { any }
 			local state = mutationFight(46, true)

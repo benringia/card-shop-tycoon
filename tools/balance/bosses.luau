@@ -286,7 +286,8 @@ local playerScale: number? = nil
 -- `pylons` (its room 3, spec 2026-11-11-dungeon-puzzles): they also swing at the pylons until the shield falls
 local function battle(players: { { any } }, foes: { any }, hpLeft: { [string]: number }, seed: number, mode: string?, pylons: { any }?, inRoom: boolean?): (boolean, number, { [string]: number })
 	local leaders, reserves = {}, {}
-	-- every player has the MUTATION: Pet Boost on their creatures, a teammate's Rally (one, not stacked) in a group
+	-- every player has the MUTATION: Pet Boost and Tough on their creatures (as BattleService), a teammate's Rally (one,
+	-- not stacked) in a group
 	local rally = if #players > 1 then MUTATION_STATS.rally else 0
 	for _, own in players do
 		local led = false
@@ -295,7 +296,7 @@ local function battle(players: { { any } }, foes: { any }, hpLeft: { [string]: n
 				local copy = table.clone(input)
 				copy.hpNow = hpLeft[input.id]
 				copy.atk *= MUTATION_STATS.petAtk * (1 + rally)
-				copy.hp = math.max(1, math.round(copy.hp * MUTATION_STATS.petHp))
+				copy.hp = math.max(1, math.round(copy.hp * MUTATION_STATS.petHp * MUTATION_STATS.hp))
 				table.insert(if led then reserves else leaders, copy)
 				led = true
 			end

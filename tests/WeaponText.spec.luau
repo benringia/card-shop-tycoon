@@ -497,7 +497,7 @@ return {
 		expect.equal(choice.cards[1].button, "Nice!")
 		expect.equal(choice.cards[1].take, true)
 		expect.isNil(choice.cards[1].gets)
-		expect.equal(choice.cards[1].effect, "Your HP +16%. Second Wind: once a fight, heal 30% when low")
+		expect.equal(choice.cards[1].effect, "You and your creatures: HP +16%. Second Wind: once a fight, heal 30% when low")
 	end,
 
 	["the Steel Sword's rows: its dash alone, no empty rows"] = function()

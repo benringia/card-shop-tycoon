@@ -744,10 +744,30 @@ takeDamage = function(state: State, target: Fighter, amount: number, events: { E
 	if pylonsUp((state.sides :: any)[target.side]) then
 		return -- its pylons' shield takes every hit (burns and abilities too)
 	end
+	-- The weapon in hand's mutation protects its owner's creatures too (owner 2026-11-26, option C): Guard takes less,
+	-- Thorns strikes `from` back for its share of what landed, Tough's Second Wind heals each once a fight
+	local mutation = state.mutations[ownerKey(target)]
+	if mutation then
+		amount = math.round(amount * mutation.taken)
+	end
 	fillMeter(state, target, state.combat.SUPER_METER.hurt * amount / target.maxHp)
 	local floor = if target.guarded then 1 else 0 -- a guarded creature stops at 1 HP and never faints
 	target.taken += math.max(0, math.min(amount, target.hp - floor))
 	target.hp = math.max(floor, target.hp - amount)
+	if mutation and mutation.thorns > 0 and from and from.side ~= target.side and not from.player and not from.fainted and not from.left then
+		local back = math.round(amount * mutation.thorns)
+		if back > 0 then
+			table.insert(events, { type = "thorns", from = target.id, to = from.id, damage = back })
+			target.dealt += math.min(back, from.hp)
+			takeDamage(state, from, back, events)
+		end
+	end
+	if mutation and mutation.secondWind > 0 and not target.secondWindUsed and target.hp > 0 and target.hp < target.maxHp * mutation.secondWind then
+		target.secondWindUsed = true
+		local before = target.hp
+		target.hp = math.min(target.maxHp, target.hp + math.round(target.maxHp * mutation.secondWind))
+		table.insert(events, { type = "regen", kind = "SecondWind", to = target.id, heal = target.hp - before })
+	end
 	if target.hp <= 0 and not target.fainted then
 		target.fainted = true
 		target.regenLeft = 0
@@ -824,6 +844,13 @@ local function hit(
 ): number
 	local eventType = if kind and not asAttack then "ability" else "attack"
 	if state.time < target.dodgeUntil then
+		table.insert(events, { type = eventType, kind = kind, from = from.id, to = target.id, damage = 0, dodged = true })
+		return 0
+	end
+	-- Quick Step: its owner's creatures dodge its share of the hits on them (owner 2026-11-26, option C); rolled only
+	-- when there's a chance, so a fight without it draws the same randoms as before
+	local quick = if target.player or target.boss then nil else state.mutations[ownerKey(target)]
+	if quick and quick.dodge < 1 and from.side ~= target.side and random(state) < 1 - quick.dodge then
 		table.insert(events, { type = eventType, kind = kind, from = from.id, to = target.id, damage = 0, dodged = true })
 		return 0
 	end
@@ -2130,6 +2157,18 @@ function BattleSim._hurtPlayer(state: State, id: string, amount: number, fromId:
 	local from = if fromId then find(state, fromId) else nil
 	if fighter and fighter.player and not fighter.down and not fighter.left and not state.result then
 		hurtPlayer(state, fighter, amount, events, from)
+	end
+	return events
+end
+
+-- Lune tests only: damage any fighter directly (a creature's path; a player's goes through hurtPlayer); `fromId`: the
+-- hitter (a Thorns mutation strikes it back)
+function BattleSim._damage(state: State, id: string, amount: number, fromId: string?): { Event }
+	local events: { Event } = {}
+	local fighter = find(state, id)
+	local from = if fromId then find(state, fromId) else nil
+	if fighter and not fighter.fainted and not state.result then
+		takeDamage(state, fighter, amount, events, from)
 	end
 	return events
 end

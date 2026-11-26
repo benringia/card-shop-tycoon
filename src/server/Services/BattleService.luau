@@ -1364,8 +1364,9 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 	local members: { Member } = {}
 	local leaders, reserves = {}, {}
 	-- The weapon in hand's mutation for each player (weapons round 4 part 2; never in the arena, which builds its own
-	-- fights): Tough on their player fighter's HP, Pet Boost on their creatures' ATK and HP, a teammate's Rally (the
-	-- best one, not stacked) on their creatures' ATK; the rest lives in the sim (BattleSim.setMutation below)
+	-- fights): Tough on their player fighter's HP and their creatures' (option C, owner 2026-11-26), Pet Boost on their
+	-- creatures' ATK and HP, a teammate's Rally (the best one, not stacked) on their creatures' ATK; the rest lives in
+	-- the sim (BattleSim.setMutation below)
 	local mutationOf: { [Player]: MutationRules.Stats } = {}
 	for _, player in players do
 		mutationOf[player] = WeaponService.MutationStats(player)
@@ -1379,7 +1380,7 @@ local function startFight(players: { Player }, monster: Monster, options: RunOpt
 			end
 		end
 		input.atk *= mine.petAtk * (1 + rally)
-		input.hp = math.max(1, math.round(input.hp * mine.petHp))
+		input.hp = math.max(1, math.round(input.hp * mine.petHp * mine.hp))
 	end
 	for _, player in players do
 		local party = PartyService.GetParty(player) :: { slots: { [number]: string }, summoned: number? }

@@ -67,12 +67,15 @@ return {
 			group = "defense",
 			stat = "hp",
 			how = "more",
-			words = "Your HP +{n}%",
+			words = "You and your creatures: HP +{n}%",
 			twist = { stat = "secondWind", value = 0.3, words = "Second Wind: once a fight, heal 30% when low" },
 		},
-		{ id = "guard", name = "Guard", group = "defense", stat = "taken", how = "less", words = "You take {n}% less damage" },
-		{ id = "quickStep", name = "Quick Step", group = "defense", stat = "dodge", how = "less", words = "Dodge ready {n}% sooner" },
-		{ id = "thorns", name = "Thorns", group = "defense", stat = "thorns", how = "add", words = "{n}% of the damage you take hits back" },
+		-- The defensive ones protect your creatures too (owner 2026-11-26, option C: on the player alone a Legendary
+		-- Thorns added nothing to a boss fight, players who fight well are rarely hit): Tough their HP (BattleService),
+		-- Guard, Thorns and Second Wind on their hits, Quick Step a chance to dodge each (BattleSim)
+		{ id = "guard", name = "Guard", group = "defense", stat = "taken", how = "less", words = "You and your creatures take {n}% less damage" },
+		{ id = "quickStep", name = "Quick Step", group = "defense", stat = "dodge", how = "less", words = "Dodge ready {n}% sooner; your creatures dodge {n}% of hits" },
+		{ id = "thorns", name = "Thorns", group = "defense", stat = "thorns", how = "add", words = "{n}% of the damage you and your creatures take hits back" },
 		{
 			-- a share of the player's own HP for every sword hit that lands (the part 3 boss pass, 2026-11-26: a share of the
 			-- hit's damage made a 100 HP player unkillable on late bosses, whose hits are hundreds); a Legendary's 1.6% adds

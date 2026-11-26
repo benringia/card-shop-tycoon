@@ -55,15 +55,19 @@ return {
 		expect.equal(sharp.icon, "Sword")
 		expect.equal(sharp.group, "offense")
 		expect.equal(sharp.rarity, "Epic")
-		expect.equal(MutationRules.words(Mutations, m("tough", "Rare")).yours, "Rare · Tough (your HP +5%)", "the mockup's line")
-		expect.equal(MutationRules.words(Mutations, m("tough", "Legendary")).line, "Your HP +16%. Second Wind: once a fight, heal 30% when low.")
+		expect.equal(MutationRules.words(Mutations, m("tough", "Rare")).yours, "Rare · Tough (you and your creatures: HP +5%)", "the mockup's line, creatures too (option C)")
+		expect.equal(MutationRules.words(Mutations, m("tough", "Legendary")).line, "You and your creatures: HP +16%. Second Wind: once a fight, heal 30% when low.")
 		expect.equal(MutationRules.words(Mutations, m("petBoost", "Legendary")).line, "Your creatures' ATK and HP +6%. Rally: teammates' creatures +5% ATK.")
 		-- the part 3 boss pass (2026-11-26): Lifesteal heals a share of your own HP a landed sword hit, small numbers with
 		-- one decimal
 		expect.equal(MutationRules.words(Mutations, m("lifesteal", "Common")).line, "Each sword hit heals 0.3% of your HP.")
 		expect.equal(MutationRules.words(Mutations, m("lifesteal", "Legendary")).line, "Each sword hit heals 1.6% of your HP.")
 		expect.equal(MutationRules.words(Mutations, m("treasure", "Common")).line, "Fight cash +2%.", "Treasure at half")
-		expect.equal(MutationRules.words(Mutations, m("guard", "Very Rare")).line, "You take 8% less damage.")
+		-- the defensive ones protect your creatures too (owner 2026-11-26, option C)
+		expect.equal(MutationRules.words(Mutations, m("guard", "Very Rare")).line, "You and your creatures take 8% less damage.")
+		expect.equal(MutationRules.words(Mutations, m("thorns", "Rare")).line, "5% of the damage you and your creatures take hits back.")
+		expect.equal(MutationRules.words(Mutations, m("quickStep", "Epic")).line, "Dodge ready 12% sooner; your creatures dodge 12% of hits.")
+		expect.equal(MutationRules.words(Mutations, m("tough", "Rare")).line, "You and your creatures: HP +5%.")
 		expect.equal(MutationRules.words(Mutations, m("critical", "Rare")).line, "5% chance a sword hit deals double.")
 		for _, entry in Mutations.LIST do
 			for _, rarityName in Mutations.RARITIES do
