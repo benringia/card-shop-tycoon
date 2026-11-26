@@ -15,6 +15,7 @@ local Config = Shared:WaitForChild("Config")
 local PlacementConfig = require(Config:WaitForChild("Placement"))
 local PlotConfig = require(Config:WaitForChild("Plots"))
 local CellSearch = require(Shared:WaitForChild("Util"):WaitForChild("CellSearch"))
+local CheckoutLayout = require(Shared:WaitForChild("Util"):WaitForChild("CheckoutLayout"))
 local PlacementGrid = require(Shared:WaitForChild("Util"):WaitForChild("PlacementGrid"))
 local Props = require(Shared:WaitForChild("Util"):WaitForChild("Props"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
@@ -43,6 +44,7 @@ type Session = {
 	tinted: { Instance }, -- what turns green or red: the Highlight, the footprint, the arrow
 	status: TextLabel,
 	shown: CFrame?, -- where the ghost is drawn this frame (glides toward the snapped cell)
+	maxRows: number?, -- it must stay within the shop's first rows (the register's checkout: the hall)
 }
 
 local RAY_LENGTH = 500
@@ -154,7 +156,15 @@ local function makeGhost(size: Vector3, opts: BeginOptions): (Model, Part, { Ins
 	for _, arm in addArrow(ghost, size) do
 		table.insert(tinted, arm)
 	end
-	if opts.prop and Props.hasLook(opts.prop) then
+	if opts.pieces then
+		-- its pieces where the real ones stand (the register's checkout: the counter, its step, the queue's strip)
+		box.Transparency = 1
+		for _, piece in opts.pieces do
+			local part = ghostPart(ghost, piece.name, Vector3.new(piece.w, piece.h, piece.d), CFrame.new(piece.x, piece.y, piece.z))
+			part.Transparency = PlacementConfig.GHOST_TRANSPARENCY
+			table.insert(tinted, part)
+		end
+	elseif opts.prop and Props.hasLook(opts.prop) then
 		box.Transparency = 1
 		local model = Props.fit(opts.prop, size, CFrame.new(0, -size.Y / 2, 0), ghost)
 		for _, descendant in model:GetDescendants() do
@@ -220,6 +230,11 @@ local function update(dt: number)
 	current.ghost:PivotTo(shown)
 
 	current.valid = PlacementGrid.isFree(current.blocked, size, current.gridX, current.gridZ, current.rotation)
+	local maxRows = current.maxRows
+	if maxRows and current.valid then
+		local _, d = PlacementGrid.getFootprint(size, current.rotation)
+		current.valid = CheckoutLayout.inHall(current.gridZ, d, maxRows)
+	end
 	local color = if current.valid then PlacementConfig.GHOST_VALID_COLOR else PlacementConfig.GHOST_INVALID_COLOR
 	for _, item in current.tinted do
 		if item:IsA("Highlight") then
@@ -322,6 +337,8 @@ export type BeginOptions = {
 	prop: string?, -- the prop slot drawn as the ghost (Config/Shelves prop, or "Computer")
 	propColors: { [string]: Color3 }?,
 	title: string?, -- the ghost's label, e.g. "Wall Shelf · $400" or "Move Collector Case"
+	pieces: { CheckoutLayout.Piece }?, -- drawn instead of the box: pieces round its middle (the register's checkout)
+	maxRows: number?, -- it must stay within the shop's first rows (the register: Config/ShopRooms HALL_ROWS)
 }
 
 -- Starts placement mode for something of this size: a new shelf, or moving a shelf or fixture
@@ -357,6 +374,7 @@ function PlacementController.Begin(size: Vector3, opts: BeginOptions)
 		tinted = tinted,
 		status = status,
 		shown = nil,
+		maxRows = opts.maxRows,
 	}
 	if opts.gridX == nil then
 		local x, z = startCell(current)

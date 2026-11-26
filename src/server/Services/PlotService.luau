@@ -28,8 +28,14 @@ local ShopDetail = require(Config:WaitForChild("ShopDetail"))
 local PlacementConfig = require(Config:WaitForChild("Placement"))
 local ShopRooms = require(Shared:WaitForChild("Util"):WaitForChild("ShopRooms"))
 local RegisterBuild = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("RegisterBuild"))
+local CheckoutLayout = require(Shared:WaitForChild("Util"):WaitForChild("CheckoutLayout"))
 
 local COMPUTER_FIXTURE_ID = "OrderComputer"
+-- The movable checkout (testers 2026-11-26, the owner's pick A; Util/CheckoutLayout): the counter, its step and the
+-- queue zone carry this FixtureId, so moving it never blocks itself; it moves on the grid as one box
+local REGISTER_FIXTURE_ID = "Register"
+local CHECKOUT = CheckoutLayout.fromConfig(PlotConfig, Town)
+local CHECKOUT_SIZE = Vector3.new(CHECKOUT.width, PlotConfig.REGISTER_SIZE.Y, CHECKOUT.depth)
 -- The shop's cells (Config/ShopRooms counts in them) and the hall's back wall's middle plane, where back posters hang
 local GRID = ShopRooms.grid(PlotConfig.WIDTH, PlotConfig.DEPTH, PlacementConfig.GRID_SIZE)
 local BACK_Z = ShopRooms.innerWalls(RoomsConfig, GRID)[1].at
@@ -517,6 +523,7 @@ local function buildCheckout(register: Part, accent: Color3, parent: Instance)
 	local stepPart = shellPart(parent, "CashierStep", Vector3.new(step.width, step.height, step.depth), cframe * CFrame.new(0, bottom + step.height / 2, stepZ), Props.color(Town.SHOP.CHARCOAL))
 	stepPart.CanQuery = false
 	stepPart:SetAttribute("BlocksPlacement", true)
+	stepPart:SetAttribute("FixtureId", REGISTER_FIXTURE_ID)
 
 	local pendant = look.PENDANT
 	local cordLength = Town.WALL_HEIGHT - pendant.BOTTOM - pendant.SHADE_HEIGHT
@@ -540,33 +547,42 @@ local function buildCheckout(register: Part, accent: Color3, parent: Instance)
 	end
 end
 
+-- Where the counter stands for a checkout on this cell: its box (Util/CheckoutLayout) centred on the cells like a shelf,
+-- the counter toward the box's back, the queue filling its front (turn 0: customers queue toward the street)
+local function registerCFrame(floorCFrame: CFrame, gridX: number, gridZ: number, rotation: number): CFrame
+	return floorCFrame * PlacementGrid.getLocalCFrame(CHECKOUT_SIZE, gridX, gridZ, rotation) * CFrame.new(0, 0, CHECKOUT.registerZ)
+end
+
 -- Register faces the street like the plot; customers queue in front of it, the owner stands behind.
--- The counter part is what the shop systems use; the terminal and counter props sit on top of it.
+-- The counter part is what the shop systems use; the terminal and counter props sit on top of it. Every piece of the
+-- checkout goes in its `Checkout` folder, which moves as one (setRegisterCell)
 local function buildRegister(id: number, plotCFrame: CFrame, parent: Instance): Part
+	local checkout = Instance.new("Folder")
+	checkout.Name = "Checkout"
+	checkout.Parent = parent
 	local size = PlotConfig.REGISTER_SIZE
 	local register = Instance.new("Part")
 	register.Name = "Register"
 	register.Anchored = true
 	register.Size = size
-	-- by the left wall near the hall's back (the shop rooms lie behind it)
-	register.CFrame = plotCFrame
-		* CFrame.new(
-			-PlotConfig.WIDTH / 2 + PlotConfig.REGISTER_SIDE_INSET,
-			(PlotConfig.FLOOR_THICKNESS + size.Y) / 2,
-			ShopRooms.hallBack(RoomsConfig, GRID) - PlotConfig.REGISTER_BACK_INSET
-		)
+	-- by the left wall near the hall's back (the shop rooms lie behind it), until the owner moves it
+	register.CFrame = registerCFrame(plotCFrame, PlotConfig.REGISTER_GRID_X, PlotConfig.REGISTER_GRID_Z, 0)
 	register:SetAttribute("BlocksPlacement", true)
-	register.Parent = parent
+	register:SetAttribute("FixtureId", REGISTER_FIXTURE_ID)
+	register:SetAttribute("GridX", PlotConfig.REGISTER_GRID_X)
+	register:SetAttribute("GridZ", PlotConfig.REGISTER_GRID_Z)
+	register:SetAttribute("Rotation", 0)
+	register.Parent = checkout
 	local counter = Town.COUNTER
 	register:SetAttribute("Info", PlotConfig.REGISTER_TEXT) -- the owner's hover tooltip (ShelfInfoController)
-	buildCheckout(register, Props.color(getTheme(id).accent), parent)
+	buildCheckout(register, Props.color(getTheme(id).accent), checkout)
 	-- The register unit takes the left end (screen, cash drawer, card machine: Util/RegisterBuild); the decor sits in
 	-- the back strip, clear of the scan items on the front edge (RegisterService)
 	local counterTop = register.CFrame * CFrame.new(0, size.Y / 2, 0)
-	RegisterBuild.build(counterTop, parent)
+	RegisterBuild.build(counterTop, checkout)
 	local _, propZ = PropFit.counterZ(size.Z, RegisterConfig.ITEM_SIZE.Z, counter.PROP_DEPTH)
 	local decorBox = Vector3.new(counter.DECOR.width, counter.DECOR.height, counter.PROP_DEPTH)
-	Props.fit("CounterDecor", decorBox, counterTop * CFrame.new(counter.DECOR.x, 0, propZ), parent, id)
+	Props.fit("CounterDecor", decorBox, counterTop * CFrame.new(counter.DECOR.x, 0, propZ), checkout, id)
 
 	-- Keeps shelves out of the customer queue line
 	local zone = Instance.new("Part")
@@ -580,9 +596,27 @@ local function buildRegister(id: number, plotCFrame: CFrame, parent: Instance): 
 	zone.CFrame = register.CFrame
 		* CFrame.new(0, -size.Y / 2, -(size.Z + PlotConfig.QUEUE_ZONE_LENGTH) / 2)
 	zone:SetAttribute("BlocksPlacement", true)
-	zone.Parent = parent
+	zone:SetAttribute("FixtureId", REGISTER_FIXTURE_ID)
+	zone.Parent = checkout
 
 	return register
+end
+
+-- Moves the whole checkout (its folder: the counter and everything built round it) to a checkout cell, by one offset
+local function setRegisterCell(plot: Plot, gridX: number, gridZ: number, rotation: number)
+	local register = plot.register
+	local delta = registerCFrame(plot.floor.CFrame, gridX, gridZ, rotation) * register.CFrame:Inverse()
+	local checkout = register.Parent
+	for _, piece in if checkout then checkout:GetChildren() else { register } do
+		if piece:IsA("BasePart") then
+			piece.CFrame = delta * piece.CFrame
+		elseif piece:IsA("Model") then
+			piece:PivotTo(delta * piece:GetPivot())
+		end
+	end
+	register:SetAttribute("GridX", gridX)
+	register:SetAttribute("GridZ", gridZ)
+	register:SetAttribute("Rotation", rotation)
 end
 
 -- Invisible pad used as the owner's RespawnLocation. Turned 180° so they face into the shop.
@@ -1186,6 +1220,7 @@ function PlotService.Release(player: Player)
 	plot.signLabel.Text = PlotConfig.FREE_SIGN_TEXT
 	-- The next owner gets the default layout
 	setComputerCell(plot.computer, plot.floor.CFrame, PlotConfig.COMPUTER_GRID_X, PlotConfig.COMPUTER_GRID_Z, 0)
+	setRegisterCell(plot, PlotConfig.REGISTER_GRID_X, PlotConfig.REGISTER_GRID_Z, 0)
 
 	for _, callback in releasedCallbacks do
 		task.spawn(callback, player, plot)
@@ -1277,6 +1312,15 @@ PlotService.COMPUTER_FIXTURE_ID = COMPUTER_FIXTURE_ID
 -- Moves the order computer. PlacementService validates the spot first.
 function PlotService.SetComputerCell(plot: Plot, gridX: number, gridZ: number, rotation: number)
 	setComputerCell(plot.computer, plot.floor.CFrame, gridX, gridZ, rotation)
+end
+
+-- The movable checkout (testers 2026-11-26): its FixtureId, its box on the grid (the counter, its step behind and the
+-- queue in front) and moving it as one. PlacementService validates the cell first (in the hall, clear of the rest)
+PlotService.REGISTER_FIXTURE_ID = REGISTER_FIXTURE_ID
+PlotService.CHECKOUT_SIZE = CHECKOUT_SIZE
+
+function PlotService.SetRegisterCell(plot: Plot, gridX: number, gridZ: number, rotation: number)
+	setRegisterCell(plot, gridX, gridZ, rotation)
 end
 
 function PlotService.Start()

@@ -73,6 +73,7 @@ type ShelfPrompts = {
 
 local COMPUTER_PROMPT_OFFSET = 80 -- pixels below the computer's "Order stock" prompt
 local CONDENSER_EDIT_OFFSET = 80 -- machines show their use prompt and Edit together, so Edit sits below
+local REGISTER_PROMPT_OFFSET = 80 -- the register's Move sits below "Man the register" (its unit's prompt, on the counter)
 
 local player = Players.LocalPlayer
 
@@ -83,6 +84,7 @@ local palette: UIKit.Palette -- the cream windows' colours (UIKit.colorsFor), se
 local shopRows: { ShopRow } = {}
 local shelvesConnection: RBXScriptConnection? = nil
 local computerPrompt: ProximityPrompt? = nil
+local registerPrompt: ProximityPrompt? = nil
 local promptsByShelf: { [BasePart]: ShelfPrompts } = {}
 local items: { [string]: number } = {} -- the bag (ItemsChanged): trophies are placed from it (PlaceTrophy)
 
@@ -707,7 +709,46 @@ local function addComputerPrompt(computer: BasePart)
 	computerPrompt = prompt
 end
 
--- Adds prompts to every shelf on the player's own plot (including ones placed later) and its computer
+-- Move prompt on the owner's register (testers 2026-11-26: "Make the cash register Moveable", the owner's pick A): the
+-- whole checkout moves as one box (Util/CheckoutLayout), its ghost the counter, the cashier's step and the queue's strip,
+-- only in the hall. Hidden while you man it (its first-person view)
+local function addRegisterPrompt(register: BasePart)
+	if registerPrompt then
+		registerPrompt:Destroy()
+	end
+	local PlotConfig = require(Config:WaitForChild("Plots")) :: any
+	local Town = require(Config:WaitForChild("Town")) :: any
+	local RoomsConfig = require(Config:WaitForChild("ShopRooms")) :: any
+	local CheckoutLayout = require(Shared:WaitForChild("Util"):WaitForChild("CheckoutLayout"))
+	local prompt = makePrompt(register, "Move", "Register", Enum.KeyCode.F)
+	prompt.GamepadKeyCode = Enum.KeyCode.ButtonY
+	prompt.UIOffset = Vector2.new(0, REGISTER_PROMPT_OFFSET)
+	local function follow()
+		prompt.Enabled = player:GetAttribute("ManningRegister") ~= true
+	end
+	follow()
+	player:GetAttributeChangedSignal("ManningRegister"):Connect(follow)
+	prompt.Triggered:Connect(function()
+		local fixtureId = register:GetAttribute("FixtureId")
+		if PlacementController.IsActive() or typeof(fixtureId) ~= "string" then
+			return
+		end
+		local box = CheckoutLayout.fromConfig(PlotConfig, Town)
+		PlacementController.Begin(Vector3.new(box.width, PlotConfig.REGISTER_SIZE.Y, box.depth), {
+			kind = "MoveFixture",
+			id = fixtureId,
+			title = "Move Register",
+			rotation = getNumberAttribute(register, "Rotation", 0),
+			gridX = getNumberAttribute(register, "GridX", 0),
+			gridZ = getNumberAttribute(register, "GridZ", 0),
+			pieces = CheckoutLayout.pieces(PlotConfig, Town, box),
+			maxRows = RoomsConfig.HALL_ROWS,
+		})
+	end)
+	registerPrompt = prompt
+end
+
+-- Adds prompts to every shelf on the player's own plot (including ones placed later), its computer and its register
 local function watchOwnPlot()
 	if shelvesConnection then
 		shelvesConnection:Disconnect()
@@ -718,6 +759,10 @@ local function watchOwnPlot()
 		return
 	end
 	local plot = workspace:WaitForChild("Plots"):WaitForChild("Plot" .. plotId)
+	task.spawn(function()
+		local checkout = plot:WaitForChild("Checkout")
+		addRegisterPrompt(checkout:WaitForChild("Register") :: BasePart)
+	end)
 	addComputerPrompt(plot:WaitForChild("OrderComputer") :: BasePart)
 	local shelvesFolder = plot:WaitForChild("Shelves")
 

@@ -26,6 +26,7 @@ local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"
 local CardRules = require(Shared:WaitForChild("Util"):WaitForChild("CardRules"))
 local PlacementGrid = require(Shared:WaitForChild("Util"):WaitForChild("PlacementGrid"))
 local CellSearch = require(Shared:WaitForChild("Util"):WaitForChild("CellSearch"))
+local CheckoutLayout = require(Shared:WaitForChild("Util"):WaitForChild("CheckoutLayout"))
 local Props = require(Shared:WaitForChild("Util"):WaitForChild("Props"))
 local PlotConfig = require(Config:WaitForChild("Plots"))
 local ShelfStock = require(Shared:WaitForChild("Util"):WaitForChild("ShelfStock"))
@@ -769,6 +770,27 @@ local function canPlaceAt(plot: Plot, size: Vector3, gridX: number, gridZ: numbe
 	return PlacementGrid.isFree(blocked, size, gridX, gridZ, rotation)
 end
 
+-- The movable checkout (testers 2026-11-26, the owner's pick A; Util/CheckoutLayout): its box fits like a shelf, its
+-- own pieces ignored, and stays in the hall, never in a room or its wall. `beforeComputer`: a load puts it back before
+-- the computer finds its own spot, so the computer's spot doesn't count yet
+local function registerFits(plot: Plot, gridX: number, gridZ: number, rotation: number, beforeComputer: boolean?): boolean
+	local size = PlotService.CHECKOUT_SIZE
+	local _, d = PlacementGrid.getFootprint(size, rotation)
+	if not CheckoutLayout.inHall(gridZ, d, RoomsConfig.HALL_ROWS) then
+		return false
+	end
+	local blocked = PlacementGrid.getBlockedRects(plot.model, plot.floor.CFrame, PlotService.REGISTER_FIXTURE_ID, if beforeComputer then PlotService.COMPUTER_FIXTURE_ID else nil)
+	return PlacementGrid.isFree(blocked, size, gridX, gridZ, rotation)
+end
+
+-- What keeps the register where it is now (RegisterService: a checkout; CustomerService: someone in line), in words for
+-- the locked card; nil when it may move
+local moveGuards: { (player: Player, plot: Plot) -> string? } = {}
+
+function PlacementService.AddRegisterGuard(guard: (player: Player, plot: Plot) -> string?)
+	table.insert(moveGuards, guard)
+end
+
 -- Shared checks for every edit request. Returns the plot and layout when the player may edit.
 local function getEditablePlot(player: Player): (Plot?, { [string]: PlacedShelf }?)
 	local plot = PlotService.GetPlot(player)
@@ -879,12 +901,13 @@ local function onMove(player: Player, uid: unknown, gridX: unknown, gridZ: unkno
 	positionShelf(plot, shelf)
 end
 
--- Only the order computer can be moved for now; the register stays put because the queue lines up on it
+-- The order computer, and since testers 2026-11-26 the register's whole checkout (the owner's pick A: the counter, its
+-- step and the queue in front, in the hall, never while it's in use)
 local function onMoveFixture(player: Player, fixtureId: unknown, gridX: unknown, gridZ: unknown, rotation: unknown)
 	if not allowAction(player) then
 		return
 	end
-	if fixtureId ~= PlotService.COMPUTER_FIXTURE_ID then
+	if fixtureId ~= PlotService.COMPUTER_FIXTURE_ID and fixtureId ~= PlotService.REGISTER_FIXTURE_ID then
 		return
 	end
 	if not isGridInteger(gridX) or not isGridInteger(gridZ) or not isValidRotation(rotation) then
@@ -895,7 +918,26 @@ local function onMoveFixture(player: Player, fixtureId: unknown, gridX: unknown,
 		return
 	end
 	local gx, gz, rot = gridX :: number, gridZ :: number, rotation :: number
-	if not canPlaceAt(plot, plot.computer.Size, gx, gz, rot, fixtureId) then
+	if fixtureId == PlotService.REGISTER_FIXTURE_ID then
+		if player:GetAttribute("ManningRegister") == true then
+			Blocked.tell(player, "Leave the register first, then move it.", { title = "Register" })
+			return
+		end
+		for _, guard in moveGuards do
+			local why = guard(player, plot)
+			if why then
+				Blocked.tell(player, why, { title = "Register" })
+				return
+			end
+		end
+		if not registerFits(plot, gx, gz, rot) then
+			Blocked.tell(player, "The register needs room for its line in front, inside the shop's front hall.", { title = "Register" })
+			return
+		end
+		PlotService.SetRegisterCell(plot, gx, gz, rot)
+		return
+	end
+	if not canPlaceAt(plot, plot.computer.Size, gx, gz, rot, fixtureId :: string) then
 		notify(player, "That spot is blocked.", true)
 		return
 	end
@@ -972,6 +1014,21 @@ local function nearestFreeCell(plot: Plot, size: Vector3, startX: number, startZ
 		end
 	end
 	return nil, nil
+end
+
+-- Runs first, before the shelves and the computer: the register's checkout goes back to its saved cell when it still
+-- fits there (in the hall, clear of the walls, rooms and spawn), else to where it always stood. The shelves then find
+-- their spots round it (a saved layout already did)
+local function restoreRegister(plot: Plot, saved: SavedCell?)
+	local valid = typeof(saved) == "table"
+		and isGridInteger(saved.gridX)
+		and isGridInteger(saved.gridZ)
+		and isValidRotation(saved.rotation)
+	if valid and registerFits(plot, saved.gridX, saved.gridZ, saved.rotation, true) then
+		PlotService.SetRegisterCell(plot, saved.gridX, saved.gridZ, saved.rotation)
+	else
+		PlotService.SetRegisterCell(plot, PlotConfig.REGISTER_GRID_X, PlotConfig.REGISTER_GRID_Z, 0)
+	end
 end
 
 -- Runs after the shelves: the computer goes back to its saved spot, or (when that is taken, or a bigger
@@ -1106,8 +1163,8 @@ local function restoreShelf(player: Player, plot: Plot, saved: SavedShelf, lefto
 end
 
 -- New shops have an empty layout; returning players get their shelves, stock and displayed cards back.
--- Shelves go first (ignoring the computer), then the computer finds its spot around them. CardService loads
--- before this, so displayed cards that can't be put back are returned to the binder.
+-- The register's checkout goes first, then the shelves (ignoring the computer), then the computer finds its spot around
+-- them. CardService loads before this, so displayed cards that can't be put back are returned to the binder.
 local function load(player: Player, data: PlayerData)
 	local plot = PlotService.GetPlot(player)
 	if not plot then
@@ -1115,6 +1172,7 @@ local function load(player: Player, data: PlayerData)
 	end
 	layouts[player] = {}
 	pendingExtras[player] = {}
+	restoreRegister(plot, data.fixtures[PlotService.REGISTER_FIXTURE_ID])
 	local leftovers: { DisplayedCard } = {}
 	for _, saved in data.layout do
 		restoreShelf(player, plot, saved, leftovers)
@@ -1173,6 +1231,13 @@ local function save(player: Player, data: PlayerData)
 		gridZ = computer:GetAttribute("GridZ") :: number,
 		rotation = computer:GetAttribute("Rotation") :: number,
 	}
+	-- the register's checkout cell (testers 2026-11-26): the same map, so no schema change; an older save has none
+	local register = plot.register
+	data.fixtures[PlotService.REGISTER_FIXTURE_ID] = {
+		gridX = register:GetAttribute("GridX") :: number,
+		gridZ = register:GetAttribute("GridZ") :: number,
+		rotation = register:GetAttribute("Rotation") :: number,
+	}
 end
 
 local function unload(player: Player)
@@ -1211,6 +1276,12 @@ function PlacementService.Refit(player: Player)
 	end
 	local computer = plot.computer
 	restoreComputer(plot, { gridX = computer:GetAttribute("GridX") :: number, gridZ = computer:GetAttribute("GridZ") :: number, rotation = computer:GetAttribute("Rotation") :: number })
+	-- the register keeps its cell while it still fits (it always does: rooms only add floor), else goes home
+	local register = plot.register
+	local gx, gz, rot = register:GetAttribute("GridX"), register:GetAttribute("GridZ"), register:GetAttribute("Rotation")
+	if not (isGridInteger(gx) and isGridInteger(gz) and isValidRotation(rot) and registerFits(plot, gx :: number, gz :: number, rot :: number)) then
+		PlotService.SetRegisterCell(plot, PlotConfig.REGISTER_GRID_X, PlotConfig.REGISTER_GRID_Z, 0)
+	end
 end
 
 -- A shelf bought and placed (the tutorial's "build a rack" step)

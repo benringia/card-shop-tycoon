@@ -39,8 +39,11 @@ return {
 	-- Register counter on the left side near the back. Customers queue in front of it toward the street;
 	-- the owner stands behind it.
 	REGISTER_SIZE = Vector3.new(6, 2.5, 2), -- low, so small cashier pets behind it still show
-	REGISTER_SIDE_INSET = 5, -- from the side wall to the counter centre
-	REGISTER_BACK_INSET = 6, -- from the back wall to the counter centre
+	-- The owner can move the whole checkout since testers 2026-11-26 (Util/CheckoutLayout: the counter, its step behind and
+	-- the queue in front as one box, 3 x 12 cells); it starts on this cell (the counter where it always stood, 5 studs from
+	-- the left wall and 6.45 from the hall's back) and goes back there when the plot is released
+	REGISTER_GRID_X = 1,
+	REGISTER_GRID_Z = 7,
 	REGISTER_TEXT = "💰 Register", -- the owner's hover tooltip over the checkout (ShelfInfoController)
 
 	-- Invisible strip in front of the register that shelves can't be placed on.

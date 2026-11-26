@@ -1421,6 +1421,15 @@ end
 
 function CustomerService.Start()
 	NpcMotion.setupCollisionGroups()
+	-- The register stays put while anyone waits in line or pays (testers 2026-11-26, the movable register): a queued
+	-- customer steps to its spot in a straight line, so a line moved under it could leave it stuck on a shelf
+	PlacementService.AddRegisterGuard(function(_player: Player, plot: Plot): string?
+		local state = plotStates[plot]
+		if state and #state.queue > 0 then
+			return "Customers are in line. Move the register once they've paid."
+		end
+		return nil
+	end)
 
 	customersFolder = Instance.new("Folder")
 	customersFolder.Name = "Customers"

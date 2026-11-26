@@ -70,7 +70,7 @@ local function shelfAt(screen: Vector2): BasePart?
 	local plot = getOwnPlot()
 	local shelves = plot and plot:FindFirstChild("Shelves")
 	local computer = plot and plot:FindFirstChild("OrderComputer", true)
-	local register = plot and plot:FindFirstChild("Register")
+	local register = plot and plot:FindFirstChild("Register", true) -- in its Checkout folder (the movable register)
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if not camera or not plot or not shelves or not root then

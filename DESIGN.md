@@ -835,8 +835,22 @@ is over UI (`UIKit.pointerBlocked`).
   queue strip is 18 studs (`Plots.QUEUE_ZONE_LENGTH`: 6 customers x 3).
 
 ### 4.6 Register / checkout
-- The counter stands by the left wall (5 studs in) near the hall's back (6 in front of its back wall); since the shop
+- The counter starts by the left wall (5 studs in) near the hall's back (6.45 in front of its back wall); since the shop
   rooms it keeps that spot measured from the hall, not the 60-deep floor's back.
+- **The owner can move it** (testers 2026-11-26: "Make the cash register Moveable", the owner's pick A; spec
+  `docs/superpowers/specs/2026-11-26-movable-register-design.md`): its own "Move" prompt (F, under "Man the register",
+  hidden while manning) opens the placement ghost, the counter, the cashier's step and the queue's strip over the
+  footprint grid, four turns, customers always on its front. The whole checkout moves as one: the counter, plinth,
+  top, LED, register unit, decor, step, pendant lights and queue zone are built into the plot's `Checkout` folder and
+  moved by one offset (`PlotService.SetRegisterCell`), so everything reading `plot.register` follows (customers' queue
+  spots, the cashier worker, the counter items, the register station's camera). Its footprint is one box
+  (`Util/CheckoutLayout`: 6 x 22.9 studs, 3 x 12 cells, the counter at its back, the queue filling its front) that fits
+  like a shelf (its own pieces carry `FixtureId` "Register") and stays in the hall (`CheckoutLayout.inHall`, rows 0-19:
+  never in a room, its wall or a door's path). Refused with the locked card while you man it or anyone waits in line
+  or pays (queued customers step to their spot in a straight line: a moved line could leave one stuck on a shelf).
+  Saved as `fixtures.Register` (10.4) and put back first on load, then the shelves round it, then the computer; a
+  released plot puts it home (`Plots.REGISTER_GRID_X/Z` 1, 7). Studio-checked: moved 8 studs right, a customer queued,
+  was served by the cashier worker and left; the spot came back after a rejoin.
 - Player stands at register, customer puts items on counter, player clicks/taps each item to scan, then confirms payment.
   Sounds at the register (heard nearby, the owner's and a cashier's alike; licensed PSE, owner 2026-11-16): a checkout
   beep on every scan (`Register.SCAN_SOUND_ID`), the drawer opening under a bright ding on every sale (`SALE_SOUNDS`).
@@ -5553,6 +5567,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
         ├── Remotes.luau        # all RemoteEvents/Functions defined in one place
         └── Util/
             ├── PlacementGrid.luau # grid maths shared by client preview + server validation
+            ├── CheckoutLayout.luau # the movable register's box: counter, step, queue; the hall only (pure, Lune-tested)
             ├── DecorRules.luau    # shop decor: buy / use a look, a save cleaned, the decor score, the piece cap (pure, Lune-tested)
             ├── DecorLooks.luau    # shop decor pieces' code-built stand-ins and their finish by part name
             ├── TrophyLooks.luau   # a placed trophy's lights: its Gem in the boss's colour, its Glow parts Neon
@@ -5726,7 +5741,9 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
                             --   cards (card cases): { { slot, cardId, foil, price, grade, beastId?, level?, xp?, stars? } } (stars 0-5)
                             --   boxes (storage racks, v43): { { slot, productId, units } } the boxes on it, by spot
     fixtures = {},          -- { [fixtureId] = { gridX, gridZ, rotation } } e.g. the moved order computer (a 10x6 desk;
-                            -- restored after the shelves, to the nearest free spot if its own is taken).
+                            -- restored after the shelves, to the nearest free spot if its own is taken) and, since
+                            -- 2026-11-26 (same map, no schema change), `Register`: the checkout's cell (4.6), restored
+                            -- first when it still fits in the hall, else home (an older save has none: home).
                             -- Saved shelves that no longer fit their spot (a shelf grew) move to the nearest free one.
     boxes = {},             -- { { productId, units } } on the pad, carried, or ordered but not delivered
     cards = {},             -- { [cardId] = { [grade] = { normal = n, foil = n } } } plain copies in the binder, not on display

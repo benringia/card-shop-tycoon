@@ -7,6 +7,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	BeastMath = require("./BeastMath.spec"),
 	Migrations = require("./Migrations.spec"),
 	SaleRules = require("./SaleRules.spec"),
+	CheckoutLayout = require("./CheckoutLayout.spec"),
 	ListingHold = require("./ListingHold.spec"),
 	TipRules = require("./TipRules.spec"),
 	Funnel = require("./Funnel.spec"),
