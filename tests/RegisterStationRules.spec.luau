@@ -246,4 +246,29 @@ return {
 			expect.equal(left, 0, `exact for {change}`)
 		end
 	end,
+
+	-- Testers 2026-11-26: "Make the player look around while in the cashier"
+	["looking around: a drag turns the view its way and stops at the limits"] = function()
+		local look = RegisterStation.CAMERA.look
+		local yaw, pitch = RegisterStationRules.look(0, 0, 40, 0, 0.25, look)
+		expect.near(yaw, -10, 1e-9, "dragged right: turned right (a negative yaw)")
+		expect.near(pitch, 0, 1e-9)
+		yaw, pitch = RegisterStationRules.look(0, 0, 0, -40, 0.25, look)
+		expect.near(pitch, 10, 1e-9, "dragged up: looks up")
+		yaw = RegisterStationRules.look(0, 0, -100000, 0, 0.25, look)
+		expect.near(yaw, look.yaw, 1e-9, "never further left than its limit")
+		yaw = RegisterStationRules.look(0, 0, 100000, 0, 0.25, look)
+		expect.near(yaw, -look.yaw, 1e-9, "nor right")
+		_, pitch = RegisterStationRules.look(0, 0, 0, -100000, 0.25, look)
+		expect.near(pitch, look.up, 1e-9, "nor up")
+		_, pitch = RegisterStationRules.look(0, 0, 0, 100000, 0.25, look)
+		expect.near(pitch, -look.down, 1e-9, "nor down")
+		expect.equal(look.yaw >= 45 and look.up >= 15 and look.down >= 15, true, "far enough to watch the shop")
+	end,
+
+	["looking around: a finger only looks once it moves; a tap stays a tap"] = function()
+		local look = RegisterStation.CAMERA.look
+		expect.equal(RegisterStationRules.isLookDrag(100, 100, 100 + look.dragFrom - 1, 100, look), false, "a tap's wobble")
+		expect.equal(RegisterStationRules.isLookDrag(100, 100, 100, 100 + look.dragFrom + 1, look), true, "a drag")
+	end,
 }

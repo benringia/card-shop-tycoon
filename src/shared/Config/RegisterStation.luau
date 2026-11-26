@@ -60,6 +60,11 @@ return {
 		},
 		fov = 70,
 		seconds = 0.45,
+		-- Looking around (testers 2026-11-26: "Make the player look around while in the cashier"): hold the right mouse
+		-- button, or drag a finger over the view (`dragFrom` pixels before a touch looks rather than taps), and the view
+		-- turns `mouse` / `touch` degrees a pixel, up to `yaw` either side, `up` up and `down` down; the next step's
+		-- camera (Charge, the card machine, the drawer) starts straight on again
+		look = { yaw = 70, up = 25, down = 30, mouse = 0.25, touch = 0.3, dragFrom = 12 },
 	},
 	-- Exact change gives itself after this long (no small button to find on a phone; a kid sees "Exact!" first)
 	AUTO_GIVE_SECONDS = 0.7,

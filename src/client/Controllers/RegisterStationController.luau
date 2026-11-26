@@ -88,6 +88,12 @@ local drawerOpen = false
 local drawerClosed: CFrame? = nil
 local saved: { walk: number, jumpPower: number, jumpHeight: number, autoRotate: boolean }? = nil
 local hideConnection: RBXScriptConnection? = nil
+-- Looking around (testers 2026-11-26; CAMERA.look): the step's own view (tweened), how far you've turned off it in
+-- degrees, and the drag doing it (the right mouse button, or a finger that has moved past dragFrom)
+local poseView = Instance.new("CFrameValue")
+local lookYaw, lookPitch = 0, 0
+local lookDrag: { input: InputObject?, from: Vector2, looking: boolean }? = nil
+local LOOK_STEP = "RegisterLook"
 
 local prompt: ProximityPrompt? = nil
 local screen: RegisterScreen.Screen
@@ -657,7 +663,70 @@ local function moveCamera(name: string)
 	local look = top * Vector3.new(pose.look[1], pose.look[2], pose.look[3])
 	camera.CameraType = Enum.CameraType.Scriptable
 	camera.FieldOfView = CAMERA.fov
-	TweenService:Create(camera, TweenInfo.new(CAMERA.seconds, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), { CFrame = CFrame.lookAt(eye, look) }):Play()
+	-- from wherever you were looking, straight on to the step's view (aimCamera adds your look-around on top)
+	poseView.Value = camera.CFrame
+	lookYaw, lookPitch = 0, 0
+	TweenService:Create(poseView, TweenInfo.new(CAMERA.seconds, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), { Value = CFrame.lookAt(eye, look) }):Play()
+end
+
+-- Every frame while you man it: the step's view turned by your look-around, round the world's up (the horizon stays
+-- level however far down the view looks)
+local function aimCamera()
+	local camera = workspace.CurrentCamera
+	if not camera or camera.CameraType ~= Enum.CameraType.Scriptable then
+		return
+	end
+	local base = poseView.Value
+	local forward = base.LookVector
+	local yaw = math.atan2(-forward.X, -forward.Z) + math.rad(lookYaw)
+	local pitch = math.clamp(math.asin(math.clamp(forward.Y, -1, 1)) + math.rad(lookPitch), math.rad(-85), math.rad(85))
+	camera.CFrame = CFrame.new(base.Position) * CFrame.Angles(0, yaw, 0) * CFrame.Angles(pitch, 0, 0)
+end
+
+-- Look-around's drag: the right mouse button held (the mouse stays put, as Roblox's own camera does), or a finger on
+-- the view that moves past dragFrom (a tap stays a tap: the drawer's money still takes it)
+local function onLookBegan(input: InputObject, processed: boolean)
+	if not manned or processed or lookDrag then
+		return
+	end
+	if input.UserInputType == Enum.UserInputType.MouseButton2 then
+		lookDrag = { input = nil, from = Vector2.zero, looking = true }
+		UserInputService.MouseBehavior = Enum.MouseBehavior.LockCurrentPosition
+	elseif input.UserInputType == Enum.UserInputType.Touch then
+		lookDrag = { input = input, from = Vector2.new(input.Position.X, input.Position.Y), looking = false }
+	end
+end
+
+local function onLookChanged(input: InputObject)
+	local drag = lookDrag
+	if not manned or not drag then
+		return
+	end
+	local cfg = CAMERA.look
+	if drag.input == nil and input.UserInputType == Enum.UserInputType.MouseMovement then
+		lookYaw, lookPitch = RegisterStationRules.look(lookYaw, lookPitch, input.Delta.X, input.Delta.Y, cfg.mouse, cfg)
+	elseif drag.input == input then
+		if not drag.looking and RegisterStationRules.isLookDrag(drag.from.X, drag.from.Y, input.Position.X, input.Position.Y, cfg) then
+			drag.looking = true
+		end
+		if drag.looking then
+			lookYaw, lookPitch = RegisterStationRules.look(lookYaw, lookPitch, input.Delta.X, input.Delta.Y, cfg.touch, cfg)
+		end
+	end
+end
+
+local function endLook()
+	if lookDrag and lookDrag.input == nil then
+		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+	end
+	lookDrag = nil
+end
+
+local function onLookEnded(input: InputObject)
+	local drag = lookDrag
+	if drag and ((drag.input == nil and input.UserInputType == Enum.UserInputType.MouseButton2) or drag.input == input) then
+		endLook()
+	end
 end
 
 local function refresh()
@@ -806,6 +875,13 @@ function RegisterStationController.Man()
 		end
 	end)
 	shownPose = ""
+	-- your look-around on top of each step's view (aimCamera), starting from where the camera is now
+	local view = workspace.CurrentCamera
+	if view then
+		poseView.Value = view.CFrame
+	end
+	lookYaw, lookPitch = 0, 0
+	RunService:BindToRenderStep(LOOK_STEP, Enum.RenderPriority.Camera.Value + 1, aimCamera)
 	lastProgressAt = os.clock()
 	if prompt then
 		prompt.Enabled = false
@@ -847,6 +923,9 @@ function RegisterStationController.Leave()
 		return
 	end
 	manned = false
+	RunService:UnbindFromRenderStep(LOOK_STEP)
+	endLook()
+	lookYaw, lookPitch = 0, 0
 	Remotes.ManRegister:FireServer(false)
 	SaleOrigin.set(nil)
 	Hud.keepOnly("register", nil)
@@ -1143,6 +1222,11 @@ function RegisterStationController.Start()
 	end)
 	UserInputService.InputBegan:Connect(onInput)
 	UserInputService.InputChanged:Connect(onHover)
+	-- looking around while you man it (testers 2026-11-26): right mouse held or a finger dragged over the view
+	UserInputService.InputBegan:Connect(onLookBegan)
+	UserInputService.InputChanged:Connect(onLookChanged)
+	UserInputService.InputEnded:Connect(onLookEnded)
+	UserInputService.WindowFocusReleased:Connect(endLook) -- never left holding the mouse still
 	task.spawn(function()
 		while true do
 			task.wait(CHECK_SECONDS)

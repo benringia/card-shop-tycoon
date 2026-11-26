@@ -150,4 +150,16 @@ function RegisterStationRules.leaveKey(key: string, pill: { key: string }, manne
 	return manned and not typing and key == pill.key
 end
 
+-- Looking around while you man it (testers 2026-11-26; Config/RegisterStation CAMERA.look): a drag of (dx, dy) pixels
+-- turns the view `perPixel` degrees a pixel its way (right turns right: a negative yaw; up looks up), never past the
+-- limits. Degrees off the step's own view
+function RegisterStationRules.look(yaw: number, pitch: number, dx: number, dy: number, perPixel: number, cfg: { yaw: number, up: number, down: number }): (number, number)
+	return math.clamp(yaw - dx * perPixel, -cfg.yaw, cfg.yaw), math.clamp(pitch - dy * perPixel, -cfg.down, cfg.up)
+end
+
+-- Whether a finger has moved far enough from where it touched down to be looking around (not a tap)
+function RegisterStationRules.isLookDrag(fromX: number, fromY: number, toX: number, toY: number, cfg: { dragFrom: number }): boolean
+	return (toX - fromX) ^ 2 + (toY - fromY) ^ 2 >= cfg.dragFrom ^ 2
+end
+
 return RegisterStationRules
