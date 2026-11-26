@@ -124,6 +124,14 @@ return {
 		assert(UIIcons.PishPresent and UIIcons.PishGift, "both pictures uploaded")
 	end,
 
+	-- owner 2026-11-26 ("also add some icon on the essence", pick A): Mutation Essence has its own shiny picture like
+	-- the other materials, not the white Potion line drawing
+	["Mutation Essence has its own uploaded picture"] = function()
+		local UIIcons = require("../src/shared/Config/UIIcons")
+		expect.equal(config.ITEMS.mutationEssence.icon, "Essence")
+		assert(UIIcons.Essence, "uploaded")
+	end,
+
 	-- owner 2026-11-14: "all card pack in my inventory look the same (epic/legendary/first cardpack) ... samewith the
 	-- trophies and keys": each key fragment, trophy and Turts pack has its own uploaded picture
 	["every key fragment, trophy and rarity pack has its own picture"] = function()

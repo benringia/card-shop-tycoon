@@ -116,10 +116,11 @@ return {
 			source = "Wild and Frontier monsters · 15% (elites 60%) · shop level gifts",
 			use = "Bring it to the Forge in your shop",
 		},
-		-- Weapon mutations (weapons round 4 part 2, Config/Mutations): the mutation you don't keep turns into it
+		-- Weapon mutations (weapons round 4 part 2, Config/Mutations): the mutation you don't keep after a boss's drop
+		-- turns into it (never a Forge roll's: owner 2026-11-26)
 		mutationEssence = {
 			name = "Mutation Essence",
-			icon = "Potion",
+			icon = "Essence",
 			description = "Rolls a new mutation on a weapon.",
 			source = "Boss drops of a weapon you have: the mutation you don't keep",
 			use = "At the Forge in your shop, open Mutate",

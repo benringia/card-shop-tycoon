@@ -71,6 +71,9 @@ return {
 	Job = "rbxassetid://118599839064458",
 	KeyFragment = "rbxassetid://94794644631272",
 	XpTonic = "rbxassetid://125806292616128",
+	-- Mutation Essence (owner 2026-11-26, pick A): the XP Tonic's flask in violet with sparkles,
+	-- tools/ui-icons/make_essence.py (its plain Potion line drawing sat beside the other materials' shiny pictures)
+	Essence = "rbxassetid://91797084120103",
 	GradingSeal = "rbxassetid://76519908973343",
 	GoldSeal = "rbxassetid://96924262888584",
 	Travel = "rbxassetid://93470751784969",
