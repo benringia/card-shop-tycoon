@@ -3864,7 +3864,18 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
       Reveals wait until no window is open (the stage is 3D: a window over it hid the blade). A choice left waiting (they
       left) is saved and asked again after the next join.
     - **The look**: the held blade (and the reveal's) gets a rim in the card rarity colour (a Highlight on the model,
-      `Mutations.LOOK.rim`), Legendary also sparkles (`WeaponLook.mutation`, the character's `SwordMutation`).
+      `Mutations.LOOK.rim`), Legendary also sparkles (`WeaponLook.mutation`, the character's `SwordMutation`). Its card
+      too (owner 2026-11-26, pick A of artifact 6awW3fMBYRdEZ8mQp9pPHB: "Binder: add an indication for mutations on weapon
+      cards"): a bright line and a soft glow round the card's edge in the mutation's colour and its group's icon on a
+      disc above the Attack line (`WeaponFace`, `WeaponLooks.CARD.mutation`), everywhere a weapon card shows (binder,
+      Forge, weapon window); a small card (the Forge list's thumbnails) keeps the edge, no disc.
+    - **Words** (owner 2026-11-26: "make this description more specific"): each says exactly what it changes ("Your
+      sword deals +3% damage to bosses", "You and your creatures get +12% max HP", "+8% cash from fights you win");
+      Thorns "Reflects 100% of the damage you and your creatures take back at the foe" (owner: "does this mean REFLECTS
+      back? if yes change the wordings").
+    - **A Thorns reflect** (owner 2026-11-26, pick B, "make the thorns subtle"; `AttackFx.THORNS`): a green number
+      tagged THORNS over the foe (BattleController's `floatText` tag) and three thin green thorns out of the ground
+      under it, sized to it, short-lived, no ring, burst or light (`ElementFx.thornsBack` from FightFx).
     - **The weapon window** (layout A): its last row is the mutation, tinted (a pale fill, its edge and title in the
       colour, its group's icon tinted: "Sharp · Epic mutation" / "Sword hits +12%."); a gold "New mutation waiting!"
       row while a choice waits. Rows 46 px since then (48 before), so four rows and the gold box fit a short window. The
