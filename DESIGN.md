@@ -3938,7 +3938,7 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
       cooldown set when you dodge (a switch costs its lock), Lifesteal heals nothing on a hit the shield takes, a lent
       weapon (the prologue) and the arena have none, Thorns can't farm the loot contribution. Sims after (200 fights,
       +10 S tier weapon, 0.8x fighting well): no mutation and Pet Boost exactly as before (Ember Colossus 88 / 97%,
-      Storm Sovereign 68 / 87%), Thorns 100% a point lower (overkill no longer reflects), Legendary Tough 94 / 88%;
+      Storm Sovereign 68 / 87%, Prism Hydra through its Dungeon rooms 83 / 100%), Thorns 100% a point lower (overkill no longer reflects), Legendary Tough 94 / 88%;
       four players all with the same Legendary (worst case): every row already wins at +10 S, and the fight is a few
       seconds shorter (Ember Colossus 44 s; Thorns 41, Pet Boost with Rally 39, Guard 44).
 
