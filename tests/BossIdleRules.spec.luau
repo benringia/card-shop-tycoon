@@ -39,6 +39,18 @@ return {
 		expect.equal(yawEnd, 0, "facing the fight once there")
 	end,
 
+	-- Testers 2026-11-26: "Boss still face/attack dead pets": it kept facing the way its fight began, where your first
+	-- creature stood, after that creature fell and you fought on alone
+	["it turns to what it goes for, from where it stands, in a walk's own turns"] = function()
+		expect.near(BossIdleRules.faceYaw(0, 0, 0, -10) :: number, 0, 1e-9, "straight ahead (-z): no turn")
+		expect.near(BossIdleRules.faceYaw(0, 0, 10, 0) :: number, -math.pi / 2, 1e-9, "to its right (+x): a quarter turn")
+		expect.near(math.abs(BossIdleRules.faceYaw(0, 0, 0, 10) :: number), math.pi, 1e-9, "behind it: half a turn")
+		expect.near(BossIdleRules.faceYaw(4, 2, 4, -8) :: number, 0, 1e-9, "from where it stands, not its spot")
+		local _, _, walkYaw = BossIdleRules.walk(0.1, 0, 0, 10, 0, 6)
+		expect.near(BossIdleRules.faceYaw(0, 0, 10, 0) :: number, walkYaw, 1e-9, "the same turn as walking that way")
+		expect.isNil(BossIdleRules.faceYaw(3, 3, 3.05, 3), "right on top of it: no new turn (it keeps the one it has)")
+	end,
+
 	["it picks a walk, a roar or a stomp by the config's weights"] = function()
 		local counts = {}
 		for step = 0, 99 do

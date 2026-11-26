@@ -1057,6 +1057,7 @@ local function newFightFx(): FightFx.Dispatcher
 		monster = MonsterController.GetFightView,
 		playClip = MonsterController.PlayClip,
 		react = MonsterController.React, -- a monster hit by a creature reacts too (spec 2026-11-25-hit-feel-design 1)
+		faceToward = MonsterController.FaceToward, -- a boss turns to what it goes for
 	})
 end
 

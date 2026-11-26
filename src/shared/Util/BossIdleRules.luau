@@ -67,4 +67,15 @@ function BossIdleRules.walk(t: number, ax: number, az: number, bx: number, bz: n
 	return ax + dx * share, az + dz * share, math.atan2(-dx, -dz), false
 end
 
+-- Its turn (a walk's yaw) to face a point from where it stands, both in its spot's space: what it goes for now
+-- (testers 2026-11-26: "Boss still face/attack dead pets": it faced the way its fight began, where your first creature
+-- fell). Nil when the point is right on top of it: it keeps the turn it has
+function BossIdleRules.faceYaw(fromX: number, fromZ: number, toX: number, toZ: number): number?
+	local dx, dz = toX - fromX, toZ - fromZ
+	if dx * dx + dz * dz < 0.25 then
+		return nil
+	end
+	return math.atan2(-dx, -dz)
+end
+
 return BossIdleRules

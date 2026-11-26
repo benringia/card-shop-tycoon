@@ -87,6 +87,9 @@ type Monster = {
 	-- The finishing blow (Config/FinishingBlow): a boss's beaten mark seen (asked once), and it held still until then
 	beaten: boolean?,
 	heldUntil: number?,
+	-- A boss turns to what it goes for (FaceToward): where that is now (nil once it's gone), and the turn it has
+	faceAt: (() -> Vector3?)?,
+	faceYaw: number?,
 }
 
 local TRAIL_SPEED = 3 -- studs a second: a summon running faster than this trails its wisps
@@ -459,10 +462,25 @@ end
 
 local idleRandom = Random.new()
 
+-- Its turn toward what it goes for now (FaceToward; testers 2026-11-26: "Boss still face/attack dead pets": it faced
+-- the way its fight began, where your first creature fell), from where it stands (x, z in its spot's space). The turn
+-- it has stays while that's gone (fainted, left); straight ahead, the fight, until something comes
+local function faceYaw(monster: Monster, x: number, z: number): number
+	local at = if monster.faceAt then monster.faceAt() else nil
+	if at then
+		local mine = monster.marker.CFrame:PointToObjectSpace(at)
+		local yaw = BossIdleRules.faceYaw(x, z, mine.X, mine.Z)
+		if yaw then
+			monster.faceYaw = yaw
+		end
+	end
+	return monster.faceYaw or 0
+end
+
 -- A boss between its moves (the owner 2026-11-10: "walking around while waiting for his next attack or roaring.
 -- something intimidating but not limiting its attack speed"; Config/Bosses IDLE): short walks to new spots near its
--- own, a roar, a stomp, a second or two apart. A move only stops its feet: it attacks from wherever it stands, facing
--- the fight, so its attacks keep the server's clock
+-- own, a roar, a stomp, a second or two apart. A move only stops its feet: it attacks from wherever it stands, turned
+-- to what it goes for, so its attacks keep the server's clock
 local function stepIdle(monster: Monster, idle: Idle, now: number)
 	local cfg = idle.cfg
 	local body = monster.body
@@ -470,11 +488,11 @@ local function stepIdle(monster: Monster, idle: Idle, now: number)
 	local walk = idle.walk
 	if not BossIdleRules.free(now, idle.busyUntil, idle.introEnd, monster.marker:GetAttribute("Fainted") == true) then
 		if walk then
-			-- stopped where it is, turned to the fight
+			-- stopped where it is, turned to what it goes for
 			local x, z = BossIdleRules.walk(now - walk.start, walk.ax, walk.az, walk.bx, walk.bz, cfg.wander.speed * scale)
 			idle.x, idle.z, idle.walk = x, z, nil
 		end
-		body.offset = CFrame.new(idle.x, 0, idle.z)
+		body.offset = CFrame.new(idle.x, 0, idle.z) * CFrame.Angles(0, faceYaw(monster, idle.x, idle.z), 0)
 		idle.nextAt = math.max(idle.nextAt, idle.busyUntil)
 		return
 	end
@@ -483,13 +501,16 @@ local function stepIdle(monster: Monster, idle: Idle, now: number)
 		if monster.wild then
 			yaw *= HitFeelConfig.STEP.turn -- a wild monster mostly keeps facing the fight as it steps (Config/HitFeel)
 		end
-		body.offset = CFrame.new(x, 0, z) * CFrame.Angles(0, yaw, 0)
 		if done then
 			idle.x, idle.z, idle.walk = x, z, nil
 			idle.nextAt = now + BossIdleRules.gap(idleRandom:NextNumber(), cfg.gap)
+			yaw = faceYaw(monster, x, z)
 		end
+		body.offset = CFrame.new(x, 0, z) * CFrame.Angles(0, yaw, 0)
 		return
 	end
+	-- standing between its moves: turned to what it goes for
+	body.offset = CFrame.new(idle.x, 0, idle.z) * CFrame.Angles(0, faceYaw(monster, idle.x, idle.z), 0)
 	if now < idle.nextAt then
 		return
 	end
@@ -969,6 +990,15 @@ function MonsterController.GetFightView(marker: BasePart): { root: BasePart, hei
 end
 
 -- Plays one of its attack clips at `speed`, holding its last pose `hold` seconds (Util/ClipPlayer)
+-- A boss turns to what it goes for (FightFx on its charge, warning, ring or hit): `target` says where that is now, nil
+-- once it's gone (fainted, left: it keeps the turn it has). Its body turns where it stands; its spot stays the server's
+function MonsterController.FaceToward(marker: BasePart, target: () -> Vector3?)
+	local monster = monsters[marker]
+	if monster then
+		monster.faceAt = target
+	end
+end
+
 function MonsterController.PlayClip(marker: BasePart, name: string, speed: number, hold: number)
 	local monster = monsters[marker]
 	local clip = if monster then monster.clips[name] else nil

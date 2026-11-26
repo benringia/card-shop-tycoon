@@ -55,6 +55,8 @@ export type Resolve = {
 	playClip: ((marker: BasePart, name: string, speed: number, hold: number) -> ())?,
 	-- A monster hit by a creature reacts (spec 2026-11-25-hit-feel-design 1; true: it did, nil: no monsters here)
 	react: ((marker: BasePart, from: Vector3, big: boolean) -> boolean)?,
+	-- A boss turns to what it goes for: where that is now, nil once it's gone (nil: no bosses here)
+	faceToward: ((marker: BasePart, target: () -> Vector3?) -> ())?,
 }
 -- key: its boss id or species; lengths: its attack clips (name -> seconds)
 export type MonsterView = { root: BasePart, height: number, key: string, lengths: { [string]: number } }
@@ -76,6 +78,9 @@ local function color(rgb: { number }): Color3
 end
 
 local THROW_FOE_MAX = 1.5 -- a thrown attack's landing grows this much at most on a big foe
+
+-- A boss's events that go for someone (`to`): it turns to them (a thunderclap's storm circle, kind "clap", is round it)
+local AIMED: { [string]: boolean } = { charge = true, telegraph = true, ring = true, attack = true, ability = true }
 
 -- Each special move's name by its kind (Combat ABILITIES and SIGNATURES), for its callout
 local MOVE_NAMES: { [string]: string } = {}
@@ -892,6 +897,18 @@ function FightFx.new(resolve: Resolve): Dispatcher
 	-- A boss's or wild monster's move: its clip and, with looks (AttackFx BOSS or MONSTER), the effect
 	local function onMonster(event: any, marker: BasePart, view: MonsterView)
 		local move = playMove(event, marker, view)
+		-- A boss turns to what it goes for (testers 2026-11-26: "Boss still face/attack dead pets": it faced the way its
+		-- fight began, where your first creature fell, while it swung at you); a fallen or gone one keeps the turn it has
+		local to = event.to
+		if resolve.faceToward and AIMED[event.type] and typeof(to) == "string" and event.kind ~= "clap" and AttackFx.BOSS[view.key] then
+			resolve.faceToward(marker, function(): Vector3?
+				local target = resolve.marker(to)
+				if not target or not target.Parent or target:GetAttribute("Fainted") == true then
+					return nil
+				end
+				return target.Position
+			end)
+		end
 		if event.type == "enrage" then
 			-- any boss's enrage: its burst and roar, then its aura for the rest of the fight (Util/BossSkillFx)
 			if not auras[marker] then
