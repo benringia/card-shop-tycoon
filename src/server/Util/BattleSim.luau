@@ -745,7 +745,8 @@ takeDamage = function(state: State, target: Fighter, amount: number, events: { E
 		return -- its pylons' shield takes every hit (burns and abilities too)
 	end
 	-- The weapon in hand's mutation protects its owner's creatures too (owner 2026-11-26, option C): Guard takes less,
-	-- Thorns strikes `from` back for its share of what landed, Tough's Second Wind heals each once a fight
+	-- Thorns strikes `from` back for its share of what landed (Tough's HP is set at the start; its Second Wind stays the
+	-- player's: on every creature it added up to 68 points to a 0.8x boss fight)
 	local mutation = state.mutations[ownerKey(target)]
 	if mutation then
 		amount = math.round(amount * mutation.taken)
@@ -761,12 +762,6 @@ takeDamage = function(state: State, target: Fighter, amount: number, events: { E
 			target.dealt += math.min(back, from.hp)
 			takeDamage(state, from, back, events)
 		end
-	end
-	if mutation and mutation.secondWind > 0 and not target.secondWindUsed and target.hp > 0 and target.hp < target.maxHp * mutation.secondWind then
-		target.secondWindUsed = true
-		local before = target.hp
-		target.hp = math.min(target.maxHp, target.hp + math.round(target.maxHp * mutation.secondWind))
-		table.insert(events, { type = "regen", kind = "SecondWind", to = target.id, heal = target.hp - before })
 	end
 	if target.hp <= 0 and not target.fainted then
 		target.fainted = true

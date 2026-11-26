@@ -3580,7 +3580,8 @@ return {
 
 	-- owner 2026-11-26 ("go with C"): the defensive mutations protect your creatures too (the part 3 sims: in boss fights
 	-- a player who fights well is rarely hit, so on the player alone a Legendary Thorns added nothing)
-	["mutations: Guard, Thorns and Second Wind protect your creatures too"] = function()
+	-- (Second Wind stays the player's: on every creature it added up to 68 points to a 0.8x boss fight, the part 3 sims)
+	["mutations: Guard and Thorns protect your creatures too, Second Wind stays the player's"] = function()
 		local state = mutationFight(47, true)
 		BattleSim.setMutation(state, "1", mutationStats({ taken = 0.5, thorns = 0.5, secondWind = 0.3 }))
 		local before = viewOf(state, "a:p1").hp
@@ -3595,12 +3596,9 @@ return {
 		expect.equal(thorns and thorns.from, "a:p1", "the creature strikes back")
 		expect.equal(thorns and thorns.to, "b:m")
 		expect.equal(thorns and thorns.damage, 25, "half of what landed")
-		-- Second Wind: once under 30% of its HP, 30% back, once a fight
+		-- under 30% of its HP: no Second Wind for the creature
 		BattleSim._damage(state, "a:p1", (before - 50 - 0.2 * before) * 2)
-		expect.equal(viewOf(state, "a:p1").hp, math.round(0.2 * before) + math.round(0.3 * before), "healed once under 30%")
-		local healed = viewOf(state, "a:p1").hp
-		BattleSim._damage(state, "a:p1", 400) -- 200 after Guard: under 30% again
-		expect.equal(viewOf(state, "a:p1").hp, healed - 200, "only once")
+		expect.equal(viewOf(state, "a:p1").hp, math.round(0.2 * before), "no heal: Second Wind is the player's")
 		local plain = mutationFight(47, true)
 		BattleSim._damage(plain, "a:p1", 100, "b:m")
 		expect.equal(viewOf(plain, "a:p1").hp, before - 100, "no mutation: the whole hit")
