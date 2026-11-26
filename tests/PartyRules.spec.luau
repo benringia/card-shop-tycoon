@@ -119,4 +119,14 @@ return {
 		expect.equal(PartyRules.changeText("swapped", "Cindercub", "Ashbeak"), "Cindercub swapped in for Ashbeak!", "swapped")
 		expect.equal(PartyRules.changeText("left", nil, "Ashbeak"), "Ashbeak left your party", "left")
 	end,
+
+	-- Testers 2026-11-26: "Resting pets should not be summoned. add a notification if someone tries to summon a dead pet"
+	["a resting creature can't be called out: when it's back and where to heal it, by place"] = function()
+		expect.equal(PartyRules.restingWords("Pixie", 192, "Main"), "Pixie is resting: back in 3:12. Summon a rested one or visit the plaza spring.")
+		expect.equal(PartyRules.restingWords("Pixie", 59, "Frontier"), "Pixie is resting: back in 0:59. Summon a rested one or visit the spring at the entrance.")
+		expect.equal(PartyRules.restingWords("Pixie", 61.4, "Dungeon"), "Pixie is resting: back in 1:02. Summon a rested one.", "part of a second counts up")
+		expect.equal(PartyRules.isResting(1000, 999), true, "rested until a later time")
+		expect.equal(PartyRules.isResting(1000, 1000), false, "its time is up")
+		expect.equal(PartyRules.isResting(nil, 1000), false, "never fainted")
+	end,
 }

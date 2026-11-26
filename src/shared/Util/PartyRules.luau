@@ -125,4 +125,19 @@ function PartyRules.changeText(kind: ChangeKind, inName: string?, outName: strin
 	return `{outName or "A card"} left your party`
 end
 
+-- Resting creatures stay in their cards (testers 2026-11-26: "Resting pets should not be summoned"): whether a creature
+-- rested until `restUntil` (os.time, nil: never fainted) is still resting at `now`
+function PartyRules.isResting(restUntil: number?, now: number): boolean
+	return restUntil ~= nil and restUntil > now
+end
+
+-- What a refused summon says ("add a notification if someone tries to summon a dead pet"): when it's back (a part of a
+-- second counts up) and where `place` ("Main" | "Frontier" | "Dungeon") heals it now
+function PartyRules.restingWords(name: string, secondsLeft: number, place: string): string
+	local left = math.max(0, math.ceil(secondsLeft))
+	local back = string.format("%d:%02d", left // 60, left % 60)
+	local heal = if place == "Dungeon" then "." elseif place == "Frontier" then " or visit the spring at the entrance." else " or visit the plaza spring."
+	return `{name} is resting: back in {back}. Summon a rested one{heal}`
+end
+
 return PartyRules

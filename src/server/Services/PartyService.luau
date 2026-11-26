@@ -17,6 +17,7 @@ local Items = require(Config:WaitForChild("Items"))
 local Party = require(Config:WaitForChild("Party"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
 local PartyRules = require(Shared:WaitForChild("Util"):WaitForChild("PartyRules"))
+local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 local SummonMotion = require(Shared:WaitForChild("Util"):WaitForChild("SummonMotion"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
@@ -444,6 +445,17 @@ local function onSummon(player: Player, slot: unknown)
 	if slot == nil then
 		unsummon(player)
 	elseif isSlot(slot) and state.slots[slot :: number] then
+		-- a resting creature stays in its card (testers 2026-11-26: "Resting pets should not be summoned. add a
+		-- notification if someone tries to summon a dead pet"): the locked card says when it's back
+		local beastId = state.slots[slot :: number]
+		local restsUntil = if restUntil then restUntil(player, beastId) else nil
+		if PartyRules.isResting(restsUntil, os.time()) then
+			local beast = CardService.GetBeast(player, beastId)
+			local card = if beast then Cards.ById[beast.cardId] else nil
+			local place = if Place.isDungeon() then "Dungeon" elseif Place.isFrontier() then "Frontier" else "Main"
+			Blocked.tell(player, PartyRules.restingWords(if card then card.name else "That creature", (restsUntil :: number) - os.time(), place), { title = "Resting" })
+			return
+		end
 		state.summoned = slot :: number
 		spawnMarker(player)
 		applyHustle(player)
@@ -478,8 +490,17 @@ function PartyService.SetRestLookup(lookup: (player: Player, beastId: string) ->
 	restUntil = lookup
 end
 
--- BattleService: a card's rest changed (it fainted, rested, or the spring healed it): the summoned creature shows it
+-- BattleService: a card's rest changed (it fainted, rested, or the spring healed it): the summoned creature shows it.
+-- One that fainted goes back to its card once its fight is over (testers 2026-11-26: "Resting pets should not be
+-- summoned"); a fight's locked party is left alone until then
 function PartyService.RefreshRest(player: Player)
+	local state = states[player]
+	local summoned = if state and state.summoned then state.slots[state.summoned] else nil
+	if state and summoned and not state.locked and restUntil and PartyRules.isResting(restUntil(player, summoned), os.time()) then
+		unsummon(player)
+		sendParty(player)
+		return
+	end
 	refreshMarker(player)
 end
 

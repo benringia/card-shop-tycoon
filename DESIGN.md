@@ -1629,7 +1629,12 @@ left portrait instead: owner 2026-11-17, "the party section is cutoff"); and a s
 for everyone ("add noticeable indicator ON the pet that it's injured"; `Party.HURT`, client `Util/HurtBadge`): while
 its card rests (the marker's `RestUntil`, os.time, set by PartyService from BattleService's resting) a red "Hurt 4:41"
 pill with a beating heart sits over its name tag (the "+ Healing" pill takes the spot at the spring) and three gold
-stars circle its head; hidden in a fight.
+stars circle its head; hidden in a fight. **Resting creatures stay in their cards** since testers 2026-11-26
+("Resting pets should not be summoned. add a notification if someone tries to summon a dead pet"): a summon of a resting
+one is refused with the locked card, "Bramblequake is resting: back in 3:53. Summon a rested one or visit the plaza
+spring." (the Frontier's "spring at the entrance", the Dungeon none; `PartyRules.restingWords` / `isResting`), and a
+summoned creature that fainted goes back to its card as its fight ends (`PartyService.RefreshRest`), so the hurt look
+above now shows only on a creature the spring is healing.
 
 **PvP opens in the first update** (owner 2026-11-13: a week after launch, "I need to put on alot of planning to make
 the pvp good"): `Pvp.OPEN = false` till then. The plaza Arena portal shows "⚔️ Coming soon" and its card ("The Arena
