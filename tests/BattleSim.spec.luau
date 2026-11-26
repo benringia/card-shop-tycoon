@@ -3560,13 +3560,15 @@ return {
 		expect.equal(viewOf(wind, "a:@1").hp, 15, "once a fight")
 	end,
 
+	-- Lifesteal heals a share of the player's own HP for every sword hit that lands (the part 3 sims, 2026-11-26: a
+	-- share of the hit's damage made a 100 HP player unkillable on late bosses, whose hits are hundreds)
 	["mutations: Lifesteal heals the player, Quick Step's dodge comes back sooner, Ultimate Charge fills faster"] = function()
 		local state = mutationFight(45, true)
-		BattleSim.setMutation(state, "1", mutationStats({ lifesteal = 0.5, dodge = 0.5, meter = 2 }))
+		BattleSim.setMutation(state, "1", mutationStats({ lifesteal = 0.1, dodge = 0.5, meter = 2 }))
 		BattleSim._hurtPlayer(state, "a:@1", 50)
 		local events = BattleSim.swordHit(state, "1", "b:m", 1, "Sword") :: { any }
-		local dealt = events[1].damage
-		expect.equal(viewOf(state, "a:@1").hp, math.min(combat.PLAYER_HP, 50 + math.round(dealt * 0.5)), "half the hit back")
+		expect.equal(events[1].damage > 10, true, "a hit bigger than the heal")
+		expect.near(viewOf(state, "a:@1").hp, 50 + combat.PLAYER_HP * 0.1, 1e-9, "a tenth of their HP back, whatever the hit dealt")
 		local plain = mutationFight(45, true)
 		BattleSim._hurtPlayer(plain, "a:@1", 50)
 		BattleSim.swordHit(plain, "1", "b:m", 1, "Sword")

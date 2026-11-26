@@ -76,12 +76,19 @@ for setting in string.gmatch(process.env.SET or "", "[^,]+") do
 	signature[field] = tonumber(value)
 	print(`SET {card}.{field} = {value}`)
 end
+-- (a path reaches inside a boss's tables: BOSS_SET="frostTyrant.mechanics.shield.fraction=0.04")
 for setting in string.gmatch(process.env.BOSS_SET or "", "[^,]+") do
-	local id, field, value = string.match(setting, "^%s*(.-)%.(%w+)=([%d%.]+)%s*$")
-	local boss = if id then Bosses.BOSSES[id] else nil
-	assert(boss and tonumber(value), `BOSS_SET: can't read "{setting}"`)
-	boss[field] = tonumber(value)
-	print(`BOSS_SET {id}.{field} = {value}`)
+	local path, value = string.match(setting, "^%s*(.-)=([%d%.]+)%s*$")
+	local keys = string.split(path or "", ".")
+	local boss = Bosses.BOSSES[keys[1]]
+	assert(boss and #keys >= 2 and tonumber(value), `BOSS_SET: can't read "{setting}"`)
+	local holder = boss
+	for index = 2, #keys - 1 do
+		holder = holder[keys[index]]
+		assert(typeof(holder) == "table", `BOSS_SET: no table at "{keys[index]}" in "{setting}"`)
+	end
+	holder[keys[#keys]] = tonumber(value)
+	print(`BOSS_SET {path} = {value}`)
 end
 local ELEMENTS = { "Ember", "Tide", "Bloom", "Volt", "Shade" }
 local DT = 0.1
@@ -151,6 +158,17 @@ if process.env.MUTATION then
 	local rarity = if rarityText == "VeryRare" then "Very Rare" else rarityText
 	local mutation = MutationRules.read(Mutations, { id = id, rarity = rarity })
 	assert(mutation, `MUTATION="<id>:<Common|Rare|VeryRare|Epic|Legendary>" with a Config/Mutations id, got {process.env.MUTATION}`)
+	-- MUTATION_SIZE=<share> tries another size for it (MUTATION_SIZE=0.04: 4%) without editing Config/Mutations
+	local size = tonumber(process.env.MUTATION_SIZE or "")
+	if size then
+		Mutations.SIZE[mutation.rarity] = size
+		Mutations.HALF_SIZE[mutation.rarity] = size
+		for _, entry in Mutations.LIST do
+			if entry.id == mutation.id and entry.sizes then
+				entry.sizes[mutation.rarity] = size
+			end
+		end
+	end
 	MUTATION_STATS = MutationRules.stats(Mutations, mutation)
 	print(`MUTATION {MutationRules.words(Mutations, mutation).short}`)
 end
@@ -189,10 +207,15 @@ local function power(card: Card): number
 end
 
 -- The card (any rarity, level, stars, grade) whose Power is closest to `target`; Legendaries win ties (the low bosses'
--- recommended Power is under any Legendary's)
+-- recommended Power is under any Legendary's). PARTY_RARITY=<rarity> (Epic, Legendary, VeryRare...) picks only from
+-- that rarity, to compare (the closest card can be a maxed Common: no super, a Common's perk)
+local PARTY_RARITY = if process.env.PARTY_RARITY == "VeryRare" then "Very Rare" else process.env.PARTY_RARITY
 local function legendaryAt(target: number): Card
-	local best: Card = { rarity = "Legendary", level = 1, stars = 0, grade = "C" }
+	local best: Card = { rarity = PARTY_RARITY or "Legendary", level = 1, stars = 0, grade = "C" }
 	for rarity in Beasts.BASE_STATS do
+		if PARTY_RARITY and rarity ~= PARTY_RARITY then
+			continue
+		end
 		for level = 1, Beasts.MAX_LEVEL do
 			for stars = 0, Beasts.MAX_STARS do
 				for _, grade in Beasts.GRADES do

@@ -873,12 +873,14 @@ local function hit(
 	})
 	from.dealt += math.min(taken, target.hp)
 	takeDamage(state, target, taken, events, from)
-	-- Lifesteal: the player heals its share of what the sword hit took
+	-- Lifesteal: every sword hit that lands heals the player its share of their own HP (not of the hit: late bosses'
+	-- hits are hundreds, the player's HP 100). The exact share heals; the pop shows each whole point gained
 	if mutation and mutation.lifesteal > 0 and taken > 0 and not from.down and from.hp < from.maxHp then
 		local before = from.hp
-		from.hp = math.min(from.maxHp, from.hp + math.round(taken * mutation.lifesteal))
-		if from.hp > before then
-			table.insert(events, { type = "regen", kind = "Lifesteal", to = from.id, heal = from.hp - before })
+		from.hp = math.min(from.maxHp, from.hp + from.maxHp * mutation.lifesteal)
+		local shown = math.floor(from.hp) - math.floor(before)
+		if shown > 0 then
+			table.insert(events, { type = "regen", kind = "Lifesteal", to = from.id, heal = shown })
 		end
 	end
 	return taken

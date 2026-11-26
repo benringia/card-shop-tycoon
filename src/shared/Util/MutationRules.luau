@@ -64,11 +64,21 @@ function MutationRules.read(cfg: any, value: unknown): Mutation?
 	return { id = raw.id, rarity = raw.rarity }
 end
 
--- A mutation's number as a share (its rarity's size; half for Treasure and Scholar)
+-- A mutation's number as a share (its rarity's size; half for Treasure and Scholar; an entry's own `sizes` first)
 function MutationRules.size(cfg: any, mutation: Mutation): number
 	local entry = entryOf(cfg, mutation.id)
-	local sizes = if entry and entry.half then cfg.HALF_SIZE else cfg.SIZE
+	local sizes = if entry and entry.sizes then entry.sizes elseif entry and entry.half then cfg.HALF_SIZE else cfg.SIZE
 	return sizes[mutation.rarity] or 0
+end
+
+-- A share as the percent players read: whole when it is ("12"), else one decimal ("0.3", "1.6")
+local function percentOf(share: number): string
+	local percent = share * 100
+	local whole = math.round(percent)
+	if math.abs(percent - whole) < 1e-6 then
+		return tostring(whole)
+	end
+	return string.format("%.1f", percent)
 end
 
 function MutationRules.stats(cfg: any, mutation: Mutation?): Stats
@@ -139,7 +149,7 @@ function MutationRules.words(cfg: any, mutation: Mutation): Words
 	if not entry then
 		return { name = mutation.id, title = mutation.id, line = "", short = mutation.id, yours = mutation.id, icon = "Sparkle", group = "", rarity = mutation.rarity }
 	end
-	local percent = tostring(math.round(MutationRules.size(cfg, mutation) * 100))
+	local percent = percentOf(MutationRules.size(cfg, mutation))
 	local said = string.gsub(entry.words, "{n}", percent)
 	local line = `{said}.`
 	if entry.twist and mutation.rarity == "Legendary" then

@@ -461,7 +461,7 @@ return {
 		expect.equal(new.tag, "NEW!")
 		expect.equal(new.name, "Lifesteal")
 		expect.equal(new.rarity, "Epic")
-		expect.equal(new.effect, "Heal 12% of your sword damage")
+		expect.equal(new.effect, "Each sword hit heals 1.2% of your HP")
 		expect.equal(new.button, "Take new")
 		expect.equal(new.take, true)
 		expect.equal(new.gets, 4, "taking the new one turns your Rare into 4")
