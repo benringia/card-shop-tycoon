@@ -49,35 +49,38 @@ return {
 		local sharp = MutationRules.words(Mutations, m("sharp", "Epic"))
 		expect.equal(sharp.name, "Sharp")
 		expect.equal(sharp.title, "Sharp · Epic mutation")
-		expect.equal(sharp.line, "Sword hits +12%.")
-		expect.equal(sharp.short, "Epic · Sharp · sword hits +12%")
-		expect.equal(sharp.yours, "Epic · Sharp (sword hits +12%)")
+		expect.equal(sharp.line, "Your sword deals +12% damage.")
+		expect.equal(sharp.short, "Epic · Sharp · your sword deals +12% damage")
+		expect.equal(sharp.yours, "Epic · Sharp (your sword deals +12% damage)")
 		expect.equal(sharp.icon, "Sword")
 		expect.equal(sharp.group, "offense")
 		expect.equal(sharp.rarity, "Epic")
-		expect.equal(MutationRules.words(Mutations, m("tough", "Rare")).yours, "Rare · Tough (you and your creatures: HP +4%)", "the mockup's line, creatures too (option C)")
-		expect.equal(MutationRules.words(Mutations, m("tough", "Legendary")).line, "You and your creatures: HP +12%. Second Wind: once a fight, heal 30% when low.")
-		expect.equal(MutationRules.words(Mutations, m("petBoost", "Legendary")).line, "Your creatures' ATK and HP +6%. Rally: teammates' creatures +5% ATK.")
+		expect.equal(MutationRules.words(Mutations, m("tough", "Rare")).yours, "Rare · Tough (you and your creatures get +4% max HP)", "the mockup's line, creatures too (option C)")
+		expect.equal(MutationRules.words(Mutations, m("tough", "Legendary")).line, "You and your creatures get +12% max HP. Second Wind: below 30% HP, heal 30% once.")
+		expect.equal(MutationRules.words(Mutations, m("petBoost", "Legendary")).line, "Your creatures get +6% ATK and max HP. Rally: your teammates' creatures get +5% ATK.")
 		-- the part 3 boss pass (2026-11-26): Lifesteal heals a share of your own HP a landed sword hit, small numbers with
 		-- one decimal
-		expect.equal(MutationRules.words(Mutations, m("lifesteal", "Common")).line, "Each sword hit heals 0.3% of your HP.")
-		expect.equal(MutationRules.words(Mutations, m("lifesteal", "Legendary")).line, "Each sword hit heals 1.6% of your HP.")
-		expect.equal(MutationRules.words(Mutations, m("treasure", "Common")).line, "Fight cash +2%.", "Treasure at half")
+		expect.equal(MutationRules.words(Mutations, m("lifesteal", "Common")).line, "Each sword hit heals you 0.3% of your max HP.")
+		expect.equal(MutationRules.words(Mutations, m("lifesteal", "Legendary")).line, "Each sword hit heals you 1.6% of your max HP.")
+		expect.equal(MutationRules.words(Mutations, m("treasure", "Common")).line, "+2% cash from fights you win.", "Treasure at half")
 		-- the defensive ones protect your creatures too (owner 2026-11-26, option C)
 		expect.equal(MutationRules.words(Mutations, m("guard", "Very Rare")).line, "You and your creatures take 6% less damage.")
-		expect.equal(MutationRules.words(Mutations, m("thorns", "Rare")).line, "30% of the damage you and your creatures take hits back.")
-		expect.equal(MutationRules.words(Mutations, m("quickStep", "Epic")).line, "Dodge ready 9% sooner; your creatures dodge 9% of hits.")
-		expect.equal(MutationRules.words(Mutations, m("tough", "Rare")).line, "You and your creatures: HP +4%.")
-		expect.equal(MutationRules.words(Mutations, m("critical", "Rare")).line, "5% chance a sword hit deals double.")
+		expect.equal(MutationRules.words(Mutations, m("thorns", "Rare")).line, "Reflects 30% of the damage you and your creatures take back at the foe.")
+		expect.equal(MutationRules.words(Mutations, m("quickStep", "Epic")).line, "Your dodge recharges 9% faster; your creatures dodge 9% of hits.")
+		expect.equal(MutationRules.words(Mutations, m("tough", "Rare")).line, "You and your creatures get +4% max HP.")
+		expect.equal(MutationRules.words(Mutations, m("critical", "Rare")).line, "5% chance your sword deals double damage.")
 		for _, entry in Mutations.LIST do
 			for _, rarityName in Mutations.RARITIES do
 				local words = MutationRules.words(Mutations, m(entry.id, rarityName))
 				for _, text in { words.title, words.line, words.short, words.yours } do
 					local plain = string.gsub(text, "·", "")
 					assert(not string.find(plain, "[^\32-\126]"), `{entry.id} {rarityName}: plain text: {text}`)
-					assert(not string.find(string.lower(text), "%f[%a]supers?%f[%A]"), `{entry.id}: ultimates, never supers: {text}`)
+					-- (Super effective, the element advantage, is its own word: tests/SkillText allows it too)
+					local said = string.gsub(string.lower(text), "super effective", "")
+					assert(not string.find(said, "%f[%a]supers?%f[%A]"), `{entry.id}: ultimates, never supers: {text}`)
 				end
-				assert(#words.line <= 80, `{entry.id} {rarityName}: one short line ({#words.line})`)
+				-- (90 since the words say exactly what they change, owner 2026-11-26: "make this description more specific")
+				assert(#words.line <= 90, `{entry.id} {rarityName}: one short line ({#words.line})`)
 			end
 		end
 	end,

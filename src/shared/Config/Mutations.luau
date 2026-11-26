@@ -54,13 +54,14 @@ return {
 		support = { name = "Support", icon = "Heal" },
 	},
 	-- stat: what it changes (Util/MutationRules Stats; "pet" is the creatures' ATK and HP); how: "more" (x 1 + size),
-	-- "less" (x 1 - size), "add" (the size itself: a chance or a share); words: one short line, {n} the size in %;
+	-- "less" (x 1 - size), "add" (the size itself: a chance or a share); words: one short line saying exactly what it
+	-- changes (owner 2026-11-26: "make this description more specific": damage, max HP, cash...), {n} the size in %;
 	-- twist: a Legendary's extra (its stat set to `value`). None copies a weapon's own perk (heal, burn, chill...).
 	LIST = {
-		{ id = "sharp", name = "Sharp", group = "offense", stat = "sword", how = "more", words = "Sword hits +{n}%" },
-		{ id = "critical", name = "Critical", group = "offense", stat = "crit", how = "add", words = "{n}% chance a sword hit deals double" },
-		{ id = "elementEdge", name = "Element Edge", group = "offense", stat = "strong", how = "more", words = "Strong sword hits +{n}%" },
-		{ id = "bossHunter", name = "Boss Hunter", group = "offense", stat = "boss", how = "more", words = "Sword hits on bosses +{n}%" },
+		{ id = "sharp", name = "Sharp", group = "offense", stat = "sword", how = "more", words = "Your sword deals +{n}% damage" },
+		{ id = "critical", name = "Critical", group = "offense", stat = "crit", how = "add", words = "{n}% chance your sword deals double damage" },
+		{ id = "elementEdge", name = "Element Edge", group = "offense", stat = "strong", how = "more", words = "Super effective sword hits deal +{n}% damage" },
+		{ id = "bossHunter", name = "Boss Hunter", group = "offense", stat = "boss", how = "more", words = "Your sword deals +{n}% damage to bosses" },
 		-- The defensive ones protect your creatures too (owner 2026-11-26, option C: on the player alone a Legendary
 		-- Thorns added nothing to a boss fight, players who fight well are rarely hit): Tough their HP (BattleService),
 		-- Guard and Thorns on their hits, Quick Step a chance to dodge each (BattleSim); Tough's Second Wind stays the
@@ -74,8 +75,8 @@ return {
 			stat = "hp",
 			how = "more",
 			sizes = { Common = 0.02, Rare = 0.04, ["Very Rare"] = 0.06, Epic = 0.09, Legendary = 0.12 },
-			words = "You and your creatures: HP +{n}%",
-			twist = { stat = "secondWind", value = 0.3, words = "Second Wind: once a fight, heal 30% when low" },
+			words = "You and your creatures get +{n}% max HP",
+			twist = { stat = "secondWind", value = 0.3, words = "Second Wind: below 30% HP, heal 30% once" },
 		},
 		{
 			id = "guard",
@@ -93,7 +94,7 @@ return {
 			stat = "dodge",
 			how = "less",
 			sizes = { Common = 0.02, Rare = 0.04, ["Very Rare"] = 0.06, Epic = 0.09, Legendary = 0.12 },
-			words = "Dodge ready {n}% sooner; your creatures dodge {n}% of hits",
+			words = "Your dodge recharges {n}% faster; your creatures dodge {n}% of hits",
 		},
 		{
 			id = "thorns",
@@ -102,7 +103,9 @@ return {
 			stat = "thorns",
 			how = "add",
 			sizes = { Common = 0.2, Rare = 0.3, ["Very Rare"] = 0.5, Epic = 0.75, Legendary = 1.0 },
-			words = "{n}% of the damage you and your creatures take hits back",
+			-- (it reflects: the foe that hit takes this share of the damage it dealt; owner 2026-11-26: "does this mean
+			-- REFLECTS back? if yes change the wordings")
+			words = "Reflects {n}% of the damage you and your creatures take back at the foe",
 		},
 		{
 			-- a share of the player's own HP for every sword hit that lands (the part 3 boss pass, 2026-11-26: a share of the
@@ -114,7 +117,7 @@ return {
 			stat = "lifesteal",
 			how = "add",
 			sizes = { Common = 0.003, Rare = 0.005, ["Very Rare"] = 0.008, Epic = 0.012, Legendary = 0.016 },
-			words = "Each sword hit heals {n}% of your HP",
+			words = "Each sword hit heals you {n}% of your max HP",
 		},
 		{
 			-- its own sizes (the boss sims 2026-11-26: +16% on every creature took the Prism Hydra at 0.8x from 59% to 95%,
@@ -126,12 +129,12 @@ return {
 			stat = "pet",
 			how = "more",
 			sizes = { Common = 0.01, Rare = 0.02, ["Very Rare"] = 0.03, Epic = 0.04, Legendary = 0.06 },
-			words = "Your creatures' ATK and HP +{n}%",
-			twist = { stat = "rally", value = 0.05, words = "Rally: teammates' creatures +5% ATK" },
+			words = "Your creatures get +{n}% ATK and max HP",
+			twist = { stat = "rally", value = 0.05, words = "Rally: your teammates' creatures get +5% ATK" },
 		},
-		{ id = "ultimateCharge", name = "Ultimate Charge", group = "support", stat = "meter", how = "more", words = "Ultimates charge {n}% faster" },
-		{ id = "treasure", name = "Treasure", group = "support", stat = "cash", how = "more", half = true, words = "Fight cash +{n}%" },
-		{ id = "scholar", name = "Scholar", group = "support", stat = "xp", how = "more", half = true, words = "Creature XP from fights +{n}%" },
+		{ id = "ultimateCharge", name = "Ultimate Charge", group = "support", stat = "meter", how = "more", words = "Your creatures' ultimates charge {n}% faster" },
+		{ id = "treasure", name = "Treasure", group = "support", stat = "cash", how = "more", half = true, words = "+{n}% cash from fights you win" },
+		{ id = "scholar", name = "Scholar", group = "support", stat = "xp", how = "more", half = true, words = "Your creatures get +{n}% XP from fights" },
 	},
 	-- (Second Wind heals its share once the player drops under that same share of their HP: BattleSim's hurtPlayer)
 	-- The blade's look (owner's mockups: "Epic mutation · pink rim", "Legendary mutation · gold rim and sparkles"): a rim
