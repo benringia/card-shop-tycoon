@@ -1170,6 +1170,12 @@ local function onTravel(player: Player, raw: unknown)
 		FrontierService.ToBoss(player, bossId)
 		return
 	end
+	-- never beaten: walk to its portal first (testers 2026-11-26: "Players should only be able to teleport to bosses
+	-- they have already beaten once"); the board shows the way and no button, so this is an old or edited client
+	if choice == "walk" then
+		Blocked.tell(player, `Beat the {boss.name} once to teleport to it. Walk to its portal for your first fight.`, { title = "Not beaten yet", icon = "Lock" })
+		return
+	end
 	local gate = BossService.GetGate(raw)
 	if choice ~= "gate" or not gate then
 		notify(player, `The {boss.name} isn't in this place.`, true)

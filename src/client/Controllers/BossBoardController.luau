@@ -634,6 +634,14 @@ local function travelHint(bossId: string): string?
 	if choice == "teleport" then
 		-- beaten (owner 2026-11-21): Take me there goes straight to it
 		return if boss.place == "Dungeon" then "You beat it: Take me there starts a run of your own in its lair." else "You beat it: Take me there teleports you to its gate."
+	elseif choice == "walk" then
+		-- never beaten (testers 2026-11-26: "Players should only be able to teleport to bosses they have already beaten
+		-- once"): no Take me there yet, the way to its portal
+		local frontier = boss.place == "Frontier"
+		local zones = if frontier then (require(Config:WaitForChild("Frontier")) :: any).ZONES else WildConfig.ZONES
+		local zone = zones[boss.zone]
+		local where = if not zone then "the Wild" elseif frontier then zone.name else `the Wild's {zone.name}`
+		return `Beat it once to unlock Take me there. Walk to its portal in {where}: follow the trail.`
 	elseif choice == "viaPortal" then
 		return "Enter the Dungeon portal in the Frontier."
 	elseif choice == "walkToFrontier" then

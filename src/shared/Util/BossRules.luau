@@ -499,8 +499,10 @@ end
 -- directions to the Frontier portal (it stands at the end of the Frostpeak trail and the server only sends you from
 -- it), the Dungeon portal's directions, or nothing (inside a Dungeon run). A Frontier or Dungeon boss you have
 -- beaten (`cleared`) is a "teleport" instead (owner 2026-11-21: "Add teleport to bosses in frontier and dungeon, when
--- the player defeated the boss once"): to its gate in a Frontier server, or into its lair in a Dungeon run of your own
-function BossRules.travelChoice(bossPlace: string, here: string, cleared: boolean?): "gate" | "walkToFrontier" | "toMain" | "viaPortal" | "teleport" | "none"
+-- the player defeated the boss once"): to its gate in a Frontier server, or into its lair in a Dungeon run of your own.
+-- Its gate in this place only once beaten too: before that a "walk" to its portal (testers 2026-11-26: "Players should
+-- only be able to teleport to bosses they have already beaten once")
+function BossRules.travelChoice(bossPlace: string, here: string, cleared: boolean?): "gate" | "walk" | "walkToFrontier" | "toMain" | "viaPortal" | "teleport" | "none"
 	if here == "Dungeon" then
 		return "none"
 	end
@@ -508,7 +510,7 @@ function BossRules.travelChoice(bossPlace: string, here: string, cleared: boolea
 		return if cleared then "teleport" else "viaPortal"
 	end
 	if (bossPlace == "Wild" and here == "Main") or (bossPlace == "Frontier" and here == "Frontier") then
-		return "gate"
+		return if cleared then "gate" else "walk"
 	end
 	if bossPlace == "Frontier" then
 		return if cleared then "teleport" else "walkToFrontier"

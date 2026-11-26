@@ -539,15 +539,24 @@ return {
 	end,
 
 	["travelChoice: the gate in this place, else the normal travel"] = function()
-		expect.equal(BossRules.travelChoice("Wild", "Main"), "gate", "Wild boss from the main game")
+		expect.equal(BossRules.travelChoice("Wild", "Main", true), "gate", "a beaten Wild boss from the main game")
 		-- The Frontier portal stands at the end of the Frostpeak trail now: walk there (the server only travels from it)
 		expect.equal(BossRules.travelChoice("Frontier", "Main"), "walkToFrontier", "Frontier boss from the main game")
 		expect.equal(BossRules.travelChoice("Dungeon", "Main"), "viaPortal", "the Hydra")
-		expect.equal(BossRules.travelChoice("Frontier", "Frontier"), "gate", "in the Frontier")
+		expect.equal(BossRules.travelChoice("Frontier", "Frontier", true), "gate", "a beaten one in the Frontier")
 		expect.equal(BossRules.travelChoice("Wild", "Frontier"), "toMain", "Wild boss from the Frontier")
 		expect.equal(BossRules.travelChoice("Dungeon", "Frontier"), "viaPortal", "the Hydra from the Frontier")
 		expect.equal(BossRules.travelChoice("Wild", "Dungeon"), "none", "in a run")
 		expect.equal(BossRules.travelChoice("Dungeon", "Dungeon"), "none", "in a run")
+	end,
+
+	-- Testers 2026-11-26: "in Wilds bosses, you can teleport on bosses you never beaten once ... Players should only be
+	-- able to teleport to bosses they have already beaten once": before the first win you walk to its portal
+	["travelChoice: a boss you haven't beaten is a walk to its portal, never a teleport"] = function()
+		expect.equal(BossRules.travelChoice("Wild", "Main"), "walk", "a Wild boss never beaten")
+		expect.equal(BossRules.travelChoice("Wild", "Main", false), "walk")
+		expect.equal(BossRules.travelChoice("Frontier", "Frontier", false), "walk", "a Frontier boss in the Frontier")
+		expect.equal(BossRules.travelChoice("Wild", "Main", true), "gate", "beaten once: Take me there")
 	end,
 	["lockReason: what keeps a boss shut, shop level first"] = function()
 		local base: BossRules.Step = { cleared = false, unlocked = false, keyNeeded = 3, fragments = 3, shopLevel = 10, needLevel = 5, power = 1, recommended = 400 }
