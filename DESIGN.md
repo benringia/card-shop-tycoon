@@ -1606,7 +1606,7 @@ Admin) lifted clear of it on a short one, hidden in fights and behind the binder
 bottom right (owner 2026-11-13: "move weapon lower to close the gap"; UiLayout.weaponSwitch `above`). Also on PC (owner
 2026-11-13): only Cards and Bag stay in the bottom row; Bosses and Admin are Phone apps on a computer too (`Hud.tile`
 `phoneAlways`, CompactHud.spot `always`), so the left column is just the Phone; the rating chip has a hover tip (what it
-is, what raises it, "Click it for what to fix"); the weapon dial's Q sits beside its next weapon (Z under the one before). On a phone it
+is, what raises it, "Click it for what to fix"); the weapon row's Q sits under its next weapon and Z under the one before (the row since 2026-11-27). On a phone it
 hangs under the cash at the top right. On top a **carousel** of your 3 party slots: the creature that's out (else the one last
 in the middle, else the first card) big in the middle with the orange glow and OUT (at its foot), the other two smaller either side, each with its level in a gold
 chip at the top centre of its circle (owner 2026-11-13),
@@ -3864,18 +3864,22 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
   weapon's portrait in its rarity's ring, `<` and `>` either side, Q (next) / Z (previous, `Weapons.PREVIOUS_KEY`, its
   badge on `<`; owner 2026-11-09; Shift+Q too, but Shift is the dodge in a fight) on keyboards, a swipe on the chip; it
   steps through every weapon you own (swords, spears, scythes; by rarity, then name: `Util/WeaponSwitch`, Lune-tested)
-  and asks the server to equip it (`EquipWeapon`), its name under the chip for 1.5 s. **The medallion dial** (owner
-  2026-11-14 pick C of three mockups: card hand, hotbar, dial; the arrows and the flat carousel went): the weapon in hand
-  in a 72 px medallion, its rarity's ring with a shine going round every 4 s, its inside the element's colour (lavender
-  for the Prism Blade, slate with none), its grade on its corner; on a curved track 70 px from its middle the one before
-  on the left (Z under it), the next on top (Q beside it) and, with four weapons or more, the one after that between
-  them, smaller and faded (Util/WeaponSwitch `track`). Tap one on the track to step to it (each a 48 px tap area); a
-  switch rolls the dial: each weapon slides along the track from where it was, the new one in hand slides into the
-  medallion from its spot, one that wasn't showing fades in (`WeaponSwitch.roll`, `arcPoint`). The name in its rarity's
-  colour with its line ("+4 · Nature", `WeaponText.switchLine`) shows left of the track for 1.5 s after a switch only
-  (owner: "only briefly"); the stats tip under a mouse on the medallion (its foot level with the medallion's, growing
-  upward, so it never runs off the bottom of a computer's screen). Phones: the medallion alone (64 px, "2/6" on
-  its corner, tap for the next, swipe back). Shown with two weapons or more,
+  and asks the server to equip it (`EquipWeapon`). **The row** (owner 2026-11-27 pick B of three mockups, "the twin of
+  the party dock", https://claude.ai/artifact/QKG3ZzZdXSFcNQSc7THGiW, spec `2026-11-27-weapon-dial-row-design.md`;
+  the medallion dial of 2026-11-14 before it: its grade's white "S" read as a key next to Q and Z and its mutation sat on
+  it): the weapon in hand big in the middle (72 px, its rarity's ring with a shine going round every 4 s, its inside the
+  element's colour, lavender for the Prism Blade, slate with none), its level "+4" in a gold pill on its top (none at
+  +0) like the party dock's "Lv 30", its grade as the cards' gold medal on its top-left corner (`GradeLook` medals)
+  mirroring its mutation's mark on the top-right, its name under it (always, white with the dark edge, between the keys
+  and shrinking to fit); the one before on the left and the next on the right (44 px, 8 px off it, 8 px lower, on their
+  own element's colour in their rarity's ring; `WeaponSwitch.rowSpot`), Z under the left one and Q under the right one
+  on keyboards. Two weapons: only the next shows; no faded fourth (`WeaponSwitch.track`). Tap a side to step to it (48 px
+  tap areas); a switch slides the row: the new weapon in hand comes in from its side growing, the old one moves to the
+  other side, one that wasn't showing fades in (`WeaponSwitch.roll`). Its box (180 x 101 before the HUD scale) is
+  `UiLayout.switchBox`, which the desktop bar's room for it and the toasts over it read too. The stats tip under a mouse
+  on the big one (its foot level with its foot, growing upward). Phones: the medallion alone (64 px, "2/6" on its
+  corner, the grade medal and the mutation mark, tap for the next, swipe back, its name over it for 1.5 s after a
+  switch). Shown with two weapons or more,
   never over a window or while placing (`WeaponSwitchController`, sizes in `Config/HudLayout` WEAPON_SWITCH). In a fight a
   switch is allowed but costs `Weapons.SWAP_SECONDS` (1 s) with no cut or skill (the dodge still works), the combo
   starts again, the old weapon's cut or skill still on its way is cancelled (the server checks `SwordRules.skillDodged`
