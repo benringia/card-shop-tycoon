@@ -157,6 +157,27 @@ return {
 		expect.equal(Victory.START_AT.win, options[1].startAt)
 		assert(Victory.SOUNDS.win ~= "rbxassetid://1844539433", "not the old orchestral hits")
 	end,
+	-- Seen 2026-11-27: the win toast lay on Chikin's "Monsters give your shop a little XP too." at the top. It slides in
+	-- under the talk card (and Skip hanging off it) when they'd meet, else where it always slides in
+	["a monster win's toast slides in under the tutorial's card, never on it"] = function()
+		local gap = Victory.TOAST.belowTalk
+		assert(typeof(gap) == "number" and gap >= 6 and gap <= 24, "a small gap under the card")
+		local toast = { x = 300, y = 64, w = 400, h = 60 }
+		expect.equal(VictoryRules.toastTop(toast, {}, gap), 64, "no tutorial: where it always slides in")
+		local card = { x = 230, y = 8, w = 540, h = 100 }
+		expect.equal(VictoryRules.toastTop(toast, { card }, gap), 108 + gap, "under the card")
+		local skip = { x = 640, y = 102, w = 68, h = 24 }
+		expect.equal(VictoryRules.toastTop(toast, { card, skip }, gap), 126 + gap, "under Skip hanging off it too")
+		expect.equal(VictoryRules.toastTop(toast, { skip, card }, gap), 126 + gap, "whatever order they come in")
+		local low = { x = 230, y = 500, w = 540, h = 100 }
+		expect.equal(VictoryRules.toastTop(toast, { low }, gap), 64, "a card down above the HUD leaves the top alone")
+		local aside = { x = 20, y = 8, w = 200, h = 100 }
+		expect.equal(VictoryRules.toastTop(toast, { aside }, gap), 64, "beside it: no move")
+		local touching = { x = 230, y = 8, w = 540, h = 56 }
+		expect.equal(VictoryRules.toastTop(toast, { touching }, gap), 64, "a card ending where it starts: no move")
+		local unmeasured = { x = 500, y = 64, w = 0, h = 0 }
+		expect.equal(VictoryRules.toastTop(unmeasured, { card }, gap), 108 + gap, "not laid out yet (0 x 0): still clear")
+	end,
 	-- Owner 2026-11-21 (launch day), on a monster win's banner: "make this bigger and make it last longer"
 	["a monster win's banner is big and stays long enough to read"] = function()
 		local Victory = require("../src/shared/Config/Victory")

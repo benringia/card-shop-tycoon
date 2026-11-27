@@ -609,6 +609,19 @@ function TutorialCues.skipBox(talk: TalkRules.Box, below: boolean): TalkRules.Bo
 	return { x = right - SKIP_SIZE.X, y = y, w = SKIP_SIZE.X, h = SKIP_SIZE.Y }
 end
 
+-- Skip's pill as drawn (nil while it's hidden): kept clear with the talk card (Util/FightToast slides in under them)
+function TutorialCues.skipPill(): TalkRules.Box?
+	local button = skip
+	if not button or not button.Parent or not button.Visible then
+		return nil
+	end
+	local pill = button:FindFirstChild("Pill")
+	if not pill or not pill:IsA("GuiObject") then
+		return nil
+	end
+	return { x = pill.AbsolutePosition.X, y = pill.AbsolutePosition.Y, w = pill.AbsoluteSize.X, h = pill.AbsoluteSize.Y }
+end
+
 -- The tour card (Skip tapped): "Pish's Tour · 3 of 8", the paw row, his gift and what you'd miss, a big green Keep
 -- going and a small grey Skip tour
 function TutorialCues.tourCard(done: number, total: number, onKeep: () -> (), onSkip: () -> (), custom: { tour: string?, tourGift: string?, icon: string? }?)

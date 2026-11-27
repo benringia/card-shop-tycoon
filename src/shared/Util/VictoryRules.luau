@@ -126,6 +126,30 @@ function VictoryRules.toast(summary: any, cardsById: { [string]: any }, restLine
 	}
 end
 
+export type Box = { x: number, y: number, w: number, h: number }
+
+-- The toast's top (px): where it slides in (`toast.y`), or `gap` px under what it would lie on among `keepClear` (the
+-- tutorial's talk card and Skip hanging off it; seen 2026-11-27: the win toast covered Chikin's line about the shop XP
+-- it shows). A toast not laid out yet counts as a point at its middle.
+function VictoryRules.toastTop(toast: Box, keepClear: { Box }, gap: number): number
+	local w, h = math.max(toast.w, 1), math.max(toast.h, 1)
+	local x = toast.x + (toast.w - w) / 2
+	local top = toast.y
+	local moved = true
+	while moved do
+		moved = false
+		for _, box in keepClear do
+			local across = math.min(x + w, box.x + box.w) - math.max(x, box.x)
+			local down = math.min(top + h, box.y + box.h) - math.max(top, box.y)
+			if across > 0 and down > 0 then
+				top = box.y + box.h + gap -- past it for good: each box moves the toast once at most
+				moved = true
+			end
+		end
+	end
+	return top
+end
+
 -- "Meadow Warden defeated · 1:24"
 function VictoryRules.subtitle(foe: string?, seconds: number?): string
 	local name = if foe and foe ~= "" then `{foe} defeated` else "Fight won"

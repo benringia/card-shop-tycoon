@@ -535,6 +535,22 @@ function TutorialTalk.keepClear(target: GuiObject?, pointer: GuiObject?)
 	avoidPointer = pointer
 end
 
+-- The card and Skip hanging off it, as drawn (none while the card is hidden or the tutorial's screen is quiet):
+-- Util/FightToast slides in under them
+function TutorialTalk.shownBoxes(): { TalkRules.Box }
+	local shown = card
+	local box = if shown and shown.Visible and TutorialCues.screen().Enabled then boxOf(shown) else nil
+	if not box then
+		return {}
+	end
+	local boxes = { box }
+	local pill = TutorialCues.skipPill()
+	if pill then
+		table.insert(boxes, pill)
+	end
+	return boxes
+end
+
 function TutorialTalk.hide()
 	if card then
 		card.Visible = false

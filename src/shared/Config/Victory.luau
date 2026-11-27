@@ -58,7 +58,8 @@ return {
 		scale = 1.4,
 		touchScale = 1.15,
 		top = 64, -- px under the top bar, clear of the Shop button
-		edge = { win = rgb(62, 224, 138), rare = rgb(255, 207, 74), lose = rgb(224, 71, 58), run = rgb(154, 150, 168) },
+		belowTalk = 10, -- px under the tutorial's talk card (and its Skip) when it shows at the top (VictoryRules.toastTop)
+		edge ={ win = rgb(62, 224, 138), rare = rgb(255, 207, 74), lose = rgb(224, 71, 58), run = rgb(154, 150, 168) },
 	},
 	-- Boss loot picked up (Util/ItemPopup, Util/ItemPopupRules; the owner 2026-11-10: "picking up an item should show a
 	-- notification"): a card per item at the top right, under Roblox's top bar, `width` px wide, stacking down (three

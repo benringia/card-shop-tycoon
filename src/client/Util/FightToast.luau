@@ -2,9 +2,12 @@
 -- A normal monster fight's end, small and quick (owner 2026-11-03: no big screen for normal monsters; Config/Victory
 -- TOAST, words from Util/VictoryRules.toast): a dark pill slides down at the top with an edge in its colour, "Mossling
 -- defeated" with cash and XP pills (a gold line for a card or shards), "Your party fainted" in red, "Got away safely"
--- in grey. Gone after a moment; a new one replaces it.
+-- in grey. Gone after a moment; a new one replaces it. Never on the tutorial's talk card (seen 2026-11-27 on Chikin's
+-- "Monsters give your shop a little XP too."): it slides in under the card and its Skip while they show at the top
+-- (VictoryRules.toastTop), drawn a layer under them.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -14,12 +17,15 @@ local Victory = require(Shared:WaitForChild("Config"):WaitForChild("Victory"))
 local VictoryRules = require(Shared:WaitForChild("Util"):WaitForChild("VictoryRules"))
 local Icon = require((script.Parent :: Instance):WaitForChild("Icon"))
 local SoundBank = require((script.Parent :: Instance):WaitForChild("SoundBank"))
+local TutorialTalk = require((script.Parent :: Instance):WaitForChild("TutorialTalk"))
 
 local FightToast = {}
 
 local SLIDE = TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+local MOVE = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local FADE = TweenInfo.new(0.25)
 local BACK = Color3.fromRGB(18, 14, 26)
+local LAYER = 29 -- one under the tutorial's screen (Util/TutorialCues, 30): its card and Skip stay on top even mid-slide
 
 local current: ScreenGui? = nil
 local token = 0
@@ -39,6 +45,14 @@ local function label(parent: Instance, text: string, size: number, color: Color3
 	item.LayoutOrder = order
 	item.Parent = parent
 	return item
+end
+
+-- Where the pill's top goes now: Config/Victory TOAST top, or under the tutorial's talk card and Skip it would lie on
+local function topFor(gui: ScreenGui, pill: Frame): number
+	local cfg = Victory.TOAST
+	local size = pill.AbsoluteSize
+	local box = { x = gui.AbsoluteSize.X / 2 - size.X / 2, y = cfg.top, w = size.X, h = size.Y }
+	return VictoryRules.toastTop(box, TutorialTalk.shownBoxes(), cfg.belowTalk)
 end
 
 local function sound(id: string)
@@ -65,7 +79,7 @@ function FightToast.show(toast: VictoryRules.Toast)
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "FightToast"
 	gui.ResetOnSpawn = false
-	gui.DisplayOrder = 30
+	gui.DisplayOrder = LAYER
 	gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 	current = gui
 
@@ -136,12 +150,30 @@ function FightToast.show(toast: VictoryRules.Toast)
 		label(chip, item.text, 15, Color3.new(1, 1, 1), 2)
 	end
 
-	TweenService:Create(pill, SLIDE, { Position = UDim2.new(0.5, 0, 0, cfg.top) }):Play()
+	local aimed = topFor(gui, pill)
+	TweenService:Create(pill, SLIDE, { Position = UDim2.new(0.5, 0, 0, aimed) }):Play()
+	-- the talk card can show, move or go while the toast is up: the toast follows (under it, or back up)
+	local leaving = false
+	local follow: RBXScriptConnection? = nil
+	follow = RunService.RenderStepped:Connect(function()
+		if token ~= mine or leaving or not gui.Parent then
+			if follow then
+				follow:Disconnect()
+			end
+			return
+		end
+		local want = topFor(gui, pill)
+		if math.abs(want - aimed) > 0.5 then
+			aimed = want
+			TweenService:Create(pill, MOVE, { Position = UDim2.new(0.5, 0, 0, want) }):Play()
+		end
+	end)
 	sound(if toast.kind == "rare" then Victory.SOUNDS.rare elseif toast.kind == "win" then Victory.SOUNDS.tile else "")
 	task.delay(cfg.seconds, function()
 		if token ~= mine then
 			return
 		end
+		leaving = true
 		TweenService:Create(pill, FADE, { Position = UDim2.new(0.5, 0, 0, -80), BackgroundTransparency = 1 }):Play()
 		TweenService:Create(edge, FADE, { Transparency = 1 }):Play()
 		task.delay(FADE.Time, function()

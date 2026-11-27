@@ -2821,7 +2821,11 @@ a foe wider than it is tall. A kind with no entry plays nothing (`FightFxRules.h
   `Config/Victory`), boss fights only: normal monster fights (wild, elites, Dungeon rooms) end with a toast instead
   (`Util/FightToast`, `VictoryRules.toast`, `Victory.TOAST`): a dark pill slides down at the top, "Mossling defeated"
   with +cash and +XP pills (green edge; gold with a "New card! Petalpaw · Grade B" or Star Shard line and a chime),
-  "Your party fainted" with when it's rested (red), "Got away safely" (grey), gone after 2.6 s. The boss screen: a warm flash, then a big glowing title popping in over the arena ("VICTORY!", gold; "DUNGEON
+  "Your party fainted" with when it's rested (red), "Got away safely" (grey), gone after 2.6 s. Never on the tutorial's
+  talk card (seen 2026-11-27: it covered Chikin's "Monsters give your shop a little XP too."): while the card shows at
+  the top, the toast slides in `Victory.TOAST.belowTalk` px under it and its Skip (`VictoryRules.toastTop`,
+  `TutorialTalk.shownBoxes`), follows when the card goes or comes back, and draws a layer under the tutorial's screen
+  (29 to its 30). The boss screen: a warm flash, then a big glowing title popping in over the arena ("VICTORY!", gold; "DUNGEON
   CONQUERED!" on the first Hydra clear) with "<foe> defeated · m:ss" under it; a row of reward tiles popping in one by
   one with their icons (cash, XP each, Star Shards, a dropped card, the boss chest and ground loot, the daily bonus; a
   new card, a first-clear chest item and the bonus glow gold, with a chime; a boss win opens with a rewarding sting,
