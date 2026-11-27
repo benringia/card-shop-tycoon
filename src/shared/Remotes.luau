@@ -125,6 +125,7 @@ local NAMES = {
 	"BossesChanged", -- server → owner: { [bossId] = { unlocked, cleared, lootIn: seconds, bonusReady, fragments, weaponPity } }
 	"RequestBosses", -- client → server: () resend BossesChanged
 	"BossResetBuy", -- client → server: () open the Robux "reset all boss timers" purchase (Bosses.RESET)
+	"BossLootReady", -- server → owner: (bossIds: { string }) loot timers they started ran out (Bosses.LOOT_READY): the Bosses tile's count and a Phone ping
 	"BossCleared", -- server → clients: (displayName: string, bossId: string) someone beat a boss for the first time
 	"BossLoot", -- server → owner: { drops = { { id, item, count, x, y, z } }, from = { x, y, z } } or { taken = id }
 	"PickUpLoot", -- client → server: (ids: { string }) pick up your boss drops close by (up to Bosses.LOOT_PICKUP_BATCH)
@@ -312,6 +313,7 @@ return {
 	BossesChanged = remotes.BossesChanged,
 	RequestBosses = remotes.RequestBosses,
 	BossResetBuy = remotes.BossResetBuy,
+	BossLootReady = remotes.BossLootReady,
 	BossCleared = remotes.BossCleared,
 	BossLoot = remotes.BossLoot,
 	PickUpLoot = remotes.PickUpLoot,

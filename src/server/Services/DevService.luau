@@ -654,6 +654,16 @@ function DevService.Start()
 	addCommand(folder, "bossreset", function(player: Player, _text: string)
 		BossService.ResetTimers(player)
 	end)
+	-- "/bosstimer <1-7> <seconds>": that boss's loot timer runs out in that many seconds, to see its notice
+	-- (Bosses.LOOT_READY: the toast, the Bosses tile's count, the Phone ping)
+	addCommand(folder, "bosstimer", function(player: Player, text: string)
+		local index, seconds = string.match(text, "^/%w+%s+(%d+)%s+(%d+)")
+		if not index or not BossService.DevSetLootIn(player, tonumber(index) :: number, tonumber(seconds) :: number) then
+			Remotes.Notify:FireClient(player, `Usage: /bosstimer <1-{#Bosses.LADDER}> <seconds>`, true)
+			return
+		end
+		Remotes.Notify:FireClient(player, `Loot timer ends in {seconds} s.`, false)
+	end)
 	addCommand(folder, "boss", function(player, text)
 		local index = tonumber(string.match(text, "%s+(%d+)") or "") or 0
 		local gate = BossService.GetGate(index)

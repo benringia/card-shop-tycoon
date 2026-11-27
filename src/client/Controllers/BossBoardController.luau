@@ -106,6 +106,7 @@ end
 local receivedAt = 0 -- os.clock() when `states` arrived (lootIn counts down from then)
 local partyIds: { string } = {}
 local selected = 1 -- the boss shown beside the list
+local lootReady = 0 -- bosses whose loot came back since the board last opened: the Bosses tile's red count
 local lootPill: TextLabel? = nil -- the shown boss's loot timer
 local resetButton: TextButton? = nil -- beside it: the Robux reset of every boss timer (Util/BossReset)
 
@@ -1057,6 +1058,8 @@ end
 local function toggle()
 	panel.Visible = not panel.Visible
 	if panel.Visible then
+		lootReady = 0 -- seen: the count goes
+		Hud.setBadge("Bosses", 0)
 		layout()
 		selected = defaultStep()
 		Remotes.RequestBosses:FireServer()
@@ -1165,6 +1168,16 @@ function BossBoardController.Start()
 		if typeof(items) == "table" then
 			bagItems = items :: any
 		end
+	end)
+	-- Loot timers ran out (Bosses.LOOT_READY; the server's toast says which): the Bosses tile counts them until the board
+	-- opens, and the Phone pings
+	Remotes.BossLootReady.OnClientEvent:Connect(function(bossIds: unknown)
+		if typeof(bossIds) ~= "table" or panel.Visible then
+			return
+		end
+		lootReady += #(bossIds :: { any })
+		Hud.setBadge("Bosses", lootReady)
+		Hud.notice("ping")
 	end)
 	Remotes.BossesChanged.OnClientEvent:Connect(function(payload)
 		if typeof(payload) ~= "table" then

@@ -113,6 +113,7 @@ AdminPanel.SECTIONS = {
 			{ label = "Drop cinematic (preview)", command = "/weapondrop %s preview", placeholder = "boss id (meadowWarden, prismHydra)" },
 			{ label = "Boss chests", command = "/chests %s", placeholder = "boss id [drop|miss] (meadowWarden drop)" },
 			{ label = "Boss timers reset (as if bought)", command = "/bossreset" },
+			{ label = "Meadow Warden's loot ready in 5 s (its notice)", command = "/bosstimer 1 5" },
 			{ label = "Event: Boss Rush", command = "/event bossRush" },
 			{ label = "Event: Lucky Sunday", command = "/event luckySunday" },
 			{ label = "Event: none", command = "/event off" },

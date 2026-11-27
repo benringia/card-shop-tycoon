@@ -57,6 +57,7 @@ end
 local GATED = {
 	{ "BattleService", "BattleService.SetBossHpShare" },
 	{ "BossService", "BossService.DevSetBeaten" },
+	{ "BossService", "BossService.DevSetLootIn" },
 	{ "DecorService", "DecorService.SetLookForDev" },
 	{ "EventService", "EventService.Dev" },
 	{ "MainQuestService", "MainQuestService.Dev" },

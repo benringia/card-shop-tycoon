@@ -529,6 +529,17 @@ local function makeBadge(button: GuiObject): TextLabel
 	return badge
 end
 
+-- A tile's or app's own count (Hud.setBadge), hidden at 0; one set before it was made shows at once
+local function attachBadge(id: string, button: GuiObject)
+	local badge = makeBadge(button)
+	badges[id] = badge
+	local waiting = badgeCounts[id]
+	if waiting and waiting > 0 then
+		badge.Visible = true
+		badge.Text = PhoneNotice.text(waiting)
+	end
+end
+
 local function ensureManageTile()
 	if manageTile then
 		return
@@ -927,6 +938,8 @@ function Hud.tile(spec: TileSpec): TextButton
 	end
 	tile = makeTile(parent, made, HudLayout.CANDY[spec.id] or HudLayout.CANDY.Manage)
 	tiles[spec.id] = tile
+	-- its own red count too, at the bottom or as a Phone app (the Bosses tile's loot come back, owner 2026-11-27)
+	attachBadge(spec.id, tile)
 	if spec.phoneApp then
 		ensureManageTile()
 	end
@@ -960,14 +973,7 @@ function Hud.fanButton(spec: FanSpec): TextButton
 		end,
 	}, HudLayout.CANDY_FAN[(math.max(spec.order, 1) - 1) % #HudLayout.CANDY_FAN + 1])
 	button.ZIndex = 35
-	-- a red count on its corner (Hud.setBadge), hidden at 0
-	local badge = makeBadge(button)
-	badges[spec.id] = badge
-	local waiting = badgeCounts[spec.id]
-	if waiting and waiting > 0 then
-		badge.Visible = true
-		badge.Text = PhoneNotice.text(waiting) -- set before its app was made
-	end
+	attachBadge(spec.id, button) -- a red count on its corner (Hud.setBadge), hidden at 0
 	table.insert(entries, {
 		button = button,
 		rule = { app = true, everywhere = spec.everywhere },

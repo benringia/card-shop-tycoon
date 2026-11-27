@@ -123,6 +123,29 @@ function BossRules.lootEligible(record: Record, now: number): boolean
 	return now >= record.lootAt
 end
 
+-- The watched loot timers (ones the player started, or still running when they came, in this server) that have run
+-- out by `now`, in the ladder's order (BossService tells the player; owner 2026-11-27)
+function BossRules.dueLoot(ladder: { string }, records: { [string]: Record }, watched: { [string]: boolean }, now: number): { string }
+	local due = {}
+	for _, bossId in ladder do
+		local record = records[bossId]
+		if watched[bossId] and record and now >= record.lootAt then
+			table.insert(due, bossId)
+		end
+	end
+	return due
+end
+
+-- What the player is told when loot timers run out (Config/Bosses LOOT_READY): one or two bosses by name, more by count
+function BossRules.readyWords(words: { one: string, two: string, many: string }, names: { string }): string
+	if #names == 1 then
+		return string.format(words.one, names[1])
+	elseif #names == 2 then
+		return string.format(words.two, names[1], names[2])
+	end
+	return string.format(words.many, #names)
+end
+
 -- The party's Power as the Boss Ladder reads it against a boss's recommended Power: the average of its `slots`
 -- (empty ones count as nothing), not its best card (owner 2026-11-19: a party with one card at the recommended Power
 -- and two at 60% read "Ready" and won about 1 fight in 5; one whose average is the recommended Power wins like three

@@ -293,6 +293,29 @@ return {
 		expect.equal(BossRules.lootEligible(saved, 1000), true, "ready")
 	end,
 
+	-- Owner 2026-11-27: "add a notification if boss timer resets", then go on "Meadow Warden's loot is ready again!", a
+	-- ping, only timers you started, several at once in one message
+	["dueLoot: the watched timers that ran out, in the ladder's order"] = function()
+		local records = {
+			meadowWarden = record({ lootAt = 1000 }),
+			caveBroodQueen = record({ lootAt = 2000 }),
+			emberColossus = record({ lootAt = 900 }),
+			frostTyrant = record({ lootAt = 500 }),
+		}
+		local watched = { meadowWarden = true, caveBroodQueen = true, emberColossus = true }
+		expect.equal(#BossRules.dueLoot(Bosses.LADDER, records, watched, 999), 1, "only the Colossus by then")
+		expect.equal(table.concat(BossRules.dueLoot(Bosses.LADDER, records, watched, 1000), ","), "meadowWarden,emberColossus")
+		expect.equal(table.find(BossRules.dueLoot(Bosses.LADDER, records, watched, 5000), "frostTyrant"), nil, "never a timer you didn't start here")
+		expect.equal(#BossRules.dueLoot(Bosses.LADDER, records, {}, 5000), 0, "nothing watched, nothing told")
+	end,
+
+	["readyWords: one boss by name, two by name, more by count"] = function()
+		local words = Bosses.LOOT_READY
+		expect.equal(BossRules.readyWords(words, { "Meadow Warden" }), "Meadow Warden's loot is ready again!")
+		expect.equal(BossRules.readyWords(words, { "Meadow Warden", "Ember Colossus" }), "Meadow Warden and Ember Colossus have loot again!")
+		expect.equal(BossRules.readyWords(words, { "A", "B", "C" }), "3 bosses have loot again!")
+	end,
+
 	-- The Robux boss timer reset (owner 2026-11-19: "go A, both spots, R$ 19. but it should also tell players that all
 	-- the bosses reset"): one buy ends every running boss loot timer
 	["reset: offered while a boss timer has a minute left; one buy ends every running timer"] = function()

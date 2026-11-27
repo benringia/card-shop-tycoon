@@ -5107,6 +5107,16 @@ Built products live in Config/Monetization PRODUCTS (0 = not created yet: "Comin
 the experience → Monetization → Developer Products, then paste the ids there. PurchaseService holds the one
 ProcessReceipt.
 
+### Loot ready again (built 2026-11-27)
+Owner: "add a notification if boss timer resets", then go on the proposal: when a boss's loot timer runs out by itself
+the player hears it: one toast for every timer that ran out together ("Meadow Warden's loot is ready again!", "Meadow
+Warden and Ember Colossus have loot again!", "3 bosses have loot again!"; `Bosses.LOOT_READY`, `BossRules.readyWords`),
+a red count on the Bosses tile or Phone app until the board opens, and a Phone ping (`Remotes.BossLootReady`,
+`BossBoardController`). Only timers the player started in that server or that were still running when they came
+(`BossService` watches them, checking every second, `BossRules.dueLoot`); a bought reset says its own words instead.
+Every `Hud.tile` now has its own count like the Phone's apps (`Hud.setBadge`). Studio: `/bosstimer <1-7> <seconds>` and
+the admin panel's "Meadow Warden's loot ready in 5 s" button. `tests/BossRules`.
+
 ### Boss timer reset (built 2026-11-19)
 Owner, once the daily limit was gone and loot came every 7 minutes per boss: "can we now add a reset on bosses? should
 we add it by region? by boss? or one for all", then "go A, both spots, R$ 19. but it should also tell players that all

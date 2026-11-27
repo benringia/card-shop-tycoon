@@ -61,6 +61,9 @@ local secretFound: { [Player]: boolean } = {} -- found the Dungeon's secret ches
 -- told whenever a player's boss clears or secret change (TitleService: the titles they've earned)
 local progressHooks: { (player: Player, progress: { cleared: { [string]: boolean }, secret: boolean }) -> () } = {}
 local seenIntro: { [Player]: boolean } = {} -- saw the Hydra's full welcome (saved data.dungeon.seenIntro)
+-- The loot timers this server tells the player about when they run out (Bosses.LOOT_READY, owner 2026-11-27): ones
+-- started here and ones still running when they came
+local watched: { [Player]: { [string]: boolean } } = {}
 local arenas: { [string]: WildService.BossArena } = {}
 local occupants: { [string]: { [number]: WildService.Monster } } = {} -- the boss being fought in each arena copy
 local fighters: { [string]: { [number]: { Player } } } = {} -- who fought in each remote copy (they hold it until they leave)
@@ -535,6 +538,10 @@ local function onBossWin(player: Player, monster: WildService.Monster, fight: { 
 		-- the weekly event on now (Config/Events): Boss Rush halves the wait and says so on the victory screen
 		local event = EventNow.today()
 		record.lootAt = now + EventRules.lootCooldown(event, Bosses.LOOT_COOLDOWN)
+		local mine = watched[player]
+		if mine then
+			mine[bossId] = true -- told when it runs out (Bosses.LOOT_READY)
+		end
 		result.event = if event then event.note else nil
 		-- Its chests (BossChestService) after every loot win of those who helped (the owner 2026-11-11: "chests every
 		-- win"); they hold the weapon or its material, so the material's own roll is skipped here
@@ -1125,6 +1132,13 @@ local function load(player: Player, data: DataService.PlayerData)
 		byBoss[bossId] = BossRules.read(saved[bossId], Bosses.BOSSES[bossId].unlock == nil)
 	end
 	records[player] = byBoss
+	local running = {}
+	for bossId, record in byBoss do
+		if record.lootAt > os.time() then
+			running[bossId] = true -- still running from before: told when it runs out here
+		end
+	end
+	watched[player] = running
 	secretFound[player] = typeof(data.dungeon) == "table" and data.dungeon.secretFound == true
 	seenIntro[player] = typeof(data.dungeon) == "table" and data.dungeon.seenIntro == true
 	setTitle(player)
@@ -1145,6 +1159,7 @@ end
 
 local function unload(player: Player)
 	records[player] = nil
+	watched[player] = nil
 	secretFound[player] = nil
 	seenIntro[player] = nil
 	pending[player] = nil -- loot left on the ground is gone
@@ -1273,13 +1288,57 @@ function BossService.ResetTimers(player: Player): boolean
 		return false
 	end
 	BossRules.resetTimers(byBoss, os.time())
+	watched[player] = {} -- the reset says it itself (Bosses.RESET.done): no "ready again" for each
 	sendBosses(player)
 	Remotes.Notify:FireClient(player, Bosses.RESET.done)
 	return true
 end
 
+-- Every watched loot timer that ran out: one toast for all of them (BossRules.readyWords) and the client's count on the
+-- Bosses tile with a Phone ping (Remotes.BossLootReady); owner 2026-11-27
+local function tellLootReady()
+	local now = os.time()
+	for player, mine in watched do
+		local byBoss = records[player]
+		local due = if byBoss then BossRules.dueLoot(Bosses.LADDER, byBoss, mine, now) else {}
+		if #due > 0 then
+			local names = {}
+			for _, bossId in due do
+				mine[bossId] = nil
+				table.insert(names, Bosses.BOSSES[bossId].name)
+			end
+			Remotes.Notify:FireClient(player, BossRules.readyWords(Bosses.LOOT_READY, names))
+			Remotes.BossLootReady:FireClient(player, due)
+		end
+	end
+end
+
+-- Studio's /bosstimer <n> <seconds> (and the admin panel): boss n's loot timer runs out in `seconds`, watched, to see
+-- its notice
+function BossService.DevSetLootIn(player: Player, index: number, seconds: number): boolean
+	if not DevAccess.can(player) then
+		return false
+	end
+	local bossId = Bosses.LADDER[index]
+	local byBoss, mine = records[player], watched[player]
+	local record = if bossId and byBoss then byBoss[bossId] else nil
+	if not record or not mine then
+		return false
+	end
+	record.lootAt = os.time() + math.max(0, math.floor(seconds))
+	mine[bossId] = true
+	sendBosses(player)
+	return true
+end
+
 function BossService.Start()
 	DataService.Register({ name = "BossService", load = load, save = save, unload = unload })
+	task.spawn(function()
+		while true do
+			task.wait(Bosses.LOOT_READY.checkEvery)
+			tellLootReady()
+		end
+	end)
 	arenas = WildService.BuildBossArenas(onGate, onGroup, onReturn)
 	BattleService.SetBossRewards(onBossWin)
 	BattleService.OnMemberLeft(function(player, monster)
