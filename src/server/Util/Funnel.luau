@@ -7,6 +7,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local FunnelConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Funnel"))
+local AnalyticsGate = require((script.Parent :: Instance):WaitForChild("AnalyticsGate"))
 
 local Funnel = {}
 
@@ -14,8 +15,8 @@ local logged: { [Player]: { [string]: boolean } } = {}
 
 function Funnel.step(player: Player, name: string)
 	local index = table.find(FunnelConfig.ONBOARDING, name)
-	if not index then
-		return
+	if not index or not AnalyticsGate.allowed(player) then
+		return -- not a step, or the owner's test save (kept out of the numbers)
 	end
 	local done = logged[player]
 	if not done then

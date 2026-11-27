@@ -22,6 +22,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Services = script.Parent :: Instance
 local RateLimiter = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("RateLimiter"))
 local DevAccess = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("DevAccess"))
+local AnalyticsGate = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("AnalyticsGate"))
 local BattleService = require(Services:WaitForChild("BattleService"))
 local CardService = require(Services:WaitForChild("CardService"))
 local DataService = require(Services:WaitForChild("DataService"))
@@ -43,7 +44,10 @@ local states: { [Player]: Saved } = {}
 local begun: { [Player]: boolean } = {}
 local allowAction = RateLimiter.new(ACTION_COOLDOWN)
 
-local function log(callback: () -> ())
+local function log(player: Player, callback: () -> ())
+	if not AnalyticsGate.allowed(player) then
+		return -- the owner's test save stays out of the numbers
+	end
 	pcall(callback) -- analytics never stops the game
 end
 
@@ -108,7 +112,7 @@ local function record(player: Player, stepId: string)
 	end
 	for _, id in done do
 		local index = table.find(STEPS, id) :: number
-		log(function()
+		log(player, function()
 			AnalyticsService:LogFunnelStepEvent(player, FUNNEL, nil, index, id)
 		end)
 	end
@@ -184,14 +188,14 @@ local function onAction(player: Player, action: unknown)
 		end
 	elseif action == "skip" and state.firstVisit == "todo" then
 		states[player] = TutorialRules.skip(state)
-		log(function()
+		log(player, function()
 			AnalyticsService:LogCustomEvent(player, "CombatTutorialSkipped", state.step)
 		end)
 		publish(player)
 	elseif action == "gotIt" and state.firstVisit == "todo" and ChikinRules.gotIt(Chikin, current) then
 		-- "Got it!" on his level 4 visit's waiting line: he's off for good (the boss is on the Bosses board)
 		states[player] = TutorialRules.skip(state)
-		log(function()
+		log(player, function()
 			AnalyticsService:LogCustomEvent(player, "CombatTutorialGotIt", state.step)
 		end)
 		publish(player)

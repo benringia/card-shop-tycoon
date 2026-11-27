@@ -27,6 +27,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
 local ServerUtil = (Services.Parent :: Instance):WaitForChild("Util")
+local AnalyticsGate = require(ServerUtil:WaitForChild("AnalyticsGate"))
 local RateLimiter = require(ServerUtil:WaitForChild("RateLimiter"))
 local TownDog = require(ServerUtil:WaitForChild("TownDog"))
 
@@ -100,6 +101,9 @@ local function onPet(player: Player)
 	local left = if granted then 0 else math.max(0, (courageAt[player] or now) + courage.cooldown - now)
 	Remotes.ChikinPetted:FireAllClients(player.UserId, granted, left)
 	pcall(function()
+		if not AnalyticsGate.allowed(player) then
+			return -- the owner's test save stays out of the numbers
+		end
 		AnalyticsService:LogCustomEvent(player, "ChikinPetted", if granted then 1 else 0)
 	end)
 end

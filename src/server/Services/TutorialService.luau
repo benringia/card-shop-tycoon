@@ -27,6 +27,7 @@ local Services = script.Parent :: Instance
 local RateLimiter = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("RateLimiter"))
 local Funnel = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("Funnel"))
 local DevAccess = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("DevAccess"))
+local AnalyticsGate = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("AnalyticsGate"))
 local CustomerService = require(Services:WaitForChild("CustomerService"))
 local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
@@ -61,7 +62,10 @@ local lastNudge: { [Player]: number } = {}
 local mutedNudges: { [Player]: boolean } = {} -- "Got it" on a nudge: no more this session (owner 2026-11-18)
 local allowAction = RateLimiter.new(ACTION_COOLDOWN)
 
-local function log(callback: () -> ())
+local function log(player: Player, callback: () -> ())
+	if not AnalyticsGate.allowed(player) then
+		return -- the owner's test save stays out of the numbers
+	end
 	-- Analytics never stops the game (it can't be reached in some Studio sessions)
 	pcall(callback)
 end
@@ -91,7 +95,7 @@ local function publish(player: Player)
 end
 
 local function logLesson(player: Player, event: string, lessonId: string)
-	log(function()
+	log(player, function()
 		AnalyticsService:LogCustomEvent(player, event, 0, { [Enum.AnalyticsCustomFieldKeys.CustomField01.Name] = lessonId })
 	end)
 end
@@ -204,7 +208,7 @@ local function enter(player: Player, stepId: string)
 	elseif stepId == "gift" and not state.giftClaimed then
 		state.giftClaimed = true
 		ItemService.GiveItem(player, Pish.GIFT_ITEM, 1)
-		log(function()
+		log(player, function()
 			AnalyticsService:LogCustomEvent(player, "PishGiftClaimed")
 		end)
 	end
@@ -269,7 +273,7 @@ local function onAction(player: Player, action: unknown, lessonId: unknown, used
 	end
 	if action == "skip" and state.firstVisit == "todo" then
 		states[player] = TutorialRules.skip(state)
-		log(function()
+		log(player, function()
 			AnalyticsService:LogCustomEvent(player, "TutorialSkipped", state.step)
 		end)
 		publish(player)

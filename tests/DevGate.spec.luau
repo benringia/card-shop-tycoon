@@ -107,6 +107,21 @@ return {
 		assert(string.find(source, 'GetAttribute("TestSave") == true', 1, true), "test save")
 	end,
 
+	-- The owner's test save stays out of the analytics (funnels, custom events): its fresh runs would read as new players
+	["every file that logs to analytics asks AnalyticsGate first"] = function()
+		local count = 0
+		for _, path in files("src/server") do
+			local source = read(path)
+			if string.find(source, "AnalyticsService:Log", 1, true) then
+				count += 1
+				assert(string.find(source, "AnalyticsGate.allowed(", 1, true), `{path} logs without AnalyticsGate`)
+			end
+		end
+		expect.equal(count >= 5, true, "the funnel and the tutorials, Pish and Chikin")
+		local gate = read("src/server/Util/AnalyticsGate.luau")
+		assert(string.find(gate, 'GetAttribute("TestSave") ~= true', 1, true), "the server's own test save mark")
+	end,
+
 	["every other service's dev function asks DevAccess first, never a bare Studio check"] = function()
 		for _, entry in GATED do
 			local first = opening(read(`src/server/Services/{entry[1]}.luau`), entry[2])

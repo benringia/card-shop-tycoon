@@ -29,6 +29,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Services = script.Parent :: Instance
 local RateLimiter = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("RateLimiter"))
 local TownDog = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("TownDog"))
+local AnalyticsGate = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("AnalyticsGate"))
 local PackService = require(Services:WaitForChild("PackService"))
 local PlotService = require(Services:WaitForChild("PlotService"))
 
@@ -132,6 +133,9 @@ local function onPet(player: Player)
 	local left = if lucky then 0 else math.max(0, (luckAt[player] or now) + Pish.LUCK.cooldown - now)
 	Remotes.PishPetted:FireAllClients(player.UserId, lucky, left)
 	pcall(function()
+		if not AnalyticsGate.allowed(player) then
+			return -- the owner's test save stays out of the numbers
+		end
 		AnalyticsService:LogCustomEvent(player, "PishPetted", if lucky then 1 else 0)
 	end)
 end
