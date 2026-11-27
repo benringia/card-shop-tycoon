@@ -202,13 +202,18 @@ end
 -- The quick weapon switch (Config/HudLayout WEAPON_SWITCH) on the right edge at mid height. Its HUD scale never shrinks
 -- a tap area under 48 px. In a fight it moves up above any fight button in its way (boss buttons by touch or mouse,
 -- wild buttons), so it never covers the Pet or Signature buttons.
--- The medallion dial (owner 2026-11-14 pick C): the weapon in hand in a `chip` px medallion in the box's bottom-right
--- corner, the others on a track `arc` px from its middle, the one before on the left and the next on top, each with a
--- `hit`-sized tap area: a square box from the left one's tap area to the medallion's edge
+-- The row (owner 2026-11-27 pick B; the medallion dial of 2026-11-14 before it): its box is UiLayout.switchBox
 -- `fightScale`: its size in a computer's fight (layout "mouse"), of its size out of one (owner 2026-11-20: it was the
 -- biggest thing over the compact buttons)
-export type SwitchLook = { chip: number, side: number, arc: number, hit: number, gap: number, right: number, compactChip: number?, fightScale: number? }
+export type SwitchLook = { chip: number, side: number, hit: number, row: number, drop: number, rise: number, name: number, gap: number, right: number, compactChip: number?, fightScale: number? }
 export type SwitchRect = { x: number, y: number, w: number, h: number, scale: number }
+
+-- The weapon switch's box before its scale (owner 2026-11-27 pick B, the twin of the party dock): the weapon in hand
+-- (`chip`) between the one before and the next (`side`, `row` px off it, each with a `hit`-sized tap area), its level
+-- pill `rise` px over it and its name's line (`name`) under it
+function UiLayout.switchBox(look: { chip: number, side: number, hit: number, row: number, rise: number, name: number }): (number, number)
+	return look.chip + 2 * look.row + look.side + look.hit, look.rise + look.chip + look.name
+end
 -- `clear`: boxes it keeps out of (a phone's top-right column with the party bar under it, owner 2026-11-13): it
 -- moves just under one it would sit on, kept on screen. `compact` (phones, owner 2026-11-13 pick A): only the weapon in
 -- hand, a bigger chip (`compactChip`), its count on its corner. `above` (a computer, owner 2026-11-13: "move weapon
@@ -222,8 +227,9 @@ function UiLayout.weaponSwitch(view: Size, look: SwitchLook, scale: number, figh
 		s *= look.fightScale -- a pointer needs less than a finger
 	end
 	local chip = if compact then look.compactChip or look.chip else look.chip
-	local w = (if compact then chip else look.arc + look.hit / 2 + look.chip / 2) * s
-	local h = w
+	local rowW, rowH = UiLayout.switchBox(look)
+	local w = (if compact then chip else rowW) * s
+	local h = (if compact then chip else rowH) * s
 	local x = view.w - look.right - w
 	local y = view.h / 2 - h / 2
 	if above and not fight then

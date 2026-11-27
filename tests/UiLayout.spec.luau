@@ -167,9 +167,18 @@ return {
 		end
 	end,
 
+	-- owner 2026-11-27 pick B (the twin of the party dock): the weapon in hand between the one before and the next, the
+	-- level pill over it and the name's line under it; the sides' tap areas count
+	["weapon switch: the row's box, the sides' tap areas and the name included"] = function()
+		local look = { chip = 72, side = 44, hit = 48, row = 8, drop = 8, rise = 9, name = 20 }
+		local w, h = UiLayout.switchBox(look)
+		expect.equal(w, 72 + 2 * 8 + 44 + 48, "the middle, two gaps, a side either way and half a tap area past each")
+		expect.equal(h, 9 + 72 + 20, "the pill over it, the weapon, the name under it")
+	end,
+
 	["weapon switch: smaller in a computer's fight, still over Super, still clickable"] = function()
-		-- Config/HudLayout WEAPON_SWITCH's numbers (it needs Roblox to load): 130 px out of a fight, about 90 in one
-		local look = { chip = 72, side = 36, arc = 70, hit = 48, gap = 6, right = 12, compactChip = 64, fightScale = 0.7 }
+		-- Config/HudLayout WEAPON_SWITCH's numbers (it needs Roblox to load): 180 px wide out of a fight, 126 in one
+		local look = { chip = 72, side = 44, hit = 48, row = 8, drop = 8, rise = 9, name = 20, gap = 6, right = 12, compactChip = 64, fightScale = 0.7 }
 		for _, view in { { w = 1920, h = 1080 }, { w = 1891, h = 672 }, { w = 1366, h = 768 } } do
 			local where = `{view.w}x{view.h}`
 			local calm = UiLayout.weaponSwitch(view, look :: any, 1, false, nil, false, nil)
@@ -207,12 +216,13 @@ return {
 		end
 	end,
 	["weapon switch: in a fight, clear of every button layout, on screen, its weapons big enough to tap"] = function()
-		-- Config/HudLayout WEAPON_SWITCH (not loadable in Lune) and its SCALE.MIN, the smallest HUD scale; the medallion
-		-- dial (owner 2026-11-14 pick C): the weapon in hand in the corner, the others `arc` from its middle up and left,
-		-- each drawn `side` px with a `hit`-sized tap area
+		-- Config/HudLayout WEAPON_SWITCH (not loadable in Lune) and its SCALE.MIN, the smallest HUD scale; the row (owner
+		-- 2026-11-27 pick B): the weapon in hand between the one before and the next, each side drawn `side` px with a
+		-- `hit`-sized tap area
 		-- touch screens (phones and tablets) always show the medallion alone (UIController's touch layout); the whole
-		-- dial is a computer's
-		local look = { chip = 72, side = 36, arc = 70, hit = 48, gap = 6, right = 12, compactChip = 64 }
+		-- row is a computer's
+		local look = { chip = 72, side = 44, hit = 48, row = 8, drop = 8, rise = 9, name = 20, gap = 6, right = 12, compactChip = 64 }
+		local boxW, boxH = UiLayout.switchBox(look)
 		local phones = { { w = 844, h = 390 }, { w = 667, h = 375 }, { w = 740, h = 360 } }
 		local tablets = { { w = 1180, h = 820 }, { w = 1024, h = 768 }, { w = 1366, h = 1024 } }
 		local desktops = { { w = 1920, h = 1080 }, { w = 1280, h = 720 }, { w = 1366, h = 768 }, { w = 1024, h = 600 } }
@@ -224,9 +234,8 @@ return {
 				local where = `{view.w}x{view.h}`
 				expect.equal(look.hit * r.scale >= 48, true, `{where}: the weapons on the track are tap targets`)
 				expect.equal(look.side < look.hit, true, "they're drawn smaller than their tap area")
-				local size = if compact then look.compactChip else look.arc + look.hit / 2 + look.chip / 2
-				expect.near(r.w, size * r.scale, 1e-6, `{where}: from the left one's tap area to the medallion's edge`)
-				expect.near(r.h, r.w, 1e-6, `{where}: as tall (the top one's tap area to the medallion's foot)`)
+				expect.near(r.w, (if compact then look.compactChip else boxW) * r.scale, 1e-6, `{where}: the row's width (a phone: the medallion)`)
+				expect.near(r.h, (if compact then look.compactChip else boxH) * r.scale, 1e-6, `{where}: the row's height`)
 				expect.equal(r.x >= 0 and r.y >= 0 and r.x + r.w <= view.w and r.y + r.h <= view.h, true, `{where}: on screen`)
 				expect.near(r.x + r.w, view.w - look.right, 1e-6, `{where}: on the right edge`)
 				for _, rects in { UiLayout.combatButtons(view), UiLayout.combatButtons(view, true), UiLayout.wildButtons(view) } do
@@ -241,7 +250,7 @@ return {
 	-- owner 2026-11-13 (a phone screenshot): on a short phone the switch sat on the party bar, which hangs under the cash
 	-- and XP column at the top right; it goes just under whatever it's told to keep clear of, on screen
 	["weapon switch: on a phone, under the top-right column and party bar, never on them"] = function()
-		local look = { chip = 72, side = 36, arc = 70, hit = 48, gap = 6, right = 12 }
+		local look = { chip = 72, side = 44, hit = 48, row = 8, drop = 8, rise = 9, name = 20, gap = 6, right = 12 }
 		for _, view in { { w = 750, h = 381 }, { w = 667, h = 375 }, { w = 844, h = 390 } } do
 			local column = { x = view.w - 270, y = 8, w = 258, h = 165 }
 			local r = UiLayout.weaponSwitch(view, look, 0.7, false, { column })
@@ -257,7 +266,7 @@ return {
 	-- which rise over the column: on a computer the switch sits beside the cash column, its foot with the column's, or
 	-- just above the column on a window too narrow for that (clear of the bottom tiles in the middle)
 	["weapon switch: on a computer, beside the cash column (above it on a narrow window)"] = function()
-		local look = { chip = 72, side = 36, arc = 70, hit = 48, gap = 6, right = 12 }
+		local look = { chip = 72, side = 44, hit = 48, row = 8, drop = 8, rise = 9, name = 20, gap = 6, right = 12 }
 		for _, view in { { w = 1726, h = 567 }, { w = 1920, h = 1080 }, { w = 1366, h = 768 } } do
 			local column = { x = view.w - 180, y = view.h - 150, w = 168, h = 138 }
 			local r = UiLayout.weaponSwitch(view, look, 1, false, nil, false, column)
@@ -273,7 +282,7 @@ return {
 	end,
 
 	["weapon switch: out of a fight, at mid height on the right edge"] = function()
-		local look = { chip = 72, side = 36, arc = 70, hit = 48, gap = 6, right = 12 }
+		local look = { chip = 72, side = 44, hit = 48, row = 8, drop = 8, rise = 9, name = 20, gap = 6, right = 12 }
 		for _, view in { { w = 844, h = 390 }, { w = 1180, h = 820 }, { w = 1920, h = 1080 } } do
 			local r = UiLayout.weaponSwitch(view, look, 0.7, false)
 			expect.near(r.y + r.h / 2, view.h / 2, 1e-6, `{view.w}x{view.h}: mid height`)
@@ -401,7 +410,7 @@ return {
 	-- height, far over the skills; it sits right over the buttons in its column (the Super button), for the layout on
 	-- screen
 	["weapon switch: in a fight it sits right over the fight buttons in its column"] = function()
-		local look = { chip = 72, side = 36, arc = 70, hit = 48, gap = 6, right = 12, compactChip = 64 }
+		local look = { chip = 72, side = 44, hit = 48, row = 8, drop = 8, rise = 9, name = 20, gap = 6, right = 12, compactChip = 64 }
 		local cases = {
 			{ view = { w = 1920, h = 1080 }, layout = "mouse", compact = false },
 			{ view = { w = 1366, h = 768 }, layout = "mouse", compact = false },
