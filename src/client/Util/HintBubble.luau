@@ -84,7 +84,10 @@ local function build(): Parts
 	close.LayoutOrder = 3
 	close.ZIndex = 22
 	close.Parent = bubble
-	local dot = UIKit.label(close, "x", Enum.Font.FredokaOne, 15, X_INK)
+	-- a capital X centred both ways (UIKit.label starts left-aligned; owner 2026-11-27: "center the X")
+	local dot = UIKit.label(close, "X", Enum.Font.FredokaOne, 14, X_INK)
+	dot.TextXAlignment = Enum.TextXAlignment.Center
+	dot.TextYAlignment = Enum.TextYAlignment.Center
 	dot.AnchorPoint = Vector2.new(0.5, 0.5)
 	dot.Position = UDim2.fromScale(0.5, 0.5)
 	dot.Size = UDim2.fromOffset(LOOK.x, LOOK.x)

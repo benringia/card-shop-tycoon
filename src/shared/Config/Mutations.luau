@@ -49,7 +49,8 @@ return {
 	-- The weapon in hand's mutation shown (owner 2026-11-27, picks B and C; client Util/MutationChip): a chip after your
 	-- HP words in a fight, pale in the rarity's colour with its edge and icon in it, opening into its words on hover or
 	-- for `openSeconds` after a tap; and a mark on the weapon dial's medallion (`mark`: its size and how far past the
-	-- medallion's top-left corner, the icon inside)
+	-- medallion's top-right corner, the icon inside; the top-left holds the grade badge: owner 2026-11-27, "the mutation
+	-- icon is overlapping")
 	CHIP = {
 		height = 18,
 		gap = 6, -- after your HP words

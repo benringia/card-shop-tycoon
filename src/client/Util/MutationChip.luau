@@ -149,14 +149,15 @@ function MutationChip.onLine(label: TextLabel): { setAllowed: (allowed: boolean)
 	}
 end
 
--- C: a mark on the weapon dial's medallion: a circle in the rarity's colour with its group's icon, past its top-left
--- corner; hidden without a mutation
+-- C: a mark on the weapon dial's medallion: a circle in the rarity's colour with its group's icon, past its top-right
+-- corner (the top-left is the grade's); hidden without a mutation
 function MutationChip.onDial(medallion: GuiObject)
 	local spec = LOOK.mark
 	local mark = Instance.new("Frame")
 	mark.Name = "MutationMark"
 	mark.Size = UDim2.fromOffset(spec.size, spec.size)
-	mark.Position = UDim2.fromOffset(spec.offset, spec.offset)
+	mark.AnchorPoint = Vector2.new(1, 0)
+	mark.Position = UDim2.new(1, -spec.offset, 0, spec.offset)
 	mark.Visible = false
 	mark.ZIndex = medallion.ZIndex + 3
 	corner(mark, spec.size // 2)
