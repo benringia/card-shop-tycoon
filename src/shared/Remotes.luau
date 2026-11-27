@@ -129,7 +129,7 @@ local NAMES = {
 	"BossLoot", -- server → owner: { drops = { { id, item, count, x, y, z } }, from = { x, y, z } } or { taken = id }
 	"PickUpLoot", -- client → server: (ids: { string }) pick up your boss drops close by (up to Bosses.LOOT_PICKUP_BATCH)
 	"BossTravel", -- client → server: (index: number) the board's Take me there: to boss n's gate in this place, or (a beaten Frontier or Dungeon boss) a teleport straight to it (FrontierService.ToBoss)
-	"DevPanel", -- client → server: (command: string) a dev chat command from the admin panel; handled in Studio only
+	"DevPanel", -- client → server: (command: string) a dev chat command from the admin panel; DevService runs it only after Util/DevAccess (Studio, or the game's owner on their test save)
 	"DungeonRun", -- server → client: { room, rooms, stage = "waiting" | "room" | "gather" | "beams" | "plates" | "lock" | "boss" | "won" | "out", next?, here?, total? (gather: the next puzzle, players on its island / still in the run), message?, intro? = "full" | "short" (play the Hydra's welcome; sent until the client acks) } the Dungeon run; client → server: () ask for it, or ("introSeen") the welcome started
 	"DungeonLeave", -- client → server: () leave the Dungeon run (back to the Frontier)
 	"Titles", -- server → client: { earned = { titleId }, equipped = titleId ("" automatic) }; client → server: () ask (TitleService)
@@ -142,7 +142,7 @@ local NAMES = {
 	"OpenBagPacks", -- client → server: (itemId: string, count: number) Open 10: up to Levels.OPEN_MANY packs of a Bag stack at once (LevelUpService)
 	"PacksOpened", -- server → client: (productId, results: { { cardId, foil, grade } }, newFlags: { boolean }, itemId: string, packs: number) Open 10's cards, pack by pack (BulkOpenController)
 	"LevelUpFx", -- server → clients: { kind = "shop", userId, from, to } or { kind = "creature", userId, beastId, element, from, to, fromFight }
-	"MovePreview", -- server → one client, Studio only: { move = "rain" | "vine" | "orbs" | "curse", grade = "C" | "B" | "A" | "S", big } (DevService /movefx), or { super = <Config/SuperFx look id>, grade } (/superfx)
+	"MovePreview", -- server → one client, admin only (Studio, or the owner's test save live; DevAccess): { move = "rain" | "vine" | "orbs" | "curse", grade = "C" | "B" | "A" | "S", big } (DevService /movefx), or { super = <Config/SuperFx look id>, grade } (/superfx)
 	"FrontierTravel", -- client → server: (where: "explore" | "friend" | "home", friendUserId?); server → client: { open = true } (portal menu) or { message }
 	"Departing", -- server → client: (kind: "Main" | "Frontier" | "Dungeon" | nil) a teleport is starting: that place's loading screen goes up now (DepartureController); nil: it stopped (failed, or Studio), take it down
 	"WelcomeSeen", -- client → server: () the welcome cinematic finished or was skipped

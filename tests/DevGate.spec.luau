@@ -138,11 +138,14 @@ return {
 		end
 	end,
 
-	["the admin panel is only built in Studio"] = function()
-		local start = opening(read("src/client/Controllers/AdminPanelController.luau"), "AdminPanelController.Start")
-		expect.equal(start, "if not RunService:IsStudio() then return end")
+	["the admin panel is built in Studio, or live only from the server's Admin mark"] = function()
+		local source = read("src/client/Controllers/AdminPanelController.luau")
+		local start = opening(source, "AdminPanelController.Start")
+		expect.equal(start, 'if RunService:IsStudio() then buildPanel("🛠 Admin (Studio)") return')
+		assert(string.find(source, 'GetAttribute("AdminAccess")', 1, true), "live: the tile waits for the owner's mark")
+		-- the effect previews (/movefx, /superfx...) only play what the gated server sends; they never ask it for anything
 		local preview = read("src/client/Controllers/MovePreviewController.luau")
-		assert(string.find(preview, "if not RunService:IsStudio() then", 1, true), "the effect previews too")
+		assert(not string.find(preview, "FireServer", 1, true), "the previews send nothing")
 	end,
 
 	["/slot, the one live chat command, is the game owner's alone"] = function()

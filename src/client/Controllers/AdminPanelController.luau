@@ -1,7 +1,9 @@
 --!strict
--- The admin panel (Studio only): every dev chat command as a button (Config/AdminPanel), plus +1/+10 of every item
--- and Go/Fight/Group for every boss. Buttons send the command text through Remotes.DevPanel; DevService runs it
--- (only in Studio) and answers with its usual notification.
+-- The admin panel: every dev chat command as a button (Config/AdminPanel), plus +1/+10 of every item and
+-- Go/Fight/Group for every boss. Buttons send the command text through Remotes.DevPanel; DevService runs it after
+-- Util/DevAccess says yes (Studio: anyone; the published game: the game's owner on their test save) and answers with its
+-- usual notification.
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -154,14 +156,45 @@ local function toggle()
 	panel.Visible = not panel.Visible
 end
 
-function AdminPanelController.Start()
-	if not RunService:IsStudio() then
-		return -- testing tools: nothing in the live game
-	end
-	panel, list = UIKit.panel(UIController.GetScreenGui(), "AdminPanel", "🛠 Admin (Studio)")
+-- The Admin tile, in the Phone (owner 2026-11-13)
+local function addTile(onClick: () -> ())
+	Hud.tile({ id = "Admin", icon = "🛠", label = "Admin", group = "Side", order = 90, phoneApp = 90, phoneAlways = true, onClick = onClick })
+end
+
+-- The panel and its tile
+local function buildPanel(title: string)
+	panel, list = UIKit.panel(UIController.GetScreenGui(), "AdminPanel", title)
 	palette = UIKit.colorsFor(panel)
 	build()
-	Hud.tile({ id = "Admin", icon = "🛠", label = "Admin", group = "Side", order = 90, phoneApp = 90, phoneAlways = true, onClick = toggle }) -- in the Phone (owner 2026-11-13)
+	addTile(toggle)
+end
+
+function AdminPanelController.Start()
+	if RunService:IsStudio() then
+		buildPanel("🛠 Admin (Studio)")
+		return
+	end
+	-- The published game (spec 2026-11-27-live-admin-creator-design): only the game's owner gets the server's Admin
+	-- mark (DevService markAdmin). On their test save the panel; on the real one the tile alone, whose tap asks the server
+	-- (it answers with the locked card saying how to get to the test save). The server checks every button anyway.
+	local player = Players.LocalPlayer
+	local built = false
+	local function onMark()
+		local mark = player:GetAttribute("AdminAccess")
+		if built or (mark ~= "open" and mark ~= "mainSave") then
+			return
+		end
+		built = true
+		if mark == "open" then
+			buildPanel("🛠 Admin")
+		else
+			addTile(function()
+				send("/admin")
+			end)
+		end
+	end
+	player:GetAttributeChangedSignal("AdminAccess"):Connect(onMark)
+	onMark()
 end
 
 return AdminPanelController

@@ -1,11 +1,10 @@
 --!strict
--- Studio only: plays a Pet button move at a chosen grade on your summoned creature against a dummy in front of it (spec
+-- The admin panel's previews (Studio, and the owner's test save live): plays a Pet button move at a chosen grade on your summoned creature against a dummy in front of it (spec
 -- 2026-11-05-pet-moves-design "Seeing it in Studio"; DevService /movefx, the admin panel's "Pet moves" buttons), a
 -- super (/superfx) or three of its basic attacks (/attackfx). It feeds Util/FightFx the sim's real event shapes (cast,
 -- ability, regen ticks, charges and attacks), so what plays is what a fight plays. /skillfx: your character swings a
 -- round 1 sword's cut or skill at a dummy with that sword's effects (Util/SwordSkillFx, spec 2026-11-06-sword-skills).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Combat = require(Shared:WaitForChild("Config"):WaitForChild("Combat"))
@@ -397,9 +396,8 @@ local function play(payload: any)
 end
 
 function MovePreviewController.Start()
-	if not RunService:IsStudio() then
-		return
-	end
+	-- Listening is harmless everywhere: only DevService's handlers send these, after Util/DevAccess said yes (Studio, or
+	-- the game's owner on their test save in the published game: their footage)
 	Remotes.MovePreview.OnClientEvent:Connect(play)
 end
 
