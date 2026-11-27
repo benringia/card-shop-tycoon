@@ -846,6 +846,9 @@ function CombatHud.new(parent: ScreenGui, callbacks: Callbacks, showNames: boole
 	end
 	-- The matchup chip after them (owner 2026-11-25 picked "A"): weak red, strong green, nothing when even
 	local matchupChip = require((script.Parent :: Instance):WaitForChild("MatchupChip")).new(chipRow, 3)
+	-- the weapon in hand's mutation, a chip after your HP words (owner 2026-11-27, pick B; Util/MutationChip)
+	local mutationChip = require((script.Parent :: Instance):WaitForChild("MutationChip")).onLine(playerLabel)
+	mutationChip.setAllowed(not creatureOnly)
 	local chipEdge = Instance.new("UIStroke")
 	chipEdge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	chipEdge.Thickness = 1.5

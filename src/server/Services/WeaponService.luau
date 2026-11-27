@@ -164,6 +164,8 @@ function WeaponService.ApplyAttributes(player: Player)
 	character:SetAttribute("SwordGrade", if record then record.grade else nil)
 	character:SetAttribute("SwordLevel", if record then record.level else nil)
 	character:SetAttribute("SwordMutation", if mutation then mutation.rarity else nil)
+	-- which one: the fight HUD's chip and the weapon dial's mark (MutationRules.chip; owner 2026-11-27)
+	character:SetAttribute("SwordMutationId", if mutation then mutation.id else nil)
 end
 
 local function copyMutation(mutation: Mutation?): Mutation?

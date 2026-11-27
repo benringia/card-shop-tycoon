@@ -167,6 +167,25 @@ function MutationRules.words(cfg: any, mutation: Mutation): Words
 	}
 end
 
+-- The chip for the weapon in hand's mutation (owner 2026-11-27, picks B: on your own HP line in a fight, and C: a mark
+-- on the weapon dial), from the character's SwordMutationId and SwordMutation attributes (WeaponService.ApplyAttributes):
+-- its name, its words when opened ("Sharp: your sword deals +12% damage"), its group's icon and its rarity (the colour);
+-- nil without a mutation or for anything it doesn't know
+function MutationRules.chip(cfg: any, id: unknown, rarity: unknown): { name: string, open: string, icon: string, rarity: string }?
+	local mutation = MutationRules.read(cfg, { id = id, rarity = rarity })
+	if not mutation then
+		return nil
+	end
+	local entry = entryOf(cfg, mutation.id)
+	local said = string.gsub(entry.words, "{n}", percentOf(MutationRules.size(cfg, mutation)))
+	return {
+		name = entry.name,
+		open = `{entry.name}: {lowerFirst(said)}`,
+		icon = cfg.GROUPS[entry.group].icon,
+		rarity = mutation.rarity,
+	}
+end
+
 -- Treasure and Scholar over a fight (the mutation audit 2026-11-26: switching to a Treasure weapon for the last hit
 -- paid its whole share): what the weapon in hand pays, weighted by how long each was in hand. `holding` with the time
 -- the fight starts (after a boss's intro: its seconds never count), `switched` on every weapon switch, `averaged` at

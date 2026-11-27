@@ -217,4 +217,24 @@ return {
 		assert(item, "Config/Items has Mutation Essence")
 		expect.equal(item.name, "Mutation Essence")
 	end,
+
+	-- Owner 2026-11-27: "add a small chip somewhere indicating that a mutation is active", picks B (on your own HP line
+	-- in a fight) and C (a mark on the weapon dial): what they show, from the weapon in hand's attributes
+	["the mutation chip: its name, its words when opened, its icon and rarity, from the weapon's attributes"] = function()
+		local chip = MutationRules.chip(Mutations, "sharp", "Epic")
+		assert(chip, "a mutation on the weapon in hand")
+		expect.equal(chip.name, "Sharp")
+		expect.equal(chip.open, "Sharp: your sword deals +12% damage")
+		expect.equal(chip.icon, "Sword")
+		expect.equal(chip.rarity, "Epic")
+		expect.equal(MutationRules.chip(Mutations, "tough", "Rare").icon, "Shield", "a defence one's shield")
+	end,
+
+	["the mutation chip: none without a mutation or with junk attributes"] = function()
+		expect.isNil(MutationRules.chip(Mutations, nil, nil), "no mutation")
+		expect.isNil(MutationRules.chip(Mutations, "sharp", nil), "no rarity")
+		expect.isNil(MutationRules.chip(Mutations, "nonsense", "Rare"), "an unknown mutation")
+		expect.isNil(MutationRules.chip(Mutations, "sharp", "Mythic"), "an unknown rarity")
+		expect.isNil(MutationRules.chip(Mutations, 5, "Rare"), "not a name")
+	end,
 }

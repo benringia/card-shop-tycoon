@@ -530,6 +530,8 @@ local function build()
 	chip.Parent = holder
 	chipButton = chip
 	UIKit.corner(chip, LOOK.chip // 2)
+	-- the weapon in hand's mutation: a mark past the medallion's corner (owner 2026-11-27, pick C; Util/MutationChip)
+	require(ClientUtil:WaitForChild("MutationChip")).onDial(chip)
 	inside = Instance.new("UIGradient")
 	inside.Rotation = 90
 	inside.Parent = chip

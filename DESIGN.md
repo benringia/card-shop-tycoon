@@ -3990,6 +3990,13 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
       cards"): a bright line and a soft glow round the card's edge in the mutation's colour and its group's icon on a
       disc above the Attack line (`WeaponFace`, `WeaponLooks.CARD.mutation`), everywhere a weapon card shows (binder,
       Forge, weapon window); a small card (the Forge list's thumbnails) keeps the edge, no disc.
+      **Active, at a glance** (owner 2026-11-27: "add a small chip somewhere indicating that a mutation is active", picks
+      B and C of artifact WXZFoGxe6b7zEwkJrckj25): in a fight a chip right after your HP words ("♥ Lifesteal", pale in
+      the rarity's colour, its edge and icon in it) opens into its words on hover or for 4 s after a tap ("Lifesteal:
+      each sword hit heals you 1.6% of your max HP"); the weapon dial's medallion carries a mark past its top-left
+      corner, a circle in the rarity's colour with the group's icon. Both follow the weapon in hand (the character's
+      `SwordMutationId` beside `SwordMutation`; `MutationRules.chip`, client `Util/MutationChip`, `Mutations.CHIP`).
+      Hidden in a wild fight before the sword (that line shows the creature). The dial gets its own rework later (owner).
     - **Words** (owner 2026-11-26: "make this description more specific"): each says exactly what it changes ("Your
       sword deals +3% damage to bosses", "You and your creatures get +12% max HP", "+8% cash from fights you win");
       Thorns "Reflects 100% of the damage you and your creatures take back at the foe" (owner: "does this mean REFLECTS
