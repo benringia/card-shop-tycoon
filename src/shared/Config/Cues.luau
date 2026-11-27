@@ -22,8 +22,9 @@ return {
 	-- every `gap` studs along the walking route (`max` at most), only the next `ahead` past the player, the last `fade`
 	-- fading out (TrailRules.ahead); each `size` studs square, `lift` studs over the ground, drawn `pixelsPerStud` sharp
 	-- and over walls and doors (a SurfaceGui AlwaysOnTop); never fainter than `dim` transparency as the glow flows
-	-- toward the goal; `rotation` turns the picture on its surface so it points along the way
-	TRAIL = { gap = 3, max = 200, ahead = 12, fade = 4, size = 2.6, lift = 0.15, pixelsPerStud = 60, dim = 0.35, rotation = 0 },
+	-- toward the goal; `rotation` turns the picture on its surface so it points along the way (a Top-face picture's top
+	-- edge lies along its part's -X, server Util/RegisterBuild; the part looks along the way)
+	TRAIL = { gap = 3, max = 200, ahead = 12, fade = 4, size = 2.6, lift = 0.15, pixelsPerStud = 60, dim = 0.35, rotation = 90 },
 	-- A thing in the world off the screen or behind the camera: its arrow waits at the screen's edge pointing the way
 	-- (CueShape.offscreen), `margin` px in from the sides, between the `top` and `bottom` shares of the height (clear of
 	-- the talk card, the bottom tiles and a phone's thumbstick)

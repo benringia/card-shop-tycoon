@@ -64,6 +64,9 @@ return {
 		assert(trail.fade >= 1 and trail.fade < trail.ahead, "the last few fade out")
 		assert(trail.max * trail.gap >= 400, "a long walk (the Wild: about 300 studs) keeps its spacing")
 		assert(trail.size > 1 and trail.lift > 0 and trail.lift < 1, "lying just over the ground")
+		-- a Top-face picture's top edge lies along its part's -X (server Util/RegisterBuild); each arrow's part looks
+		-- along the way (-Z), so the picture (pointing up) turns a quarter clockwise to point there
+		expect.equal(trail.rotation, 90, "pointing along the way")
 	end,
 	-- Found 2026-11-21 with the Phone under the gift's tile: the paw over the Phone sat on the gift. A tile in the left
 	-- side column gets its arrow on its right, pointing left
