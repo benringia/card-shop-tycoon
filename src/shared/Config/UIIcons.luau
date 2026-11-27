@@ -59,6 +59,10 @@ return {
 	-- the recipes' arrow (Condenser, Grading Station, Forge; owner 2026-11-26 pick C, "Gold sparkle arrow"): drawn by
 	-- tools/ui-icons/make_arrow.py, not cut from a sheet
 	ArrowGold = "rbxassetid://85109343937108",
+	-- the tutorial's cues (owner 2026-11-27, picks B and 1; Util/TutorialCues): the chunky gold arrow pointing down at what
+	-- to use, and the chevron lying on the ground along the way (pointing up: forward); tools/ui-icons/make_cue_arrows.py
+	ArrowCue = "rbxassetid://89980733268447",
+	Chevron = "rbxassetid://130723683782041",
 	Heart = "rbxassetid://81178736634418",
 	Star = "rbxassetid://109389918339627",
 	Gem = "rbxassetid://78526112614740",

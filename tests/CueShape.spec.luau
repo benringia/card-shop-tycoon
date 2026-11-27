@@ -5,9 +5,20 @@
 -- outward; the paws are bigger with a dark backing so they show on light floors and walls.
 local CueShape = require("../src/shared/Util/CueShape")
 local Cues = require("../src/shared/Config/Cues")
+local UIIcons = require("../src/shared/Config/UIIcons")
 local expect = require("./lib/expect")
 
 return {
+	-- Owner 2026-11-27 ("Maybe just use arrows instead of paws. to be simple", picks B and 1; spec
+	-- 2026-11-27-tutorial-arrows-design): the chunky gold arrow and the ground chevron, made by
+	-- tools/ui-icons/make_cue_arrows.py
+	["the arrows' pictures are uploaded"] = function()
+		for _, name in { "ArrowCue", "Chevron" } do
+			local id = (UIIcons :: any)[name]
+			assert(typeof(id) == "string" and string.match(id, "^rbxassetid://%d+$") ~= nil, `{name} is uploaded`)
+		end
+	end,
+
 	["the ring takes the shape of what it's on"] = function()
 		local pad = 5 -- how far off the ring stands (CueShape.pad: the thing's outline plus RING.gap)
 		expect.equal(CueShape.radius({ w = 52, h = 52 }, { scale = 0.5, offset = 0 }, pad, Cues.RING.fallback), 26 + pad, "a round button: a round ring")
