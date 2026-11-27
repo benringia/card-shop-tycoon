@@ -7224,6 +7224,35 @@ boss models; the ranch and Heroic tiers come after those.
     game's video (Creator Hub, Thumbnails): real gameplay, no voice-over, no music with lyrics, no ads or claims, a
     logo and a few describing words allowed; 3 uploads a month, rejected ones count. Needs Pillow and
     imageio-ffmpeg (it brings ffmpeg).
+  - *A short clip for TikTok, Shorts and Reels* (owner 2026-11-27: "a clip I can post for marketing", then "add an
+    upsell element that invites people to play"; spec `docs/superpowers/specs/2026-11-27-short-clip-design.md`):
+    `tools/video/make_short.py <recordings folder> <out folder>` cuts 15 shots of the owner's 2026-11-27 recordings
+    into a 20.7 s 1080 x 1920 clip: a 608 x 1080 slice of each shot, aimed at its action, zoomed to fill a phone (the
+    owner's pick of three framings). The loop in order: the Legendary phoenix tearing the sky in Open 10 (I PULLED A
+    LEGENDARY), the phoenix swooping past the camera (IT CAME ALIVE), the Ember Colossus with SUPERNOVA! and VICTORY (IT
+    FIGHTS BOSSES), the chests and the Magma Halberd's mutation, a sale at the register (SELL CARDS IN YOUR SHOP), Open
+    10 turning (ONE MORE PACK...). The invite: a PLAY FREE / on Roblox badge with the game's icon slides in at 2.4 s
+    (after the hook) bottom left, and a 2.8 s end card: the icon, ONE MORE PACK, a search bar typing the name, "Search
+    it on Roblox", a PLAY FREE button with Pish peeking over it and a tap ring. Words and badge stay clear of TikTok's
+    buttons (right edge) and caption (bottom). Two files: the game's sound (-14 LUFS) and silent, the safe post: Roblox
+    licenses its music for use inside Roblox only. The game page video waits for a late-game recording.
+    The voice-over (owner: "install it and bake the voice in"): `--voice` has Kokoro (an open AI voice, run on this
+    computer, nothing sent anywhere) say seven lines, each tied to its shot ("I pulled a Legendary...", "and it came
+    alive!", "Now it fights bosses for me!", "Bosses drop new weapons!", "Then I sell cards in my own shop...", "and open
+    one more pack!", "One More Pack! Play free on Roblox!"), voice af_heart at 1.1x speed; Roblox is spelled "Roeblox" for
+    it (espeak says RAH-blocks). Two more files: the voice over the game's sound, turned down about 10 dB while it speaks,
+    and the voice alone (the safe post). Never on the game page video: Roblox rejects voice-over there.
+  - *A story clip* (owner 2026-11-27: "make me another video that I can post tomorrow. this time make it square with
+    blur background ... use a different voice", then "story with am_michael"): `make_short.py --clip story` (the
+    first clip is `--clip loop`, the default) tells the comeback in 25.7 s from the prologue's own footage: the young
+    Prism Hydra rises (A HYDRA STOLE ALL MY CARDS), the lent Legendaries' FIGHT!, fire and Thunderstorm's -739 (MY
+    LEGENDARIES COULDN'T STOP IT), it swallows the cards (IT SWALLOWED THEM ALL), "Everything was gone." on black, your
+    eyes opening on Pish and Chikin (MY DOGS WOKE ME UP), the first pack and its RARE!, the shop's very first sale,
+    SOLD! +$3.00 in Pish's tour (SOLD MY FIRST CARDS), the Meadow Warden won (AND FOUGHT MY WAY BACK), the Hydra again
+    (NOW I'M COMING FOR THAT HYDRA), then the same end card. Layout C (picked from the first round's three mockups):
+    each shot's 1080 x 1080 square at 1:1 over a blurred, darkened copy of its 9:16 slice, the words in the band above
+    it, the badge under it from 3 s. Voice am_michael (Kokoro's deep storyteller) at 1.05x. The same four files,
+    named OneMorePack_story*.
   - *No intro flight* (owner 2026-11-20: "remove intro cinematic. the game starts after prologue", then "the
     tutorial starts after the pish and chikin waking you up scene"): the first-visit welcome flight (past Forest
     Falls, Frostpeak, the plaza and Ember Canyon to your shop) no longer plays. It counts as seen the moment the

@@ -230,6 +230,13 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - `python tools/video/make_trailer.py <recording.mp4> <out.mp4> [--mute]` — the game page's 30 s gameplay video cut
   from one recording (its CLIPS list: start, end, caption; needs Pillow and imageio-ffmpeg; Roblox's video rules in its
   header)
+- `python tools/video/make_short.py <recordings folder> <out folder> [--clip loop|story] [--voice <kokoro folder>]
+  [--speaker <voice>] [--reuse-video]` — vertical clips for TikTok, Shorts and Reels (CLIPS: `loop`, ~21 s full screen,
+  a 608 x 1080 slice of each shot zoomed to 1080 x 1920; `story`, ~26 s, a square over a blurred copy of the frame;
+  each with words, the PLAY FREE badge and the end card), with the game's sound and silent; `--voice` adds an AI
+  voice-over said offline by Kokoro (kokoro-onnx; model files in `Documents/clipping/tts/kokoro`; each shot's `say`
+  line, in the clip's own voice), over the ducked game sound and alone; `--reuse-video` redoes only the sound (spec
+  `docs/superpowers/specs/2026-11-27-short-clip-design.md`)
 - `lune run tools/audio/sound_ids` — every super / Pet move / attack sound id; measure new ones in Studio with
   `tools/audio/measure_loudness.luau` into `Config/SoundLevels` (skill sounds louder than its TARGET are turned down,
   `Util/SoundLevel`; `tests/SoundLevel` fails for an unmeasured skill sound)
