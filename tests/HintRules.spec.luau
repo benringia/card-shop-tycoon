@@ -101,6 +101,70 @@ return {
 		expect.equal(HintRules.words("hunt", facts({}), words), "Hunt monsters in the Wild!")
 	end,
 
+	["a tip waits past the first minute"] = function()
+		expect.equal(HintRules.due(59, { joinedAt = 0, idleSince = 0, quietSince = 0 }, Hints), false)
+		expect.equal(HintRules.due(60, { joinedAt = 0, idleSince = 30, quietSince = 60 }, Hints), true)
+	end,
+
+	["standing idle 30 s or 2 minutes with nothing earned"] = function()
+		expect.equal(HintRules.due(200, { joinedAt = 0, idleSince = 171, quietSince = 199 }, Hints), false)
+		expect.equal(HintRules.due(200, { joinedAt = 0, idleSince = 170, quietSince = 199 }, Hints), true)
+		expect.equal(HintRules.due(200, { joinedAt = 0, idleSince = nil, quietSince = 81 }, Hints), false, "moving, earning")
+		expect.equal(HintRules.due(200, { joinedAt = 0, idleSince = nil, quietSince = 80 }, Hints), true, "walking around, nothing earned")
+	end,
+
+	["two minutes between tips"] = function()
+		local timing = { joinedAt = 0, idleSince = 0, quietSince = 0, lastShownAt = 100 }
+		expect.equal(HintRules.due(219, timing, Hints), false)
+		expect.equal(HintRules.due(220, timing, Hints), true)
+	end,
+
+	["a muted tip or one shown in the last 5 minutes is skipped"] = function()
+		local skip = HintRules.skip(400, { packs = 101, claim = 99 }, { hunt = true }, 300)
+		expect.equal(skip.packs, true)
+		expect.equal(skip.hunt, true)
+		expect.equal(skip.claim, nil)
+	end,
+
+	["over an arrow pointing down the bubble sits above it"] = function()
+		local at = HintRules.bubbleAt({ x = 480, y = 300, w = 78, h = 78 }, 0, { w = 240, h = 46 }, { w = 1000, h = 600 }, { gap = 6, margin = 8 })
+		expect.equal(at.x, 399)
+		expect.equal(at.y, 248)
+	end,
+
+	["beside an arrow at the left edge it sits to its right"] = function()
+		local at = HintRules.bubbleAt({ x = 17, y = 261, w = 78, h = 78 }, 90, { w = 240, h = 46 }, { w = 1000, h = 600 }, { gap = 6, margin = 8 })
+		expect.equal(at.x, 101)
+		expect.equal(at.y, 277)
+		local right = HintRules.bubbleAt({ x = 905, y = 261, w = 78, h = 78 }, -90, { w = 240, h = 46 }, { w = 1000, h = 600 }, { gap = 6, margin = 8 })
+		expect.equal(right.x, 659, "at the right edge: to its left")
+	end,
+
+	["an arrow pointing up puts it underneath"] = function()
+		local at = HintRules.bubbleAt({ x = 480, y = 20, w = 78, h = 78 }, 180, { w = 240, h = 46 }, { w = 1000, h = 600 }, { gap = 6, margin = 8 })
+		expect.equal(at.x, 399)
+		expect.equal(at.y, 104)
+	end,
+
+	["never off the screen"] = function()
+		local corner = HintRules.bubbleAt({ x = 2, y = 2, w = 78, h = 78 }, 0, { w = 240, h = 46 }, { w = 1000, h = 600 }, { gap = 6, margin = 8 })
+		expect.equal(corner.x, 8)
+		expect.equal(corner.y, 8)
+		local edge = HintRules.bubbleAt({ x = 950, y = 300, w = 78, h = 78 }, 0, { w = 240, h = 46 }, { w = 1000, h = 600 }, { gap = 6, margin = 8 })
+		expect.equal(edge.x, 1000 - 8 - 240)
+	end,
+
+	["the server takes only real tips and outcomes"] = function()
+		local kind, outcome = HintRules.readSeen("packs", "shown", Hints.ORDER)
+		expect.equal(kind, "packs")
+		expect.equal(outcome, "shown")
+		for _, bad in { { "packs", "eaten" }, { "nope", "done" }, { 5, "done" }, { "packs", nil } } do
+			local k, o = HintRules.readSeen(bad[1], bad[2], Hints.ORDER)
+			expect.equal(k, nil)
+			expect.equal(o, nil)
+		end
+	end,
+
 	["every word is plain text and short"] = function()
 		local all = {}
 		strings(Hints.WORDS, all)
