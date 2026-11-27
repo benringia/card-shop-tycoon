@@ -237,4 +237,17 @@ return {
 		expect.equal(WeaponLookRules.perkIcon(Looks, { kind = "mystery" }), "Sparkle", "an unknown perk")
 		expect.equal(WeaponLookRules.familyIcon(Looks, "mystery"), "Sword", "an unknown family")
 	end,
+
+	-- Owner 2026-11-27: "upgrade and tell them": a duplicate at a better grade plays NEW GRADE first, then its mutation
+	-- roll; never the "New weapon!" reveal of a weapon you didn't have
+	["a boss drop's reveals: new weapon, a mutation roll, or a better grade then its roll"] = function()
+		local up = { from = "C", to = "A", level = 3 }
+		local offer = { id = "x" }
+		expect.equal(table.concat(WeaponLookRules.dropSteps({ refund = 0 }), ","), "new")
+		expect.equal(table.concat(WeaponLookRules.dropSteps({ refund = 0, offer = offer }), ","), "mutation")
+		expect.equal(table.concat(WeaponLookRules.dropSteps({ refund = 0, offer = offer, gradeUp = up }), ","), "gradeUp,mutation")
+		expect.equal(table.concat(WeaponLookRules.dropSteps({ refund = 0, gradeUp = up }), ","), "gradeUp", "no roll: no new-weapon reveal after it")
+		expect.equal(table.concat(WeaponLookRules.dropSteps({ refund = 4 }), ","), "refund")
+		expect.equal(table.concat(WeaponLookRules.dropSteps({ refund = 0, gradeUp = { from = "C" } }), ","), "new", "a broken grade-up is ignored")
+	end,
 }

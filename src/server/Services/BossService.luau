@@ -311,7 +311,15 @@ for _, weapon in Weapons.WEAPONS do
 end
 
 -- offer: a weapon you had already: its mutation roll (WeaponService.Offer), shown by its reveal with the choice
-type WeaponPayload = { weaponId: string, grade: string, refund: number, material: string?, offer: WeaponService.Offer? }
+-- `gradeUp`: a duplicate drop at a better grade upgraded the one you had (owner 2026-11-27: "upgrade and tell them")
+type WeaponPayload = {
+	weaponId: string,
+	grade: string,
+	refund: number,
+	material: string?,
+	offer: WeaponService.Offer?,
+	gradeUp: { from: string, to: string, level: number }?,
+}
 
 -- The Dungeon's secret chest found (DungeonPuzzleService): true the first time ever (saved; the title Crystal Seeker
 -- shows unless Dungeon Conqueror outranks it), false after or for a player whose data isn't loaded
@@ -343,18 +351,29 @@ function BossService.HasFoundSecret(player: Player): boolean
 end
 
 -- A boss's weapon is given to this player (weapons round 1): its grade rolled like a card's. One you have already is a
--- mutation roll instead (weapons round 4 part 2: on at once when it has none, else Take new or Keep mine). Nothing
--- shows yet: AnnounceWeapon does that. nil: it couldn't be given.
+-- mutation roll instead (weapons round 4 part 2: on at once when it has none, else Take new or Keep mine), and when its
+-- rolled grade is better it upgrades yours, level and mutation kept (`gradeUp`, owner 2026-11-27). Nothing shows yet:
+-- AnnounceWeapon does that. nil: it couldn't be given.
 function BossService.GiveWeapon(player: Player, weaponId: string): WeaponPayload?
 	local weapon = Weapons.ById[weaponId]
 	if not weapon or not WeaponService.IsLoaded(player) then
 		return nil
 	end
-	local had = WeaponService.GetAll(player)[weaponId] ~= nil
+	local before = WeaponService.GetAll(player)[weaponId]
+	local had = before ~= nil
+	local fromGrade = if before then before.grade else nil
 	local grade = BeastRules.rollGrade(rng:NextNumber(), weapon.rarity)
-	local _, refund = WeaponService.Give(player, weaponId, grade, "drop")
+	local record, refund = WeaponService.Give(player, weaponId, grade, "drop")
+	local gradeUp = if had and record and fromGrade then { from = fromGrade, to = record.grade, level = record.level } else nil
 	local offer = if had then WeaponService.Offer(player, weaponId, MutationRules.roll(Mutations, rng:NextNumber(), rng:NextNumber()), "drop") else nil
-	return { weaponId = weaponId, grade = grade, refund = refund, material = WeaponRules.material(Weapons, weaponId), offer = offer }
+	return {
+		weaponId = weaponId,
+		grade = grade,
+		refund = refund,
+		material = WeaponRules.material(Weapons, weaponId),
+		offer = offer,
+		gradeUp = gradeUp,
+	}
 end
 
 -- A given weapon's moment: the drop cinematic on their screen (a mutation's reveal for one they had), a new one's light

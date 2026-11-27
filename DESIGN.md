@@ -3931,7 +3931,11 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
     "Offensive / Defensive / supportive"; `Config/Mutations`, `Util/MutationRules`). One per weapon, saved on its
     record (v44); only the weapon in your hand counts, never in the arena (it builds its own fights).
     - **Drops**: a boss's weapon drops on 95 / 92 / 88 / 85% of loot wins by rarity, sure on the second (`Weapons.DROP`;
-      Wild bosses x1.3, so always). A new one comes plain; one you have is a mutation roll (`WeaponService.Offer`): on at
+      Wild bosses x1.3, so always). A new one comes plain; one you have is a mutation roll (`WeaponService.Offer`), and
+      when its rolled grade is better it upgrades yours first (owner 2026-11-27: "notify player if the duplicate is a
+      higher grade", then "upgrade and tell them"; `WeaponRules.give`, payload `gradeUp`): level, mutation and a waiting
+      choice kept, and the reveal says so before the roll ("NEW GRADE A!", "A better Verdant Blade dropped! Yours went
+      from Grade B to A.", `WeaponText.gradeUp`, `WeaponLookRules.dropSteps`). The roll: on at
       once when it has none ("Its first mutation!", Nice!), else Keep current or Take new, the other turning into
       Mutation Essence (2 / 4 / 8 / 12 / 20 by rarity; a Bag item with its own shiny icon since part 3: the XP Tonic's
       flask in violet with sparkles, `tools/ui-icons/make_essence.py`, the owner's pick A). **Essence comes only from

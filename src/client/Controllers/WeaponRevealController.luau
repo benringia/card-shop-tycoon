@@ -845,27 +845,43 @@ function WeaponRevealController.AskPending(weaponId: string)
 	})
 end
 
--- A boss's drop: a new weapon, or the mutation roll a weapon you had became (weapons round 4 part 2)
+-- A boss's drop (WeaponLookRules.dropSteps): a new weapon, or for a weapon you had its mutation roll (weapons round 4
+-- part 2), after NEW GRADE when its grade was better and upgraded yours (owner 2026-11-27: "upgrade and tell them")
 function WeaponRevealController.Drop(payload: any)
 	if typeof(payload) ~= "table" or typeof(payload.weaponId) ~= "string" or typeof(payload.grade) ~= "string" then
 		return
 	end
-	if typeof(payload.offer) == "table" then
-		WeaponRevealController.Mutation(payload.offer)
-		return
+	local weapon = Weapons.ById[payload.weaponId]
+	for _, step in WeaponLookRules.dropSteps(payload) do
+		if step == "gradeUp" then
+			local up = payload.gradeUp
+			if weapon then
+				local said = WeaponText.gradeUp(weapon.name, up.from, up.to, "drop")
+				WeaponRevealController.Show({
+					weaponId = weapon.id,
+					grade = up.to,
+					level = tonumber(up.level) or 0,
+					banner = said.banner,
+					line = said.line,
+				})
+			end
+		elseif step == "mutation" then
+			WeaponRevealController.Mutation(payload.offer)
+		else
+			local refund = tonumber(payload.refund) or 0
+			local material = if typeof(payload.material) == "string" then Items.ITEMS[payload.material] else nil
+			local line = if refund > 0 then `Already yours: +{refund} {if material then material.name else "material"}`
+				else "New weapon! Equip it in the Armory."
+			WeaponRevealController.Show({
+				weaponId = payload.weaponId,
+				grade = payload.grade,
+				level = 0,
+				line = line,
+				gradeText = if refund > 0 then "Already yours" else nil, -- the rolled grade isn't kept
+				card = refund <= 0, -- a new weapon's card turns over beside it
+			})
+		end
 	end
-	local refund = tonumber(payload.refund) or 0
-	local material = if typeof(payload.material) == "string" then Items.ITEMS[payload.material] else nil
-	local line = if refund > 0 then `Already yours: +{refund} {if material then material.name else "material"}`
-		else "New weapon! Equip it in the Armory."
-	WeaponRevealController.Show({
-		weaponId = payload.weaponId,
-		grade = payload.grade,
-		level = 0,
-		line = line,
-		gradeText = if refund > 0 then "Already yours" else nil, -- the rolled grade isn't kept
-		card = refund <= 0, -- a new weapon's card turns over beside it
-	})
 end
 
 -- The Forge's result (ForgeResult): forged, reforged (a higher grade, or the one it kept) or upgraded
@@ -899,8 +915,9 @@ function WeaponRevealController.Forge(result: any)
 		reveal.hit = forge.hit.C
 		reveal.flash = forge.flash.C
 	elseif result.action == "reforge" then
-		reveal.banner = `NEW GRADE {result.grade}!`
-		reveal.line = `Your {weapon.name} is Grade {result.grade} now.`
+		local said = WeaponText.gradeUp(weapon.name, owned, result.grade, "forge")
+		reveal.banner = said.banner
+		reveal.line = said.line
 	else
 		reveal.line = "Forged! Equip it in the Armory."
 	end

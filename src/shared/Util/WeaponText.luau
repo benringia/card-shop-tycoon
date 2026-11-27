@@ -152,6 +152,14 @@ function WeaponText.source(cfg: any, bosses: any, weaponId: string): string
 	return `Masterwork: {materials} bosses' materials{if shards then " + Star Shards" else ""}`
 end
 
+-- A better grade's reveal words: the Forge's reforge, or a boss's duplicate drop at a higher grade (owner 2026-11-27:
+-- "upgrade and tell them")
+function WeaponText.gradeUp(name: string, from: string, to: string, source: "forge" | "drop"): { banner: string, line: string }
+	local line = if source == "drop" then `A better {name} dropped! Yours went from Grade {from} to {to}.`
+		else `Your {name} is Grade {to} now.`
+	return { banner = `NEW GRADE {to}!`, line = line }
+end
+
 -- A material picked up, with its progress toward what it's for (WeaponRules.materialGoal): "Warden Heartwood +2 (9/15)"
 function WeaponText.pickup(name: string, gained: number, have: number, need: number?): string
 	return if need then `{name} +{gained} ({have}/{need})` else `{name} +{gained}`

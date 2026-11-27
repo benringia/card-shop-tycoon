@@ -562,5 +562,16 @@ return {
 		local dash = CombatHud.BUTTONS.skill
 		assert(typeof(dash.short) == "string" and #dash.short <= 55, "the Steel Sword's dash")
 	end,
+
+	-- A better grade, from the Forge's reforge or (owner 2026-11-27: "upgrade and tell them") a boss's duplicate drop
+	["a better grade's words: NEW GRADE A! and where it came from"] = function()
+		local forged = WeaponText.gradeUp("Verdant Blade", "B", "A", "forge")
+		expect.equal(forged.banner, "NEW GRADE A!")
+		expect.equal(forged.line, "Your Verdant Blade is Grade A now.", "the Forge's words as before")
+		local dropped = WeaponText.gradeUp("Verdant Blade", "B", "A", "drop")
+		expect.equal(dropped.banner, "NEW GRADE A!")
+		expect.equal(dropped.line, "A better Verdant Blade dropped! Yours went from Grade B to A.")
+		expect.equal(string.find(dropped.line, "[\128-\255]") == nil, true, "plain ASCII")
+	end,
 }
 

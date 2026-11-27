@@ -311,22 +311,22 @@ function WeaponRules.pay(cost: Cost, cash: number, items: { [string]: number }):
 end
 
 -- Getting a weapon: the new record (nil when nothing changes) and the material refund (none since weapons round 4
--- part 2: a drop you already own is a mutation roll, WeaponService.Offer, made by the caller). A forge or reforge of an
--- owned one keeps the better grade, the level and its mutations. A new weapon comes plain.
+-- part 2: a drop you already own is a mutation roll, WeaponService.Offer, made by the caller). One you own, forged,
+-- reforged or dropped again, takes a better grade and keeps the level and its mutations (drops since 2026-11-27). A new
+-- weapon comes plain. `_how` no longer changes the outcome; callers still say it.
 function WeaponRules.give(
 	owned: { [string]: Owned },
 	weaponId: string,
 	grade: string,
-	how: "forge" | "reforge" | "drop",
+	_how: "forge" | "reforge" | "drop",
 	cfg: any
 ): (Owned?, number)
 	local have = owned[weaponId]
 	if not have then
 		return { grade = grade, level = 0 }, 0
 	end
-	if how == "drop" then
-		return nil, 0
-	end
+	-- One you have: a reforge, or (owner 2026-11-27: "upgrade and tell them") a boss's duplicate drop, takes a better
+	-- grade and keeps the rest; otherwise nothing (a duplicate drop's mutation roll is the caller's, WeaponService.Offer)
 	if (cfg.GRADE_POWER[grade] or 0) > (cfg.GRADE_POWER[have.grade] or 0) then
 		return { grade = grade, level = have.level, mutation = have.mutation, pending = have.pending }, 0
 	end

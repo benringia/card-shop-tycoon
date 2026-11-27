@@ -162,4 +162,22 @@ function WeaponLookRules.perkIcon(looks: any, perk: { kind: string, look: string
 	return (if perk.look then icons[perk.look] else nil) or icons[perk.kind] or looks.ICONS.unknownPerk
 end
 
+-- The reveals a boss's weapon drop plays (WeaponRevealController.Drop; BossService.GiveWeapon's payload), in order:
+-- "gradeUp" (a duplicate at a better grade upgraded yours, owner 2026-11-27) then "mutation" (a duplicate's roll), or
+-- "refund" (an old duplicate's material), or "new" (a weapon you didn't have)
+function WeaponLookRules.dropSteps(payload: any): { string }
+	local up = payload.gradeUp
+	local steps = {}
+	if typeof(up) == "table" and typeof(up.from) == "string" and typeof(up.to) == "string" then
+		table.insert(steps, "gradeUp")
+	end
+	if typeof(payload.offer) == "table" then
+		table.insert(steps, "mutation")
+	end
+	if #steps > 0 then
+		return steps
+	end
+	return { if (tonumber(payload.refund) or 0) > 0 then "refund" else "new" }
+end
+
 return WeaponLookRules

@@ -342,6 +342,22 @@ return {
 		expect.equal(none, 0)
 	end,
 
+	-- Owner 2026-11-27: "All Weapon drops notify player if the duplicate is a higher grade", then "upgrade and tell them"
+	["a drop you own at a higher grade upgrades yours: its level, mutation and waiting choice kept"] = function()
+		local sharp = { id = "sharp", rarity = "Epic" }
+		local guard = { id = "guard", rarity = "Rare" }
+		local owned = { verdantBlade = { grade = "B", level = 6, mutation = sharp, pending = guard } }
+		local rec, refund = WeaponRules.give(owned, "verdantBlade", "A", "drop", W)
+		assert(rec, "a better grade")
+		expect.equal(rec.grade, "A")
+		expect.equal(rec.level, 6, "its level kept")
+		expect.equal(rec.mutation and rec.mutation.id, "sharp", "its mutation kept")
+		expect.equal(rec.pending and rec.pending.id, "guard", "the choice waiting kept")
+		expect.equal(refund, 0, "no material")
+		expect.isNil((WeaponRules.give(owned, "verdantBlade", "B", "drop", W)), "the same grade: nothing")
+		expect.isNil((WeaponRules.give(owned, "verdantBlade", "C", "drop", W)), "a lower grade: nothing")
+	end,
+
 	["loading keeps a known mutation and a waiting one, and drops unknown ones"] = function()
 		local MutationRules = require("../src/shared/Util/MutationRules")
 		local Mutations = require("../src/shared/Config/Mutations")
