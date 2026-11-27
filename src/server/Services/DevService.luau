@@ -1282,6 +1282,17 @@ function DevService.Start()
 		local said = if word then QuestService.Dev(player, string.lower(word)) else nil
 		Remotes.Notify:FireClient(player, said or "Usage: /quests done | new | week | newweek", said == nil)
 	end)
+	-- What now? hints (Config/Hints, client HintController): /hint <kind> shows that tip on its target now, whatever the
+	-- shop's state
+	addCommand(folder, "hint", function(player, text)
+		local Hints = require(Config:WaitForChild("Hints")) :: any
+		local kind = string.match(text, "^/%w+%s+(%a+)")
+		if not kind or not table.find(Hints.ORDER, kind) then
+			Remotes.Notify:FireClient(player, `Usage: /hint <{table.concat(Hints.ORDER, "|")}>`, true)
+			return
+		end
+		player:SetAttribute("HintPreview", `{kind}:{os.clock()}`)
+	end)
 	-- The coin sound whenever cash goes up (Config/CoinSound OPTIONS, owner 2026-11-19): /coinsound <n> picks one by ear
 	-- (heard once now and on every earning), 0 for the default
 	addCommand(folder, "coinsound", function(player, text)

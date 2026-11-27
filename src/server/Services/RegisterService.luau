@@ -470,12 +470,16 @@ local function startCheckout(customer: Customer)
 				break
 			end
 			local now = os.clock()
-			if RegisterBell.due({ now = now, lastProgressAt = checkout.lastProgressAt, lastRangAt = lastRangAt, rings = rings, attended = isBehindCounter(owner, plot), outOfTown = WildService.IsInWild(owner) }, BellConfig) then
+			local attended, outOfTown = isBehindCounter(owner, plot), WildService.IsInWild(owner)
+			if RegisterBell.due({ now = now, lastProgressAt = checkout.lastProgressAt, lastRangAt = lastRangAt, rings = rings, attended = attended, outOfTown = outOfTown }, BellConfig) then
 				rings += 1
 				lastRangAt = now
 				Remotes.RegisterBell:FireClient(owner, rings)
 			end
+			-- a customer waits with nobody there, once the bell has rung (the What now? tip: client HintController)
+			owner:SetAttribute("RegisterWaiting", if rings > 0 and not attended and not outOfTown then true else nil)
 		end
+		checkout.customer.owner:SetAttribute("RegisterWaiting", nil)
 	end)
 
 	local register = plot.register

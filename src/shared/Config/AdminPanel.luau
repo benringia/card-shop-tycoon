@@ -354,6 +354,22 @@ AdminPanel.SECTIONS = {
 		},
 	},
 	{
+		-- What now? hints (spec 2026-11-27-what-now-hints-design): each tip on its target now, whatever the shop's state
+		title = "What now? hints",
+		buttons = {
+			{ label = "Customers waiting", command = "/hint register" },
+			{ label = "A quest is done", command = "/hint claim" },
+			{ label = "A box waiting", command = "/hint stock" },
+			{ label = "Order packs", command = "/hint order" },
+			{ label = "A station is ready", command = "/hint station" },
+			{ label = "You can build", command = "/hint build" },
+			{ label = "Open your packs", command = "/hint packs" },
+			{ label = "A boss to fight", command = "/hint boss" },
+			{ label = "A quest going", command = "/hint quest" },
+			{ label = "Hunt in the Wild", command = "/hint hunt" },
+		},
+	},
+	{
 		-- Turts' rug shop (spec 2026-11-13-turts-shop-design)
 		title = "Turts' rug shop",
 		buttons = {

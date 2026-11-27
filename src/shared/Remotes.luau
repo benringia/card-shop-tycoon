@@ -172,6 +172,7 @@ local NAMES = {
 	"BossChestOpened", -- server → owner: { id, index, contents = { { kind = "weapon"|"material"|"mystery", weaponId?, item?, count? } x3 } }
 	"PishPetted", -- server → all clients: (userId, lucky: boolean, left: number) Town Pish was petted: his hearts; the petter's luck card, or the seconds until he gives luck again
 	"ChikinPetted", -- server → all clients: (userId, granted: boolean, left: number) Town Chikin was petted: his hearts; the petter's Courage card, or the seconds until it comes again
+	"HintSeen", -- client → server: (kind: string, outcome: "shown" | "done" | "closed") a What now? tip was shown, followed or closed (HintService's analytics)
 	"TutorialAction", -- client → server: (action: "skip" | "replay" | "bye" | "lessonDone", lessonId: string?) the tutorial
 	"CombatTutorialAction", -- client → server: (action: "next" | "skip" | "replay") Chikin's combat tutorial; gives nothing
 	"TutorialState", -- server → client: { firstVisit, step, giftClaimed, lesson: string? } the tutorial's state, a lesson visit
@@ -360,6 +361,7 @@ return {
 	BossChestOpened = remotes.BossChestOpened,
 	PishPetted = remotes.PishPetted,
 	ChikinPetted = remotes.ChikinPetted,
+	HintSeen = remotes.HintSeen,
 	TutorialAction = remotes.TutorialAction,
 	CombatTutorialAction = remotes.CombatTutorialAction,
 	TutorialState = remotes.TutorialState,
