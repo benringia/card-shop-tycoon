@@ -89,6 +89,7 @@ local DungeonFallController = require(Controllers:WaitForChild("DungeonFallContr
 local DungeonCinematicController = require(Controllers:WaitForChild("DungeonCinematicController"))
 local DungeonRegionController = require(Controllers:WaitForChild("DungeonRegionController"))
 local TitleController = require(Controllers:WaitForChild("TitleController"))
+local CreatorAuraController = require(Controllers:WaitForChild("CreatorAuraController"))
 local SupportController = require(Controllers:WaitForChild("SupportController"))
 local ThanksController = require(Controllers:WaitForChild("ThanksController"))
 local ReviewsController = require(Controllers:WaitForChild("ReviewsController"))
@@ -149,6 +150,7 @@ if Place.isFrontier() or Place.isDungeon() then
 	BossChestController.Start() -- a boss win's three chests on the stage (BossChestService)
 	SoundscapeController.Start() -- spot sounds round you, the town's night bed and gusts (not the Dungeon)
 	TitleController.Start() -- titles over names (small, in their gradient)
+	CreatorAuraController.Start() -- the Creator title's orbiting cards (the game's owner)
 	SupportController.Start() -- "Support the dev": tap Pish for the card; he asks after a good moment
 	ThanksController.Start() -- a gift's thank-you: Pish and Chikin run in, then the glow
 	SwordController.Start() -- swords on characters, the first-sword popup
@@ -268,6 +270,7 @@ else
 	BossChestController.Start() -- a boss win's three chests on the stage (BossChestService)
 	SoundscapeController.Start() -- spot sounds round you, the town's night bed and gusts (not the Dungeon)
 	TitleController.Start() -- titles over names (small, in their gradient)
+	CreatorAuraController.Start() -- the Creator title's orbiting cards (the game's owner)
 	SupportController.Start() -- "Support the dev": tap Pish for the card; he asks after a good moment
 	ThanksController.Start() -- a gift's thank-you: Pish and Chikin run in, then the glow
 	SwordController.Start() -- swords on characters, the first-sword popup

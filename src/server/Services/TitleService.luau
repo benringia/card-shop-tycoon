@@ -142,6 +142,8 @@ local function refresh(player: Player, boss: TitleRules.Progress?, tell: boolean
 	local shown = TitleRules.shown(Titles, state.equipped, earned)
 	player:SetAttribute("Title", if shown then Titles.ById[shown].name else nil)
 	player:SetAttribute("TitleId", shown)
+	-- wearing Creator brings its orbiting cards (client CreatorAuraController; spec 2026-11-27-live-admin-creator-design)
+	player:SetAttribute("CreatorAura", if shown == "creator" then true else nil)
 	if tell or changed then
 		send(player, state, earned, progress)
 	end

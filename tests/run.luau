@@ -98,6 +98,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	CueShape = require("./CueShape.spec"),
 	DevGate = require("./DevGate.spec"),
 	DevRules = require("./DevRules.spec"),
+	CreatorAura = require("./CreatorAura.spec"),
 	DesktopHud = require("./DesktopHud.spec"),
 	PhoneNotice = require("./PhoneNotice.spec"),
 	QuestRemind = require("./QuestRemind.spec"),
