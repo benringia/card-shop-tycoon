@@ -36,6 +36,7 @@ local BossRules = require(Shared:WaitForChild("Util"):WaitForChild("BossRules"))
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
+local DevAccess = require(Util:WaitForChild("DevAccess"))
 local PlotService = require(Services:WaitForChild("PlotService"))
 local BloomFountain = require(Util:WaitForChild("BloomFountain"))
 local PortalBuild = require(Util:WaitForChild("PortalBuild"))
@@ -799,8 +800,8 @@ function WildService.BuildPortal(parent: Instance, name: string, position: Vecto
 end
 
 -- Studio only (/crowd): players counted in every valley biome on top of the real ones, to test a crowd alone
-function WildService.SetPhantomPlayers(count: number)
-	if RunService:IsStudio() then
+function WildService.SetPhantomPlayers(player: Player, count: number)
+	if DevAccess.can(player, "server") then
 		phantomPlayers = math.max(0, math.floor(count))
 	end
 end

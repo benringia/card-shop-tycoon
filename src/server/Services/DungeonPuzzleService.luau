@@ -27,6 +27,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
+local DevAccess = require(Util:WaitForChild("DevAccess"))
 local BossService = require(Services:WaitForChild("BossService"))
 local CardService = require(Services:WaitForChild("CardService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
@@ -540,8 +541,8 @@ function DungeonPuzzleService.Open(kind: string)
 end
 
 -- Studio only (/puzzle solve): puzzle `kind` solved at once, its chest and all
-function DungeonPuzzleService.Solve(kind: string)
-	if not RunService:IsStudio() or not prompts[kind] then
+function DungeonPuzzleService.Solve(player: Player, kind: string)
+	if not DevAccess.can(player, "server") or not prompts[kind] then
 		return
 	end
 	if kind == "beams" then
@@ -558,7 +559,7 @@ end
 -- Chest_beams...), every check included; false when there's no such piece or its prompt is off
 function DungeonPuzzleService.Tap(player: Player, name: string): boolean
 	local handler = triggers[name]
-	if not RunService:IsStudio() or not handler then
+	if not DevAccess.can(player, "server") or not handler then
 		return false
 	end
 	handler(player)

@@ -5,7 +5,6 @@
 -- Displayed card parts carry CardId, Foil, Grade, Price, Slot, ShelfUid, OwnerUserId, ShelfKind, Level, Stars, BeastId.
 local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
@@ -46,6 +45,7 @@ local Blocked = require((script.Parent :: Instance).Parent:WaitForChild("Util"):
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
+local DevAccess = require(Util:WaitForChild("DevAccess"))
 local CardService = require(Services:WaitForChild("CardService"))
 local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
@@ -1288,10 +1288,13 @@ end
 -- Studio's "/decor pieces" (DevService): one free copy of a shelf at the free cell nearest the shop's middle, within
 -- the caps. False when it doesn't fit or this isn't Studio.
 function PlacementService.DevPlace(player: Player, shelfId: string): boolean
+	if not DevAccess.can(player) then
+		return false
+	end
 	local def = Shelves.ById[shelfId]
 	local plot = PlotService.GetPlot(player)
 	local layout = layouts[player]
-	if not RunService:IsStudio() or not def or not plot or not layout then
+	if not def or not plot or not layout then
 		return false
 	end
 	local full = if isDecor(def)

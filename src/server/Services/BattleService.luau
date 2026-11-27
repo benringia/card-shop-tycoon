@@ -60,6 +60,7 @@ local MutationRules = require(Shared:WaitForChild("Util"):WaitForChild("Mutation
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
+local DevAccess = require(Util:WaitForChild("DevAccess"))
 local BattleSim = require(Util:WaitForChild("BattleSim"))
 local CardService = require(Services:WaitForChild("CardService"))
 local DataService = require(Services:WaitForChild("DataService"))
@@ -1735,7 +1736,7 @@ end
 
 function BattleService.SetBossHpShare(player: Player, share: number): boolean
 	local fight = fights[player]
-	if not RunService:IsStudio() or not fight or not fight.monster.boss then
+	if not DevAccess.can(player, "server") or not fight or not fight.monster.boss then
 		return false
 	end
 	return BattleSim.setHpShare(fight.sim, MONSTER_ID, share)

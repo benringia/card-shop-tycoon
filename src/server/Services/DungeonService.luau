@@ -22,6 +22,7 @@ local Blocked = require((script.Parent :: Instance).Parent:WaitForChild("Util"):
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
+local DevAccess = require(Util:WaitForChild("DevAccess"))
 local BattleService = require(Services:WaitForChild("BattleService"))
 local BossService = require(Services:WaitForChild("BossService"))
 local DataService = require(Services:WaitForChild("DataService"))
@@ -662,9 +663,9 @@ end
 
 -- Studio only (/winroom): the fight room the run is at counts as won (no fight needed), as a real win goes on: its
 -- seal opens and the next puzzle waits for the group
-function DungeonService.WinRoom()
+function DungeonService.WinRoom(player: Player)
 	local step = Dungeon.STEPS[run.done + 1]
-	if not RunService:IsStudio() or not layout or not step or step.kind ~= "fight" then
+	if not DevAccess.can(player, "server") or not layout or not step or step.kind ~= "fight" then
 		return
 	end
 	run.started = true
@@ -674,7 +675,7 @@ end
 
 -- Studio only (/puzzle solve): the puzzle the run is at counts as solved
 function DungeonService.SolvePuzzle(player: Player)
-	if not RunService:IsStudio() or not layout then
+	if not DevAccess.can(player, "server") or not layout then
 		return
 	end
 	local kind = DungeonRules.stepKind(Dungeon.STEPS, run.done)
@@ -683,12 +684,12 @@ function DungeonService.SolvePuzzle(player: Player)
 		return
 	end
 	run.started = true
-	DungeonPuzzleService.Solve(kind) -- its chest, then DungeonService.CompleteStep through the hooks
+	DungeonPuzzleService.Solve(player, kind) -- its chest, then DungeonService.CompleteStep through the hooks
 end
 
 -- Studio only (/tap RoomGate<n>): what pressing room n's "Fight" gate does, every check included
 function DungeonService.TapGate(player: Player, index: number)
-	if RunService:IsStudio() and layout and layout.rooms[index] then
+	if DevAccess.can(player, "server") and layout and layout.rooms[index] then
 		onRoomGate(player, index)
 	end
 end
@@ -697,7 +698,7 @@ end
 -- puzzle opens and `player` stands at its room's entrance
 function DungeonService.SkipToPuzzle(kind: string, player: Player)
 	local index = DungeonRules.stepIndex(Dungeon.STEPS, kind)
-	if not RunService:IsStudio() or not layout or not index or kind == "fight" then
+	if not DevAccess.can(player, "server") or not layout or not index or kind == "fight" then
 		return
 	end
 	run.started = true
@@ -725,7 +726,7 @@ end
 -- Studio only (/room): rooms before `room` count as cleared, their doors open, and `player` goes to that room's gate
 -- (rooms + 1: the Prism Hydra's chamber gate)
 function DungeonService.SkipTo(room: number, player: Player?)
-	if not RunService:IsStudio() or not layout then
+	if not DevAccess.can(player, "server") or not layout then
 		return
 	end
 	skipTo(room, player)

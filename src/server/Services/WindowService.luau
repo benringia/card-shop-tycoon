@@ -5,7 +5,6 @@
 -- achievement decor they've unlocked ("window:<style>" and "shelf:<id>" joined by commas; TitleService's progress),
 -- which their Decor tab reads.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
@@ -25,6 +24,7 @@ local EconomyService = require(Services:WaitForChild("EconomyService"))
 local PlotService = require(Services:WaitForChild("PlotService"))
 local TitleService = require(Services:WaitForChild("TitleService"))
 local ServerUtil = (Services.Parent :: Instance):WaitForChild("Util")
+local DevAccess = require(ServerUtil:WaitForChild("DevAccess"))
 local Blocked = require(ServerUtil:WaitForChild("Blocked"))
 local RateLimiter = require(ServerUtil:WaitForChild("RateLimiter"))
 
@@ -177,7 +177,7 @@ end
 -- Studio's "/window <style> <side> <at>": that window put in for free, wherever it fits
 function WindowService.DevPlace(player: Player, styleId: string, side: string, at: number): (boolean, string?)
 	local list = windowsOf[player]
-	if not RunService:IsStudio() or not list then
+	if not DevAccess.can(player) or not list then
 		return false, "Not loaded."
 	end
 	local window: WindowRules.Window = { style = styleId, side = side, at = WindowRules.snap(Windows, at) }

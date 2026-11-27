@@ -4,7 +4,6 @@
 -- inside their shop by PlotService.SetLook. The owner's client reads the attributes ShopLook (the look in use) and
 -- ShopLooksOwned (bought ids joined by commas). The placeable pieces are shelves (PlacementService, kind "Decor").
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Decor = require(Shared:WaitForChild("Config"):WaitForChild("Decor"))
@@ -16,6 +15,7 @@ local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local PlotService = require(Services:WaitForChild("PlotService"))
 local ServerUtil = (Services.Parent :: Instance):WaitForChild("Util")
+local DevAccess = require(ServerUtil:WaitForChild("DevAccess"))
 local Blocked = require(ServerUtil:WaitForChild("Blocked"))
 local RateLimiter = require(ServerUtil:WaitForChild("RateLimiter"))
 
@@ -76,7 +76,7 @@ end
 -- Studio's "/decor <look id>": that look owned and in use
 function DecorService.SetLookForDev(player: Player, lookId: string): boolean
 	local state = states[player]
-	if not RunService:IsStudio() or not state or not DecorRules.look(Decor, lookId) then
+	if not DevAccess.can(player) or not state or not DecorRules.look(Decor, lookId) then
 		return false
 	end
 	if not DecorRules.owns(Decor, state, lookId) then

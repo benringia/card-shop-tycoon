@@ -13,7 +13,11 @@
 -- rip has a card of that rarity (rare, veryrare, epic, legendary) and who offers it if it's Very Rare or better),
 -- /serve (scan everything on the counter and press Charge, as the owner behind the register). Add "hand" to /customer
 -- and it arrives holding its shopping list (empty shelves; nothing is taken from or put back on them).
--- Does nothing outside Studio, so live players never get these commands.
+-- The chat commands (and ServerStorage.DevCommand) exist only in Studio. The admin panel's buttons work in Studio and,
+-- in the published game, for the game's owner on their test save only (owner 2026-11-27, spec
+-- 2026-11-27-live-admin-creator-design): every request goes through Util/DevAccess first, so no other player can run
+-- one (theirs get no reply), the owner's real save is refused with a locked card, and a command that changes other
+-- players' game waits until the owner is alone or in their own private server.
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -84,7 +88,11 @@ local PlacementService = require(Services:WaitForChild("PlacementService"))
 local DecorService = require(Services:WaitForChild("DecorService"))
 local WindowService = require(Services:WaitForChild("WindowService"))
 local RoomService = require(Services:WaitForChild("RoomService"))
-local RateLimiter = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("RateLimiter"))
+local DataService = require(Services:WaitForChild("DataService"))
+local ServerUtil = (Services.Parent :: Instance):WaitForChild("Util")
+local RateLimiter = require(ServerUtil:WaitForChild("RateLimiter"))
+local DevAccess = require(ServerUtil:WaitForChild("DevAccess"))
+local SaveSlots = require(ServerUtil:WaitForChild("SaveSlots"))
 
 type CommandHandler = (player: Player, text: string) -> ()
 
@@ -100,8 +108,12 @@ end
 
 local handlersByAlias: { [string]: CommandHandler } = {}
 
-local function addCommand(folder: Instance, alias: string, handler: CommandHandler)
+-- A command's handler, and in Studio its chat command (`folder` is nil in the published game: no chat commands there)
+local function addCommand(folder: Instance?, alias: string, handler: CommandHandler)
 	handlersByAlias[alias] = handler
+	if not folder then
+		return
+	end
 	local command = Instance.new("TextChatCommand")
 	command.Name = "Dev" .. alias
 	command.PrimaryAlias = "/" .. alias
@@ -113,6 +125,58 @@ local function addCommand(folder: Instance, alias: string, handler: CommandHandl
 			handler(player, text)
 		end
 	end)
+end
+
+-- Runs a command's text ("/item gradingSeal 5"); false when there's no such command
+local function run(player: Player, text: string): boolean
+	local alias = string.match(text, "^/(%w+)")
+	local handler = if alias then handlersByAlias[alias] else nil
+	if not handler or typeof(player) ~= "Instance" or not player:IsA("Player") then
+		return false
+	end
+	handler(player, text)
+	return true
+end
+
+-- The same commands for Studio's scripting tools, which can't type in chat:
+-- ServerStorage.DevCommand:Invoke(player, "/item gradingSeal 5"). Studio only, like the chat commands.
+local function makeStudioRunner()
+	if not RunService:IsStudio() then
+		return
+	end
+	local runner = Instance.new("BindableFunction")
+	runner.Name = "DevCommand"
+	runner.OnInvoke = run
+	runner.Parent = game:GetService("ServerStorage")
+end
+
+local allowPanel = RateLimiter.new(AdminPanel.COMMAND_COOLDOWN)
+
+-- An admin panel button (AdminPanelController): DevAccess decides before anything runs. In the published game each
+-- command the owner runs is written to the server log (the Developer Console shows it)
+local function onPanel(player: Player, text: unknown)
+	if typeof(text) ~= "string" or #text > AdminPanel.COMMAND_MAX_LENGTH or not allowPanel(player) then
+		return
+	end
+	local alias = string.match(text, "^/(%w+)") or ""
+	local ok, reason = DevAccess.check(player, alias)
+	if not ok then
+		DevAccess.refuse(player, reason)
+		return
+	end
+	if not RunService:IsStudio() then
+		print(`[Admin] {player.Name}: {text}`)
+	end
+	run(player, text)
+end
+
+-- The published game's Admin mark (AdminPanelController builds the tile from it): only the game's owner gets it,
+-- "open" on their test save, "mainSave" on the real one (its tile shows how to get to the test save)
+local function markAdmin(player: Player)
+	if RunService:IsStudio() or not SaveSlots.isOwner(player.UserId, game.CreatorId, game.CreatorType.Name) then
+		return
+	end
+	player:SetAttribute("AdminAccess", if DataService.IsTestSlot(player) then "open" else "mainSave")
 end
 
 -- Wraps an economy function so the command reads its amount from the chat text
@@ -421,11 +485,8 @@ local function grantBeastXp(player: Player, amount: number)
 end
 
 function DevService.Start()
-	if not RunService:IsStudio() then
-		return
-	end
-
-	local folder = TextChatService:FindFirstChild("TextChatCommands") or TextChatService
+	-- Chat commands only in Studio; the published game keeps just the handlers, for the owner's panel (onPanel)
+	local folder: Instance? = if RunService:IsStudio() then (TextChatService:FindFirstChild("TextChatCommands") or TextChatService) else nil
 	addCommand(folder, "cash", withAmount(EconomyService.AddCash))
 	-- A shop that can't restock (Config/Broke): /broke [cash] empties your shelves and boxes and sets your cash to
 	-- that (default $8, down too). Under a box's cost Pish's help comes within a few seconds; a little over it,
@@ -537,7 +598,7 @@ function DevService.Start()
 			Remotes.Notify:FireClient(player, "Usage (Dungeon window): /winroom (the room the run is at, won)", true)
 			return
 		end
-		DungeonService.WinRoom()
+		DungeonService.WinRoom(player)
 	end)
 	addCommand(folder, "puzzle", function(player, text)
 		local kind = string.match(text, "%s+(%a+)")
@@ -923,7 +984,7 @@ function DevService.Start()
 			Remotes.Notify:FireClient(player, `Usage: /crowd <0-{MAX_CROWD}> (players counted in every Wild biome)`, true)
 			return
 		end
-		WildService.SetPhantomPlayers(count)
+		WildService.SetPhantomPlayers(player, count)
 		Remotes.Notify:FireClient(player, `The Wild counts {count} extra players in every biome.`, false)
 	end)
 	addCommand(folder, "rest", function(player)
@@ -1173,28 +1234,21 @@ function DevService.Start()
 	addCommand(folder, "raritypack", function(player, text)
 		PackService.OpenRarityPack(player, string.find(string.lower(text), "foil") ~= nil)
 	end)
-	-- The same commands for Studio's scripting tools, which can't type in chat:
-	-- ServerStorage.DevCommand:Invoke(player, "/item gradingSeal 5"). Studio only, like the chat commands.
-	local function run(player: Player, text: string): boolean
-		local alias = string.match(text, "^/(%w+)")
-		local handler = if alias then handlersByAlias[alias] else nil
-		if not handler or typeof(player) ~= "Instance" or not player:IsA("Player") then
-			return false
-		end
-		handler(player, text)
-		return true
-	end
-	local runner = Instance.new("BindableFunction")
-	runner.Name = "DevCommand"
-	runner.OnInvoke = run
-	runner.Parent = game:GetService("ServerStorage")
-	-- The admin panel's buttons (AdminPanelController). Only connected here, in Studio: the live game ignores them.
-	local allowPanel = RateLimiter.new(AdminPanel.COMMAND_COOLDOWN)
-	Remotes.DevPanel.OnServerEvent:Connect(function(player, text)
-		if allowPanel(player) and typeof(text) == "string" and #text <= AdminPanel.COMMAND_MAX_LENGTH then
-			run(player, text)
-		end
+	-- The published game's Admin tile: a bare "/admin" (the owner's real save sends it) only answers with the refusal
+	addCommand(folder, "admin", function(player: Player, _text: string)
+		Remotes.Notify:FireClient(player, "Admin is open: pick a button.", false)
 	end)
+	makeStudioRunner()
+	Remotes.DevPanel.OnServerEvent:Connect(onPanel)
+	DataService.Register({
+		name = "DevService",
+		load = markAdmin,
+		save = function() end,
+		unload = function() end,
+	})
+	if not RunService:IsStudio() then
+		return
+	end
 	print("[DevService] Studio commands enabled: /cash <amount>, /broke [cash], /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /bulk [cards], /item <id> <amount>, /weapon <id> [grade] [level], /material <boss id> <amount>, /weapondrop <boss id>, /chests <boss id> [drop|miss], /bossreset, /event <bossRush|luckySunday|off|auto|luck>, /codes reset, /boss <n> [fight|group], /jobslot, /luck <x2|x3> [minutes] | clear, /prologue [reset], /jobtired, /wild, /rest, /tire, /bosshp <1-100>, /townchikin, /turts <restock|move|offer <id>>, /gift <ready|day n|week n|month n|reset|tutorial|win kind>, /elite, /knockout, /support <0-3>, /titles forget, /review <outcome>, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /decor <look id|pieces>, /window <style> <side> <at>, /shoproom <open|lock|fill> [room|all], /storage <place|fill [product]|clear>, /loading <main|wild|frontier|dungeon>, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-4> [volume], /victorysound <1-3>, /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S], /skillfx <sword> [cut1|cut2|cut3|skill] [level], /room <2-4>, /winroom, /puzzle <solve|beams|plates|lock>, /tap <piece>, /dungeonfx <intro|introshort|roar|glimpse>")
 end
 

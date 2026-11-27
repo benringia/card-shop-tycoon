@@ -9,7 +9,6 @@
 -- stays done once its item was built: selling the item never opens it again (owner 2026-11-21: "buying then selling
 -- the accessory hook resets the main quest to buy accessory hook again"; MainQuestRules.doneText).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
@@ -20,6 +19,7 @@ local Place = require(Shared:WaitForChild("Util"):WaitForChild("Place"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
+local DevAccess = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("DevAccess"))
 local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 
@@ -117,7 +117,7 @@ end
 -- Studio (/mainquest reset): every first build pays again (sell one and place it to see the moment); the line to tell
 -- them, or nil for usage
 function MainQuestService.Dev(player: Player, action: string): string?
-	if not RunService:IsStudio() or action ~= "reset" or not paid[player] then
+	if not DevAccess.can(player) or action ~= "reset" or not paid[player] then
 		return nil
 	end
 	paid[player] = {}

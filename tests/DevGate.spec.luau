@@ -44,10 +44,71 @@ local function opening(source: string, functionName: string): string
 	return table.concat(lines, " ")
 end
 
+-- The text of a top-level `local function name(` up to its closing `end`
+local function body(source: string, functionName: string): string
+	local at = string.find(source, "local function " .. functionName .. "(", 1, true)
+	assert(at, functionName .. " exists")
+	local stop = string.find(source, "\nend\n", at, true)
+	assert(stop, functionName .. " ends")
+	return string.sub(source, at, stop)
+end
+
+-- The dev functions other services hold, each behind DevAccess (spec 2026-11-27-live-admin-creator-design)
+local GATED = {
+	{ "BattleService", "BattleService.SetBossHpShare" },
+	{ "BossService", "BossService.DevSetBeaten" },
+	{ "DecorService", "DecorService.SetLookForDev" },
+	{ "EventService", "EventService.Dev" },
+	{ "MainQuestService", "MainQuestService.Dev" },
+	{ "PlacementService", "PlacementService.DevPlace" },
+	{ "RoomService", "RoomService.DevSet" },
+	{ "WindowService", "WindowService.DevPlace" },
+	{ "WildService", "WildService.SetPhantomPlayers" },
+	{ "DungeonPuzzleService", "DungeonPuzzleService.Solve" },
+	{ "DungeonPuzzleService", "DungeonPuzzleService.Tap" },
+	{ "DungeonService", "DungeonService.WinRoom" },
+	{ "DungeonService", "DungeonService.SolvePuzzle" },
+	{ "DungeonService", "DungeonService.TapGate" },
+	{ "DungeonService", "DungeonService.SkipToPuzzle" },
+	{ "DungeonService", "DungeonService.SkipTo" },
+}
+
 return {
-	["DevService does nothing outside Studio: its first lines leave"] = function()
-		local start = opening(read("src/server/Services/DevService.luau"), "DevService.Start")
-		expect.equal(start, "if not RunService:IsStudio() then return end")
+	-- Owner 2026-11-27: "proper admin UI I can publish that only I can use" (pick A: the test save only). The live
+	-- game has no dev chat commands and no DevCommand; the panel's remote runs a command only after DevAccess said yes
+	["chat commands and the DevCommand bindable are made only in Studio"] = function()
+		local source = read("src/server/Services/DevService.luau")
+		assert(string.find(source, "local folder: Instance? = if RunService:IsStudio() then", 1, true), "no chat folder live")
+		assert(string.find(opening(source, "addCommand"), "if not folder then return", 1, true), "addCommand makes no chat command live")
+		expect.equal(opening(source, "makeStudioRunner"), "if not RunService:IsStudio() then return end")
+	end,
+
+	["the panel's remote asks DevAccess before it runs anything"] = function()
+		local source = read("src/server/Services/DevService.luau")
+		local handler = body(source, "onPanel")
+		local checked = string.find(handler, "DevAccess.check(", 1, true)
+		local ran = string.find(handler, "run(player", 1, true)
+		assert(checked and ran and checked < ran, "DevAccess.check before run")
+		assert(string.find(source, "Remotes.DevPanel.OnServerEvent:Connect(onPanel)", 1, true), "the remote goes through onPanel")
+	end,
+
+	["only the game's owner gets the Admin mark"] = function()
+		local source = read("src/server/Services/DevService.luau")
+		assert(string.find(opening(source, "markAdmin"), "SaveSlots.isOwner(player.UserId, game.CreatorId, game.CreatorType.Name)", 1, true), "owner checked first")
+	end,
+
+	["DevAccess fails closed: the owner from the game's creator, the test save from the server's own mark"] = function()
+		local source = read("src/server/Util/DevAccess.luau")
+		assert(string.find(source, "SaveSlots.isOwner(player.UserId, game.CreatorId, game.CreatorType.Name)", 1, true), "owner")
+		assert(string.find(source, 'GetAttribute("TestSave") == true', 1, true), "test save")
+	end,
+
+	["every other service's dev function asks DevAccess first, never a bare Studio check"] = function()
+		for _, entry in GATED do
+			local first = opening(read(`src/server/Services/{entry[1]}.luau`), entry[2])
+			assert(string.find(first, "DevAccess.can(", 1, true), `{entry[2]} asks DevAccess: {first}`)
+			assert(not string.find(first, "RunService:IsStudio()", 1, true), `{entry[2]} has a bare Studio check: {first}`)
+		end
 	end,
 
 	["dev commands are registered nowhere else"] = function()

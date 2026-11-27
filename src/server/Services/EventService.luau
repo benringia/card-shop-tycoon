@@ -7,7 +7,6 @@
 -- here: this service needs LuckService, which the boss services' own requires lead back to. Players in their first visit (the prologue, Pish's tour) hear nothing
 -- until it's over. Studio: /event (DevService) sets the override EventNow reads.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Events = require(Shared:WaitForChild("Config"):WaitForChild("Events"))
@@ -16,6 +15,7 @@ local EventRules = require(Shared:WaitForChild("Util"):WaitForChild("EventRules"
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
+local DevAccess = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("DevAccess"))
 local DataService = require(Services:WaitForChild("DataService"))
 local LuckService = require(Services:WaitForChild("LuckService"))
 
@@ -99,7 +99,7 @@ end
 -- everyone here is told of the change. "luck": Lucky Sunday's luck can be given again today. The line to print, or nil
 -- for usage
 function EventService.Dev(player: Player, id: string): string?
-	if not RunService:IsStudio() then
+	if not DevAccess.can(player, "server") then
 		return nil
 	end
 	if id == "luck" then

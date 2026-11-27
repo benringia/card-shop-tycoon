@@ -5,7 +5,6 @@
 -- floor, one more customer at a time and more shelves (CustomerService and PlacementService read the plot's rooms).
 -- Every refusal is a big locked card (Util/Blocked).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
@@ -22,6 +21,7 @@ local PlotService = require(Services:WaitForChild("PlotService"))
 local PlacementService = require(Services:WaitForChild("PlacementService"))
 local TutorialService = require(Services:WaitForChild("TutorialService"))
 local ServerUtil = (Services.Parent :: Instance):WaitForChild("Util")
+local DevAccess = require(ServerUtil:WaitForChild("DevAccess"))
 local Blocked = require(ServerUtil:WaitForChild("Blocked"))
 local RateLimiter = require(ServerUtil:WaitForChild("RateLimiter"))
 
@@ -93,8 +93,8 @@ end
 -- Studio's "/shoproom open|lock <room|all>" (DevService): rooms opened or locked for free, no lesson; locking moves
 -- anything standing in the room out to the nearest open spot (PlacementService.Refit). False and why when it can't
 function RoomService.DevSet(player: Player, which: string, open: boolean): (boolean, string?)
-	if not RunService:IsStudio() then
-		return false, "Studio only."
+	if not DevAccess.can(player) then
+		return false, "Admin only."
 	end
 	local list = roomsOf[player]
 	if not list then

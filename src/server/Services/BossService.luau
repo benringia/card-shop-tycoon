@@ -9,7 +9,6 @@ local MessagingService = game:GetService("MessagingService")
 local Players = game:GetService("Players")
 local PolicyService = game:GetService("PolicyService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
@@ -40,6 +39,7 @@ local Teams = require(Config:WaitForChild("Teams"))
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
+local DevAccess = require(Util:WaitForChild("DevAccess"))
 local BattleService = require(Services:WaitForChild("BattleService"))
 local BossChestService = require(Services:WaitForChild("BossChestService"))
 local CardService = require(Services:WaitForChild("CardService"))
@@ -432,10 +432,13 @@ end
 -- when it can't (not Studio, an unknown boss, not loaded)
 local beatenBefore: { [Player]: { [string]: { cleared: boolean, unlocked: boolean } } } = {}
 function BossService.DevSetBeaten(player: Player, index: number, beaten: boolean): boolean
+	if not DevAccess.can(player) then
+		return false
+	end
 	local bossId = Bosses.LADDER[index]
 	local mine = records[player]
 	local record = if bossId and mine then mine[bossId] else nil
-	if not RunService:IsStudio() or not record then
+	if not record then
 		return false
 	end
 	local kept = beatenBefore[player] or {}
