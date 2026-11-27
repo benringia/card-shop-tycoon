@@ -361,9 +361,9 @@ local function showCue(key: string, target: Target)
 			end)
 		end
 		if target.gui then
-			cue = TutorialCues.pawOn(target.gui)
+			cue = TutorialCues.pointAt(target.gui)
 		elseif part then
-			cue = TutorialCues.pawOn(part)
+			cue = TutorialCues.pointAt(part)
 		end
 		if thing and marker then
 			play("point")

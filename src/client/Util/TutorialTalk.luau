@@ -44,7 +44,7 @@ local GAP = 34 -- px above the HUD tiles (their icons pop up out of the row)
 local TOP = 8 -- px under Roblox's top bar: where the card sits (the owner 2026-11-11: "move the dialogue higher up")
 local FIGHT_TOP = 66 -- px in a fight: under the boss's HP bar
 local BAR_GAP = 12 -- px above the placement bar while the player places something
-local PAW_ROOM = 82 -- px over the button Pish points at for his bouncing paw (Util/TutorialCues: 64 + lift + bounce)
+local POINTER_ROOM = 82 -- px over the button Pish points at for his bouncing arrow (Util/TutorialCues: 64 + lift + bounce)
 local EDGE = 8 -- px kept clear of the screen's edges and the HUD's side columns
 local SIDE_FIT = 0.82 -- at the register the card stands at the left side, a little smaller (TalkRules.cardPlace)
 local TYPE_SPEED = 45 -- letters a second
@@ -78,7 +78,7 @@ local COVER_CHECK = 0.2 -- seconds between looks for something over the card
 local coverCheck = 0
 local covered = false -- a button or window of a screen above the tutorial's lies over the card (isCovered)
 local lineLimit: UITextSizeConstraint? = nil -- the line's text size limits (in screen px: they don't follow the UIScale)
-local avoidPaw: GuiObject? = nil -- the button his paw bounces on (`avoid` is what the ring goes round: a whole tile)
+local avoidPointer: GuiObject? = nil -- the button his arrow bounces on (`avoid` is what the ring goes round: a whole tile)
 
 -- A button's box on screen; nil when there's none (or it's gone)
 local function boxOf(gui: GuiObject?): TalkRules.Box?
@@ -349,11 +349,16 @@ local function build(): Frame
 			scale.Scale = scale:GetAttribute("Popping") and scale.Scale or fit
 		end
 		height = HEIGHT * fit
-		local target, paw = boxOf(avoid), boxOf(avoidPaw or avoid)
+		local target, pointer = boxOf(avoid), boxOf(avoidPointer or avoid)
+		if not target then
+			-- nothing on the screen to point at: the arrow over a thing in the world, or waiting at the screen's edge
+			-- (seen 2026-11-27: Chikin's card covered the Wild's paw on the walk there)
+			target = TutorialCues.worldPointerBox()
+		end
 		local cardLeft = centre - width / 2
-		if paw and paw.x + paw.w > cardLeft and paw.x < cardLeft + width and paw.y >= bottom and paw.y - PAW_ROOM < bottom then
-			-- A HUD tile under the card when it's down: up enough to show the paw bouncing on it
-			bottom = paw.y - PAW_ROOM
+		if pointer and pointer.x + pointer.w > cardLeft and pointer.x < cardLeft + width and pointer.y >= bottom and pointer.y - POINTER_ROOM < bottom then
+			-- A HUD tile under the card when it's down: up enough to show the arrow bouncing on it
+			bottom = pointer.y - POINTER_ROOM
 		end
 		local top = if forceTop then FIGHT_TOP else TOP
 		local manning = Players.LocalPlayer:GetAttribute("ManningRegister") == true
@@ -365,7 +370,7 @@ local function build(): Frame
 			{ name = "top", boxes = if topSkip then { topCard, topSkip } else { topCard } },
 			{ name = "bottom", boxes = if lowSkip then { lowCard, lowSkip } else { lowCard } },
 		}
-		local where = TalkRules.cardPlace(spots, target, if paw then TalkRules.pawBox(paw, PAW_ROOM) else nil, forceTop, manning)
+		local where = TalkRules.cardPlace(spots, target, if pointer then TalkRules.pointerBox(pointer, POINTER_ROOM) else nil, forceTop, manning)
 		if where == "side" then
 			-- at the register: left of its screen and drawer, half way down (under the Leave pill)
 			made.AnchorPoint = Vector2.new(0, 0.5)
@@ -522,11 +527,12 @@ function TutorialTalk.atTop(on: boolean)
 	forceTop = on
 end
 
--- What Pish points at now, kept clear of the card (nil: nothing): `target` what his ring goes round, `paw` the button
--- his paw bounces on (the same one unless the ring takes a whole tile: the rack's Buy)
-function TutorialTalk.keepClear(target: GuiObject?, paw: GuiObject?)
+-- What Pish points at now, kept clear of the card (nil: nothing; then the arrow over a thing in the world): `target`
+-- what his ring goes round, `pointer` the button his arrow bounces on (the same one unless the ring takes a whole
+-- tile: the rack's Buy)
+function TutorialTalk.keepClear(target: GuiObject?, pointer: GuiObject?)
 	avoid = target
-	avoidPaw = paw
+	avoidPointer = pointer
 end
 
 function TutorialTalk.hide()

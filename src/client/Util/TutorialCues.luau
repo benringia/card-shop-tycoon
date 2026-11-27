@@ -1,12 +1,14 @@
 --!strict
--- The tutorial's cues (spec 2026-11-09-tutorial-pish-design 5, 6, 14): glowing paw prints on the ground to where to go,
--- a bouncing paw (and a gold ring) over what to tap (a HUD button, a button in a window or a thing in the shop), the
--- small Skip at the top right and the tour card it opens (the step of the tour, the paw row, his gift, Keep going or
--- Skip tour) (Pish's words: Util/TutorialTalk). Each returns a remover, or is set again.
+-- The tutorial's cues (spec 2026-11-09-tutorial-pish-design 5, 6, 14): arrows on the ground to where to go, a bouncing
+-- arrow (and a gold ring) over what to tap (a HUD button, a button in a window or a thing in the shop), the small Skip
+-- at the top right and the tour card it opens (the step of the tour, the paw row, his gift, Keep going or Skip tour)
+-- (Pish's words: Util/TutorialTalk). Each returns a remover, or is set again.
 -- Owner 2026-11-21 ("make the highlight more noticeable, also make it fit the shape of what it is highlighting. also
 -- make the pawprint more noticeable"; Config/Cues, Util/CueShape): the ring and the spotlight's hole take the button's
 -- own corner (a round button gets a round ring), the ring is thicker with a dark line outside it and a second ring
--- pinging outward, and every paw is bigger with a dark backing (and the bouncing one a gold halo).
+-- pinging outward. Owner 2026-11-27 ("Maybe just use arrows instead of paws. to be simple", picks B and 1; spec
+-- 2026-11-27-tutorial-arrows-design): a chunky gold arrow where the bouncing paw was, at the screen's edge when its
+-- thing is off the screen, and arrows lying on the ground for the next stretch of the way where the paw prints were.
 local PathfindingService = game:GetService("PathfindingService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -18,6 +20,7 @@ local ScreenEdges = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChil
 local Cues = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("Cues"))
 local CueShape = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("CueShape"))
 local TalkRules = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("TalkRules"))
+local UIIcons = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("UIIcons"))
 
 local ClientUtil = script.Parent :: Instance
 local Icon = require(ClientUtil:WaitForChild("Icon"))
@@ -26,18 +29,16 @@ local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 
 local TutorialCues = {}
 
-local PRINT_GAP = 3 -- studs between paw prints
-local PRINT_MAX = 48 -- a walking route to the Wild runs ~300 studs: about one paw every 6
-local PRINT_PX = Cues.PRINT.px -- px: a paw print up close (PRINT_NEAR studs away), smaller further off down to PRINT_MIN
-local PRINT_NEAR = Cues.PRINT.near
-local PRINT_MIN = Cues.PRINT.min
-local PAW_SIZE = Cues.PAW.size -- px: the bouncing paw over a button (smaller over a small one, down to PAW_MIN)
-local PAW_MIN = Cues.PAW.min
-local RING_PAD = Cues.RING.gap + 3 -- px the paw keeps beside a ringed tile (the ring's own pad: shapeOf)
+local TRAIL = Cues.TRAIL -- the arrows lying on the ground
+local OFFSCREEN = Cues.OFFSCREEN -- the arrow at the screen's edge for a thing off the screen
+local FLOW_SPEED = 6 -- the glow flowing along the arrows on the ground toward the goal
+local POINTER_SIZE = Cues.POINTER.size -- px: the bouncing arrow over a button (smaller over a small one, down to POINTER_MIN)
+local POINTER_MIN = Cues.POINTER.min
+local RING_PAD = Cues.RING.gap + 3 -- px the arrow keeps beside a ringed tile (the ring's own pad: shapeOf)
 local RING_THICKNESS = Cues.RING.thickness
 local BOUNCE = 10 -- px (studs * 0.4 on a thing in the shop)
 local BOUNCE_SPEED = 6
-local SCROLL_SWIPE = 60 -- px the scroll paw slides down each time
+local SCROLL_SWIPE = 60 -- px the scroll arrow slides down each time
 local SCROLL_SPEED = 0.9 -- swipes a second
 local GOLD = Color3.fromRGB(255, 214, 90)
 -- The small Skip at the top right (round 3, owner's pick A) and the tour card it opens: the step of the tour, the paw
@@ -54,7 +55,6 @@ local CARD_GREY = Color3.fromRGB(190, 195, 205)
 local DIM_COLOR = Color3.fromRGB(20, 10, 40) -- the spotlight's dimming
 local DIM_TRANSPARENCY = Cues.SPOT.dim
 local SPOT_PAD = Cues.SPOT.pad -- px of light round the button
-local BACKING = Color3.fromRGB(Cues.BACKING[1], Cues.BACKING[2], Cues.BACKING[3])
 local EDGE = Color3.fromRGB(Cues.EDGE[1], Cues.EDGE[2], Cues.EDGE[3])
 
 local screen: ScreenGui? = nil
@@ -67,15 +67,10 @@ local card: Frame? = nil
 local askCard: Frame? = nil -- the "tour again?" card (TutorialCues.askReplay)
 local ASK_SIZE = Vector2.new(330, 150)
 local ASK_EXTRA = 60 -- px taller with a second choice
-
--- Gold paws: white ones vanished against the shop's white walls and light floors
-local function tint(icon: Instance, color: Color3)
-	for _, image in icon:GetDescendants() do
-		if image:IsA("ImageLabel") then
-			image.ImageColor3 = color
-		end
-	end
-end
+-- The arrow over a thing in the world, for the talk card to keep clear of (TutorialCues.worldPointerBox): its holder
+-- and the box it bounces in (the screen's px, as AbsolutePosition)
+local worldHolder: Frame? = nil
+local worldBox: TalkRules.Box? = nil
 
 -- The cues' own screen, over the HUD
 local function gui(): ScreenGui
@@ -102,38 +97,20 @@ local function fade(icon: Instance, transparency: number)
 	end
 end
 
--- A gold paw filling `holder` with a dark backing a little bigger behind it (a bare gold one was hard to see on light
--- floors and walls). Returns the paw and its backing.
-local function pawIn(holder: GuiObject, rotation: number): (Frame, Frame)
-	local back = Icon.make(holder, "Paw", UDim2.fromScale(Cues.PAW.back, Cues.PAW.back))
-	back.Name = "Backing"
-	back.AnchorPoint = Vector2.new(0.5, 0.5)
-	back.Position = UDim2.fromScale(0.5, 0.5)
-	back.Rotation = rotation
-	tint(back, BACKING)
-	local paw = Icon.make(holder, "Paw", UDim2.fromScale(1, 1))
-	paw.Rotation = rotation
-	paw.ZIndex = back.ZIndex + 1
-	tint(paw, GOLD)
-	return paw, back
+-- The chunky gold arrow filling `holder` (pick B: its own white edge and dark outline read on light floors and dark
+-- streets alike; the paw before needed a dark backing and a halo), turned `rotation` degrees clockwise from pointing
+-- down
+local function arrowIn(holder: GuiObject, rotation: number): Frame
+	local arrow = Icon.make(holder, "ArrowCue", UDim2.fromScale(1, 1))
+	arrow.Name = "Arrow"
+	arrow.Rotation = rotation
+	return arrow
 end
 
--- A soft gold disc behind the bouncing paw, breathing with its bounce
-local function haloIn(holder: GuiObject): Frame
-	local halo = Instance.new("Frame")
-	halo.Name = "Halo"
-	halo.AnchorPoint = Vector2.new(0.5, 0.5)
-	halo.Position = UDim2.fromScale(0.5, 0.5)
-	halo.Size = UDim2.fromScale(Cues.PAW.halo, Cues.PAW.halo)
-	halo.BackgroundColor3 = GOLD
-	halo.BackgroundTransparency = Cues.PAW.haloDim
-	halo.BorderSizePixel = 0
-	halo.ZIndex = 0 -- under the paw and its backing (siblings in the holder)
-	halo.Parent = holder
-	local round = Instance.new("UICorner")
-	round.CornerRadius = UDim.new(0.5, 0)
-	round.Parent = halo
-	return halo
+-- Which way an arrow turned `rotation` degrees points (screen px: x right, y down)
+local function pointing(rotation: number): Vector2
+	local turn = math.rad(rotation)
+	return Vector2.new(-math.sin(turn), math.cos(turn))
 end
 
 -- The piece that holds the shape of the thing a cue is on: itself when it has a UICorner, else a face inside it that
@@ -245,49 +222,79 @@ local function route(from: Vector3, to: Vector3): { TrailRules.Point }
 	return points
 end
 
--- Glowing paw prints along the walking route from `from` to `to`, lighting up one after another. Drawn on the screen
--- over the world (owner 2026-11-10: "paw prints are not visible when the door is closed"), smaller further away
+-- One arrow lying on the ground: a small invisible part of this client's own with the Chevron picture on its top, drawn
+-- over walls and doors (AlwaysOnTop; owner 2026-11-10: "paw prints are not visible when the door is closed")
+local function chevronIn(folder: Instance): { part: BasePart, surface: SurfaceGui, image: ImageLabel, shown: number }
+	local part = Instance.new("Part")
+	part.Name = "Chevron"
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.CastShadow = false
+	part.Transparency = 1
+	part.Size = Vector3.new(TRAIL.size, 0.05, TRAIL.size)
+	part.Parent = folder
+	local surface = Instance.new("SurfaceGui")
+	surface.Face = Enum.NormalId.Top
+	surface.AlwaysOnTop = true
+	surface.LightInfluence = 0
+	surface.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	surface.PixelsPerStud = TRAIL.pixelsPerStud
+	surface.Enabled = false
+	surface.Parent = part
+	local image = Instance.new("ImageLabel")
+	image.Name = "Chevron"
+	image.BackgroundTransparency = 1
+	image.Size = UDim2.fromScale(1, 1)
+	image.Image = UIIcons.Chevron
+	image.Rotation = TRAIL.rotation
+	image.Parent = surface
+	return { part = part, surface = surface, image = image, shown = 0 }
+end
+
+-- Arrows lying on the ground along the walking route from `from` to `to` (owner 2026-11-27, pick 1): only the next
+-- stretch past the player (TrailRules.ahead; the whole route's paws piled into a gold smear at the horizon), a glow
+-- flowing toward the goal, the last few fading out. The callers redraw it from where the player is every few studs;
+-- in between, the stretch moves on with them
 function TutorialCues.trail(from: Vector3, to: Vector3): () -> ()
-	local holder = Instance.new("Frame")
-	holder.Name = "PawTrail"
-	holder.BackgroundTransparency = 1
-	holder.Size = UDim2.fromScale(1, 1)
-	holder.ZIndex = 5
-	holder.Parent = gui()
-	local prints: { { at: Vector3, holder: Frame, paw: Frame, back: Frame } } = {}
+	local folder = Instance.new("Folder")
+	folder.Name = "ArrowTrail"
+	folder.Parent = workspace
 	local stopped = false
 	local connection: RBXScriptConnection? = nil
 	task.spawn(function()
-		local paws = TrailRules.along(route(from, to), PRINT_GAP, PRINT_MAX)
+		local points = route(from, to)
 		if stopped then
 			return
 		end
-		for _, spot in paws do
-			local print = Instance.new("Frame")
-			print.Name = "Print"
-			print.BackgroundTransparency = 1
-			print.AnchorPoint = Vector2.new(0.5, 0.5)
-			print.Size = UDim2.fromOffset(PRINT_PX, PRINT_PX)
-			print.Visible = false
-			print.Parent = holder
-			local paw, back = pawIn(print, spot.facing)
-			table.insert(prints, { at = Vector3.new(spot.x, spot.y + 0.15, spot.z), holder = print, paw = paw, back = back })
+		local marks = TrailRules.along(points, TRAIL.gap, TRAIL.max)
+		local pool = {}
+		for _ = 1, TRAIL.ahead do
+			table.insert(pool, chevronIn(folder))
 		end
 		local started = os.clock()
+		local fadeFrom = TRAIL.ahead - TRAIL.fade -- the slots past this one fade out
 		connection = RunService.RenderStepped:Connect(function()
-			local wave = (os.clock() - started) * 6
-			for i, entry in prints do
-				local point, depth = onScreen(entry.at)
-				entry.holder.Visible = point ~= nil
-				if point then
-					-- the wave passing: each print swells and brightens in turn, never fainter than PRINT.dim
-					local glow = 0.5 + 0.5 * math.sin(wave - i * 0.7)
-					local size = math.clamp(PRINT_PX * PRINT_NEAR / depth, PRINT_MIN, PRINT_PX) * (0.9 + 0.2 * glow)
-					entry.holder.Position = UDim2.fromOffset(point.X, point.Y)
-					entry.holder.Size = UDim2.fromOffset(size, size)
-					local dim = Cues.PRINT.dim * (1 - glow)
-					fade(entry.paw, dim)
-					fade(entry.back, 0.2 + dim)
+			local character = Players.LocalPlayer.Character
+			local body = if character then character:FindFirstChild("HumanoidRootPart") else nil
+			local at = if body and body:IsA("BasePart") then body.Position else from
+			local first, last = TrailRules.ahead(marks, TrailRules.progress(points, { x = at.X, y = at.Y, z = at.Z }), TRAIL.ahead)
+			local wave = (os.clock() - started) * FLOW_SPEED
+			for slot, chevron in pool do
+				local index = first + slot - 1
+				local mark = if index <= last then marks[index] else nil
+				chevron.surface.Enabled = mark ~= nil
+				if mark then
+					if chevron.shown ~= index then
+						chevron.shown = index
+						chevron.part.CFrame = CFrame.new(mark.x, mark.y + TRAIL.lift, mark.z) * CFrame.Angles(0, -math.rad(mark.facing), 0)
+					end
+					-- the glow passing toward the goal, never fainter than TRAIL.dim; the last few fading out
+					local glow = 0.5 + 0.5 * math.sin(wave - slot * 0.7)
+					local base = TRAIL.dim * (1 - glow)
+					local gone = math.max(0, slot - fadeFrom) / (TRAIL.fade + 1)
+					chevron.image.ImageTransparency = base + (1 - base) * gone
 				end
 			end
 		end)
@@ -297,31 +304,29 @@ function TutorialCues.trail(from: Vector3, to: Vector3): () -> ()
 		if connection then
 			connection:Disconnect()
 		end
-		holder:Destroy()
+		folder:Destroy()
 	end
 end
 
--- A paw inside a scrolling list's bottom edge, toes down, sliding downward again and again: scroll down (owner
+-- An arrow inside a scrolling list's bottom edge, pointing down, sliding downward again and again: scroll down (owner
 -- 2026-11-16: the paw pointed at a tile out of view)
-function TutorialCues.scrollPaw(list: GuiObject): () -> ()
+function TutorialCues.scrollHint(list: GuiObject): () -> ()
 	local started = os.clock()
 	local holder = Instance.new("Frame")
-	holder.Name = "ScrollPaw"
+	holder.Name = "ScrollArrow"
 	holder.BackgroundTransparency = 1
 	holder.AnchorPoint = Vector2.new(0.5, 1)
-	holder.Size = UDim2.fromOffset(PAW_SIZE, PAW_SIZE)
+	holder.Size = UDim2.fromOffset(POINTER_SIZE, POINTER_SIZE)
 	holder.ZIndex = 20
 	holder.Parent = gui()
-	local paw, back = pawIn(holder, 180)
+	local arrow = arrowIn(holder, 0)
 	local connection = RunService.RenderStepped:Connect(function()
 		local at, size = list.AbsolutePosition, list.AbsoluteSize
-		holder.Visible = list.Parent ~= nil and list.Visible and size.Y > PAW_SIZE * 2
+		holder.Visible = list.Parent ~= nil and list.Visible and size.Y > POINTER_SIZE * 2
 		-- a downward swipe: slides SCROLL_SWIPE px down, fading out at the bottom, then starts again
 		local cycle = ((os.clock() - started) * SCROLL_SPEED) % 1
 		holder.Position = UDim2.fromOffset(at.X + size.X / 2, at.Y + size.Y - 8 - SCROLL_SWIPE + cycle * SCROLL_SWIPE)
-		local gone = if cycle > 0.7 then (cycle - 0.7) / 0.3 else 0
-		fade(paw, gone)
-		fade(back, gone)
+		fade(arrow, if cycle > 0.7 then (cycle - 0.7) / 0.3 else 0)
 	end)
 	return function()
 		connection:Disconnect()
@@ -345,56 +350,53 @@ local function showing(gui: GuiObject): (Vector2, Vector2, boolean, CueShape.Cor
 	return at, size, clipped, pieceCorner, pieceScale, pad
 end
 
--- A bouncing paw pointing down at a HUD button, a button in a window or a thing in the shop; a button also gets a
--- pulsing gold ring round it (in a window full of items the paw alone could pass for one of them). `around`: what the
--- ring goes round instead, the paw staying on `target` (the rack's whole Shop tile, its paw on Buy: spec
+-- A bouncing arrow pointing down at a HUD button, a button in a window or a thing in the shop; a button also gets a
+-- pulsing gold ring round it (in a window full of items the arrow alone could pass for one of them). `around`: what
+-- the ring goes round instead, the arrow staying on `target` (the rack's whole Shop tile, its arrow on Buy: spec
 -- 2026-11-25-pish-first-steps-design 2)
-function TutorialCues.pawOn(target: GuiObject | BasePart, around: GuiObject?): () -> ()
+function TutorialCues.pointAt(target: GuiObject | BasePart, around: GuiObject?): () -> ()
 	local started = os.clock()
 	if typeof(target) == "Instance" and target:IsA("GuiObject") then
 		local ringOn = around or target
 		local holder = Instance.new("Frame")
-		holder.Name = "PawPointer"
+		holder.Name = "ArrowPointer"
 		holder.BackgroundTransparency = 1
 		holder.AnchorPoint = Vector2.new(0.5, 1)
 		holder.ZIndex = 20
 		holder.Parent = gui()
-		local paw, back = pawIn(holder, 180) -- toes down, toward the button
-		local halo = haloIn(holder)
+		local arrow = arrowIn(holder, 0) -- pointing down, toward the button
 		-- the gold ring in the button's own shape, a dark line outside it, and a second ring pinging outward
-		local ring, corner, stroke = outlineFrame("PawRing", GOLD, RING_THICKNESS, 19)
-		local edge, edgeCorner, edgeStroke = outlineFrame("PawRingEdge", EDGE, Cues.RING.edge, 18)
+		local ring, corner, stroke = outlineFrame("CueRing", GOLD, RING_THICKNESS, 19)
+		local edge, edgeCorner, edgeStroke = outlineFrame("CueRingEdge", EDGE, Cues.RING.edge, 18)
 		edgeStroke.Transparency = 0.35
-		local ping, pingCorner, pingStroke = outlineFrame("PawPing", GOLD, Cues.PING.thickness, 18)
+		local ping, pingCorner, pingStroke = outlineFrame("CuePing", GOLD, Cues.PING.thickness, 18)
 		local connection = RunService.RenderStepped:Connect(function()
 			local elapsed = os.clock() - started
 			local beat = math.abs(math.sin(elapsed * BOUNCE_SPEED))
-			-- the paw's button as it shows, and the ring's: the piece that holds its shape (a tile's face), its corner as
+			-- the arrow's button as it shows, and the ring's: the piece that holds its shape (a tile's face), its corner as
 			-- drawn, and the ring's place just outside its own outline
 			local at, size, clipped = showing(target)
 			local ringAt, ringSize, _, pieceCorner, pieceScale, pad = showing(ringOn)
 			local shown = target.Parent ~= nil and target.Visible and size.X > 0 and size.Y > 0
 				and ringOn.Parent ~= nil and ringSize.X > 0 and ringSize.Y > 0
-			local pawSize = math.clamp(size.Y * 0.9, PAW_MIN, PAW_SIZE)
+			local arrowSize = math.clamp(size.Y * 0.9, POINTER_MIN, POINTER_SIZE)
 			holder.Visible = shown
-			holder.Size = UDim2.fromOffset(pawSize, pawSize)
-			-- above it, or just inside its top when that is the list's edge (not over the window's tabs); under it, toes
-			-- up, when there's no room above (a button in Roblox's top bar: the town button, owner 2026-11-18)
-			local pawBottom = if clipped then at.Y + pawSize + 4 else at.Y - 4
-			local under = not clipped and pawBottom - pawSize - BOUNCE < ScreenCover.rect(gui()).y
-			-- a tile in the left side column: from its right, toes pointing left (CueShape.pawSide)
+			holder.Size = UDim2.fromOffset(arrowSize, arrowSize)
+			-- above it, or just inside its top when that is the list's edge (not over the window's tabs); under it,
+			-- pointing up, when there's no room above (a button in Roblox's top bar: the town button, owner 2026-11-18)
+			local arrowBottom = if clipped then at.Y + arrowSize + 4 else at.Y - 4
+			local under = not clipped and arrowBottom - arrowSize - BOUNCE < ScreenCover.rect(gui()).y
+			-- a tile in the left side column: from its right, pointing left (CueShape.pointerSide)
 			local layer = gui()
-			local beside = not clipped and CueShape.pawSide({ x = at.X - layer.AbsolutePosition.X, w = size.X }, layer.AbsoluteSize.X, Cues.PAW.sideShare) == "right"
-			paw.Rotation = if beside then -90 elseif under then 0 else 180
-			back.Rotation = paw.Rotation
-			halo.BackgroundTransparency = Cues.PAW.haloDim + beat * (1 - Cues.PAW.haloDim) * 0.6
+			local beside = not clipped and CueShape.pointerSide({ x = at.X - layer.AbsolutePosition.X, w = size.X }, layer.AbsoluteSize.X, Cues.POINTER.sideShare) == "right"
+			arrow.Rotation = if beside then 90 elseif under then 180 else 0
 			holder.AnchorPoint = if beside then Vector2.new(0, 0.5) else Vector2.new(0.5, if under then 0 else 1)
 			if beside then
 				holder.Position = UDim2.fromOffset(at.X + size.X + RING_PAD + RING_THICKNESS + 4 + beat * BOUNCE, at.Y + size.Y / 2)
 			elseif under then
 				holder.Position = UDim2.fromOffset(at.X + size.X / 2, at.Y + size.Y + 4 + beat * BOUNCE)
 			else
-				holder.Position = UDim2.fromOffset(at.X + size.X / 2, pawBottom - beat * BOUNCE)
+				holder.Position = UDim2.fromOffset(at.X + size.X / 2, arrowBottom - beat * BOUNCE)
 			end
 			-- the ring: the button's own corner (a tile half out of its list keeps the list's square edge there)
 			local radius = CueShape.radius({ w = ringSize.X, h = ringSize.Y }, pieceCorner, pad, Cues.RING.fallback, pieceScale)
@@ -426,29 +428,64 @@ function TutorialCues.pawOn(target: GuiObject | BasePart, around: GuiObject?): (
 		end
 	end
 	local part = target :: BasePart
-	-- On the screen over the world, like the trail: walls and closed doors don't hide it
+	-- On the screen over the world: walls and closed doors don't hide it. Off the screen or behind the camera, it waits
+	-- at the screen's edge pointing the way to turn (CueShape.offscreen; owner 2026-11-27: today nothing showed)
 	local holder = Instance.new("Frame")
-	holder.Name = "PawPointer"
+	holder.Name = "ArrowPointer"
 	holder.BackgroundTransparency = 1
-	holder.AnchorPoint = Vector2.new(0.5, 1)
-	holder.Size = UDim2.fromOffset(PAW_SIZE, PAW_SIZE)
+	holder.Size = UDim2.fromOffset(POINTER_SIZE, POINTER_SIZE)
 	holder.ZIndex = 20
 	holder.Parent = gui()
-	pawIn(holder, 180)
-	local halo = haloIn(holder)
+	local arrow = arrowIn(holder, 0)
+	worldHolder = holder
 	local connection = RunService.RenderStepped:Connect(function()
-		local point = onScreen(part.Position + Vector3.new(0, part.Size.Y / 2 + 0.5, 0))
-		holder.Visible = point ~= nil and part.Parent ~= nil
-		if point then
-			local beat = math.abs(math.sin((os.clock() - started) * BOUNCE_SPEED))
-			holder.Position = UDim2.fromOffset(point.X, point.Y - beat * BOUNCE)
-			halo.BackgroundTransparency = Cues.PAW.haloDim + beat * (1 - Cues.PAW.haloDim) * 0.6
+		local camera = workspace.CurrentCamera
+		holder.Visible = part.Parent ~= nil and camera ~= nil
+		if not holder.Visible or not camera then
+			worldBox = nil
+			return
 		end
+		local beat = math.abs(math.sin((os.clock() - started) * BOUNCE_SPEED))
+		local origin = gui().AbsolutePosition
+		local top = part.Position + Vector3.new(0, part.Size.Y / 2 + 0.5, 0)
+		local point = onScreen(top)
+		if point then
+			-- over it, pointing down: the box is where it bounces (for the talk card to keep clear of)
+			holder.AnchorPoint = Vector2.new(0.5, 1)
+			arrow.Rotation = 0
+			holder.Position = UDim2.fromOffset(point.X, point.Y - beat * BOUNCE)
+			worldBox = { x = origin.X + point.X - POINTER_SIZE / 2, y = origin.Y + point.Y - POINTER_SIZE - BOUNCE, w = POINTER_SIZE, h = POINTER_SIZE + BOUNCE }
+			return
+		end
+		local rel = camera.CFrame:PointToObjectSpace(top)
+		local view = gui().AbsoluteSize
+		local spot = CueShape.offscreen({ x = rel.X, y = rel.Y, z = -rel.Z }, { w = view.X, h = view.Y }, OFFSCREEN)
+		local way = pointing(spot.rotation)
+		holder.AnchorPoint = Vector2.new(0.5, 0.5)
+		arrow.Rotation = spot.rotation
+		-- nudging toward the edge, the way it points
+		holder.Position = UDim2.fromOffset(spot.x + way.X * beat * BOUNCE, spot.y + way.Y * beat * BOUNCE)
+		local reach = POINTER_SIZE / 2 + BOUNCE
+		worldBox = { x = origin.X + spot.x - reach, y = origin.Y + spot.y - reach, w = reach * 2, h = reach * 2 }
 	end)
 	return function()
 		connection:Disconnect()
 		holder:Destroy()
+		if worldHolder == holder then
+			worldHolder = nil
+			worldBox = nil
+		end
 	end
+end
+
+-- Where the arrow over a thing in the world bounces, in the screen's px (nil: none showing), for Pish's talk card to
+-- keep clear of (Util/TutorialTalk; seen 2026-11-27: Chikin's card covered the Wild's paw)
+function TutorialCues.worldPointerBox(): TalkRules.Box?
+	local holder = worldHolder
+	if not holder or not holder.Parent or not holder.Visible then
+		return nil
+	end
+	return worldBox
 end
 
 

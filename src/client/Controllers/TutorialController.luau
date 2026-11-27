@@ -724,11 +724,11 @@ local function pointPaw()
 	end
 	cues = {}
 	if button and focusSituation == "scroll" then
-		table.insert(cues, TutorialCues.scrollPaw(button))
+		table.insert(cues, TutorialCues.scrollHint(button))
 	elseif button then
-		table.insert(cues, TutorialCues.pawOn(button, around))
+		table.insert(cues, TutorialCues.pointAt(button, around))
 	elseif part then
-		table.insert(cues, TutorialCues.pawOn(part))
+		table.insert(cues, TutorialCues.pointAt(part))
 	end
 end
 

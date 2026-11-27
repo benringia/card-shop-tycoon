@@ -53,20 +53,49 @@ return {
 
 	["more noticeable than before"] = function()
 		assert(Cues.RING.thickness > 4, "a thicker ring (4 px before)")
-		assert(Cues.PAW.size > 64 and Cues.PAW.min > 40, "a bigger bouncing paw (64 / 40 before)")
-		assert(Cues.PRINT.px > 46 and Cues.PRINT.min > 16, "bigger paw prints (46 / 16 before)")
-		assert(Cues.PRINT.dim < 0.55, "paw prints never as faint as before (0.55)")
-		assert(Cues.PAW.back > 1 and Cues.PAW.back <= 1.4, "a dark backing a little bigger than the paw")
-		assert(Cues.PAW.min >= 44, "still clear on a small button")
+		assert(Cues.POINTER.size > 64 and Cues.POINTER.min >= 44, "a big arrow (the paw was 64 / 40 before 11-21), still clear on a small button")
+		assert(Cues.TRAIL.dim < 0.55, "the arrows on the ground never as faint as the old paw prints (0.55)")
+	end,
+	-- Owner 2026-11-27, pick 1: the next stretch of the way only, arrows a few studs apart lying on the ground
+	["the arrows on the ground: only the next stretch, a few studs apart"] = function()
+		local trail = Cues.TRAIL
+		assert(trail.gap >= 2 and trail.gap <= 5, "a few studs apart")
+		assert(trail.ahead * trail.gap >= 20 and trail.ahead * trail.gap <= 60, "the next 20 to 60 studs, not the whole route")
+		assert(trail.fade >= 1 and trail.fade < trail.ahead, "the last few fade out")
+		assert(trail.max * trail.gap >= 400, "a long walk (the Wild: about 300 studs) keeps its spacing")
+		assert(trail.size > 1 and trail.lift > 0 and trail.lift < 1, "lying just over the ground")
 	end,
 	-- Found 2026-11-21 with the Phone under the gift's tile: the paw over the Phone sat on the gift. A tile in the left
-	-- side column gets its paw on its right, pointing left
+	-- side column gets its arrow on its right, pointing left
 	["a tile in the left column is pointed at from its right side"] = function()
-		expect.equal(CueShape.pawSide({ x = 8, w = 96 }, 1891, Cues.PAW.sideShare), "right", "the Phone's tile at the left edge")
-		expect.equal(CueShape.pawSide({ x = 843, w = 96 }, 1891, Cues.PAW.sideShare), "above", "a tile at the bottom centre")
-		expect.equal(CueShape.pawSide({ x = 600, w = 680 }, 1891, Cues.PAW.sideShare), "above", "a window's button")
-		expect.equal(CueShape.pawSide({ x = 8, w = 96 }, 0, Cues.PAW.sideShare), "above", "no screen size yet")
-		assert(Cues.PAW.sideShare > 0.05 and Cues.PAW.sideShare < 0.2, "only what hugs the left edge")
+		expect.equal(CueShape.pointerSide({ x = 8, w = 96 }, 1891, Cues.POINTER.sideShare), "right", "the Phone's tile at the left edge")
+		expect.equal(CueShape.pointerSide({ x = 843, w = 96 }, 1891, Cues.POINTER.sideShare), "above", "a tile at the bottom centre")
+		expect.equal(CueShape.pointerSide({ x = 600, w = 680 }, 1891, Cues.POINTER.sideShare), "above", "a window's button")
+		expect.equal(CueShape.pointerSide({ x = 8, w = 96 }, 0, Cues.POINTER.sideShare), "above", "no screen size yet")
+		assert(Cues.POINTER.sideShare > 0.05 and Cues.POINTER.sideShare < 0.2, "only what hugs the left edge")
+	end,
+	-- Seen in the 11-27 recording: a goal off the screen or behind the camera showed nothing. Its arrow waits at the
+	-- screen's edge pointing the way to turn: on the edge along the way to it, in a band clear of the talk card and the
+	-- bottom tiles; behind, at the nearer side. Rotation: degrees clockwise from pointing down (the arrow's picture)
+	["a thing off the screen: its arrow waits at the edge, pointing the way"] = function()
+		local view, band = { w = 1000, h = 600 }, { margin = 50, top = 0.25, bottom = 0.3 } -- the band: y 150 to 420
+		local function check(rel: { x: number, y: number, z: number }, x: number, y: number, rotation: number, what: string)
+			local spot = CueShape.offscreen(rel, view, band)
+			expect.near(spot.x, x, 1e-6, `{what}: x`)
+			expect.near(spot.y, y, 1e-6, `{what}: y`)
+			expect.near(spot.rotation, rotation, 1e-6, `{what}: rotation`)
+		end
+		check({ x = -10, y = 0, z = 5 }, 50, 300, 90, "off to the left: the left edge, pointing left")
+		check({ x = 10, y = 0, z = 5 }, 950, 300, -90, "off to the right: pointing right")
+		check({ x = 0, y = 10, z = 5 }, 500, 150, -180, "far above: the band's top, pointing up (under the talk card)")
+		check({ x = -10, y = -10, z = 5 }, 380, 420, 45, "down and left: the band's bottom comes first, pointing down-left")
+		check({ x = 0, y = 0, z = -5 }, 950, 285, -90, "straight behind: a side edge half way down the band, never over the tiles")
+		check({ x = -3, y = 2, z = -5 }, 50, 285, 90, "behind on the left: the left edge")
+		local ahead = CueShape.offscreen({ x = 0, y = 0, z = 5 }, view, band)
+		assert(ahead.x == ahead.x and ahead.y == ahead.y and ahead.rotation == ahead.rotation, "straight ahead never gives NaN")
+		local cfg = Cues.OFFSCREEN
+		assert(cfg.top > 0.15 and cfg.top < 0.5 and cfg.bottom > 0.15 and cfg.bottom < 0.5, "a band in the middle of the screen")
+		assert(cfg.margin >= 40, "a whole arrow inside the screen")
 	end,
 	-- owner 2026-11-20 (the Phone's tile on a computer, where the HUD is drawn bigger): "the highight border doesnt fit
 	-- the tile. check it and make sure every highlighted elements fit the highlight border". A corner given in px is

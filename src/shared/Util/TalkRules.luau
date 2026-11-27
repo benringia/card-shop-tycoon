@@ -21,7 +21,7 @@ function TalkRules.show(talk: StepTalk, introIndex: number, situation: string): 
 	return { text = talk.now[situation] or talk.now.default or "", next = false, finish = false }
 end
 
--- A box on screen (px): the talk card, its Skip pill, what Pish points at, his paw's room
+-- A box on screen (px): the talk card, its Skip pill, what Pish points at, his arrow's room
 export type Box = { x: number, y: number, w: number, h: number }
 -- A place the card can stand: its name and the boxes it fills there (the card, and Skip's tap area while it shows)
 export type Spot = { name: string, boxes: { Box } }
@@ -33,8 +33,9 @@ function TalkRules.overlap(a: Box, b: Box): number
 	return if w > 0 and h > 0 then w * h else 0
 end
 
--- The room Pish's paw bounces in over a button: `room` px square over its middle, its bottom on the button's top
-function TalkRules.pawBox(target: Box, room: number): Box
+-- The room Pish's arrow bounces in over a button (a paw before 2026-11-27): `room` px square over its middle, its
+-- bottom on the button's top
+function TalkRules.pointerBox(target: Box, room: number): Box
 	return { x = target.x + target.w / 2 - room / 2, y = target.y - room, w = room, h = room }
 end
 

@@ -233,12 +233,12 @@ return {
 			return { { name = "top", boxes = top }, { name = "bottom", boxes = bottom } }
 		end
 		local bag = { x = 286, y = 163, w = 64, h = 64 } -- the Phone's second row
-		expect.equal(TalkRules.cardPlace(spots(true), bag, TalkRules.pawBox(bag, 82), false, false), "top", "the Bag: top (its paw may touch the card)")
+		expect.equal(TalkRules.cardPlace(spots(true), bag, TalkRules.pointerBox(bag, 82), false, false), "top", "the Bag: top (its paw may touch the card)")
 		local shop = { x = 286, y = 75, w = 64, h = 64 } -- the Phone's first row
-		expect.equal(TalkRules.cardPlace(spots(true), shop, TalkRules.pawBox(shop, 82), false, false), "bottom", "the Shop app: bottom")
+		expect.equal(TalkRules.cardPlace(spots(true), shop, TalkRules.pointerBox(shop, 82), false, false), "bottom", "the Shop app: bottom")
 		local tile = { x = 27, y = 122, w = 340, h = 100 } -- the Small Pack Rack tile, the paw on its $100 button
 		local buy = { x = 127, y = 170, w = 232, h = 44 }
-		expect.equal(TalkRules.cardPlace(spots(true), tile, TalkRules.pawBox(buy, 82), false, false), "top", "the rack: top")
+		expect.equal(TalkRules.cardPlace(spots(true), tile, TalkRules.pointerBox(buy, 82), false, false), "top", "the rack: top")
 		expect.equal(TalkRules.cardPlace(spots(true), nil, nil, false, false), "top", "nothing pointed at")
 	end,
 
@@ -276,9 +276,9 @@ return {
 		}
 		local tile = { x = 478, y = 169, w = 222, h = 214 }
 		local buy = { x = 486, y = 327, w = 206, h = 48 }
-		expect.equal(TalkRules.cardPlace(spots, tile, TalkRules.pawBox(buy, 82), false, false), "top", "the rack's $100 clear")
+		expect.equal(TalkRules.cardPlace(spots, tile, TalkRules.pointerBox(buy, 82), false, false), "top", "the rack's $100 clear")
 		local bag = { x = 840, y = 478, w = 72, h = 72 }
-		expect.equal(TalkRules.cardPlace(spots, bag, TalkRules.pawBox(bag, 82), false, false), "top", "a bottom tile: top as before")
+		expect.equal(TalkRules.cardPlace(spots, bag, TalkRules.pointerBox(bag, 82), false, false), "top", "a bottom tile: top as before")
 	end,
 
 	["both spots on the target: the one covering less of it"] = function()
@@ -303,7 +303,7 @@ return {
 	["boxes touching edges don't overlap; the paw's room sits over the button's middle"] = function()
 		expect.equal(TalkRules.overlap({ x = 0, y = 0, w = 10, h = 10 }, { x = 10, y = 0, w = 10, h = 10 }), 0, "side by side")
 		expect.equal(TalkRules.overlap({ x = 0, y = 0, w = 10, h = 10 }, { x = 5, y = 5, w = 10, h = 10 }), 25)
-		local paw = TalkRules.pawBox({ x = 100, y = 200, w = 40, h = 20 }, 82)
+		local paw = TalkRules.pointerBox({ x = 100, y = 200, w = 40, h = 20 }, 82)
 		expect.equal(paw.x, 79)
 		expect.equal(paw.y, 118)
 		expect.equal(paw.w, 82)
