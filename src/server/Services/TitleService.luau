@@ -28,6 +28,7 @@ local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local SupportService = require(Services:WaitForChild("SupportService"))
 local Blocked = require(Util:WaitForChild("Blocked"))
+local SaveSlots = require(Util:WaitForChild("SaveSlots"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
 
 local TitleService = {}
@@ -93,13 +94,14 @@ local function progressOf(player: Player, boss: TitleRules.Progress?): TitleRule
 		sets = sets,
 		rarities = rarities,
 		pvpWins = pvpWins(player),
+		owner = SaveSlots.isOwner(player.UserId, game.CreatorId, game.CreatorType.Name), -- the Creator title, any save
 	}
 end
 
 -- The client's list: every title earned (now or before), the picked one, the new ones, and how far each locked one is
 local function send(player: Player, state: State, earned: { string }, progress: TitleRules.Progress)
 	local far = {}
-	for _, id in Titles.ORDER do
+	for _, id in TitleRules.listed(Titles, earned) do
 		if not table.find(earned, id) then
 			local have, need = TitleRules.progress(Titles, progress, id)
 			far[id] = { have = have, need = need }

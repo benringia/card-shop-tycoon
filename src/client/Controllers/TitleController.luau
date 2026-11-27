@@ -13,6 +13,7 @@ local Chikin = require(Shared:WaitForChild("Config"):WaitForChild("Chikin"))
 local Titles = require(Shared:WaitForChild("Config"):WaitForChild("Titles"))
 local TitleRules = require(Shared:WaitForChild("Util"):WaitForChild("TitleRules"))
 local TutorialRules = require(Shared:WaitForChild("Util"):WaitForChild("TutorialRules"))
+local TitleGradient = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("TitleGradient"))
 
 local TitleController = {}
 
@@ -34,10 +35,6 @@ local TAG = {
 local FALLBACK = { { 255, 225, 110 }, { 255, 160, 50 } } -- a title missing from Config/Titles: gold
 local STROKE = Color3.fromRGB(55, 30, 20)
 local NAME_STROKE = Color3.fromRGB(30, 25, 45)
-
-local function rgb(values: { number }): Color3
-	return Color3.fromRGB(values[1], values[2], values[3])
-end
 
 -- Whether `player`'s tag shows on this screen: everyone's, and your own unless a tour leads, you man your register
 -- (in first person it hung across the top of the view, QA 2026-11-17) or you're in a fight (BattleController's FightHud)
@@ -75,7 +72,7 @@ local function titleLine(parent: Frame, title: string, look: any)
 	label.TextStrokeTransparency = TAG.stroke
 	local colors = if look then look.gradient else FALLBACK
 	local gradient = Instance.new("UIGradient")
-	gradient.Color = ColorSequence.new(rgb(colors[1]), rgb(colors[2]))
+	gradient.Color = TitleGradient.sequence(colors)
 	gradient.Parent = label
 	if look and look.shimmer then
 		TweenService:Create(gradient, TweenInfo.new(TAG.shimmerSeconds, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), { Rotation = 360 }):Play()

@@ -52,12 +52,17 @@ return {
 	end,
 
 	-- owner 2026-11-12, after looking at other games: "lets do gradient, and shorter" (pick B: small gradient text)
-	["titles are short and drawn in a two-colour gradient; supporter titles shimmer"] = function()
+	["titles are short and drawn in a gradient (two colours, Creator's five); supporter titles and Creator shimmer"] = function()
 		for _, id in Titles.ORDER do
 			local title = Titles.ById[id]
 			expect.equal(#title.name <= 12, true, `{id}: "{title.name}" is short`)
-			expect.equal(#title.gradient == 2 and #title.gradient[1] == 3 and #title.gradient[2] == 3, true, `{id}: its gradient`)
-			expect.equal((title.shimmer == true) == (title.check.kind == "supporter"), true, `{id}: shimmers only if a supporter title`)
+			local colours = if id == "creator" then 5 else 2
+			expect.equal(#title.gradient, colours, `{id}: its gradient's colours`)
+			for _, colour in title.gradient do
+				expect.equal(#colour, 3, `{id}: r, g, b`)
+			end
+			local shimmers = title.check.kind == "supporter" or title.check.kind == "owner"
+			expect.equal(title.shimmer == true, shimmers, `{id}: shimmers only if a supporter title or Creator`)
 		end
 		expect.equal(Titles.ById.dungeonConqueror.name, "Hydra Slayer")
 		expect.equal(Titles.ById.legendarySupporter.name, "Legend")
@@ -80,7 +85,7 @@ return {
 			local title = Titles.ById[id]
 			assert(title, `{id} is listed`)
 			expect.equal(#title.name > 0 and #title.how > 0 and #title.color == 3, true, `{id}'s words`)
-			local kinds = { bossClear = true, secret = true, supporter = true, level = true, stat = true, bosses = true, cards = true, set = true, rarity = true, pvp = true }
+			local kinds = { bossClear = true, secret = true, supporter = true, level = true, stat = true, bosses = true, cards = true, set = true, rarity = true, pvp = true, owner = true }
 			expect.equal(kinds[title.check.kind] == true, true, `{id}'s check`)
 			expect.equal(typeof(title.icon) == "string" and #title.icon > 0, true, `{id}: an icon before it`)
 			expect.equal(string.find(title.name .. title.how, "[\128-\255]") == nil, true, `{id}: plain ASCII`)
@@ -126,5 +131,30 @@ return {
 		expect.equal(TitleRules.ownTag({ fight = true, register = false, tour = false }), false, "your own fight")
 		expect.equal(TitleRules.ownTag({ fight = false, register = true, tour = false }), false)
 		expect.equal(TitleRules.ownTag({ fight = false, register = false, tour = true }), false)
+	end,
+
+	-- Owner 2026-11-27: "Dev exclusive title" (pick 3: Creator, the rainbow; spec 2026-11-27-live-admin-creator-design)
+	["Creator: earned only by the game's owner"] = function()
+		expect.equal(table.find(TitleRules.earned(Titles, BUSY), "creator"), nil, "a busy player")
+		local owner = table.clone(BUSY) :: any
+		owner.owner = true
+		expect.equal(TitleRules.earned(Titles, owner)[1], "creator", "the owner's, first in the list")
+	end,
+
+	["a hidden title isn't listed for anyone who hasn't earned it"] = function()
+		local stranger = TitleRules.listed(Titles, TitleRules.earned(Titles, BUSY))
+		expect.equal(table.find(stranger, "creator"), nil, "not in a player's list")
+		expect.equal(#stranger, #Titles.ORDER - 1, "every other title still listed")
+		expect.equal(table.find(TitleRules.listed(Titles, { "creator" }), "creator") ~= nil, true, "the owner's list has it")
+	end,
+
+	["Creator's look: a five-colour rainbow that shimmers, a crown"] = function()
+		local creator = Titles.ById.creator
+		expect.equal(creator.name, "Creator")
+		expect.equal(creator.icon, "👑")
+		expect.equal(#creator.gradient, 5, "five colours")
+		expect.equal(creator.shimmer, true)
+		expect.equal(creator.hidden, true)
+		expect.equal(Titles.ORDER[1], "creator")
 	end,
 }

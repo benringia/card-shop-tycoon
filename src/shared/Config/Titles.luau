@@ -15,12 +15,26 @@ local FRONTIER = { "frostTyrant", "stormSovereign", "riftDevourer" }
 
 return {
 	ORDER = {
+		"creator",
 		"legendarySupporter", "superSupporter", "supporter",
 		"dungeonConqueror", "champion", "cardMogul", "millionaire", "setMaster", "trailblazer",
 		"tycoon", "shopStar", "wildHunter", "luckyStar", "duelist", "crystalSeeker",
 		"collector", "packRipper", "shopkeeper",
 	},
 	ById = {
+		-- The game's owner's own (owner 2026-11-27: "Dev exclusive title and aura", pick 3; spec
+		-- 2026-11-27-live-admin-creator-design): any save, hidden from everyone else's list. Worn, it brings the
+		-- orbiting cards aura (TitleService sets CreatorAura; client CreatorAuraController)
+		creator = {
+			name = "Creator",
+			color = { 255, 210, 90 },
+			gradient = { { 255, 107, 107 }, { 255, 210, 90 }, { 110, 231, 160 }, { 110, 203, 255 }, { 185, 140, 255 } },
+			shimmer = true,
+			icon = "👑",
+			how = "Make this game",
+			check = { kind = "owner" },
+			hidden = true,
+		},
 		dungeonConqueror = {
 			name = "Hydra Slayer",
 			color = { 255, 200, 70 },

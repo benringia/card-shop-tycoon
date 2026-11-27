@@ -16,6 +16,7 @@ export type Progress = {
 	sets: { [string]: { have: number, total: number } }?,
 	rarities: { [string]: number }?,
 	pvpWins: number?,
+	owner: boolean?, -- the game's owner (the Creator title)
 }
 
 -- How far `progress` is toward a title's check: what they have and what it needs
@@ -50,6 +51,8 @@ local function measure(check: any, progress: Progress): (number, number)
 		return if rarities then rarities[check.rarity] or 0 else 0, check.min
 	elseif kind == "pvp" then
 		return progress.pvpWins or 0, check.min
+	elseif kind == "owner" then
+		return if progress.owner then 1 else 0, 1
 	end
 	return 0, 1
 end
@@ -67,6 +70,17 @@ function TitleRules.earned(cfg: any, progress: Progress): { string }
 	for _, id in cfg.ORDER do
 		local have, need = measure(cfg.ById[id].check, progress)
 		if need > 0 and have >= need then
+			table.insert(list, id)
+		end
+	end
+	return list
+end
+
+-- The titles a player's list shows, in the list's order: every title, but a hidden one (Creator) only once earned
+function TitleRules.listed(cfg: any, earned: { string }): { string }
+	local list = {}
+	for _, id in cfg.ORDER do
+		if not cfg.ById[id].hidden or table.find(earned, id) then
 			table.insert(list, id)
 		end
 	end

@@ -16,6 +16,7 @@ local Combat = require(Config:WaitForChild("Combat"))
 local Look = require(Config:WaitForChild("CharacterWindow"))
 local Party = require(Config:WaitForChild("Party"))
 local Titles = require(Config:WaitForChild("Titles"))
+local TitleRules = require(Shared:WaitForChild("Util"):WaitForChild("TitleRules"))
 local Weapons = require(Config:WaitForChild("Weapons"))
 local WeaponLooks = require(Config:WaitForChild("WeaponLooks"))
 local BeastRules = require(Shared:WaitForChild("Util"):WaitForChild("BeastRules"))
@@ -30,6 +31,7 @@ local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
 local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Motion = require(ClientUtil:WaitForChild("Motion"))
 local ElementWheelView = require(ClientUtil:WaitForChild("ElementWheelView"))
+local TitleGradient = require(ClientUtil:WaitForChild("TitleGradient"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
 local ElementBadge = require(ClientUtil:WaitForChild("ElementBadge"))
 local CharacterStage = require(ClientUtil:WaitForChild("CharacterStage"))
@@ -155,7 +157,7 @@ local function showProgress()
 		bosses = bosses,
 		bossesTotal = bossesTotal,
 		titles = #titleState.earned,
-		titlesTotal = #Titles.ORDER,
+		titlesTotal = #TitleRules.listed(Titles, titleState.earned), -- a hidden title (Creator) only counts once earned
 	})
 	local row = Instance.new("Frame")
 	row.Name = "Progress"
@@ -305,7 +307,7 @@ local function titleRow(order: number, id: string, earned: boolean)
 		name.TextStrokeTransparency = 0.6
 		local gradient = Instance.new("UIGradient")
 		gradient.Color = if earned
-			then ColorSequence.new(rgb(title.gradient[1]), rgb(title.gradient[2]))
+			then TitleGradient.sequence(title.gradient)
 			else ColorSequence.new(palette.inkSoft)
 		gradient.Parent = name
 	end
@@ -366,7 +368,7 @@ local function showTitles()
 	titleRow(1, "", true)
 	local order = 1
 	local function rows(keep: (id: string, earned: boolean) -> boolean)
-		for _, id in Titles.ORDER do
+		for _, id in TitleRules.listed(Titles, titleState.earned) do
 			local earned = table.find(titleState.earned, id) ~= nil
 			if keep(id, earned) then
 				order += 1
@@ -473,7 +475,7 @@ local function showStageTitle()
 	most.MaxTextSize = look.maxText
 	most.Parent = name
 	local gradient = Instance.new("UIGradient")
-	gradient.Color = ColorSequence.new(rgb(title.gradient[1]), rgb(title.gradient[2]))
+	gradient.Color = TitleGradient.sequence(title.gradient)
 	gradient.Parent = name
 	local icon = UIKit.label(row, title.icon, Enum.Font.FredokaOne, look.maxText, Color3.new(1, 1, 1))
 	icon.AnchorPoint = Vector2.new(1, 0.5)
@@ -623,7 +625,7 @@ local function showUnlocks()
 			name.TextStrokeColor3 = Color3.fromRGB(70, 40, 80)
 			name.TextStrokeTransparency = 0.2 -- a pastel gradient still reads on the cream card
 			local gradient = Instance.new("UIGradient")
-			gradient.Color = ColorSequence.new(rgb(title.gradient[1]), rgb(title.gradient[2]))
+			gradient.Color = TitleGradient.sequence(title.gradient)
 			gradient.Parent = name
 			local how = UIKit.label(holder, title.how, Enum.Font.GothamBold, 12, colors.inkSoft)
 			how.Position = UDim2.fromOffset(16, 60)
