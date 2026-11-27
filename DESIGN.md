@@ -6955,6 +6955,30 @@ boss models; the ranch and Heroic tiers come after those.
     `tests/DevGate` reads the source and fails if any of that moves. It found one misnamed call: Pish's tutorial
     sent its one customer through `CustomerService.SpawnForTest`; that is now `CustomerService.SendPlain` (same
     behaviour, once ever, within the shop's cap).
+  - *The admin panel in the published game, the owner's alone* (owner 2026-11-27: "proper admin UI I can publish that
+    only I can use. Dev exclusive title and aura. this will help me record some footage for marketing without grinding
+    as much"; pick A: the test save only; spec `docs/superpowers/specs/2026-11-27-live-admin-creator-design.md`). The
+    launch-day promise holds for every other player. The panel's `DevPanel` remote now runs live too, but DevService
+    asks `Util/DevAccess` before anything: Studio, anyone; the published game, only the game's owner (the creator id)
+    on their test save (`/slot test`; the server-set `TestSave` attribute), every other request dropped with no reply.
+    A command that changes other players' game ("server" in `Config/AdminPanel` SCOPE: event, time, crowd, the
+    Dungeon shortcuts, the town dogs, Turts, spawned monsters, a shared boss's HP) only runs when the owner is alone or
+    in their own private server; `/jobslot` (a pretend game pass) never live. Refusals are big locked cards (the real
+    save's says "Type /slot test, then rejoin"). The chat commands and `ServerStorage.DevCommand` stay Studio-only; the
+    dev functions in other services ask `DevAccess` too; each live command is printed to the server log. The owner
+    gets an `AdminAccess` mark on load ("open" on the test save, "mainSave" on the real one: the tile alone, whose tap
+    shows the card). The test save sends nothing to the analytics (`Util/AnalyticsGate`). **Footage**, the panel's
+    first section (`/footage <late|shop|golden>`, `AdminPanel.FOOTAGE`): Late game (Pish's and Chikin's tours skipped
+    with every lesson seen, shop Lv 60, $1,000,000, a Grade S copy of every Legendary, every boss beaten, Solarion,
+    Stormking and Voidmaw maxed in the party, every weapon S 10 with a Legendary mutation), Full shop (both rooms
+    open, racks to the cap, a filled storage rack, every decor piece, the Candy Pastel look, every shelf stocked) and
+    Golden hour (sunset; a "server" step). `tests/DevRules`, `tests/DevGate` (rewritten), `tests/AdminPanel`.
+  - *Creator, the owner's title, and its aura*: the Creator title (👑, a five-colour rainbow that shimmers, first in
+    `Config/Titles` ORDER; the "owner" check, any save; `hidden`: left out of everyone else's list and count until
+    earned, `TitleRules.listed`). Gradients of any number of colours (client `Util/TitleGradient`). Wearing it sets
+    the `CreatorAura` attribute and every client draws three card backs over a gold glow circling the owner at chest
+    height, a lap every 9 s (`Config/CreatorAura`, `Util/CreatorAuraRules`, `CreatorAuraController`; your own hides at
+    the register). Picking another title takes the aura off. `tests/TitleRules`, `tests/CreatorAura`.
   - *The quest strip kept its desktop size* ("this window is going back to its small size when I hide then show
     it"): folding the strip plays a small bump on it, and the bump took the strip's one UIScale (the HUD's own,
     holding the desktop growth), set it to 1 and left it there. A scaled HUD piece now carries its scale at rest in
