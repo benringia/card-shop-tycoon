@@ -100,6 +100,17 @@ local function refresh()
 	end
 end
 
+-- The shelves and racks glowing now: a What now? tip about the box in your hands points at the nearest (HintController)
+function StockHintController.Glowing(): { BasePart }
+	local parts = {}
+	for part in lit do
+		if part:IsDescendantOf(workspace) then
+			table.insert(parts, part)
+		end
+	end
+	return parts
+end
+
 function StockHintController.Start()
 	if workspace:GetAttribute("PlaceKind") ~= "Main" then
 		return -- shops are in the main game

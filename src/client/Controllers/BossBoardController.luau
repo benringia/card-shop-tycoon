@@ -1096,6 +1096,26 @@ function BossBoardController.BeatenCount(): (number, number)
 	return beaten, #Bosses.LADDER
 end
 
+-- The Wild boss to go for now, for the What now? tips (HintController): the first of the ladder in the Wild valley not
+-- beaten yet that the party is strong enough for; else the first beaten one whose loot is back and that the party still
+-- matches; nil when neither
+function BossBoardController.Suggested(): { name: string, cleared: boolean }?
+	local power = bestPower()
+	for index, bossId in Bosses.LADDER do
+		local boss = Bosses.BOSSES[bossId]
+		if boss.place == "Wild" and states[bossId] and stepOf(index, power) == "ready" then
+			return { name = boss.name, cleared = false }
+		end
+	end
+	for index, bossId in Bosses.LADDER do
+		local boss, state = Bosses.BOSSES[bossId], states[bossId]
+		if boss.place == "Wild" and state and stepOf(index, power) == "beaten" and secondsLeft(state) == 0 and power >= boss.recommended then
+			return { name = boss.name, cleared = true }
+		end
+	end
+	return nil
+end
+
 function BossBoardController.Start()
 	CollectionService:GetInstanceAddedSignal("BossGroupPrompt"):Connect(watchGroupPrompt)
 	for _, prompt in CollectionService:GetTagged("BossGroupPrompt") do

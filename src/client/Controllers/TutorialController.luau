@@ -1328,6 +1328,11 @@ local function byeIdle()
 end
 
 -- Whether his tour can be offered again now: the main game, the first visit done, no visit on, Chikin not leading
+-- Pish's tour or one of his lesson visits is on: the What now? tips wait (HintController)
+function TutorialController.IsVisiting(): boolean
+	return visit ~= nil or step ~= ""
+end
+
 function TutorialController.CanReplay(): boolean
 	return workspace:GetAttribute("PlaceKind") == "Main" and replayShown() and step ~= "bye" and not visit and chikinAway()
 end

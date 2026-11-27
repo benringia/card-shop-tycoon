@@ -109,6 +109,7 @@ local CameraLimitController = require(Controllers:WaitForChild("CameraLimitContr
 local FightTouchController = require(Controllers:WaitForChild("FightTouchController"))
 local StationTimerController = require(Controllers:WaitForChild("StationTimerController"))
 local StockHintController = require(Controllers:WaitForChild("StockHintController"))
+local HintController = require(Controllers:WaitForChild("HintController"))
 local MusicController = require(Controllers:WaitForChild("MusicController"))
 local FootstepController = require(Controllers:WaitForChild("FootstepController"))
 local WildLoadingController = require(Controllers:WaitForChild("WildLoadingController"))
@@ -279,4 +280,5 @@ else
 	CameraLimitController.Start() -- how far the camera zooms out (Config/CameraLimits)
 	FightTouchController.Start() -- a phone's fight: the camera pulled out, the jump button aside
 	LevelUpController.Start() -- the level-up light pillar on you, your creatures and players nearby
+	HintController.Start() -- What now? tips for an idle player (after the HUD and the controllers it reads)
 end

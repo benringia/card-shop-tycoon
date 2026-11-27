@@ -778,6 +778,21 @@ local function startReminder()
 	end)
 end
 
+-- The quests as the window draws them (Util/QuestRules.View; nil before the server's first word): the What now? tips
+-- read them (HintController)
+function QuestController.QuestView(): any?
+	return view
+end
+
+-- Where a What now? tip about quests points: on a computer the Phone's tile (its Quests app once the Phone is open), on
+-- a phone the quest strip
+function QuestController.HintTarget(): GuiObject?
+	if inPhone() then
+		return if Hud.isTrayOpen() then Hud.find("Quests") else Hud.find("Manage")
+	end
+	return tracker
+end
+
 function QuestController.Start()
 	screen = UIController.GetScreenGui()
 	buildTracker()

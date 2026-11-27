@@ -71,6 +71,10 @@ local ASK_EXTRA = 60 -- px taller with a second choice
 -- and the box it bounces in (the screen's px, as AbsolutePosition)
 local worldHolder: Frame? = nil
 local worldBox: TalkRules.Box? = nil
+-- The newest arrow pointAt drew (on a button or over the world), for the What now? bubble to stand by
+-- (TutorialCues.pointerOf, Util/HintBubble)
+local pointerHolder: Frame? = nil
+local pointerArrow: GuiObject? = nil
 
 -- The cues' own screen, over the HUD
 local function gui(): ScreenGui
@@ -365,6 +369,7 @@ function TutorialCues.pointAt(target: GuiObject | BasePart, around: GuiObject?):
 		holder.ZIndex = 20
 		holder.Parent = gui()
 		local arrow = arrowIn(holder, 0) -- pointing down, toward the button
+		pointerHolder, pointerArrow = holder, arrow
 		-- the gold ring in the button's own shape, a dark line outside it, and a second ring pinging outward
 		local ring, corner, stroke = outlineFrame("CueRing", GOLD, RING_THICKNESS, 19)
 		local edge, edgeCorner, edgeStroke = outlineFrame("CueRingEdge", EDGE, Cues.RING.edge, 18)
@@ -425,6 +430,9 @@ function TutorialCues.pointAt(target: GuiObject | BasePart, around: GuiObject?):
 			ring:Destroy()
 			edge:Destroy()
 			ping:Destroy()
+			if pointerHolder == holder then
+				pointerHolder, pointerArrow = nil, nil
+			end
 		end
 	end
 	local part = target :: BasePart
@@ -438,6 +446,7 @@ function TutorialCues.pointAt(target: GuiObject | BasePart, around: GuiObject?):
 	holder.Parent = gui()
 	local arrow = arrowIn(holder, 0)
 	worldHolder = holder
+	pointerHolder, pointerArrow = holder, arrow
 	local connection = RunService.RenderStepped:Connect(function()
 		local camera = workspace.CurrentCamera
 		holder.Visible = part.Parent ~= nil and camera ~= nil
@@ -475,7 +484,21 @@ function TutorialCues.pointAt(target: GuiObject | BasePart, around: GuiObject?):
 			worldHolder = nil
 			worldBox = nil
 		end
+		if pointerHolder == holder then
+			pointerHolder, pointerArrow = nil, nil
+		end
 	end
+end
+
+-- The newest arrow as drawn: its box on the screen (px, as AbsolutePosition) and its turn (0 points down, 90 left);
+-- nil while none shows. The What now? bubble stands by it (Util/HintBubble, HintRules.bubbleAt)
+function TutorialCues.pointerOf(): { box: TalkRules.Box, rotation: number }?
+	local holder, arrow = pointerHolder, pointerArrow
+	if not holder or not arrow or not holder.Parent or not holder.Visible then
+		return nil
+	end
+	local at, size = holder.AbsolutePosition, holder.AbsoluteSize
+	return { box = { x = at.X, y = at.Y, w = size.X, h = size.Y }, rotation = arrow.Rotation }
 end
 
 -- Where the arrow over a thing in the world bounces, in the screen's px (nil: none showing), for Pish's talk card to

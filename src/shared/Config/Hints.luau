@@ -29,6 +29,7 @@ Hints.REPEAT = 300 -- the same tip not again sooner (its x mutes it for the sess
 Hints.SHOW = 20 -- a tip stays this long
 Hints.WALK_SHOW = 45 -- a tip to walk to (the Wild portal, a boss's portal)
 Hints.SPOT_HEIGHT = 9 -- studs over the ground the arrow over a spot in the world hangs
+Hints.TICK = 0.5 -- how often the client looks (idle, free, the shown tip still true)
 
 -- The bubble (Util/HintBubble, HintRules.bubbleAt): `gap` from the arrow, `margin` inside the screen, its `height`,
 -- Pish's `face`, the words' `text` size, the x's look and its finger-sized `tap` area
