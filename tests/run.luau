@@ -97,6 +97,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	SoftFilter = require("./SoftFilter.spec"),
 	CueShape = require("./CueShape.spec"),
 	DevGate = require("./DevGate.spec"),
+	DevRules = require("./DevRules.spec"),
 	DesktopHud = require("./DesktopHud.spec"),
 	PhoneNotice = require("./PhoneNotice.spec"),
 	QuestRemind = require("./QuestRemind.spec"),

@@ -402,6 +402,35 @@ AdminPanel.ITEM_AMOUNTS = { 1, 10 } -- one button each per item
 AdminPanel.COMMAND_MAX_LENGTH = 120 -- the server ignores longer requests
 AdminPanel.COMMAND_COOLDOWN = 0.2 -- seconds between requests
 
+-- In the published game (spec 2026-11-27-live-admin-creator-design; server Util/DevRules): the panel works for the
+-- game's owner on their test save. A "server" command changes other players' game too (their sky, the event, the town
+-- dogs and Turts, monsters, a Dungeon run's rooms, a shared boss fight), so it runs only when the owner is alone or in
+-- their own private server; a "studio" command never runs live. Every command not listed is "own".
+AdminPanel.SCOPE = {
+	event = "server",
+	time = "server",
+	crowd = "server",
+	room = "server",
+	winroom = "server",
+	puzzle = "server",
+	tap = "server",
+	dungeonfx = "server",
+	pish = "server",
+	townchikin = "server",
+	turts = "server",
+	elite = "server",
+	ko = "server",
+	bosshp = "server",
+	jobslot = "studio", -- pretends to own a game pass
+} :: { [string]: "server" | "studio" }
+
+-- What a refused command says (a big locked card, server Util/Blocked); anyone but the owner gets no reply
+AdminPanel.REFUSE = {
+	mainSave = "Admin works on your test save. Type /slot test, then rejoin.",
+	notAlone = "Only when you're alone or in your own private server: it changes other players' game too.",
+	studioOnly = "That one works in Studio only.",
+}
+
 -- The command to send: "%s" filled with the typed text (nil when it needs text and none was typed)
 function AdminPanel.fill(command: string, typed: string): string?
 	if not string.find(command, "%s", 1, true) then
