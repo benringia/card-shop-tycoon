@@ -12,6 +12,23 @@ export type RackPlan = { fromShelves: { number }, fromRacks: { number }, units: 
 
 type Config = { MIN_AWAY_MINUTES: number, MAX_MINUTES: number, UNITS_PER_MINUTE: number, RACK_MINUTES: number?, MAX_EXTRA_MINUTES: number? }
 
+-- Whether the Welcome back card may open now (WelcomeBackController): the game ready (loaded, the prologue and the welcome
+-- seen), no window up, no purchase dialog or Roblox menu, and nothing on the stage or waiting for it (a weapon reveal,
+-- a mutation choice, a pack opening). Bug 2026-11-27: on joining, a waiting mutation choice and the card opened on top
+-- of each other (the reveal isn't a window)
+function OfflineRules.cardFree(facts: { ready: boolean, panelOpen: boolean, screenClear: boolean, stageShown: boolean, revealing: boolean }): boolean
+	return facts.ready and not facts.panelOpen and facts.screenClear and not facts.stageShown and not facts.revealing
+end
+
+-- A Welcome back chip's words: "1 pack", "18 packs" (Config/Offline SINGULARS and PLURALS; "items" for a product
+-- without words)
+function OfflineRules.soldWords(count: number, productId: string, cfg: { PLURALS: { [string]: string }, SINGULARS: { [string]: string } }): string
+	if count == 1 then
+		return `1 {cfg.SINGULARS[productId] or "item"}`
+	end
+	return `{count} {cfg.PLURALS[productId] or "items"}`
+end
+
 -- Whole minutes away that earn, from the last time the save was written (`lastSeen`, os.time) to `now`: none for a
 -- save never written (0), a clock in the future or less than MIN_AWAY_MINUTES; at most `cap` (MAX_MINUTES when not
 -- given; the racks' extra time raises it)

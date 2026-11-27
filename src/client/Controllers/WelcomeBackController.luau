@@ -14,6 +14,7 @@ local Products = require(Config:WaitForChild("Products"))
 local UIStyle = require(Config:WaitForChild("UIStyle"))
 local CardArtConfig = require(Config:WaitForChild("CardArt"))
 local CardArt = require(Shared:WaitForChild("Util"):WaitForChild("CardArt"))
+local OfflineRules = require(Shared:WaitForChild("Util"):WaitForChild("OfflineRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -22,7 +23,9 @@ local UIKit = require(ClientUtil:WaitForChild("UIKit"))
 local Icon = require(ClientUtil:WaitForChild("Icon"))
 local CoinBurst = require(ClientUtil:WaitForChild("CoinBurst"))
 local ScreenClear = require(ClientUtil:WaitForChild("ScreenClear"))
+local OpeningStage = require(ClientUtil:WaitForChild("OpeningStage"))
 local UIController = require(Controllers:WaitForChild("UIController"))
+local WeaponRevealController = require(Controllers:WaitForChild("WeaponRevealController"))
 
 local WelcomeBackController = {}
 
@@ -57,12 +60,18 @@ local function awayText(minutes: number): string
 	return if rest > 0 then `{hours}h {rest}m` else `{hours}h`
 end
 
+-- The screen is free for the card (OfflineRules.cardFree): ready, no window, no dialog, nothing on the stage (a weapon
+-- reveal or a mutation choice waiting after a join used to end up under it, bug 2026-11-27)
 local function free(): boolean
-	return player:GetAttribute("LoadingDone") == true
-		and player:GetAttribute("SeenPrologue") == true
-		and player:GetAttribute("SeenWelcome") == true
-		and not UIKit.anyPanelOpen()
-		and ScreenClear.isClear()
+	return OfflineRules.cardFree({
+		ready = player:GetAttribute("LoadingDone") == true
+			and player:GetAttribute("SeenPrologue") == true
+			and player:GetAttribute("SeenWelcome") == true,
+		panelOpen = UIKit.anyPanelOpen(),
+		screenClear = ScreenClear.isClear(),
+		stageShown = OpeningStage.isShown(),
+		revealing = WeaponRevealController.IsPlaying(),
+	})
 end
 
 -- One "18 packs" chip: the product's picture and its count
@@ -88,7 +97,7 @@ local function soldChip(parent: Instance, productId: string, count: number, orde
 	row.Parent = chip
 	local picture = Icon.make(chip, if product then product.icon else "Box", UDim2.fromOffset(30, 30))
 	picture.LayoutOrder = 1
-	local words = UIKit.label(chip, `{count} {Offline.PLURALS[productId] or "items"}`, Enum.Font.FredokaOne, 17, UIStyle.CREAM.INK)
+	local words = UIKit.label(chip, OfflineRules.soldWords(count, productId, Offline), Enum.Font.FredokaOne, 17, UIStyle.CREAM.INK)
 	words.LayoutOrder = 2
 	words.AutomaticSize = Enum.AutomaticSize.X
 	words.Size = UDim2.fromOffset(0, 30)
@@ -172,7 +181,7 @@ local function restockerReport(parent: Instance, summary: Summary, order: number
 end
 
 local function show(summary: Summary)
-	while UIKit.anyPanelOpen() do -- one window at a time: after the one that's up
+	while not free() do -- one thing at a time: after the window, the dialog or the reveal that's up
 		task.wait(READY_CHECK)
 	end
 	local screen = UIController.GetScreenGui()

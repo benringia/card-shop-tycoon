@@ -111,8 +111,42 @@ return {
 		end
 	end,
 
+	-- Seen 2026-11-27 checking the overlap bug: the card said "1 packs"
+	["the welcome-back card's chips: one is singular, more plural"] = function()
+		expect.equal(OfflineRules.soldWords(1, "FirstSparkPack", Offline), "1 pack")
+		expect.equal(OfflineRules.soldWords(18, "FirstSparkPack", Offline), "18 packs")
+		expect.equal(OfflineRules.soldWords(1, "DeckBox", Offline), "1 deck box")
+		expect.equal(OfflineRules.soldWords(1, "BulkCards", Offline), "1 bulk handful")
+		expect.equal(OfflineRules.soldWords(1, "Mystery", Offline), "1 item", "a product without words")
+		expect.equal(OfflineRules.soldWords(3, "Mystery", Offline), "3 items")
+		local Products = require("../src/shared/Config/Products")
+		for _, product in Products.List do
+			local word = Offline.SINGULARS[product.id]
+			assert(typeof(word) == "string" and #word > 0 and #word <= 16, `{product.id} has a short singular`)
+		end
+	end,
+
 	["the pace is slow next to a busy shop's: about a fifth"] = function()
 		assert(Offline.UNITS_PER_MINUTE > 0 and Offline.UNITS_PER_MINUTE <= 3, "a slow pace")
 		assert(Offline.MAX_MINUTES <= 180, "a few hours at most")
+	end,
+
+	-- Bug (owner 2026-11-27: "add the overlap bug to the list"): on joining, a mutation choice left waiting and the Welcome
+	-- back card opened on top of each other. The card waits for the stage (a reveal, a pack opening) like for a window
+	["the Welcome back card waits for the screen: loading, the prologue, a window, a dialog, a reveal on the stage"] = function()
+		local clear = { ready = true, panelOpen = false, screenClear = true, stageShown = false, revealing = false }
+		local function with(changes: { [string]: any }): any
+			local facts = table.clone(clear) :: any
+			for key, value in changes do
+				facts[key] = value
+			end
+			return facts
+		end
+		expect.equal(OfflineRules.cardFree(clear), true, "nothing on screen")
+		expect.equal(OfflineRules.cardFree(with({ ready = false })), false, "still loading or in the prologue")
+		expect.equal(OfflineRules.cardFree(with({ panelOpen = true })), false, "a window is up")
+		expect.equal(OfflineRules.cardFree(with({ screenClear = false })), false, "a purchase dialog or Roblox's menu")
+		expect.equal(OfflineRules.cardFree(with({ stageShown = true })), false, "a weapon reveal or a pack opening on the stage")
+		expect.equal(OfflineRules.cardFree(with({ revealing = true })), false, "a reveal waiting its turn")
 	end,
 }

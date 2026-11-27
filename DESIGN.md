@@ -4789,8 +4789,12 @@ the always-on tracker B, the money card A).
   2 hours. Real stock only (`PlacementService.TakeStock`): empty shelves earn nothing, which is the reason to restock
   before leaving and to come back. Cash and shop XP ($1 = 1 XP, like a sale) go through EconomyService at load, so
   nothing is lost if the window never shows; once the loading screen, the prologue and the welcome flight are done and
-  no window is up, the client asks and a gold "Welcome back!" window shows how long, what sold ("23 packs"), the cash and
-  XP, and "Your shelves are empty. Restock them!" (or a tip to stock up); Collect sends coins into the cash pill. Time in
+  no window is up, the client asks and a gold "Welcome back!" window shows how long, what sold ("23 packs", "1 pack":
+  `OfflineRules.soldWords`, Config/Offline SINGULARS), the cash and XP, and "Your shelves are empty. Restock them!" (or a
+  tip to stock up); Collect sends coins into the cash pill. The window waits its turn (`OfflineRules.cardFree`): no
+  window, purchase dialog or Roblox menu up, and nothing on the stage (a weapon reveal, a mutation choice asked again
+  after a join, a pack opening). Bug 2026-11-27: a waiting mutation choice and this window opened on top of each other
+  on join (the reveal isn't a window). Time in
   the Frontier or the Dungeon counts as away. `lastSeen` (schema v33) is written at every main-game save. Studio:
   `/away <minutes>`.
   - **With storage racks** (owner 2026-11-24, pick 2; spec `2026-11-24-shop-variety-design`): while a card works as

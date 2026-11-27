@@ -12,6 +12,8 @@ return {
 	-- what the welcome-back card calls each product's units ("18 packs"); customers and reviews name a missed product
 	-- with it too ("No sleeves? Aww.", spec 2026-11-24-shop-variety-design)
 	PLURALS = { FirstSparkPack = "packs", CardSleeves = "sleeves", DeckBox = "deck boxes", FirstSparkBox = "booster boxes", BulkCards = "bulk handfuls", FrontierPack = "Frontier packs" },
+	-- one of them ("1 pack", OfflineRules.soldWords)
+	SINGULARS = { FirstSparkPack = "pack", CardSleeves = "sleeve", DeckBox = "deck box", FirstSparkBox = "booster box", BulkCards = "bulk handful", FrontierPack = "Frontier pack" },
 	-- Storage racks keep it going (owner 2026-11-24, pick 2; spec 2026-11-24-shop-variety-design): while a card works as
 	-- Restocker, it refills the shelves from the racks' boxes, and each rack holding boxes adds RACK_MINUTES (at most
 	-- MAX_EXTRA_MINUTES) of selling only what's still in the racks (OfflineRules.split, planRacks)
