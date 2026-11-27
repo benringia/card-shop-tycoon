@@ -48,9 +48,9 @@ return {
 	},
 	-- The weapon in hand's mutation shown (owner 2026-11-27, picks B and C; client Util/MutationChip): a chip after your
 	-- HP words in a fight, pale in the rarity's colour with its edge and icon in it, opening into its words on hover or
-	-- for `openSeconds` after a tap; and a mark on the weapon dial's medallion (`mark`: its size and how far past the
-	-- medallion's top-right corner, the icon inside; the top-left holds the grade badge: owner 2026-11-27, "the mutation
-	-- icon is overlapping")
+	-- for `openSeconds` after a tap; and a mark past the weapon dial's medallion's top-right corner (the top-left holds the
+	-- grade's medal: owner 2026-11-27, "the mutation icon is overlapping"; its size and place: WeaponSwitch.chipTop), `mark`:
+	-- the icon's share of it and its white ring's px
 	CHIP = {
 		height = 18,
 		gap = 6, -- after your HP words
@@ -58,7 +58,7 @@ return {
 		fillToWhite = 0.75, -- the fill: the rarity's colour this far toward white
 		inkToBlack = 0.6, -- the words: this far toward black
 		icon = 13,
-		mark = { size = 24, offset = -7, icon = 14 },
+		mark = { icon = 0.58, edge = 2 },
 	},
 	-- Each group's icon (Config/UIIcons white glyphs, so the window tints them in the mutation's rarity colour: the
 	-- spec's heart is the Heal glyph, the glossy Heart can't take a tint)

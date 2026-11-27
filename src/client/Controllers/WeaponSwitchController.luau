@@ -54,7 +54,7 @@ local BOX_W, BOX_H = UiLayout.switchBox(LOOK)
 local CENTER = Vector2.new(BOX_W / 2, LOOK.rise + LOOK.chip / 2)
 local NO_ELEMENT = Color3.fromRGB(110, 120, 150)
 local PRISM = Color3.fromRGB(200, 170, 255)
-local LEVEL_PILL = { w = 34, h = 17, text = 12, fill = Color3.fromRGB(255, 207, 74), ink = Color3.fromRGB(90, 53, 0) }
+local LEVEL_PILL = { fill = Color3.fromRGB(255, 207, 74), ink = Color3.fromRGB(90, 53, 0) }
 local NAME_TEXT = { max = 14, min = 10 } -- the name's text size at the row's own size, shrinking to fit
 
 local owned: { [string]: any } = {}
@@ -68,6 +68,7 @@ local portrait: ImageLabel
 local shine: UIGradient -- the ring's colour, its bright spot going round
 local inside: UIGradient -- the medallion's inside: the element's colour
 local gradeMedal: ImageLabel -- the cards' grade medal on its top-left corner (never a white key-like circle)
+local mutationMark: Frame -- its mutation's mark on its top-right corner (Util/MutationChip)
 local levelPill: Frame -- "+4" on its top
 local levelLabel: TextLabel
 local underName: TextLabel -- its name under it, always (a computer's row)
@@ -90,6 +91,16 @@ local weaponHints: Frame? = nil -- a phone's chevrons over and under the medalli
 
 local function refreshHere()
 	weaponHere = CompactHud.phonePieces(compact, Hud.inTown(), false, false).weaponChip
+end
+
+-- The medal and the mark on a `size` px medallion's top corners, clear of the level pill between them (owner 2026-11-28:
+-- "make sure no overlapping elements"; WeaponSwitch.chipTop)
+local function placeTop(size: number)
+	local top = WeaponSwitch.chipTop(size, LOOK, Mutations.CHIP.mark.edge)
+	gradeMedal.Size = UDim2.fromOffset(top.badge, top.badge)
+	gradeMedal.Position = UDim2.fromOffset(-top.x, -top.y)
+	mutationMark.Size = UDim2.fromOffset(top.badge, top.badge)
+	mutationMark.Position = UDim2.new(1, top.x, 0, -top.y)
 end
 
 local function unlocked(): boolean
@@ -535,7 +546,7 @@ local function build()
 	chipButton = chip
 	UIKit.corner(chip, LOOK.chip // 2)
 	-- the weapon in hand's mutation: a mark past the medallion's corner (owner 2026-11-27, pick C; Util/MutationChip)
-	require(ClientUtil:WaitForChild("MutationChip")).onDial(chip)
+	mutationMark = require(ClientUtil:WaitForChild("MutationChip")).onDial(chip)
 	inside = Instance.new("UIGradient")
 	inside.Rotation = 90
 	inside.Parent = chip
@@ -554,29 +565,27 @@ local function build()
 
 	-- the grade as the cards' gold medal on its top-left corner, mirroring the mutation's mark on the top-right (owner
 	-- 2026-11-27: the grade's white circle read as a key next to Q and Z)
-	local mark = Mutations.CHIP.mark
 	gradeMedal = Instance.new("ImageLabel")
 	gradeMedal.Name = "Grade"
 	gradeMedal.BackgroundTransparency = 1
 	gradeMedal.ScaleType = Enum.ScaleType.Fit
-	gradeMedal.Position = UDim2.fromOffset(mark.offset, mark.offset)
-	gradeMedal.Size = UDim2.fromOffset(LOOK.medal, LOOK.medal)
 	gradeMedal.ZIndex = 5
 	gradeMedal.Parent = chip
+	placeTop(LOOK.chip)
 
 	-- its level on its top, like the party dock's "Lv 30"
 	levelPill = Instance.new("Frame")
 	levelPill.Name = "Level"
 	levelPill.AnchorPoint = Vector2.new(0.5, 0.5)
 	levelPill.Position = UDim2.fromScale(0.5, 0)
-	levelPill.Size = UDim2.fromOffset(LEVEL_PILL.w, LEVEL_PILL.h)
+	levelPill.Size = UDim2.fromOffset(LOOK.pill, LOOK.pillHeight)
 	levelPill.BackgroundColor3 = LEVEL_PILL.fill
 	levelPill.Visible = false
 	levelPill.ZIndex = 5
 	levelPill.Parent = chip
-	UIKit.corner(levelPill, LEVEL_PILL.h // 2)
-	UIKit.outline(levelPill, Color3.new(1, 1, 1), 2)
-	levelLabel = UIKit.label(levelPill, "", Enum.Font.FredokaOne, LEVEL_PILL.text, LEVEL_PILL.ink)
+	UIKit.corner(levelPill, LOOK.pillHeight // 2)
+	UIKit.outline(levelPill, Color3.new(1, 1, 1), LOOK.pillEdge)
+	levelLabel = UIKit.label(levelPill, "", Enum.Font.FredokaOne, LOOK.pillText, LEVEL_PILL.ink)
 	levelLabel.Size = UDim2.fromScale(1, 1)
 	levelLabel.TextXAlignment = Enum.TextXAlignment.Center
 	levelLabel.ZIndex = 6
@@ -725,6 +734,7 @@ local function setCompact(on: boolean)
 	end
 	local middle = if on then Vector2.new(size / 2, size / 2) else CENTER
 	chipButton.Position = UDim2.fromOffset(middle.X, middle.Y)
+	placeTop(size)
 	holder.Size = if on then UDim2.fromOffset(size, size) else UDim2.fromOffset(BOX_W, BOX_H)
 	-- a phone's name over the medallion (the creature sits left of it in the pair), with chevrons over and under it
 	-- (it swipes)
@@ -736,7 +746,7 @@ local function setCompact(on: boolean)
 		weaponHints = nil
 	end
 	if on then
-		weaponHints = PickWheel.hints(chipButton, size / 2 + 12)
+		weaponHints = PickWheel.hints(chipButton, size / 2 + LOOK.hint)
 	end
 	laidOutSize = Vector2.zero -- lay it out again
 	render()

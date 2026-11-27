@@ -1,8 +1,10 @@
 --!strict
 -- The What now? tip's bubble (spec 2026-11-27-what-now-hints-design, the owner's look 1): Pish's face, one short line
 -- and a small x in a white pill standing on the gold arrow (Util/TutorialCues.pointerOf): over it when it points down
--- at a button or a thing, beside it when it waits at the screen's edge (Util/HintRules.bubbleAt). Hidden while the arrow
--- is. Built once, shown again for each tip (client HintController).
+-- at a button or a thing, beside it when it waits at the screen's edge (Util/HintRules.bubbleAt), still while the arrow
+-- bounces, never on the arrow or the ring it points into (owner 2026-11-28). Hidden while the arrow is. Built once,
+-- shown again for each tip (client HintController).
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -32,6 +34,48 @@ type Parts = { bubble: Frame, words: TextLabel, close: TextButton, scale: UIScal
 local parts: Parts? = nil
 local onClose: (() -> ())? = nil
 local follow: RBXScriptConnection? = nil
+local AVOID_EVERY = 0.5 -- seconds between looks at where the HUD's pieces are
+
+local function drawn(gui: GuiObject): boolean
+	if gui.BackgroundTransparency < 0.95 then
+		return true
+	end
+	if (gui:IsA("TextLabel") or gui:IsA("TextButton")) and gui.Text ~= "" and gui.TextTransparency < 0.95 then
+		return true
+	end
+	return (gui:IsA("ImageLabel") or gui:IsA("ImageButton")) and gui.Image ~= "" and gui.ImageTransparency < 0.95
+end
+
+-- The HUD's pieces on the screen, for the bubble to keep clear of (owner 2026-11-28 "make sure no overlapping
+-- elements"): what MainGui draws, its hidden windows skipped whole, the soft glows round tiles and portraits left out
+-- (see-through at their edges); the toasts make room for the bubble themselves (UIController, ToastRules.hangBelow)
+local function hudBoxes(): { HintRules.Box }
+	local boxes: { HintRules.Box } = {}
+	local playerGui = Players.LocalPlayer:FindFirstChild("PlayerGui")
+	local main = if playerGui then playerGui:FindFirstChild("MainGui") else nil
+	if not main or not main:IsA("ScreenGui") then
+		return boxes
+	end
+	local view = main.AbsoluteSize
+	local function walk(node: Instance)
+		for _, child in node:GetChildren() do
+			if child:IsA("GuiObject") then
+				if child.Visible and child.Name ~= "Toasts" then
+					local at, size = child.AbsolutePosition, child.AbsoluteSize
+					local cover = size.X >= view.X * 0.6 and size.Y >= view.Y * 0.6 -- a layer the HUD sits in
+					if size.X > 1 and size.Y > 1 and not cover and child.Name ~= "Glow" and drawn(child) then
+						table.insert(boxes, { x = at.X, y = at.Y, w = size.X, h = size.Y })
+					end
+					walk(child)
+				end
+			elseif child:IsA("Folder") then
+				walk(child)
+			end
+		end
+	end
+	walk(main)
+	return boxes
+end
 
 local function build(): Parts
 	local bubble = Instance.new("Frame")
@@ -120,6 +164,8 @@ function HintBubble.show(text: string, closed: () -> ()): () -> ()
 	local scale = if typeof(rest) == "number" then rest else made.scale.Scale
 	made.scale.Scale = scale * 0.7
 	TweenService:Create(made.scale, POP, { Scale = scale }):Play()
+	local avoid: { HintRules.Box } = {}
+	local lookedAt = -math.huge
 	local connection = RunService.RenderStepped:Connect(function()
 		local arrow = TutorialCues.pointerOf()
 		local layer = TutorialCues.screen()
@@ -127,8 +173,13 @@ function HintBubble.show(text: string, closed: () -> ()): () -> ()
 		if not arrow then
 			return
 		end
+		local now = os.clock()
+		if now - lookedAt >= AVOID_EVERY then
+			lookedAt = now
+			avoid = hudBoxes()
+		end
 		local size, view, origin = made.bubble.AbsoluteSize, layer.AbsoluteSize, layer.AbsolutePosition
-		local at = HintRules.bubbleAt(arrow.box, arrow.rotation, { w = size.X, h = size.Y }, { w = view.X, h = view.Y }, LOOK)
+		local at = HintRules.bubbleAt(arrow.box, arrow.rotation, { w = size.X, h = size.Y }, { w = view.X, h = view.Y }, LOOK, arrow.target, avoid)
 		made.bubble.Position = UDim2.fromOffset(at.x - origin.X, at.y - origin.Y)
 	end)
 	follow = connection

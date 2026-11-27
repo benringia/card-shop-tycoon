@@ -150,27 +150,28 @@ function MutationChip.onLine(label: TextLabel): { setAllowed: (allowed: boolean)
 end
 
 -- C: a mark on the weapon dial's medallion: a circle in the rarity's colour with its group's icon, past its top-right
--- corner (the top-left is the grade's); hidden without a mutation
-function MutationChip.onDial(medallion: GuiObject)
+-- corner (the top-left is the grade's); hidden without a mutation. Returned for the dial to size and place
+-- (WeaponSwitch.chipTop: clear of the level pill on the medallion's top)
+function MutationChip.onDial(medallion: GuiObject): Frame
 	local spec = LOOK.mark
 	local mark = Instance.new("Frame")
 	mark.Name = "MutationMark"
-	mark.Size = UDim2.fromOffset(spec.size, spec.size)
 	mark.AnchorPoint = Vector2.new(1, 0)
-	mark.Position = UDim2.new(1, -spec.offset, 0, spec.offset)
 	mark.Visible = false
 	mark.ZIndex = medallion.ZIndex + 3
-	corner(mark, spec.size // 2)
+	local round = Instance.new("UICorner")
+	round.CornerRadius = UDim.new(0.5, 0)
+	round.Parent = mark
 	local ring = Instance.new("UIStroke")
 	ring.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	ring.Color = WHITE
-	ring.Thickness = 2
+	ring.Thickness = spec.edge
 	ring.Parent = mark
 	local icon = Instance.new("ImageLabel")
 	icon.BackgroundTransparency = 1
 	icon.AnchorPoint = Vector2.new(0.5, 0.5)
 	icon.Position = UDim2.fromScale(0.5, 0.5)
-	icon.Size = UDim2.fromOffset(spec.icon, spec.icon)
+	icon.Size = UDim2.fromScale(spec.icon, spec.icon)
 	icon.ImageColor3 = WHITE
 	icon.ZIndex = mark.ZIndex + 1
 	icon.Parent = mark
@@ -183,6 +184,7 @@ function MutationChip.onDial(medallion: GuiObject)
 			icon.Image = (UIIcons :: any)[mutation.icon] or ""
 		end
 	end)
+	return mark
 end
 
 return MutationChip

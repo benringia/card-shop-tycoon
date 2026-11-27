@@ -111,6 +111,19 @@ function WeaponSwitch.rowSpot(spot: Spot, look: { chip: number, side: number, ro
 	return if spot == "before" then -out else out, look.drop
 end
 
+-- The medallion's top edge, left to right (owner 2026-11-28: "make sure no overlapping elements"): the grade's medal
+-- past its top-left corner, the level's pill in the middle (`pill` px wide), the mutation's mark past its top-right
+-- corner. The badges are `medal` px on a `look.chip` px medallion, in step on smaller ones, `overhang` px over its top;
+-- they stand out past its sides as far as keeps `topGap` px between them and the pill, the pill's and the mark's
+-- white outlines counted, never less than `overhang`. Returns the badges' size and how far past the sides (x) and
+-- over the top (y) they start, px on a `chip` px medallion
+export type TopLook = { chip: number, medal: number, overhang: number, pill: number, pillEdge: number, topGap: number }
+function WeaponSwitch.chipTop(chip: number, look: TopLook, markEdge: number): { badge: number, x: number, y: number }
+	local badge = look.medal * chip / look.chip
+	local need = badge + markEdge + look.topGap + look.pill / 2 + look.pillEdge - chip / 2
+	return { badge = badge, x = math.max(look.overhang, need), y = look.overhang }
+end
+
 -- The chip shows when there's something to switch to
 function WeaponSwitch.visible(list: { string }): boolean
 	return #list >= 2

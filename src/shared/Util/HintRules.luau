@@ -133,20 +133,77 @@ export type Box = { x: number, y: number, w: number, h: number }
 
 -- Where the bubble sits (its top-left, px) by the arrow drawn at `arrow` turned `rotation` degrees (its picture points
 -- down at 0 and turns clockwise: 90 points left, -90 right, 180 up): on the side it points away from, `gap` px off it,
--- in whole px, kept `margin` px inside the view
-function HintRules.bubbleAt(arrow: Box, rotation: number, bubble: { w: number, h: number }, view: { w: number, h: number }, cfg: { gap: number, margin: number }): { x: number, y: number }
+-- in whole px, kept `margin` px inside the view. Never on the arrow or on what it points at (`target`, the ring round
+-- it), and off the HUD's pieces (`avoid`) where it can be (owner 2026-11-28 "make sure no overlapping elements": by a
+-- phone's quest strip at the top, with no room over the arrow, the bubble fell on the strip and the cash): then beside
+-- the two across the way it points, the roomier side first, or past the target; with no spot clear of the HUD, the one
+-- covering the least of it
+function HintRules.bubbleAt(arrow: Box, rotation: number, bubble: { w: number, h: number }, view: { w: number, h: number }, cfg: { gap: number, margin: number }, target: Box?, avoid: { Box }?): { x: number, y: number }
 	local turn = math.rad(rotation)
 	local ux, uy = -math.sin(turn), math.cos(turn)
 	local function reach(w: number, h: number): number
 		return math.abs(ux) * w / 2 + math.abs(uy) * h / 2
 	end
+	-- the bubble round a middle, in whole px, on the screen
+	local function place(cx: number, cy: number): { x: number, y: number }
+		local x = math.floor(cx - bubble.w / 2 + 0.5)
+		local y = math.floor(cy - bubble.h / 2 + 0.5)
+		return {
+			x = math.clamp(x, cfg.margin, math.max(cfg.margin, view.w - cfg.margin - bubble.w)),
+			y = math.clamp(y, cfg.margin, math.max(cfg.margin, view.h - cfg.margin - bubble.h)),
+		}
+	end
+	local function covers(at: { x: number, y: number }, box: Box): boolean
+		return at.x < box.x + box.w and box.x < at.x + bubble.w and at.y < box.y + box.h and box.y < at.y + bubble.h
+	end
+	local function clear(at: { x: number, y: number }): boolean
+		return not covers(at, arrow) and not (target ~= nil and covers(at, target))
+	end
+	-- px² of the HUD under it
+	local function covered(at: { x: number, y: number }): number
+		local total = 0
+		for _, box in avoid or {} do
+			local w = math.min(at.x + bubble.w, box.x + box.w) - math.max(at.x, box.x)
+			local h = math.min(at.y + bubble.h, box.y + box.h) - math.max(at.y, box.y)
+			if w > 0 and h > 0 then
+				total += w * h
+			end
+		end
+		return total
+	end
+	local ax, ay = arrow.x + arrow.w / 2, arrow.y + arrow.h / 2
 	local away = reach(arrow.w, arrow.h) + cfg.gap + reach(bubble.w, bubble.h)
-	local x = math.floor(arrow.x + arrow.w / 2 - ux * away - bubble.w / 2 + 0.5)
-	local y = math.floor(arrow.y + arrow.h / 2 - uy * away - bubble.h / 2 + 0.5)
-	return {
-		x = math.clamp(x, cfg.margin, math.max(cfg.margin, view.w - cfg.margin - bubble.w)),
-		y = math.clamp(y, cfg.margin, math.max(cfg.margin, view.h - cfg.margin - bubble.h)),
-	}
+	local behind = place(ax - ux * away, ay - uy * away)
+	local area = target or arrow
+	local x1, y1 = math.min(arrow.x, area.x), math.min(arrow.y, area.y)
+	local x2, y2 = math.max(arrow.x + arrow.w, area.x + area.w), math.max(arrow.y + arrow.h, area.y + area.h)
+	local spots = { behind }
+	if math.abs(uy) >= math.abs(ux) then
+		local left, right = place(x1 - cfg.gap - bubble.w / 2, ay), place(x2 + cfg.gap + bubble.w / 2, ay)
+		table.insert(spots, if (x1 + x2) / 2 > view.w / 2 then left else right)
+		table.insert(spots, if (x1 + x2) / 2 > view.w / 2 then right else left)
+	else
+		local above, below = place(ax, y1 - cfg.gap - bubble.h / 2), place(ax, y2 + cfg.gap + bubble.h / 2)
+		table.insert(spots, if (y1 + y2) / 2 > view.h / 2 then above else below)
+		table.insert(spots, if (y1 + y2) / 2 > view.h / 2 then below else above)
+	end
+	if target then
+		local past = reach(target.w, target.h) + cfg.gap + reach(bubble.w, bubble.h)
+		table.insert(spots, place(target.x + target.w / 2 + ux * past, target.y + target.h / 2 + uy * past))
+	end
+	local best, least = nil, math.huge
+	for _, at in spots do
+		if clear(at) then
+			local cover = covered(at)
+			if cover == 0 then
+				return at
+			end
+			if cover < least then
+				best, least = at, cover
+			end
+		end
+	end
+	return best or behind
 end
 
 local OUTCOMES = { shown = true, done = true, closed = true }

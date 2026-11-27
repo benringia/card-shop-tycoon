@@ -72,9 +72,12 @@ local ASK_EXTRA = 60 -- px taller with a second choice
 local worldHolder: Frame? = nil
 local worldBox: TalkRules.Box? = nil
 -- The newest arrow pointAt drew (on a button or over the world), for the What now? bubble to stand by
--- (TutorialCues.pointerOf, Util/HintBubble)
+-- (TutorialCues.pointerOf, Util/HintBubble): the box its whole bounce takes (the bubble stays still by it) and the
+-- ring round its button (the bubble never covers it)
 local pointerHolder: Frame? = nil
 local pointerArrow: GuiObject? = nil
+local pointerBox: TalkRules.Box? = nil
+local pointerTarget: TalkRules.Box? = nil
 
 -- The cues' own screen, over the HUD
 local function gui(): ScreenGui
@@ -396,12 +399,18 @@ function TutorialCues.pointAt(target: GuiObject | BasePart, around: GuiObject?):
 			local beside = not clipped and CueShape.pointerSide({ x = at.X - layer.AbsolutePosition.X, w = size.X }, layer.AbsoluteSize.X, Cues.POINTER.sideShare) == "right"
 			arrow.Rotation = if beside then 90 elseif under then 180 else 0
 			holder.AnchorPoint = if beside then Vector2.new(0, 0.5) else Vector2.new(0.5, if under then 0 else 1)
+			local bounceBox: TalkRules.Box
 			if beside then
-				holder.Position = UDim2.fromOffset(at.X + size.X + RING_PAD + RING_THICKNESS + 4 + beat * BOUNCE, at.Y + size.Y / 2)
+				local left = at.X + size.X + RING_PAD + RING_THICKNESS + 4
+				holder.Position = UDim2.fromOffset(left + beat * BOUNCE, at.Y + size.Y / 2)
+				bounceBox = { x = left, y = at.Y + size.Y / 2 - arrowSize / 2, w = arrowSize + BOUNCE, h = arrowSize }
 			elseif under then
-				holder.Position = UDim2.fromOffset(at.X + size.X / 2, at.Y + size.Y + 4 + beat * BOUNCE)
+				local top = at.Y + size.Y + 4
+				holder.Position = UDim2.fromOffset(at.X + size.X / 2, top + beat * BOUNCE)
+				bounceBox = { x = at.X + size.X / 2 - arrowSize / 2, y = top, w = arrowSize, h = arrowSize + BOUNCE }
 			else
 				holder.Position = UDim2.fromOffset(at.X + size.X / 2, arrowBottom - beat * BOUNCE)
+				bounceBox = { x = at.X + size.X / 2 - arrowSize / 2, y = arrowBottom - arrowSize - BOUNCE, w = arrowSize, h = arrowSize + BOUNCE }
 			end
 			-- the ring: the button's own corner (a tile half out of its list keeps the list's square edge there)
 			local radius = CueShape.radius({ w = ringSize.X, h = ringSize.Y }, pieceCorner, pad, Cues.RING.fallback, pieceScale)
@@ -415,6 +424,10 @@ function TutorialCues.pointAt(target: GuiObject | BasePart, around: GuiObject?):
 			edge.Visible = shown
 			edge.Position = UDim2.fromOffset(ringAt.X - out, ringAt.Y - out)
 			edge.Size = UDim2.fromOffset(ringSize.X + out * 2, ringSize.Y + out * 2)
+			if pointerHolder == holder then
+				pointerBox = bounceBox
+				pointerTarget = { x = ringAt.X - out, y = ringAt.Y - out, w = ringSize.X + out * 2, h = ringSize.Y + out * 2 }
+			end
 			edgeCorner.CornerRadius = UDim.new(0, radius + RING_THICKNESS)
 			local grow, gone = CueShape.ping(elapsed, Cues.PING)
 			local far = out + grow
@@ -431,7 +444,7 @@ function TutorialCues.pointAt(target: GuiObject | BasePart, around: GuiObject?):
 			edge:Destroy()
 			ping:Destroy()
 			if pointerHolder == holder then
-				pointerHolder, pointerArrow = nil, nil
+				pointerHolder, pointerArrow, pointerBox, pointerTarget = nil, nil, nil, nil
 			end
 		end
 	end
@@ -446,7 +459,7 @@ function TutorialCues.pointAt(target: GuiObject | BasePart, around: GuiObject?):
 	holder.Parent = gui()
 	local arrow = arrowIn(holder, 0)
 	worldHolder = holder
-	pointerHolder, pointerArrow = holder, arrow
+	pointerHolder, pointerArrow, pointerBox, pointerTarget = holder, arrow, nil, nil
 	local connection = RunService.RenderStepped:Connect(function()
 		local camera = workspace.CurrentCamera
 		holder.Visible = part.Parent ~= nil and camera ~= nil
@@ -485,20 +498,24 @@ function TutorialCues.pointAt(target: GuiObject | BasePart, around: GuiObject?):
 			worldBox = nil
 		end
 		if pointerHolder == holder then
-			pointerHolder, pointerArrow = nil, nil
+			pointerHolder, pointerArrow, pointerBox, pointerTarget = nil, nil, nil, nil
 		end
 	end
 end
 
--- The newest arrow as drawn: its box on the screen (px, as AbsolutePosition) and its turn (0 points down, 90 left);
--- nil while none shows. The What now? bubble stands by it (Util/HintBubble, HintRules.bubbleAt)
-function TutorialCues.pointerOf(): { box: TalkRules.Box, rotation: number }?
+-- The newest arrow as drawn: the box its whole bounce takes on the screen (px, as AbsolutePosition; over the world:
+-- where it bounces), its turn (0 points down, 90 left) and the ring round the button it points at (none over the
+-- world); nil while none shows. The What now? bubble stands by it (Util/HintBubble, HintRules.bubbleAt)
+function TutorialCues.pointerOf(): { box: TalkRules.Box, rotation: number, target: TalkRules.Box? }?
 	local holder, arrow = pointerHolder, pointerArrow
 	if not holder or not arrow or not holder.Parent or not holder.Visible then
 		return nil
 	end
-	local at, size = holder.AbsolutePosition, holder.AbsoluteSize
-	return { box = { x = at.X, y = at.Y, w = size.X, h = size.Y }, rotation = arrow.Rotation }
+	local box = pointerBox or (if holder == worldHolder then worldBox else nil)
+	if not box then
+		return nil -- not placed yet (its first frame: the bubble flashed in the top-left corner)
+	end
+	return { box = box, rotation = arrow.Rotation, target = pointerTarget }
 end
 
 -- Where the arrow over a thing in the world bounces, in the screen's px (nil: none showing), for Pish's talk card to

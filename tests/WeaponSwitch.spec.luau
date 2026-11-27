@@ -2,7 +2,22 @@
 -- The quick weapon switch (spec 2026-11-07-weapons-round2-design 6): which weapons the chip steps through, in order
 local WeaponSwitch = require("../src/shared/Util/WeaponSwitch")
 local Weapons = require("../src/shared/Config/Weapons")
+local Mutations = require("../src/shared/Config/Mutations")
 local expect = require("./lib/expect")
+local fs = require("@lune/fs")
+
+-- Config/HudLayout WEAPON_SWITCH's numbers, read from its source (it needs Roblox to load), its comments left out
+local function switchLook(): { [string]: number }
+	local source = (string.gsub(fs.readFile("src/shared/Config/HudLayout.luau"), "\r", ""))
+	local block = string.match(source, "WEAPON_SWITCH = (%b{})")
+	assert(block, "Config/HudLayout has WEAPON_SWITCH")
+	block = string.gsub(block, "%-%-[^\n]*", "")
+	local look = {}
+	for key, value in string.gmatch(block, "([%a_][%w_]*)%s*=%s*(%-?[%d%.]+)") do
+		look[key] = tonumber(value)
+	end
+	return look
+end
 
 -- The catalogue with one weapon not built yet (every weapon is built since weapons round 3; the rule still matters for
 -- the next round's)
@@ -91,6 +106,46 @@ return {
 		expect.near(y, 8, 1e-6)
 		x, y = WeaponSwitch.rowSpot("center", look)
 		expect.equal(x == 0 and y == 0, true, "the middle")
+	end,
+
+	-- the medallion's top edge (owner 2026-11-28: "make sure no overlapping elements"; the level pill touched both
+	-- badges on a phone's 64 px medallion): the grade's medal, the level's pill ("+10" its widest) and the mutation's
+	-- mark `topGap` px apart counting the pill's and the mark's white outlines, on a computer's medallion and a phone's;
+	-- the badges in step with the medallion's size and still reaching onto its ring, never floating off it
+	["the medallion's top: the grade medal, the level pill and the mutation mark never touch"] = function()
+		local look = switchLook()
+		local markEdge = Mutations.CHIP.mark.edge
+		for _, chip in { look.chip, look.compactChip } do
+			local top = WeaponSwitch.chipTop(chip, look :: any, markEdge)
+			local where = `a {chip} px medallion`
+			local pillLeft = chip / 2 - look.pill / 2 - look.pillEdge
+			local pillRight = chip / 2 + look.pill / 2 + look.pillEdge
+			local medalRight = -top.x + top.badge -- an image, no outline
+			local markLeft = chip + top.x - top.badge - markEdge
+			assert(pillLeft - medalRight >= look.topGap - 1e-6, `{where}: the medal ends at {medalRight}, the pill starts at {pillLeft}`)
+			assert(markLeft - pillRight >= look.topGap - 1e-6, `{where}: the pill ends at {pillRight}, the mark starts at {markLeft}`)
+			expect.near(top.badge, look.medal * chip / look.chip, 1e-6, `{where}: the badges in step with the medallion`)
+			expect.equal(top.y, look.overhang, `{where}: as high as ever`)
+			local r = chip / 2
+			local innerX, innerY = -top.x + top.badge, -top.y + top.badge
+			local reach = r - math.sqrt((innerX - r) ^ 2 + (innerY - r) ^ 2)
+			assert(reach >= 4, `{where}: the medal's inner corner {reach} px onto the medallion`)
+		end
+	end,
+
+	-- the row's box (UiLayout.switchBox) holds what stands over the medallion: the level pill with its outline, the badges
+	["the row's box holds the level pill and the badges over the medallion"] = function()
+		local look = switchLook()
+		assert(look.rise >= look.pillHeight / 2 + look.pillEdge, `rise {look.rise}: the pill reaches {look.pillHeight / 2 + look.pillEdge} over`)
+		assert(look.rise >= look.overhang, `rise {look.rise}: the badges reach {look.overhang} over`)
+	end,
+
+	-- a phone's medallion swipes: its chevrons over and under it clear of the level pill on its top edge
+	["the phone medallion's chevrons clear of its level pill"] = function()
+		local look = switchLook()
+		local chevronHalf = 5.25 -- Util/PickWheel's chevron: two 3 x 9 bars at 45 degrees, a 1 px edge round them
+		local pillTop = look.pillHeight / 2 + look.pillEdge -- over the medallion's top edge
+		assert(look.hint - chevronHalf - pillTop >= 2, `the chevron's foot {look.hint - chevronHalf} px over the top edge, the pill's top {pillTop}`)
 	end,
 
 	-- spec 2026-11-12-timed-upgrades-revive-design: an item being upgraded is locked till done

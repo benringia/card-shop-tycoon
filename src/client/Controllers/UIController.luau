@@ -82,6 +82,9 @@ end
 -- placePerch)
 local perch: Frame
 local replace: () -> () = function() end -- Start's place(), for pieces that follow the quest strip
+-- The What now? bubble (Util/HintBubble, in the cues' own gui): a phone's toasts hang under it while it sits where they
+-- hang (ToastRules.hangBelow; owner 2026-11-28 "make sure no overlapping elements")
+local hintBubble: GuiObject? = nil
 -- "quests" (on the quest strip) or "corner" (the bottom right, by the weapon dial: the quests are in the Phone)
 local function pishAt(): string?
 	return DesktopHud.pishAt(desktopLayout(), DesktopHudConfig)
@@ -779,9 +782,18 @@ local function placeStatusRow(rowLayout: UIListLayout)
 		local top = math.max(TOUCH_TOP / 4, (inset - height) / 2) - inset
 		statusRow.Position = UDim2.new(1, -STATUS_MARGIN, 0, top)
 		if toastStack then
-			-- left of the column, under the top bar strip: clear of the dock and the jump button
+			-- left of the column, under the top bar strip: clear of the dock and the jump button; under the What now?
+			-- bubble while it sits there
 			local beside = STATUS_MARGIN + rowLayout.AbsoluteContentSize.X + 8
-			toastStack.Position = UDim2.new(1, -beside, 0, top + height + 8)
+			local right = screenGui.AbsoluteSize.X - beside
+			local bubble = hintBubble
+			local keep = if bubble and bubble.Parent and bubble.Visible
+				then { x = bubble.AbsolutePosition.X, y = bubble.AbsolutePosition.Y, w = bubble.AbsoluteSize.X, h = bubble.AbsoluteSize.Y }
+				else nil
+			local scale = toastStack.AbsoluteSize.X / (Toasts.WIDTH + 40) -- its UIScale (shapeToasts sizes it on a phone)
+			local stack = { left = right - toastStack.AbsoluteSize.X, right = right }
+			local hang = ToastRules.hangBelow(top + height + 8, stack, keep, Toasts.TOUCH_REACH * scale, Toasts.GAP * scale)
+			toastStack.Position = UDim2.new(1, -beside, 0, hang)
 		end
 		return
 	end
@@ -1073,6 +1085,31 @@ function UIController.Start()
 			task.defer(place) -- the quest strip arrived: Pish goes onto it
 		end
 	end)
+	-- the What now? bubble, made on its first tip in the cues' gui: a phone's toasts follow it (placeStatusRow)
+	local function followBubble(child: Instance)
+		if child.Name ~= "HintBubble" or not child:IsA("GuiObject") or hintBubble == child then
+			return
+		end
+		hintBubble = child
+		for _, property in { "AbsolutePosition", "AbsoluteSize", "Visible" } do
+			child:GetPropertyChangedSignal(property):Connect(place)
+		end
+		task.defer(place)
+	end
+	local function followCues(child: Instance)
+		if child.Name ~= "TutorialCues" then
+			return
+		end
+		child.ChildAdded:Connect(followBubble)
+		for _, inside in child:GetChildren() do
+			followBubble(inside)
+		end
+	end
+	local playerGui = player:WaitForChild("PlayerGui")
+	playerGui.ChildAdded:Connect(followCues)
+	for _, child in playerGui:GetChildren() do
+		followCues(child)
+	end
 	topRow:GetPropertyChangedSignal("AbsoluteSize"):Connect(place)
 	GuiService:GetPropertyChangedSignal("TopbarInset"):Connect(place)
 	-- the weapon dial joins or leaves the bar (WeaponSwitchController sets Wanted on its layer), a fight comes or goes

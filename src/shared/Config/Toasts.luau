@@ -15,6 +15,9 @@ return {
 	CLOSE_HOVER = { 230, 205, 238 },
 	MAX = 3, -- bubbles at once; a new one past this pushes the oldest out early
 	MAX_TOUCH = 2, -- landscape phones are short
+	-- px at the HUD's full size a phone's hanging stack takes (its MAX_TOUCH one-line bubbles and the gap): the What now?
+	-- bubble there sends them under it (ToastRules.hangBelow, owner 2026-11-28)
+	TOUCH_REACH = 80,
 	-- A bubble: white with the windows' white outline and soft lilac edge, a soft plum shadow and a tail at its
 	-- bottom right; an icon chip on the left in its kind's colour, the words in its kind's ink
 	WIDTH = 300, -- the most a bubble is wide before its words wrap

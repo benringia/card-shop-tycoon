@@ -98,9 +98,16 @@ return {
 	-- before and the next (`side`) `row` px off the weapon in hand (`chip`) and `drop` px lower, its level pill reaching
 	-- `rise` px over it, its name's line `name` px under it (`nameGap` px clear of the Z and Q keys either side, so
 	-- they never read as one line), its grade's medal `medal` px on its top-left corner (the cards' medal)
+	-- Its top edge (owner 2026-11-28: "make sure no overlapping elements"; WeaponSwitch.chipTop): the medal and the
+	-- mutation's mark `medal` px on the `chip` px medallion (in step on a phone's), `overhang` px over its top and at
+	-- least that past its sides, further when the level's pill needs `topGap` px either side: `pill` px wide ("+10", its
+	-- widest, 17 px at `pillText` px, with the party dock's 5 px padding), `pillHeight` tall, a `pillEdge` px white
+	-- outline like the dock's level chip; `rise` holds the pill and its outline. A phone's swipe chevrons `hint` px past
+	-- its edge, clear of the pill
 	WEAPON_SWITCH = {
 		chip = 72, side = 44, hit = 48, gap = 6, right = 12, ring = 4, shineSeconds = 4,
-		row = 8, drop = 8, rise = 9, name = 20, nameGap = 9, medal = 24,
+		row = 8, drop = 8, rise = 10, name = 20, nameGap = 9, medal = 24,
+		overhang = 7, pill = 27, pillHeight = 17, pillText = 12, pillEdge = 1.5, topGap = 3, hint = 18,
 		sideFade = 0.15, roll = 0.28, nameSeconds = 1.5, swipe = 30,
 		compactChip = 64, countText = 12,
 		fightScale = 0.7, -- in a computer's fight: 180 px wide -> 126, over the compact buttons (UiLayout.weaponSwitch)

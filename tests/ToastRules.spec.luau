@@ -112,4 +112,17 @@ return {
 		expect.equal(spot.y, 96 + Toasts.UNDER_GAP, "under what hangs from the bar (its states, its adds)")
 		expect.equal(ToastRules.under({ x = 600, y = 6, w = 720, h = 70 }, 0, Toasts.UNDER_GAP).y, 76 + Toasts.UNDER_GAP, "nothing under the bar: its own foot")
 	end,
+
+	-- owner 2026-11-28 "make sure no overlapping elements": a phone's stack hangs from the top left of the cash column,
+	-- where the What now? bubble stands by the quest strip's arrow; the toasts hang under the bubble while it's there
+	["a phone's toasts hang under the What now? bubble where it sits on their spot"] = function()
+		local stack = { left = 119, right = 459 }
+		local reach = Toasts.TOUCH_REACH
+		expect.equal(ToastRules.hangBelow(14, stack, nil, reach, Toasts.GAP), 14, "no bubble: where they always hang")
+		local bubble = { x = 259, y = 8, w = 289, h = 46 }
+		expect.equal(ToastRules.hangBelow(14, stack, bubble, reach, Toasts.GAP), 54 + Toasts.GAP, "under it, the bubbles' gap off it")
+		expect.equal(ToastRules.hangBelow(14, stack, { x = 470, y = 8, w = 260, h = 46 }, reach, Toasts.GAP), 14, "beside them: no move")
+		expect.equal(ToastRules.hangBelow(14, stack, { x = 259, y = 14 + reach, w = 289, h = 46 }, reach, Toasts.GAP), 14, "under where they reach: no move")
+		expect.equal(ToastRules.hangBelow(60, stack, { x = 259, y = 0, w = 289, h = 46 }, reach, Toasts.GAP), 60, "over them already: no move")
+	end,
 }

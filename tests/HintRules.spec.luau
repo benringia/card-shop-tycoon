@@ -146,12 +146,64 @@ return {
 		expect.equal(at.y, 104)
 	end,
 
-	["never off the screen"] = function()
+	["never off the screen, never on the arrow"] = function()
 		local corner = HintRules.bubbleAt({ x = 2, y = 2, w = 78, h = 78 }, 0, { w = 240, h = 46 }, { w = 1000, h = 600 }, { gap = 6, margin = 8 })
-		expect.equal(corner.x, 8)
-		expect.equal(corner.y, 8)
+		expect.equal(corner.x, 86, "no room over it in the corner: beside it")
+		expect.equal(corner.y, 18)
 		local edge = HintRules.bubbleAt({ x = 950, y = 300, w = 78, h = 78 }, 0, { w = 240, h = 46 }, { w = 1000, h = 600 }, { gap = 6, margin = 8 })
 		expect.equal(edge.x, 1000 - 8 - 240)
+	end,
+
+	-- owner 2026-11-28 "make sure no overlapping elements": on a phone the claim tip's arrow points down at the quest
+	-- strip from the top bar, no room over it, and the bubble fell on the strip and the cash
+	["the bubble never lands on what the arrow points at: by the phone's quest strip it sits beside it"] = function()
+		local view, bubble, cfg = { w = 750, h = 323 }, { w = 289, h = 46 }, { gap = 6, margin = 8 }
+		local strip = { x = 557, y = -5, w = 105, h = 46 } -- the strip's ring
+		local arrow = { x = 591, y = -63, w = 36, h = 46 } -- its whole bounce, in the top bar
+		local at = HintRules.bubbleAt(arrow, 0, bubble, view, cfg, strip)
+		local function covers(box: { x: number, y: number, w: number, h: number }): boolean
+			return at.x < box.x + box.w and box.x < at.x + bubble.w and at.y < box.y + box.h and box.y < at.y + bubble.h
+		end
+		expect.equal(covers(strip), false, "off the strip")
+		expect.equal(covers(arrow), false, "off the arrow")
+		expect.equal(at.x + bubble.w <= strip.x, true, "on the roomier side: left of it")
+		expect.equal(at.x >= 8 and at.y >= 8 and at.y + bubble.h <= view.h - 8, true, "on the screen")
+	end,
+
+	["no room beside it either: past what it points at"] = function()
+		local view, bubble, cfg = { w = 300, h = 600 }, { w = 240, h = 46 }, { gap = 6, margin = 8 }
+		local target = { x = 110, y = 8, w = 80, h = 40 }
+		local at = HintRules.bubbleAt({ x = 130, y = -50, w = 40, h = 54 }, 0, bubble, view, cfg, target)
+		expect.equal(at.x, 30)
+		expect.equal(at.y, 54, "under it, the gap off its bottom")
+	end,
+
+	-- seen 2026-11-28 on a phone: "Put your box on a shelf!" over a thing near the top edge, no room over the arrow; the
+	-- bubble went right onto the quest strip and the cash
+	["the bubble keeps clear of the HUD: off the cash column, on the free side"] = function()
+		local view, bubble, cfg = { w = 750, h = 323 }, { w = 289, h = 46 }, { gap = 6, margin = 8 }
+		local arrow = { x = 345, y = -28, w = 40, h = 58 } -- its whole bounce, down to the top of a thing near the top edge
+		local hud = { { x = 565, y = 3, w = 89, h = 30 }, { x = 692, y = 5, w = 36, h = 26 }, { x = 12, y = 79, w = 50, h = 129 } }
+		local at = HintRules.bubbleAt(arrow, 0, bubble, view, cfg, nil, hud)
+		for i, box in hud do
+			local covers = at.x < box.x + box.w and box.x < at.x + bubble.w and at.y < box.y + box.h and box.y < at.y + bubble.h
+			expect.equal(covers, false, `off the HUD's piece {i}`)
+		end
+		expect.equal(at.x + bubble.w <= arrow.x, true, "left of the arrow: the free side")
+	end,
+
+	["nowhere clear of the HUD: the spot covering the least, still off the arrow"] = function()
+		local view, bubble, cfg = { w = 750, h = 323 }, { w = 289, h = 46 }, { gap = 6, margin = 8 }
+		local arrow = { x = 345, y = -28, w = 40, h = 58 }
+		local hud = { { x = 0, y = 0, w = 300, h = 60 }, { x = 420, y = 0, w = 330, h = 20 } }
+		local at = HintRules.bubbleAt(arrow, 0, bubble, view, cfg, nil, hud)
+		expect.equal(at.x >= arrow.x + arrow.w, true, "right: it covers less there")
+	end,
+
+	["with room over the arrow a target changes nothing"] = function()
+		local at = HintRules.bubbleAt({ x = 480, y = 300, w = 78, h = 78 }, 0, { w = 240, h = 46 }, { w = 1000, h = 600 }, { gap = 6, margin = 8 }, { x = 470, y = 380, w = 98, h = 50 })
+		expect.equal(at.x, 399)
+		expect.equal(at.y, 248)
 	end,
 
 	["the server takes only real tips and outcomes"] = function()

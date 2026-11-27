@@ -65,7 +65,7 @@ local bottom: Frame
 local fan: Frame -- the phone's layer: the dim and the phone (still named HudFan: fights hide it by that name)
 local phone: Frame
 local dim: TextButton
-local apps: Frame -- the home screen's app grid
+local apps: ScrollingFrame -- the home screen's app grid (its rows past the screen scroll)
 local phoneScreen: Frame -- inside the bezel: the status bar, the home screen and the app pages
 local homeScreen: Frame
 local statusRight: TextLabel
@@ -82,7 +82,7 @@ local tiles: { [string]: TextButton } = {}
 type Entry = {
 	button: TextButton,
 	rule: { app: boolean?, everywhere: boolean?, phone: boolean?, side: boolean?, always: boolean?, bottom: boolean? },
-	home: Frame,
+	home: GuiObject,
 	order: number,
 	appOrder: number,
 	sideOrder: number,
@@ -755,9 +755,18 @@ local function buildPhone(screenGui: ScreenGui)
 	dogs.Size = UDim2.new(1, -60, 0, PHONE.pictureHeight.tall)
 	dogs.ZIndex = 34
 	dogs.Parent = homeScreen
-	apps = Instance.new("Frame")
+	-- rows past the screen scroll, like a real phone's (owner 2026-11-27: "make sure no overlapping elements": a fourth
+	-- row, the owner's Admin app, ran under the home bar)
+	apps = Instance.new("ScrollingFrame")
 	apps.Name = "Apps"
 	apps.BackgroundTransparency = 1
+	apps.BorderSizePixel = 0
+	apps.ScrollingDirection = Enum.ScrollingDirection.Y
+	apps.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	apps.CanvasSize = UDim2.new()
+	apps.ScrollBarThickness = 4
+	apps.ScrollBarImageColor3 = ink
+	apps.ScrollBarImageTransparency = 0.5
 	local appsTop = 50 + PHONE.pictureHeight.tall -- under the name and the dogs
 	apps.Position = UDim2.fromOffset(10, appsTop)
 	apps.Size = UDim2.new(1, -20, 1, -(appsTop + 30))

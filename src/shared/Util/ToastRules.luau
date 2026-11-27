@@ -68,6 +68,20 @@ function ToastRules.under(bar: { x: number, y: number, w: number, h: number }, h
 	return { x = bar.x + bar.w / 2, y = math.max(bar.y + bar.h, hang) + gap }
 end
 
+-- A phone's stack (owner 2026-11-28 "make sure no overlapping elements"): it hangs from `top` (px) across `stack`'s
+-- left..right, `reach` px down at most; while the What now? bubble (`keep`) sits there, it hangs `gap` px under it
+function ToastRules.hangBelow(top: number, stack: { left: number, right: number }, keep: { x: number, y: number, w: number, h: number }?, reach: number, gap: number): number
+	if not keep then
+		return top
+	end
+	local across = keep.x < stack.right and stack.left < keep.x + keep.w
+	local down = keep.y < top + reach and top < keep.y + keep.h
+	if not (across and down) then
+		return top
+	end
+	return keep.y + keep.h + gap
+end
+
 -- Whether a bubble has a tail: someone says it (`speaker`: Pish is on the HUD), or it hangs from a phone's column;
 -- a computer's bubbles with no Pish are plain
 function ToastRules.tail(mode: string, speaker: boolean): boolean

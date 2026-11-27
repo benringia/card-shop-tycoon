@@ -1520,7 +1520,8 @@ better icon for binder and phone"; Config/UIIcons Phone and Cards, each generate
 `tools/ui-icons/slice_icons.py <png> single <Name>`). Tapping it dims the world and a phone
 rises into the middle: a status bar (the time, ⭐ the shop rating), "<name>'s shop", Pish and Chikin with the golden
 heart, and the apps: Shop, Prices, Jobs, Party (each opens its window as before and the phone drops away) and
-**Reviews**, a page inside the phone with a red count of new posts. Tapping the dim, the home bar or the tile again puts
+**Reviews**, a page inside the phone with a red count of new posts. The apps scroll when there are more rows than fit
+over the home bar (owner 2026-11-28 "make sure no overlapping elements": a phone's fourth row, Admin, ran under it). Tapping the dim, the home bar or the tile again puts
 it away; the home bar on an app's page goes back home. Pish's lessons now say "Tap the Phone." and point at the app
 inside it. **Reviews** (the small version for the testers; Config/Reviews, Util/ReviewRules, ReviewService,
 ReviewsController): every customer visit's outcome may post (a sale 35% of the time, a happy moment 60%, a failed
@@ -3869,17 +3870,20 @@ the enemy + arrow over it"). No camera lock: the camera stays yours.
   the medallion dial of 2026-11-14 before it: its grade's white "S" read as a key next to Q and Z and its mutation sat on
   it): the weapon in hand big in the middle (72 px, its rarity's ring with a shine going round every 4 s, its inside the
   element's colour, lavender for the Prism Blade, slate with none), its level "+4" in a gold pill on its top (none at
-  +0) like the party dock's "Lv 30", its grade as the cards' gold medal on its top-left corner (`GradeLook` medals)
-  mirroring its mutation's mark on the top-right, its name under it (always, white with the dark edge, between the keys
+  +0) like the party dock's "Lv 30" (27 px wide: "+10", its widest, with the dock's 5 px padding and 1.5 px outline),
+  its grade as the cards' gold medal on its top-left corner (`GradeLook` medals) mirroring its mutation's mark on the
+  top-right, the three at least 3 px apart counting their outlines on a computer's medallion and a phone's: the badges
+  in step with the medallion's size, standing out past its sides as far as that needs (`WeaponSwitch.chipTop`; owner
+  2026-11-28 "make sure no overlapping elements": on a phone's 64 px medallion the pill touched both), its name under it (always, white with the dark edge, between the keys
   and shrinking to fit); the one before on the left and the next on the right (44 px, 8 px off it, 8 px lower, on their
   own element's colour in their rarity's ring; `WeaponSwitch.rowSpot`), Z under the left one and Q under the right one
   on keyboards. Two weapons: only the next shows; no faded fourth (`WeaponSwitch.track`). Tap a side to step to it (48 px
   tap areas); a switch slides the row: the new weapon in hand comes in from its side growing, the old one moves to the
-  other side, one that wasn't showing fades in (`WeaponSwitch.roll`). Its box (180 x 101 before the HUD scale) is
+  other side, one that wasn't showing fades in (`WeaponSwitch.roll`). Its box (180 x 102 before the HUD scale, the pill and its outline inside) is
   `UiLayout.switchBox`, which the desktop bar's room for it and the toasts over it read too. The stats tip under a mouse
   on the big one (its foot level with its foot, growing upward). Phones: the medallion alone (64 px, "2/6" on its
-  corner, the grade medal and the mutation mark, tap for the next, swipe back, its name over it for 1.5 s after a
-  switch). Shown with two weapons or more,
+  corner, the grade medal and the mutation mark, tap for the next, swipe back, its swipe chevrons 18 px past its edge
+  clear of the pill, its name over it for 1.5 s after a switch). Shown with two weapons or more,
   never over a window or while placing (`WeaponSwitchController`, sizes in `Config/HudLayout` WEAPON_SWITCH). In a fight a
   switch is allowed but costs `Weapons.SWAP_SECONDS` (1 s) with no cut or skill (the dodge still works), the combo
   starts again, the old weapon's cut or skill still on its way is cancelled (the server checks `SwordRules.skillDodged`
@@ -4477,7 +4481,13 @@ All numbers in `Config/Pish`.
   around 2 minutes with nothing earned (cash and XP unchanged), and is free (`PlayerBusy`, carrying allowed) gets one
   tip: a white bubble with Pish's face, his words and a small x standing on the gold arrow (`TutorialCues.pointAt`;
   over it on a button or a thing, beside it when the arrow waits at the screen's edge: `HintRules.bubbleAt`,
-  `TutorialCues.pointerOf`), ground arrows for a walk. First match wins (`Hints.ORDER`, `HintRules.pick`): a customer
+  `TutorialCues.pointerOf`), ground arrows for a walk. The bubble stays still while the arrow bounces (placed by the
+  box its whole bounce takes) and never covers the arrow, the ring round what it points at or the HUD (owner 2026-11-28
+  "make sure no overlapping elements": on a phone the claim tip's bubble fell on the quest strip and the cash): with no
+  room behind the arrow it sits beside the arrow and its target, the roomier side first, or past the target, and with no
+  spot clear of the HUD (MainGui's drawn pieces, read twice a second, tiles' soft glows left out) the one covering the
+  least. A phone's toasts hang under the bubble while it sits where they hang (`ToastRules.hangBelow`,
+  `Toasts.TOUCH_REACH`). First match wins (`Hints.ORDER`, `HintRules.pick`): a customer
   waiting at the register with nobody there (the server's `RegisterWaiting`, set once the bell has rung) "Customers are
   waiting! Ring them up." on the register; a quest done "A quest is done! Claim it." on the Phone (a phone: the quest
   strip); a box on the pad or in your hands "Put your box on a shelf!" on the shelf it fits or the pad; empty shelves,
