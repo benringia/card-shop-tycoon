@@ -29,7 +29,8 @@ return {
 		},
 		wild = {
 			intro = { "Now let's find a monster!" },
-			now = { default = "Follow my paws to the Wild!" },
+			-- arrows on the ground since 2026-11-27 (owner: "use arrows instead of paws"), paw prints before
+			now = { default = "Follow the arrows to the Wild!" },
 		},
 		fight = {
 			intro = {},
@@ -64,7 +65,7 @@ return {
 		},
 		wild2 = {
 			intro = {},
-			now = { default = "Follow my paws to the Wild!" },
+			now = { default = "Follow the arrows to the Wild!" },
 		},
 		fight2 = {
 			intro = {},

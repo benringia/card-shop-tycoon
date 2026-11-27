@@ -107,6 +107,21 @@ return {
 		expect.equal(ChikinTalk.GOT_IT, "Got it!")
 	end,
 
+	-- Owner 2026-11-27 ("Maybe just use arrows instead of paws. to be simple", picks B and 1): arrows lie on the ground
+	-- where his paw prints were, so his line says so
+	["his walk to the Wild follows the arrows, and no line of his says paws"] = function()
+		for _, step in { "wild", "wild2" } do
+			expect.equal(ChikinTalk.STEPS[step].now.default, "Follow the arrows to the Wild!", step)
+		end
+		for id, talk in ChikinTalk.STEPS do
+			for _, lines in { talk.intro, talk.now } do
+				for _, line in lines do
+					assert(not string.find(string.lower(line), "paw"), `{id}: "{line}"`)
+				end
+			end
+		end
+	end,
+
 	["town: Chikin's Courage and his portal-side walk"] = townChecks,
 
 	-- owner 2026-11-16: "in the wilds. chikin will make you fight a monster with your summoned pet. after the monster is
