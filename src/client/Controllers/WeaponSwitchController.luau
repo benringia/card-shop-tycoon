@@ -55,6 +55,7 @@ local CENTER = Vector2.new(BOX_W / 2, LOOK.rise + LOOK.chip / 2)
 local NO_ELEMENT = Color3.fromRGB(110, 120, 150)
 local PRISM = Color3.fromRGB(200, 170, 255)
 local LEVEL_PILL = { w = 34, h = 17, text = 12, fill = Color3.fromRGB(255, 207, 74), ink = Color3.fromRGB(90, 53, 0) }
+local NAME_TEXT = { max = 14, min = 10 } -- the name's text size at the row's own size, shrinking to fit
 
 local owned: { [string]: any } = {}
 local equipped: string? = nil
@@ -580,22 +581,29 @@ local function build()
 	levelLabel.TextXAlignment = Enum.TextXAlignment.Center
 	levelLabel.ZIndex = 6
 
-	-- its name under it, always, like the party dock's: between the keys under the sides, never on them (seen
-	-- 2026-11-27: "Dark Forge Sword" reached both), shrinking to fit
+	-- its name under it, always, like the party dock's: between the keys under the sides with room either side, never
+	-- on them (seen 2026-11-27: "Dark Forge Sword" reached both, then sat 3 px off them), shrinking to fit
 	local sideX = WeaponSwitch.rowSpot("after", LOOK)
 	underName = UIKit.label(holder, "", Enum.Font.FredokaOne, 14, Color3.new(1, 1, 1))
 	underName.Name = "Name"
 	underName.AnchorPoint = Vector2.new(0.5, 0)
 	underName.Position = UDim2.fromOffset(CENTER.X, CENTER.Y + LOOK.chip / 2 + 1)
-	underName.Size = UDim2.fromOffset(2 * (sideX - HudLayout.KEY_SIZE / 2 - 2), LOOK.name - 2)
+	underName.Size = UDim2.fromOffset(2 * (sideX - HudLayout.KEY_SIZE / 2 - LOOK.nameGap), LOOK.name - 2)
 	underName.TextXAlignment = Enum.TextXAlignment.Center
 	underName.TextWrapped = false
 	underName.TextScaled = true
 	underName.ZIndex = 4
 	local fit = Instance.new("UITextSizeConstraint")
-	fit.MaxTextSize = 14
-	fit.MinTextSize = 10
 	fit.Parent = underName
+	-- a text size limit is in screen px: it follows the row's scale (0.7 in a computer's fight, where "Dark Forge Sword"
+	-- was cut to "Dark Forge")
+	local function fitName()
+		local s = holderScale.Scale
+		fit.MaxTextSize = math.max(1, math.round(NAME_TEXT.max * s))
+		fit.MinTextSize = math.max(1, math.round(NAME_TEXT.min * s))
+	end
+	fitName()
+	holderScale:GetPropertyChangedSignal("Scale"):Connect(fitName)
 	UIKit.outlined(underName)
 
 	countLabel = UIKit.label(chip, "", Enum.Font.FredokaOne, LOOK.countText, Color3.fromRGB(20, 28, 60))

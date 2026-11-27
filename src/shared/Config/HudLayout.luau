@@ -96,10 +96,11 @@ return {
 	-- medallion alone (`compactChip`), its "2/6" count `countText` px
 	-- The row (owner 2026-11-27 pick B, the twin of the party dock; UiLayout.switchBox, WeaponSwitch.rowSpot): the one
 	-- before and the next (`side`) `row` px off the weapon in hand (`chip`) and `drop` px lower, its level pill reaching
-	-- `rise` px over it, its name's line `name` px under it, its grade's medal `medal` px on its top-left corner
+	-- `rise` px over it, its name's line `name` px under it (`nameGap` px clear of the Z and Q keys either side, so
+	-- they never read as one line), its grade's medal `medal` px on its top-left corner (the cards' medal)
 	WEAPON_SWITCH = {
 		chip = 72, side = 44, hit = 48, gap = 6, right = 12, ring = 4, shineSeconds = 4,
-		row = 8, drop = 8, rise = 9, name = 20, medal = 24,
+		row = 8, drop = 8, rise = 9, name = 20, nameGap = 9, medal = 24,
 		sideFade = 0.15, roll = 0.28, nameSeconds = 1.5, swipe = 30,
 		compactChip = 64, countText = 12,
 		fightScale = 0.7, -- in a computer's fight: 180 px wide -> 126, over the compact buttons (UiLayout.weaponSwitch)
