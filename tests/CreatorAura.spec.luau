@@ -41,6 +41,21 @@ return {
 
 	["a card is card-shaped and its glow is behind it, bigger"] = function()
 		expect.equal(CreatorAura.CARD.h > CreatorAura.CARD.w, true, "taller than wide")
-		expect.equal(CreatorAura.GLOW.size > 1, true, "the glow reaches past the card")
+		expect.equal(CreatorAura.GLOW.reach > 0, true, "the glow reaches past the card")
+	end,
+
+	-- Owner 2026-11-27 on seeing it: "make the cards around me glow"
+	["the cards glow: a strong breathing halo, a gold rim and a light of their own"] = function()
+		local glow = CreatorAura.GLOW
+		expect.equal(glow.transparency <= 0.15, true, "a strong halo")
+		expect.equal(glow.breathe.low < glow.breathe.high and glow.breathe.seconds > 0, true, "it breathes")
+		expect.equal(CreatorAura.RIM.thickness > 0 and #CreatorAura.RIM.color == 3, true, "a gold rim")
+		expect.equal(CreatorAura.LIGHT.brightness > 0 and CreatorAura.LIGHT.range > 0, true, "lights what's near")
+		-- in daylight the halo alone read faint (Studio check 2026-11-27): a brighter halo layer and a sparkle trail
+		-- the particles' soft glow was nearly see-through in an ImageLabel: the cards' own card-shaped glow picture
+		-- (Config/GradeLook IMAGES.glow, a Grade S card's), reaching further than a Grade S card's
+		expect.equal(glow.reach >= 0.4 and glow.brightness > 1, true, "a big, bright card-shaped halo")
+		local sparkles = CreatorAura.SPARKLES
+		expect.equal(sparkles.rate > 0 and sparkles.lightEmission == 1 and sparkles.lifetime > 0, true, "glowing sparkles trail each card")
 	end,
 }

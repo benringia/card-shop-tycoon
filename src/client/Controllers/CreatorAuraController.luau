@@ -8,11 +8,12 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
-local AttackFx = require(Config:WaitForChild("AttackFx"))
 local CardDesign = require(Config:WaitForChild("CardDesign"))
+local GradeLook = require(Config:WaitForChild("GradeLook"))
 local CreatorAura = require(Config:WaitForChild("CreatorAura"))
 local CreatorAuraRules = require(Shared:WaitForChild("Util"):WaitForChild("CreatorAuraRules"))
 
@@ -24,37 +25,82 @@ local function rgb(values: { number }): Color3
 	return Color3.fromRGB(values[1], values[2], values[3])
 end
 
--- One card on its own Attachment: the gold glow behind, the card back over it
-local function makeCard(root: BasePart, index: number): Attachment
-	local glow = CreatorAura.GLOW
-	local attachment = Instance.new("Attachment")
-	attachment.Name = `CreatorAuraCard{index}`
+local function billboard(name: string, w: number, h: number, parent: Instance): BillboardGui
 	local gui = Instance.new("BillboardGui")
-	gui.Name = "Card"
-	gui.Size = UDim2.fromScale(CreatorAura.CARD.w * glow.size, CreatorAura.CARD.h * glow.size)
+	gui.Name = name
+	gui.Size = UDim2.fromScale(w, h)
 	gui.LightInfluence = 0
 	gui.MaxDistance = CreatorAura.MAX_DISTANCE
-	gui.Parent = attachment
+	gui.Parent = parent
+	return gui
+end
+
+-- One card on its own Attachment (owner: "make the cards around me glow"): a gold halo on its own layer, lit past
+-- white so it glows in daylight and breathing, a hair behind the card; the card back with a gold rim; a small gold
+-- light; a trail of glowing sparkles as it circles
+local function makeCard(root: BasePart, index: number): Attachment
+	local glow = CreatorAura.GLOW
+	local size = CreatorAura.CARD
+	local attachment = Instance.new("Attachment")
+	attachment.Name = `CreatorAuraCard{index}`
+
+	local margin = 2 * glow.reach * size.w -- the glow picture is a card with `reach` round it, stretched over this
+	local haloGui = billboard("Glow", size.w + margin, size.h + margin, attachment)
+	haloGui.Brightness = glow.brightness
+	haloGui.StudsOffset = Vector3.new(0, 0, -0.05) -- behind the card from wherever it's seen
 	local halo = Instance.new("ImageLabel")
-	halo.Name = "Glow"
+	halo.Name = "Halo"
 	halo.BackgroundTransparency = 1
 	halo.Size = UDim2.fromScale(1, 1)
-	halo.Image = AttackFx.TEXTURES.glow
+	halo.Image = GradeLook.IMAGES.glow
 	halo.ImageColor3 = rgb(glow.color)
 	halo.ImageTransparency = glow.transparency
-	halo.Parent = gui
+	halo.Parent = haloGui
+	TweenService:Create(
+		halo,
+		TweenInfo.new(glow.breathe.seconds, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true, (index - 1) * 0.4),
+		{ ImageTransparency = glow.breathe.high }
+	):Play()
+
+	local cardGui = billboard("Card", size.w, size.h, attachment)
 	local card = Instance.new("ImageLabel")
 	card.Name = "Back"
 	card.BackgroundTransparency = 1
-	card.AnchorPoint = Vector2.new(0.5, 0.5)
-	card.Position = UDim2.fromScale(0.5, 0.5)
-	card.Size = UDim2.fromScale(1 / glow.size, 1 / glow.size)
+	card.Size = UDim2.fromScale(1, 1)
 	card.Image = CardDesign.BACK.IMAGE
-	card.ZIndex = 2
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(CreatorAura.CORNER, 0)
 	corner.Parent = card
-	card.Parent = gui
+	local rim = Instance.new("UIStroke")
+	rim.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	rim.Color = rgb(CreatorAura.RIM.color)
+	rim.Thickness = CreatorAura.RIM.thickness
+	rim.Parent = card
+	card.Parent = cardGui
+
+	local light = Instance.new("PointLight")
+	light.Color = rgb(CreatorAura.LIGHT.color)
+	light.Brightness = CreatorAura.LIGHT.brightness
+	light.Range = CreatorAura.LIGHT.range
+	light.Shadows = false
+	light.Parent = attachment
+
+	local spark = CreatorAura.SPARKLES
+	local sparkles = Instance.new("ParticleEmitter")
+	sparkles.Texture = spark.texture
+	sparkles.Color = ColorSequence.new(rgb(spark.color))
+	sparkles.LightEmission = spark.lightEmission
+	sparkles.Rate = spark.rate
+	sparkles.Lifetime = NumberRange.new(spark.lifetime * 0.7, spark.lifetime)
+	sparkles.Speed = NumberRange.new(spark.speed)
+	sparkles.SpreadAngle = Vector2.new(180, 180)
+	sparkles.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, spark.size),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	sparkles.Transparency = NumberSequence.new(0.1, 1)
+	sparkles.Parent = attachment
+
 	attachment.Parent = root
 	return attachment
 end
