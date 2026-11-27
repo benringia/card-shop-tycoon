@@ -4450,25 +4450,46 @@ All numbers in `Config/Pish`.
   customer wanted Card Sleeves!" (`{product}`, `TalkRules.product`, `VARIETY.names`), "Shops with every product get
   more customers!", "Customers who find it all pay 10% extra!", "Order some here. Bye!". Studio: `/tutorial lesson
   variety` (names Card Sleeves when no product was missed yet), admin "Lesson: Customers love choice".
-- [ ] **Stuck helper**: a new player's first hour (first visit not done when they joined), a quiet minute (no order,
-  restock, sale or pack) with a box waiting brings Pish to point at it, with empty shelves at the order computer (only
-  when the cash covers the cheapest box, `LessonRules.cheapestBox`; owner 2026-11-18: "Pish is forcing players to buy
-  items that the player cant afford yet"); at most every 2 minutes (`LessonRules.nudge`).
+- **Stuck helper** (retired 2026-11-27): Pish's visits for a new player's first hour (a box waiting, an order to
+  place) became tips 3 and 4 of the What now? tips below, for every player at any level.
 - **Got it!** (owner 2026-11-18: "add close or 'ill keep that in mind' that will make pish go away. or 'dont remind me
-  again'"): a lesson's or nudge's card shows "Got it!" (`PishTalk.GOT_IT`) wherever it has no Next; it sends Pish off
-  at once: the lesson is done (never shown again), a nudge stops them for the session (TutorialAction `nudgeOff`). Only
-  the button does it, not a tap on the card, and a fresh Got it! ignores presses for half a second (it takes Next's
-  place: a quick double tap on Next must not send him away; `TutorialTalk` `buttonOnly`).
+  again'"): a lesson's card shows "Got it!" (`PishTalk.GOT_IT`) wherever it has no Next; it sends Pish off at once: the
+  lesson is done (never shown again). Only the button does it, not a tap on the card, and a fresh Got it! ignores
+  presses for half a second (it takes Next's place: a quick double tap on Next must not send him away; `TutorialTalk`
+  `buttonOnly`).
 - **Never while you're busy** (owner 2026-11-18: "Improve tutorials. make it helpful but not annoying. do not popup
   when the player is currently doing something. like manning the cashier"; `Pish.PACE`, `LessonRules.busyWith`,
-  `mayStart`, `whileBusy`, client `Util/PlayerBusy`): a lesson or a nudge starts only once the player has been free 4 s
-  (not on the register or its checkout, carrying boxes, placing a shelf, window or decor, in a window, the Phone or the
-  binder, a fight, a pack opening, a weapon reveal, a cinematic, a level-up card, a gift, a locked card, a purchase
-  dialog or the Roblox menu) and 45 s after his last visit, so lessons never come back to back. One under way steps back
-  while they get busy with something else (his card and paw hidden, his time stopped; a lesson's own windows and
-  placing don't count, nor a nudge's box) and after 12 s of it he runs off with the lesson still waiting, back after
-  the breather (it used to time out and count as seen during a pack opening). A nudge waits up to 20 s for a free
-  moment. Chikin's arrival (it takes the camera) waits for a free moment the same way.
+  `mayStart`, `whileBusy`, client `Util/PlayerBusy`): a lesson starts only once the player has been free 4 s (not on
+  the register or its checkout, carrying boxes, placing a shelf, window or decor, in a window, the Phone or the binder,
+  a fight, a pack opening, a weapon reveal, a cinematic, a level-up card, a gift, a locked card, a purchase dialog or
+  the Roblox menu) and 90 s after his last visit, so lessons never come back to back. One under way steps back while
+  they get busy with something else (his card and paw hidden, his time stopped; a lesson's own windows and placing
+  don't count) and after 12 s of it he runs off with the lesson still waiting, back after the breather (it used to time
+  out and count as seen during a pack opening). Chikin's arrival (it takes the camera) waits for a free moment the same
+  way.
+- [ ] **What now? tips** (owner 2026-11-27: "how can we apply this to our game 'never let a player go idle'", idea A
+  and look 1; spec `docs/superpowers/specs/2026-11-27-what-now-hints-design.md`; `Config/Hints`, `Util/HintRules`,
+  client `HintController` and `Util/HintBubble`, server `HintService`). A player who has stood still 30 s, or walked
+  around 2 minutes with nothing earned (cash and XP unchanged), and is free (`PlayerBusy`, carrying allowed) gets one
+  tip: a white bubble with Pish's face, his words and a small x standing on the gold arrow (`TutorialCues.pointAt`;
+  over it on a button or a thing, beside it when the arrow waits at the screen's edge: `HintRules.bubbleAt`,
+  `TutorialCues.pointerOf`), ground arrows for a walk. First match wins (`Hints.ORDER`, `HintRules.pick`): a customer
+  waiting at the register with nobody there (the server's `RegisterWaiting`, set once the bell has rung) "Customers are
+  waiting! Ring them up." on the register; a quest done "A quest is done! Claim it." on the Phone (a phone: the quest
+  strip); a box on the pad or in your hands "Put your box on a shelf!" on the shelf it fits or the pad; empty shelves,
+  nothing on the way and the cash for the cheapest box "Order packs to sell!" on the order computer; a Condenser or
+  Grading Station result waiting "Your new star is ready!" / "Your graded card is ready!" on it; the next main quest
+  build affordable "You can build the Bulk Bin!" on Build; packs or deck boxes in the Bag "Open your 3 packs!" on the
+  Bag; a Wild boss the party is ready for, or a beaten one whose loot is back (`BossBoardController.Suggested`) "You're
+  strong enough for the Meadow Warden!" / "The Meadow Warden's loot is ready!" on the Wild portal (its own portal in
+  the valley); the quest nearest done "Quest: Serve 6 customers · 5 / 6" on the Phone; else, in town, "Hunt monsters in
+  the Wild!" on the portal. A tip whose thing isn't there is skipped for the next. Never in the first minute, during
+  Pish's or Chikin's tours or a lesson; one every 2 minutes at most, the same one not for 5 (`HintRules.due`, `skip`);
+  it goes when done (its thing true no more, its walk out of town), when a window opens, when the player gets busy,
+  after 20 s (45 s for a walk), or on its x (that tip muted for the session). Each tip shown, followed or closed is
+  logged (`Remotes.HintSeen`: HintShown, HintDone, HintClosed with the kind). Folded in: the quest bubble by the Phone
+  and the stuck helper. Studio: `/hint <kind>` (that tip now, sample words, whatever the shop's state), admin "What now?
+  hints".
 - [ ] **Sounds**: Pro Sound Effects has no house dogs: coyote barks pitched up small, a coyote cub's whimper, dirt
   from a shovel; the yawn is silent (`Pish.SOUNDS`, `SOUND_PITCH`, measured in `Config/SoundLevels`).
 - Analytics: the onboarding funnel (steps 1-8, `LogOnboardingFunnelStepEvent`) and custom events `TutorialSkipped`,
@@ -4521,12 +4542,12 @@ his card for a face.
   on once used or after 7 s. Pish's cues hide in fights; Chikin's stay (`TutorialCues.quiet` per guide).
 - [ ] **Skip and replay**: his own small Skip and tour card ("Chikin's Training · 2 of 5"); the peeking Pish's "tour
   again?" card adds "Chikin's fight lesson" once his tour is done. Pish's own sword lesson is done for anyone whose
-  combat tour is still to come; Pish's lessons and nudges wait while Chikin leads. Nothing in it is a reward.
+  combat tour is still to come; Pish's lessons and the What now? tips wait while Chikin leads. Nothing in it is a reward.
 - [ ] **Sharing the screen with Pish** (final review 2026-11-10): the two dogs are never on screen together. Chikin
   begins once Pish's first visit is over and the player owns a card (his first step is the party; a skip before
   opening Pish's present waits for one); his step is hidden while Pish's tour is replayed and comes back after it; he
   runs in only once Pish has gone, no window, weapon reveal or pack opening has the screen (the first-sword popup
-  first), and after the loading screen. Pish's lessons and the stuck helper go on during Chikin's wait for shop level 4
+  first), and after the loading screen. Pish's lessons and the What now? tips go on during Chikin's wait for shop level 4
   and stop only while he leads; Pish's tour replay isn't offered while Chikin leads; handing over the sword (his first fight's
   end onward) marks Pish's sword lesson seen on the server; Pish's goodbye names Chikin only while his tour is still to come. A fight tip counts as
   used when its button is tapped (phones) or its key pressed; a click on a window isn't a swing. After a rejoin the
@@ -5352,7 +5373,8 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── WelcomeService.luau   # the first-visit welcome cinematic's saved flag (SeenWelcome)
     │   │   ├── PishService.luau      # Town Pish: wandering the town, petting him for luck (luck times kept for TutorialService)
     │   │   ├── TownChikinService.luau # Town Chikin: the portal side of town, petting him for Courage (times kept for CombatTutorialService)
-    │   │   ├── TutorialService.luau  # the first visit with Pish: steps, gifts, customer, funnel; lesson queue and the stuck helper
+    │   │   ├── TutorialService.luau  # the first visit with Pish: steps, gifts, customer, funnel; lesson queue
+    │   │   ├── HintService.luau  # the What now? tips' analytics (Remotes.HintSeen: shown, followed, closed)
     │   │   ├── EconomyService.luau   # cash, XP, levels (ONLY place cash changes)
     │   │   ├── StockService.luau     # orders, deliveries, carrying, stocking shelves; storing and taking boxes on storage racks
     │   │   ├── PlacementService.luau # validate + place/move/sell shelves, shelf contents
@@ -5470,6 +5492,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │   │   ├── TownPishController.luau # Town Pish drawn on the server's marker, his clips and hearts
     │   │   ├── TownChikinController.luau # Town Chikin drawn the same way, his pet prompt once the combat tour is done
     │   │   ├── TurtsController.luau  # Turts on his rug (head shake, sit, spin), your offers on it, his timer and beacon, the shop window
+    │   │   ├── HintController.luau  # the What now? tips: an idle, free player gets one, on its target (the facts the HUD holds)
     │   │   ├── QuestController.luau  # the daily quests' tracker at the top right, the Daily Quests window, claims with coins
     │   │   ├── WelcomeBackController.luau # the "Welcome back!" window: what the shop sold while you were away, Collect
     │   │   ├── BulkOpenController.luau # Open 10: the grid of cards turning over, the totals, Continue and Open 10 more
@@ -5587,6 +5610,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │       ├── PackHit.luau            # a hit in the packs' look, sized to the foe: sword cuts and creature attacks
     │       ├── VictoryScreen.luau      # the boss fight end screen: glowing title, reward tiles, notes, party XP bars
     │       ├── FightToast.luau         # a normal monster fight's end: a small toast with cash and XP
+    │       ├── HintBubble.luau         # the What now? tip's bubble: Pish's face, the words and an x on the gold arrow
     │       ├── MonsterKO.luau          # a beaten monster's knockout: the hit beat, the tumble and bounces, dizzy stars, the poof, your coins
     │       ├── FinishingBlow.luau      # your own fight's last hit: everything holds a beat, the camera punch, the thud, a boss's white flash
     │       ├── MatchupChip.luau        # the matchup chip in your creature's status row: weak red, strong green, none when even
@@ -5695,8 +5719,9 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
         │   ├── Welcome.luau    # the welcome cinematic's flight, its place cards, cues, lens and confetti (plain data)
         │   ├── Footsteps.luau  # footsteps: surfaces by floor material, their sounds, the stride (plain data)
         │   ├── Soundscape.luau # the worlds' spot sounds per area, the night bed, gusts (plain data)
-        │   ├── Pish.luau       # the tutorial: steps and pictures, gifts, luck, lessons, stuck helper, Town Pish, sounds
-        │   ├── PishTalk.luau   # what Pish says: each step's intro and now lines, lessons, nudges, the Skip and tour card labels
+        │   ├── Pish.luau       # the tutorial: steps and pictures, gifts, luck, lessons, Town Pish, sounds
+        │   ├── PishTalk.luau   # what Pish says: each step's intro and now lines, lessons, the Skip and tour card labels
+        │   ├── Hints.luau      # the What now? tips: their order and words, when one shows, the bubble's look
         │   ├── PetReward.luau  # petting Pish or Chikin: each dog's card, words, colours, the pop-up's sizes and times (plain data)
         │   ├── Game.luau       # the game's name (a placeholder until it's decided)
         │   ├── Plaza.luau      # the Card Festival Square plaza (plain data)
@@ -5746,7 +5771,8 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
             ├── GreetRules.luau    # Town Chikin's greeting: whom he greets next and which line (pure, Lune-tested)
             ├── TutorialRules.luau # the first visit's saved table: read, steps recorded, skip, replay (pure, Lune-tested)
             ├── LuckRules.luau     # Pish's Luck: the hit slot's boost, the gift's floor, cooldown, badge text (pure, Lune-tested)
-            ├── LessonRules.luau   # lessons due at a level-up or an event and waiting, what placing or ordering completes, the stuck helper's nudge, never while busy and the pacing (pure, Lune-tested)
+            ├── LessonRules.luau   # lessons due at a level-up or an event and waiting, what placing or ordering completes, the cheapest box to order, never while busy and the pacing (pure, Lune-tested)
+            ├── HintRules.luau     # the What now? tips: which one (first match), its words, when one may show, where its bubble sits by the arrow, the server's check of HintSeen (pure, Lune-tested)
             ├── PishPath.luau      # Town Pish's walk round the fountain, a town dog's next stop (pure, Lune-tested)
             ├── PetRewardRules.luau # the pet reward's words: how long, what it does, "Lucky again in m:ss!" (pure, Lune-tested)
             ├── TalkRules.luau     # which of Pish's lines shows: intro with Next, then the line for now (pure, Lune-tested)
@@ -7130,7 +7156,8 @@ boss models; the ranch and Heroic tiers come after those.
     nudges. Up 7 s; a tap opens the Quests window. Never in the first 90 s after joining, at most once every 5
     minutes, never while busy (a fight, a window, the register, carrying, a guide's tour: `Util/PlayerBusy`,
     `Hud.isCalm`), and nothing at all once every quest is done. `Config/Quests` REMIND, `Util/QuestRemind`
-    (`due`, `words`), QuestController `startReminder`.
+    (`due`, `words`), QuestController `startReminder`. Retired 2026-11-27: the What now? tips say it now, on phones
+    too (`QuestRemind.words` kept for their quest tip).
   - *The check after the day's HUD changes* (same message: "do necessary checks make sure nothing broke ... check
     combat, check phone. tutorials and etc. if you see bugs fix it"). Played in Studio in all three places: a wild
     fight, a boss fight to its win screen, Pish's first visit from a reset, a lesson visit, the Phone and Quests.
