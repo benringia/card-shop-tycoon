@@ -67,6 +67,14 @@ return {
 		expect.equal(DevRules.scope(AdminPanel, "nonsense"), "own", "an unknown alias is refused by DevService, not here")
 	end,
 
+	-- Final review: these make every player in the server see a find that never happened ("found Stormking!", a new
+	-- Legendary weapon's announcement), so they wait until the owner is alone or in their own private server
+	["scope: commands that announce a pretend find to the whole server are server commands"] = function()
+		for _, alias in { "frontierdrop", "weapondrop", "bosscard", "carddrop" } do
+			expect.equal(DevRules.scope(AdminPanel, alias), "server", alias)
+		end
+	end,
+
 	["scope: the table names only commands DevService registers"] = function()
 		local source = fs.readFile("src/server/Services/DevService.luau")
 		local aliases = {}

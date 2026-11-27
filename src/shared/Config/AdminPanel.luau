@@ -431,6 +431,11 @@ AdminPanel.SCOPE = {
 	elite = "server",
 	ko = "server",
 	bosshp = "server",
+	-- these announce a find to the whole server ("found Stormking!", a new Legendary weapon) that never really happened
+	frontierdrop = "server",
+	weapondrop = "server",
+	bosscard = "server",
+	carddrop = "server",
 	jobslot = "studio", -- pretends to own a game pass
 } :: { [string]: "server" | "studio" }
 
