@@ -1,20 +1,19 @@
 --!strict
--- The guides' paw trails (owner 2026-11-16: "chikin paws are passes through things. fix it and make the paws go
--- through the correct path"; client Util/TutorialCues.trail): paw prints spaced evenly along a walking route (the
--- pathfinding's waypoints, the ground's height at each), each facing along its own leg. Pure (no Roblox APIs).
+-- The guides' trails (owner 2026-11-16: "chikin paws are passes through things. fix it and make the paws go through the
+-- correct path"; client Util/TutorialCues.trail): marks spaced evenly along a walking route (the pathfinding's
+-- waypoints, the ground's height at each), each facing along its own leg; since 2026-11-27 arrows lying on the ground,
+-- only the next stretch ahead of the player (owner's picks B and 1, spec 2026-11-27-tutorial-arrows-design: the whole
+-- route's paws piled into a gold smear at the horizon). Pure (no Roblox APIs).
 local TrailRules = {}
 
 export type Point = { x: number, y: number, z: number }
-export type Paw = { x: number, y: number, z: number, facing: number } -- facing: degrees, 0 = -Z, 90 = +X (screen rotation)
+-- facing: degrees, 0 = -Z, 90 = +X (screen rotation); distance: studs along the route
+export type Paw = { x: number, y: number, z: number, facing: number, distance: number }
+type Leg = { a: Point, b: Point, length: number, from: number }
 
--- Paws every `gap` studs along the route (`maxCount` at most: a longer route spreads them out), never on its very
--- start or end; one in the middle of a route shorter than a gap; none for fewer than two points
-function TrailRules.along(route: { Point }, gap: number, maxCount: number): { Paw }
-	local paws: { Paw } = {}
-	if #route < 2 then
-		return paws
-	end
-	local legs = {}
+-- The route's legs (flat lengths; zero-length ones dropped), each with how far along the route it starts, and the total
+local function legsOf(route: { Point }): ({ Leg }, number)
+	local legs: { Leg } = {}
 	local total = 0
 	for index = 1, #route - 1 do
 		local a, b = route[index], route[index + 1]
@@ -24,6 +23,17 @@ function TrailRules.along(route: { Point }, gap: number, maxCount: number): { Pa
 			total += length
 		end
 	end
+	return legs, total
+end
+
+-- Marks every `gap` studs along the route (`maxCount` at most: a longer route spreads them out), never on its very
+-- start or end; one in the middle of a route shorter than a gap; none for fewer than two points
+function TrailRules.along(route: { Point }, gap: number, maxCount: number): { Paw }
+	local paws: { Paw } = {}
+	if #route < 2 then
+		return paws
+	end
+	local legs, total = legsOf(route)
 	if total <= 0 then
 		return paws
 	end
@@ -44,9 +54,39 @@ function TrailRules.along(route: { Point }, gap: number, maxCount: number): { Pa
 			y = a.y + (b.y - a.y) * share,
 			z = a.z + (b.z - a.z) * share,
 			facing = math.deg(math.atan2(b.x - a.x, -(b.z - a.z))),
+			distance = at,
 		})
 	end
 	return paws
+end
+
+-- How far along the route (studs) its point nearest `at` lies, on the flat (0 for fewer than two points)
+function TrailRules.progress(route: { Point }, at: Point): number
+	local legs = legsOf(route)
+	local best, nearest = 0, math.huge
+	for _, leg in legs do
+		local dx, dz = leg.b.x - leg.a.x, leg.b.z - leg.a.z
+		local share = math.clamp(((at.x - leg.a.x) * dx + (at.z - leg.a.z) * dz) / (leg.length * leg.length), 0, 1)
+		local px, pz = leg.a.x + dx * share, leg.a.z + dz * share
+		local gap = (at.x - px) ^ 2 + (at.z - pz) ^ 2
+		if gap < nearest then
+			best, nearest = leg.from + leg.length * share, gap
+		end
+	end
+	return best
+end
+
+-- Which marks show for a player `progress` studs along the route: from the first one past them, `count` at most, never
+-- past the last (first > last: none)
+function TrailRules.ahead(paws: { Paw }, progress: number, count: number): (number, number)
+	local first = #paws + 1
+	for index, paw in paws do
+		if paw.distance > progress then
+			first = index
+			break
+		end
+	end
+	return first, math.min(first + count - 1, #paws)
 end
 
 return TrailRules
