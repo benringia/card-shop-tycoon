@@ -4338,7 +4338,7 @@ All numbers in `Config/Pish`.
   paw's 82 px room clear, else the first leaving the target clear, else the one covering least of it
   (`TalkRules.pickSpot` / `cardPlace`; the register's side spot and a fight's top as before). Down there it rises above
   a HUD tile he points at so his paw shows, and keeps clear of the HUD's side columns on phones. In the Shop his paw
-  is on a tile's `Buy` button while the ring goes round the whole tile (`TutorialCues.pawOn(target, around)`; the rack
+  is on a tile's `Buy` button while the ring goes round the whole tile (`TutorialCues.pointAt(target, around)`; the rack
   step and his shop lessons). **On a phone** the Bag is an app in the Phone, so his present step says "I brought you a
   present! Tap the Phone." then "Tap Bag." (his gift "Open it in your Bag! Tap the Phone."; the trophy lesson "Tap the
   Phone." / "Tap Bag."); a computer keeps "Open your Bag!". **"Let's go inside!"**: you wake at your door on the
@@ -4347,11 +4347,24 @@ All numbers in `Config/Pish`.
   step, so the funnel stays comparable. Placing the rack his paw sits on its preview's green footprint (which starts in
   view, 4.3; over the preview's top it hid behind his card on a phone, `PlacementController.GhostFootprint`):
   "Tap Place!", one line whether it's green or red (a new line pops and chimes, and a dragged preview flips colour
-  many times a second; red, the preview's own "Can't place here" and the greyed Place button say it). Cues: gold paw prints to the place along the walking route (Roblox's pathfinding round walls and shops, about one
-  every 3 studs up to 48, `Util/TrailRules`; owner 2026-11-16: "chikin paws are passes through things"; a straight line
-  only when no route is found) and a bouncing gold paw over a thing in the shop, drawn on the screen
-  so walls and closed doors don't hide them (none while a window is open, so they never sit on it); a bouncing gold
-  paw and a pulsing gold ring on a button (it follows a window that rebuilds its buttons). The small Skip hides while
+  many times a second; red, the preview's own "Can't place here" and the greyed Place button say it). **Cues: arrows**
+  (owner 2026-11-27: "Research some tutorial best practices on roblox ... Maybe just use arrows instead of paws. to be
+  simple", picks B and 1 of the mockups; spec `2026-11-27-tutorial-arrows-design`; Roblox's onboarding guide leads with
+  "a bouncing arrow pointing at a button" and "a glowing trail" to the goal; every "paw" that points in this section
+  and Chikin's is this arrow now): arrows lying on the ground to the place along the walking route (Roblox's
+  pathfinding round walls and shops, one every 3 studs, `Util/TrailRules`; owner 2026-11-16: "chikin paws are passes
+  through things"; a straight line only when no route is found), only the next 12 past the player
+  (`TrailRules.progress`, `TrailRules.ahead`: the whole route's paw prints piled into a gold smear at the horizon), the
+  last 4 fading, a glow flowing toward the goal: each the `Chevron` picture on a SurfaceGui drawn over walls and closed
+  doors (AlwaysOnTop) on a small invisible part of the player's own (`Config/Cues` TRAIL; a Top-face picture's top
+  edge lies along the part's -X, so it turns 90); a bouncing chunky gold arrow (`ArrowCue`: its own white sticker edge
+  and dark outline, no backing or halo) over a thing in the shop, drawn on the screen so walls and closed doors don't
+  hide it, and when that thing is off the screen or behind the camera, at the screen's edge pointing the way to turn
+  (`CueShape.offscreen`: inside a band clear of the talk card and the bottom tiles; behind, at the nearer side; before,
+  nothing showed); the same arrow and a pulsing gold ring on a button (it follows a window that rebuilds its buttons;
+  `TutorialCues.pointAt`, `scrollHint`); none while a window is open, so they never sit on it. With no button to point
+  at, the talk card keeps clear of the arrow in the world (`TutorialCues.worldPointerBox`; on Chikin's walk to the
+  Wild his card sat on its paw). Pictures: `tools/ui-icons/make_cue_arrows.py`. The small Skip hides while
   a window is open (on phones it sat on the window's X); while the talk card shows it hangs off the card's bottom right
   as a small pill (its top right while the card sits low; still a 48 px tap area: `TutorialCues` SKIP_DOCKED, the
   owner's focus mode A, 2026-11-11), else it stands at the top right. The card is small since 2026-11-11 (the owner:
@@ -4420,7 +4433,7 @@ All numbers in `Config/Pish`.
   Owner 2026-11-16 round: a lesson that has you buy something waits until you can pay for it (the Glass Showcase's
   $250: "pish should only tell players when the player have enough money"; `LessonRules.firstReady`, the next
   affordable one goes first); a tile further down a scrolling list gets "Scroll down to find the Potted Plant!" with a
-  paw sliding down at the list's bottom (`PishTalk.TEACH.scroll`, `TutorialCues.scrollPaw`), and a tile half scrolled
+  arrow sliding down at the list's bottom (`PishTalk.TEACH.scroll`, `TutorialCues.scrollHint`), and a tile half scrolled
   out keeps its ring and paw inside the list. Right after his first visit he comes back for **prices** (trigger
   `tourDone`, owner: "let pish teach players how to set prices"): "Set your own prices! Tap Prices on your Phone.", the
   paw on the Prices tile, then inside the window "Tap + or - to change a price.", "At market price, customers almost
@@ -4471,14 +4484,15 @@ his card for a face.
   `Util/TutorialRules`, saved as `data.combat`, schema v18: done for every shop past Pish's tour). Pish's goodbye hands
   over ("My buddy Chikin will teach you to fight!"); once Pish has gone Chikin runs in with the same arrival shot
   (`Util/DogArrival`, now shared; his can't be skipped by a tap, owner 2026-11-16, `Intro.unskippable`). Visit 1: hello, Add to party (Cards, then the card's Add to party), summon (party
-  slot 1), the Wild (paw trail to the portal), a fight ("Walk up to a monster and tap Fight!", paw over the nearest
+  slot 1), the Wild ("Follow the arrows to the Wild!", the arrows on the ground to the portal), a fight ("Walk up to a
+  monster and tap Fight!", the arrow over the nearest
   monster), its end ("You won! Your creature got XP." or "Oh no! Your creature got tired.", then "Here's a sword! Now
   you can fight too." as it appears on your back with its popup), a second fight with the sword that must be won ("Find
   another monster and tap Fight!"; "Oops! Rest up, then try another one!" after a loss or a run), then his goodbye
   ("Great fighting!", "Monsters give your shop a little XP too.", "Stay and hunt here to reach shop level 4...",
-  "...or tap here to sell in your shop: much faster!" and Bye!, the last line's paw and gold ring on the round town
-  button in Roblox's top bar, the paw under it pointing up since there's no room above (`Chikin.TOWN_LINE`,
-  `TutorialCues.pawOn`); owner 2026-11-18: "killing monsters now give a little bit shop exp too ... let the player know
+  "...or tap here to sell in your shop: much faster!" and Bye!, the last line's arrow and gold ring on the round town
+  button in Roblox's top bar, the arrow under it pointing up since there's no room above (`Chikin.TOWN_LINE`,
+  `TutorialCues.pointAt`); owner 2026-11-18: "killing monsters now give a little bit shop exp too ... let the player know
   they can stay here and kill monsters to level 4 or go back to town (highlight the town icon) for faster shop exp";
   it said fights don't grow the shop before fights paid shop XP, `Levels.FIGHT_XP_PER_CASH`; or "You're shop level 4
   already! Let's find a boss!" for a player already there). Owner 2026-11-16: "chikin will make you fight a monster with
@@ -5581,7 +5595,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     │       ├── PlayerBusy.luau         # what the player is doing now (register, boxes, placing, a window, a fight, a show, a popup): guides wait
     │       ├── ClipPlayer.luau         # one-shot attack clips on monster and boss bones (model-space poses), over the procedural motion
     │       ├── PishVisual.luau         # Pish on a marker: his model, clips, marker sounds, dirt and hearts
-    │       ├── TutorialCues.luau       # the tutorial's cues: paw trail, bouncing paw and gold ring, the small Skip and tour card, the spotlight
+    │       ├── TutorialCues.luau       # the tutorial's cues: arrows on the ground, the bouncing arrow (at the screen's edge when its thing is off screen) and gold ring, the small Skip and tour card, the spotlight
     │       ├── TutorialTalk.luau       # Pish's talk card: his face, one short line, the step's picture, Next
     │       └── AfterImage.luau         # the dodge's fading copies of the character
     └── shared/                 # → ReplicatedStorage
