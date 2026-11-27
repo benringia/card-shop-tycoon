@@ -23,6 +23,7 @@ local SquishRules = require(Shared:WaitForChild("Util"):WaitForChild("SquishRule
 local SoftHud = require(Shared:WaitForChild("Config"):WaitForChild("SoftHud"))
 local DesktopHudConfig = require(Shared:WaitForChild("Config"):WaitForChild("DesktopHud"))
 local DesktopHud = require(Shared:WaitForChild("Util"):WaitForChild("DesktopHud"))
+local UiLayout = require(Shared:WaitForChild("Util"):WaitForChild("UiLayout"))
 local PartyConfig = require(Shared:WaitForChild("Config"):WaitForChild("Party"))
 local QuestsConfig = require(Shared:WaitForChild("Config"):WaitForChild("Quests"))
 local TeamsConfig = require(Shared:WaitForChild("Config"):WaitForChild("Teams"))
@@ -864,6 +865,7 @@ local function placeDesktop()
 	local dialWanted = dial ~= nil and dial:GetAttribute("Wanted") == true and not fighting
 	local quick = PartyConfig.BAR.DOCK.quick
 	local dockWidth = if dockHolder.AbsoluteSize.X > 4 then dockHolder.AbsoluteSize.X + (quick.gap + quick.size) * scale else 0
+	local dialWidth = UiLayout.switchBox(look) -- the weapon row (owner 2026-11-27 pick B)
 	local tiles = screenGui:FindFirstChild("HudBottom")
 	local tilesWidth = if tiles and tiles:IsA("GuiObject") then tiles.AbsoluteSize.X else 0
 	local side = screenGui:FindFirstChild("HudSide")
@@ -872,7 +874,7 @@ local function placeDesktop()
 	local clearRight = STATUS_MARGIN + clear
 	local spots = DesktopHud.bar(view.X, {
 		{ id = "party", w = dockWidth },
-		{ id = "weapon", w = if dialWanted then (look.arc + look.hit / 2 + look.chip / 2) * dialScale else 0 },
+		{ id = "weapon", w = if dialWanted then dialWidth * dialScale else 0 },
 		{ id = "tiles", w = tilesWidth },
 	}, DesktopHudConfig.GAP * scale, clearLeft, clearRight)
 	if not spots then
@@ -906,7 +908,8 @@ local function placePerch()
 			local look = HudLayout.WEAPON_SWITCH
 			local dial = screenGui:FindFirstChild("WeaponSwitch")
 			local wanted = dial ~= nil and dial:GetAttribute("Wanted") == true
-			local dialHeight = if wanted then (look.arc + look.hit / 2 + look.chip / 2) * math.max(Hud.scaleFor(), 48 / look.hit) else 0
+			local _, rowHeight = UiLayout.switchBox(look) -- the weapon row (owner 2026-11-27 pick B)
+			local dialHeight = if wanted then rowHeight * math.max(Hud.scaleFor(), 48 / look.hit) else 0
 			local corner = DesktopHud.toastCorner({ w = view.X, h = view.Y }, dialHeight, DesktopHudConfig)
 			toastStack.Position = UDim2.fromOffset(corner.x, corner.y)
 		end

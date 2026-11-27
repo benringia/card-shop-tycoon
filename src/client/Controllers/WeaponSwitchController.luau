@@ -1,12 +1,13 @@
 --!strict
--- The quick weapon switch (spec 2026-11-07-weapons-round2-design 6), the medallion dial (owner 2026-11-14 pick C; the
--- carousel before it, owner 2026-11-12): the weapon in hand in a medallion on the right edge, its rarity's ring with a
--- shine going round, its inside the element's colour, its grade on its corner; the one before on a curved track to its
--- left (Z), the next on top (Q) and the one after that between them, faded. Tap one on the track (or swipe the
--- medallion, or Q / Z) and the dial rolls a step. It steps through every weapon you own (Util/WeaponSwitch) and asks
--- the server to equip it (EquipWeapon; in a fight a switch costs Weapons.SWAP_SECONDS with no cut or skill). Shown with
--- two weapons or more, never over a window; the name and its line (WeaponText.switchLine) show for a moment after a
--- switch (owner: "only briefly"), the stats tip under a mouse on the medallion.
+-- The quick weapon switch (spec 2026-11-07-weapons-round2-design 6), the row (owner 2026-11-27 pick B, the twin of the
+-- party dock, spec 2026-11-27-weapon-dial-row-design; the medallion dial of 2026-11-14 and the carousel of 2026-11-12
+-- before it): the weapon in hand big in the middle, its rarity's ring with a shine going round, its inside the element's
+-- colour, its level "+4" in a gold pill on top, its grade as the cards' medal on its top-left corner and its mutation's
+-- mark on its top-right, its name under it; the one before on the left (Z under it) and the next on the right (Q under
+-- it), smaller, a little lower, on their own element's colour. Tap a side (or swipe the big one, or Q / Z) and the row
+-- slides a step. It steps through every weapon you own (Util/WeaponSwitch) and asks the server to equip it
+-- (EquipWeapon; in a fight a switch costs Weapons.SWAP_SECONDS with no cut or skill). Shown with two weapons or more,
+-- never over a window; the stats tip under a mouse on the big one.
 -- Phones (owner 2026-11-13, pick A: "the UI on phone is really crowded"; UIController.OnCompact): the medallion alone,
 -- bigger (tap it for the next weapon, swipe it back), "1/6" on its corner (CompactHud.weaponCount), its name beside it;
 -- out of a fight it sits at the end of your row in the party dock (PartyBarController.GetWeaponSpot, owner 2026-11-13).
@@ -25,6 +26,7 @@ local WeaponLooks = require(Config:WaitForChild("WeaponLooks"))
 local Swords = require(Config:WaitForChild("Swords"))
 local HudLayout = require(Config:WaitForChild("HudLayout"))
 local Combat = require(Config:WaitForChild("Combat"))
+local GradeLook = require(Config:WaitForChild("GradeLook"))
 local UIStyle = require(Config:WaitForChild("UIStyle"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local WeaponSwitch = require(Shared:WaitForChild("Util"):WaitForChild("WeaponSwitch"))
@@ -47,11 +49,12 @@ local WeaponSwitchController = {}
 
 local player = Players.LocalPlayer
 local LOOK = HudLayout.WEAPON_SWITCH
--- the dial's box: the medallion in its bottom-right corner, the track up and to the left of its middle
-local DIAL = LOOK.arc + LOOK.hit / 2 + LOOK.chip / 2
-local CENTER = Vector2.new(DIAL - LOOK.chip / 2, DIAL - LOOK.chip / 2)
+-- the row's box (UiLayout.switchBox): the weapon in hand in its middle, the level pill over it, its name under it
+local BOX_W, BOX_H = UiLayout.switchBox(LOOK)
+local CENTER = Vector2.new(BOX_W / 2, LOOK.rise + LOOK.chip / 2)
 local NO_ELEMENT = Color3.fromRGB(110, 120, 150)
 local PRISM = Color3.fromRGB(200, 170, 255)
+local LEVEL_PILL = { w = 34, h = 17, text = 12, fill = Color3.fromRGB(255, 207, 74), ink = Color3.fromRGB(90, 53, 0) }
 
 local owned: { [string]: any } = {}
 local equipped: string? = nil
@@ -63,12 +66,14 @@ local chipButton: ImageButton -- the medallion
 local portrait: ImageLabel
 local shine: UIGradient -- the ring's colour, its bright spot going round
 local inside: UIGradient -- the medallion's inside: the element's colour
-local gradeBadge: Frame
-local gradeLabel: TextLabel
-type Orb = { button: ImageButton, picture: ImageLabel, ring: UIStroke, scale: UIScale, fade: number }
-local orbs: { [string]: Orb } = {} -- before, after, later on the track
-local SPOTS = { "before", "after", "later" }
-local STEPS = { before = -1, after = 1, later = 2 }
+local gradeMedal: ImageLabel -- the cards' grade medal on its top-left corner (never a white key-like circle)
+local levelPill: Frame -- "+4" on its top
+local levelLabel: TextLabel
+local underName: TextLabel -- its name under it, always (a computer's row)
+type Orb = { button: ImageButton, picture: ImageLabel, ring: UIStroke, inside: UIGradient, fade: number }
+local orbs: { [string]: Orb } = {} -- the one before (left) and the next (right)
+local SPOTS: { WeaponSwitch.Spot } = { "before", "after" }
+local STEPS = { before = -1, after = 1 }
 local nameFrame: Frame
 local nameLabel: TextLabel
 local lineLabel: TextLabel
@@ -103,24 +108,28 @@ local function current(): string?
 	return if equipped and table.find(list, equipped) then equipped else list[1]
 end
 
--- A spot on the track: its offset from the medallion's middle, rolled `t` of the way from where it was
-local function spotOffset(spot: string, from: string?, t: number): Vector2
-	local angle = LOOK.angles[spot]
-	local fromAngle, fromRadius = angle, LOOK.arc
-	if from == "center" then
-		fromRadius = 0
-	elseif from then
-		fromAngle = LOOK.angles[from]
-	end
-	local x, y = WeaponSwitch.arcPoint(fromAngle + (angle - fromAngle) * t, fromRadius + (LOOK.arc - fromRadius) * t)
-	return Vector2.new(x, y)
+-- A weapon's inside: its element's colour (lavender for the Prism Blade, slate with none), light at the top
+local function insideOf(id: string?): ColorSequence
+	local weapon = if id then Weapons.ById[id] else nil
+	local element = if weapon and weapon.prism then PRISM elseif weapon and weapon.element then Cards.ELEMENTS[weapon.element] or NO_ELEMENT else NO_ELEMENT
+	return ColorSequence.new(element:Lerp(Color3.new(1, 1, 1), 0.45), element:Lerp(Color3.new(0, 0, 0), 0.35))
 end
 
--- The track's weapons and the medallion's picture `t` of the way through a roll (1: at rest)
+-- A spot in the row: its offset from the middle, slid `t` of the way from where it was (`from`; nil: from itself)
+local function spotOffset(spot: WeaponSwitch.Spot, from: WeaponSwitch.Spot?, t: number): Vector2
+	local x, y = WeaponSwitch.rowSpot(spot, LOOK)
+	local fromX, fromY = x, y
+	if from then
+		fromX, fromY = WeaponSwitch.rowSpot(from, LOOK)
+	end
+	return Vector2.new(fromX + (x - fromX) * t, fromY + (y - fromY) * t)
+end
+
+-- The row's sides and the big one's picture `t` of the way through a slide (1: at rest)
 local function placeRoll(roll: any, t: number)
 	for spot, orb in orbs do
 		local from = if roll then (roll :: any)[spot] else spot
-		local at = CENTER + spotOffset(spot, from, t)
+		local at = CENTER + spotOffset(spot :: WeaponSwitch.Spot, from, t)
 		orb.button.Position = UDim2.fromOffset(at.X, at.Y)
 		-- one that wasn't showing fades in where it lands
 		local seen = if from == nil then t else 1
@@ -129,7 +138,7 @@ local function placeRoll(roll: any, t: number)
 		orb.picture.ImageTransparency = fade
 		orb.ring.Transparency = fade
 	end
-	-- the new weapon in hand slides into the medallion from where it was, growing
+	-- the new weapon in hand slides into the middle from its side, growing
 	local from = if roll then roll.current else "center"
 	local start = if from and from ~= "center" then spotOffset(from, nil, 1) else Vector2.zero
 	local offset = start * (1 - t)
@@ -138,7 +147,7 @@ local function placeRoll(roll: any, t: number)
 	portrait.Size = UDim2.fromScale(size, size)
 end
 
--- The medallion shows your equipped weapon, the track the ones before and after
+-- The big one shows your equipped weapon, the sides the ones before and after
 local function render()
 	list = WeaponSwitch.list(Weapons, owned, unlocked(), locked)
 	local id = current()
@@ -152,12 +161,18 @@ local function render()
 		ColorSequenceKeypoint.new(0.6, color),
 		ColorSequenceKeypoint.new(1, color),
 	})
-	local element = if weapon and weapon.prism then PRISM elseif weapon and weapon.element then Cards.ELEMENTS[weapon.element] or NO_ELEMENT else NO_ELEMENT
-	inside.Color = ColorSequence.new(element:Lerp(Color3.new(1, 1, 1), 0.45), element:Lerp(Color3.new(0, 0, 0), 0.35))
+	inside.Color = insideOf(id)
 	local entry = if id then owned[id] else nil
 	local grade = if typeof(entry) == "table" and typeof(entry.grade) == "string" then entry.grade else nil
-	gradeLabel.Text = grade or ""
-	gradeBadge.Visible = grade ~= nil
+	local medal = if grade then (GradeLook.IMAGES.medal :: any)[grade] else nil
+	gradeMedal.Image = medal or ""
+	gradeMedal.Visible = medal ~= nil
+	-- its upgrade level, like the party dock's "Lv 30" (none at +0)
+	local level = if typeof(entry) == "table" and typeof(entry.level) == "number" then math.floor(entry.level) else 0
+	levelLabel.Text = `+{level}`
+	levelPill.Visible = level >= 1
+	underName.Text = if weapon then weapon.name else ""
+	underName.Visible = not compact
 	nameLabel.Text = if weapon then weapon.name else ""
 	nameLabel.TextColor3 = color
 	lineLabel.Text = if id then WeaponText.switchLine(Weapons, id, if typeof(entry) == "table" then entry else nil) else ""
@@ -167,6 +182,7 @@ local function render()
 		local spotId = (track :: any)[spot]
 		orb.button.Visible = spotId ~= nil and not compact
 		orb.picture.Image, orb.ring.Color = looksOf(spotId)
+		orb.inside.Color = insideOf(spotId)
 	end
 	-- the phone's count on the medallion's corner, edged in the weapon's rarity colour
 	local count = CompactHud.weaponCount(list, id)
@@ -391,27 +407,13 @@ local function barKey(fight: boolean): string
 	local spot = barOf(fight)
 	return if spot then `{math.floor(spot.x)},{math.floor(spot.bottom)},{spot.scale}` else ""
 end
--- The name after a switch: left of the track; in the bar your creatures are there, so over the dial
-local function placeName(inBar: boolean)
-	if compact then
-		return -- the phone's place (setCompact)
-	end
-	if inBar then
-		nameFrame.AnchorPoint = Vector2.new(1, 1)
-		nameFrame.Position = UDim2.fromOffset(DIAL, -6)
-	else
-		nameFrame.AnchorPoint = Vector2.new(1, 0.5)
-		nameFrame.Position = UDim2.fromOffset(CENTER.X - LOOK.arc - LOOK.side / 2 - LOOK.gap, CENTER.Y)
-	end
-end
 local function relayout(view: Vector2, fight: boolean)
 	laidOutSize, laidOutFight, laidOutClear = view, fight, clearKey()
 	laidOutBar = barKey(fight)
 	local inBar = barOf(fight)
-	placeName(inBar ~= nil)
 	if inBar then
 		laidOutSpot = Vector2.zero
-		holder.Position = UDim2.fromOffset(inBar.x, view.Y - inBar.bottom - DIAL * inBar.scale)
+		holder.Position = UDim2.fromOffset(inBar.x, view.Y - inBar.bottom - BOX_H * inBar.scale)
 		holderScale.Scale = inBar.scale
 		return
 	end
@@ -445,15 +447,15 @@ local function build()
 	Hud.calmPiece(layer, "weapons") -- hidden through Pish's first visit (a calm HUD) and Chikin's but his sword step
 	holder = Instance.new("Frame")
 	holder.Name = "Switch"
-	holder.Size = UDim2.fromOffset(DIAL, DIAL)
+	holder.Size = UDim2.fromOffset(BOX_W, BOX_H)
 	holder.BackgroundTransparency = 1
 	holder.Visible = false
 	holder.Parent = layer
 	holderScale = Instance.new("UIScale") -- set by relayout (UiLayout.weaponSwitch)
 	holderScale.Parent = holder
 
-	-- Q (the next weapon) and Z (the one before, owner 2026-11-09) beside their weapons on the track, on keyboards, each
-	-- in its white circle like the HUD tiles' keys
+	-- Z (the one before, owner 2026-11-09) and Q (the next) under their weapons, on keyboards, each in its white circle
+	-- like the HUD tiles' keys and the party dock's 1 and 3
 	local function badge(parent: GuiObject, text: string, anchor: Vector2, position: UDim2): Frame
 		local frame = Instance.new("Frame")
 		frame.Name = "Key"
@@ -472,7 +474,8 @@ local function build()
 		return frame
 	end
 
-	-- the track's weapons: small and round, each with a finger-sized tap area; a tap steps to it
+	-- the row's sides: smaller, a little lower, on their own element's colour in their rarity's ring, each with a
+	-- finger-sized tap area; a tap steps to it
 	local track = Instance.new("Frame")
 	track.Name = "Track"
 	track.BackgroundTransparency = 1
@@ -482,16 +485,16 @@ local function build()
 		local button = Instance.new("ImageButton")
 		button.Name = spot
 		button.AutoButtonColor = false
-		button.BackgroundColor3 = UIKit.Colors.Panel
+		button.BackgroundColor3 = Color3.new(1, 1, 1)
 		button.AnchorPoint = Vector2.new(0.5, 0.5)
 		button.Size = UDim2.fromOffset(LOOK.side, LOOK.side)
 		button.Visible = false
 		button.Parent = track
 		UIKit.corner(button, LOOK.side // 2)
 		local ring = UIKit.outline(button, UIKit.Colors.Outline, 3)
-		local scale = Instance.new("UIScale")
-		scale.Scale = if spot == "later" then LOOK.laterScale else 1
-		scale.Parent = button
+		local sideInside = Instance.new("UIGradient")
+		sideInside.Rotation = 90
+		sideInside.Parent = button
 		local picture = Instance.new("ImageLabel")
 		picture.Name = "Portrait"
 		picture.BackgroundTransparency = 1
@@ -513,10 +516,10 @@ local function build()
 		hit.Activated:Connect(function()
 			step(delta)
 		end)
-		orbs[spot] = { button = button, picture = picture, ring = ring, scale = scale, fade = if spot == "later" then LOOK.laterFade else LOOK.sideFade }
+		orbs[spot] = { button = button, picture = picture, ring = ring, inside = sideInside, fade = LOOK.sideFade }
 	end
-	badge(orbs.before.button, Weapons.PREVIOUS_KEY, Vector2.new(0.5, 0), UDim2.new(0.5, 0, 1, 2))
-	badge(orbs.after.button, "Q", Vector2.new(0, 0.5), UDim2.new(1, 3, 0.5, 0))
+	badge(orbs.before.button, Weapons.PREVIOUS_KEY, Vector2.new(0.5, 0), UDim2.new(0.5, 0, 1, 3))
+	badge(orbs.after.button, "Q", Vector2.new(0.5, 0), UDim2.new(0.5, 0, 1, 3))
 
 	-- the medallion: the element's colour inside, the rarity's ring with its shine
 	local chip = Instance.new("ImageButton")
@@ -548,20 +551,52 @@ local function build()
 	portrait.ZIndex = 3
 	portrait.Parent = chip
 
-	-- the grade on the medallion's corner
-	gradeBadge = Instance.new("Frame")
-	gradeBadge.Name = "Grade"
-	gradeBadge.AnchorPoint = Vector2.new(0.5, 0.5)
-	gradeBadge.Position = UDim2.fromScale(0.15, 0.15)
-	gradeBadge.Size = UDim2.fromOffset(20, 20)
-	gradeBadge.BackgroundColor3 = Color3.new(1, 1, 1)
-	gradeBadge.ZIndex = 5
-	gradeBadge.Parent = chip
-	UIKit.corner(gradeBadge, 10)
-	gradeLabel = UIKit.label(gradeBadge, "", Enum.Font.FredokaOne, 13, HudLayout.KEY_CHIP)
-	gradeLabel.Size = UDim2.fromScale(1, 1)
-	gradeLabel.TextXAlignment = Enum.TextXAlignment.Center
-	gradeLabel.ZIndex = 6
+	-- the grade as the cards' gold medal on its top-left corner, mirroring the mutation's mark on the top-right (owner
+	-- 2026-11-27: the grade's white circle read as a key next to Q and Z)
+	local mark = Mutations.CHIP.mark
+	gradeMedal = Instance.new("ImageLabel")
+	gradeMedal.Name = "Grade"
+	gradeMedal.BackgroundTransparency = 1
+	gradeMedal.ScaleType = Enum.ScaleType.Fit
+	gradeMedal.Position = UDim2.fromOffset(mark.offset, mark.offset)
+	gradeMedal.Size = UDim2.fromOffset(LOOK.medal, LOOK.medal)
+	gradeMedal.ZIndex = 5
+	gradeMedal.Parent = chip
+
+	-- its level on its top, like the party dock's "Lv 30"
+	levelPill = Instance.new("Frame")
+	levelPill.Name = "Level"
+	levelPill.AnchorPoint = Vector2.new(0.5, 0.5)
+	levelPill.Position = UDim2.fromScale(0.5, 0)
+	levelPill.Size = UDim2.fromOffset(LEVEL_PILL.w, LEVEL_PILL.h)
+	levelPill.BackgroundColor3 = LEVEL_PILL.fill
+	levelPill.Visible = false
+	levelPill.ZIndex = 5
+	levelPill.Parent = chip
+	UIKit.corner(levelPill, LEVEL_PILL.h // 2)
+	UIKit.outline(levelPill, Color3.new(1, 1, 1), 2)
+	levelLabel = UIKit.label(levelPill, "", Enum.Font.FredokaOne, LEVEL_PILL.text, LEVEL_PILL.ink)
+	levelLabel.Size = UDim2.fromScale(1, 1)
+	levelLabel.TextXAlignment = Enum.TextXAlignment.Center
+	levelLabel.ZIndex = 6
+
+	-- its name under it, always, like the party dock's: between the keys under the sides, never on them (seen
+	-- 2026-11-27: "Dark Forge Sword" reached both), shrinking to fit
+	local sideX = WeaponSwitch.rowSpot("after", LOOK)
+	underName = UIKit.label(holder, "", Enum.Font.FredokaOne, 14, Color3.new(1, 1, 1))
+	underName.Name = "Name"
+	underName.AnchorPoint = Vector2.new(0.5, 0)
+	underName.Position = UDim2.fromOffset(CENTER.X, CENTER.Y + LOOK.chip / 2 + 1)
+	underName.Size = UDim2.fromOffset(2 * (sideX - HudLayout.KEY_SIZE / 2 - 2), LOOK.name - 2)
+	underName.TextXAlignment = Enum.TextXAlignment.Center
+	underName.TextWrapped = false
+	underName.TextScaled = true
+	underName.ZIndex = 4
+	local fit = Instance.new("UITextSizeConstraint")
+	fit.MaxTextSize = 14
+	fit.MinTextSize = 10
+	fit.Parent = underName
+	UIKit.outlined(underName)
 
 	countLabel = UIKit.label(chip, "", Enum.Font.FredokaOne, LOOK.countText, Color3.fromRGB(20, 28, 60))
 	countLabel.Name = "Count"
@@ -669,7 +704,8 @@ function WeaponSwitchController.GetState(): { owned: { [string]: any }, equipped
 	return { owned = owned, equipped = equipped }
 end
 
--- The phone's medallion alone, or the dial: the track hides, the medallion grows and sits alone, the name goes beside it
+-- The phone's medallion alone, or the row: the sides hide, the medallion grows and sits alone, its name shows over it
+-- for a moment after a switch (a computer's row has its name under it, always)
 local function setCompact(on: boolean)
 	compact = on
 	refreshHere()
@@ -681,16 +717,11 @@ local function setCompact(on: boolean)
 	end
 	local middle = if on then Vector2.new(size / 2, size / 2) else CENTER
 	chipButton.Position = UDim2.fromOffset(middle.X, middle.Y)
-	holder.Size = if on then UDim2.fromOffset(size, size) else UDim2.fromOffset(DIAL, DIAL)
-	-- the name left of the track, level with the medallion's middle; on a phone over the medallion (the creature sits
-	-- left of it in the pair), with chevrons over and under it (it swipes)
-	if on then
-		nameFrame.AnchorPoint = Vector2.new(1, 1)
-		nameFrame.Position = UDim2.fromOffset(size, -26)
-	else
-		nameFrame.AnchorPoint = Vector2.new(1, 0.5)
-		nameFrame.Position = UDim2.fromOffset(CENTER.X - LOOK.arc - LOOK.side / 2 - LOOK.gap, middle.Y)
-	end
+	holder.Size = if on then UDim2.fromOffset(size, size) else UDim2.fromOffset(BOX_W, BOX_H)
+	-- a phone's name over the medallion (the creature sits left of it in the pair), with chevrons over and under it
+	-- (it swipes)
+	nameFrame.AnchorPoint = Vector2.new(1, 1)
+	nameFrame.Position = UDim2.fromOffset(size, -26)
 	local hints = weaponHints
 	if hints then
 		hints:Destroy()
@@ -765,7 +796,7 @@ function WeaponSwitchController.Start()
 			and not UIKit.anyPanelOpen()
 			and not PlacementController.IsActive()
 			and not RegisterController.IsShowing() -- the checkout sits in the same spot (owner 2026-11-10)
-		nameFrame.Visible = os.clock() < nameUntil
+		nameFrame.Visible = compact and os.clock() < nameUntil
 		if holder.Visible then
 			shine.Rotation = (os.clock() / LOOK.shineSeconds * 360) % 360
 		end

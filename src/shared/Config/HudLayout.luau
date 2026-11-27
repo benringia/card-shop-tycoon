@@ -94,11 +94,14 @@ return {
 	-- after a switch (owner: "only briefly"); a swipe of `swipe` px on the medallion steps too. Placed by
 	-- UiLayout.weaponSwitch: never scaled under 48 px tap areas, above the fight buttons in a fight. Phones: the
 	-- medallion alone (`compactChip`), its "2/6" count `countText` px
+	-- The row (owner 2026-11-27 pick B, the twin of the party dock; UiLayout.switchBox, WeaponSwitch.rowSpot): the one
+	-- before and the next (`side`) `row` px off the weapon in hand (`chip`) and `drop` px lower, its level pill reaching
+	-- `rise` px over it, its name's line `name` px under it, its grade's medal `medal` px on its top-left corner
 	WEAPON_SWITCH = {
-		chip = 72, side = 36, arc = 70, hit = 48, gap = 6, right = 12, ring = 4, shineSeconds = 4,
-		angles = { before = 180, after = 90, later = 135 },
-		sideFade = 0.15, laterFade = 0.55, laterScale = 0.8, roll = 0.28, nameSeconds = 1.5, swipe = 30,
+		chip = 72, side = 44, hit = 48, gap = 6, right = 12, ring = 4, shineSeconds = 4,
+		row = 8, drop = 8, rise = 9, name = 20, medal = 24,
+		sideFade = 0.15, roll = 0.28, nameSeconds = 1.5, swipe = 30,
 		compactChip = 64, countText = 12,
-		fightScale = 0.7, -- in a computer's fight: 130 px -> 91, over the compact buttons (UiLayout.weaponSwitch)
+		fightScale = 0.7, -- in a computer's fight: 180 px wide -> 126, over the compact buttons (UiLayout.weaponSwitch)
 	},
 }
