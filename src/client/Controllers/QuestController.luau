@@ -13,8 +13,6 @@
 -- for, the window's first section, and a first build's moment (Remotes.MainQuestDone).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
@@ -60,7 +58,6 @@ local MAIN_ORDER = -10 -- the main quest comes first in the window
 local DesktopHudConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("DesktopHud"))
 local DesktopHud = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("DesktopHud"))
 local PhoneNotice = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("PhoneNotice"))
-local QuestRemind = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("QuestRemind"))
 
 local player = Players.LocalPlayer
 
@@ -684,100 +681,6 @@ function QuestController.Below(piece: GuiObject)
 	end
 end
 
--- The idle reminder (owner 2026-11-21; Util/QuestRemind, Config/Quests REMIND): a computer's quests live in the Phone,
--- so a player standing idle and free a while gets a small bubble by the Phone's tile saying what waits or the quest
--- nearest done, and the tile pings or nudges. A tap on it opens the Quests window. Never in a fight, a window, a
--- guide's visit or anything else that keeps them busy (Util/PlayerBusy), and minutes apart
-local function startReminder()
-	local remind = Quests.REMIND
-	local bubble = Instance.new("TextButton")
-	bubble.Name = "QuestReminder"
-	bubble.Text = ""
-	bubble.AutoButtonColor = false
-	bubble.AnchorPoint = Vector2.new(0, 0.5)
-	bubble.Size = UDim2.fromOffset(0, 40)
-	bubble.AutomaticSize = Enum.AutomaticSize.X
-	bubble.BackgroundColor3 = Color3.new(1, 1, 1)
-	bubble.Visible = false
-	bubble.ZIndex = 5
-	bubble.Parent = screen
-	UIKit.corner(bubble, 20)
-	UIKit.outline(bubble, UIStyle.BABY.lilac.deep, 2)
-	local pad = Instance.new("UIPadding")
-	pad.PaddingLeft = UDim.new(0, 8)
-	pad.PaddingRight = UDim.new(0, 14)
-	pad.Parent = bubble
-	local line = Instance.new("UIListLayout")
-	line.FillDirection = Enum.FillDirection.Horizontal
-	line.VerticalAlignment = Enum.VerticalAlignment.Center
-	line.Padding = UDim.new(0, 6)
-	line.SortOrder = Enum.SortOrder.LayoutOrder
-	line.Parent = bubble
-	local picture = Icon.make(bubble, "Gift", UDim2.fromOffset(26, 26))
-	picture.LayoutOrder = 1
-	local words = UIKit.label(bubble, "", Enum.Font.FredokaOne, 16, UIStyle.CREAM.INK)
-	words.LayoutOrder = 2
-	words.Size = UDim2.fromOffset(0, 40)
-	words.AutomaticSize = Enum.AutomaticSize.X
-	words.TextWrapped = false
-	local pop = Hud.scaleWith(bubble, 1, true) -- grows on a desktop with the HUD
-	bubble.Activated:Connect(function()
-		bubble.Visible = false
-		panel.Visible = true
-	end)
-
-	local joinedAt = os.clock()
-	local idleSince: number? = nil
-	local lastAt: number? = nil
-	local shownUntil = 0
-	-- any key, click or stick counts as doing something; so does walking
-	UserInputService.InputBegan:Connect(function()
-		idleSince = nil
-	end)
-	task.spawn(function()
-		local PlayerBusy = require(ClientUtil:WaitForChild("PlayerBusy")) :: any -- here, not at load: it requires half the controllers
-		while true do
-			task.wait(1)
-			local now = os.clock()
-			local character = player.Character
-			local human = if character then character:FindFirstChildOfClass("Humanoid") else nil
-			local moving = human ~= nil and human.MoveDirection.Magnitude > 0.05
-			local tile = Hud.find("Manage")
-			-- (TutorialDone is only set in the main game, false through Pish's tour; in the Frontier and the Dungeon the
-			-- tour is long over)
-			local free = inPhone() and not moving and tile ~= nil and tile.Visible and not Hud.isTrayOpen()
-				and player:GetAttribute("TutorialDone") ~= false and not Hud.isCalm() and PlayerBusy.reason() == nil
-			if not free then
-				idleSince = nil
-				bubble.Visible = false
-			elseif idleSince == nil then
-				idleSince = now
-			end
-			if bubble.Visible and now >= shownUntil then
-				bubble.Visible = false
-			end
-			if free and tile and not bubble.Visible and QuestRemind.due(now, joinedAt, idleSince, lastAt, remind) then
-				local goal = MainQuest.current()
-				local said = QuestRemind.words(view :: any, if goal and goal.kind == "build" and goal.ready then goal.name else nil)
-				if said then
-					lastAt = now
-					shownUntil = now + remind.show
-					Icon.set(picture, said.icon)
-					words.Text = said.text
-					local origin = screen.AbsolutePosition
-					bubble.Position = UDim2.fromOffset(tile.AbsolutePosition.X - origin.X + tile.AbsoluteSize.X + 14, tile.AbsolutePosition.Y - origin.Y + tile.AbsoluteSize.Y / 2)
-					bubble.Visible = true
-					Hud.notice(if said.strong then "ping" else "nudge")
-					-- it pops in at its grown size (its UIScale is the HUD's: start and end there)
-					local rest = pop.Scale
-					pop.Scale = rest * 0.7
-					TweenService:Create(pop, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = rest }):Play()
-				end
-			end
-		end
-	end)
-end
-
 -- The quests as the window draws them (Util/QuestRules.View; nil before the server's first word): the What now? tips
 -- read them (HintController)
 function QuestController.QuestView(): any?
@@ -830,7 +733,6 @@ function QuestController.Start()
 		Hud.onCalm(function()
 			tellPhone(false) -- a tour began or ended: the count goes or comes back
 		end)
-		startReminder()
 	end
 	QuestStrip.setMain(MainQuest.current())
 	Remotes.BattleStarted.OnClientEvent:Connect(function(payload: unknown)

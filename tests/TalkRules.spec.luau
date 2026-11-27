@@ -1,6 +1,6 @@
 --!strict
 -- Pish talks the player through the first visit (spec 2026-11-09-tutorial-pish-design 14): a few lines per step, then
--- the line for what to do now, by situation; one line per lesson and nudge
+-- the line for what to do now, by situation; one line per lesson
 local Pish = require("../src/shared/Config/Pish")
 local PishTalk = require("../src/shared/Config/PishTalk")
 local Game = require("../src/shared/Config/Game")
@@ -33,9 +33,6 @@ local function eachLine(visit: (where: string, text: string) -> ())
 	end
 	for id, text in PishTalk.LESSONS do
 		visit(`lesson {id}`, text)
-	end
-	for kind, text in PishTalk.NUDGES do
-		visit(`nudge {kind}`, text)
 	end
 	for key, text in PishTalk.LABELS do
 		visit(`label {key}`, string.format(text, 3, 8))
@@ -80,12 +77,9 @@ return {
 		expect.equal(TalkRules.product(PishTalk.LESSONS.variety, "Deck Boxes"), "That customer wanted Deck Boxes!")
 	end,
 
-	["every lesson and nudge has its line"] = function()
+	["every lesson has its line"] = function()
 		for _, lesson in Pish.LESSONS do
 			assert(PishTalk.LESSONS[lesson.id], `lesson {lesson.id}`)
-		end
-		for _, kind in { "order", "stock" } do
-			assert(PishTalk.NUDGES[kind], `nudge {kind}`)
 		end
 	end,
 

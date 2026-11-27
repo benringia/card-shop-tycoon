@@ -41,7 +41,7 @@ return {
 
 	SKIP_HOLD = 2, -- seconds the skip button is held before the "really skip?" card
 	-- His pacing (owner 2026-11-18: "make it helpful but not annoying. do not popup when the player is currently doing
-	-- something. like manning the cashier"; Util/LessonRules.mayStart, whileBusy): a lesson or a nudge starts once the
+	-- something. like manning the cashier"; Util/LessonRules.mayStart, whileBusy): a lesson visit starts once the
 	-- player has been free `free` seconds (not on the register, carrying boxes, placing, in a window, a fight, a show or
 	-- a popup: client Util/PlayerBusy) and `gap` seconds after his last visit; one under way steps back while they're
 	-- busy (his time stopped) and leaves after `wait` seconds of it, its lesson kept for a better moment
@@ -104,9 +104,6 @@ return {
 		-- computer; `talk`: he goes straight to his lines (PishTalk.AFTER.variety, "{product}" the one they missed)
 		{ id = "variety", icon = "Order", trigger = "missing", talk = true },
 	} :: { { id: string, level: number?, icon: string, shelf: string?, product: string?, trigger: string?, on: string?, rush: boolean?, late: boolean?, talk: boolean? } },
-	-- The stuck helper: in a player's first `firstSeconds` of play, after `quiet` seconds without progress, at most
-	-- once per `gap` seconds
-	STUCK = { firstSeconds = 3600, quiet = 60, gap = 120 },
 
 	-- Town Pish's day: walking at `speed` (studs a second; `trotSpeed` running to a player), now and then to an open
 	-- shop's door (`shopChance`) where he stays `visitSeconds`, a random idle clip every `idleEvery` seconds (never the

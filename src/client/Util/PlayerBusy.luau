@@ -1,7 +1,7 @@
 --!strict
 -- What the player is doing right now, so a guide never cuts in (owner 2026-11-18: "do not popup when the player is
 -- currently doing something. like manning the cashier"): facts for Shared/Util/LessonRules.busyWith, read by Pish's
--- lesson visits and nudges (TutorialController) and Chikin's arrival (ChikinController).
+-- lesson visits (TutorialController), Chikin's arrival (ChikinController) and the What now? tips (HintController).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 

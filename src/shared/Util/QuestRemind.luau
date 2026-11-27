@@ -1,23 +1,12 @@
 --!strict
--- The quest reminder (owner 2026-11-21: "add something that always reminds players to check quests specially when
--- they are doing nothing. but not to the point that it is annoying"): when it may show and what it says. On a
--- computer the quests live in the Phone, so a player standing idle gets a small bubble by the Phone's tile (client
--- QuestController). Numbers: Config/Quests REMIND. Pure, Lune-tested (tests/QuestRemind).
+-- What a reminder about quests says (owner 2026-11-21: "add something that always reminds players to check quests
+-- specially when they are doing nothing. but not to the point that it is annoying"). Since 2026-11-27 the What now?
+-- tips say it, and decide when (Util/HintRules, client HintController). Pure, Lune-tested (tests/QuestRemind).
 local QuestRemind = {}
 
 type Quest = { text: string, icon: string, goal: number, progress: number, done: boolean, claimed: boolean }
 type View = { quests: { Quest }, claimable: number, week: View? }
 export type Words = { text: string, icon: string, strong: boolean }
-type Config = { first: number, idle: number, every: number }
-
--- Whether a reminder may show at `now`: not in the first moments after joining (`joinedAt`), the player idle and free
--- since `idleSince` (nil: busy or moving) for `cfg.idle` seconds, and `cfg.every` seconds past the last one (`lastAt`)
-function QuestRemind.due(now: number, joinedAt: number, idleSince: number?, lastAt: number?, cfg: Config): boolean
-	if now - joinedAt < cfg.first or idleSince == nil or now - idleSince < cfg.idle then
-		return false
-	end
-	return lastAt == nil or now - lastAt >= cfg.every
-end
 
 -- The quest nearest done among those still going; nil when none is
 local function nearest(quests: { Quest }): Quest?

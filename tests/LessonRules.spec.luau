@@ -1,6 +1,6 @@
 --!strict
--- Pish's lesson visits and the stuck helper (spec 2026-11-09-tutorial-pish-design 8): which lessons a level-up brings,
--- and when Pish comes to point at what to do next
+-- Pish's lesson visits (spec 2026-11-09-tutorial-pish-design 8): which lessons a level-up brings, when he may come,
+-- and what's free to order
 local LessonRules = require("../src/shared/Util/LessonRules")
 local Pish = require("../src/shared/Config/Pish")
 local Products = require("../src/shared/Config/Products")
@@ -40,14 +40,6 @@ local function same(a: { string }, b: { string }, what: string)
 	for i = 1, #b do
 		expect.equal(a[i], b[i], `{what}: #{i}`)
 	end
-end
-
-local function facts(over: { [string]: any }): any
-	local base = { played = 300, quiet = 70, sinceNudge = 200, boxWaiting = false, shelvesStocked = true, canOrder = true, muted = false }
-	for key, value in over do
-		base[key] = value
-	end
-	return base
 end
 
 return {
@@ -137,31 +129,10 @@ return {
 		same(LessonRules.pending(Pish.LESSONS, {}), {}, "none")
 	end,
 
-	["nudge: stock a waiting box, else order"] = function()
-		expect.equal(LessonRules.nudge(Pish.STUCK, facts({ boxWaiting = true })), "stock")
-		expect.equal(LessonRules.nudge(Pish.STUCK, facts({ shelvesStocked = false })), "order")
-		expect.equal(LessonRules.nudge(Pish.STUCK, facts({})), nil, "stocked, nothing waiting: customers will come")
-	end,
-
-	-- the owner 2026-11-18: "Pish is forcing players to buy items that the player cant afford yet. maybe add close or 'ill
-	-- keep that in mind' that will make pish go away. or 'dont remind me again'"
-	["nudge: never to order packs you can't pay for, and never again once told Got it"] = function()
-		expect.equal(LessonRules.nudge(Pish.STUCK, facts({ shelvesStocked = false, canOrder = false })), nil, "empty shelves, no cash for a box: no nagging")
-		expect.equal(LessonRules.nudge(Pish.STUCK, facts({ boxWaiting = true, canOrder = false })), "stock", "a box already here costs nothing to stock")
-		expect.equal(LessonRules.nudge(Pish.STUCK, facts({ shelvesStocked = false, muted = true })), nil, "Got it: he stops coming")
-		expect.equal(LessonRules.nudge(Pish.STUCK, facts({ boxWaiting = true, muted = true })), nil, "for any nudge")
-	end,
-
 	["cheapestBox: the least a box to order costs at a shop level (never the Bulk Bin's handfuls)"] = function()
 		expect.equal(LessonRules.cheapestBox(Products.List, 1), Products.ById.FirstSparkPack.boxCost, "level 1: First Spark packs")
 		expect.equal(LessonRules.cheapestBox(Products.List, 12), Products.ById.CardSleeves.boxCost, "sleeves once unlocked")
 		expect.equal(LessonRules.cheapestBox({}, 1), nil, "nothing to order")
-	end,
-
-	["nudge: never too soon, too often or after the first hour"] = function()
-		expect.equal(LessonRules.nudge(Pish.STUCK, facts({ boxWaiting = true, quiet = 30 })), nil, "busy a moment ago")
-		expect.equal(LessonRules.nudge(Pish.STUCK, facts({ boxWaiting = true, sinceNudge = 60 })), nil, "nudged a minute ago")
-		expect.equal(LessonRules.nudge(Pish.STUCK, facts({ boxWaiting = true, played = 4000 })), nil, "past the first hour")
 	end,
 	-- Owner 2026-11-21: "when recycler is in game, pish will introduce it to old players and add it to tutorial for
 	-- new players": a new player gets its lesson on reaching its level like any level lesson; a save already past that

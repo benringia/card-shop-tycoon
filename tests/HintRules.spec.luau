@@ -173,7 +173,7 @@ return {
 			local plain = string.gsub(text, "·", "")
 			assert(string.match(plain, "^[%w%s%p]*$"), `plain ASCII: {text}`)
 			local filled = string.gsub(string.gsub(text, "%%d", "12"), "%%s", "Meadow Warden")
-			assert(#filled <= 46, `fits the bubble: {filled}`)
+			assert(#filled <= Hints.MAX_WORDS, `fits the bubble: {filled}`)
 		end
 		-- the Wild's real bosses, the only ones a tip names
 		local Bosses = require("../src/shared/Config/Bosses")
@@ -181,7 +181,7 @@ return {
 			if boss.place == "Wild" then
 				for _, line in { Hints.WORDS.boss.ready, Hints.WORDS.boss.loot } do
 					local said = string.format(line, boss.name)
-					assert(#said <= 46, `fits the bubble: {said}`)
+					assert(#said <= Hints.MAX_WORDS, `fits the bubble: {said}`)
 				end
 			end
 		end

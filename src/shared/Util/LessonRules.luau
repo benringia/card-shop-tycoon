@@ -1,16 +1,7 @@
 --!strict
--- Pish's lesson visits and the stuck helper (spec 2026-11-09-tutorial-pish-design 8, 16). Pure: `lessons` is
--- Config/Pish LESSONS, `cfg` its STUCK.
+-- Pish's lesson visits (spec 2026-11-09-tutorial-pish-design 8, 16) and what's free to order. Pure: `lessons` is
+-- Config/Pish LESSONS. (The stuck helper's nudges became the What now? tips in 2026-11-27: Util/HintRules.)
 export type Lesson = { id: string, level: number?, icon: string, shelf: string?, product: string?, trigger: string?, on: string?, rush: boolean?, late: boolean? }
-export type Facts = {
-	played: number, -- seconds of play so far
-	quiet: number, -- seconds since the last order, restock, sale or pack
-	sinceNudge: number, -- seconds since Pish last came to point
-	boxWaiting: boolean, -- a delivered box is waiting to go on a shelf
-	shelvesStocked: boolean, -- some shelf has stock on it
-	canOrder: boolean, -- the player's cash covers the cheapest box of packs
-	muted: boolean, -- the player told him "Got it" on a nudge: no more this session
-}
 -- What the player is doing right now (owner 2026-11-18: "do not popup when the player is currently doing something.
 -- like manning the cashier"), read on the client by Util/PlayerBusy
 export type Busy = {
@@ -202,7 +193,8 @@ function LessonRules.forProduct(lessons: { Lesson }, productId: string): string?
 end
 
 -- The least a box to order costs at shop level `level` (the Bulk Bin's free handfuls are never ordered), nil when
--- nothing is: whether "Let's order packs!" is something the player can do
+-- nothing is: whether "Order packs to sell!" is something the player can do (owner 2026-11-18: never send someone to
+-- buy what they can't afford; the What now? tips, HintController)
 function LessonRules.cheapestBox(products: { { boxCost: number, unlockLevel: number, bulk: boolean? } }, level: number): number?
 	local cheapest: number? = nil
 	for _, product in products do
@@ -211,22 +203,6 @@ function LessonRules.cheapestBox(products: { { boxCost: number, unlockLevel: num
 		end
 	end
 	return cheapest
-end
-
--- What Pish comes to point at for a stuck new player: "stock" (a box waiting for a shelf), "order" (empty shelves, and
--- the cash for a box: owner 2026-11-18, "Pish is forcing players to buy items that the player cant afford yet"), or nil
--- (not stuck, too soon since the last nudge, past their first hour, or told "Got it")
-function LessonRules.nudge(cfg: { firstSeconds: number, quiet: number, gap: number }, facts: Facts): ("order" | "stock")?
-	if facts.muted or facts.played > cfg.firstSeconds or facts.quiet < cfg.quiet or facts.sinceNudge < cfg.gap then
-		return nil
-	end
-	if facts.boxWaiting then
-		return "stock"
-	end
-	if not facts.shelvesStocked and facts.canOrder then
-		return "order"
-	end
-	return nil
 end
 
 return LessonRules

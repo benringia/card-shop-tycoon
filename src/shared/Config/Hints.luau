@@ -7,8 +7,9 @@ local Hints = {}
 -- Checked in this order; the first that's true is the tip (HintRules.holds says when each is)
 Hints.ORDER = { "register", "claim", "stock", "order", "station", "build", "packs", "boss", "quest", "hunt" }
 
--- What Pish says (the quest tip's words are the quest itself: QuestRemind.words). Plain ASCII and ·, 46 characters at
--- most once a count or a name is in
+-- What Pish says (the quest tip's words are the quest itself: QuestRemind.words). Plain ASCII and ·, MAX_WORDS
+-- characters at most once a count or a name is in
+Hints.MAX_WORDS = 46
 Hints.WORDS = {
 	register = "Customers are waiting! Ring them up.",
 	claim = { one = "A quest is done! Claim it.", many = "%d quests are done! Claim them." },

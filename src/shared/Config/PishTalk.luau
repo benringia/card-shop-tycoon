@@ -2,7 +2,7 @@
 -- What Pish says (spec 2026-11-09-tutorial-pish-design 14, the owner's script): for each first-visit step a few intro
 -- lines (Next moves on), then the line for what to do now, by situation (TutorialController finds the situation and
 -- points the paw at its thing); a talk with only intro lines ends on its last Next (the goodbye). One line per lesson
--- visit and per nudge. "{game}" is Config/Game.NAME. Plain ASCII, the middle dot and emoji only, at most 60
+-- visit. "{game}" is Config/Game.NAME. Plain ASCII, the middle dot and emoji only, at most 60
 -- characters (tests/TalkRules). Plain data.
 export type StepTalk = { intro: { string }, now: { [string]: string } }
 
@@ -208,12 +208,6 @@ return {
 		bagPlace = "Tap Place!",
 	} :: { [string]: string },
 
-	-- The stuck helper's nudges (Util/LessonRules.nudge)
-	NUDGES = {
-		order = "Your shelves are empty. Let's order packs!",
-		stock = "A box is waiting! Pick it up.",
-	} :: { [string]: string },
-
 	-- The talk card is easy to notice and never waits on a press (owner 2026-11-20: "My friend says tutorial is hard
 	-- to notice. fix it too. and people hardly press next on tutorial"; Util/TalkRules, client Util/TutorialTalk).
 	-- DESKTOP: times bigger on a computer, on top of the HUD's own growth (Config/HudGrow); a phone keeps its small
@@ -238,8 +232,8 @@ return {
 	NAME = "Pish", -- on the talk card
 	NEXT = "Next",
 	BYE = "Bye!", -- the goodbye's last button
-	-- a lesson's or nudge's button that sends him off (owner 2026-11-18: "add close or 'ill keep that in mind' that will
-	-- make pish go away. or 'dont remind me again'"): the lesson is done, the nudges stop for the session
+	-- a lesson's button that sends him off (owner 2026-11-18: "add close or 'ill keep that in mind' that will make pish
+	-- go away. or 'dont remind me again'"): the lesson is done
 	GOT_IT = "Got it!",
 
 	-- The small Skip button and the tour card it opens (round 3, owner's pick A: "just put a skip icon on the top right

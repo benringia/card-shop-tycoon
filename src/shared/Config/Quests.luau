@@ -27,11 +27,6 @@ return {
 		{ id = "boss", kind = "adventure", event = "winBoss", icon = "Trophy", text = "Beat a boss {n} times", one = "Beat a boss",
 			minLevel = 4, goals = { { level = 4, goal = 1 }, { level = 26, goal = 2 } } },
 	},
-	-- The idle reminder (owner 2026-11-21: "add something that always reminds players to check quests specially when
-	-- they are doing nothing. but not to the point that it is annoying"; Util/QuestRemind, client QuestController): on a
-	-- computer, where the quests live in the Phone, a bubble by the Phone's tile once the player has stood idle and free
-	-- `idle` seconds: never in the first `first` seconds after joining, at most once every `every` seconds, up `show`
-	-- seconds (a tap opens the Quests window), its words at most `maxLength` characters
 	-- The Quests window's layout (owner 2026-11-20: "looks awkward/broken. no gaps between the bar and the button,
 	-- borders cutoff ... redesign/relayout"; QuestRules.rowBox, client QuestController). Px. `list`: room kept inside
 	-- the scrolling list so a row's outline isn't cut and rows stop short of the scroll bar. A row: `pad` inside its
@@ -45,7 +40,6 @@ return {
 		MAIN = { height = 100, pad = 14, icon = 68, gap = 16, action = 132, button = 56, title = 20, bar = 14 },
 		THEN = { max = 3, height = 46, gap = 8, caption = "Coming next" },
 	},
-	REMIND = { first = 90, idle = 40, every = 300, show = 7, maxLength = 46 },
 	-- each quest: cash and shop XP of `cash` + `cashPerLevel` x the shop level ($18 at Lv 1, $105 at Lv 30)
 	REWARD = { cash = 15, cashPerLevel = 3, xp = 15, xpPerLevel = 3 },
 	-- all three claimed: the Quest Chest (Config/Items ids)

@@ -8,7 +8,7 @@
 -- (SeenWelcome). Saves Pish's luck time too (PishService keeps it while they play).
 -- Lesson visits (spec 8): a level-up marks the lessons it unlocks as waiting (saved false in `lessons`, so ones gained
 -- in the Frontier or the Dungeon, StartLessonsOnly, wait for the town); the client shows them when the player is free
--- and says when each is done. The stuck helper: a new player's first hour, Pish comes to point at what to do next.
+-- and says when each is done. (His stuck helper's nudges became the What now? tips, 2026-11-27: client HintController.)
 local AnalyticsService = game:GetService("AnalyticsService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -16,7 +16,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Items = require(Shared:WaitForChild("Config"):WaitForChild("Items"))
 local Pish = require(Shared:WaitForChild("Config"):WaitForChild("Pish"))
-local Products = require(Shared:WaitForChild("Config"):WaitForChild("Products"))
 local Shelves = require(Shared:WaitForChild("Config"):WaitForChild("Shelves"))
 local LevelRules = require(Shared:WaitForChild("Util"):WaitForChild("LevelRules"))
 local LessonRules = require(Shared:WaitForChild("Util"):WaitForChild("LessonRules"))
@@ -44,8 +43,7 @@ type Saved = TutorialRules.Saved
 local TutorialService = {}
 
 local ACTION_COOLDOWN = 0.5 -- seconds between TutorialAction requests
-local ACTIONS = { skip = true, replay = true, bye = true, lessonShown = true, lessonDone = true, nudgeOff = true }
-local STUCK_CHECK = 10 -- seconds between stuck checks
+local ACTIONS = { skip = true, replay = true, bye = true, lessonShown = true, lessonDone = true }
 
 local STEPS = Pish.STEPS
 local LESSON_IDS: { [string]: boolean } = {}
@@ -56,10 +54,6 @@ end
 local inTown = false -- Start (the main game) rather than StartLessonsOnly
 local states: { [Player]: Saved } = {}
 local begun: { [Player]: boolean } = {} -- the first visit is running (the welcome flight is over)
-local newcomers: { [Player]: number } = {} -- os.clock() a new player (first visit not done at load) joined
-local lastActive: { [Player]: number } = {} -- os.clock() of their last order, restock, sale or opened pack
-local lastNudge: { [Player]: number } = {}
-local mutedNudges: { [Player]: boolean } = {} -- "Got it" on a nudge: no more this session (owner 2026-11-18)
 local allowAction = RateLimiter.new(ACTION_COOLDOWN)
 
 local function log(player: Player, callback: () -> ())
@@ -146,34 +140,6 @@ local function onItemGiven(player: Player, itemId: string)
 	local def = (Items.ITEMS :: any)[itemId]
 	if def and def.trophy == true then
 		queueEvent(player, "trophy", inTown)
-	end
-end
-
-local function markActive(player: Player)
-	lastActive[player] = os.clock()
-end
-
--- The stuck helper: a new player past the first visit, quiet a while with a box waiting or nothing on the shelves
-local function checkStuck(player: Player)
-	local state = states[player]
-	local joined = newcomers[player]
-	if not state or not joined or state.firstVisit == "todo" then
-		return
-	end
-	local now = os.clock()
-	local cheapest = LessonRules.cheapestBox(Products.List, EconomyService.GetLevel(player))
-	local kind = LessonRules.nudge(Pish.STUCK, {
-		played = now - joined,
-		quiet = now - (lastActive[player] or joined),
-		sinceNudge = now - (lastNudge[player] or -math.huge),
-		boxWaiting = StockService.HasWaitingBox(player),
-		shelvesStocked = StockService.ShelvesStocked(player),
-		canOrder = cheapest ~= nil and EconomyService.GetCash(player) >= cheapest,
-		muted = mutedNudges[player] == true,
-	})
-	if kind then
-		lastNudge[player] = now
-		Remotes.TutorialState:FireClient(player, { nudge = kind })
 	end
 end
 
@@ -283,8 +249,6 @@ local function onAction(player: Player, action: unknown, lessonId: unknown, used
 		begin(player)
 	elseif action == "bye" then
 		record(player, "bye")
-	elseif action == "nudgeOff" then
-		mutedNudges[player] = true -- "Got it" on a nudge (owner 2026-11-18: "dont remind me again")
 	elseif typeof(lessonId) ~= "string" or not LESSON_IDS[lessonId] or state.lessons[lessonId] ~= false then
 		return -- the lesson actions below are only for a lesson waiting to be shown
 	elseif action == "lessonShown" then
@@ -387,9 +351,6 @@ local function load(player: Player, data: DataService.PlayerData)
 	if not inTown then
 		return -- the Frontier or the Dungeon: lessons are only marked here (StartLessonsOnly)
 	end
-	if state.firstVisit == "todo" then
-		newcomers[player] = os.clock()
-	end
 	-- a thing added after launch (the Recycler, owner 2026-11-21: "pish will introduce it to old players"): a save
 	-- already past its level never levels up into its lesson, so it waits from this join on, once
 	local level = LevelRules.getLevelForXp(if typeof(data.xp) == "number" then math.floor(data.xp) else 0)
@@ -420,10 +381,6 @@ end
 local function unload(player: Player)
 	states[player] = nil
 	begun[player] = nil
-	newcomers[player] = nil
-	lastActive[player] = nil
-	lastNudge[player] = nil
-	mutedNudges[player] = nil
 	-- Pish's luck lives in this lifecycle (saved above first): nothing kept for a player who's gone
 	PishService.ForgetLuck(player)
 	PackService.SetLuck(player, nil)
@@ -481,14 +438,6 @@ function TutorialService.Start()
 		owner:SetAttribute("MissedProduct", productId)
 		queueEvent(owner, "missing", inTown)
 	end)
-	task.spawn(function()
-		while true do
-			task.wait(STUCK_CHECK)
-			for player in newcomers do
-				checkStuck(player)
-			end
-		end
-	end)
 	Players.PlayerAdded:Connect(function(player)
 		player:GetAttributeChangedSignal("SeenWelcome"):Connect(function()
 			begin(player)
@@ -506,12 +455,10 @@ function TutorialService.Start()
 	PartyService.OnSummoned(function(player: Player)
 		local state = states[player]
 		if state and TutorialRules.current(state, STEPS) == "summonPal" then
-			markActive(player)
 			record(player, "summonPal")
 		end
 	end)
 	PackService.OnOpened(function(player, _, itemId)
-		markActive(player)
 		if itemId == Pish.FIRST_ITEM then
 			record(player, "giftPack")
 			-- the present's best card joins the party as their pal, for his next step to call out (owner 2026-11-17;
@@ -543,7 +490,6 @@ function TutorialService.Start()
 		end
 	end)
 	StockService.OnOrdered(function(player, productId)
-		markActive(player)
 		if productId == Pish.ORDER_PRODUCT then
 			record(player, "orderStock")
 		end
@@ -553,14 +499,12 @@ function TutorialService.Start()
 		end
 	end)
 	StockService.OnStocked(function(player)
-		markActive(player)
 		record(player, "stockRack")
 	end)
 	CustomerService.OnReachedCounter(function(customer)
 		record(customer.owner, "customer")
 	end)
 	RegisterService.OnSaleCompleted(function(customer)
-		markActive(customer.owner)
 		record(customer.owner, "ringUp")
 	end)
 end

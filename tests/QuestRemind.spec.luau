@@ -1,13 +1,11 @@
 --!strict
 -- Owner 2026-11-21, with the quests moved into the Phone: "add something that always reminds players to check quests
--- specially when they are doing nothing. but not to the point that it is annoying." A small bubble by the Phone's tile
--- when the player has stood idle a while: what's waiting, or the quest nearest done. Never while they're busy, never
--- back to back, never when there's nothing left to do.
+-- specially when they are doing nothing. but not to the point that it is annoying." What a reminder about quests says:
+-- what's waiting, or the quest nearest done, nothing when there's nothing left to do. Since 2026-11-27 the What now?
+-- tips say it (when one shows: HintRules, tests/HintRules).
 local QuestRemind = require("../src/shared/Util/QuestRemind")
-local Quests = require("../src/shared/Config/Quests")
+local Hints = require("../src/shared/Config/Hints")
 local expect = require("./lib/expect")
-
-local R = Quests.REMIND
 
 local function quest(text: string, progress: number, goal: number, claimed: boolean?): any
 	return { id = text, kind = "shop", text = text, icon = "Pack", goal = goal, progress = progress, done = progress >= goal, claimed = claimed == true, cash = 75, xp = 75 }
@@ -24,20 +22,6 @@ local function view(quests: { any }, week: any?): any
 end
 
 return {
-	["only after standing idle a while, and never back to back"] = function()
-		local joined = 0
-		local now = 1000
-		expect.equal(QuestRemind.due(now, joined, now - R.idle, nil, R), true, "idle long enough, none yet")
-		expect.equal(QuestRemind.due(now, joined, now - R.idle + 1, nil, R), false, "only just stopped")
-		expect.equal(QuestRemind.due(now, joined, nil, nil, R), false, "busy or moving: never")
-		expect.equal(QuestRemind.due(now, joined, now - 500, now - R.every + 1, R), false, "one came a moment ago")
-		expect.equal(QuestRemind.due(now, joined, now - 500, now - R.every, R), true, "a long breather later")
-		expect.equal(QuestRemind.due(R.first - 1, joined, 0, nil, R), false, "never in the first moments after joining")
-		assert(R.idle >= 30, "a real pause, not a breath")
-		assert(R.every >= 180, "minutes apart: not annoying")
-		assert(R.show >= 4 and R.show <= 10, "up long enough to read, gone soon")
-	end,
-
 	["it says what waits first, then the quest nearest done"] = function()
 		local claim = QuestRemind.words(view({ quest("Rip 8 packs", 8, 8), quest("Serve 6 customers", 1, 6) }), nil)
 		assert(claim, "something to say")
@@ -63,10 +47,10 @@ return {
 		expect.isNil(QuestRemind.words(nil, nil), "no quests yet")
 	end,
 
-	["every line is short enough for its bubble"] = function()
+	["every line is short enough for the What now? bubble"] = function()
 		local long = QuestRemind.words(view({ quest("Level up creatures 3 times", 2, 3) }), nil)
-		assert(#(long :: any).text <= R.maxLength, "fits")
+		assert(#(long :: any).text <= Hints.MAX_WORDS, "fits")
 		local build = QuestRemind.words(view({ quest("Rip 8 packs", 1, 8) }), "Collector Case")
-		assert(#(build :: any).text <= R.maxLength)
+		assert(#(build :: any).text <= Hints.MAX_WORDS)
 	end,
 }
