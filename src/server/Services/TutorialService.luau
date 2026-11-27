@@ -26,6 +26,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Services = script.Parent :: Instance
 local RateLimiter = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("RateLimiter"))
 local Funnel = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("Funnel"))
+local DevAccess = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("DevAccess"))
 local CustomerService = require(Services:WaitForChild("CustomerService"))
 local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
@@ -426,6 +427,23 @@ end
 
 -- The Frontier and the Dungeon: only the saved table (kept as it is) and the lessons a level-up there unlocks, marked
 -- waiting for the town
+-- The admin panel's Footage setup (DevService /footage late): Pish's tour skipped and every lesson seen, so no visit
+-- walks into the shot
+function TutorialService.SkipForTesting(player: Player)
+	local state = states[player]
+	if not DevAccess.can(player) or not state then
+		return
+	end
+	if state.firstVisit == "todo" then
+		state = TutorialRules.skip(state)
+		states[player] = state
+	end
+	for lessonId in LESSON_IDS do
+		state.lessons = LessonRules.used(state.lessons, lessonId)
+	end
+	publish(player)
+end
+
 function TutorialService.StartLessonsOnly()
 	DataService.Register({ name = "TutorialService", load = load, save = save, unload = unload })
 	EconomyService.OnLevelUp(function(player, fromLevel, toLevel)

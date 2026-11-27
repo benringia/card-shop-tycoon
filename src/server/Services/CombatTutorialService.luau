@@ -21,6 +21,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
 local RateLimiter = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("RateLimiter"))
+local DevAccess = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("DevAccess"))
 local BattleService = require(Services:WaitForChild("BattleService"))
 local CardService = require(Services:WaitForChild("CardService"))
 local DataService = require(Services:WaitForChild("DataService"))
@@ -253,6 +254,18 @@ local function unload(player: Player)
 	states[player] = nil
 	begun[player] = nil
 	TownChikinService.ForgetCourage(player)
+end
+
+-- The admin panel's Footage setup (DevService /footage late): Chikin's tour skipped, so he doesn't walk into the shot
+function CombatTutorialService.SkipForTesting(player: Player)
+	local state = states[player]
+	if not DevAccess.can(player) or not state then
+		return
+	end
+	if state.firstVisit == "todo" then
+		states[player] = TutorialRules.skip(state)
+		publish(player)
+	end
 end
 
 function CombatTutorialService.Start()

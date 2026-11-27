@@ -23,6 +23,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Services = script.Parent :: Instance
 local Util = (Services.Parent :: Instance):WaitForChild("Util")
+local DevAccess = require(Util:WaitForChild("DevAccess"))
 local CardService = require(Services:WaitForChild("CardService"))
 local DataService = require(Services:WaitForChild("DataService"))
 local ItemService = require(Services:WaitForChild("ItemService"))
@@ -671,6 +672,31 @@ local function unload(player: Player)
 	despawn(player)
 	states[player] = nil
 	ownParty[player] = nil
+end
+
+-- The admin panel's Footage setup (DevService /footage late): these creatures fill the party in order, the old ones out
+function PartyService.SetSlotsForTesting(player: Player, beastIds: { string }): boolean
+	local state = states[player]
+	if not DevAccess.can(player) or not state or state.locked or ownParty[player] then
+		return false
+	end
+	if state.summoned then
+		unsummon(player)
+	end
+	for slot = 1, Party.PARTY_SIZE do
+		local old = state.slots[slot]
+		if old then
+			CardService.SetPartied(player, old, false)
+		end
+		local beastId = beastIds[slot]
+		local valid = beastId ~= nil and CardService.GetBeast(player, beastId) ~= nil
+		state.slots[slot] = if valid then beastId else nil
+		if valid then
+			CardService.SetPartied(player, beastId :: string, true)
+		end
+	end
+	sendParty(player)
+	return true
 end
 
 function PartyService.Start()

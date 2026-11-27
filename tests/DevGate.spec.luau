@@ -71,6 +71,10 @@ local GATED = {
 	{ "DungeonService", "DungeonService.TapGate" },
 	{ "DungeonService", "DungeonService.SkipToPuzzle" },
 	{ "DungeonService", "DungeonService.SkipTo" },
+	-- the Footage setup's helpers (DevService /footage)
+	{ "PartyService", "PartyService.SetSlotsForTesting" },
+	{ "TutorialService", "TutorialService.SkipForTesting" },
+	{ "CombatTutorialService", "CombatTutorialService.SkipForTesting" },
 }
 
 return {

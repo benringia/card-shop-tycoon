@@ -1,5 +1,6 @@
 --!strict
 local AdminPanel = require("../src/shared/Config/AdminPanel")
+local CardList = require("../src/shared/Config/CardList")
 local Pish = require("../src/shared/Config/Pish")
 local expect = require("./lib/expect")
 local fs = require("@lune/fs")
@@ -108,5 +109,48 @@ return {
 		expect.equal(AdminPanel.fill("/maxcard %s foil", "solarion"), "/maxcard solarion foil", "fills the input")
 		expect.equal(AdminPanel.fill("/maxcard %s", "  "), nil, "an empty input sends nothing")
 		expect.equal(AdminPanel.fill("/cash 1000", ""), "/cash 1000", "no input needed")
+	end,
+
+	-- Owner 2026-11-27: "this will help me record some footage for marketing without grinding as much" (spec
+	-- 2026-11-27-live-admin-creator-design): one-tap setups at the top of the panel
+	["admin panel: Footage comes first, with Late game, Full shop and Golden hour"] = function()
+		local first = AdminPanel.SECTIONS[1]
+		expect.equal(first.title, "Footage")
+		local commands = {}
+		for _, button in first.buttons do
+			table.insert(commands, button.command)
+		end
+		expect.equal(table.concat(commands, ", "), "/footage late, /footage shop, /footage golden")
+		expect.equal(registered().footage, true, "/footage exists")
+	end,
+
+	["admin panel: every Footage step is a command DevService knows"] = function()
+		local aliases = registered()
+		for _, preset in { "shop", "golden" } do
+			for _, command in AdminPanel.FOOTAGE[preset].commands do
+				local alias = string.match(command, "^/(%w+)")
+				expect.equal(alias ~= nil and aliases[alias] == true, true, `{preset}: {command}`)
+			end
+		end
+		expect.equal(AdminPanel.FOOTAGE.golden.commands[1], "/time sunset")
+	end,
+
+	["admin panel: Late game is shop Lv 60, $1,000,000, three maxed Legendaries and every weapon S 10 Legendary"] = function()
+		local late = AdminPanel.FOOTAGE.late
+		expect.equal(late.level, 60)
+		expect.equal(late.cash, 1000000)
+		expect.equal(late.weapon.grade, "S")
+		expect.equal(late.weapon.level, 10)
+		expect.equal(late.weapon.mutation, "Legendary")
+		expect.equal(#late.party, 3, "a full party")
+		local rarities = {}
+		for _, set in { CardList.SET1, CardList.FRONTIER } do
+			for _, row in set do
+				rarities[row[1]] = row[3]
+			end
+		end
+		for _, name in late.party do
+			expect.equal(rarities[name], "Legendary", name)
+		end
 	end,
 }

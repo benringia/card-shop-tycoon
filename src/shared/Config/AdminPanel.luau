@@ -9,6 +9,16 @@ local AdminPanel = {}
 
 AdminPanel.SECTIONS = {
 	{
+		-- One-tap setups for recording (owner 2026-11-27: "this will help me record some footage for marketing without
+		-- grinding as much"; spec 2026-11-27-live-admin-creator-design): what each does is AdminPanel.FOOTAGE
+		title = "Footage",
+		buttons = {
+			{ label = "Late game", command = "/footage late" },
+			{ label = "Full shop", command = "/footage shop" },
+			{ label = "Golden hour", command = "/footage golden" },
+		},
+	},
+	{
 		-- The binder loading screens (spec 2026-11-13-loading-screen-binder-design), each played on your screen
 		title = "Loading screens",
 		buttons = {
@@ -423,6 +433,36 @@ AdminPanel.SCOPE = {
 	bosshp = "server",
 	jobslot = "studio", -- pretends to own a game pass
 } :: { [string]: "server" | "studio" }
+
+-- The Footage section's setups (DevService /footage <late|shop|golden>). Each step is checked like a button press, so
+-- Golden hour (a "server" command) needs the owner alone or in their own private server.
+-- late: Pish's and Chikin's tours skipped with every lesson seen (no visit mid-shot), the shop level, cash, a Grade S
+-- copy of every Legendary (/legendarys), every boss beaten (/bossbeaten), `party`'s Legendaries maxed (max level, 5
+-- stars, Grade S) and put in the party (the biggest ultimates: Supernova, Thunderstorm, Devour), and every weapon at
+-- `weapon`'s grade and level with a mutation of its rarity (so switching to a creature's element unlocks its ultimate).
+-- shop: its commands in order (the look: Candy Pastel, the game's own colours), then every Products shelf stocked with
+-- the first product it takes (/stock per product).
+AdminPanel.FOOTAGE = {
+	late = {
+		level = 60,
+		cash = 1000000,
+		party = { "Solarion", "Stormking", "Voidmaw" },
+		weapon = { grade = "S", level = 10, mutation = "Legendary" },
+	},
+	shop = {
+		commands = {
+			"/shoproom open all",
+			"/shoproom fill",
+			"/storage place",
+			"/storage fill",
+			"/decor pieces",
+			"/decor CandyPastel",
+		},
+	},
+	golden = {
+		commands = { "/time sunset" },
+	},
+}
 
 -- What a refused command says (a big locked card, server Util/Blocked); anyone but the owner gets no reply
 AdminPanel.REFUSE = {

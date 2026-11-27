@@ -440,6 +440,20 @@ local function giveSupremeLegendaries(player: Player, text: string)
 end
 
 -- /maxcard <name or number> [foil]: one copy at the top of everything (max level, max stars, best grade)
+-- A maxed copy of `card` in the binder (max level, max stars, the best grade); its id
+local function addMaxed(player: Player, card: any, foil: boolean): string
+	local beast = CardService.AddBeast(player, {
+		id = HttpService:GenerateGUID(false),
+		cardId = card.id,
+		foil = foil,
+		level = Beasts.MAX_LEVEL,
+		xp = 0,
+		stars = Beasts.MAX_STARS,
+		grade = Beasts.GRADES[#Beasts.GRADES],
+	})
+	return beast.id
+end
+
 local function giveMaxCard(player: Player, text: string)
 	local query = string.lower(string.gsub(string.gsub(text, "^%s*/?%a+%s*", ""), "%s+foil%s*$", ""))
 	local foil = string.find(string.lower(text), "%sfoil%s*$") ~= nil
@@ -461,16 +475,89 @@ local function giveMaxCard(player: Player, text: string)
 		Remotes.Notify:FireClient(player, "Usage: /maxcard <card name or number> [foil]", true)
 		return
 	end
-	CardService.AddBeast(player, {
-		id = HttpService:GenerateGUID(false),
-		cardId = found.id,
-		foil = foil,
-		level = Beasts.MAX_LEVEL,
-		xp = 0,
-		stars = Beasts.MAX_STARS,
-		grade = Beasts.GRADES[#Beasts.GRADES],
-	})
+	addMaxed(player, found, foil)
 	Remotes.Notify:FireClient(player, `Gave a maxed {if foil then "foil " else ""}{found.name} (Lv {Beasts.MAX_LEVEL}, {Beasts.MAX_STARS} stars, Grade {Beasts.GRADES[#Beasts.GRADES]})`, false)
+end
+
+-- Every weapon (the Steel Sword aside) at `weapon`'s grade and level, each with a mutation of its rarity (the kind
+-- rolled): so switching to a creature's element unlocks its ultimate
+local function giveFootageWeapons(player: Player, weapon: { grade: string, level: number, mutation: string })
+	local Mutations = require(Config:WaitForChild("Mutations")) :: any
+	local MutationRules = require(Shared:WaitForChild("Util"):WaitForChild("MutationRules")) :: any
+	local rng = Random.new()
+	for weaponId in Weapons.ById do
+		if weaponId ~= Weapons.STARTER then
+			WeaponService.SetForTesting(player, weaponId, weapon.grade, weapon.level)
+			local rolled = MutationRules.roll(Mutations, rng:NextNumber(), rng:NextNumber())
+			WeaponService.SetMutation(player, weaponId, { id = rolled.id, rarity = weapon.mutation })
+		end
+	end
+end
+
+-- One Footage step, checked like a button press (Golden hour's /time needs the owner alone or in their own private
+-- server); false, after the refusal's card, when it can't run
+local function footageStep(player: Player, command: string): boolean
+	local ok, reason = DevAccess.check(player, string.match(command, "^/(%w+)") or "")
+	if not ok then
+		DevAccess.refuse(player, reason)
+		return false
+	end
+	run(player, command)
+	return true
+end
+
+-- "/footage <late|shop|golden>": the admin panel's one-tap setups for recording (Config/AdminPanel FOOTAGE; spec
+-- 2026-11-27-live-admin-creator-design)
+local function runFootage(player: Player, text: string)
+	local which = string.match(text, "^/%w+%s+(%a+)")
+	local preset = if which then (AdminPanel.FOOTAGE :: any)[which] else nil
+	if not preset then
+		Remotes.Notify:FireClient(player, "Usage: /footage <late|shop|golden>", true)
+		return
+	end
+	if which == "late" then
+		TutorialService.SkipForTesting(player)
+		CombatTutorialService.SkipForTesting(player)
+		local steps = { `/level {preset.level}`, `/cash {preset.cash}`, "/legendarys" }
+		for index = 1, #Bosses.LADDER do
+			table.insert(steps, `/bossbeaten {index} on`)
+		end
+		for _, command in steps do
+			if not footageStep(player, command) then
+				return
+			end
+		end
+		local party = {}
+		for _, name in preset.party do
+			for _, card in Cards.List do
+				if card.name == name then
+					table.insert(party, addMaxed(player, card, false))
+				end
+			end
+		end
+		PartyService.SetSlotsForTesting(player, party)
+		giveFootageWeapons(player, preset.weapon)
+	else
+		for _, command in preset.commands do
+			if not footageStep(player, command) then
+				return
+			end
+		end
+		if which == "shop" then
+			-- every Products shelf full of the first product it takes
+			local Products = require(Config:WaitForChild("Products")) :: any
+			for _, shelf in PlacementService.GetShelves(player) do
+				if shelf.def.kind == "Products" then
+					for _, product in Products.List do
+						if (PlacementService.AddStock(shelf, product.id, shelf.def.capacity)) > 0 then
+							break
+						end
+					end
+				end
+			end
+		end
+	end
+	Remotes.Notify:FireClient(player, `Footage: {which} ready.`, false)
 end
 
 local function grantBeastXp(player: Player, amount: number)
@@ -1234,6 +1321,7 @@ function DevService.Start()
 	addCommand(folder, "raritypack", function(player, text)
 		PackService.OpenRarityPack(player, string.find(string.lower(text), "foil") ~= nil)
 	end)
+	addCommand(folder, "footage", runFootage)
 	-- The published game's Admin tile: a bare "/admin" (the owner's real save sends it) only answers with the refusal
 	addCommand(folder, "admin", function(player: Player, _text: string)
 		Remotes.Notify:FireClient(player, "Admin is open: pick a button.", false)
