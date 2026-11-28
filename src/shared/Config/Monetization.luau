@@ -7,7 +7,9 @@ return {
 		ExtraJobSlot = 0, -- +1 shop job slot (DESIGN 8); sold as the developer product below (UNLOCKS) instead
 		-- Robux round (spec 2026-11-28-robux-round-design; R$ 149 / 99 / 149 on Creator Hub, managed pricing on): VIP (a
 		-- gold name with a crown, a [VIP] chat tag, the VIP Lounge look), Quick Open (Open 50 in the Bag), Night Shift
-		-- (the welcome-back limits doubled)
+		-- (the welcome-back limits doubled). Game passes (Monetization -> Passes), never developer products: the developer
+		-- products made by mistake on 2026-11-28 (VIP Pass 3737243311, Quick Open 3737243526, Night Shift pass 3737243690)
+		-- are unused and stay Unlisted
 		VIP = 0,
 		QuickOpen = 0,
 		NightShift = 0,
@@ -75,8 +77,10 @@ return {
 		-- pricing on (the Philippines R$ 8), so its buttons read the price live
 		BossReset = 3733394373,
 		-- The Starter Pack, one time (UNLOCKS; spec 2026-11-28-robux-round-design): the Sunny Shop look, the "Shop
-		-- Starter" title and 30 minutes of 2x Luck; R$ 99, managed pricing on
-		StarterPack = 0,
+		-- Starter" title and 30 minutes of 2x Luck; R$ 99, managed pricing on (regional prices 30% to 100% of it), so its
+		-- buttons read the price live. Keep it Unlisted in Monetization -> Shop: a sale outside the game skips the
+		-- restricted-region check and the "already bought" one
+		StarterPack = 3737243901,
 	},
 	PURCHASE_MEMORY = 100, -- receipts remembered in a save, so a retried one is never granted twice
 }

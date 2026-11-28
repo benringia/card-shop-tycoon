@@ -5339,7 +5339,11 @@ empty) and nothing for sale where players spend the most time. Speed, convenienc
   keeps it selling for 4 h." with the pass's live price (shown once the pass is made).
 - **Creator Hub** (the owner): game passes VIP 149, Quick Open 99, Night Shift 149 and the developer product Starter
   Pack 99, managed pricing on; icons drawn by `tools/ui-art/make_pass_icons.py` into `assets/ui/passes/`; ids into
-  `Config/Monetization`. The VIP Lounge and Sunny Shop wallpapers: Figma, made seamless, uploaded (section 4.8).
+  `Config/Monetization`. The Starter Pack is made (3737243901, 2026-11-28; Unlisted in Monetization -> Shop: a sale
+  outside the game would skip the restricted-region and already-bought checks). The three passes are still to make on
+  the Passes page: the first try made them developer products (unused, kept Unlisted). The passes may be Listed (Roblox
+  then shows them on its homepage, search and Shop). The VIP Lounge and Sunny Shop wallpapers: Figma, made seamless,
+  uploaded (section 4.8).
 - Studio: `/pass <VIP|QuickOpen|NightShift|StarterPack> [on|off]` (as if bought: its grant and win card; Studio only),
   `/starter offer` (the card at the next calm moment), `/starter reset`; the admin panel's "Robux round" section.
   Tests: `UnlockRules`, `StoreRules`, `StarterRules`, `VipRules`, `DecorRules`, `TitleRules`, `ItemRules`,
