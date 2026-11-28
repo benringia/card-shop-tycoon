@@ -89,7 +89,8 @@ Keep it in sync: when code changes a rule, number or file, update DESIGN.md in t
 - `assets/ui/card-back` (the card back: Pish and Chikin's medallion; id in `Config/CardDesign` BACK.IMAGE) and
   `assets/ui/opening` (the pack opening's backdrop: their shop at night; id in `Config/PackOpening` BACKDROP.IMAGE):
   Figma-generated, uploaded as images. Not synced by Rojo. Pish and Chikin are the face of the game (owner 2026-11-10).
-- `assets/ui/decor-wallpapers`: the six shop looks' wallpapers (ids in `Config/Decor` LOOKS), Figma-generated, made
+- `assets/ui/decor-wallpapers`: the shop looks' wallpapers (ids in `Config/Decor` LOOKS and PERK_LOOKS: the six sold
+  for cash, the VIP Lounge and Sunny Shop), Figma-generated, made
   seamless by `tools/textures/make_seamless.py <in> <out> [size]`, uploaded as images. Not synced by Rojo. The decor
   pieces' models: one pack from `tools/blender/build_decor_props.py` (`assets/blender/DecorProps/`), imported once as
   `assets/props-import/DecorProps.rbxm` and split by `lune run tools/props/split_pack` (docs/props.md "Decor props");

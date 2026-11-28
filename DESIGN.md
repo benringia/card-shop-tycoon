@@ -1017,8 +1017,9 @@ for launch, plushies after). Cash only, no Robux, except two perk looks (Robux r
   is held, a gold "Get VIP" / "Get it" with the live price. Never sold for cash or stored as owned
   (`DecorRules.owns(..., perks)`, `canBuy` refuses); a saved one in use stays through the load and goes back to Cozy Wood
   only when a working check says the perk isn't held (`DecorRules.keepLook`; a failing check keeps it). Sunny Shop is
-  hidden where Roblox restricts paid random items (unless it's yours). Wallpapers "" (plain walls) until the owner OKs
-  the Figma AI credits.
+  hidden where Roblox restricts paid random items (unless it's yours). Their wallpapers like the six's (Figma, made
+  seamless, `assets/ui/decor-wallpapers/VipLounge.png` and `SunnyShop.png`, 2026-11-28): a plum damask with gold
+  crowns, and butter yellow with smiling suns and daisies.
 - [x] **Shop looks** (`Config/Decor LOOKS`, `Util/DecorRules`, `DecorService`, `PlotService.SetLook`): six whole-shop
   insides, bought once in the Decor tab and switched free after (remote `ShopLook` "buy" / "use"; every refusal a
   Blocked card): Cozy Wood (free, every shop's default), Candy Pastel ($500, Lv 3), Enchanted Forest ($1,000, Lv 5),
@@ -5338,8 +5339,7 @@ empty) and nothing for sale where players spend the most time. Speed, convenienc
   keeps it selling for 4 h." with the pass's live price (shown once the pass is made).
 - **Creator Hub** (the owner): game passes VIP 149, Quick Open 99, Night Shift 149 and the developer product Starter
   Pack 99, managed pricing on; icons drawn by `tools/ui-art/make_pass_icons.py` into `assets/ui/passes/`; ids into
-  `Config/Monetization`. The VIP Lounge and Sunny Shop wallpapers wait for the owner's OK on Figma AI credits (plain
-  wall colours until then).
+  `Config/Monetization`. The VIP Lounge and Sunny Shop wallpapers: Figma, made seamless, uploaded (section 4.8).
 - Studio: `/pass <VIP|QuickOpen|NightShift|StarterPack> [on|off]` (as if bought: its grant and win card; Studio only),
   `/starter offer` (the card at the next calm moment), `/starter reset`; the admin panel's "Robux round" section.
   Tests: `UnlockRules`, `StoreRules`, `StarterRules`, `VipRules`, `DecorRules`, `TitleRules`, `ItemRules`,

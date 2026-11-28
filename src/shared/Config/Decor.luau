@@ -124,8 +124,7 @@ return {
 
 	-- Looks that come with a perk instead of cash (Robux round, spec 2026-11-28-robux-round-design): `perk` is the pass
 	-- or unlock key (Config/Monetization) the player must hold; never sold for cash, never stored as owned, listed after
-	-- the looks above in the Decor tab. Their wallpapers are made like the others once the owner OKs the AI credits;
-	-- until then "" (the walls' plain colour).
+	-- the looks above in the Decor tab. Their wallpapers are made like the others (Figma, made seamless, 2026-11-28).
 	PERK_LOOKS = {
 		{
 			id = "VipLounge",
@@ -136,7 +135,7 @@ return {
 			floor = { 58, 36, 24 },
 			floorMaterial = "WoodPlanks",
 			wall = { 74, 29, 102 },
-			wallpaper = "",
+			wallpaper = "rbxassetid://137090311725461", -- assets/ui/decor-wallpapers/VipLounge.png
 			tile = 16,
 			band = { 44, 15, 64 },
 			bandMaterial = "SmoothPlastic",
@@ -153,7 +152,7 @@ return {
 			floor = { 222, 184, 135 },
 			floorMaterial = "WoodPlanks",
 			wall = { 255, 231, 150 },
-			wallpaper = "",
+			wallpaper = "rbxassetid://108864595255058", -- assets/ui/decor-wallpapers/SunnyShop.png
 			tile = 16,
 			band = { 255, 255, 255 },
 			bandMaterial = "SmoothPlastic",
