@@ -247,6 +247,20 @@ local function giveLuck(player: Player, text: string)
 	Remotes.Notify:FireClient(player, `{strength} luck: {count} more minutes (Studio)`, false)
 end
 
+-- Studio stand-in for buying (its grant and win card) or taking away a Robux round pass or the Starter Pack (spec
+-- 2026-11-28-robux-round-design): /pass <VIP|QuickOpen|NightShift|StarterPack> [on|off] (no on/off: toggle)
+local PASS_KEYS = { "VIP", "QuickOpen", "NightShift", "StarterPack" }
+local function devPass(player: Player, text: string)
+	local key, state = string.match(text, "^%S+%s+(%S+)%s*(%S*)")
+	if not key or not table.find(PASS_KEYS, key) or (state ~= "" and state ~= "on" and state ~= "off") then
+		Remotes.Notify:FireClient(player, "Usage: /pass <VIP|QuickOpen|NightShift|StarterPack> [on|off]", true)
+		return
+	end
+	local on = if state == "" then not MonetizationService.HasPass(player, key) else state == "on"
+	MonetizationService.DevGrant(player, key, on)
+	Remotes.Notify:FireClient(player, `{key} {if on then "on" else "off"} (Studio)`, false)
+end
+
 -- Studio stand-in for buying or refunding the Extra Job Slot pass
 local function toggleJobSlot(player: Player)
 	local owns = MonetizationService.HasPass(player, "ExtraJobSlot")
@@ -730,6 +744,7 @@ function DevService.Start()
 		end
 	end)
 	addCommand(folder, "jobslot", toggleJobSlot)
+	addCommand(folder, "pass", devPass)
 	addCommand(folder, "luck", giveLuck)
 	addCommand(folder, "jobtired", function(player)
 		JobService.ToggleTiredForTest(player)
@@ -1358,7 +1373,7 @@ function DevService.Start()
 	if not RunService:IsStudio() then
 		return
 	end
-	print("[DevService] Studio commands enabled: /cash <amount>, /broke [cash], /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /bulk [cards], /item <id> <amount>, /weapon <id> [grade] [level], /material <boss id> <amount>, /weapondrop <boss id>, /chests <boss id> [drop|miss], /bossreset, /event <bossRush|luckySunday|off|auto|luck>, /codes reset, /boss <n> [fight|group], /jobslot, /luck <x2|x3> [minutes] | clear, /prologue [reset], /jobtired, /wild, /rest, /tire, /bosshp <1-100>, /townchikin, /turts <restock|move|offer <id>>, /gift <ready|day n|week n|month n|reset|tutorial|win kind>, /elite, /knockout, /support <0-3>, /titles forget, /review <outcome>, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /decor <look id|pieces>, /window <style> <side> <at>, /shoproom <open|lock|fill> [room|all], /storage <place|fill [product]|clear>, /loading <main|wild|frontier|dungeon>, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-4> [volume], /victorysound <1-3>, /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S], /skillfx <sword> [cut1|cut2|cut3|skill] [level], /room <2-4>, /winroom, /puzzle <solve|beams|plates|lock>, /tap <piece>, /dungeonfx <intro|introshort|roar|glimpse>, /hint <kind>")
+	print("[DevService] Studio commands enabled: /cash <amount>, /broke [cash], /xp <amount>, /level <level>, /setxp <xp>, /beastxp <amount>, /givecard <number> <amount>, /bulk [cards], /item <id> <amount>, /weapon <id> [grade] [level], /material <boss id> <amount>, /weapondrop <boss id>, /chests <boss id> [drop|miss], /bossreset, /event <bossRush|luckySunday|off|auto|luck>, /codes reset, /boss <n> [fight|group], /jobslot, /pass <VIP|QuickOpen|NightShift|StarterPack> [on|off], /luck <x2|x3> [minutes] | clear, /prologue [reset], /jobtired, /wild, /rest, /tire, /bosshp <1-100>, /townchikin, /turts <restock|move|offer <id>>, /gift <ready|day n|week n|month n|reset|tutorial|win kind>, /elite, /knockout, /support <0-3>, /titles forget, /review <outcome>, /arena, /frontierdrop, /testpack, /raritypack [foil], /legendarys [foil], /maxcard <name> [foil], /crowd <0-60>, /customer <type> [card|rarity], /serve, /decor <look id|pieces>, /window <style> <side> <at>, /shoproom <open|lock|fill> [room|all], /storage <place|fill [product]|clear>, /loading <main|wild|frontier|dungeon>, /swordpopup, /buttonnames, /music [place] <n> [volume], /summonsound <n>, /unsummonsound <n>, /levelfx [level], /beastlevelfx, /levelsound <1-4> [volume], /victorysound <1-3>, /movefx <rain|vine|orbs|curse> [C|B|A|S] [big], /superfx <move> [C|B|A|S], /attackfx [C|B|A|S], /skillfx <sword> [cut1|cut2|cut3|skill] [level], /room <2-4>, /winroom, /puzzle <solve|beams|plates|lock>, /tap <piece>, /dungeonfx <intro|introshort|roar|glimpse>, /hint <kind>")
 end
 
 return DevService

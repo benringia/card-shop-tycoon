@@ -29,4 +29,43 @@ return {
 		expect.equal(UnlockRules.canBuy({}, "ExtraJobSlot", 0, Monetization.UNLOCKS), false, "not made yet")
 		expect.equal(UnlockRules.canBuy({}, "Luck15", 3731134842, Monetization.UNLOCKS), false, "not an unlock")
 	end,
+
+	-- Robux round (spec 2026-11-28-robux-round-design): the Starter Pack is a one-time unlock holding 2x Luck, so it's
+	-- chance-based and not sold where paid random items are restricted
+	["the Starter Pack is a one-time unlock, a pass key and chance-based"] = function()
+		assert(table.find(Monetization.UNLOCKS, "StarterPack"), "listed as a one-time unlock")
+		expect.equal(Monetization.PASSES.StarterPack, 0)
+		expect.equal(Monetization.PRODUCTS.StarterPack ~= nil, true)
+		expect.equal(UnlockRules.chanceBased("StarterPack", Monetization), true)
+		expect.equal(UnlockRules.chanceBased("ExtraJobSlot", Monetization), false)
+	end,
+
+	["the new passes are pass keys"] = function()
+		for _, key in { "VIP", "QuickOpen", "NightShift" } do
+			expect.equal(typeof(Monetization.PASSES[key]), "number", key)
+		end
+	end,
+
+	["a grant that fails leaves it unbought"] = function()
+		local bought = {}
+		expect.equal(UnlockRules.apply(bought, "StarterPack", function()
+			return false
+		end), false)
+		expect.isNil(bought.StarterPack, "Roblox asks again")
+		expect.equal(UnlockRules.apply(bought, "StarterPack", function()
+			return true
+		end), true)
+		expect.equal(bought.StarterPack, true)
+		expect.equal(UnlockRules.apply({}, "ExtraJobSlot", nil), true, "no grant: just owned")
+	end,
+
+	["every pass and unlock has a win card"] = function()
+		local Luck = require("../src/shared/Config/Luck")
+		for key in Monetization.PASSES do
+			local kind = Monetization.WIN_KINDS[key]
+			assert(kind, `{key} has a win kind`)
+			local win = Luck.WIN[kind]
+			assert(win and win.title and win.text and win.glyph, `{kind} has a title, text and glyph`)
+		end
+	end,
 }

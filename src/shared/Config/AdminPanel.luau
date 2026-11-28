@@ -423,6 +423,21 @@ AdminPanel.SECTIONS = {
 			{ label = "+10 Hydra fragments", command = "/item fragment_prismHydra 10" },
 		},
 	},
+	-- Robux round (spec 2026-11-28-robux-round-design): each pass and the Starter Pack as if bought (its win card,
+	-- grant) or taken away (Studio only), and the Starter card
+	{
+		title = "Robux round",
+		buttons = {
+			{ label = "VIP on (as if bought)", command = "/pass VIP on" },
+			{ label = "VIP off", command = "/pass VIP off" },
+			{ label = "Quick Open on (as if bought)", command = "/pass QuickOpen on" },
+			{ label = "Quick Open off", command = "/pass QuickOpen off" },
+			{ label = "Night Shift on (as if bought)", command = "/pass NightShift on" },
+			{ label = "Night Shift off", command = "/pass NightShift off" },
+			{ label = "Starter Pack on (as if bought)", command = "/pass StarterPack on" },
+			{ label = "Starter Pack off", command = "/pass StarterPack off" },
+		},
+	},
 } :: { Section }
 
 AdminPanel.ITEM_AMOUNTS = { 1, 10 } -- one button each per item
@@ -454,6 +469,7 @@ AdminPanel.SCOPE = {
 	bosscard = "server",
 	carddrop = "server",
 	jobslot = "studio", -- pretends to own a game pass
+	pass = "studio", -- pretends to own a Robux round pass or the Starter Pack
 } :: { [string]: "server" | "studio" }
 
 -- The Footage section's setups (DevService /footage <late|shop|golden>). Each step is checked like a button press, so

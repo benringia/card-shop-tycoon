@@ -22,4 +22,21 @@ function UnlockRules.canBuy(owned: { [string]: boolean }, key: string, productId
 	return table.find(known, key) ~= nil and productId ~= 0 and owned[key] ~= true
 end
 
+-- A purchase granted: its grant first (the Starter Pack's luck), then owned. A grant that can't go through yet (the save
+-- not loaded here) leaves it unbought, so Roblox asks again
+function UnlockRules.apply(bought: { [string]: boolean }, key: string, grant: (() -> boolean)?): boolean
+	if grant and not grant() then
+		return false
+	end
+	bought[key] = true
+	return true
+end
+
+-- Whether an unlock holds something chance-based (Config/Monetization CHANCE): not sold where paid random items are
+-- restricted
+function UnlockRules.chanceBased(key: string, cfg: any): boolean
+	local chance = if typeof(cfg) == "table" then cfg.CHANCE else nil
+	return typeof(chance) == "table" and chance[key] == true
+end
+
 return UnlockRules

@@ -29,7 +29,13 @@ return {
 	WIN = {
 		x2 = { title = "2x LUCK!", text = "{minutes} minutes of luckier packs!", colors = { { 70, 225, 130 }, { 15, 140, 80 } } },
 		x3 = { title = "SUPER LUCK!", text = "{minutes} minutes of super lucky packs!", colors = { { 190, 120, 255 }, { 90, 60, 200 } }, rainbow = true },
-		jobslot = { title = "+1 WORKER!", text = "A second card can work in your shop!", colors = { { 255, 210, 90 }, { 220, 140, 20 } } },
+		-- `glyph`: the big picture for a pass or unlock (luck shows the clover); Robux round (spec
+		-- 2026-11-28-robux-round-design) adds the passes' and the Starter Pack's
+		jobslot = { title = "+1 WORKER!", text = "A second card can work in your shop!", colors = { { 255, 210, 90 }, { 220, 140, 20 } }, glyph = "💼" },
+		vip = { title = "VIP!", text = "Your name shines gold in town!", colors = { { 255, 210, 63 }, { 118, 70, 217 } }, glyph = "👑" },
+		quickopen = { title = "QUICK OPEN!", text = "Open 50 packs at once!", colors = { { 120, 200, 255 }, { 28, 120, 200 } }, glyph = "⚡" },
+		nightshift = { title = "NIGHT SHIFT!", text = "Your shop sells for 4 h while you're away!", colors = { { 150, 140, 255 }, { 40, 48, 112 } }, glyph = "🌙" },
+		starter = { title = "STARTER PACK!", text = "Sunny Shop look, your title and 2x Luck!", colors = { { 255, 127, 184 }, { 255, 184, 46 } }, glyph = "🎁" },
 		SECONDS = 2.6,
 		SOUND = "rbxassetid://9116418035", -- Magic Tone Falling Shimmer (Config/Support)
 		RAYS = "rbxassetid://139701534930046", -- Config/PackFx rays

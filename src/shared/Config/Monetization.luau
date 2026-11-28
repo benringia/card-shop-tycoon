@@ -5,10 +5,28 @@
 return {
 	PASSES = {
 		ExtraJobSlot = 0, -- +1 shop job slot (DESIGN 8); sold as the developer product below (UNLOCKS) instead
+		-- Robux round (spec 2026-11-28-robux-round-design; R$ 149 / 99 / 149 on Creator Hub, managed pricing on): VIP (a
+		-- gold name with a crown, a [VIP] chat tag, the VIP Lounge look), Quick Open (Open 50 in the Bag), Night Shift
+		-- (the welcome-back limits doubled)
+		VIP = 0,
+		QuickOpen = 0,
+		NightShift = 0,
+		StarterPack = 0, -- sold as the one-time developer product below (UNLOCKS); a pass key so every check counts it
 	},
 	-- Pass keys sold as one-time developer products and saved (owner 2026-11-14 made the Extra Job Slot a developer
 	-- product): MonetizationService counts a bought one as owning the pass, never sells it twice (Util/UnlockRules)
-	UNLOCKS = { "ExtraJobSlot" },
+	UNLOCKS = { "ExtraJobSlot", "StarterPack" },
+	-- Unlocks holding something chance-based (the Starter Pack's 2x Luck): not shown or sold where Roblox restricts paid
+	-- random items (Util/PaidRandomRules), like the luck boosts
+	CHANCE = { StarterPack = true },
+	-- Each pass's and unlock's win card the moment it's granted (Config/Luck WIN, StoreWinController)
+	WIN_KINDS = {
+		ExtraJobSlot = "jobslot",
+		StarterPack = "starter",
+		VIP = "vip",
+		QuickOpen = "quickopen",
+		NightShift = "nightshift",
+	},
 	CHECK_RETRY_SECONDS = 60, -- after a failed ownership check, wait this long before asking Roblox again
 	-- Developer products (spec 2026-11-12-timed-upgrades-revive-design; PurchaseService). Create each on Creator Hub (the
 	-- experience -> Monetization -> Developer Products -> Create), set its price there and paste its ID here; 0 means
@@ -37,6 +55,9 @@ return {
 		-- Every boss's loot timer ended at once (Bosses.RESET, BossService; owner 2026-11-19, pick A): R$ 20, managed
 		-- pricing on (the Philippines R$ 8), so its buttons read the price live
 		BossReset = 3733394373,
+		-- The Starter Pack, one time (UNLOCKS; spec 2026-11-28-robux-round-design): the Sunny Shop look, the "Shop
+		-- Starter" title and 30 minutes of 2x Luck; R$ 99, managed pricing on
+		StarterPack = 0,
 	},
 	PURCHASE_MEMORY = 100, -- receipts remembered in a save, so a retried one is never granted twice
 }

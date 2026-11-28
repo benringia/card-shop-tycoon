@@ -112,11 +112,11 @@ local function show(kind: string, seconds: number)
 	rays.Parent = card
 
 	local picture: GuiObject
-	if kind == "jobslot" then
+	if look.glyph then -- a pass's or unlock's own picture (the luck boosts show the clover)
 		local glyph = Instance.new("TextLabel")
 		glyph.BackgroundTransparency = 1
 		glyph.Font = Enum.Font.FredokaOne
-		glyph.Text = "💼"
+		glyph.Text = look.glyph
 		glyph.TextScaled = true
 		picture = glyph
 	else
@@ -163,7 +163,7 @@ local function show(kind: string, seconds: number)
 	sound.Volume = 0.6
 	sound.Parent = gui
 	sound:Play()
-	if kind ~= "jobslot" then
+	if not look.glyph then -- clovers burst round you for luck only
 		burst(look.colors)
 	end
 

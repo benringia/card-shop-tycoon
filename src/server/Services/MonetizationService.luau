@@ -4,21 +4,27 @@
 -- A failed Roblox check counts as "not owned" and is retried on the next check, so it never errors.
 -- Studio: the DevPass_<PassKey> attribute (toggled by /jobslot) stands in for owning the pass.
 -- Some pass keys are also sold as one-time developer products (Config/Monetization UNLOCKS, owner 2026-11-14: the Extra
--- Job Slot): a bought one is saved (data.unlocks) and counts as owning the pass; its purchase opens only while it isn't
--- owned (remote BuyUnlock, Util/UnlockRules), so it's never sold twice.
+-- Job Slot; 2026-11-28: the Starter Pack): a bought one is saved (data.unlocks) and counts as owning the pass; its
+-- purchase opens only while it isn't owned (remote BuyUnlock, Util/UnlockRules), so it's never sold twice. One that holds
+-- something chance-based (Monetization CHANCE) isn't sold where Roblox restricts paid random items. Every pass and
+-- unlock granted plays its win card (Monetization WIN_KINDS, StoreWinController).
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
+local PolicyService = game:GetService("PolicyService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Monetization = require(Shared:WaitForChild("Config"):WaitForChild("Monetization"))
 local UnlockRules = require(Shared:WaitForChild("Util"):WaitForChild("UnlockRules"))
+local PaidRandomRules = require(Shared:WaitForChild("Util"):WaitForChild("PaidRandomRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Services = script.Parent :: Instance
 local DataService = require(Services:WaitForChild("DataService"))
 local PurchaseService = require(Services:WaitForChild("PurchaseService"))
-local RateLimiter = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("RateLimiter"))
+local ServerUtil = (Services.Parent :: Instance):WaitForChild("Util")
+local RateLimiter = require(ServerUtil:WaitForChild("RateLimiter"))
+local Blocked = require(ServerUtil:WaitForChild("Blocked"))
 
 local MonetizationService = {}
 
@@ -26,7 +32,18 @@ local owned: { [Player]: { [string]: boolean } } = {} -- only successful checks 
 local retryAt: { [Player]: { [string]: number } } = {} -- failed checks: don't ask Roblox again before this
 local passChangedCallbacks: { (player: Player, passKey: string) -> () } = {}
 local unlocks: { [Player]: { [string]: boolean } } = {} -- one-time unlocks bought (saved), once loaded
+local unlockGrants: { [string]: (player: Player) -> boolean } = {} -- what an unlock gives besides owning it
 local buyLimit = RateLimiter.new(2)
+
+local NOT_SOLD_HERE = "Not sold where you live."
+
+-- The win card for a pass or unlock just granted (Config/Luck WIN)
+local function winCard(player: Player, key: string)
+	local kind = Monetization.WIN_KINDS[key]
+	if kind then
+		Remotes.StoreWin:FireClient(player, kind, 0)
+	end
+end
 
 local function check(player: Player, passKey: string): boolean
 	if RunService:IsStudio() and player:GetAttribute(`DevPass_{passKey}`) == true then
@@ -102,7 +119,29 @@ function MonetizationService.SetDevPass(player: Player, passKey: string, value: 
 	refresh(player, passKey)
 end
 
--- Opens a one-time unlock's purchase (the Store, the Jobs panel) while it's for sale: known, made, not owned yet
+-- What an unlock gives besides owning it, run once per purchase before it counts as bought (the Starter Pack's luck,
+-- StarterService); false when it can't go through yet, so Roblox asks again
+function MonetizationService.OnUnlockGrant(key: string, grant: (player: Player) -> boolean)
+	unlockGrants[key] = grant
+end
+
+-- Studio only (DevService /pass): a pass or unlock as if bought (its grant and win card) or taken away again
+function MonetizationService.DevGrant(player: Player, key: string, on: boolean)
+	if not RunService:IsStudio() or Monetization.PASSES[key] == nil then
+		return
+	end
+	MonetizationService.SetDevPass(player, key, on)
+	if on then
+		local grant = unlockGrants[key]
+		if grant then
+			grant(player)
+		end
+		winCard(player, key)
+	end
+end
+
+-- Opens a one-time unlock's purchase (the Store, the Jobs panel, the Starter card) while it's for sale: known, made, not
+-- owned yet, and not chance-based where paid random items are restricted (the big locked card says so)
 local function onBuyUnlock(player: Player, key: unknown)
 	if typeof(key) ~= "string" or not buyLimit(player) then
 		return
@@ -112,9 +151,17 @@ local function onBuyUnlock(player: Player, key: unknown)
 		return -- not loaded yet, or owned: the button says "Owned"
 	end
 	local productId = PurchaseService.ProductId(key)
-	if UnlockRules.canBuy(bought, key, productId, Monetization.UNLOCKS) then
-		MarketplaceService:PromptProductPurchase(player, productId)
+	if not UnlockRules.canBuy(bought, key, productId, Monetization.UNLOCKS) then
+		return
 	end
+	if UnlockRules.chanceBased(key, Monetization) then
+		local ok, info = pcall(PolicyService.GetPolicyInfoForPlayerAsync, PolicyService, player)
+		if PaidRandomRules.restricted(ok, info) then
+			Blocked.tell(player, NOT_SOLD_HERE)
+			return
+		end
+	end
+	MarketplaceService:PromptProductPurchase(player, productId)
 end
 
 function MonetizationService.Start()
@@ -143,11 +190,17 @@ function MonetizationService.Start()
 			if not bought then
 				return false -- not loaded here yet: Roblox asks again
 			end
-			bought[key] = true
-			refresh(player, key)
-			if key == "ExtraJobSlot" then
-				Remotes.StoreWin:FireClient(player, "jobslot", 0) -- its win card
+			local grant = unlockGrants[key]
+			local granted = UnlockRules.apply(bought, key, if grant
+				then function(): boolean
+					return grant(player)
+				end
+				else nil)
+			if not granted then
+				return false -- its grant can't go through yet: Roblox asks again
 			end
+			refresh(player, key)
+			winCard(player, key)
 			return true
 		end)
 	end
@@ -171,13 +224,14 @@ function MonetizationService.Start()
 			return
 		end
 		for passKey, id in Monetization.PASSES do
-			if id == passId then
+			if id ~= 0 and id == passId then
 				owned[player] = owned[player] or {}
 				owned[player][passKey] = true
 				if retryAt[player] then
 					retryAt[player][passKey] = nil
 				end
 				refresh(player, passKey)
+				winCard(player, passKey)
 			end
 		end
 	end)
