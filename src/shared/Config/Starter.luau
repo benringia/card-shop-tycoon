@@ -22,5 +22,9 @@ return {
 		},
 		later = "Maybe later",
 		foot = "It stays in the Store if you change your mind.",
+		-- the window: its most size (px) and Pish's peek sticker (Config/HudMascot images.peek) over its top-left corner,
+		-- placed like Turts' (`left` px in, its bottom `overlap` px below the window's top)
+		maxSize = { 420, 400 },
+		peek = { size = { 70, 55 }, left = 10, overlap = 26 },
 	},
 }
