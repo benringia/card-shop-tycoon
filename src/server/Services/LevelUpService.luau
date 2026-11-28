@@ -27,6 +27,7 @@ local EconomyService = require(Services:WaitForChild("EconomyService"))
 local ItemService = require(Services:WaitForChild("ItemService"))
 local BattleService = require(Services:WaitForChild("BattleService"))
 local CardService = require(Services:WaitForChild("CardService"))
+local MonetizationService = require(Services:WaitForChild("MonetizationService"))
 local RateLimiter = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("RateLimiter"))
 local Funnel = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("Funnel"))
 local Blocked = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("Blocked"))
@@ -142,7 +143,8 @@ local function onOpenBagPack(player: Player, itemId: unknown)
 	end
 end
 
--- Open 10 (owner 2026-11-17): up to Levels.OPEN_MANY packs of a Bag stack at once, the same checks as one
+-- Open 10 (owner 2026-11-17): up to Levels.OPEN_MANY packs of a Bag stack at once, the same checks as one; up to
+-- Levels.OPEN_QUICK with the Quick Open pass (Robux round, spec 2026-11-28-robux-round-design), whatever the client asks
 local function onOpenBagPacks(player: Player, itemId: unknown, asked: unknown)
 	if not allowOpen(player) or typeof(asked) ~= "number" then
 		return
@@ -157,7 +159,8 @@ local function onOpenBagPacks(player: Player, itemId: unknown, asked: unknown)
 		return
 	end
 	local id = itemId :: string
-	local count = ItemRules.openMany(math.min(ItemService.GetCount(player, id), asked :: number), Levels.OPEN_MANY)
+	local cap = ItemRules.openCap(MonetizationService.HasPass(player, "QuickOpen"), Levels)
+	local count = ItemRules.openMany(math.min(ItemService.GetCount(player, id), asked :: number), cap)
 	if count < 1 or not ItemService.TakeItem(player, id, count) then
 		return
 	end

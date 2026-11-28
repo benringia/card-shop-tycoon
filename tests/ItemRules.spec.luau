@@ -310,4 +310,28 @@ return {
 			end
 		end
 	end,
+	-- Quick Open (Robux round, spec 2026-11-28-robux-round-design): Open 50 for the pass's owners, else Open 10, on the
+	-- server whatever a client asks for, and the Bag's buttons
+	["openCap: 50 with Quick Open, else 10"] = function()
+		local Levels = require("../src/shared/Config/Levels")
+		expect.equal(Levels.OPEN_QUICK, 50)
+		expect.equal(ItemRules.openCap(true, Levels), 50)
+		expect.equal(ItemRules.openCap(false, Levels), 10)
+		expect.equal(ItemRules.openMany(9999, ItemRules.openCap(true, Levels)), 50, "a modified client asking for 9999")
+		expect.equal(ItemRules.openMany(9999, ItemRules.openCap(false, Levels)), 10)
+	end,
+
+	["the Bag's buttons"] = function()
+		local Levels = require("../src/shared/Config/Levels")
+		local owner = ItemRules.bagButtons(64, true, Levels)
+		expect.equal(owner.many, 10)
+		expect.equal(owner.quick, 50)
+		expect.equal(owner.offer, false)
+		expect.equal(ItemRules.bagButtons(37, true, Levels).quick, 37)
+		expect.equal(ItemRules.bagButtons(10, true, Levels).quick, 0, "Open 10 covers it")
+		expect.equal(ItemRules.bagButtons(64, false, Levels).offer, true)
+		expect.equal(ItemRules.bagButtons(64, false, Levels).quick, 0)
+		expect.equal(ItemRules.bagButtons(10, false, Levels).offer, false)
+		expect.equal(ItemRules.bagButtons(1, false, Levels).many, 0, "one pack: Open alone")
+	end,
 }

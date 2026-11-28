@@ -122,6 +122,24 @@ function ItemRules.openMany(have: number, max: number): number
 	return if whole >= 2 then math.min(whole, max) else 0
 end
 
+-- The most Bag packs opened at once (Robux round, spec 2026-11-28-robux-round-design): OPEN_QUICK with the Quick Open
+-- pass, else OPEN_MANY; the server caps every request with it
+function ItemRules.openCap(quick: boolean, cfg: any): number
+	return if quick then cfg.OPEN_QUICK else cfg.OPEN_MANY
+end
+
+-- The Bag's open buttons for a stack of `have` packs: Open N (up to OPEN_MANY), and past OPEN_MANY either the pass's
+-- "Open N" (up to OPEN_QUICK) or, without the pass, its offer
+function ItemRules.bagButtons(have: number, quick: boolean, cfg: any): { many: number, quick: number, offer: boolean }
+	local whole = if typeof(have) == "number" and have == have then math.floor(have) else 0
+	local past = whole > cfg.OPEN_MANY
+	return {
+		many = ItemRules.openMany(whole, cfg.OPEN_MANY),
+		quick = if quick and past then math.min(whole, cfg.OPEN_QUICK) else 0,
+		offer = not quick and past,
+	}
+end
+
 -- Whether a Bag item is placed in your shop from the Bag (its Place button; owner 2026-11-17): the boss trophies, each
 -- its own Config/Shelves entry by the same id
 function ItemRules.placesInShop(config: Config, itemId: any): boolean

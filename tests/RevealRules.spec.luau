@@ -159,4 +159,25 @@ return {
 		assert(total >= 2.5 and total <= 3.5, `Open 10's sky tear is about 3 s (was {total})`)
 		assert(sky.rumble[2] > sky.rumble[1], "the rumble grows as the sky cracks")
 	end,
+
+	-- Quick Open (Robux round, spec 2026-11-28-robux-round-design; owner: "make it unskippable. [skippable] only on
+	-- Open 50"): Open 10 plays through, Open 50 turns the rest over on a tap and shows only its best pulls
+	["only Open 50 can be skipped"] = function()
+		expect.equal(RevealRules.skippable(10, 10), false, "Open 10")
+		expect.equal(RevealRules.skippable(2, 10), false, "a few packs")
+		expect.equal(RevealRules.skippable(11, 10), true)
+		expect.equal(RevealRules.skippable(50, 10), true, "Open 50")
+	end,
+
+	["best pulls: Very Rare and up, best first, capped"] = function()
+		local rank = { Common = 1, Rare = 2, ["Very Rare"] = 3, Epic = 4, Legendary = 5 }
+		local picks, below, over = RevealRules.bestPulls({ "Common", "Epic", "Very Rare", "Legendary", "Rare", "Epic" }, "Very Rare", rank, 3)
+		expect.equal(table.concat(picks, ","), "4,2,6", "the Legendary, then the Epics in pull order")
+		expect.equal(below, 2, "a Common and a Rare to the binder")
+		expect.equal(over, 1, "the Very Rare past the cap")
+		local none, belowAll, overNone = RevealRules.bestPulls({ "Common", "Rare" }, "Very Rare", rank, 50)
+		expect.equal(#none, 0)
+		expect.equal(belowAll, 2)
+		expect.equal(overNone, 0)
+	end,
 }

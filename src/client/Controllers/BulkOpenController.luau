@@ -4,8 +4,10 @@
 -- them out face down in a grid over a dim screen and turns them over quickly, pausing on Rare and better (an Epic or a
 -- Legendary flashes the screen and gets the chat shout-out). Very Rare and up light up as they turn (a halo, a turning
 -- rim, a shine, their rarity's tag; CardReveal.BEST), a Grade A or S card glows with its medal and dings
--- (Config/GradeLook), and the rest dims once all are turned. A tap turns the rest over at once. Then the totals (cards,
--- NEW, worth), Continue and Open 10 more while the stack lasts.
+-- (Config/GradeLook), and the rest dims once all are turned. Open 10 plays through (owner 2026-11-28: "make it
+-- unskippable"). Then the totals (cards, NEW, worth), Continue and Open 10 more while the stack lasts. Open 50 (Quick
+-- Open, the game pass; Robux round, spec 2026-11-28-robux-round-design; PackOpening.BULK.QUICK): only the best pulls
+-- (Very Rare and up) go in the grid, the rest counted under the totals, and a tap turns the rest over at once.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -32,6 +34,7 @@ local CardArt = require(Shared:WaitForChild("Util"):WaitForChild("CardArt"))
 local GradeLook = require(Shared:WaitForChild("Util"):WaitForChild("GradeLook"))
 local CardArtConfig = require(Config:WaitForChild("CardArt"))
 local SuperFxConfig = require(Config:WaitForChild("SuperFx"))
+local Rarities = require(Config:WaitForChild("Rarities"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
@@ -49,7 +52,16 @@ local PAUSE = PackOpening.BULK.pause -- seconds each rarity holds the turning ov
 local GRID = PackOpening.BULK.grid
 local BIG = { Epic = true, Legendary = true }
 local BEST = CardReveal.BEST
+local QUICK = PackOpening.BULK.QUICK -- Open 50 (Quick Open): best pulls only, a tap skips
 local HUD_REASON = "BulkOpen" -- the HUD hides under the grid, like the pack opening's stage (the quest strip plays its news after)
+
+-- Each rarity's rank (Config/Rarities order), for Open 50's best pulls
+local RANK: { [string]: number } = {}
+for name, rarity in Rarities do
+	if typeof(rarity) == "table" and typeof(rarity.order) == "number" then
+		RANK[name] = rarity.order
+	end
+end
 
 local player = Players.LocalPlayer
 local gui: ScreenGui
@@ -63,6 +75,8 @@ local flash: Frame
 local bagItems: { [string]: number } = {}
 local showing = 0 -- bumps per batch, so an old batch's turning stops
 local skipping = false
+local quickRun = false -- this batch is an Open 50 (more than Open 10's): best pulls only, and a tap may skip
+local restLine: TextLabel -- Open 50's line under the totals: the best pulls heading, then what went to the binder
 local itemId: string? = nil
 
 local function playSound(id: string, volume: number, speed: number?)
@@ -413,17 +427,26 @@ local function skyTear(cell: Frame, pull: Pull, mine: number)
 	done()
 end
 
-local function finish(pulls: { Pull }, cells: { Frame }, packs: number)
-	dimRest(cells, pulls)
+-- The batch's totals (every card, shown or not), the dimming of the shown cells and the buttons; Open 50 also says what
+-- went straight to the binder (`below` under Very Rare, `over` best pulls past the grid's cap)
+local function finish(pulls: { Pull }, shown: { Pull }, cells: { Frame }, packs: number, below: number, over: number)
+	dimRest(cells, shown)
 	local newCount, value = 0, 0
 	for _, pull in pulls do
 		newCount += if pull.isNew then 1 else 0
 		value += CardRules.getMarketValue(pull.card, pull.foil, 1, BeastRules.START_STARS, pull.grade)
 	end
 	totals.Text = string.format("%d cards · %d NEW · worth $%.2f", #pulls, newCount, value)
+	if quickRun then
+		restLine.Text = if #shown == 0 then QUICK.none
+			elseif over > 0 then string.format(QUICK.overflow, below + over)
+			elseif below > 0 then string.format(QUICK.rest, below)
+			else ""
+	end
 	playSound(PackOpening.SOUNDS.chime, 0.4)
-	local left = if itemId then ItemRules.openMany(bagItems[itemId] or 0, Levels.OPEN_MANY) else 0
-	moreButton.Text = `Open {left} more`
+	local cap = if quickRun then Levels.OPEN_QUICK else Levels.OPEN_MANY
+	local left = if itemId then ItemRules.openMany(bagItems[itemId] or 0, cap) else 0
+	moreButton.Text = if quickRun then string.format(QUICK.more, left) else `Open {left} more`
 	moreButton.Visible = left > 0
 	continueButton.Visible = true
 	title.Text = `{packs} packs opened!`
@@ -455,13 +478,35 @@ local function show(_productId: unknown, results: unknown, flags: unknown, fromI
 	local item = Items.ITEMS[fromItem]
 	local name = if item then item.name else "pack"
 	title.Text = `Opening {count} {name}{if count > 1 and string.sub(name, -1) ~= "s" then "s" else ""}...`
-	totals.Text = "Tap to turn them all over"
+	-- Open 50 (more than Open 10's): only the best pulls in the grid, the rest counted at the end; a tap may skip it.
+	-- Open 10 plays through (owner 2026-11-28: "make it unskippable")
+	quickRun = RevealRules.skippable(count, Levels.OPEN_MANY)
+	local shown = pulls
+	local below, over = 0, 0
+	if quickRun then
+		local rarities: { string } = {}
+		for index, pull in pulls do
+			rarities[index] = pull.card.rarity
+		end
+		local picks
+		picks, below, over = RevealRules.bestPulls(rarities, BEST.from, RANK, QUICK.limit)
+		shown = {}
+		for _, index in picks do
+			table.insert(shown, pulls[index])
+		end
+	end
+	totals.Text = if quickRun then "Tap to turn them all over" else ""
+	restLine.Text = if quickRun then QUICK.best else ""
+	restLine.Visible = quickRun
+	local offset = if quickRun then QUICK.restOffset else 0
+	grid.Position = UDim2.new(0.5, 0, 0, PackOpening.TOP + 76 + offset)
+	grid.Size = UDim2.new(1, -32, 1, -(PackOpening.TOP + 76 + 84 + offset))
 	continueButton.Visible = false
 	moreButton.Visible = false
-	local width = cellWidth(#pulls)
+	local width = cellWidth(#shown)
 	layout.CellSize = UDim2.fromOffset(width, math.floor(width * GRID.ratio))
 	local cells: { Frame } = {}
-	for index in pulls do
+	for index in shown do
 		local cell = Instance.new("Frame")
 		cell.Name = `Card{index}`
 		cell.LayoutOrder = index
@@ -479,7 +524,7 @@ local function show(_productId: unknown, results: unknown, flags: unknown, fromI
 	player:SetAttribute("PackOpeningBusy", true)
 	task.spawn(function()
 		task.wait(0.4)
-		for index, pull in pulls do
+		for index, pull in shown do
 			if showing ~= mine then
 				return
 			end
@@ -509,7 +554,7 @@ local function show(_productId: unknown, results: unknown, flags: unknown, fromI
 			end
 		end
 		if showing == mine then
-			finish(pulls, cells, count)
+			finish(pulls, shown, cells, count, below, over)
 		end
 	end)
 end
@@ -532,7 +577,9 @@ local function build()
 	backdrop.Size = UDim2.fromScale(1, 1)
 	backdrop.Parent = ScreenCover.layer(gui) -- the backdrop and the flash: the whole screen, past a phone's safe area
 	backdrop.Activated:Connect(function()
-		skipping = true -- a tap turns the rest over at once
+		if quickRun then
+			skipping = true -- Open 50: a tap turns the rest over at once (Open 10 plays through)
+		end
 	end)
 	UIKit.hideTouchControlsWhileVisible(backdrop)
 	flash = Instance.new("Frame")
@@ -555,6 +602,15 @@ local function build()
 	totals.TextXAlignment = Enum.TextXAlignment.Center
 	totals.ZIndex = 5
 	UIKit.outlined(totals, 1.5)
+	restLine = UIKit.label(gui, "", Enum.Font.FredokaOne, 15, Color3.fromRGB(230, 220, 255))
+	restLine.Name = "RestLine"
+	restLine.AnchorPoint = Vector2.new(0.5, 0)
+	restLine.Position = UDim2.new(0.5, 0, 0, PackOpening.TOP + 66)
+	restLine.Size = UDim2.new(1, -32, 0, 20)
+	restLine.TextXAlignment = Enum.TextXAlignment.Center
+	restLine.ZIndex = 5
+	restLine.Visible = false
+	UIKit.outlined(restLine, 1.5)
 	grid = Instance.new("ScrollingFrame")
 	grid.Name = "Cards"
 	grid.AnchorPoint = Vector2.new(0.5, 0)
@@ -597,8 +653,9 @@ local function build()
 	moreButton.Activated:Connect(function()
 		local from = itemId
 		if from then
+			local cap = if quickRun then Levels.OPEN_QUICK else Levels.OPEN_MANY -- the server caps it again
 			close()
-			Remotes.OpenBagPacks:FireServer(from, Levels.OPEN_MANY)
+			Remotes.OpenBagPacks:FireServer(from, cap)
 		end
 	end)
 end

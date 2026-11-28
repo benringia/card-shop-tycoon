@@ -1134,6 +1134,38 @@ local function renderBagDetail()
 			end)
 		end
 		y += 58
+		-- Quick Open (the game pass; Robux round, spec 2026-11-28-robux-round-design): past Open 10, its "Open N" (up to
+		-- Levels.OPEN_QUICK) or, without it, its offer with the live price (ItemRules.bagButtons; the server caps opens)
+		local Monetization = require(Config:WaitForChild("Monetization")) :: any
+		local quickButtons = ItemRules.bagButtons(bagItems[openId] or 0, player:GetAttribute("HasQuickOpen") == true, Levels)
+		local passId = Monetization.PASSES.QuickOpen or 0
+		if quickButtons.quick > 0 or (quickButtons.offer and passId ~= 0) then
+			local owner = quickButtons.quick > 0
+			local quick = UIKit.button(bagDetail, `⚡ Open {quickButtons.quick}`, if owner then UIKit.Colors.Secondary else UIKit.Colors.Accent)
+			quick.Name = "OpenQuick"
+			quick.AnchorPoint = Vector2.new(0.5, 0)
+			quick.Position = UDim2.new(0.5, 0, 0, y)
+			quick.Size = UDim2.fromOffset(240, 48)
+			quick.ZIndex = 34
+			if not owner then
+				local price = require(ClientUtil:WaitForChild("ProductPrice")).ofPass(passId)
+				require(ClientUtil:WaitForChild("RobuxPrice")).set(quick, `⚡ Open {Levels.OPEN_QUICK}`, price)
+			end
+			quick.Activated:Connect(function()
+				if not owner then
+					require(ClientUtil:WaitForChild("ScreenClear")).prompt()
+					game:GetService("MarketplaceService"):PromptGamePassPurchase(player, passId)
+					return
+				end
+				if player:GetAttribute("PackOpeningBusy") == true then
+					UIController.Notify("Finish this pack first.", true)
+					return
+				end
+				Remotes.OpenBagPacks:FireServer(openId, Levels.OPEN_QUICK)
+				bagOverlay.Visible = false
+			end)
+			y += 58
+		end
 	end
 	-- Shop stock (Config/Items `stock`: packs, deck boxes): To shop puts a box of them back on your delivery pad to
 	-- sell (owner 2026-11-20: "Cards in your inventory should also be placed in shelves by players"). Your shop is

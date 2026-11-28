@@ -208,5 +208,17 @@ return {
 	BULK = {
 		pause = { Common = 0.05, Rare = 0.2, ["Very Rare"] = 0.35, Epic = 0.8, Legendary = 1.3 },
 		grid = { min = 44, max = 84, gap = 8, rowGap = 16, ratio = 1.4 },
+		-- Open 50 (Quick Open, the game pass; Robux round, spec 2026-11-28-robux-round-design): the grid holds only the
+		-- best pulls (RevealRules.bestPulls, at most `limit`), the rest counted under the totals; a tap turns the rest
+		-- over (Open 10 plays through: RevealRules.skippable)
+		QUICK = {
+			best = "Best pulls: Very Rare and up",
+			rest = "+ %d Commons and Rares went to your binder",
+			overflow = "+ %d more cards went to your binder",
+			none = "No Very Rare this time",
+			more = "⚡ Open %d more",
+			limit = 50,
+			restOffset = 24, -- px the grid moves down for the line under the totals
+		},
 	},
 }

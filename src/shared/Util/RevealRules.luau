@@ -42,6 +42,39 @@ function RevealRules.standsOut(rarity: string, from: string): boolean
 	return rank ~= nil and rank >= (RANK[from] or math.huge)
 end
 
+-- Whether a bulk opening's reveal can be cut short by a tap (Robux round, spec 2026-11-28-robux-round-design; owner:
+-- Open 10 "unskippable", only Open 50 skippable): more packs than Open 10's
+function RevealRules.skippable(packs: number, openMany: number): boolean
+	return packs > openMany
+end
+
+-- Open 50's grid (Quick Open): the pulls `from` and up, best rarity first (ties in pull order), at most `limit` of them;
+-- also how many were below `from` (straight to the binder) and how many best pulls the cap left out
+function RevealRules.bestPulls(rarities: { string }, from: string, rank: { [string]: number }, limit: number): ({ number }, number, number)
+	local bar = rank[from] or math.huge
+	local picks: { number } = {}
+	local below = 0
+	for index, rarity in rarities do
+		if (rank[rarity] or 0) >= bar then
+			table.insert(picks, index)
+		else
+			below += 1
+		end
+	end
+	table.sort(picks, function(a: number, b: number): boolean
+		local rankA, rankB = rank[rarities[a]] or 0, rank[rarities[b]] or 0
+		if rankA ~= rankB then
+			return rankA > rankB
+		end
+		return a < b
+	end)
+	local over = math.max(0, #picks - limit)
+	for _ = 1, over do
+		table.remove(picks)
+	end
+	return picks, below, over
+end
+
 -- Whether a card's creature bursts out of it on the stage (Config/CardReveal CREATURE): an Epic, a Legendary, a Frontier
 -- card or a card the player never had. `ready` false: its model isn't fully downloaded yet (a new player's first
 -- packs), so it stays in its card rather than show rough (owner 2026-11-19); nil: not asked. `on` false: creature
