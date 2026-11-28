@@ -9,10 +9,11 @@ return {
 		-- gold name with a crown, a [VIP] chat tag, the VIP Lounge look), Quick Open (Open 50 in the Bag), Night Shift
 		-- (the welcome-back limits doubled). Game passes (Monetization -> Passes), never developer products: the developer
 		-- products made by mistake on 2026-11-28 (VIP Pass 3737243311, Quick Open 3737243526, Night Shift pass 3737243690)
-		-- are unused and stay Unlisted
-		VIP = 0,
-		QuickOpen = 0,
-		NightShift = 0,
+		-- are unused and stay Unlisted. Free trials stay off on Creator Hub: a trial's start comes in as a purchase (its win
+		-- card says forever) and nothing here re-checks a pass mid-session
+		VIP = 2098477736,
+		QuickOpen = 2099065706,
+		NightShift = 2101057657,
 		StarterPack = 0, -- sold as the one-time developer product below (UNLOCKS); a pass key so every check counts it
 	},
 	-- Pass keys sold as one-time developer products and saved (owner 2026-11-14 made the Extra Job Slot a developer
