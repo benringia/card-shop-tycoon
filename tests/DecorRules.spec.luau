@@ -107,6 +107,65 @@ return {
 		expect.equal(DecorRules.fitsCap(20, 20), false)
 	end,
 
+	-- Robux round (spec 2026-11-28-robux-round-design): the VIP Lounge (the VIP pass) and Sunny Shop (the Starter Pack)
+	-- looks, never sold for cash, usable while the player holds their perk
+	["the perk looks: VIP Lounge and Sunny Shop, each with its perk"] = function()
+		local vip = DecorRules.look(Decor, "VipLounge")
+		local sunny = DecorRules.look(Decor, "SunnyShop")
+		assert(vip and sunny, "both found by id")
+		expect.equal(vip.perk, "VIP")
+		expect.equal(sunny.perk, "StarterPack")
+		for _, look in Decor.PERK_LOOKS do
+			assert(Decor.PERKS[look.perk], `{look.id}'s perk has its words`)
+			for _, key in { "floor", "wall", "band", "trim" } do
+				assert(isColor((look :: any)[key]), `{look.id}.{key} is a colour`)
+			end
+			assert(look.wallpaper == "" or string.match(look.wallpaper, "^rbxassetid://%d+$"), `{look.id} wallpaper`)
+			expect.equal(DecorRules.lookPoints(Decor, look.id), Decor.LOOK_POINTS)
+		end
+	end,
+
+	["a perk look is owned only with its perk"] = function()
+		local state = DecorRules.clean(Decor, nil)
+		expect.equal(DecorRules.owns(Decor, state, "VipLounge", { VIP = true }), true)
+		expect.equal(DecorRules.owns(Decor, state, "VipLounge", {}), false)
+		expect.equal(DecorRules.owns(Decor, state, "VipLounge"), false)
+		expect.equal(DecorRules.owns(Decor, state, "SunnyShop", { VIP = true }), false, "its own perk only")
+	end,
+
+	["a perk look is never bought for cash"] = function()
+		local ok, reason = DecorRules.canBuy(Decor, DecorRules.clean(Decor, nil), "SunnyShop", 99, 1e9)
+		expect.equal(ok, false)
+		expect.equal(reason, Decor.PERKS.StarterPack.refuse)
+		local okVip, reasonVip = DecorRules.canBuy(Decor, DecorRules.clean(Decor, nil), "VipLounge", 99, 1e9)
+		expect.equal(okVip, false)
+		expect.equal(reasonVip, Decor.PERKS.VIP.refuse)
+	end,
+
+	["using a perk look needs the perk"] = function()
+		local state = DecorRules.clean(Decor, nil)
+		expect.equal((DecorRules.canUse(Decor, state, "VipLounge", { VIP = true })), true)
+		local ok, reason = DecorRules.canUse(Decor, state, "VipLounge", {})
+		expect.equal(ok, false)
+		expect.equal(reason, Decor.PERKS.VIP.refuse)
+		expect.equal((DecorRules.canUse(Decor, state, "CozyWood", {})), true, "the default still works")
+	end,
+
+	["a saved perk look stays in use, never in the owned list"] = function()
+		local state = DecorRules.clean(Decor, { look = "VipLounge", owned = { "VipLounge", "CandyPastel" } })
+		expect.equal(state.look, "VipLounge", "kept: the pass check comes after the load")
+		expect.equal(#state.owned, 1)
+		expect.equal(state.owned[1], "CandyPastel")
+	end,
+
+	["keepLook only drops a perk look on a confirmed check"] = function()
+		expect.equal(DecorRules.keepLook(Decor, "VipLounge", {}, false), true, "check failing: keep")
+		expect.equal(DecorRules.keepLook(Decor, "VipLounge", {}, true), false, "confirmed not owned")
+		expect.equal(DecorRules.keepLook(Decor, "VipLounge", { VIP = true }, true), true)
+		expect.equal(DecorRules.keepLook(Decor, "CozyWood", {}, true), true)
+		expect.equal(DecorRules.keepLook(Decor, "CandyPastel", {}, true), true, "a cash look isn't a perk's")
+	end,
+
 	-- Owner 2026-11-16: "items from the shop can be placed through a wall. fix it": a shelf in the back row stood right
 	-- on the wall line, and the look's band and glowing trim (0.3 and 0.35 studs out from the wall) cut through its back
 	["nothing on the walls reaches a placed shelf: the look's pieces lie flat, shelves stand WALL_GAP off"] = function()

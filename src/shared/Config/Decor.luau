@@ -122,6 +122,50 @@ return {
 		},
 	},
 
+	-- Looks that come with a perk instead of cash (Robux round, spec 2026-11-28-robux-round-design): `perk` is the pass
+	-- or unlock key (Config/Monetization) the player must hold; never sold for cash, never stored as owned, listed after
+	-- the looks above in the Decor tab. Their wallpapers are made like the others once the owner OKs the AI credits;
+	-- until then "" (the walls' plain colour).
+	PERK_LOOKS = {
+		{
+			id = "VipLounge",
+			name = "VIP Lounge",
+			perk = "VIP",
+			price = 0,
+			level = 1,
+			floor = { 58, 36, 24 },
+			floorMaterial = "WoodPlanks",
+			wall = { 74, 29, 102 },
+			wallpaper = "",
+			tile = 16,
+			band = { 44, 15, 64 },
+			bandMaterial = "SmoothPlastic",
+			trim = { 255, 214, 90 },
+			extra = "topStrip",
+			extraColor = { 255, 214, 90 },
+		},
+		{
+			id = "SunnyShop",
+			name = "Sunny Shop",
+			perk = "StarterPack",
+			price = 0,
+			level = 1,
+			floor = { 222, 184, 135 },
+			floorMaterial = "WoodPlanks",
+			wall = { 255, 231, 150 },
+			wallpaper = "",
+			tile = 16,
+			band = { 255, 255, 255 },
+			bandMaterial = "SmoothPlastic",
+			trim = { 255, 255, 255 },
+		},
+	},
+	-- Each perk's words: its chip on the Decor row, the refusal (the big locked card) and the row's buy button
+	PERKS = {
+		VIP = { chip = "VIP only", refuse = "The VIP Lounge is for VIPs.", buy = "Get VIP" },
+		StarterPack = { chip = "Starter Pack", refuse = "Sunny Shop comes in the Starter Pack.", buy = "Get it" },
+	},
+
 	-- The look's parts inside the shop (PlotService.SetLook). Studs above the floor's top.
 	SHELL = {
 		HEIGHT = 17, -- the liners' height (the walls are 18; the ceiling sits on top)

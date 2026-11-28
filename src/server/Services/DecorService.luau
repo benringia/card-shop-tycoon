@@ -14,6 +14,7 @@ local Services = script.Parent :: Instance
 local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local PlotService = require(Services:WaitForChild("PlotService"))
+local MonetizationService = require(Services:WaitForChild("MonetizationService"))
 local ServerUtil = (Services.Parent :: Instance):WaitForChild("Util")
 local DevAccess = require(ServerUtil:WaitForChild("DevAccess"))
 local Blocked = require(ServerUtil:WaitForChild("Blocked"))
@@ -32,6 +33,30 @@ local function apply(player: Player, state: DecorRules.State)
 	end
 	player:SetAttribute("ShopLook", state.look)
 	player:SetAttribute("ShopLooksOwned", table.concat(state.owned, ","))
+end
+
+-- The perks this player holds for the perk looks (Config/Decor PERK_LOOKS: the VIP Lounge, Sunny Shop)
+local function perksOf(player: Player): DecorRules.Perks
+	local perks: DecorRules.Perks = {}
+	for key in Decor.PERKS do
+		perks[key] = MonetizationService.HasPass(player, key)
+	end
+	return perks
+end
+
+-- A perk look in use whose perk a working check says isn't held goes back to the default look (a failing check keeps
+-- it: DecorRules.keepLook)
+local function checkPerkLook(player: Player)
+	local state = states[player]
+	local look = if state then DecorRules.look(Decor, state.look) else nil
+	if not state or not look or not look.perk then
+		return
+	end
+	local confirmed = not MonetizationService.IsCheckFailing(player, look.perk)
+	if not DecorRules.keepLook(Decor, state.look, perksOf(player), confirmed) and states[player] == state then
+		state.look = Decor.DEFAULT_LOOK
+		apply(player, state)
+	end
 end
 
 local function onShopLook(player: Player, action: unknown, lookId: unknown)
@@ -55,7 +80,7 @@ local function onShopLook(player: Player, action: unknown, lookId: unknown)
 		end
 		table.insert(state.owned, lookId)
 	elseif action == "use" then
-		local ok, reason = DecorRules.canUse(Decor, state, lookId)
+		local ok, reason = DecorRules.canUse(Decor, state, lookId, perksOf(player))
 		if not ok then
 			Blocked.tell(player, reason or "You can't use that look.")
 			return
@@ -76,10 +101,11 @@ end
 -- Studio's "/decor <look id>": that look owned and in use
 function DecorService.SetLookForDev(player: Player, lookId: string): boolean
 	local state = states[player]
-	if not DevAccess.can(player) or not state or not DecorRules.look(Decor, lookId) then
+	local look = DecorRules.look(Decor, lookId)
+	if not DevAccess.can(player) or not state or not look then
 		return false
 	end
-	if not DecorRules.owns(Decor, state, lookId) then
+	if not look.perk and not DecorRules.owns(Decor, state, lookId) then -- a perk look comes with its perk (/pass)
 		table.insert(state.owned, lookId)
 	end
 	state.look = lookId
@@ -94,6 +120,13 @@ function DecorService.Start()
 			local state = DecorRules.clean(Decor, data.decor)
 			states[player] = state
 			apply(player, state)
+			-- a perk look in use is checked once every service has loaded (the Starter Pack's unlock is saved)
+			task.spawn(function()
+				if player:GetAttribute("DataLoaded") ~= true then
+					player:GetAttributeChangedSignal("DataLoaded"):Wait()
+				end
+				checkPerkLook(player)
+			end)
 		end,
 		save = function(player, data)
 			local state = states[player]
@@ -107,6 +140,11 @@ function DecorService.Start()
 		end,
 	})
 	Remotes.ShopLook.OnServerEvent:Connect(onShopLook)
+	MonetizationService.OnPassChanged(function(player: Player, passKey: string)
+		if Decor.PERKS[passKey] then
+			checkPerkLook(player)
+		end
+	end)
 end
 
 return DecorService

@@ -18,10 +18,14 @@ export type Look = {
 	trim: { number },
 	extra: string?,
 	extraColor: { number }?,
+	perk: string?, -- a perk look's pass or unlock key (cfg.PERK_LOOKS): held, never bought
 }
 
 -- The look in use and the looks bought (the default is always owned and never stored)
 export type State = { look: string, owned: { string } }
+
+-- The perks a player holds (Robux round, spec 2026-11-28-robux-round-design): { VIP = true, StarterPack = true }
+export type Perks = { [string]: boolean }
 
 local UNKNOWN = "That look doesn't exist."
 
@@ -31,28 +35,51 @@ function DecorRules.look(cfg: any, id: string): Look?
 			return look
 		end
 	end
+	for _, look in cfg.PERK_LOOKS or {} do
+		if look.id == id then
+			return look
+		end
+	end
 	return nil
 end
 
-function DecorRules.owns(cfg: any, state: State, id: string): boolean
+-- Whether the player has this look: the default, one bought, or a perk look whose perk they hold
+function DecorRules.owns(cfg: any, state: State, id: string, perks: Perks?): boolean
+	local look = DecorRules.look(cfg, id)
+	if look and look.perk then
+		return perks ~= nil and perks[look.perk] == true
+	end
 	return id == cfg.DEFAULT_LOOK or table.find(state.owned, id) ~= nil
 end
 
--- A save's decor made safe: known looks only, each once, never the default; the look in use owned, else the default
+-- A save's decor made safe: known looks only, each once, never the default or a perk look; the look in use owned, else
+-- the default. A perk look in use stays: the perk is checked after the load (DecorRules.keepLook)
 function DecorRules.clean(cfg: any, saved: any): State
 	local owned: { string } = {}
 	local list = if typeof(saved) == "table" and typeof(saved.owned) == "table" then saved.owned else {}
 	for _, id in list do
-		if typeof(id) == "string" and id ~= cfg.DEFAULT_LOOK and DecorRules.look(cfg, id) and not table.find(owned, id) then
+		local look = if typeof(id) == "string" then DecorRules.look(cfg, id) else nil
+		if look and not look.perk and id ~= cfg.DEFAULT_LOOK and not table.find(owned, id) then
 			table.insert(owned, id)
 		end
 	end
 	local state: State = { look = cfg.DEFAULT_LOOK, owned = owned }
 	local wanted = if typeof(saved) == "table" then saved.look else nil
-	if typeof(wanted) == "string" and DecorRules.look(cfg, wanted) and DecorRules.owns(cfg, state, wanted) then
+	local wantedLook = if typeof(wanted) == "string" then DecorRules.look(cfg, wanted) else nil
+	if wantedLook and (wantedLook.perk or DecorRules.owns(cfg, state, wanted)) then
 		state.look = wanted
 	end
 	return state
+end
+
+-- Whether the look in use stays: a perk look goes back to the default only when a check that worked says the perk isn't
+-- held (`confirmed`); while Roblox can't answer it stays
+function DecorRules.keepLook(cfg: any, lookId: string, perks: Perks, confirmed: boolean): boolean
+	local look = DecorRules.look(cfg, lookId)
+	if not look or not look.perk then
+		return true
+	end
+	return perks[look.perk] == true or not confirmed
 end
 
 -- Whether this look can be bought now; the reason (for the Blocked card) when it can't
@@ -60,6 +87,9 @@ function DecorRules.canBuy(cfg: any, state: State, id: string, level: number, ca
 	local look = DecorRules.look(cfg, id)
 	if not look then
 		return false, UNKNOWN
+	end
+	if look.perk then
+		return false, cfg.PERKS[look.perk].refuse
 	end
 	if DecorRules.owns(cfg, state, id) then
 		return false, `You already own {look.name}.`
@@ -73,14 +103,14 @@ function DecorRules.canBuy(cfg: any, state: State, id: string, level: number, ca
 	return true, nil
 end
 
--- Whether this look can be put in use: any look owned, whatever the level now
-function DecorRules.canUse(cfg: any, state: State, id: string): (boolean, string?)
+-- Whether this look can be put in use: any look owned, whatever the level now; a perk look while its perk is held
+function DecorRules.canUse(cfg: any, state: State, id: string, perks: Perks?): (boolean, string?)
 	local look = DecorRules.look(cfg, id)
 	if not look then
 		return false, UNKNOWN
 	end
-	if not DecorRules.owns(cfg, state, id) then
-		return false, `Buy {look.name} first.`
+	if not DecorRules.owns(cfg, state, id, perks) then
+		return false, if look.perk then cfg.PERKS[look.perk].refuse else `Buy {look.name} first.`
 	end
 	return true, nil
 end

@@ -4,17 +4,28 @@
 -- and wallpaper above the band, trim and floor), its name and a button: "Using" on the look in use, "Use" on one
 -- you own, its price (green, pink when you're short) or the level it unlocks at. Pressing asks the server
 -- (Remotes.ShopLook); DecorService says no through the Blocked card. Reads the attributes ShopLook, ShopLooksOwned,
--- Level and Cash.
+-- Level and Cash. After them the perk looks (Config/Decor PERK_LOOKS; Robux round, spec 2026-11-28-robux-round-design):
+-- the VIP Lounge and Sunny Shop, their chip under the name and, until their perk is held (HasVIP, HasStarterPack), a
+-- gold "Get VIP" / "Get it" with the live price that opens the pass or the Starter Pack; Sunny Shop is hidden where
+-- Roblox restricts paid random items (the Starter Pack holds luck) unless it's already yours.
+local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
+local PolicyService = game:GetService("PolicyService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Decor = require(Shared:WaitForChild("Config"):WaitForChild("Decor"))
+local Monetization = require(Shared:WaitForChild("Config"):WaitForChild("Monetization"))
 local DecorRules = require(Shared:WaitForChild("Util"):WaitForChild("DecorRules"))
+local PaidRandomRules = require(Shared:WaitForChild("Util"):WaitForChild("PaidRandomRules"))
+local UnlockRules = require(Shared:WaitForChild("Util"):WaitForChild("UnlockRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local UIKit = require((script.Parent :: Instance):WaitForChild("UIKit"))
 local Tooltip = require((script.Parent :: Instance):WaitForChild("Tooltip"))
+local ProductPrice = require((script.Parent :: Instance):WaitForChild("ProductPrice"))
+local RobuxPrice = require((script.Parent :: Instance):WaitForChild("RobuxPrice"))
+local ScreenClear = require((script.Parent :: Instance):WaitForChild("ScreenClear"))
 local ShopTips = require(Shared:WaitForChild("Util"):WaitForChild("ShopTips"))
 
 local LookTiles = {}
@@ -32,6 +43,40 @@ end
 
 local function attribute(name: string): any
 	return player:GetAttribute(name)
+end
+
+-- The perks this player holds for the perk looks (MonetizationService's Has<Key> attributes)
+local function perks(): DecorRules.Perks
+	local held: DecorRules.Perks = {}
+	for key in Decor.PERKS do
+		held[key] = player:GetAttribute(`Has{key}`) == true
+	end
+	return held
+end
+
+-- A perk look's live price: the pass's, or the one-time product's (UNLOCKS: the Starter Pack); nil while unknown or not
+-- made yet
+local function perkPrice(perk: string): number?
+	if table.find(Monetization.UNLOCKS, perk) then
+		local id = Monetization.PRODUCTS[perk] or 0
+		return if id ~= 0 then ProductPrice.of(id) else nil
+	end
+	local id = Monetization.PASSES[perk] or 0
+	return if id ~= 0 then ProductPrice.ofPass(id) else nil
+end
+
+-- Opens a perk's purchase: the pass, or the one-time product through the server (it checks it's for sale here)
+local function buyPerk(perk: string)
+	if table.find(Monetization.UNLOCKS, perk) then
+		ScreenClear.prompt()
+		Remotes.BuyUnlock:FireServer(perk)
+		return
+	end
+	local id = Monetization.PASSES[perk] or 0
+	if id ~= 0 then
+		ScreenClear.prompt()
+		MarketplaceService:PromptGamePassPurchase(player, id)
+	end
 end
 
 -- The player's decor as the server last told it
@@ -89,10 +134,23 @@ local function refresh(tiles: { Tile })
 	local cash = attribute("Cash")
 	level = if typeof(level) == "number" then level else 1
 	cash = if typeof(cash) == "number" then cash else 0
+	local held = perks()
 	for _, tile in tiles do
 		local look, button = tile.look, tile.button
 		local using = current.look == look.id
-		local owned = DecorRules.owns(Decor, current, look.id)
+		local owned = DecorRules.owns(Decor, current, look.id, held)
+		if look.perk then
+			-- a perk look: "Using" / "Use" while held, else its gold buy button with the live price
+			if using or owned then
+				RobuxPrice.set(button, if using then "Using" else "Use", nil)
+				button.BackgroundColor3 = if using then UIKit.Colors.Accent else UIKit.Colors.Secondary
+			else
+				RobuxPrice.set(button, Decor.PERKS[look.perk].buy, perkPrice(look.perk))
+				button.BackgroundColor3 = UIKit.Colors.Accent
+			end
+			button.AutoButtonColor = not using
+			continue
+		end
 		local locked = not owned and level < look.level
 		button.Text = if using then "Using"
 			elseif owned then "Use"
@@ -108,11 +166,16 @@ local function refresh(tiles: { Tile })
 	end
 end
 
--- The six look tiles in `list` (LayoutOrder 1-6, so they come before the Build tiles), kept up to date
+-- The look tiles in `list` (LayoutOrder 1-8: the six cash looks, then the perk looks, before the windows and the
+-- Build tiles), kept up to date
 function LookTiles.build(list: ScrollingFrame, palette: any): { GuiObject }
 	local tiles: { Tile } = {}
 	local frames: { GuiObject } = {}
-	for index, look in Decor.LOOKS do
+	local looks: { DecorRules.Look } = table.clone(Decor.LOOKS)
+	for _, look in Decor.PERK_LOOKS do
+		table.insert(looks, look)
+	end
+	for index, look in looks do
 		local frame = Instance.new("Frame")
 		frame.Name = "Look" .. look.id
 		frame.LayoutOrder = index
@@ -127,7 +190,7 @@ function LookTiles.build(list: ScrollingFrame, palette: any): { GuiObject }
 		name.Size = UDim2.new(1, -20, 0, 22)
 		name.TextTruncate = Enum.TextTruncate.AtEnd
 		name.TextWrapped = false
-		local detail = UIKit.label(frame, "Shop look", Enum.Font.GothamBold, 13, UIKit.Colors.Subtext)
+		local detail = UIKit.label(frame, if look.perk then Decor.PERKS[look.perk].chip else "Shop look", Enum.Font.GothamBold, 13, UIKit.Colors.Subtext)
 		detail.Position = UDim2.fromOffset(10, PICTURE + 34)
 		detail.Size = UDim2.new(1, -20, 0, 18)
 		local button = UIKit.button(frame, "", UIKit.Colors.Success)
@@ -141,18 +204,36 @@ function LookTiles.build(list: ScrollingFrame, palette: any): { GuiObject }
 			if current.look == look.id then
 				return -- already in use
 			end
-			Remotes.ShopLook:FireServer(if DecorRules.owns(Decor, current, look.id) then "use" else "buy", look.id)
+			if look.perk and not DecorRules.owns(Decor, current, look.id, perks()) then
+				buyPerk(look.perk)
+				return
+			end
+			Remotes.ShopLook:FireServer(if DecorRules.owns(Decor, current, look.id, perks()) then "use" else "buy", look.id)
 		end)
+		-- a chance-based perk's look (Sunny Shop: the Starter Pack holds luck) shows once Roblox's policy says it's sold
+		-- here, or once it's yours
+		if look.perk and UnlockRules.chanceBased(look.perk, Monetization) then
+			frame.Visible = player:GetAttribute(`Has{look.perk}`) == true
+			task.spawn(function()
+				local ok, info = pcall(PolicyService.GetPolicyInfoForPlayerAsync, PolicyService, player)
+				if not PaidRandomRules.restricted(ok, info) then
+					frame.Visible = true
+				end
+			end)
+		end
 		table.insert(tiles, { look = look, frame = frame, button = button })
 		table.insert(frames, frame)
 	end
 	local function update()
 		refresh(tiles)
 	end
-	for _, name in { "ShopLook", "ShopLooksOwned", "Level", "Cash" } do
+	for _, name in { "ShopLook", "ShopLooksOwned", "Level", "Cash", "HasVIP", "HasStarterPack" } do
 		player:GetAttributeChangedSignal(name):Connect(update)
 	end
 	update()
+	-- the perk looks' live prices come in a moment after the first draw
+	task.delay(2, update)
+	task.delay(6, update)
 	return frames
 end
 
