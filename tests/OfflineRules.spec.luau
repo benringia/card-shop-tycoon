@@ -149,4 +149,49 @@ return {
 		expect.equal(OfflineRules.cardFree(with({ stageShown = true })), false, "a weapon reveal or a pack opening on the stage")
 		expect.equal(OfflineRules.cardFree(with({ revealing = true })), false, "a reveal waiting its turn")
 	end,
+
+	-- Night Shift (the game pass; Robux round, spec 2026-11-28-robux-round-design): the welcome-back limits doubled, and
+	-- the Welcome back card's words when you were away past the normal limit
+	["Night Shift doubles both limits"] = function()
+		local cfg = OfflineRules.caps(Offline, true, Offline.NIGHT_SHIFT.factor)
+		expect.equal(cfg.MAX_MINUTES, 240)
+		expect.equal(cfg.MAX_EXTRA_MINUTES, 240)
+		expect.equal(cfg.RACK_MINUTES, Offline.RACK_MINUTES, "a rack still adds its half hour")
+		expect.equal(OfflineRules.caps(Offline, false, 2).MAX_MINUTES, 120)
+		expect.equal(Offline.MAX_MINUTES, 120, "the config itself untouched")
+	end,
+
+	["the selling limit"] = function()
+		expect.equal(OfflineRules.limit(Offline, 0, true), 120)
+		expect.equal(OfflineRules.limit(Offline, 3, false), 120, "no Restocker: racks don't sell")
+		expect.equal(OfflineRules.limit(Offline, 3, true), 210)
+		expect.equal(OfflineRules.limit(Offline, 9, true), 240)
+		expect.equal(OfflineRules.limit(OfflineRules.caps(Offline, true, 2), 9, true), 480, "8 h with Night Shift")
+	end,
+
+	["the note shows only when away past the normal limit"] = function()
+		expect.isNil(OfflineRules.nightShiftNote(100, 120, 240, true))
+		expect.isNil(OfflineRules.nightShiftNote(120, 120, 240, false))
+		local owned = OfflineRules.nightShiftNote(380, 120, 240, true) :: any
+		expect.equal(owned.owned, true)
+		expect.equal(owned.sold, 240)
+		expect.equal(owned.other, 120)
+		local offer = OfflineRules.nightShiftNote(380, 120, 240, false) :: any
+		expect.equal(offer.owned, false)
+		expect.equal(offer.sold, 120)
+		expect.equal(offer.other, 240)
+		expect.equal((OfflineRules.nightShiftNote(180, 120, 240, true) :: any).sold, 180, "away 3 h: all 3 sold")
+	end,
+
+	["hours in plain words"] = function()
+		expect.equal(OfflineRules.hoursText(120), "2")
+		expect.equal(OfflineRules.hoursText(150), "2.5")
+		expect.equal(OfflineRules.hoursText(480), "8")
+		expect.equal(OfflineRules.hoursText(200), "3.3")
+	end,
+
+	["the Night Shift words"] = function()
+		expect.equal(string.format(Offline.NIGHT_SHIFT.owned, "4", "2"), "Night Shift sold for 4 h (2 h without it)")
+		expect.equal(string.format(Offline.NIGHT_SHIFT.offer, "2", "4"), "Your shop sold for 2 h. Night Shift keeps it selling for 4 h.")
+	end,
 }

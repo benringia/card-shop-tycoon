@@ -45,6 +45,44 @@ end
 
 -- The time away split in two (spec 2026-11-24-shop-variety-design): the shelves' MAX_MINUTES, then with a Restocker
 -- RACK_MINUTES for each of `racks` racks holding boxes, at most MAX_EXTRA_MINUTES, selling only what's in the racks
+-- The limits with Night Shift (the game pass; Robux round, spec 2026-11-28-robux-round-design): a copy of `cfg` with
+-- MAX_MINUTES and MAX_EXTRA_MINUTES times `factor` when it's owned
+function OfflineRules.caps(cfg: Config, nightShift: boolean, factor: number): Config
+	local copy = table.clone(cfg)
+	if nightShift then
+		copy.MAX_MINUTES = cfg.MAX_MINUTES * factor
+		copy.MAX_EXTRA_MINUTES = (cfg.MAX_EXTRA_MINUTES or 0) * factor
+	end
+	return copy
+end
+
+-- The most minutes away a shop sells for with this setup: MAX_MINUTES, plus each rack of boxes' RACK_MINUTES (at most
+-- MAX_EXTRA_MINUTES) with a Restocker
+function OfflineRules.limit(cfg: Config, racks: number, restocker: boolean): number
+	local extra = if restocker and racks > 0 then math.min(racks * (cfg.RACK_MINUTES or 0), cfg.MAX_EXTRA_MINUTES or 0) else 0
+	return cfg.MAX_MINUTES + extra
+end
+
+export type NightNote = { owned: boolean, sold: number, other: number }
+
+-- The Welcome back card's Night Shift line, only when away past the normal limit: with the pass, minutes sold and what
+-- it would have been without; without it, minutes sold and what Night Shift sells (minutes)
+function OfflineRules.nightShiftNote(away: number, normal: number, shift: number, owned: boolean): NightNote?
+	if away <= normal then
+		return nil
+	end
+	if owned then
+		return { owned = true, sold = math.min(away, shift), other = normal }
+	end
+	return { owned = false, sold = normal, other = shift }
+end
+
+-- Minutes as hours in plain words: "2", "2.5", "3.3"
+function OfflineRules.hoursText(minutes: number): string
+	local hours = math.floor(minutes / 6 + 0.5) / 10
+	return if hours == math.floor(hours) then tostring(math.floor(hours)) else string.format("%.1f", hours)
+end
+
 function OfflineRules.split(minutes: number, racks: number, restocker: boolean, cfg: Config): (number, number)
 	local base = math.min(math.max(0, minutes), cfg.MAX_MINUTES)
 	if not restocker or racks <= 0 then

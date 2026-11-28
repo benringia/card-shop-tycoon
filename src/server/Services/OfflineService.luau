@@ -22,6 +22,7 @@ local EconomyService = require(Services:WaitForChild("EconomyService"))
 local JobService = require(Services:WaitForChild("JobService"))
 local PlacementService = require(Services:WaitForChild("PlacementService"))
 local PricingService = require(Services:WaitForChild("PricingService"))
+local MonetizationService = require(Services:WaitForChild("MonetizationService"))
 local RateLimiter = require((Services.Parent :: Instance):WaitForChild("Util"):WaitForChild("RateLimiter"))
 
 type PlayerData = DataService.PlayerData
@@ -41,6 +42,7 @@ export type Summary = {
 	base: number,
 	extra: number,
 	needsRestocker: boolean,
+	nightShift: OfflineRules.NightNote?, -- away past the normal limit: Night Shift's line (Robux round)
 }
 
 -- A rack's box the Restocker can carry out: its rack, its spot and the units in it
@@ -175,10 +177,15 @@ local function sellAway(player: Player, lastSeen: number)
 	if not loaded[player] then
 		return -- gone meanwhile
 	end
-	local minutes = OfflineRules.minutesAway(lastSeen, os.time(), Offline, Offline.MAX_MINUTES + Offline.MAX_EXTRA_MINUTES)
+	-- Night Shift (the game pass; Robux round, spec 2026-11-28-robux-round-design): both limits doubled
+	local nightShift = MonetizationService.HasPass(player, "NightShift")
+	local factor = Offline.NIGHT_SHIFT.factor
+	local cfg = OfflineRules.caps(Offline, nightShift, factor)
+	local minutes = OfflineRules.minutesAway(lastSeen, os.time(), cfg, cfg.MAX_MINUTES + cfg.MAX_EXTRA_MINUTES)
 	if minutes <= 0 then
 		return
 	end
+	local away = OfflineRules.minutesAway(lastSeen, os.time(), Offline, math.huge) -- uncapped, for Night Shift's line
 	local restocker = JobService.GetRestocker(player)
 	local racks = 0
 	for _, rack in PlacementService.GetRacks(player) do
@@ -186,7 +193,7 @@ local function sellAway(player: Player, lastSeen: number)
 			racks += 1
 		end
 	end
-	local base, extra = OfflineRules.split(minutes, racks, restocker ~= nil, Offline)
+	local base, extra = OfflineRules.split(minutes, racks, restocker ~= nil, cfg)
 	local sold: { [string]: number } = {}
 	local units, cents, boxes = 0, 0, 0
 	local shelves: { PlacedShelf }
@@ -219,6 +226,12 @@ local function sellAway(player: Player, lastSeen: number)
 		base = base,
 		extra = extra,
 		needsRestocker = restocker == nil and racks > 0,
+		nightShift = OfflineRules.nightShiftNote(
+			away,
+			OfflineRules.limit(Offline, racks, restocker ~= nil),
+			OfflineRules.limit(OfflineRules.caps(Offline, true, factor), racks, restocker ~= nil),
+			nightShift
+		),
 	}
 	deliver(player)
 end

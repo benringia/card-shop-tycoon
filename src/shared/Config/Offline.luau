@@ -19,6 +19,14 @@ return {
 	-- MAX_EXTRA_MINUTES) of selling only what's still in the racks (OfflineRules.split, planRacks)
 	RACK_MINUTES = 30,
 	MAX_EXTRA_MINUTES = 120,
+	-- Night Shift (the game pass; Robux round, spec 2026-11-28-robux-round-design): MAX_MINUTES and MAX_EXTRA_MINUTES
+	-- times `factor` (OfflineRules.caps); the Welcome back card's words when you were away past the normal limit (%s:
+	-- hours, OfflineRules.hoursText): with it, and without it (with the pass's price button)
+	NIGHT_SHIFT = {
+		factor = 2,
+		owned = "Night Shift sold for %s h (%s h without it)",
+		offer = "Your shop sold for %s h. Night Shift keeps it selling for %s h.",
+	},
 	-- The Welcome back card's Restocker report (WelcomeBackController; %d h: the longest away selling, in hours)
 	REPORT = {
 		-- the panel's look: its height, the card's round picture and ring, the time bar (blue: shelves, green: storage)

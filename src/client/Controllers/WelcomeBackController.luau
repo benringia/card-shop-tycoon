@@ -4,12 +4,14 @@
 -- (Remotes.WelcomeBack); if the shop sold anything while you were away a gold window says how long, what sold, the cash
 -- and shop XP, and whether the shelves ran empty; Collect sends coins into the cash pill. OfflineService already paid
 -- it (so nothing is lost if the window never shows).
+local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = Shared:WaitForChild("Config")
 local Offline = require(Config:WaitForChild("Offline"))
+local Monetization = require(Config:WaitForChild("Monetization"))
 local Products = require(Config:WaitForChild("Products"))
 local UIStyle = require(Config:WaitForChild("UIStyle"))
 local CardArtConfig = require(Config:WaitForChild("CardArt"))
@@ -24,6 +26,8 @@ local Icon = require(ClientUtil:WaitForChild("Icon"))
 local CoinBurst = require(ClientUtil:WaitForChild("CoinBurst"))
 local ScreenClear = require(ClientUtil:WaitForChild("ScreenClear"))
 local OpeningStage = require(ClientUtil:WaitForChild("OpeningStage"))
+local ProductPrice = require(ClientUtil:WaitForChild("ProductPrice"))
+local RobuxPrice = require(ClientUtil:WaitForChild("RobuxPrice"))
 local UIController = require(Controllers:WaitForChild("UIController"))
 local WeaponRevealController = require(Controllers:WaitForChild("WeaponRevealController"))
 
@@ -43,6 +47,7 @@ type Summary = {
 	base: number?,
 	extra: number?,
 	needsRestocker: boolean?,
+	nightShift: { owned: boolean, sold: number, other: number }?, -- Night Shift's line (Robux round): away past the limit
 }
 
 local REPORT = Offline.REPORT
@@ -180,6 +185,55 @@ local function restockerReport(parent: Instance, summary: Summary, order: number
 	fromStorage.Visible = extra > 0
 end
 
+-- Night Shift's line (the game pass; Robux round, spec 2026-11-28-robux-round-design; Config/Offline NIGHT_SHIFT), only
+-- when away past the normal limit: with it, an indigo chip saying how long it sold; without it, a quiet row with the
+-- words and the pass's live price (shown once the pass is made). False when nothing was drawn
+local function nightShiftRow(list: Instance, note: { owned: boolean, sold: number, other: number }, order: number, palette: any): boolean
+	local words = Offline.NIGHT_SHIFT
+	local passId = Monetization.PASSES.NightShift or 0
+	if not note.owned and passId == 0 then
+		return false
+	end
+	local text = string.format(if note.owned then words.owned else words.offer, OfflineRules.hoursText(note.sold), OfflineRules.hoursText(note.other))
+	local row = Instance.new("Frame")
+	row.Name = "NightShift"
+	row.LayoutOrder = order
+	row.Size = UDim2.new(1, -16, 0, if note.owned then 34 else 48)
+	row.BackgroundColor3 = if note.owned then Color3.fromRGB(40, 48, 112) else palette.row
+	row.Parent = list
+	UIKit.corner(row, if note.owned then 17 else 14)
+	local ink = if note.owned then Color3.new(1, 1, 1) else palette.ink
+	local moon = UIKit.label(row, "🌙", Enum.Font.FredokaOne, 20, ink)
+	moon.Position = UDim2.fromOffset(8, 0)
+	moon.Size = UDim2.new(0, 26, 1, 0)
+	moon.TextXAlignment = Enum.TextXAlignment.Center
+	local label = UIKit.label(row, text, Enum.Font.GothamBold, 13, ink)
+	label.Position = UDim2.fromOffset(38, 0)
+	label.TextWrapped = true
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	if note.owned then
+		local fill = Instance.new("UIGradient")
+		fill.Color = ColorSequence.new(Color3.fromRGB(40, 48, 112), Color3.fromRGB(88, 70, 170))
+		fill.Parent = row
+		label.Size = UDim2.new(1, -46, 1, 0)
+		return true
+	end
+	UIKit.outline(row, palette.rowEdge, 2)
+	label.Size = UDim2.new(1, -(38 + 100), 1, 0)
+	local price = ProductPrice.ofPass(passId)
+	local buy = UIKit.button(row, "", UIKit.Colors.Accent)
+	buy.Name = "GetNightShift"
+	buy.AnchorPoint = Vector2.new(1, 0.5)
+	buy.Position = UDim2.new(1, -6, 0.5, 0)
+	buy.Size = UDim2.fromOffset(90, 38)
+	RobuxPrice.set(buy, if price then "" else "Get it", price)
+	buy.Activated:Connect(function()
+		ScreenClear.prompt()
+		MarketplaceService:PromptGamePassPurchase(player, passId)
+	end)
+	return true
+end
+
 local function show(summary: Summary)
 	while not free() do -- one thing at a time: after the window, the dialog or the reveal that's up
 		task.wait(READY_CHECK)
@@ -230,19 +284,23 @@ local function show(summary: Summary)
 	if summary.restocker then
 		restockerReport(list, summary, 4)
 	end
+	local night = summary.nightShift
+	if night and nightShiftRow(list, night, 5, palette) and limit then
+		limit.MaxSize += Vector2.new(0, if night.owned then 44 else 58) -- room for Night Shift's line
+	end
 	-- the hint: storage's when racks are in play (more racks, or a Restocker to run them), else the shelves'
 	local hint = if summary.needsRestocker then string.format(REPORT.needs, MOST_HOURS)
 		elseif summary.restocker then string.format(REPORT.more, MOST_HOURS)
 		elseif summary.empty then "Your shelves are empty. Restock them!"
 		else "Stock up before you leave and it keeps selling!"
 	local tip = UIKit.label(list, hint, Enum.Font.GothamBold, 14, palette.hint)
-	tip.LayoutOrder = 5
+	tip.LayoutOrder = 6
 	tip.Size = UDim2.new(1, -16, 0, if summary.needsRestocker then 40 else 20)
 	tip.TextWrapped = true
 	tip.TextXAlignment = Enum.TextXAlignment.Center
 	local collect = UIKit.button(list, "Collect", UIKit.Colors.Accent)
 	collect.Name = "Collect"
-	collect.LayoutOrder = 6
+	collect.LayoutOrder = 7
 	collect.Size = UDim2.fromOffset(180, 52)
 	collect.Activated:Connect(function()
 		CoinBurst.fly(screen, collect.AbsolutePosition + collect.AbsoluteSize / 2, UIController.GetCashPill(), 8)
