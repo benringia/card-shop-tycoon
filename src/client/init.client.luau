@@ -244,6 +244,7 @@ else
 	StoreController.Start() -- the phone's Store app: luck boosts and the Extra Job Slot for Robux
 	StoreWinController.Start() -- the win card when a Store purchase goes through
 	require(Controllers:WaitForChild("StarterController")).Start() -- the Starter Pack's card, once, at a calm moment
+	require(Controllers:WaitForChild("VipChatController")).Start() -- a gold [VIP] in front of VIPs' chat lines
 	GiftController.Start() -- daily, weekly and monthly gifts: the Gift tile, the window, the win moments
 	TeamController.Start() -- teams in this world: Team up prompts, invites, the team strip, boss calls
 	QuestController.Start() -- daily quests: the tracker under the team strip, the window, claims (after TeamController)

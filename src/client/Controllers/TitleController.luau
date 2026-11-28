@@ -11,6 +11,7 @@ local TweenService = game:GetService("TweenService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Chikin = require(Shared:WaitForChild("Config"):WaitForChild("Chikin"))
 local Titles = require(Shared:WaitForChild("Config"):WaitForChild("Titles"))
+local Vip = require(Shared:WaitForChild("Config"):WaitForChild("Vip"))
 local TitleRules = require(Shared:WaitForChild("Util"):WaitForChild("TitleRules"))
 local TutorialRules = require(Shared:WaitForChild("Util"):WaitForChild("TutorialRules"))
 local TitleGradient = require(((script.Parent :: Instance).Parent :: Instance):WaitForChild("Util"):WaitForChild("TitleGradient"))
@@ -91,6 +92,29 @@ local function titleLine(parent: Frame, title: string, look: any)
 	place()
 end
 
+-- A VIP's name (spec 2026-11-28-robux-round-design, tag B; Config/Vip NAME): the name in a gold gradient, top to bottom,
+-- with a crown just left of it, the pair centred like a title's icon and words; the title row above stays theirs
+local function vipName(label: TextLabel)
+	local gradient = Instance.new("UIGradient")
+	gradient.Color = TitleGradient.sequence(Vip.NAME.gradient)
+	gradient.Rotation = 90
+	gradient.Parent = label
+	label.TextStrokeColor3 = Color3.fromRGB(Vip.NAME.stroke[1], Vip.NAME.stroke[2], Vip.NAME.stroke[3])
+	local crown = text(label, Vip.NAME.crown, TAG.maxName)
+	crown.Name = "Crown"
+	crown.AnchorPoint = Vector2.new(1, 0)
+	local function place()
+		local height = label.AbsoluteSize.Y
+		local half = label.TextBounds.X / 2
+		crown.Size = UDim2.new(0, height, 1, 0)
+		label.Position = UDim2.new(0, height / 2, 1, 0) -- the pair stays centred
+		crown.Position = UDim2.new(0.5, -half - height * 0.15, 0, 0) -- just left of the name's first letter
+	end
+	label:GetPropertyChangedSignal("TextBounds"):Connect(place)
+	label:GetPropertyChangedSignal("AbsoluteSize"):Connect(place)
+	place()
+end
+
 local function show(player: Player)
 	local character = player.Character
 	local head = if character then character:FindFirstChild("Head") else nil
@@ -132,11 +156,14 @@ local function show(player: Player)
 	name.TextColor3 = Color3.new(1, 1, 1)
 	name.TextStrokeColor3 = NAME_STROKE
 	name.TextStrokeTransparency = 0.3
+	if player:GetAttribute("HasVIP") == true then
+		vipName(name)
+	end
 	gui.Parent = head
 end
 
 local function watch(player: Player)
-	for _, name in { "Title", "TitleId" } do
+	for _, name in { "Title", "TitleId", "HasVIP" } do
 		player:GetAttributeChangedSignal(name):Connect(function()
 			show(player)
 		end)
