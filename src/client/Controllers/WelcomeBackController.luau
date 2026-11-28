@@ -220,13 +220,16 @@ local function nightShiftRow(list: Instance, note: { owned: boolean, sold: numbe
 	end
 	UIKit.outline(row, palette.rowEdge, 2)
 	label.Size = UDim2.new(1, -(38 + 100), 1, 0)
-	local price = ProductPrice.ofPass(passId)
-	local buy = UIKit.button(row, "", UIKit.Colors.Accent)
+	local buy = UIKit.button(row, "Get it", UIKit.Colors.Accent)
 	buy.Name = "GetNightShift"
 	buy.AnchorPoint = Vector2.new(1, 0.5)
 	buy.Position = UDim2.new(1, -6, 0.5, 0)
 	buy.Size = UDim2.fromOffset(90, 38)
-	RobuxPrice.set(buy, if price then "" else "Get it", price)
+	ProductPrice.whenKnown(passId, true, function(price: number)
+		if buy.Parent then
+			RobuxPrice.set(buy, "", price)
+		end
+	end)
 	buy.Activated:Connect(function()
 		ScreenClear.prompt()
 		MarketplaceService:PromptGamePassPurchase(player, passId)

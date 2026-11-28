@@ -38,4 +38,29 @@ function ProductPrice.ofPass(passId: number): number?
 	return priceOf(passId, Enum.InfoType.GamePass)
 end
 
+-- Calls `apply(price)` once the price is known: now when it's cached, else as soon as Roblox answers (looked at once a
+-- second, `tries` times, default 10); never for id 0. For buttons drawn once (the Starter card, the Bag's Quick Open
+-- offer, the Welcome back card's Night Shift row) that would otherwise keep their placeholder words
+function ProductPrice.whenKnown(id: number, pass: boolean, apply: (price: number) -> (), tries: number?)
+	if id == 0 then
+		return
+	end
+	local read = if pass then ProductPrice.ofPass else ProductPrice.of
+	local price = read(id)
+	if price then
+		apply(price)
+		return
+	end
+	task.spawn(function()
+		for _ = 1, tries or 10 do
+			task.wait(1)
+			local known = read(id)
+			if known then
+				apply(known)
+				return
+			end
+		end
+	end)
+end
+
 return ProductPrice

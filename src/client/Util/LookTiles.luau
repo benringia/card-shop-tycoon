@@ -210,14 +210,21 @@ function LookTiles.build(list: ScrollingFrame, palette: any): { GuiObject }
 			end
 			Remotes.ShopLook:FireServer(if DecorRules.owns(Decor, current, look.id, perks()) then "use" else "buy", look.id)
 		end)
-		-- a chance-based perk's look (Sunny Shop: the Starter Pack holds luck) shows once Roblox's policy says it's sold
-		-- here, or once it's yours
+		-- a chance-based perk's look (Sunny Shop: the Starter Pack holds luck) stays out of the Decor tab (its "Hidden"
+		-- attribute, which BuildController's tab switch reads) until Roblox's policy says it's sold here, or it's yours
 		if look.perk and UnlockRules.chanceBased(look.perk, Monetization) then
-			frame.Visible = player:GetAttribute(`Has{look.perk}`) == true
+			local perk = look.perk
+			local key = `Has{perk}`
+			frame:SetAttribute("Hidden", player:GetAttribute(key) ~= true)
+			player:GetAttributeChangedSignal(key):Connect(function()
+				if player:GetAttribute(key) == true then
+					frame:SetAttribute("Hidden", false)
+				end
+			end)
 			task.spawn(function()
 				local ok, info = pcall(PolicyService.GetPolicyInfoForPlayerAsync, PolicyService, player)
 				if not PaidRandomRules.restricted(ok, info) then
-					frame.Visible = true
+					frame:SetAttribute("Hidden", false)
 				end
 			end)
 		end

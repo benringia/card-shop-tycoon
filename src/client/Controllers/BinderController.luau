@@ -1148,8 +1148,14 @@ local function renderBagDetail()
 			quick.Size = UDim2.fromOffset(240, 48)
 			quick.ZIndex = 34
 			if not owner then
-				local price = require(ClientUtil:WaitForChild("ProductPrice")).ofPass(passId)
-				require(ClientUtil:WaitForChild("RobuxPrice")).set(quick, `⚡ Open {Levels.OPEN_QUICK}`, price)
+				local RobuxPrice = require(ClientUtil:WaitForChild("RobuxPrice")) :: any
+				local words = `⚡ Open {Levels.OPEN_QUICK}`
+				RobuxPrice.set(quick, words, nil)
+				require(ClientUtil:WaitForChild("ProductPrice")).whenKnown(passId, true, function(price: number)
+					if quick.Parent then
+						RobuxPrice.set(quick, words, price)
+					end
+				end)
 			end
 			quick.Activated:Connect(function()
 				if not owner then

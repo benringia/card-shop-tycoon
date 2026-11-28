@@ -121,14 +121,15 @@ local function show()
 	flow.SortOrder = Enum.SortOrder.LayoutOrder
 	flow.Parent = buttons
 	local id = Monetization.PRODUCTS[KEY] or 0
-	local price = ProductPrice.of(id)
 	local buy = UIKit.button(buttons, if id == 0 then "Coming soon" else "...", UIKit.Colors.Accent)
 	buy.Name = "Buy"
 	buy.LayoutOrder = 1
 	buy.Size = UDim2.fromOffset(150, 52)
-	if id ~= 0 and price then
-		RobuxPrice.set(buy, "", price)
-	end
+	ProductPrice.whenKnown(id, false, function(price: number)
+		if buy.Parent then
+			RobuxPrice.set(buy, "", price)
+		end
+	end)
 	buy.Activated:Connect(function()
 		if id == 0 then
 			return

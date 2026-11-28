@@ -352,7 +352,8 @@ local function buildShopPanel(parent: Instance)
 			tile.Visible = row.def.category == category
 		end
 		for _, tile in lookTiles do
-			tile.Visible = category == "Decor"
+			-- a look tile can keep itself out (LookTiles: Sunny Shop where Roblox restricts paid random items)
+			tile.Visible = category == "Decor" and tile:GetAttribute("Hidden") ~= true
 		end
 		for _, tile in windowTiles do
 			tile.Visible = category == "Decor"
