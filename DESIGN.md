@@ -1010,7 +1010,15 @@ is over UI (`UIKit.pointerBlocked`).
 
 ### 4.8 Shop decor
 Spec `docs/superpowers/specs/2026-11-14-shop-decor-design.md` (owner 2026-11-14: "next is Decors", looks plus pieces
-for launch, plushies after). Cash only, no Robux.
+for launch, plushies after). Cash only, no Robux, except two perk looks (Robux round, 2026-11-28; section 8):
+- [ ] **Perk looks** (`Config/Decor PERK_LOOKS`, `PERKS`): the **VIP Lounge** (plum walls, gold trim and a gold strip
+  near the ceiling, dark wood) with the VIP pass and **Sunny Shop** (butter walls, white trim, light wood) with the
+  Starter Pack, listed after the six in the Decor tab with their chip ("VIP only", "Starter Pack") and, until the perk
+  is held, a gold "Get VIP" / "Get it" with the live price. Never sold for cash or stored as owned
+  (`DecorRules.owns(..., perks)`, `canBuy` refuses); a saved one in use stays through the load and goes back to Cozy Wood
+  only when a working check says the perk isn't held (`DecorRules.keepLook`; a failing check keeps it). Sunny Shop is
+  hidden where Roblox restricts paid random items (unless it's yours). Wallpapers "" (plain walls) until the owner OKs
+  the Figma AI credits.
 - [x] **Shop looks** (`Config/Decor LOOKS`, `Util/DecorRules`, `DecorService`, `PlotService.SetLook`): six whole-shop
   insides, bought once in the Decor tab and switched free after (remote `ShopLook` "buy" / "use"; every refusal a
   Blocked card): Cozy Wood (free, every shop's default), Candy Pastel ($500, Lv 3), Enchanted Forest ($1,000, Lv 5),
@@ -1376,8 +1384,9 @@ the same, shared by more cards.
     left, `ItemRules.openMany`). The server opens them all at once with pity, luck and NEW checks per pack
     (`PackService.OpenItemPacks`, remote `OpenBagPacks`, LevelUpService: the stock XP each) and sends every card
     (`PacksOpened`); a grid over a dim screen turns them over in order, quick for Commons and pausing on Rare and better,
-    with a NEW ribbon, a flash, the chat shout-out and the drop sting for Epic and Legendary; a tap turns the rest over
-    at once. Then "10 packs opened!", "50 cards · 3 NEW · worth $48.99", Continue and "Open 10 more"
+    with a NEW ribbon, a flash, the chat shout-out and the drop sting for Epic and Legendary; it plays through (owner
+    2026-11-28: no tap skip; only Quick Open's Open 50 can be skipped, section 8 "Robux round"). Then "10 packs
+    opened!", "50 cards · 3 NEW · worth $48.99", Continue and "Open 10 more"
     (`BulkOpenController`, numbers in `PackOpening.BULK`). **Best pulls** (owner 2026-11-17: "highlight any veryrare and
     above cards on the after opening 10cards"; look A of artifact XyGHP2ku71fRaYeuEkGZ6D, `CardReveal.BEST`,
     `RevealRules.standsOut`): a Very Rare or better lights up as it turns (a halo of its colour breathing behind it,
@@ -4849,7 +4858,8 @@ the always-on tracker B, the money card A).
   after a join, a pack opening). Bug 2026-11-27: a waiting mutation choice and this window opened on top of each other
   on join (the reveal isn't a window). Time in
   the Frontier or the Dungeon counts as away. `lastSeen` (schema v33) is written at every main-game save. Studio:
-  `/away <minutes>`.
+  `/away <minutes>`. **Night Shift** (the game pass, 2026-11-28; section 8 "Robux round"): both limits doubled (4 h, 8 h
+  with a Restocker and racks) and, away past the normal limit, its line on this window (with it, or its offer).
   - **With storage racks** (owner 2026-11-24, pick 2; spec `2026-11-24-shop-variety-design`): while a card works as
     Restocker (`JobService.GetRestocker`) and racks hold boxes, every product with a shelf (even an empty one) sells
     from its shelves and from the racks' boxes of it in the first 2 hours (`OfflineRules.planRacks`, the same 2 a
@@ -5150,11 +5160,12 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 ### Game passes (one-time)
 | Pass | Effect | Suggested price |
 |---|---|---|
-| 2x Cash | Double sale income | 299 R$ |
-| Auto Restock | Shelves refill from stock automatically | 199 R$ |
-| VIP | Gold name tag, VIP shop theme, +1 NPC cap | 149 R$ |
+| VIP (built) | A gold name with a crown, a gold [VIP] chat tag, the VIP Lounge shop look (Robux round below) | 149 R$ |
+| Quick Open (built) | Open 50 Bag packs at once, the best pulls shown (Robux round below) | 99 R$ |
+| Night Shift (built) | The welcome-back limits doubled: 4 h, 8 h with a Restocker and racks (Robux round below) | 149 R$ |
+| 2x Cash | Double sale income (not built: speeds packs, so Legendaries; the owner's call against "no pay to win") | 299 R$ |
+| Auto Restock | Shelves refill from stock automatically (the Restocker job does it now) | 199 R$ |
 | Extra Showcase Slots | +6 showcase slots | 99 R$ |
-| Fast Open | Instant pack opening animation skip + Open All x10 | 79 R$ |
 
 ### Developer products (repeatable)
 | Product | Effect | Suggested price |
@@ -5166,6 +5177,7 @@ Principle: sell **convenience, speed and looks**, not "win". Never sell anything
 | Finish now S / M / L (built) | A station job done now: up to 5 min / 20 min / 1 h left (7.8) | 12 / 30 / 70 R$ |
 | Support the dev 1 / 2 / 3 (built) | A gift: supporter title and golden aura (Support the dev below) | 160 / 325 / 510 R$ |
 | Reset all boss timers (built) | Every running boss loot timer ends now (Boss timer reset below) | 20 R$ (managed pricing) |
+| Starter Pack (built, one time) | The Sunny Shop look, the "Shop Starter" title, 30 min of 2x Luck (Robux round below) | 99 R$ (managed pricing) |
 
 Built products live in Config/Monetization PRODUCTS (0 = not created yet: "Coming soon"); create them on Creator Hub →
 the experience → Monetization → Developer Products, then paste the ids there. PurchaseService holds the one
@@ -5282,8 +5294,56 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
   PromptGamePassPurchaseFinished once its OK or Cancel is pressed; 120 s at most) and no Roblox menu is open.
 - Studio: `/support <0-3>` (as if bought; 0: none again), admin panel "Supporter tier 1 / 3", "Not a supporter again".
 
+### Robux round: VIP, Quick Open, Night Shift and the Starter Pack (built 2026-11-28)
+Spec `docs/superpowers/specs/2026-11-28-robux-round-design.md`, plan `docs/superpowers/plans/2026-11-28-robux-round.md`;
+mockups https://claude.ai/artifact/LCpNjGyKWk1So3moAuLj41 (owner: "A, A, B but still add the VIP on chat and the VIP
+lounge"; "Quick Open: right now you can skip Open 10 animations by clicking, remove that ... [skippable] only on Open 50").
+Before ads and the under-16s, the game had no game passes (the game page's Store tab and Roblox's Shop button were
+empty) and nothing for sale where players spend the most time. Speed, convenience and looks only; nothing that gives power.
+- **Passes** (`Monetization.PASSES` VIP, QuickOpen, NightShift: 0 until made on Creator Hub, then "Coming soon" turns
+  into the live price): MonetizationService's `Has<Key>` attributes, its cache and retries, Studio's `DevPass_<Key>`. A
+  purchase in the game plays its win card (`Monetization.WIN_KINDS`, `Luck.WIN` vip / quickopen / nightshift / starter,
+  each with its `glyph`); one bought outside the game counts from the next join.
+- **The Starter Pack** (`Monetization.UNLOCKS` "StarterPack", also a pass key, `CHANCE`: it holds luck, so it's hidden and
+  refused (`Util/Blocked` "Not sold where you live.") where Roblox restricts paid random items): one time, R$ 99. Its
+  grant (`MonetizationService.OnUnlockGrant`, `UnlockRules.apply`: the grant first, owned only once it went through, so a
+  purchase before the save loaded is asked again) adds 30 min of 2x Luck; owning it gives the Sunny Shop look and the
+  "Shop Starter" title (Config/Titles `shopStarter`, check kind "unlock"). **Its card** (StarterController,
+  Config/Starter): StarterService counts an hour of play after Pish's first visit in the main place (saved
+  `starter.played`, v46), then sends `StarterOffer`; the client waits for a calm moment (`StarterRules.mayShow`: ready,
+  no window, no purchase dialog or Roblox menu, nothing on the stage, no fight, tour or register), shows "Starter Pack!"
+  with Pish peeking over its corner, "A one-time pack to start your shop:", its three things, the gold price button and
+  "Maybe later", "It stays in the Store if you change your mind.", and reports it; only then `starter.shown` is saved, so
+  it comes once. Never called a gift (kids read "gift" as free).
+- **The Store** (Store A, StoreController, `Util/StoreRules`): the Starter banner on top while it's for sale here, the
+  luck boosts, then "Forever": VIP (purple, gold outline), Quick Open (sky outline), Night Shift (navy to indigo), the
+  Extra Job Slot; NEW on the three passes until `Monetization.NEW_UNTIL` (2027-01-01 UTC), "Owned" once yours.
+- **VIP**: TitleController draws a VIP's name in a gold gradient with a 👑 just left of it (Config/Vip NAME); the title
+  row above stays theirs (owner pick B). VipChatController's `TextChatService.OnIncomingMessage` puts a gold bold [VIP]
+  in front of their chat lines (`VipRules.chatPrefix`, once even when a message comes by twice). The VIP Lounge look
+  (4.8). Looks only.
+- **Quick Open** (`Levels.OPEN_QUICK` 50): the Bag shows, past Open 10, the owner's sky "⚡ Open N" (up to 50) or, without
+  the pass, a gold "⚡ Open 50" with the live price (`ItemRules.bagButtons`; shown once the pass is made). The server caps
+  every open (`ItemRules.openCap` in LevelUpService). Open 50's results (BulkOpenController, `PackOpening.BULK.QUICK`):
+  only the best pulls (Very Rare and up, best first, at most 50: `RevealRules.bestPulls`), "+ N Commons and Rares went
+  to your binder" (or "No Very Rare this time"), "⚡ Open N more". **Skipping** (owner): Open 10 plays through (a tap does
+  nothing); only Open 50 turns the rest over on a tap (`RevealRules.skippable`).
+- **Night Shift** (`Offline.NIGHT_SHIFT`): OfflineService doubles both welcome-back limits for an owner
+  (`OfflineRules.caps`); away past the normal limit (`OfflineRules.limit`, `nightShiftNote`), the Welcome back card shows
+  an owner "🌙 Night Shift sold for 4 h (2 h without it)" and anyone else a quiet row "Your shop sold for 2 h. Night Shift
+  keeps it selling for 4 h." with the pass's live price (shown once the pass is made).
+- **Creator Hub** (the owner): game passes VIP 149, Quick Open 99, Night Shift 149 and the developer product Starter
+  Pack 99, managed pricing on; icons drawn by `tools/ui-art/make_pass_icons.py` into `assets/ui/passes/`; ids into
+  `Config/Monetization`. The VIP Lounge and Sunny Shop wallpapers wait for the owner's OK on Figma AI credits (plain
+  wall colours until then).
+- Studio: `/pass <VIP|QuickOpen|NightShift|StarterPack> [on|off]` (as if bought: its grant and win card; Studio only),
+  `/starter offer` (the card at the next calm moment), `/starter reset`; the admin panel's "Robux round" section.
+  Tests: `UnlockRules`, `StoreRules`, `StarterRules`, `VipRules`, `DecorRules`, `TitleRules`, `ItemRules`,
+  `RevealRules`, `OfflineRules`, `Migrations` v46.
+
 ### Cosmetics
-- Shop themes (floor, walls, lighting): retro arcade, neon, cozy wood, etc.
+- Shop themes (floor, walls, lighting): retro arcade, neon, cozy wood, etc. (the VIP Lounge and Sunny Shop come with
+  VIP and the Starter Pack: 4.8)
 - Register skins, sign styles, card sleeve colors in binder.
 
 ### Other
@@ -5914,7 +5974,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
 - Use Luau type annotations (`--!strict` where practical).
 - Mobile-first UI: big tap targets, test at phone resolution.
 
-### 10.4 Player data schema (v45)
+### 10.4 Player data schema (v46)
 ```lua
 {
     version = 21,
@@ -5945,6 +6005,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
     stats = { packsOpened = 0, customersServed = 0, totalEarned = 0, bossKills = 0 }, -- bossKills: every boss win (v41)
     seenWelcome = false,    -- saw the first-visit welcome cinematic (WelcomeService)
     seenSword = false,      -- closed the "You got your first sword!" popup (SwordService)
+    starter = { played = 0, shown = false }, -- the Starter card: play counted up to an hour, shown once (v46, StarterService)
     swordFights = 0,        -- boss fights fought with the sword HUD; its buttons show names for the first 3 (SwordService)
     weapons = {},           -- weaponId -> { grade, level, mutation?, pending? } (WeaponService; the Steel Sword is everyone's, never saved; mutation and pending = { id, rarity }: its mutation and one waiting for Keep current or Take new, v44; pending.forge = true when the Forge's Mutate rolled it: its choice gives no Essence, v45)
     equippedWeapon = "starterSword", -- the weapon in hand (Config/Weapons id)
@@ -6027,6 +6088,11 @@ v45 (weapons round 4 part 3, owner 2026-11-26: Essence only from boss drops) let
 true` (the Forge's Mutate rolled it: its choice gives no Essence); one saved before has no mark and stays a drop's, so
 its step changes nothing but the version. `WeaponRules.read` keeps the mark only when it is `true`. Release with
 "Migrate to latest update": an old server's read drops the mark.
+v46 (Robux round, 2026-11-28; section 8) adds `starter = { played = 0, shown = false }`: the Starter card's play counter
+(seconds after Pish's first visit in the main place, up to an hour) and whether it showed (StarterService;
+`StarterRules.clean` checks it on load). Every older save starts at none played, not shown, so players from before see
+the card after one more hour of play. Release with "Migrate to latest update": an old server doesn't know `starter`
+and leaves it alone.
 
 ### 10.6 UI style and HUD
 - **Loading screen: the binder** (owner 2026-11-13, spec `docs/superpowers/specs/2026-11-13-loading-screen-binder-design.md`;
