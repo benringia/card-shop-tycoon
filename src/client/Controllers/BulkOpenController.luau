@@ -34,7 +34,6 @@ local CardArt = require(Shared:WaitForChild("Util"):WaitForChild("CardArt"))
 local GradeLook = require(Shared:WaitForChild("Util"):WaitForChild("GradeLook"))
 local CardArtConfig = require(Config:WaitForChild("CardArt"))
 local SuperFxConfig = require(Config:WaitForChild("SuperFx"))
-local Rarities = require(Config:WaitForChild("Rarities"))
 
 local Controllers = script.Parent :: Instance
 local ClientUtil = (Controllers.Parent :: Instance):WaitForChild("Util")
@@ -54,14 +53,6 @@ local BIG = { Epic = true, Legendary = true }
 local BEST = CardReveal.BEST
 local QUICK = PackOpening.BULK.QUICK -- Open 50 (Quick Open): best pulls only, a tap skips
 local HUD_REASON = "BulkOpen" -- the HUD hides under the grid, like the pack opening's stage (the quest strip plays its news after)
-
--- Each rarity's rank (Config/Rarities order), for Open 50's best pulls
-local RANK: { [string]: number } = {}
-for name, rarity in Rarities do
-	if typeof(rarity) == "table" and typeof(rarity.order) == "number" then
-		RANK[name] = rarity.order
-	end
-end
 
 local player = Players.LocalPlayer
 local gui: ScreenGui
@@ -489,7 +480,7 @@ local function show(_productId: unknown, results: unknown, flags: unknown, fromI
 			rarities[index] = pull.card.rarity
 		end
 		local picks
-		picks, below, over = RevealRules.bestPulls(rarities, BEST.from, RANK, QUICK.limit)
+		picks, below, over = RevealRules.bestPulls(rarities, BEST.from, RevealRules.RANK, QUICK.limit)
 		shown = {}
 		for _, index in picks do
 			table.insert(shown, pulls[index])
@@ -505,6 +496,7 @@ local function show(_productId: unknown, results: unknown, flags: unknown, fromI
 	moreButton.Visible = false
 	local width = cellWidth(#shown)
 	layout.CellSize = UDim2.fromOffset(width, math.floor(width * GRID.ratio))
+	layout.CellPadding = UDim2.fromOffset(GRID.gap, GRID.rowGap + (if quickRun then QUICK.tagRoom else 0))
 	local cells: { Frame } = {}
 	for index in shown do
 		local cell = Instance.new("Frame")

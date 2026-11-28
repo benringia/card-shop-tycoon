@@ -5314,7 +5314,8 @@ empty) and nothing for sale where players spend the most time. Speed, convenienc
   no window, no purchase dialog or Roblox menu, nothing on the stage, no fight, tour or register), shows "Starter Pack!"
   with Pish peeking over its corner, "A one-time pack to start your shop:", its three things, the gold price button and
   "Maybe later", "It stays in the Store if you change your mind.", and reports it; only then `starter.shown` is saved, so
-  it comes once. Never called a gift (kids read "gift" as free).
+  it comes once. Never called a gift (kids read "gift" as free). Its title starts past Pish (as in Turts' window); on a
+  phone the rows are slimmer and the lead line goes, so the buttons stay on the card.
 - **The Store** (Store A, StoreController, `Util/StoreRules`): the Starter banner on top while it's for sale here, the
   luck boosts, then "Forever": VIP (purple, gold outline), Quick Open (sky outline), Night Shift (navy to indigo), the
   Extra Job Slot; NEW on the three passes until `Monetization.NEW_UNTIL` (2027-01-01 UTC), "Owned" once yours.
@@ -5323,11 +5324,14 @@ empty) and nothing for sale where players spend the most time. Speed, convenienc
   in front of their chat lines (`VipRules.chatPrefix`, once even when a message comes by twice). The VIP Lounge look
   (4.8). Looks only.
 - **Quick Open** (`Levels.OPEN_QUICK` 50): the Bag shows, past Open 10, the owner's sky "⚡ Open N" (up to 50) or, without
-  the pass, a gold "⚡ Open 50" with the live price (`ItemRules.bagButtons`; shown once the pass is made). The server caps
-  every open (`ItemRules.openCap` in LevelUpService). Open 50's results (BulkOpenController, `PackOpening.BULK.QUICK`):
-  only the best pulls (Very Rare and up, best first, at most 50: `RevealRules.bestPulls`), "+ N Commons and Rares went
-  to your binder" (or "No Very Rare this time"), "⚡ Open N more". **Skipping** (owner): Open 10 plays through (a tap does
-  nothing); only Open 50 turns the rest over on a tap (`RevealRules.skippable`).
+  the pass, a gold "Open 50" with the live price (`ItemRules.bagButtons`; shown once the pass is made; no ⚡ on gold:
+  the yellow emoji vanishes there), beside "To shop" when the item has it (a phone's Bag has no room for another row).
+  The server caps every open (`ItemRules.openCap` in LevelUpService). Open 50's results (BulkOpenController,
+  `PackOpening.BULK.QUICK`): only the best pulls (Very Rare and up, best first, at most 50: `RevealRules.bestPulls`
+  with `RevealRules.RANK`), a little more room between rows for their big tags, "+ N Commons and Rares went to your
+  binder" (or "No Very Rare this time"), "Open N more". **Skipping** (owner): Open 10 plays through (a tap does
+  nothing; Studio: taps at 0.4 s and 1 s, done at 8.2 s); only Open 50 turns the rest over on a tap (a tap at 1.6 s,
+  done at 2.1 s; `RevealRules.skippable`).
 - **Night Shift** (`Offline.NIGHT_SHIFT`): OfflineService doubles both welcome-back limits for an owner
   (`OfflineRules.caps`); away past the normal limit (`OfflineRules.limit`, `nightShiftNote`), the Welcome back card shows
   an owner "🌙 Night Shift sold for 4 h (2 h without it)" and anyone else a quiet row "Your shop sold for 2 h. Night Shift

@@ -1141,15 +1141,19 @@ local function renderBagDetail()
 		local passId = Monetization.PASSES.QuickOpen or 0
 		if quickButtons.quick > 0 or (quickButtons.offer and passId ~= 0) then
 			local owner = quickButtons.quick > 0
+			-- beside To shop when the item has it (the row Open | Open 10 sits in), else its own row: a phone's Bag has no
+			-- room for one more row (found in Studio 2026-11-28: the item's "What it does" went past the Bag's bottom)
+			local beside = info.stock ~= nil and info.shop ~= nil
 			local quick = UIKit.button(bagDetail, `⚡ Open {quickButtons.quick}`, if owner then UIKit.Colors.Secondary else UIKit.Colors.Accent)
 			quick.Name = "OpenQuick"
 			quick.AnchorPoint = Vector2.new(0.5, 0)
-			quick.Position = UDim2.new(0.5, 0, 0, y)
-			quick.Size = UDim2.fromOffset(240, 48)
+			quick.Position = UDim2.new(0.5, if beside then -62 else 0, 0, y)
+			quick.Size = UDim2.fromOffset(if beside then 116 else 240, 48)
 			quick.ZIndex = 34
+			quick:SetAttribute("Beside", beside)
 			if not owner then
 				local RobuxPrice = require(ClientUtil:WaitForChild("RobuxPrice")) :: any
-				local words = `⚡ Open {Levels.OPEN_QUICK}`
+				local words = `Open {Levels.OPEN_QUICK}` -- no ⚡ here: the yellow emoji vanishes on the gold button
 				RobuxPrice.set(quick, words, nil)
 				require(ClientUtil:WaitForChild("ProductPrice")).whenKnown(passId, true, function(price: number)
 					if quick.Parent then
@@ -1170,7 +1174,9 @@ local function renderBagDetail()
 				Remotes.OpenBagPacks:FireServer(openId, Levels.OPEN_QUICK)
 				bagOverlay.Visible = false
 			end)
-			y += 58
+			if not beside then
+				y += 58
+			end
 		end
 	end
 	-- Shop stock (Config/Items `stock`: packs, deck boxes): To shop puts a box of them back on your delivery pad to
@@ -1181,13 +1187,21 @@ local function renderBagDetail()
 		local toShop = UIKit.button(bagDetail, info.shop, UIKit.Colors.Secondary)
 		toShop.Name = "ToShop"
 		toShop.AnchorPoint = Vector2.new(0.5, 0)
-		toShop.Position = UDim2.new(0.5, 0, 0, y)
-		toShop.Size = UDim2.fromOffset(160, 44)
 		toShop.ZIndex = 34
 		toShop.Activated:Connect(function()
 			Remotes.ShopBagStock:FireServer(stockId)
 		end)
-		y += 54
+		-- Quick Open's button left of it (Robux round): the two share the row
+		local quickBeside = bagDetail:FindFirstChild("OpenQuick")
+		if quickBeside and quickBeside:GetAttribute("Beside") == true then
+			toShop.Position = UDim2.new(0.5, 62, 0, y)
+			toShop.Size = UDim2.fromOffset(116, 48)
+			y += 58
+		else
+			toShop.Position = UDim2.new(0.5, 0, 0, y)
+			toShop.Size = UDim2.fromOffset(160, 44)
+			y += 54
+		end
 	end
 	-- The XP Tonic: Use, then pick the party card it goes on (owner 2026-11-17)
 	if selectedItem == "xpTonic" and tonics > 0 then

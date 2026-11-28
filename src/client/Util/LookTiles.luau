@@ -65,6 +65,15 @@ local function perkPrice(perk: string): number?
 	return if id ~= 0 then ProductPrice.ofPass(id) else nil
 end
 
+-- Whether a perk's pass or one-time product is made on Creator Hub (its id isn't 0): until then its button says
+-- "Coming soon" (never a buy button that does nothing)
+local function perkMade(perk: string): boolean
+	if table.find(Monetization.UNLOCKS, perk) then
+		return (Monetization.PRODUCTS[perk] or 0) ~= 0
+	end
+	return (Monetization.PASSES[perk] or 0) ~= 0
+end
+
 -- Opens a perk's purchase: the pass, or the one-time product through the server (it checks it's for sale here)
 local function buyPerk(perk: string)
 	if table.find(Monetization.UNLOCKS, perk) then
@@ -141,14 +150,18 @@ local function refresh(tiles: { Tile })
 		local owned = DecorRules.owns(Decor, current, look.id, held)
 		if look.perk then
 			-- a perk look: "Using" / "Use" while held, else its gold buy button with the live price
+			local made = perkMade(look.perk)
 			if using or owned then
 				RobuxPrice.set(button, if using then "Using" else "Use", nil)
 				button.BackgroundColor3 = if using then UIKit.Colors.Accent else UIKit.Colors.Secondary
+			elseif not made then
+				RobuxPrice.set(button, "Coming soon", nil)
+				button.BackgroundColor3 = UIKit.Colors.Locked
 			else
 				RobuxPrice.set(button, Decor.PERKS[look.perk].buy, perkPrice(look.perk))
 				button.BackgroundColor3 = UIKit.Colors.Accent
 			end
-			button.AutoButtonColor = not using
+			button.AutoButtonColor = not using and (owned or made)
 			continue
 		end
 		local locked = not owned and level < look.level

@@ -169,6 +169,17 @@ return {
 		expect.equal(RevealRules.skippable(50, 10), true, "Open 50")
 	end,
 
+	-- found in Studio 2026-11-28: the client built its own rank from Config/Rarities' top level (the tiers live under
+	-- `Tiers`), ranked nothing and showed "No Very Rare this time" for every Open 50
+	["its own rarity ranking is shared (Open 50 ranks pulls with it)"] = function()
+		local rank = RevealRules.RANK
+		expect.equal(rank.Common, 1)
+		expect.equal(rank["Very Rare"], 3)
+		expect.equal(rank.Legendary, 5)
+		local picks = RevealRules.bestPulls({ "Common", "Very Rare", "Rare", "Epic" }, "Very Rare", rank, 50)
+		expect.equal(table.concat(picks, ","), "4,2")
+	end,
+
 	["best pulls: Very Rare and up, best first, capped"] = function()
 		local rank = { Common = 1, Rare = 2, ["Very Rare"] = 3, Epic = 4, Legendary = 5 }
 		local picks, below, over = RevealRules.bestPulls({ "Common", "Epic", "Very Rare", "Legendary", "Rare", "Epic" }, "Very Rare", rank, 3)

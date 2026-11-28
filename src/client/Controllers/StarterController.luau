@@ -54,26 +54,26 @@ local function facts(): StarterRules.Facts
 	}
 end
 
--- One of the three things inside: its picture, its name and a short line
-local function row(list: Instance, order: number, look: { icon: string, name: string, line: string }, palette: any)
+-- One of the three things inside: its picture, its name and a short line (`compact` on a phone: a short screen)
+local function row(list: Instance, order: number, look: { icon: string, name: string, line: string }, palette: any, compact: boolean)
 	local frame = Instance.new("Frame")
 	frame.LayoutOrder = order
-	frame.Size = UDim2.new(1, -16, 0, 50)
+	frame.Size = UDim2.new(1, -16, 0, if compact then 40 else 50)
 	frame.BackgroundColor3 = palette.row
 	frame.Parent = list
-	UIKit.corner(frame, 14)
+	UIKit.corner(frame, if compact then 12 else 14)
 	UIKit.outline(frame, palette.rowEdge, 2)
-	local icon = UIKit.label(frame, look.icon, Enum.Font.FredokaOne, 26, palette.ink)
+	local icon = UIKit.label(frame, look.icon, Enum.Font.FredokaOne, if compact then 22 else 26, palette.ink)
 	icon.Position = UDim2.fromOffset(8, 0)
 	icon.Size = UDim2.new(0, 36, 1, 0)
 	icon.TextXAlignment = Enum.TextXAlignment.Center
-	local name = UIKit.label(frame, look.name, Enum.Font.FredokaOne, 17, palette.ink)
-	name.Position = UDim2.fromOffset(52, 6)
-	name.Size = UDim2.new(1, -60, 0, 20)
+	local name = UIKit.label(frame, look.name, Enum.Font.FredokaOne, if compact then 15 else 17, palette.ink)
+	name.Position = UDim2.fromOffset(52, if compact then 3 else 6)
+	name.Size = UDim2.new(1, -60, 0, if compact then 18 else 20)
 	name.TextXAlignment = Enum.TextXAlignment.Left
-	local line = UIKit.label(frame, look.line, Enum.Font.GothamBold, 12, palette.inkSoft)
-	line.Position = UDim2.fromOffset(52, 27)
-	line.Size = UDim2.new(1, -60, 0, 16)
+	local line = UIKit.label(frame, look.line, Enum.Font.GothamBold, if compact then 11 else 12, palette.inkSoft)
+	line.Position = UDim2.fromOffset(52, if compact then 21 else 27)
+	line.Size = UDim2.new(1, -60, 0, if compact then 14 else 16)
 	line.TextXAlignment = Enum.TextXAlignment.Left
 end
 
@@ -85,9 +85,11 @@ local function show()
 		limit.MaxSize = Vector2.new(CARD.maxSize[1], CARD.maxSize[2])
 	end
 	local palette = UIKit.colorsFor(panel)
+	-- a phone's short screen (found in Studio 2026-11-28: the buttons fell below the card): slimmer rows, no lead line
+	local compact = UIKit.isPhone()
 	local layout = list:FindFirstChildOfClass("UIListLayout")
 	if layout then
-		layout.Padding = UDim.new(0, 8)
+		layout.Padding = UDim.new(0, if compact then 6 else 8)
 		layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	end
 	local peek = Instance.new("ImageLabel")
@@ -100,19 +102,28 @@ local function show()
 	peek.Size = UDim2.fromOffset(CARD.peek.size[1], CARD.peek.size[2])
 	peek.ZIndex = 60
 	peek.Parent = panel
+	-- the title starts past Pish, as in Turts' window (found in Studio 2026-11-28: he covered "Sta")
+	local title = panel:FindFirstChild("Title")
+	if title and title:IsA("TextLabel") then
+		local past = CARD.peek.left + CARD.peek.size[1] + 6
+		title.Position = UDim2.fromOffset(past, title.Position.Y.Offset)
+		title.Size = UDim2.new(1, -(past + 72), title.Size.Y.Scale, title.Size.Y.Offset)
+	end
 
-	local line = UIKit.label(list, CARD.line, Enum.Font.GothamBold, 14, palette.inkSoft)
-	line.LayoutOrder = 1
-	line.Size = UDim2.new(1, -16, 0, 20)
-	line.TextXAlignment = Enum.TextXAlignment.Center
+	if not compact then
+		local line = UIKit.label(list, CARD.line, Enum.Font.GothamBold, 14, palette.inkSoft)
+		line.LayoutOrder = 1
+		line.Size = UDim2.new(1, -16, 0, 20)
+		line.TextXAlignment = Enum.TextXAlignment.Center
+	end
 	for index, look in CARD.rows do
-		row(list, 1 + index, look, palette)
+		row(list, 1 + index, look, palette, compact)
 	end
 
 	local buttons = Instance.new("Frame")
 	buttons.LayoutOrder = 10
 	buttons.BackgroundTransparency = 1
-	buttons.Size = UDim2.new(1, -16, 0, 56)
+	buttons.Size = UDim2.new(1, -16, 0, if compact then 50 else 56)
 	buttons.Parent = list
 	local flow = Instance.new("UIListLayout")
 	flow.FillDirection = Enum.FillDirection.Horizontal
@@ -124,7 +135,7 @@ local function show()
 	local buy = UIKit.button(buttons, if id == 0 then "Coming soon" else "...", UIKit.Colors.Accent)
 	buy.Name = "Buy"
 	buy.LayoutOrder = 1
-	buy.Size = UDim2.fromOffset(150, 52)
+	buy.Size = UDim2.fromOffset(150, if compact then 48 else 52)
 	ProductPrice.whenKnown(id, false, function(price: number)
 		if buy.Parent then
 			RobuxPrice.set(buy, "", price)
@@ -140,7 +151,7 @@ local function show()
 	local later = UIKit.button(buttons, CARD.later, UIKit.Colors.Secondary)
 	later.Name = "Later"
 	later.LayoutOrder = 2
-	later.Size = UDim2.fromOffset(140, 52)
+	later.Size = UDim2.fromOffset(140, if compact then 48 else 52)
 	later.Activated:Connect(function()
 		panel.Visible = false
 	end)

@@ -216,9 +216,10 @@ return {
 			rest = "+ %d Commons and Rares went to your binder",
 			overflow = "+ %d more cards went to your binder",
 			none = "No Very Rare this time",
-			more = "⚡ Open %d more",
+			more = "Open %d more", -- no ⚡: the yellow emoji vanishes on the gold button (Studio 2026-11-28)
 			limit = 50,
 			restOffset = 24, -- px the grid moves down for the line under the totals
+			tagRoom = 12, -- px more between rows: its few cards draw big, and so do their rarity tags (Studio 2026-11-28)
 		},
 	},
 }
