@@ -1011,7 +1011,7 @@ is over UI (`UIKit.pointerBlocked`).
 ### 4.8 Shop decor
 Spec `docs/superpowers/specs/2026-11-14-shop-decor-design.md` (owner 2026-11-14: "next is Decors", looks plus pieces
 for launch, plushies after). Cash only, no Robux, except two perk looks (Robux round, 2026-11-28; section 8):
-- [ ] **Perk looks** (`Config/Decor PERK_LOOKS`, `PERKS`): the **VIP Lounge** (plum walls, gold trim and a gold strip
+- [x] **Perk looks** (`Config/Decor PERK_LOOKS`, `PERKS`): the **VIP Lounge** (plum walls, gold trim and a gold strip
   near the ceiling, dark wood) with the VIP pass and **Sunny Shop** (butter walls, white trim, light wood) with the
   Starter Pack, listed after the six in the Decor tab with their chip ("VIP only", "Starter Pack") and, until the perk
   is held, a gold "Get VIP" / "Get it" with the live price. Never sold for cash or stored as owned
@@ -5295,7 +5295,7 @@ off). Config/Support, Util/SupportRules, Server/Services/SupportService, client 
   PromptGamePassPurchaseFinished once its OK or Cancel is pressed; 120 s at most) and no Roblox menu is open.
 - Studio: `/support <0-3>` (as if bought; 0: none again), admin panel "Supporter tier 1 / 3", "Not a supporter again".
 
-### Robux round: VIP, Quick Open, Night Shift and the Starter Pack (built 2026-11-28)
+### Robux round: VIP, Quick Open, Night Shift and the Starter Pack (built and published 2026-11-28)
 Spec `docs/superpowers/specs/2026-11-28-robux-round-design.md`, plan `docs/superpowers/plans/2026-11-28-robux-round.md`;
 mockups https://claude.ai/artifact/LCpNjGyKWk1So3moAuLj41 (owner: "A, A, B but still add the VIP on chat and the VIP
 lounge"; "Quick Open: right now you can skip Open 10 animations by clicking, remove that ... [skippable] only on Open 50").
@@ -5344,8 +5344,12 @@ empty) and nothing for sale where players spend the most time. Speed, convenienc
   page (VIP 2098477736, Quick Open 2099065706, Night Shift 2101057657; a first try had made them developer products,
   unused and kept Unlisted), with free trials off: a trial's start comes in as a purchase (the win card says forever)
   and a pass check holds for the session. An off-sale pass reads no price (its buttons stay "..."), so all three go on
-  sale before a publish. The passes may be Listed (Roblox then shows them on its homepage, search and Shop). The VIP
-  Lounge and Sunny Shop wallpapers: Figma, made seamless, uploaded (section 4.8).
+  sale before a publish. Roblox's Shop (Monetization -> Shop): passes are always Listed (homepage, search, the page
+  after a Robux purchase, its in-game Shop); every developer product stays Unlisted; the global Shop button is on
+  (2026-11-28, Roblox's top bar row right of the voice icon, clear of our HUD on a computer and a phone). The VIP
+  Lounge and Sunny Shop wallpapers: Figma, made seamless, uploaded (section 4.8). All published 2026-11-28 (the three
+  places, save v46). The plan for making the passes easier to find (a Store dot once, free trials once the code tells
+  a trial from a buy): https://claude.ai/artifact/7v7RvQjjLEjQ76np3ahize.
 - Studio: `/pass <VIP|QuickOpen|NightShift|StarterPack> [on|off]` (as if bought: its grant and win card; Studio only),
   `/starter offer` (the card at the next calm moment), `/starter reset`; the admin panel's "Robux round" section.
   Tests: `UnlockRules`, `StoreRules`, `StarterRules`, `VipRules`, `DecorRules`, `TitleRules`, `ItemRules`,
