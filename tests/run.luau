@@ -255,6 +255,7 @@ local specs: { [string]: { [string]: () -> () } } = {
 	PetRewardRules = require("./PetRewardRules.spec"),
 	FrontierPack = require("./FrontierPack.spec"),
 	HintRules = require("./HintRules.spec"),
+	StoreRules = require("./StoreRules.spec"),
 }
 
 -- `lune run tests/run <SpecName>` runs only that spec

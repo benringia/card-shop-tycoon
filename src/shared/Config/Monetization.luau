@@ -19,6 +19,25 @@ return {
 	-- Unlocks holding something chance-based (the Starter Pack's 2x Luck): not shown or sold where Roblox restricts paid
 	-- random items (Util/PaidRandomRules), like the luck boosts
 	CHANCE = { StarterPack = true },
+	-- The Store's "Forever" list, in order (Util/StoreRules, StoreController), the ones tagged NEW and until when
+	-- (2027-01-01 00:00 UTC: true while they're new), and each one's words (icon, name, short line, its win chip)
+	FOREVER = { "VIP", "QuickOpen", "NightShift", "ExtraJobSlot" },
+	NEW = { VIP = true, QuickOpen = true, NightShift = true },
+	NEW_UNTIL = 1798761600,
+	STORE = {
+		VIP = { icon = "👑", name = "VIP", line = "Shine in town", win = "Gold name + VIP look" },
+		QuickOpen = { icon = "⚡", name = "Quick Open", line = "Open 50 at once", win = "Open 10 becomes Open 50" },
+		NightShift = { icon = "🌙", name = "Night Shift", line = "Sell while away", win = "Away selling 2 h to 4 h" },
+		ExtraJobSlot = { icon = "💼", name = "Extra Job Slot", line = "A second worker", win = "+1 worker, forever" },
+		-- the banner on top of the Store while it's for sale (StoreRules.showStarter)
+		StarterPack = {
+			icon = "🎁",
+			name = "Starter Pack",
+			line = "One time only",
+			chips = { "Sunny Shop look", '"Shop Starter" title', "2x Luck · 30 min" },
+			tag = "ONE TIME",
+		},
+	},
 	-- Each pass's and unlock's win card the moment it's granted (Config/Luck WIN, StoreWinController)
 	WIN_KINDS = {
 		ExtraJobSlot = "jobslot",

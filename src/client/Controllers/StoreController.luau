@@ -4,8 +4,10 @@
 -- inside the phone (Util/Hud.phonePage). On top a green "Feeling lucky?" banner with Pish and floating clovers and the
 -- luck running now; then the three boosts as colourful tiles (2x Luck 15 / 30 min, 3x Super Luck 30 min in an animated
 -- rainbow), each with its win in a chip (the Legendary chance before and with it), a tag on the true best ones and a
--- shine sweeping them, and chunky gold price buttons (live prices: managed pricing gives each player theirs); then the
--- Extra Job Slot as a gold "forever" tile. A boost tap asks the server (Remotes.BuyLuck: LuckService prompts the
+-- shine sweeping them, and chunky gold price buttons (live prices: managed pricing gives each player theirs); then
+-- "Forever": VIP, Quick Open, Night Shift and the Extra Job Slot (Util/StoreRules; Robux round, spec
+-- 2026-11-28-robux-round-design, Store A), with the Starter Pack's banner on top while it's for sale here. A pass tap
+-- prompts the pass; the Starter Pack goes through BuyUnlock. A boost tap asks the server (Remotes.BuyLuck: LuckService prompts the
 -- purchase; the slot: BuyUnlock); where Roblox restricts paid random items the luck tiles say they aren't sold here.
 -- The win card after a purchase: StoreWinController.
 local MarketplaceService = game:GetService("MarketplaceService")
@@ -23,6 +25,7 @@ local HudMascot = require(Config:WaitForChild("HudMascot"))
 local LuckRules = require(Shared:WaitForChild("Util"):WaitForChild("LuckRules"))
 local BoughtLuck = require(Shared:WaitForChild("Util"):WaitForChild("BoughtLuck"))
 local PaidRandomRules = require(Shared:WaitForChild("Util"):WaitForChild("PaidRandomRules"))
+local StoreRules = require(Shared:WaitForChild("Util"):WaitForChild("StoreRules"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Controllers = script.Parent :: Instance
@@ -58,6 +61,7 @@ local BUTTON_WIDTH = 78
 local BUTTON_HEIGHT = 48
 local Z = 35 -- over the phone's screen
 local PASS_KEY = "ExtraJobSlot"
+local STARTER_KEY = "StarterPack" -- the one-time Starter Pack (Monetization UNLOCKS)
 local PACK_ID = "FirstSparkPack"
 
 local player = Players.LocalPlayer
@@ -336,6 +340,70 @@ local function banner()
 	shine(frame, 2.4)
 end
 
+-- The Starter Pack's banner on top while it's for sale here (spec 2026-11-28-robux-round-design, Store A): pink to
+-- peach, the gift, "Starter Pack", "One time only", its three things and a true ONE TIME tag, the gold price button
+local function starterBanner(restricted: boolean?)
+	if not StoreRules.showStarter(player:GetAttribute(`Has{STARTER_KEY}`) == true, restricted) then
+		return
+	end
+	local words = Monetization.STORE[STARTER_KEY]
+	local frame = Instance.new("Frame")
+	frame.LayoutOrder = 0
+	frame.Size = UDim2.new(1, -8, 0, 118)
+	frame.BackgroundColor3 = WHITE
+	frame.ZIndex = Z
+	frame.Parent = list
+	corner(frame, 18)
+	gradient(frame, ColorSequence.new(rgb(255, 127, 184), rgb(255, 148, 104)), 20)
+	stroke(frame, rgb(255, 214, 232), 2)
+	local box = Instance.new("Frame")
+	box.Position = UDim2.fromOffset(10, 10)
+	box.Size = UDim2.fromOffset(40, 40)
+	box.BackgroundColor3 = WHITE
+	box.ZIndex = Z + 2
+	box.Parent = frame
+	corner(box, 12)
+	gradient(box, ColorSequence.new(GOLD_TOP, GOLD_BOTTOM), 90)
+	local glyph = label(box, words.icon, Enum.Font.FredokaOne, 24, INK)
+	glyph.Size = UDim2.fromScale(1, 1)
+	glyph.TextXAlignment = Enum.TextXAlignment.Center
+	glyph.ZIndex = Z + 3
+	local title = label(frame, words.name, Enum.Font.FredokaOne, 19, WHITE)
+	title.Position = UDim2.fromOffset(58, 8)
+	title.Size = UDim2.new(1, -(58 + BUTTON_WIDTH + 14), 0, 24)
+	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.TextStrokeTransparency = 0.55
+	local line = label(frame, words.line, Enum.Font.GothamBold, 11, WHITE)
+	line.Position = UDim2.fromOffset(58, 32)
+	line.Size = UDim2.new(1, -(58 + BUTTON_WIDTH + 14), 0, 16)
+	line.TextXAlignment = Enum.TextXAlignment.Left
+	line.TextStrokeTransparency = 0.6
+	local chips = Instance.new("Frame")
+	chips.BackgroundTransparency = 1
+	chips.Position = UDim2.fromOffset(10, 64)
+	chips.Size = UDim2.new(1, -20, 0, 44)
+	chips.ZIndex = Z + 1
+	chips.Parent = frame
+	local flow = Instance.new("UIListLayout")
+	flow.FillDirection = Enum.FillDirection.Horizontal
+	flow.Wraps = true
+	flow.Padding = UDim.new(0, 5)
+	flow.SortOrder = Enum.SortOrder.LayoutOrder
+	flow.Parent = chips
+	for index, text in words.chips do
+		chip(chips, text, WHITE, INK, 11).LayoutOrder = index
+	end
+	chip(chips, words.tag, rgb(168, 21, 90), WHITE, 10).LayoutOrder = #words.chips + 1
+	local id = Monetization.PRODUCTS[STARTER_KEY] or 0
+	local price = ProductPrice.of(id)
+	local buttonWords, robux = priceText(id, price)
+	buyButton(frame, buttonWords, id ~= 0 and price ~= nil, function()
+		ScreenClear.prompt()
+		Remotes.BuyUnlock:FireServer(STARTER_KEY)
+	end, robux)
+	shine(frame, 1.2)
+end
+
 local function heading(order: number, text: string)
 	local line = label(list, text, Enum.Font.FredokaOne, 16, INK)
 	line.LayoutOrder = order
@@ -356,6 +424,32 @@ local SLOT_LOOK: TileLook = {
 	chipBack = WHITE,
 	chipInk = rgb(176, 112, 15),
 }
+-- The Robux round passes' tiles (spec 2026-11-28-robux-round-design, Store A): VIP purple with a gold outline, Quick
+-- Open white with a sky outline, Night Shift navy to indigo
+local PASS_LOOKS: { [string]: TileLook } = {
+	VIP = {
+		back = ColorSequence.new(rgb(118, 70, 217), rgb(162, 116, 255)),
+		outline = rgb(245, 194, 66),
+		iconBack = ColorSequence.new(GOLD_TOP, GOLD_BOTTOM),
+		light = true,
+		chipBack = WHITE,
+		chipInk = rgb(106, 63, 208),
+	},
+	QuickOpen = {
+		outline = rgb(79, 180, 255),
+		iconBack = ColorSequence.new(rgb(180, 224, 255), rgb(79, 180, 255)),
+		light = false,
+		chipBack = rgb(230, 243, 255),
+		chipInk = rgb(28, 111, 184),
+	},
+	NightShift = {
+		back = ColorSequence.new(rgb(40, 48, 112), rgb(88, 70, 170)),
+		iconBack = ColorSequence.new(rgb(74, 82, 160), rgb(28, 30, 80)),
+		light = true,
+		chipBack = WHITE,
+		chipInk = rgb(58, 47, 143),
+	},
+}
 
 local function draw()
 	pricesPending = false
@@ -368,6 +462,7 @@ local function draw()
 	if not list:FindFirstChild("CodeBox") then
 		CodeBox.build(list, 40, Z) -- under everything sold: a code box for the codes we post (Config/Codes)
 	end
+	starterBanner(if luckAllowed == nil then nil else not luckAllowed)
 	banner()
 
 	heading(2, "🍀 Luck boosts")
@@ -396,27 +491,36 @@ local function draw()
 	note.TextWrapped = true
 
 	heading(20, "⭐ Forever")
-	-- Sold as a one-time developer product (Monetization UNLOCKS; the server opens it only while you don't own it),
-	-- else as the game pass
-	local productId = Monetization.PRODUCTS[PASS_KEY] or 0
-	local passId = Monetization.PASSES[PASS_KEY] or 0
-	local sub = "A second worker"
-	if player:GetAttribute(`Has{PASS_KEY}`) == true then
-		tile(21, SLOT_LOOK, "💼", "Extra Job Slot", sub, "+1 worker, yours forever", nil, "Owned", false, nil)
-	elseif productId ~= 0 then
-		local price = ProductPrice.of(productId)
-		local words, robux = priceText(productId, price)
-		tile(21, SLOT_LOOK, "💼", "Extra Job Slot", sub, "+1 worker, forever", "FOREVER", words, price ~= nil, function()
-			ScreenClear.prompt()
-			Remotes.BuyUnlock:FireServer(PASS_KEY)
-		end, robux)
-	else
-		local price = ProductPrice.ofPass(passId)
-		local words, robux = priceText(passId, price)
-		tile(21, SLOT_LOOK, "💼", "Extra Job Slot", sub, "+1 worker, forever", "FOREVER", words, passId ~= 0 and price ~= nil, function()
-			ScreenClear.prompt()
-			MarketplaceService:PromptGamePassPurchase(player, passId)
-		end, robux)
+	local owned: { [string]: boolean } = {}
+	for _, key in Monetization.FOREVER do
+		owned[key] = player:GetAttribute(`Has{key}`) == true
+	end
+	for index, row in StoreRules.forever(owned, os.time(), Monetization) do
+		local order = 20 + index
+		local words = Monetization.STORE[row.key]
+		local look = PASS_LOOKS[row.key] or SLOT_LOOK
+		local badge = if row.new then "NEW" elseif row.key == PASS_KEY then "FOREVER" else nil
+		local productId = Monetization.PRODUCTS[row.key] or 0
+		local passId = Monetization.PASSES[row.key] or 0
+		if row.owned then
+			tile(order, look, words.icon, words.name, words.line, words.win, nil, "Owned", false, nil)
+		elseif row.key == PASS_KEY and productId ~= 0 then
+			-- the slot is sold as a one-time developer product (Monetization UNLOCKS; the server opens it only while you
+			-- don't own it), else as the game pass
+			local price = ProductPrice.of(productId)
+			local buttonWords, robux = priceText(productId, price)
+			tile(order, look, words.icon, words.name, words.line, words.win, badge, buttonWords, price ~= nil, function()
+				ScreenClear.prompt()
+				Remotes.BuyUnlock:FireServer(PASS_KEY)
+			end, robux)
+		else
+			local price = ProductPrice.ofPass(passId)
+			local buttonWords, robux = priceText(passId, price)
+			tile(order, look, words.icon, words.name, words.line, words.win, badge, buttonWords, passId ~= 0 and price ~= nil, function()
+				ScreenClear.prompt()
+				MarketplaceService:PromptGamePassPurchase(player, passId)
+			end, robux)
+		end
 	end
 end
 
@@ -486,7 +590,7 @@ function StoreController.Start()
 			draw()
 		end
 	end)
-	for _, name in { "BoughtLuck", "BoughtLuckUntil", `Has{PASS_KEY}` } do
+	for _, name in { "BoughtLuck", "BoughtLuckUntil", `Has{PASS_KEY}`, "HasVIP", "HasQuickOpen", "HasNightShift", `Has{STARTER_KEY}` } do
 		player:GetAttributeChangedSignal(name):Connect(function()
 			if isOpen() then
 				draw()
