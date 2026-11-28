@@ -842,4 +842,16 @@ return {
 		expect.equal(data.layout[1].gridX, 23)
 		expect.equal(data.version, 42)
 	end,
+
+	-- v46 (Robux round, spec 2026-11-28-robux-round-design): the Starter card's play counter and whether it was shown;
+	-- every older save starts at none played, not shown
+	["v46 (the Starter Pack): every save gets starter = { played = 0, shown = false }"] = function()
+		local Data = require("../src/shared/Config/Data")
+		expect.equal(Data.SCHEMA_VERSION >= 46, true, "the schema is at v46")
+		local data: any = { version = 45 }
+		Migrations.run(data, 46, nil, footprint)
+		expect.equal(data.version, 46)
+		expect.equal(data.starter.played, 0)
+		expect.equal(data.starter.shown, false)
+	end,
 }

@@ -70,6 +70,7 @@ local RecyclerService = require(Services:WaitForChild("RecyclerService"))
 local OfflineService = require(Services:WaitForChild("OfflineService"))
 local EventService = require(Services:WaitForChild("EventService"))
 local CodeService = require(Services:WaitForChild("CodeService"))
+local StarterService = require(Services:WaitForChild("StarterService"))
 local BrokeService = require(Services:WaitForChild("BrokeService"))
 
 local Place = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Util"):WaitForChild("Place"))
@@ -92,6 +93,7 @@ if Place.isDungeon() then
 	SupportService.Start() -- "Support the dev" gifts: aura, best tier (before TitleService: its titles)
 	LuckService.Start() -- luck bought with Robux: its time running down while you play (after PurchaseService)
 	EventService.Start() -- weekly events: the day's toast, Lucky Sunday's free luck (after LuckService)
+	StarterService.Start() -- the Starter Pack: its play counter, card and luck (after MonetizationService and LuckService)
 	GiftService.Start() -- daily, weekly and monthly gifts: play time counts here too (claimed in the main game)
 	QuestService.Start() -- daily quests: fights here count (after EconomyService, ItemService, CardService, BattleService)
 	MainQuestService.Start() -- main quests: the saved layout's builds for the strip's main row
@@ -126,6 +128,7 @@ elseif Place.isFrontier() then
 	SupportService.Start() -- "Support the dev" gifts: aura, best tier (before TitleService: its titles)
 	LuckService.Start() -- luck bought with Robux: its time running down while you play (after PurchaseService)
 	EventService.Start() -- weekly events: the day's toast, Lucky Sunday's free luck (after LuckService)
+	StarterService.Start() -- the Starter Pack: its play counter, card and luck (after MonetizationService and LuckService)
 	GiftService.Start() -- daily, weekly and monthly gifts: play time counts here too (claimed in the main game)
 	QuestService.Start() -- daily quests: fights here count (after EconomyService, ItemService, CardService, BattleService)
 	MainQuestService.Start() -- main quests: the saved layout's builds for the strip's main row
@@ -183,6 +186,7 @@ else
 	SupportService.Start() -- "Support the dev" gifts: aura, best tier (before TitleService: its titles)
 	LuckService.Start() -- luck bought with Robux: its time running down while you play (after PurchaseService)
 	EventService.Start() -- weekly events: the day's toast, Lucky Sunday's free luck (after LuckService)
+	StarterService.Start() -- the Starter Pack: its play counter, card and luck (after MonetizationService and LuckService)
 	TitleService.Start() -- the title over the name (after BossService and SupportService: their progress)
 	FrontierService.Start() -- the plaza Frontier portal (after WildService builds the plaza)
 	TownService.Start() -- street, decor, portal frames and lighting around the plots and portals

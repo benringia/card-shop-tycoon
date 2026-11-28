@@ -83,6 +83,7 @@ export type PlayerData = {
 	seenWelcome: boolean, -- saw the first-visit welcome cinematic (WelcomeService)
 	seenPrologue: boolean, -- saw the prologue (the Hydra takes it all; WelcomeService, PrologueController)
 	seenSword: boolean, -- closed the "You got your first sword!" popup (SwordService)
+	starter: { played: number, shown: boolean }, -- the Starter card's play counter and whether it showed (v46, StarterService)
 	swordFights: number, -- boss fights fought with the sword HUD; its buttons show names for the first few (SwordService)
 	-- weaponId -> its grade, upgrade level, mutation and a mutation waiting for the player's choice (WeaponService; v44)
 	weapons: { [string]: { grade: string, level: number, mutation: { id: string, rarity: string }?, pending: { id: string, rarity: string, forge: boolean? }? } },
@@ -161,6 +162,7 @@ local TEMPLATE: PlayerData = {
 	seenWelcome = false,
 	seenPrologue = false, -- new saves play the prologue once (saves from before: Migrations v29)
 	seenSword = false,
+	starter = { played = 0, shown = false }, -- v46: the Starter card (StarterService)
 	swordFights = 0,
 	weapons = {},
 	equippedWeapon = "starterSword",

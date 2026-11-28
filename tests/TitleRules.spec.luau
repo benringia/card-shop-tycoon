@@ -85,7 +85,7 @@ return {
 			local title = Titles.ById[id]
 			assert(title, `{id} is listed`)
 			expect.equal(#title.name > 0 and #title.how > 0 and #title.color == 3, true, `{id}'s words`)
-			local kinds = { bossClear = true, secret = true, supporter = true, level = true, stat = true, bosses = true, cards = true, set = true, rarity = true, pvp = true, owner = true }
+			local kinds = { bossClear = true, secret = true, supporter = true, level = true, stat = true, bosses = true, cards = true, set = true, rarity = true, pvp = true, owner = true, unlock = true }
 			expect.equal(kinds[title.check.kind] == true, true, `{id}'s check`)
 			expect.equal(typeof(title.icon) == "string" and #title.icon > 0, true, `{id}: an icon before it`)
 			expect.equal(string.find(title.name .. title.how, "[\128-\255]") == nil, true, `{id}: plain ASCII`)
@@ -156,5 +156,14 @@ return {
 		expect.equal(creator.shimmer, true)
 		expect.equal(creator.hidden, true)
 		expect.equal(Titles.ORDER[1], "creator")
+	end,
+
+	-- Robux round (spec 2026-11-28-robux-round-design): the Starter Pack brings the "Shop Starter" title
+	["the Shop Starter title comes with the Starter Pack"] = function()
+		local progress = { cleared = {}, secret = false, unlocks = { StarterPack = true } }
+		assert(table.find(TitleRules.earned(Titles, progress), "shopStarter"), "earned with the Starter Pack")
+		assert(not table.find(TitleRules.earned(Titles, NONE), "shopStarter"), "not without it")
+		expect.equal(Titles.ById.shopStarter.name, "Shop Starter")
+		assert(table.find(Titles.ORDER, "shopStarter"), "listed in ORDER")
 	end,
 }

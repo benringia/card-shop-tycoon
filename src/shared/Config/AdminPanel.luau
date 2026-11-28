@@ -436,6 +436,8 @@ AdminPanel.SECTIONS = {
 			{ label = "Night Shift off", command = "/pass NightShift off" },
 			{ label = "Starter Pack on (as if bought)", command = "/pass StarterPack on" },
 			{ label = "Starter Pack off", command = "/pass StarterPack off" },
+			{ label = "Starter card now", command = "/starter offer" },
+			{ label = "Starter card: reset", command = "/starter reset" },
 		},
 	},
 } :: { Section }

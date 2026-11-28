@@ -17,6 +17,7 @@ export type Progress = {
 	rarities: { [string]: number }?,
 	pvpWins: number?,
 	owner: boolean?, -- the game's owner (the Creator title)
+	unlocks: { [string]: boolean }?, -- one-time unlocks owned (Config/Monetization UNLOCKS: the Starter Pack's title)
 }
 
 -- How far `progress` is toward a title's check: what they have and what it needs
@@ -53,6 +54,9 @@ local function measure(check: any, progress: Progress): (number, number)
 		return progress.pvpWins or 0, check.min
 	elseif kind == "owner" then
 		return if progress.owner then 1 else 0, 1
+	elseif kind == "unlock" then
+		local unlocks = progress.unlocks
+		return if unlocks and unlocks[check.key] then 1 else 0, 1
 	end
 	return 0, 1
 end

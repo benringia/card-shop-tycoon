@@ -46,6 +46,7 @@ local NAMES = {
 	"PrologueArena", -- server → client: (centre: Vector3?) this player's lair, its loadout lent; nil: no prologue now
 	"RedeemCode", -- client → server: (typed: string) the Store's code box: try this code (CodeService; rate-limited)
 	"CodeResult", -- server → client: (ok: boolean, message: string, reward: { cash?, items?, luck? }?) a code's answer; a redeemed one's gift plays its win moment (Util/CodeBox)
+	"StarterOffer", -- server → client: () show the Starter Pack's card at the next calm moment; client → server: () it showed (StarterService, StarterController)
 	"StoreWin", -- server → client: (kind: "x2" | "x3" | a Monetization WIN_KINDS kind (jobslot, starter, vip, quickopen, nightshift), seconds: number) a Store purchase went through: its win card (StoreWinController)
 	"GiftState", -- server → client: (view: GiftRules.View, counting: boolean) the daily, weekly and monthly gifts; client → server: () send it again (GiftService)
 	"GiftClaim", -- client → server: (kind: "daily" | "weekly" | "monthly") claim it; server → client: (kind, day: number, lines: { GiftRules.Line }) its win moment (GiftController)
@@ -217,6 +218,7 @@ return {
 	BuyLuck = remotes.BuyLuck,
 	BuyUnlock = remotes.BuyUnlock,
 	StoreWin = remotes.StoreWin,
+	StarterOffer = remotes.StarterOffer,
 	RedeemCode = remotes.RedeemCode,
 	CodeResult = remotes.CodeResult,
 	GiftState = remotes.GiftState,

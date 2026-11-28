@@ -27,6 +27,7 @@ local CardService = require(Services:WaitForChild("CardService"))
 local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local SupportService = require(Services:WaitForChild("SupportService"))
+local MonetizationService = require(Services:WaitForChild("MonetizationService"))
 local Blocked = require(Util:WaitForChild("Blocked"))
 local SaveSlots = require(Util:WaitForChild("SaveSlots"))
 local RateLimiter = require(Util:WaitForChild("RateLimiter"))
@@ -95,6 +96,7 @@ local function progressOf(player: Player, boss: TitleRules.Progress?): TitleRule
 		rarities = rarities,
 		pvpWins = pvpWins(player),
 		owner = SaveSlots.isOwner(player.UserId, game.CreatorId, game.CreatorType.Name), -- the Creator title, any save
+		unlocks = { StarterPack = MonetizationService.HasPass(player, "StarterPack") }, -- the Shop Starter title
 	}
 end
 
@@ -234,6 +236,12 @@ function TitleService.Start()
 	end)
 	SupportService.OnChanged(function(player: Player)
 		refresh(player)
+	end)
+	-- the Starter Pack bought (or its Studio stand-in): its Shop Starter title (spec 2026-11-28-robux-round-design)
+	MonetizationService.OnPassChanged(function(player: Player, passKey: string)
+		if passKey == "StarterPack" then
+			refresh(player)
+		end
 	end)
 	EconomyService.OnLevelUp(function(player: Player)
 		refresh(player)

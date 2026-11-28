@@ -533,6 +533,14 @@ local MIGRATIONS: { [number]: (data: any, rollGrade: () -> string, footprint: Fo
 	-- true`, a Forge roll's, whose choice gives no Essence (WeaponRules.read keeps the mark). One saved before has none
 	-- and stays a drop's, so nothing changes but the version.
 	[44] = function(_data) end,
+	-- v46 (Robux round, spec 2026-11-28-robux-round-design): the Starter card's play counter and whether it was shown
+	-- (StarterService; StarterRules.clean checks it on load). Every older save starts at none played, not shown, so a
+	-- player from before sees the card after one more hour of play.
+	[45] = function(data)
+		if typeof(data.starter) ~= "table" then
+			data.starter = { played = 0, shown = false }
+		end
+	end,
 }
 
 local function lowestGrade(): string

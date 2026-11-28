@@ -4,7 +4,8 @@
 -- (Util/TitleRules): "bossClear" (that boss cleared), "bosses" (every one of them cleared), "secret" (the Dungeon's
 -- secret chest found), "supporter" (a "Support the dev" gift of that tier or higher, Config/Support), "level" (shop
 -- level), "stat" (a lifetime counter: packsOpened, customersServed, totalEarned), "cards" (different cards owned),
--- "set" (every card of a set: its id prefix, `count` cards), "rarity" (cards of a rarity owned), "pvp" (duels won).
+-- "set" (every card of a set: its id prefix, `count` cards), "rarity" (cards of a rarity owned), "pvp" (duels won),
+-- "unlock" (a one-time unlock owned: Config/Monetization UNLOCKS, the Starter Pack's "Shop Starter").
 -- Once earned a title stays earned (TitleService saves it). The player picks one in the character window (saved
 -- data.title; "" = automatic: the first earned in ORDER, so the rarest come first).
 -- Names plain ASCII and short (owner 2026-11-12: "lets do gradient, and shorter", after other games' one- or two-word
@@ -19,7 +20,7 @@ return {
 		"legendarySupporter", "superSupporter", "supporter",
 		"dungeonConqueror", "champion", "cardMogul", "millionaire", "setMaster", "trailblazer",
 		"tycoon", "shopStar", "wildHunter", "luckyStar", "duelist", "crystalSeeker",
-		"collector", "packRipper", "shopkeeper",
+		"shopStarter", "collector", "packRipper", "shopkeeper",
 	},
 	ById = {
 		-- The game's owner's own (owner 2026-11-27: "Dev exclusive title and aura", pick 3; spec
@@ -117,6 +118,15 @@ return {
 			icon = "🎉",
 			how = "Serve 1,000 customers",
 			check = { kind = "stat", stat = "customersServed", min = 1000 },
+		},
+		-- The Starter Pack's (Robux round, spec 2026-11-28-robux-round-design; Config/Starter TITLE)
+		shopStarter = {
+			name = "Shop Starter",
+			color = { 255, 120, 130 },
+			gradient = { { 255, 138, 61 }, { 255, 79, 154 } },
+			icon = "🎁",
+			how = "Get the Starter Pack (Store)",
+			check = { kind = "unlock", key = "StarterPack" },
 		},
 		packRipper = {
 			name = "Pack Ripper",
